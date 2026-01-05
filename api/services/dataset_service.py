@@ -1419,7 +1419,7 @@ class DocumentService:
 
         document.name = name
         db.session.add(document)
-        if document.data_source_info_dict:
+        if document.data_source_info_dict and "upload_file_id" in document.data_source_info_dict:
             db.session.query(UploadFile).where(
                 UploadFile.id == document.data_source_info_dict["upload_file_id"]
             ).update({UploadFile.name: name})
@@ -2817,20 +2817,20 @@ class SegmentService:
                     db.session.add(binding)
                 db.session.commit()
 
-                # save vector index
-                try:
-                    VectorService.create_segments_vector(
-                        [args["keywords"]], [segment_document], dataset, document.doc_form
-                    )
-                except Exception as e:
-                    logger.exception("create segment index failed")
-                    segment_document.enabled = False
-                    segment_document.disabled_at = naive_utc_now()
-                    segment_document.status = "error"
-                    segment_document.error = str(e)
-                    db.session.commit()
-                segment = db.session.query(DocumentSegment).where(DocumentSegment.id == segment_document.id).first()
-                return segment
+            # save vector index
+            try:
+                keywords = args.get("keywords")
+                keywords_list = [keywords] if keywords is not None else None
+                VectorService.create_segments_vector(keywords_list, [segment_document], dataset, document.doc_form)
+            except Exception as e:
+                logger.exception("create segment index failed")
+                segment_document.enabled = False
+                segment_document.disabled_at = naive_utc_now()
+                segment_document.status = "error"
+                segment_document.error = str(e)
+                db.session.commit()
+            segment = db.session.query(DocumentSegment).where(DocumentSegment.id == segment_document.id).first()
+            return segment
         except LockNotOwnedError:
             pass
 
@@ -3458,7 +3458,7 @@ class SegmentService:
         if keyword:
             query = query.where(DocumentSegment.content.ilike(f"%{keyword}%"))
 
-        query = query.order_by(DocumentSegment.position.asc())
+        query = query.order_by(DocumentSegment.position.asc(), DocumentSegment.id.asc())
         paginated_segments = db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
 
         return paginated_segments.items, paginated_segments.total

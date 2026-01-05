@@ -1,19 +1,20 @@
-import React, { useState } from 'react'
+import { RiCloseLine } from '@remixicon/react'
+import { noop } from 'es-toolkit/function'
+import * as React from 'react'
+import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import { RiCloseLine } from '@remixicon/react'
-import { useAppContext } from '@/context/app-context'
-import { ToastContext } from '@/app/components/base/toast'
-import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import MemberSelector from './member-selector'
+import Modal from '@/app/components/base/modal'
+import { ToastContext } from '@/app/components/base/toast'
+import { useAppContext } from '@/context/app-context'
 import {
   ownershipTransfer,
   sendOwnerEmail,
   verifyOwnerEmail,
 } from '@/service/common'
-import { noop } from 'lodash-es'
+import MemberSelector from './member-selector'
 
 type Props = {
   show: boolean
@@ -126,122 +127,124 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
     <Modal
       isShow={show}
       onClose={noop}
-      className='!w-[420px] !p-6'
+      className="!w-[420px] !p-6"
     >
-      <div className='absolute right-5 top-5 cursor-pointer p-1.5' onClick={onClose}>
-        <RiCloseLine className='h-5 w-5 text-text-tertiary' />
+      <div className="absolute right-5 top-5 cursor-pointer p-1.5" onClick={onClose}>
+        <RiCloseLine className="h-5 w-5 text-text-tertiary" />
       </div>
       {step === STEP.start && (
         <>
-          <div className='title-2xl-semi-bold pb-3 text-text-primary'>{t('common.members.transferModal.title')}</div>
-          <div className='space-y-1 pb-2 pt-1'>
-            <div className='body-md-medium text-text-destructive'>{t('common.members.transferModal.warning', { workspace: currentWorkspace.name.replace(/'/g, '’') })}</div>
-            <div className='body-md-regular text-text-secondary'>{t('common.members.transferModal.warningTip')}</div>
-            <div className='body-md-regular text-text-secondary'>
+          <div className="title-2xl-semi-bold pb-3 text-text-primary">{t('members.transferModal.title', { ns: 'common' })}</div>
+          <div className="space-y-1 pb-2 pt-1">
+            <div className="body-md-medium text-text-destructive">{t('members.transferModal.warning', { ns: 'common', workspace: currentWorkspace.name.replace(/'/g, '’') })}</div>
+            <div className="body-md-regular text-text-secondary">{t('members.transferModal.warningTip', { ns: 'common' })}</div>
+            <div className="body-md-regular text-text-secondary">
               <Trans
-                i18nKey="common.members.transferModal.sendTip"
-                components={{ email: <span className='body-md-medium text-text-primary'></span> }}
+                i18nKey="members.transferModal.sendTip"
+                ns="common"
+                components={{ email: <span className="body-md-medium text-text-primary"></span> }}
                 values={{ email: userProfile.email }}
               />
             </div>
           </div>
-          <div className='pt-3'></div>
-          <div className='space-y-2'>
+          <div className="pt-3"></div>
+          <div className="space-y-2">
             <Button
-              className='!w-full'
-              variant='primary'
+              className="!w-full"
+              variant="primary"
               onClick={sendCodeToOriginEmail}
             >
-              {t('common.members.transferModal.sendVerifyCode')}
+              {t('members.transferModal.sendVerifyCode', { ns: 'common' })}
             </Button>
             <Button
-              className='!w-full'
+              className="!w-full"
               onClick={onClose}
             >
-              {t('common.operation.cancel')}
+              {t('operation.cancel', { ns: 'common' })}
             </Button>
           </div>
         </>
       )}
       {step === STEP.verify && (
         <>
-          <div className='title-2xl-semi-bold pb-3 text-text-primary'>{t('common.members.transferModal.verifyEmail')}</div>
-          <div className='pb-2 pt-1'>
-            <div className='body-md-regular text-text-secondary'>
+          <div className="title-2xl-semi-bold pb-3 text-text-primary">{t('members.transferModal.verifyEmail', { ns: 'common' })}</div>
+          <div className="pb-2 pt-1">
+            <div className="body-md-regular text-text-secondary">
               <Trans
-                i18nKey="common.members.transferModal.verifyContent"
-                components={{ email: <span className='body-md-medium text-text-primary'></span> }}
+                i18nKey="members.transferModal.verifyContent"
+                ns="common"
+                components={{ email: <span className="body-md-medium text-text-primary"></span> }}
                 values={{ email: userProfile.email }}
               />
             </div>
-            <div className='body-md-regular text-text-secondary'>{t('common.members.transferModal.verifyContent2')}</div>
+            <div className="body-md-regular text-text-secondary">{t('members.transferModal.verifyContent2', { ns: 'common' })}</div>
           </div>
-          <div className='pt-3'>
-            <div className='system-sm-medium mb-1 flex h-6 items-center text-text-secondary'>{t('common.members.transferModal.codeLabel')}</div>
+          <div className="pt-3">
+            <div className="system-sm-medium mb-1 flex h-6 items-center text-text-secondary">{t('members.transferModal.codeLabel', { ns: 'common' })}</div>
             <Input
-              className='!w-full'
-              placeholder={t('common.members.transferModal.codePlaceholder')}
+              className="!w-full"
+              placeholder={t('members.transferModal.codePlaceholder', { ns: 'common' })}
               value={code}
               onChange={e => setCode(e.target.value)}
               maxLength={6}
             />
           </div>
-          <div className='mt-3 space-y-2'>
+          <div className="mt-3 space-y-2">
             <Button
               disabled={code.length !== 6}
-              className='!w-full'
-              variant='primary'
+              className="!w-full"
+              variant="primary"
               onClick={handleVerifyOriginEmail}
             >
-              {t('common.members.transferModal.continue')}
+              {t('members.transferModal.continue', { ns: 'common' })}
             </Button>
             <Button
-              className='!w-full'
+              className="!w-full"
               onClick={onClose}
             >
-              {t('common.operation.cancel')}
+              {t('operation.cancel', { ns: 'common' })}
             </Button>
           </div>
-          <div className='system-xs-regular mt-3 flex items-center gap-1 text-text-tertiary'>
-            <span>{t('common.members.transferModal.resendTip')}</span>
+          <div className="system-xs-regular mt-3 flex items-center gap-1 text-text-tertiary">
+            <span>{t('members.transferModal.resendTip', { ns: 'common' })}</span>
             {time > 0 && (
-              <span>{t('common.members.transferModal.resendCount', { count: time })}</span>
+              <span>{t('members.transferModal.resendCount', { ns: 'common', count: time })}</span>
             )}
             {!time && (
-              <span onClick={sendCodeToOriginEmail} className='system-xs-medium cursor-pointer text-text-accent-secondary'>{t('common.members.transferModal.resend')}</span>
+              <span onClick={sendCodeToOriginEmail} className="system-xs-medium cursor-pointer text-text-accent-secondary">{t('members.transferModal.resend', { ns: 'common' })}</span>
             )}
           </div>
         </>
       )}
       {step === STEP.transfer && (
         <>
-          <div className='title-2xl-semi-bold pb-3 text-text-primary'>{t('common.members.transferModal.title')}</div>
-          <div className='space-y-1 pb-2 pt-1'>
-            <div className='body-md-medium text-text-destructive'>{t('common.members.transferModal.warning', { workspace: currentWorkspace.name.replace(/'/g, '’') })}</div>
-            <div className='body-md-regular text-text-secondary'>{t('common.members.transferModal.warningTip')}</div>
+          <div className="title-2xl-semi-bold pb-3 text-text-primary">{t('members.transferModal.title', { ns: 'common' })}</div>
+          <div className="space-y-1 pb-2 pt-1">
+            <div className="body-md-medium text-text-destructive">{t('members.transferModal.warning', { ns: 'common', workspace: currentWorkspace.name.replace(/'/g, '’') })}</div>
+            <div className="body-md-regular text-text-secondary">{t('members.transferModal.warningTip', { ns: 'common' })}</div>
           </div>
-          <div className='pt-3'>
-            <div className='system-sm-medium mb-1 flex h-6 items-center text-text-secondary'>{t('common.members.transferModal.transferLabel')}</div>
+          <div className="pt-3">
+            <div className="system-sm-medium mb-1 flex h-6 items-center text-text-secondary">{t('members.transferModal.transferLabel', { ns: 'common' })}</div>
             <MemberSelector
               exclude={[userProfile.id]}
               value={newOwner}
               onSelect={setNewOwner}
             />
           </div>
-          <div className='mt-4 space-y-2'>
+          <div className="mt-4 space-y-2">
             <Button
               disabled={!newOwner || isTransfer}
-              className='!w-full'
-              variant='warning'
+              className="!w-full"
+              variant="warning"
               onClick={handleTransfer}
             >
-              {t('common.members.transferModal.transfer')}
+              {t('members.transferModal.transfer', { ns: 'common' })}
             </Button>
             <Button
-              className='!w-full'
+              className="!w-full"
               onClick={onClose}
             >
-              {t('common.operation.cancel')}
+              {t('operation.cancel', { ns: 'common' })}
             </Button>
           </div>
         </>

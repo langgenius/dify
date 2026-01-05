@@ -83,8 +83,9 @@ class WordExtractor(BaseExtractor):
     def _extract_images_from_docx(self, doc):
         image_count = 0
         image_map = {}
+        base_url = dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL
 
-        for rId, rel in doc.part.rels.items():
+        for r_id, rel in doc.part.rels.items():
             if "image" in rel.target_ref:
                 image_count += 1
                 if rel.is_external:
@@ -121,9 +122,7 @@ class WordExtractor(BaseExtractor):
                             used_at=naive_utc_now(),
                         )
                         db.session.add(upload_file)
-                        db.session.commit()
-                        # Use rId as key for external images since target_part is undefined
-                        image_map[rId] = f"![image]({dify_config.FILES_URL}/files/{upload_file.id}/file-preview)"
+                        image_map[r_id] = f"![image]({base_url}/files/{upload_file.id}/file-preview)"
                 else:
                     image_ext = rel.target_ref.split(".")[-1]
                     if image_ext is None:
@@ -151,12 +150,8 @@ class WordExtractor(BaseExtractor):
                         used_at=naive_utc_now(),
                     )
                     db.session.add(upload_file)
-                    db.session.commit()
-                    # Use target_part as key for internal images
-                    image_map[rel.target_part] = (
-                        f"![image]({dify_config.FILES_URL}/files/{upload_file.id}/file-preview)"
-                    )
-
+                    image_map[rel.target_part] = f"![image]({base_url}/files/{upload_file.id}/file-preview)"
+        db.session.commit()
         return image_map
 
     def _table_to_markdown(self, table, image_map):

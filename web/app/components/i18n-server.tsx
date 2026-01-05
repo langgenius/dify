@@ -1,7 +1,7 @@
-import React from 'react'
-import I18N from './i18n'
-import { ToastProvider } from './base/toast'
+import * as React from 'react'
 import { getLocaleOnServer } from '@/i18n-config/server'
+import { ToastProvider } from './base/toast'
+import I18N from './i18n'
 
 export type II18NServerProps = {
   children: React.ReactNode

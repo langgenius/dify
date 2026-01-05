@@ -153,11 +153,11 @@ class ToolInvokeMessage(BaseModel):
         @classmethod
         def transform_variable_value(cls, values):
             """
-            Only basic types and lists are allowed.
+            Only basic types, lists, and None are allowed.
             """
             value = values.get("variable_value")
-            if not isinstance(value, dict | list | str | int | float | bool):
-                raise ValueError("Only basic types and lists are allowed.")
+            if value is not None and not isinstance(value, dict | list | str | int | float | bool):
+                raise ValueError("Only basic types, lists, and None are allowed.")
 
             # if stream is true, the value must be a string
             if values.get("stream"):

@@ -1,28 +1,29 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useState } from 'react'
-import Modal from '../../../base/modal'
-import type { BuiltInMetadataItem, MetadataItemInBatchEdit } from '../types'
-import { type MetadataItemWithEdit, UpdateType } from '../types'
-import EditMetadataBatchItem from './edit-row'
-import AddedMetadataItem from './add-row'
-import Button from '../../../base/button'
-import { useTranslation } from 'react-i18next'
-import Checkbox from '../../../base/checkbox'
-import Tooltip from '../../../base/tooltip'
-import SelectMetadataModal from '../metadata-dataset/select-metadata-modal'
+import type { BuiltInMetadataItem, MetadataItemInBatchEdit, MetadataItemWithEdit } from '../types'
 import { RiQuestionLine } from '@remixicon/react'
-import Divider from '@/app/components/base/divider'
-import AddMetadataButton from '../add-metadata-button'
 import { produce } from 'immer'
-import useCheckMetadataName from '../hooks/use-check-metadata-name'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Divider from '@/app/components/base/divider'
 import Toast from '@/app/components/base/toast'
 import { useCreateMetaData } from '@/service/knowledge/use-metadata'
+import Button from '../../../base/button'
+import Checkbox from '../../../base/checkbox'
+import Modal from '../../../base/modal'
+import Tooltip from '../../../base/tooltip'
+import AddMetadataButton from '../add-metadata-button'
+import useCheckMetadataName from '../hooks/use-check-metadata-name'
+import SelectMetadataModal from '../metadata-dataset/select-metadata-modal'
+import { UpdateType } from '../types'
+import AddedMetadataItem from './add-row'
+import EditMetadataBatchItem from './edit-row'
 
-const i18nPrefix = 'dataset.metadata.batchEditMetadata'
+const i18nPrefix = 'metadata.batchEditMetadata'
 
 type Props = {
-  datasetId: string,
+  datasetId: string
   documentNum: number
   list: MetadataItemInBatchEdit[]
   onSave: (editedList: MetadataItemInBatchEdit[], addedList: MetadataItemInBatchEdit[], isApplyToAllSelectDocument: boolean) => void
@@ -48,8 +49,7 @@ const EditMetadataBatchModal: FC<Props> = ({
         draft[index].isUpdated = true
         draft[index].updateType = UpdateType.changeValue
       }
-    },
-    )
+    })
     setTempleList(newTempleList)
   }, [templeList])
   const handleTempleItemRemove = useCallback((id: string) => {
@@ -89,7 +89,7 @@ const EditMetadataBatchModal: FC<Props> = ({
     await doAddMetaData(payload)
     Toast.notify({
       type: 'success',
-      message: t('common.api.actionSuccess'),
+      message: t('api.actionSuccess', { ns: 'common' }),
     })
   }, [checkName, doAddMetaData, t])
 
@@ -112,15 +112,15 @@ const EditMetadataBatchModal: FC<Props> = ({
   }, [templeList, addedList, isApplyToAllSelectDocument, onSave])
   return (
     <Modal
-      title={t(`${i18nPrefix}.editMetadata`)}
+      title={t(`${i18nPrefix}.editMetadata`, { ns: 'dataset' })}
       isShow
       closable
       onClose={onHide}
-      className='!max-w-[640px]'
+      className="!max-w-[640px]"
     >
-      <div className='system-xs-medium mt-1 text-text-accent'>{t(`${i18nPrefix}.editDocumentsNum`, { num: documentNum })}</div>
-      <div className='max-h-[305px] overflow-y-auto overflow-x-hidden'>
-        <div className='mt-4 space-y-2'>
+      <div className="system-xs-medium mt-1 text-text-accent">{t(`${i18nPrefix}.editDocumentsNum`, { ns: 'dataset', num: documentNum })}</div>
+      <div className="max-h-[305px] overflow-y-auto overflow-x-hidden">
+        <div className="mt-4 space-y-2">
           {templeList.map(item => (
             <EditMetadataBatchItem
               key={item.id}
@@ -131,12 +131,12 @@ const EditMetadataBatchModal: FC<Props> = ({
             />
           ))}
         </div>
-        <div className='mt-4 pl-[18px]'>
-          <div className='flex items-center'>
-            <div className='system-xs-medium-uppercase mr-2 shrink-0 text-text-tertiary'>{t('dataset.metadata.createMetadata.title')}</div>
-            <Divider bgStyle='gradient' />
+        <div className="mt-4 pl-[18px]">
+          <div className="flex items-center">
+            <div className="system-xs-medium-uppercase mr-2 shrink-0 text-text-tertiary">{t('metadata.createMetadata.title', { ns: 'dataset' })}</div>
+            <Divider bgStyle="gradient" />
           </div>
-          <div className='mt-2 space-y-2'>
+          <div className="mt-2 space-y-2">
             {addedList.map((item, i) => (
               <AddedMetadataItem
                 key={i}
@@ -146,10 +146,10 @@ const EditMetadataBatchModal: FC<Props> = ({
               />
             ))}
           </div>
-          <div className='mt-3'>
+          <div className="mt-3">
             <SelectMetadataModal
               datasetId={datasetId}
-              popupPlacement='top-start'
+              popupPlacement="top-start"
               popupOffset={{ mainAxis: 4, crossAxis: 0 }}
               trigger={
                 <AddMetadataButton />
@@ -162,25 +162,31 @@ const EditMetadataBatchModal: FC<Props> = ({
         </div>
       </div>
 
-      <div className='mt-4 flex items-center justify-between'>
-        <div className='flex select-none items-center'>
+      <div className="mt-4 flex items-center justify-between">
+        <div className="flex select-none items-center">
           <Checkbox checked={isApplyToAllSelectDocument} onCheck={() => setIsApplyToAllSelectDocument(!isApplyToAllSelectDocument)} />
-          <div className='system-xs-medium ml-2 mr-1 text-text-secondary'>{t(`${i18nPrefix}.applyToAllSelectDocument`)}</div>
+          <div className="system-xs-medium ml-2 mr-1 text-text-secondary">{t(`${i18nPrefix}.applyToAllSelectDocument`, { ns: 'dataset' })}</div>
           <Tooltip popupContent={
-            <div className='max-w-[240px]'>{t(`${i18nPrefix}.applyToAllSelectDocumentTip`)}</div>
-          } >
-            <div className='cursor-pointer p-px'>
-              <RiQuestionLine className='size-3.5 text-text-tertiary' />
+            <div className="max-w-[240px]">{t(`${i18nPrefix}.applyToAllSelectDocumentTip`, { ns: 'dataset' })}</div>
+          }
+          >
+            <div className="cursor-pointer p-px">
+              <RiQuestionLine className="size-3.5 text-text-tertiary" />
             </div>
           </Tooltip>
         </div>
-        <div className='flex items-center space-x-2'>
+        <div className="flex items-center space-x-2">
           <Button
-            onClick={onHide}>{t('common.operation.cancel')}</Button>
+            onClick={onHide}
+          >
+            {t('operation.cancel', { ns: 'common' })}
+          </Button>
           <Button
             onClick={handleSave}
-            variant='primary'
-          >{t('common.operation.save')}</Button>
+            variant="primary"
+          >
+            {t('operation.save', { ns: 'common' })}
+          </Button>
         </div>
       </div>
     </Modal>

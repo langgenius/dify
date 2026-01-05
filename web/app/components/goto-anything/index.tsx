@@ -1,25 +1,26 @@
 'use client'
 
 import type { FC } from 'react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import Modal from '@/app/components/base/modal'
-import Input from '@/app/components/base/input'
+import type { Plugin } from '../plugins/types'
+import type { SearchResult } from './actions'
+import { RiSearchLine } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
 import { useDebounce, useKeyPress } from 'ahooks'
+import { Command } from 'cmdk'
+import { useRouter } from 'next/navigation'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Input from '@/app/components/base/input'
+import Modal from '@/app/components/base/modal'
 import { getKeyboardKeyCodeBySystem, isEventTargetInputArea, isMac } from '@/app/components/workflow/utils/common'
 import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigation'
-import { RiSearchLine } from '@remixicon/react'
-import { type SearchResult, createActions, matchAction, searchAnything } from './actions'
-import { GotoAnythingProvider, useGotoAnythingContext } from './context'
-import { slashCommandRegistry } from './actions/commands/registry'
-import { useQuery } from '@tanstack/react-query'
 import { useGetLanguage } from '@/context/i18n'
-import { useTranslation } from 'react-i18next'
 import InstallFromMarketplace from '../plugins/install-plugin/install-from-marketplace'
-import type { Plugin } from '../plugins/types'
-import { Command } from 'cmdk'
-import CommandSelector from './command-selector'
+import { createActions, matchAction, searchAnything } from './actions'
 import { SlashCommandProvider } from './actions/commands'
+import { slashCommandRegistry } from './actions/commands/registry'
+import CommandSelector from './command-selector'
+import { GotoAnythingProvider, useGotoAnythingContext } from './context'
 
 type Props = {
   onHide?: () => void
@@ -109,7 +110,7 @@ const GotoAnything: FC<Props> = ({
         isWorkflowPage,
         isRagPipelinePage,
         defaultLocale,
-        Object.keys(Actions).sort().join(','),
+        Actions,
       ],
       queryFn: async () => {
         const query = searchQueryDebouncedValue.toLowerCase()
@@ -195,8 +196,7 @@ const GotoAnything: FC<Props> = ({
 
     acc[result.type].push(result)
     return acc
-  }, {} as { [key: string]: SearchResult[] }),
-  [dedupedResults])
+  }, {} as { [key: string]: SearchResult[] }), [dedupedResults])
 
   useEffect(() => {
     if (isCommandsMode)
@@ -222,9 +222,9 @@ const GotoAnything: FC<Props> = ({
       return (
         <div className="flex items-center justify-center py-8 text-center text-text-tertiary">
           <div>
-            <div className='text-sm font-medium text-red-500'>{t('app.gotoAnything.searchTemporarilyUnavailable')}</div>
-            <div className='mt-1 text-xs text-text-quaternary'>
-              {t('app.gotoAnything.servicesUnavailableMessage')}
+            <div className="text-sm font-medium text-red-500">{t('gotoAnything.searchTemporarilyUnavailable', { ns: 'app' })}</div>
+            <div className="mt-1 text-xs text-text-quaternary">
+              {t('gotoAnything.servicesUnavailableMessage', { ns: 'app' })}
             </div>
           </div>
         </div>
@@ -234,25 +234,23 @@ const GotoAnything: FC<Props> = ({
     return (
       <div className="flex items-center justify-center py-8 text-center text-text-tertiary">
         <div>
-          <div className='text-sm font-medium'>
+          <div className="text-sm font-medium">
             {isCommandSearch
               ? (() => {
-                const keyMap: Record<string, string> = {
-                  app: 'app.gotoAnything.emptyState.noAppsFound',
-                  plugin: 'app.gotoAnything.emptyState.noPluginsFound',
-                  knowledge: 'app.gotoAnything.emptyState.noKnowledgeBasesFound',
-                  node: 'app.gotoAnything.emptyState.noWorkflowNodesFound',
-                }
-                return t(keyMap[commandType] || 'app.gotoAnything.noResults')
-              })()
-              : t('app.gotoAnything.noResults')
-            }
+                  const keyMap = {
+                    app: 'gotoAnything.emptyState.noAppsFound',
+                    plugin: 'gotoAnything.emptyState.noPluginsFound',
+                    knowledge: 'gotoAnything.emptyState.noKnowledgeBasesFound',
+                    node: 'gotoAnything.emptyState.noWorkflowNodesFound',
+                  } as const
+                  return t(keyMap[commandType as keyof typeof keyMap] || 'gotoAnything.noResults', { ns: 'app' })
+                })()
+              : t('gotoAnything.noResults', { ns: 'app' })}
           </div>
-          <div className='mt-1 text-xs text-text-quaternary'>
+          <div className="mt-1 text-xs text-text-quaternary">
             {isCommandSearch
-              ? t('app.gotoAnything.emptyState.tryDifferentTerm')
-              : t('app.gotoAnything.emptyState.trySpecificSearch', { shortcuts: Object.values(Actions).map(action => action.shortcut).join(', ') })
-            }
+              ? t('gotoAnything.emptyState.tryDifferentTerm', { ns: 'app' })
+              : t('gotoAnything.emptyState.trySpecificSearch', { ns: 'app', shortcuts: Object.values(Actions).map(action => action.shortcut).join(', ') })}
           </div>
         </div>
       </div>
@@ -263,16 +261,18 @@ const GotoAnything: FC<Props> = ({
     if (searchQuery.trim())
       return null
 
-    return (<div className="flex items-center justify-center py-8 text-center text-text-tertiary">
-      <div>
-        <div className='text-sm font-medium'>{t('app.gotoAnything.searchTitle')}</div>
-        <div className='mt-3 space-y-1 text-xs text-text-quaternary'>
-          <div>{t('app.gotoAnything.searchHint')}</div>
-          <div>{t('app.gotoAnything.commandHint')}</div>
-          <div>{t('app.gotoAnything.slashHint')}</div>
+    return (
+      <div className="flex items-center justify-center py-8 text-center text-text-tertiary">
+        <div>
+          <div className="text-sm font-medium">{t('gotoAnything.searchTitle', { ns: 'app' })}</div>
+          <div className="mt-3 space-y-1 text-xs text-text-quaternary">
+            <div>{t('gotoAnything.searchHint', { ns: 'app' })}</div>
+            <div>{t('gotoAnything.commandHint', { ns: 'app' })}</div>
+            <div>{t('gotoAnything.slashHint', { ns: 'app' })}</div>
+          </div>
         </div>
       </div>
-    </div>)
+    )
   }, [searchQuery, Actions])
 
   useEffect(() => {
@@ -295,24 +295,24 @@ const GotoAnything: FC<Props> = ({
           onHide?.()
         }}
         closable={false}
-        className='!w-[480px] !p-0'
+        className="!w-[480px] !p-0"
         highPriority={true}
       >
-        <div className='flex flex-col rounded-2xl border border-components-panel-border bg-components-panel-bg shadow-xl'>
+        <div className="flex flex-col rounded-2xl border border-components-panel-border bg-components-panel-bg shadow-xl">
           <Command
-            className='outline-none'
+            className="outline-none"
             value={cmdVal}
             onValueChange={setCmdVal}
             disablePointerSelection
             loop
           >
-            <div className='flex items-center gap-3 border-b border-divider-subtle bg-components-panel-bg-blur px-4 py-3'>
-              <RiSearchLine className='h-4 w-4 text-text-quaternary' />
-              <div className='flex flex-1 items-center gap-2'>
+            <div className="flex items-center gap-3 border-b border-divider-subtle bg-components-panel-bg-blur px-4 py-3">
+              <RiSearchLine className="h-4 w-4 text-text-quaternary" />
+              <div className="flex flex-1 items-center gap-2">
                 <Input
                   ref={inputRef}
                   value={searchQuery}
-                  placeholder={t('app.gotoAnything.searchPlaceholder')}
+                  placeholder={t('gotoAnything.searchPlaceholder', { ns: 'app' })}
                   onChange={(e) => {
                     setSearchQuery(e.target.value)
                     if (!e.target.value.startsWith('@') && !e.target.value.startsWith('/'))
@@ -337,46 +337,48 @@ const GotoAnything: FC<Props> = ({
                       }
                     }
                   }}
-                  className='flex-1 !border-0 !bg-transparent !shadow-none'
-                  wrapperClassName='flex-1 !border-0 !bg-transparent'
+                  className="flex-1 !border-0 !bg-transparent !shadow-none"
+                  wrapperClassName="flex-1 !border-0 !bg-transparent"
                   autoFocus
                 />
                 {searchMode !== 'general' && (
-                  <div className='flex items-center gap-1 rounded bg-gray-100 px-2 py-[2px] text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300'>
-                    <span>{(() => {
-                      if (searchMode === 'scopes')
-                        return 'SCOPES'
-                      else if (searchMode === 'commands')
-                        return 'COMMANDS'
-                      else
-                        return searchMode.replace('@', '').toUpperCase()
-                    })()}</span>
+                  <div className="flex items-center gap-1 rounded bg-gray-100 px-2 py-[2px] text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                    <span>
+                      {(() => {
+                        if (searchMode === 'scopes')
+                          return 'SCOPES'
+                        else if (searchMode === 'commands')
+                          return 'COMMANDS'
+                        else
+                          return searchMode.replace('@', '').toUpperCase()
+                      })()}
+                    </span>
                   </div>
                 )}
               </div>
-              <div className='text-xs text-text-quaternary'>
-                <span className='system-kbd rounded bg-gray-200 px-1 py-[2px] font-mono text-gray-700 dark:bg-gray-800 dark:text-gray-100'>
+              <div className="text-xs text-text-quaternary">
+                <span className="system-kbd rounded bg-gray-200 px-1 py-[2px] font-mono text-gray-700 dark:bg-gray-800 dark:text-gray-100">
                   {isMac() ? '⌘' : 'Ctrl'}
                 </span>
-                <span className='system-kbd ml-1 rounded bg-gray-200 px-1 py-[2px] font-mono text-gray-700 dark:bg-gray-800 dark:text-gray-100'>
+                <span className="system-kbd ml-1 rounded bg-gray-200 px-1 py-[2px] font-mono text-gray-700 dark:bg-gray-800 dark:text-gray-100">
                   K
                 </span>
               </div>
             </div>
 
-            <Command.List className='h-[240px] overflow-y-auto'>
+            <Command.List className="h-[240px] overflow-y-auto">
               {isLoading && (
                 <div className="flex items-center justify-center py-8 text-center text-text-tertiary">
                   <div className="flex items-center gap-2">
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"></div>
-                    <span className="text-sm">{t('app.gotoAnything.searching')}</span>
+                    <span className="text-sm">{t('gotoAnything.searching', { ns: 'app' })}</span>
                   </div>
                 </div>
               )}
               {isError && (
                 <div className="flex items-center justify-center py-8 text-center text-text-tertiary">
                   <div>
-                    <div className="text-sm font-medium text-red-500">{t('app.gotoAnything.searchFailed')}</div>
+                    <div className="text-sm font-medium text-red-500">{t('gotoAnything.searchFailed', { ns: 'app' })}</div>
                     <div className="mt-1 text-xs text-text-quaternary">
                       {error.message}
                     </div>
@@ -385,53 +387,59 @@ const GotoAnything: FC<Props> = ({
               )}
               {!isLoading && !isError && (
                 <>
-                  {isCommandsMode ? (
-                    <CommandSelector
-                      actions={Actions}
-                      onCommandSelect={handleCommandSelect}
-                      searchFilter={searchQuery.trim().substring(1)}
-                      commandValue={cmdVal}
-                      onCommandValueChange={setCmdVal}
-                      originalQuery={searchQuery.trim()}
-                    />
-                  ) : (
-                    Object.entries(groupedResults).map(([type, results], groupIndex) => (
-                      <Command.Group key={groupIndex} heading={(() => {
-                        const typeMap: Record<string, string> = {
-                          'app': 'app.gotoAnything.groups.apps',
-                          'plugin': 'app.gotoAnything.groups.plugins',
-                          'knowledge': 'app.gotoAnything.groups.knowledgeBases',
-                          'workflow-node': 'app.gotoAnything.groups.workflowNodes',
-                          'command': 'app.gotoAnything.groups.commands',
-                        }
-                        return t(typeMap[type] || `${type}s`)
-                      })()} className='p-2 capitalize text-text-secondary'>
-                        {results.map(result => (
-                          <Command.Item
-                            key={`${result.type}-${result.id}`}
-                            value={`${result.type}-${result.id}`}
-                            className='flex cursor-pointer items-center gap-3 rounded-md p-3 will-change-[background-color] hover:bg-state-base-hover aria-[selected=true]:bg-state-base-hover-alt data-[selected=true]:bg-state-base-hover-alt'
-                            onSelect={() => handleNavigate(result)}
+                  {isCommandsMode
+                    ? (
+                        <CommandSelector
+                          actions={Actions}
+                          onCommandSelect={handleCommandSelect}
+                          searchFilter={searchQuery.trim().substring(1)}
+                          commandValue={cmdVal}
+                          onCommandValueChange={setCmdVal}
+                          originalQuery={searchQuery.trim()}
+                        />
+                      )
+                    : (
+                        Object.entries(groupedResults).map(([type, results], groupIndex) => (
+                          <Command.Group
+                            key={groupIndex}
+                            heading={(() => {
+                              const typeMap = {
+                                'app': 'gotoAnything.groups.apps',
+                                'plugin': 'gotoAnything.groups.plugins',
+                                'knowledge': 'gotoAnything.groups.knowledgeBases',
+                                'workflow-node': 'gotoAnything.groups.workflowNodes',
+                                'command': 'gotoAnything.groups.commands',
+                              } as const
+                              return t(typeMap[type as keyof typeof typeMap] || `${type}s`, { ns: 'app' })
+                            })()}
+                            className="p-2 capitalize text-text-secondary"
                           >
-                            {result.icon}
-                            <div className='min-w-0 flex-1'>
-                              <div className='truncate font-medium text-text-secondary'>
-                                {result.title}
-                              </div>
-                              {result.description && (
-                                <div className='mt-0.5 truncate text-xs text-text-quaternary'>
-                                  {result.description}
+                            {results.map(result => (
+                              <Command.Item
+                                key={`${result.type}-${result.id}`}
+                                value={`${result.type}-${result.id}`}
+                                className="flex cursor-pointer items-center gap-3 rounded-md p-3 will-change-[background-color] hover:bg-state-base-hover aria-[selected=true]:bg-state-base-hover-alt data-[selected=true]:bg-state-base-hover-alt"
+                                onSelect={() => handleNavigate(result)}
+                              >
+                                {result.icon}
+                                <div className="min-w-0 flex-1">
+                                  <div className="truncate font-medium text-text-secondary">
+                                    {result.title}
+                                  </div>
+                                  {result.description && (
+                                    <div className="mt-0.5 truncate text-xs text-text-quaternary">
+                                      {result.description}
+                                    </div>
+                                  )}
                                 </div>
-                              )}
-                            </div>
-                            <div className='text-xs capitalize text-text-quaternary'>
-                              {result.type}
-                            </div>
-                          </Command.Item>
-                        ))}
-                      </Command.Group>
-                    ))
-                  )}
+                                <div className="text-xs capitalize text-text-quaternary">
+                                  {result.type}
+                                </div>
+                              </Command.Item>
+                            ))}
+                          </Command.Group>
+                        ))
+                      )}
                   {!isCommandsMode && emptyResult}
                   {!isCommandsMode && defaultUI}
                 </>
@@ -439,51 +447,54 @@ const GotoAnything: FC<Props> = ({
             </Command.List>
 
             {/* Always show footer to prevent height jumping */}
-            <div className='border-t border-divider-subtle bg-components-panel-bg-blur px-4 py-2 text-xs text-text-tertiary'>
-              <div className='flex min-h-[16px] items-center justify-between'>
-                {(!!dedupedResults.length || isError) ? (
-                  <>
-                    <span>
-                      {isError ? (
-                        <span className='text-red-500'>{t('app.gotoAnything.someServicesUnavailable')}</span>
-                      ) : (
-                        <>
-                          {t('app.gotoAnything.resultCount', { count: dedupedResults.length })}
-                          {searchMode !== 'general' && (
-                            <span className='ml-2 opacity-60'>
-                              {t('app.gotoAnything.inScope', { scope: searchMode.replace('@', '') })}
-                            </span>
-                          )}
-                        </>
-                      )}
-                    </span>
-                    <span className='opacity-60'>
-                      {searchMode !== 'general'
-                        ? t('app.gotoAnything.clearToSearchAll')
-                        : t('app.gotoAnything.useAtForSpecific')
-                      }
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <span className='opacity-60'>
-                      {(() => {
-                        if (isCommandsMode)
-                          return t('app.gotoAnything.selectToNavigate')
+            <div className="border-t border-divider-subtle bg-components-panel-bg-blur px-4 py-2 text-xs text-text-tertiary">
+              <div className="flex min-h-[16px] items-center justify-between">
+                {(!!dedupedResults.length || isError)
+                  ? (
+                      <>
+                        <span>
+                          {isError
+                            ? (
+                                <span className="text-red-500">{t('gotoAnything.someServicesUnavailable', { ns: 'app' })}</span>
+                              )
+                            : (
+                                <>
+                                  {t('gotoAnything.resultCount', { ns: 'app', count: dedupedResults.length })}
+                                  {searchMode !== 'general' && (
+                                    <span className="ml-2 opacity-60">
+                                      {t('gotoAnything.inScope', { ns: 'app', scope: searchMode.replace('@', '') })}
+                                    </span>
+                                  )}
+                                </>
+                              )}
+                        </span>
+                        <span className="opacity-60">
+                          {searchMode !== 'general'
+                            ? t('gotoAnything.clearToSearchAll', { ns: 'app' })
+                            : t('gotoAnything.useAtForSpecific', { ns: 'app' })}
+                        </span>
+                      </>
+                    )
+                  : (
+                      <>
+                        <span className="opacity-60">
+                          {(() => {
+                            if (isCommandsMode)
+                              return t('gotoAnything.selectToNavigate', { ns: 'app' })
 
-                        if (searchQuery.trim())
-                          return t('app.gotoAnything.searching')
+                            if (searchQuery.trim())
+                              return t('gotoAnything.searching', { ns: 'app' })
 
-                        return t('app.gotoAnything.startTyping')
-                      })()}
-                    </span>
-                    <span className='opacity-60'>
-                      {searchQuery.trim() || isCommandsMode
-                        ? t('app.gotoAnything.tips')
-                        : t('app.gotoAnything.pressEscToClose')}
-                    </span>
-                  </>
-                )}
+                            return t('gotoAnything.startTyping', { ns: 'app' })
+                          })()}
+                        </span>
+                        <span className="opacity-60">
+                          {searchQuery.trim() || isCommandsMode
+                            ? t('gotoAnything.tips', { ns: 'app' })
+                            : t('gotoAnything.pressEscToClose', { ns: 'app' })}
+                        </span>
+                      </>
+                    )}
               </div>
             </div>
           </Command>

@@ -1,7 +1,8 @@
 'use client'
-import { IS_CLOUD_EDITION } from '@/config'
 import type { FC } from 'react'
-import React, { useEffect } from 'react'
+import * as React from 'react'
+import { useEffect } from 'react'
+import { IS_CLOUD_EDITION } from '@/config'
 import usePSInfo from './use-ps-info'
 
 const PartnerStack: FC = () => {

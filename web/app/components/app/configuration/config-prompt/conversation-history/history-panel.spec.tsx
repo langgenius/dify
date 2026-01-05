@@ -1,20 +1,13 @@
-import React from 'react'
 import { render, screen } from '@testing-library/react'
+import * as React from 'react'
 import HistoryPanel from './history-panel'
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
-const mockDocLink = jest.fn(() => 'doc-link')
-jest.mock('@/context/i18n', () => ({
+const mockDocLink = vi.fn(() => 'doc-link')
+vi.mock('@/context/i18n', () => ({
   useDocLink: () => mockDocLink,
 }))
 
-jest.mock('@/app/components/app/configuration/base/operation-btn', () => ({
-  __esModule: true,
+vi.mock('@/app/components/app/configuration/base/operation-btn', () => ({
   default: ({ onClick }: { onClick: () => void }) => (
     <button type="button" data-testid="edit-button" onClick={onClick}>
       edit
@@ -22,18 +15,17 @@ jest.mock('@/app/components/app/configuration/base/operation-btn', () => ({
   ),
 }))
 
-jest.mock('@/app/components/app/configuration/base/feature-panel', () => ({
-  __esModule: true,
+vi.mock('@/app/components/app/configuration/base/feature-panel', () => ({
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
 describe('HistoryPanel', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   it('should render warning content and link when showWarning is true', () => {
-    render(<HistoryPanel showWarning onShowEditModal={jest.fn()} />)
+    render(<HistoryPanel showWarning onShowEditModal={vi.fn()} />)
 
     expect(screen.getByText('appDebug.feature.conversationHistory.tip')).toBeInTheDocument()
     const link = screen.getByText('appDebug.feature.conversationHistory.learnMore')
@@ -41,7 +33,7 @@ describe('HistoryPanel', () => {
   })
 
   it('should hide warning when showWarning is false', () => {
-    render(<HistoryPanel showWarning={false} onShowEditModal={jest.fn()} />)
+    render(<HistoryPanel showWarning={false} onShowEditModal={vi.fn()} />)
 
     expect(screen.queryByText('appDebug.feature.conversationHistory.tip')).toBeNull()
   })
