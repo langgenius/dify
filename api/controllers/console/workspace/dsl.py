@@ -22,7 +22,7 @@ class DSLPredictApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        user, tenant_id = current_account_with_tenant()
+        user, _ = current_account_with_tenant()
         if not user.is_admin_or_owner:
             raise Forbidden()
 
@@ -39,6 +39,11 @@ class DSLPredictApi(Resource):
         with Session(db.engine) as session:
             app = session.query(App).filter_by(id=app_id).first()
             workflow = session.query(Workflow).filter_by(app_id=app_id, version=Workflow.VERSION_DRAFT).first()
+
+        if not app:
+            raise ValueError("App not found")
+        if not workflow:
+            raise ValueError("Workflow not found")
 
         try:
             i = 0

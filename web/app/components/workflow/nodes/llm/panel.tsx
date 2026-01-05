@@ -22,6 +22,7 @@ import VarReferencePicker from '../_base/components/variable/var-reference-picke
 import ConfigPrompt from './components/config-prompt'
 import ReasoningFormatConfig from './components/reasoning-format-config'
 import StructureOutput from './components/structure-output'
+import Tools from './components/tools'
 import useConfig from './use-config'
 
 const i18nPrefix = 'nodes.llm'
@@ -232,6 +233,12 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             />
           </>
         )}
+
+        <Tools
+          nodeId={id}
+          tools={inputs.tools}
+          maxIterations={inputs.max_iterations}
+        />
 
         {/* Vision: GPT4-vision and so on */}
         <ConfigVision

@@ -8,7 +8,7 @@ from io import BytesIO
 from typing import Any
 from uuid import uuid4
 
-from e2b_code_interpreter import Sandbox
+from e2b_code_interpreter import Sandbox  # type: ignore[import-untyped]
 
 from core.virtual_environment.__base.entities import Arch, CommandStatus, ConnectionHandle, FileState, Metadata
 from core.virtual_environment.__base.exec import ArchNotSupportedError, NotSupportedOperationError

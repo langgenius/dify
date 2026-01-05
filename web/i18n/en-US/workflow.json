@@ -666,6 +666,7 @@
   "nodes.llm.roleDescription.user": "Provide instructions, queries, or any text-based input to the model",
   "nodes.llm.singleRun.variable": "Variable",
   "nodes.llm.sysQueryInUser": "sys.query in user message is required",
+  "nodes.llm.tools.title": "Tools",
   "nodes.llm.variables": "variables",
   "nodes.llm.vision": "vision",
   "nodes.loop.ErrorMethod.continueOnError": "Continue on Error",

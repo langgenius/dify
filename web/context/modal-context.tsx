@@ -22,7 +22,7 @@ import type {
   ExternalDataTool,
 } from '@/models/common'
 import type { ModerationConfig, PromptVariable } from '@/models/debug'
-import { noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createContext, useContext, useContextSelector } from 'use-context-selector'
