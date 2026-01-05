@@ -7,12 +7,11 @@ instance to control its execution flow.
 
 from collections.abc import Sequence
 from enum import StrEnum, auto
-from typing import Any, TypeAlias
+from typing import Any
 
 from pydantic import BaseModel, Field
 
-from core.file import File
-from core.variables import Segment, Variable
+from core.variables.variables import VariableUnion
 
 
 class CommandType(StrEnum):
@@ -44,14 +43,11 @@ class PauseCommand(GraphEngineCommand):
     reason: str = Field(default="unknown reason", description="reason for pause")
 
 
-VariableUpdateValue: TypeAlias = File | Segment | Variable | str | int | float | dict[str, object] | list[object]
-
-
 class VariableUpdate(BaseModel):
     """Represents a single variable update instruction."""
 
     selector: tuple[str, str] = Field(description="Variable selector (node_id, variable_name)")
-    value: VariableUpdateValue = Field(description="New variable value")
+    value: VariableUnion = Field(description="New variable value")
 
 
 class UpdateVariablesCommand(GraphEngineCommand):

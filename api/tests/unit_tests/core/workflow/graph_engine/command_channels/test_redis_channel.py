@@ -3,6 +3,7 @@
 import json
 from unittest.mock import MagicMock
 
+from core.variables import IntegerVariable, StringVariable
 from core.workflow.graph_engine.command_channels.redis_channel import RedisChannel
 from core.workflow.graph_engine.entities.commands import (
     AbortCommand,
@@ -169,8 +170,14 @@ class TestRedisChannel:
 
         update_command = UpdateVariablesCommand(
             updates=[
-                VariableUpdate(selector=["node1", "foo"], value="bar"),
-                VariableUpdate(selector=["node2", "baz"], value=123),
+                VariableUpdate(
+                    selector=["node1", "foo"],
+                    value=StringVariable(name="foo", value="bar", selector=["node1", "foo"]),
+                ),
+                VariableUpdate(
+                    selector=["node2", "baz"],
+                    value=IntegerVariable(name="baz", value=123, selector=["node2", "baz"]),
+                ),
             ]
         )
         command_json = json.dumps(update_command.model_dump())
@@ -184,7 +191,8 @@ class TestRedisChannel:
         assert len(commands) == 1
         assert isinstance(commands[0], UpdateVariablesCommand)
         assert commands[0].updates[0].selector == ("node1", "foo")
-        assert commands[0].updates[0].value == "bar"
+        assert isinstance(commands[0].updates[0].value, StringVariable)
+        assert commands[0].updates[0].value.value == "bar"
 
     def test_fetch_commands_skips_invalid_json(self):
         """Test that invalid JSON commands are skipped."""
