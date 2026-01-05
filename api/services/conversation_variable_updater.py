@@ -5,8 +5,6 @@ from core.variables.variables import Variable
 from extensions.ext_database import db
 from models import ConversationVariable
 
-from .exc import VariableOperatorNodeError
-
 
 class ConversationVariableUpdaterImpl:
     def update(self, conversation_id: str, variable: Variable):
@@ -16,7 +14,7 @@ class ConversationVariableUpdaterImpl:
         with Session(db.engine) as session:
             row = session.scalar(stmt)
             if not row:
-                raise VariableOperatorNodeError("conversation variable not found in the database")
+                raise ValueError("conversation variable not found in the database")
             row.data = variable.model_dump_json()
             session.commit()
 
