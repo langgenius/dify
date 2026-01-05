@@ -131,7 +131,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
         crossAxis: 8,
       }}
     >
-      <PortalToFollowElemTrigger onClick={() => !isLoading && setOpen(v => !v)}>
+      <PortalToFollowElemTrigger asChild onClick={() => setOpen(v => !v)}>
         <Button
           className="relative"
           variant={notConfigured ? 'primary' : 'secondary'}
