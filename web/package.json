@@ -47,7 +47,7 @@
     "knip": "knip"
   },
   "dependencies": {
-    "@amplitude/analytics-browser": "^2.31.3",
+    "@amplitude/analytics-browser": "^2.33.1",
     "@amplitude/plugin-session-replay-browser": "^1.23.6",
     "@emoji-mart/data": "^1.2.1",
     "@floating-ui/react": "^0.26.28",
@@ -165,6 +165,7 @@
     "@storybook/addon-themes": "9.1.13",
     "@storybook/nextjs": "9.1.13",
     "@storybook/react": "9.1.13",
+    "@tanstack/eslint-plugin-query": "^5.91.2",
     "@tanstack/react-devtools": "^0.9.0",
     "@tanstack/react-form-devtools": "^0.2.9",
     "@tanstack/react-query-devtools": "^5.90.2",
