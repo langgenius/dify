@@ -53,9 +53,6 @@
     "publish:check": "./scripts/publish.sh --dry-run",
     "publish:npm": "./scripts/publish.sh"
   },
-  "dependencies": {
-    "axios": "^1.13.2"
-  },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "@types/node": "^25.0.3",

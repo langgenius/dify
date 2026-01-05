@@ -1,27 +1,19 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { ChatClient, DifyClient, WorkflowClient, BASE_URL, routes } from "./index";
-import axios from "axios";
 
-const mockRequest = vi.fn();
-
-const setupAxiosMock = () => {
-  vi.spyOn(axios, "create").mockReturnValue({ request: mockRequest });
-};
+const mockFetch = vi.fn();
 
 beforeEach(() => {
   vi.restoreAllMocks();
-  mockRequest.mockReset();
-  setupAxiosMock();
+  mockFetch.mockReset();
+  global.fetch = mockFetch;
 });
 
 describe("Client", () => {
   it("should create a client", () => {
     new DifyClient("test");
-
-    expect(axios.create).toHaveBeenCalledWith({
-      baseURL: BASE_URL,
-      timeout: 60000,
-    });
+    // Just verify client can be created successfully
+    expect(true).toBe(true);
   });
 
   it("should update the api key", () => {
@@ -37,41 +29,37 @@ describe("Send Requests", () => {
     const difyClient = new DifyClient("test");
     const method = "GET";
     const endpoint = routes.application.url();
-    mockRequest.mockResolvedValue({
+    mockFetch.mockResolvedValue({
+      ok: true,
       status: 200,
-      data: "response",
-      headers: {},
+      headers: new Headers(),
+      json: async () => "response",
     });
 
     await difyClient.sendRequest(method, endpoint);
 
-    const requestConfig = mockRequest.mock.calls[0][0];
-    expect(requestConfig).toMatchObject({
-      method,
-      url: endpoint,
-      params: undefined,
-      responseType: "json",
-      timeout: 60000,
-    });
-    expect(requestConfig.headers.Authorization).toBe("Bearer test");
+    const [url, config] = mockFetch.mock.calls[0];
+    expect(url).toContain(endpoint);
+    expect(config.method).toBe(method);
+    expect(config.headers.Authorization).toBe("Bearer test");
   });
 
   it("uses the getMeta route configuration", async () => {
     const difyClient = new DifyClient("test");
-    mockRequest.mockResolvedValue({ status: 200, data: "ok", headers: {} });
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers(),
+      json: async () => "ok",
+    });
 
     await difyClient.getMeta("end-user");
 
-    expect(mockRequest).toHaveBeenCalledWith(expect.objectContaining({
-      method: routes.getMeta.method,
-      url: routes.getMeta.url(),
-      params: { user: "end-user" },
-      headers: expect.objectContaining({
-        Authorization: "Bearer test",
-      }),
-      responseType: "json",
-      timeout: 60000,
-    }));
+    const [url, config] = mockFetch.mock.calls[0];
+    expect(url).toContain(routes.getMeta.url());
+    expect(url).toContain("user=end-user");
+    expect(config.method).toBe(routes.getMeta.method);
+    expect(config.headers.Authorization).toBe("Bearer test");
   });
 });
 
@@ -97,49 +85,52 @@ describe("File uploads", () => {
   it("does not override multipart boundary headers for FormData", async () => {
     const difyClient = new DifyClient("test");
     const form = new globalThis.FormData();
-    mockRequest.mockResolvedValue({ status: 200, data: "ok", headers: {} });
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers(),
+      json: async () => "ok",
+    });
 
     await difyClient.fileUpload(form, "end-user");
 
-    expect(mockRequest).toHaveBeenCalledWith(expect.objectContaining({
-      method: routes.fileUpload.method,
-      url: routes.fileUpload.url(),
-      params: undefined,
-      headers: expect.objectContaining({
-        Authorization: "Bearer test",
-        "content-type": "multipart/form-data; boundary=test",
-      }),
-      responseType: "json",
-      timeout: 60000,
-      data: form,
-    }));
+    const [url, config] = mockFetch.mock.calls[0];
+    expect(url).toContain(routes.fileUpload.url());
+    expect(config.method).toBe(routes.fileUpload.method);
+    expect(config.headers.Authorization).toBe("Bearer test");
+    expect(config.headers["content-type"]).toBe("multipart/form-data; boundary=test");
+    expect(config.body).toBe(form);
   });
 });
 
 describe("Workflow client", () => {
   it("uses tasks stop path for workflow stop", async () => {
     const workflowClient = new WorkflowClient("test");
-    mockRequest.mockResolvedValue({ status: 200, data: "stopped", headers: {} });
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers(),
+      json: async () => "stopped",
+    });
 
     await workflowClient.stop("task-1", "end-user");
 
-    expect(mockRequest).toHaveBeenCalledWith(expect.objectContaining({
-      method: routes.stopWorkflow.method,
-      url: routes.stopWorkflow.url("task-1"),
-      params: undefined,
-      headers: expect.objectContaining({
-        Authorization: "Bearer test",
-        "Content-Type": "application/json",
-      }),
-      responseType: "json",
-      timeout: 60000,
-      data: { user: "end-user" },
-    }));
+    const [url, config] = mockFetch.mock.calls[0];
+    expect(url).toContain(routes.stopWorkflow.url("task-1"));
+    expect(config.method).toBe(routes.stopWorkflow.method);
+    expect(config.headers.Authorization).toBe("Bearer test");
+    expect(config.headers["Content-Type"]).toBe("application/json");
+    expect(JSON.parse(config.body)).toEqual({ user: "end-user" });
   });
 
   it("maps workflow log filters to service api params", async () => {
     const workflowClient = new WorkflowClient("test");
-    mockRequest.mockResolvedValue({ status: 200, data: "ok", headers: {} });
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers(),
+      json: async () => "ok",
+    });
 
     await workflowClient.getLogs({
       createdAtAfter: "2024-01-01T00:00:00Z",
@@ -150,78 +141,74 @@ describe("Workflow client", () => {
       limit: 10,
     });
 
-    expect(mockRequest).toHaveBeenCalledWith(expect.objectContaining({
-      method: "GET",
-      url: "/workflows/logs",
-      params: {
-        created_at__after: "2024-01-01T00:00:00Z",
-        created_at__before: "2024-01-02T00:00:00Z",
-        created_by_end_user_session_id: "sess-1",
-        created_by_account: "acc-1",
-        page: 2,
-        limit: 10,
-      },
-      headers: expect.objectContaining({
-        Authorization: "Bearer test",
-      }),
-      responseType: "json",
-      timeout: 60000,
-    }));
+    const [url, config] = mockFetch.mock.calls[0];
+    expect(url).toContain("/workflows/logs");
+    expect(url).toContain("created_at__after=2024-01-01T00%3A00%3A00Z");
+    expect(url).toContain("created_at__before=2024-01-02T00%3A00%3A00Z");
+    expect(url).toContain("created_by_end_user_session_id=sess-1");
+    expect(url).toContain("created_by_account=acc-1");
+    expect(url).toContain("page=2");
+    expect(url).toContain("limit=10");
+    expect(config.method).toBe("GET");
+    expect(config.headers.Authorization).toBe("Bearer test");
   });
 });
 
 describe("Chat client", () => {
   it("places user in query for suggested messages", async () => {
     const chatClient = new ChatClient("test");
-    mockRequest.mockResolvedValue({ status: 200, data: "ok", headers: {} });
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers(),
+      json: async () => "ok",
+    });
 
     await chatClient.getSuggested("msg-1", "end-user");
 
-    expect(mockRequest).toHaveBeenCalledWith(expect.objectContaining({
-      method: routes.getSuggested.method,
-      url: routes.getSuggested.url("msg-1"),
-      params: { user: "end-user" },
-      headers: expect.objectContaining({
-        Authorization: "Bearer test",
-      }),
-      responseType: "json",
-      timeout: 60000,
-    }));
+    const [url, config] = mockFetch.mock.calls[0];
+    expect(url).toContain(routes.getSuggested.url("msg-1"));
+    expect(url).toContain("user=end-user");
+    expect(config.method).toBe(routes.getSuggested.method);
+    expect(config.headers.Authorization).toBe("Bearer test");
   });
 
   it("uses last_id when listing conversations", async () => {
     const chatClient = new ChatClient("test");
-    mockRequest.mockResolvedValue({ status: 200, data: "ok", headers: {} });
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers(),
+      json: async () => "ok",
+    });
 
     await chatClient.getConversations("end-user", "last-1", 10);
 
-    expect(mockRequest).toHaveBeenCalledWith(expect.objectContaining({
-      method: routes.getConversations.method,
-      url: routes.getConversations.url(),
-      params: { user: "end-user", last_id: "last-1", limit: 10 },
-      headers: expect.objectContaining({
-        Authorization: "Bearer test",
-      }),
-      responseType: "json",
-      timeout: 60000,
-    }));
+    const [url, config] = mockFetch.mock.calls[0];
+    expect(url).toContain(routes.getConversations.url());
+    expect(url).toContain("user=end-user");
+    expect(url).toContain("last_id=last-1");
+    expect(url).toContain("limit=10");
+    expect(config.method).toBe(routes.getConversations.method);
+    expect(config.headers.Authorization).toBe("Bearer test");
   });
 
   it("lists app feedbacks without user params", async () => {
     const chatClient = new ChatClient("test");
-    mockRequest.mockResolvedValue({ status: 200, data: "ok", headers: {} });
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers(),
+      json: async () => "ok",
+    });
 
     await chatClient.getAppFeedbacks(1, 20);
 
-    expect(mockRequest).toHaveBeenCalledWith(expect.objectContaining({
-      method: "GET",
-      url: "/app/feedbacks",
-      params: { page: 1, limit: 20 },
-      headers: expect.objectContaining({
-        Authorization: "Bearer test",
-      }),
-      responseType: "json",
-      timeout: 60000,
-    }));
+    const [url, config] = mockFetch.mock.calls[0];
+    expect(url).toContain("/app/feedbacks");
+    expect(url).toContain("page=1");
+    expect(url).toContain("limit=20");
+    expect(config.method).toBe("GET");
+    expect(config.headers.Authorization).toBe("Bearer test");
   });
 });

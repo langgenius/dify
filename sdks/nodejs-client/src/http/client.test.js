@@ -1,4 +1,3 @@
-import axios from "axios";
 import { Readable } from "node:stream";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -12,17 +11,45 @@ import {
 } from "../errors/dify-error";
 import { HttpClient } from "./client";
 
+// Helper to create a mock fetch response
+const createMockResponse = (options = {}) => {
+  const {
+    ok = true,
+    status = 200,
+    headers = {},
+    body = null,
+    data = null,
+  } = options;
+
+  const headersObj = new Headers(headers);
+  const response = {
+    ok,
+    status,
+    headers: headersObj,
+    body,
+    json: vi.fn().mockResolvedValue(data),
+    text: vi.fn().mockResolvedValue(typeof data === 'string' ? data : JSON.stringify(data)),
+    blob: vi.fn().mockResolvedValue(new Blob()),
+    arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(0)),
+  };
+
+  return response;
+};
+
 describe("HttpClient", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
   });
+
   it("builds requests with auth headers and JSON content type", async () => {
-    const mockRequest = vi.fn().mockResolvedValue({
-      status: 200,
-      data: { ok: true },
-      headers: { "x-request-id": "req" },
-    });
-    vi.spyOn(axios, "create").mockReturnValue({ request: mockRequest });
+    const mockFetch = vi.fn().mockResolvedValue(
+      createMockResponse({
+        status: 200,
+        headers: { "x-request-id": "req" },
+        data: { ok: true },
+      })
+    );
+    global.fetch = mockFetch;
 
     const client = new HttpClient({ apiKey: "test" });
     const response = await client.request({
@@ -32,19 +59,20 @@ describe("HttpClient", () => {
     });
 
     expect(response.requestId).toBe("req");
-    const config = mockRequest.mock.calls[0][0];
+    const [url, config] = mockFetch.mock.calls[0];
     expect(config.headers.Authorization).toBe("Bearer test");
     expect(config.headers["Content-Type"]).toBe("application/json");
-    expect(config.responseType).toBe("json");
+    expect(url).toContain("/chat-messages");
   });
 
   it("serializes array query params", async () => {
-    const mockRequest = vi.fn().mockResolvedValue({
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
       status: 200,
-      data: "ok",
-      headers: {},
+      headers: new Headers(),
+      text: async () => "ok",
     });
-    vi.spyOn(axios, "create").mockReturnValue({ request: mockRequest });
+    global.fetch = mockFetch;
 
     const client = new HttpClient({ apiKey: "test" });
     await client.requestRaw({
@@ -53,21 +81,31 @@ describe("HttpClient", () => {
       query: { tag_ids: ["a", "b"], limit: 2 },
     });
 
-    const config = mockRequest.mock.calls[0][0];
-    const queryString = config.paramsSerializer.serialize({
-      tag_ids: ["a", "b"],
-      limit: 2,
-    });
-    expect(queryString).toBe("tag_ids=a&tag_ids=b&limit=2");
+    const [url] = mockFetch.mock.calls[0];
+    expect(url).toContain("tag_ids=a&tag_ids=b&limit=2");
   });
 
   it("returns SSE stream helpers", async () => {
-    const mockRequest = vi.fn().mockResolvedValue({
-      status: 200,
-      data: Readable.from(["data: {\"text\":\"hi\"}\n\n"]),
-      headers: { "x-request-id": "req" },
+    // Create a mock web ReadableStream from Node stream data
+    const chunks = ['data: {"text":"hi"}\n\n'];
+    let index = 0;
+    const webStream = new ReadableStream({
+      pull(controller) {
+        if (index < chunks.length) {
+          controller.enqueue(new TextEncoder().encode(chunks[index++]));
+        } else {
+          controller.close();
+        }
+      },
     });
-    vi.spyOn(axios, "create").mockReturnValue({ request: mockRequest });
+
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "x-request-id": "req" }),
+      body: webStream,
+    });
+    global.fetch = mockFetch;
 
     const client = new HttpClient({ apiKey: "test" });
     const stream = await client.requestStream({
@@ -82,12 +120,26 @@ describe("HttpClient", () => {
   });
 
   it("returns binary stream helpers", async () => {
-    const mockRequest = vi.fn().mockResolvedValue({
-      status: 200,
-      data: Readable.from(["chunk"]),
-      headers: { "x-request-id": "req" },
+    // Create a mock web ReadableStream from Node stream data
+    const chunks = ["chunk"];
+    let index = 0;
+    const webStream = new ReadableStream({
+      pull(controller) {
+        if (index < chunks.length) {
+          controller.enqueue(new TextEncoder().encode(chunks[index++]));
+        } else {
+          controller.close();
+        }
+      },
     });
-    vi.spyOn(axios, "create").mockReturnValue({ request: mockRequest });
+
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "x-request-id": "req" }),
+      body: webStream,
+    });
+    global.fetch = mockFetch;
 
     const client = new HttpClient({ apiKey: "test" });
     const stream = await client.requestBinaryStream({
@@ -101,12 +153,13 @@ describe("HttpClient", () => {
   });
 
   it("respects form-data headers", async () => {
-    const mockRequest = vi.fn().mockResolvedValue({
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
       status: 200,
-      data: "ok",
-      headers: {},
+      headers: new Headers(),
+      text: async () => "ok",
     });
-    vi.spyOn(axios, "create").mockReturnValue({ request: mockRequest });
+    global.fetch = mockFetch;
 
     const client = new HttpClient({ apiKey: "test" });
     const form = {
@@ -120,7 +173,7 @@ describe("HttpClient", () => {
       data: form,
     });
 
-    const config = mockRequest.mock.calls[0][0];
+    const [, config] = mockFetch.mock.calls[0];
     expect(config.headers["content-type"]).toBe(
       "multipart/form-data; boundary=abc"
     );
@@ -128,29 +181,25 @@ describe("HttpClient", () => {
   });
 
   it("maps 401 and 429 errors", async () => {
-    const mockRequest = vi.fn();
-    vi.spyOn(axios, "create").mockReturnValue({ request: mockRequest });
     const client = new HttpClient({ apiKey: "test", maxRetries: 0 });
 
-    mockRequest.mockRejectedValueOnce({
-      isAxiosError: true,
-      response: {
-        status: 401,
-        data: { message: "unauthorized" },
-        headers: {},
-      },
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      headers: new Headers(),
+      text: vi.fn().mockResolvedValue('{"message":"unauthorized"}'),
+      json: vi.fn().mockResolvedValue({ message: "unauthorized" }),
     });
     await expect(
       client.requestRaw({ method: "GET", path: "/meta" })
     ).rejects.toBeInstanceOf(AuthenticationError);
 
-    mockRequest.mockRejectedValueOnce({
-      isAxiosError: true,
-      response: {
-        status: 429,
-        data: { message: "rate" },
-        headers: { "retry-after": "2" },
-      },
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 429,
+      headers: new Headers({ "retry-after": "2" }),
+      text: vi.fn().mockResolvedValue('{"message":"rate"}'),
+      json: vi.fn().mockResolvedValue({ message: "rate" }),
     });
     const error = await client
       .requestRaw({ method: "GET", path: "/meta" })
@@ -160,30 +209,25 @@ describe("HttpClient", () => {
   });
 
   it("maps validation and upload errors", async () => {
-    const mockRequest = vi.fn();
-    vi.spyOn(axios, "create").mockReturnValue({ request: mockRequest });
     const client = new HttpClient({ apiKey: "test", maxRetries: 0 });
 
-    mockRequest.mockRejectedValueOnce({
-      isAxiosError: true,
-      response: {
-        status: 422,
-        data: { message: "invalid" },
-        headers: {},
-      },
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 422,
+      headers: new Headers(),
+      text: vi.fn().mockResolvedValue('{"message":"invalid"}'),
+      json: vi.fn().mockResolvedValue({ message: "invalid" }),
     });
     await expect(
       client.requestRaw({ method: "POST", path: "/chat-messages", data: { user: "u" } })
     ).rejects.toBeInstanceOf(ValidationError);
 
-    mockRequest.mockRejectedValueOnce({
-      isAxiosError: true,
-      config: { url: "/files/upload" },
-      response: {
-        status: 400,
-        data: { message: "bad upload" },
-        headers: {},
-      },
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      headers: new Headers(),
+      text: vi.fn().mockResolvedValue('{"message":"bad upload"}'),
+      json: vi.fn().mockResolvedValue({ message: "bad upload" }),
     });
     await expect(
       client.requestRaw({ method: "POST", path: "/files/upload", data: { user: "u" } })
@@ -191,65 +235,62 @@ describe("HttpClient", () => {
   });
 
   it("maps timeout and network errors", async () => {
-    const mockRequest = vi.fn();
-    vi.spyOn(axios, "create").mockReturnValue({ request: mockRequest });
-    const client = new HttpClient({ apiKey: "test", maxRetries: 0 });
+    const client = new HttpClient({ apiKey: "test", maxRetries: 0, timeout: 0.001 });
 
-    mockRequest.mockRejectedValueOnce({
-      isAxiosError: true,
-      code: "ECONNABORTED",
-      message: "timeout",
-    });
+    global.fetch = vi.fn().mockImplementation(() =>
+      new Promise((resolve) => setTimeout(() => resolve({
+        ok: true,
+        status: 200,
+        headers: new Headers(),
+        json: async () => ({}),
+      }), 100))
+    );
     await expect(
       client.requestRaw({ method: "GET", path: "/meta" })
     ).rejects.toBeInstanceOf(TimeoutError);
 
-    mockRequest.mockRejectedValueOnce({
-      isAxiosError: true,
-      message: "network",
-    });
+    global.fetch = vi.fn().mockRejectedValue(new Error("network"));
     await expect(
       client.requestRaw({ method: "GET", path: "/meta" })
     ).rejects.toBeInstanceOf(NetworkError);
   });
 
   it("retries on timeout errors", async () => {
-    const mockRequest = vi.fn();
-    vi.spyOn(axios, "create").mockReturnValue({ request: mockRequest });
+    const mockFetch = vi.fn()
+      .mockRejectedValueOnce(new DOMException("aborted", "AbortError"))
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: new Headers(),
+        text: async () => "ok",
+      });
+    global.fetch = mockFetch;
+
     const client = new HttpClient({ apiKey: "test", maxRetries: 1, retryDelay: 0 });
-
-    mockRequest
-      .mockRejectedValueOnce({
-        isAxiosError: true,
-        code: "ECONNABORTED",
-        message: "timeout",
-      })
-      .mockResolvedValueOnce({ status: 200, data: "ok", headers: {} });
-
     await client.requestRaw({ method: "GET", path: "/meta" });
-    expect(mockRequest).toHaveBeenCalledTimes(2);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
   });
 
   it("validates query parameters before request", async () => {
-    const mockRequest = vi.fn();
-    vi.spyOn(axios, "create").mockReturnValue({ request: mockRequest });
+    const mockFetch = vi.fn();
+    global.fetch = mockFetch;
     const client = new HttpClient({ apiKey: "test" });
 
     await expect(
       client.requestRaw({ method: "GET", path: "/meta", query: { user: 1 } })
     ).rejects.toBeInstanceOf(ValidationError);
-    expect(mockRequest).not.toHaveBeenCalled();
+    expect(mockFetch).not.toHaveBeenCalled();
   });
 
   it("returns APIError for other http failures", async () => {
-    const mockRequest = vi.fn();
-    vi.spyOn(axios, "create").mockReturnValue({ request: mockRequest });
-    const client = new HttpClient({ apiKey: "test", maxRetries: 0 });
-
-    mockRequest.mockRejectedValueOnce({
-      isAxiosError: true,
-      response: { status: 500, data: { message: "server" }, headers: {} },
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      headers: new Headers(),
+      text: vi.fn().mockResolvedValue('{"message":"server"}'),
+      json: vi.fn().mockResolvedValue({ message: "server" }),
     });
+    const client = new HttpClient({ apiKey: "test", maxRetries: 0 });
 
     await expect(
       client.requestRaw({ method: "GET", path: "/meta" })
@@ -257,12 +298,12 @@ describe("HttpClient", () => {
   });
 
   it("logs requests and responses when enableLogging is true", async () => {
-    const mockRequest = vi.fn().mockResolvedValue({
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
       status: 200,
-      data: { ok: true },
-      headers: {},
+      headers: new Headers(),
+      json: async () => ({ ok: true }),
     });
-    vi.spyOn(axios, "create").mockReturnValue({ request: mockRequest });
     const consoleInfo = vi.spyOn(console, "info").mockImplementation(() => {});
 
     const client = new HttpClient({ apiKey: "test", enableLogging: true });
@@ -275,8 +316,15 @@ describe("HttpClient", () => {
   });
 
   it("logs retry attempts when enableLogging is true", async () => {
-    const mockRequest = vi.fn();
-    vi.spyOn(axios, "create").mockReturnValue({ request: mockRequest });
+    const mockFetch = vi.fn()
+      .mockRejectedValueOnce(new DOMException("aborted", "AbortError"))
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: new Headers(),
+        text: async () => "ok",
+      });
+    global.fetch = mockFetch;
     const consoleInfo = vi.spyOn(console, "info").mockImplementation(() => {});
 
     const client = new HttpClient({
@@ -285,14 +333,6 @@ describe("HttpClient", () => {
       retryDelay: 0,
       enableLogging: true,
     });
-
-    mockRequest
-      .mockRejectedValueOnce({
-        isAxiosError: true,
-        code: "ECONNABORTED",
-        message: "timeout",
-      })
-      .mockResolvedValueOnce({ status: 200, data: "ok", headers: {} });
 
     await client.requestRaw({ method: "GET", path: "/meta" });
 
