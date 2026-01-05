@@ -43,10 +43,29 @@ def init_app(app: DifyApp):
 
     _apply_cors_once(
         web_bp,
-        resources={r"/*": {"origins": dify_config.WEB_API_CORS_ALLOW_ORIGINS}},
-        supports_credentials=False,
-        allow_headers=list(EMBED_HEADERS),
-        methods=["GET", "PUT", "POST", "OPTIONS"],
+        resources={
+             # Embedded bot endpoints (unauthenticated, cross-origin safe)
+             r"^/chat-messages$": {
+                 "origins": dify_config.WEB_API_CORS_ALLOW_ORIGINS,
+                 "supports_credentials": False,
+                 "allow_headers": list(EMBED_HEADERS),
+                 "methods": ["GET", "POST", "OPTIONS"],
+             },
+             r"^/chat-messages/.*": {
+                 "origins": dify_config.WEB_API_CORS_ALLOW_ORIGINS,
+                 "supports_credentials": False,
+                 "allow_headers": list(EMBED_HEADERS),
+                 "methods": ["GET", "POST", "OPTIONS"],
+             },
+
+             # Default web application endpoints (authenticated)
+             r"/*": {
+                 "origins": dify_config.WEB_API_CORS_ALLOW_ORIGINS,
+                 "supports_credentials": True,
+                 "allow_headers": list(AUTHENTICATED_HEADERS),
+                 "methods": ["GET", "PUT", "POST", "DELETE", "OPTIONS", "PATCH"],
+            },
+        },
         expose_headers=list(EXPOSED_HEADERS),
     )
     app.register_blueprint(web_bp)
