@@ -10,6 +10,7 @@ from core.workflow.enums import NodeType, SystemVariableKey, WorkflowNodeExecuti
 from core.workflow.graph_engine.protocols.command_channel import CommandChannel
 from core.workflow.graph_events.node import NodeRunSucceededEvent
 from core.workflow.node_events import NodeRunResult
+from core.workflow.nodes.variable_assigner.common import helpers as common_helpers
 from core.workflow.runtime.graph_runtime_state_protocol import ReadOnlyGraphRuntimeState
 
 
@@ -62,7 +63,9 @@ def test_persists_conversation_variables_from_assigner_output():
         value="updated",
         selector=[CONVERSATION_VARIABLE_NODE_ID, "name"],
     )
-    outputs = {".".join(variable.selector): variable.value}
+    process_data = common_helpers.set_updated_variables(
+        {}, [common_helpers.variable_to_processed_data(variable.selector, variable)]
+    )
 
     variable_pool = MockReadOnlyVariablePool(
         {
@@ -75,7 +78,7 @@ def test_persists_conversation_variables_from_assigner_output():
     layer = ConversationVariablePersistenceLayer(updater)
     layer.initialize(_build_graph_runtime_state(variable_pool), Mock(spec=CommandChannel))
 
-    event = _build_node_run_succeeded_event(node_type=NodeType.VARIABLE_ASSIGNER, outputs=outputs)
+    event = _build_node_run_succeeded_event(node_type=NodeType.VARIABLE_ASSIGNER, process_data=process_data)
     layer.on_event(event)
 
     updater.update.assert_called_once_with(conversation_id=conversation_id, variable=variable)
@@ -129,7 +132,9 @@ def test_skips_non_conversation_variables():
         value="updated",
         selector=["environment", "name"],
     )
-    outputs = {".".join(non_conversation_variable.selector): non_conversation_variable.value}
+    process_data = common_helpers.set_updated_variables(
+        {}, [common_helpers.variable_to_processed_data(non_conversation_variable.selector, non_conversation_variable)]
+    )
 
     variable_pool = MockReadOnlyVariablePool(
         {
@@ -141,7 +146,7 @@ def test_skips_non_conversation_variables():
     layer = ConversationVariablePersistenceLayer(updater)
     layer.initialize(_build_graph_runtime_state(variable_pool), Mock(spec=CommandChannel))
 
-    event = _build_node_run_succeeded_event(node_type=NodeType.VARIABLE_ASSIGNER, outputs=outputs)
+    event = _build_node_run_succeeded_event(node_type=NodeType.VARIABLE_ASSIGNER, process_data=process_data)
     layer.on_event(event)
 
     updater.update.assert_not_called()

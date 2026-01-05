@@ -6,6 +6,7 @@ from core.workflow.conversation_variable_updater import ConversationVariableUpda
 from core.workflow.enums import NodeType, SystemVariableKey
 from core.workflow.graph_engine.layers.base import GraphEngineLayer
 from core.workflow.graph_events import GraphEngineEvent, NodeRunSucceededEvent
+from core.workflow.nodes.variable_assigner.common import helpers as common_helpers
 
 logger = logging.getLogger(__name__)
 
@@ -26,27 +27,26 @@ class ConversationVariablePersistenceLayer(GraphEngineLayer):
         if self.graph_runtime_state is None:
             return
 
-        outputs = event.node_run_result.outputs
-        if not outputs:
-            return
-        selector_keys = [key for key in outputs if key.startswith(f"{CONVERSATION_VARIABLE_NODE_ID}.")]
-        if not selector_keys:
+        updated_variables = common_helpers.get_updated_variables(event.node_run_result.process_data) or []
+        if not updated_variables:
             return
 
         conversation_id = self._get_conversation_id()
         if conversation_id is None:
             return
 
-        for selector_key in selector_keys:
-            selector = selector_key.split(".")
+        for item in updated_variables:
+            selector = item.selector
             if len(selector) < 2:
-                logger.warning("Conversation variable selector invalid. selector=%s", selector_key)
+                logger.warning("Conversation variable selector invalid. selector=%s", selector)
+                continue
+            if selector[0] != CONVERSATION_VARIABLE_NODE_ID:
                 continue
             variable = self.graph_runtime_state.variable_pool.get(selector)
             if not isinstance(variable, Variable):
                 logger.warning(
                     "Conversation variable not found in variable pool. selector=%s",
-                    selector[:2],
+                    selector,
                 )
                 continue
             self._conversation_variable_updater.update(conversation_id=conversation_id, variable=variable)

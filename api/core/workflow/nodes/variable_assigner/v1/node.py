@@ -7,6 +7,7 @@ from core.workflow.entities import GraphInitParams
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.node import Node
+from core.workflow.nodes.variable_assigner.common import helpers as common_helpers
 from core.workflow.nodes.variable_assigner.common.exc import VariableOperatorNodeError
 
 from .node_data import VariableAssignerData, WriteMode
@@ -14,7 +15,6 @@ from .node_data import VariableAssignerData, WriteMode
 if TYPE_CHECKING:
     from core.workflow.runtime import GraphRuntimeState
 
-_UPDATED_VARIABLES_KEY = "__updated_variables"
 
 class VariableAssignerNode(Node[VariableAssignerData]):
     node_type = NodeType.VARIABLE_ASSIGNER
@@ -88,14 +88,7 @@ class VariableAssignerNode(Node[VariableAssignerData]):
         # Over write the variable.
         self.graph_runtime_state.variable_pool.add(assigned_variable_selector, updated_variable)
 
-        updated_variables = [
-            {
-                "name": updated_variable.name,
-                "selector": list(assigned_variable_selector[:2]),
-                "value_type": updated_variable.value_type,
-                "new_value": updated_variable.value,
-            }
-        ]
+        updated_variables = [common_helpers.variable_to_processed_data(assigned_variable_selector, updated_variable)]
         selector_key = ".".join(updated_variable.selector)
         output_variables = {selector_key: updated_variable.value}
 
@@ -107,6 +100,6 @@ class VariableAssignerNode(Node[VariableAssignerData]):
             # NOTE(QuantumGhost): although only one variable is updated in `v1.VariableAssignerNode`,
             # we still set `output_variables` as a list to ensure the schema of output is
             # compatible with `v2.VariableAssignerNode`.
-            process_data={_UPDATED_VARIABLES_KEY: updated_variables},
+            process_data=common_helpers.set_updated_variables({}, updated_variables),
             outputs=output_variables,
         )
