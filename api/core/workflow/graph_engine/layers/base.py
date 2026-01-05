@@ -21,9 +21,7 @@ class GraphEngineLayerNotInitializedError(Exception):
 
     def __init__(self, layer_name: str | None = None) -> None:
         name = layer_name or "GraphEngineLayer"
-        super().__init__(
-            f"{name} runtime state is not initialized. Bind the layer to a GraphEngine before access."
-        )
+        super().__init__(f"{name} runtime state is not initialized. Bind the layer to a GraphEngine before access.")
 
 
 class UninitializedReadOnlyGraphRuntimeState(ReadOnlyGraphRuntimeState):
@@ -96,7 +94,9 @@ class GraphEngineLayer(ABC):
 
     def __init__(self) -> None:
         """Initialize the layer. Subclasses can override with custom parameters."""
-        self.graph_runtime_state: ReadOnlyGraphRuntimeState = UninitializedReadOnlyGraphRuntimeState(type(self).__name__)
+        self.graph_runtime_state: ReadOnlyGraphRuntimeState = UninitializedReadOnlyGraphRuntimeState(
+            type(self).__name__
+        )
         self.command_channel: CommandChannel | None = None
 
     def initialize(self, graph_runtime_state: ReadOnlyGraphRuntimeState, command_channel: CommandChannel) -> None:
