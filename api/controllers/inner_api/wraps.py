@@ -5,6 +5,8 @@ from hashlib import sha1
 from hmac import new as hmac_new
 from typing import ParamSpec, TypeVar
 
+from core.session.inner_api import InnerApiSessionManager
+
 P = ParamSpec("P")
 R = TypeVar("R")
 from flask import abort, request
@@ -85,14 +87,19 @@ def enterprise_inner_api_user_auth(view: Callable[P, R]):
 def plugin_inner_api_only(view: Callable[P, R]):
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
+        # if session id is provided, using session id to validate
+        session_id = request.headers.get("X-Inner-Api-Session-Id")
+        if session_id and InnerApiSessionManager().exists(session_id):
+            return view(*args, **kwargs)
+
         if not dify_config.PLUGIN_DAEMON_KEY:
             abort(404)
 
-        # get header 'X-Inner-Api-Key'
+        # if inner api key is provided, using inner api key to validate
         inner_api_key = request.headers.get("X-Inner-Api-Key")
-        if not inner_api_key or inner_api_key != dify_config.INNER_API_KEY_FOR_PLUGIN:
-            abort(404)
+        if inner_api_key and inner_api_key == dify_config.INNER_API_KEY_FOR_PLUGIN:
+            return view(*args, **kwargs)
 
-        return view(*args, **kwargs)
+        abort(404)
 
     return decorated

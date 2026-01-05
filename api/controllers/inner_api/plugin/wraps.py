@@ -7,6 +7,7 @@ from flask_login import user_logged_in
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from core.session.inner_api import InnerApiSession, InnerApiSessionManager
 from extensions.ext_database import db
 from libs.login import current_user
 from models.account import Tenant
@@ -74,10 +75,18 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
 def get_user_tenant(view_func: Callable[P, R]):
     @wraps(view_func)
     def decorated_view(*args: P.args, **kwargs: P.kwargs):
-        payload = TenantUserPayload.model_validate(request.get_json(silent=True) or {})
+        session_id = request.headers.get("X-Inner-Api-Session-Id")
 
-        user_id = payload.user_id
-        tenant_id = payload.tenant_id
+        if session_id:
+            session: InnerApiSession | None = InnerApiSessionManager().get(session_id)
+            if not session:
+                raise ValueError("session not found")
+            user_id = session.user_id
+            tenant_id = session.tenant_id
+        else:
+            payload = TenantUserPayload.model_validate(request.get_json(silent=True) or {})
+            user_id = payload.user_id
+            tenant_id = payload.tenant_id
 
         if not tenant_id:
             raise ValueError("tenant_id is required")
