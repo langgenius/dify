@@ -351,14 +351,17 @@ export class HttpClient {
         if (!response.ok) {
           const contentType = response.headers.get("content-type") || "";
           let responseBody: unknown;
+          // Read body as text first to avoid "Body has already been read" error
+          const text = await response.text();
           if (contentType.includes("application/json")) {
             try {
-              responseBody = await response.json();
+              responseBody = text ? JSON.parse(text) : null;
             } catch {
-              responseBody = await response.text();
+              // Fallback to raw text if JSON parsing fails
+              responseBody = text;
             }
           } else {
-            responseBody = await response.text();
+            responseBody = text;
           }
           throw mapFetchError(new Error(`HTTP ${response.status}`), url, response, responseBody);
         }
@@ -390,10 +393,17 @@ export class HttpClient {
         } else {
           // json or default
           const contentType = response.headers.get("content-type") || "";
+          // Read body as text first to handle malformed JSON gracefully
+          const text = await response.text();
           if (contentType.includes("application/json")) {
-            responseData = await response.json();
+            try {
+              responseData = text ? JSON.parse(text) : null;
+            } catch {
+              // Fallback to raw text if JSON parsing fails
+              responseData = text;
+            }
           } else {
-            responseData = await response.text();
+            responseData = text;
           }
         }
 
