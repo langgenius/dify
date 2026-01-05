@@ -5,8 +5,27 @@ from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 
 from services.feedback_service import FeedbackService
+
+
+@pytest.fixture(autouse=True)
+def mock_flask_context(monkeypatch):
+    """Auto-mock Flask context for all tests."""
+    flask_app = Flask(__name__)
+    flask_app.config["TESTING"] = True
+
+    # Mock current_app._get_current_object() to return our Flask app
+    def mock_get_current_object():
+        return flask_app
+
+    # Mock stream_with_context to just return the generator
+    def mock_stream_with_context(gen):
+        return gen
+
+    monkeypatch.setattr("services.feedback_service.current_app._get_current_object", mock_get_current_object)
+    monkeypatch.setattr("services.feedback_service.stream_with_context", mock_stream_with_context)
 
 
 class TestFeedbackServiceFactory:
@@ -141,6 +160,8 @@ class TestFeedbackService:
         mock_query.where.return_value = mock_query
         mock_query.filter.return_value = mock_query
         mock_query.order_by.return_value = mock_query
+        mock_query.offset.return_value = mock_query
+        mock_query.limit.return_value = mock_query
         mock_query.all.return_value = sample_feedback_data
 
         # Set up the session.query to return our mock
@@ -155,7 +176,7 @@ class TestFeedbackService:
         assert "attachment" in response.headers["Content-Disposition"]
         assert "dify_feedback_export_app-456" in response.headers["Content-Disposition"]
 
-        # Verify CSV content
+        # Verify CSV content (streaming response)
         csv_content = response.get_data(as_text=True)
         reader = csv.DictReader(io.StringIO(csv_content))
         rows = list(reader)
@@ -167,10 +188,10 @@ class TestFeedbackService:
         assert rows[0]["user_query"] == "What is Python?"
         assert rows[0]["ai_response"] == "Python is a programming language."
 
-    # Test 02: JSON Export - Basic Functionality
+    # Test 02: JSONL Export - Basic Functionality
     @patch("services.feedback_service.db")
     def test_export_feedbacks_json_basic(self, mock_db, factory, sample_feedback_data):
-        """Test basic JSON export with metadata structure."""
+        """Test basic JSONL export (JSON Lines format)."""
         # Arrange
         mock_query = MagicMock()
         # Configure the mock to return itself for all chaining methods
@@ -179,6 +200,8 @@ class TestFeedbackService:
         mock_query.where.return_value = mock_query
         mock_query.filter.return_value = mock_query
         mock_query.order_by.return_value = mock_query
+        mock_query.offset.return_value = mock_query
+        mock_query.limit.return_value = mock_query
         mock_query.all.return_value = sample_feedback_data
 
         # Set up the session.query to return our mock
@@ -188,17 +211,22 @@ class TestFeedbackService:
         response = FeedbackService.export_feedbacks(app_id="app-456", format_type="json")
 
         # Assert
-        assert response.mimetype == "application/json"
+        assert response.mimetype == "application/jsonl"
         assert "charset=utf-8" in response.content_type
         assert "attachment" in response.headers["Content-Disposition"]
+        assert ".jsonl" in response.headers["Content-Disposition"]
 
-        # Verify JSON structure
-        json_content = json.loads(response.get_data(as_text=True))
-        assert "export_info" in json_content
-        assert "feedback_data" in json_content
-        assert json_content["export_info"]["app_id"] == "app-456"
-        assert json_content["export_info"]["total_records"] == 1
-        assert len(json_content["feedback_data"]) == 1
+        # Verify JSONL structure (one JSON object per line)
+        jsonl_content = response.get_data(as_text=True)
+        lines = jsonl_content.strip().split("\n")
+        assert len(lines) == 1
+        json_record = json.loads(lines[0])
+        assert json_record["feedback_id"] == "feedback-123"
+        assert json_record["feedback_rating"] == "👍"
+        assert json_record["feedback_rating_raw"] == "like"
+        assert json_record["feedback_comment"] == "Excellent answer!"
+        assert json_record["user_query"] == "What is Python?"
+        assert json_record["ai_response"] == "Python is a programming language."
 
     # Test 03: Filter by from_source
     @patch("services.feedback_service.db")
@@ -212,6 +240,8 @@ class TestFeedbackService:
         mock_query.where.return_value = mock_query
         mock_query.filter.return_value = mock_query
         mock_query.order_by.return_value = mock_query
+        mock_query.offset.return_value = mock_query
+        mock_query.limit.return_value = mock_query
         mock_query.all.return_value = []
 
         # Act
@@ -232,6 +262,8 @@ class TestFeedbackService:
         mock_query.where.return_value = mock_query
         mock_query.filter.return_value = mock_query
         mock_query.order_by.return_value = mock_query
+        mock_query.offset.return_value = mock_query
+        mock_query.limit.return_value = mock_query
         mock_query.all.return_value = []
 
         # Act
@@ -252,6 +284,8 @@ class TestFeedbackService:
         mock_query.where.return_value = mock_query
         mock_query.filter.return_value = mock_query
         mock_query.order_by.return_value = mock_query
+        mock_query.offset.return_value = mock_query
+        mock_query.limit.return_value = mock_query
         mock_query.all.return_value = []
 
         # Act
@@ -272,6 +306,8 @@ class TestFeedbackService:
         mock_query.where.return_value = mock_query
         mock_query.filter.return_value = mock_query
         mock_query.order_by.return_value = mock_query
+        mock_query.offset.return_value = mock_query
+        mock_query.limit.return_value = mock_query
         mock_query.all.return_value = []
 
         # Act
@@ -292,6 +328,8 @@ class TestFeedbackService:
         mock_query.where.return_value = mock_query
         mock_query.filter.return_value = mock_query
         mock_query.order_by.return_value = mock_query
+        mock_query.offset.return_value = mock_query
+        mock_query.limit.return_value = mock_query
         mock_query.all.return_value = []
 
         # Act
@@ -353,6 +391,8 @@ class TestFeedbackService:
         mock_query.where.return_value = mock_query
         mock_query.filter.return_value = mock_query
         mock_query.order_by.return_value = mock_query
+        mock_query.offset.return_value = mock_query
+        mock_query.limit.return_value = mock_query
         mock_query.all.return_value = []
 
         # Act
@@ -369,7 +409,7 @@ class TestFeedbackService:
     # Test 12: Empty result set - JSON
     @patch("services.feedback_service.db")
     def test_export_feedbacks_empty_results_json(self, mock_db):
-        """Test JSON export with no feedback records."""
+        """Test JSONL export with no feedback records."""
         # Arrange
         mock_query = MagicMock()
         mock_db.session.query.return_value = mock_query
@@ -378,15 +418,16 @@ class TestFeedbackService:
         mock_query.where.return_value = mock_query
         mock_query.filter.return_value = mock_query
         mock_query.order_by.return_value = mock_query
+        mock_query.offset.return_value = mock_query
+        mock_query.limit.return_value = mock_query
         mock_query.all.return_value = []
 
         # Act
         response = FeedbackService.export_feedbacks(app_id="app-456", format_type="json")
 
         # Assert
-        json_content = json.loads(response.get_data(as_text=True))
-        assert json_content["export_info"]["total_records"] == 0
-        assert len(json_content["feedback_data"]) == 0
+        jsonl_content = response.get_data(as_text=True)
+        assert jsonl_content == ""  # Empty JSONL file
 
     # Test 13: Long response truncation
     @patch("services.feedback_service.db")
@@ -407,14 +448,17 @@ class TestFeedbackService:
         mock_query.where.return_value = mock_query
         mock_query.filter.return_value = mock_query
         mock_query.order_by.return_value = mock_query
+        mock_query.offset.return_value = mock_query
+        mock_query.limit.return_value = mock_query
         mock_query.all.return_value = [(feedback, message, conversation, app, account)]
 
         # Act
         response = FeedbackService.export_feedbacks(app_id="app-456", format_type="json")
 
         # Assert
-        json_content = json.loads(response.get_data(as_text=True))
-        ai_response = json_content["feedback_data"][0]["ai_response"]
+        jsonl_content = response.get_data(as_text=True)
+        json_record = json.loads(jsonl_content.strip())
+        ai_response = json_record["ai_response"]
         assert len(ai_response) == 503  # 500 + "..."
         assert ai_response.endswith("...")
 
@@ -436,14 +480,17 @@ class TestFeedbackService:
         mock_query.where.return_value = mock_query
         mock_query.filter.return_value = mock_query
         mock_query.order_by.return_value = mock_query
+        mock_query.offset.return_value = mock_query
+        mock_query.limit.return_value = mock_query
         mock_query.all.return_value = [(feedback, message, conversation, app, account)]
 
         # Act
         response = FeedbackService.export_feedbacks(app_id="app-456", format_type="json")
 
         # Assert
-        json_content = json.loads(response.get_data(as_text=True))
-        assert json_content["feedback_data"][0]["from_account_name"] == ""
+        jsonl_content = response.get_data(as_text=True)
+        json_record = json.loads(jsonl_content.strip())
+        assert json_record["from_account_name"] == ""
 
     # Test 15: Null conversation name
     @patch("services.feedback_service.db")
@@ -463,14 +510,17 @@ class TestFeedbackService:
         mock_query.where.return_value = mock_query
         mock_query.filter.return_value = mock_query
         mock_query.order_by.return_value = mock_query
+        mock_query.offset.return_value = mock_query
+        mock_query.limit.return_value = mock_query
         mock_query.all.return_value = [(feedback, message, conversation, app, account)]
 
         # Act
         response = FeedbackService.export_feedbacks(app_id="app-456", format_type="json")
 
         # Assert
-        json_content = json.loads(response.get_data(as_text=True))
-        assert json_content["feedback_data"][0]["conversation_name"] == ""
+        jsonl_content = response.get_data(as_text=True)
+        json_record = json.loads(jsonl_content.strip())
+        assert json_record["conversation_name"] == ""
 
     # Test 16: Dislike rating emoji
     @patch("services.feedback_service.db")
@@ -490,15 +540,18 @@ class TestFeedbackService:
         mock_query.where.return_value = mock_query
         mock_query.filter.return_value = mock_query
         mock_query.order_by.return_value = mock_query
+        mock_query.offset.return_value = mock_query
+        mock_query.limit.return_value = mock_query
         mock_query.all.return_value = [(feedback, message, conversation, app, account)]
 
         # Act
         response = FeedbackService.export_feedbacks(app_id="app-456", format_type="json")
 
         # Assert
-        json_content = json.loads(response.get_data(as_text=True))
-        assert json_content["feedback_data"][0]["feedback_rating"] == "👎"
-        assert json_content["feedback_data"][0]["feedback_rating_raw"] == "dislike"
+        jsonl_content = response.get_data(as_text=True)
+        json_record = json.loads(jsonl_content.strip())
+        assert json_record["feedback_rating"] == "👎"
+        assert json_record["feedback_rating_raw"] == "dislike"
 
     # Test 17: Combined filters
     @patch("services.feedback_service.db")
@@ -512,6 +565,8 @@ class TestFeedbackService:
         mock_query.where.return_value = mock_query
         mock_query.filter.return_value = mock_query
         mock_query.order_by.return_value = mock_query
+        mock_query.offset.return_value = mock_query
+        mock_query.limit.return_value = mock_query
         mock_query.all.return_value = []
 
         # Act
@@ -546,14 +601,17 @@ class TestFeedbackService:
         mock_query.where.return_value = mock_query
         mock_query.filter.return_value = mock_query
         mock_query.order_by.return_value = mock_query
+        mock_query.offset.return_value = mock_query
+        mock_query.limit.return_value = mock_query
         mock_query.all.return_value = [(feedback, message, conversation, app, account)]
 
         # Act
         response = FeedbackService.export_feedbacks(app_id="app-456", format_type="json")
 
         # Assert
-        json_content = json.loads(response.get_data(as_text=True))
-        assert json_content["feedback_data"][0]["user_query"] == "Query from inputs"
+        jsonl_content = response.get_data(as_text=True)
+        json_record = json.loads(jsonl_content.strip())
+        assert json_record["user_query"] == "Query from inputs"
 
     # Test 19: Empty feedback content
     @patch("services.feedback_service.db")
@@ -573,15 +631,18 @@ class TestFeedbackService:
         mock_query.where.return_value = mock_query
         mock_query.filter.return_value = mock_query
         mock_query.order_by.return_value = mock_query
+        mock_query.offset.return_value = mock_query
+        mock_query.limit.return_value = mock_query
         mock_query.all.return_value = [(feedback, message, conversation, app, account)]
 
         # Act
         response = FeedbackService.export_feedbacks(app_id="app-456", format_type="json")
 
         # Assert
-        json_content = json.loads(response.get_data(as_text=True))
-        assert json_content["feedback_data"][0]["feedback_comment"] == ""
-        assert json_content["feedback_data"][0]["has_comment"] == "No"
+        jsonl_content = response.get_data(as_text=True)
+        json_record = json.loads(jsonl_content.strip())
+        assert json_record["feedback_comment"] == ""
+        assert json_record["has_comment"] == "No"
 
     # Test 20: CSV headers validation
     @patch("services.feedback_service.db")
@@ -595,6 +656,8 @@ class TestFeedbackService:
         mock_query.where.return_value = mock_query
         mock_query.filter.return_value = mock_query
         mock_query.order_by.return_value = mock_query
+        mock_query.offset.return_value = mock_query
+        mock_query.limit.return_value = mock_query
         mock_query.all.return_value = sample_feedback_data
 
         expected_headers = [

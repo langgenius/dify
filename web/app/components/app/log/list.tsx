@@ -8,12 +8,18 @@ import {
   HandThumbDownIcon,
   HandThumbUpIcon,
 } from '@heroicons/react/24/outline'
-import { RiCloseLine, RiEditFill } from '@remixicon/react'
+import {
+  RiCloseLine,
+  RiDownloadLine,
+  RiEditFill,
+} from '@remixicon/react'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
+import { uniq } from 'es-toolkit/array'
 import { get } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
+import Cookies from 'js-cookie'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -24,9 +30,12 @@ import ModelInfo from '@/app/components/app/log/model-info'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import ActionButton from '@/app/components/base/action-button'
+import Button from '@/app/components/base/button'
 import Chat from '@/app/components/base/chat/chat'
 import { buildChatItemTree, getThreadMessages } from '@/app/components/base/chat/utils'
+import Checkbox from '@/app/components/base/checkbox'
 import CopyIcon from '@/app/components/base/copy-icon'
+import Divider from '@/app/components/base/divider'
 import Drawer from '@/app/components/base/drawer'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import Loading from '@/app/components/base/loading'
@@ -35,6 +44,7 @@ import { ToastContext } from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
+import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
@@ -57,6 +67,8 @@ type IConversationList = {
   logs?: ChatConversationsResponse | CompletionConversationsResponse
   appDetail: App
   onRefresh: () => void
+  selectedIds: string[]
+  onSelectedIdChange: (selectedIds: string[]) => void
 }
 
 const defaultValue = 'N/A'
@@ -921,7 +933,7 @@ const ChatConversationDetailComp: FC<{ appId?: string, conversationId?: string }
 /**
  * Conversation list component including basic information
  */
-const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh }) => {
+const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh, selectedIds, onSelectedIdChange }) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
   const router = useRouter()
@@ -944,6 +956,19 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
     setShowAgentLogModal: state.setShowAgentLogModal,
     setShowMessageLogModal: state.setShowMessageLogModal,
   })))
+
+  // Selection state management
+  const isAllSelected = logs?.data ? logs.data.length > 0 && logs.data.every(log => selectedIds.includes(log.id)) : false
+  const isSomeSelected = logs?.data ? logs.data.some(log => selectedIds.includes(log.id)) : false
+
+  const onSelectedAll = useCallback(() => {
+    if (!logs?.data)
+      return
+    if (isAllSelected)
+      onSelectedIdChange([])
+    else
+      onSelectedIdChange(uniq([...selectedIds, ...logs.data.map(log => log.id)]))
+  }, [isAllSelected, logs, onSelectedIdChange, selectedIds])
 
   const activeConversationId = conversationIdInUrl ?? pendingConversationIdRef.current ?? currentConversation?.id
 
@@ -1031,6 +1056,59 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
       router.replace(buildUrlWithConversation(), { scroll: false })
   }, [buildUrlWithConversation, conversationIdInUrl, onRefresh, router, setShowAgentLogModal, setShowMessageLogModal, setShowPromptLogModal])
 
+  const { notify } = useContext(ToastContext)
+
+  const handleBatchExportFeedback = useCallback(async () => {
+    if (selectedIds.length === 0)
+      return
+
+    try {
+      // Export feedback for all selected conversations
+      const url = `/apps/${appDetail.id}/feedbacks/export?format=csv&conversation_id=${selectedIds.join(',')}`
+      const response = await fetch(`${API_PREFIX}${url}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'text/csv',
+          [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '',
+        },
+        credentials: 'include',
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Export failed' }))
+        throw new Error(errorData.message || 'Export failed')
+      }
+
+      // Get filename from Content-Disposition header
+      const contentDisposition = response.headers.get('Content-Disposition')
+      let filename = `feedback_export_batch.csv`
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1].replace(/['"]/g, '')
+        }
+      }
+
+      // Download file
+      const blob = await response.blob()
+      const downloadUrl = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = downloadUrl
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(downloadUrl)
+
+      notify({ type: 'success', message: t('actionMsg.exportedSuccessfully', { ns: 'common' }) })
+      onSelectedIdChange([])
+    }
+    catch (error) {
+      console.error('Batch export feedback failed:', error)
+      notify({ type: 'error', message: t('actionMsg.exportedUnsuccessfully', { ns: 'common' }) })
+    }
+  }, [appDetail.id, selectedIds, t, notify, onSelectedIdChange])
+
   // Annotated data needs to be highlighted
   const renderTdValue = (value: string | number | null, isEmptyStyle: boolean, isHighlight = false, annotation?: LogAnnotation) => {
     return (
@@ -1058,7 +1136,16 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
       <table className={cn('w-full min-w-[440px] border-collapse border-0')}>
         <thead className="system-xs-medium-uppercase text-text-tertiary">
           <tr>
-            <td className="w-5 whitespace-nowrap rounded-l-lg bg-background-section-burn pl-2 pr-1"></td>
+            <td className="w-5 whitespace-nowrap rounded-l-lg bg-background-section-burn pl-2 pr-1">
+              <div className="flex items-center" onClick={e => e.stopPropagation()}>
+                <Checkbox
+                  className="shrink-0"
+                  checked={isAllSelected}
+                  indeterminate={!isAllSelected && isSomeSelected}
+                  onCheck={onSelectedAll}
+                />
+              </div>
+            </td>
             <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{isChatMode ? t('table.header.summary', { ns: 'appLog' }) : t('table.header.input', { ns: 'appLog' })}</td>
             <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('table.header.endUser', { ns: 'appLog' })}</td>
             {isChatflow && <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('table.header.status', { ns: 'appLog' })}</td>}
@@ -1080,12 +1167,20 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                 className={cn('cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover', activeConversationId !== log.id ? '' : 'bg-background-default-hover')}
                 onClick={() => handleRowClick(log)}
               >
-                <td className="h-4">
-                  {!log.read_at && (
-                    <div className="flex items-center p-3 pr-0.5">
-                      <span className="inline-block h-1.5 w-1.5 rounded bg-util-colors-blue-blue-500"></span>
-                    </div>
-                  )}
+                <td className="h-4 pl-2 pr-1">
+                  <div className="flex items-center" onClick={e => e.stopPropagation()}>
+                    <Checkbox
+                      className="shrink-0"
+                      checked={selectedIds.includes(log.id)}
+                      onCheck={() => {
+                        onSelectedIdChange(
+                          selectedIds.includes(log.id)
+                            ? selectedIds.filter(id => id !== log.id)
+                            : [...selectedIds, log.id],
+                        )
+                      }}
+                    />
+                  </div>
                 </td>
                 <td className="w-[160px] p-3 pr-2" style={{ maxWidth: isChatMode ? 300 : 200 }}>
                   {renderTdValue(leftValue || t('table.empty.noChat', { ns: 'appLog' }), !leftValue, isChatMode && log.annotated)}
@@ -1126,6 +1221,27 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
           })}
         </tbody>
       </table>
+      {selectedIds.length > 0 && (
+        <div className="absolute bottom-16 left-0 z-20 flex w-full justify-center">
+          <div className="pointer-events-auto flex items-center gap-x-1 rounded-[10px] border border-components-actionbar-border-accent bg-components-actionbar-bg-accent p-1 shadow-xl shadow-shadow-shadow-5">
+            <div className="inline-flex items-center gap-x-2 py-1 pl-2 pr-3">
+              <span className="system-xs-medium flex h-5 w-5 items-center justify-center rounded-md bg-text-accent text-text-primary-on-surface">
+                {selectedIds.length}
+              </span>
+              <span className="system-sm-semibold text-text-accent">{t('batchAction.selected', { ns: 'appLog' })}</span>
+            </div>
+            <Divider type="vertical" className="mx-0.5 h-3.5 bg-divider-regular" />
+            <Button
+              variant="ghost"
+              className="gap-x-0.5 px-3"
+              onClick={handleBatchExportFeedback}
+            >
+              <RiDownloadLine className="size-4" />
+              <span className="px-0.5">{t('detail.exportFeedback', { ns: 'appLog' })}</span>
+            </Button>
+          </div>
+        </div>
+      )}
       <Drawer
         isOpen={showDrawer}
         onClose={onCloseDrawer}

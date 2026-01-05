@@ -76,6 +76,9 @@ class FeedbackExportQuery(BaseModel):
     start_date: str | None = Field(default=None, description="Start date (YYYY-MM-DD)")
     end_date: str | None = Field(default=None, description="End date (YYYY-MM-DD)")
     format: Literal["csv", "json"] = Field(default="csv", description="Export format")
+    conversation_id: str | None = Field(
+        default=None, description="Filter by conversation ID(s), comma-separated for multiple"
+    )
 
     @field_validator("has_comment", mode="before")
     @classmethod
@@ -442,6 +445,7 @@ class MessageFeedbackExportApi(Resource):
                 start_date=args.start_date,
                 end_date=args.end_date,
                 format_type=args.format,
+                conversation_id=args.conversation_id,
             )
 
             return export_data
