@@ -1,4 +1,7 @@
-from pydantic import TypeAdapter
+from typing import Literal
+
+from flask import request
+from pydantic import BaseModel, Field, TypeAdapter, field_validator, model_validator
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
@@ -183,7 +186,7 @@ class ConversationRenameApi(WebApiResource):
 
         try:
             conversation = ConversationService.rename(
-                app_model, conversation_id, end_user, args["name"], args["auto_generate"]
+                app_model, conversation_id, end_user, payload.name, payload.auto_generate
             )
             return (
                 TypeAdapter(SimpleConversation)
