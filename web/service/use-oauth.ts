@@ -1,5 +1,5 @@
-import { post } from './base'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { post } from './base'
 
 const NAME_SPACE = 'oauth-provider'
 

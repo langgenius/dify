@@ -1,11 +1,12 @@
-import React from 'react'
+import type { Props } from './csv-uploader'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import CSVUploader, { type Props } from './csv-uploader'
+import * as React from 'react'
 import { ToastContext } from '@/app/components/base/toast'
+import CSVUploader from './csv-uploader'
 
 describe('CSVUploader', () => {
-  const notify = jest.fn()
-  const updateFile = jest.fn()
+  const notify = vi.fn()
+  const updateFile = vi.fn()
 
   const getDropElements = () => {
     const title = screen.getByText('appAnnotation.batchModal.csvUploadTitle')
@@ -23,18 +24,18 @@ describe('CSVUploader', () => {
       ...props,
     }
     return render(
-      <ToastContext.Provider value={{ notify, close: jest.fn() }}>
+      <ToastContext.Provider value={{ notify, close: vi.fn() }}>
         <CSVUploader {...mergedProps} />
       </ToastContext.Provider>,
     )
   }
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   it('should open the file picker when clicking browse', () => {
-    const clickSpy = jest.spyOn(HTMLInputElement.prototype, 'click')
+    const clickSpy = vi.spyOn(HTMLInputElement.prototype, 'click')
     renderComponent()
 
     fireEvent.click(screen.getByText('appAnnotation.batchModal.browse'))
@@ -100,12 +101,12 @@ describe('CSVUploader', () => {
     expect(screen.getByText('report')).toBeInTheDocument()
     expect(screen.getByText('.csv')).toBeInTheDocument()
 
-    const clickSpy = jest.spyOn(HTMLInputElement.prototype, 'click')
+    const clickSpy = vi.spyOn(HTMLInputElement.prototype, 'click')
     fireEvent.click(screen.getByText('datasetCreation.stepOne.uploader.change'))
     expect(clickSpy).toHaveBeenCalled()
     clickSpy.mockRestore()
 
-    const valueSetter = jest.spyOn(fileInput, 'value', 'set')
+    const valueSetter = vi.spyOn(fileInput, 'value', 'set')
     const removeTrigger = screen.getByTestId('remove-file-button')
     fireEvent.click(removeTrigger)
 

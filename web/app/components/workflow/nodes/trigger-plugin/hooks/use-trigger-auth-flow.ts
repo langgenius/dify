@@ -1,14 +1,14 @@
+import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import { useCallback, useState } from 'react'
 import {
   useBuildTriggerSubscription,
   useCreateTriggerSubscriptionBuilder,
   useUpdateTriggerSubscriptionBuilder,
-  useVerifyTriggerSubscriptionBuilder,
+  useVerifyAndUpdateTriggerSubscriptionBuilder,
 } from '@/service/use-triggers'
-import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 
 // Helper function to serialize complex values to strings for backend encryption
-const serializeFormValues = (values: Record<string, any>): Record<string, string> => {
+const serializeFormValues = (values: Record<string, unknown>): Record<string, string> => {
   const result: Record<string, string> = {}
 
   for (const [key, value] of Object.entries(values)) {
@@ -23,6 +23,17 @@ const serializeFormValues = (values: Record<string, any>): Record<string, string
   return result
 }
 
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (error instanceof Error && error.message)
+    return error.message
+  if (typeof error === 'object' && error && 'message' in error) {
+    const message = (error as { message?: string }).message
+    if (typeof message === 'string' && message)
+      return message
+  }
+  return fallback
+}
+
 export type AuthFlowStep = 'auth' | 'params' | 'complete'
 
 export type AuthFlowState = {
@@ -34,8 +45,8 @@ export type AuthFlowState = {
 
 export type AuthFlowActions = {
   startAuth: () => Promise<void>
-  verifyAuth: (credentials: Record<string, any>) => Promise<void>
-  completeConfig: (parameters: Record<string, any>, properties?: Record<string, any>, name?: string) => Promise<void>
+  verifyAuth: (credentials: Record<string, unknown>) => Promise<void>
+  completeConfig: (parameters: Record<string, unknown>, properties?: Record<string, unknown>, name?: string) => Promise<void>
   reset: () => void
 }
 
@@ -47,11 +58,12 @@ export const useTriggerAuthFlow = (provider: TriggerWithProvider): AuthFlowState
 
   const createBuilder = useCreateTriggerSubscriptionBuilder()
   const updateBuilder = useUpdateTriggerSubscriptionBuilder()
-  const verifyBuilder = useVerifyTriggerSubscriptionBuilder()
+  const verifyBuilder = useVerifyAndUpdateTriggerSubscriptionBuilder()
   const buildSubscription = useBuildTriggerSubscription()
 
   const startAuth = useCallback(async () => {
-    if (builderId) return // Prevent multiple calls if already started
+    if (builderId)
+      return // Prevent multiple calls if already started
 
     setIsLoading(true)
     setError(null)
@@ -63,8 +75,8 @@ export const useTriggerAuthFlow = (provider: TriggerWithProvider): AuthFlowState
       setBuilderId(response.subscription_builder.id)
       setStep('auth')
     }
-    catch (err: any) {
-      setError(err.message || 'Failed to start authentication flow')
+    catch (err: unknown) {
+      setError(getErrorMessage(err, 'Failed to start authentication flow'))
       throw err
     }
     finally {
@@ -72,7 +84,7 @@ export const useTriggerAuthFlow = (provider: TriggerWithProvider): AuthFlowState
     }
   }, [provider.name, createBuilder, builderId])
 
-  const verifyAuth = useCallback(async (credentials: Record<string, any>) => {
+  const verifyAuth = useCallback(async (credentials: Record<string, unknown>) => {
     if (!builderId) {
       setError('No builder ID available')
       return
@@ -95,8 +107,8 @@ export const useTriggerAuthFlow = (provider: TriggerWithProvider): AuthFlowState
 
       setStep('params')
     }
-    catch (err: any) {
-      setError(err.message || 'Authentication verification failed')
+    catch (err: unknown) {
+      setError(getErrorMessage(err, 'Authentication verification failed'))
       throw err
     }
     finally {
@@ -105,8 +117,8 @@ export const useTriggerAuthFlow = (provider: TriggerWithProvider): AuthFlowState
   }, [provider.name, builderId, updateBuilder, verifyBuilder])
 
   const completeConfig = useCallback(async (
-    parameters: Record<string, any>,
-    properties: Record<string, any> = {},
+    parameters: Record<string, unknown>,
+    properties: Record<string, unknown> = {},
     name?: string,
   ) => {
     if (!builderId) {
@@ -133,8 +145,8 @@ export const useTriggerAuthFlow = (provider: TriggerWithProvider): AuthFlowState
 
       setStep('complete')
     }
-    catch (err: any) {
-      setError(err.message || 'Configuration failed')
+    catch (err: unknown) {
+      setError(getErrorMessage(err, 'Configuration failed'))
       throw err
     }
     finally {

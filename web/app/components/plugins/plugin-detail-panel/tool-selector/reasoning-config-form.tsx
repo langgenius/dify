@@ -1,43 +1,43 @@
-import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { produce } from 'immer'
-import {
-  RiArrowRightUpLine,
-  RiBracesLine,
-} from '@remixicon/react'
-import Tooltip from '@/app/components/base/tooltip'
-import Switch from '@/app/components/base/switch'
-import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
-import Input from '@/app/components/base/input'
-import FormInputTypeSwitch from '@/app/components/workflow/nodes/_base/components/form-input-type-switch'
-import FormInputBoolean from '@/app/components/workflow/nodes/_base/components/form-input-boolean'
-import { SimpleSelect } from '@/app/components/base/select'
-import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
-import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
-import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
-import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
-import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
-import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Node } from 'reactflow'
+import type { SchemaRoot } from '@/app/components/workflow/nodes/llm/types'
+import type { ToolVarInputs } from '@/app/components/workflow/nodes/tool/types'
 import type {
   NodeOutPutVar,
   ValueSelector,
 } from '@/app/components/workflow/types'
-import type { ToolVarInputs } from '@/app/components/workflow/nodes/tool/types'
+import {
+  RiArrowRightUpLine,
+  RiBracesLine,
+} from '@remixicon/react'
+import { useBoolean } from 'ahooks'
+import { produce } from 'immer'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Input from '@/app/components/base/input'
+import { SimpleSelect } from '@/app/components/base/select'
+import Switch from '@/app/components/base/switch'
+import Tooltip from '@/app/components/base/tooltip'
+import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
+import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
+import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
+import FormInputBoolean from '@/app/components/workflow/nodes/_base/components/form-input-boolean'
+import FormInputTypeSwitch from '@/app/components/workflow/nodes/_base/components/form-input-type-switch'
+import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
+import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import { VarType } from '@/app/components/workflow/types'
-import cn from '@/utils/classnames'
-import { useBoolean } from 'ahooks'
+import { cn } from '@/utils/classnames'
 import SchemaModal from './schema-modal'
-import type { SchemaRoot } from '@/app/components/workflow/nodes/llm/types'
 
 type Props = {
   value: Record<string, any>
   onChange: (val: Record<string, any>) => void
   schemas: any[]
-  nodeOutputVars: NodeOutPutVar[],
-  availableNodes: Node[],
+  nodeOutputVars: NodeOutPutVar[]
+  availableNodes: Node[]
   nodeId: string
 }
 
@@ -151,11 +151,14 @@ const ReasoningConfigForm: React.FC<Props> = ({
     const auto = value[variable]?.auto
     const tooltipContent = (tooltip && (
       <Tooltip
-        popupContent={<div className='w-[200px]'>
-          {tooltip[language] || tooltip.en_US}
-        </div>}
-        triggerClassName='ml-0.5 w-4 h-4'
-        asChild={false} />
+        popupContent={(
+          <div className="w-[200px]">
+            {tooltip[language] || tooltip.en_US}
+          </div>
+        )}
+        triggerClassName="ml-0.5 w-4 h-4"
+        asChild={false}
+      />
     ))
     const varInput = value[variable].value
     const isString = type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput
@@ -206,36 +209,39 @@ const ReasoningConfigForm: React.FC<Props> = ({
     }
 
     return (
-      <div key={variable} className='space-y-0.5'>
-        <div className='system-sm-semibold flex items-center justify-between py-2 text-text-secondary'>
-          <div className='flex items-center'>
+      <div key={variable} className="space-y-0.5">
+        <div className="system-sm-semibold flex items-center justify-between py-2 text-text-secondary">
+          <div className="flex items-center">
             <span className={cn('code-sm-semibold max-w-[140px] truncate text-text-secondary')} title={label[language] || label.en_US}>{label[language] || label.en_US}</span>
             {required && (
-              <span className='ml-1 text-red-500'>*</span>
+              <span className="ml-1 text-red-500">*</span>
             )}
             {tooltipContent}
-            <span className='system-xs-regular mx-1 text-text-quaternary'>·</span>
-            <span className='system-xs-regular text-text-tertiary'>{targetVarType()}</span>
+            <span className="system-xs-regular mx-1 text-text-quaternary">·</span>
+            <span className="system-xs-regular text-text-tertiary">{targetVarType()}</span>
             {isShowJSONEditor && (
               <Tooltip
-                popupContent={<div className='system-xs-medium text-text-secondary'>
-                  {t('workflow.nodes.agent.clickToViewParameterSchema')}
-                </div>}
-                asChild={false}>
+                popupContent={(
+                  <div className="system-xs-medium text-text-secondary">
+                    {t('nodes.agent.clickToViewParameterSchema', { ns: 'workflow' })}
+                  </div>
+                )}
+                asChild={false}
+              >
                 <div
-                  className='ml-0.5 cursor-pointer rounded-[4px] p-px text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary'
+                  className="ml-0.5 cursor-pointer rounded-[4px] p-px text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
                   onClick={() => showSchema(input_schema as SchemaRoot, label[language] || label.en_US)}
                 >
-                  <RiBracesLine className='size-3.5'/>
+                  <RiBracesLine className="size-3.5" />
                 </div>
               </Tooltip>
             )}
 
           </div>
-          <div className='flex cursor-pointer items-center gap-1 rounded-[6px] border border-divider-subtle bg-background-default-lighter px-2 py-1 hover:bg-state-base-hover' onClick={() => handleAutomatic(variable, !auto, type)}>
-            <span className='system-xs-medium text-text-secondary'>{t('plugin.detailPanel.toolSelector.auto')}</span>
+          <div className="flex cursor-pointer items-center gap-1 rounded-[6px] border border-divider-subtle bg-background-default-lighter px-2 py-1 hover:bg-state-base-hover" onClick={() => handleAutomatic(variable, !auto, type)}>
+            <span className="system-xs-medium text-text-secondary">{t('detailPanel.toolSelector.auto', { ns: 'plugin' })}</span>
             <Switch
-              size='xs'
+              size="xs"
               defaultValue={!!auto}
               onChange={val => handleAutomatic(variable, val, type)}
             />
@@ -244,7 +250,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
         {auto === 0 && (
           <div className={cn('gap-1', !(isShowJSONEditor && isConstant) && 'flex')}>
             {showTypeSwitch && (
-              <FormInputTypeSwitch value={varInput?.type || VarKindType.constant} onChange={handleTypeChange(variable, defaultValue)}/>
+              <FormInputTypeSwitch value={varInput?.type || VarKindType.constant} onChange={handleTypeChange(variable, defaultValue)} />
             )}
             {isString && (
               <MixedVariableTextInput
@@ -256,8 +262,8 @@ const ReasoningConfigForm: React.FC<Props> = ({
             )}
             {isNumber && isConstant && (
               <Input
-                className='h-8 grow'
-                type='number'
+                className="h-8 grow"
+                type="number"
                 value={varInput?.value || ''}
                 onChange={e => handleValueChange(variable, type)(e.target.value)}
                 placeholder={placeholder?.[language] || placeholder?.en_US}
@@ -271,30 +277,30 @@ const ReasoningConfigForm: React.FC<Props> = ({
             )}
             {isSelect && (
               <SimpleSelect
-                wrapperClassName='h-8 grow'
+                wrapperClassName="h-8 grow"
                 defaultValue={varInput?.value}
                 items={options.filter((option: { show_on: any[] }) => {
                   if (option.show_on.length)
                     return option.show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value)
 
                   return true
-                }).map((option: { value: any; label: { [x: string]: any; en_US: any } }) => ({ value: option.value, name: option.label[language] || option.label.en_US }))}
+                }).map((option: { value: any, label: { [x: string]: any, en_US: any } }) => ({ value: option.value, name: option.label[language] || option.label.en_US }))}
                 onSelect={item => handleValueChange(variable, type)(item.value as string)}
                 placeholder={placeholder?.[language] || placeholder?.en_US}
               />
             )}
             {isShowJSONEditor && isConstant && (
-              <div className='mt-1 w-full'>
+              <div className="mt-1 w-full">
                 <CodeEditor
-                  title='JSON'
+                  title="JSON"
                   value={varInput?.value as any}
                   isExpand
                   isInNode
                   height={100}
                   language={CodeLanguage.json}
                   onChange={handleValueChange(variable, type)}
-                  className='w-full'
-                  placeholder={<div className='whitespace-pre'>{placeholder?.[language] || placeholder?.en_US}</div>}
+                  className="w-full"
+                  placeholder={<div className="whitespace-pre">{placeholder?.[language] || placeholder?.en_US}</div>}
                 />
               </div>
             )}
@@ -308,7 +314,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
             )}
             {isModelSelector && (
               <ModelParameterModal
-                popupClassName='!w-[387px]'
+                popupClassName="!w-[387px]"
                 isAdvancedMode
                 isInWorkflow
                 value={varInput}
@@ -319,7 +325,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
             {showVariableSelector && (
               <VarReferencePicker
                 zIndex={1001}
-                className='h-8 grow'
+                className="h-8 grow"
                 readonly={false}
                 isShowNodeName
                 nodeId={nodeId}
@@ -335,18 +341,19 @@ const ReasoningConfigForm: React.FC<Props> = ({
         {url && (
           <a
             href={url}
-            target='_blank' rel='noopener noreferrer'
-            className='inline-flex items-center text-xs text-text-accent'
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center text-xs text-text-accent"
           >
-            {t('tools.howToGet')}
-            <RiArrowRightUpLine className='ml-1 h-3 w-3' />
+            {t('howToGet', { ns: 'tools' })}
+            <RiArrowRightUpLine className="ml-1 h-3 w-3" />
           </a>
         )}
       </div>
     )
   }
   return (
-    <div className='space-y-3 px-4 py-2'>
+    <div className="space-y-3 px-4 py-2">
       {!isShowSchema && schemas.map(schema => renderField(schema, (s: SchemaRoot, rootName: string) => {
         setSchema(s)
         setSchemaRootName(rootName)

@@ -572,7 +572,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                     datasource_type=DatasourceType.NOTION,
                     notion_info=NotionInfo.model_validate(
                         {
-                            "credential_id": data_source_info["credential_id"],
+                            "credential_id": data_source_info.get("credential_id"),
                             "notion_workspace_id": data_source_info["notion_workspace_id"],
                             "notion_obj_id": data_source_info["notion_page_id"],
                             "notion_page_type": data_source_info["type"],
@@ -751,12 +751,12 @@ class DocumentApi(DocumentResource):
         elif metadata == "without":
             dataset_process_rules = DatasetService.get_process_rules(dataset_id)
             document_process_rules = document.dataset_process_rule.to_dict() if document.dataset_process_rule else {}
-            data_source_info = document.data_source_detail_dict
             response = {
                 "id": document.id,
                 "position": document.position,
                 "data_source_type": document.data_source_type,
-                "data_source_info": data_source_info,
+                "data_source_info": document.data_source_info_dict,
+                "data_source_detail_dict": document.data_source_detail_dict,
                 "dataset_process_rule_id": document.dataset_process_rule_id,
                 "dataset_process_rule": dataset_process_rules,
                 "document_process_rule": document_process_rules,
@@ -784,12 +784,12 @@ class DocumentApi(DocumentResource):
         else:
             dataset_process_rules = DatasetService.get_process_rules(dataset_id)
             document_process_rules = document.dataset_process_rule.to_dict() if document.dataset_process_rule else {}
-            data_source_info = document.data_source_detail_dict
             response = {
                 "id": document.id,
                 "position": document.position,
                 "data_source_type": document.data_source_type,
-                "data_source_info": data_source_info,
+                "data_source_info": document.data_source_info_dict,
+                "data_source_detail_dict": document.data_source_detail_dict,
                 "dataset_process_rule_id": document.dataset_process_rule_id,
                 "dataset_process_rule": dataset_process_rules,
                 "document_process_rule": document_process_rules,

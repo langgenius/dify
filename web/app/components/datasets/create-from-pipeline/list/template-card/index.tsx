@@ -1,9 +1,15 @@
-import React, { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import Modal from '@/app/components/base/modal'
-import EditPipelineInfo from './edit-pipeline-info'
 import type { PipelineTemplate } from '@/models/pipeline'
+import { useRouter } from 'next/navigation'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { trackEvent } from '@/app/components/base/amplitude'
 import Confirm from '@/app/components/base/confirm'
+import Modal from '@/app/components/base/modal'
+import Toast from '@/app/components/base/toast'
+import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
+import { useCreatePipelineDatasetFromCustomized } from '@/service/knowledge/use-create-dataset'
+import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import {
   useDeleteTemplate,
   useExportTemplateDSL,
@@ -11,15 +17,10 @@ import {
   usePipelineTemplateById,
 } from '@/service/use-pipeline'
 import { downloadFile } from '@/utils/format'
-import Toast from '@/app/components/base/toast'
-import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
-import { useRouter } from 'next/navigation'
-import Details from './details'
-import Content from './content'
 import Actions from './actions'
-import { useCreatePipelineDatasetFromCustomized } from '@/service/knowledge/use-create-dataset'
-import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
-import { trackEvent } from '@/app/components/base/amplitude'
+import Content from './content'
+import Details from './details'
+import EditPipelineInfo from './edit-pipeline-info'
 
 type TemplateCardProps = {
   pipeline: PipelineTemplate
@@ -51,7 +52,7 @@ const TemplateCard = ({
     if (!pipelineTemplateInfo) {
       Toast.notify({
         type: 'error',
-        message: t('datasetPipeline.creation.errorTip'),
+        message: t('creation.errorTip', { ns: 'datasetPipeline' }),
       })
       return
     }
@@ -62,7 +63,7 @@ const TemplateCard = ({
       onSuccess: async (newDataset) => {
         Toast.notify({
           type: 'success',
-          message: t('datasetPipeline.creation.successTip'),
+          message: t('creation.successTip', { ns: 'datasetPipeline' }),
         })
         invalidDatasetList()
         if (newDataset.pipeline_id)
@@ -77,7 +78,7 @@ const TemplateCard = ({
       onError: () => {
         Toast.notify({
           type: 'error',
-          message: t('datasetPipeline.creation.errorTip'),
+          message: t('creation.errorTip', { ns: 'datasetPipeline' }),
         })
       },
     })
@@ -102,7 +103,8 @@ const TemplateCard = ({
   const { mutateAsync: exportPipelineDSL, isPending: isExporting } = useExportTemplateDSL()
 
   const handleExportDSL = useCallback(async () => {
-    if (isExporting) return
+    if (isExporting)
+      return
     await exportPipelineDSL(pipeline.id, {
       onSuccess: (res) => {
         const blob = new Blob([res.data], { type: 'application/yaml' })
@@ -112,13 +114,13 @@ const TemplateCard = ({
         })
         Toast.notify({
           type: 'success',
-          message: t('datasetPipeline.exportDSL.successTip'),
+          message: t('exportDSL.successTip', { ns: 'datasetPipeline' }),
         })
       },
       onError: () => {
         Toast.notify({
           type: 'error',
-          message: t('datasetPipeline.exportDSL.errorTip'),
+          message: t('exportDSL.errorTip', { ns: 'datasetPipeline' }),
         })
       },
     })
@@ -145,7 +147,7 @@ const TemplateCard = ({
   }, [pipeline.id, deletePipeline, invalidCustomizedTemplateList])
 
   return (
-    <div className='group relative flex h-[132px] cursor-pointer flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 shadow-xs shadow-shadow-shadow-3'>
+    <div className="group relative flex h-[132px] cursor-pointer flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 shadow-xs shadow-shadow-shadow-3">
       <Content
         name={pipeline.name}
         description={pipeline.description}
@@ -164,7 +166,7 @@ const TemplateCard = ({
         <Modal
           isShow={showEditModal}
           onClose={closeEditModal}
-          className='max-w-[520px] p-0'
+          className="max-w-[520px] p-0"
         >
           <EditPipelineInfo
             pipeline={pipeline}
@@ -174,8 +176,8 @@ const TemplateCard = ({
       )}
       {showDeleteConfirm && (
         <Confirm
-          title={t('datasetPipeline.deletePipeline.title')}
-          content={t('datasetPipeline.deletePipeline.content')}
+          title={t('deletePipeline.title', { ns: 'datasetPipeline' })}
+          content={t('deletePipeline.content', { ns: 'datasetPipeline' })}
           isShow={showDeleteConfirm}
           onConfirm={onConfirmDelete}
           onCancel={onCancelDelete}
@@ -185,7 +187,7 @@ const TemplateCard = ({
         <Modal
           isShow={showDetailModal}
           onClose={closeDetailsModal}
-          className='h-[calc(100vh-64px)] max-w-[1680px] rounded-3xl p-0'
+          className="h-[calc(100vh-64px)] max-w-[1680px] rounded-3xl p-0"
         >
           <Details
             id={pipeline.id}

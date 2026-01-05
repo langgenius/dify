@@ -45,8 +45,8 @@ export const deepSanitizeFormValues = (values: Record<string, any>, visited = ne
  */
 export const findMissingRequiredField = (
   formData: Record<string, any>,
-  requiredFields: Array<{ name: string; label: any }>,
-): { name: string; label: any } | null => {
+  requiredFields: Array<{ name: string, label: any }>,
+): { name: string, label: any } | null => {
   for (const field of requiredFields) {
     if (!formData[field.name] || formData[field.name] === '')
       return field

@@ -1,22 +1,20 @@
 import { render, screen } from '@testing-library/react'
 import AnnotationFull from './index'
 
-jest.mock('./usage', () => ({
-  __esModule: true,
+vi.mock('./usage', () => ({
   default: (props: { className?: string }) => {
     return (
-      <div data-testid='usage-component' data-classname={props.className ?? ''}>
+      <div data-testid="usage-component" data-classname={props.className ?? ''}>
         usage
       </div>
     )
   },
 }))
 
-jest.mock('../upgrade-btn', () => ({
-  __esModule: true,
+vi.mock('../upgrade-btn', () => ({
   default: (props: { loc?: string }) => {
     return (
-      <button type='button' data-testid='upgrade-btn'>
+      <button type="button" data-testid="upgrade-btn">
         {props.loc}
       </button>
     )
@@ -25,7 +23,7 @@ jest.mock('../upgrade-btn', () => ({
 
 describe('AnnotationFull', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // Rendering marketing copy with action button

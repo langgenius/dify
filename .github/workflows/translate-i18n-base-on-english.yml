@@ -1,10 +1,11 @@
-name: Check i18n Files and Create PR
+name: Translate i18n Files Based on English
 
 on:
   push:
     branches: [main]
     paths:
-      - 'web/i18n/en-US/*.ts'
+      - 'web/i18n/en-US/*.json'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -18,6 +19,7 @@ jobs:
       run:
         working-directory: web
     steps:
+      # Keep use old checkout action version for https://github.com/peter-evans/create-pull-request/issues/4272
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -26,21 +28,28 @@ jobs:
       - name: Check for file changes in i18n/en-US
         id: check_files
         run: |
-          git fetch origin "${{ github.event.before }}" || true
-          git fetch origin "${{ github.sha }}" || true
-          changed_files=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" -- 'i18n/en-US/*.ts')
-          echo "Changed files: $changed_files"
-          if [ -n "$changed_files" ]; then
+          # Skip check for manual trigger, translate all files
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             echo "FILES_CHANGED=true" >> $GITHUB_ENV
-            file_args=""
-            for file in $changed_files; do
-              filename=$(basename "$file" .ts)
-              file_args="$file_args --file $filename"
-            done
-            echo "FILE_ARGS=$file_args" >> $GITHUB_ENV
-            echo "File arguments: $file_args"
+            echo "FILE_ARGS=" >> $GITHUB_ENV
+            echo "Manual trigger: translating all files"
           else
-            echo "FILES_CHANGED=false" >> $GITHUB_ENV
+            git fetch origin "${{ github.event.before }}" || true
+            git fetch origin "${{ github.sha }}" || true
+            changed_files=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" -- 'i18n/en-US/*.json')
+            echo "Changed files: $changed_files"
+            if [ -n "$changed_files" ]; then
+              echo "FILES_CHANGED=true" >> $GITHUB_ENV
+              file_args=""
+              for file in $changed_files; do
+                filename=$(basename "$file" .json)
+                file_args="$file_args --file $filename"
+              done
+              echo "FILE_ARGS=$file_args" >> $GITHUB_ENV
+              echo "File arguments: $file_args"
+            else
+              echo "FILES_CHANGED=false" >> $GITHUB_ENV
+            fi
           fi
 
       - name: Install pnpm
@@ -51,7 +60,7 @@ jobs:
 
       - name: Set up Node.js
         if: env.FILES_CHANGED == 'true'
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 'lts/*'
           cache: pnpm
@@ -65,12 +74,7 @@ jobs:
       - name: Generate i18n translations
         if: env.FILES_CHANGED == 'true'
         working-directory: ./web
-        run: pnpm run auto-gen-i18n ${{ env.FILE_ARGS }}
-
-      - name: Generate i18n type definitions
-        if: env.FILES_CHANGED == 'true'
-        working-directory: ./web
-        run: pnpm run gen:i18n-types
+        run: pnpm run i18n:gen ${{ env.FILE_ARGS }}
 
       - name: Create Pull Request
         if: env.FILES_CHANGED == 'true'
@@ -78,14 +82,13 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: 'chore(i18n): update translations based on en-US changes'
-          title: 'chore(i18n): translate i18n files and update type definitions'
+          title: 'chore(i18n): translate i18n files based on en-US changes'
           body: |
-            This PR was automatically created to update i18n files and TypeScript type definitions based on changes in en-US locale.
+            This PR was automatically created to update i18n translation files based on changes in en-US locale.
 
             **Triggered by:** ${{ github.sha }}
 
             **Changes included:**
             - Updated translation files for all locales
-            - Regenerated TypeScript type definitions for type safety
           branch: chore/automated-i18n-updates-${{ github.sha }}
           delete-branch: true

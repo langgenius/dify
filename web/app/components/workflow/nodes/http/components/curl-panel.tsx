@@ -1,13 +1,15 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useState } from 'react'
+import type { HttpNodeType } from '../types'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { BodyPayloadValueType, BodyType, type HttpNodeType, Method } from '../types'
-import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
+import Modal from '@/app/components/base/modal'
 import Textarea from '@/app/components/base/textarea'
 import Toast from '@/app/components/base/toast'
 import { useNodesInteractions } from '@/app/components/workflow/hooks'
+import { BodyPayloadValueType, BodyType, Method } from '../types'
 
 type Props = {
   nodeId: string
@@ -16,7 +18,7 @@ type Props = {
   handleCurlImport: (node: HttpNodeType) => void
 }
 
-const parseCurl = (curlCommand: string): { node: HttpNodeType | null; error: string | null } => {
+const parseCurl = (curlCommand: string): { node: HttpNodeType | null, error: string | null } => {
   if (!curlCommand.trim().toLowerCase().startsWith('curl'))
     return { node: null, error: 'Invalid cURL command. Command must start with "curl".' }
 
@@ -29,7 +31,7 @@ const parseCurl = (curlCommand: string): { node: HttpNodeType | null; error: str
     params: '',
     body: { type: BodyType.none, data: '' },
   }
-  const args = curlCommand.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || []
+  const args = curlCommand.match(/(?:[^\s"']|"[^"]*"|'[^']*')+/g) || []
   let hasData = false
 
   for (let i = 1; i < args.length; i++) {
@@ -142,22 +144,25 @@ const CurlPanel: FC<Props> = ({ nodeId, isShow, onHide, handleCurlImport }) => {
 
   return (
     <Modal
-      title={t('workflow.nodes.http.curl.title')}
+      title={t('nodes.http.curl.title', { ns: 'workflow' })}
       isShow={isShow}
       onClose={onHide}
-      className='!w-[400px] !max-w-[400px] !p-4'
+      className="!w-[400px] !max-w-[400px] !p-4"
     >
       <div>
         <Textarea
           value={inputString}
-          className='my-3 h-40 w-full grow'
+          className="my-3 h-40 w-full grow"
           onChange={e => setInputString(e.target.value)}
-          placeholder={t('workflow.nodes.http.curl.placeholder')!}
+          placeholder={t('nodes.http.curl.placeholder', { ns: 'workflow' })!}
         />
       </div>
-      <div className='mt-4 flex justify-end space-x-2'>
-        <Button className='!w-[95px]' onClick={onHide} >{t('common.operation.cancel')}</Button>
-        <Button className='!w-[95px]' variant='primary' onClick={handleSave} > {t('common.operation.save')}</Button>
+      <div className="mt-4 flex justify-end space-x-2">
+        <Button className="!w-[95px]" onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
+        <Button className="!w-[95px]" variant="primary" onClick={handleSave}>
+          {' '}
+          {t('operation.save', { ns: 'common' })}
+        </Button>
       </div>
     </Modal>
   )

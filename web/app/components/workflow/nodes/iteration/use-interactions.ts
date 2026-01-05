@@ -1,21 +1,21 @@
-import { useCallback } from 'react'
-import { produce } from 'immer'
-import { useTranslation } from 'react-i18next'
-import { useStoreApi } from 'reactflow'
 import type {
   BlockEnum,
   ChildNodeTypeCount,
   Node,
 } from '../../types'
+import { produce } from 'immer'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useStoreApi } from 'reactflow'
+import { useNodesMetaData } from '@/app/components/workflow/hooks'
+import {
+  ITERATION_PADDING,
+} from '../../constants'
 import {
   generateNewNode,
   getNodeCustomTypeByNodeDataType,
 } from '../../utils'
-import {
-  ITERATION_PADDING,
-} from '../../constants'
 import { CUSTOM_ITERATION_START_NODE } from '../iteration-start/constants'
-import { useNodesMetaData } from '@/app/components/workflow/hooks'
 
 export const useNodeIterationInteractions = () => {
   const { t } = useTranslation()
@@ -78,7 +78,7 @@ export const useNodeIterationInteractions = () => {
     const { getNodes } = store.getState()
     const nodes = getNodes()
 
-    const restrictPosition: { x?: number; y?: number } = { x: undefined, y: undefined }
+    const restrictPosition: { x?: number, y?: number } = { x: undefined, y: undefined }
 
     if (node.data.isInIteration) {
       const parentNode = nodes.find(n => n.id === node.parentId)
@@ -121,7 +121,7 @@ export const useNodeIterationInteractions = () => {
       const childNodeType = child.data.type as BlockEnum
       const nodesWithSameType = nodes.filter(node => node.data.type === childNodeType)
 
-      if(!childNodeTypeCount[childNodeType])
+      if (!childNodeTypeCount[childNodeType])
         childNodeTypeCount[childNodeType] = nodesWithSameType.length + 1
       else
         childNodeTypeCount[childNodeType] = childNodeTypeCount[childNodeType] + 1
@@ -135,7 +135,7 @@ export const useNodeIterationInteractions = () => {
           _isBundled: false,
           _connectedSourceHandleIds: [],
           _connectedTargetHandleIds: [],
-          title: nodesWithSameType.length > 0 ? `${t(`workflow.blocks.${childNodeType}`)} ${childNodeTypeCount[childNodeType]}` : t(`workflow.blocks.${childNodeType}`),
+          title: nodesWithSameType.length > 0 ? `${t(`blocks.${childNodeType}`, { ns: 'workflow' })} ${childNodeTypeCount[childNodeType]}` : t(`blocks.${childNodeType}`, { ns: 'workflow' }),
           iteration_id: newNodeId,
           type: childNodeType,
         },

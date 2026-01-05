@@ -1,10 +1,12 @@
-import React from 'react'
+import type { IPromptProps } from './index'
+import type { PromptItem, PromptVariable } from '@/models/debug'
 import { fireEvent, render, screen } from '@testing-library/react'
-import Prompt, { type IPromptProps } from './index'
-import ConfigContext from '@/context/debug-configuration'
+import * as React from 'react'
 import { MAX_PROMPT_MESSAGE_LENGTH } from '@/config'
-import { type PromptItem, PromptRole, type PromptVariable } from '@/models/debug'
+import ConfigContext from '@/context/debug-configuration'
+import { PromptRole } from '@/models/debug'
 import { AppModeEnum, ModelModeType } from '@/types/app'
+import Prompt from './index'
 
 type DebugConfiguration = {
   isAdvancedMode: boolean
@@ -28,8 +30,7 @@ const defaultPromptVariables: PromptVariable[] = [
 
 let mockSimplePromptInputProps: IPromptProps | null = null
 
-jest.mock('./simple-prompt-input', () => ({
-  __esModule: true,
+vi.mock('./simple-prompt-input', () => ({
   default: (props: IPromptProps) => {
     mockSimplePromptInputProps = props
     return (
@@ -64,8 +65,7 @@ type AdvancedMessageInputProps = {
   noResize?: boolean
 }
 
-jest.mock('./advanced-prompt-input', () => ({
-  __esModule: true,
+vi.mock('./advanced-prompt-input', () => ({
   default: (props: AdvancedMessageInputProps) => {
     return (
       <div
@@ -94,7 +94,7 @@ jest.mock('./advanced-prompt-input', () => ({
 }))
 const getContextValue = (overrides: Partial<DebugConfiguration> = {}): DebugConfiguration => {
   return {
-    setCurrentAdvancedPrompt: jest.fn(),
+    setCurrentAdvancedPrompt: vi.fn(),
     isAdvancedMode: false,
     currentAdvancedPrompt: [],
     modelModeType: ModelModeType.chat,
@@ -116,7 +116,7 @@ const renderComponent = (
     mode: AppModeEnum.CHAT,
     promptTemplate: 'initial template',
     promptVariables: defaultPromptVariables,
-    onChange: jest.fn(),
+    onChange: vi.fn(),
     ...props,
   }
   const contextValue = getContextValue(contextOverrides)
@@ -133,13 +133,13 @@ const renderComponent = (
 
 describe('Prompt config component', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     mockSimplePromptInputProps = null
   })
 
   // Rendering simple mode
   it('should render simple prompt when advanced mode is disabled', () => {
-    const onChange = jest.fn()
+    const onChange = vi.fn()
     renderComponent({ onChange }, { isAdvancedMode: false })
 
     const simplePrompt = screen.getByTestId('simple-prompt-input')
@@ -181,7 +181,7 @@ describe('Prompt config component', () => {
       { role: PromptRole.user, text: 'first' },
       { role: PromptRole.assistant, text: 'second' },
     ]
-    const setCurrentAdvancedPrompt = jest.fn()
+    const setCurrentAdvancedPrompt = vi.fn()
     renderComponent(
       {},
       {
@@ -207,7 +207,7 @@ describe('Prompt config component', () => {
       { role: PromptRole.user, text: 'first' },
       { role: PromptRole.user, text: 'second' },
     ]
-    const setCurrentAdvancedPrompt = jest.fn()
+    const setCurrentAdvancedPrompt = vi.fn()
     renderComponent(
       {},
       {
@@ -232,7 +232,7 @@ describe('Prompt config component', () => {
       { role: PromptRole.user, text: 'first' },
       { role: PromptRole.assistant, text: 'second' },
     ]
-    const setCurrentAdvancedPrompt = jest.fn()
+    const setCurrentAdvancedPrompt = vi.fn()
     renderComponent(
       {},
       {
@@ -252,7 +252,7 @@ describe('Prompt config component', () => {
     const currentAdvancedPrompt: PromptItem[] = [
       { role: PromptRole.user, text: 'first' },
     ]
-    const setCurrentAdvancedPrompt = jest.fn()
+    const setCurrentAdvancedPrompt = vi.fn()
     renderComponent(
       {},
       {
@@ -274,7 +274,7 @@ describe('Prompt config component', () => {
     const currentAdvancedPrompt: PromptItem[] = [
       { role: PromptRole.assistant, text: 'reply' },
     ]
-    const setCurrentAdvancedPrompt = jest.fn()
+    const setCurrentAdvancedPrompt = vi.fn()
     renderComponent(
       {},
       {
@@ -293,7 +293,7 @@ describe('Prompt config component', () => {
   })
 
   it('should insert a system message when adding to an empty chat prompt list', () => {
-    const setCurrentAdvancedPrompt = jest.fn()
+    const setCurrentAdvancedPrompt = vi.fn()
     renderComponent(
       {},
       {
@@ -327,7 +327,7 @@ describe('Prompt config component', () => {
 
   // Completion mode
   it('should update completion prompt value and flag as user change', () => {
-    const setCurrentAdvancedPrompt = jest.fn()
+    const setCurrentAdvancedPrompt = vi.fn()
     renderComponent(
       {},
       {
