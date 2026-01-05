@@ -24,7 +24,7 @@ const ClearAllAnnotationsConfirmModal: FC<Props> = ({
       onCancel={onHide}
       onConfirm={onConfirm}
       type="danger"
-      title={t('appAnnotation.table.header.clearAllConfirm')}
+      title={t('table.header.clearAllConfirm', { ns: 'appAnnotation' })}
     />
   )
 }

@@ -22,7 +22,7 @@ const FormInputTypeSwitch: FC<Props> = ({
   return (
     <div className="inline-flex h-8 shrink-0 gap-px rounded-[10px] bg-components-segmented-control-bg-normal p-0.5">
       <Tooltip
-        popupContent={value === VarType.variable ? '' : t('workflow.nodes.common.typeSwitch.variable')}
+        popupContent={value === VarType.variable ? '' : t('nodes.common.typeSwitch.variable', { ns: 'workflow' })}
       >
         <div
           className={cn('cursor-pointer rounded-lg px-2.5 py-1.5 text-text-tertiary hover:bg-state-base-hover', value === VarType.variable && 'bg-components-segmented-control-item-active-bg text-text-secondary shadow-xs hover:bg-components-segmented-control-item-active-bg')}
@@ -32,7 +32,7 @@ const FormInputTypeSwitch: FC<Props> = ({
         </div>
       </Tooltip>
       <Tooltip
-        popupContent={value === VarType.constant ? '' : t('workflow.nodes.common.typeSwitch.input')}
+        popupContent={value === VarType.constant ? '' : t('nodes.common.typeSwitch.input', { ns: 'workflow' })}
       >
         <div
           className={cn('cursor-pointer rounded-lg px-2.5 py-1.5 text-text-tertiary hover:bg-state-base-hover', value === VarType.constant && 'bg-components-segmented-control-item-active-bg text-text-secondary shadow-xs hover:bg-components-segmented-control-item-active-bg')}

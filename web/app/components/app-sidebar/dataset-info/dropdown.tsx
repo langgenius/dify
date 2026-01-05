@@ -73,14 +73,14 @@ const DropDown = ({
       URL.revokeObjectURL(url)
     }
     catch {
-      Toast.notify({ type: 'error', message: t('app.exportFailed') })
+      Toast.notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
     }
   }, [dataset, exportPipelineConfig, handleTrigger, t])
 
   const detectIsUsedByApp = useCallback(async () => {
     try {
       const { is_using: isUsedByApp } = await checkIsUsedInApp(dataset.id)
-      setConfirmMessage(isUsedByApp ? t('dataset.datasetUsedByApp')! : t('dataset.deleteDatasetConfirmContent')!)
+      setConfirmMessage(isUsedByApp ? t('datasetUsedByApp', { ns: 'dataset' })! : t('deleteDatasetConfirmContent', { ns: 'dataset' })!)
       setShowConfirmDelete(true)
     }
     catch (e: any) {
@@ -95,7 +95,7 @@ const DropDown = ({
   const onConfirmDelete = useCallback(async () => {
     try {
       await deleteDataset(dataset.id)
-      Toast.notify({ type: 'success', message: t('dataset.datasetDeleted') })
+      Toast.notify({ type: 'success', message: t('datasetDeleted', { ns: 'dataset' }) })
       invalidDatasetList()
       replace('/datasets')
     }
@@ -141,7 +141,7 @@ const DropDown = ({
       )}
       {showConfirmDelete && (
         <Confirm
-          title={t('dataset.deleteDatasetConfirmTitle')}
+          title={t('deleteDatasetConfirmTitle', { ns: 'dataset' })}
           content={confirmMessage}
           isShow={showConfirmDelete}
           onConfirm={onConfirmDelete}

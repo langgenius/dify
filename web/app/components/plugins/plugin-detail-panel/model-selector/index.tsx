@@ -145,12 +145,12 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
         if (keys.length) {
           Toast.notify({
             type: 'warning',
-            message: `${t('common.modelProvider.parametersInvalidRemoved')}: ${keys.map(k => `${k} (${removedDetails[k]})`).join(', ')}`,
+            message: `${t('modelProvider.parametersInvalidRemoved', { ns: 'common' })}: ${keys.map(k => `${k} (${removedDetails[k]})`).join(', ')}`,
           })
         }
       }
       catch {
-        Toast.notify({ type: 'error', message: t('common.error') })
+        Toast.notify({ type: 'error', message: t('error', { ns: 'common' }) })
       }
     }
 
@@ -246,7 +246,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
             <div className={cn('max-h-[420px] overflow-y-auto p-4 pt-3')}>
               <div className="relative">
                 <div className={cn('system-sm-semibold mb-1 flex h-6 items-center text-text-secondary')}>
-                  {t('common.modelProvider.model').toLocaleUpperCase()}
+                  {t('modelProvider.model', { ns: 'common' }).toLocaleUpperCase()}
                 </div>
                 <ModelSelector
                   defaultModel={(value?.provider || value?.model) ? { provider: value?.provider, model: value?.model } : undefined}

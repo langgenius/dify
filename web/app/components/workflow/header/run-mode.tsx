@@ -66,7 +66,7 @@ const RunMode = ({
         isValid = false
     })
     if (!isValid) {
-      notify({ type: 'error', message: t('workflow.panel.checklistTip') })
+      notify({ type: 'error', message: t('panel.checklistTip', { ns: 'workflow' }) })
       return
     }
 
@@ -126,7 +126,7 @@ const RunMode = ({
                 disabled={true}
               >
                 <RiLoader2Line className="mr-1 size-4 animate-spin" />
-                {isListening ? t('workflow.common.listening') : t('workflow.common.running')}
+                {isListening ? t('common.listening', { ns: 'workflow' }) : t('common.running', { ns: 'workflow' })}
               </button>
             )
           : (
@@ -142,7 +142,7 @@ const RunMode = ({
                   style={{ userSelect: 'none' }}
                 >
                   <RiPlayLargeLine className="mr-1 size-4" />
-                  {text ?? t('workflow.common.run')}
+                  {text ?? t('common.run', { ns: 'workflow' })}
                   <div className="system-kbd flex items-center gap-x-0.5 text-text-tertiary">
                     <div className="flex size-4 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray">
                       {getKeyboardKeyNameBySystem('alt')}

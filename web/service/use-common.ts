@@ -23,6 +23,7 @@ import type {
 } from '@/models/common'
 import type { RETRIEVE_METHOD } from '@/types/app'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { IS_DEV } from '@/config'
 import { get, post } from './base'
 import { useInvalid } from './use-base'
 
@@ -55,7 +56,7 @@ export const commonQueryKeys = {
   ] as const,
   notionBinding: (code?: string | null) => [NAME_SPACE, 'notion-binding', code] as const,
   modelParameterRules: (provider?: string, model?: string) => [NAME_SPACE, 'model-parameter-rules', provider, model] as const,
-  langGeniusVersion: (currentVersion?: string | null) => [NAME_SPACE, 'lang-genius-version', currentVersion] as const,
+  langGeniusVersion: (currentVersion?: string | null) => [NAME_SPACE, 'langgenius-version', currentVersion] as const,
   forgotPasswordValidity: (token?: string | null) => [NAME_SPACE, 'forgot-password-validity', token] as const,
   dataSourceIntegrates: [NAME_SPACE, 'data-source-integrates'] as const,
 }
@@ -85,7 +86,7 @@ export const useUserProfile = () => {
         profile,
         meta: {
           currentVersion: response.headers.get('x-version'),
-          currentEnv: process.env.NODE_ENV === 'development'
+          currentEnv: IS_DEV
             ? 'DEVELOPMENT'
             : response.headers.get('x-env'),
         },

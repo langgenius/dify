@@ -853,7 +853,7 @@ class TriggerProviderService:
         """
         Create a subscription builder for rebuilding an existing subscription.
 
-        This method creates a builder pre-filled with data from the rebuild request,
+        This method rebuild the subscription by call DELETE and CREATE API of the third party provider(e.g. GitHub)
         keeping the same subscription_id and endpoint_id so the webhook URL remains unchanged.
 
         :param tenant_id: Tenant ID
@@ -876,16 +876,12 @@ class TriggerProviderService:
             raise ValueError(f"Subscription {subscription_id} not found")
 
         credential_type = CredentialType.of(subscription.credential_type)
-        if credential_type not in [CredentialType.OAUTH2, CredentialType.API_KEY]:
-            raise ValueError("Credential type not supported for rebuild")
-
-        # TODO: Trying to invoke update api of the plugin trigger provider
-
-        # FALLBACK: If the update api is not implemented, delete the previous subscription and create a new one
+        if credential_type not in {CredentialType.OAUTH2, CredentialType.API_KEY}:
+            raise ValueError(f"Credential type {credential_type} not supported for auto creation")
 
         # Delete the previous subscription
         user_id = subscription.user_id
-        TriggerManager.unsubscribe_trigger(
+        unsubscribe_result = TriggerManager.unsubscribe_trigger(
             tenant_id=tenant_id,
             user_id=user_id,
             provider_id=provider_id,
@@ -893,15 +889,21 @@ class TriggerProviderService:
             credentials=subscription.credentials,
             credential_type=credential_type,
         )
+        if not unsubscribe_result.success:
+            raise ValueError(f"Failed to delete previous subscription: {unsubscribe_result.message}")
 
         # Create a new subscription with the same subscription_id and endpoint_id
+        new_credentials: dict[str, Any] = {
+            key: value if value != HIDDEN_VALUE else subscription.credentials.get(key, UNKNOWN_VALUE)
+            for key, value in credentials.items()
+        }
         new_subscription: TriggerSubscriptionEntity = TriggerManager.subscribe_trigger(
             tenant_id=tenant_id,
             user_id=user_id,
             provider_id=provider_id,
             endpoint=generate_plugin_trigger_endpoint_url(subscription.endpoint_id),
             parameters=parameters,
-            credentials=credentials,
+            credentials=new_credentials,
             credential_type=credential_type,
         )
         TriggerProviderService.update_trigger_subscription(
@@ -909,7 +911,7 @@ class TriggerProviderService:
             subscription_id=subscription.id,
             name=name,
             parameters=parameters,
-            credentials=credentials,
+            credentials=new_credentials,
             properties=new_subscription.properties,
             expires_at=new_subscription.expires_at,
         )

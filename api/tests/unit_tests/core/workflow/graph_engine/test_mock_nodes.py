@@ -40,12 +40,14 @@ class MockNodeMixin:
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
         mock_config: Optional["MockConfig"] = None,
+        **kwargs: Any,
     ):
         super().__init__(
             id=id,
             config=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
+            **kwargs,
         )
         self.mock_config = mock_config
 

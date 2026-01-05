@@ -1,10 +1,11 @@
 import type { ComponentProps } from 'react'
+import type { Mock } from 'vitest'
 import type { AnnotationItemBasic } from '../type'
 import type { Locale } from '@/i18n-config'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import I18NContext from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
 import { clearAllAnnotations, fetchExportAnnotationList } from '@/service/annotation'
 import HeaderOptions from './index'
@@ -159,8 +160,11 @@ vi.mock('@/context/provider-context', () => ({
 }))
 
 vi.mock('@/app/components/billing/annotation-full', () => ({
-  __esModule: true,
   default: () => <div data-testid="annotation-full" />,
+}))
+
+vi.mock('@/context/i18n', () => ({
+  useLocale: vi.fn(() => LanguagesSupported[0]),
 }))
 
 type HeaderOptionsProps = ComponentProps<typeof HeaderOptions>
@@ -169,6 +173,8 @@ const renderComponent = (
   props: Partial<HeaderOptionsProps> = {},
   locale: Locale = LanguagesSupported[0],
 ) => {
+  ;(useLocale as Mock).mockReturnValue(locale)
+
   const defaultProps: HeaderOptionsProps = {
     appId: 'test-app-id',
     onAdd: vi.fn(),
@@ -177,17 +183,7 @@ const renderComponent = (
     ...props,
   }
 
-  return render(
-    <I18NContext.Provider
-      value={{
-        locale,
-        i18n: {},
-        setLocaleOnClient: vi.fn(),
-      }}
-    >
-      <HeaderOptions {...defaultProps} />
-    </I18NContext.Provider>,
-  )
+  return render(<HeaderOptions {...defaultProps} />)
 }
 
 const openOperationsPopover = async (user: ReturnType<typeof userEvent.setup>) => {
@@ -440,20 +436,12 @@ describe('HeaderOptions', () => {
     await waitFor(() => expect(mockedFetchAnnotations).toHaveBeenCalledTimes(1))
 
     view.rerender(
-      <I18NContext.Provider
-        value={{
-          locale: LanguagesSupported[0],
-          i18n: {},
-          setLocaleOnClient: vi.fn(),
-        }}
-      >
-        <HeaderOptions
-          appId="test-app-id"
-          onAdd={vi.fn()}
-          onAdded={vi.fn()}
-          controlUpdateList={1}
-        />
-      </I18NContext.Provider>,
+      <HeaderOptions
+        appId="test-app-id"
+        onAdd={vi.fn()}
+        onAdded={vi.fn()}
+        controlUpdateList={1}
+      />,
     )
 
     await waitFor(() => expect(mockedFetchAnnotations).toHaveBeenCalledTimes(2))

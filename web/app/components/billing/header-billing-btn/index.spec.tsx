@@ -27,7 +27,6 @@ vi.mock('@/context/provider-context', () => {
 })
 
 vi.mock('../upgrade-btn', () => ({
-  __esModule: true,
   default: () => <button data-testid="upgrade-btn" type="button">Upgrade</button>,
 }))
 

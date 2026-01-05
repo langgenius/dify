@@ -52,27 +52,22 @@ const mockFiles: FileEntity[] = [
 ]
 
 vi.mock('@/context/debug-configuration', () => ({
-  __esModule: true,
   useDebugConfigurationContext: () => mockUseDebugConfigurationContext(),
 }))
 
 vi.mock('@/app/components/base/features/hooks', () => ({
-  __esModule: true,
   useFeatures: (selector: (state: FeatureStoreState) => unknown) => mockUseFeaturesSelector(selector),
 }))
 
 vi.mock('@/context/event-emitter', () => ({
-  __esModule: true,
   useEventEmitterContextContext: () => mockUseEventEmitterContext(),
 }))
 
 vi.mock('@/app/components/app/store', () => ({
-  __esModule: true,
   useStore: (selector: (state: { setShowAppConfigureFeaturesModal: typeof mockSetShowAppConfigureFeaturesModal }) => unknown) => mockUseAppStoreSelector(selector),
 }))
 
 vi.mock('./debug-item', () => ({
-  __esModule: true,
   default: ({
     modelAndParameter,
     className,
@@ -95,7 +90,6 @@ vi.mock('./debug-item', () => ({
 }))
 
 vi.mock('@/app/components/base/chat/chat/chat-input-area', () => ({
-  __esModule: true,
   default: (props: MockChatInputAreaProps) => {
     capturedChatInputProps = props
     return (
