@@ -1,11 +1,13 @@
-
 from pydantic import BaseModel, Field, TypeAdapter
 from werkzeug.exceptions import NotFound
+
+from controllers.common.schema import register_schema_models
 from controllers.web import web_ns
 from controllers.web.error import NotCompletionAppError
 from controllers.web.wraps import WebApiResource
 from fields.conversation_fields import ResultResponse
 from fields.message_fields import SavedMessageInfiniteScrollPagination, SavedMessageItem
+from libs.helper import UUIDStrOrEmpty
 from services.errors.message import MessageNotExistsError
 from services.saved_message_service import SavedMessageService
 
