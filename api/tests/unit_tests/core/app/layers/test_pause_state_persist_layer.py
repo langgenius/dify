@@ -15,6 +15,10 @@ from core.app.layers.pause_state_persist_layer import (
 from core.variables.segments import Segment
 from core.workflow.entities.pause_reason import SchedulingPause
 from core.workflow.graph_engine.entities.commands import GraphEngineCommand
+from core.workflow.graph_engine.layers.base import (
+    GraphEngineLayerNotInitializedError,
+    UninitializedReadOnlyGraphRuntimeState,
+)
 from core.workflow.graph_events.graph import (
     GraphRunFailedEvent,
     GraphRunPausedEvent,
@@ -209,8 +213,8 @@ class TestPauseStatePersistenceLayer:
 
         assert layer._session_maker is session_factory
         assert layer._state_owner_user_id == state_owner_user_id
-        assert not hasattr(layer, "graph_runtime_state")
-        assert not hasattr(layer, "command_channel")
+        assert isinstance(layer.graph_runtime_state, UninitializedReadOnlyGraphRuntimeState)
+        assert layer.command_channel is None
 
     def test_initialize_sets_dependencies(self):
         session_factory = Mock(name="session_factory")
@@ -295,7 +299,7 @@ class TestPauseStatePersistenceLayer:
         mock_factory.assert_not_called()
         mock_repo.create_workflow_pause.assert_not_called()
 
-    def test_on_event_raises_attribute_error_when_graph_runtime_state_is_none(self):
+    def test_on_event_raises_when_graph_runtime_state_is_uninitialized(self):
         session_factory = Mock(name="session_factory")
         layer = PauseStatePersistenceLayer(
             session_factory=session_factory,
@@ -305,7 +309,7 @@ class TestPauseStatePersistenceLayer:
 
         event = TestDataFactory.create_graph_run_paused_event()
 
-        with pytest.raises(AttributeError):
+        with pytest.raises(GraphEngineLayerNotInitializedError):
             layer.on_event(event)
 
     def test_on_event_asserts_when_workflow_execution_id_missing(self, monkeypatch: pytest.MonkeyPatch):

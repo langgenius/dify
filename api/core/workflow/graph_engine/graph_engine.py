@@ -212,9 +212,19 @@ class GraphEngine:
             if id(node.graph_runtime_state) != expected_state_id:
                 raise ValueError(f"GraphRuntimeState consistency violation: Node '{node.id}' has a different instance")
 
+    def _bind_layer_context(
+        self,
+        layer: GraphEngineLayer,
+    ) -> None:
+        try:
+            layer.initialize(ReadOnlyGraphRuntimeStateWrapper(self._graph_runtime_state), self._command_channel)
+        except Exception as e:
+            logger.warning("Failed to initialize layer %s: %s", layer.__class__.__name__, e)
+
     def layer(self, layer: GraphEngineLayer) -> "GraphEngine":
         """Add a layer for extending functionality."""
         self._layers.append(layer)
+        self._bind_layer_context(layer)
         return self
 
     def run(self) -> Generator[GraphEngineEvent, None, None]:
@@ -301,14 +311,7 @@ class GraphEngine:
     def _initialize_layers(self) -> None:
         """Initialize layers with context."""
         self._event_manager.set_layers(self._layers)
-        # Create a read-only wrapper for the runtime state
-        read_only_state = ReadOnlyGraphRuntimeStateWrapper(self._graph_runtime_state)
         for layer in self._layers:
-            try:
-                layer.initialize(read_only_state, self._command_channel)
-            except Exception as e:
-                logger.warning("Failed to initialize layer %s: %s", layer.__class__.__name__, e)
-
             try:
                 layer.on_graph_start()
             except Exception as e:
