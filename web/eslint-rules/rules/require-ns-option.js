@@ -12,11 +12,6 @@ export default {
     },
   },
   create(context) {
-    /**
-     * Check if a t() call has ns in its second argument
-     * @param {import('estree').CallExpression} node
-     * @returns {boolean}
-     */
     function hasNsOption(node) {
       if (node.arguments.length < 2)
         return false
