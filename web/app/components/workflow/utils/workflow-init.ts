@@ -380,6 +380,16 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
       })
     }
 
+    if (node.data.type === BlockEnum.Group) {
+      const groupData = node.data as GroupNodeData
+      if (groupData.handlers?.length) {
+        node.data._targetBranches = groupData.handlers.map(handler => ({
+          id: handler.id,
+          name: handler.label || handler.id,
+        }))
+      }
+    }
+
     if (node.data.type === BlockEnum.Iteration) {
       const iterationNodeData = node.data as IterationNodeType
       iterationNodeData._children = iterationOrLoopNodeMap[node.id] || []

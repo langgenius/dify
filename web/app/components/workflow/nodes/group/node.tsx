@@ -24,14 +24,15 @@ const GroupNode = (props: NodeProps<GroupNodeData>) => {
         : []
   ), [data._children, data.members])
 
-  // handler 列表：优先使用传入的 handlers，缺省时用 members 的 label 填充。
   const handlers: GroupHandler[] = useMemo(() => (
     data.handlers?.length
       ? data.handlers
       : members.length
         ? members.map(member => ({
-            id: member.id,
+            id: `${member.id}-source`,
             label: member.label || member.id,
+            nodeId: member.id,
+            sourceHandle: 'source',
           }))
         : []
   ), [data.handlers, members])

@@ -103,7 +103,23 @@ function createGroupEdgePair(params: {
 }): { realEdge: Edge, uiEdge: Edge } | null {
   const { groupNodeId, handlerId, targetNodeId, targetHandle, nodes, baseEdgeData = {}, zIndex = 0 } = params
 
-  const { originalNodeId, originalSourceHandle } = parseGroupHandlerId(handlerId)
+  const groupNode = nodes.find(node => node.id === groupNodeId)
+  const groupData = groupNode?.data as GroupNodeData | undefined
+  const handler = groupData?.handlers?.find(h => h.id === handlerId)
+
+  let originalNodeId: string
+  let originalSourceHandle: string
+
+  if (handler?.nodeId && handler?.sourceHandle) {
+    originalNodeId = handler.nodeId
+    originalSourceHandle = handler.sourceHandle
+  }
+  else {
+    const parsed = parseGroupHandlerId(handlerId)
+    originalNodeId = parsed.originalNodeId
+    originalSourceHandle = parsed.originalSourceHandle
+  }
+
   const originalNode = nodes.find(node => node.id === originalNodeId)
   const targetNode = nodes.find(node => node.id === targetNodeId)
 
@@ -2580,9 +2596,40 @@ export const useNodesInteractions = () => {
     const outboundEdges = edges.filter(edge => bundledNodeIdSet.has(edge.source) && !bundledNodeIdSet.has(edge.target))
 
     // leaf node: no outbound edges to other nodes in the selection
-    const leafNodeIds = bundledNodes
-      .filter(node => !edges.some(edge => edge.source === node.id && bundledNodeIdSet.has(edge.target)))
-      .map(node => node.id)
+    const handlers: GroupHandler[] = []
+    const leafNodeIdSet = new Set<string>()
+
+    bundledNodes.forEach((node: Node) => {
+      const targetBranches = node.data._targetBranches || [{ id: 'source', name: node.data.title }]
+      targetBranches.forEach((branch) => {
+        // A branch should be a handler if it's either:
+        // 1. Connected to a node OUTSIDE the group
+        // 2. NOT connected to any node INSIDE the group
+        const isConnectedInside = edges.some(edge =>
+          edge.source === node.id
+          && (edge.sourceHandle === branch.id || (!edge.sourceHandle && branch.id === 'source'))
+          && bundledNodeIdSet.has(edge.target),
+        )
+        const isConnectedOutside = edges.some(edge =>
+          edge.source === node.id
+          && (edge.sourceHandle === branch.id || (!edge.sourceHandle && branch.id === 'source'))
+          && !bundledNodeIdSet.has(edge.target),
+        )
+
+        if (isConnectedOutside || !isConnectedInside) {
+          const handlerId = `${node.id}-${branch.id}`
+          handlers.push({
+            id: handlerId,
+            label: branch.name || node.data.title || node.id,
+            nodeId: node.id,
+            sourceHandle: branch.id,
+          })
+          leafNodeIdSet.add(node.id)
+        }
+      })
+    })
+
+    const leafNodeIds = Array.from(leafNodeIdSet)
     leafNodeIds.forEach(id => bundledNodeIdIsLeaf.add(id))
 
     const members: GroupMember[] = bundledNodes.map((node) => {
@@ -2592,42 +2639,6 @@ export const useNodesInteractions = () => {
         label: node.data.title,
       }
     })
-    // Build handlers from all leaf nodes
-    // For multi-branch nodes (if-else, classifier), create one handler per branch
-    // For regular nodes, create one handler with 'source' handle
-    const handlerMap = new Map<string, GroupHandler>()
-
-    leafNodeIds.forEach((nodeId) => {
-      const node = bundledNodes.find(n => n.id === nodeId)
-      if (!node)
-        return
-
-      const targetBranches = node.data._targetBranches
-      if (targetBranches && targetBranches.length > 0) {
-        // Multi-branch node: create handler for each branch
-        targetBranches.forEach((branch: { id: string, name?: string }) => {
-          const handlerId = `${nodeId}-${branch.id}`
-          handlerMap.set(handlerId, {
-            id: handlerId,
-            label: branch.name || node.data.title || nodeId,
-            nodeId,
-            sourceHandle: branch.id,
-          })
-        })
-      }
-      else {
-        // Regular node: single 'source' handler
-        const handlerId = `${nodeId}-source`
-        handlerMap.set(handlerId, {
-          id: handlerId,
-          label: node.data.title || nodeId,
-          nodeId,
-          sourceHandle: 'source',
-        })
-      }
-    })
-
-    const handlers: GroupHandler[] = Array.from(handlerMap.values())
 
     // head nodes: nodes that receive input from outside the group
     const headNodeIds = [...new Set(inboundEdges.map(edge => edge.target))]
@@ -2644,6 +2655,10 @@ export const useNodesInteractions = () => {
       headNodeIds,
       leafNodeIds,
       selected: true,
+      _targetBranches: handlers.map(handler => ({
+        id: handler.id,
+        name: handler.label || handler.id,
+      })),
     }
 
     const { newNode: groupNode } = generateNewNode({
