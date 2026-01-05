@@ -104,9 +104,8 @@ class GraphEngineLayer(ABC):
         Initialize the layer with engine dependencies.
 
         Called by GraphEngine to inject the read-only runtime state and command channel.
-        This may be invoked more than once (early binding when the layer is registered,
-        and again before engine execution). Implementations should be idempotent.
-
+        This is invoked when the layer is registered with a `GraphEngine` instance.
+        Implementations should be idempotent.
         Args:
             graph_runtime_state: Read-only view of the runtime state
             command_channel: Channel for sending commands to the engine
