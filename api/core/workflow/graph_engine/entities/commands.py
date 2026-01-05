@@ -5,22 +5,17 @@ This module defines command types that can be sent to a running GraphEngine
 instance to control its execution flow.
 """
 
-from collections.abc import Sequence
-from enum import StrEnum, auto
-from typing import Any, TypeAlias
+from enum import StrEnum
+from typing import Any
 
 from pydantic import BaseModel, Field
-
-from core.file import File
-from core.variables import Segment, Variable
 
 
 class CommandType(StrEnum):
     """Types of commands that can be sent to GraphEngine."""
 
-    ABORT = auto()
-    PAUSE = auto()
-    UPDATE_VARIABLES = auto()
+    ABORT = "abort"
+    PAUSE = "pause"
 
 
 class GraphEngineCommand(BaseModel):
@@ -42,20 +37,3 @@ class PauseCommand(GraphEngineCommand):
 
     command_type: CommandType = Field(default=CommandType.PAUSE, description="Type of command")
     reason: str = Field(default="unknown reason", description="reason for pause")
-
-
-VariableUpdateValue: TypeAlias = File | Segment | Variable | str | int | float | dict[str, object] | list[object]
-
-
-class VariableUpdate(BaseModel):
-    """Represents a single variable update instruction."""
-
-    selector: tuple[str, str] = Field(description="Variable selector (node_id, variable_name)")
-    value: VariableUpdateValue = Field(description="New variable value")
-
-
-class UpdateVariablesCommand(GraphEngineCommand):
-    """Command to update a group of variables in the variable pool."""
-
-    command_type: CommandType = Field(default=CommandType.UPDATE_VARIABLES, description="Type of command")
-    updates: Sequence[VariableUpdate] = Field(default_factory=list, description="Variable updates")

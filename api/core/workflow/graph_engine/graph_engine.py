@@ -30,13 +30,8 @@ from core.workflow.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWr
 if TYPE_CHECKING:  # pragma: no cover - used only for static analysis
     from core.workflow.runtime.graph_runtime_state import GraphProtocol
 
-from .command_processing import (
-    AbortCommandHandler,
-    CommandProcessor,
-    PauseCommandHandler,
-    UpdateVariablesCommandHandler,
-)
-from .entities.commands import AbortCommand, PauseCommand, UpdateVariablesCommand
+from .command_processing import AbortCommandHandler, CommandProcessor, PauseCommandHandler
+from .entities.commands import AbortCommand, PauseCommand
 from .error_handler import ErrorHandler
 from .event_management import EventHandler, EventManager
 from .graph_state_manager import GraphStateManager
@@ -144,9 +139,6 @@ class GraphEngine:
 
         pause_handler = PauseCommandHandler()
         self._command_processor.register_handler(PauseCommand, pause_handler)
-
-        update_variables_handler = UpdateVariablesCommandHandler(self._graph_runtime_state.variable_pool)
-        self._command_processor.register_handler(UpdateVariablesCommand, update_variables_handler)
 
         # === Extensibility ===
         # Layers allow plugins to extend engine functionality
