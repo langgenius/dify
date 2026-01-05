@@ -85,7 +85,7 @@ class E2BEnvironment(VirtualEnvironment):
     class StoreKey(StrEnum):
         SANDBOX = "sandbox"
 
-    def construct_environment(self, options: Mapping[str, Any], environments: Mapping[str, str]) -> Metadata:
+    def _construct_environment(self, options: Mapping[str, Any], environments: Mapping[str, str]) -> Metadata:
         """
         Construct a new E2B virtual environment.
         """

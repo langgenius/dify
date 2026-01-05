@@ -77,7 +77,7 @@ class DockerDaemonEnvironment(VirtualEnvironment):
         DOCKER_IMAGE = "docker_image"
         DOCKER_COMMAND = "docker_command"
 
-    def construct_environment(self, options: Mapping[str, Any], environments: Mapping[str, str]) -> Metadata:
+    def _construct_environment(self, options: Mapping[str, Any], environments: Mapping[str, str]) -> Metadata:
         """
         Construct the Docker daemon virtual environment.
         """

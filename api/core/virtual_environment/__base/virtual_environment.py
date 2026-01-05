@@ -18,10 +18,10 @@ class VirtualEnvironment(ABC):
         """
 
         self.options = options
-        self.metadata = self.construct_environment(options, environments or {})
+        self.metadata = self._construct_environment(options, environments or {})
 
     @abstractmethod
-    def construct_environment(self, options: Mapping[str, Any], environments: Mapping[str, str]) -> Metadata:
+    def _construct_environment(self, options: Mapping[str, Any], environments: Mapping[str, str]) -> Metadata:
         """
         Construct the unique identifier for the virtual environment.
 

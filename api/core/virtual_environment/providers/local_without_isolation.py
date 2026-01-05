@@ -65,7 +65,7 @@ class LocalVirtualEnvironment(VirtualEnvironment):
     NEVER USE IT IN PRODUCTION ENVIRONMENTS.
     """
 
-    def construct_environment(self, options: Mapping[str, Any], environments: Mapping[str, str]) -> Metadata:
+    def _construct_environment(self, options: Mapping[str, Any], environments: Mapping[str, str]) -> Metadata:
         """
         Construct the local virtual environment.
 
