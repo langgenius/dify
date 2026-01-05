@@ -216,10 +216,7 @@ class GraphEngine:
         self,
         layer: GraphEngineLayer,
     ) -> None:
-        try:
-            layer.initialize(ReadOnlyGraphRuntimeStateWrapper(self._graph_runtime_state), self._command_channel)
-        except Exception as e:
-            logger.warning("Failed to initialize layer %s: %s", layer.__class__.__name__, e)
+        layer.initialize(ReadOnlyGraphRuntimeStateWrapper(self._graph_runtime_state), self._command_channel)
 
     def layer(self, layer: GraphEngineLayer) -> "GraphEngine":
         """Add a layer for extending functionality."""
