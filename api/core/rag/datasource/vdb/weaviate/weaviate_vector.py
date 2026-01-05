@@ -49,7 +49,6 @@ class WeaviateConfig(BaseModel):
     api_key: str | None = None
     batch_size: int = 100
 
-
     @model_validator(mode="before")
     @classmethod
     def validate_config(cls, values: dict) -> dict:
@@ -66,6 +65,7 @@ class WeaviateVector(BaseVector):
     Handles creation, insertion, deletion, and querying of document embeddings
     in a Weaviate collection.
     """
+
     _DOCUMENT_ID_PROPERTY = "document_id"
 
     def __init__(self, collection_name: str, config: WeaviateConfig, attributes: list):
