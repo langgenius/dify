@@ -1,8 +1,9 @@
+import { fireEvent, render, screen } from '@testing-library/react'
+import React from 'react'
+import PageSelector from './index'
 import type { NotionPageTreeItem, NotionPageTreeMap } from './index'
 import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
-import { fireEvent, render, screen } from '@testing-library/react'
-import * as React from 'react'
-import PageSelector from './index'
+import { OnlineDriveViewMode } from '@/models/pipeline'
 import { recursivePushInParentDescendants } from './utils'
 
 // ==========================================
@@ -645,6 +646,7 @@ describe('PageSelector', () => {
       const props = createDefaultProps({
         list,
         pagesMap,
+        viewMode: OnlineDriveViewMode.tree,
       })
 
       // Act
@@ -753,6 +755,7 @@ describe('PageSelector', () => {
       const props = createDefaultProps({
         list,
         pagesMap,
+        viewMode: OnlineDriveViewMode.tree,
       })
 
       // Act
@@ -814,6 +817,7 @@ describe('PageSelector', () => {
       const props = createDefaultProps({
         list,
         pagesMap,
+        viewMode: OnlineDriveViewMode.tree,
       })
 
       // Act
@@ -908,6 +912,7 @@ describe('PageSelector', () => {
       const props = createDefaultProps({
         list,
         pagesMap,
+        viewMode: OnlineDriveViewMode.tree,
       })
 
       // Act
@@ -989,6 +994,7 @@ describe('PageSelector', () => {
       const props = createDefaultProps({
         list,
         pagesMap,
+        viewMode: OnlineDriveViewMode.tree,
       })
 
       // Act
@@ -1233,6 +1239,7 @@ describe('PageSelector', () => {
       const props = createDefaultProps({
         list: pages,
         pagesMap: createMockPagesMap(pages),
+        viewMode: OnlineDriveViewMode.tree,
       })
 
       // Act
@@ -1587,6 +1594,7 @@ describe('PageSelector', () => {
       const props = createDefaultProps({
         list,
         pagesMap,
+        viewMode: OnlineDriveViewMode.tree,
       })
 
       // Act

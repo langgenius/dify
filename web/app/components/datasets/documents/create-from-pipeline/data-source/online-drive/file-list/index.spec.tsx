@@ -1,8 +1,8 @@
-import type { OnlineDriveFile } from '@/models/pipeline'
 import { fireEvent, render, screen } from '@testing-library/react'
-import * as React from 'react'
-import { OnlineDriveFileType } from '@/models/pipeline'
+import React from 'react'
 import FileList from './index'
+import type { OnlineDriveFile } from '@/models/pipeline'
+import { OnlineDriveFileType } from '@/models/pipeline'
 
 // ==========================================
 // Mock Modules
@@ -17,6 +17,18 @@ vi.mock('ahooks', () => ({
     mockDebounceFnRun.mockImplementation(fn)
     return { run: mockDebounceFnRun }
   },
+  useBoolean: (defaultValue = false) => {
+    const [value, setValue] = React.useState(defaultValue)
+    return [
+      value,
+      {
+        setTrue: () => setValue(true),
+        setFalse: () => setValue(false),
+        toggle: () => setValue(v => !v),
+        set: setValue,
+      },
+    ]
+  },
 }))
 
 // Mock store - context provider requires mocking
@@ -30,6 +42,9 @@ const mockStoreState = {
   setBreadcrumbs: vi.fn(),
   setPrefix: vi.fn(),
   setBucket: vi.fn(),
+  prefix: [],
+  expandedFolderIds: new Set<string>(),
+  setExpandedFolderIds: vi.fn(),
 }
 
 const mockGetState = vi.fn(() => mockStoreState)
@@ -278,7 +293,7 @@ describe('FileList', () => {
         const { container } = render(<FileList {...props} />)
 
         // Assert - Should show spinner icon at the bottom
-        expect(container.querySelector('.animation-spin')).toBeInTheDocument()
+        expect(container.querySelector('.animate-spin')).toBeInTheDocument()
       })
     })
 
@@ -544,7 +559,8 @@ describe('FileList', () => {
     it('should handle large number of files', () => {
       // Arrange
       const fileList = Array.from({ length: 50 }, (_, i) =>
-        createMockOnlineDriveFile({ id: `file-${i}`, name: `file-${i}.txt` }))
+        createMockOnlineDriveFile({ id: `file-${i}`, name: `file-${i}.txt` }),
+      )
       const props = createDefaultProps({ fileList })
 
       // Act
@@ -597,7 +613,8 @@ describe('FileList', () => {
     ])('should handle $description correctly', ({ isLoading, fileCount }) => {
       // Arrange
       const fileList = Array.from({ length: fileCount }, (_, i) =>
-        createMockOnlineDriveFile({ id: `file-${i}`, name: `file-${i}.txt` }))
+        createMockOnlineDriveFile({ id: `file-${i}`, name: `file-${i}.txt` }),
+      )
       const props = createDefaultProps({ isLoading, fileList })
 
       // Act

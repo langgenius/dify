@@ -1,13 +1,13 @@
-import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-import type { OnlineDriveFile } from '@/models/pipeline'
-import type { OnlineDriveData } from '@/types/pipeline'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import * as React from 'react'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { DatasourceType, OnlineDriveFileType } from '@/models/pipeline'
-import Header from './header'
+import React from 'react'
 import OnlineDrive from './index'
+import Header from './header'
 import { convertOnlineDriveData, isBucketListInitiation, isFile } from './utils'
+import type { OnlineDriveFile } from '@/models/pipeline'
+import { DatasourceType, OnlineDriveFileType } from '@/models/pipeline'
+import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import type { OnlineDriveData } from '@/types/pipeline'
 
 // ==========================================
 // Mock Modules
@@ -57,6 +57,7 @@ const { mockToastNotify } = vi.hoisted(() => ({
 }))
 
 vi.mock('@/app/components/base/toast', () => ({
+  __esModule: true,
   default: {
     notify: mockToastNotify,
   },
@@ -76,6 +77,8 @@ const mockStoreState = {
   currentCredentialId: '',
   isTruncated: { current: false },
   currentNextPageParametersRef: { current: {} },
+  treeMap: {},
+  expandedFolderIds: new Set<string>(),
   setOnlineDriveFileList: vi.fn(),
   setKeywords: vi.fn(),
   setSelectedFileIds: vi.fn(),
@@ -83,6 +86,8 @@ const mockStoreState = {
   setPrefix: vi.fn(),
   setBucket: vi.fn(),
   setHasBucket: vi.fn(),
+  setTreeMap: vi.fn(),
+  setExpandedFolderIds: vi.fn(),
 }
 
 const mockGetState = vi.fn(() => mockStoreState)
@@ -197,7 +202,7 @@ const createMockOnlineDriveFile = (overrides?: Partial<OnlineDriveFile>): Online
   ...overrides,
 })
 
-const createMockCredential = (overrides?: Partial<{ id: string, name: string }>) => ({
+const createMockCredential = (overrides?: Partial<{ id: string; name: string }>) => ({
   id: 'cred-1',
   name: 'Test Credential',
   avatar_url: 'https://example.com/avatar.png',
@@ -232,6 +237,8 @@ const resetMockStoreState = () => {
   mockStoreState.currentCredentialId = ''
   mockStoreState.isTruncated = { current: false }
   mockStoreState.currentNextPageParametersRef = { current: {} }
+  mockStoreState.treeMap = {}
+  mockStoreState.expandedFolderIds = new Set<string>()
   mockStoreState.setOnlineDriveFileList = vi.fn()
   mockStoreState.setKeywords = vi.fn()
   mockStoreState.setSelectedFileIds = vi.fn()
@@ -239,6 +246,8 @@ const resetMockStoreState = () => {
   mockStoreState.setPrefix = vi.fn()
   mockStoreState.setBucket = vi.fn()
   mockStoreState.setHasBucket = vi.fn()
+  mockStoreState.setTreeMap = vi.fn()
+  mockStoreState.setExpandedFolderIds = vi.fn()
 }
 
 // ==========================================

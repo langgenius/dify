@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import * as React from 'react'
+import React from 'react'
 import Header from './index'
+import { OnlineDriveViewMode } from '@/models/pipeline'
 
 // ==========================================
 // Mock Modules
@@ -42,6 +43,8 @@ const createDefaultProps = (overrides?: Partial<HeaderProps>): HeaderProps => ({
   handleInputChange: vi.fn(),
   handleResetKeywords: vi.fn(),
   isInPipeline: false,
+  viewMode: OnlineDriveViewMode.flat,
+  onViewModeChange: vi.fn(),
   ...overrides,
 })
 
