@@ -515,6 +515,7 @@ class DatasetRetrieval:
                         0
                     ].embedding_model_provider
                     weights["vector_setting"]["embedding_model_name"] = available_datasets[0].embedding_model
+        dataset_count = len(available_datasets)
         with measure_time() as timer:
             cancel_event = threading.Event()
             thread_exceptions: list[Exception] = []
@@ -537,6 +538,7 @@ class DatasetRetrieval:
                         "score_threshold": score_threshold,
                         "query": query,
                         "attachment_id": None,
+                        "dataset_count": dataset_count,
                         "cancel_event": cancel_event,
                         "thread_exceptions": thread_exceptions,
                     },
@@ -562,6 +564,7 @@ class DatasetRetrieval:
                             "score_threshold": score_threshold,
                             "query": None,
                             "attachment_id": attachment_id,
+                            "dataset_count": dataset_count,
                             "cancel_event": cancel_event,
                             "thread_exceptions": thread_exceptions,
                         },
@@ -1422,6 +1425,7 @@ class DatasetRetrieval:
         score_threshold: float,
         query: str | None,
         attachment_id: str | None,
+        dataset_count: int,
         cancel_event: threading.Event | None = None,
         thread_exceptions: list[Exception] | None = None,
     ):
@@ -1469,8 +1473,9 @@ class DatasetRetrieval:
                             break
                     if cancel_event and cancel_event.is_set():
                         break
-
-                if reranking_enable:
+    
+                # Skip second reranking when there is only one dataset
+                if reranking_enable and dataset_count > 1:
                     # do rerank for searched documents
                     data_post_processor = DataPostProcessor(tenant_id, reranking_mode, reranking_model, weights, False)
                     if query:
