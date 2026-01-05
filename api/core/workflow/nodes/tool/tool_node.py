@@ -105,6 +105,9 @@ class ToolNode(Node[ToolNodeData]):
         # get conversation id
         conversation_id = self.graph_runtime_state.variable_pool.get(["sys", SystemVariableKey.CONVERSATION_ID])
 
+        # Get trace_manager from the graph runtime state
+        trace_manager = self.graph_runtime_state.trace_manager
+
         try:
             message_stream = ToolEngine.generic_invoke(
                 tool=tool_runtime,
@@ -114,6 +117,7 @@ class ToolNode(Node[ToolNodeData]):
                 workflow_call_depth=self.workflow_call_depth,
                 app_id=self.app_id,
                 conversation_id=conversation_id.text if conversation_id else None,
+                trace_manager=trace_manager,
             )
         except ToolNodeError as e:
             yield StreamCompletedEvent(
