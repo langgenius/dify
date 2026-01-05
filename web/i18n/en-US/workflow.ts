@@ -351,6 +351,7 @@ const translation = {
     'trigger-schedule': 'Time-based workflow trigger that starts workflows on a schedule',
     'trigger-webhook': 'Webhook Trigger receives HTTP pushes from third-party systems to automatically trigger workflows.',
     'trigger-plugin': 'Third-party integration trigger that starts workflows from external platform events',
+    'group': 'Group multiple nodes together for better organization and reusability.',
   },
   difyTeam: 'Dify Team',
   operator: {

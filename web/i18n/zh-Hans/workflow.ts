@@ -351,6 +351,7 @@ const translation = {
     'trigger-webhook': 'Webhook 触发器接收来自第三方系统的 HTTP 推送以自动触发工作流。',
     'trigger-schedule': '基于时间的工作流触发器，按计划启动工作流',
     'trigger-plugin': '从外部平台事件启动工作流的第三方集成触发器',
+    'group': '将多个节点组合在一起，以便更好地组织和管理',
   },
   difyTeam: 'Dify 团队',
   operator: {

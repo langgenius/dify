@@ -351,6 +351,7 @@ const translation = {
     'trigger-schedule': 'スケジュールに基づいてワークフローを開始する時間ベースのトリガー',
     'trigger-webhook': 'Webhook トリガーは第三者システムからの HTTP プッシュを受信してワークフローを自動的に開始します。',
     'trigger-plugin': 'サードパーティ統合トリガー、外部プラットフォームのイベントによってワークフローを開始します',
+    'group': '複数のノードをグループ化して整理・管理しやすくします',
   },
   difyTeam: 'Dify チーム',
   operator: {

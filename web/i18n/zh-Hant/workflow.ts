@@ -337,6 +337,7 @@ const translation = {
     'trigger-schedule': '基於時間的工作流程觸發器，可按計劃啟動工作流程',
     'trigger-webhook': 'Webhook 觸發器接收來自第三方系統的 HTTP 推送，以自動觸發工作流程。',
     'trigger-plugin': '第三方整合觸發器，從外部平台事件啟動工作流程',
+    'group': '將多個節點組合在一起，以便更好地組織和管理',
   },
   operator: {
     zoomIn: '放大',
