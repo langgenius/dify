@@ -2550,23 +2550,24 @@ export const useNodesInteractions = () => {
     return nodes.some(node => node.data._isBundled)
   }, [store])
 
-  // Check if the current box selection can be grouped
   const getCanMakeGroup = useCallback(() => {
     const { getNodes, edges } = store.getState()
     const nodes = getNodes()
-    const bundledNodeIds = nodes.filter(node => node.data._isBundled).map(node => node.id)
+    const bundledNodes = nodes.filter(node => node.data._isBundled)
 
-    if (bundledNodeIds.length <= 1)
+    if (bundledNodes.length <= 1)
       return false
 
+    const bundledNodeIds = bundledNodes.map(node => node.id)
     const minimalEdges = edges.map(edge => ({
       id: edge.id,
       source: edge.source,
       sourceHandle: edge.sourceHandle || 'source',
       target: edge.target,
     }))
+    const hasGroupNode = bundledNodes.some(node => node.data.type === BlockEnum.Group)
 
-    const { canMakeGroup } = checkMakeGroupAvailability(bundledNodeIds, minimalEdges)
+    const { canMakeGroup } = checkMakeGroupAvailability(bundledNodeIds, minimalEdges, hasGroupNode)
     return canMakeGroup
   }, [store])
 
@@ -2574,19 +2575,20 @@ export const useNodesInteractions = () => {
     const { getNodes, setNodes, edges, setEdges } = store.getState()
     const nodes = getNodes()
     const bundledNodes = nodes.filter(node => node.data._isBundled)
-    const bundledNodeIds = bundledNodes.map(node => node.id)
 
-    if (bundledNodeIds.length <= 1)
+    if (bundledNodes.length <= 1)
       return
 
+    const bundledNodeIds = bundledNodes.map(node => node.id)
     const minimalEdges = edges.map(edge => ({
       id: edge.id,
       source: edge.source,
       sourceHandle: edge.sourceHandle || 'source',
       target: edge.target,
     }))
+    const hasGroupNode = bundledNodes.some(node => node.data.type === BlockEnum.Group)
 
-    const { canMakeGroup } = checkMakeGroupAvailability(bundledNodeIds, minimalEdges)
+    const { canMakeGroup } = checkMakeGroupAvailability(bundledNodeIds, minimalEdges, hasGroupNode)
     if (!canMakeGroup)
       return
 

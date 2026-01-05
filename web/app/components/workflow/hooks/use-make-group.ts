@@ -2,6 +2,7 @@ import type { PredecessorHandle } from '../utils'
 import { useMemo } from 'react'
 import { useStore as useReactFlowStore } from 'reactflow'
 import { shallow } from 'zustand/shallow'
+import { BlockEnum } from '../types'
 import { getCommonPredecessorHandles } from '../utils'
 
 export type MakeGroupAvailability = {
@@ -24,9 +25,9 @@ type MinimalEdge = {
 export const checkMakeGroupAvailability = (
   selectedNodeIds: string[],
   edges: MinimalEdge[],
+  hasGroupNode = false,
 ): MakeGroupAvailability => {
-  // Make group requires selecting at least 2 nodes.
-  if (selectedNodeIds.length <= 1) {
+  if (selectedNodeIds.length <= 1 || hasGroupNode) {
     return {
       canMakeGroup: false,
       branchEntryNodeIds: [],
@@ -109,8 +110,6 @@ export const checkMakeGroupAvailability = (
 }
 
 export const useMakeGroupAvailability = (selectedNodeIds: string[]): MakeGroupAvailability => {
-  // Subscribe to the minimal edge state we need (source/sourceHandle/target) to avoid
-  // snowball rerenders caused by subscribing to the entire `edges` objects.
   const edgeKeys = useReactFlowStore((state) => {
     const delimiter = '\u0000'
     const keys = state.edges.map(edge => `${edge.source}${delimiter}${edge.sourceHandle || 'source'}${delimiter}${edge.target}`)
@@ -118,8 +117,11 @@ export const useMakeGroupAvailability = (selectedNodeIds: string[]): MakeGroupAv
     return keys
   }, shallow)
 
+  const hasGroupNode = useReactFlowStore((state) => {
+    return state.getNodes().some(node => node.selected && node.data.type === BlockEnum.Group)
+  })
+
   return useMemo(() => {
-    // Reconstruct a minimal edge list from `edgeKeys` for downstream graph checks.
     const delimiter = '\u0000'
     const edges = edgeKeys.map((key) => {
       const [source, handleId, target] = key.split(delimiter)
@@ -131,6 +133,6 @@ export const useMakeGroupAvailability = (selectedNodeIds: string[]): MakeGroupAv
       }
     })
 
-    return checkMakeGroupAvailability(selectedNodeIds, edges)
-  }, [edgeKeys, selectedNodeIds])
+    return checkMakeGroupAvailability(selectedNodeIds, edges, hasGroupNode)
+  }, [edgeKeys, selectedNodeIds, hasGroupNode])
 }
