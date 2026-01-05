@@ -7,11 +7,12 @@ instance to control its execution flow.
 
 from collections.abc import Sequence
 from enum import StrEnum, auto
-from typing import Any
+from typing import Any, TypeAlias
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
-from core.variables.variables import VariableUnion
+from core.file import File
+from core.variables import Segment, SegmentType, Variable
 
 
 class CommandType(StrEnum):
@@ -43,11 +44,37 @@ class PauseCommand(GraphEngineCommand):
     reason: str = Field(default="unknown reason", description="reason for pause")
 
 
+VariableUpdateValue: TypeAlias = File | Segment | Variable | str | int | float | dict[str, object] | list[object]
+
+
 class VariableUpdate(BaseModel):
     """Represents a single variable update instruction."""
 
     selector: tuple[str, str] = Field(description="Variable selector (node_id, variable_name)")
-    value: VariableUnion = Field(description="New variable value")
+    value_type: SegmentType = Field(description="Variable value type")
+    value: VariableUpdateValue = Field(description="New variable value")
+
+    @model_validator(mode="after")
+    def _validate_value_type(self) -> "VariableUpdate":
+        value_type = self.value_type
+        value = self.value
+
+        if isinstance(value, Variable | Segment):
+            if value.value_type != value_type:
+                raise ValueError(f"value type mismatch: expected {value_type}, got {value.value_type}")
+            return self
+
+        if isinstance(value, File):
+            if value_type != SegmentType.FILE:
+                raise ValueError(f"value type mismatch: expected {value_type}, got {SegmentType.FILE}")
+            return self
+
+        casted_value = SegmentType.cast_value(value, value_type)
+        if not value_type.is_valid(casted_value):
+            raise ValueError(f"value type mismatch: expected {value_type}, got {type(value).__name__}")
+
+        self.value = casted_value
+        return self
 
 
 class UpdateVariablesCommand(GraphEngineCommand):

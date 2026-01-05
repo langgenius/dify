@@ -44,12 +44,7 @@ class UpdateVariablesCommandHandler(CommandHandler):
         assert isinstance(command, UpdateVariablesCommand)
         for update in command.updates:
             try:
-                variable = update.value
-                if list(variable.selector) != list(update.selector):
-                    variable = variable.model_copy(
-                        update={"selector": list(update.selector), "name": update.selector[1]}
-                    )
-                self._variable_pool.add(update.selector, variable)
+                self._variable_pool.add(update.selector, update.value)
                 logger.debug("Updated variable %s for workflow %s", update.selector, execution.workflow_id)
             except ValueError as exc:
                 logger.warning(
