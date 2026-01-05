@@ -13,11 +13,8 @@ from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base import variable_template_parser
 from core.workflow.nodes.base.entities import VariableSelector
 from core.workflow.nodes.base.node import Node
-from core.workflow.nodes.http_request.executor import (
-    Executor,
-    FileManagerProtocol,
-    HttpClientProtocol,
-)
+from core.workflow.nodes.http_request.executor import Executor
+from core.workflow.nodes.protocols import FileManagerProtocol, HttpClientProtocol
 from factories import file_factory
 
 from .entities import (

@@ -4,18 +4,20 @@ import secrets
 import string
 from collections.abc import Mapping
 from copy import deepcopy
-from typing import Any, Literal, Protocol
+from typing import Any, Literal
 from urllib.parse import urlencode, urlparse
 
 import httpx
 from json_repair import repair_json
 
 from configs import dify_config
-from core.file import File, file_manager
+from core.file import file_manager
 from core.file.enums import FileTransferMethod
 from core.helper import ssrf_proxy
 from core.variables.segments import ArrayFileSegment, FileSegment
 from core.workflow.runtime import VariablePool
+
+from ..protocols import FileManagerProtocol, HttpClientProtocol
 
 from .entities import (
     HttpRequestNodeAuthorization,
@@ -39,30 +41,6 @@ BODY_TYPE_TO_CONTENT_TYPE = {
     "form-data": "multipart/form-data",
     "raw-text": "text/plain",
 }
-
-
-class HttpClientProtocol(Protocol):
-    @property
-    def max_retries_exceeded_error(self) -> type[Exception]: ...
-
-    @property
-    def request_error(self) -> type[Exception]: ...
-
-    def get(self, url: str, max_retries: int = ..., **kwargs: object) -> httpx.Response: ...
-
-    def head(self, url: str, max_retries: int = ..., **kwargs: object) -> httpx.Response: ...
-
-    def post(self, url: str, max_retries: int = ..., **kwargs: object) -> httpx.Response: ...
-
-    def put(self, url: str, max_retries: int = ..., **kwargs: object) -> httpx.Response: ...
-
-    def delete(self, url: str, max_retries: int = ..., **kwargs: object) -> httpx.Response: ...
-
-    def patch(self, url: str, max_retries: int = ..., **kwargs: object) -> httpx.Response: ...
-
-
-class FileManagerProtocol(Protocol):
-    def download(self, f: File, /) -> bytes: ...
 
 
 class Executor:
