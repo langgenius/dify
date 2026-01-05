@@ -4,7 +4,6 @@ import time
 from unittest.mock import MagicMock
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.variables import SegmentType
 from core.workflow.entities.graph_init_params import GraphInitParams
 from core.workflow.entities.pause_reason import SchedulingPause
 from core.workflow.graph import Graph
@@ -232,8 +231,8 @@ def test_update_variables_command_updates_pool():
 
     update_command = UpdateVariablesCommand(
         updates=[
-            VariableUpdate(selector=["node1", "foo"], value_type=SegmentType.STRING, value="new value"),
-            VariableUpdate(selector=["node2", "bar"], value_type=SegmentType.INTEGER, value=123),
+            VariableUpdate(selector=["node1", "foo"], value="new value"),
+            VariableUpdate(selector=["node2", "bar"], value=123),
         ]
     )
     command_channel.send_command(update_command)

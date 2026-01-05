@@ -3,7 +3,6 @@
 import json
 from unittest.mock import MagicMock
 
-from core.variables import SegmentType
 from core.workflow.graph_engine.command_channels.redis_channel import RedisChannel
 from core.workflow.graph_engine.entities.commands import (
     AbortCommand,
@@ -170,8 +169,8 @@ class TestRedisChannel:
 
         update_command = UpdateVariablesCommand(
             updates=[
-                VariableUpdate(selector=["node1", "foo"], value_type=SegmentType.STRING, value="bar"),
-                VariableUpdate(selector=["node2", "baz"], value_type=SegmentType.INTEGER, value=123),
+                VariableUpdate(selector=["node1", "foo"], value="bar"),
+                VariableUpdate(selector=["node2", "baz"], value=123),
             ]
         )
         command_json = json.dumps(update_command.model_dump())
