@@ -1,9 +1,10 @@
 import logging
+from collections.abc import Mapping
 from typing import Any
 
 from flask import make_response, redirect, request
-from flask_restx import Resource
-from pydantic import BaseModel, model_validator
+from flask_restx import Resource, reqparse
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden
 
@@ -34,8 +35,13 @@ from ..wraps import (
 logger = logging.getLogger(__name__)
 
 
-class TriggerSubscriptionBuilderCreatePayload(BaseModel):
-    credential_type: str | None = None
+class TriggerSubscriptionUpdateRequest(BaseModel):
+    """Request payload for updating a trigger subscription"""
+
+    name: str | None = Field(default=None, description="The name for the subscription")
+    credentials: Mapping[str, Any] | None = Field(default=None, description="The credentials for the subscription")
+    parameters: Mapping[str, Any] | None = Field(default=None, description="The parameters for the subscription")
+    properties: Mapping[str, Any] | None = Field(default=None, description="The properties for the subscription")
 
     @model_validator(mode="after")
     def check_at_least_one_field(self):
@@ -44,24 +50,20 @@ class TriggerSubscriptionBuilderCreatePayload(BaseModel):
         return self
 
 
-class TriggerSubscriptionBuilderUpdatePayload(BaseModel):
-    name: str | None = None
-    parameters: dict[str, Any] | None = None
-    properties: dict[str, Any] | None = None
-    credentials: dict[str, Any] | None = None
+class TriggerSubscriptionVerifyRequest(BaseModel):
+    """Request payload for verifying subscription credentials."""
+
+    credentials: Mapping[str, Any] = Field(description="The credentials to verify")
 
 
-class TriggerOAuthClientPayload(BaseModel):
-    client_params: dict[str, Any] | None = None
-    enabled: bool | None = None
+console_ns.schema_model(
+    TriggerSubscriptionUpdateRequest.__name__,
+    TriggerSubscriptionUpdateRequest.model_json_schema(ref_template="#/definitions/{model}"),
+)
 
-
-register_schema_models(
-    console_ns,
-    TriggerSubscriptionBuilderCreatePayload,
-    TriggerSubscriptionBuilderVerifyPayload,
-    TriggerSubscriptionBuilderUpdatePayload,
-    TriggerOAuthClientPayload,
+console_ns.schema_model(
+    TriggerSubscriptionVerifyRequest.__name__,
+    TriggerSubscriptionVerifyRequest.model_json_schema(ref_template="#/definitions/{model}"),
 )
 
 
@@ -130,11 +132,16 @@ class TriggerSubscriptionListApi(Resource):
             raise
 
 
+parser = reqparse.RequestParser().add_argument(
+    "credential_type", type=str, required=False, nullable=True, location="json"
+)
+
+
 @console_ns.route(
     "/workspaces/current/trigger-provider/<path:provider>/subscriptions/builder/create",
 )
 class TriggerSubscriptionBuilderCreateApi(Resource):
-    @console_ns.expect(console_ns.models[TriggerSubscriptionBuilderCreatePayload.__name__])
+    @console_ns.expect(parser)
     @setup_required
     @login_required
     @edit_permission_required
@@ -144,10 +151,10 @@ class TriggerSubscriptionBuilderCreateApi(Resource):
         user = current_user
         assert user.current_tenant_id is not None
 
-        payload = TriggerSubscriptionBuilderCreatePayload.model_validate(console_ns.payload or {})
+        args = parser.parse_args()
 
         try:
-            credential_type = CredentialType.of(payload.credential_type or CredentialType.UNAUTHORIZED.value)
+            credential_type = CredentialType.of(args.get("credential_type") or CredentialType.UNAUTHORIZED.value)
             subscription_builder = TriggerSubscriptionBuilderService.create_trigger_subscription_builder(
                 tenant_id=user.current_tenant_id,
                 user_id=user.id,
@@ -175,11 +182,18 @@ class TriggerSubscriptionBuilderGetApi(Resource):
         )
 
 
+parser_api = (
+    reqparse.RequestParser()
+    # The credentials of the subscription builder
+    .add_argument("credentials", type=dict, required=False, nullable=True, location="json")
+)
+
+
 @console_ns.route(
     "/workspaces/current/trigger-provider/<path:provider>/subscriptions/builder/verify-and-update/<path:subscription_builder_id>",
 )
-class TriggerSubscriptionBuilderVerifyApi(Resource):
-    @console_ns.expect(console_ns.models[TriggerSubscriptionBuilderVerifyPayload.__name__])
+class TriggerSubscriptionBuilderVerifyAndUpdateApi(Resource):
+    @console_ns.expect(parser_api)
     @setup_required
     @login_required
     @edit_permission_required
@@ -189,7 +203,7 @@ class TriggerSubscriptionBuilderVerifyApi(Resource):
         user = current_user
         assert user.current_tenant_id is not None
 
-        payload = TriggerSubscriptionBuilderVerifyPayload.model_validate(console_ns.payload or {})
+        args = parser_api.parse_args()
 
         try:
             # Use atomic update_and_verify to prevent race conditions
@@ -199,7 +213,7 @@ class TriggerSubscriptionBuilderVerifyApi(Resource):
                 provider_id=TriggerProviderID(provider),
                 subscription_builder_id=subscription_builder_id,
                 subscription_builder_updater=SubscriptionBuilderUpdater(
-                    credentials=payload.credentials,
+                    credentials=args.get("credentials", None),
                 ),
             )
         except Exception as e:
@@ -207,11 +221,24 @@ class TriggerSubscriptionBuilderVerifyApi(Resource):
             raise ValueError(str(e)) from e
 
 
+parser_update_api = (
+    reqparse.RequestParser()
+    # The name of the subscription builder
+    .add_argument("name", type=str, required=False, nullable=True, location="json")
+    # The parameters of the subscription builder
+    .add_argument("parameters", type=dict, required=False, nullable=True, location="json")
+    # The properties of the subscription builder
+    .add_argument("properties", type=dict, required=False, nullable=True, location="json")
+    # The credentials of the subscription builder
+    .add_argument("credentials", type=dict, required=False, nullable=True, location="json")
+)
+
+
 @console_ns.route(
     "/workspaces/current/trigger-provider/<path:provider>/subscriptions/builder/update/<path:subscription_builder_id>",
 )
 class TriggerSubscriptionBuilderUpdateApi(Resource):
-    @console_ns.expect(console_ns.models[TriggerSubscriptionBuilderUpdatePayload.__name__])
+    @console_ns.expect(parser_update_api)
     @setup_required
     @login_required
     @edit_permission_required
@@ -222,7 +249,7 @@ class TriggerSubscriptionBuilderUpdateApi(Resource):
         assert isinstance(user, Account)
         assert user.current_tenant_id is not None
 
-        payload = TriggerSubscriptionBuilderUpdatePayload.model_validate(console_ns.payload or {})
+        args = parser_update_api.parse_args()
         try:
             return jsonable_encoder(
                 TriggerSubscriptionBuilderService.update_trigger_subscription_builder(
@@ -230,10 +257,10 @@ class TriggerSubscriptionBuilderUpdateApi(Resource):
                     provider_id=TriggerProviderID(provider),
                     subscription_builder_id=subscription_builder_id,
                     subscription_builder_updater=SubscriptionBuilderUpdater(
-                        name=payload.name,
-                        parameters=payload.parameters,
-                        properties=payload.properties,
-                        credentials=payload.credentials,
+                        name=args.get("name", None),
+                        parameters=args.get("parameters", None),
+                        properties=args.get("properties", None),
+                        credentials=args.get("credentials", None),
                     ),
                 )
             )
@@ -268,7 +295,7 @@ class TriggerSubscriptionBuilderLogsApi(Resource):
     "/workspaces/current/trigger-provider/<path:provider>/subscriptions/builder/build/<path:subscription_builder_id>",
 )
 class TriggerSubscriptionBuilderBuildApi(Resource):
-    @console_ns.expect(console_ns.models[TriggerSubscriptionBuilderUpdatePayload.__name__])
+    @console_ns.expect(parser_update_api)
     @setup_required
     @login_required
     @edit_permission_required
@@ -277,7 +304,7 @@ class TriggerSubscriptionBuilderBuildApi(Resource):
         """Build a subscription instance for a trigger provider"""
         user = current_user
         assert user.current_tenant_id is not None
-        payload = TriggerSubscriptionBuilderUpdatePayload.model_validate(console_ns.payload or {})
+        args = parser_update_api.parse_args()
         try:
             # Use atomic update_and_build to prevent race conditions
             TriggerSubscriptionBuilderService.update_and_build_builder(
@@ -286,9 +313,9 @@ class TriggerSubscriptionBuilderBuildApi(Resource):
                 provider_id=TriggerProviderID(provider),
                 subscription_builder_id=subscription_builder_id,
                 subscription_builder_updater=SubscriptionBuilderUpdater(
-                    name=payload.name,
-                    parameters=payload.parameters,
-                    properties=payload.properties,
+                    name=args.get("name", None),
+                    parameters=args.get("parameters", None),
+                    properties=args.get("properties", None),
                 ),
             )
             return 200
@@ -541,6 +568,13 @@ class TriggerOAuthCallbackApi(Resource):
         return redirect(f"{dify_config.CONSOLE_WEB_URL}/oauth-callback")
 
 
+parser_oauth_client = (
+    reqparse.RequestParser()
+    .add_argument("client_params", type=dict, required=False, nullable=True, location="json")
+    .add_argument("enabled", type=bool, required=False, nullable=True, location="json")
+)
+
+
 @console_ns.route("/workspaces/current/trigger-provider/<path:provider>/oauth/client")
 class TriggerOAuthClientManageApi(Resource):
     @setup_required
@@ -588,7 +622,7 @@ class TriggerOAuthClientManageApi(Resource):
             logger.exception("Error getting OAuth client", exc_info=e)
             raise
 
-    @console_ns.expect(console_ns.models[TriggerOAuthClientPayload.__name__])
+    @console_ns.expect(parser_oauth_client)
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -598,15 +632,15 @@ class TriggerOAuthClientManageApi(Resource):
         user = current_user
         assert user.current_tenant_id is not None
 
-        payload = TriggerOAuthClientPayload.model_validate(console_ns.payload or {})
+        args = parser_oauth_client.parse_args()
 
         try:
             provider_id = TriggerProviderID(provider)
             return TriggerProviderService.save_custom_oauth_client_params(
                 tenant_id=user.current_tenant_id,
                 provider_id=provider_id,
-                client_params=payload.client_params,
-                enabled=payload.enabled,
+                client_params=args.get("client_params"),
+                enabled=args.get("enabled"),
             )
 
         except ValueError as e:
