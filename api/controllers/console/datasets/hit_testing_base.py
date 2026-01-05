@@ -56,7 +56,7 @@ class DatasetsHitTestingBase:
         HitTestingService.hit_testing_args_check(args)
 
     @staticmethod
-    def parse_args(payload: dict[str, Any] | None = None) -> dict[str, Any]:
+    def parse_args(payload: dict[str, Any]) -> dict[str, Any]:
         """Validate and return hit-testing arguments from an incoming payload."""
         hit_testing_payload = HitTestingPayload.model_validate(payload or {})
         return hit_testing_payload.model_dump(exclude_none=True)
