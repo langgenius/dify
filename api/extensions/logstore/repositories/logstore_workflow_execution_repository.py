@@ -81,6 +81,11 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
         # Set to True to enable dual-write for safe migration, False to use LogStore only
         self._enable_dual_write = os.environ.get("LOGSTORE_DUAL_WRITE_ENABLED", "true").lower() == "true"
 
+        # Control flag for whether to write the `graph` field to LogStore.
+        # If LOGSTORE_ENABLE_PUT_GRAPH_FIELD is "true", write the full `graph` field;
+        # otherwise write an empty {} instead. Defaults to writing the `graph` field.
+        self._enable_put_graph_field = os.environ.get("LOGSTORE_ENABLE_PUT_GRAPH_FIELD", "true").lower() == "true"
+
     def _to_logstore_model(self, domain_model: WorkflowExecution) -> list[tuple[str, str]]:
         """
         Convert a domain model to a logstore model (List[Tuple[str, str]]).
@@ -123,7 +128,7 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
             (
                 "graph",
                 json.dumps(domain_model.graph, ensure_ascii=False, default=to_serializable)
-                if domain_model.graph
+                if domain_model.graph and self._enable_put_graph_field
                 else "{}",
             ),
             (
