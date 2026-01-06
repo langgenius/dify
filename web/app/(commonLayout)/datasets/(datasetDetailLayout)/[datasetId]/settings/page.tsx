@@ -5,7 +5,7 @@ import { getLocaleOnServer, getTranslation } from '@/i18n-config/server'
 
 const Settings = async () => {
   const locale = await getLocaleOnServer()
-  const { t } = await getTranslation(locale, 'dataset-settings')
+  const { t } = await getTranslation(locale, 'datasetSettings')
 
   return (
     <div className="h-full overflow-y-auto">

@@ -1,13 +1,15 @@
 import type { i18n as I18nInstance } from 'i18next'
 import type { Locale } from '.'
 import type { NamespaceCamelCase, NamespaceKebabCase } from './i18next-config'
+import type { Arrayable } from '@/utils/type'
 import { match } from '@formatjs/intl-localematcher'
-import { camelCase, kebabCase } from 'es-toolkit/compat'
+import { kebabCase } from 'es-toolkit/compat'
 import { createInstance } from 'i18next'
 import resourcesToBackend from 'i18next-resources-to-backend'
 import Negotiator from 'negotiator'
 import { cookies, headers } from 'next/headers'
 import { initReactI18next } from 'react-i18next/initReactI18next'
+import { toArray } from '@/utils/array'
 import { serverOnlyContext } from '@/utils/server-only-context'
 import { i18n } from '.'
 
@@ -35,15 +37,17 @@ const getOrCreateI18next = async (lng: Locale) => {
   return instance
 }
 
-export async function getTranslation(lng: Locale, ns: NamespaceKebabCase) {
-  const camelNs = camelCase(ns) as NamespaceCamelCase
+export async function getTranslation(lng: Locale, ns?: Arrayable<NamespaceCamelCase>) {
   const i18nextInstance = await getOrCreateI18next(lng)
 
-  if (!i18nextInstance.hasLoadedNamespace(camelNs))
-    await i18nextInstance.loadNamespaces(camelNs)
+  const nsArray = toArray(ns)
+  for (const namespace of nsArray) {
+    if (!i18nextInstance.hasLoadedNamespace(namespace))
+      await i18nextInstance.loadNamespaces(namespace)
+  }
 
   return {
-    t: i18nextInstance.getFixedT(lng, camelNs),
+    t: i18nextInstance.getFixedT(lng, nsArray.at(0)),
     i18n: i18nextInstance,
   }
 }
