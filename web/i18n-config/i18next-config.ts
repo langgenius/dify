@@ -4,32 +4,29 @@ import type { Locale } from '.'
 import type { NamespaceCamelCase, NamespaceKebabCase } from './resources'
 import { kebabCase } from 'es-toolkit/string'
 import { createInstance } from 'i18next'
+import resourcesToBackend from 'i18next-resources-to-backend'
 import { getI18n, initReactI18next } from 'react-i18next'
-
-function getBackend() {
-  return {
-    type: 'backend' as const,
-    init() {},
-    read(language: string, namespace: NamespaceKebabCase | NamespaceCamelCase, callback: (err: unknown, data?: unknown) => void) {
-      const ns = kebabCase(namespace) as NamespaceKebabCase
-      import(`../i18n/${language}/${ns}.json`)
-        .then(data => callback(null, data.default ?? data))
-        .catch(callback)
-    },
-  }
-}
+import { NAMESPACES } from './resources'
 
 export function createI18nextInstance(lng: Locale, resources: Resource) {
   const instance = createInstance()
-  instance.use(initReactI18next).use(getBackend()).init({
-    lng,
-    fallbackLng: 'en-US',
-    resources,
-    partialBundledLanguages: true,
-    defaultNS: 'common',
-    ns: Object.keys(resources),
-    keySeparator: false,
-  })
+  instance
+    .use(initReactI18next)
+    .use(resourcesToBackend((
+      language: Locale,
+      namespace: NamespaceKebabCase | NamespaceCamelCase,
+    ) => {
+      const namespaceKebab = kebabCase(namespace)
+      return import(`../i18n/${language}/${namespaceKebab}.json`)
+    }))
+    .init({
+      lng,
+      fallbackLng: 'en-US',
+      resources,
+      partialBundledLanguages: true,
+      ns: NAMESPACES,
+      keySeparator: false,
+    })
   return instance
 }
 

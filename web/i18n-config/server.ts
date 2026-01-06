@@ -32,6 +32,8 @@ const getOrCreateI18next = async (lng: Locale) => {
     .init({
       lng,
       fallbackLng: 'en-US',
+      partialBundledLanguages: true,
+      ns: NAMESPACES,
       keySeparator: false,
     })
   setI18nInstance(instance)
