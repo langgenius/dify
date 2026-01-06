@@ -1,42 +1,29 @@
 'use client'
 
-import type { FC } from 'react'
+import type { i18n, Resource } from 'i18next'
 import type { Locale } from '@/i18n-config'
-import { usePrefetchQuery } from '@tanstack/react-query'
-import * as React from 'react'
-import { useEffect, useState } from 'react'
-import { setLocaleOnClient } from '@/i18n-config'
-import { getSystemFeatures } from '@/service/common'
-import Loading from './base/loading'
+import { I18nextProvider } from 'react-i18next'
+import { createI18nextInstance } from '@/i18n-config/i18next-config'
 
 export type II18nProps = {
   locale: Locale
+  resource: Resource
   children: React.ReactNode
 }
-const I18n: FC<II18nProps> = ({
+
+let i18nextInstance: i18n | null = null
+
+export function I18n({
   locale,
+  resource,
   children,
-}) => {
-  const [loading, setLoading] = useState(true)
-
-  usePrefetchQuery({
-    queryKey: ['systemFeatures'],
-    queryFn: getSystemFeatures,
-  })
-
-  useEffect(() => {
-    setLocaleOnClient(locale, false).then(() => {
-      setLoading(false)
-    })
-  }, [locale])
-
-  if (loading)
-    return <div className="flex h-screen w-screen items-center justify-center"><Loading type="app" /></div>
-
+}: II18nProps) {
+  if (!i18nextInstance || i18nextInstance.language !== locale) {
+    i18nextInstance = createI18nextInstance(locale, resource)
+  }
   return (
-    <>
+    <I18nextProvider i18n={i18nextInstance}>
       {children}
-    </>
+    </I18nextProvider>
   )
 }
-export default React.memo(I18n)

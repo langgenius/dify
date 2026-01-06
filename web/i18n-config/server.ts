@@ -1,15 +1,17 @@
-import type { i18n as I18nInstance } from 'i18next'
+import type { i18n as I18nInstance, Resource, ResourceLanguage } from 'i18next'
 import type { Locale } from '.'
-import type { NamespaceCamelCase, NamespaceKebabCase } from './i18next-config'
+import type { NamespaceCamelCase, NamespaceKebabCase } from './resources'
 import { match } from '@formatjs/intl-localematcher'
 import { kebabCase } from 'es-toolkit/compat'
 import { createInstance } from 'i18next'
 import resourcesToBackend from 'i18next-resources-to-backend'
 import Negotiator from 'negotiator'
 import { cookies, headers } from 'next/headers'
+import { cache } from 'react'
 import { initReactI18next } from 'react-i18next/initReactI18next'
 import { serverOnlyContext } from '@/utils/server-only-context'
 import { i18n } from '.'
+import { NAMESPACES } from './resources'
 
 const [getLocaleCache, setLocaleCache] = serverOnlyContext<Locale | null>(null)
 const [getI18nInstance, setI18nInstance] = serverOnlyContext<I18nInstance | null>(null)
@@ -76,3 +78,16 @@ export const getLocaleOnServer = async (): Promise<Locale> => {
   setLocaleCache(matchedLocale)
   return matchedLocale
 }
+
+export const getResources = cache(async (lng: Locale): Promise<Resource> => {
+  const messages = {} as ResourceLanguage
+
+  await Promise.all(
+    (NAMESPACES).map(async (ns) => {
+      const mod = await import(`../i18n/${lng}/${ns}.json`)
+      messages[ns] = mod.default
+    }),
+  )
+
+  return { [lng]: messages }
+})
