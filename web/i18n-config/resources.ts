@@ -74,10 +74,9 @@ export type CamelCase<S extends string> = S extends `${infer T}-${infer U}`
   ? `${T}${Capitalize<CamelCase<U>>}`
   : S
 
+export type Resources = typeof resources
 export type NamespaceCamelCase = keyof Resources
 export type NamespaceKebabCase = KebabCase<NamespaceCamelCase>
 
 export const namespacesCamelCase = Object.keys(resources) as NamespaceCamelCase[]
 export const namespacesKebabCase = namespacesCamelCase.map(ns => kebabCase(ns)) as NamespaceKebabCase[]
-
-export type Resources = typeof resources
