@@ -31,7 +31,7 @@ import tools from '../i18n/en-US/tools.json'
 import workflow from '../i18n/en-US/workflow.json'
 
 // @keep-sorted
-export const resources = {
+const resources = {
   app,
   appAnnotation,
   appApi,
