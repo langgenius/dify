@@ -1513,6 +1513,7 @@ class WorkflowDraftVariable(Base):
         file_id: str | None = None,
     ) -> "WorkflowDraftVariable":
         variable = WorkflowDraftVariable()
+        variable.id = str(uuid4())
         variable.created_at = naive_utc_now()
         variable.updated_at = naive_utc_now()
         variable.description = description

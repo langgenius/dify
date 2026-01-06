@@ -58,8 +58,8 @@ importers:
   .:
     dependencies:
       '@amplitude/analytics-browser':
-        specifier: ^2.31.3
-        version: 2.31.4
+        specifier: ^2.33.1
+        version: 2.33.1
       '@amplitude/plugin-session-replay-browser':
         specifier: ^1.23.6
         version: 1.24.1(@amplitude/rrweb@2.0.0-alpha.33)(rollup@2.79.2)
@@ -406,6 +406,9 @@ importers:
       '@storybook/react':
         specifier: 9.1.13
         version: 9.1.13(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(storybook@9.1.17(@testing-library/dom@10.4.1)(vite@7.3.0(@types/node@18.15.0)(jiti@1.21.7)(sass@1.95.0)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)))(typescript@5.9.3)
+      '@tanstack/eslint-plugin-query':
+        specifier: ^5.91.2
+        version: 5.91.2(eslint@9.39.2(jiti@1.21.7))(typescript@5.9.3)
       '@tanstack/react-devtools':
         specifier: ^0.9.0
         version: 0.9.0(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(csstype@3.2.3)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@1.9.10)
@@ -481,6 +484,9 @@ importers:
       autoprefixer:
         specifier: ^10.4.21
         version: 10.4.22(postcss@8.5.6)
+      babel-loader:
+        specifier: ^10.0.0
+        version: 10.0.0(@babel/core@7.28.5)(webpack@5.103.0(esbuild@0.25.0)(uglify-js@3.19.3))
       bing-translate-api:
         specifier: ^4.1.0
         version: 4.2.0
@@ -572,8 +578,8 @@ packages:
     resolution: {integrity: sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==}
     engines: {node: '>=10'}
 
-  '@amplitude/analytics-browser@2.31.4':
-    resolution: {integrity: sha512-9O8a0SK55tQOgJJ0z9eE+q/C2xWo6a65wN4iSglxYwm1vvGJKG6Z/QV4XKQ6X0syGscRuG1XoMc0mt3xdVPtDg==}
+  '@amplitude/analytics-browser@2.33.1':
+    resolution: {integrity: sha512-93wZjuAFJ7QdyptF82i1pezm5jKuBWITHI++XshDgpks1RstJvJ9n11Ak8MnE4L2BGQ93XDN2aVEHfmQkt0/Pw==}
 
   '@amplitude/analytics-client-common@2.4.16':
     resolution: {integrity: sha512-qF7NAl6Qr6QXcWKnldGJfO0Kp1TYoy1xsmzEDnOYzOS96qngtvsZ8MuKya1lWdVACoofwQo82V0VhNZJKk/2YA==}
@@ -584,29 +590,32 @@ packages:
   '@amplitude/analytics-core@2.33.0':
     resolution: {integrity: sha512-56m0R12TjZ41D2YIghb/XNHSdL4CurAVyRT3L2FD+9DCFfbgjfT8xhDBnsZtA+aBkb6Yak1EGUojGBunfAm2/A==}
 
+  '@amplitude/analytics-core@2.35.0':
+    resolution: {integrity: sha512-7RmHYELXCGu8yuO9D6lEXiqkMtiC5sePNhCWmwuP30dneDYHtH06gaYvAFH/YqOFuE6enwEEJfFYtcaPhyiqtA==}
+
   '@amplitude/analytics-types@2.11.0':
     resolution: {integrity: sha512-L1niBXYSWmbyHUE/GNuf6YBljbafaxWI3X5jjEIZDFCjQvdWO3DKalY1VPFUbhgYQgWw7+bC6I/AlUaporyfig==}
 
   '@amplitude/experiment-core@0.7.2':
     resolution: {integrity: sha512-Wc2NWvgQ+bLJLeF0A9wBSPIaw0XuqqgkPKsoNFQrmS7r5Djd56um75In05tqmVntPJZRvGKU46pAp8o5tdf4mA==}
 
-  '@amplitude/plugin-autocapture-browser@1.18.0':
-    resolution: {integrity: sha512-hBBZpghTEnl+XF8UZaGxe1xCbSjawdmOkJC0/tQF2k1FwlJS/rdWBGmPd8wH7iU4hd55pnSw28Kd2NL7q0zTcA==}
+  '@amplitude/plugin-autocapture-browser@1.18.3':
+    resolution: {integrity: sha512-njYque5t1QCEEe5V8Ls4yVVklTM6V7OXxBk6pqznN/hj/Pc4X8Wjy898pZ2VtbnvpagBKKzGb5B6Syl8OXiicw==}
 
-  '@amplitude/plugin-network-capture-browser@1.7.0':
-    resolution: {integrity: sha512-tlwkBL0tlc1OUTT2XYTjWx4mm6O0DSggKzkkDq+8DhW+ZFl9OfHMFIh/hDLJzxs1LTtX7CvFUfAVSDifJOs+NA==}
+  '@amplitude/plugin-network-capture-browser@1.7.3':
+    resolution: {integrity: sha512-zfWgAN7g6AigJAsgrGmlgVwydOHH6XvweBoxhU+qEvRydboiIVCDLSxuXczUsBG7kYVLWRdBK1DYoE5J7lqTGA==}
 
-  '@amplitude/plugin-page-url-enrichment-browser@0.5.6':
-    resolution: {integrity: sha512-H6+tf0zYhvM+8oJsdC/kAbIzuxOY/0p+3HBmX4K+G4doo5nCGAB0DYTr6dqMp1GcPOZ09pKT41+DJ6vwSy4ypQ==}
+  '@amplitude/plugin-page-url-enrichment-browser@0.5.9':
+    resolution: {integrity: sha512-TqdELx4WrdRutCjHUFUzum/f/UjhbdTZw0UKkYFAj5gwAKDjaPEjL4waRvINOTaVLsne1A6ck4KEMfC8AKByFw==}
 
-  '@amplitude/plugin-page-view-tracking-browser@2.6.3':
-    resolution: {integrity: sha512-lLU4W2r5jXtfn/14cZKM9c9CQDxT7PVVlgm0susHJ3Kfsua9jJQuMHs4Zlg6rwByAtZi5nF4nYE5z0GF09gx0A==}
+  '@amplitude/plugin-page-view-tracking-browser@2.6.6':
+    resolution: {integrity: sha512-dBcJlrdKgPzSgS3exDRRrMLqhIaOjwlIy7o8sEMn1PpMawERlbumSSdtfII6L4L67HYUPo4PY4Kp4acqSzaLvQ==}
 
   '@amplitude/plugin-session-replay-browser@1.24.1':
     resolution: {integrity: sha512-NHePIu2Yv9ba+fOt5N33b8FFQPzyKvjs1BnWBgBCM5RECos3w6n/+zUWTnTJ4at2ipO2lz111abKDteUwbuptg==}
 
-  '@amplitude/plugin-web-vitals-browser@1.1.0':
-    resolution: {integrity: sha512-TA0X4Np4Wt5hkQ4+Ouhg6nm2xjDd9l03OV9N8Kbe1cqpr/sxvRwSpd+kp2eREbp6D7tHFFkKJA2iNtxbE5Y0cA==}
+  '@amplitude/plugin-web-vitals-browser@1.1.4':
+    resolution: {integrity: sha512-XQXI9OjTNSz2yi0lXw2VYMensDzzSkMCfvXNniTb1LgnHwBcQ1JWPcTqHLPFrvvNckeIdOT78vjs7yA+c1FyzA==}
 
   '@amplitude/rrdom@2.0.0-alpha.33':
     resolution: {integrity: sha512-uu+1w1RGEJ7QcGPwCC898YBR47DpNYOZTnQMY9/IgMzTXQ0+Hh1/JLsQfMnBBtAePhvCS0BlHd/qGD5w0taIcg==}
@@ -3384,6 +3393,11 @@ packages:
     peerDependencies:
       solid-js: '>=1.9.7'
 
+  '@tanstack/eslint-plugin-query@5.91.2':
+    resolution: {integrity: sha512-UPeWKl/Acu1IuuHJlsN+eITUHqAaa9/04geHHPedY8siVarSaWprY0SVMKrkpKfk5ehRT7+/MZ5QwWuEtkWrFw==}
+    peerDependencies:
+      eslint: ^8.57.0 || ^9.0.0
+
   '@tanstack/form-core@1.27.1':
     resolution: {integrity: sha512-hPM+0tUnZ2C2zb2TE1lar1JJ0S0cbnQHlUwFcCnVBpMV3rjtUzkoM766gUpWrlmTGCzNad0GbJ0aTxVsjT6J8g==}
 
@@ -4264,6 +4278,13 @@ packages:
     hasBin: true
     peerDependencies:
       postcss: ^8.1.0
+
+  babel-loader@10.0.0:
+    resolution: {integrity: sha512-z8jt+EdS61AMw22nSfoNJAZ0vrtmhPRVi6ghL3rCeRZI8cdNYFiV5xeV3HbE7rlZZNmGH8BVccwWt8/ED0QOHA==}
+    engines: {node: ^18.20.0 || ^20.10.0 || >=22.0.0}
+    peerDependencies:
+      '@babel/core': ^7.12.0
+      webpack: '>=5.61.0'
 
   babel-loader@8.4.1:
     resolution: {integrity: sha512-nXzRChX+Z1GoE6yWavBQg6jDslyFF3SDjl2paADuoQtQW10JqShJt62R6eJQ5m/pjJFDT8xgKIWSP85OY8eXeA==}
@@ -8716,8 +8737,8 @@ packages:
   web-namespaces@2.0.1:
     resolution: {integrity: sha512-bKr1DkiNa2krS7qxNtdrtHAmzuYGFQLiQ13TsorsdT6ULTkPLKuu5+GsFpDlg6JFjUTwX2DyhMPG2be8uPrqsQ==}
 
-  web-vitals@5.0.1:
-    resolution: {integrity: sha512-BsULPWaCKAAtNntUz0aJq1cu1wyuWmDzf4N6vYNMbYA6zzQAf2pzCYbyClf+Ui2MI54bt225AwugXIfL1W+Syg==}
+  web-vitals@5.1.0:
+    resolution: {integrity: sha512-ArI3kx5jI0atlTtmV0fWU3fjpLmq/nD3Zr1iFFlJLaqa5wLBkUSzINwBPySCX/8jRyjlmy1Volw1kz1g9XE4Jg==}
 
   webidl-conversions@4.0.2:
     resolution: {integrity: sha512-YQ+BmxuTgd6UXZW3+ICGfyqRyHXVlD5GtQr5+qjiNW7bF0cqrzX500HVXPBOvgXb5YnzDd+h0zqyv61KUD7+Sg==}
@@ -8998,14 +9019,14 @@ snapshots:
 
   '@alloc/quick-lru@5.2.0': {}
 
-  '@amplitude/analytics-browser@2.31.4':
+  '@amplitude/analytics-browser@2.33.1':
     dependencies:
-      '@amplitude/analytics-core': 2.33.0
-      '@amplitude/plugin-autocapture-browser': 1.18.0
-      '@amplitude/plugin-network-capture-browser': 1.7.0
-      '@amplitude/plugin-page-url-enrichment-browser': 0.5.6
-      '@amplitude/plugin-page-view-tracking-browser': 2.6.3
-      '@amplitude/plugin-web-vitals-browser': 1.1.0
+      '@amplitude/analytics-core': 2.35.0
+      '@amplitude/plugin-autocapture-browser': 1.18.3
+      '@amplitude/plugin-network-capture-browser': 1.7.3
+      '@amplitude/plugin-page-url-enrichment-browser': 0.5.9
+      '@amplitude/plugin-page-view-tracking-browser': 2.6.6
+      '@amplitude/plugin-web-vitals-browser': 1.1.4
       tslib: 2.8.1
 
   '@amplitude/analytics-client-common@2.4.16':
@@ -9023,31 +9044,37 @@ snapshots:
       tslib: 2.8.1
       zen-observable-ts: 1.1.0
 
+  '@amplitude/analytics-core@2.35.0':
+    dependencies:
+      '@amplitude/analytics-connector': 1.6.4
+      tslib: 2.8.1
+      zen-observable-ts: 1.1.0
+
   '@amplitude/analytics-types@2.11.0': {}
 
   '@amplitude/experiment-core@0.7.2':
     dependencies:
       js-base64: 3.7.8
 
-  '@amplitude/plugin-autocapture-browser@1.18.0':
+  '@amplitude/plugin-autocapture-browser@1.18.3':
     dependencies:
-      '@amplitude/analytics-core': 2.33.0
+      '@amplitude/analytics-core': 2.35.0
       rxjs: 7.8.2
       tslib: 2.8.1
 
-  '@amplitude/plugin-network-capture-browser@1.7.0':
+  '@amplitude/plugin-network-capture-browser@1.7.3':
     dependencies:
-      '@amplitude/analytics-core': 2.33.0
+      '@amplitude/analytics-core': 2.35.0
       tslib: 2.8.1
 
-  '@amplitude/plugin-page-url-enrichment-browser@0.5.6':
+  '@amplitude/plugin-page-url-enrichment-browser@0.5.9':
     dependencies:
-      '@amplitude/analytics-core': 2.33.0
+      '@amplitude/analytics-core': 2.35.0
       tslib: 2.8.1
 
-  '@amplitude/plugin-page-view-tracking-browser@2.6.3':
+  '@amplitude/plugin-page-view-tracking-browser@2.6.6':
     dependencies:
-      '@amplitude/analytics-core': 2.33.0
+      '@amplitude/analytics-core': 2.35.0
       tslib: 2.8.1
 
   '@amplitude/plugin-session-replay-browser@1.24.1(@amplitude/rrweb@2.0.0-alpha.33)(rollup@2.79.2)':
@@ -9062,11 +9089,11 @@ snapshots:
       - '@amplitude/rrweb'
       - rollup
 
-  '@amplitude/plugin-web-vitals-browser@1.1.0':
+  '@amplitude/plugin-web-vitals-browser@1.1.4':
     dependencies:
-      '@amplitude/analytics-core': 2.33.0
+      '@amplitude/analytics-core': 2.35.0
       tslib: 2.8.1
-      web-vitals: 5.0.1
+      web-vitals: 5.1.0
 
   '@amplitude/rrdom@2.0.0-alpha.33':
     dependencies:
@@ -9130,7 +9157,7 @@ snapshots:
   '@amplitude/targeting@0.2.0':
     dependencies:
       '@amplitude/analytics-client-common': 2.4.16
-      '@amplitude/analytics-core': 2.33.0
+      '@amplitude/analytics-core': 2.35.0
       '@amplitude/analytics-types': 2.11.0
       '@amplitude/experiment-core': 0.7.2
       idb: 8.0.0
@@ -10120,7 +10147,7 @@ snapshots:
   '@es-joy/jsdoccomment@0.76.0':
     dependencies:
       '@types/estree': 1.0.8
-      '@typescript-eslint/types': 8.50.0
+      '@typescript-eslint/types': 8.50.1
       comment-parser: 1.4.1
       esquery: 1.6.0
       jsdoc-type-pratt-parser: 6.10.0
@@ -10128,7 +10155,7 @@ snapshots:
   '@es-joy/jsdoccomment@0.78.0':
     dependencies:
       '@types/estree': 1.0.8
-      '@typescript-eslint/types': 8.50.0
+      '@typescript-eslint/types': 8.50.1
       comment-parser: 1.4.1
       esquery: 1.6.0
       jsdoc-type-pratt-parser: 7.0.0
@@ -11947,7 +11974,7 @@ snapshots:
   '@stylistic/eslint-plugin@5.6.1(eslint@9.39.2(jiti@1.21.7))':
     dependencies:
       '@eslint-community/eslint-utils': 4.9.0(eslint@9.39.2(jiti@1.21.7))
-      '@typescript-eslint/types': 8.49.0
+      '@typescript-eslint/types': 8.50.1
       eslint: 9.39.2(jiti@1.21.7)
       eslint-visitor-keys: 4.2.1
       espree: 10.4.0
@@ -12028,6 +12055,14 @@ snapshots:
       - bufferutil
       - csstype
       - utf-8-validate
+
+  '@tanstack/eslint-plugin-query@5.91.2(eslint@9.39.2(jiti@1.21.7))(typescript@5.9.3)':
+    dependencies:
+      '@typescript-eslint/utils': 8.50.1(eslint@9.39.2(jiti@1.21.7))(typescript@5.9.3)
+      eslint: 9.39.2(jiti@1.21.7)
+    transitivePeerDependencies:
+      - supports-color
+      - typescript
 
   '@tanstack/form-core@1.27.1':
     dependencies:
@@ -12502,8 +12537,8 @@ snapshots:
 
   '@typescript-eslint/project-service@8.50.0(typescript@5.9.3)':
     dependencies:
-      '@typescript-eslint/tsconfig-utils': 8.50.0(typescript@5.9.3)
-      '@typescript-eslint/types': 8.50.0
+      '@typescript-eslint/tsconfig-utils': 8.50.1(typescript@5.9.3)
+      '@typescript-eslint/types': 8.50.1
       debug: 4.4.3
       typescript: 5.9.3
     transitivePeerDependencies:
@@ -12732,7 +12767,7 @@ snapshots:
 
   '@vitest/eslint-plugin@1.6.1(eslint@9.39.2(jiti@1.21.7))(typescript@5.9.3)(vitest@4.0.16(@types/node@18.15.0)(happy-dom@20.0.11)(jiti@1.21.7)(jsdom@27.3.0(canvas@3.2.0))(sass@1.95.0)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))':
     dependencies:
-      '@typescript-eslint/scope-manager': 8.49.0
+      '@typescript-eslint/scope-manager': 8.50.1
       '@typescript-eslint/utils': 8.50.1(eslint@9.39.2(jiti@1.21.7))(typescript@5.9.3)
       eslint: 9.39.2(jiti@1.21.7)
     optionalDependencies:
@@ -13079,6 +13114,12 @@ snapshots:
       picocolors: 1.1.1
       postcss: 8.5.6
       postcss-value-parser: 4.2.0
+
+  babel-loader@10.0.0(@babel/core@7.28.5)(webpack@5.103.0(esbuild@0.25.0)(uglify-js@3.19.3)):
+    dependencies:
+      '@babel/core': 7.28.5
+      find-up: 5.0.0
+      webpack: 5.103.0(esbuild@0.25.0)(uglify-js@3.19.3)
 
   babel-loader@8.4.1(@babel/core@7.28.5)(webpack@5.103.0(esbuild@0.25.0)(uglify-js@3.19.3)):
     dependencies:
@@ -14224,7 +14265,7 @@ snapshots:
 
   eslint-plugin-perfectionist@4.15.1(eslint@9.39.2(jiti@1.21.7))(typescript@5.9.3):
     dependencies:
-      '@typescript-eslint/types': 8.49.0
+      '@typescript-eslint/types': 8.50.1
       '@typescript-eslint/utils': 8.50.1(eslint@9.39.2(jiti@1.21.7))(typescript@5.9.3)
       eslint: 9.39.2(jiti@1.21.7)
       natural-orderby: 5.0.0
@@ -18304,7 +18345,7 @@ snapshots:
 
   web-namespaces@2.0.1: {}
 
-  web-vitals@5.0.1: {}
+  web-vitals@5.1.0: {}
 
   webidl-conversions@4.0.2: {}
 
