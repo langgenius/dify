@@ -28,13 +28,9 @@ const commonTranslations: Record<string, string> = {
   'operation.in': 'in',
 }
 
-// Mock useLocale hook
-vi.mock('#i18n/useLocale', () => ({
+// Mock i18n hooks
+vi.mock('#i18n', () => ({
   useLocale: vi.fn(() => mockLocale),
-}))
-
-// Mock useTranslation hook
-vi.mock('#i18n/useTranslation', () => ({
   useTranslation: vi.fn((ns: string) => ({
     t: (key: string) => {
       if (ns === 'plugin')
