@@ -657,7 +657,7 @@ class TriggerSubscriptionVerifyApi(Resource):
         user = current_user
         assert user.current_tenant_id is not None
 
-        verify_request = TriggerSubscriptionBuilderVerifyPayload.model_validate(console_ns.payload)
+        verify_request = TriggerSubscriptionBuilderVerifyPayload.model_validate(console_ns.payload or {})
 
         try:
             result = TriggerProviderService.verify_subscription_credentials(
