@@ -3,7 +3,7 @@ from typing import Any
 
 from flask import make_response, redirect, request
 from flask_restx import Resource
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden
 
@@ -40,7 +40,7 @@ class TriggerSubscriptionBuilderCreatePayload(BaseModel):
 
 
 class TriggerSubscriptionBuilderVerifyPayload(BaseModel):
-    credentials: dict[str, Any] = {}
+    credentials: dict[str, Any]
 
 
 class TriggerSubscriptionBuilderUpdatePayload(BaseModel):
