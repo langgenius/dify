@@ -163,11 +163,11 @@ const ChatWrapper = () => {
     return chatList.filter(item => !item.isOpeningStatement)
   }, [chatList, currentConversationId])
 
-  const handleSubmitHumanInputForm = useCallback(async (formID: string, formData: any) => {
+  const handleSubmitHumanInputForm = useCallback(async (formToken: string, formData: any) => {
     if (isInstalledApp)
-      await submitHumanInputFormService(formID, formData)
+      await submitHumanInputFormService(formToken, formData)
     else
-      await submitHumanInputForm(formID, formData)
+      await submitHumanInputForm(formToken, formData)
   }, [isInstalledApp])
 
   const [collapsed, setCollapsed] = useState(!!currentConversationId)

@@ -13,7 +13,7 @@ export type UnsubmittedHumanInputContentProps = {
   showDebugModeTip?: boolean
   showTimeout?: boolean
   expirationTime?: number
-  onSubmit?: (formID: string, data: any) => Promise<void>
+  onSubmit?: (formToken: string, data: any) => Promise<void>
 }
 
 export type SubmittedHumanInputContentProps = {
@@ -22,7 +22,7 @@ export type SubmittedHumanInputContentProps = {
 
 export type HumanInputFormProps = {
   formData: HumanInputFormData
-  onSubmit?: (formID: string, data: any) => Promise<void>
+  onSubmit?: (formToken: string, data: any) => Promise<void>
 }
 
 export type ContentItemProps = {

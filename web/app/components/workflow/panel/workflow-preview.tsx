@@ -99,8 +99,8 @@ const WorkflowPreview = () => {
     }
   }, [resize, stopResizing])
 
-  const handleSubmitHumanInputForm = useCallback(async (formID: string, formData: any) => {
-    await submitHumanInputForm(formID, formData)
+  const handleSubmitHumanInputForm = useCallback(async (formToken: string, formData: any) => {
+    await submitHumanInputForm(formToken, formData)
   }, [])
 
   return (

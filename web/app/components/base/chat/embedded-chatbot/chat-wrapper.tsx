@@ -176,11 +176,11 @@ const ChatWrapper = () => {
     }
   }, [inputsForms.length, isMobile, currentConversationId, collapsed, allInputsHidden])
 
-  const handleSubmitHumanInputForm = useCallback(async (formID: string, formData: any) => {
+  const handleSubmitHumanInputForm = useCallback(async (formToken: string, formData: any) => {
     if (isInstalledApp)
-      await submitHumanInputFormService(formID, formData)
+      await submitHumanInputFormService(formToken, formData)
     else
-      await submitHumanInputForm(formID, formData)
+      await submitHumanInputForm(formToken, formData)
   }, [isInstalledApp])
 
   const welcome = useMemo(() => {

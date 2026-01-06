@@ -10,7 +10,7 @@ const HumanInputForm = ({
   formData,
   onSubmit,
 }: HumanInputFormProps) => {
-  const formID = formData.form_id
+  const formToken = formData.form_token
   const defaultInputs = initializeInputs(formData.inputs)
   const contentList = splitByOutputVar(formData.form_content)
   const [inputs, setInputs] = useState(defaultInputs)
@@ -23,9 +23,9 @@ const HumanInputForm = ({
     }))
   }, [])
 
-  const submit = async (formID: string, actionID: string, inputs: Record<string, any>) => {
+  const submit = async (formToken: string, actionID: string, inputs: Record<string, any>) => {
     setIsSubmitting(true)
-    await onSubmit?.(formID, { inputs, action: actionID })
+    await onSubmit?.(formToken, { inputs, action: actionID })
     setIsSubmitting(false)
   }
 
@@ -47,7 +47,7 @@ const HumanInputForm = ({
             key={action.id}
             disabled={isSubmitting}
             variant={getButtonStyle(action.button_style) as any}
-            onClick={() => submit(formID, action.id, inputs)}
+            onClick={() => submit(formToken, action.id, inputs)}
           >
             {action.title}
           </Button>

@@ -583,8 +583,8 @@ export const useChat = (
     )
   }, [threadMessages, chatTree.length, updateCurrentQAOnTree, handleResponding, formSettings?.inputsForm, handleRun, notify, t, workflowStore, fetchInspectVars, invalidAllLastRun, config?.suggested_questions_after_answer?.enabled])
 
-  const handleSubmitHumanInputForm = async (formID: string, formData: any) => {
-    await submitHumanInputForm(formID, formData)
+  const handleSubmitHumanInputForm = async (formToken: string, formData: any) => {
+    await submitHumanInputForm(formToken, formData)
   }
 
   const getHumanInputNodeData = (nodeID: string) => {

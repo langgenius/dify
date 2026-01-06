@@ -9,7 +9,7 @@ import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/
 
 type HumanInputFormListProps = {
   humanInputFormDataList: HumanInputFormData[]
-  onHumanInputFormSubmit?: (formID: string, formData: any) => Promise<void>
+  onHumanInputFormSubmit?: (formToken: string, formData: any) => Promise<void>
 }
 
 const HumanInputFormList = ({

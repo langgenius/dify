@@ -73,7 +73,7 @@ export type ChatProps = {
   inputDisabled?: boolean
   sidebarCollapseState?: boolean
   hideAvatar?: boolean
-  onHumanInputFormSubmit?: (formID: string, formData: any) => Promise<void>
+  onHumanInputFormSubmit?: (formToken: string, formData: any) => Promise<void>
   getHumanInputNodeData?: (nodeID: string) => any
 }
 

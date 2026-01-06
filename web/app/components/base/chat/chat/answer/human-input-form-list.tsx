@@ -7,7 +7,7 @@ import { UnsubmittedHumanInputContent } from './human-input-content/unsubmitted'
 
 type HumanInputFormListProps = {
   humanInputFormDataList: HumanInputFormData[]
-  onHumanInputFormSubmit?: (formID: string, formData: any) => Promise<void>
+  onHumanInputFormSubmit?: (formToken: string, formData: any) => Promise<void>
   getHumanInputNodeData?: (nodeID: string) => any
 }
 

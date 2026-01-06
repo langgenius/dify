@@ -123,9 +123,9 @@ const ChatWrapper = (
     doSend(editedQuestion ? editedQuestion.message : question.content, editedQuestion ? editedQuestion.files : question.message_files, true, isValidGeneratedAnswer(parentAnswer) ? parentAnswer : null)
   }, [chatList, doSend])
 
-  const doHumanInputFormSubmit = useCallback(async (formID: string, formData: any) => {
+  const doHumanInputFormSubmit = useCallback(async (formToken: string, formData: any) => {
     // Handle human input form submission
-    await handleSubmitHumanInputForm(formID, formData)
+    await handleSubmitHumanInputForm(formToken, formData)
   }, [handleSubmitHumanInputForm])
 
   const inputDisabled = useMemo(() => {

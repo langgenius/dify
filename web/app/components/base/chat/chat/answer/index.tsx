@@ -40,7 +40,7 @@ type AnswerProps = {
   noChatInput?: boolean
   switchSibling?: (siblingMessageId: string) => void
   hideAvatar?: boolean
-  onHumanInputFormSubmit?: (formID: string, formData: any) => Promise<void>
+  onHumanInputFormSubmit?: (formToken: string, formData: any) => Promise<void>
 }
 const Answer: FC<AnswerProps> = ({
   item,

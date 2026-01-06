@@ -15,7 +15,7 @@ const HumanInputFilledFormList = ({
         humanInputFilledFormDataList.map(formData => (
           <ContentWrapper
             key={formData.node_id}
-            nodeTitle="todo: replace with node title"
+            nodeTitle={formData.node_title}
             showExpandIcon
           >
             <SubmittedHumanInputContent

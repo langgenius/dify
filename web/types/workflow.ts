@@ -320,7 +320,7 @@ export type HumanInputFormData = {
   form_content: string
   inputs: FormInputItem[]
   actions: UserAction[]
-  web_app_form_token: string // For WebApp
+  form_token: string
   resolved_placeholder_values: Record<string, string> // For human input placeholder when its type is variable
 }
 
@@ -333,6 +333,7 @@ export type HumanInputRequiredResponse = {
 
 export type HumanInputFilledFormData = {
   node_id: string
+  node_title: string
   rendered_content: string
   action_id: string
   action_text: string
