@@ -72,6 +72,8 @@ const Answer: FC<AnswerProps> = ({
     humanInputFilledFormDataList,
   } = item
   const hasAgentThoughts = !!agent_thoughts?.length
+  const hasHumanInputs = !!humanInputFormDataList?.length || !!humanInputFilledFormDataList?.length
+  const hasHumanInputFormSubmitted = !!humanInputFilledFormDataList?.length
 
   const [containerWidth, setContainerWidth] = useState(0)
   const [contentWidth, setContentWidth] = useState(0)
@@ -139,122 +141,240 @@ const Answer: FC<AnswerProps> = ({
         </div>
       )}
       <div className="chat-answer-container group ml-4 w-0 grow pb-4" ref={containerRef}>
-        <div className={cn('group relative pr-10', chatAnswerContainerInner)}>
-          <div
-            ref={contentRef}
-            className={cn('body-lg-regular relative inline-block max-w-full rounded-2xl bg-chat-bubble-bg px-4 py-3 text-text-primary', workflowProcess && 'w-full')}
-          >
-            {
-              !responding && (
-                <Operation
-                  hasWorkflowProcess={!!workflowProcess}
-                  maxSize={containerWidth - contentWidth - 4}
-                  contentWidth={contentWidth}
-                  item={item}
-                  question={question}
-                  index={index}
-                  showPromptLog={showPromptLog}
-                  noChatInput={noChatInput}
-                />
-              )
-            }
-            {/** Render workflow process */}
-            {
-              workflowProcess && (
-                <WorkflowProcessItem
-                  data={workflowProcess}
-                  item={item}
-                  hideProcessDetail={hideProcessDetail}
-                  readonly={hideProcessDetail && appData ? !appData.site.show_workflow_steps : undefined}
-                />
-              )
-            }
-            {
-              responding && contentIsEmpty && !hasAgentThoughts && (
-                <div className="flex h-5 w-6 items-center justify-center">
-                  <LoadingAnim type="text" />
-                </div>
-              )
-            }
-            {
-              humanInputFormDataList && humanInputFormDataList.length > 0 && (
-                <HumanInputFormList
-                  humanInputFormDataList={humanInputFormDataList}
-                  onHumanInputFormSubmit={onHumanInputFormSubmit}
-                  getHumanInputNodeData={getHumanInputNodeData}
-                />
-              )
-            }
-            {
-              humanInputFilledFormDataList && humanInputFilledFormDataList.length > 0 && (
-                <HumanInputFilledFormList
-                  humanInputFilledFormDataList={humanInputFilledFormDataList}
-                />
-              )
-            }
-            {
-              !contentIsEmpty && !hasAgentThoughts && (
-                <BasicContent item={item} />
-              )
-            }
-            {
-              (hasAgentThoughts) && (
-                <AgentContent
-                  item={item}
-                  responding={responding}
-                  content={content}
-                />
-              )
-            }
-            {
-              !!allFiles?.length && (
-                <FileList
-                  className="my-1"
-                  files={allFiles}
-                  showDeleteAction={false}
-                  showDownloadAction
-                  canPreview
-                />
-              )
-            }
-            {
-              !!message_files?.length && (
-                <FileList
-                  className="my-1"
-                  files={message_files}
-                  showDeleteAction={false}
-                  showDownloadAction
-                  canPreview
-                />
-              )
-            }
-            {
-              annotation?.id && annotation.authorName && (
-                <EditTitle
-                  className="mt-1"
-                  title={t('editBy', { ns: 'appAnnotation', author: annotation.authorName })}
-                />
-              )
-            }
-            <SuggestedQuestions item={item} />
-            {
-              !!citation?.length && !responding && (
-                <Citation data={citation} showHitInfo={config?.supportCitationHitInfo} />
-              )
-            }
-            {
-              item.siblingCount && item.siblingCount > 1 && item.siblingIndex !== undefined && (
-                <ContentSwitch
-                  count={item.siblingCount}
-                  currentIndex={item.siblingIndex}
-                  prevDisabled={!item.prevSibling}
-                  nextDisabled={!item.nextSibling}
-                  switchSibling={handleSwitchSibling}
-                />
-              )
-            }
+        {/* Block 1: Workflow Process + Human Input Forms */}
+        {hasHumanInputs && (
+          <div className={cn('group relative pr-10', chatAnswerContainerInner)}>
+            <div
+              className={cn('body-lg-regular relative inline-block max-w-full rounded-2xl bg-chat-bubble-bg px-4 py-3 text-text-primary', workflowProcess && 'w-full')}
+            >
+              {/** Render workflow process */}
+              {
+                workflowProcess && (
+                  <WorkflowProcessItem
+                    data={workflowProcess}
+                    item={item}
+                    hideProcessDetail={hideProcessDetail}
+                    readonly={hideProcessDetail && appData ? !appData.site.show_workflow_steps : undefined}
+                  />
+                )
+              }
+              {
+                humanInputFormDataList && humanInputFormDataList.length > 0 && (
+                  <HumanInputFormList
+                    humanInputFormDataList={humanInputFormDataList}
+                    onHumanInputFormSubmit={onHumanInputFormSubmit}
+                    getHumanInputNodeData={getHumanInputNodeData}
+                  />
+                )
+              }
+              {
+                humanInputFilledFormDataList && humanInputFilledFormDataList.length > 0 && (
+                  <HumanInputFilledFormList
+                    humanInputFilledFormDataList={humanInputFilledFormDataList}
+                  />
+                )
+              }
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Block 2: Response Content (when human inputs exist) */}
+        {hasHumanInputFormSubmitted && (
+          <div className={cn('group relative mt-2 pr-10', chatAnswerContainerInner)}>
+            <div className="absolute -top-2 left-6 h-3 w-0.5 bg-chat-answer-human-input-form-divider-bg" />
+            <div
+              ref={contentRef}
+              className="body-lg-regular relative inline-block max-w-full rounded-2xl bg-chat-bubble-bg px-4 py-3 text-text-primary"
+            >
+              {
+                !responding && (
+                  <Operation
+                    hasWorkflowProcess={!!workflowProcess}
+                    maxSize={containerWidth - contentWidth - 4}
+                    contentWidth={contentWidth}
+                    item={item}
+                    question={question}
+                    index={index}
+                    showPromptLog={showPromptLog}
+                    noChatInput={noChatInput}
+                  />
+                )
+              }
+              {
+                responding && contentIsEmpty && !hasAgentThoughts && (
+                  <div className="flex h-5 w-6 items-center justify-center">
+                    <LoadingAnim type="text" />
+                  </div>
+                )
+              }
+              {
+                !contentIsEmpty && !hasAgentThoughts && (
+                  <BasicContent item={item} />
+                )
+              }
+              {
+                hasAgentThoughts && (
+                  <AgentContent
+                    item={item}
+                    responding={responding}
+                    content={content}
+                  />
+                )
+              }
+              {
+                !!allFiles?.length && (
+                  <FileList
+                    className="my-1"
+                    files={allFiles}
+                    showDeleteAction={false}
+                    showDownloadAction
+                    canPreview
+                  />
+                )
+              }
+              {
+                !!message_files?.length && (
+                  <FileList
+                    className="my-1"
+                    files={message_files}
+                    showDeleteAction={false}
+                    showDownloadAction
+                    canPreview
+                  />
+                )
+              }
+              {
+                annotation?.id && annotation.authorName && (
+                  <EditTitle
+                    className="mt-1"
+                    title={t('editBy', { ns: 'appAnnotation', author: annotation.authorName })}
+                  />
+                )
+              }
+              <SuggestedQuestions item={item} />
+              {
+                !!citation?.length && !responding && (
+                  <Citation data={citation} showHitInfo={config?.supportCitationHitInfo} />
+                )
+              }
+              {
+                item.siblingCount && item.siblingCount > 1 && item.siblingIndex !== undefined && (
+                  <ContentSwitch
+                    count={item.siblingCount}
+                    currentIndex={item.siblingIndex}
+                    prevDisabled={!item.prevSibling}
+                    nextDisabled={!item.nextSibling}
+                    switchSibling={handleSwitchSibling}
+                  />
+                )
+              }
+            </div>
+          </div>
+        )}
+
+        {/* Original single block layout (when no human inputs) */}
+        {!hasHumanInputs && (
+          <div className={cn('group relative pr-10', chatAnswerContainerInner)}>
+            <div
+              ref={contentRef}
+              className={cn('body-lg-regular relative inline-block max-w-full rounded-2xl bg-chat-bubble-bg px-4 py-3 text-text-primary', workflowProcess && 'w-full')}
+            >
+              {
+                !responding && (
+                  <Operation
+                    hasWorkflowProcess={!!workflowProcess}
+                    maxSize={containerWidth - contentWidth - 4}
+                    contentWidth={contentWidth}
+                    item={item}
+                    question={question}
+                    index={index}
+                    showPromptLog={showPromptLog}
+                    noChatInput={noChatInput}
+                  />
+                )
+              }
+              {/** Render workflow process */}
+              {
+                workflowProcess && (
+                  <WorkflowProcessItem
+                    data={workflowProcess}
+                    item={item}
+                    hideProcessDetail={hideProcessDetail}
+                    readonly={hideProcessDetail && appData ? !appData.site.show_workflow_steps : undefined}
+                  />
+                )
+              }
+              {
+                responding && contentIsEmpty && !hasAgentThoughts && (
+                  <div className="flex h-5 w-6 items-center justify-center">
+                    <LoadingAnim type="text" />
+                  </div>
+                )
+              }
+              {
+                !contentIsEmpty && !hasAgentThoughts && (
+                  <BasicContent item={item} />
+                )
+              }
+              {
+                hasAgentThoughts && (
+                  <AgentContent
+                    item={item}
+                    responding={responding}
+                    content={content}
+                  />
+                )
+              }
+              {
+                !!allFiles?.length && (
+                  <FileList
+                    className="my-1"
+                    files={allFiles}
+                    showDeleteAction={false}
+                    showDownloadAction
+                    canPreview
+                  />
+                )
+              }
+              {
+                !!message_files?.length && (
+                  <FileList
+                    className="my-1"
+                    files={message_files}
+                    showDeleteAction={false}
+                    showDownloadAction
+                    canPreview
+                  />
+                )
+              }
+              {
+                annotation?.id && annotation.authorName && (
+                  <EditTitle
+                    className="mt-1"
+                    title={t('editBy', { ns: 'appAnnotation', author: annotation.authorName })}
+                  />
+                )
+              }
+              <SuggestedQuestions item={item} />
+              {
+                !!citation?.length && !responding && (
+                  <Citation data={citation} showHitInfo={config?.supportCitationHitInfo} />
+                )
+              }
+              {
+                item.siblingCount && item.siblingCount > 1 && item.siblingIndex !== undefined && (
+                  <ContentSwitch
+                    count={item.siblingCount}
+                    currentIndex={item.siblingIndex}
+                    prevDisabled={!item.prevSibling}
+                    nextDisabled={!item.nextSibling}
+                    switchSibling={handleSwitchSibling}
+                  />
+                )
+              }
+            </div>
+          </div>
+        )}
         <More more={more} />
       </div>
     </div>
