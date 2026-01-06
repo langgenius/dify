@@ -239,6 +239,8 @@ class MessageCycleManager:
         tool_files: list[str] | None = None,
         tool_error: str | None = None,
         tool_elapsed_time: float | None = None,
+        tool_icon: str | dict | None = None,
+        tool_icon_dark: str | dict | None = None,
         event_type: StreamEvent | None = None,
     ) -> MessageStreamResponse:
         """
@@ -271,6 +273,8 @@ class MessageCycleManager:
                     "tool_call_id": tool_call_id,
                     "tool_name": tool_name,
                     "tool_arguments": tool_arguments,
+                    "tool_icon": tool_icon,
+                    "tool_icon_dark": tool_icon_dark,
                 }
             )
         elif chunk_type == "tool_result":
@@ -282,6 +286,8 @@ class MessageCycleManager:
                     "tool_files": tool_files,
                     "tool_error": tool_error,
                     "tool_elapsed_time": tool_elapsed_time,
+                    "tool_icon": tool_icon,
+                    "tool_icon_dark": tool_icon_dark,
                 }
             )
 
