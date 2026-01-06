@@ -10,6 +10,7 @@ from flask import Flask
 from controllers.console import wraps as console_wraps
 from controllers.console.app import workflow as workflow_module
 from controllers.console.app import wraps as app_wraps
+from controllers.web.error import InvalidArgumentError
 from libs import login as login_lib
 from models.account import Account, AccountStatus, TenantAccountRole
 from models.model import AppMode
@@ -144,6 +145,72 @@ def test_human_input_submit_forwards_payload(app: Flask, monkeypatch: pytest.Mon
         form_inputs={"answer": "42"},
         action="approve",
     )
+
+
+@dataclass
+class DeliveryTestCase:
+    resource_cls: type
+    path: str
+    mode: AppMode
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        DeliveryTestCase(
+            resource_cls=workflow_module.AdvancedChatDraftHumanInputDeliveryTestApi,
+            path="/console/api/apps/app-123/advanced-chat/workflows/draft/human-input/nodes/node-7/delivery-test",
+            mode=AppMode.ADVANCED_CHAT,
+        ),
+        DeliveryTestCase(
+            resource_cls=workflow_module.WorkflowDraftHumanInputDeliveryTestApi,
+            path="/console/api/apps/app-123/workflows/draft/human-input/nodes/node-7/delivery-test",
+            mode=AppMode.WORKFLOW,
+        ),
+    ],
+)
+def test_human_input_delivery_test_calls_service(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, case: DeliveryTestCase
+) -> None:
+    account = _make_account()
+    app_model = _make_app(case.mode)
+    _patch_console_guards(monkeypatch, account, app_model)
+
+    service_instance = MagicMock()
+    monkeypatch.setattr(workflow_module, "WorkflowService", MagicMock(return_value=service_instance))
+
+    with app.test_request_context(
+        case.path,
+        method="POST",
+        json={"delivery_method_id": "delivery-123"},
+    ):
+        response = case.resource_cls().post(app_id=app_model.id, node_id="node-7")
+
+    assert response == {}
+    service_instance.test_human_input_delivery.assert_called_once_with(
+        app_model=app_model,
+        account=account,
+        node_id="node-7",
+        delivery_method_id="delivery-123",
+    )
+
+
+def test_human_input_delivery_test_maps_validation_error(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    account = _make_account()
+    app_model = _make_app(AppMode.ADVANCED_CHAT)
+    _patch_console_guards(monkeypatch, account, app_model)
+
+    service_instance = MagicMock()
+    service_instance.test_human_input_delivery.side_effect = ValueError("bad delivery method")
+    monkeypatch.setattr(workflow_module, "WorkflowService", MagicMock(return_value=service_instance))
+
+    with app.test_request_context(
+        "/console/api/apps/app-123/advanced-chat/workflows/draft/human-input/nodes/node-1/delivery-test",
+        method="POST",
+        json={"delivery_method_id": "bad"},
+    ):
+        with pytest.raises(InvalidArgumentError):
+            workflow_module.AdvancedChatDraftHumanInputDeliveryTestApi().post(app_id=app_model.id, node_id="node-1")
 
 
 def test_human_input_preview_rejects_non_mapping(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -29,8 +29,8 @@ def _calculate_node_deadline(definition: FormDefinition, created_at, *, start_ti
     raise AssertionError("unknown timeout unit.")
 
 
-def _is_global_timeout(form_model: HumanInputForm, global_timeout_hours: int) -> bool:
-    if global_timeout_hours <= 0:
+def _is_global_timeout(form_model: HumanInputForm, global_timeout_seconds: int) -> bool:
+    if global_timeout_seconds <= 0:
         return False
 
     form_definition = FormDefinition.model_validate_json(form_model.form_definition)
@@ -38,7 +38,7 @@ def _is_global_timeout(form_model: HumanInputForm, global_timeout_hours: int) ->
     created_at = ensure_naive_utc(form_model.created_at)
     expiration_time = ensure_naive_utc(form_model.expiration_time)
     node_deadline = _calculate_node_deadline(form_definition, created_at)
-    global_deadline = created_at + timedelta(hours=global_timeout_hours)
+    global_deadline = created_at + timedelta(seconds=global_timeout_seconds)
     return global_deadline <= node_deadline and expiration_time <= global_deadline
 
 
@@ -74,7 +74,7 @@ def check_and_handle_human_input_timeouts(limit: int = 100) -> None:
     form_repo = HumanInputFormSubmissionRepository(session_factory)
     service = HumanInputService(session_factory, form_repository=form_repo)
     now = naive_utc_now()
-    global_timeout_hours = int(getattr(dify_config, "HITL_GLOBAL_TIMEOUT_HOURS", 0) or 0)
+    global_timeout_seconds = dify_config.HITL_GLOBAL_TIMEOUT_SECONDS
 
     with session_factory() as session:
         stmt = (
@@ -89,7 +89,7 @@ def check_and_handle_human_input_timeouts(limit: int = 100) -> None:
 
     for form_model in expired_forms:
         try:
-            is_global = _is_global_timeout(form_model, global_timeout_hours)
+            is_global = _is_global_timeout(form_model, global_timeout_seconds)
             record = form_repo.mark_timeout(
                 form_id=form_model.id,
                 reason="global_timeout" if is_global else "node_timeout",

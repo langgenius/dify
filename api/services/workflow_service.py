@@ -23,7 +23,7 @@ from core.workflow.graph_events import GraphNodeEventBase, NodeRunFailedEvent, N
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.base.node import Node
-from core.workflow.nodes.human_input.entities import HumanInputNodeData
+from core.workflow.nodes.human_input.entities import DeliveryChannelConfig, HumanInputNodeData
 from core.workflow.nodes.human_input.human_input_node import HumanInputNode
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from core.workflow.nodes.start.entities import StartNodeData
@@ -48,6 +48,12 @@ from services.errors.app import IsDraftWorkflowError, TriggerNodeLimitExceededEr
 from services.workflow.workflow_converter import WorkflowConverter
 
 from .errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
+from .human_input_delivery_test_service import (
+    DeliveryTestContext,
+    DeliveryTestError,
+    DeliveryTestUnsupportedError,
+    HumanInputDeliveryTestService,
+)
 from .workflow_draft_variable_service import DraftVariableSaver, DraftVarLoader, WorkflowDraftVariableService
 
 
@@ -858,6 +864,87 @@ class WorkflowService:
             session.commit()
 
         return outputs
+
+    def test_human_input_delivery(
+        self,
+        *,
+        app_model: App,
+        account: Account,
+        node_id: str,
+        delivery_method_id: str,
+    ) -> None:
+        draft_workflow = self.get_draft_workflow(app_model=app_model)
+        if not draft_workflow:
+            raise ValueError("Workflow not initialized")
+
+        node_config = draft_workflow.get_node_config_by_id(node_id)
+        node_type = Workflow.get_node_type_from_node_config(node_config)
+        if node_type is not NodeType.HUMAN_INPUT:
+            raise ValueError("Node type must be human-input.")
+
+        node_data = HumanInputNodeData.model_validate(node_config.get("data", {}))
+        delivery_method = self._resolve_human_input_delivery_method(
+            node_data=node_data,
+            delivery_method_id=delivery_method_id,
+        )
+        if delivery_method is None:
+            raise ValueError("Delivery method not found.")
+        if not delivery_method.enabled:
+            raise ValueError("Delivery method is disabled.")
+
+        rendered_content = self._render_human_input_content_for_test(
+            app_model=app_model,
+            workflow=draft_workflow,
+            account=account,
+            node_config=node_config,
+        )
+        test_service = HumanInputDeliveryTestService()
+        context = DeliveryTestContext(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            node_id=node_id,
+            node_title=node_data.title,
+            rendered_content=rendered_content,
+        )
+        try:
+            test_service.send_test(context=context, method=delivery_method)
+        except DeliveryTestUnsupportedError as exc:
+            raise ValueError("Delivery method does not support test send.") from exc
+        except DeliveryTestError as exc:
+            raise ValueError(str(exc)) from exc
+
+    @staticmethod
+    def _resolve_human_input_delivery_method(
+        *,
+        node_data: HumanInputNodeData,
+        delivery_method_id: str,
+    ) -> DeliveryChannelConfig | None:
+        for method in node_data.delivery_methods:
+            if str(method.id) == delivery_method_id:
+                return method
+        return None
+
+    def _render_human_input_content_for_test(
+        self,
+        *,
+        app_model: App,
+        workflow: Workflow,
+        account: Account,
+        node_config: Mapping[str, Any],
+    ) -> str:
+        variable_pool = self._build_human_input_variable_pool(
+            app_model=app_model,
+            workflow=workflow,
+            node_config=node_config,
+            manual_inputs={},
+        )
+        node = self._build_human_input_node(
+            workflow=workflow,
+            account=account,
+            node_config=node_config,
+            variable_pool=variable_pool,
+        )
+        return node._render_form_content_before_submission()
 
     def _build_human_input_node(
         self,

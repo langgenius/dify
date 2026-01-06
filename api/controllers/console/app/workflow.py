@@ -14,6 +14,7 @@ from controllers.console import console_ns
 from controllers.console.app.error import ConversationCompletedError, DraftWorkflowNotExist, DraftWorkflowNotSync
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
+from controllers.web.error import InvalidArgumentError
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -532,6 +533,10 @@ class HumanInputSubmitPayload(BaseModel):
     action: str
 
 
+class HumanInputDeliveryTestPayload(BaseModel):
+    delivery_method_id: str
+
+
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/human-input/nodes/<string:node_id>/form")
 class AdvancedChatDraftHumanInputFormApi(Resource):
     @console_ns.doc("get_advanced_chat_draft_human_input_form")
@@ -660,6 +665,80 @@ class WorkflowDraftHumanInputFormApi(Resource):
             action=args.action,
         )
         return jsonable_encoder(result)
+
+
+@console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/human-input/nodes/<string:node_id>/delivery-test")
+class AdvancedChatDraftHumanInputDeliveryTestApi(Resource):
+    @console_ns.doc("test_advanced_chat_draft_human_input_delivery")
+    @console_ns.doc(description="Test human input delivery for advanced chat workflow")
+    @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
+    @console_ns.expect(
+        console_ns.model(
+            "AdvancedChatHumanInputDeliveryTestRequest",
+            {
+                "delivery_method_id": fields.String(required=True, description="Delivery method ID"),
+            },
+        )
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT])
+    @edit_permission_required
+    def post(self, app_model: App, node_id: str):
+        """
+        Test human input delivery
+        """
+        current_user, _ = current_account_with_tenant()
+        args = HumanInputDeliveryTestPayload.model_validate(console_ns.payload or {})
+        workflow_service = WorkflowService()
+        try:
+            workflow_service.test_human_input_delivery(
+                app_model=app_model,
+                account=current_user,
+                node_id=node_id,
+                delivery_method_id=args.delivery_method_id,
+            )
+        except ValueError as exc:
+            raise InvalidArgumentError(str(exc))
+        return jsonable_encoder({})
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflows/draft/human-input/nodes/<string:node_id>/delivery-test")
+class WorkflowDraftHumanInputDeliveryTestApi(Resource):
+    @console_ns.doc("test_workflow_draft_human_input_delivery")
+    @console_ns.doc(description="Test human input delivery for workflow")
+    @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
+    @console_ns.expect(
+        console_ns.model(
+            "WorkflowHumanInputDeliveryTestRequest",
+            {
+                "delivery_method_id": fields.String(required=True, description="Delivery method ID"),
+            },
+        )
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.WORKFLOW])
+    @edit_permission_required
+    def post(self, app_model: App, node_id: str):
+        """
+        Test human input delivery
+        """
+        current_user, _ = current_account_with_tenant()
+        workflow_service = WorkflowService()
+        args = HumanInputDeliveryTestPayload.model_validate(console_ns.payload or {})
+        try:
+            workflow_service.test_human_input_delivery(
+                app_model=app_model,
+                account=current_user,
+                node_id=node_id,
+                delivery_method_id=args.delivery_method_id,
+            )
+        except ValueError as exc:
+            raise InvalidArgumentError(str(exc))
+        return jsonable_encoder({})
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/run")
