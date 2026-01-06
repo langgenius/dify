@@ -3,7 +3,7 @@
 import type { Resource } from 'i18next'
 import type { Locale } from '@/i18n-config'
 import { I18nextProvider } from 'react-i18next'
-import { createI18nextInstance } from '@/i18n-config/i18next-config'
+import { createI18nextInstance } from '@/i18n-config/client'
 
 export function I18nClientProvider({
   locale,

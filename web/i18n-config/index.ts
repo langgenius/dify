@@ -2,7 +2,7 @@ import type { Locale } from '@/i18n-config/language'
 
 import Cookies from 'js-cookie'
 import { LOCALE_COOKIE_NAME } from '@/config'
-import { changeLanguage } from '@/i18n-config/i18next-config'
+import { changeLanguage } from '@/i18n-config/client'
 import { LanguagesSupported } from '@/i18n-config/language'
 
 export const i18n = {
