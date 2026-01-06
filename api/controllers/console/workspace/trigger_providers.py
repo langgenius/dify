@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 
 class TriggerSubscriptionBuilderCreatePayload(BaseModel):
-    credential_type: str | None = None
+    credential_type: str = CredentialType.UNAUTHORIZED
 
 
 class TriggerSubscriptionBuilderVerifyPayload(BaseModel):
@@ -146,7 +146,7 @@ class TriggerSubscriptionBuilderCreateApi(Resource):
         payload = TriggerSubscriptionBuilderCreatePayload.model_validate(console_ns.payload or {})
 
         try:
-            credential_type = CredentialType.of(payload.credential_type or CredentialType.UNAUTHORIZED.value)
+            credential_type = CredentialType.of(payload.credential_type)
             subscription_builder = TriggerSubscriptionBuilderService.create_trigger_subscription_builder(
                 tenant_id=user.current_tenant_id,
                 user_id=user.id,
