@@ -2,8 +2,8 @@ import logging
 from typing import Any
 
 from flask import make_response, redirect, request
-from flask_restx import Resource, reqparse
-from pydantic import BaseModel, Field, model_validator
+from flask_restx import Resource
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden
 
