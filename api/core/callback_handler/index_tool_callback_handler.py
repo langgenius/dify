@@ -39,7 +39,9 @@ class DatasetIndexToolCallbackHandler:
             source="app",
             source_app_id=self._app_id,
             created_by_role=(
-                UserFrom.ACCOUNT if self._invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER} else UserFrom.END_USER
+                UserFrom.ACCOUNT
+                if self._invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER}
+                else UserFrom.END_USER
             ),
             created_by=self._user_id,
         )

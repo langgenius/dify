@@ -177,9 +177,7 @@ class DatasetRetrieval:
         )
 
         all_documents = []
-        user_from = (
-            UserFrom.ACCOUNT if invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER} else UserFrom.END_USER
-        )
+        user_from = UserFrom.ACCOUNT if invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER} else UserFrom.END_USER
         if retrieve_config.retrieve_strategy == DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE:
             all_documents = self.single_retrieve(
                 app_id,
