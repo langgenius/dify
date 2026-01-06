@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
 import Button from '@/app/components/base/button'
 import { formContext, useAppForm } from '@/app/components/base/form'
+import { zodSubmitValidator } from '@/app/components/base/form/utils/zod-submit-validator'
 import {
   fetchInitValidateStatus,
   fetchSetupStatus,
@@ -36,17 +37,7 @@ const ForgotPasswordForm = () => {
   const form = useAppForm({
     defaultValues: { email: '' },
     validators: {
-      onSubmit: ({ value }) => {
-        const result = accountFormSchema.safeParse(value)
-        if (!result.success) {
-          const fieldErrors: Record<string, string> = {}
-          for (const issue of result.error.issues)
-            fieldErrors[issue.path[0] as string] = issue.message
-
-          return fieldErrors
-        }
-        return undefined
-      },
+      onSubmit: zodSubmitValidator(accountFormSchema),
     },
     onSubmit: async ({ value }) => {
       try {
