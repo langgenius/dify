@@ -20,6 +20,7 @@ from core.app.entities.queue_entities import (
     QueueTextChunkEvent,
 )
 from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature
+from core.app.layers.conversation_variable_persist_layer import ConversationVariablePersistenceLayer
 from core.moderation.base import ModerationError
 from core.moderation.input_moderation import InputModeration
 from core.variables.variables import VariableUnion
@@ -40,6 +41,7 @@ from models import Workflow
 from models.enums import UserFrom
 from models.model import App, Conversation, Message, MessageAnnotation
 from models.workflow import ConversationVariable
+from services.conversation_variable_updater import conversation_variable_updater_factory
 
 logger = logging.getLogger(__name__)
 
@@ -200,6 +202,8 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         )
 
         workflow_entry.graph_engine.layer(persistence_layer)
+        conversation_variable_layer = ConversationVariablePersistenceLayer(conversation_variable_updater_factory())
+        workflow_entry.graph_engine.layer(conversation_variable_layer)
         for layer in self._graph_engine_layers:
             workflow_entry.graph_engine.layer(layer)
 

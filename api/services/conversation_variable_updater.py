@@ -5,22 +5,24 @@ from core.variables.variables import Variable
 from extensions.ext_database import db
 from models import ConversationVariable
 
-from .exc import VariableOperatorNodeError
+
+class ConversationVariableNotFoundError(Exception):
+    pass
 
 
 class ConversationVariableUpdaterImpl:
-    def update(self, conversation_id: str, variable: Variable):
+    def update(self, conversation_id: str, variable: Variable) -> None:
         stmt = select(ConversationVariable).where(
             ConversationVariable.id == variable.id, ConversationVariable.conversation_id == conversation_id
         )
         with Session(db.engine) as session:
             row = session.scalar(stmt)
             if not row:
-                raise VariableOperatorNodeError("conversation variable not found in the database")
+                raise ConversationVariableNotFoundError("conversation variable not found in the database")
             row.data = variable.model_dump_json()
             session.commit()
 
-    def flush(self):
+    def flush(self) -> None:
         pass
 
 
