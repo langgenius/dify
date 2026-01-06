@@ -171,7 +171,7 @@
     "@storybook/react": "9.1.13",
     "@tanstack/eslint-plugin-query": "^5.91.2",
     "@tanstack/react-devtools": "^0.9.0",
-    "@tanstack/react-form-devtools": "^0.2.9",
+    "@tanstack/react-form-devtools": "^0.2.11",
     "@tanstack/react-query-devtools": "^5.90.2",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",

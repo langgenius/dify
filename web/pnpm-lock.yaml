@@ -407,8 +407,8 @@ importers:
         specifier: ^0.9.0
         version: 0.9.0(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(csstype@3.2.3)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@1.9.10)
       '@tanstack/react-form-devtools':
-        specifier: ^0.2.9
-        version: 0.2.9(@types/react@19.2.7)(csstype@3.2.3)(react@19.2.3)(solid-js@1.9.10)
+        specifier: ^0.2.11
+        version: 0.2.11(@types/react@19.2.7)(csstype@3.2.3)(preact@10.28.0)(react@19.2.3)(solid-js@1.9.10)
       '@tanstack/react-query-devtools':
         specifier: ^5.90.2
         version: 5.91.1(@tanstack/react-query@5.90.12(react@19.2.3))(react@19.2.3)
@@ -3355,16 +3355,19 @@ packages:
     peerDependencies:
       solid-js: '>=1.9.7'
 
-  '@tanstack/devtools-utils@0.0.9':
-    resolution: {integrity: sha512-tCObM6wbEjuHeGNs3JDhrqBhoMxpJpVuVIg5Kc33EmUI1ZO7KLpC1277Qf6AmSWy3aVOreGwn3y5bJzxmAJNXg==}
+  '@tanstack/devtools-utils@0.2.3':
+    resolution: {integrity: sha512-Ob7wAGTNs7SfOJWZlV+3fi7JGT8ApgeNKoaKV4trRk3TDjThm0w4EwbNDsfZu5NCvefSOY0sequp2qG8g7zG/g==}
     engines: {node: '>=18'}
     peerDependencies:
       '@types/react': ~19.2.7
+      preact: '>=10.0.0'
       react: '>=17.0.0'
       solid-js: '>=1.9.7'
       vue: '>=3.2.0'
     peerDependenciesMeta:
       '@types/react':
+        optional: true
+      preact:
         optional: true
       react:
         optional: true
@@ -3387,11 +3390,11 @@ packages:
   '@tanstack/form-core@1.27.1':
     resolution: {integrity: sha512-hPM+0tUnZ2C2zb2TE1lar1JJ0S0cbnQHlUwFcCnVBpMV3rjtUzkoM766gUpWrlmTGCzNad0GbJ0aTxVsjT6J8g==}
 
-  '@tanstack/form-core@1.27.6':
-    resolution: {integrity: sha512-1C4PUpOcCpivddKxtAeqdeqncxnPKiPpTVDRknDExCba+6zCsAjxgL+p3qYA3hu+EFyUAdW71rU+uqYbEa7qqA==}
+  '@tanstack/form-core@1.27.7':
+    resolution: {integrity: sha512-nvogpyE98fhb0NDw1Bf2YaCH+L7ZIUgEpqO9TkHucDn6zg3ni521boUpv0i8HKIrmmFwDYjWZoCnrgY4HYWTkw==}
 
-  '@tanstack/form-devtools@0.2.9':
-    resolution: {integrity: sha512-KOJiwvlFPsHeuWXvHUXRVdciXG1OPhg1c476MsLre0YLdaw1jeMlDYSlqq7sdEULX+2Sg/lhNpX86QbQuxzd2A==}
+  '@tanstack/form-devtools@0.2.11':
+    resolution: {integrity: sha512-wCQ5uicGfxs34ytZmVhppKELijrx4OU5zRj4PYs0RbBJH3bJYOj5MATsj+rkdDLi1FeVrwLgK2qX4a6c/hWF4g==}
     peerDependencies:
       solid-js: '>=1.9.9'
 
@@ -3418,8 +3421,8 @@ packages:
       react: '>=16.8'
       react-dom: '>=16.8'
 
-  '@tanstack/react-form-devtools@0.2.9':
-    resolution: {integrity: sha512-wg0xrcVY8evIFGVHrnl9s+/9ENzuVbqv5Ru4HyAJjjL4uECtl6KdDJsi0lZdOyoM1UYEQoVdcN8jfBbxkA3q1g==}
+  '@tanstack/react-form-devtools@0.2.11':
+    resolution: {integrity: sha512-Hv6aZqH2dfamFPWwonA20xKj61xU3omilOYEGdihldOddl+cFLY6P7q66Zqs0p9a9mOQvBS+/i0zBcZjRzvupg==}
     peerDependencies:
       react: ^17.0.0 || ^18.0.0 || ^19.0.0
 
@@ -12003,11 +12006,12 @@ snapshots:
     transitivePeerDependencies:
       - csstype
 
-  '@tanstack/devtools-utils@0.0.9(@types/react@19.2.7)(csstype@3.2.3)(react@19.2.3)(solid-js@1.9.10)':
+  '@tanstack/devtools-utils@0.2.3(@types/react@19.2.7)(csstype@3.2.3)(preact@10.28.0)(react@19.2.3)(solid-js@1.9.10)':
     dependencies:
       '@tanstack/devtools-ui': 0.4.4(csstype@3.2.3)(solid-js@1.9.10)
     optionalDependencies:
       '@types/react': 19.2.7
+      preact: 10.28.0
       react: 19.2.3
       solid-js: 1.9.10
     transitivePeerDependencies:
@@ -12043,17 +12047,17 @@ snapshots:
       '@tanstack/pacer': 0.15.4
       '@tanstack/store': 0.7.7
 
-  '@tanstack/form-core@1.27.6':
+  '@tanstack/form-core@1.27.7':
     dependencies:
       '@tanstack/devtools-event-client': 0.4.0
       '@tanstack/pacer-lite': 0.1.1
       '@tanstack/store': 0.7.7
 
-  '@tanstack/form-devtools@0.2.9(@types/react@19.2.7)(csstype@3.2.3)(react@19.2.3)(solid-js@1.9.10)':
+  '@tanstack/form-devtools@0.2.11(@types/react@19.2.7)(csstype@3.2.3)(preact@10.28.0)(react@19.2.3)(solid-js@1.9.10)':
     dependencies:
       '@tanstack/devtools-ui': 0.4.4(csstype@3.2.3)(solid-js@1.9.10)
-      '@tanstack/devtools-utils': 0.0.9(@types/react@19.2.7)(csstype@3.2.3)(react@19.2.3)(solid-js@1.9.10)
-      '@tanstack/form-core': 1.27.6
+      '@tanstack/devtools-utils': 0.2.3(@types/react@19.2.7)(csstype@3.2.3)(preact@10.28.0)(react@19.2.3)(solid-js@1.9.10)
+      '@tanstack/form-core': 1.27.7
       clsx: 2.1.1
       dayjs: 1.11.19
       goober: 2.1.18(csstype@3.2.3)
@@ -12061,6 +12065,7 @@ snapshots:
     transitivePeerDependencies:
       - '@types/react'
       - csstype
+      - preact
       - react
       - vue
 
@@ -12088,14 +12093,15 @@ snapshots:
       - solid-js
       - utf-8-validate
 
-  '@tanstack/react-form-devtools@0.2.9(@types/react@19.2.7)(csstype@3.2.3)(react@19.2.3)(solid-js@1.9.10)':
+  '@tanstack/react-form-devtools@0.2.11(@types/react@19.2.7)(csstype@3.2.3)(preact@10.28.0)(react@19.2.3)(solid-js@1.9.10)':
     dependencies:
-      '@tanstack/devtools-utils': 0.0.9(@types/react@19.2.7)(csstype@3.2.3)(react@19.2.3)(solid-js@1.9.10)
-      '@tanstack/form-devtools': 0.2.9(@types/react@19.2.7)(csstype@3.2.3)(react@19.2.3)(solid-js@1.9.10)
+      '@tanstack/devtools-utils': 0.2.3(@types/react@19.2.7)(csstype@3.2.3)(preact@10.28.0)(react@19.2.3)(solid-js@1.9.10)
+      '@tanstack/form-devtools': 0.2.11(@types/react@19.2.7)(csstype@3.2.3)(preact@10.28.0)(react@19.2.3)(solid-js@1.9.10)
       react: 19.2.3
     transitivePeerDependencies:
       - '@types/react'
       - csstype
+      - preact
       - solid-js
       - vue
 
