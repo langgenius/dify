@@ -69,7 +69,7 @@ def test_graph_run_paused_event_emits_queue_pause_event():
         actions=[],
         node_id="node-human",
         node_title="Human Step",
-        web_app_form_token="tok",
+        form_token="tok",
     )
     event = GraphRunPausedEvent(reasons=[reason], outputs={"foo": "bar"})
     workflow_entry = SimpleNamespace(
@@ -128,7 +128,7 @@ def test_queue_workflow_paused_event_to_stream_responses():
         actions=[UserAction(id="approve", title="Approve")],
         node_id="node-id",
         node_title="Human Step",
-        web_app_form_token="token",
+        form_token="token",
     )
     queue_event = QueueWorkflowPausedEvent(
         reasons=[reason],

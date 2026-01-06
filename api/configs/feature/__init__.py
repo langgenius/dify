@@ -1,3 +1,4 @@
+from datetime import timedelta
 from enum import StrEnum
 from typing import Literal
 
@@ -82,9 +83,9 @@ class AppExecutionConfig(BaseSettings):
         default=0,
     )
 
-    HITL_GLOBAL_TIMEOUT_HOURS: PositiveInt = Field(
-        description="Maximum hours a workflow run can stay paused waiting for human input before global timeout.",
-        default=24 * 7,
+    HITL_GLOBAL_TIMEOUT_SECONDS: PositiveInt = Field(
+        description="Maximum seconds a workflow run can stay paused waiting for human input before global timeout.",
+        default=int(timedelta(days=3).total_seconds()),
         ge=1,
     )
 

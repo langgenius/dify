@@ -14,6 +14,7 @@ from core.workflow.nodes.human_input.enums import (
     FormInputType,
     TimeoutUnit,
 )
+from libs.datetime_utils import naive_utc_now
 
 from .support import (
     FormAlreadySubmittedError,
@@ -53,7 +54,7 @@ class TestFormService:
             "user_actions": [UserAction(id="submit", title="Submit")],
             "timeout": 1,
             "timeout_unit": TimeoutUnit.HOUR,
-            "web_app_form_token": "token-xyz",
+            "form_token": "token-xyz",
         }
 
     def test_create_form(self, form_service, sample_form_data):
@@ -65,7 +66,7 @@ class TestFormService:
         assert form.node_id == "node-789"
         assert form.tenant_id == "tenant-abc"
         assert form.app_id == "app-def"
-        assert form.web_app_form_token == "token-xyz"
+        assert form.form_token == "token-xyz"
         assert form.timeout == 1
         assert form.timeout_unit == TimeoutUnit.HOUR
         assert form.expires_at is not None
@@ -99,7 +100,7 @@ class TestFormService:
         retrieved_form = form_service.get_form_by_token("token-xyz")
 
         assert retrieved_form.form_id == created_form.form_id
-        assert retrieved_form.web_app_form_token == "token-xyz"
+        assert retrieved_form.form_token == "token-xyz"
 
     def test_get_form_by_token_not_found(self, form_service):
         """Test getting non-existent form by token."""
@@ -261,13 +262,13 @@ class TestFormService:
         for i in range(3):
             data = sample_form_data.copy()
             data["form_id"] = f"form-{i}"
-            data["web_app_form_token"] = f"token-{i}"
+            data["form_token"] = f"token-{i}"
             form_service.create_form(**data)
 
         # Manually expire some forms
         for i in range(2):  # Expire first 2 forms
             form = form_service.get_form_by_id(f"form-{i}")
-            form.expires_at = datetime.utcnow() - timedelta(hours=1)
+            form.expires_at = naive_utc_now() - timedelta(hours=1)
             form_service.repository.save(form)
 
         # Clean up expired forms

@@ -13,7 +13,6 @@ from core.workflow.nodes.human_input.entities import FormDefinition
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
 from libs.exception import BaseHTTPException
-from models.account import Account
 from models.human_input import RecipientType
 from models.model import App, AppMode
 from repositories.factory import DifyAPIRepositoryFactory
@@ -66,7 +65,8 @@ class FormSubmittedError(HumanInputError, BaseHTTPException):
     code = 412
 
     def __init__(self, form_id: str):
-        description = self.description.format(form_id=form_id)
+        template = self.description or "This form has already been submitted by another user, form_id={form_id}"
+        description = template.format(form_id=form_id)
         super().__init__(description=description)
 
 
@@ -115,22 +115,6 @@ class HumanInputService:
             return None
         return Form(record)
 
-    def get_form_by_id(self, form_id: str, recipient_type: RecipientType = RecipientType.WEBAPP) -> Form | None:
-        record = self._form_repository.get_by_form_id_and_recipient_type(
-            form_id=form_id,
-            recipient_type=recipient_type,
-        )
-        if record is None:
-            return None
-        return Form(record)
-
-    def get_form_definition_by_id(self, form_id: str) -> Form | None:
-        form = self.get_form_by_id(form_id, recipient_type=RecipientType.WEBAPP)
-        if form is None:
-            return None
-        self._ensure_not_submitted(form)
-        return form
-
     def get_form_definition_by_token(self, recipient_type: RecipientType, form_token: str) -> Form | None:
         form = self.get_form_by_token(form_token)
         if form is None or form.recipient_type != recipient_type:
@@ -138,30 +122,12 @@ class HumanInputService:
         self._ensure_not_submitted(form)
         return form
 
-    def submit_form_by_id(
-        self,
-        form_id: str,
-        selected_action_id: str,
-        form_data: Mapping[str, Any],
-        user: Account | None = None,
-    ):
-        form = self.get_form_by_id(form_id, recipient_type=RecipientType.WEBAPP)
-        if form is None:
-            raise WebAppDeliveryNotEnabledError()
-
-        self._ensure_form_active(form)
-        self._validate_submission(form=form, selected_action_id=selected_action_id, form_data=form_data)
-
-        result = self._form_repository.mark_submitted(
-            form_id=form.id,
-            recipient_id=form.recipient_id,
-            selected_action_id=selected_action_id,
-            form_data=form_data,
-            submission_user_id=user.id if user else None,
-            submission_end_user_id=None,
-        )
-
-        self._enqueue_resume(result.workflow_run_id)
+    def get_form_definition_by_token_for_console(self, form_token: str) -> Form | None:
+        form = self.get_form_by_token(form_token)
+        if form is None or form.recipient_type != RecipientType.CONSOLE:
+            return None
+        self._ensure_not_submitted(form)
+        return form
 
     def submit_form_by_token(
         self,
@@ -170,6 +136,7 @@ class HumanInputService:
         selected_action_id: str,
         form_data: Mapping[str, Any],
         submission_end_user_id: str | None = None,
+        submission_user_id: str | None = None,
     ):
         form = self.get_form_by_token(form_token)
         if form is None or form.recipient_type != recipient_type:
@@ -183,7 +150,7 @@ class HumanInputService:
             recipient_id=form.recipient_id,
             selected_action_id=selected_action_id,
             form_data=form_data,
-            submission_user_id=None,
+            submission_user_id=submission_user_id,
             submission_end_user_id=submission_end_user_id,
         )
 

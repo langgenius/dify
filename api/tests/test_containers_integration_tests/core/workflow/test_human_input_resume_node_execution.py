@@ -4,12 +4,12 @@ from datetime import timedelta
 from unittest.mock import MagicMock
 
 import pytest
-from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.entities import GraphInitParams
 from core.workflow.enums import WorkflowType

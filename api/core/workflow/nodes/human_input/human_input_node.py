@@ -3,6 +3,7 @@ import logging
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.repositories.human_input_reposotiry import HumanInputFormRepositoryImpl
 from core.workflow.entities.pause_reason import HumanInputRequired
 from core.workflow.enums import NodeExecutionType, NodeType, WorkflowNodeExecutionStatus
@@ -153,9 +154,19 @@ class HumanInputNode(Node[HumanInputNodeData]):
 
         return resolved_inputs
 
+    def _should_require_form_token(self) -> bool:
+        if self.invoke_from == InvokeFrom.DEBUGGER:
+            return True
+        if self.invoke_from == InvokeFrom.EXPLORE:
+            return self._node_data.is_webapp_enabled()
+        return False
+
     def _human_input_required_event(self, form_entity: HumanInputFormEntity) -> HumanInputRequired:
         node_data = self._node_data
         resolved_placeholder_values = self._resolve_inputs()
+        form_token = form_entity.web_app_token
+        if self._should_require_form_token() and form_token is None:
+            raise AssertionError("Form token should be available for console execution.")
         return HumanInputRequired(
             form_id=form_entity.id,
             form_content=form_entity.rendered_content,
@@ -163,7 +174,7 @@ class HumanInputNode(Node[HumanInputNodeData]):
             actions=node_data.user_actions,
             node_id=self.id,
             node_title=node_data.title,
-            web_app_form_token=form_entity.web_app_token,
+            form_token=form_token,
             resolved_placeholder_values=resolved_placeholder_values,
         )
 
@@ -188,6 +199,10 @@ class HumanInputNode(Node[HumanInputNodeData]):
                 form_config=self._node_data,
                 rendered_content=self._render_form_content_before_submission(),
                 resolved_placeholder_values=self._resolve_inputs(),
+                console_recipient_required=self._should_require_form_token(),
+                console_creator_account_id=(
+                    self.user_id if self.invoke_from in {InvokeFrom.DEBUGGER, InvokeFrom.EXPLORE} else None
+                ),
             )
             form_entity = self._form_repository.create_form(params)
             # Create human input required event

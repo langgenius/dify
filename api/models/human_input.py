@@ -112,7 +112,14 @@ class RecipientType(StrEnum):
     # EMAIL_MEMBER member means that the
     EMAIL_MEMBER = "email_member"
     EMAIL_EXTERNAL = "email_external"
-    WEBAPP = "webapp"
+    # STANDALONE_WEB_APP is used by the standalone web app.
+    #
+    # It's not used while running workflows / chatflows containing HumanInput
+    # node inside console.
+    STANDALONE_WEB_APP = "standalone_web_app"
+    # CONSOLE is used while running workflows / chatflows containing HumanInput
+    # node inside console. (E.G. running installed apps or debugging workflows / chatflows)
+    CONSOLE = "console"
 
 
 @final
@@ -131,12 +138,27 @@ class EmailExternalRecipientPayload(BaseModel):
 
 
 @final
-class WebAppRecipientPayload(BaseModel):
-    TYPE: Literal[RecipientType.WEBAPP] = RecipientType.WEBAPP
+class StandaloneWebAppRecipientPayload(BaseModel):
+    TYPE: Literal[RecipientType.STANDALONE_WEB_APP] = RecipientType.STANDALONE_WEB_APP
+
+
+@final
+class ConsoleRecipientPayload(BaseModel):
+    TYPE: Literal[RecipientType.CONSOLE] = RecipientType.CONSOLE
+    account_id: str | None = None
+
+
+@final
+class ConsoleDeliveryPayload(BaseModel):
+    type: Literal["console"] = "console"
+    internal: bool = True
 
 
 RecipientPayload = Annotated[
-    EmailMemberRecipientPayload | EmailExternalRecipientPayload | WebAppRecipientPayload,
+    EmailMemberRecipientPayload
+    | EmailExternalRecipientPayload
+    | StandaloneWebAppRecipientPayload
+    | ConsoleRecipientPayload,
     Field(discriminator="TYPE"),
 ]
 

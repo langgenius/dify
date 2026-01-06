@@ -17,7 +17,7 @@ from core.workflow.nodes.human_input.entities import (
     MemberRecipient,
     WebAppDeliveryMethod,
 )
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
+from core.workflow.nodes.human_input.enums import DeliveryMethodType, HumanInputFormStatus
 from core.workflow.repositories.human_input_form_repository import (
     FormCreateParams,
     FormNotFoundError,
@@ -28,13 +28,15 @@ from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models.account import Account, TenantAccountJoin
 from models.human_input import (
+    ConsoleDeliveryPayload,
+    ConsoleRecipientPayload,
     EmailExternalRecipientPayload,
     EmailMemberRecipientPayload,
     HumanInputDelivery,
     HumanInputForm,
     HumanInputFormRecipient,
     RecipientType,
-    WebAppRecipientPayload,
+    StandaloneWebAppRecipientPayload,
 )
 
 
@@ -70,7 +72,15 @@ class _HumanInputFormEntityImpl(HumanInputFormEntity):
         self._form_model = form_model
         self._recipients = [_HumanInputFormRecipientEntityImpl(recipient) for recipient in recipient_models]
         self._web_app_recipient = next(
-            (recipient for recipient in recipient_models if recipient.recipient_type == RecipientType.WEBAPP),
+            (
+                recipient
+                for recipient in recipient_models
+                if recipient.recipient_type == RecipientType.STANDALONE_WEB_APP
+            ),
+            None,
+        )
+        self._console_recipient = next(
+            (recipient for recipient in recipient_models if recipient.recipient_type == RecipientType.CONSOLE),
             None,
         )
         self._submitted_data: Mapping[str, Any] | None = (
@@ -83,6 +93,8 @@ class _HumanInputFormEntityImpl(HumanInputFormEntity):
 
     @property
     def web_app_token(self):
+        if self._console_recipient is not None:
+            return self._console_recipient.access_token
         if self._web_app_recipient is None:
             return None
         return self._web_app_recipient.access_token
@@ -195,8 +207,8 @@ class HumanInputFormRepositoryImpl:
             recipient_model = HumanInputFormRecipient(
                 form_id=form_id,
                 delivery_id=delivery_id,
-                recipient_type=RecipientType.WEBAPP,
-                recipient_payload=WebAppRecipientPayload().model_dump_json(),
+                recipient_type=RecipientType.STANDALONE_WEB_APP,
+                recipient_payload=StandaloneWebAppRecipientPayload().model_dump_json(),
             )
             recipients.append(recipient_model)
         elif isinstance(delivery_method, EmailDeliveryMethod):
@@ -339,6 +351,28 @@ class HumanInputFormRepositoryImpl:
                 session.add(delivery_and_recipients.delivery)
                 session.add_all(delivery_and_recipients.recipients)
                 recipient_models.extend(delivery_and_recipients.recipients)
+            if params.console_recipient_required and not any(
+                recipient.recipient_type == RecipientType.CONSOLE for recipient in recipient_models
+            ):
+                console_delivery_id = str(uuidv7())
+                console_delivery = HumanInputDelivery(
+                    id=console_delivery_id,
+                    form_id=form_id,
+                    delivery_method_type=DeliveryMethodType.WEBAPP,
+                    delivery_config_id=None,
+                    channel_payload=ConsoleDeliveryPayload().model_dump_json(),
+                )
+                console_recipient = HumanInputFormRecipient(
+                    form_id=form_id,
+                    delivery_id=console_delivery_id,
+                    recipient_type=RecipientType.CONSOLE,
+                    recipient_payload=ConsoleRecipientPayload(
+                        account_id=params.console_creator_account_id,
+                    ).model_dump_json(),
+                )
+                session.add(console_delivery)
+                session.add(console_recipient)
+                recipient_models.append(console_recipient)
             session.flush()
 
         return _HumanInputFormEntityImpl(form_model=form_model, recipient_models=recipient_models)

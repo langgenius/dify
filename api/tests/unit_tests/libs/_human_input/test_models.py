@@ -35,7 +35,7 @@ class TestHumanInputForm:
             "user_actions": [UserAction(id="submit", title="Submit")],
             "timeout": 2,
             "timeout_unit": TimeoutUnit.HOUR,
-            "web_app_form_token": "token-xyz",
+            "form_token": "token-xyz",
         }
 
     def test_form_creation(self, sample_form_data):
@@ -47,7 +47,7 @@ class TestHumanInputForm:
         assert form.node_id == "node-789"
         assert form.tenant_id == "tenant-abc"
         assert form.app_id == "app-def"
-        assert form.web_app_form_token == "token-xyz"
+        assert form.form_token == "token-xyz"
         assert form.timeout == 2
         assert form.timeout_unit == TimeoutUnit.HOUR
         assert form.created_at is not None
@@ -148,11 +148,11 @@ class TestHumanInputForm:
 
     def test_form_without_web_app_token(self, sample_form_data):
         """Test form creation without web app token."""
-        sample_form_data["web_app_form_token"] = None
+        sample_form_data["form_token"] = None
 
         form = HumanInputForm(**sample_form_data)
 
-        assert form.web_app_form_token is None
+        assert form.form_token is None
         assert form.form_id == "form-123"  # Other fields should still work
 
     def test_form_with_explicit_timestamps(self):

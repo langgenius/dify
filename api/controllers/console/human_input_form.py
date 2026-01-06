@@ -11,7 +11,6 @@ from flask_restx import Resource, reqparse
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
-from werkzeug.exceptions import Forbidden
 
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
@@ -20,55 +19,32 @@ from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.apps.message_generator import MessageGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
-from core.workflow.nodes.human_input.entities import FormDefinition
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
 from models import App
 from models.enums import CreatorUserRole
-from models.human_input import HumanInputForm as HumanInputFormModel
+from models.human_input import RecipientType
 from models.model import AppMode
 from models.workflow import Workflow, WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
-from services.human_input_service import HumanInputService
+from services.human_input_service import Form, HumanInputService
 
 logger = logging.getLogger(__name__)
-
-
-class _FormDefinitionWithSite(FormDefinition):
-    # the site field may be not necessary for console scenario.
-    site: None
 
 
 def _jsonify_pydantic_model(model: BaseModel) -> Response:
     return Response(model.model_dump_json(), mimetype="application/json")
 
 
-@console_ns.route("/form/human_input/<string:form_id>")
+@console_ns.route("/form/human_input/<string:form_token>")
 class ConsoleHumanInputFormApi(Resource):
     """Console API for getting human input form definition."""
 
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def get(self, form_id: str):
-        """
-        Get human input form definition by form ID.
-
-        GET /console/api/form/human_input/<form_id>
-        """
-        service = HumanInputService(db.engine)
-        form = service.get_form_definition_by_id(
-            form_id=form_id,
-        )
-        if form is None:
-            raise NotFoundError(f"form not found, id={form_id}")
-
+    @staticmethod
+    def _ensure_console_access(form: Form):
         current_user, current_tenant_id = current_account_with_tenant()
-        form_model = db.session.get(HumanInputFormModel, form_id)
-        if form_model is None or form_model.tenant_id != current_tenant_id:
-            raise NotFoundError(f"form not found, id={form_id}")
 
-        workflow_run = db.session.get(WorkflowRun, form_model.workflow_run_id)
+        workflow_run = db.session.get(WorkflowRun, form.workflow_run_id)
         if workflow_run is None or workflow_run.tenant_id != current_tenant_id:
             raise NotFoundError("Workflow run not found")
 
@@ -81,20 +57,32 @@ class ConsoleHumanInputFormApi(Resource):
             workflow = db.session.get(Workflow, workflow_run.workflow_id)
             if workflow is None or workflow.tenant_id != current_tenant_id:
                 raise NotFoundError("Workflow not found")
-            owner_account_id = workflow.created_by
 
-        if owner_account_id != current_user.id:
-            raise Forbidden("You do not have permission to access this human input form.")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, form_token: str):
+        """
+        Get human input form definition by form token.
+
+        GET /console/api/form/human_input/<form_token>
+        """
+        service = HumanInputService(db.engine)
+        form = service.get_form_definition_by_token_for_console(form_token)
+        if form is None:
+            raise NotFoundError(f"form not found, token={form_token}")
+
+        self._ensure_console_access(form)
 
         return _jsonify_pydantic_model(form.get_definition())
 
     @account_initialization_required
     @login_required
-    def post(self, form_id: str):
+    def post(self, form_token: str):
         """
-        Submit human input form by form ID.
+        Submit human input form by form token.
 
-        POST /console/api/form/human_input/<form_id>
+        POST /console/api/form/human_input/<form_token>
 
         Request body:
         {
@@ -110,13 +98,23 @@ class ConsoleHumanInputFormApi(Resource):
         args = parser.parse_args()
         current_user, _ = current_account_with_tenant()
 
-        # Submit the form
         service = HumanInputService(db.engine)
-        service.submit_form_by_id(
-            form_id=form_id,
+        form = service.get_form_by_token(form_token)
+        if form is None:
+            raise NotFoundError(f"form not found, token={form_token}")
+
+        self._ensure_console_access(form)
+
+        recipient_type = form.recipient_type
+        if recipient_type != RecipientType.CONSOLE:
+            raise NotFoundError(f"form not found, token={form_token}")
+
+        service.submit_form_by_token(
+            recipient_type=RecipientType.CONSOLE,
+            form_token=form_token,
             selected_action_id=args["action"],
             form_data=args["inputs"],
-            user=current_user,
+            submission_user_id=current_user.id,
         )
 
         return jsonify({})
@@ -167,8 +165,10 @@ class ConsoleWorkflowEventsApi(Resource):
             payload = response.model_dump(mode="json")
             payload["event"] = response.event.value
 
-            def generate_events() -> Generator[str, None, None]:
+            def _generate_finished_events() -> Generator[str, None, None]:
                 yield f"data: {json.dumps(payload)}\n\n"
+
+            event_generator = _generate_finished_events
 
         else:
             msg_generator = MessageGenerator()
@@ -179,13 +179,15 @@ class ConsoleWorkflowEventsApi(Resource):
             else:
                 raise InvalidArgumentError(f"cannot subscribe to workflow run, workflow_run_id={workflow_run.id}")
 
-            def generate_events():
+            def _generate_stream_events():
                 return generator.convert_to_event_stream(
                     msg_generator.retrieve_events(AppMode(app.mode), workflow_run.id),
                 )
 
+            event_generator = _generate_stream_events
+
         return Response(
-            generate_events(),
+            event_generator(),
             mimetype="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",

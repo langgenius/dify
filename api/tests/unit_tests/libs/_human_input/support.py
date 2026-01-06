@@ -48,7 +48,7 @@ class HumanInputForm:
     user_actions: list[dict[str, Any]]
     timeout: int
     timeout_unit: TimeoutUnit
-    web_app_form_token: str | None = None
+    form_token: str | None = None
     created_at: datetime = field(default_factory=datetime.utcnow)
     expires_at: datetime | None = None
     submitted_at: datetime | None = None
@@ -141,7 +141,7 @@ class InMemoryFormRepository:
 
     def get_by_token(self, token: str) -> Optional[HumanInputForm]:
         for form in self._forms.values():
-            if form.web_app_form_token == token:
+            if form.form_token == token:
                 return form
         return None
 
@@ -169,7 +169,7 @@ class FormService:
         user_actions,
         timeout: int,
         timeout_unit: TimeoutUnit,
-        web_app_form_token: str | None = None,
+        form_token: str | None = None,
     ) -> HumanInputForm:
         form = HumanInputForm(
             form_id=form_id,
@@ -182,7 +182,7 @@ class FormService:
             user_actions=[{"id": action.id, "title": action.title} for action in user_actions],
             timeout=timeout,
             timeout_unit=timeout_unit,
-            web_app_form_token=web_app_form_token,
+            form_token=form_token,
         )
         form.calculate_expiration()
         self.repository.save(form)

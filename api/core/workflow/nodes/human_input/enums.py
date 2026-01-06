@@ -13,7 +13,10 @@ class HumanInputFormStatus(enum.StrEnum):
 class DeliveryMethodType(enum.StrEnum):
     """Delivery method types for human input forms."""
 
+    # WEBAPP controls whether the form is delivered to the web app. It not only controls
+    # the standalone web app, but also controls the installed apps in the console.
     WEBAPP = enum.auto()
+
     EMAIL = enum.auto()
 
 

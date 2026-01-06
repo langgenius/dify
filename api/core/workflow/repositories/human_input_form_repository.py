@@ -36,6 +36,10 @@ class FormCreateParams:
     # For type = CONSTANT, the value is not stored inside `resolved_placeholder_values`
     resolved_placeholder_values: Mapping[str, Any]
 
+    # Force creating a console-only recipient for submission in Console.
+    console_recipient_required: bool = False
+    console_creator_account_id: str | None = None
+
 
 class HumanInputFormEntity(abc.ABC):
     @property
@@ -49,7 +53,8 @@ class HumanInputFormEntity(abc.ABC):
     def web_app_token(self) -> str | None:
         """web_app_token returns the token for submission inside webapp.
 
-        If web app delivery is not enabled, this method would return `None`.
+        For console/debug execution, this may point to the console submission token
+        if the form is configured to require console delivery.
         """
 
         # TODO: what if the users are allowed to add multiple

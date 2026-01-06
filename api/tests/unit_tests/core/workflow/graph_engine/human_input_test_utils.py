@@ -38,6 +38,7 @@ class _InMemoryFormEntity(HumanInputFormEntity):
     form_id: str
     rendered: str
     token: str | None = None
+    console_token_value: str | None = None
     action_id: str | None = None
     data: Mapping[str, Any] | None = None
     is_submitted: bool = False
@@ -50,6 +51,8 @@ class _InMemoryFormEntity(HumanInputFormEntity):
 
     @property
     def web_app_token(self) -> str | None:
+        if self.console_token_value is not None:
+            return self.console_token_value
         return self.token
 
     @property
@@ -94,7 +97,13 @@ class InMemoryHumanInputFormRepository(HumanInputFormRepository):
         self.created_params.append(params)
         self._form_counter += 1
         form_id = f"form-{self._form_counter}"
-        entity = _InMemoryFormEntity(form_id=form_id, rendered=params.rendered_content, token=f"token-{form_id}")
+        console_token = f"console-{form_id}" if params.console_recipient_required else None
+        entity = _InMemoryFormEntity(
+            form_id=form_id,
+            rendered=params.rendered_content,
+            token=f"token-{form_id}",
+            console_token_value=console_token,
+        )
         self.created_forms.append(entity)
         self._forms_by_key[(params.workflow_execution_id, params.node_id)] = entity
         return entity

@@ -350,6 +350,61 @@ class TestHumanInputNodeVariableResolution:
         params = mock_repo.create_form.call_args.args[0]
         assert params.resolved_placeholder_values == expected_values
 
+    def test_debugger_falls_back_to_recipient_token_when_webapp_disabled(self):
+        variable_pool = VariablePool(
+            system_variables=SystemVariable(
+                user_id="user",
+                app_id="app",
+                workflow_id="workflow",
+                workflow_execution_id="exec-2",
+            ),
+            user_inputs={},
+            conversation_variables=[],
+        )
+        runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=0.0)
+        graph_init_params = GraphInitParams(
+            tenant_id="tenant",
+            app_id="app",
+            workflow_id="workflow",
+            graph_config={"nodes": [], "edges": []},
+            user_id="user",
+            user_from="account",
+            invoke_from="debugger",
+            call_depth=0,
+        )
+
+        node_data = HumanInputNodeData(
+            title="Human Input",
+            form_content="Provide your name",
+            inputs=[],
+            user_actions=[UserAction(id="submit", title="Submit")],
+        )
+        config = {"id": "human", "data": node_data.model_dump()}
+
+        mock_repo = MagicMock(spec=HumanInputFormRepository)
+        mock_repo.get_form.return_value = None
+        mock_repo.create_form.return_value = SimpleNamespace(
+            id="form-2",
+            rendered_content="Provide your name",
+            web_app_token="console-token",
+            recipients=[SimpleNamespace(token="recipient-token")],
+            submitted=False,
+        )
+
+        node = HumanInputNode(
+            id=config["id"],
+            config=config,
+            graph_init_params=graph_init_params,
+            graph_runtime_state=runtime_state,
+            form_repository=mock_repo,
+        )
+
+        run_result = node._run()
+        pause_event = next(run_result)
+
+        assert isinstance(pause_event, PauseRequestedEvent)
+        assert pause_event.reason.form_token == "console-token"
+
 
 class TestValidation:
     """Test validation scenarios."""

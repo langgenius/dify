@@ -32,11 +32,11 @@ class HumanInputRequired(BaseModel):
     # Only form inputs with placeholder type `VARIABLE` will be resolved and stored in `resolved_placeholder_values`.
     resolved_placeholder_values: Mapping[str, Any] = Field(default_factory=dict)
 
-    # The `web_app_form_token` is the token used to submit the form via webapp. It corresponds to
+    # The `form_token` is the token used to submit the form via webapp. It corresponds to
     # `HumanInputFormRecipient.access_token`.
     #
     # This field is `None` if webapp delivery is not set.
-    web_app_form_token: str | None = None
+    form_token: str | None = None
 
 
 class SchedulingPause(BaseModel):

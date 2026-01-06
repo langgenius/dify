@@ -18,9 +18,8 @@ from core.workflow.nodes.human_input.enums import (
     HumanInputFormStatus,
     TimeoutUnit,
 )
-from models.account import Account
 from models.human_input import RecipientType
-from services.human_input_service import FormSubmittedError, HumanInputService, InvalidFormDataError
+from services.human_input_service import HumanInputService, InvalidFormDataError
 
 
 @pytest.fixture
@@ -60,7 +59,7 @@ def sample_form_record():
         submission_end_user_id=None,
         completed_by_recipient_id=None,
         recipient_id="recipient-id",
-        recipient_type=RecipientType.WEBAPP,
+        recipient_type=RecipientType.STANDALONE_WEB_APP,
         access_token="token",
     )
 
@@ -146,32 +145,18 @@ def test_enqueue_resume_skips_unsupported_app_mode(mocker, mock_session_factory)
     resume_task.apply_async.assert_not_called()
 
 
-def test_get_form_definition_by_id_uses_repository(sample_form_record, mock_session_factory):
+def test_get_form_definition_by_token_for_console_uses_repository(sample_form_record, mock_session_factory):
     session_factory, _ = mock_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
-    repo.get_by_form_id_and_recipient_type.return_value = sample_form_record
+    console_record = dataclasses.replace(sample_form_record, recipient_type=RecipientType.CONSOLE)
+    repo.get_by_token.return_value = console_record
 
     service = HumanInputService(session_factory, form_repository=repo)
-    form = service.get_form_definition_by_id("form-id")
+    form = service.get_form_definition_by_token_for_console("token")
 
-    repo.get_by_form_id_and_recipient_type.assert_called_once_with(
-        form_id="form-id",
-        recipient_type=RecipientType.WEBAPP,
-    )
+    repo.get_by_token.assert_called_once_with("token")
     assert form is not None
-    assert form.get_definition() == sample_form_record.definition
-
-
-def test_get_form_definition_by_id_raises_on_submitted(sample_form_record, mock_session_factory):
-    session_factory, _ = mock_session_factory
-    submitted_record = dataclasses.replace(sample_form_record, submitted_at=datetime(2024, 1, 1))
-    repo = MagicMock(spec=HumanInputFormSubmissionRepository)
-    repo.get_by_form_id_and_recipient_type.return_value = submitted_record
-
-    service = HumanInputService(session_factory, form_repository=repo)
-
-    with pytest.raises(FormSubmittedError):
-        service.get_form_definition_by_id("form-id")
+    assert form.get_definition() == console_record.definition
 
 
 def test_submit_form_by_token_calls_repository_and_enqueue(sample_form_record, mock_session_factory, mocker):
@@ -183,7 +168,7 @@ def test_submit_form_by_token_calls_repository_and_enqueue(sample_form_record, m
     enqueue_spy = mocker.patch.object(service, "_enqueue_resume")
 
     service.submit_form_by_token(
-        recipient_type=RecipientType.WEBAPP,
+        recipient_type=RecipientType.STANDALONE_WEB_APP,
         form_token="token",
         selected_action_id="submit",
         form_data={"field": "value"},
@@ -201,26 +186,25 @@ def test_submit_form_by_token_calls_repository_and_enqueue(sample_form_record, m
     enqueue_spy.assert_called_once_with(sample_form_record.workflow_run_id)
 
 
-def test_submit_form_by_id_passes_account(sample_form_record, mock_session_factory, mocker):
+def test_submit_form_by_token_passes_submission_user_id(sample_form_record, mock_session_factory, mocker):
     session_factory, _ = mock_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
-    repo.get_by_form_id_and_recipient_type.return_value = sample_form_record
+    repo.get_by_token.return_value = sample_form_record
     repo.mark_submitted.return_value = sample_form_record
     service = HumanInputService(session_factory, form_repository=repo)
     enqueue_spy = mocker.patch.object(service, "_enqueue_resume")
-    account = MagicMock(spec=Account)
-    account.id = "account-id"
 
-    service.submit_form_by_id(
-        form_id="form-id",
+    service.submit_form_by_token(
+        recipient_type=RecipientType.STANDALONE_WEB_APP,
+        form_token="token",
         selected_action_id="submit",
-        form_data={"x": 1},
-        user=account,
+        form_data={"field": "value"},
+        submission_user_id="account-id",
     )
 
-    repo.get_by_form_id_and_recipient_type.assert_called_once()
-    repo.mark_submitted.assert_called_once()
-    assert repo.mark_submitted.call_args.kwargs["submission_user_id"] == "account-id"
+    call_kwargs = repo.mark_submitted.call_args.kwargs
+    assert call_kwargs["submission_user_id"] == "account-id"
+    assert call_kwargs["submission_end_user_id"] is None
     enqueue_spy.assert_called_once_with(sample_form_record.workflow_run_id)
 
 
@@ -232,7 +216,7 @@ def test_submit_form_by_token_invalid_action(sample_form_record, mock_session_fa
 
     with pytest.raises(InvalidFormDataError) as exc_info:
         service.submit_form_by_token(
-            recipient_type=RecipientType.WEBAPP,
+            recipient_type=RecipientType.STANDALONE_WEB_APP,
             form_token="token",
             selected_action_id="invalid",
             form_data={},
@@ -260,7 +244,7 @@ def test_submit_form_by_token_missing_inputs(sample_form_record, mock_session_fa
 
     with pytest.raises(InvalidFormDataError) as exc_info:
         service.submit_form_by_token(
-            recipient_type=RecipientType.WEBAPP,
+            recipient_type=RecipientType.STANDALONE_WEB_APP,
             form_token="token",
             selected_action_id="submit",
             form_data={},

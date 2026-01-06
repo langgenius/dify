@@ -789,7 +789,7 @@ class WorkflowService:
             node_id=node_id,
             node_title=node.title,
             resolved_placeholder_values=resolved_placeholder_values,
-            web_app_form_token=None,
+            form_token=None,
         )
         return human_input_required.model_dump(mode="json")
 

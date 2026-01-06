@@ -290,7 +290,7 @@ class TestHumanInputFormRepositoryImplPublicMethods:
         recipient = _DummyRecipient(
             id="recipient-1",
             form_id=form.id,
-            recipient_type=RecipientType.WEBAPP,
+            recipient_type=RecipientType.STANDALONE_WEB_APP,
             access_token="token-123",
         )
         session = _FakeSession(scalars_results=[form, [recipient]])
@@ -368,7 +368,7 @@ class TestHumanInputFormSubmissionRepository:
         recipient = _DummyRecipient(
             id="recipient-1",
             form_id=form.id,
-            recipient_type=RecipientType.WEBAPP,
+            recipient_type=RecipientType.STANDALONE_WEB_APP,
             access_token="token-123",
             form=form,
         )
@@ -379,7 +379,7 @@ class TestHumanInputFormSubmissionRepository:
 
         assert record is not None
         assert record.form_id == form.id
-        assert record.recipient_type == RecipientType.WEBAPP
+        assert record.recipient_type == RecipientType.STANDALONE_WEB_APP
         assert record.submitted is False
 
     def test_get_by_form_id_and_recipient_type_uses_recipient(self):
@@ -395,14 +395,17 @@ class TestHumanInputFormSubmissionRepository:
         recipient = _DummyRecipient(
             id="recipient-1",
             form_id=form.id,
-            recipient_type=RecipientType.WEBAPP,
+            recipient_type=RecipientType.STANDALONE_WEB_APP,
             access_token="token-123",
             form=form,
         )
         session = _FakeSession(scalars_result=recipient)
         repo = HumanInputFormSubmissionRepository(_session_factory(session))
 
-        record = repo.get_by_form_id_and_recipient_type(form_id=form.id, recipient_type=RecipientType.WEBAPP)
+        record = repo.get_by_form_id_and_recipient_type(
+            form_id=form.id,
+            recipient_type=RecipientType.STANDALONE_WEB_APP,
+        )
 
         assert record is not None
         assert record.recipient_id == recipient.id
@@ -424,7 +427,7 @@ class TestHumanInputFormSubmissionRepository:
         recipient = _DummyRecipient(
             id="recipient-1",
             form_id="form-1",
-            recipient_type=RecipientType.WEBAPP,
+            recipient_type=RecipientType.STANDALONE_WEB_APP,
             access_token="token-123",
         )
         session = _FakeSession(
