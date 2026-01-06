@@ -6,7 +6,7 @@ from typing import cast
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfig
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
-from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.workflow.enums import WorkflowType
 from core.workflow.graph_engine.command_channels.redis_channel import RedisChannel
 from core.workflow.graph_engine.layers.base import GraphEngineLayer
@@ -78,12 +78,12 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
 
         # if only single iteration or single loop run is requested
         if self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
+            invoke_from = InvokeFrom.DEBUGGER
+            user_from = self._resolve_user_from(invoke_from)
             graph, variable_pool, graph_runtime_state = self._prepare_single_node_execution(
                 workflow=self._workflow,
                 single_iteration_run=self.application_generate_entity.single_iteration_run,
                 single_loop_run=self.application_generate_entity.single_loop_run,
-                user_from=user_from,
-                invoke_from=invoke_from,
             )
         else:
             inputs = self.application_generate_entity.inputs

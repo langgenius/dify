@@ -138,8 +138,6 @@ class WorkflowBasedAppRunner:
         workflow: Workflow,
         single_iteration_run: Any | None = None,
         single_loop_run: Any | None = None,
-        user_from: UserFrom = UserFrom.ACCOUNT,
-        invoke_from: InvokeFrom = InvokeFrom.SERVICE_API,
     ) -> tuple[Graph, VariablePool, GraphRuntimeState]:
         """
         Prepare graph, variable pool, and runtime state for single node execution
@@ -173,8 +171,6 @@ class WorkflowBasedAppRunner:
                 node_id=single_iteration_run.node_id,
                 user_inputs=dict(single_iteration_run.inputs),
                 graph_runtime_state=graph_runtime_state,
-                user_from=user_from,
-                invoke_from=invoke_from,
             )
         elif single_loop_run:
             graph, variable_pool = self._get_graph_and_variable_pool_of_single_loop(
@@ -182,8 +178,6 @@ class WorkflowBasedAppRunner:
                 node_id=single_loop_run.node_id,
                 user_inputs=dict(single_loop_run.inputs),
                 graph_runtime_state=graph_runtime_state,
-                user_from=user_from,
-                invoke_from=invoke_from,
             )
         else:
             raise ValueError("Neither single_iteration_run nor single_loop_run is specified")
@@ -200,8 +194,6 @@ class WorkflowBasedAppRunner:
         graph_runtime_state: GraphRuntimeState,
         node_type_filter_key: str,  # 'iteration_id' or 'loop_id'
         node_type_label: str = "node",  # 'iteration' or 'loop' for error messages
-        user_from: UserFrom = UserFrom.ACCOUNT,
-        invoke_from: InvokeFrom = InvokeFrom.SERVICE_API,
     ) -> tuple[Graph, VariablePool]:
         """
         Get graph and variable pool for single node execution (iteration or loop).
@@ -265,8 +257,8 @@ class WorkflowBasedAppRunner:
             workflow_id=workflow.id,
             graph_config=graph_config,
             user_id="",
-            user_from=user_from,
-            invoke_from=invoke_from,
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.DEBUGGER,
             call_depth=0,
         )
 
@@ -328,8 +320,6 @@ class WorkflowBasedAppRunner:
         node_id: str,
         user_inputs: dict[str, Any],
         graph_runtime_state: GraphRuntimeState,
-        user_from: UserFrom = UserFrom.ACCOUNT,
-        invoke_from: InvokeFrom = InvokeFrom.SERVICE_API,
     ) -> tuple[Graph, VariablePool]:
         """
         Get variable pool of single iteration
@@ -341,8 +331,6 @@ class WorkflowBasedAppRunner:
             graph_runtime_state=graph_runtime_state,
             node_type_filter_key="iteration_id",
             node_type_label="iteration",
-            user_from=user_from,
-            invoke_from=invoke_from,
         )
 
     def _get_graph_and_variable_pool_of_single_loop(
@@ -351,8 +339,6 @@ class WorkflowBasedAppRunner:
         node_id: str,
         user_inputs: dict[str, Any],
         graph_runtime_state: GraphRuntimeState,
-        user_from: UserFrom = UserFrom.ACCOUNT,
-        invoke_from: InvokeFrom = InvokeFrom.SERVICE_API,
     ) -> tuple[Graph, VariablePool]:
         """
         Get variable pool of single loop
@@ -364,8 +350,6 @@ class WorkflowBasedAppRunner:
             graph_runtime_state=graph_runtime_state,
             node_type_filter_key="loop_id",
             node_type_label="loop",
-            user_from=user_from,
-            invoke_from=invoke_from,
         )
 
     def _handle_event(self, workflow_entry: WorkflowEntry, event: GraphEngineEvent):

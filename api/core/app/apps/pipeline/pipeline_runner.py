@@ -74,6 +74,10 @@ class PipelineRunner(WorkflowBasedAppRunner):
         app_config = self.application_generate_entity.app_config
         app_config = cast(PipelineConfig, app_config)
         invoke_from = self.application_generate_entity.invoke_from
+
+        if self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
+            invoke_from = InvokeFrom.DEBUGGER
+
         user_from = self._resolve_user_from(invoke_from)
 
         user_id = None
@@ -101,8 +105,6 @@ class PipelineRunner(WorkflowBasedAppRunner):
                 workflow=workflow,
                 single_iteration_run=self.application_generate_entity.single_iteration_run,
                 single_loop_run=self.application_generate_entity.single_loop_run,
-                user_from=user_from,
-                invoke_from=invoke_from,
             )
         else:
             inputs = self.application_generate_entity.inputs
