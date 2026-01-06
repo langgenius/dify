@@ -1,7 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.variables.variables import Variable
+from core.variables.variables import VariableBase
 from models import ConversationVariable
 
 
@@ -13,7 +13,7 @@ class ConversationVariableUpdater:
     def __init__(self, session_maker: sessionmaker[Session]) -> None:
         self._session_maker: sessionmaker[Session] = session_maker
 
-    def update(self, conversation_id: str, variable: Variable) -> None:
+    def update(self, conversation_id: str, variable: VariableBase) -> None:
         stmt = select(ConversationVariable).where(
             ConversationVariable.id == variable.id, ConversationVariable.conversation_id == conversation_id
         )
