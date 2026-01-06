@@ -20,8 +20,6 @@ const DatasetCardFooter = ({ dataset }: DatasetCardFooterProps) => {
 
   const documentCount = useMemo(() => {
     const availableDocCount = dataset.total_available_documents ?? 0
-    if (availableDocCount === dataset.document_count)
-      return `${dataset.document_count}`
     if (availableDocCount < dataset.document_count)
       return `${availableDocCount} / ${dataset.document_count}`
     return `${dataset.document_count}`
@@ -29,8 +27,6 @@ const DatasetCardFooter = ({ dataset }: DatasetCardFooterProps) => {
 
   const documentCountTooltip = useMemo(() => {
     const availableDocCount = dataset.total_available_documents ?? 0
-    if (availableDocCount === dataset.document_count)
-      return t('docAllEnabled', { ns: 'dataset', count: availableDocCount })
     if (availableDocCount < dataset.document_count)
       return t('partialEnabled', { ns: 'dataset', count: dataset.document_count, num: availableDocCount })
     return t('docAllEnabled', { ns: 'dataset', count: availableDocCount })

@@ -107,8 +107,13 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
       }))
     }
     catch (e: unknown) {
-      const res = await (e as Response).json()
-      Toast.notify({ type: 'error', message: res?.message || 'Unknown error' })
+      if (e instanceof Response) {
+        const res = await e.json()
+        Toast.notify({ type: 'error', message: res?.message || 'Unknown error' })
+      }
+      else {
+        Toast.notify({ type: 'error', message: (e as Error)?.message || 'Unknown error' })
+      }
     }
   }, [dataset.id, checkUsage, t])
 
