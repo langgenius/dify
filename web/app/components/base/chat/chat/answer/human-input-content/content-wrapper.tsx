@@ -9,6 +9,7 @@ type ContentWrapperProps = {
   children: React.ReactNode
   showExpandIcon?: boolean
   className?: string
+  expanded?: boolean
 }
 
 const ContentWrapper = ({
@@ -16,8 +17,9 @@ const ContentWrapper = ({
   children,
   showExpandIcon = false,
   className,
+  expanded = false,
 }: ContentWrapperProps) => {
-  const [isExpanded, setIsExpanded] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(expanded)
 
   const handleToggleExpand = useCallback(() => {
     setIsExpanded(!isExpanded)

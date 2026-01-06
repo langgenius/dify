@@ -32,6 +32,7 @@ const HumanInputFilledFormList = ({
             nodeTitle={getHumanInputNodeTitle(formData.node_id)}
             showExpandIcon
             className="bg-components-panel-bg"
+            expanded
           >
             <SubmittedHumanInputContent
               key={formData.node_id}
