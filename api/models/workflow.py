@@ -618,13 +618,6 @@ class WorkflowRun(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     finished_at: Mapped[datetime | None] = mapped_column(DateTime)
     exceptions_count: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"), nullable=True)
-    is_archived: Mapped[bool] = mapped_column(
-        sa.Boolean,
-        nullable=False,
-        default=False,
-        server_default=sa.text("false"),
-        comment=("Indicates whether the current workflow run has been archived. "),
-    )
 
     pause: Mapped[Optional["WorkflowPause"]] = orm.relationship(
         "WorkflowPause",
@@ -1171,6 +1164,50 @@ class WorkflowAppLog(TypeBase):
             "created_by": self.created_by,
             "created_at": self.created_at,
         }
+
+
+class WorkflowArchiveLog(TypeBase):
+    """
+    Workflow archive log.
+
+    Stores essential workflow run snapshot data for archived app logs.
+    """
+
+    __tablename__ = "workflow_archive_logs"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="workflow_archive_log_pkey"),
+        sa.Index("workflow_archive_log_app_idx", "tenant_id", "app_id"),
+        sa.Index("workflow_archive_log_workflow_run_id_idx", "workflow_run_id"),
+        sa.Index("workflow_archive_log_created_at_idx", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+    )
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    workflow_run_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_from: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_by_role: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+    run_version: Mapped[str] = mapped_column(String(255), nullable=False)
+    run_status: Mapped[str] = mapped_column(String(255), nullable=False)
+    run_triggered_from: Mapped[str] = mapped_column(String(255), nullable=False)
+    run_error: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    run_elapsed_time: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("0"))
+    run_total_tokens: Mapped[int] = mapped_column(sa.BigInteger, server_default=sa.text("0"))
+    run_total_steps: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"), nullable=True)
+    run_created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    run_finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    run_exceptions_count: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"), nullable=True)
+
+    trigger_metadata: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    archived_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
 
 class ConversationVariable(TypeBase):
