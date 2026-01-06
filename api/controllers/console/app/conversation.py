@@ -52,9 +52,9 @@ class FormatTypeEnum(StrEnum):
 
 class ChatConversationExportApiModel(BaseModel):
     format: FormatTypeEnum
-    keyword: Optional[str] = Field(None, description="keyword")
-    start: Optional[str] = Field(None, description="start date")
-    end: Optional[str] = Field(None, description="end date")
+    keyword: str | None = Field(None, description="keyword")
+    start: str | None = Field(None, description="start date")
+    end: str | None = Field(None, description="end date")
     annotation_status: str = Field("all", description="annotation status")
     sort_by: str = Field("-created_at", description="sort by")
 
