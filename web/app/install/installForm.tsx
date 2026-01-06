@@ -1,17 +1,15 @@
 'use client'
 import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
 import { useStore } from '@tanstack/react-form'
-
-import { useDebounceFn } from 'ahooks'
 import Link from 'next/link'
 
 import { useRouter } from 'next/navigation'
 import * as React from 'react'
-import { useCallback, useEffect } from 'react'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
 import Button from '@/app/components/base/button'
-import { useAppForm } from '@/app/components/base/form'
+import { formContext, useAppForm } from '@/app/components/base/form'
 import Input from '@/app/components/base/input'
 import { validPassword } from '@/config'
 
@@ -94,26 +92,6 @@ const InstallForm = () => {
   const nameErrors = useStore(form.store, state => state.fieldMeta.name?.errors)
   const passwordErrors = useStore(form.store, state => state.fieldMeta.password?.errors)
 
-  const handleSetting = async () => {
-    if (isSubmitting)
-      return
-    form.handleSubmit()
-  }
-
-  const { run: debouncedHandleKeyDown } = useDebounceFn(
-    (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        e.preventDefault()
-        handleSetting()
-      }
-    },
-    { wait: 200 },
-  )
-
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    debouncedHandleKeyDown(e)
-  }, [debouncedHandleKeyDown])
-
   useEffect(() => {
     fetchSetupStatus().then((res: SetupStatusResponse) => {
       if (res.step === 'finished') {
@@ -141,105 +119,108 @@ const InstallForm = () => {
             </div>
             <div className="mt-8 grow sm:mx-auto sm:w-full sm:max-w-md">
               <div className="relative">
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    form.handleSubmit()
-                  }}
-                  onKeyDown={handleKeyDown}
-                >
-                  <div className="mb-5">
-                    <label htmlFor="email" className="my-2 flex items-center justify-between text-sm font-medium text-text-primary">
-                      {t('email', { ns: 'login' })}
-                    </label>
-                    <div className="mt-1">
-                      <form.AppField name="email">
-                        {field => (
-                          <Input
-                            id="email"
-                            value={field.state.value}
-                            onChange={e => field.handleChange(e.target.value)}
-                            onBlur={field.handleBlur}
-                            placeholder={t('emailPlaceholder', { ns: 'login' }) || ''}
-                          />
+                <formContext.Provider value={form}>
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      if (isSubmitting)
+                        return
+                      form.handleSubmit()
+                    }}
+                  >
+                    <div className="mb-5">
+                      <label htmlFor="email" className="my-2 flex items-center justify-between text-sm font-medium text-text-primary">
+                        {t('email', { ns: 'login' })}
+                      </label>
+                      <div className="mt-1">
+                        <form.AppField name="email">
+                          {field => (
+                            <Input
+                              id="email"
+                              value={field.state.value}
+                              onChange={e => field.handleChange(e.target.value)}
+                              onBlur={field.handleBlur}
+                              placeholder={t('emailPlaceholder', { ns: 'login' }) || ''}
+                            />
+                          )}
+                        </form.AppField>
+                        {emailErrors && emailErrors.length > 0 && (
+                          <span className="text-sm text-red-400">
+                            {t(`${emailErrors[0]}` as 'error.emailInValid', { ns: 'login' })}
+                          </span>
                         )}
-                      </form.AppField>
-                      {emailErrors && emailErrors.length > 0 && (
-                        <span className="text-sm text-red-400">
-                          {t(`${emailErrors[0]}` as 'error.emailInValid', { ns: 'login' })}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="mb-5">
-                    <label htmlFor="name" className="my-2 flex items-center justify-between text-sm font-medium text-text-primary">
-                      {t('name', { ns: 'login' })}
-                    </label>
-                    <div className="relative mt-1">
-                      <form.AppField name="name">
-                        {field => (
-                          <Input
-                            id="name"
-                            value={field.state.value}
-                            onChange={e => field.handleChange(e.target.value)}
-                            onBlur={field.handleBlur}
-                            placeholder={t('namePlaceholder', { ns: 'login' }) || ''}
-                          />
-                        )}
-                      </form.AppField>
-                    </div>
-                    {nameErrors && nameErrors.length > 0 && (
-                      <span className="text-sm text-red-400">
-                        {t(`${nameErrors[0]}` as 'error.nameEmpty', { ns: 'login' })}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="mb-5">
-                    <label htmlFor="password" className="my-2 flex items-center justify-between text-sm font-medium text-text-primary">
-                      {t('password', { ns: 'login' })}
-                    </label>
-                    <div className="relative mt-1">
-                      <form.AppField name="password">
-                        {field => (
-                          <Input
-                            id="password"
-                            type={showPassword ? 'text' : 'password'}
-                            value={field.state.value}
-                            onChange={e => field.handleChange(e.target.value)}
-                            onBlur={field.handleBlur}
-                            placeholder={t('passwordPlaceholder', { ns: 'login' }) || ''}
-                          />
-                        )}
-                      </form.AppField>
-
-                      <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="text-text-quaternary hover:text-text-tertiary focus:text-text-tertiary focus:outline-none"
-                        >
-                          {showPassword ? '👀' : '😝'}
-                        </button>
                       </div>
                     </div>
 
-                    <div className={cn('mt-1 text-xs text-text-secondary', {
-                      'text-red-400 !text-sm': passwordErrors && passwordErrors.length > 0,
-                    })}
-                    >
-                      {t('error.passwordInvalid', { ns: 'login' })}
+                    <div className="mb-5">
+                      <label htmlFor="name" className="my-2 flex items-center justify-between text-sm font-medium text-text-primary">
+                        {t('name', { ns: 'login' })}
+                      </label>
+                      <div className="relative mt-1">
+                        <form.AppField name="name">
+                          {field => (
+                            <Input
+                              id="name"
+                              value={field.state.value}
+                              onChange={e => field.handleChange(e.target.value)}
+                              onBlur={field.handleBlur}
+                              placeholder={t('namePlaceholder', { ns: 'login' }) || ''}
+                            />
+                          )}
+                        </form.AppField>
+                      </div>
+                      {nameErrors && nameErrors.length > 0 && (
+                        <span className="text-sm text-red-400">
+                          {t(`${nameErrors[0]}` as 'error.nameEmpty', { ns: 'login' })}
+                        </span>
+                      )}
                     </div>
-                  </div>
 
-                  <div>
-                    <Button variant="primary" className="w-full" onClick={handleSetting}>
-                      {t('installBtn', { ns: 'login' })}
-                    </Button>
-                  </div>
-                </form>
+                    <div className="mb-5">
+                      <label htmlFor="password" className="my-2 flex items-center justify-between text-sm font-medium text-text-primary">
+                        {t('password', { ns: 'login' })}
+                      </label>
+                      <div className="relative mt-1">
+                        <form.AppField name="password">
+                          {field => (
+                            <Input
+                              id="password"
+                              type={showPassword ? 'text' : 'password'}
+                              value={field.state.value}
+                              onChange={e => field.handleChange(e.target.value)}
+                              onBlur={field.handleBlur}
+                              placeholder={t('passwordPlaceholder', { ns: 'login' }) || ''}
+                            />
+                          )}
+                        </form.AppField>
+
+                        <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="text-text-quaternary hover:text-text-tertiary focus:text-text-tertiary focus:outline-none"
+                          >
+                            {showPassword ? '👀' : '😝'}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className={cn('mt-1 text-xs text-text-secondary', {
+                        'text-red-400 !text-sm': passwordErrors && passwordErrors.length > 0,
+                      })}
+                      >
+                        {t('error.passwordInvalid', { ns: 'login' })}
+                      </div>
+                    </div>
+
+                    <div>
+                      <Button variant="primary" type="submit" disabled={isSubmitting} loading={isSubmitting} className="w-full">
+                        {t('installBtn', { ns: 'login' })}
+                      </Button>
+                    </div>
+                  </form>
+                </formContext.Provider>
                 <div className="mt-2 block w-full text-xs text-text-secondary">
                   {t('license.tip', { ns: 'login' })}
                 &nbsp;

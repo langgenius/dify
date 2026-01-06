@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
 import Button from '@/app/components/base/button'
-import { useAppForm } from '@/app/components/base/form'
+import { formContext, useAppForm } from '@/app/components/base/form'
 import {
   fetchInitValidateStatus,
   fetchSetupStatus,
@@ -101,49 +101,51 @@ const ForgotPasswordForm = () => {
             </div>
             <div className="mt-8 grow sm:mx-auto sm:w-full sm:max-w-md">
               <div className="relative">
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    form.handleSubmit()
-                  }}
-                >
-                  {!isEmailSent && (
-                    <div className="mb-5">
-                      <label
-                        htmlFor="email"
-                        className="my-2 flex items-center justify-between text-sm font-medium text-text-primary"
-                      >
-                        {t('email', { ns: 'login' })}
-                      </label>
-                      <div className="mt-1">
-                        <form.AppField
-                          name="email"
+                <formContext.Provider value={form}>
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      form.handleSubmit()
+                    }}
+                  >
+                    {!isEmailSent && (
+                      <div className="mb-5">
+                        <label
+                          htmlFor="email"
+                          className="my-2 flex items-center justify-between text-sm font-medium text-text-primary"
                         >
-                          {field => (
-                            <Input
-                              id="email"
-                              value={field.state.value}
-                              onChange={e => field.handleChange(e.target.value)}
-                              onBlur={field.handleBlur}
-                              placeholder={t('emailPlaceholder', { ns: 'login' }) || ''}
-                            />
+                          {t('email', { ns: 'login' })}
+                        </label>
+                        <div className="mt-1">
+                          <form.AppField
+                            name="email"
+                          >
+                            {field => (
+                              <Input
+                                id="email"
+                                value={field.state.value}
+                                onChange={e => field.handleChange(e.target.value)}
+                                onBlur={field.handleBlur}
+                                placeholder={t('emailPlaceholder', { ns: 'login' }) || ''}
+                              />
+                            )}
+                          </form.AppField>
+                          {emailErrors && emailErrors.length > 0 && (
+                            <span className="text-sm text-red-400">
+                              {t(`${emailErrors[0]}` as 'error.emailInValid', { ns: 'login' })}
+                            </span>
                           )}
-                        </form.AppField>
-                        {emailErrors && emailErrors.length > 0 && (
-                          <span className="text-sm text-red-400">
-                            {t(`${emailErrors[0]}` as 'error.emailInValid', { ns: 'login' })}
-                          </span>
-                        )}
+                        </div>
                       </div>
+                    )}
+                    <div>
+                      <Button variant="primary" className="w-full" onClick={handleSendResetPasswordClick}>
+                        {isEmailSent ? t('backToSignIn', { ns: 'login' }) : t('sendResetLink', { ns: 'login' })}
+                      </Button>
                     </div>
-                  )}
-                  <div>
-                    <Button variant="primary" className="w-full" onClick={handleSendResetPasswordClick}>
-                      {isEmailSent ? t('backToSignIn', { ns: 'login' }) : t('sendResetLink', { ns: 'login' })}
-                    </Button>
-                  </div>
-                </form>
+                  </form>
+                </formContext.Provider>
               </div>
             </div>
           </>
