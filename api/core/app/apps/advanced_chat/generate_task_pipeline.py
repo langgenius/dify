@@ -526,6 +526,8 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         tool_arguments = tool_call.arguments if tool_call and tool_call.arguments else ""
         tool_files = tool_result.files if tool_result else []
         tool_elapsed_time = tool_result.elapsed_time if tool_result else None
+        tool_icon = tool_payload.icon if tool_payload else None
+        tool_icon_dark = tool_payload.icon_dark if tool_payload else None
         # Record stream event based on chunk type
         chunk_type = event.chunk_type or ChunkType.TEXT
         match chunk_type:
@@ -548,7 +550,8 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                     tool_elapsed_time=tool_elapsed_time,
                 )
                 self._task_state.answer += delta_text
-
+            case _:
+                pass
         yield self._message_cycle_manager.message_to_stream_response(
             answer=delta_text,
             message_id=self._message_id,
@@ -559,6 +562,8 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             tool_arguments=tool_arguments or None,
             tool_files=tool_files,
             tool_elapsed_time=tool_elapsed_time,
+            tool_icon=tool_icon,
+            tool_icon_dark=tool_icon_dark,
         )
 
     def _handle_iteration_start_event(

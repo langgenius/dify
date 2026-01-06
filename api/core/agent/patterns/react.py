@@ -347,7 +347,11 @@ class ReActStrategy(AgentPattern):
         tool_name = action.action_name
         tool_args: dict[str, Any] | str = action.action_input
 
-        # Start tool log
+        # Find tool instance first to get metadata
+        tool_instance = self._find_tool_by_name(tool_name)
+        tool_metadata = self._get_tool_metadata(tool_instance) if tool_instance else {}
+
+        # Start tool log with tool metadata
         tool_log = self._create_log(
             label=f"CALL {tool_name}",
             log_type=AgentLog.LogType.TOOL_CALL,
@@ -357,11 +361,10 @@ class ReActStrategy(AgentPattern):
                 "tool_args": tool_args,
             },
             parent_id=round_log.id,
+            extra_metadata=tool_metadata,
         )
         yield tool_log
 
-        # Find tool instance
-        tool_instance = self._find_tool_by_name(tool_name)
         if not tool_instance:
             # Finish tool log with error
             yield self._finish_log(

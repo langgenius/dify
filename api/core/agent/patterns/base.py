@@ -155,6 +155,35 @@ class AgentPattern(ABC):
             return " ".join(text_parts)
         return ""
 
+    def _get_tool_metadata(self, tool_instance: Tool) -> dict[AgentLog.LogMetadata, Any]:
+        """Get metadata for a tool including provider and icon info."""
+        from core.tools.tool_manager import ToolManager
+
+        metadata: dict[AgentLog.LogMetadata, Any] = {}
+        if tool_instance.entity and tool_instance.entity.identity:
+            identity = tool_instance.entity.identity
+            if identity.provider:
+                metadata[AgentLog.LogMetadata.PROVIDER] = identity.provider
+
+            # Get icon using ToolManager for proper URL generation
+            tenant_id = self.context.tenant_id
+            if tenant_id and identity.provider:
+                try:
+                    provider_type = tool_instance.tool_provider_type()
+                    icon = ToolManager.get_tool_icon(tenant_id, provider_type, identity.provider)
+                    if isinstance(icon, str):
+                        metadata[AgentLog.LogMetadata.ICON] = icon
+                    elif isinstance(icon, dict):
+                        # Handle icon dict with background/content or light/dark variants
+                        metadata[AgentLog.LogMetadata.ICON] = icon
+                except Exception:
+                    # Fallback to identity.icon if ToolManager fails
+                    if identity.icon:
+                        metadata[AgentLog.LogMetadata.ICON] = identity.icon
+            elif identity.icon:
+                metadata[AgentLog.LogMetadata.ICON] = identity.icon
+        return metadata
+
     def _create_log(
         self,
         label: str,
@@ -165,7 +194,7 @@ class AgentPattern(ABC):
         extra_metadata: dict[AgentLog.LogMetadata, Any] | None = None,
     ) -> AgentLog:
         """Create a new AgentLog with standard metadata."""
-        metadata = {
+        metadata: dict[AgentLog.LogMetadata, Any] = {
             AgentLog.LogMetadata.STARTED_AT: time.perf_counter(),
         }
         if extra_metadata:

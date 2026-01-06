@@ -132,6 +132,10 @@ class MessageStreamResponse(StreamResponse):
     """error message if tool failed"""
     tool_elapsed_time: float | None = None
     """elapsed time spent executing the tool"""
+    tool_icon: str | dict | None = None
+    """icon of the tool"""
+    tool_icon_dark: str | dict | None = None
+    """dark theme icon of the tool"""
 
     def model_dump(self, *args, **kwargs) -> dict[str, object]:
         kwargs.setdefault("exclude_none", True)

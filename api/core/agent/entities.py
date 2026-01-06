@@ -160,6 +160,8 @@ class AgentLog(BaseModel):
         PROVIDER = "provider"
         CURRENCY = "currency"
         LLM_USAGE = "llm_usage"
+        ICON = "icon"
+        ICON_DARK = "icon_dark"
 
     class LogStatus(StrEnum):
         START = "start"

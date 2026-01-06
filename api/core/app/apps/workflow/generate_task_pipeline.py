@@ -492,6 +492,8 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         tool_arguments = tool_call.arguments if tool_call else None
         tool_elapsed_time = tool_result.elapsed_time if tool_result else None
         tool_files = tool_result.files if tool_result else []
+        tool_icon = tool_payload.icon if tool_payload else None
+        tool_icon_dark = tool_payload.icon_dark if tool_payload else None
 
         # only publish tts message at text chunk streaming
         if tts_publisher and queue_message:
@@ -506,6 +508,8 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             tool_arguments=tool_arguments,
             tool_files=tool_files,
             tool_elapsed_time=tool_elapsed_time,
+            tool_icon=tool_icon,
+            tool_icon_dark=tool_icon_dark,
         )
 
     def _handle_agent_log_event(self, event: QueueAgentLogEvent, **kwargs) -> Generator[StreamResponse, None, None]:
@@ -679,6 +683,8 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         tool_files: list[str] | None = None,
         tool_error: str | None = None,
         tool_elapsed_time: float | None = None,
+        tool_icon: str | dict | None = None,
+        tool_icon_dark: str | dict | None = None,
     ) -> TextChunkStreamResponse:
         """
         Handle completed event.
@@ -701,6 +707,8 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                     "tool_call_id": tool_call_id,
                     "tool_name": tool_name,
                     "tool_arguments": tool_arguments,
+                    "tool_icon": tool_icon,
+                    "tool_icon_dark": tool_icon_dark,
                 }
             )
         elif response_chunk_type == ResponseChunkType.TOOL_RESULT:
@@ -712,6 +720,8 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                     "tool_files": tool_files,
                     "tool_error": tool_error,
                     "tool_elapsed_time": tool_elapsed_time,
+                    "tool_icon": tool_icon,
+                    "tool_icon_dark": tool_icon_dark,
                 }
             )
 

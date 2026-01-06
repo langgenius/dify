@@ -10,7 +10,7 @@ from core.model_runtime.entities import ImagePromptMessageContent, LLMMode
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
 from core.tools.entities.tool_entities import ToolProviderType
-from core.workflow.entities import ToolCallResult
+from core.workflow.entities import ToolCall, ToolCallResult
 from core.workflow.node_events import AgentLogEvent
 from core.workflow.nodes.base import BaseNodeData
 from core.workflow.nodes.base.entities import VariableSelector
@@ -89,24 +89,44 @@ class ToolMetadata(BaseModel):
     extra: dict[str, Any] = Field(default_factory=dict, description="Extra tool configuration like custom description")
 
 
+class ModelTraceSegment(BaseModel):
+    """Model invocation trace segment with token usage and output."""
+
+    text: str | None = Field(None, description="Model output text content")
+    reasoning: str | None = Field(None, description="Reasoning/thought content from model")
+    tool_calls: list[ToolCall] = Field(default_factory=list, description="Tool calls made by the model")
+
+
+class ToolTraceSegment(BaseModel):
+    """Tool invocation trace segment with call details and result."""
+
+    id: str | None = Field(default=None, description="Unique identifier for this tool call")
+    name: str | None = Field(default=None, description="Name of the tool being called")
+    arguments: str | None = Field(default=None, description="Accumulated tool arguments JSON")
+    output: str | None = Field(default=None, description="Tool call result")
+
+
 class LLMTraceSegment(BaseModel):
     """
     Streaming trace segment for LLM tool-enabled runs.
 
-    Order is preserved for replay. Tool calls are single entries containing both
-    arguments and results.
+    Represents alternating model and tool invocations in sequence:
+    model -> tool -> model -> tool -> ...
+
+    Each segment records its execution duration.
     """
 
-    type: Literal["thought", "content", "tool_call"]
+    type: Literal["model", "tool"]
+    duration: float = Field(..., description="Execution duration in seconds")
+    usage: LLMUsage | None = Field(default=None, description="Token usage statistics for this model call")
+    output: ModelTraceSegment | ToolTraceSegment = Field(..., description="Output of the segment")
 
-    # Common optional fields
-    text: str | None = Field(None, description="Text chunk for thought/content")
-
-    # Tool call fields (combined start + result)
-    tool_call: ToolCallResult | None = Field(
-        default=None,
-        description="Combined tool call arguments and result for this segment",
-    )
+    # Common metadata for both model and tool segments
+    provider: str | None = Field(default=None, description="Model or tool provider identifier")
+    icon: str | None = Field(default=None, description="Icon for the provider")
+    icon_dark: str | None = Field(default=None, description="Dark theme icon for the provider")
+    error: str | None = Field(default=None, description="Error message if segment failed")
+    status: Literal["success", "error"] | None = Field(default=None, description="Tool execution status")
 
 
 class LLMGenerationData(BaseModel):
@@ -233,6 +253,7 @@ class StreamBuffers(BaseModel):
     think_parser: ThinkTagStreamParser = Field(default_factory=ThinkTagStreamParser)
     pending_thought: list[str] = Field(default_factory=list)
     pending_content: list[str] = Field(default_factory=list)
+    pending_tool_calls: list[ToolCall] = Field(default_factory=list)
     current_turn_reasoning: list[str] = Field(default_factory=list)
     reasoning_per_turn: list[str] = Field(default_factory=list)
 
@@ -241,6 +262,8 @@ class TraceState(BaseModel):
     trace_segments: list[LLMTraceSegment] = Field(default_factory=list)
     tool_trace_map: dict[str, LLMTraceSegment] = Field(default_factory=dict)
     tool_call_index_map: dict[str, int] = Field(default_factory=dict)
+    model_segment_start_time: float | None = Field(default=None, description="Start time for current model segment")
+    pending_usage: LLMUsage | None = Field(default=None, description="Pending usage for current model segment")
 
 
 class AggregatedResult(BaseModel):

@@ -235,6 +235,9 @@ class FunctionCallStrategy(AgentPattern):
         if not tool_instance:
             raise ValueError(f"Tool {tool_name} not found")
 
+        # Get tool metadata (provider, icon, etc.)
+        tool_metadata = self._get_tool_metadata(tool_instance)
+
         # Create tool call log
         tool_call_log = self._create_log(
             label=f"CALL {tool_name}",
@@ -246,6 +249,7 @@ class FunctionCallStrategy(AgentPattern):
                 "tool_args": tool_args,
             },
             parent_id=round_log.id,
+            extra_metadata=tool_metadata,
         )
         yield tool_call_log
 
