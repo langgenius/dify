@@ -49,6 +49,12 @@ class TriggerSubscriptionBuilderUpdatePayload(BaseModel):
     properties: dict[str, Any] | None = None
     credentials: dict[str, Any] | None = None
 
+    @model_validator(mode="after")
+    def check_at_least_one_field(self):
+        if all(v is None for v in self.model_dump().values()):
+            raise ValueError("At least one of name, credentials, parameters, or properties must be provided")
+        return self
+
 
 class TriggerOAuthClientPayload(BaseModel):
     client_params: dict[str, Any] | None = None
