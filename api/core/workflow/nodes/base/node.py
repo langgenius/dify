@@ -264,6 +264,10 @@ class Node(Generic[NodeDataT]):
         """
         raise NotImplementedError
 
+    def _should_stop(self) -> bool:
+        """Check if execution should be stopped."""
+        return self.graph_runtime_state.stop_event.is_set()
+
     def run(self) -> Generator[GraphNodeEventBase, None, None]:
         execution_id = self.ensure_execution_id()
         self._start_at = naive_utc_now()
@@ -332,6 +336,21 @@ class Node(Generic[NodeDataT]):
                     yield event
                 else:
                     yield event
+
+                if self._should_stop():
+                    error_message = "Execution cancelled"
+                    yield NodeRunFailedEvent(
+                        id=self.execution_id,
+                        node_id=self._node_id,
+                        node_type=self.node_type,
+                        start_at=self._start_at,
+                        node_run_result=NodeRunResult(
+                            status=WorkflowNodeExecutionStatus.FAILED,
+                            error=error_message,
+                        ),
+                        error=error_message,
+                    )
+                    return
         except Exception as e:
             logger.exception("Node %s failed to run", self._node_id)
             result = NodeRunResult(
