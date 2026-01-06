@@ -1,4 +1,5 @@
-from pydantic import TypeAdapter
+from flask import request
+from pydantic import BaseModel, Field, TypeAdapter
 from werkzeug.exceptions import NotFound
 
 from controllers.common.schema import register_schema_models
@@ -7,6 +8,7 @@ from controllers.web.error import NotCompletionAppError
 from controllers.web.wraps import WebApiResource
 from fields.conversation_fields import ResultResponse
 from fields.message_fields import SavedMessageInfiniteScrollPagination, SavedMessageItem
+from libs.helper import UUIDStrOrEmpty
 from services.errors.message import MessageNotExistsError
 from services.saved_message_service import SavedMessageService
 
@@ -55,7 +57,7 @@ class SavedMessageListApi(WebApiResource):
         raw_args = request.args.to_dict()
         query = SavedMessageListQuery.model_validate(raw_args)
 
-        pagination = SavedMessageService.pagination_by_last_id(app_model, end_user, args["last_id"], args["limit"])
+        pagination = SavedMessageService.pagination_by_last_id(app_model, end_user, query.last_id, query.limit)
         adapter = TypeAdapter(SavedMessageItem)
         items = [adapter.validate_python(message, from_attributes=True) for message in pagination.data]
         return SavedMessageInfiniteScrollPagination(
