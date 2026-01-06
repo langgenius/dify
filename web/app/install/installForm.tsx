@@ -97,7 +97,7 @@ const InstallForm = () => {
       }
       setLoading(false)
     })
-  }, [router])
+  }, [])
 
   return (
     loading
