@@ -8,6 +8,10 @@
     "#i18n/useTranslation": {
       "react-server": "./i18n-config/useTranslation.server.ts",
       "default": "./i18n-config/useTranslation.client.ts"
+    },
+    "#i18n/useLocale": {
+      "react-server": "./i18n-config/useLocale.server.ts",
+      "default": "./i18n-config/useLocale.client.ts"
     }
   },
   "engines": {
