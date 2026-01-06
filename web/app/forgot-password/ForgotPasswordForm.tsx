@@ -1,15 +1,15 @@
 'use client'
 import type { InitValidateStatusResponse } from '@/models/common'
-import { zodResolver } from '@hookform/resolvers/zod'
+import { useStore } from '@tanstack/react-form'
 
 import { useRouter } from 'next/navigation'
 
 import * as React from 'react'
 import { useEffect, useState } from 'react'
-import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
 import Button from '@/app/components/base/button'
+import { useAppForm } from '@/app/components/base/form'
 import {
   fetchInitValidateStatus,
   fetchSetupStatus,
@@ -27,44 +27,51 @@ const accountFormSchema = z.object({
     .email('error.emailInValid'),
 })
 
-type AccountFormValues = z.infer<typeof accountFormSchema>
-
 const ForgotPasswordForm = () => {
   const { t } = useTranslation()
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [isEmailSent, setIsEmailSent] = useState(false)
-  const { register, trigger, getValues, formState: { errors } } = useForm<AccountFormValues>({
-    resolver: zodResolver(accountFormSchema),
+
+  const form = useAppForm({
     defaultValues: { email: '' },
+    validators: {
+      onSubmit: ({ value }) => {
+        const result = accountFormSchema.safeParse(value)
+        if (!result.success) {
+          const fieldErrors: Record<string, string> = {}
+          for (const issue of result.error.issues)
+            fieldErrors[issue.path[0] as string] = issue.message
+
+          return fieldErrors
+        }
+        return undefined
+      },
+    },
+    onSubmit: async ({ value }) => {
+      try {
+        const res = await sendForgotPasswordEmail({
+          url: '/forgot-password',
+          body: { email: value.email },
+        })
+        if (res.result === 'success')
+          setIsEmailSent(true)
+        else console.error('Email verification failed')
+      }
+      catch (error) {
+        console.error('Request failed:', error)
+      }
+    },
   })
 
-  const handleSendResetPasswordEmail = async (email: string) => {
-    try {
-      const res = await sendForgotPasswordEmail({
-        url: '/forgot-password',
-        body: { email },
-      })
-      if (res.result === 'success')
-        setIsEmailSent(true)
-
-      else console.error('Email verification failed')
-    }
-    catch (error) {
-      console.error('Request failed:', error)
-    }
-  }
+  const emailErrors = useStore(form.store, state => state.fieldMeta.email?.errors)
 
   const handleSendResetPasswordClick = async () => {
     if (isEmailSent) {
       router.push('/signin')
     }
     else {
-      const isValid = await trigger('email')
-      if (isValid) {
-        const email = getValues('email')
-        await handleSendResetPasswordEmail(email)
-      }
+      form.handleSubmit()
     }
   }
 
@@ -94,7 +101,13 @@ const ForgotPasswordForm = () => {
             </div>
             <div className="mt-8 grow sm:mx-auto sm:w-full sm:max-w-md">
               <div className="relative">
-                <form>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    form.handleSubmit()
+                  }}
+                >
                   {!isEmailSent && (
                     <div className="mb-5">
                       <label
@@ -104,11 +117,24 @@ const ForgotPasswordForm = () => {
                         {t('email', { ns: 'login' })}
                       </label>
                       <div className="mt-1">
-                        <Input
-                          {...register('email')}
-                          placeholder={t('emailPlaceholder', { ns: 'login' }) || ''}
-                        />
-                        {errors.email && <span className="text-sm text-red-400">{t(`${errors.email?.message}` as 'error.emailInValid', { ns: 'login' })}</span>}
+                        <form.AppField
+                          name="email"
+                        >
+                          {field => (
+                            <Input
+                              id="email"
+                              value={field.state.value}
+                              onChange={e => field.handleChange(e.target.value)}
+                              onBlur={field.handleBlur}
+                              placeholder={t('emailPlaceholder', { ns: 'login' }) || ''}
+                            />
+                          )}
+                        </form.AppField>
+                        {emailErrors && emailErrors.length > 0 && (
+                          <span className="text-sm text-red-400">
+                            {t(`${emailErrors[0]}` as 'error.emailInValid', { ns: 'login' })}
+                          </span>
+                        )}
                       </div>
                     </div>
                   )}
