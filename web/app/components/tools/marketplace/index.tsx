@@ -104,7 +104,6 @@ const Marketplace = ({
               marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap || {}}
               plugins={plugins}
               showInstallButton
-              locale={locale}
             />
           )
         }
