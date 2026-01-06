@@ -177,6 +177,8 @@
   "feature.tools.tips": "工具提供了一個標準的 API 呼叫方式，將使用者輸入或變數作為 API 的請求引數，用於查詢外部資料作為上下文。",
   "feature.tools.title": "工具",
   "feature.tools.toolsInUse": "{{count}} 工具使用中",
+  "feature.videoUpload.description": "啟用視訊後，模型可以處理視訊檔案進行轉錄和分析。",
+  "feature.videoUpload.title": "視訊",
   "formattingChangedText": "修改編排將重置除錯區域，確定嗎？",
   "formattingChangedTitle": "編排已改變",
   "generate.apply": "應用",

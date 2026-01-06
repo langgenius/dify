@@ -177,6 +177,8 @@
   "feature.tools.tips": "Tools provide a standard API call method, taking user input or variables as request parameters for querying external data as context.",
   "feature.tools.title": "Tools",
   "feature.tools.toolsInUse": "{{count}} tools in use",
+  "feature.videoUpload.description": "Enable Video will allow the model to process video files for transcription and analysis.",
+  "feature.videoUpload.title": "Video",
   "formattingChangedText": "Modifying the formatting will reset the debug area, are you sure?",
   "formattingChangedTitle": "Formatting changed",
   "generate.apply": "Apply",

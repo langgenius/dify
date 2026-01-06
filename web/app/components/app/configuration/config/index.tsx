@@ -15,6 +15,7 @@ import { useFormattingChangedDispatcher } from '../debug/hooks'
 import AgentTools from './agent/agent-tools'
 import ConfigAudio from './config-audio'
 import ConfigDocument from './config-document'
+import ConfigVideo from './config-video'
 
 const Config: FC = () => {
   const {
@@ -86,6 +87,8 @@ const Config: FC = () => {
         <ConfigDocument />
 
         <ConfigAudio />
+
+        <ConfigVideo />
 
         {/* Chat History */}
         {isAdvancedMode && isChatApp && modelModeType === ModelModeType.completion && (

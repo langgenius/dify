@@ -177,6 +177,8 @@
   "feature.tools.tips": "Les outils fournissent une méthode d'appel API standard, prenant en compte les entrées de l'utilisateur ou des variables comme paramètres de requête pour interroger des données externes en tant que contexte.",
   "feature.tools.title": "Outils",
   "feature.tools.toolsInUse": "{{count}} outils en usage",
+  "feature.videoUpload.description": "Enable Video will allow the model to process video files for transcription and analysis.",
+  "feature.videoUpload.title": "Video",
   "formattingChangedText": "La modification du formatage réinitialisera la zone de débogage, êtes-vous sûr ?",
   "formattingChangedTitle": "Formatage modifié",
   "generate.apply": "Appliquer",

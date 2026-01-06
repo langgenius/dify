@@ -503,6 +503,7 @@ const Configuration: FC = () => {
   const isShowVisionConfig = !!currModel?.features?.includes(ModelFeatureEnum.vision)
   const isShowDocumentConfig = !!currModel?.features?.includes(ModelFeatureEnum.document)
   const isShowAudioConfig = !!currModel?.features?.includes(ModelFeatureEnum.audio)
+  const isShowVideoConfig = !!currModel?.features?.includes(ModelFeatureEnum.video)
   const isAllowVideoUpload = !!currModel?.features?.includes(ModelFeatureEnum.video)
   // *** web app features ***
   const featuresData: FeaturesData = useMemo(() => {
@@ -950,6 +951,7 @@ const Configuration: FC = () => {
     visionConfig,
     setVisionConfig: handleSetVisionConfig,
     isAllowVideoUpload,
+    isShowVideoConfig,
     isShowDocumentConfig,
     isShowAudioConfig,
     rerankSettingModalOpen,
