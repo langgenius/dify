@@ -85,6 +85,11 @@ export const useWorkflowInit = () => {
             const nodesData = isAdvancedChat ? nodesTemplate : []
             const edgesData = isAdvancedChat ? edgesTemplate : []
 
+            const runtimeStorageKey = `workflow:sandbox-runtime:${appDetail.id}`
+            const enableSandboxRuntime = localStorage.getItem(runtimeStorageKey) === '1'
+            if (enableSandboxRuntime)
+              localStorage.removeItem(runtimeStorageKey)
+
             syncWorkflowDraft({
               url: `/apps/${appDetail.id}/workflows/draft`,
               params: {
@@ -94,6 +99,7 @@ export const useWorkflowInit = () => {
                 },
                 features: {
                   retriever_resource: { enabled: true },
+                  runtime: { enabled: enableSandboxRuntime },
                 },
                 environment_variables: [],
                 conversation_variables: [],

@@ -121,6 +121,7 @@ const UpdateDSLModal = ({
       text2speech: features.text_to_speech || { enabled: false },
       citation: features.retriever_resource || { enabled: false },
       moderation: features.sensitive_word_avoidance || { enabled: false },
+      runtime: features.runtime || { enabled: false },
     }
 
     eventEmitter?.emit({

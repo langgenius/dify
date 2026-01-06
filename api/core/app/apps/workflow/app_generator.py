@@ -23,6 +23,7 @@ from core.app.apps.workflow.generate_response_converter import WorkflowAppGenera
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.task_entities import WorkflowAppBlockingResponse, WorkflowAppStreamResponse
+from core.app.layers.sandbox_layer import SandboxLayer
 from core.helper.trace_id_helper import extract_external_trace_id_from_args
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
@@ -486,6 +487,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 )
                 if workflow is None:
                     raise ValueError("Workflow not found")
+
+                runtime = workflow.features_dict.get("runtime")
+                if isinstance(runtime, dict) and runtime.get("enabled"):
+                    graph_engine_layers = (*graph_engine_layers, SandboxLayer())
 
                 # Determine system_user_id based on invocation source
                 is_external_api_call = application_generate_entity.invoke_from in {

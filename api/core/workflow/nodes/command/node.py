@@ -126,10 +126,6 @@ class CommandNode(Node[CommandNodeData]):
                 connection_handle, command
             )
 
-            # This node currently does not support interactive stdin.
-            with contextlib.suppress(Exception):
-                stdin_transport.close()
-
             is_combined_stream = stdout_transport is stderr_transport
 
             stdout_thread = threading.Thread(

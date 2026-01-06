@@ -1,5 +1,6 @@
 import time
 from io import BytesIO
+from typing import Any
 
 from core.virtual_environment.__base.entities import Arch, CommandStatus, ConnectionHandle, FileState, Metadata
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
@@ -139,12 +140,16 @@ def test_command_node_nonzero_exit_code_returns_failed_result():
     assert "exited with code" in result.error
 
 
-def test_command_node_timeout_returns_failed_result_and_closes_transports():
+def test_command_node_timeout_returns_failed_result_and_closes_transports(monkeypatch: Any):
+    from core.workflow.nodes.command import node as command_node_module
+
+    monkeypatch.setattr(command_node_module, "COMMAND_NODE_TIMEOUT_SECONDS", 1)
+
     node = _make_node(command="sleep 10")
     sandbox = FakeSandbox(
         stdout=b"",
         stderr=b"",
-        statuses=[CommandStatus(status=CommandStatus.Status.RUNNING, exit_code=None)] * 100,
+        statuses=[CommandStatus(status=CommandStatus.Status.RUNNING, exit_code=None)] * 1000,
         close_streams=False,
     )
     node.sandbox = sandbox

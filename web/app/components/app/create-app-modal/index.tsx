@@ -39,6 +39,10 @@ type CreateAppProps = {
   defaultAppMode?: AppModeEnum
 }
 
+type RuntimeMode = 'classical' | 'new'
+
+const WORKFLOW_RUNTIME_STORAGE_KEY_PREFIX = 'workflow:sandbox-runtime:'
+
 function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }: CreateAppProps) {
   const { t } = useTranslation()
   const { push } = useRouter()
@@ -50,6 +54,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [isAppTypeExpanded, setIsAppTypeExpanded] = useState(false)
+  const [runtimeMode, setRuntimeMode] = useState<RuntimeMode>('classical')
 
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
@@ -60,6 +65,9 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
   useEffect(() => {
     if (appMode === AppModeEnum.CHAT || appMode === AppModeEnum.AGENT_CHAT || appMode === AppModeEnum.COMPLETION)
       setIsAppTypeExpanded(true)
+
+    if (appMode !== AppModeEnum.WORKFLOW && appMode !== AppModeEnum.ADVANCED_CHAT)
+      setRuntimeMode('classical')
   }, [appMode])
 
   const onCreate = useCallback(async () => {
@@ -84,6 +92,9 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
         mode: appMode,
       })
 
+      if (runtimeMode === 'new' && (appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT))
+        localStorage.setItem(`${WORKFLOW_RUNTIME_STORAGE_KEY_PREFIX}${app.id}`, '1')
+
       // Track app creation success
       trackEvent('create_app', {
         app_mode: appMode,
@@ -103,7 +114,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
       })
     }
     isCreatingRef.current = false
-  }, [name, notify, t, appMode, appIcon, description, onSuccess, onClose, push, isCurrentWorkspaceEditor])
+  }, [name, notify, t, appMode, appIcon, description, onSuccess, onClose, push, isCurrentWorkspaceEditor, runtimeMode])
 
   const { run: handleCreateApp } = useDebounceFn(onCreate, { wait: 300 })
   useKeyPress(['meta.enter', 'ctrl.enter'], () => {
@@ -258,6 +269,54 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                   onChange={e => setDescription(e.target.value)}
                 />
               </div>
+
+              {(appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT) && (
+                <div>
+                  <div className="system-sm-semibold mb-2 text-text-secondary">
+                    {t('newApp.runtimeLabel', { ns: 'app' })}
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      className={cn(
+                        'flex h-10 flex-1 items-center gap-2 rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg px-3',
+                        runtimeMode === 'new' && 'border-components-option-card-option-border-selected bg-components-option-card-option-selected-bg',
+                      )}
+                      onClick={() => setRuntimeMode('new')}
+                    >
+                      <div
+                        className={cn(
+                          'h-4 w-4 rounded-full border border-components-radio-border bg-components-radio-bg shadow-xs',
+                          runtimeMode === 'new' && 'border-[5px] border-components-radio-border-checked',
+                        )}
+                      />
+                      <div className="system-sm-medium text-text-secondary">
+                        {t('newApp.runtimeOptionNew', { ns: 'app' })}
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      className={cn(
+                        'flex h-10 flex-1 items-center gap-2 rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg px-3',
+                        runtimeMode === 'classical' && 'border-components-option-card-option-border-selected bg-components-option-card-option-selected-bg',
+                      )}
+                      onClick={() => setRuntimeMode('classical')}
+                    >
+                      <div
+                        className={cn(
+                          'h-4 w-4 rounded-full border border-components-radio-border bg-components-radio-bg shadow-xs',
+                          runtimeMode === 'classical' && 'border-[5px] border-components-radio-border-checked',
+                        )}
+                      />
+                      <div className="system-sm-medium text-text-secondary">
+                        {t('newApp.runtimeOptionClassical', { ns: 'app' })}
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
+
             </div>
             {isAppsFull && <AppsFull className="mt-4" loc="app-create" />}
             <div className="flex items-center justify-between pb-10 pt-5">

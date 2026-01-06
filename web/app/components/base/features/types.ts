@@ -77,6 +77,10 @@ export type AnnotationReplyConfig = {
   }
 }
 
+export type Runtime = {
+  enabled: boolean
+}
+
 export enum FeatureEnum {
   moreLikeThis = 'moreLikeThis',
   opening = 'opening',
@@ -87,6 +91,7 @@ export enum FeatureEnum {
   moderation = 'moderation',
   file = 'file',
   annotationReply = 'annotationReply',
+  runtime = 'runtime',
 }
 
 export type Features = {
@@ -99,6 +104,7 @@ export type Features = {
   [FeatureEnum.moderation]?: SensitiveWordAvoidance
   [FeatureEnum.file]?: FileUpload
   [FeatureEnum.annotationReply]?: AnnotationReplyConfig
+  [FeatureEnum.runtime]?: Runtime
 }
 
 export type OnFeaturesChange = (features?: Features) => void

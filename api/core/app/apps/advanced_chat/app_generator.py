@@ -24,6 +24,7 @@ from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.entities.task_entities import ChatbotAppBlockingResponse, ChatbotAppStreamResponse
+from core.app.layers.sandbox_layer import SandboxLayer
 from core.helper.trace_id_helper import extract_external_trace_id_from_args
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
@@ -512,6 +513,11 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 if workflow is None:
                     raise ValueError("Workflow not found")
 
+                runtime = workflow.features_dict.get("runtime")
+                graph_engine_layers = ()
+                if isinstance(runtime, dict) and runtime.get("enabled"):
+                    graph_engine_layers = (SandboxLayer(),)
+
                 # Determine system_user_id based on invocation source
                 is_external_api_call = application_generate_entity.invoke_from in {
                     InvokeFrom.WEB_APP,
@@ -542,6 +548,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 app=app,
                 workflow_execution_repository=workflow_execution_repository,
                 workflow_node_execution_repository=workflow_node_execution_repository,
+                graph_engine_layers=graph_engine_layers,
             )
 
             try:
