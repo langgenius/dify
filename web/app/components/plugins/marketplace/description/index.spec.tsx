@@ -7,7 +7,7 @@ import Description from './index'
 // ================================
 
 // Track mock locale for testing
-let mockLocale = 'en-US'
+let mockDefaultLocale = 'en-US'
 
 // Mock translations with realistic values
 const pluginTranslations: Record<string, string> = {
@@ -30,7 +30,7 @@ const commonTranslations: Record<string, string> = {
 
 // Mock i18n hooks
 vi.mock('#i18n', () => ({
-  useLocale: vi.fn(() => mockLocale),
+  useLocale: vi.fn(() => mockDefaultLocale),
   useTranslation: vi.fn((ns: string) => ({
     t: (key: string) => {
       if (ns === 'plugin')
@@ -48,7 +48,7 @@ vi.mock('#i18n', () => ({
 describe('Description', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockLocale = 'en-US'
+    mockDefaultLocale = 'en-US'
   })
 
   // ================================
@@ -101,7 +101,7 @@ describe('Description', () => {
   // ================================
   describe('Non-Chinese Locale Rendering', () => {
     beforeEach(() => {
-      mockLocale = 'en-US'
+      mockDefaultLocale = 'en-US'
     })
 
     it('should render discover text for en-US locale', () => {
@@ -163,7 +163,7 @@ describe('Description', () => {
   // ================================
   describe('Chinese (zh-Hans) Locale Rendering', () => {
     beforeEach(() => {
-      mockLocale = 'zh-Hans'
+      mockDefaultLocale = 'zh-Hans'
     })
 
     it('should render "in" text at the beginning for zh-Hans locale', () => {
@@ -214,14 +214,14 @@ describe('Description', () => {
   // ================================
   describe('Locale Variations', () => {
     it('should use en-US locale by default', () => {
-      mockLocale = 'en-US'
+      mockDefaultLocale = 'en-US'
       render(<Description />)
 
       expect(screen.getByText('Empower your AI development')).toBeInTheDocument()
     })
 
     it('should handle ja-JP locale as non-Chinese', () => {
-      mockLocale = 'ja-JP'
+      mockDefaultLocale = 'ja-JP'
       render(<Description />)
 
       // Should render in non-Chinese format (discover first, then "in Dify Marketplace" at end)
@@ -230,7 +230,7 @@ describe('Description', () => {
     })
 
     it('should handle ko-KR locale as non-Chinese', () => {
-      mockLocale = 'ko-KR'
+      mockDefaultLocale = 'ko-KR'
       render(<Description />)
 
       // Should render in non-Chinese format
@@ -238,28 +238,28 @@ describe('Description', () => {
     })
 
     it('should handle de-DE locale as non-Chinese', () => {
-      mockLocale = 'de-DE'
+      mockDefaultLocale = 'de-DE'
       render(<Description />)
 
       expect(screen.getByText('Empower your AI development')).toBeInTheDocument()
     })
 
     it('should handle fr-FR locale as non-Chinese', () => {
-      mockLocale = 'fr-FR'
+      mockDefaultLocale = 'fr-FR'
       render(<Description />)
 
       expect(screen.getByText('Empower your AI development')).toBeInTheDocument()
     })
 
     it('should handle pt-BR locale as non-Chinese', () => {
-      mockLocale = 'pt-BR'
+      mockDefaultLocale = 'pt-BR'
       render(<Description />)
 
       expect(screen.getByText('Empower your AI development')).toBeInTheDocument()
     })
 
     it('should handle es-ES locale as non-Chinese', () => {
-      mockLocale = 'es-ES'
+      mockDefaultLocale = 'es-ES'
       render(<Description />)
 
       expect(screen.getByText('Empower your AI development')).toBeInTheDocument()
@@ -271,7 +271,7 @@ describe('Description', () => {
   // ================================
   describe('Conditional Rendering', () => {
     it('should render zh-Hans specific content when locale is zh-Hans', () => {
-      mockLocale = 'zh-Hans'
+      mockDefaultLocale = 'zh-Hans'
       const { container } = render(<Description />)
 
       // zh-Hans has additional span with mr-1 before "in" text at the start
@@ -280,7 +280,7 @@ describe('Description', () => {
     })
 
     it('should render non-Chinese specific content when locale is not zh-Hans', () => {
-      mockLocale = 'en-US'
+      mockDefaultLocale = 'en-US'
       render(<Description />)
 
       // Non-Chinese has "in" and "Dify Marketplace" at the end
@@ -289,7 +289,7 @@ describe('Description', () => {
     })
 
     it('should not render zh-Hans intro content for non-Chinese locales', () => {
-      mockLocale = 'en-US'
+      mockDefaultLocale = 'en-US'
       render(<Description />)
 
       // For en-US, the order should be Discover ... in Dify Marketplace
@@ -307,7 +307,7 @@ describe('Description', () => {
     })
 
     it('should render zh-Hans with proper word order', () => {
-      mockLocale = 'zh-Hans'
+      mockDefaultLocale = 'zh-Hans'
       render(<Description />)
 
       const subheading = screen.getByRole('heading', { level: 2 })
@@ -399,7 +399,7 @@ describe('Description', () => {
     })
 
     it('should handle zh-Hant as non-Chinese simplified', () => {
-      mockLocale = 'zh-Hant'
+      mockDefaultLocale = 'zh-Hant'
       render(<Description />)
 
       // zh-Hant is different from zh-Hans, should use non-Chinese format
@@ -443,7 +443,7 @@ describe('Description', () => {
     })
 
     it('should render all text elements in correct order for en-US', () => {
-      mockLocale = 'en-US'
+      mockDefaultLocale = 'en-US'
       render(<Description />)
 
       const subheading = screen.getByRole('heading', { level: 2 })
@@ -472,7 +472,7 @@ describe('Description', () => {
     })
 
     it('should render all text elements in correct order for zh-Hans', () => {
-      mockLocale = 'zh-Hans'
+      mockDefaultLocale = 'zh-Hans'
       render(<Description />)
 
       const subheading = screen.getByRole('heading', { level: 2 })
@@ -573,7 +573,7 @@ describe('Description', () => {
 describe('Description Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockLocale = 'en-US'
+    mockDefaultLocale = 'en-US'
   })
 
   it('should render complete component structure', () => {
@@ -589,7 +589,7 @@ describe('Description Integration', () => {
   })
 
   it('should render complete zh-Hans structure', () => {
-    mockLocale = 'zh-Hans'
+    mockDefaultLocale = 'zh-Hans'
     const { container } = render(<Description />)
 
     // Main headings
@@ -603,13 +603,13 @@ describe('Description Integration', () => {
 
   it('should correctly differentiate between zh-Hans and en-US layouts', () => {
     // Render en-US
-    mockLocale = 'en-US'
+    mockDefaultLocale = 'en-US'
     const { container: enContainer, unmount: unmountEn } = render(<Description />)
     const enContent = enContainer.querySelector('h2')?.textContent || ''
     unmountEn()
 
     // Render zh-Hans
-    mockLocale = 'zh-Hans'
+    mockDefaultLocale = 'zh-Hans'
     const { container: zhContainer } = render(<Description />)
     const zhContent = zhContainer.querySelector('h2')?.textContent || ''
 
@@ -632,13 +632,13 @@ describe('Description Integration', () => {
 
   it('should maintain consistent styling across locales', () => {
     // Render en-US
-    mockLocale = 'en-US'
+    mockDefaultLocale = 'en-US'
     const { container: enContainer, unmount: unmountEn } = render(<Description />)
     const enCategoryCount = enContainer.querySelectorAll('.body-md-medium').length
     unmountEn()
 
     // Render zh-Hans
-    mockLocale = 'zh-Hans'
+    mockDefaultLocale = 'zh-Hans'
     const { container: zhContainer } = render(<Description />)
     const zhCategoryCount = zhContainer.querySelectorAll('.body-md-medium').length
 
