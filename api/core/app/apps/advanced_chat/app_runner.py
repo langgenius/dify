@@ -109,6 +109,8 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         if self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
             invoke_from = InvokeFrom.DEBUGGER
         user_from = self._resolve_user_from(invoke_from)
+
+        if self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
             # Handle single iteration or single loop run
             graph, variable_pool, graph_runtime_state = self._prepare_single_node_execution(
                 workflow=self._workflow,
