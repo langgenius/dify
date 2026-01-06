@@ -4,14 +4,15 @@ from unittest.mock import Mock
 
 from core.app.layers.conversation_variable_persist_layer import ConversationVariablePersistenceLayer
 from core.variables import StringVariable
-from core.variables.segments import Segment, StringSegment
-from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
-from core.workflow.enums import NodeType, SystemVariableKey, WorkflowNodeExecutionStatus
+from core.variables.segments import Segment
+from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID
+from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.graph_engine.protocols.command_channel import CommandChannel
 from core.workflow.graph_events.node import NodeRunSucceededEvent
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.variable_assigner.common import helpers as common_helpers
 from core.workflow.runtime.graph_runtime_state_protocol import ReadOnlyGraphRuntimeState
+from core.workflow.system_variable import SystemVariable
 
 
 class MockReadOnlyVariablePool:
@@ -30,9 +31,13 @@ class MockReadOnlyVariablePool:
         return {key: value for (nid, key), value in self._variables.items() if nid == prefix}
 
 
-def _build_graph_runtime_state(variable_pool: MockReadOnlyVariablePool) -> ReadOnlyGraphRuntimeState:
+def _build_graph_runtime_state(
+    variable_pool: MockReadOnlyVariablePool,
+    conversation_id: str | None = None,
+) -> ReadOnlyGraphRuntimeState:
     graph_runtime_state = Mock(spec=ReadOnlyGraphRuntimeState)
     graph_runtime_state.variable_pool = variable_pool
+    graph_runtime_state.system_variable = SystemVariable(conversation_id=conversation_id).as_view()
     return graph_runtime_state
 
 
@@ -67,16 +72,11 @@ def test_persists_conversation_variables_from_assigner_output():
         {}, [common_helpers.variable_to_processed_data(variable.selector, variable)]
     )
 
-    variable_pool = MockReadOnlyVariablePool(
-        {
-            (SYSTEM_VARIABLE_NODE_ID, SystemVariableKey.CONVERSATION_ID): StringSegment(value=conversation_id),
-            (CONVERSATION_VARIABLE_NODE_ID, "name"): variable,
-        }
-    )
+    variable_pool = MockReadOnlyVariablePool({(CONVERSATION_VARIABLE_NODE_ID, "name"): variable})
 
     updater = Mock()
     layer = ConversationVariablePersistenceLayer(updater)
-    layer.initialize(_build_graph_runtime_state(variable_pool), Mock(spec=CommandChannel))
+    layer.initialize(_build_graph_runtime_state(variable_pool, conversation_id), Mock(spec=CommandChannel))
 
     event = _build_node_run_succeeded_event(node_type=NodeType.VARIABLE_ASSIGNER, process_data=process_data)
     layer.on_event(event)
@@ -94,16 +94,11 @@ def test_skips_when_outputs_missing():
         selector=[CONVERSATION_VARIABLE_NODE_ID, "name"],
     )
 
-    variable_pool = MockReadOnlyVariablePool(
-        {
-            (SYSTEM_VARIABLE_NODE_ID, SystemVariableKey.CONVERSATION_ID): StringSegment(value=conversation_id),
-            (CONVERSATION_VARIABLE_NODE_ID, "name"): variable,
-        }
-    )
+    variable_pool = MockReadOnlyVariablePool({(CONVERSATION_VARIABLE_NODE_ID, "name"): variable})
 
     updater = Mock()
     layer = ConversationVariablePersistenceLayer(updater)
-    layer.initialize(_build_graph_runtime_state(variable_pool), Mock(spec=CommandChannel))
+    layer.initialize(_build_graph_runtime_state(variable_pool, conversation_id), Mock(spec=CommandChannel))
 
     event = _build_node_run_succeeded_event(node_type=NodeType.VARIABLE_ASSIGNER)
     layer.on_event(event)
@@ -136,15 +131,11 @@ def test_skips_non_conversation_variables():
         {}, [common_helpers.variable_to_processed_data(non_conversation_variable.selector, non_conversation_variable)]
     )
 
-    variable_pool = MockReadOnlyVariablePool(
-        {
-            (SYSTEM_VARIABLE_NODE_ID, SystemVariableKey.CONVERSATION_ID): StringSegment(value=conversation_id),
-        }
-    )
+    variable_pool = MockReadOnlyVariablePool()
 
     updater = Mock()
     layer = ConversationVariablePersistenceLayer(updater)
-    layer.initialize(_build_graph_runtime_state(variable_pool), Mock(spec=CommandChannel))
+    layer.initialize(_build_graph_runtime_state(variable_pool, conversation_id), Mock(spec=CommandChannel))
 
     event = _build_node_run_succeeded_event(node_type=NodeType.VARIABLE_ASSIGNER, process_data=process_data)
     layer.on_event(event)

@@ -1,9 +1,9 @@
 import logging
 
 from core.variables import Variable
-from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID
 from core.workflow.conversation_variable_updater import ConversationVariableUpdater
-from core.workflow.enums import NodeType, SystemVariableKey
+from core.workflow.enums import NodeType
 from core.workflow.graph_engine.layers.base import GraphEngineLayer
 from core.workflow.graph_events import GraphEngineEvent, NodeRunSucceededEvent
 from core.workflow.nodes.variable_assigner.common import helpers as common_helpers
@@ -31,7 +31,7 @@ class ConversationVariablePersistenceLayer(GraphEngineLayer):
         if not updated_variables:
             return
 
-        conversation_id = self._get_conversation_id()
+        conversation_id = self.graph_runtime_state.system_variable.conversation_id
         if conversation_id is None:
             return
 
@@ -58,12 +58,3 @@ class ConversationVariablePersistenceLayer(GraphEngineLayer):
 
     def on_graph_end(self, error: Exception | None) -> None:
         pass
-
-    def _get_conversation_id(self) -> str | None:
-        assert self.graph_runtime_state is not None
-        segment = self.graph_runtime_state.variable_pool.get(
-            [SYSTEM_VARIABLE_NODE_ID, SystemVariableKey.CONVERSATION_ID]
-        )
-        if segment is None:
-            return None
-        return str(segment.value)
