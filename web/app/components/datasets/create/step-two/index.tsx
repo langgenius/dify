@@ -9,7 +9,7 @@ import {
   RiArrowLeftLine,
   RiSearchEyeLine,
 } from '@remixicon/react'
-import { noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'

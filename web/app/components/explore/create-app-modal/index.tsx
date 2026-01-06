@@ -2,7 +2,7 @@
 import type { AppIconType } from '@/types/app'
 import { RiCloseLine, RiCommandLine, RiCornerDownLeftLine } from '@remixicon/react'
 import { useDebounceFn, useKeyPress } from 'ahooks'
-import { noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'

@@ -70,6 +70,7 @@ class AppMode(StrEnum):
 class IconType(StrEnum):
     IMAGE = auto()
     EMOJI = auto()
+    LINK = auto()
 
 
 class App(Base):
@@ -81,7 +82,7 @@ class App(Base):
     name: Mapped[str] = mapped_column(String(255))
     description: Mapped[str] = mapped_column(LongText, default=sa.text("''"))
     mode: Mapped[str] = mapped_column(String(255))
-    icon_type: Mapped[str | None] = mapped_column(String(255))  # image, emoji
+    icon_type: Mapped[str | None] = mapped_column(String(255))  # image, emoji, link
     icon = mapped_column(String(255))
     icon_background: Mapped[str | None] = mapped_column(String(255))
     app_model_config_id = mapped_column(StringUUID, nullable=True)
@@ -1419,14 +1420,19 @@ class MessageAnnotation(Base):
     app_id: Mapped[str] = mapped_column(StringUUID)
     conversation_id: Mapped[str | None] = mapped_column(StringUUID, sa.ForeignKey("conversations.id"))
     message_id: Mapped[str | None] = mapped_column(StringUUID)
-    question = mapped_column(LongText, nullable=True)
-    content = mapped_column(LongText, nullable=False)
+    question: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    content: Mapped[str] = mapped_column(LongText, nullable=False)
     hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
-    account_id = mapped_column(StringUUID, nullable=False)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = mapped_column(
+    account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
+
+    @property
+    def question_text(self) -> str:
+        """Return a non-null question string, falling back to the answer content."""
+        return self.question or self.content
 
     @property
     def account(self):

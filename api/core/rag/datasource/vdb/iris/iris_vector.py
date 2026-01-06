@@ -287,11 +287,15 @@ class IrisVector(BaseVector):
                 cursor.execute(sql, (query,))
             else:
                 # Fallback to LIKE search (inefficient for large datasets)
-                query_pattern = f"%{query}%"
+                # Escape special characters for LIKE clause to prevent SQL injection
+                from libs.helper import escape_like_pattern
+
+                escaped_query = escape_like_pattern(query)
+                query_pattern = f"%{escaped_query}%"
                 sql = f"""
                     SELECT TOP {top_k} id, text, meta
                     FROM {self.schema}.{self.table_name}
-                    WHERE text LIKE ?
+                    WHERE text LIKE ? ESCAPE '\\'
                 """
                 cursor.execute(sql, (query_pattern,))
 
