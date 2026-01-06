@@ -63,7 +63,6 @@ from libs.json_in_md_parser import parse_and_check_json_markdown
 from models import UploadFile
 from models.dataset import ChildChunk, Dataset, DatasetMetadata, DatasetQuery, DocumentSegment, SegmentAttachmentBinding
 from models.dataset import Document as DatasetDocument
-from models.enums import CreatorUserRole
 from services.external_knowledge_service import ExternalDatasetService
 
 default_retrieval_model: dict[str, Any] = {
@@ -177,11 +176,7 @@ class DatasetRetrieval:
         )
 
         all_documents = []
-        user_from = (
-            CreatorUserRole.ACCOUNT
-            if invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER}
-            else CreatorUserRole.END_USER
-        )
+        user_from = "account" if invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER} else "end_user"
         if retrieve_config.retrieve_strategy == DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE:
             all_documents = self.single_retrieve(
                 app_id,
