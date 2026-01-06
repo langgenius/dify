@@ -25,6 +25,7 @@ export function createI18nextInstance(lng: Locale, resources: Resource) {
     lng,
     fallbackLng: 'en-US',
     resources,
+    partialBundledLanguages: true,
     defaultNS: 'common',
     ns: Object.keys(resources),
     keySeparator: false,
