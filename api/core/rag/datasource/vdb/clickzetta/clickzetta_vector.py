@@ -984,9 +984,11 @@ class ClickzettaVector(BaseVector):
 
         # No need for dataset_id filter since each dataset has its own table
 
-        # Use simple quote escaping for LIKE clause
-        escaped_query = query.replace("'", "''")
-        filter_clauses.append(f"{Field.CONTENT_KEY} LIKE '%{escaped_query}%'")
+        # Escape special characters for LIKE clause to prevent SQL injection
+        from libs.helper import escape_like_pattern
+
+        escaped_query = escape_like_pattern(query).replace("'", "''")
+        filter_clauses.append(f"{Field.CONTENT_KEY} LIKE '%{escaped_query}%' ESCAPE '\\\\'")
         where_clause = " AND ".join(filter_clauses)
 
         search_sql = f"""

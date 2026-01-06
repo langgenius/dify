@@ -1198,18 +1198,24 @@ class DatasetRetrieval:
 
         json_field = DatasetDocument.doc_metadata[metadata_name].as_string()
 
+        from libs.helper import escape_like_pattern
+
         match condition:
             case "contains":
-                filters.append(json_field.like(f"%{value}%"))
+                escaped_value = escape_like_pattern(str(value))
+                filters.append(json_field.like(f"%{escaped_value}%", escape="\\"))
 
             case "not contains":
-                filters.append(json_field.notlike(f"%{value}%"))
+                escaped_value = escape_like_pattern(str(value))
+                filters.append(json_field.notlike(f"%{escaped_value}%", escape="\\"))
 
             case "start with":
-                filters.append(json_field.like(f"{value}%"))
+                escaped_value = escape_like_pattern(str(value))
+                filters.append(json_field.like(f"{escaped_value}%", escape="\\"))
 
             case "end with":
-                filters.append(json_field.like(f"%{value}"))
+                escaped_value = escape_like_pattern(str(value))
+                filters.append(json_field.like(f"%{escaped_value}", escape="\\"))
 
             case "is" | "=":
                 if isinstance(value, str):
