@@ -1,5 +1,5 @@
 import { RiCloseLine } from '@remixicon/react'
-import { noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
@@ -140,7 +140,8 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
             <div className="body-md-regular text-text-secondary">{t('members.transferModal.warningTip', { ns: 'common' })}</div>
             <div className="body-md-regular text-text-secondary">
               <Trans
-                i18nKey="common.members.transferModal.sendTip"
+                i18nKey="members.transferModal.sendTip"
+                ns="common"
                 components={{ email: <span className="body-md-medium text-text-primary"></span> }}
                 values={{ email: userProfile.email }}
               />
@@ -170,7 +171,8 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
           <div className="pb-2 pt-1">
             <div className="body-md-regular text-text-secondary">
               <Trans
-                i18nKey="common.members.transferModal.verifyContent"
+                i18nKey="members.transferModal.verifyContent"
+                ns="common"
                 components={{ email: <span className="body-md-medium text-text-primary"></span> }}
                 values={{ email: userProfile.email }}
               />

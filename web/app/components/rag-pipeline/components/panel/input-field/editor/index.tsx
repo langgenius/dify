@@ -49,6 +49,7 @@ const InputFieldEditorPanel = ({
       </div>
       <button
         type="button"
+        data-testid="input-field-editor-close-btn"
         className="absolute right-2.5 top-2.5 flex size-8 items-center justify-center"
         onClick={onClose}
       >

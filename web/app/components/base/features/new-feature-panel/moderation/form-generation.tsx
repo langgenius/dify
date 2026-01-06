@@ -1,10 +1,9 @@
 import type { FC } from 'react'
 import type { CodeBasedExtensionForm } from '@/models/common'
 import type { ModerationConfig } from '@/models/debug'
-import { useContext } from 'use-context-selector'
 import { PortalSelect } from '@/app/components/base/select'
 import Textarea from '@/app/components/base/textarea'
-import I18n from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 
 type FormGenerationProps = {
   forms: CodeBasedExtensionForm[]
@@ -16,7 +15,7 @@ const FormGeneration: FC<FormGenerationProps> = ({
   value,
   onChange,
 }) => {
-  const { locale } = useContext(I18n)
+  const locale = useLocale()
 
   const handleFormChange = (type: string, v: string) => {
     onChange({ ...value, [type]: v })

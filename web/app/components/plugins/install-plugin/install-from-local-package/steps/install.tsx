@@ -122,6 +122,7 @@ const Installed: FC<Props> = ({
           <p>
             <Trans
               i18nKey={`${i18nPrefix}.fromTrustSource`}
+              ns="plugin"
               components={{ trustSource: <span className="system-md-semibold" /> }}
             />
           </p>

@@ -56,7 +56,6 @@ class WorkflowToolProviderController(ToolProviderController):
                 raise ValueError("app not found")
 
             user = session.get(Account, db_provider.user_id) if db_provider.user_id else None
-
             controller = WorkflowToolProviderController(
                 entity=ToolProviderEntity(
                     identity=ToolProviderIdentity(
@@ -69,7 +68,7 @@ class WorkflowToolProviderController(ToolProviderController):
                     credentials_schema=[],
                     plugin_id=None,
                 ),
-                provider_id="",
+                provider_id=db_provider.id,
             )
 
             controller.tools = [

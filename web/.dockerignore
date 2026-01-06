@@ -7,8 +7,12 @@ logs
 
 # node
 node_modules
+dist
+build
+coverage
 .husky
 .next
+.pnpm-store
 
 # vscode
 .vscode
@@ -22,3 +26,7 @@ node_modules
 
 # Jetbrains
 .idea
+
+# git
+.git
+.gitignore

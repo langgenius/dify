@@ -8,11 +8,12 @@ class TestCelerySSLConfiguration:
     """Test suite for Celery SSL configuration."""
 
     def test_get_celery_ssl_options_when_ssl_disabled(self):
-        """Test SSL options when REDIS_USE_SSL is False."""
-        mock_config = MagicMock()
-        mock_config.REDIS_USE_SSL = False
+        """Test SSL options when BROKER_USE_SSL is False."""
+        from configs import DifyConfig
 
-        with patch("extensions.ext_celery.dify_config", mock_config):
+        dify_config = DifyConfig(CELERY_BROKER_URL="redis://localhost:6379/0")
+
+        with patch("extensions.ext_celery.dify_config", dify_config):
             from extensions.ext_celery import _get_celery_ssl_options
 
             result = _get_celery_ssl_options()
@@ -21,7 +22,6 @@ class TestCelerySSLConfiguration:
     def test_get_celery_ssl_options_when_broker_not_redis(self):
         """Test SSL options when broker is not Redis."""
         mock_config = MagicMock()
-        mock_config.REDIS_USE_SSL = True
         mock_config.CELERY_BROKER_URL = "amqp://localhost:5672"
 
         with patch("extensions.ext_celery.dify_config", mock_config):
@@ -33,7 +33,6 @@ class TestCelerySSLConfiguration:
     def test_get_celery_ssl_options_with_cert_none(self):
         """Test SSL options with CERT_NONE requirement."""
         mock_config = MagicMock()
-        mock_config.REDIS_USE_SSL = True
         mock_config.CELERY_BROKER_URL = "redis://localhost:6379/0"
         mock_config.REDIS_SSL_CERT_REQS = "CERT_NONE"
         mock_config.REDIS_SSL_CA_CERTS = None
@@ -53,7 +52,6 @@ class TestCelerySSLConfiguration:
     def test_get_celery_ssl_options_with_cert_required(self):
         """Test SSL options with CERT_REQUIRED and certificates."""
         mock_config = MagicMock()
-        mock_config.REDIS_USE_SSL = True
         mock_config.CELERY_BROKER_URL = "rediss://localhost:6380/0"
         mock_config.REDIS_SSL_CERT_REQS = "CERT_REQUIRED"
         mock_config.REDIS_SSL_CA_CERTS = "/path/to/ca.crt"
@@ -73,7 +71,6 @@ class TestCelerySSLConfiguration:
     def test_get_celery_ssl_options_with_cert_optional(self):
         """Test SSL options with CERT_OPTIONAL requirement."""
         mock_config = MagicMock()
-        mock_config.REDIS_USE_SSL = True
         mock_config.CELERY_BROKER_URL = "redis://localhost:6379/0"
         mock_config.REDIS_SSL_CERT_REQS = "CERT_OPTIONAL"
         mock_config.REDIS_SSL_CA_CERTS = "/path/to/ca.crt"
@@ -91,7 +88,6 @@ class TestCelerySSLConfiguration:
     def test_get_celery_ssl_options_with_invalid_cert_reqs(self):
         """Test SSL options with invalid cert requirement defaults to CERT_NONE."""
         mock_config = MagicMock()
-        mock_config.REDIS_USE_SSL = True
         mock_config.CELERY_BROKER_URL = "redis://localhost:6379/0"
         mock_config.REDIS_SSL_CERT_REQS = "INVALID_VALUE"
         mock_config.REDIS_SSL_CA_CERTS = None
@@ -108,7 +104,6 @@ class TestCelerySSLConfiguration:
     def test_celery_init_applies_ssl_to_broker_and_backend(self):
         """Test that SSL options are applied to both broker and backend when using Redis."""
         mock_config = MagicMock()
-        mock_config.REDIS_USE_SSL = True
         mock_config.CELERY_BROKER_URL = "redis://localhost:6379/0"
         mock_config.CELERY_BACKEND = "redis"
         mock_config.CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
