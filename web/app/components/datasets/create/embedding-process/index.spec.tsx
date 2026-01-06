@@ -289,7 +289,7 @@ describe('utils', () => {
       expect(getFileType(undefined)).toBe('txt')
     })
 
-    it('should return "txt" for filename without extension', () => {
+    it('should return" filename filename without extension', () => {
       expect(getFileType('filename')).toBe('filename')
     })
   })

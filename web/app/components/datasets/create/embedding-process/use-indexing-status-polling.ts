@@ -4,7 +4,7 @@ import { fetchIndexingStatusBatch } from '@/service/datasets'
 
 const POLLING_INTERVAL = 2500
 const COMPLETED_STATUSES = ['completed', 'error', 'paused'] as const
-const EMBEDDING_STATUSES = ['indexing', 'splitting', 'parsing', 'cleaning'] as const
+const EMBEDDING_STATUSES = ['indexing', 'splitting', 'parsing', 'cleaning', 'waiting'] as const
 
 type IndexingStatusPollingParams = {
   datasetId: string
