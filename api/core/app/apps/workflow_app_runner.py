@@ -79,9 +79,9 @@ class WorkflowBasedAppRunner:
 
     @staticmethod
     def _resolve_user_from(invoke_from: InvokeFrom) -> UserFrom:
-        if invoke_from == InvokeFrom.WEB_APP:
-            return UserFrom.END_USER
-        return UserFrom.ACCOUNT
+        if invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER}:
+            return UserFrom.ACCOUNT
+        return UserFrom.END_USER
 
     def _init_graph(
         self,
@@ -90,8 +90,8 @@ class WorkflowBasedAppRunner:
         workflow_id: str = "",
         tenant_id: str = "",
         user_id: str = "",
-        user_from: UserFrom = UserFrom.ACCOUNT,
-        invoke_from: InvokeFrom = InvokeFrom.SERVICE_API,
+        user_from: UserFrom,
+        invoke_from: InvokeFrom,
         root_node_id: str | None = None,
     ) -> Graph:
         """
