@@ -115,7 +115,7 @@ class WorkflowBasedAppRunner:
             graph_config=graph_config,
             user_id=user_id,
             user_from=UserFrom.ACCOUNT,
-            invoke_from=InvokeFrom.SERVICE_API,
+            invoke_from=self._queue_manager.invoke_from,
             call_depth=0,
         )
 
@@ -259,7 +259,7 @@ class WorkflowBasedAppRunner:
             graph_config=graph_config,
             user_id="",
             user_from=UserFrom.ACCOUNT,
-            invoke_from=InvokeFrom.SERVICE_API,
+            invoke_from=self._queue_manager.invoke_from,
             call_depth=0,
         )
 
