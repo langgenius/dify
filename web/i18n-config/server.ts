@@ -3,6 +3,7 @@ import type { Locale } from '.'
 import type { NamespaceCamelCase, NamespaceKebabCase } from './resources'
 import { match } from '@formatjs/intl-localematcher'
 import { kebabCase } from 'es-toolkit/compat'
+import { camelCase } from 'es-toolkit/string'
 import { createInstance } from 'i18next'
 import resourcesToBackend from 'i18next-resources-to-backend'
 import Negotiator from 'negotiator'
@@ -85,7 +86,7 @@ export const getResources = cache(async (lng: Locale): Promise<Resource> => {
   await Promise.all(
     (NAMESPACES).map(async (ns) => {
       const mod = await import(`../i18n/${lng}/${ns}.json`)
-      messages[ns] = mod.default
+      messages[camelCase(ns)] = mod.default
     }),
   )
 
