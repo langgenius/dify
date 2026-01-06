@@ -109,10 +109,8 @@ class DebugLoggingLayer(GraphEngineLayer):
         self.logger.info("=" * 80)
         self.logger.info("🚀 GRAPH EXECUTION STARTED")
         self.logger.info("=" * 80)
-
-        if self.graph_runtime_state:
-            # Log initial state
-            self.logger.info("Initial State:")
+        # Log initial state
+        self.logger.info("Initial State:")
 
     @override
     def on_event(self, event: GraphEngineEvent) -> None:
@@ -243,8 +241,7 @@ class DebugLoggingLayer(GraphEngineLayer):
         self.logger.info("  Node retries: %s", self.retry_count)
 
         # Log final state if available
-        if self.graph_runtime_state and self.include_outputs:
-            if self.graph_runtime_state.outputs:
-                self.logger.info("Final outputs: %s", self._format_dict(self.graph_runtime_state.outputs))
+        if self.include_outputs and self.graph_runtime_state.outputs:
+            self.logger.info("Final outputs: %s", self._format_dict(self.graph_runtime_state.outputs))
 
         self.logger.info("=" * 80)

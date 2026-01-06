@@ -235,7 +235,7 @@ def migrate_annotation_vector_database():
                 if annotations:
                     for annotation in annotations:
                         document = Document(
-                            page_content=annotation.question,
+                            page_content=annotation.question_text,
                             metadata={"annotation_id": annotation.id, "app_id": app.id, "doc_id": annotation.id},
                         )
                         documents.append(document)
@@ -1182,6 +1182,217 @@ def remove_orphaned_files_on_storage(force: bool):
         click.echo(click.style(f"Removed {removed_files} orphaned files without errors.", fg="green"))
     else:
         click.echo(click.style(f"Removed {removed_files} orphaned files, with {error_files} errors.", fg="yellow"))
+
+
+@click.command("file-usage", help="Query file usages and show where files are referenced.")
+@click.option("--file-id", type=str, default=None, help="Filter by file UUID.")
+@click.option("--key", type=str, default=None, help="Filter by storage key.")
+@click.option("--src", type=str, default=None, help="Filter by table.column pattern (e.g., 'documents.%' or '%.icon').")
+@click.option("--limit", type=int, default=100, help="Limit number of results (default: 100).")
+@click.option("--offset", type=int, default=0, help="Offset for pagination (default: 0).")
+@click.option("--json", "output_json", is_flag=True, help="Output results in JSON format.")
+def file_usage(
+    file_id: str | None,
+    key: str | None,
+    src: str | None,
+    limit: int,
+    offset: int,
+    output_json: bool,
+):
+    """
+    Query file usages and show where files are referenced in the database.
+
+    This command reuses the same reference checking logic as clear-orphaned-file-records
+    and displays detailed information about where each file is referenced.
+    """
+    # define tables and columns to process
+    files_tables = [
+        {"table": "upload_files", "id_column": "id", "key_column": "key"},
+        {"table": "tool_files", "id_column": "id", "key_column": "file_key"},
+    ]
+    ids_tables = [
+        {"type": "uuid", "table": "message_files", "column": "upload_file_id", "pk_column": "id"},
+        {"type": "text", "table": "documents", "column": "data_source_info", "pk_column": "id"},
+        {"type": "text", "table": "document_segments", "column": "content", "pk_column": "id"},
+        {"type": "text", "table": "messages", "column": "answer", "pk_column": "id"},
+        {"type": "text", "table": "workflow_node_executions", "column": "inputs", "pk_column": "id"},
+        {"type": "text", "table": "workflow_node_executions", "column": "process_data", "pk_column": "id"},
+        {"type": "text", "table": "workflow_node_executions", "column": "outputs", "pk_column": "id"},
+        {"type": "text", "table": "conversations", "column": "introduction", "pk_column": "id"},
+        {"type": "text", "table": "conversations", "column": "system_instruction", "pk_column": "id"},
+        {"type": "text", "table": "accounts", "column": "avatar", "pk_column": "id"},
+        {"type": "text", "table": "apps", "column": "icon", "pk_column": "id"},
+        {"type": "text", "table": "sites", "column": "icon", "pk_column": "id"},
+        {"type": "json", "table": "messages", "column": "inputs", "pk_column": "id"},
+        {"type": "json", "table": "messages", "column": "message", "pk_column": "id"},
+    ]
+
+    # Stream file usages with pagination to avoid holding all results in memory
+    paginated_usages = []
+    total_count = 0
+
+    # First, build a mapping of file_id -> storage_key from the base tables
+    file_key_map = {}
+    for files_table in files_tables:
+        query = f"SELECT {files_table['id_column']}, {files_table['key_column']} FROM {files_table['table']}"
+        with db.engine.begin() as conn:
+            rs = conn.execute(sa.text(query))
+            for row in rs:
+                file_key_map[str(row[0])] = f"{files_table['table']}:{row[1]}"
+
+    # If filtering by key or file_id, verify it exists
+    if file_id and file_id not in file_key_map:
+        if output_json:
+            click.echo(json.dumps({"error": f"File ID {file_id} not found in base tables"}))
+        else:
+            click.echo(click.style(f"File ID {file_id} not found in base tables.", fg="red"))
+        return
+
+    if key:
+        valid_prefixes = {f"upload_files:{key}", f"tool_files:{key}"}
+        matching_file_ids = [fid for fid, fkey in file_key_map.items() if fkey in valid_prefixes]
+        if not matching_file_ids:
+            if output_json:
+                click.echo(json.dumps({"error": f"Key {key} not found in base tables"}))
+            else:
+                click.echo(click.style(f"Key {key} not found in base tables.", fg="red"))
+            return
+
+    guid_regexp = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+
+    # For each reference table/column, find matching file IDs and record the references
+    for ids_table in ids_tables:
+        src_filter = f"{ids_table['table']}.{ids_table['column']}"
+
+        # Skip if src filter doesn't match (use fnmatch for wildcard patterns)
+        if src:
+            if "%" in src or "_" in src:
+                import fnmatch
+
+                # Convert SQL LIKE wildcards to fnmatch wildcards (% -> *, _ -> ?)
+                pattern = src.replace("%", "*").replace("_", "?")
+                if not fnmatch.fnmatch(src_filter, pattern):
+                    continue
+            else:
+                if src_filter != src:
+                    continue
+
+        if ids_table["type"] == "uuid":
+            # Direct UUID match
+            query = (
+                f"SELECT {ids_table['pk_column']}, {ids_table['column']} "
+                f"FROM {ids_table['table']} WHERE {ids_table['column']} IS NOT NULL"
+            )
+            with db.engine.begin() as conn:
+                rs = conn.execute(sa.text(query))
+                for row in rs:
+                    record_id = str(row[0])
+                    ref_file_id = str(row[1])
+                    if ref_file_id not in file_key_map:
+                        continue
+                    storage_key = file_key_map[ref_file_id]
+
+                    # Apply filters
+                    if file_id and ref_file_id != file_id:
+                        continue
+                    if key and not storage_key.endswith(key):
+                        continue
+
+                    # Only collect items within the requested page range
+                    if offset <= total_count < offset + limit:
+                        paginated_usages.append(
+                            {
+                                "src": f"{ids_table['table']}.{ids_table['column']}",
+                                "record_id": record_id,
+                                "file_id": ref_file_id,
+                                "key": storage_key,
+                            }
+                        )
+                    total_count += 1
+
+        elif ids_table["type"] in ("text", "json"):
+            # Extract UUIDs from text/json content
+            column_cast = f"{ids_table['column']}::text" if ids_table["type"] == "json" else ids_table["column"]
+            query = (
+                f"SELECT {ids_table['pk_column']}, {column_cast} "
+                f"FROM {ids_table['table']} WHERE {ids_table['column']} IS NOT NULL"
+            )
+            with db.engine.begin() as conn:
+                rs = conn.execute(sa.text(query))
+                for row in rs:
+                    record_id = str(row[0])
+                    content = str(row[1])
+
+                    # Find all UUIDs in the content
+                    import re
+
+                    uuid_pattern = re.compile(guid_regexp, re.IGNORECASE)
+                    matches = uuid_pattern.findall(content)
+
+                    for ref_file_id in matches:
+                        if ref_file_id not in file_key_map:
+                            continue
+                        storage_key = file_key_map[ref_file_id]
+
+                        # Apply filters
+                        if file_id and ref_file_id != file_id:
+                            continue
+                        if key and not storage_key.endswith(key):
+                            continue
+
+                        # Only collect items within the requested page range
+                        if offset <= total_count < offset + limit:
+                            paginated_usages.append(
+                                {
+                                    "src": f"{ids_table['table']}.{ids_table['column']}",
+                                    "record_id": record_id,
+                                    "file_id": ref_file_id,
+                                    "key": storage_key,
+                                }
+                            )
+                        total_count += 1
+
+    # Output results
+    if output_json:
+        result = {
+            "total": total_count,
+            "offset": offset,
+            "limit": limit,
+            "usages": paginated_usages,
+        }
+        click.echo(json.dumps(result, indent=2))
+    else:
+        click.echo(
+            click.style(f"Found {total_count} file usages (showing {len(paginated_usages)} results)", fg="white")
+        )
+        click.echo("")
+
+        if not paginated_usages:
+            click.echo(click.style("No file usages found matching the specified criteria.", fg="yellow"))
+            return
+
+        # Print table header
+        click.echo(
+            click.style(
+                f"{'Src (Table.Column)':<50} {'Record ID':<40} {'File ID':<40} {'Storage Key':<60}",
+                fg="cyan",
+            )
+        )
+        click.echo(click.style("-" * 190, fg="white"))
+
+        # Print each usage
+        for usage in paginated_usages:
+            click.echo(f"{usage['src']:<50} {usage['record_id']:<40} {usage['file_id']:<40} {usage['key']:<60}")
+
+        # Show pagination info
+        if offset + limit < total_count:
+            click.echo("")
+            click.echo(
+                click.style(
+                    f"Showing {offset + 1}-{offset + len(paginated_usages)} of {total_count} results", fg="white"
+                )
+            )
+            click.echo(click.style(f"Use --offset {offset + limit} to see next page", fg="white"))
 
 
 @click.command("setup-system-tool-oauth-client", help="Setup system tool oauth client.")
