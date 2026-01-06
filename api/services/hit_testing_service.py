@@ -13,7 +13,7 @@ from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
 from models import Account
 from models.dataset import Dataset, DatasetQuery
-from models.enums import UserFrom
+from models.enums import CreatorUserRole
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +99,7 @@ class HitTestingService:
                 content=json.dumps(dataset_queries),
                 source="hit_testing",
                 source_app_id=None,
-                created_by_role=UserFrom.ACCOUNT,
+                created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
             )
             db.session.add(dataset_query)
@@ -139,7 +139,7 @@ class HitTestingService:
             content=query,
             source="hit_testing",
             source_app_id=None,
-            created_by_role=UserFrom.ACCOUNT,
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
         )
 
