@@ -6,7 +6,7 @@ from extensions.ext_database import db
 from models import ConversationVariable
 
 
-class ConversationVariableNotFoundError(RuntimeError):
+class ConversationVariableNotFoundError(Exception):
     pass
 
 
