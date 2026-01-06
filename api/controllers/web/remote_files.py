@@ -139,7 +139,7 @@ class RemoteFileUploadApi(WebApiResource):
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError
 
-        payload = FileWithSignedUrl(
+        payload1 = FileWithSignedUrl(
             id=upload_file.id,
             name=upload_file.name,
             size=upload_file.size,
@@ -149,4 +149,4 @@ class RemoteFileUploadApi(WebApiResource):
             created_by=upload_file.created_by,
             created_at=int(upload_file.created_at.timestamp()),
         )
-        return payload.model_dump(mode="json"), 201
+        return payload1.model_dump(mode="json"), 201
