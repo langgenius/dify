@@ -337,7 +337,7 @@ class ConversationService:
             updated_variable = variable_factory.build_conversation_variable_from_mapping(updated_variable_dict)
 
             # Use the conversation variable updater to persist the changes
-            updater = conversation_variable_updater_factory()
+            updater = conversation_variable_updater_factory(session_factory.get_session_maker())
             updater.update(conversation_id, updated_variable)
             updater.flush()
 

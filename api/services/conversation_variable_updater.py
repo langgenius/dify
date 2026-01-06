@@ -1,8 +1,7 @@
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.variables.variables import Variable
-from extensions.ext_database import db
 from models import ConversationVariable
 
 
@@ -11,11 +10,14 @@ class ConversationVariableNotFoundError(Exception):
 
 
 class ConversationVariableUpdaterImpl:
+    def __init__(self, session_maker: sessionmaker[Session]) -> None:
+        self._session_maker: sessionmaker[Session] = session_maker
+
     def update(self, conversation_id: str, variable: Variable) -> None:
         stmt = select(ConversationVariable).where(
             ConversationVariable.id == variable.id, ConversationVariable.conversation_id == conversation_id
         )
-        with Session(db.engine) as session:
+        with self._session_maker() as session:
             row = session.scalar(stmt)
             if not row:
                 raise ConversationVariableNotFoundError("conversation variable not found in the database")
@@ -26,5 +28,7 @@ class ConversationVariableUpdaterImpl:
         pass
 
 
-def conversation_variable_updater_factory() -> ConversationVariableUpdaterImpl:
-    return ConversationVariableUpdaterImpl()
+def conversation_variable_updater_factory(
+    session_maker: sessionmaker[Session],
+) -> ConversationVariableUpdaterImpl:
+    return ConversationVariableUpdaterImpl(session_maker)
