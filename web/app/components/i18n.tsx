@@ -3,10 +3,8 @@
 import type { FC } from 'react'
 import type { Locale } from '@/i18n-config'
 import { usePrefetchQuery } from '@tanstack/react-query'
-import { useHydrateAtoms } from 'jotai/utils'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
-import { localeAtom } from '@/context/i18n'
 import { setLocaleOnClient } from '@/i18n-config'
 import { getSystemFeatures } from '@/service/common'
 import Loading from './base/loading'
@@ -19,7 +17,6 @@ const I18n: FC<II18nProps> = ({
   locale,
   children,
 }) => {
-  useHydrateAtoms([[localeAtom, locale]])
   const [loading, setLoading] = useState(true)
 
   usePrefetchQuery({
