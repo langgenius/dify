@@ -26,4 +26,3 @@ class ConversationVariableUpdater:
 
     def flush(self) -> None:
         pass
-
