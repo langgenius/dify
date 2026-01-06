@@ -9,6 +9,7 @@ from core.app.app_config.entities import EasyUIBasedAppConfig, WorkflowUIBasedAp
 from core.entities.provider_configuration import ProviderModelBundle
 from core.file import File, FileUploadConfig
 from core.model_runtime.entities.model_entities import AIModelEntity
+from models.enums import CreatorUserRole
 
 if TYPE_CHECKING:
     from core.ops.ops_trace_manager import TraceQueueManager
@@ -78,6 +79,11 @@ class InvokeFrom(StrEnum):
             return "api"
 
         return "dev"
+
+    def to_creator_user_role(self) -> CreatorUserRole:
+        if self in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER}:
+            return CreatorUserRole.ACCOUNT
+        return CreatorUserRole.END_USER
 
 
 class ModelConfigWithCredentialsEntity(BaseModel):

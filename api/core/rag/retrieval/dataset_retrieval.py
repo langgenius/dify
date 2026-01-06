@@ -177,11 +177,7 @@ class DatasetRetrieval:
         )
 
         all_documents = []
-        creator_user_role = (
-            CreatorUserRole.ACCOUNT
-            if invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER}
-            else CreatorUserRole.END_USER
-        )
+        creator_user_role = invoke_from.to_creator_user_role()
         if retrieve_config.retrieve_strategy == DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE:
             all_documents = self.single_retrieve(
                 app_id,
