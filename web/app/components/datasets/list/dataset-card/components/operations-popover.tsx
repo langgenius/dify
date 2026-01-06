@@ -9,7 +9,7 @@ type OperationsPopoverProps = {
   dataset: DataSet
   isCurrentWorkspaceDatasetOperator: boolean
   openRenameModal: () => void
-  handleExportPipeline: () => void
+  handleExportPipeline: (include?: boolean) => void
   detectIsUsedByApp: () => void
 }
 

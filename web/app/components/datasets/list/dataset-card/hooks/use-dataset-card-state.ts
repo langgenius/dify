@@ -1,6 +1,6 @@
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import type { DataSet } from '@/models/datasets'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
 import { useCheckDatasetUsage, useDeleteDataset } from '@/service/use-dataset-card'
@@ -17,25 +17,13 @@ type UseDatasetCardStateOptions = {
   onSuccess?: () => void
 }
 
-// Helper to sync tags with dataset changes
-const useSyncTags = (dataset: DataSet) => {
-  const [tags, setTags] = useState<Tag[]>(dataset.tags)
-  const [prevDatasetId, setPrevDatasetId] = useState(dataset.id)
-
-  // Sync when dataset changes (pattern to avoid useEffect + setState warning)
-  if (prevDatasetId !== dataset.id) {
-    setPrevDatasetId(dataset.id)
-    setTags(dataset.tags)
-  }
-
-  return { tags, setTags }
-}
-
 export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateOptions) => {
   const { t } = useTranslation()
+  const [tags, setTags] = useState<Tag[]>(dataset.tags)
 
-  // Tag state with sync
-  const { tags, setTags } = useSyncTags(dataset)
+  useEffect(() => {
+    setTags(dataset.tags)
+  }, [dataset.tags])
 
   // Modal state
   const [modalState, setModalState] = useState<ModalState>({
@@ -66,7 +54,7 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
   const { mutateAsync: exportPipelineConfig } = useExportPipelineDSL()
 
   // Export pipeline handler
-  const handleExportPipeline = useCallback(async (include = false) => {
+  const handleExportPipeline = useCallback(async (include: boolean = false) => {
     const { pipeline_id, name } = dataset
     if (!pipeline_id || exporting)
       return
