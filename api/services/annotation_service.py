@@ -77,7 +77,7 @@ class AppAnnotationService:
         if annotation_setting:
             add_annotation_to_index_task.delay(
                 annotation.id,
-                annotation.question,
+                question,
                 current_tenant_id,
                 app_id,
                 annotation_setting.collection_binding_id,
@@ -137,13 +137,16 @@ class AppAnnotationService:
         if not app:
             raise NotFound("App not found")
         if keyword:
+            from libs.helper import escape_like_pattern
+
+            escaped_keyword = escape_like_pattern(keyword)
             stmt = (
                 select(MessageAnnotation)
                 .where(MessageAnnotation.app_id == app_id)
                 .where(
                     or_(
-                        MessageAnnotation.question.ilike(f"%{keyword}%"),
-                        MessageAnnotation.content.ilike(f"%{keyword}%"),
+                        MessageAnnotation.question.ilike(f"%{escaped_keyword}%", escape="\\"),
+                        MessageAnnotation.content.ilike(f"%{escaped_keyword}%", escape="\\"),
                     )
                 )
                 .order_by(MessageAnnotation.created_at.desc(), MessageAnnotation.id.desc())
@@ -253,7 +256,7 @@ class AppAnnotationService:
         if app_annotation_setting:
             update_annotation_to_index_task.delay(
                 annotation.id,
-                annotation.question,
+                annotation.question_text,
                 current_tenant_id,
                 app_id,
                 app_annotation_setting.collection_binding_id,
