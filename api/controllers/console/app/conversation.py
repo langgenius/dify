@@ -1,4 +1,5 @@
-from typing import Literal
+from enum import StrEnum
+from typing import Literal, Optional
 
 import sqlalchemy as sa
 from flask import abort, request
@@ -42,6 +43,20 @@ class BaseConversationQuery(BaseModel):
         if value == "":
             return None
         return value
+
+
+class FormatTypeEnum(StrEnum):
+    csv = "csv"
+    jsonl = "jsonl"
+
+
+class ChatConversationExportApiModel(BaseModel):
+    format: FormatTypeEnum
+    keyword: Optional[str] = Field(None, description="keyword")
+    start: Optional[str] = Field(None, description="start date")
+    end: Optional[str] = Field(None, description="end date")
+    annotation_status: str = Field("all", description="annotation status")
+    sort_by: str = Field("-created_at", description="sort by")
 
 
 class CompletionConversationQuery(BaseConversationQuery):
@@ -548,15 +563,13 @@ class ChatConversationExportApi(Resource):
         Query params: keyword, start, end, annotation_status, sort_by, format
         """
         current_user, _ = current_account_with_tenant()
-        format_type = request.args.get("format", "jsonl").lower()
-        keyword = request.args.get("keyword")
-        start = request.args.get("start")
-        end = request.args.get("end")
-        annotation_status = request.args.get("annotation_status", "all")
-        sort_by = request.args.get("sort_by", "-created_at")
-
-        if format_type not in {"jsonl", "csv"}:
-            abort(400, description="Format must be 'jsonl' or 'csv'")
+        args = ChatConversationExportApiModel.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        format_type = args.format
+        keyword = args.keyword
+        start = args.start
+        end = args.end
+        annotation_status = args.annotation_status
+        sort_by = args.sort_by
 
         # Parse time range
         account = current_user
