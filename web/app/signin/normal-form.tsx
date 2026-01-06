@@ -158,7 +158,9 @@ const NormalForm = () => {
           : (
               <div className="mx-auto w-full">
                 <h2 className="title-4xl-semi-bold text-text-primary">{systemFeatures.branding.enabled ? t('pageTitleForE', { ns: 'login' }) : t('pageTitle', { ns: 'login' })}</h2>
-                <p className="body-md-regular mt-2 text-text-tertiary">{t('welcome', { ns: 'login' })}</p>
+                <p className="body-md-regular mt-2 text-text-tertiary">
+                {process.env.NEXT_PUBLIC_LOGIN_WELCOME_MESSAGE || t('welcome', { ns: 'login' })}
+                </p>
               </div>
             )}
         <div className="relative">
