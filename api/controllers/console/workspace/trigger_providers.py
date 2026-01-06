@@ -316,7 +316,7 @@ class TriggerSubscriptionUpdateApi(Resource):
         user = current_user
         assert user.current_tenant_id is not None
 
-        request = TriggerSubscriptionBuilderUpdatePayload.model_validate(console_ns.payload)
+        request = TriggerSubscriptionBuilderUpdatePayload.model_validate(console_ns.payload or {})
 
         subscription = TriggerProviderService.get_subscription_by_id(
             tenant_id=user.current_tenant_id,
