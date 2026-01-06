@@ -177,8 +177,6 @@ const List = () => {
   const hasAnyApp = (pages[0]?.total ?? 0) > 0
   // Show skeleton during initial load or when refetching with no previous data
   const showSkeleton = isLoading || (isFetching && pages.length === 0)
-  // Only show empty state when we're sure there's no data and not loading
-  const showEmpty = !isFetching && !hasAnyApp
 
   return (
     <>
@@ -214,7 +212,7 @@ const List = () => {
         </div>
         <div className={cn(
           'relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6',
-          showEmpty && 'overflow-hidden',
+          !hasAnyApp && 'overflow-hidden',
         )}
         >
           {(isCurrentWorkspaceEditor || isLoadingCurrentWorkspace) && (
@@ -223,7 +221,7 @@ const List = () => {
               isLoading={isLoadingCurrentWorkspace}
               onSuccess={refetch}
               selectedAppType={activeTab}
-              className={cn(showEmpty && 'z-10')}
+              className={cn(!hasAnyApp && 'z-10')}
             />
           )}
           {(() => {
@@ -236,10 +234,8 @@ const List = () => {
               )))
             }
 
-            if (showEmpty)
-              return <Empty />
-
-            return null
+            // No apps - show empty state
+            return <Empty />
           })()}
         </div>
 

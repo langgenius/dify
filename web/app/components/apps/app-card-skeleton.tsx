@@ -17,7 +17,7 @@ export const AppCardSkeleton = React.memo(({ count = 6 }: AppCardSkeletonProps) 
       {Array.from({ length: count }).map((_, index) => (
         <div
           key={index}
-          className="h-[160px] rounded-xl border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-4"
+          className="h-[160px] rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg p-4"
         >
           <SkeletonContainer className="h-full">
             <SkeletonRow>
