@@ -19,10 +19,6 @@ export const setLocaleOnClient = async (locale: Locale, reloadPage = true) => {
     location.reload()
 }
 
-export const getLocaleOnClient = (): Locale => {
-  return Cookies.get(LOCALE_COOKIE_NAME) as Locale || i18n.defaultLocale
-}
-
 export const renderI18nObject = (obj: Record<string, string>, language: string) => {
   if (!obj)
     return ''

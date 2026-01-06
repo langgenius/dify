@@ -42,10 +42,6 @@ vi.mock('@/utils/var', () => ({
   getMarketplaceUrl: vi.fn(() => 'https://marketplace.test/market'),
 }))
 
-vi.mock('@/i18n-config', () => ({
-  getLocaleOnClient: () => 'en',
-}))
-
 vi.mock('next-themes', () => ({
   useTheme: () => ({ theme: 'light' }),
 }))
