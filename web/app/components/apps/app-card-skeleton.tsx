@@ -11,7 +11,7 @@ type AppCardSkeletonProps = {
  * Skeleton placeholder for App cards during loading states.
  * Matches the visual layout of AppCard component.
  */
-const AppCardSkeleton = ({ count = 6 }: AppCardSkeletonProps) => {
+export const AppCardSkeleton = React.memo(({ count = 6 }: AppCardSkeletonProps) => {
   return (
     <>
       {Array.from({ length: count }).map((_, index) => (
@@ -36,6 +36,6 @@ const AppCardSkeleton = ({ count = 6 }: AppCardSkeletonProps) => {
       ))}
     </>
   )
-}
+})
 
-export default React.memo(AppCardSkeleton)
+AppCardSkeleton.displayName = 'AppCardSkeleton'
