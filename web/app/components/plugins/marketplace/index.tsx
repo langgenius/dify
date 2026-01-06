@@ -42,7 +42,7 @@ const Marketplace = async ({
         scrollContainerId={scrollContainerId}
         showSearchParams={showSearchParams}
       >
-        <Description locale={locale} />
+        <Description />
         <StickySearchAndSwitchWrapper
           locale={locale}
           pluginTypeSwitchClassName={pluginTypeSwitchClassName}

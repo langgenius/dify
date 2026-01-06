@@ -550,6 +550,7 @@ export const useIsNodeInLoop = (loopId: string) => {
       return false
 
     if (node.parentId === loopId)
+
       return true
 
     return false
