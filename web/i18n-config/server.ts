@@ -8,7 +8,7 @@ import resourcesToBackend from 'i18next-resources-to-backend'
 import Negotiator from 'negotiator'
 import { cookies, headers } from 'next/headers'
 import { initReactI18next } from 'react-i18next/initReactI18next'
-import serverOnlyContext from '@/utils/server-only-context'
+import { serverOnlyContext } from '@/utils/server-only-context'
 import { i18n } from '.'
 
 const [getLocaleCache, setLocaleCache] = serverOnlyContext<Locale | null>(null)
