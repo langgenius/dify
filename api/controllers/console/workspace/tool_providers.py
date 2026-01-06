@@ -1,5 +1,6 @@
 import io
 import logging
+from typing import Any, Literal
 from urllib.parse import urlparse
 
 from flask import make_response, redirect, request, send_file
@@ -993,8 +994,8 @@ class ToolProviderMCPApi(Resource):
         #    Perform network I/O outside any DB session to avoid holding locks.
         try:
             reconnect = MCPToolManageService.reconnect_with_url(
-                server_url=args["server_url"],
-                headers=args.get("headers") or {},
+                server_url=payload.server_url,
+                headers=payload.headers or {},
                 timeout=configuration.timeout,
                 sse_read_timeout=configuration.sse_read_timeout,
             )
@@ -1027,14 +1028,14 @@ class ToolProviderMCPApi(Resource):
         with Session(db.engine) as session:
             service = MCPToolManageService(session=session)
             validation_data = service.get_provider_for_url_validation(
-                tenant_id=current_tenant_id, provider_id=args.provider_id
+                tenant_id=current_tenant_id, provider_id=payload.provider_id
             )
 
         # Step 2: Perform URL validation with network I/O OUTSIDE of any database session
         # This prevents holding database locks during potentially slow network operations
         validation_result = MCPToolManageService.validate_server_url_standalone(
             tenant_id=current_tenant_id,
-            new_server_url=args["server_url"],
+            new_server_url=payload.server_url,
             validation_data=validation_data,
         )
 
@@ -1068,7 +1069,7 @@ class ToolProviderMCPApi(Resource):
 
         with Session(db.engine) as session, session.begin():
             service = MCPToolManageService(session=session)
-            service.delete_provider(tenant_id=current_tenant_id, provider_id=args.provider_id)
+            service.delete_provider(tenant_id=current_tenant_id, provider_id=payload.provider_id)
 
         return {"result": "success"}
 
