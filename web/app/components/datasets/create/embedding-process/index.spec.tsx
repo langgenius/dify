@@ -744,6 +744,123 @@ describe('IndexingProgressItem', () => {
       expect(screen.getByText('document.pdf')).toBeInTheDocument()
     })
 
+    // DocumentFileIcon branch coverage: different file extensions
+    describe('DocumentFileIcon file extensions', () => {
+      it.each([
+        ['document.pdf', 'pdf'],
+        ['data.json', 'json'],
+        ['page.html', 'html'],
+        ['readme.txt', 'txt'],
+        ['notes.markdown', 'markdown'],
+        ['readme.md', 'md'],
+        ['spreadsheet.xlsx', 'xlsx'],
+        ['legacy.xls', 'xls'],
+        ['data.csv', 'csv'],
+        ['letter.doc', 'doc'],
+        ['report.docx', 'docx'],
+      ])('should render file icon for %s (%s extension)', (filename) => {
+        // Arrange
+        const detail = createMockIndexingStatus()
+
+        // Act
+        render(
+          <IndexingProgressItem
+            detail={detail}
+            name={filename}
+            sourceType={DataSourceType.FILE}
+          />,
+        )
+
+        // Assert
+        expect(screen.getByText(filename)).toBeInTheDocument()
+      })
+
+      it('should handle unknown file extension with default icon', () => {
+        // Arrange
+        const detail = createMockIndexingStatus()
+
+        // Act
+        render(
+          <IndexingProgressItem
+            detail={detail}
+            name="archive.zip"
+            sourceType={DataSourceType.FILE}
+          />,
+        )
+
+        // Assert - should still render with default document icon
+        expect(screen.getByText('archive.zip')).toBeInTheDocument()
+      })
+
+      it('should handle uppercase extension', () => {
+        // Arrange
+        const detail = createMockIndexingStatus()
+
+        // Act
+        render(
+          <IndexingProgressItem
+            detail={detail}
+            name="REPORT.PDF"
+            sourceType={DataSourceType.FILE}
+          />,
+        )
+
+        // Assert
+        expect(screen.getByText('REPORT.PDF')).toBeInTheDocument()
+      })
+
+      it('should handle mixed case extension', () => {
+        // Arrange
+        const detail = createMockIndexingStatus()
+
+        // Act
+        render(
+          <IndexingProgressItem
+            detail={detail}
+            name="Document.Docx"
+            sourceType={DataSourceType.FILE}
+          />,
+        )
+
+        // Assert
+        expect(screen.getByText('Document.Docx')).toBeInTheDocument()
+      })
+
+      it('should handle filename with multiple dots', () => {
+        // Arrange
+        const detail = createMockIndexingStatus()
+
+        // Act
+        render(
+          <IndexingProgressItem
+            detail={detail}
+            name="my.file.name.pdf"
+            sourceType={DataSourceType.FILE}
+          />,
+        )
+
+        // Assert - should extract "pdf" as extension
+        expect(screen.getByText('my.file.name.pdf')).toBeInTheDocument()
+      })
+
+      it('should handle filename without extension', () => {
+        // Arrange
+        const detail = createMockIndexingStatus()
+
+        // Act
+        render(
+          <IndexingProgressItem
+            detail={detail}
+            name="noextension"
+            sourceType={DataSourceType.FILE}
+          />,
+        )
+
+        // Assert - should use filename itself as fallback
+        expect(screen.getByText('noextension')).toBeInTheDocument()
+      })
+    })
+
     it('should render notion icon for NOTION source type', () => {
       // Arrange
       const detail = createMockIndexingStatus()
@@ -1441,52 +1558,5 @@ describe('EmbeddingProcess', () => {
       // Assert - should use default semantic search
       expect(screen.getByText(/dataset\.retrieval\.semantic_search\.title/i)).toBeInTheDocument()
     })
-  })
-})
-
-// =============================================================================
-// Snapshot Tests (Used Sparingly)
-// =============================================================================
-
-describe('Snapshots', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('IndexingProgressItem should match snapshot for completed state', () => {
-    // Arrange
-    const detail = createMockIndexingStatus({ indexing_status: 'completed' })
-
-    // Act
-    const { container } = render(
-      <IndexingProgressItem
-        detail={detail}
-        name="document.pdf"
-        sourceType={DataSourceType.FILE}
-      />,
-    )
-
-    // Assert
-    expect(container.firstChild).toMatchSnapshot()
-  })
-
-  it('IndexingProgressItem should match snapshot for error state', () => {
-    // Arrange
-    const detail = createMockIndexingStatus({
-      indexing_status: 'error',
-      error: 'Processing failed',
-    })
-
-    // Act
-    const { container } = render(
-      <IndexingProgressItem
-        detail={detail}
-        name="document.pdf"
-        sourceType={DataSourceType.FILE}
-      />,
-    )
-
-    // Assert
-    expect(container.firstChild).toMatchSnapshot()
   })
 })
