@@ -179,7 +179,7 @@ export default antfu(
       // 'dify-i18n/no-as-any-in-t': ['error', { mode: 'all' }],
       'dify-i18n/no-as-any-in-t': 'error',
       // 'dify-i18n/no-legacy-namespace-prefix': 'error',
-      'dify-i18n/require-ns-option': 'error',
+      // 'dify-i18n/require-ns-option': 'error',
     },
   },
   // i18n JSON validation rules

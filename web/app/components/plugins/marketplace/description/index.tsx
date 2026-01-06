@@ -1,4 +1,3 @@
-/* eslint-disable dify-i18n/require-ns-option */
 import { useLocale } from '#i18n/useLocale'
 import { useTranslation } from '#i18n/useTranslation'
 

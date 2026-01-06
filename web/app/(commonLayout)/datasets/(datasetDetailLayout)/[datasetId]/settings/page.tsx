@@ -1,4 +1,3 @@
-/* eslint-disable dify-i18n/require-ns-option */
 import * as React from 'react'
 import Form from '@/app/components/datasets/settings/form'
 import { getLocaleOnServer, getTranslation } from '@/i18n-config/server'
