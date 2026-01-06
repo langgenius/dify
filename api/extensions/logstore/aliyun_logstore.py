@@ -217,26 +217,21 @@ class AliyunLogStore:
         Raises:
             ConnectionError: If endpoint is not reachable
         """
+        # Extract hostname from endpoint
         hostname = endpoint.replace('https://', '').replace('http://', '').split('/')[0].split(':')[0]
-        port = 443  # SLS uses HTTPS
+        port = 80
         
-        sock = None
         try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(timeout)
-            sock.connect((hostname, port))
-        except TimeoutError:
+            # Use context manager to ensure socket is properly closed
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.settimeout(timeout)
+                sock.connect((hostname, port))
+        except Exception as e:
+            # Catch all exceptions and provide clear error message
+            error_type = type(e).__name__
             raise ConnectionError(
-                f"Cannot reach {hostname}:{port} within {timeout}s. "
-                f"Check: endpoint configuration, network connectivity, firewall/proxy settings"
-            )
-        except socket.gaierror as e:
-            raise ConnectionError(f"DNS resolution failed for {hostname}: {e}")
-        except OSError as e:
-            raise ConnectionError(f"Network error connecting to {hostname}:{port}: {e}")
-        finally:
-            if sock:
-                sock.close()
+                f"Cannot connect to {hostname}:{port} (timeout={timeout}s): [{error_type}] {e}"
+            ) from e
 
     @property
     def supports_pg_protocol(self) -> bool:
@@ -259,19 +254,15 @@ class AliyunLogStore:
         try:
             self._use_pg_protocol = self._pg_client.init_connection()
             if self._use_pg_protocol:
-                logger.info("Successfully connected to project %s using PG protocol", self.project_name)
+                logger.info("Using PG protocol for project %s", self.project_name)
                 # Check if scan_index is enabled for all logstores
                 self._check_and_disable_pg_if_scan_index_disabled()
                 return True
             else:
-                logger.info("PG connection failed for project %s. Will use SDK mode.", self.project_name)
+                logger.debug("Using SDK mode for project %s", self.project_name)
                 return False
         except Exception as e:
-            logger.warning(
-                "Failed to establish PG connection for project %s: %s. Will use SDK mode.",
-                self.project_name,
-                str(e),
-            )
+            logger.debug("Using SDK mode for project %s: %s", self.project_name, str(e))
             self._use_pg_protocol = False
             return False
 
