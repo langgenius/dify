@@ -55,7 +55,6 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.json_in_md_parser import parse_and_check_json_markdown
 from models.dataset import Dataset, DatasetMetadata, Document, RateLimitLog
-from models.enums import UserFrom
 from services.feature_service import FeatureService
 
 from .entities import KnowledgeRetrievalNodeData
