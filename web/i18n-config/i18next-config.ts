@@ -6,7 +6,7 @@ import { kebabCase } from 'es-toolkit/string'
 import { createInstance } from 'i18next'
 import resourcesToBackend from 'i18next-resources-to-backend'
 import { getI18n, initReactI18next } from 'react-i18next'
-import { NAMESPACES } from './resources'
+import { namespacesCamelCase } from './resources'
 
 export function createI18nextInstance(lng: Locale, resources: Resource) {
   const instance = createInstance()
@@ -24,7 +24,7 @@ export function createI18nextInstance(lng: Locale, resources: Resource) {
       fallbackLng: 'en-US',
       resources,
       partialBundledLanguages: true,
-      ns: NAMESPACES,
+      ns: namespacesCamelCase,
       keySeparator: false,
     })
   return instance

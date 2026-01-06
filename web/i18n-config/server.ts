@@ -12,7 +12,7 @@ import { cache } from 'react'
 import { initReactI18next } from 'react-i18next/initReactI18next'
 import { serverOnlyContext } from '@/utils/server-only-context'
 import { i18n } from '.'
-import { NAMESPACES } from './resources'
+import { namespacesCamelCase, namespacesKebabCase } from './resources'
 
 const [getLocaleCache, setLocaleCache] = serverOnlyContext<Locale | null>(null)
 const [getI18nInstance, setI18nInstance] = serverOnlyContext<I18nInstance | null>(null)
@@ -33,7 +33,7 @@ const getOrCreateI18next = async (lng: Locale) => {
       lng,
       fallbackLng: 'en-US',
       partialBundledLanguages: true,
-      ns: NAMESPACES,
+      ns: namespacesCamelCase,
       keySeparator: false,
     })
   setI18nInstance(instance)
@@ -86,7 +86,7 @@ export const getResources = cache(async (lng: Locale): Promise<Resource> => {
   const messages = {} as ResourceLanguage
 
   await Promise.all(
-    (NAMESPACES).map(async (ns) => {
+    (namespacesKebabCase).map(async (ns) => {
       const mod = await import(`../i18n/${lng}/${ns}.json`)
       messages[camelCase(ns)] = mod.default
     }),
