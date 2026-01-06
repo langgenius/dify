@@ -39,7 +39,7 @@ class ArchiveStorage:
     """
     S3-compatible storage client for archiving or exporting.
 
-    This client provides methods for storing and retrieving archived data in JSONL+gzip format.
+    This client provides methods for storing and retrieving archived data in JSONL and JSONL+gzip formats.
     """
 
     def __init__(self, bucket: str):
@@ -270,6 +270,28 @@ class ArchiveStorage:
             jsonl_content += b"\n"
 
         return gzip.compress(jsonl_content)
+
+    @staticmethod
+    def serialize_to_jsonl(records: list[dict[str, Any]]) -> bytes:
+        """
+        Serialize records to JSONL format.
+
+        Args:
+            records: List of dictionaries to serialize
+
+        Returns:
+            JSONL bytes
+        """
+        lines = []
+        for record in records:
+            serialized = ArchiveStorage._serialize_record(record)
+            lines.append(orjson.dumps(serialized))
+
+        jsonl_content = b"\n".join(lines)
+        if jsonl_content:
+            jsonl_content += b"\n"
+
+        return jsonl_content
 
     @staticmethod
     def deserialize_from_jsonl_gz(data: bytes) -> list[dict[str, Any]]:

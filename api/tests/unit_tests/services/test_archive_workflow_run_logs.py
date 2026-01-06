@@ -50,17 +50,21 @@ class TestWorkflowRunArchiver:
 
         key = archiver._get_archive_key(mock_run)
 
-        assert key == "tenant-123/app_id=app-999/year=2024/month=01/workflow_run_id=run-456/archive.v1.0.tar"
+        assert (
+            key
+            == "tenant-123/app_id=app-999/year=2024/month=01/workflow_run_id=run-456/"
+            f"{archiver.ARCHIVE_BUNDLE_NAME}"
+        )
 
     def test_get_table_member_path(self):
-        """Test table member path generation within tar archive."""
+        """Test table member path generation within zip archive."""
         from services.retention.workflow_run.archive_paid_plan_workflow_run import WorkflowRunArchiver
 
         archiver = WorkflowRunArchiver.__new__(WorkflowRunArchiver)
 
         path = archiver._get_table_member_path("workflow_node_executions")
 
-        assert path == "workflow_node_executions.jsonl.gz"
+        assert path == "workflow_node_executions.jsonl"
 
 
 class TestWorkflowRunExportService:

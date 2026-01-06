@@ -5,21 +5,22 @@ This service archives workflow run logs for paid plan users older than the confi
 retention period (default: 90 days) to S3-compatible storage.
 
 Archived tables:
+- workflow_runs
+- workflow_app_logs
 - workflow_node_executions
 - workflow_node_execution_offload
 - workflow_pauses
 - workflow_pause_reasons
 - workflow_trigger_logs
 
-The workflow_runs and workflow_app_logs tables are preserved for UI listing.
 """
 
 import datetime
 import io
 import json
 import logging
-import tarfile
 import time
+import zipfile
 from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
@@ -37,7 +38,7 @@ from libs.archive_storage import (
     ArchiveStorageNotConfiguredError,
     get_archive_storage,
 )
-from models.workflow import WorkflowRun
+from models.workflow import WorkflowAppLog, WorkflowRun
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.sqlalchemy_api_workflow_node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
@@ -87,19 +88,23 @@ class WorkflowRunArchiver:
 
     Storage Layout:
     {tenant_id}/app_id={app_id}/year={YYYY}/month={MM}/workflow_run_id={run_id}/
-        └── archive.v1.0.tar
+        └── archive.v1.0.zip
             ├── manifest.json
-            ├── workflow_node_executions.jsonl.gz
-            ├── workflow_node_execution_offload.jsonl.gz
-            ├── workflow_pauses.jsonl.gz
-            ├── workflow_pause_reasons.jsonl.gz
-            └── workflow_trigger_logs.jsonl.gz
+            ├── workflow_runs.jsonl
+            ├── workflow_app_logs.jsonl
+            ├── workflow_node_executions.jsonl
+            ├── workflow_node_execution_offload.jsonl
+            ├── workflow_pauses.jsonl
+            ├── workflow_pause_reasons.jsonl
+            └── workflow_trigger_logs.jsonl
     """
 
     ARCHIVE_SCHEMA_VERSION = "1.0"
-    ARCHIVE_BUNDLE_NAME = f"archive.v{ARCHIVE_SCHEMA_VERSION}.tar"
+    ARCHIVE_BUNDLE_NAME = f"archive.v{ARCHIVE_SCHEMA_VERSION}.zip"
 
     ARCHIVED_TABLES = [
+        "workflow_runs",
+        "workflow_app_logs",
         "workflow_node_executions",
         "workflow_node_execution_offload",
         "workflow_pauses",
@@ -356,7 +361,7 @@ class WorkflowRunArchiver:
                 table_payloads: dict[str, bytes] = {}
                 for table_name in self.ARCHIVED_TABLES:
                     records = table_data.get(table_name, [])
-                    data = ArchiveStorage.serialize_to_jsonl_gz(records)
+                    data = ArchiveStorage.serialize_to_jsonl(records)
                     table_payloads[table_name] = data
                     checksum = ArchiveStorage.compute_checksum(data)
 
@@ -400,6 +405,17 @@ class WorkflowRunArchiver:
 
     def _extract_data(self, session: Session, run: WorkflowRun) -> dict[str, list[dict[str, Any]]]:
         table_data: dict[str, list[dict[str, Any]]] = {}
+        table_data["workflow_runs"] = [self._row_to_dict(run)]
+        app_logs = (
+            session.query(WorkflowAppLog)
+            .where(
+                WorkflowAppLog.tenant_id == run.tenant_id,
+                WorkflowAppLog.app_id == run.app_id,
+                WorkflowAppLog.workflow_run_id == run.id,
+            )
+            .all()
+        )
+        table_data["workflow_app_logs"] = [self._row_to_dict(row) for row in app_logs]
         run_context: DifyAPISQLAlchemyWorkflowNodeExecutionRepository.RunContext = {
             "run_id": run.id,
             "tenant_id": run.tenant_id,
@@ -467,21 +483,15 @@ class WorkflowRunArchiver:
             },
         }
 
-    @staticmethod
-    def _add_tar_member(tar: tarfile.TarFile, name: str, data: bytes) -> None:
-        info = tarfile.TarInfo(name)
-        info.size = len(data)
-        tar.addfile(info, io.BytesIO(data))
-
     def _build_archive_bundle(self, manifest_data: bytes, table_payloads: dict[str, bytes]) -> bytes:
         buffer = io.BytesIO()
-        with tarfile.open(fileobj=buffer, mode="w") as tar:
-            self._add_tar_member(tar, "manifest.json", manifest_data)
+        with zipfile.ZipFile(buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr("manifest.json", manifest_data)
             for table_name in self.ARCHIVED_TABLES:
                 data = table_payloads.get(table_name)
                 if data is None:
                     raise ValueError(f"Missing archive payload for {table_name}")
-                self._add_tar_member(tar, f"{table_name}.jsonl.gz", data)
+                archive.writestr(f"{table_name}.jsonl", data)
         return buffer.getvalue()
 
     def _mark_archived(self, session: Session, run_id: str) -> None:
