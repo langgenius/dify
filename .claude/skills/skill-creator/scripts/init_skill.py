@@ -188,7 +188,7 @@ Note: This is a text placeholder. Actual assets can be any file type.
 
 def title_case_skill_name(skill_name):
     """Convert hyphenated skill name to Title Case for display."""
-    return ' '.join(word.capitalize() for word in skill_name.split('-'))
+    return " ".join(word.capitalize() for word in skill_name.split("-"))
 
 
 def init_skill(skill_name, path):
@@ -220,12 +220,9 @@ def init_skill(skill_name, path):
 
     # Create SKILL.md from template
     skill_title = title_case_skill_name(skill_name)
-    skill_content = SKILL_TEMPLATE.format(
-        skill_name=skill_name,
-        skill_title=skill_title
-    )
+    skill_content = SKILL_TEMPLATE.format(skill_name=skill_name, skill_title=skill_title)
 
-    skill_md_path = skill_dir / 'SKILL.md'
+    skill_md_path = skill_dir / "SKILL.md"
     try:
         skill_md_path.write_text(skill_content)
         print("✅ Created SKILL.md")
@@ -236,24 +233,24 @@ def init_skill(skill_name, path):
     # Create resource directories with example files
     try:
         # Create scripts/ directory with example script
-        scripts_dir = skill_dir / 'scripts'
+        scripts_dir = skill_dir / "scripts"
         scripts_dir.mkdir(exist_ok=True)
-        example_script = scripts_dir / 'example.py'
+        example_script = scripts_dir / "example.py"
         example_script.write_text(EXAMPLE_SCRIPT.format(skill_name=skill_name))
         example_script.chmod(0o755)
         print("✅ Created scripts/example.py")
 
         # Create references/ directory with example reference doc
-        references_dir = skill_dir / 'references'
+        references_dir = skill_dir / "references"
         references_dir.mkdir(exist_ok=True)
-        example_reference = references_dir / 'api_reference.md'
+        example_reference = references_dir / "api_reference.md"
         example_reference.write_text(EXAMPLE_REFERENCE.format(skill_title=skill_title))
         print("✅ Created references/api_reference.md")
 
         # Create assets/ directory with example asset placeholder
-        assets_dir = skill_dir / 'assets'
+        assets_dir = skill_dir / "assets"
         assets_dir.mkdir(exist_ok=True)
-        example_asset = assets_dir / 'example_asset.txt'
+        example_asset = assets_dir / "example_asset.txt"
         example_asset.write_text(EXAMPLE_ASSET)
         print("✅ Created assets/example_asset.txt")
     except Exception as e:
@@ -271,7 +268,7 @@ def init_skill(skill_name, path):
 
 
 def main():
-    if len(sys.argv) < 4 or sys.argv[2] != '--path':
+    if len(sys.argv) < 4 or sys.argv[2] != "--path":
         print("Usage: init_skill.py <skill-name> --path <path>")
         print("\nSkill name requirements:")
         print("  - Hyphen-case identifier (e.g., 'data-analyzer')")
