@@ -32,6 +32,38 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def escape_like_pattern(pattern: str) -> str:
+    """
+    Escape special characters in a string for safe use in SQL LIKE patterns.
+
+    This function escapes the special characters used in SQL LIKE patterns:
+    - Backslash (\\) -> \\
+    - Percent (%) -> \\%
+    - Underscore (_) -> \\_
+
+    The escaped pattern can then be safely used in SQL LIKE queries with the
+    ESCAPE '\\' clause to prevent SQL injection via LIKE wildcards.
+
+    Args:
+        pattern: The string pattern to escape
+
+    Returns:
+        Escaped string safe for use in SQL LIKE queries
+
+    Examples:
+        >>> escape_like_pattern("50% discount")
+        '50\\% discount'
+        >>> escape_like_pattern("test_data")
+        'test\\_data'
+        >>> escape_like_pattern("path\\to\\file")
+        'path\\\\to\\\\file'
+    """
+    if not pattern:
+        return pattern
+    # Escape backslash first, then percent and underscore
+    return pattern.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 def extract_tenant_id(user: Union["Account", "EndUser"]) -> str | None:
     """
     Extract tenant_id from Account or EndUser object.

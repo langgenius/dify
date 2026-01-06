@@ -1,5 +1,6 @@
 // @ts-check
 import antfu from '@antfu/eslint-config'
+import pluginQuery from '@tanstack/eslint-plugin-query'
 import sonar from 'eslint-plugin-sonarjs'
 import storybook from 'eslint-plugin-storybook'
 import tailwind from 'eslint-plugin-tailwindcss'
@@ -79,6 +80,7 @@ export default antfu(
     },
   },
   storybook.configs['flat/recommended'],
+  ...pluginQuery.configs['flat/recommended'],
   // sonar
   {
     rules: {
@@ -126,15 +128,6 @@ export default antfu(
     },
     plugins: {
       sonarjs: sonar,
-    },
-  },
-  // allow generated i18n files (like i18n/*/workflow.ts) to exceed max-lines
-  {
-    files: ['i18n/**'],
-    rules: {
-      'sonarjs/max-lines': 'off',
-      'max-lines': 'off',
-      'jsonc/sort-keys': 'error',
     },
   },
   tailwind.configs['flat/recommended'],
@@ -186,7 +179,22 @@ export default antfu(
       // 'dify-i18n/no-as-any-in-t': ['error', { mode: 'all' }],
       'dify-i18n/no-as-any-in-t': 'error',
       // 'dify-i18n/no-legacy-namespace-prefix': 'error',
-      'dify-i18n/require-ns-option': 'error',
+      // 'dify-i18n/require-ns-option': 'error',
+    },
+  },
+  // i18n JSON validation rules
+  {
+    files: ['i18n/**/*.json'],
+    plugins: {
+      'dify-i18n': difyI18n,
+    },
+    rules: {
+      'sonarjs/max-lines': 'off',
+      'max-lines': 'off',
+      'jsonc/sort-keys': 'error',
+
+      'dify-i18n/valid-i18n-keys': 'error',
+      'dify-i18n/no-extra-keys': 'error',
     },
   },
 )
