@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime
 from enum import StrEnum, auto
 from functools import cached_property
@@ -19,7 +21,7 @@ class ProviderType(StrEnum):
     SYSTEM = auto()
 
     @staticmethod
-    def value_of(value: str) -> "ProviderType":
+    def value_of(value: str) -> ProviderType:
         for member in ProviderType:
             if member.value == value:
                 return member
@@ -37,7 +39,7 @@ class ProviderQuotaType(StrEnum):
     """hosted trial quota"""
 
     @staticmethod
-    def value_of(value: str) -> "ProviderQuotaType":
+    def value_of(value: str) -> ProviderQuotaType:
         for member in ProviderQuotaType:
             if member.value == value:
                 return member
