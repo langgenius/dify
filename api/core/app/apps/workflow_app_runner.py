@@ -130,6 +130,8 @@ class WorkflowBasedAppRunner:
         workflow: Workflow,
         single_iteration_run: Any | None = None,
         single_loop_run: Any | None = None,
+        *,
+        system_variables: SystemVariable | None = None,
     ) -> tuple[Graph, VariablePool, GraphRuntimeState]:
         """
         Prepare graph, variable pool, and runtime state for single node execution
@@ -147,9 +149,10 @@ class WorkflowBasedAppRunner:
             ValueError: If neither single_iteration_run nor single_loop_run is specified
         """
         # Create initial runtime state with variable pool containing environment variables
+        system_variables = system_variables or SystemVariable.empty()
         graph_runtime_state = GraphRuntimeState(
             variable_pool=VariablePool(
-                system_variables=SystemVariable.empty(),
+                system_variables=system_variables,
                 user_inputs={},
                 environment_variables=workflow.environment_variables,
             ),
@@ -220,7 +223,7 @@ class WorkflowBasedAppRunner:
         # filter nodes only in the specified node type (iteration or loop)
         main_node_config = next((n for n in graph_config.get("nodes", []) if n.get("id") == node_id), None)
         start_node_id = main_node_config.get("data", {}).get("start_node_id") if main_node_config else None
-        node_configs = [
+        base_node_configs = [
             node
             for node in graph_config.get("nodes", [])
             if node.get("id") == node_id
@@ -228,26 +231,74 @@ class WorkflowBasedAppRunner:
             or (start_node_id and node.get("id") == start_node_id)
         ]
 
-        graph_config["nodes"] = node_configs
+        # Build a base graph config (without synthetic entry) to keep node-level context minimal.
+        base_graph_config = graph_config.copy()
+        base_graph_config["nodes"] = base_node_configs
 
-        node_ids = [node.get("id") for node in node_configs]
+        node_ids = [node.get("id") for node in base_node_configs if isinstance(node.get("id"), str)]
 
         # filter edges only in the specified node type
-        edge_configs = [
+        base_edge_configs = [
             edge
             for edge in graph_config.get("edges", [])
             if (edge.get("source") is None or edge.get("source") in node_ids)
             and (edge.get("target") is None or edge.get("target") in node_ids)
         ]
 
-        graph_config["edges"] = edge_configs
+        base_graph_config["edges"] = base_edge_configs
+
+        # Inject a synthetic start node so Graph validation accepts the single-node graph
+        # (loop/iteration nodes are containers and cannot serve as graph roots).
+        synthetic_start_node_id = f"{node_id}_single_step_start"
+        synthetic_start_node = {
+            "id": synthetic_start_node_id,
+            "type": "custom",
+            "data": {
+                "type": NodeType.START,
+                "title": "Start",
+                "desc": "Synthetic start for single-step run",
+                "version": "1",
+                "variables": [],
+            },
+        }
+
+        synthetic_end_node_id = f"{node_id}_single_step_end"
+        synthetic_end_node = {
+            "id": synthetic_end_node_id,
+            "type": "custom",
+            "data": {
+                "type": NodeType.END,
+                "title": "End",
+                "desc": "Synthetic end for single-step run",
+                "version": "1",
+                "outputs": [],
+            },
+        }
+
+        graph_config_with_entry = base_graph_config.copy()
+        graph_config_with_entry["nodes"] = [*base_node_configs, synthetic_start_node, synthetic_end_node]
+        graph_config_with_entry["edges"] = [
+            *base_edge_configs,
+            {
+                "source": synthetic_start_node_id,
+                "target": node_id,
+                "sourceHandle": "source",
+                "targetHandle": "target",
+            },
+            {
+                "source": node_id,
+                "target": synthetic_end_node_id,
+                "sourceHandle": "source",
+                "targetHandle": "target",
+            },
+        ]
 
         # Create required parameters for Graph.init
         graph_init_params = GraphInitParams(
             tenant_id=workflow.tenant_id,
             app_id=self._app_id,
             workflow_id=workflow.id,
-            graph_config=graph_config,
+            graph_config=base_graph_config,
             user_id="",
             user_from=UserFrom.ACCOUNT,
             invoke_from=InvokeFrom.SERVICE_API,
@@ -260,14 +311,16 @@ class WorkflowBasedAppRunner:
         )
 
         # init graph
-        graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id=node_id)
+        graph = Graph.init(
+            graph_config=graph_config_with_entry, node_factory=node_factory, root_node_id=synthetic_start_node_id
+        )
 
         if not graph:
             raise ValueError("graph not found in workflow")
 
         # fetch node config from node id
         target_node_config = None
-        for node in node_configs:
+        for node in base_node_configs:
             if node.get("id") == node_id:
                 target_node_config = node
                 break

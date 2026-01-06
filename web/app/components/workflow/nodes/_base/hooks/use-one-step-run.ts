@@ -792,8 +792,12 @@ const useOneStepRun = <T>({
                 },
               })
               const { data: iterationData } = params
-              _runResult.created_by = iterationData.created_by.name
-              setRunResult(_runResult)
+              const nextRunResult = {
+                ..._runResult,
+                created_by: (iterationData.created_by as any)?.name || '',
+              }
+              _runResult = nextRunResult
+              setRunResult(nextRunResult)
             },
             onIterationStart: (params) => {
               const newIterationRunResult = produce(_iterationResult, (draft) => {
@@ -895,8 +899,12 @@ const useOneStepRun = <T>({
                 },
               })
               const { data: loopData } = params
-              _runResult.created_by = loopData.created_by.name
-              setRunResult(_runResult)
+              const nextRunResult = {
+                ..._runResult,
+                created_by: (loopData.created_by as any)?.name || '',
+              }
+              _runResult = nextRunResult
+              setRunResult(nextRunResult)
             },
             onLoopStart: (params) => {
               const newLoopRunResult = produce(_loopResult, (draft) => {
