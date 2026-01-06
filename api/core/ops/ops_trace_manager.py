@@ -316,30 +316,45 @@ class OpsTraceManager:
             app_id = str(app_id)
 
         if app_id is None:
+            logger.info("[OPS_Trace] get_ops_trace_instance: app_id is None")
             return None
 
         app: App | None = db.session.query(App).where(App.id == app_id).first()
 
         if app is None:
+            logger.info("[OPS_Trace] get_ops_trace_instance: App not found, app_id=%s", app_id)
             return None
 
         app_ops_trace_config = json.loads(app.tracing) if app.tracing else None
         if app_ops_trace_config is None:
+            logger.info("[OPS_Trace] get_ops_trace_instance: app.tracing is None, app_id=%s", app_id)
             return None
         if not app_ops_trace_config.get("enabled"):
+            logger.info("[OPS_Trace] get_ops_trace_instance: tracing not enabled, app_id=%s", app_id)
             return None
 
         tracing_provider = app_ops_trace_config.get("tracing_provider")
         if tracing_provider is None:
+            logger.info("[OPS_Trace] get_ops_trace_instance: tracing_provider is None, app_id=%s", app_id)
             return None
         try:
             provider_config_map[tracing_provider]
         except KeyError:
+            logger.info(
+                "[OPS_Trace] get_ops_trace_instance: unsupported tracing_provider=%s, app_id=%s",
+                tracing_provider,
+                app_id,
+            )
             return None
 
         # decrypt_token
         decrypt_trace_config = cls.get_decrypted_tracing_config(app_id, tracing_provider)
         if not decrypt_trace_config:
+            logger.info(
+                "[OPS_Trace] get_ops_trace_instance: failed to decrypt trace config, app_id=%s, tracing_provider=%s",
+                app_id,
+                tracing_provider,
+            )
             return None
 
         trace_instance, config_class = (
@@ -352,7 +367,17 @@ class OpsTraceManager:
             # create new tracing_instance and update the cache if it absent
             tracing_instance = trace_instance(config_class(**decrypt_trace_config))
             cls.ops_trace_instances_cache[decrypt_trace_config_key] = tracing_instance
-            logger.info("new tracing_instance for app_id: %s", app_id)
+            logger.info(
+                "[OPS_Trace] New tracing_instance created, app_id=%s, tracing_provider=%s",
+                app_id,
+                tracing_provider,
+            )
+        else:
+            logger.info(
+                "[OPS_Trace] Using cached tracing_instance, app_id=%s, tracing_provider=%s",
+                app_id,
+                tracing_provider,
+            )
         return tracing_instance
 
     @classmethod
@@ -936,6 +961,13 @@ class TraceQueueManager:
         self.user_id = user_id
         self.trace_instance = OpsTraceManager.get_ops_trace_instance(app_id)
         self.flask_app = current_app._get_current_object()  # type: ignore
+        logger.info(
+            "[OPS_Trace] TraceQueueManager initialized, app_id=%s, user_id=%s, trace_instance=%s, timer_exists=%s",
+            app_id,
+            user_id,
+            "exists" if self.trace_instance else "None",
+            trace_manager_timer is not None,
+        )
         if trace_manager_timer is None:
             self.start_timer()
 
@@ -945,6 +977,18 @@ class TraceQueueManager:
             if self.trace_instance:
                 trace_task.app_id = self.app_id
                 trace_manager_queue.put(trace_task)
+                logger.info(
+                    "[OPS_Trace] Trace task added to queue, app_id=%s, trace_type=%s, queue_size=%s",
+                    self.app_id,
+                    trace_task.trace_type,
+                    trace_manager_queue.qsize(),
+                )
+            else:
+                logger.info(
+                    "[OPS_Trace] Trace task skipped (trace_instance is None), app_id=%s, trace_type=%s",
+                    self.app_id,
+                    trace_task.trace_type,
+                )
         except Exception:
             logger.exception("Error adding trace task, trace_type %s", trace_task.trace_type)
         finally:
@@ -952,18 +996,29 @@ class TraceQueueManager:
 
     def collect_tasks(self):
         global trace_manager_queue
+        initial_queue_size = trace_manager_queue.qsize()
         tasks: list[TraceTask] = []
         while len(tasks) < trace_manager_batch_size and not trace_manager_queue.empty():
             task = trace_manager_queue.get_nowait()
             tasks.append(task)
             trace_manager_queue.task_done()
+        logger.info(
+            "[OPS_Trace] Collected tasks from queue, initial_size=%s, collected=%s, remaining=%s",
+            initial_queue_size,
+            len(tasks),
+            trace_manager_queue.qsize(),
+        )
         return tasks
 
     def run(self):
         try:
+            logger.info("[OPS_Trace] Timer run() started")
             tasks = self.collect_tasks()
             if tasks:
+                logger.info("[OPS_Trace] Sending %s tasks to Celery", len(tasks))
                 self.send_to_celery(tasks)
+            else:
+                logger.info("[OPS_Trace] No tasks to send, queue is empty")
         except Exception:
             logger.exception("Error processing trace tasks")
 
@@ -974,14 +1029,28 @@ class TraceQueueManager:
             trace_manager_timer.name = f"trace_manager_timer_{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}"
             trace_manager_timer.daemon = False
             trace_manager_timer.start()
+            logger.info(
+                "[OPS_Trace] Timer started, interval=%s seconds, queue_size=%s, timer_alive=%s",
+                trace_manager_interval,
+                trace_manager_queue.qsize(),
+                trace_manager_timer.is_alive(),
+            )
 
     def send_to_celery(self, tasks: list[TraceTask]):
         with self.flask_app.app_context():
             for task in tasks:
                 if task.app_id is None:
+                    logger.info("[OPS_Trace] Skipping task with None app_id, trace_type=%s", task.trace_type)
                     continue
                 file_id = uuid4().hex
                 trace_info = task.execute()
+                if trace_info is None:
+                    logger.info(
+                        "[OPS_Trace] Task execute() returned None, app_id=%s, trace_type=%s",
+                        task.app_id,
+                        task.trace_type,
+                    )
+                    continue
 
                 task_data = TaskData(
                     app_id=task.app_id,
@@ -989,9 +1058,37 @@ class TraceQueueManager:
                     trace_info=trace_info.model_dump() if trace_info else None,
                 )
                 file_path = f"{OPS_FILE_PATH}{task.app_id}/{file_id}.json"
-                storage.save(file_path, task_data.model_dump_json().encode("utf-8"))
+                try:
+                    storage.save(file_path, task_data.model_dump_json().encode("utf-8"))
+                    logger.info(
+                        "[OPS_Trace] Trace file saved successfully, app_id=%s, file_path=%s, trace_type=%s",
+                        task.app_id,
+                        file_path,
+                        task.trace_type,
+                    )
+                except Exception:
+                    logger.exception(
+                        "[OPS_Trace] Failed to save trace file, app_id=%s, file_path=%s",
+                        task.app_id,
+                        file_path,
+                    )
+                    continue
+
                 file_info = {
                     "file_id": file_id,
                     "app_id": task.app_id,
                 }
-                process_trace_tasks.delay(file_info)  # type: ignore
+                try:
+                    process_trace_tasks.delay(file_info)  # type: ignore
+                    logger.info(
+                        "[OPS_Trace] Celery task sent successfully, app_id=%s, file_id=%s, trace_type=%s",
+                        task.app_id,
+                        file_id,
+                        task.trace_type,
+                    )
+                except Exception:
+                    logger.exception(
+                        "[OPS_Trace] Failed to send Celery task, app_id=%s, file_id=%s",
+                        task.app_id,
+                        file_id,
+                    )
