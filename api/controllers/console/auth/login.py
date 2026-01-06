@@ -1,3 +1,5 @@
+from typing import Any
+
 import flask_login
 from flask import make_response, request
 from flask_restx import Resource
@@ -96,14 +98,13 @@ class LoginApi(Resource):
         if is_login_error_rate_limit:
             raise EmailPasswordLoginLimitError()
 
-        # TODO: why invitation is re-assigned with different type?
-        invitation = args.invite_token  # type: ignore
-        if invitation:
-            invitation = RegisterService.get_invitation_if_token_valid(None, args.email, invitation)  # type: ignore
+        invitation_data: dict[str, Any] | None = None
+        if args.invite_token:
+            invitation_data = RegisterService.get_invitation_if_token_valid(None, args.email, args.invite_token)
 
         try:
-            if invitation:
-                data = invitation.get("data", {})  # type: ignore
+            if invitation_data:
+                data = invitation_data.get("data", {})
                 invitee_email = data.get("email") if data else None
                 if invitee_email != args.email:
                     raise InvalidEmailError()
