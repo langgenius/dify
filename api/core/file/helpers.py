@@ -9,7 +9,8 @@ from configs import dify_config
 
 
 def get_signed_file_url(upload_file_id: str, as_attachment=False) -> str:
-    url = f"{dify_config.FILES_URL}/files/{upload_file_id}/file-preview"
+    base_url = dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL
+    url = f"{base_url}/files/{upload_file_id}/file-preview"
 
     timestamp = str(int(time.time()))
     nonce = os.urandom(16).hex()
