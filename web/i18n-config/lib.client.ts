@@ -7,3 +7,5 @@ import { useTranslation as useTranslationOriginal } from 'react-i18next'
 export function useTranslation(ns?: Arrayable<NamespaceCamelCase>) {
   return useTranslationOriginal(ns)
 }
+
+export { useLocale } from '@/context/i18n'

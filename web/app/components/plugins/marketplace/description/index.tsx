@@ -1,5 +1,4 @@
-import { useLocale } from '#i18n/useLocale'
-import { useTranslation } from '#i18n/useTranslation'
+import { useLocale, useTranslation } from '#i18n'
 
 const Description = () => {
   const { t } = useTranslation('plugin')

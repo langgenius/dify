@@ -11,3 +11,7 @@ async function getI18nConfig(ns?: Arrayable<NamespaceCamelCase>) {
 export function useTranslation(ns?: Arrayable<NamespaceCamelCase>) {
   return use(getI18nConfig(ns))
 }
+
+export function useLocale() {
+  return use(getLocaleOnServer())
+}
