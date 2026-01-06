@@ -49,6 +49,7 @@ export enum BlockEnum {
   TriggerSchedule = 'trigger-schedule',
   TriggerWebhook = 'trigger-webhook',
   TriggerPlugin = 'trigger-plugin',
+  Command = 'command',
 }
 
 export enum ControlMode {

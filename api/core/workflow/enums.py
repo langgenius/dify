@@ -63,6 +63,7 @@ class NodeType(StrEnum):
     TRIGGER_SCHEDULE = "trigger-schedule"
     TRIGGER_PLUGIN = "trigger-plugin"
     HUMAN_INPUT = "human-input"
+    COMMAND = "command"
 
     @property
     def is_trigger_node(self) -> bool:

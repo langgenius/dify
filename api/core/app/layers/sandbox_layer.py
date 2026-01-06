@@ -2,14 +2,17 @@
 Sandbox Layer for managing VirtualEnvironment lifecycle during workflow execution.
 """
 
+import contextlib
 import logging
 from collections.abc import Mapping
 from typing import Any
 
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 from core.virtual_environment.factory import SandboxFactory, SandboxType
+from core.workflow.enums import NodeType
 from core.workflow.graph_engine.layers.base import GraphEngineLayer
 from core.workflow.graph_events.base import GraphEngineEvent
+from core.workflow.nodes.base.node import Node
 
 logger = logging.getLogger(__name__)
 
@@ -106,6 +109,26 @@ class SandboxLayer(GraphEngineLayer):
         Currently a no-op, but can be extended for sandbox monitoring/health checks.
         """
         pass
+
+    def on_node_run_start(self, node: Node[Any]) -> None:
+        """Attach sandbox handle to CommandNode instances."""
+        if node.node_type is not NodeType.COMMAND:
+            return
+
+        try:
+            # FIXME: type: ignore[attr-defined]
+            node.sandbox = self.sandbox  # type: ignore[attr-defined]
+        except Exception:
+            logger.exception("Failed to attach sandbox to node")
+
+    def on_node_run_end(self, node: Node[Any], error: Exception | None) -> None:
+        _ = error
+        if node.node_type is not NodeType.COMMAND:
+            return
+
+        with contextlib.suppress(Exception):
+            # FIXME: type: ignore[attr-defined]
+            node.sandbox = None  # type: ignore[attr-defined]
 
     def on_graph_end(self, error: Exception | None) -> None:
         """

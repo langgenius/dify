@@ -1,6 +1,7 @@
 import agentDefault from '@/app/components/workflow/nodes/agent/default'
 import assignerDefault from '@/app/components/workflow/nodes/assigner/default'
 import codeDefault from '@/app/components/workflow/nodes/code/default'
+import commandDefault from '@/app/components/workflow/nodes/command/default'
 
 import documentExtractorDefault from '@/app/components/workflow/nodes/document-extractor/default'
 
@@ -33,6 +34,7 @@ export const WORKFLOW_COMMON_NODES = [
   loopStartDefault,
   loopEndDefault,
   codeDefault,
+  commandDefault,
   templateTransformDefault,
   variableAggregatorDefault,
   documentExtractorDefault,

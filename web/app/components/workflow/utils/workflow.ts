@@ -20,6 +20,7 @@ export const canRunBySingle = (nodeType: BlockEnum, isChildNode: boolean) => {
   return nodeType === BlockEnum.LLM
     || nodeType === BlockEnum.KnowledgeRetrieval
     || nodeType === BlockEnum.Code
+    || nodeType === BlockEnum.Command
     || nodeType === BlockEnum.TemplateTransform
     || nodeType === BlockEnum.QuestionClassifier
     || nodeType === BlockEnum.HttpRequest
