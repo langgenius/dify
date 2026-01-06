@@ -121,6 +121,11 @@ class PluginUploadFileApi(Resource):
                 mime_type=mimetype,
                 preview_url=preview_url,
                 source_url=tool_file.original_url,
+                original_url=tool_file.original_url,
+                user_id=tool_file.user_id,
+                tenant_id=tool_file.tenant_id,
+                conversation_id=tool_file.conversation_id,
+                file_key=tool_file.file_key,
             )
 
             return result.model_dump(mode="json"), 201

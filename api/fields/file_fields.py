@@ -44,6 +44,11 @@ class FileResponse(ResponseModel):
     created_at: int | None = None
     preview_url: str | None = None
     source_url: str | None = None
+    original_url: str | None = None
+    user_id: str | None = None
+    tenant_id: str | None = None
+    conversation_id: str | None = None
+    file_key: str | None = None
 
     @field_validator("created_at", mode="before")
     @classmethod

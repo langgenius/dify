@@ -18,6 +18,11 @@ def test_file_response_serializes_datetime() -> None:
         created_at=created_at,
         preview_url="https://preview",
         source_url="https://source",
+        original_url="https://origin",
+        user_id="user-1",
+        tenant_id="tenant-1",
+        conversation_id="conv-1",
+        file_key="key-1",
     )
 
     serialized = FileResponse.model_validate(file_obj, from_attributes=True).model_dump(mode="json")
@@ -26,6 +31,11 @@ def test_file_response_serializes_datetime() -> None:
     assert serialized["created_at"] == int(created_at.timestamp())
     assert serialized["preview_url"] == "https://preview"
     assert serialized["source_url"] == "https://source"
+    assert serialized["original_url"] == "https://origin"
+    assert serialized["user_id"] == "user-1"
+    assert serialized["tenant_id"] == "tenant-1"
+    assert serialized["conversation_id"] == "conv-1"
+    assert serialized["file_key"] == "key-1"
 
 
 def test_file_with_signed_url_builds_payload() -> None:
