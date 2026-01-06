@@ -5,9 +5,12 @@ This engine uses a modular architecture with separated packages following
 Domain-Driven Design principles for improved maintainability and testability.
 """
 
+from __future__ import annotations
+
 import contextvars
 import logging
 import queue
+import threading
 from collections.abc import Generator
 from typing import TYPE_CHECKING, cast, final
 
@@ -75,10 +78,13 @@ class GraphEngine:
         scale_down_idle_time: float | None = None,
     ) -> None:
         """Initialize the graph engine with all subsystems and dependencies."""
+        # stop event
+        self._stop_event = threading.Event()
 
         # Bind runtime state to current workflow context
         self._graph = graph
         self._graph_runtime_state = graph_runtime_state
+        self._graph_runtime_state.stop_event = self._stop_event
         self._graph_runtime_state.configure(graph=cast("GraphProtocol", graph))
         self._command_channel = command_channel
 
@@ -177,6 +183,7 @@ class GraphEngine:
             max_workers=self._max_workers,
             scale_up_threshold=self._scale_up_threshold,
             scale_down_idle_time=self._scale_down_idle_time,
+            stop_event=self._stop_event,
         )
 
         # === Orchestration ===
@@ -207,6 +214,7 @@ class GraphEngine:
             event_handler=self._event_handler_registry,
             execution_coordinator=self._execution_coordinator,
             event_emitter=self._event_manager,
+            stop_event=self._stop_event,
         )
 
         # === Validation ===
@@ -226,7 +234,7 @@ class GraphEngine:
     ) -> None:
         layer.initialize(ReadOnlyGraphRuntimeStateWrapper(self._graph_runtime_state), self._command_channel)
 
-    def layer(self, layer: GraphEngineLayer) -> "GraphEngine":
+    def layer(self, layer: GraphEngineLayer) -> GraphEngine:
         """Add a layer for extending functionality."""
         self._layers.append(layer)
         self._bind_layer_context(layer)
@@ -324,6 +332,7 @@ class GraphEngine:
 
     def _start_execution(self, *, resume: bool = False) -> None:
         """Start execution subsystems."""
+        self._stop_event.clear()
         paused_nodes: list[str] = []
         if resume:
             paused_nodes = self._graph_runtime_state.consume_paused_nodes()
@@ -351,13 +360,12 @@ class GraphEngine:
 
     def _stop_execution(self) -> None:
         """Stop execution subsystems."""
+        self._stop_event.set()
         self._dispatcher.stop()
         self._worker_pool.stop()
         # Don't mark complete here as the dispatcher already does it
 
         # Notify layers
-        logger = logging.getLogger(__name__)
-
         for layer in self._layers:
             try:
                 layer.on_graph_end(self._graph_execution.error)
