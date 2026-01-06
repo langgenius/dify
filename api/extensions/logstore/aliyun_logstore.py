@@ -1,5 +1,6 @@
 import logging
 import os
+import socket
 import threading
 import time
 from collections.abc import Sequence
@@ -180,11 +181,17 @@ class AliyunLogStore:
         self.log_enabled: bool = os.environ.get("SQLALCHEMY_ECHO", "false").lower() == "true"
         self.pg_mode_enabled: bool = os.environ.get("LOGSTORE_PG_MODE_ENABLED", "true").lower() == "true"
 
+        # Get timeout configuration
+        check_timeout = int(os.environ.get("ALIYUN_SLS_CHECK_CONNECTIVITY_TIMEOUT", 30))
+        
+        # Pre-check endpoint connectivity to prevent indefinite hangs
+        self._check_endpoint_connectivity(self.endpoint, check_timeout)
+        
         # Initialize SDK client
         self.client = LogClient(
             self.endpoint, self.access_key_id, self.access_key_secret, auth_version=AUTH_VERSION_4, region=self.region
         )
-
+        
         # Append Dify identification to the existing user agent
         original_user_agent = self.client._user_agent  # pyright: ignore[reportPrivateUsage]
         dify_version = dify_config.project.version
@@ -196,6 +203,40 @@ class AliyunLogStore:
         self._use_pg_protocol: bool = False
 
         self.__class__._initialized = True
+
+    @staticmethod
+    def _check_endpoint_connectivity(endpoint: str, timeout: int) -> None:
+        """
+        Check if the SLS endpoint is reachable before creating LogClient.
+        Prevents indefinite hangs when the endpoint is unreachable.
+        
+        Args:
+            endpoint: SLS endpoint URL
+            timeout: Connection timeout in seconds
+            
+        Raises:
+            ConnectionError: If endpoint is not reachable
+        """
+        hostname = endpoint.replace('https://', '').replace('http://', '').split('/')[0].split(':')[0]
+        port = 443  # SLS uses HTTPS
+        
+        sock = None
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(timeout)
+            sock.connect((hostname, port))
+        except TimeoutError:
+            raise ConnectionError(
+                f"Cannot reach {hostname}:{port} within {timeout}s. "
+                f"Check: endpoint configuration, network connectivity, firewall/proxy settings"
+            )
+        except socket.gaierror as e:
+            raise ConnectionError(f"DNS resolution failed for {hostname}: {e}")
+        except OSError as e:
+            raise ConnectionError(f"Network error connecting to {hostname}:{port}: {e}")
+        finally:
+            if sock:
+                sock.close()
 
     @property
     def supports_pg_protocol(self) -> bool:
