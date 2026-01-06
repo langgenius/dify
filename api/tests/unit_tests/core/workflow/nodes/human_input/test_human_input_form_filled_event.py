@@ -95,6 +95,7 @@ def test_human_input_node_emits_form_filled_event_before_succeeded():
     assert isinstance(events[1], NodeRunHumanInputFormFilledEvent)
 
     filled_event = events[1]
+    assert filled_event.node_title == "Human Input"
     assert filled_event.rendered_content.endswith("Alice")
     assert filled_event.action_id == "Accept"
     assert filled_event.action_text == "Approve"

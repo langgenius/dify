@@ -52,6 +52,7 @@ class PauseRequestedEvent(NodeEventBase):
 class HumanInputFormFilledEvent(NodeEventBase):
     """Event emitted when a human input form is submitted."""
 
+    node_title: str
     rendered_content: str
     action_id: str
     action_text: str

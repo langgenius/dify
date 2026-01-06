@@ -502,6 +502,7 @@ class QueueHumanInputFormFilledEvent(AppQueueEvent):
     node_execution_id: str
     node_id: str
     node_type: NodeType
+    node_title: str
     rendered_content: str
     action_id: str
     action_text: str

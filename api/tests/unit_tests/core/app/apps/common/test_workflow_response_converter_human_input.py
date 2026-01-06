@@ -46,6 +46,7 @@ def test_human_input_form_filled_stream_response_contains_rendered_content():
         node_execution_id="exec-1",
         node_id="node-1",
         node_type="human-input",
+        node_title="Human Input",
         rendered_content="# Title\nvalue",
         action_id="Approve",
         action_text="Approve",
@@ -55,5 +56,6 @@ def test_human_input_form_filled_stream_response_contains_rendered_content():
 
     assert resp.workflow_run_id == "run-1"
     assert resp.data.node_id == "node-1"
+    assert resp.data.node_title == "Human Input"
     assert resp.data.rendered_content.startswith("# Title")
     assert resp.data.action_id == "Approve"

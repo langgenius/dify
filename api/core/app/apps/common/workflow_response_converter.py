@@ -329,6 +329,7 @@ class WorkflowResponseConverter:
             workflow_run_id=run_id,
             data=HumanInputFormFilledResponse.Data(
                 node_id=event.node_id,
+                node_title=event.node_title,
                 rendered_content=event.rendered_content,
                 action_id=event.action_id,
                 action_text=event.action_text,

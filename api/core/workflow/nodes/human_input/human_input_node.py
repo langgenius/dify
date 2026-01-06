@@ -246,6 +246,7 @@ class HumanInputNode(Node[HumanInputNodeData]):
         action_text = self._node_data.find_action_text(selected_action_id)
 
         yield HumanInputFormFilledEvent(
+            node_title=self._node_data.title,
             rendered_content=rendered_content,
             action_id=selected_action_id,
             action_text=action_text,

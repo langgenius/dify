@@ -643,6 +643,7 @@ class Node(Generic[NodeDataT]):
             id=self.execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
+            node_title=event.node_title,
             rendered_content=event.rendered_content,
             action_id=event.action_id,
             action_text=event.action_text,
