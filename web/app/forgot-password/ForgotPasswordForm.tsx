@@ -64,9 +64,13 @@ const ForgotPasswordForm = () => {
     },
   })
 
+  const isSubmitting = useStore(form.store, state => state.isSubmitting)
   const emailErrors = useStore(form.store, state => state.fieldMeta.email?.errors)
 
   const handleSendResetPasswordClick = async () => {
+    if (isSubmitting)
+      return
+
     if (isEmailSent) {
       router.push('/signin')
     }
@@ -140,7 +144,7 @@ const ForgotPasswordForm = () => {
                       </div>
                     )}
                     <div>
-                      <Button variant="primary" className="w-full" onClick={handleSendResetPasswordClick}>
+                      <Button variant="primary" className="w-full" disabled={isSubmitting} onClick={handleSendResetPasswordClick}>
                         {isEmailSent ? t('backToSignIn', { ns: 'login' }) : t('sendResetLink', { ns: 'login' })}
                       </Button>
                     </div>
