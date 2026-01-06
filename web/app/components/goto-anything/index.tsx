@@ -110,7 +110,7 @@ const GotoAnything: FC<Props> = ({
         isWorkflowPage,
         isRagPipelinePage,
         defaultLocale,
-        Object.keys(Actions).sort().join(','),
+        Actions,
       ],
       queryFn: async () => {
         const query = searchQueryDebouncedValue.toLowerCase()

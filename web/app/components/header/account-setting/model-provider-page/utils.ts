@@ -34,7 +34,7 @@ export const modelNameMap = {
   [ModelProviderQuotaGetPaid.GEMINI]: 'Gemini',
   [ModelProviderQuotaGetPaid.X]: 'xAI',
   [ModelProviderQuotaGetPaid.DEEPSEEK]: 'DeepSeek',
-  [ModelProviderQuotaGetPaid.TONGYI]: 'TONGYI',
+  [ModelProviderQuotaGetPaid.TONGYI]: 'Tongyi',
 }
 
 export const isNullOrUndefined = (value: any) => {

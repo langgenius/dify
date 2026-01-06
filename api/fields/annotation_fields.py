@@ -1,4 +1,4 @@
-from flask_restx import Api, Namespace, fields
+from flask_restx import Namespace, fields
 
 from libs.helper import TimestampField
 
@@ -12,7 +12,7 @@ annotation_fields = {
 }
 
 
-def build_annotation_model(api_or_ns: Api | Namespace):
+def build_annotation_model(api_or_ns: Namespace):
     """Build the annotation model for the API or Namespace."""
     return api_or_ns.model("Annotation", annotation_fields)
 

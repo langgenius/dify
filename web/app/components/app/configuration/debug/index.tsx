@@ -11,7 +11,8 @@ import {
   RiSparklingFill,
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import { cloneDeep, noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
+import { cloneDeep } from 'es-toolkit/object'
 import { produce, setAutoFreeze } from 'immer'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'

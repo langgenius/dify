@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import { headers } from 'next/headers'
 import Script from 'next/script'
 import * as React from 'react'
+import { IS_CE_EDITION } from '@/config'
 
 export enum GaType {
   admin = 'admin',
@@ -28,8 +29,8 @@ const extractNonceFromCSP = (cspHeader: string | null): string | undefined => {
 const GA: FC<IGAProps> = ({
   gaType,
 }) => {
-  // if (IS_CE_EDITION)
-  //   return null
+  if (IS_CE_EDITION)
+    return null
 
   const cspHeader = process.env.NODE_ENV === 'production'
     ? (headers() as unknown as UnsafeUnwrappedHeaders).get('content-security-policy')

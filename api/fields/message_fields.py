@@ -1,4 +1,4 @@
-from flask_restx import Api, Namespace, fields
+from flask_restx import Namespace, fields
 
 from fields.conversation_fields import message_file_fields
 from libs.helper import TimestampField
@@ -10,7 +10,7 @@ feedback_fields = {
 }
 
 
-def build_feedback_model(api_or_ns: Api | Namespace):
+def build_feedback_model(api_or_ns: Namespace):
     """Build the feedback model for the API or Namespace."""
     return api_or_ns.model("Feedback", feedback_fields)
 
@@ -30,7 +30,7 @@ agent_thought_fields = {
 }
 
 
-def build_agent_thought_model(api_or_ns: Api | Namespace):
+def build_agent_thought_model(api_or_ns: Namespace):
     """Build the agent thought model for the API or Namespace."""
     return api_or_ns.model("AgentThought", agent_thought_fields)
 
