@@ -55,6 +55,7 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.json_in_md_parser import parse_and_check_json_markdown
 from models.dataset import Dataset, DatasetMetadata, Document, RateLimitLog
+from models.enums import CreatorUserRole, UserFrom
 from services.feature_service import FeatureService
 
 from .entities import KnowledgeRetrievalNodeData
@@ -268,6 +269,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
             usage = self._merge_usage(usage, metadata_usage)
         all_documents = []
         dataset_retrieval = DatasetRetrieval()
+        creator_user_role = CreatorUserRole.ACCOUNT if self.user_from == UserFrom.ACCOUNT else CreatorUserRole.END_USER
         if str(node_data.retrieval_mode) == DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE and query:
             # fetch model config
             if node_data.single_retrieval_config is None:
@@ -292,7 +294,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                     tenant_id=self.tenant_id,
                     user_id=self.user_id,
                     app_id=self.app_id,
-                    user_from=self.user_from.value,
+                    creator_user_role=creator_user_role,
                     query=query,
                     model_config=model_config,
                     model_instance=model_instance,
@@ -334,7 +336,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                 app_id=self.app_id,
                 tenant_id=self.tenant_id,
                 user_id=self.user_id,
-                user_from=self.user_from.value,
+                creator_user_role=creator_user_role,
                 available_datasets=available_datasets,
                 query=query,
                 top_k=node_data.multiple_retrieval_config.top_k,
