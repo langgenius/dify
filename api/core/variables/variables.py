@@ -144,7 +144,7 @@ class RAGPipelineVariableInput(BaseModel):
 #
 # Note:
 # - All variants in `Variable` must inherit from the `VariableBase` class.
-# - The union must include all non-abstract subclasses of `Segment`, except:
+# - The union must include all non-abstract subclasses of `VariableBase`.
 Variable: TypeAlias = Annotated[
     (
         Annotated[NoneVariable, Tag(SegmentType.NONE)]
