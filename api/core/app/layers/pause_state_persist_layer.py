@@ -66,6 +66,7 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
         """
         if isinstance(session_factory, Engine):
             session_factory = sessionmaker(session_factory)
+        super().__init__()
         self._session_maker = session_factory
         self._state_owner_user_id = state_owner_user_id
         self._generate_entity = generate_entity
@@ -97,8 +98,6 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
         """
         if not isinstance(event, GraphRunPausedEvent):
             return
-
-        assert self.graph_runtime_state is not None
 
         entity_wrapper: _GenerateEntityUnion
         if isinstance(self._generate_entity, WorkflowAppGenerateEntity):

@@ -679,6 +679,7 @@ def _batch_upsert_draft_variable(
 
 def _model_to_insertion_dict(model: WorkflowDraftVariable) -> dict[str, Any]:
     d: dict[str, Any] = {
+        "id": model.id,
         "app_id": model.app_id,
         "last_edited_at": None,
         "node_id": model.node_id,

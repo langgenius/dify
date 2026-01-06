@@ -1,9 +1,11 @@
-from flask_restx import reqparse
-from flask_restx.inputs import int_range
-from pydantic import TypeAdapter
+from typing import Literal
+
+from flask import request
+from pydantic import BaseModel, Field, TypeAdapter, field_validator, model_validator
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
+from controllers.common.schema import register_schema_models
 from controllers.web import web_ns
 from controllers.web.error import NotChatAppError
 from controllers.web.wraps import WebApiResource
@@ -19,6 +21,35 @@ from models.model import AppMode
 from services.conversation_service import ConversationService
 from services.errors.conversation import ConversationNotExistsError, LastConversationNotExistsError
 from services.web_conversation_service import WebConversationService
+
+
+class ConversationListQuery(BaseModel):
+    last_id: str | None = None
+    limit: int = Field(default=20, ge=1, le=100)
+    pinned: bool | None = None
+    sort_by: Literal["created_at", "-created_at", "updated_at", "-updated_at"] = "-updated_at"
+
+    @field_validator("last_id")
+    @classmethod
+    def validate_last_id(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        return uuid_value(value)
+
+
+class ConversationRenamePayload(BaseModel):
+    name: str | None = None
+    auto_generate: bool = False
+
+    @model_validator(mode="after")
+    def validate_name_requirement(self):
+        if not self.auto_generate:
+            if self.name is None or not self.name.strip():
+                raise ValueError("name is required when auto_generate is false")
+        return self
+
+
+register_schema_models(web_ns, ConversationListQuery, ConversationRenamePayload)
 
 
 @web_ns.route("/conversations")
@@ -64,25 +95,8 @@ class ConversationListApi(WebApiResource):
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("last_id", type=uuid_value, location="args")
-            .add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
-            .add_argument("pinned", type=str, choices=["true", "false", None], location="args")
-            .add_argument(
-                "sort_by",
-                type=str,
-                choices=["created_at", "-created_at", "updated_at", "-updated_at"],
-                required=False,
-                default="-updated_at",
-                location="args",
-            )
-        )
-        args = parser.parse_args()
-
-        pinned = None
-        if "pinned" in args and args["pinned"] is not None:
-            pinned = args["pinned"] == "true"
+        raw_args = request.args.to_dict()
+        query = ConversationListQuery.model_validate(raw_args)
 
         try:
             with Session(db.engine) as session:
@@ -90,11 +104,11 @@ class ConversationListApi(WebApiResource):
                     session=session,
                     app_model=app_model,
                     user=end_user,
-                    last_id=args["last_id"],
-                    limit=args["limit"],
+                    last_id=query.last_id,
+                    limit=query.limit,
                     invoke_from=InvokeFrom.WEB_APP,
-                    pinned=pinned,
-                    sort_by=args["sort_by"],
+                    pinned=query.pinned,
+                    sort_by=query.sort_by,
                 )
                 adapter = TypeAdapter(SimpleConversation)
                 conversations = [adapter.validate_python(item, from_attributes=True) for item in pagination.data]
@@ -168,16 +182,11 @@ class ConversationRenameApi(WebApiResource):
 
         conversation_id = str(c_id)
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("name", type=str, required=False, location="json")
-            .add_argument("auto_generate", type=bool, required=False, default=False, location="json")
-        )
-        args = parser.parse_args()
+        payload = ConversationRenamePayload.model_validate(web_ns.payload or {})
 
         try:
             conversation = ConversationService.rename(
-                app_model, conversation_id, end_user, args["name"], args["auto_generate"]
+                app_model, conversation_id, end_user, payload.name, payload.auto_generate
             )
             return (
                 TypeAdapter(SimpleConversation)
