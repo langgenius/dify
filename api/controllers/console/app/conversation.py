@@ -1,5 +1,5 @@
 from enum import StrEnum
-from typing import Literal, Optional
+from typing import Literal
 
 import sqlalchemy as sa
 from flask import abort, request
