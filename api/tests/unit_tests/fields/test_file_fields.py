@@ -37,7 +37,7 @@ def test_file_with_signed_url_builds_payload() -> None:
         url="https://signed",
         mime_type="application/pdf",
         created_by="user-2",
-        created_at=int(datetime(2024, 1, 2, 0, 0, 0).timestamp()),
+        created_at=datetime(2024, 1, 2, 0, 0, 0),
     )
 
     dumped = payload.model_dump(mode="json")
