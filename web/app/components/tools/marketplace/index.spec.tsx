@@ -19,7 +19,6 @@ vi.mock('@/app/components/plugins/marketplace/list', () => ({
     marketplaceCollectionPluginsMap: Record<string, unknown[]>
     plugins?: unknown[]
     showInstallButton?: boolean
-    locale: string
   }) => {
     listRenderSpy(props)
     return <div data-testid="marketplace-list" />
@@ -144,7 +143,6 @@ describe('Marketplace', () => {
       expect(screen.getByTestId('marketplace-list')).toBeInTheDocument()
       expect(listRenderSpy).toHaveBeenCalledWith(expect.objectContaining({
         showInstallButton: true,
-        locale: 'en',
       }))
     })
   })
