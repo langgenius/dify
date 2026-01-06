@@ -40,7 +40,7 @@ class TriggerSubscriptionBuilderCreatePayload(BaseModel):
 
 
 class TriggerSubscriptionBuilderVerifyPayload(BaseModel):
-    credentials: dict[str, Any] | None = None
+    credentials: dict[str, Any] = {}
 
 
 class TriggerSubscriptionBuilderUpdatePayload(BaseModel):
@@ -300,7 +300,7 @@ class TriggerSubscriptionBuilderBuildApi(Resource):
     "/workspaces/current/trigger-provider/<path:subscription_id>/subscriptions/update",
 )
 class TriggerSubscriptionUpdateApi(Resource):
-    @console_ns.expect(console_ns.models[TriggerSubscriptionUpdateRequest.__name__])
+    @console_ns.expect(console_ns.models[TriggerSubscriptionBuilderUpdatePayload.__name__])
     @setup_required
     @login_required
     @edit_permission_required
@@ -310,7 +310,7 @@ class TriggerSubscriptionUpdateApi(Resource):
         user = current_user
         assert user.current_tenant_id is not None
 
-        request = TriggerSubscriptionUpdateRequest.model_validate(console_ns.payload)
+        request = TriggerSubscriptionBuilderUpdatePayload.model_validate(console_ns.payload)
 
         subscription = TriggerProviderService.get_subscription_by_id(
             tenant_id=user.current_tenant_id,
@@ -641,7 +641,7 @@ class TriggerOAuthClientManageApi(Resource):
     "/workspaces/current/trigger-provider/<path:provider>/subscriptions/verify/<path:subscription_id>",
 )
 class TriggerSubscriptionVerifyApi(Resource):
-    @console_ns.expect(console_ns.models[TriggerSubscriptionVerifyRequest.__name__])
+    @console_ns.expect(console_ns.models[TriggerSubscriptionBuilderVerifyPayload.__name__])
     @setup_required
     @login_required
     @edit_permission_required
@@ -651,9 +651,7 @@ class TriggerSubscriptionVerifyApi(Resource):
         user = current_user
         assert user.current_tenant_id is not None
 
-        verify_request: TriggerSubscriptionVerifyRequest = TriggerSubscriptionVerifyRequest.model_validate(
-            console_ns.payload
-        )
+        verify_request = TriggerSubscriptionBuilderVerifyPayload.model_validate(console_ns.payload)
 
         try:
             result = TriggerProviderService.verify_subscription_credentials(
