@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 import pytest
 from faker import Faker
+from sqlalchemy import select
 
 from models.model import EndUser, Message
 from models.web import SavedMessage
@@ -349,16 +350,16 @@ class TestSavedMessageService:
         # Check if saved message was created in database
         from extensions.ext_database import db
 
-        saved_message = (
-            db.session.query(SavedMessage)
+        saved_message = db.session.scalars(
+            select(SavedMessage)
             .where(
                 SavedMessage.app_id == app.id,
                 SavedMessage.message_id == message.id,
                 SavedMessage.created_by_role == "account",
                 SavedMessage.created_by == account.id,
             )
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         assert saved_message is not None
         assert saved_message.app_id == app.id
@@ -424,14 +425,9 @@ class TestSavedMessageService:
         # Verify no saved message was created
         from extensions.ext_database import db
 
-        saved_message = (
-            db.session.query(SavedMessage)
-            .where(
-                SavedMessage.app_id == app.id,
-                SavedMessage.message_id == message.id,
-            )
-            .first()
-        )
+        saved_message = db.session.scalars(
+            select(SavedMessage).where(SavedMessage.app_id == app.id, SavedMessage.message_id == message.id).limit(1)
+        ).first()
 
         assert saved_message is None
 
@@ -464,14 +460,16 @@ class TestSavedMessageService:
 
         # Verify saved message exists
         assert (
-            db.session.query(SavedMessage)
-            .where(
-                SavedMessage.app_id == app.id,
-                SavedMessage.message_id == message.id,
-                SavedMessage.created_by_role == "account",
-                SavedMessage.created_by == account.id,
-            )
-            .first()
+            db.session.scalars(
+                select(SavedMessage)
+                .where(
+                    SavedMessage.app_id == app.id,
+                    SavedMessage.message_id == message.id,
+                    SavedMessage.created_by_role == "account",
+                    SavedMessage.created_by == account.id,
+                )
+                .limit(1)
+            ).first()
             is not None
         )
 
@@ -480,23 +478,23 @@ class TestSavedMessageService:
 
         # Assert: Verify the expected outcomes
         # Check if saved message was deleted from database
-        deleted_saved_message = (
-            db.session.query(SavedMessage)
+        deleted_saved_message = db.session.scalars(
+            select(SavedMessage)
             .where(
                 SavedMessage.app_id == app.id,
                 SavedMessage.message_id == message.id,
                 SavedMessage.created_by_role == "account",
                 SavedMessage.created_by == account.id,
             )
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         assert deleted_saved_message is None
 
         # Verify database state
         db.session.commit()
         # The message should still exist, only the saved_message should be deleted
-        assert db.session.query(Message).where(Message.id == message.id).first() is not None
+        assert db.session.scalars(select(Message).where(Message.id == message.id).limit(1)).first() is not None
 
     def test_pagination_by_last_id_error_no_user(self, db_session_with_containers, mock_external_service_dependencies):
         """
@@ -545,14 +543,9 @@ class TestSavedMessageService:
         # Verify no saved message was created
         from extensions.ext_database import db
 
-        saved_message = (
-            db.session.query(SavedMessage)
-            .where(
-                SavedMessage.app_id == app.id,
-                SavedMessage.message_id == message.id,
-            )
-            .first()
-        )
+        saved_message = db.session.scalars(
+            select(SavedMessage).where(SavedMessage.app_id == app.id, SavedMessage.message_id == message.id).limit(1)
+        ).first()
 
         assert saved_message is None
 
@@ -585,14 +578,16 @@ class TestSavedMessageService:
 
         # Verify saved message exists
         assert (
-            db.session.query(SavedMessage)
-            .where(
-                SavedMessage.app_id == app.id,
-                SavedMessage.message_id == message.id,
-                SavedMessage.created_by_role == "account",
-                SavedMessage.created_by == account.id,
-            )
-            .first()
+            db.session.scalars(
+                select(SavedMessage)
+                .where(
+                    SavedMessage.app_id == app.id,
+                    SavedMessage.message_id == message.id,
+                    SavedMessage.created_by_role == "account",
+                    SavedMessage.created_by == account.id,
+                )
+                .limit(1)
+            ).first()
             is not None
         )
 
@@ -601,20 +596,20 @@ class TestSavedMessageService:
 
         # Assert: Verify the expected outcomes
         # Check if saved message was deleted from database
-        deleted_saved_message = (
-            db.session.query(SavedMessage)
+        deleted_saved_message = db.session.scalars(
+            select(SavedMessage)
             .where(
                 SavedMessage.app_id == app.id,
                 SavedMessage.message_id == message.id,
                 SavedMessage.created_by_role == "account",
                 SavedMessage.created_by == account.id,
             )
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         assert deleted_saved_message is None
 
         # Verify database state
         db.session.commit()
         # The message should still exist, only the saved_message should be deleted
-        assert db.session.query(Message).where(Message.id == message.id).first() is not None
+        assert db.session.scalars(select(Message).where(Message.id == message.id).limit(1)).first() is not None

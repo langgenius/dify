@@ -80,7 +80,7 @@ class TestFilePreviewApi:
 
         with patch("controllers.service_api.app.file_preview.db") as mock_db:
             # Mock database queries
-            mock_db.session.query.return_value.where.return_value.first.side_effect = [
+            mock_db.session.scalars.return_value.first.side_effect = [
                 mock_message_file,  # MessageFile query
                 mock_message,  # Message query
                 mock_upload_file,  # UploadFile query
@@ -101,7 +101,7 @@ class TestFilePreviewApi:
 
         with patch("controllers.service_api.app.file_preview.db") as mock_db:
             # Mock MessageFile not found
-            mock_db.session.query.return_value.where.return_value.first.return_value = None
+            mock_db.session.scalars.return_value.first.return_value = None
 
             # Execute and assert exception
             with pytest.raises(FileNotFoundError) as exc_info:
@@ -116,7 +116,7 @@ class TestFilePreviewApi:
 
         with patch("controllers.service_api.app.file_preview.db") as mock_db:
             # Mock MessageFile found but Message not owned by app
-            mock_db.session.query.return_value.where.return_value.first.side_effect = [
+            mock_db.session.scalars.return_value.first.side_effect = [
                 mock_message_file,  # MessageFile query - found
                 None,  # Message query - not found (access denied)
             ]
@@ -134,7 +134,7 @@ class TestFilePreviewApi:
 
         with patch("controllers.service_api.app.file_preview.db") as mock_db:
             # Mock MessageFile and Message found but UploadFile not found
-            mock_db.session.query.return_value.where.return_value.first.side_effect = [
+            mock_db.session.scalars.return_value.first.side_effect = [
                 mock_message_file,  # MessageFile query - found
                 mock_message,  # Message query - found
                 None,  # UploadFile query - not found
@@ -162,7 +162,7 @@ class TestFilePreviewApi:
 
         with patch("controllers.service_api.app.file_preview.db") as mock_db:
             # Mock database queries
-            mock_db.session.query.return_value.where.return_value.first.side_effect = [
+            mock_db.session.scalars.return_value.first.side_effect = [
                 mock_message_file,  # MessageFile query
                 mock_message,  # Message query
                 mock_upload_file,  # UploadFile query
@@ -263,7 +263,7 @@ class TestFilePreviewApi:
 
         with patch("controllers.service_api.app.file_preview.db") as mock_db:
             # Mock database queries
-            mock_db.session.query.return_value.where.return_value.first.side_effect = [
+            mock_db.session.scalars.return_value.first.side_effect = [
                 mock_message_file,  # MessageFile query
                 mock_message,  # Message query
                 mock_upload_file,  # UploadFile query
@@ -302,7 +302,7 @@ class TestFilePreviewApi:
 
         with patch("controllers.service_api.app.file_preview.db") as mock_db:
             # Mock database queries for validation
-            mock_db.session.query.return_value.where.return_value.first.side_effect = [
+            mock_db.session.scalars.return_value.first.side_effect = [
                 mock_message_file,  # MessageFile query
                 mock_message,  # Message query
                 mock_upload_file,  # UploadFile query
@@ -328,7 +328,7 @@ class TestFilePreviewApi:
 
         with patch("controllers.service_api.app.file_preview.db") as mock_db:
             # Mock database query to raise unexpected exception
-            mock_db.session.query.side_effect = Exception("Unexpected database error")
+            mock_db.session.scalars.side_effect = Exception("Unexpected database error")
 
             # Execute and assert exception
             with pytest.raises(FileAccessDeniedError) as exc_info:

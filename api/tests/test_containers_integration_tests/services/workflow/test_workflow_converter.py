@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import pytest
 from faker import Faker
+from sqlalchemy import select
 
 from core.app.app_config.entities import (
     DatasetEntity,
@@ -232,7 +233,7 @@ class TestWorkflowConverter:
         assert new_app.id is not None
 
         # Verify workflow was created
-        workflow = db.session.query(Workflow).where(Workflow.app_id == new_app.id).first()
+        workflow = db.session.scalars(select(Workflow).where(Workflow.app_id == new_app.id).limit(1)).first()
         assert workflow is not None
         assert workflow.tenant_id == app.tenant_id
         assert workflow.type == "chat"

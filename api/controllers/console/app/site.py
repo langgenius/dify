@@ -2,6 +2,7 @@ from typing import Literal
 
 from flask_restx import Resource, marshal_with
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
 from constants.languages import supported_language
@@ -75,7 +76,7 @@ class AppSite(Resource):
     def post(self, app_model):
         args = AppSiteUpdatePayload.model_validate(console_ns.payload or {})
         current_user, _ = current_account_with_tenant()
-        site = db.session.query(Site).where(Site.app_id == app_model.id).first()
+        site = db.session.scalars(select(Site).where(Site.app_id == app_model.id).limit(1)).first()
         if not site:
             raise NotFound
 
@@ -124,7 +125,7 @@ class AppSiteAccessTokenReset(Resource):
     @marshal_with(app_site_model)
     def post(self, app_model):
         current_user, _ = current_account_with_tenant()
-        site = db.session.query(Site).where(Site.app_id == app_model.id).first()
+        site = db.session.scalars(select(Site).where(Site.app_id == app_model.id).limit(1)).first()
 
         if not site:
             raise NotFound

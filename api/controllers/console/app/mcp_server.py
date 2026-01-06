@@ -3,6 +3,7 @@ from enum import StrEnum
 
 from flask_restx import Resource, marshal_with
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
 from controllers.console import console_ns
@@ -52,7 +53,7 @@ class AppMCPServerController(Resource):
     @get_app_model
     @marshal_with(app_server_model)
     def get(self, app_model):
-        server = db.session.query(AppMCPServer).where(AppMCPServer.app_id == app_model.id).first()
+        server = db.session.scalars(select(AppMCPServer).where(AppMCPServer.app_id == app_model.id).limit(1)).first()
         return server
 
     @console_ns.doc("create_app_mcp_server")
@@ -103,7 +104,7 @@ class AppMCPServerController(Resource):
     @edit_permission_required
     def put(self, app_model):
         payload = MCPServerUpdatePayload.model_validate(console_ns.payload or {})
-        server = db.session.query(AppMCPServer).where(AppMCPServer.id == payload.id).first()
+        server = db.session.scalars(select(AppMCPServer).where(AppMCPServer.id == payload.id).limit(1)).first()
         if not server:
             raise NotFound()
 

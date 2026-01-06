@@ -96,15 +96,15 @@ class WorkflowService:
         if workflow_id:
             return self.get_published_workflow_by_id(app_model, workflow_id)
         # fetch draft workflow by app_model
-        workflow = (
-            db.session.query(Workflow)
+        workflow = db.session.scalars(
+            select(Workflow)
             .where(
                 Workflow.tenant_id == app_model.tenant_id,
                 Workflow.app_id == app_model.id,
                 Workflow.version == Workflow.VERSION_DRAFT,
             )
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         # return draft workflow
         return workflow
@@ -113,15 +113,13 @@ class WorkflowService:
         """
         fetch published workflow by workflow_id
         """
-        workflow = (
-            db.session.query(Workflow)
+        workflow = db.session.scalars(
+            select(Workflow)
             .where(
-                Workflow.tenant_id == app_model.tenant_id,
-                Workflow.app_id == app_model.id,
-                Workflow.id == workflow_id,
+                Workflow.tenant_id == app_model.tenant_id, Workflow.app_id == app_model.id, Workflow.id == workflow_id
             )
-            .first()
-        )
+            .limit(1)
+        ).first()
         if not workflow:
             return None
         if workflow.version == Workflow.VERSION_DRAFT:
@@ -140,15 +138,15 @@ class WorkflowService:
             return None
 
         # fetch published workflow by workflow_id
-        workflow = (
-            db.session.query(Workflow)
+        workflow = db.session.scalars(
+            select(Workflow)
             .where(
                 Workflow.tenant_id == app_model.tenant_id,
                 Workflow.app_id == app_model.id,
                 Workflow.id == app_model.workflow_id,
             )
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         return workflow
 
@@ -1018,15 +1016,15 @@ class WorkflowService:
 
         # Don't use workflow.tool_published as it's not accurate for specific workflow versions
         # Check if there's a tool provider using this specific workflow version
-        tool_provider = (
-            session.query(WorkflowToolProvider)
+        tool_provider = session.scalars(
+            select(WorkflowToolProvider)
             .where(
                 WorkflowToolProvider.tenant_id == workflow.tenant_id,
                 WorkflowToolProvider.app_id == workflow.app_id,
                 WorkflowToolProvider.version == workflow.version,
             )
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         if tool_provider:
             # Cannot delete a workflow that's published as a tool

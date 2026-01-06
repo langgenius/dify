@@ -378,7 +378,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
             if records:
                 for record in records:
                     segment = record.segment
-                    dataset = db.session.query(Dataset).filter_by(id=segment.dataset_id).first()  # type: ignore
+                    dataset = db.session.scalars(select(Dataset).filter_by(id=segment.dataset_id).limit(1)).first()  # type: ignore
                     stmt = select(Document).where(
                         Document.id == segment.document_id,
                         Document.enabled == True,

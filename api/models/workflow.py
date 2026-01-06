@@ -656,13 +656,13 @@ class WorkflowRun(Base):
     def message(self):
         from .model import Message
 
-        return (
-            db.session.query(Message).where(Message.app_id == self.app_id, Message.workflow_run_id == self.id).first()
-        )
+        return db.session.scalars(
+            select(Message).where(Message.app_id == self.app_id, Message.workflow_run_id == self.id).limit(1)
+        ).first()
 
     @property
     def workflow(self):
-        return db.session.query(Workflow).where(Workflow.id == self.workflow_id).first()
+        return db.session.scalars(select(Workflow).where(Workflow.id == self.workflow_id).limit(1)).first()
 
     def to_dict(self):
         return {

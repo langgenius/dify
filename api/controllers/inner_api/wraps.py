@@ -5,6 +5,8 @@ from hashlib import sha1
 from hmac import new as hmac_new
 from typing import ParamSpec, TypeVar
 
+from sqlalchemy import select
+
 P = ParamSpec("P")
 R = TypeVar("R")
 from flask import abort, request
@@ -75,7 +77,7 @@ def enterprise_inner_api_user_auth(view: Callable[P, R]):
         if signature_base64 != token:
             return view(*args, **kwargs)
 
-        kwargs["user"] = db.session.query(EndUser).where(EndUser.id == user_id).first()
+        kwargs["user"] = db.session.scalars(select(EndUser).where(EndUser.id == user_id).limit(1)).first()
 
         return view(*args, **kwargs)
 

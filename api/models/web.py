@@ -2,7 +2,7 @@ from datetime import datetime
 from uuid import uuid4
 
 import sqlalchemy as sa
-from sqlalchemy import DateTime, String, func
+from sqlalchemy import DateTime, String, func, select
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import TypeBase
@@ -34,7 +34,7 @@ class SavedMessage(TypeBase):
 
     @property
     def message(self):
-        return db.session.query(Message).where(Message.id == self.message_id).first()
+        return db.session.scalars(select(Message).where(Message.id == self.message_id).limit(1)).first()
 
 
 class PinnedConversation(TypeBase):

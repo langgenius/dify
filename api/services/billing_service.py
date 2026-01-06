@@ -6,6 +6,7 @@ from typing import Literal
 
 import httpx
 from pydantic import TypeAdapter
+from sqlalchemy import select
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
 from typing_extensions import TypedDict
 from werkzeug.exceptions import InternalServerError
@@ -149,11 +150,11 @@ class BillingService:
     def is_tenant_owner_or_admin(current_user: Account):
         tenant_id = current_user.current_tenant_id
 
-        join: TenantAccountJoin | None = (
-            db.session.query(TenantAccountJoin)
+        join: TenantAccountJoin | None = db.session.scalars(
+            select(TenantAccountJoin)
             .where(TenantAccountJoin.tenant_id == tenant_id, TenantAccountJoin.account_id == current_user.id)
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         if not join:
             raise ValueError("Tenant account join not found")

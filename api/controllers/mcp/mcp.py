@@ -3,6 +3,7 @@ from typing import Any, Union
 from flask import Response
 from flask_restx import Resource
 from pydantic import BaseModel, Field, ValidationError
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from controllers.common.schema import register_schema_model
@@ -80,11 +81,13 @@ class MCPAppApi(Resource):
 
     def _get_mcp_server_and_app(self, server_code: str, session: Session) -> tuple[AppMCPServer, App]:
         """Get and validate MCP server and app in one query session"""
-        mcp_server = session.query(AppMCPServer).where(AppMCPServer.server_code == server_code).first()
+        mcp_server = session.scalars(
+            select(AppMCPServer).where(AppMCPServer.server_code == server_code).limit(1)
+        ).first()
         if not mcp_server:
             raise MCPRequestError(mcp_types.INVALID_REQUEST, "Server Not Found")
 
-        app = session.query(App).where(App.id == mcp_server.app_id).first()
+        app = session.scalars(select(App).where(App.id == mcp_server.app_id).limit(1)).first()
         if not app:
             raise MCPRequestError(mcp_types.INVALID_REQUEST, "App Not Found")
 

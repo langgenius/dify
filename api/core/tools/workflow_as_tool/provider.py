@@ -96,8 +96,8 @@ class WorkflowToolProviderController(ToolProviderController):
         workflow: Workflow | None = (
             session.query(Workflow)
             .where(Workflow.app_id == db_provider.app_id, Workflow.version == db_provider.version)
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         if not workflow:
             raise ValueError("workflow not found")

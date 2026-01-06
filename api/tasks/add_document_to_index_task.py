@@ -3,6 +3,7 @@ import time
 
 import click
 from celery import shared_task
+from sqlalchemy import select
 
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType
@@ -28,7 +29,9 @@ def add_document_to_index_task(dataset_document_id: str):
     logger.info(click.style(f"Start add document to index: {dataset_document_id}", fg="green"))
     start_at = time.perf_counter()
 
-    dataset_document = db.session.query(DatasetDocument).where(DatasetDocument.id == dataset_document_id).first()
+    dataset_document = db.session.scalars(
+        select(DatasetDocument).where(DatasetDocument.id == dataset_document_id).limit(1)
+    ).first()
     if not dataset_document:
         logger.info(click.style(f"Document not found: {dataset_document_id}", fg="red"))
         db.session.close()

@@ -279,11 +279,11 @@ class OpsTraceManager:
         :param tracing_provider: tracing provider
         :return:
         """
-        trace_config_data: TraceAppConfig | None = (
-            db.session.query(TraceAppConfig)
+        trace_config_data: TraceAppConfig | None = db.session.scalars(
+            select(TraceAppConfig)
             .where(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         if not trace_config_data:
             return None
@@ -318,7 +318,7 @@ class OpsTraceManager:
         if app_id is None:
             return None
 
-        app: App | None = db.session.query(App).where(App.id == app_id).first()
+        app: App | None = db.session.scalars(select(App).where(App.id == app_id).limit(1)).first()
 
         if app is None:
             return None
@@ -392,7 +392,7 @@ class OpsTraceManager:
             except KeyError:
                 raise ValueError(f"Invalid tracing provider: {tracing_provider}")
 
-        app_config: App | None = db.session.query(App).where(App.id == app_id).first()
+        app_config: App | None = db.session.scalars(select(App).where(App.id == app_id).limit(1)).first()
         if not app_config:
             raise ValueError("App not found")
         app_config.tracing = json.dumps(
@@ -410,7 +410,7 @@ class OpsTraceManager:
         :param app_id: app id
         :return:
         """
-        app: App | None = db.session.query(App).where(App.id == app_id).first()
+        app: App | None = db.session.scalars(select(App).where(App.id == app_id).limit(1)).first()
         if not app:
             raise ValueError("App not found")
         if not app.tracing:
@@ -635,7 +635,7 @@ class TraceTask:
         inputs = message_data.message
 
         # get message file data
-        message_file_data = db.session.query(MessageFile).filter_by(message_id=message_id).first()
+        message_file_data = db.session.scalars(select(MessageFile).filter_by(message_id=message_id).limit(1)).first()
         file_list = []
         if message_file_data and message_file_data.url is not None:
             file_url = f"{self.file_base_url}/{message_file_data.url}" if message_file_data else ""
@@ -700,9 +700,9 @@ class TraceTask:
         # get workflow_app_log_id
         workflow_app_log_id = None
         if message_data.workflow_run_id:
-            workflow_app_log_data = (
-                db.session.query(WorkflowAppLog).filter_by(workflow_run_id=message_data.workflow_run_id).first()
-            )
+            workflow_app_log_data = db.session.scalars(
+                select(WorkflowAppLog).filter_by(workflow_run_id=message_data.workflow_run_id).limit(1)
+            ).first()
             workflow_app_log_id = str(workflow_app_log_data.id) if workflow_app_log_data else None
 
         moderation_trace_info = ModerationTraceInfo(
@@ -741,9 +741,9 @@ class TraceTask:
         # get workflow_app_log_id
         workflow_app_log_id = None
         if message_data.workflow_run_id:
-            workflow_app_log_data = (
-                db.session.query(WorkflowAppLog).filter_by(workflow_run_id=message_data.workflow_run_id).first()
-            )
+            workflow_app_log_data = db.session.scalars(
+                select(WorkflowAppLog).filter_by(workflow_run_id=message_data.workflow_run_id).limit(1)
+            ).first()
             workflow_app_log_id = str(workflow_app_log_data.id) if workflow_app_log_data else None
 
         suggested_question_trace_info = SuggestedQuestionTraceInfo(
@@ -837,7 +837,7 @@ class TraceTask:
         }
 
         file_url = ""
-        message_file_data = db.session.query(MessageFile).filter_by(message_id=message_id).first()
+        message_file_data = db.session.scalars(select(MessageFile).filter_by(message_id=message_id).limit(1)).first()
         if message_file_data:
             message_file_id = message_file_data.id if message_file_data else None
             type = message_file_data.type

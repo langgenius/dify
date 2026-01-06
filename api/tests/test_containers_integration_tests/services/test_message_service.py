@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 import pytest
 from faker import Faker
+from sqlalchemy import select
 
 from models.model import MessageFeedback
 from services.app_service import AppService
@@ -484,7 +485,9 @@ class TestMessageService:
         # Verify feedback was deleted
         from extensions.ext_database import db
 
-        deleted_feedback = db.session.query(MessageFeedback).where(MessageFeedback.id == feedback.id).first()
+        deleted_feedback = db.session.scalars(
+            select(MessageFeedback).where(MessageFeedback.id == feedback.id).limit(1)
+        ).first()
         assert deleted_feedback is None
 
     def test_create_feedback_no_rating_when_not_exists(

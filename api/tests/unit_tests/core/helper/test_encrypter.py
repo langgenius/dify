@@ -38,13 +38,13 @@ class TestObfuscatedToken:
 
 
 class TestEncryptToken:
-    @patch("models.engine.db.session.query")
+    @patch("models.engine.db.session.scalars")
     @patch("libs.rsa.encrypt")
     def test_successful_encryption(self, mock_encrypt, mock_query):
         """Test successful token encryption"""
         mock_tenant = MagicMock()
         mock_tenant.encrypt_public_key = "mock_public_key"
-        mock_query.return_value.where.return_value.first.return_value = mock_tenant
+        mock_query.return_value.first.return_value = mock_tenant
         mock_encrypt.return_value = b"encrypted_data"
 
         result = encrypt_token("tenant-123", "test_token")
@@ -52,10 +52,10 @@ class TestEncryptToken:
         assert result == base64.b64encode(b"encrypted_data").decode()
         mock_encrypt.assert_called_with("test_token", "mock_public_key")
 
-    @patch("models.engine.db.session.query")
+    @patch("models.engine.db.session.scalars")
     def test_tenant_not_found(self, mock_query):
         """Test error when tenant doesn't exist"""
-        mock_query.return_value.where.return_value.first.return_value = None
+        mock_query.return_value.first.return_value = None
 
         with pytest.raises(ValueError) as exc_info:
             encrypt_token("invalid-tenant", "test_token")
@@ -119,7 +119,7 @@ class TestGetDecryptDecoding:
 
 
 class TestEncryptDecryptIntegration:
-    @patch("models.engine.db.session.query")
+    @patch("models.engine.db.session.scalars")
     @patch("libs.rsa.encrypt")
     @patch("libs.rsa.decrypt")
     def test_should_encrypt_and_decrypt_consistently(self, mock_decrypt, mock_encrypt, mock_query):
@@ -127,7 +127,7 @@ class TestEncryptDecryptIntegration:
         # Setup mock tenant
         mock_tenant = MagicMock()
         mock_tenant.encrypt_public_key = "mock_public_key"
-        mock_query.return_value.where.return_value.first.return_value = mock_tenant
+        mock_query.return_value.first.return_value = mock_tenant
 
         # Setup mock encryption/decryption
         original_token = "test_token_123"
@@ -146,14 +146,14 @@ class TestEncryptDecryptIntegration:
 class TestSecurity:
     """Critical security tests for encryption system"""
 
-    @patch("models.engine.db.session.query")
+    @patch("models.engine.db.session.scalars")
     @patch("libs.rsa.encrypt")
     def test_cross_tenant_isolation(self, mock_encrypt, mock_query):
         """Ensure tokens encrypted for one tenant cannot be used by another"""
         # Setup mock tenant
         mock_tenant = MagicMock()
         mock_tenant.encrypt_public_key = "tenant1_public_key"
-        mock_query.return_value.where.return_value.first.return_value = mock_tenant
+        mock_query.return_value.first.return_value = mock_tenant
         mock_encrypt.return_value = b"encrypted_for_tenant1"
 
         # Encrypt token for tenant1
@@ -181,12 +181,12 @@ class TestSecurity:
         with pytest.raises(Exception, match="Decryption error"):
             decrypt_token("tenant-123", tampered)
 
-    @patch("models.engine.db.session.query")
+    @patch("models.engine.db.session.scalars")
     @patch("libs.rsa.encrypt")
     def test_encryption_randomness(self, mock_encrypt, mock_query):
         """Ensure same plaintext produces different ciphertext"""
         mock_tenant = MagicMock(encrypt_public_key="key")
-        mock_query.return_value.where.return_value.first.return_value = mock_tenant
+        mock_query.return_value.first.return_value = mock_tenant
 
         # Different outputs for same input
         mock_encrypt.side_effect = [b"enc1", b"enc2", b"enc3"]
@@ -205,13 +205,13 @@ class TestEdgeCases:
         # Test empty string (which is a valid str type)
         assert obfuscated_token("") == ""
 
-    @patch("models.engine.db.session.query")
+    @patch("models.engine.db.session.scalars")
     @patch("libs.rsa.encrypt")
     def test_should_handle_empty_token_encryption(self, mock_encrypt, mock_query):
         """Test encryption of empty token"""
         mock_tenant = MagicMock()
         mock_tenant.encrypt_public_key = "mock_public_key"
-        mock_query.return_value.where.return_value.first.return_value = mock_tenant
+        mock_query.return_value.first.return_value = mock_tenant
         mock_encrypt.return_value = b"encrypted_empty"
 
         result = encrypt_token("tenant-123", "")
@@ -219,13 +219,13 @@ class TestEdgeCases:
         assert result == base64.b64encode(b"encrypted_empty").decode()
         mock_encrypt.assert_called_with("", "mock_public_key")
 
-    @patch("models.engine.db.session.query")
+    @patch("models.engine.db.session.scalars")
     @patch("libs.rsa.encrypt")
     def test_should_handle_special_characters_in_token(self, mock_encrypt, mock_query):
         """Test tokens containing special/unicode characters"""
         mock_tenant = MagicMock()
         mock_tenant.encrypt_public_key = "mock_public_key"
-        mock_query.return_value.where.return_value.first.return_value = mock_tenant
+        mock_query.return_value.first.return_value = mock_tenant
         mock_encrypt.return_value = b"encrypted_special"
 
         # Test various special characters
@@ -242,13 +242,13 @@ class TestEdgeCases:
             assert result == base64.b64encode(b"encrypted_special").decode()
             mock_encrypt.assert_called_with(token, "mock_public_key")
 
-    @patch("models.engine.db.session.query")
+    @patch("models.engine.db.session.scalars")
     @patch("libs.rsa.encrypt")
     def test_should_handle_rsa_size_limits(self, mock_encrypt, mock_query):
         """Test behavior when token exceeds RSA encryption limits"""
         mock_tenant = MagicMock()
         mock_tenant.encrypt_public_key = "mock_public_key"
-        mock_query.return_value.where.return_value.first.return_value = mock_tenant
+        mock_query.return_value.first.return_value = mock_tenant
 
         # RSA 2048-bit can only encrypt ~245 bytes
         # The actual limit depends on padding scheme

@@ -4,6 +4,7 @@ import uuid
 from collections.abc import Generator
 
 from flask import Response, stream_with_context
+from sqlalchemy import select
 from werkzeug.datastructures import FileStorage
 
 from constants import AUDIO_EXTENSIONS
@@ -133,7 +134,7 @@ class AudioService:
                 uuid.UUID(message_id)
             except ValueError:
                 return None
-            message = db.session.query(Message).where(Message.id == message_id).first()
+            message = db.session.scalars(select(Message).where(Message.id == message_id).limit(1)).first()
             if message is None:
                 return None
             if message.answer == "" and message.status == MessageStatus.NORMAL:

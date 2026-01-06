@@ -2,6 +2,7 @@ import json
 
 from flask_restx import Resource
 from pydantic import BaseModel
+from sqlalchemy import select
 
 from controllers.common.schema import register_schema_models
 from controllers.console.wraps import setup_required
@@ -42,7 +43,7 @@ class EnterpriseWorkspace(Resource):
     def post(self):
         args = WorkspaceCreatePayload.model_validate(inner_api_ns.payload or {})
 
-        account = db.session.query(Account).filter_by(email=args.owner_email).first()
+        account = db.session.scalars(select(Account).filter_by(email=args.owner_email).limit(1)).first()
         if account is None:
             return {"message": "owner account not found."}, 404
 

@@ -4,6 +4,7 @@ from typing import TypedDict, cast
 
 import sqlalchemy as sa
 from flask_sqlalchemy.pagination import Pagination
+from sqlalchemy import select
 
 from configs import dify_config
 from constants.model_template import default_app_templates
@@ -404,9 +405,9 @@ class AppService:
                     meta["tool_icons"][tool_name] = url_prefix + provider_id + "/icon"
                 elif provider_type == "api":
                     try:
-                        provider: ApiToolProvider | None = (
-                            db.session.query(ApiToolProvider).where(ApiToolProvider.id == provider_id).first()
-                        )
+                        provider: ApiToolProvider | None = db.session.scalars(
+                            select(ApiToolProvider).where(ApiToolProvider.id == provider_id).limit(1)
+                        ).first()
                         if provider is None:
                             raise ValueError(f"provider not found for tool {tool_name}")
                         meta["tool_icons"][tool_name] = json.loads(provider.icon)
@@ -422,7 +423,7 @@ class AppService:
         :param app_id: app id
         :return: app code
         """
-        site = db.session.query(Site).where(Site.app_id == app_id).first()
+        site = db.session.scalars(select(Site).where(Site.app_id == app_id).limit(1)).first()
         if not site:
             raise ValueError(f"App with id {app_id} not found")
         return str(site.code)
@@ -434,7 +435,7 @@ class AppService:
         :param app_code: app code
         :return: app id
         """
-        site = db.session.query(Site).where(Site.code == app_code).first()
+        site = db.session.scalars(select(Site).where(Site.code == app_code).limit(1)).first()
         if not site:
             raise ValueError(f"App with code {app_code} not found")
         return str(site.app_id)

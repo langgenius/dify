@@ -1,5 +1,7 @@
 import logging
 
+from sqlalchemy import select
+
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.rag.datasource.keyword.keyword_factory import Keyword
@@ -28,7 +30,9 @@ class VectorService:
 
         for segment in segments:
             if doc_form == IndexStructureType.PARENT_CHILD_INDEX:
-                dataset_document = db.session.query(DatasetDocument).filter_by(id=segment.document_id).first()
+                dataset_document = db.session.scalars(
+                    select(DatasetDocument).filter_by(id=segment.document_id).limit(1)
+                ).first()
                 if not dataset_document:
                     logger.warning(
                         "Expected DatasetDocument record to exist, but none was found, document_id=%s, segment_id=%s",
@@ -37,11 +41,11 @@ class VectorService:
                     )
                     continue
                 # get the process rule
-                processing_rule = (
-                    db.session.query(DatasetProcessRule)
+                processing_rule = db.session.scalars(
+                    select(DatasetProcessRule)
                     .where(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
-                    .first()
-                )
+                    .limit(1)
+                ).first()
                 if not processing_rule:
                     raise ValueError("No processing rule found.")
                 # get embedding model instance

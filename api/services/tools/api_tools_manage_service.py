@@ -117,14 +117,11 @@ class ApiToolManageService:
         provider_name = provider_name.strip()
 
         # check if the provider exists
-        provider = (
-            db.session.query(ApiToolProvider)
-            .where(
-                ApiToolProvider.tenant_id == tenant_id,
-                ApiToolProvider.name == provider_name,
-            )
-            .first()
-        )
+        provider = db.session.scalars(
+            select(ApiToolProvider)
+            .where(ApiToolProvider.tenant_id == tenant_id, ApiToolProvider.name == provider_name)
+            .limit(1)
+        ).first()
 
         if provider is not None:
             raise ValueError(f"provider {provider_name} already exists")
@@ -208,14 +205,11 @@ class ApiToolManageService:
         """
         list api tool provider tools
         """
-        provider: ApiToolProvider | None = (
-            db.session.query(ApiToolProvider)
-            .where(
-                ApiToolProvider.tenant_id == tenant_id,
-                ApiToolProvider.name == provider_name,
-            )
-            .first()
-        )
+        provider: ApiToolProvider | None = db.session.scalars(
+            select(ApiToolProvider)
+            .where(ApiToolProvider.tenant_id == tenant_id, ApiToolProvider.name == provider_name)
+            .limit(1)
+        ).first()
 
         if provider is None:
             raise ValueError(f"you have not added provider {provider_name}")
@@ -252,14 +246,11 @@ class ApiToolManageService:
         provider_name = provider_name.strip()
 
         # check if the provider exists
-        provider = (
-            db.session.query(ApiToolProvider)
-            .where(
-                ApiToolProvider.tenant_id == tenant_id,
-                ApiToolProvider.name == original_provider,
-            )
-            .first()
-        )
+        provider = db.session.scalars(
+            select(ApiToolProvider)
+            .where(ApiToolProvider.tenant_id == tenant_id, ApiToolProvider.name == original_provider)
+            .limit(1)
+        ).first()
 
         if provider is None:
             raise ValueError(f"api provider {provider_name} does not exists")
@@ -321,14 +312,11 @@ class ApiToolManageService:
         """
         delete tool provider
         """
-        provider = (
-            db.session.query(ApiToolProvider)
-            .where(
-                ApiToolProvider.tenant_id == tenant_id,
-                ApiToolProvider.name == provider_name,
-            )
-            .first()
-        )
+        provider = db.session.scalars(
+            select(ApiToolProvider)
+            .where(ApiToolProvider.tenant_id == tenant_id, ApiToolProvider.name == provider_name)
+            .limit(1)
+        ).first()
 
         if provider is None:
             raise ValueError(f"you have not added provider {provider_name}")
@@ -371,14 +359,11 @@ class ApiToolManageService:
         if tool_bundle is None:
             raise ValueError(f"invalid tool name {tool_name}")
 
-        db_provider = (
-            db.session.query(ApiToolProvider)
-            .where(
-                ApiToolProvider.tenant_id == tenant_id,
-                ApiToolProvider.name == provider_name,
-            )
-            .first()
-        )
+        db_provider = db.session.scalars(
+            select(ApiToolProvider)
+            .where(ApiToolProvider.tenant_id == tenant_id, ApiToolProvider.name == provider_name)
+            .limit(1)
+        ).first()
 
         if not db_provider:
             # create a fake db provider

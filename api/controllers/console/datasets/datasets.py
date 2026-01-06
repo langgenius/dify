@@ -779,15 +779,15 @@ class DatasetApiDeleteApi(Resource):
     def delete(self, api_key_id):
         _, current_tenant_id = current_account_with_tenant()
         api_key_id = str(api_key_id)
-        key = (
-            db.session.query(ApiToken)
+        key = db.session.scalars(
+            select(ApiToken)
             .where(
                 ApiToken.tenant_id == current_tenant_id,
                 ApiToken.type == self.resource_type,
                 ApiToken.id == api_key_id,
             )
-            .first()
-        )
+            .limit(1)
+        ).first()
 
         if key is None:
             console_ns.abort(404, message="API key not found")

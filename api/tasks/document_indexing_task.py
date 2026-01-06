@@ -4,6 +4,7 @@ from collections.abc import Callable, Sequence
 
 import click
 from celery import shared_task
+from sqlalchemy import select
 
 from configs import dify_config
 from core.entities.document_task import DocumentTask
@@ -46,7 +47,7 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
     documents = []
     start_at = time.perf_counter()
 
-    dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
+    dataset = db.session.scalars(select(Dataset).where(Dataset.id == dataset_id).limit(1)).first()
     if not dataset:
         logger.info(click.style(f"Dataset is not found: {dataset_id}", fg="yellow"))
         db.session.close()
@@ -69,9 +70,9 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
                 )
     except Exception as e:
         for document_id in document_ids:
-            document = (
-                db.session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
-            )
+            document = db.session.scalars(
+                select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
+            ).first()
             if document:
                 document.indexing_status = "error"
                 document.error = str(e)
@@ -84,9 +85,9 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
     for document_id in document_ids:
         logger.info(click.style(f"Start process document: {document_id}", fg="green"))
 
-        document = (
-            db.session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
-        )
+        document = db.session.scalars(
+            select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
+        ).first()
 
         if document:
             document.indexing_status = "parsing"

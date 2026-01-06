@@ -53,7 +53,7 @@ def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: Fe
         def decorated_view(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token("app")
 
-            app_model = db.session.query(App).where(App.id == api_token.app_id).first()
+            app_model = db.session.scalars(select(App).where(App.id == api_token.app_id).limit(1)).first()
             if not app_model:
                 raise Forbidden("The app no longer exists.")
 
@@ -63,7 +63,7 @@ def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: Fe
             if not app_model.enable_api:
                 raise Forbidden("The app's API service has been disabled.")
 
-            tenant = db.session.query(Tenant).where(Tenant.id == app_model.tenant_id).first()
+            tenant = db.session.scalars(select(Tenant).where(Tenant.id == app_model.tenant_id).limit(1)).first()
             if tenant is None:
                 raise ValueError("Tenant does not exist.")
             if tenant.status == TenantStatus.ARCHIVE:
@@ -272,7 +272,7 @@ def validate_dataset_token(view: Callable[Concatenate[T, P], R] | None = None):
             )  # TODO: only owner information is required, so only one is returned.
             if tenant_account_join:
                 tenant, ta = tenant_account_join
-                account = db.session.query(Account).where(Account.id == ta.account_id).first()
+                account = db.session.scalars(select(Account).where(Account.id == ta.account_id).limit(1)).first()
                 # Login admin
                 if account:
                     account.current_tenant = tenant
@@ -337,7 +337,9 @@ class DatasetApiResource(Resource):
     method_decorators = [validate_dataset_token]
 
     def get_dataset(self, dataset_id: str, tenant_id: str) -> Dataset:
-        dataset = db.session.query(Dataset).where(Dataset.id == dataset_id, Dataset.tenant_id == tenant_id).first()
+        dataset = db.session.scalars(
+            select(Dataset).where(Dataset.id == dataset_id, Dataset.tenant_id == tenant_id).limit(1)
+        ).first()
 
         if not dataset:
             raise NotFound("Dataset not found.")

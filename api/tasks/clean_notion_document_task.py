@@ -25,14 +25,14 @@ def clean_notion_document_task(document_ids: list[str], dataset_id: str):
     start_at = time.perf_counter()
 
     try:
-        dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
+        dataset = db.session.scalars(select(Dataset).where(Dataset.id == dataset_id).limit(1)).first()
 
         if not dataset:
             raise Exception("Document has no dataset")
         index_type = dataset.doc_form
         index_processor = IndexProcessorFactory(index_type).init_index_processor()
         for document_id in document_ids:
-            document = db.session.query(Document).where(Document.id == document_id).first()
+            document = db.session.scalars(select(Document).where(Document.id == document_id).limit(1)).first()
             db.session.delete(document)
 
             segments = db.session.scalars(

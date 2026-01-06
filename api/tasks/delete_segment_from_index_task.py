@@ -3,6 +3,7 @@ import time
 
 import click
 from celery import shared_task
+from sqlalchemy import select
 
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from extensions.ext_database import db
@@ -27,12 +28,12 @@ def delete_segment_from_index_task(
     logger.info(click.style("Start delete segment from index", fg="green"))
     start_at = time.perf_counter()
     try:
-        dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
+        dataset = db.session.scalars(select(Dataset).where(Dataset.id == dataset_id).limit(1)).first()
         if not dataset:
             logging.warning("Dataset %s not found, skipping index cleanup", dataset_id)
             return
 
-        dataset_document = db.session.query(Document).where(Document.id == document_id).first()
+        dataset_document = db.session.scalars(select(Document).where(Document.id == document_id).limit(1)).first()
         if not dataset_document:
             return
 
