@@ -76,7 +76,7 @@ class Provider(TypeBase):
 
     quota_type: Mapped[str | None] = mapped_column(String(40), nullable=True, server_default=text("''"), default="")
     quota_limit: Mapped[int | None] = mapped_column(sa.BigInteger, nullable=True, default=None)
-    quota_used: Mapped[int] = mapped_column(sa.BigInteger, nullable=False, default=0)
+    quota_used: Mapped[int | None] = mapped_column(sa.BigInteger, nullable=True, default=0)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
