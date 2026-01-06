@@ -1,3 +1,4 @@
+import process from 'node:process'
 import withBundleAnalyzerInit from '@next/bundle-analyzer'
 import createMDX from '@next/mdx'
 import { codeInspectorPlugin } from 'code-inspector-plugin'
@@ -98,6 +99,7 @@ const remoteImageURLs = [hasSetWebPrefix ? new URL(`${process.env.NEXT_PUBLIC_WE
 const nextConfig = {
   basePath: process.env.NEXT_PUBLIC_BASE_PATH || '',
   transpilePackages: ['echarts', 'zrender'],
+  reactCompiler: true,
   turbopack: {
     rules: codeInspectorPlugin({
       bundler: 'turbopack',
@@ -117,16 +119,11 @@ const nextConfig = {
     })),
   },
   experimental: {
+    turbopackFileSystemCacheForDev: true,
+    turbopackFileSystemCacheForBuild: true,
     optimizePackageImports: [
       '@heroicons/react',
     ],
-  },
-  // fix all before production. Now it slow the develop speed.
-  eslint: {
-    // Warning: This allows production builds to successfully complete even if
-    // your project has ESLint errors.
-    ignoreDuringBuilds: true,
-    dirs: ['app', 'bin', 'config', 'context', 'hooks', 'i18n', 'models', 'service', 'test', 'types', 'utils'],
   },
   typescript: {
     // https://nextjs.org/docs/api-reference/next.config.js/ignoring-typescript-errors
