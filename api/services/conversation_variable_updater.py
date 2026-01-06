@@ -9,7 +9,7 @@ class ConversationVariableNotFoundError(Exception):
     pass
 
 
-class ConversationVariableUpdaterImpl:
+class ConversationVariableUpdater:
     def __init__(self, session_maker: sessionmaker[Session]) -> None:
         self._session_maker: sessionmaker[Session] = session_maker
 
@@ -27,8 +27,3 @@ class ConversationVariableUpdaterImpl:
     def flush(self) -> None:
         pass
 
-
-def conversation_variable_updater_factory(
-    session_maker: sessionmaker[Session],
-) -> ConversationVariableUpdaterImpl:
-    return ConversationVariableUpdaterImpl(session_maker)

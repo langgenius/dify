@@ -42,7 +42,7 @@ from models import Workflow
 from models.enums import UserFrom
 from models.model import App, Conversation, Message, MessageAnnotation
 from models.workflow import ConversationVariable
-from services.conversation_variable_updater import conversation_variable_updater_factory
+from services.conversation_variable_updater import ConversationVariableUpdater
 
 logger = logging.getLogger(__name__)
 
@@ -204,7 +204,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
 
         workflow_entry.graph_engine.layer(persistence_layer)
         conversation_variable_layer = ConversationVariablePersistenceLayer(
-            conversation_variable_updater_factory(session_factory.get_session_maker())
+            ConversationVariableUpdater(session_factory.get_session_maker())
         )
         workflow_entry.graph_engine.layer(conversation_variable_layer)
         for layer in self._graph_engine_layers:

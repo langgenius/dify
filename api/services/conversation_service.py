@@ -17,7 +17,7 @@ from libs.datetime_utils import naive_utc_now
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account, ConversationVariable
 from models.model import App, Conversation, EndUser, Message
-from services.conversation_variable_updater import conversation_variable_updater_factory
+from services.conversation_variable_updater import ConversationVariableUpdater
 from services.errors.conversation import (
     ConversationNotExistsError,
     ConversationVariableNotExistsError,
@@ -337,7 +337,7 @@ class ConversationService:
             updated_variable = variable_factory.build_conversation_variable_from_mapping(updated_variable_dict)
 
             # Use the conversation variable updater to persist the changes
-            updater = conversation_variable_updater_factory(session_factory.get_session_maker())
+            updater = ConversationVariableUpdater(session_factory.get_session_maker())
             updater.update(conversation_id, updated_variable)
             updater.flush()
 
