@@ -229,9 +229,9 @@ const List = () => {
               return <AppCardSkeleton count={6} />
 
             if (hasAnyApp) {
-              return pages.map(({ data: apps }) => apps.map(app => (
+              return pages.flatMap(({ data: apps }) => apps).map(app => (
                 <AppCard key={app.id} app={app} onRefresh={refetch} />
-              )))
+              ))
             }
 
             // No apps - show empty state
