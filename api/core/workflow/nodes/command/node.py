@@ -87,7 +87,7 @@ class CommandNode(Node[CommandNodeData]):
             # Once the interface adds a `cwd` parameter, remove this shell hack
             # and pass working_directory directly to run_command.
             if working_directory:
-                check_cmd = ["sh", "-c", f"test -d {shlex.quote(working_directory)}"]
+                check_cmd = ["test", "-d", working_directory]
                 check_future = self.sandbox.run_command(connection_handle, check_cmd)
                 check_result = check_future.result(timeout=timeout)
 
@@ -98,9 +98,9 @@ class CommandNode(Node[CommandNodeData]):
                         error_type="WorkingDirectoryNotFoundError",
                     )
 
-                command = ["sh", "-lc", f"cd {shlex.quote(working_directory)} && {raw_command}"]
+                command = ["sh", "-c", f"cd {shlex.quote(working_directory)} && {raw_command}"]
             else:
-                command = ["sh", "-lc", raw_command]
+                command = shlex.split(raw_command)
 
             future = self.sandbox.run_command(connection_handle, command)
             result = future.result(timeout=timeout)
