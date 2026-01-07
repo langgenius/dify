@@ -113,6 +113,67 @@ export function useMarketplacePluginsByCollectionId(
 
 const DEFAULT_PAGE_SIZE = 40
 
+async function fetchMarketplacePlugins(
+  queryParams: PluginsSearchParams | undefined,
+  pageParam: number,
+  signal?: AbortSignal,
+) {
+  if (!queryParams) {
+    return {
+      plugins: [] as Plugin[],
+      total: 0,
+      page: 1,
+      pageSize: DEFAULT_PAGE_SIZE,
+    }
+  }
+
+  const {
+    query,
+    sortBy,
+    sortOrder,
+    category,
+    tags,
+    type,
+    pageSize = DEFAULT_PAGE_SIZE,
+  } = queryParams
+  const pluginOrBundle = type === 'bundle' ? 'bundles' : 'plugins'
+
+  try {
+    const res = await postMarketplace<{ data: PluginsFromMarketplaceResponse }>(
+      `/${pluginOrBundle}/search/advanced`,
+      {
+        body: {
+          page: pageParam,
+          page_size: pageSize,
+          query,
+          sort_by: sortBy,
+          sort_order: sortOrder,
+          category: category !== 'all' ? category : '',
+          tags,
+          type,
+        },
+        signal,
+      },
+    )
+    const resPlugins = res.data.bundles || res.data.plugins || []
+
+    return {
+      plugins: resPlugins.map(plugin => getFormattedPlugin(plugin)),
+      total: res.data.total,
+      page: pageParam,
+      pageSize,
+    }
+  }
+  catch {
+    return {
+      plugins: [],
+      total: 0,
+      page: pageParam,
+      pageSize,
+    }
+  }
+}
+
 /**
  * Fetches plugins with infinite scroll support - imperative version
  * Used by external components (workflow block selectors, etc.)
@@ -122,62 +183,7 @@ export function useMarketplacePlugins(initialParams?: PluginsSearchParams) {
 
   const query = useInfiniteQuery({
     queryKey: marketplaceKeys.plugins(queryParams),
-    queryFn: async ({ pageParam = 1, signal }) => {
-      if (!queryParams) {
-        return {
-          plugins: [] as Plugin[],
-          total: 0,
-          page: 1,
-          pageSize: DEFAULT_PAGE_SIZE,
-        }
-      }
-
-      const {
-        query,
-        sortBy,
-        sortOrder,
-        category,
-        tags,
-        type,
-        pageSize = DEFAULT_PAGE_SIZE,
-      } = queryParams
-      const pluginOrBundle = type === 'bundle' ? 'bundles' : 'plugins'
-
-      try {
-        const res = await postMarketplace<{ data: PluginsFromMarketplaceResponse }>(
-          `/${pluginOrBundle}/search/advanced`,
-          {
-            body: {
-              page: pageParam,
-              page_size: pageSize,
-              query,
-              sort_by: sortBy,
-              sort_order: sortOrder,
-              category: category !== 'all' ? category : '',
-              tags,
-              type,
-            },
-            signal,
-          },
-        )
-        const resPlugins = res.data.bundles || res.data.plugins || []
-
-        return {
-          plugins: resPlugins.map(plugin => getFormattedPlugin(plugin)),
-          total: res.data.total,
-          page: pageParam,
-          pageSize,
-        }
-      }
-      catch {
-        return {
-          plugins: [],
-          total: 0,
-          page: pageParam,
-          pageSize,
-        }
-      }
-    },
+    queryFn: ({ pageParam = 1, signal }) => fetchMarketplacePlugins(queryParams, pageParam, signal),
     getNextPageParam: (lastPage) => {
       const nextPage = lastPage.page + 1
       const loaded = lastPage.page * lastPage.pageSize
@@ -218,6 +224,42 @@ export function useMarketplacePlugins(initialParams?: PluginsSearchParams) {
 }
 
 /**
+ * Fetches plugins with infinite scroll support - reactive version
+ * Automatically refetches when queryParams changes
+ */
+export function useMarketplacePluginsReactive(queryParams?: PluginsSearchParams) {
+  const query = useInfiniteQuery({
+    queryKey: marketplaceKeys.plugins(queryParams),
+    queryFn: ({ pageParam = 1, signal }) => fetchMarketplacePlugins(queryParams, pageParam, signal),
+    getNextPageParam: (lastPage) => {
+      const nextPage = lastPage.page + 1
+      const loaded = lastPage.page * lastPage.pageSize
+      return loaded < (lastPage.total || 0) ? nextPage : undefined
+    },
+    initialPageParam: 1,
+    enabled: !!queryParams,
+  })
+
+  const plugins = useMemo(() => {
+    if (!queryParams || !query.data)
+      return undefined
+    return query.data.pages.flatMap(page => page.plugins)
+  }, [queryParams, query.data])
+
+  const total = queryParams && query.data ? query.data.pages[0]?.total : undefined
+
+  return {
+    plugins,
+    total,
+    isLoading: !!queryParams && query.isPending,
+    isFetchingNextPage: query.isFetchingNextPage,
+    hasNextPage: query.hasNextPage,
+    fetchNextPage: query.fetchNextPage,
+    page: query.data?.pages?.length || 0,
+  }
+}
+
+/**
  * Reactive hook that automatically fetches plugins based on current state
  */
 export function useMarketplacePluginsData() {
@@ -228,7 +270,9 @@ export function useMarketplacePluginsData() {
   const filterPluginTags = urlFilters.tags
   const activePluginType = urlFilters.category
 
-  const isSearchMode = !!searchPluginText || filterPluginTags.length > 0
+  const isSearchMode = !!searchPluginText
+    || filterPluginTags.length > 0
+    || (activePluginType !== PLUGIN_TYPE_SEARCH_MAP.all && activePluginType !== PLUGIN_TYPE_SEARCH_MAP.tool)
 
   // Compute query params reactively - TanStack Query will auto-refetch when this changes
   const queryParams = useMemo((): PluginsSearchParams | undefined => {
@@ -251,7 +295,7 @@ export function useMarketplacePluginsData() {
     fetchNextPage,
     hasNextPage,
     page: pluginsPage,
-  } = useMarketplacePlugins(queryParams)
+  } = useMarketplacePluginsReactive(queryParams)
 
   const handleSortChange = useCallback((newSort: typeof sort) => {
     setSort(newSort)
