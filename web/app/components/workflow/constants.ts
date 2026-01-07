@@ -212,6 +212,17 @@ export const TOOL_OUTPUT_STRUCT: Var[] = [
   },
 ]
 
+export const HUMAN_INPUT_OUTPUT_STRUCT: Var[] = [
+  {
+    variable: '__action_id',
+    type: VarType.string,
+  },
+  {
+    variable: '__rendered_content',
+    type: VarType.string,
+  },
+]
+
 export const PARAMETER_EXTRACTOR_COMMON_STRUCT: Var[] = [
   {
     variable: '__is_success',

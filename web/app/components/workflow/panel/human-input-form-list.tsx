@@ -52,10 +52,14 @@ const HumanInputFormList = ({
     }, {} as Record<string, { showEmailTip: boolean, isEmailDebugMode: boolean, showDebugModeTip: boolean }>)
   }, [getHumanInputNodeData, humanInputFormDataList])
 
+  const filteredHumanInputFormDataList = useMemo(() => {
+    return humanInputFormDataList.filter(formData => formData.display_in_ui)
+  }, [humanInputFormDataList])
+
   return (
     <div className="flex flex-col gap-y-3">
       {
-        humanInputFormDataList.map(formData => (
+        filteredHumanInputFormDataList.map(formData => (
           <ContentWrapper
             key={formData.node_id}
             nodeTitle={formData.node_title}

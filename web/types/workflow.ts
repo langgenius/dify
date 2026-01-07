@@ -321,7 +321,8 @@ export type HumanInputFormData = {
   inputs: FormInputItem[]
   actions: UserAction[]
   form_token: string
-  resolved_placeholder_values: Record<string, string> // For human input placeholder when its type is variable
+  resolved_placeholder_values: Record<string, string>
+  display_in_ui: boolean
 }
 
 export type HumanInputRequiredResponse = {

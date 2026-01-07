@@ -205,6 +205,16 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
             />
           ))
         }
+        <VarItem
+          name="__action_id"
+          type="string"
+          description="Action ID user triggered"
+        />
+        <VarItem
+          name="__rendered_content"
+          type="string"
+          description="Rendered content"
+        />
       </OutputVars>
 
       {isPreview && (

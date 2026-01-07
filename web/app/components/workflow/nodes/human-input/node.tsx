@@ -62,7 +62,7 @@ const Node: FC<NodeProps<HumanInputNodeType>> = (props) => {
           <div className="system-xs-semibold-uppercase truncate text-text-secondary">Timeout</div>
           <NodeSourceHandle
             {...props}
-            handleId="timeout"
+            handleId="__timeout"
             handleClassName="!top-1/2 !-right-[9px] !-translate-y-1/2"
           />
         </div>

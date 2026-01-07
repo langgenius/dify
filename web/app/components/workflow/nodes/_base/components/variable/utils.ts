@@ -42,6 +42,7 @@ import {
   FILE_STRUCT,
   getGlobalVars,
   HTTP_REQUEST_OUTPUT_STRUCT,
+  HUMAN_INPUT_OUTPUT_STRUCT,
   KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT,
   LLM_OUTPUT_STRUCT,
   PARAMETER_EXTRACTOR_COMMON_STRUCT,
@@ -640,7 +641,7 @@ const formatItem = (
         [],
         { schemaTypeDefinitions },
       ) || []
-      res.vars = outputSchema
+      res.vars = [...outputSchema, ...HUMAN_INPUT_OUTPUT_STRUCT]
       break
     }
 

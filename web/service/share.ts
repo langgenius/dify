@@ -334,12 +334,12 @@ export const getHumanInputForm = (token: string) => {
     inputs: FormInputItem[]
     user_actions: UserAction[]
     expiration_time: number
-  }>(`/api/form/human_input/${token}`)
+  }>(`/form/human_input/${token}`)
 }
 
 export const submitHumanInputForm = (token: string, data: {
   inputs: Record<string, any>
   action: string
 }) => {
-  return post(`/api/form/human_input/${token}`, { body: data })
+  return post(`/form/human_input/${token}`, { body: data })
 }
