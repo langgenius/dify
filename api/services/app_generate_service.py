@@ -1,5 +1,7 @@
+import logging
+import threading
 import uuid
-from collections.abc import Generator, Mapping
+from collections.abc import Callable, Generator, Mapping
 from typing import Any, Union
 
 from configs import dify_config
@@ -20,8 +22,44 @@ from services.errors.app import InvokeRateLimitError, QuotaExceededError, Workfl
 from services.workflow_service import WorkflowService
 from tasks.app_generate.workflow_execute_task import AppExecutionParams, chatflow_execute_task
 
+logger = logging.getLogger(__name__)
+
+SSE_TASK_START_FALLBACK_MS = 200
+
 
 class AppGenerateService:
+    @staticmethod
+    def _build_streaming_task_on_subscribe(start_task: Callable[[], None]) -> Callable[[], None]:
+        started = False
+        lock = threading.Lock()
+
+        def _try_start() -> bool:
+            nonlocal started
+            with lock:
+                if started:
+                    return True
+                try:
+                    start_task()
+                except Exception:
+                    logger.exception("Failed to enqueue streaming task")
+                    return False
+                started = True
+                return True
+
+        # XXX(QuantumGhost): dirty hacks to avoid a race between publisher and SSE subscriber.
+        # The Celery task may publish the first event before the API side actually subscribes,
+        # causing an "at most once" drop with Redis Pub/Sub. We start the task on subscribe,
+        # but also use a short fallback timer so the task still runs if the client never consumes.
+        timer = threading.Timer(SSE_TASK_START_FALLBACK_MS / 1000.0, _try_start)
+        timer.daemon = True
+        timer.start()
+
+        def _on_subscribe() -> None:
+            if _try_start():
+                timer.cancel()
+
+        return _on_subscribe
+
     @classmethod
     @trace_span(AppGenerateHandler)
     def generate(
@@ -95,11 +133,18 @@ class AppGenerateService:
                         streaming=streaming,
                         call_depth=0,
                     )
-                    chatflow_execute_task.delay(payload.model_dump_json())
+                    payload_json = payload.model_dump_json()
+                on_subscribe = cls._build_streaming_task_on_subscribe(
+                    lambda: chatflow_execute_task.delay(payload_json)
+                )
                 generator = AdvancedChatAppGenerator()
                 return rate_limit.generate(
                     generator.convert_to_event_stream(
-                        generator.retrieve_events(AppMode.ADVANCED_CHAT, payload.workflow_run_id),
+                        generator.retrieve_events(
+                            AppMode.ADVANCED_CHAT,
+                            payload.workflow_run_id,
+                            on_subscribe=on_subscribe,
+                        ),
                     ),
                     request_id=request_id,
                 )
@@ -119,10 +164,17 @@ class AppGenerateService:
                             root_node_id=root_node_id,
                             workflow_run_id=uuid.uuid4(),
                         )
-                        chatflow_execute_task.delay(payload.model_dump_json())
+                        payload_json = payload.model_dump_json()
+                    on_subscribe = cls._build_streaming_task_on_subscribe(
+                        lambda: chatflow_execute_task.delay(payload_json)
+                    )
                     return rate_limit.generate(
                         WorkflowAppGenerator.convert_to_event_stream(
-                            MessageBasedAppGenerator.retrieve_events(AppMode.WORKFLOW, payload.workflow_run_id),
+                            MessageBasedAppGenerator.retrieve_events(
+                                AppMode.WORKFLOW,
+                                payload.workflow_run_id,
+                                on_subscribe=on_subscribe,
+                            ),
                         ),
                         request_id,
                     )

@@ -2,7 +2,7 @@ import json
 import logging
 import time
 import uuid
-from collections.abc import Generator, Mapping
+from collections.abc import Callable, Generator, Mapping
 from typing import Any, Union, cast
 
 from sqlalchemy import select
@@ -309,15 +309,25 @@ class MessageBasedAppGenerator(BaseAppGenerator):
 
     @classmethod
     def retrieve_events(
-        cls, app_mode: AppMode, workflow_run_id: uuid.UUID, idle_timeout=300
+        cls,
+        app_mode: AppMode,
+        workflow_run_id: uuid.UUID,
+        idle_timeout=300,
+        on_subscribe: Callable[[], None] | None = None,
     ) -> Generator[Mapping | str, None, None]:
         topic = cls.get_response_topic(app_mode, workflow_run_id)
-        return _topic_msg_generator(topic, idle_timeout)
+        return _topic_msg_generator(topic, idle_timeout, on_subscribe)
 
 
-def _topic_msg_generator(topic: Topic, idle_timeout: float) -> Generator[Mapping[str, Any], None, None]:
+def _topic_msg_generator(
+    topic: Topic,
+    idle_timeout: float,
+    on_subscribe: Callable[[], None] | None = None,
+) -> Generator[Mapping[str, Any], None, None]:
     last_msg_time = time.time()
     with topic.subscribe() as sub:
+        if on_subscribe is not None:
+            on_subscribe()
         while True:
             try:
                 msg = sub.receive()

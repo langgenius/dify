@@ -4,7 +4,6 @@ from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
-from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import (
     AppQueueEvent,
     QueueAgentLogEvent,
