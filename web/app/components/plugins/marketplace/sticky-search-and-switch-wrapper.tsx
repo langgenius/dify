@@ -6,13 +6,11 @@ import SearchBoxWrapper from './search-box/search-box-wrapper'
 
 type StickySearchAndSwitchWrapperProps = {
   pluginTypeSwitchClassName?: string
-  showSearchParams?: boolean
 }
 
-const StickySearchAndSwitchWrapper = ({
+function StickySearchAndSwitchWrapper({
   pluginTypeSwitchClassName,
-  showSearchParams,
-}: StickySearchAndSwitchWrapperProps) => {
+}: StickySearchAndSwitchWrapperProps) {
   const hasCustomTopClass = pluginTypeSwitchClassName?.includes('top-')
 
   return (
@@ -24,9 +22,7 @@ const StickySearchAndSwitchWrapper = ({
       )}
     >
       <SearchBoxWrapper />
-      <PluginTypeSwitch
-        showSearchParams={showSearchParams}
-      />
+      <PluginTypeSwitch />
     </div>
   )
 }

@@ -13,6 +13,7 @@
  * - Use shallow routing to avoid unnecessary re-renders
  */
 
+import type { Options } from 'nuqs'
 import {
   createParser,
   parseAsArrayOf,
@@ -93,37 +94,42 @@ export function useAccountSettingModal<T extends string = string>() {
   return [{ isOpen, payload: currentTab }, setState] as const
 }
 
-/**
- * Marketplace Search Query Parameters
- */
-export type MarketplaceFilters = {
-  q: string // search query
-  category: string // plugin category
-  tags: string[] // array of tags
+export function useMarketplaceSearchQuery() {
+  return useQueryState('q', parseAsString.withDefault('').withOptions({ history: 'replace' }))
 }
-
-/**
- * Hook to manage marketplace search/filter state via URL
- * Provides atomic updates - all params update together
- *
- * @example
- * const [filters, setFilters] = useMarketplaceFilters()
- * setFilters({ q: 'search', category: 'tool', tags: ['ai'] }) // Updates all at once
- * setFilters({ q: '' }) // Only updates q, keeps others
- * setFilters(null) // Clears all marketplace params
- */
+export function useMarketplaceCategory() {
+  return useQueryState('category', parseAsString.withDefault('all').withOptions({ history: 'replace', clearOnDefault: false }))
+}
+export function useMarketplaceTags() {
+  return useQueryState('tags', parseAsArrayOf(parseAsString).withDefault([]).withOptions({ history: 'replace' }))
+}
 export function useMarketplaceFilters() {
-  return useQueryStates(
-    {
-      q: parseAsString.withDefault(''),
-      category: parseAsString.withDefault('all').withOptions({ clearOnDefault: false }),
-      tags: parseAsArrayOf(parseAsString).withDefault([]),
+  const [q, setQ] = useMarketplaceSearchQuery()
+  const [category, setCategory] = useMarketplaceCategory()
+  const [tags, setTags] = useMarketplaceTags()
+
+  const setFilters = useCallback(
+    (
+      updates: Partial<{ q: string, category: string, tags: string[] }> | null,
+      options?: Options,
+    ) => {
+      if (updates === null) {
+        setQ(null, options)
+        setCategory(null, options)
+        setTags(null, options)
+        return
+      }
+      if ('q' in updates)
+        setQ(updates.q!, options)
+      if ('category' in updates)
+        setCategory(updates.category!, options)
+      if ('tags' in updates)
+        setTags(updates.tags!, options)
     },
-    {
-      // Update URL without pushing to history (replaceState behavior)
-      history: 'replace',
-    },
+    [setQ, setCategory, setTags],
   )
+
+  return [{ q, category, tags }, setFilters] as const
 }
 
 /**

@@ -1,15 +1,22 @@
 'use client'
 
 import { useTranslation } from '#i18n'
-import { useMarketplaceContext } from '../context'
+import { useCallback } from 'react'
+import { useMarketplaceSearchQuery, useMarketplaceTags } from '@/hooks/use-query-params'
 import SearchBox from './index'
 
 const SearchBoxWrapper = () => {
   const { t } = useTranslation()
-  const searchPluginText = useMarketplaceContext(v => v.searchPluginText)
-  const handleSearchPluginTextChange = useMarketplaceContext(v => v.handleSearchPluginTextChange)
-  const filterPluginTags = useMarketplaceContext(v => v.filterPluginTags)
-  const handleFilterPluginTagsChange = useMarketplaceContext(v => v.handleFilterPluginTagsChange)
+  const [searchPluginText, setSearchPluginText] = useMarketplaceSearchQuery()
+  const [filterPluginTags, setFilterPluginTags] = useMarketplaceTags()
+
+  const handleSearchPluginTextChange = useCallback((text: string) => {
+    setSearchPluginText(text)
+  }, [setSearchPluginText])
+
+  const handleFilterPluginTagsChange = useCallback((tags: string[]) => {
+    setFilterPluginTags(tags)
+  }, [setFilterPluginTags])
 
   return (
     <SearchBox
