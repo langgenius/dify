@@ -231,7 +231,15 @@ jobs:
             - Always use the Edit tool. NEVER use bash scripts, node, or jq.
 
             ### Step 2.2: Process UPDATE Operations
-            For UPDATE keys, use Edit tool to replace the old value with the new translation.
+
+            **IMPORTANT: Skip rule for zh-Hans and ja-JP**
+            Before updating translations, check if the target language file was ALSO modified in the same git diff.
+            - Run: `git diff HEAD~1 --name-only | grep -E "(zh-Hans|ja-JP)"`
+            - If zh-Hans/ja-JP files appear in the diff, it means someone manually translated them
+            - **SKIP UPDATE operations for those languages** - do not overwrite manual translations
+
+            For other languages or if target file was NOT in the diff:
+            Use Edit tool to replace the old value with the new translation.
             You can batch multiple updates in one Edit if they are adjacent.
 
             ### Step 2.3: Process DELETE Operations
