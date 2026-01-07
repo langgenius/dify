@@ -5,6 +5,8 @@ This engine uses a modular architecture with separated packages following
 Domain-Driven Design principles for improved maintainability and testability.
 """
 
+from __future__ import annotations
+
 import contextvars
 import logging
 import queue
@@ -232,7 +234,7 @@ class GraphEngine:
     ) -> None:
         layer.initialize(ReadOnlyGraphRuntimeStateWrapper(self._graph_runtime_state), self._command_channel)
 
-    def layer(self, layer: GraphEngineLayer) -> "GraphEngine":
+    def layer(self, layer: GraphEngineLayer) -> GraphEngine:
         """Add a layer for extending functionality."""
         self._layers.append(layer)
         self._bind_layer_context(layer)

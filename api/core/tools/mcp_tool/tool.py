@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import base64
 import json
 import logging
@@ -118,7 +120,7 @@ class MCPTool(Tool):
         for item in json_list:
             yield self.create_json_message(item)
 
-    def fork_tool_runtime(self, runtime: ToolRuntime) -> "MCPTool":
+    def fork_tool_runtime(self, runtime: ToolRuntime) -> MCPTool:
         return MCPTool(
             entity=self.entity,
             runtime=runtime,

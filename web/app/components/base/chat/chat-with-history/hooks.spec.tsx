@@ -17,7 +17,7 @@ vi.mock('@/hooks/use-app-favicon', () => ({
   useAppFavicon: vi.fn(),
 }))
 
-vi.mock('@/i18n-config/i18next-config', () => ({
+vi.mock('@/i18n-config/client', () => ({
   changeLanguage: vi.fn().mockResolvedValue(undefined),
 }))
 

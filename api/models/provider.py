@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime
 from enum import StrEnum, auto
 from functools import cached_property
@@ -19,7 +21,7 @@ class ProviderType(StrEnum):
     SYSTEM = auto()
 
     @staticmethod
-    def value_of(value: str) -> "ProviderType":
+    def value_of(value: str) -> ProviderType:
         for member in ProviderType:
             if member.value == value:
                 return member
@@ -37,7 +39,7 @@ class ProviderQuotaType(StrEnum):
     """hosted trial quota"""
 
     @staticmethod
-    def value_of(value: str) -> "ProviderQuotaType":
+    def value_of(value: str) -> ProviderQuotaType:
         for member in ProviderQuotaType:
             if member.value == value:
                 return member
@@ -76,7 +78,7 @@ class Provider(TypeBase):
 
     quota_type: Mapped[str | None] = mapped_column(String(40), nullable=True, server_default=text("''"), default="")
     quota_limit: Mapped[int | None] = mapped_column(sa.BigInteger, nullable=True, default=None)
-    quota_used: Mapped[int] = mapped_column(sa.BigInteger, nullable=False, default=0)
+    quota_used: Mapped[int | None] = mapped_column(sa.BigInteger, nullable=True, default=0)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
