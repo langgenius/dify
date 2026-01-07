@@ -4,7 +4,8 @@ Tests for ObservabilityLayer.
 Test coverage:
 - Initialization and enable/disable logic
 - Node span lifecycle (start, end, error handling)
-- Parser integration (default and tool-specific)
+- Parser integration (default, tool, LLM, and retrieval parsers)
+- Result event parameter extraction (inputs/outputs)
 - Graph lifecycle management
 - Disabled mode behavior
 """
@@ -134,9 +135,101 @@ class TestObservabilityLayerParserIntegration:
         assert len(spans) == 1
         attrs = spans[0].attributes
         assert attrs["node.id"] == mock_tool_node.id
-        assert attrs["tool.provider.id"] == mock_tool_node._node_data.provider_id
-        assert attrs["tool.provider.type"] == mock_tool_node._node_data.provider_type.value
-        assert attrs["tool.name"] == mock_tool_node._node_data.tool_name
+        assert attrs["gen_ai.tool.name"] == mock_tool_node.title
+        assert attrs["gen_ai.tool.type"] == mock_tool_node._node_data.provider_type.value
+
+    @patch("core.workflow.graph_engine.layers.observability.dify_config.ENABLE_OTEL", True)
+    @pytest.mark.usefixtures("mock_is_instrument_flag_enabled_false")
+    def test_llm_parser_used_for_llm_node(
+        self, tracer_provider_with_memory_exporter, memory_span_exporter, mock_llm_node, mock_result_event
+    ):
+        """Test that LLM parser is used for LLM nodes and extracts LLM-specific attributes."""
+        from core.workflow.node_events.base import NodeRunResult
+
+        mock_result_event.node_run_result = NodeRunResult(
+            inputs={},
+            outputs={"text": "test completion", "finish_reason": "stop"},
+            process_data={
+                "model_name": "gpt-4",
+                "model_provider": "openai",
+                "usage": {"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
+                "prompts": [{"role": "user", "text": "test prompt"}],
+            },
+            metadata={},
+        )
+
+        layer = ObservabilityLayer()
+        layer.on_graph_start()
+
+        layer.on_node_run_start(mock_llm_node)
+        layer.on_node_run_end(mock_llm_node, None, mock_result_event)
+
+        spans = memory_span_exporter.get_finished_spans()
+        assert len(spans) == 1
+        attrs = spans[0].attributes
+        assert attrs["node.id"] == mock_llm_node.id
+        assert attrs["gen_ai.request.model"] == "gpt-4"
+        assert attrs["gen_ai.provider.name"] == "openai"
+        assert attrs["gen_ai.usage.input_tokens"] == 10
+        assert attrs["gen_ai.usage.output_tokens"] == 20
+        assert attrs["gen_ai.usage.total_tokens"] == 30
+        assert attrs["gen_ai.completion"] == "test completion"
+        assert attrs["gen_ai.response.finish_reason"] == "stop"
+
+    @patch("core.workflow.graph_engine.layers.observability.dify_config.ENABLE_OTEL", True)
+    @pytest.mark.usefixtures("mock_is_instrument_flag_enabled_false")
+    def test_retrieval_parser_used_for_retrieval_node(
+        self, tracer_provider_with_memory_exporter, memory_span_exporter, mock_retrieval_node, mock_result_event
+    ):
+        """Test that retrieval parser is used for retrieval nodes and extracts retrieval-specific attributes."""
+        from core.workflow.node_events.base import NodeRunResult
+
+        mock_result_event.node_run_result = NodeRunResult(
+            inputs={"query": "test query"},
+            outputs={"result": [{"content": "test content", "metadata": {"score": 0.9, "document_id": "doc1"}}]},
+            process_data={},
+            metadata={},
+        )
+
+        layer = ObservabilityLayer()
+        layer.on_graph_start()
+
+        layer.on_node_run_start(mock_retrieval_node)
+        layer.on_node_run_end(mock_retrieval_node, None, mock_result_event)
+
+        spans = memory_span_exporter.get_finished_spans()
+        assert len(spans) == 1
+        attrs = spans[0].attributes
+        assert attrs["node.id"] == mock_retrieval_node.id
+        assert attrs["retrieval.query"] == "test query"
+        assert "retrieval.document" in attrs
+
+    @patch("core.workflow.graph_engine.layers.observability.dify_config.ENABLE_OTEL", True)
+    @pytest.mark.usefixtures("mock_is_instrument_flag_enabled_false")
+    def test_result_event_extracts_inputs_and_outputs(
+        self, tracer_provider_with_memory_exporter, memory_span_exporter, mock_start_node, mock_result_event
+    ):
+        """Test that result_event parameter allows parsers to extract inputs and outputs."""
+        from core.workflow.node_events.base import NodeRunResult
+
+        mock_result_event.node_run_result = NodeRunResult(
+            inputs={"input_key": "input_value"},
+            outputs={"output_key": "output_value"},
+            process_data={},
+            metadata={},
+        )
+
+        layer = ObservabilityLayer()
+        layer.on_graph_start()
+
+        layer.on_node_run_start(mock_start_node)
+        layer.on_node_run_end(mock_start_node, None, mock_result_event)
+
+        spans = memory_span_exporter.get_finished_spans()
+        assert len(spans) == 1
+        attrs = spans[0].attributes
+        assert "input.value" in attrs
+        assert "output.value" in attrs
 
 
 class TestObservabilityLayerGraphLifecycle:
