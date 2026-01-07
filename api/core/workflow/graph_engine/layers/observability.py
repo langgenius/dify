@@ -18,14 +18,15 @@ from typing_extensions import override
 from configs import dify_config
 from core.workflow.enums import NodeType
 from core.workflow.graph_engine.layers.base import GraphEngineLayer
-from core.workflow.graph_engine.layers.node_parsers import (
+from core.workflow.graph_events import GraphNodeEventBase
+from core.workflow.nodes.base.node import Node
+from extensions.otel.parser import (
     DefaultNodeOTelParser,
     LLMNodeOTelParser,
     NodeOTelParser,
+    RetrievalNodeOTelParser,
     ToolNodeOTelParser,
 )
-from core.workflow.graph_events import GraphNodeEventBase
-from core.workflow.nodes.base.node import Node
 from extensions.otel.runtime import is_instrument_flag_enabled
 
 logger = logging.getLogger(__name__)
@@ -75,6 +76,7 @@ class ObservabilityLayer(GraphEngineLayer):
         self._parsers = {
             NodeType.TOOL: ToolNodeOTelParser(),
             NodeType.LLM: LLMNodeOTelParser(),
+            NodeType.KNOWLEDGE_RETRIEVAL: RetrievalNodeOTelParser(),
         }
 
     def _get_parser(self, node: Node) -> NodeOTelParser:
