@@ -1,8 +1,10 @@
 from abc import ABC, abstractmethod
 from collections.abc import Mapping, Sequence
+from functools import partial
 from io import BytesIO
 from typing import Any
 
+from core.virtual_environment.__base.command_future import CommandFuture
 from core.virtual_environment.__base.entities import CommandStatus, ConnectionHandle, FileState, Metadata
 from core.virtual_environment.channel.transport import TransportReadCloser, TransportWriteCloser
 
@@ -144,3 +146,38 @@ class VirtualEnvironment(ABC):
         Returns:
             CommandStatus: The status of the command execution.
         """
+
+    def run_command(
+        self,
+        connection_handle: ConnectionHandle,
+        command: list[str],
+        environments: Mapping[str, str] | None = None,
+    ) -> CommandFuture:
+        """
+        Execute a command and return a Future for the result.
+
+        High-level interface that handles IO draining internally.
+        For streaming output, use execute_command() instead.
+
+        Args:
+            connection_handle: The connection handle.
+            command: Command as list of strings.
+            environments: Environment variables.
+
+        Returns:
+            CommandFuture that can be used to get result with timeout or cancel.
+
+        Example:
+            result = env.run_command(handle, ["ls", "-la"]).result(timeout=30)
+        """
+        pid, stdin_transport, stdout_transport, stderr_transport = self.execute_command(
+            connection_handle, command, environments
+        )
+
+        return CommandFuture(
+            pid=pid,
+            stdin_transport=stdin_transport,
+            stdout_transport=stdout_transport,
+            stderr_transport=stderr_transport,
+            poll_status=partial(self.get_command_status, connection_handle, pid),
+        )

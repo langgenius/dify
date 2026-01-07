@@ -56,3 +56,14 @@ class FileState(BaseModel):
     path: str = Field(description="The path of the file in the virtual environment.")
     created_at: int = Field(description="The creation timestamp of the file.")
     updated_at: int = Field(description="The last modified timestamp of the file.")
+
+
+class CommandResult(BaseModel):
+    """
+    Result of a synchronous command execution.
+    """
+
+    stdout: bytes = Field(description="Standard output content.")
+    stderr: bytes = Field(description="Standard error content.")
+    exit_code: int | None = Field(description="Exit code of the command. None if unavailable.")
+    pid: str = Field(description="Process ID of the executed command.")
