@@ -68,7 +68,7 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
 
         # Control flag for dual-write (write to both LogStore and SQL database)
         # Set to True to enable dual-write for safe migration, False to use LogStore only
-        self._enable_dual_write = os.environ.get("LOGSTORE_DUAL_WRITE_ENABLED", "true").lower() == "true"
+        self._enable_dual_write = os.environ.get("LOGSTORE_DUAL_WRITE_ENABLED", "false").lower() == "true"
 
         # Control flag for whether to write the `graph` field to LogStore.
         # If LOGSTORE_ENABLE_PUT_GRAPH_FIELD is "true", write the full `graph` field;
