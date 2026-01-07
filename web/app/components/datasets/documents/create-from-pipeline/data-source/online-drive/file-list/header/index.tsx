@@ -1,7 +1,7 @@
+import type { OnlineDriveViewMode } from '@/models/pipeline'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import type { OnlineDriveViewMode } from '@/models/pipeline'
 import Breadcrumbs from './breadcrumbs'
 import ViewToggle from './view-toggle'
 

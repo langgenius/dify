@@ -1,8 +1,8 @@
 import type { OnlineDriveFile } from '@/models/pipeline'
-import { OnlineDriveViewMode } from '@/models/pipeline'
 import { useDebounceFn } from 'ahooks'
 import { useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
+import { OnlineDriveViewMode } from '@/models/pipeline'
 import { useDataSourceStoreWithSelector } from '../../store'
 import Header from './header'
 import List from './list'
@@ -82,29 +82,29 @@ const FileList = ({
       />
       {viewMode === OnlineDriveViewMode.flat
         ? (
-          <List
-            fileList={fileList}
-            selectedFileIds={selectedFileIds}
-            keywords={keywords}
-            handleResetKeywords={handleResetKeywords}
-            handleOpenFolder={handleOpenFolder}
-            handleSelectFile={handleSelectFile}
-            isLoading={isLoading}
-            supportBatchUpload={supportBatchUpload}
-          />
-        )
+            <List
+              fileList={fileList}
+              selectedFileIds={selectedFileIds}
+              keywords={keywords}
+              handleResetKeywords={handleResetKeywords}
+              handleOpenFolder={handleOpenFolder}
+              handleSelectFile={handleSelectFile}
+              isLoading={isLoading}
+              supportBatchUpload={supportBatchUpload}
+            />
+          )
         : (
-          <TreeList
-            fileList={fileList}
-            selectedFileIds={selectedFileIds}
-            keywords={keywords}
-            handleResetKeywords={handleResetKeywords}
-            handleOpenFolder={handleOpenFolder}
-            handleSelectFile={handleSelectFile}
-            isLoading={isLoading}
-            supportBatchUpload={supportBatchUpload}
-          />
-        )}
+            <TreeList
+              fileList={fileList}
+              selectedFileIds={selectedFileIds}
+              keywords={keywords}
+              handleResetKeywords={handleResetKeywords}
+              handleOpenFolder={handleOpenFolder}
+              handleSelectFile={handleSelectFile}
+              isLoading={isLoading}
+              supportBatchUpload={supportBatchUpload}
+            />
+          )}
     </div>
   )
 }

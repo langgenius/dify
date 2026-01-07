@@ -14,10 +14,10 @@ import { DatasourceType } from '@/models/pipeline'
 import { ssePost } from '@/service/base'
 import { useGetDataSourceAuth } from '@/service/use-datasource'
 import Header from '../base/header'
+import ViewToggle from '../online-drive/file-list/header/view-toggle'
 import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
 import PageSelector from './page-selector'
 import Title from './title'
-import ViewToggle from '../online-drive/file-list/header/view-toggle'
 
 type OnlineDocumentsProps = {
   nodeId: string

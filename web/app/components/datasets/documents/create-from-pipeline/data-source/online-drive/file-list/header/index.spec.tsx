@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import React from 'react'
-import Header from './index'
+import * as React from 'react'
 import { OnlineDriveViewMode } from '@/models/pipeline'
+import Header from './index'
 
 // ==========================================
 // Mock Modules

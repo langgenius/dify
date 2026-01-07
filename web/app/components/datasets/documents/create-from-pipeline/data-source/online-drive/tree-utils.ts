@@ -174,7 +174,7 @@ export const toggleFolderExpand = (
   treeMap: OnlineDriveTreeMap,
   folderId: string,
   expandedFolderIds: Set<string>,
-): { newTreeMap: OnlineDriveTreeMap; newExpandedIds: Set<string> } => {
+): { newTreeMap: OnlineDriveTreeMap, newExpandedIds: Set<string> } => {
   const newTreeMap = { ...treeMap }
   const newExpandedIds = new Set(expandedFolderIds)
 
@@ -200,7 +200,7 @@ export const toggleFolderExpand = (
 export const filterTreeBySearchKeywords = (
   treeMap: OnlineDriveTreeMap,
   keywords: string,
-): { matchedIds: Set<string>; autoExpandIds: Set<string> } => {
+): { matchedIds: Set<string>, autoExpandIds: Set<string> } => {
   const matchedIds = new Set<string>()
   const autoExpandIds = new Set<string>()
   const lowerKeywords = keywords.toLowerCase()

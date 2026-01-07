@@ -1,9 +1,9 @@
 import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
+import type { OnlineDriveViewMode as OnlineDriveViewModeType } from '@/models/pipeline'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FixedSizeList as List } from 'react-window'
 import { OnlineDriveViewMode } from '@/models/pipeline'
-import type { OnlineDriveViewMode as OnlineDriveViewModeType } from '@/models/pipeline'
 import Item from './item'
 import { recursivePushInParentDescendants } from './utils'
 

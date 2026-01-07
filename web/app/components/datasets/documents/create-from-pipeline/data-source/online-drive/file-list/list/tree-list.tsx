@@ -1,13 +1,11 @@
 'use client'
-import React, { useCallback, useEffect, useMemo, useRef } from 'react'
-import { useShallow } from 'zustand/react/shallow'
 import type { OnlineDriveFile } from '@/models/pipeline'
-import { OnlineDriveFileType } from '@/models/pipeline'
-import TreeItem from './tree-item'
-import EmptyFolder from './empty-folder'
-import EmptySearchResult from './empty-search-result'
-import Loading from '@/app/components/base/loading'
 import { RiLoader2Line } from '@remixicon/react'
+import * as React from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useShallow } from 'zustand/react/shallow'
+import Loading from '@/app/components/base/loading'
+import { OnlineDriveFileType } from '@/models/pipeline'
 import { useDataSourceStoreWithSelector } from '../../../store'
 import {
   buildTreeMapFromFlatList,
@@ -17,6 +15,9 @@ import {
   getRootIds,
   toggleFolderExpand,
 } from '../../tree-utils'
+import EmptyFolder from './empty-folder'
+import EmptySearchResult from './empty-search-result'
+import TreeItem from './tree-item'
 
 type TreeListProps = {
   fileList: OnlineDriveFile[]
@@ -164,13 +165,13 @@ const TreeList = ({
   const isSearchResultEmpty = !isLoading && fileList.length === 0 && keywords.length > 0
 
   return (
-    <div className='grow overflow-hidden p-1 pt-0'>
-      {isAllLoading && <Loading type='app' />}
+    <div className="grow overflow-hidden p-1 pt-0">
+      {isAllLoading && <Loading type="app" />}
       {isEmptyFolder && <EmptyFolder />}
       {isSearchResultEmpty && <EmptySearchResult onResetKeywords={handleResetKeywords} />}
 
       {displayList.length > 0 && (
-        <div className='flex h-full flex-col gap-y-px overflow-y-auto rounded-[10px] bg-background-section px-1 py-1.5'>
+        <div className="flex h-full flex-col gap-y-px overflow-y-auto rounded-[10px] bg-background-section px-1 py-1.5">
           {displayList.map((treeItem) => {
             const isSelected = selectedFileIds.includes(treeItem.id)
 
@@ -188,11 +189,11 @@ const TreeList = ({
             )
           })}
           {isPartialLoading && (
-            <div className='flex items-center justify-center py-2'>
-              <RiLoader2Line className='size-4 animate-spin text-text-tertiary' />
+            <div className="flex items-center justify-center py-2">
+              <RiLoader2Line className="size-4 animate-spin text-text-tertiary" />
             </div>
           )}
-          <div ref={anchorRef} className='h-0' />
+          <div ref={anchorRef} className="h-0" />
         </div>
       )}
     </div>
