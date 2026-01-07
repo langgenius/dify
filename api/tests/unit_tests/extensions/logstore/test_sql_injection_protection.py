@@ -14,7 +14,6 @@ from extensions.logstore.aliyun_logstore import AliyunLogStore
 from extensions.logstore.repositories.logstore_api_workflow_run_repository import (
     LogstoreAPIWorkflowRunRepository,
 )
-from models.enums import WorkflowRunTriggeredFrom
 
 
 class TestLogstoreAPIWorkflowRunRepositorySQLInjection:
@@ -122,7 +121,7 @@ class TestLogstoreAPIWorkflowRunRepositorySQLInjection:
         repository.get_paginated_workflow_runs(
             tenant_id=malicious_tenant_id,
             app_id=malicious_app_id,
-            triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
+            triggered_from="debugging",  # Use string constant instead of enum to avoid DB dependencies
             status=malicious_status,
             limit=20,
         )
@@ -139,7 +138,7 @@ class TestLogstoreAPIWorkflowRunRepositorySQLInjection:
         repository.get_paginated_workflow_runs(
             tenant_id="tenant1",
             app_id="app1",
-            triggered_from=[WorkflowRunTriggeredFrom.DEBUGGING, WorkflowRunTriggeredFrom.APP_RUN],
+            triggered_from=["debugging", "app-run"],  # Use string constants instead of enum
             limit=10,
         )
 
@@ -256,7 +255,7 @@ class TestLogstoreAPIWorkflowRunRepositorySQLInjection:
         repository.get_paginated_workflow_runs(
             tenant_id=attacker_tenant_id,
             app_id="app1",
-            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+            triggered_from="app-run",  # Use string constant instead of enum
             limit=100,
         )
 

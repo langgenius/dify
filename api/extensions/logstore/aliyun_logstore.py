@@ -219,9 +219,15 @@ class AliyunLogStore:
         Raises:
             ConnectionError: If endpoint is not reachable
         """
-        # Extract hostname from endpoint
-        hostname = endpoint.replace("https://", "").replace("http://", "").split("/")[0].split(":")[0]
-        port = 80
+        # Parse endpoint URL to extract hostname and port
+        from urllib.parse import urlparse
+
+        parsed_url = urlparse(endpoint if "://" in endpoint else f"http://{endpoint}")
+        hostname = parsed_url.hostname
+        port = parsed_url.port or (443 if parsed_url.scheme == "https" else 80)
+
+        if not hostname:
+            raise ConnectionError(f"Invalid endpoint URL: {endpoint}")
 
         try:
             # Use context manager to ensure socket is properly closed

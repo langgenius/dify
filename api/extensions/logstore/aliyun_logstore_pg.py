@@ -8,7 +8,6 @@ from typing import Any
 
 import psycopg2
 from sqlalchemy import create_engine
-from sqlalchemy.exc import DBAPIError
 
 from configs import dify_config
 
@@ -139,7 +138,8 @@ class AliyunLogStorePG:
 
     def _is_retriable_error(self, error: Exception) -> bool:
         """Check if error is retriable (connection-related issues)."""
-        if isinstance(error, DBAPIError) and error.connection_invalidated:
+        # Check for psycopg2 connection errors directly
+        if isinstance(error, (psycopg2.OperationalError, psycopg2.InterfaceError)):
             return True
 
         error_msg = str(error).lower()

@@ -167,7 +167,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
             status,
         )
         # Convert triggered_from to list if needed
-        if isinstance(triggered_from, WorkflowRunTriggeredFrom):
+        if isinstance(triggered_from, (WorkflowRunTriggeredFrom, str)):
             triggered_from_list = [triggered_from]
         else:
             triggered_from_list = list(triggered_from)
@@ -177,8 +177,12 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         escaped_app_id = escape_identifier(app_id)
 
         # Build triggered_from filter with escaped values
+        # Support both enum and string values for triggered_from
         triggered_from_filter = " OR ".join(
-            [f"triggered_from='{escape_sql_string(tf.value)}'" for tf in triggered_from_list]
+            [
+                f"triggered_from='{escape_sql_string(tf.value if isinstance(tf, WorkflowRunTriggeredFrom) else tf)}'"
+                for tf in triggered_from_list
+            ]
         )
 
         # Build status filter with escaped value
