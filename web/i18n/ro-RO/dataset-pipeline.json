@@ -65,6 +65,8 @@
   "onlineDrive.notConnectedTip": "Pentru a sincroniza cu {{name}}, trebuie mai întâi să se stabilească conexiunea cu {{name}}.",
   "onlineDrive.notSupportedFileType": "Acest tip de fișier nu este acceptat",
   "onlineDrive.resetKeywords": "Resetați cuvintele cheie",
+  "onlineDrive.viewMode.flatList": "Vizualizare listă simplă",
+  "onlineDrive.viewMode.treeView": "Vizualizare arbore",
   "operations.backToDataSource": "Înapoi la sursa de date",
   "operations.choose": "Alege",
   "operations.convert": "Converti",

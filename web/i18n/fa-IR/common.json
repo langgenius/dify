@@ -132,6 +132,7 @@
   "dataSource.notion.pagesAuthorized": "صفحات مجاز",
   "dataSource.notion.remove": "حذف",
   "dataSource.notion.selector.addPages": "افزودن صفحات",
+  "dataSource.notion.selector.childPagesIncluded": "+{{count}} صفحات فرزند اضافه شدند",
   "dataSource.notion.selector.noSearchResult": "نتیجه جستجویی یافت نشد",
   "dataSource.notion.selector.pageSelected": "صفحات انتخاب شده",
   "dataSource.notion.selector.preview": "پیش‌نمایش",

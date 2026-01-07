@@ -1,5 +1,7 @@
 import type { ListChildComponentProps } from 'react-window'
+import type { NotionPageTreeMap } from './index'
 import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
+import type { OnlineDriveViewMode as OnlineDriveViewModeType } from '@/models/pipeline'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -7,10 +9,8 @@ import { areEqual } from 'react-window'
 import Checkbox from '@/app/components/base/checkbox'
 import NotionIcon from '@/app/components/base/notion-icon'
 import Radio from '@/app/components/base/radio/ui'
-import { cn } from '@/utils/classnames'
 import { OnlineDriveViewMode } from '@/models/pipeline'
-import type { OnlineDriveViewMode as OnlineDriveViewModeType } from '@/models/pipeline'
-import type { NotionPageTreeMap } from './index'
+import { cn } from '@/utils/classnames'
 
 type NotionPageItem = {
   expand: boolean
@@ -88,7 +88,6 @@ const Item = ({ index, style, data }: ListChildComponentProps<{
       className={cn('group flex cursor-pointer items-center rounded-md pl-2 pr-[2px] hover:bg-state-base-hover', previewPageId === current.page_id && 'bg-state-base-hover')}
       style={{ ...style, top: style.top as number + 8, left: 8, right: 8, width: 'calc(100% - 16px)' }}
     >
-<<<<<<< HEAD
       {isMultipleChoice
         ? (
             <Checkbox
@@ -125,10 +124,11 @@ const Item = ({ index, style, data }: ListChildComponentProps<{
       {
         hasChild && viewMode === OnlineDriveViewMode.flat && (
           <div
-            className='bg-components-badge-modern-purple-bg text-components-badge-modern-purple-text ml-1 flex shrink-0 items-center rounded-md px-1.5 text-xs font-medium dark:bg-components-badge-bg-gray-soft dark:text-text-secondary'
-            title={t('common.dataSource.notion.selector.childPagesIncluded', { count: currentWithChildrenAndDescendants.descendants.size })}
+            className="bg-components-badge-modern-purple-bg text-components-badge-modern-purple-text ml-1 flex shrink-0 items-center rounded-md px-1.5 text-xs font-medium dark:bg-components-badge-bg-gray-soft dark:text-text-secondary"
+            title={t('dataSource.notion.selector.childPagesIncluded', { ns: 'common', count: currentWithChildrenAndDescendants.descendants.size })}
           >
-            +{currentWithChildrenAndDescendants.descendants.size}
+            +
+            {currentWithChildrenAndDescendants.descendants.size}
           </div>
         )
       }

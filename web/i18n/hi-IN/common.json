@@ -132,6 +132,7 @@
   "dataSource.notion.pagesAuthorized": "अधिकृत पृष्ठ",
   "dataSource.notion.remove": "हटाएं",
   "dataSource.notion.selector.addPages": "पृष्ठ जोड़ें",
+  "dataSource.notion.selector.childPagesIncluded": "+{{count}} बाल पृष्ठ शामिल",
   "dataSource.notion.selector.noSearchResult": "कोई खोज परिणाम नहीं",
   "dataSource.notion.selector.pageSelected": "चयनित पृष्ठ",
   "dataSource.notion.selector.preview": "पूर्वावलोकन",

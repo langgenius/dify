@@ -65,6 +65,8 @@
   "onlineDrive.notConnectedTip": "{{name}}と同期するには、まず{{name}}への接続を確立する必要があります。",
   "onlineDrive.notSupportedFileType": "このファイルタイプはサポートされていません",
   "onlineDrive.resetKeywords": "キーワードをリセットする",
+  "onlineDrive.viewMode.flatList": "フラットリストビュー",
+  "onlineDrive.viewMode.treeView": "ツリービュー",
   "operations.backToDataSource": "データソースに戻る",
   "operations.choose": "選ぶ",
   "operations.convert": "変換する",

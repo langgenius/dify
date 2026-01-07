@@ -65,6 +65,8 @@
   "onlineDrive.notConnectedTip": "同步 {{name}} 内容前, 须先绑定 {{name}}。",
   "onlineDrive.notSupportedFileType": "不支持此文件类型",
   "onlineDrive.resetKeywords": "重置关键词",
+  "onlineDrive.viewMode.flatList": "平铺列表视图",
+  "onlineDrive.viewMode.treeView": "树视图",
   "operations.backToDataSource": "返回数据源",
   "operations.choose": "选择",
   "operations.convert": "转换",

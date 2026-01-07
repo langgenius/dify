@@ -132,6 +132,7 @@
   "dataSource.notion.pagesAuthorized": "الصفحات المصرح بها",
   "dataSource.notion.remove": "إزالة",
   "dataSource.notion.selector.addPages": "إضافة صفحات",
+  "dataSource.notion.selector.childPagesIncluded": "+{{count}} صفحات فرعية متضمنة",
   "dataSource.notion.selector.noSearchResult": "لا توجد نتائج بحث",
   "dataSource.notion.selector.pageSelected": "الصفحات المحددة",
   "dataSource.notion.selector.preview": "معاينة",

@@ -65,6 +65,8 @@
   "onlineDrive.notConnectedTip": "للمزامنة مع {{name}}، يجب إنشاء اتصال بـ {{name}} أولاً.",
   "onlineDrive.notSupportedFileType": "نوع الملف هذا غير مدعوم",
   "onlineDrive.resetKeywords": "إعادة تعيين الكلمات الرئيسية",
+  "onlineDrive.viewMode.flatList": "عرض القائمة المسطحة",
+  "onlineDrive.viewMode.treeView": "عرض الشجرة",
   "operations.backToDataSource": "العودة إلى مصدر البيانات",
   "operations.choose": "اختر",
   "operations.convert": "تحويل",

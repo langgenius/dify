@@ -132,6 +132,7 @@
   "dataSource.notion.pagesAuthorized": "認証済みページ",
   "dataSource.notion.remove": "削除",
   "dataSource.notion.selector.addPages": "ページの追加",
+  "dataSource.notion.selector.childPagesIncluded": "+{{count}} 件の子ページが含まれています",
   "dataSource.notion.selector.noSearchResult": "検索結果なし",
   "dataSource.notion.selector.pageSelected": "選択済みページ",
   "dataSource.notion.selector.preview": "プレビュー",

@@ -65,6 +65,8 @@
   "onlineDrive.notConnectedTip": "To sync with {{name}}, connection to {{name}} must be established first.",
   "onlineDrive.notSupportedFileType": "This file type is not supported",
   "onlineDrive.resetKeywords": "Reset keywords",
+  "onlineDrive.viewMode.flatList": "Flat List View",
+  "onlineDrive.viewMode.treeView": "Tree View",
   "operations.backToDataSource": "Back to Data Source",
   "operations.choose": "Choose",
   "operations.convert": "Convert",

@@ -132,6 +132,7 @@
   "dataSource.notion.pagesAuthorized": "Авторизовані сторінки",
   "dataSource.notion.remove": "Видалити",
   "dataSource.notion.selector.addPages": "Додати сторінки",
+  "dataSource.notion.selector.childPagesIncluded": "+{{count}} вкладених сторінок",
   "dataSource.notion.selector.noSearchResult": "Результатів пошуку немає",
   "dataSource.notion.selector.pageSelected": "Сторінки вибрано",
   "dataSource.notion.selector.preview": "ПЕРЕДПЕРЕГЛЯД",

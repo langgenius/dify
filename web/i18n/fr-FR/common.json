@@ -132,6 +132,7 @@
   "dataSource.notion.pagesAuthorized": "Pages autorisées",
   "dataSource.notion.remove": "Supprimer",
   "dataSource.notion.selector.addPages": "Ajouter des pages",
+  "dataSource.notion.selector.childPagesIncluded": "+{{count}} pages enfants incluses",
   "dataSource.notion.selector.noSearchResult": "Aucun résultat de recherche",
   "dataSource.notion.selector.pageSelected": "Pages Sélectionnées",
   "dataSource.notion.selector.preview": "APERÇU",

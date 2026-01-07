@@ -65,6 +65,8 @@
   "onlineDrive.notConnectedTip": "เพื่อซิงค์กับ {{name}} ต้องสร้างการเชื่อมต่อกับ {{name}} ก่อน",
   "onlineDrive.notSupportedFileType": "ไม่รองรับชนิดแฟ้มนี้",
   "onlineDrive.resetKeywords": "รีเซ็ตคีย์เวิร์ด",
+  "onlineDrive.viewMode.flatList": "มุมมองรายการแบบแบน",
+  "onlineDrive.viewMode.treeView": "มุมมองแบบต้นไม้",
   "operations.backToDataSource": "กลับไปที่แหล่งข้อมูล",
   "operations.choose": "เลือก",
   "operations.convert": "แปลง",

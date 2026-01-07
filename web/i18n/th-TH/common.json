@@ -132,6 +132,7 @@
   "dataSource.notion.pagesAuthorized": "เพจที่ได้รับอนุญาต",
   "dataSource.notion.remove": "ถอด",
   "dataSource.notion.selector.addPages": "เพิ่มหน้า",
+  "dataSource.notion.selector.childPagesIncluded": "+{{count}} หน้าเด็กถูกรวม",
   "dataSource.notion.selector.noSearchResult": "ไม่มีผลการค้นหา",
   "dataSource.notion.selector.pageSelected": "หน้าที่เลือก",
   "dataSource.notion.selector.preview": "ดูตัวอย่าง",

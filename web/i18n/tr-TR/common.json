@@ -132,6 +132,7 @@
   "dataSource.notion.pagesAuthorized": "Yetkilendirilen sayfalar",
   "dataSource.notion.remove": "Kaldır",
   "dataSource.notion.selector.addPages": "Sayfa ekle",
+  "dataSource.notion.selector.childPagesIncluded": "+{{count}} alt sayfa dahil",
   "dataSource.notion.selector.noSearchResult": "Arama sonucu yok",
   "dataSource.notion.selector.pageSelected": "Seçilen Sayfalar",
   "dataSource.notion.selector.preview": "ÖNİZLEME",

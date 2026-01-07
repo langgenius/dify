@@ -1,16 +1,17 @@
 'use client'
-import React, { useCallback } from 'react'
+import type { Placement } from '@floating-ui/react'
 import type { OnlineDriveFile, OnlineDriveFileTreeItem } from '@/models/pipeline'
-import { OnlineDriveFileType } from '@/models/pipeline'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
+import * as React from 'react'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
 import Radio from '@/app/components/base/radio/ui'
-import FileIcon from './file-icon'
-import { formatFileSize } from '@/utils/format'
 import Tooltip from '@/app/components/base/tooltip'
-import { useTranslation } from 'react-i18next'
-import cn from '@/utils/classnames'
-import type { Placement } from '@floating-ui/react'
+import { OnlineDriveFileType } from '@/models/pipeline'
+import { cn } from '@/utils/classnames'
+import { formatFileSize } from '@/utils/format'
+import FileIcon from './file-icon'
 
 type TreeItemProps = {
   treeItem: OnlineDriveFileTreeItem
@@ -42,10 +43,10 @@ const TreeItem = ({
   const Wrapper = disabled ? Tooltip : React.Fragment
   const wrapperProps = disabled
     ? {
-      popupContent: t('datasetPipeline.onlineDrive.notSupportedFileType'),
-      position: 'top-end' as Placement,
-      offset: { mainAxis: 4, crossAxis: -104 },
-    }
+        popupContent: t('onlineDrive.notSupportedFileType', { ns: 'datasetPipeline' }),
+        position: 'top-end' as Placement,
+        offset: { mainAxis: 4, crossAxis: -104 },
+      }
     : {}
 
   const handleSelect = useCallback(
@@ -84,14 +85,14 @@ const TreeItem = ({
 
   return (
     <div
-      className='flex cursor-pointer items-center gap-2 rounded-md px-2 py-[3px] hover:bg-state-base-hover'
+      className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-[3px] hover:bg-state-base-hover"
       onClick={handleClickItem}
     >
       {/* Indentation */}
       {depth > 0 && (
-        <div className='flex shrink-0'>
+        <div className="flex shrink-0">
           {Array.from({ length: depth }).map((_, index) => (
-            <div key={index} className='w-4' />
+            <div key={index} className="w-4" />
           ))}
         </div>
       )}
@@ -99,27 +100,27 @@ const TreeItem = ({
       {/* Expand/Collapse Arrow */}
       {canExpand
         ? (
-          <div
-            className='flex h-5 w-5 shrink-0 items-center justify-center rounded-md hover:bg-components-button-ghost-bg-hover'
-            onClick={handleToggle}
-          >
-            {isExpanded
-              ? (
-                <RiArrowDownSLine className='h-4 w-4 text-text-tertiary' />
-              )
-              : (
-                <RiArrowRightSLine className='h-4 w-4 text-text-tertiary' />
-              )}
-          </div>
-        )
+            <div
+              className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md hover:bg-components-button-ghost-bg-hover"
+              onClick={handleToggle}
+            >
+              {isExpanded
+                ? (
+                    <RiArrowDownSLine className="h-4 w-4 text-text-tertiary" />
+                  )
+                : (
+                    <RiArrowRightSLine className="h-4 w-4 text-text-tertiary" />
+                  )}
+            </div>
+          )
         : (
-          <div className='h-5 w-5 shrink-0' />
-        )}
+            <div className="h-5 w-5 shrink-0" />
+          )}
 
       {/* Checkbox/Radio */}
       {!isBucket && isMultipleChoice && (
         <Checkbox
-          className='shrink-0'
+          className="shrink-0"
           disabled={disabled}
           id={id}
           checked={isSelected}
@@ -128,7 +129,7 @@ const TreeItem = ({
       )}
       {!isBucket && !isMultipleChoice && (
         <Radio
-          className='shrink-0'
+          className="shrink-0"
           disabled={disabled}
           isChecked={isSelected}
           onCheck={handleSelect}
@@ -143,12 +144,12 @@ const TreeItem = ({
             disabled && 'opacity-30',
           )}
         >
-          <FileIcon type={type} fileName={name} className='shrink-0 transform-gpu' />
-          <span className='system-sm-medium grow truncate text-text-secondary' title={name}>
+          <FileIcon type={type} fileName={name} className="shrink-0 transform-gpu" />
+          <span className="system-sm-medium grow truncate text-text-secondary" title={name}>
             {name}
           </span>
           {!isFolder && !isBucket && typeof size === 'number' && (
-            <span className='system-xs-regular shrink-0 text-text-tertiary'>
+            <span className="system-xs-regular shrink-0 text-text-tertiary">
               {formatFileSize(size)}
             </span>
           )}

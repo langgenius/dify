@@ -1,10 +1,10 @@
 'use client'
-import React from 'react'
 import { RiListUnordered, RiNodeTree } from '@remixicon/react'
-import { OnlineDriveViewMode } from '@/models/pipeline'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
-import cn from '@/utils/classnames'
+import { OnlineDriveViewMode } from '@/models/pipeline'
+import { cn } from '@/utils/classnames'
 
 type ViewToggleProps = {
   viewMode: OnlineDriveViewMode
@@ -15,10 +15,10 @@ const ViewToggle = ({ viewMode, onChange }: ViewToggleProps) => {
   const { t } = useTranslation()
 
   return (
-    <div className='flex shrink-0 items-center gap-0.5 rounded-lg border border-divider-subtle bg-background-body p-0.5'>
-      <Tooltip popupContent={t('datasetPipeline.onlineDrive.viewMode.flatList')}>
+    <div className="flex shrink-0 items-center gap-0.5 rounded-lg border border-divider-subtle bg-background-body p-0.5">
+      <Tooltip popupContent={t('onlineDrive.viewMode.flatList', { ns: 'datasetPipeline' })}>
         <button
-          type='button'
+          type="button"
           className={cn(
             'flex h-7 w-7 items-center justify-center rounded-md transition-colors',
             viewMode === OnlineDriveViewMode.flat
@@ -27,13 +27,13 @@ const ViewToggle = ({ viewMode, onChange }: ViewToggleProps) => {
           )}
           onClick={() => onChange(OnlineDriveViewMode.flat)}
         >
-          <RiListUnordered className='h-4 w-4' />
+          <RiListUnordered className="h-4 w-4" />
         </button>
       </Tooltip>
 
-      <Tooltip popupContent={t('datasetPipeline.onlineDrive.viewMode.treeView')}>
+      <Tooltip popupContent={t('onlineDrive.viewMode.treeView', { ns: 'datasetPipeline' })}>
         <button
-          type='button'
+          type="button"
           className={cn(
             'flex h-7 w-7 items-center justify-center rounded-md transition-colors',
             viewMode === OnlineDriveViewMode.tree
@@ -42,7 +42,7 @@ const ViewToggle = ({ viewMode, onChange }: ViewToggleProps) => {
           )}
           onClick={() => onChange(OnlineDriveViewMode.tree)}
         >
-          <RiNodeTree className='h-4 w-4' />
+          <RiNodeTree className="h-4 w-4" />
         </button>
       </Tooltip>
     </div>
