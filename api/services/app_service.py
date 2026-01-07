@@ -92,15 +92,13 @@ class AppService:
             sort_column = sort_field_map.get(sort_by, App.created_at)
 
         # Apply sort order
-        # For text fields (name, owner_name), always sort A-Z regardless of sort_order
+        order_func = sa.desc if sort_order == "desc" else sa.asc
+
         if sort_by == "owner_name":
-            # Primary sort: Owner name A-Z
-            # Secondary sort: Modified date descending (newest first)
-            query = query.order_by(sort_column.asc(), App.updated_at.desc())
-        elif sort_by == "name" or sort_order == "asc":
-            query = query.order_by(sort_column.asc())
+            # Primary sort by owner name, secondary by updated_at desc
+            query = query.order_by(order_func(sort_column), App.updated_at.desc())
         else:
-            query = query.order_by(sort_column.desc())
+            query = query.order_by(order_func(sort_column))
 
         app_models = db.paginate(
             query,

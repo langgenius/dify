@@ -1,5 +1,5 @@
 import { type ReadonlyURLSearchParams, usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 
 export type SortBy = 'created_at' | 'updated_at' | 'name' | 'owner_name'
 export type SortOrder = 'asc' | 'desc'
@@ -106,26 +106,25 @@ function updateSearchParams(query: AppsQuery, current: URLSearchParams) {
 
 function useAppsQueryState() {
   const searchParams = useSearchParams()
-  const [query, setQuery] = useState<AppsQuery>(() => parseParams(searchParams))
-
   const router = useRouter()
   const pathname = usePathname()
-  const syncSearchParams = useCallback((params: URLSearchParams) => {
+
+  const query = useMemo(() => parseParams(searchParams), [searchParams])
+
+  const setQuery = useCallback((updater: AppsQuery | ((prev: AppsQuery) => AppsQuery)) => {
+    const newQuery = typeof updater === 'function' ? updater(query) : updater
+
+    const params = new URLSearchParams()
+    updateSearchParams(newQuery, params)
     const search = params.toString()
-    const query = search ? `?${search}` : ''
-    router.push(`${pathname}${query}`, { scroll: false })
-  }, [router, pathname])
+    router.push(`${pathname}${search ? `?${search}` : ''}`, { scroll: false })
+  }, [query, router, pathname])
 
-  // Update the URL search string whenever the query changes.
+  // Save sort preferences to localStorage whenever they change
   useEffect(() => {
-    const params = new URLSearchParams(searchParams)
-    updateSearchParams(query, params)
-    syncSearchParams(params)
-
-    // Save sort preferences to localStorage whenever they change
     if (query.sortBy && query.sortOrder)
       saveSortPreferences(query.sortBy, query.sortOrder)
-  }, [query, searchParams, syncSearchParams])
+  }, [query.sortBy, query.sortOrder])
 
   return useMemo(() => ({ query, setQuery }), [query])
 }

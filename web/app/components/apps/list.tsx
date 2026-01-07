@@ -194,10 +194,8 @@ const List = () => {
     const hasMore = hasNextPage ?? true
     let observer: IntersectionObserver | undefined
 
-    if (error) {
-      if (observer) observer.disconnect()
+    if (error)
       return
-    }
 
     if (anchorRef.current && containerRef.current) {
       // Calculate dynamic rootMargin: clamps to 100-200px range, using 20% of container height as the base value for better responsiveness
