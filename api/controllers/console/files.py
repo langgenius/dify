@@ -1,7 +1,7 @@
 from typing import Literal
 
 from flask import request
-from flask_restx import Resource, marshal_with
+from flask_restx import Resource
 from werkzeug.exceptions import Forbidden
 
 import services
@@ -15,17 +15,20 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
+from controllers.common.schema import register_schema_models
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
     setup_required,
 )
 from extensions.ext_database import db
-from fields.file_fields import file_fields, upload_config_fields
+from fields.file_fields import FileResponse, UploadConfig
 from libs.login import current_account_with_tenant, login_required
 from services.file_service import FileService
 
 from . import console_ns
+
+register_schema_models(console_ns, UploadConfig, FileResponse)
 
 PREVIEW_WORDS_LIMIT = 3000
 
@@ -35,26 +38,27 @@ class FileApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(upload_config_fields)
+    @console_ns.response(200, "Success", console_ns.models[UploadConfig.__name__])
     def get(self):
-        return {
-            "file_size_limit": dify_config.UPLOAD_FILE_SIZE_LIMIT,
-            "batch_count_limit": dify_config.UPLOAD_FILE_BATCH_LIMIT,
-            "file_upload_limit": dify_config.BATCH_UPLOAD_LIMIT,
-            "image_file_size_limit": dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT,
-            "video_file_size_limit": dify_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT,
-            "audio_file_size_limit": dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT,
-            "workflow_file_upload_limit": dify_config.WORKFLOW_FILE_UPLOAD_LIMIT,
-            "image_file_batch_limit": dify_config.IMAGE_FILE_BATCH_LIMIT,
-            "single_chunk_attachment_limit": dify_config.SINGLE_CHUNK_ATTACHMENT_LIMIT,
-            "attachment_image_file_size_limit": dify_config.ATTACHMENT_IMAGE_FILE_SIZE_LIMIT,
-        }, 200
+        config = UploadConfig(
+            file_size_limit=dify_config.UPLOAD_FILE_SIZE_LIMIT,
+            batch_count_limit=dify_config.UPLOAD_FILE_BATCH_LIMIT,
+            file_upload_limit=dify_config.BATCH_UPLOAD_LIMIT,
+            image_file_size_limit=dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT,
+            video_file_size_limit=dify_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT,
+            audio_file_size_limit=dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT,
+            workflow_file_upload_limit=dify_config.WORKFLOW_FILE_UPLOAD_LIMIT,
+            image_file_batch_limit=dify_config.IMAGE_FILE_BATCH_LIMIT,
+            single_chunk_attachment_limit=dify_config.SINGLE_CHUNK_ATTACHMENT_LIMIT,
+            attachment_image_file_size_limit=dify_config.ATTACHMENT_IMAGE_FILE_SIZE_LIMIT,
+        )
+        return config.model_dump(mode="json"), 200
 
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(file_fields)
     @cloud_edition_billing_resource_check("documents")
+    @console_ns.response(201, "File uploaded successfully", console_ns.models[FileResponse.__name__])
     def post(self):
         current_user, _ = current_account_with_tenant()
         source_str = request.form.get("source")
@@ -90,7 +94,8 @@ class FileApi(Resource):
         except services.errors.file.BlockedFileExtensionError as blocked_extension_error:
             raise BlockedFileExtensionError(blocked_extension_error.description)
 
-        return upload_file, 201
+        response = FileResponse.model_validate(upload_file, from_attributes=True)
+        return response.model_dump(mode="json"), 201
 
 
 @console_ns.route("/files/<uuid:file_id>/preview")
