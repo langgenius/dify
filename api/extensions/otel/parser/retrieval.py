@@ -2,6 +2,8 @@
 Parser for knowledge retrieval nodes that captures retrieval-specific metadata.
 """
 
+import logging
+
 from opentelemetry.trace import Span
 
 from core.variables import Segment
@@ -10,6 +12,8 @@ from core.workflow.graph_events import GraphNodeEventBase
 from core.workflow.nodes.base.node import Node
 from extensions.otel.parser.base import DefaultNodeOTelParser, _safe_json_dumps
 from extensions.otel.semconv.gen_ai import RetrieverAttributes
+
+logger = logging.getLogger(__name__)
 
 
 def _format_retrieval_documents(retrieval_documents: list) -> list:
@@ -55,7 +59,8 @@ def _format_retrieval_documents(retrieval_documents: list) -> list:
             semantic_documents.append(semantic_doc)
 
         return semantic_documents
-    except Exception:
+    except Exception as e:
+        logger.warning("Failed to format retrieval documents: %s", e, exc_info=True)
         return []
 
 
@@ -91,7 +96,14 @@ class RetrievalNodeOTelParser:
             elif isinstance(result_value, list):
                 retrieval_documents = result_value
             elif isinstance(result_value, Segment):
-                retrieval_documents = result_value.value if hasattr(result_value, "value") else []
+                if hasattr(result_value, "value"):
+                    value = result_value.value
+                    if isinstance(value, list):
+                        retrieval_documents = value
+                    else:
+                        retrieval_documents = []
+                else:
+                    retrieval_documents = []
 
         if retrieval_documents:
             semantic_retrieval_documents = _format_retrieval_documents(retrieval_documents)

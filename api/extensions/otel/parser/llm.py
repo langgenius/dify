@@ -2,6 +2,7 @@
 Parser for LLM nodes that captures LLM-specific metadata.
 """
 
+import logging
 from collections.abc import Mapping
 from typing import Any
 
@@ -11,6 +12,8 @@ from core.workflow.graph_events import GraphNodeEventBase
 from core.workflow.nodes.base.node import Node
 from extensions.otel.parser.base import DefaultNodeOTelParser, _safe_json_dumps
 from extensions.otel.semconv.gen_ai import LLMAttributes
+
+logger = logging.getLogger(__name__)
 
 
 def _format_input_messages(process_data: Mapping[str, Any]) -> str:
@@ -48,7 +51,8 @@ def _format_input_messages(process_data: Mapping[str, Any]) -> str:
                 input_messages.append(message)
 
         return _safe_json_dumps(input_messages)
-    except Exception:
+    except Exception as e:
+        logger.warning("Failed to format input messages: %s", e, exc_info=True)
         return _safe_json_dumps([])
 
 
@@ -83,7 +87,8 @@ def _format_output_messages(outputs: Mapping[str, Any]) -> str:
         }
 
         return _safe_json_dumps([output_message])
-    except Exception:
+    except Exception as e:
+        logger.warning("Failed to format output messages: %s", e, exc_info=True)
         return _safe_json_dumps([])
 
 
@@ -106,7 +111,7 @@ class LLMNodeOTelParser:
         outputs = node_run_result.outputs or {}
 
         # Extract usage data (from process_data or outputs)
-        usage_data = process_data.get("usage", {}) if "usage" in process_data else outputs.get("usage", {})
+        usage_data = process_data.get("usage") or outputs.get("usage") or {}
 
         # Model and provider information
         model_name = process_data.get("model_name") or ""
@@ -123,9 +128,9 @@ class LLMNodeOTelParser:
             completion_tokens = usage_data.get("completion_tokens", 0)
             total_tokens = usage_data.get("total_tokens", 0)
 
-            span.set_attribute(LLMAttributes.USAGE_INPUT_TOKENS, str(prompt_tokens))
-            span.set_attribute(LLMAttributes.USAGE_OUTPUT_TOKENS, str(completion_tokens))
-            span.set_attribute(LLMAttributes.USAGE_TOTAL_TOKENS, str(total_tokens))
+            span.set_attribute(LLMAttributes.USAGE_INPUT_TOKENS, prompt_tokens)
+            span.set_attribute(LLMAttributes.USAGE_OUTPUT_TOKENS, completion_tokens)
+            span.set_attribute(LLMAttributes.USAGE_TOTAL_TOKENS, total_tokens)
 
         # Prompts and completion
         prompts = process_data.get("prompts", [])
