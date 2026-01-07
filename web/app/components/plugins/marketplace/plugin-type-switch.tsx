@@ -1,4 +1,5 @@
 'use client'
+import { useTranslation } from '#i18n'
 import {
   RiArchive2Line,
   RiBrain2Line,
@@ -12,7 +13,6 @@ import { Trigger as TriggerIcon } from '@/app/components/base/icons/src/vender/p
 import { cn } from '@/utils/classnames'
 import { PluginCategoryEnum } from '../types'
 import { useMarketplaceContext } from './context'
-import { useMixedTranslation } from './hooks'
 
 export const PLUGIN_TYPE_SEARCH_MAP = {
   all: 'all',
@@ -25,16 +25,14 @@ export const PLUGIN_TYPE_SEARCH_MAP = {
   bundle: 'bundle',
 }
 type PluginTypeSwitchProps = {
-  locale?: string
   className?: string
   showSearchParams?: boolean
 }
 const PluginTypeSwitch = ({
-  locale,
   className,
   showSearchParams,
 }: PluginTypeSwitchProps) => {
-  const { t } = useMixedTranslation(locale)
+  const { t } = useTranslation()
   const activePluginType = useMarketplaceContext(s => s.activePluginType)
   const handleActivePluginTypeChange = useMarketplaceContext(s => s.handleActivePluginTypeChange)
 
