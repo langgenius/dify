@@ -1048,6 +1048,113 @@ def restore_workflow_runs(
         )
 
 
+@click.command(
+    "delete-archived-workflow-runs",
+    help="Delete archived workflow runs from the database.",
+)
+@click.option(
+    "--tenant-ids",
+    required=False,
+    help="Tenant IDs (comma-separated).",
+)
+@click.option("--run-id", required=False, help="Workflow run ID to delete.")
+@click.option(
+    "--start-from",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    default=None,
+    help="Optional lower bound (inclusive) for created_at; must be paired with --end-before.",
+)
+@click.option(
+    "--end-before",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    default=None,
+    help="Optional upper bound (exclusive) for created_at; must be paired with --start-from.",
+)
+@click.option("--limit", type=int, default=100, show_default=True, help="Maximum number of runs to delete.")
+@click.option("--dry-run", is_flag=True, help="Preview without deleting.")
+def delete_workflow_runs(
+    tenant_ids: str | None,
+    run_id: str | None,
+    start_from: datetime.datetime | None,
+    end_before: datetime.datetime | None,
+    limit: int,
+    dry_run: bool,
+):
+    """
+    Delete archived workflow runs from the database.
+    """
+    from services.retention.workflow_run.delete_archived_workflow_run import WorkflowRunDeletion
+
+    parsed_tenant_ids = None
+    if tenant_ids:
+        parsed_tenant_ids = [tid.strip() for tid in tenant_ids.split(",") if tid.strip()]
+        if not parsed_tenant_ids:
+            raise click.BadParameter("tenant-ids must not be empty")
+
+    if (start_from is None) ^ (end_before is None):
+        raise click.UsageError("--start-from and --end-before must be provided together.")
+    if run_id is None and (start_from is None or end_before is None):
+        raise click.UsageError("--start-from and --end-before are required for batch delete.")
+
+    start_time = datetime.datetime.now(datetime.UTC)
+    target_desc = f"workflow run {run_id}" if run_id else "workflow runs"
+    click.echo(
+        click.style(
+            f"Starting delete of {target_desc} at {start_time.isoformat()}.",
+            fg="white",
+        )
+    )
+
+    deleter = WorkflowRunDeletion(dry_run=dry_run)
+    if run_id:
+        results = [deleter.delete_by_run_id(run_id)]
+    else:
+        results = deleter.delete_batch(
+            parsed_tenant_ids,
+            start_date=start_from,
+            end_date=end_before,
+            limit=limit,
+        )
+
+    for result in results:
+        if result.success:
+            click.echo(
+                click.style(
+                    f"{'[DRY RUN] Would delete' if dry_run else 'Deleted'} "
+                    f"workflow run {result.run_id} (tenant={result.tenant_id})",
+                    fg="green",
+                )
+            )
+        else:
+            click.echo(
+                click.style(
+                    f"Failed to delete workflow run {result.run_id}: {result.error}",
+                    fg="red",
+                )
+            )
+
+    end_time = datetime.datetime.now(datetime.UTC)
+    elapsed = end_time - start_time
+
+    successes = sum(1 for result in results if result.success)
+    failures = len(results) - successes
+
+    if failures == 0:
+        click.echo(
+            click.style(
+                f"Delete completed successfully. success={successes} duration={elapsed}",
+                fg="green",
+            )
+        )
+    else:
+        click.echo(
+            click.style(
+                f"Delete completed with failures. success={successes} failed={failures} duration={elapsed}",
+                fg="red",
+            )
+        )
+
+
 @click.option("-f", "--force", is_flag=True, help="Skip user confirmation and force the command to execute.")
 @click.command("clear-orphaned-file-records", help="Clear orphaned file records.")
 def clear_orphaned_file_records(force: bool):
