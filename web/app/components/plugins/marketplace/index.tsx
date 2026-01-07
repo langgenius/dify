@@ -13,19 +13,19 @@ async function Marketplace({
   showInstallButton = true,
   pluginTypeSwitchClassName,
 }: MarketplaceProps) {
-  const queryClient = getQueryClient()
+  // const queryClient = getQueryClient()
 
-  // Prefetch collections and plugins for the default view (all categories)
-  await queryClient.prefetchQuery({
-    queryKey: marketplaceKeys.collections({}),
-    queryFn: () => getMarketplaceCollectionsAndPlugins({}),
-  })
+  // // Prefetch collections and plugins for the default view (all categories)
+  // await queryClient.prefetchQuery({
+  //   queryKey: marketplaceKeys.collections({}),
+  //   queryFn: () => getMarketplaceCollectionsAndPlugins({}),
+  // })
 
   return (
     <MarketplaceClient
       showInstallButton={showInstallButton}
       pluginTypeSwitchClassName={pluginTypeSwitchClassName}
-      dehydratedState={dehydrate(queryClient)}
+      // dehydratedState={dehydrate(queryClient)}
     />
   )
 }
