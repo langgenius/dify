@@ -364,7 +364,7 @@ class DraftWorkflowTriggerRunAllPayload(BaseModel):
 class SyncDraftWorkflowResponse(ResponseModel):
     result: str
     hash: str
-    updated_at: str
+    updated_at: int
 
 
 def reg(cls: type[BaseModel]):
