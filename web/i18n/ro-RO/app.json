@@ -1,4 +1,5 @@
 {
+  "_test_ci_trigger": "Aceasta este o cheie de test pentru declanșatorul CI - va fi inversată",
   "accessControl": "Controlul Accesului la Aplicația Web",
   "accessControlDialog.accessItems.anyone": "Oricine are linkul",
   "accessControlDialog.accessItems.external": "Utilizatori extern autentificați",

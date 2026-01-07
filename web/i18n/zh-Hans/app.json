@@ -1,4 +1,5 @@
 {
+  "_test_ci_trigger": "这是用于 CI 触发的测试键 - 将被还原",
   "accessControl": "Web 应用访问控制",
   "accessControlDialog.accessItems.anyone": "任何人",
   "accessControlDialog.accessItems.external": "经认证的外部用户",

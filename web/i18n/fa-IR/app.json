@@ -1,4 +1,5 @@
 {
+  "_test_ci_trigger": "این یک کلید آزمایشی برای تریگر CI است - بازگردانده خواهد شد",
   "accessControl": "کنترل دسترسی به وب اپلیکیشن",
   "accessControlDialog.accessItems.anyone": "هر کسی که لینک را داشته باشد",
   "accessControlDialog.accessItems.external": "کاربران خارجی تأیید شده",

@@ -1,4 +1,5 @@
 {
+  "_test_ci_trigger": "Đây là khóa thử nghiệm cho trigger CI - sẽ được hoàn nguyên",
   "accessControl": "Kiểm soát truy cập ứng dụng web",
   "accessControlDialog.accessItems.anyone": "Ai có liên kết",
   "accessControlDialog.accessItems.external": "Người dùng bên ngoài được xác thực",

@@ -1,4 +1,5 @@
 {
+  "_test_ci_trigger": "これはCIトリガーのテストキーです - 元に戻されます",
   "accessControl": "Web アプリアクセス制御",
   "accessControlDialog.accessItems.anyone": "リンクを知っているすべてのユーザー",
   "accessControlDialog.accessItems.external": "認証済みの外部ユーザー",

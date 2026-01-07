@@ -1,4 +1,5 @@
 {
+  "_test_ci_trigger": "Ceci est une clé de test pour le déclencheur CI - sera annulée",
   "accessControl": "Contrôle d'accès à l'application Web",
   "accessControlDialog.accessItems.anyone": "Quiconque avec le lien",
   "accessControlDialog.accessItems.external": "Utilisateurs externes authentifiés",

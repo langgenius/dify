@@ -1,4 +1,5 @@
 {
+  "_test_ci_trigger": "CI 트리거를 위한 테스트 키입니다 - 되돌려질 예정입니다",
   "accessControl": "웹 애플리케이션 접근 제어",
   "accessControlDialog.accessItems.anyone": "링크가 있는 누구나",
   "accessControlDialog.accessItems.external": "인증된 외부 사용자",

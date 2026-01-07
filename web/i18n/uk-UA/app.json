@@ -1,4 +1,5 @@
 {
+  "_test_ci_trigger": "Це тестовий ключ для тригера CI - буде скасовано",
   "accessControl": "Контроль доступу до веб-додатків",
   "accessControlDialog.accessItems.anyone": "Кожен, у кого є посилання",
   "accessControlDialog.accessItems.external": "Аутентифіковані зовнішні користувачі",

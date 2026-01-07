@@ -1,4 +1,5 @@
 {
+  "_test_ci_trigger": "Ini adalah kunci uji untuk pemicu CI - akan dikembalikan",
   "accessControl": "Kontrol Akses Aplikasi Web",
   "accessControlDialog.accessItems.anyone": "Siapa pun yang memiliki tautan",
   "accessControlDialog.accessItems.external": "Pengguna eksternal yang diautentikasi",

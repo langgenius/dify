@@ -1,4 +1,5 @@
 {
+  "_test_ci_trigger": "यह CI ट्रिगर के लिए एक परीक्षण कुंजी है - वापस ले ली जाएगी",
   "accessControl": "वेब एप्लिकेशन पहुँच नियंत्रण",
   "accessControlDialog.accessItems.anyone": "लिंक के साथ कोई भी",
   "accessControlDialog.accessItems.external": "प्रमाणित बाहरी उपयोगकर्ता",

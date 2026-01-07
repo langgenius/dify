@@ -1,4 +1,5 @@
 {
+  "_test_ci_trigger": "Bu, CI tetikleyici için bir test anahtarıdır - geri alınacaktır",
   "accessControl": "Web Uygulaması Erişim Kontrolü",
   "accessControlDialog.accessItems.anyone": "Bağlantıya sahip olan herkes",
   "accessControlDialog.accessItems.external": "Kimliği onaylanmış harici kullanıcılar",
