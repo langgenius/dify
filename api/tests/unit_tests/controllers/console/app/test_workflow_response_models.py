@@ -129,6 +129,7 @@ def _workflow_stub(identifier: str = "wf-1") -> SimpleNamespace:
         ],
     )
 
+
 def test_workflow_node_execution_response_serializes_nested_entities():
     node_execution = SimpleNamespace(
         id="node-1",
