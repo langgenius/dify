@@ -97,26 +97,16 @@ def _resolve_segment_type(value: SegmentType | str | None) -> SegmentType:
 
 
 def _serialize_environment_variable(raw: Any) -> dict[str, Any]:
-    if isinstance(raw, SecretVariable):
-        exposed = raw.value_type.exposed_type()
-        if exposed not in ENVIRONMENT_VARIABLE_SUPPORTED_TYPES:
-            raise ValueError(f"Unsupported environment variable value type: {exposed}")
-        return {
-            "id": raw.id,
-            "name": raw.name,
-            "value_type": exposed.value,
-            "value": encrypter.full_mask_token(),
-            "description": raw.description,
-        }
     if isinstance(raw, Variable):
         exposed = raw.value_type.exposed_type()
         if exposed not in ENVIRONMENT_VARIABLE_SUPPORTED_TYPES:
             raise ValueError(f"Unsupported environment variable value type: {exposed}")
+
         return {
             "id": raw.id,
             "name": raw.name,
             "value_type": exposed.value,
-            "value": raw.value,
+            "value": encrypter.full_mask_token() if isinstance(raw, SecretVariable) else raw.value,
             "description": raw.description,
         }
     if isinstance(raw, dict):
