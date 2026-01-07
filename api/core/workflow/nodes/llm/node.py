@@ -14,7 +14,8 @@ from core.file import File, FileTransferMethod, FileType, file_manager
 from core.helper.code_executor import CodeExecutor, CodeLanguage
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
-from core.memory.token_buffer_memory import TokenBufferMemory
+from core.memory.base import BaseMemory
+from core.memory.node_token_buffer_memory import NodeTokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities import (
     ImagePromptMessageContent,
@@ -206,8 +207,10 @@ class LLMNode(Node[LLMNodeData]):
             memory = llm_utils.fetch_memory(
                 variable_pool=variable_pool,
                 app_id=self.app_id,
+                tenant_id=self.tenant_id,
                 node_data_memory=self.node_data.memory,
                 model_instance=model_instance,
+                node_id=self._node_id,
             )
 
             query: str | None = None
@@ -299,11 +302,40 @@ class LLMNode(Node[LLMNodeData]):
                 "reasoning_content": reasoning_content,
                 "usage": jsonable_encoder(usage),
                 "finish_reason": finish_reason,
+                "context": self._build_context(prompt_messages, clean_text, model_config.mode),
             }
             if structured_output:
                 outputs["structured_output"] = structured_output.structured_output
             if self._file_outputs:
                 outputs["files"] = ArrayFileSegment(value=self._file_outputs)
+
+            # Write to Node Memory if in node memory mode
+            if isinstance(memory, NodeTokenBufferMemory):
+                # Get workflow_run_id as the key for this execution
+                workflow_run_id_var = variable_pool.get(["sys", SystemVariableKey.WORKFLOW_EXECUTION_ID])
+                workflow_run_id = workflow_run_id_var.value if isinstance(workflow_run_id_var, StringSegment) else ""
+
+                if workflow_run_id:
+                    # Resolve the query template to get actual user content
+                    # query may be a template like "{{#sys.query#}}" or "{{#node_id.output#}}"
+                    actual_query = variable_pool.convert_template(query or "").text
+
+                    # Get user files from sys.files
+                    user_files_var = variable_pool.get(["sys", SystemVariableKey.FILES])
+                    user_files: list[File] = []
+                    if isinstance(user_files_var, ArrayFileSegment):
+                        user_files = list(user_files_var.value)
+                    elif isinstance(user_files_var, FileSegment):
+                        user_files = [user_files_var.value]
+
+                    memory.add_messages(
+                        workflow_run_id=workflow_run_id,
+                        user_content=actual_query,
+                        user_files=user_files,
+                        assistant_content=clean_text,
+                        assistant_files=self._file_outputs,
+                    )
+                    memory.flush()
 
             # Send final chunk event to indicate streaming is complete
             yield StreamChunkEvent(
@@ -564,6 +596,22 @@ class LLMNode(Node[LLMNodeData]):
         # Separated mode: always return clean text and reasoning_content
         return clean_text, reasoning_content or ""
 
+    @staticmethod
+    def _build_context(
+        prompt_messages: Sequence[PromptMessage],
+        assistant_response: str,
+        model_mode: str,
+    ) -> list[dict[str, Any]]:
+        """
+        Build context from prompt messages and assistant response.
+        Excludes system messages and includes the current LLM response.
+        """
+        context_messages: list[PromptMessage] = [m for m in prompt_messages if m.role != PromptMessageRole.SYSTEM]
+        context_messages.append(AssistantPromptMessage(content=assistant_response))
+        return PromptMessageUtil.prompt_messages_to_prompt_for_saving(
+            model_mode=model_mode, prompt_messages=context_messages
+        )
+
     def _transform_chat_messages(
         self, messages: Sequence[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate, /
     ) -> Sequence[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate:
@@ -776,7 +824,7 @@ class LLMNode(Node[LLMNodeData]):
         sys_query: str | None = None,
         sys_files: Sequence["File"],
         context: str | None = None,
-        memory: TokenBufferMemory | None = None,
+        memory: BaseMemory | None = None,
         model_config: ModelConfigWithCredentialsEntity,
         prompt_template: Sequence[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate,
         memory_config: MemoryConfig | None = None,
@@ -1335,7 +1383,7 @@ def _calculate_rest_token(
 
 def _handle_memory_chat_mode(
     *,
-    memory: TokenBufferMemory | None,
+    memory: BaseMemory | None,
     memory_config: MemoryConfig | None,
     model_config: ModelConfigWithCredentialsEntity,
 ) -> Sequence[PromptMessage]:
@@ -1352,7 +1400,7 @@ def _handle_memory_chat_mode(
 
 def _handle_memory_completion_mode(
     *,
-    memory: TokenBufferMemory | None,
+    memory: BaseMemory | None,
     memory_config: MemoryConfig | None,
     model_config: ModelConfigWithCredentialsEntity,
 ) -> str:

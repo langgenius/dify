@@ -8,12 +8,13 @@ from configs import dify_config
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.entities.provider_entities import QuotaUnit
 from core.file.models import File
-from core.memory.token_buffer_memory import TokenBufferMemory
+from core.memory import NodeTokenBufferMemory, TokenBufferMemory
+from core.memory.base import BaseMemory
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.prompt.entities.advanced_prompt_entities import MemoryConfig
+from core.prompt.entities.advanced_prompt_entities import MemoryConfig, MemoryMode
 from core.variables.segments import ArrayAnySegment, ArrayFileSegment, FileSegment, NoneSegment, StringSegment
 from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.llm.entities import ModelConfig
@@ -86,25 +87,56 @@ def fetch_files(variable_pool: VariablePool, selector: Sequence[str]) -> Sequenc
 
 
 def fetch_memory(
-    variable_pool: VariablePool, app_id: str, node_data_memory: MemoryConfig | None, model_instance: ModelInstance
-) -> TokenBufferMemory | None:
+    variable_pool: VariablePool,
+    app_id: str,
+    tenant_id: str,
+    node_data_memory: MemoryConfig | None,
+    model_instance: ModelInstance,
+    node_id: str = "",
+) -> BaseMemory | None:
+    """
+    Fetch memory based on configuration mode.
+
+    Returns TokenBufferMemory for conversation mode (default),
+    or NodeTokenBufferMemory for node mode (Chatflow only).
+
+    :param variable_pool: Variable pool containing system variables
+    :param app_id: Application ID
+    :param tenant_id: Tenant ID
+    :param node_data_memory: Memory configuration
+    :param model_instance: Model instance for token counting
+    :param node_id: Node ID in the workflow (required for node mode)
+    :return: Memory instance or None if not applicable
+    """
     if not node_data_memory:
         return None
 
-    # get conversation id
+    # Get conversation_id from variable pool (required for both modes in Chatflow)
     conversation_id_variable = variable_pool.get(["sys", SystemVariableKey.CONVERSATION_ID])
     if not isinstance(conversation_id_variable, StringSegment):
         return None
     conversation_id = conversation_id_variable.value
 
-    with Session(db.engine, expire_on_commit=False) as session:
-        stmt = select(Conversation).where(Conversation.app_id == app_id, Conversation.id == conversation_id)
-        conversation = session.scalar(stmt)
-        if not conversation:
+    # Return appropriate memory type based on mode
+    if node_data_memory.mode == MemoryMode.NODE:
+        # Node-level memory (Chatflow only)
+        if not node_id:
             return None
-
-    memory = TokenBufferMemory(conversation=conversation, model_instance=model_instance)
-    return memory
+        return NodeTokenBufferMemory(
+            app_id=app_id,
+            conversation_id=conversation_id,
+            node_id=node_id,
+            tenant_id=tenant_id,
+            model_instance=model_instance,
+        )
+    else:
+        # Conversation-level memory (default)
+        with Session(db.engine, expire_on_commit=False) as session:
+            stmt = select(Conversation).where(Conversation.app_id == app_id, Conversation.id == conversation_id)
+            conversation = session.scalar(stmt)
+            if not conversation:
+                return None
+        return TokenBufferMemory(conversation=conversation, model_instance=model_instance)
 
 
 def deduct_llm_quota(tenant_id: str, model_instance: ModelInstance, usage: LLMUsage):
