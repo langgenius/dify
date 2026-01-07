@@ -13,7 +13,7 @@ import { shareQueryKeys } from '@/service/use-share'
 import { CONVERSATION_ID_INFO } from '../constants'
 import { useEmbeddedChatbot } from './hooks'
 
-vi.mock('@/i18n-config/i18next-config', () => ({
+vi.mock('@/i18n-config/client', () => ({
   changeLanguage: vi.fn().mockResolvedValue(undefined),
 }))
 
