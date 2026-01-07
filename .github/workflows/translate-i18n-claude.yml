@@ -134,11 +134,12 @@ jobs:
             - Run bash commands ONE BY ONE, never combine with && or ||
             - NEVER use `$()` command substitution - it's not supported. Split into separate commands instead.
 
-            ## WORKING DIRECTORY
-            The Claude Code sandbox runs from `${{ github.workspace }}/web` directory.
-            - For pnpm commands: just use `pnpm` (no --dir needed)
-            - For git/gh commands: use `${{ github.workspace }}` as the repo root
-            - For file paths: use absolute paths like `${{ github.workspace }}/web/i18n/`
+            ## WORKING DIRECTORY & ABSOLUTE PATHS
+            Claude Code sandbox working directory may vary. Always use absolute paths:
+            - For pnpm: `pnpm --dir ${{ github.workspace }}/web <command>`
+            - For git: `git -C ${{ github.workspace }} <command>`
+            - For gh: `gh --repo ${{ github.repository }} <command>`
+            - For file paths: `${{ github.workspace }}/web/i18n/`
 
             ## EFFICIENCY RULES
             - **ONE Edit per language file** - batch all key additions into a single Edit
@@ -149,8 +150,8 @@ jobs:
             - Changed/target files: ${{ steps.detect_changes.outputs.CHANGED_FILES }}
             - Target languages (empty means all supported): ${{ steps.detect_changes.outputs.TARGET_LANGS }}
             - Sync mode: ${{ steps.detect_changes.outputs.SYNC_MODE }}
-            - Translation files are located in: web/i18n/{locale}/{filename}.json
-            - Language configuration is in: web/i18n-config/languages.ts
+            - Translation files are located in: ${{ github.workspace }}/web/i18n/{locale}/{filename}.json
+            - Language configuration is in: ${{ github.workspace }}/web/i18n-config/languages.ts
             - Git diff is available: ${{ steps.detect_changes.outputs.DIFF_AVAILABLE }}
 
             ## CRITICAL DESIGN: Verify First, Then Sync
@@ -173,15 +174,15 @@ jobs:
               * DELETE: Keys that appear only in `-` lines (removed keys)
 
             ### Step 1.2: Read Language Configuration
-            Use the Read tool to read `web/i18n-config/languages.ts`.
+            Use the Read tool to read `${{ github.workspace }}/web/i18n-config/languages.ts`.
             Extract all languages with `supported: true`.
 
             ### Step 1.3: Run i18n:check for Each Language
             ```bash
-            pnpm install --frozen-lockfile
+            pnpm --dir ${{ github.workspace }}/web install --frozen-lockfile
             ```
             ```bash
-            pnpm run i18n:check
+            pnpm --dir ${{ github.workspace }}/web run i18n:check
             ```
 
             This will report:
@@ -263,7 +264,7 @@ jobs:
 
             ### Step 2.3: Process DELETE Operations
             For extra keys reported by i18n:check:
-            - Run: `pnpm run i18n:check --auto-remove`
+            - Run: `pnpm --dir ${{ github.workspace }}/web run i18n:check --auto-remove`
             - Or manually remove from target language JSON files
 
             ## Translation Guidelines
@@ -291,7 +292,7 @@ jobs:
 
             ### Step 3.1: Run Lint Fix (IMPORTANT!)
             ```bash
-            pnpm lint:fix --quiet -- 'i18n/**/*.json'
+            pnpm --dir ${{ github.workspace }}/web lint:fix --quiet -- 'i18n/**/*.json'
             ```
             This ensures:
             - JSON keys are sorted alphabetically (jsonc/sort-keys rule)
@@ -300,7 +301,7 @@ jobs:
 
             ### Step 3.2: Run Final i18n Check
             ```bash
-            pnpm run i18n:check
+            pnpm --dir ${{ github.workspace }}/web run i18n:check
             ```
 
             ### Step 3.3: Fix Any Remaining Issues
