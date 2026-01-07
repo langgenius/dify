@@ -212,24 +212,20 @@ class LocalVirtualEnvironment(VirtualEnvironment):
         return str(process.pid), stdin_transport, stdout_transport, stderr_transport
 
     def get_command_status(self, connection_handle: ConnectionHandle, pid: str) -> CommandStatus:
-        """
-        Docstring for get_command_status
-
-        :param self: Description
-        :param connection_handle: Description
-        :type connection_handle: ConnectionHandle
-        :param pid: Description
-        :type pid: int
-        :return: Description
-        :rtype: CommandStatus
-        """
         pid_int = int(pid)
         try:
-            retcode = os.waitpid(pid_int, os.WNOHANG)[1]
-            if retcode == 0:
+            waited_pid, wait_status = os.waitpid(pid_int, os.WNOHANG)
+            if waited_pid == 0:
                 return CommandStatus(status=CommandStatus.Status.RUNNING, exit_code=None)
+
+            if os.WIFEXITED(wait_status):
+                exit_code = os.WEXITSTATUS(wait_status)
+            elif os.WIFSIGNALED(wait_status):
+                exit_code = -os.WTERMSIG(wait_status)
             else:
-                return CommandStatus(status=CommandStatus.Status.COMPLETED, exit_code=retcode)
+                exit_code = None
+
+            return CommandStatus(status=CommandStatus.Status.COMPLETED, exit_code=exit_code)
         except ChildProcessError:
             return CommandStatus(status=CommandStatus.Status.COMPLETED, exit_code=None)
 

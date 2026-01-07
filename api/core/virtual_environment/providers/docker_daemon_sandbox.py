@@ -1,7 +1,7 @@
 import socket
 import tarfile
 from collections.abc import Mapping, Sequence
-from enum import StrEnum
+from enum import IntEnum, StrEnum
 from functools import lru_cache
 from io import BytesIO
 from pathlib import PurePosixPath
@@ -15,8 +15,133 @@ import docker
 from core.virtual_environment.__base.entities import Arch, CommandStatus, ConnectionHandle, FileState, Metadata
 from core.virtual_environment.__base.exec import VirtualEnvironmentLaunchFailedError
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
-from core.virtual_environment.channel.socket_transport import SocketReadCloser, SocketWriteCloser
+from core.virtual_environment.channel.exec import TransportEOFError
+from core.virtual_environment.channel.socket_transport import SocketWriteCloser
 from core.virtual_environment.channel.transport import TransportReadCloser, TransportWriteCloser
+
+
+class DockerStreamType(IntEnum):
+    """
+    Docker multiplexed stream types.
+
+    When Docker exec runs with tty=False, it multiplexes stdout and stderr over a single
+    socket connection. Each frame is prefixed with an 8-byte header:
+
+        [stream_type (1 byte)][0][0][0][payload_size (4 bytes, big-endian)]
+
+    This allows the client to distinguish between stdout (type=1) and stderr (type=2).
+    See: https://docs.docker.com/engine/api/v1.41/#operation/ContainerAttach
+    """
+
+    STDIN = 0
+    STDOUT = 1
+    STDERR = 2
+
+
+class DockerDemuxer:
+    """
+    Demultiplexes Docker's combined stdout/stderr stream.
+
+    Docker exec with tty=False sends stdout and stderr over a single socket,
+    each frame prefixed with an 8-byte header:
+        - Byte 0: stream type (1=stdout, 2=stderr)
+        - Bytes 1-3: reserved (zeros)
+        - Bytes 4-7: payload size (big-endian uint32)
+
+    This class reads frames and routes them to separate stdout/stderr buffers.
+    Without demuxing, output contains binary garbage like:
+        b'\\x01\\x00\\x00\\x00\\x00\\x00\\x00\\x0eHello World\\n'
+    """
+
+    _HEADER_SIZE = 8
+
+    def __init__(self, sock: socket.SocketIO):
+        self._sock = sock
+        self._stdout_buf = bytearray()
+        self._stderr_buf = bytearray()
+        self._eof = False
+        self._closed = False
+
+    def read_stdout(self, n: int) -> bytes:
+        return self._read_from_buffer(self._stdout_buf, DockerStreamType.STDOUT, n)
+
+    def read_stderr(self, n: int) -> bytes:
+        return self._read_from_buffer(self._stderr_buf, DockerStreamType.STDERR, n)
+
+    def _read_from_buffer(self, buffer: bytearray, target_type: DockerStreamType, n: int) -> bytes:
+        while len(buffer) < n and not self._eof:
+            self._read_next_frame()
+
+        if not buffer:
+            raise TransportEOFError("End of demuxed stream")
+
+        result = bytes(buffer[:n])
+        del buffer[:n]
+        return result
+
+    def _read_next_frame(self) -> None:
+        header = self._read_exact(self._HEADER_SIZE)
+        if not header or len(header) < self._HEADER_SIZE:
+            self._eof = True
+            return
+
+        frame_type = header[0]
+        payload_size = int.from_bytes(header[4:8], "big")
+
+        if payload_size == 0:
+            return
+
+        payload = self._read_exact(payload_size)
+        if not payload:
+            self._eof = True
+            return
+
+        if frame_type == DockerStreamType.STDOUT:
+            self._stdout_buf.extend(payload)
+        elif frame_type == DockerStreamType.STDERR:
+            self._stderr_buf.extend(payload)
+
+    def _read_exact(self, size: int) -> bytes:
+        data = bytearray()
+        remaining = size
+        while remaining > 0:
+            try:
+                chunk = self._sock.read(remaining)
+                if not chunk:
+                    return bytes(data) if data else b""
+                data.extend(chunk)
+                remaining -= len(chunk)
+            except (ConnectionResetError, BrokenPipeError):
+                return bytes(data) if data else b""
+        return bytes(data)
+
+    def close(self) -> None:
+        if not self._closed:
+            self._closed = True
+            self._sock.close()
+
+
+class DemuxedStdoutReader(TransportReadCloser):
+    def __init__(self, demuxer: DockerDemuxer):
+        self._demuxer = demuxer
+
+    def read(self, n: int) -> bytes:
+        return self._demuxer.read_stdout(n)
+
+    def close(self) -> None:
+        self._demuxer.close()
+
+
+class DemuxedStderrReader(TransportReadCloser):
+    def __init__(self, demuxer: DockerDemuxer):
+        self._demuxer = demuxer
+
+    def read(self, n: int) -> bytes:
+        return self._demuxer.read_stderr(n)
+
+    def close(self) -> None:
+        self._demuxer.close()
+
 
 """
 EXAMPLE:
@@ -288,9 +413,11 @@ class DockerDaemonEnvironment(VirtualEnvironment):
         raw_sock: socket.SocketIO = cast(socket.SocketIO, api_client.exec_start(exec_id, socket=True, tty=False))  # pyright: ignore[reportUnknownMemberType] #
 
         stdin_transport = SocketWriteCloser(raw_sock)
-        stdout_transport = SocketReadCloser(raw_sock)
+        demuxer = DockerDemuxer(raw_sock)
+        stdout_transport = DemuxedStdoutReader(demuxer)
+        stderr_transport = DemuxedStderrReader(demuxer)
 
-        return exec_id, stdin_transport, stdout_transport, stdout_transport
+        return exec_id, stdin_transport, stdout_transport, stderr_transport
 
     def get_command_status(self, connection_handle: ConnectionHandle, pid: str) -> CommandStatus:
         api_client = self.get_docker_api_client(self.get_docker_sock())
