@@ -20,6 +20,7 @@ from core.workflow.enums import NodeType
 from core.workflow.graph_engine.layers.base import GraphEngineLayer
 from core.workflow.graph_engine.layers.node_parsers import (
     DefaultNodeOTelParser,
+    LLMNodeOTelParser,
     NodeOTelParser,
     ToolNodeOTelParser,
 )
@@ -73,6 +74,7 @@ class ObservabilityLayer(GraphEngineLayer):
         """Initialize parser registry for node types."""
         self._parsers = {
             NodeType.TOOL: ToolNodeOTelParser(),
+            NodeType.LLM: LLMNodeOTelParser(),
         }
 
     def _get_parser(self, node: Node) -> NodeOTelParser:
