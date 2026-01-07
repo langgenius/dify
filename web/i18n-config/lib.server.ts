@@ -1,4 +1,4 @@
-import type { NamespaceCamelCase } from './i18next-config'
+import type { NamespaceCamelCase } from './resources'
 import { use } from 'react'
 import { getLocaleOnServer, getTranslation } from './server'
 
