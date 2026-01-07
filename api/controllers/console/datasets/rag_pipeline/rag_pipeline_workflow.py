@@ -344,7 +344,7 @@ class PublishedRagPipelineRunApi(Resource):
                 pipeline=pipeline,
                 user=current_user,
                 args=args,
-                invoke_from=InvokeFrom.DEBUGGER if payload.is_preview else InvokeFrom.PUBLISHED,
+                invoke_from=InvokeFrom.DEBUGGER if payload.is_preview else InvokeFrom.PUBLISHED_PIPELINE,
                 streaming=streaming,
             )
 
