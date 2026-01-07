@@ -12,7 +12,7 @@ import { cache } from 'react'
 import { initReactI18next } from 'react-i18next/initReactI18next'
 import { serverOnlyContext } from '@/utils/server-only-context'
 import { i18n } from '.'
-import { namespacesCamelCase, namespacesKebabCase } from './resources'
+import { namespacesKebabCase } from './resources'
 
 const [getLocaleCache, setLocaleCache] = serverOnlyContext<Locale | null>(null)
 const [getI18nInstance, setI18nInstance] = serverOnlyContext<I18nInstance | null>(null)
@@ -31,10 +31,6 @@ const getOrCreateI18next = async (lng: Locale) => {
     }))
     .init({
       lng,
-      fallbackLng: 'en-US',
-      partialBundledLanguages: true,
-      ns: namespacesCamelCase,
-      keySeparator: false,
     })
   setI18nInstance(instance)
   return instance
