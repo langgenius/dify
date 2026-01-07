@@ -8,6 +8,7 @@ from typing import Protocol
 from opentelemetry.trace import Span
 from opentelemetry.trace.status import Status, StatusCode
 
+from core.workflow.graph_events import GraphNodeEventBase
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.tool.entities import ToolNodeData
 
@@ -15,13 +16,17 @@ from core.workflow.nodes.tool.entities import ToolNodeData
 class NodeOTelParser(Protocol):
     """Parser interface for node-specific OpenTelemetry enrichment."""
 
-    def parse(self, *, node: Node, span: "Span", error: Exception | None) -> None: ...
+    def parse(
+        self, *, node: Node, span: "Span", error: Exception | None, result_event: GraphNodeEventBase | None = None
+    ) -> None: ...
 
 
 class DefaultNodeOTelParser:
     """Fallback parser used when no node-specific parser is registered."""
 
-    def parse(self, *, node: Node, span: "Span", error: Exception | None) -> None:
+    def parse(
+        self, *, node: Node, span: "Span", error: Exception | None, result_event: GraphNodeEventBase | None = None
+    ) -> None:
         span.set_attribute("node.id", node.id)
         if node.execution_id:
             span.set_attribute("node.execution_id", node.execution_id)
@@ -41,8 +46,10 @@ class ToolNodeOTelParser:
     def __init__(self) -> None:
         self._delegate = DefaultNodeOTelParser()
 
-    def parse(self, *, node: Node, span: "Span", error: Exception | None) -> None:
-        self._delegate.parse(node=node, span=span, error=error)
+    def parse(
+        self, *, node: Node, span: "Span", error: Exception | None, result_event: GraphNodeEventBase | None = None
+    ) -> None:
+        self._delegate.parse(node=node, span=span, error=error, result_event=result_event)
 
         tool_data = getattr(node, "_node_data", None)
         if not isinstance(tool_data, ToolNodeData):

@@ -23,6 +23,7 @@ from core.workflow.graph_engine.layers.node_parsers import (
     NodeOTelParser,
     ToolNodeOTelParser,
 )
+from core.workflow.graph_events import GraphNodeEventBase
 from core.workflow.nodes.base.node import Node
 from extensions.otel.runtime import is_instrument_flag_enabled
 
@@ -119,7 +120,9 @@ class ObservabilityLayer(GraphEngineLayer):
             logger.warning("Failed to create OpenTelemetry span for node %s: %s", node.id, e)
 
     @override
-    def on_node_run_end(self, node: Node, error: Exception | None) -> None:
+    def on_node_run_end(
+        self, node: Node, error: Exception | None, result_event: GraphNodeEventBase | None = None
+    ) -> None:
         """
         Called when a node finishes execution.
 
@@ -139,7 +142,7 @@ class ObservabilityLayer(GraphEngineLayer):
             span = node_context.span
             parser = self._get_parser(node)
             try:
-                parser.parse(node=node, span=span, error=error)
+                parser.parse(node=node, span=span, error=error, result_event=result_event)
                 span.end()
             finally:
                 token = node_context.token
