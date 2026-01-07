@@ -86,6 +86,7 @@ def _load_workflow_module():
 
     return module
 
+
 def _ts(hour: int = 12) -> datetime:
     return datetime(2024, 1, 1, hour, 0, 0)
 
