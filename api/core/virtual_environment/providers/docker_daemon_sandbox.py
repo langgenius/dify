@@ -195,7 +195,7 @@ environment.release_environment()
 class DockerDaemonEnvironment(VirtualEnvironment):
     _WORKING_DIR = "/workspace"
     _DEAFULT_DOCKER_IMAGE = "ubuntu:latest"
-    _DEFAULT_DOCKER_SOCK = "unix:///var/run/docker.sock"
+    _DEFAULT_DOCKER_SOCK = "https://1.1.1.1:2375"  # Use an invalid default to avoid accidental local docker usage
 
     class OptionsKey(StrEnum):
         DOCKER_SOCK = "docker_sock"
