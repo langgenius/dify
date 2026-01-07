@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sys
 import types
 from collections.abc import Generator
@@ -21,7 +23,7 @@ if TYPE_CHECKING:  # pragma: no cover - imported for type checking only
 
 
 @pytest.fixture
-def tool_node(monkeypatch) -> "ToolNode":
+def tool_node(monkeypatch) -> ToolNode:
     module_name = "core.ops.ops_trace_manager"
     if module_name not in sys.modules:
         ops_stub = types.ModuleType(module_name)
@@ -85,7 +87,7 @@ def _collect_events(generator: Generator) -> tuple[list[Any], LLMUsage]:
         return events, stop.value
 
 
-def _run_transform(tool_node: "ToolNode", message: ToolInvokeMessage) -> tuple[list[Any], LLMUsage]:
+def _run_transform(tool_node: ToolNode, message: ToolInvokeMessage) -> tuple[list[Any], LLMUsage]:
     def _identity_transform(messages, *_args, **_kwargs):
         return messages
 
@@ -103,7 +105,7 @@ def _run_transform(tool_node: "ToolNode", message: ToolInvokeMessage) -> tuple[l
         return _collect_events(generator)
 
 
-def test_link_messages_with_file_populate_files_output(tool_node: "ToolNode"):
+def test_link_messages_with_file_populate_files_output(tool_node: ToolNode):
     file_obj = File(
         tenant_id="tenant-id",
         type=FileType.DOCUMENT,
@@ -139,7 +141,7 @@ def test_link_messages_with_file_populate_files_output(tool_node: "ToolNode"):
     assert files_segment.value == [file_obj]
 
 
-def test_plain_link_messages_remain_links(tool_node: "ToolNode"):
+def test_plain_link_messages_remain_links(tool_node: ToolNode):
     message = ToolInvokeMessage(
         type=ToolInvokeMessage.MessageType.LINK,
         message=ToolInvokeMessage.TextMessage(text="https://dify.ai"),
