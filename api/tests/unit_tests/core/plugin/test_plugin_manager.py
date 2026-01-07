@@ -15,6 +15,7 @@ from unittest.mock import patch
 import httpx
 import pytest
 from packaging.version import Version
+from pydantic import BaseModel
 from requests import HTTPError
 
 from core.plugin.entities.bundle import PluginBundleDependency
@@ -104,6 +105,15 @@ class TestPluginDiscovery:
             assert len(result) == 1
             assert result[0].plugin_id == "plugin-123"
             assert result[0].name == "Test Plugin"
+
+    def test_installation_source_parses_pascal_case(self):
+        """Test that plugin installation sources accept pascal-case values from the plugin daemon."""
+
+        class SourceModel(BaseModel):
+            source: PluginInstallationSource
+
+        model = SourceModel.model_validate({"source": "Marketplace"})
+        assert model.source is PluginInstallationSource.Marketplace
 
     def test_list_plugins_with_pagination(self, plugin_installer, mock_plugin_entity):
         """Test plugin listing with pagination support."""

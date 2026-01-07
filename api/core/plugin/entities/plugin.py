@@ -1,7 +1,7 @@
 import datetime
 from collections.abc import Mapping
 from enum import StrEnum, auto
-from typing import Any
+from typing import Any, Self
 
 from packaging.version import InvalidVersion, Version
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -21,6 +21,15 @@ class PluginInstallationSource(StrEnum):
     Marketplace = auto()
     Package = auto()
     Remote = auto()
+
+    @classmethod
+    def _missing_(cls, value: object) -> Self | None:
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            for member in cls:
+                if member.value == normalized:
+                    return member
+        return None
 
 
 class PluginResourceRequirements(BaseModel):
