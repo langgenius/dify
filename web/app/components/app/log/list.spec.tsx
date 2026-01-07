@@ -78,17 +78,21 @@ describe('Chat Message Loading Race Condition Prevention', () => {
     })
 
     it('should reset retry counter when unique items are found', () => {
-      let retryCount = 2
-      const uniqueNewItemsLength = 3
+      const state = { retryCount: 2 }
 
-      if (uniqueNewItemsLength === 0) {
-        retryCount++
-      }
-      else {
-        retryCount = 0
+      // Simulate finding unique items (length > 0)
+      const processRetry = (uniqueCount: number) => {
+        if (uniqueCount === 0) {
+          state.retryCount++
+        }
+        else {
+          state.retryCount = 0
+        }
       }
 
-      expect(retryCount).toBe(0)
+      processRetry(3) // Found 3 unique items
+
+      expect(state.retryCount).toBe(0)
     })
   })
 

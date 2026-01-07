@@ -1,7 +1,6 @@
 'use client'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import type { Item } from '@/app/components/base/select'
-import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { Listbox, ListboxButton, ListboxOption, ListboxOptions, Transition } from '@headlessui/react'
 import { CheckIcon, ChevronDownIcon } from '@heroicons/react/20/solid'
 import { RiCloseLine } from '@remixicon/react'
@@ -19,8 +18,6 @@ import { languages } from '@/i18n-config/language'
 import { useAppVoices } from '@/service/use-apps'
 import { TtsAutoPlay } from '@/types/app'
 import { cn } from '@/utils/classnames'
-
-type VoiceLanguageKey = I18nKeysWithPrefix<'common', 'voice.language.'>
 
 type VoiceParamConfigProps = {
   onClose: () => void
