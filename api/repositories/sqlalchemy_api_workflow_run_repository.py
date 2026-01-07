@@ -27,7 +27,7 @@ from decimal import Decimal
 from typing import Any, cast
 
 import sqlalchemy as sa
-from sqlalchemy import and_, delete, func, null, or_, select, update
+from sqlalchemy import and_, delete, func, null, or_, select
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
@@ -444,84 +444,6 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 "pauses": pauses_deleted,
                 "pause_reasons": pause_reasons_deleted,
             }
-
-    def delete_archived_run_related_data(
-        self,
-        session: Session,
-        runs: Sequence[WorkflowRun],
-        delete_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
-        delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
-    ) -> dict[str, int]:
-        if not runs:
-            return {
-                "node_executions": 0,
-                "offloads": 0,
-                "trigger_logs": 0,
-                "pauses": 0,
-                "pause_reasons": 0,
-            }
-
-        run_ids = [run.id for run in runs]
-        if delete_node_executions:
-            node_executions_deleted, offloads_deleted = delete_node_executions(session, runs)
-        else:
-            node_executions_deleted, offloads_deleted = 0, 0
-
-        pause_ids = session.scalars(select(WorkflowPause.id).where(WorkflowPause.workflow_run_id.in_(run_ids))).all()
-        pause_reasons_deleted = 0
-        pauses_deleted = 0
-
-        if pause_ids:
-            pause_reasons_result = session.execute(
-                delete(WorkflowPauseReason).where(WorkflowPauseReason.pause_id.in_(pause_ids))
-            )
-            pause_reasons_deleted = cast(CursorResult, pause_reasons_result).rowcount or 0
-            pauses_result = session.execute(delete(WorkflowPause).where(WorkflowPause.id.in_(pause_ids)))
-            pauses_deleted = cast(CursorResult, pauses_result).rowcount or 0
-
-        trigger_logs_deleted = delete_trigger_logs(session, run_ids) if delete_trigger_logs else 0
-
-        return {
-            "node_executions": node_executions_deleted,
-            "offloads": offloads_deleted,
-            "trigger_logs": trigger_logs_deleted,
-            "pauses": pauses_deleted,
-            "pause_reasons": pause_reasons_deleted,
-        }
-
-    def set_runs_archived(
-        self,
-        session: Session,
-        run_ids: Sequence[str],
-        archived: bool,
-    ) -> int:
-        if not run_ids:
-            return 0
-
-        result = session.execute(update(WorkflowRun).where(WorkflowRun.id.in_(run_ids)).values(is_archived=archived))
-        return cast(CursorResult, result).rowcount or 0
-
-    def get_archived_runs_by_time_range(
-        self,
-        session: Session,
-        tenant_ids: Sequence[str] | None,
-        start_date: datetime,
-        end_date: datetime,
-        limit: int,
-    ) -> Sequence[WorkflowRun]:
-        conditions = [
-            WorkflowRun.is_archived == True,
-            WorkflowRun.created_at >= start_date,
-            WorkflowRun.created_at < end_date,
-        ]
-        stmt = select(WorkflowRun).where(*conditions)
-        if tenant_ids:
-            stmt = stmt.where(WorkflowRun.tenant_id.in_(tenant_ids))
-
-        stmt = stmt.order_by(WorkflowRun.created_at.asc(), WorkflowRun.id.asc())
-        stmt = stmt.limit(limit)
-
-        return list(session.scalars(stmt).all())
 
     def get_app_logs_by_run_id(
         self,

@@ -496,21 +496,6 @@ class WorkflowRunArchiver:
                 archive.writestr(f"{table_name}.jsonl", data)
         return buffer.getvalue()
 
-    def _mark_archived(self, session: Session, run_id: str) -> None:
-        """Mark a workflow run as archived."""
-        repo = self._get_workflow_run_repo()
-        repo.set_runs_archived(session, [run_id], archived=True)
-
-    def _delete_archived_data(self, session: Session, run: WorkflowRun) -> dict[str, int]:
-        """Delete archived data from the 5 tables."""
-        repo = self._get_workflow_run_repo()
-        return repo.delete_archived_run_related_data(
-            session,
-            [run],
-            delete_node_executions=self._delete_node_executions,
-            delete_trigger_logs=self._delete_trigger_logs,
-        )
-
     def _delete_trigger_logs(self, session: Session, run_ids: Sequence[str]) -> int:
         trigger_repo = SQLAlchemyWorkflowTriggerLogRepository(session)
         return trigger_repo.delete_by_run_ids(run_ids)

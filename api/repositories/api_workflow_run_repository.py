@@ -290,43 +290,6 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         """
         ...
 
-    def delete_archived_run_related_data(
-        self,
-        session: Session,
-        runs: Sequence[WorkflowRun],
-        delete_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
-        delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
-    ) -> dict[str, int]:
-        """
-        Delete archived workflow run related records (node executions, offloads, pauses, pause reasons,
-        trigger logs). This does not delete workflow runs or workflow app logs.
-        """
-        ...
-
-    def set_runs_archived(
-        self,
-        session: Session,
-        run_ids: Sequence[str],
-        archived: bool,
-    ) -> int:
-        """
-        Set workflow runs archived flag.
-        """
-        ...
-
-    def get_archived_runs_by_time_range(
-        self,
-        session: Session,
-        tenant_ids: Sequence[str] | None,
-        start_date: datetime,
-        end_date: datetime,
-        limit: int,
-    ) -> Sequence[WorkflowRun]:
-        """
-        Get archived workflow runs in a time range.
-        """
-        ...
-
     def get_pause_records_by_run_id(
         self,
         session: Session,

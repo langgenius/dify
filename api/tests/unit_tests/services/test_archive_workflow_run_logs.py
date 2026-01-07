@@ -55,16 +55,6 @@ class TestWorkflowRunArchiver:
             f"{archiver.ARCHIVE_BUNDLE_NAME}"
         )
 
-    def test_get_table_member_path(self):
-        """Test table member path generation within zip archive."""
-        from services.retention.workflow_run.archive_paid_plan_workflow_run import WorkflowRunArchiver
-
-        archiver = WorkflowRunArchiver.__new__(WorkflowRunArchiver)
-
-        path = archiver._get_table_member_path("workflow_node_executions")
-
-        assert path == "workflow_node_executions.jsonl"
-
 
 class TestWorkflowRunExportService:
     """Tests for the WorkflowRunExportService class."""
