@@ -523,9 +523,7 @@ class ResponseStreamCoordinator:
             # Case 3: Unrelated
             return [event]
 
-    def intercept_event(
-        self, event: NodeRunStreamChunkEvent | NodeRunSucceededEvent
-    ) -> Sequence[GraphNodeEventBase]:
+    def intercept_event(self, event: NodeRunStreamChunkEvent | NodeRunSucceededEvent) -> Sequence[GraphNodeEventBase]:
         """Legacy support / dispatch."""
         if isinstance(event, NodeRunStreamChunkEvent):
             return self.intercept_chunk_event(event)
