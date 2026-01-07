@@ -66,6 +66,8 @@ class WeaviateVector(BaseVector):
     in a Weaviate collection.
     """
 
+    _DOCUMENT_ID_PROPERTY = "document_id"
+
     def __init__(self, collection_name: str, config: WeaviateConfig, attributes: list):
         """
         Initializes the Weaviate vector store.
@@ -353,15 +355,12 @@ class WeaviateVector(BaseVector):
             return []
 
         col = self._client.collections.use(self._collection_name)
-        props = list({*self._attributes, "document_id", Field.TEXT_KEY.value})
+        props = list({*self._attributes, self._DOCUMENT_ID_PROPERTY, Field.TEXT_KEY.value})
 
         where = None
         doc_ids = kwargs.get("document_ids_filter") or []
         if doc_ids:
-            ors = [Filter.by_property("document_id").equal(x) for x in doc_ids]
-            where = ors[0]
-            for f in ors[1:]:
-                where = where | f
+            where = Filter.by_property(self._DOCUMENT_ID_PROPERTY).contains_any(doc_ids)
 
         top_k = int(kwargs.get("top_k", 4))
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
@@ -408,10 +407,7 @@ class WeaviateVector(BaseVector):
         where = None
         doc_ids = kwargs.get("document_ids_filter") or []
         if doc_ids:
-            ors = [Filter.by_property("document_id").equal(x) for x in doc_ids]
-            where = ors[0]
-            for f in ors[1:]:
-                where = where | f
+            where = Filter.by_property(self._DOCUMENT_ID_PROPERTY).contains_any(doc_ids)
 
         top_k = int(kwargs.get("top_k", 4))
 
