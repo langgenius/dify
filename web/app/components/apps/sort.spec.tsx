@@ -24,7 +24,7 @@ describe('SortDropdown', () => {
 
     it('should display current sort option when sortBy is provided', () => {
       render(<SortDropdown sortBy="name" sortOrder="asc" onChange={mockOnChange} />)
-      expect(screen.getByText('Flow Name')).toBeInTheDocument()
+      expect(screen.getByText('app.sort.name')).toBeInTheDocument()
     })
 
     it('should display ascending icon when sortOrder is asc', () => {
