@@ -259,10 +259,11 @@ class AliyunLogStore:
                 self._check_and_disable_pg_if_scan_index_disabled()
                 return True
             else:
-                logger.debug("Using SDK mode for project %s", self.project_name)
+                logger.info("Using SDK mode for project %s", self.project_name)
                 return False
         except Exception as e:
-            logger.debug("Using SDK mode for project %s: %s", self.project_name, str(e))
+            logger.info("Using SDK mode for project %s", self.project_name)
+            logger.debug("PG connection details: %s", str(e))
             self._use_pg_protocol = False
             return False
 
@@ -276,10 +277,6 @@ class AliyunLogStore:
         if self._use_pg_protocol:
             return
 
-        logger.info(
-            "Attempting delayed PG connection for newly created project %s ...",
-            self.project_name,
-        )
         self._attempt_pg_connection_init()
         self.__class__._pg_connection_timer = None
 
@@ -314,11 +311,7 @@ class AliyunLogStore:
         if project_is_new:
             # For newly created projects, schedule delayed PG connection
             self._use_pg_protocol = False
-            logger.info(
-                "Project %s is newly created. Will use SDK mode and schedule PG connection attempt in %d seconds.",
-                self.project_name,
-                self.__class__._pg_connection_delay,
-            )
+            logger.info("Using SDK mode for project %s (newly created)", self.project_name)
             if self.__class__._pg_connection_timer is not None:
                 self.__class__._pg_connection_timer.cancel()
             self.__class__._pg_connection_timer = threading.Timer(
@@ -329,7 +322,6 @@ class AliyunLogStore:
             self.__class__._pg_connection_timer.start()
         else:
             # For existing projects, attempt PG connection immediately
-            logger.info("Project %s already exists. Attempting PG connection...", self.project_name)
             self._attempt_pg_connection_init()
 
     def _check_and_disable_pg_if_scan_index_disabled(self) -> None:
@@ -348,9 +340,9 @@ class AliyunLogStore:
             existing_config = self.get_existing_index_config(logstore_name)
             if existing_config and not existing_config.scan_index:
                 logger.info(
-                    "Logstore %s has scan_index=false, USE SDK mode for read/write operations. "
-                    "PG protocol requires scan_index to be enabled.",
+                    "Logstore %s requires scan_index enabled, using SDK mode for project %s",
                     logstore_name,
+                    self.project_name,
                 )
                 self._use_pg_protocol = False
                 # Close PG connection if it was initialized
