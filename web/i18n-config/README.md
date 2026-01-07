@@ -166,13 +166,14 @@ We have a list of languages that we support in the `languages.ts` file. But some
 Translation is handled automatically by Claude Code GitHub Actions. When changes are pushed to `web/i18n/en-US/*.json` on the main branch:
 
 1. Claude Code analyzes the git diff to detect changes
-1. Identifies three types of changes:
+2. Identifies three types of changes:
    - **ADD**: New keys that need translation
    - **UPDATE**: Modified keys that need re-translation (even if target language has existing translation)
    - **DELETE**: Removed keys that need to be deleted from other languages
-1. Runs `i18n:check` to verify the sync status
-1. Translates missing/updated keys while preserving placeholders (`{{var}}`, `${var}`, `<tag>`)
-1. Creates a PR with the translations
+3. Runs `i18n:check` to verify the initial sync status.
+4. Translates missing/updated keys while preserving placeholders (`{{var}}`, `${var}`, `<tag>`) and removes deleted keys.
+5. Runs `lint:fix` to sort JSON keys and `i18n:check` again to ensure everything is synchronized.
+6. Creates a PR with the translations.
 
 ### Manual Trigger
 
