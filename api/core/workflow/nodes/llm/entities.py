@@ -123,6 +123,7 @@ class LLMTraceSegment(BaseModel):
 
     # Common metadata for both model and tool segments
     provider: str | None = Field(default=None, description="Model or tool provider identifier")
+    name: str | None = Field(default=None, description="Name of the model or tool")
     icon: str | None = Field(default=None, description="Icon for the provider")
     icon_dark: str | None = Field(default=None, description="Dark theme icon for the provider")
     error: str | None = Field(default=None, description="Error message if segment failed")
