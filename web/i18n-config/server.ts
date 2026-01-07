@@ -13,6 +13,7 @@ import { initReactI18next } from 'react-i18next/initReactI18next'
 import { serverOnlyContext } from '@/utils/server-only-context'
 import { i18n } from '.'
 import { namespacesKebabCase } from './resources'
+import { getInitOptions } from './settings'
 
 const [getLocaleCache, setLocaleCache] = serverOnlyContext<Locale | null>(null)
 const [getI18nInstance, setI18nInstance] = serverOnlyContext<I18nInstance | null>(null)
@@ -30,6 +31,7 @@ const getOrCreateI18next = async (lng: Locale) => {
       return import(`../i18n/${language}/${fileNamespace}.json`)
     }))
     .init({
+      ...getInitOptions(),
       lng,
     })
   setI18nInstance(instance)
