@@ -268,6 +268,16 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         """
         ...
 
+    def get_archived_run_ids(
+        self,
+        session: Session,
+        run_ids: Sequence[str],
+    ) -> set[str]:
+        """
+        Fetch workflow run IDs that already have archive log records.
+        """
+        ...
+
     def delete_runs_with_related(
         self,
         runs: Sequence[WorkflowRun],
@@ -344,6 +354,18 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
     ) -> Sequence[WorkflowAppLog]:
         """
         Fetch workflow app logs by workflow run ID.
+        """
+        ...
+
+    def create_archive_logs(
+        self,
+        session: Session,
+        run: WorkflowRun,
+        app_logs: Sequence[WorkflowAppLog],
+        trigger_metadata: str | None,
+    ) -> int:
+        """
+        Create archive log records for a workflow run.
         """
         ...
 

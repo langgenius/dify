@@ -27,7 +27,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import click
-from sqlalchemy import inspect, select
+from sqlalchemy import inspect
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
@@ -38,7 +38,7 @@ from libs.archive_storage import (
     ArchiveStorageNotConfiguredError,
     get_archive_storage,
 )
-from models.workflow import WorkflowAppLog, WorkflowArchiveLog, WorkflowRun
+from models.workflow import WorkflowAppLog, WorkflowRun
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.sqlalchemy_api_workflow_node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
@@ -190,6 +190,7 @@ class WorkflowRunArchiver:
             return summary
 
         session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+        repo = self._get_workflow_run_repo()
 
         def _archive_with_session(run: WorkflowRun) -> ArchiveResult:
             with session_maker() as session:
@@ -213,7 +214,7 @@ class WorkflowRunArchiver:
 
                 run_ids = [run.id for run in runs]
                 with session_maker() as session:
-                    archived_run_ids = self._get_archived_run_ids(session, run_ids)
+                    archived_run_ids = repo.get_archived_run_ids(session, run_ids)
 
                 last_seen = (runs[-1].created_at, runs[-1].id)
 
@@ -340,7 +341,7 @@ class WorkflowRunArchiver:
 
         try:
             # Extract data from all tables
-            table_data = self._extract_data(session, run)
+            table_data, app_logs, trigger_metadata = self._extract_data(session, run)
 
             if self.dry_run:
                 # In dry run, just report what would be archived
@@ -384,7 +385,8 @@ class WorkflowRunArchiver:
                 archive_data = self._build_archive_bundle(manifest_data, table_payloads)
                 storage.put_object(archive_key, archive_data)
 
-                archived_log_count = self._save_archive_logs(session, run, table_data)
+                repo = self._get_workflow_run_repo()
+                archived_log_count = repo.create_archive_logs(session, run, app_logs, trigger_metadata)
                 session.commit()
 
                 logger.info(
@@ -405,18 +407,15 @@ class WorkflowRunArchiver:
         result.elapsed_time = time.time() - start_time
         return result
 
-    def _extract_data(self, session: Session, run: WorkflowRun) -> dict[str, list[dict[str, Any]]]:
+    def _extract_data(
+        self,
+        session: Session,
+        run: WorkflowRun,
+    ) -> tuple[dict[str, list[dict[str, Any]]], Sequence[WorkflowAppLog], str | None]:
         table_data: dict[str, list[dict[str, Any]]] = {}
         table_data["workflow_runs"] = [self._row_to_dict(run)]
-        app_logs = (
-            session.query(WorkflowAppLog)
-            .where(
-                WorkflowAppLog.tenant_id == run.tenant_id,
-                WorkflowAppLog.app_id == run.app_id,
-                WorkflowAppLog.workflow_run_id == run.id,
-            )
-            .all()
-        )
+        repo = self._get_workflow_run_repo()
+        app_logs = repo.get_app_logs_by_run_id(session, run.id)
         table_data["workflow_app_logs"] = [self._row_to_dict(row) for row in app_logs]
         run_context: DifyAPISQLAlchemyWorkflowNodeExecutionRepository.RunContext = {
             "run_id": run.id,
@@ -445,53 +444,8 @@ class WorkflowRunArchiver:
         trigger_repo = SQLAlchemyWorkflowTriggerLogRepository(session)
         trigger_records = trigger_repo.list_by_run_id(run.id)
         table_data["workflow_trigger_logs"] = [self._row_to_dict(row) for row in trigger_records]
-        return table_data
-
-    @staticmethod
-    def _get_archived_run_ids(session: Session, run_ids: Sequence[str]) -> set[str]:
-        if not run_ids:
-            return set()
-        stmt = select(WorkflowArchiveLog.workflow_run_id).where(WorkflowArchiveLog.workflow_run_id.in_(run_ids))
-        return set(session.scalars(stmt).all())
-
-    @staticmethod
-    def _save_archive_logs(session: Session, run: WorkflowRun, table_data: dict[str, list[dict[str, Any]]]) -> int:
-        app_logs = table_data.get("workflow_app_logs", [])
-        if not app_logs:
-            return 0
-
-        trigger_metadata = None
-        trigger_logs = table_data.get("workflow_trigger_logs", [])
-        if trigger_logs:
-            trigger_metadata = trigger_logs[0].get("trigger_metadata")
-
-        archive_logs = [
-            WorkflowArchiveLog(
-                id=app_log["id"],
-                tenant_id=app_log["tenant_id"],
-                app_id=app_log["app_id"],
-                workflow_id=app_log["workflow_id"],
-                workflow_run_id=run.id,
-                created_from=app_log["created_from"],
-                created_by_role=app_log["created_by_role"],
-                created_by=app_log["created_by"],
-                created_at=app_log["created_at"],
-                run_version=run.version,
-                run_status=run.status,
-                run_triggered_from=run.triggered_from,
-                run_error=run.error,
-                run_elapsed_time=run.elapsed_time,
-                run_total_tokens=run.total_tokens,
-                run_total_steps=run.total_steps,
-                run_created_at=run.created_at,
-                run_finished_at=run.finished_at,
-                run_exceptions_count=run.exceptions_count,
-                trigger_metadata=trigger_metadata,
-            )
-            for app_log in app_logs
-        ]
-        session.add_all(archive_logs)
-        return len(archive_logs)
+        trigger_metadata = trigger_records[0].trigger_metadata if trigger_records else None
+        return table_data, app_logs, trigger_metadata
 
     @staticmethod
     def _row_to_dict(row: Any) -> dict[str, Any]:

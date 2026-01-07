@@ -40,7 +40,7 @@ from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.time_parser import get_time_threshold
 from libs.uuid_utils import uuidv7
 from models.enums import WorkflowRunTriggeredFrom
-from models.workflow import WorkflowAppLog, WorkflowPause, WorkflowPauseReason, WorkflowRun
+from models.workflow import WorkflowAppLog, WorkflowArchiveLog, WorkflowPause, WorkflowPauseReason, WorkflowRun
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.types import (
@@ -358,6 +358,17 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
 
             return session.scalars(stmt).all()
 
+    def get_archived_run_ids(
+        self,
+        session: Session,
+        run_ids: Sequence[str],
+    ) -> set[str]:
+        if not run_ids:
+            return set()
+
+        stmt = select(WorkflowArchiveLog.workflow_run_id).where(WorkflowArchiveLog.workflow_run_id.in_(run_ids))
+        return set(session.scalars(stmt).all())
+
     def get_pause_records_by_run_id(
         self,
         session: Session,
@@ -519,6 +530,44 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
     ) -> Sequence[WorkflowAppLog]:
         stmt = select(WorkflowAppLog).where(WorkflowAppLog.workflow_run_id == run_id)
         return list(session.scalars(stmt))
+
+    def create_archive_logs(
+        self,
+        session: Session,
+        run: WorkflowRun,
+        app_logs: Sequence[WorkflowAppLog],
+        trigger_metadata: str | None,
+    ) -> int:
+        if not app_logs:
+            return 0
+
+        archive_logs = [
+            WorkflowArchiveLog(
+                id=app_log.id,
+                tenant_id=app_log.tenant_id,
+                app_id=app_log.app_id,
+                workflow_id=app_log.workflow_id,
+                workflow_run_id=run.id,
+                created_from=app_log.created_from,
+                created_by_role=app_log.created_by_role,
+                created_by=app_log.created_by,
+                created_at=app_log.created_at,
+                run_version=run.version,
+                run_status=run.status,
+                run_triggered_from=run.triggered_from,
+                run_error=run.error,
+                run_elapsed_time=run.elapsed_time,
+                run_total_tokens=run.total_tokens,
+                run_total_steps=run.total_steps,
+                run_created_at=run.created_at,
+                run_finished_at=run.finished_at,
+                run_exceptions_count=run.exceptions_count,
+                trigger_metadata=trigger_metadata,
+            )
+            for app_log in app_logs
+        ]
+        session.add_all(archive_logs)
+        return len(archive_logs)
 
     def create_workflow_pause(
         self,
