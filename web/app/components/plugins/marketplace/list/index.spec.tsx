@@ -1,6 +1,6 @@
 import type { MarketplaceCollection, SearchParamsFromCollection } from '../types'
 import type { Plugin } from '@/app/components/plugins/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import List from './index'
@@ -34,9 +34,11 @@ vi.mock('#i18n', () => ({
 const mockContextValues = {
   plugins: undefined as Plugin[] | undefined,
   pluginsTotal: 0,
-  marketplaceCollections: undefined as MarketplaceCollection[] | undefined,
-  marketplaceCollectionPluginsMap: undefined as Record<string, Plugin[]> | undefined,
+  marketplaceCollectionsFromClient: undefined as MarketplaceCollection[] | undefined,
+  marketplaceCollectionPluginsMapFromClient: undefined as Record<string, Plugin[]> | undefined,
   isLoading: false,
+  isSuccessCollections: false,
+  handleQueryPlugins: vi.fn(),
   searchPluginText: '',
   filterPluginTags: [] as string[],
   page: 1,
@@ -801,6 +803,8 @@ describe('ListWithCollection', () => {
 // ================================
 describe('ListWrapper', () => {
   const defaultProps = {
+    marketplaceCollections: [] as MarketplaceCollection[],
+    marketplaceCollectionPluginsMap: {} as Record<string, Plugin[]>,
     showInstallButton: false,
   }
 
@@ -809,9 +813,10 @@ describe('ListWrapper', () => {
     // Reset context values
     mockContextValues.plugins = undefined
     mockContextValues.pluginsTotal = 0
-    mockContextValues.marketplaceCollections = undefined
-    mockContextValues.marketplaceCollectionPluginsMap = undefined
+    mockContextValues.marketplaceCollectionsFromClient = undefined
+    mockContextValues.marketplaceCollectionPluginsMapFromClient = undefined
     mockContextValues.isLoading = false
+    mockContextValues.isSuccessCollections = false
     mockContextValues.searchPluginText = ''
     mockContextValues.filterPluginTags = []
     mockContextValues.page = 1
@@ -889,12 +894,18 @@ describe('ListWrapper', () => {
   describe('List Rendering Logic', () => {
     it('should render List when not loading', () => {
       mockContextValues.isLoading = false
-      mockContextValues.marketplaceCollections = createMockCollectionList(1)
-      mockContextValues.marketplaceCollectionPluginsMap = {
+      const collections = createMockCollectionList(1)
+      const pluginsMap: Record<string, Plugin[]> = {
         'collection-0': createMockPluginList(1),
       }
 
-      render(<ListWrapper {...defaultProps} />)
+      render(
+        <ListWrapper
+          {...defaultProps}
+          marketplaceCollections={collections}
+          marketplaceCollectionPluginsMap={pluginsMap}
+        />,
+      )
 
       expect(screen.getByText('Collection 0')).toBeInTheDocument()
     })
@@ -902,28 +913,69 @@ describe('ListWrapper', () => {
     it('should render List when loading but page > 1', () => {
       mockContextValues.isLoading = true
       mockContextValues.page = 2
-      mockContextValues.marketplaceCollections = createMockCollectionList(1)
-      mockContextValues.marketplaceCollectionPluginsMap = {
+      const collections = createMockCollectionList(1)
+      const pluginsMap: Record<string, Plugin[]> = {
         'collection-0': createMockPluginList(1),
       }
 
-      render(<ListWrapper {...defaultProps} />)
+      render(
+        <ListWrapper
+          {...defaultProps}
+          marketplaceCollections={collections}
+          marketplaceCollectionPluginsMap={pluginsMap}
+        />,
+      )
 
       expect(screen.getByText('Collection 0')).toBeInTheDocument()
     })
 
-    it('should render collections from context', () => {
-      const collections = createMockCollectionList(1)
-      collections[0].label = { 'en-US': 'Context Collection' }
+    it('should use client collections when available', () => {
+      const serverCollections = createMockCollectionList(1)
+      serverCollections[0].label = { 'en-US': 'Server Collection' }
+      const clientCollections = createMockCollectionList(1)
+      clientCollections[0].label = { 'en-US': 'Client Collection' }
 
-      mockContextValues.marketplaceCollections = collections
-      mockContextValues.marketplaceCollectionPluginsMap = {
+      const serverPluginsMap: Record<string, Plugin[]> = {
+        'collection-0': createMockPluginList(1),
+      }
+      const clientPluginsMap: Record<string, Plugin[]> = {
         'collection-0': createMockPluginList(1),
       }
 
-      render(<ListWrapper {...defaultProps} />)
+      mockContextValues.marketplaceCollectionsFromClient = clientCollections
+      mockContextValues.marketplaceCollectionPluginsMapFromClient = clientPluginsMap
 
-      expect(screen.getByText('Context Collection')).toBeInTheDocument()
+      render(
+        <ListWrapper
+          {...defaultProps}
+          marketplaceCollections={serverCollections}
+          marketplaceCollectionPluginsMap={serverPluginsMap}
+        />,
+      )
+
+      expect(screen.getByText('Client Collection')).toBeInTheDocument()
+      expect(screen.queryByText('Server Collection')).not.toBeInTheDocument()
+    })
+
+    it('should use server collections when client collections are not available', () => {
+      const serverCollections = createMockCollectionList(1)
+      serverCollections[0].label = { 'en-US': 'Server Collection' }
+      const serverPluginsMap: Record<string, Plugin[]> = {
+        'collection-0': createMockPluginList(1),
+      }
+
+      mockContextValues.marketplaceCollectionsFromClient = undefined
+      mockContextValues.marketplaceCollectionPluginsMapFromClient = undefined
+
+      render(
+        <ListWrapper
+          {...defaultProps}
+          marketplaceCollections={serverCollections}
+          marketplaceCollectionPluginsMap={serverPluginsMap}
+        />,
+      )
+
+      expect(screen.getByText('Server Collection')).toBeInTheDocument()
     })
   })
 
@@ -950,16 +1002,87 @@ describe('ListWrapper', () => {
         searchable: true,
         search_params: { query: 'test' },
       })]
-      mockContextValues.marketplaceCollections = collections
-      mockContextValues.marketplaceCollectionPluginsMap = {
+      const pluginsMap: Record<string, Plugin[]> = {
         'collection-0': createMockPluginList(1),
       }
 
-      render(<ListWrapper {...defaultProps} />)
+      render(
+        <ListWrapper
+          {...defaultProps}
+          marketplaceCollections={collections}
+          marketplaceCollectionPluginsMap={pluginsMap}
+        />,
+      )
 
       fireEvent.click(screen.getByText('View More'))
 
       expect(mockHandleMoreClick).toHaveBeenCalled()
+    })
+  })
+
+  // ================================
+  // Effect Tests (handleQueryPlugins)
+  // ================================
+  describe('handleQueryPlugins Effect', () => {
+    it('should call handleQueryPlugins when conditions are met', async () => {
+      const mockHandleQueryPlugins = vi.fn()
+      mockContextValues.handleQueryPlugins = mockHandleQueryPlugins
+      mockContextValues.isSuccessCollections = true
+      mockContextValues.marketplaceCollectionsFromClient = undefined
+      mockContextValues.searchPluginText = ''
+      mockContextValues.filterPluginTags = []
+
+      render(<ListWrapper {...defaultProps} />)
+
+      await waitFor(() => {
+        expect(mockHandleQueryPlugins).toHaveBeenCalled()
+      })
+    })
+
+    it('should not call handleQueryPlugins when client collections exist', async () => {
+      const mockHandleQueryPlugins = vi.fn()
+      mockContextValues.handleQueryPlugins = mockHandleQueryPlugins
+      mockContextValues.isSuccessCollections = true
+      mockContextValues.marketplaceCollectionsFromClient = createMockCollectionList(1)
+      mockContextValues.searchPluginText = ''
+      mockContextValues.filterPluginTags = []
+
+      render(<ListWrapper {...defaultProps} />)
+
+      // Give time for effect to run
+      await waitFor(() => {
+        expect(mockHandleQueryPlugins).not.toHaveBeenCalled()
+      })
+    })
+
+    it('should not call handleQueryPlugins when search text exists', async () => {
+      const mockHandleQueryPlugins = vi.fn()
+      mockContextValues.handleQueryPlugins = mockHandleQueryPlugins
+      mockContextValues.isSuccessCollections = true
+      mockContextValues.marketplaceCollectionsFromClient = undefined
+      mockContextValues.searchPluginText = 'search text'
+      mockContextValues.filterPluginTags = []
+
+      render(<ListWrapper {...defaultProps} />)
+
+      await waitFor(() => {
+        expect(mockHandleQueryPlugins).not.toHaveBeenCalled()
+      })
+    })
+
+    it('should not call handleQueryPlugins when filter tags exist', async () => {
+      const mockHandleQueryPlugins = vi.fn()
+      mockContextValues.handleQueryPlugins = mockHandleQueryPlugins
+      mockContextValues.isSuccessCollections = true
+      mockContextValues.marketplaceCollectionsFromClient = undefined
+      mockContextValues.searchPluginText = ''
+      mockContextValues.filterPluginTags = ['tag1']
+
+      render(<ListWrapper {...defaultProps} />)
+
+      await waitFor(() => {
+        expect(mockHandleQueryPlugins).not.toHaveBeenCalled()
+      })
     })
   })
 
@@ -1309,17 +1432,20 @@ describe('Combined Workflows', () => {
     mockContextValues.pluginsTotal = 0
     mockContextValues.isLoading = false
     mockContextValues.page = 1
-    mockContextValues.marketplaceCollections = undefined
-    mockContextValues.marketplaceCollectionPluginsMap = undefined
+    mockContextValues.marketplaceCollectionsFromClient = undefined
+    mockContextValues.marketplaceCollectionPluginsMapFromClient = undefined
   })
 
   it('should transition from loading to showing collections', async () => {
     mockContextValues.isLoading = true
     mockContextValues.page = 1
-    mockContextValues.marketplaceCollections = []
-    mockContextValues.marketplaceCollectionPluginsMap = {}
 
-    const { rerender } = render(<ListWrapper />)
+    const { rerender } = render(
+      <ListWrapper
+        marketplaceCollections={[]}
+        marketplaceCollectionPluginsMap={{}}
+      />,
+    )
 
     expect(screen.getByTestId('loading-component')).toBeInTheDocument()
 
@@ -1329,10 +1455,15 @@ describe('Combined Workflows', () => {
     const pluginsMap: Record<string, Plugin[]> = {
       'collection-0': createMockPluginList(1),
     }
-    mockContextValues.marketplaceCollections = collections
-    mockContextValues.marketplaceCollectionPluginsMap = pluginsMap
+    mockContextValues.marketplaceCollectionsFromClient = collections
+    mockContextValues.marketplaceCollectionPluginsMapFromClient = pluginsMap
 
-    rerender(<ListWrapper />)
+    rerender(
+      <ListWrapper
+        marketplaceCollections={[]}
+        marketplaceCollectionPluginsMap={{}}
+      />,
+    )
 
     expect(screen.queryByTestId('loading-component')).not.toBeInTheDocument()
     expect(screen.getByText('Collection 0')).toBeInTheDocument()
@@ -1343,10 +1474,15 @@ describe('Combined Workflows', () => {
     const pluginsMap: Record<string, Plugin[]> = {
       'collection-0': createMockPluginList(1),
     }
-    mockContextValues.marketplaceCollections = collections
-    mockContextValues.marketplaceCollectionPluginsMap = pluginsMap
+    mockContextValues.marketplaceCollectionsFromClient = collections
+    mockContextValues.marketplaceCollectionPluginsMapFromClient = pluginsMap
 
-    const { rerender } = render(<ListWrapper />)
+    const { rerender } = render(
+      <ListWrapper
+        marketplaceCollections={[]}
+        marketplaceCollectionPluginsMap={{}}
+      />,
+    )
 
     expect(screen.getByText('Collection 0')).toBeInTheDocument()
 
@@ -1354,7 +1490,12 @@ describe('Combined Workflows', () => {
     mockContextValues.plugins = createMockPluginList(5)
     mockContextValues.pluginsTotal = 5
 
-    rerender(<ListWrapper />)
+    rerender(
+      <ListWrapper
+        marketplaceCollections={[]}
+        marketplaceCollectionPluginsMap={{}}
+      />,
+    )
 
     expect(screen.queryByText('Collection 0')).not.toBeInTheDocument()
     expect(screen.getByText('5 plugins found')).toBeInTheDocument()
@@ -1363,10 +1504,13 @@ describe('Combined Workflows', () => {
   it('should handle empty search results', () => {
     mockContextValues.plugins = []
     mockContextValues.pluginsTotal = 0
-    mockContextValues.marketplaceCollections = []
-    mockContextValues.marketplaceCollectionPluginsMap = {}
 
-    render(<ListWrapper />)
+    render(
+      <ListWrapper
+        marketplaceCollections={[]}
+        marketplaceCollectionPluginsMap={{}}
+      />,
+    )
 
     expect(screen.getByTestId('empty-component')).toBeInTheDocument()
     expect(screen.getByText('0 plugins found')).toBeInTheDocument()
@@ -1377,10 +1521,13 @@ describe('Combined Workflows', () => {
     mockContextValues.pluginsTotal = 80
     mockContextValues.isLoading = true
     mockContextValues.page = 2
-    mockContextValues.marketplaceCollections = []
-    mockContextValues.marketplaceCollectionPluginsMap = {}
 
-    render(<ListWrapper />)
+    render(
+      <ListWrapper
+        marketplaceCollections={[]}
+        marketplaceCollectionPluginsMap={{}}
+      />,
+    )
 
     // Should show existing results while loading more
     expect(screen.getByText('80 plugins found')).toBeInTheDocument()

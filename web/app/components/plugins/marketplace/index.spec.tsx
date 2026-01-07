@@ -1,4 +1,4 @@
-import type { MarketplaceCollection, SearchParamsFromCollection } from './types'
+import type { MarketplaceCollection, SearchParams, SearchParamsFromCollection } from './types'
 import type { Plugin } from '@/app/components/plugins/types'
 import { act, fireEvent, render, renderHook, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -42,13 +42,11 @@ vi.mock('@/i18n-config/i18next-config', () => ({
 
 // Mock use-query-params hook
 const mockSetUrlFilters = vi.fn()
-const mockFiltersState = { q: '', tags: [] as string[], category: 'all' }
-const mockUseMarketplaceFilters = () => [mockFiltersState, mockSetUrlFilters] as const
 vi.mock('@/hooks/use-query-params', () => ({
-  useMarketplaceFilters: () => mockUseMarketplaceFilters(),
-  useMarketplaceSearchQuery: () => [mockFiltersState.q, mockSetUrlFilters],
-  useMarketplaceCategory: () => [mockFiltersState.category, mockSetUrlFilters],
-  useMarketplaceTags: () => [mockFiltersState.tags, mockSetUrlFilters],
+  useMarketplaceFilters: () => [
+    { q: '', tags: [], category: '' },
+    mockSetUrlFilters,
+  ],
 }))
 
 // Mock use-plugins service
@@ -83,7 +81,6 @@ vi.mock('@tanstack/react-query', () => ({
       data: enabled ? { marketplaceCollections: [], marketplaceCollectionPluginsMap: {} } : undefined,
       isFetching: false,
       isPending: false,
-      isLoading: false,
       isSuccess: enabled,
     }
   }),
@@ -374,28 +371,39 @@ const createMockCollection = (overrides?: Partial<MarketplaceCollection>): Marke
 // Shared Test Components
 // ================================
 
-// Search input test component - uses setUrlFilters directly
+// Search input test component - used in multiple tests
 const SearchInputTestComponent = () => {
-  const [{ q: searchText }, setUrlFilters] = mockUseMarketplaceFilters()
+  const searchText = useMarketplaceContext(v => v.searchPluginText)
+  const handleChange = useMarketplaceContext(v => v.handleSearchPluginTextChange)
 
   return (
     <div>
       <input
         data-testid="search-input"
         value={searchText}
-        onChange={e => setUrlFilters({ q: e.target.value })}
+        onChange={e => handleChange(e.target.value)}
       />
       <div data-testid="search-display">{searchText}</div>
     </div>
   )
 }
 
-// Plugin type change test component - uses setUrlFilters directly
+// Plugin type change test component
 const PluginTypeChangeTestComponent = () => {
-  const [, setUrlFilters] = mockUseMarketplaceFilters()
+  const handleChange = useMarketplaceContext(v => v.handleActivePluginTypeChange)
   return (
-    <button data-testid="change-type" onClick={() => setUrlFilters({ category: 'tool' }, { history: 'push' })}>
+    <button data-testid="change-type" onClick={() => handleChange('tool')}>
       Change Type
+    </button>
+  )
+}
+
+// Page change test component
+const PageChangeTestComponent = () => {
+  const handlePageChange = useMarketplaceContext(v => v.handlePageChange)
+  return (
+    <button data-testid="next-page" onClick={handlePageChange}>
+      Next Page
     </button>
   )
 }
@@ -601,31 +609,52 @@ describe('useMarketplaceCollectionsAndPlugins', () => {
     vi.clearAllMocks()
   })
 
-  it('should return TanStack Query result with standard properties', async () => {
+  it('should return initial state correctly', async () => {
     const { useMarketplaceCollectionsAndPlugins } = await import('./hooks')
     const { result } = renderHook(() => useMarketplaceCollectionsAndPlugins())
 
-    // TanStack Query returns standard properties
-    expect(result.current.isPending).toBeDefined()
-    expect(result.current.isSuccess).toBeDefined()
-    expect(result.current.data).toBeDefined()
+    expect(result.current.isLoading).toBe(false)
+    expect(result.current.isSuccess).toBe(false)
+    expect(result.current.queryMarketplaceCollectionsAndPlugins).toBeDefined()
+    expect(result.current.setMarketplaceCollections).toBeDefined()
+    expect(result.current.setMarketplaceCollectionPluginsMap).toBeDefined()
   })
 
-  it('should return data with collections when query succeeds', async () => {
+  it('should provide queryMarketplaceCollectionsAndPlugins function', async () => {
     const { useMarketplaceCollectionsAndPlugins } = await import('./hooks')
     const { result } = renderHook(() => useMarketplaceCollectionsAndPlugins())
 
-    // Mock returns data when enabled
-    expect(result.current.data?.marketplaceCollections).toBeDefined()
-    expect(result.current.data?.marketplaceCollectionPluginsMap).toBeDefined()
+    expect(typeof result.current.queryMarketplaceCollectionsAndPlugins).toBe('function')
   })
 
-  it('should accept enabled option', async () => {
+  it('should provide setMarketplaceCollections function', async () => {
     const { useMarketplaceCollectionsAndPlugins } = await import('./hooks')
-    const { result } = renderHook(() => useMarketplaceCollectionsAndPlugins({}, { enabled: false }))
+    const { result } = renderHook(() => useMarketplaceCollectionsAndPlugins())
 
-    // When disabled, data should be undefined
-    expect(result.current.data).toBeUndefined()
+    expect(typeof result.current.setMarketplaceCollections).toBe('function')
+  })
+
+  it('should provide setMarketplaceCollectionPluginsMap function', async () => {
+    const { useMarketplaceCollectionsAndPlugins } = await import('./hooks')
+    const { result } = renderHook(() => useMarketplaceCollectionsAndPlugins())
+
+    expect(typeof result.current.setMarketplaceCollectionPluginsMap).toBe('function')
+  })
+
+  it('should return marketplaceCollections from data or override', async () => {
+    const { useMarketplaceCollectionsAndPlugins } = await import('./hooks')
+    const { result } = renderHook(() => useMarketplaceCollectionsAndPlugins())
+
+    // Initial state
+    expect(result.current.marketplaceCollections).toBeUndefined()
+  })
+
+  it('should return marketplaceCollectionPluginsMap from data or override', async () => {
+    const { useMarketplaceCollectionsAndPlugins } = await import('./hooks')
+    const { result } = renderHook(() => useMarketplaceCollectionsAndPlugins())
+
+    // Initial state
+    expect(result.current.marketplaceCollectionPluginsMap).toBeUndefined()
   })
 })
 
@@ -993,25 +1022,27 @@ describe('Advanced Hook Integration', () => {
     mockPostMarketplaceShouldFail = false
   })
 
-  it('should test useMarketplaceCollectionsAndPlugins with query params', async () => {
-    const { useMarketplaceCollectionsAndPlugins } = await import('./hooks')
-    const { result } = renderHook(() => useMarketplaceCollectionsAndPlugins({
-      condition: 'category=tool',
-      type: 'plugin',
-    }))
-
-    // Should return standard TanStack Query result
-    expect(result.current.data).toBeDefined()
-    expect(result.current.isSuccess).toBeDefined()
-  })
-
-  it('should test useMarketplaceCollectionsAndPlugins with empty params', async () => {
+  it('should test useMarketplaceCollectionsAndPlugins with query call', async () => {
     const { useMarketplaceCollectionsAndPlugins } = await import('./hooks')
     const { result } = renderHook(() => useMarketplaceCollectionsAndPlugins())
 
-    // Should return standard TanStack Query result
-    expect(result.current.data).toBeDefined()
-    expect(result.current.isSuccess).toBeDefined()
+    // Call the query function
+    result.current.queryMarketplaceCollectionsAndPlugins({
+      condition: 'category=tool',
+      type: 'plugin',
+    })
+
+    expect(result.current.queryMarketplaceCollectionsAndPlugins).toBeDefined()
+  })
+
+  it('should test useMarketplaceCollectionsAndPlugins with empty query', async () => {
+    const { useMarketplaceCollectionsAndPlugins } = await import('./hooks')
+    const { result } = renderHook(() => useMarketplaceCollectionsAndPlugins())
+
+    // Call with undefined (converts to empty object)
+    result.current.queryMarketplaceCollectionsAndPlugins()
+
+    expect(result.current.queryMarketplaceCollectionsAndPlugins).toBeDefined()
   })
 
   it('should test useMarketplacePluginsByCollectionId with different params', async () => {
@@ -1147,18 +1178,18 @@ describe('Direct queryFn Coverage', () => {
 
   it('should test useMarketplaceCollectionsAndPlugins queryFn', async () => {
     const { useMarketplaceCollectionsAndPlugins } = await import('./hooks')
-    const { result } = renderHook(() => useMarketplaceCollectionsAndPlugins({
-      condition: 'category=tool',
-    }))
+    const { result } = renderHook(() => useMarketplaceCollectionsAndPlugins())
 
-    // TanStack Query captures queryFn internally
+    // Trigger query to enable and capture queryFn
+    result.current.queryMarketplaceCollectionsAndPlugins({
+      condition: 'category=tool',
+    })
+
     if (capturedQueryFn) {
       const controller = new AbortController()
       const response = await capturedQueryFn({ signal: controller.signal })
       expect(response).toBeDefined()
     }
-
-    expect(result.current.data).toBeDefined()
   })
 
   it('should test queryFn with all category', async () => {
@@ -1501,8 +1532,8 @@ describe('MarketplaceContext', () => {
   describe('useMarketplaceContext', () => {
     it('should return selected value from context', () => {
       const TestComponent = () => {
-        const sort = useMarketplaceContext(v => v.sort)
-        return <div data-testid="sort">{sort.sortBy}</div>
+        const searchText = useMarketplaceContext(v => v.searchPluginText)
+        return <div data-testid="search-text">{searchText}</div>
       }
 
       render(
@@ -1511,7 +1542,7 @@ describe('MarketplaceContext', () => {
         </MarketplaceContextProvider>,
       )
 
-      expect(screen.getByTestId('sort')).toHaveTextContent('install_count')
+      expect(screen.getByTestId('search-text')).toHaveTextContent('')
     })
   })
 
@@ -1531,7 +1562,8 @@ describe('MarketplaceContext', () => {
       mockInfiniteQueryData = undefined
 
       const TestComponent = () => {
-        const [{ category: activePluginType, tags: filterPluginTags }] = mockUseMarketplaceFilters()
+        const activePluginType = useMarketplaceContext(v => v.activePluginType)
+        const filterPluginTags = useMarketplaceContext(v => v.filterPluginTags)
         const sort = useMarketplaceContext(v => v.sort)
         const page = useMarketplaceContext(v => v.page)
 
@@ -1558,20 +1590,24 @@ describe('MarketplaceContext', () => {
       expect(screen.getByTestId('page')).toBeInTheDocument()
     })
 
-    it('should provide searchPluginText from URL state via nuqs hook', () => {
+    it('should initialize with searchParams from props', () => {
+      const searchParams: SearchParams = {
+        q: 'test query',
+        category: 'tool',
+      }
+
       const TestComponent = () => {
-        const [{ q: searchText }] = mockUseMarketplaceFilters()
-        return <div data-testid="search">{searchText || 'empty'}</div>
+        const searchText = useMarketplaceContext(v => v.searchPluginText)
+        return <div data-testid="search">{searchText}</div>
       }
 
       render(
-        <MarketplaceContextProvider>
+        <MarketplaceContextProvider searchParams={searchParams}>
           <TestComponent />
         </MarketplaceContextProvider>,
       )
 
-      // Initial state from mock is empty string
-      expect(screen.getByTestId('search')).toHaveTextContent('empty')
+      expect(screen.getByTestId('search')).toHaveTextContent('test query')
     })
 
     it('should provide handleSearchPluginTextChange function', () => {
@@ -1584,19 +1620,19 @@ describe('MarketplaceContext', () => {
       const input = screen.getByTestId('search-input')
       fireEvent.change(input, { target: { value: 'new search' } })
 
-      // Handler calls setUrlFilters
-      expect(mockSetUrlFilters).toHaveBeenCalledWith({ q: 'new search' })
+      expect(screen.getByTestId('search-display')).toHaveTextContent('new search')
     })
 
-    it('should react to filter tags changes via URL', () => {
+    it('should provide handleFilterPluginTagsChange function', () => {
       const TestComponent = () => {
-        const [{ tags }, setUrlFilters] = mockUseMarketplaceFilters()
+        const tags = useMarketplaceContext(v => v.filterPluginTags)
+        const handleChange = useMarketplaceContext(v => v.handleFilterPluginTagsChange)
 
         return (
           <div>
             <button
               data-testid="add-tag"
-              onClick={() => setUrlFilters({ tags: ['search', 'image'] })}
+              onClick={() => handleChange(['search', 'image'])}
             >
               Add Tags
             </button>
@@ -1613,19 +1649,19 @@ describe('MarketplaceContext', () => {
 
       fireEvent.click(screen.getByTestId('add-tag'))
 
-      // setUrlFilters is called directly
-      expect(mockSetUrlFilters).toHaveBeenCalledWith({ tags: ['search', 'image'] })
+      expect(screen.getByTestId('tags-display')).toHaveTextContent('search,image')
     })
 
-    it('should react to plugin type changes via URL', () => {
+    it('should provide handleActivePluginTypeChange function', () => {
       const TestComponent = () => {
-        const [{ category: activeType }, setUrlFilters] = mockUseMarketplaceFilters()
+        const activeType = useMarketplaceContext(v => v.activePluginType)
+        const handleChange = useMarketplaceContext(v => v.handleActivePluginTypeChange)
 
         return (
           <div>
             <button
               data-testid="change-type"
-              onClick={() => setUrlFilters({ category: 'tool' }, { history: 'push' })}
+              onClick={() => handleChange('tool')}
             >
               Change Type
             </button>
@@ -1642,8 +1678,7 @@ describe('MarketplaceContext', () => {
 
       fireEvent.click(screen.getByTestId('change-type'))
 
-      // setUrlFilters is called directly
-      expect(mockSetUrlFilters).toHaveBeenCalledWith({ category: 'tool' }, { history: 'push' })
+      expect(screen.getByTestId('type-display')).toHaveTextContent('tool')
     })
 
     it('should provide handleSortChange function', () => {
@@ -1677,7 +1712,7 @@ describe('MarketplaceContext', () => {
 
     it('should provide handleMoreClick function', () => {
       const TestComponent = () => {
-        const [{ q: searchText }] = mockUseMarketplaceFilters()
+        const searchText = useMarketplaceContext(v => v.searchPluginText)
         const sort = useMarketplaceContext(v => v.sort)
         const handleMoreClick = useMarketplaceContext(v => v.handleMoreClick)
 
@@ -1709,8 +1744,38 @@ describe('MarketplaceContext', () => {
 
       fireEvent.click(screen.getByTestId('more-click'))
 
-      // Handler calls setUrlFilters with the query
-      expect(mockSetUrlFilters).toHaveBeenCalledWith({ q: 'more query' })
+      expect(screen.getByTestId('search-display')).toHaveTextContent('more query')
+      expect(screen.getByTestId('sort-display')).toHaveTextContent('version_updated_at-DESC')
+    })
+
+    it('should provide resetPlugins function', () => {
+      const TestComponent = () => {
+        const resetPlugins = useMarketplaceContext(v => v.resetPlugins)
+        const plugins = useMarketplaceContext(v => v.plugins)
+
+        return (
+          <div>
+            <button
+              data-testid="reset-plugins"
+              onClick={resetPlugins}
+            >
+              Reset
+            </button>
+            <div data-testid="plugins-display">{plugins ? 'has plugins' : 'no plugins'}</div>
+          </div>
+        )
+      }
+
+      render(
+        <MarketplaceContextProvider>
+          <TestComponent />
+        </MarketplaceContextProvider>,
+      )
+
+      fireEvent.click(screen.getByTestId('reset-plugins'))
+
+      // Plugins should remain undefined after reset
+      expect(screen.getByTestId('plugins-display')).toHaveTextContent('no plugins')
     })
 
     it('should accept shouldExclude prop', () => {
@@ -1731,6 +1796,16 @@ describe('MarketplaceContext', () => {
     it('should accept scrollContainerId prop', () => {
       render(
         <MarketplaceContextProvider scrollContainerId="custom-container">
+          <div data-testid="child">Child</div>
+        </MarketplaceContextProvider>,
+      )
+
+      expect(screen.getByTestId('child')).toBeInTheDocument()
+    })
+
+    it('should accept showSearchParams prop', () => {
+      render(
+        <MarketplaceContextProvider showSearchParams={false}>
           <div data-testid="child">Child</div>
         </MarketplaceContextProvider>,
       )
@@ -1764,20 +1839,21 @@ describe('PluginTypeSwitch', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       const TestComponent = () => {
-        const [{ category: activeType }, setUrlFilters] = mockUseMarketplaceFilters()
+        const activeType = useMarketplaceContext(v => v.activePluginType)
+        const handleChange = useMarketplaceContext(v => v.handleActivePluginTypeChange)
 
         return (
           <div className="flex">
             <div
               className={activeType === 'all' ? 'active' : ''}
-              onClick={() => setUrlFilters({ category: 'all' }, { history: 'push' })}
+              onClick={() => handleChange('all')}
               data-testid="all-option"
             >
               All
             </div>
             <div
               className={activeType === 'tool' ? 'active' : ''}
-              onClick={() => setUrlFilters({ category: 'tool' }, { history: 'push' })}
+              onClick={() => handleChange('tool')}
               data-testid="tool-option"
             >
               Tools
@@ -1798,13 +1874,14 @@ describe('PluginTypeSwitch', () => {
 
     it('should highlight active plugin type', () => {
       const TestComponent = () => {
-        const [{ category: activeType }, setUrlFilters] = mockUseMarketplaceFilters()
+        const activeType = useMarketplaceContext(v => v.activePluginType)
+        const handleChange = useMarketplaceContext(v => v.handleActivePluginTypeChange)
 
         return (
           <div className="flex">
             <div
               className={activeType === 'all' ? 'active' : ''}
-              onClick={() => setUrlFilters({ category: 'all' }, { history: 'push' })}
+              onClick={() => handleChange('all')}
               data-testid="all-option"
             >
               All
@@ -1824,14 +1901,15 @@ describe('PluginTypeSwitch', () => {
   })
 
   describe('User Interactions', () => {
-    it('should call setUrlFilters when option is clicked', () => {
+    it('should call handleActivePluginTypeChange when option is clicked', () => {
       const TestComponent = () => {
-        const [{ category: activeType }, setUrlFilters] = mockUseMarketplaceFilters()
+        const handleChange = useMarketplaceContext(v => v.handleActivePluginTypeChange)
+        const activeType = useMarketplaceContext(v => v.activePluginType)
 
         return (
           <div className="flex">
             <div
-              onClick={() => setUrlFilters({ category: 'tool' }, { history: 'push' })}
+              onClick={() => handleChange('tool')}
               data-testid="tool-option"
             >
               Tools
@@ -1848,18 +1926,19 @@ describe('PluginTypeSwitch', () => {
       )
 
       fireEvent.click(screen.getByTestId('tool-option'))
-      expect(mockSetUrlFilters).toHaveBeenCalledWith({ category: 'tool' }, { history: 'push' })
+      expect(screen.getByTestId('active-type')).toHaveTextContent('tool')
     })
 
     it('should update active type when different option is selected', () => {
       const TestComponent = () => {
-        const [{ category: activeType }, setUrlFilters] = mockUseMarketplaceFilters()
+        const activeType = useMarketplaceContext(v => v.activePluginType)
+        const handleChange = useMarketplaceContext(v => v.handleActivePluginTypeChange)
 
         return (
           <div>
             <div
               className={activeType === 'model' ? 'active' : ''}
-              onClick={() => setUrlFilters({ category: 'model' }, { history: 'push' })}
+              onClick={() => handleChange('model')}
               data-testid="model-option"
             >
               Models
@@ -1877,14 +1956,14 @@ describe('PluginTypeSwitch', () => {
 
       fireEvent.click(screen.getByTestId('model-option'))
 
-      expect(mockSetUrlFilters).toHaveBeenCalledWith({ category: 'model' }, { history: 'push' })
+      expect(screen.getByTestId('active-display')).toHaveTextContent('model')
     })
   })
 
   describe('Props', () => {
     it('should accept locale prop', () => {
       const TestComponent = () => {
-        const [{ category: activeType }] = mockUseMarketplaceFilters()
+        const activeType = useMarketplaceContext(v => v.activePluginType)
         return <div data-testid="type">{activeType}</div>
       }
 
@@ -1966,6 +2045,16 @@ describe('StickySearchAndSwitchWrapper', () => {
   })
 
   describe('Props', () => {
+    it('should accept showSearchParams prop', () => {
+      render(
+        <MarketplaceContextProvider>
+          <StickySearchAndSwitchWrapper showSearchParams={false} />
+        </MarketplaceContextProvider>,
+      )
+
+      expect(screen.getByTestId('portal-elem')).toBeInTheDocument()
+    })
+
     it('should pass pluginTypeSwitchClassName to wrapper', () => {
       const { container } = render(
         <MarketplaceContextProvider>
@@ -1992,16 +2081,16 @@ describe('Marketplace Integration', () => {
   describe('Context with child components', () => {
     it('should share state between multiple consumers', () => {
       const SearchDisplay = () => {
-        const [{ q: searchText }] = mockUseMarketplaceFilters()
+        const searchText = useMarketplaceContext(v => v.searchPluginText)
         return <div data-testid="search-display">{searchText || 'empty'}</div>
       }
 
       const SearchInput = () => {
-        const [, setUrlFilters] = mockUseMarketplaceFilters()
+        const handleChange = useMarketplaceContext(v => v.handleSearchPluginTextChange)
         return (
           <input
             data-testid="search-input"
-            onChange={e => setUrlFilters({ q: e.target.value })}
+            onChange={e => handleChange(e.target.value)}
           />
         )
       }
@@ -2017,20 +2106,22 @@ describe('Marketplace Integration', () => {
 
       fireEvent.change(screen.getByTestId('search-input'), { target: { value: 'test' } })
 
-      // setUrlFilters is called directly
-      expect(mockSetUrlFilters).toHaveBeenCalledWith({ q: 'test' })
+      expect(screen.getByTestId('search-display')).toHaveTextContent('test')
     })
 
-    it('should update tags when search criteria changes', () => {
+    it('should update tags and reset plugins when search criteria changes', () => {
       const TestComponent = () => {
-        const [{ tags }, setUrlFilters] = mockUseMarketplaceFilters()
+        const tags = useMarketplaceContext(v => v.filterPluginTags)
+        const handleTagsChange = useMarketplaceContext(v => v.handleFilterPluginTagsChange)
+        const resetPlugins = useMarketplaceContext(v => v.resetPlugins)
 
         const handleAddTag = () => {
-          setUrlFilters({ tags: ['search'] })
+          handleTagsChange(['search'])
         }
 
         const handleReset = () => {
-          setUrlFilters({ tags: [] })
+          handleTagsChange([])
+          resetPlugins()
         }
 
         return (
@@ -2051,10 +2142,10 @@ describe('Marketplace Integration', () => {
       expect(screen.getByTestId('tags')).toHaveTextContent('none')
 
       fireEvent.click(screen.getByTestId('add-tag'))
-      expect(mockSetUrlFilters).toHaveBeenCalledWith({ tags: ['search'] })
+      expect(screen.getByTestId('tags')).toHaveTextContent('search')
 
       fireEvent.click(screen.getByTestId('reset'))
-      expect(mockSetUrlFilters).toHaveBeenCalledWith({ tags: [] })
+      expect(screen.getByTestId('tags')).toHaveTextContent('none')
     })
   })
 
@@ -2102,7 +2193,8 @@ describe('Marketplace Integration', () => {
   describe('Plugin type switching', () => {
     it('should filter by plugin type', () => {
       const TestComponent = () => {
-        const [{ category: activeType }, setUrlFilters] = mockUseMarketplaceFilters()
+        const activeType = useMarketplaceContext(v => v.activePluginType)
+        const handleTypeChange = useMarketplaceContext(v => v.handleActivePluginTypeChange)
 
         return (
           <div>
@@ -2110,7 +2202,7 @@ describe('Marketplace Integration', () => {
               <button
                 key={key}
                 data-testid={`type-${key}`}
-                onClick={() => setUrlFilters({ category: value }, { history: 'push' })}
+                onClick={() => handleTypeChange(value)}
               >
                 {key}
               </button>
@@ -2129,13 +2221,13 @@ describe('Marketplace Integration', () => {
       expect(screen.getByTestId('active-type')).toHaveTextContent('all')
 
       fireEvent.click(screen.getByTestId('type-tool'))
-      expect(mockSetUrlFilters).toHaveBeenCalledWith({ category: 'tool' }, { history: 'push' })
+      expect(screen.getByTestId('active-type')).toHaveTextContent('tool')
 
       fireEvent.click(screen.getByTestId('type-model'))
-      expect(mockSetUrlFilters).toHaveBeenCalledWith({ category: 'model' }, { history: 'push' })
+      expect(screen.getByTestId('active-type')).toHaveTextContent('model')
 
       fireEvent.click(screen.getByTestId('type-bundle'))
-      expect(mockSetUrlFilters).toHaveBeenCalledWith({ category: 'bundle' }, { history: 'push' })
+      expect(screen.getByTestId('active-type')).toHaveTextContent('bundle')
     })
   })
 })
@@ -2152,12 +2244,12 @@ describe('Edge Cases', () => {
   describe('Empty states', () => {
     it('should handle empty search text', () => {
       const TestComponent = () => {
-        const [{ q: searchText }] = mockUseMarketplaceFilters()
+        const searchText = useMarketplaceContext(v => v.searchPluginText)
         return <div data-testid="search">{searchText || 'empty'}</div>
       }
 
       render(
-        <MarketplaceContextProvider>
+        <MarketplaceContextProvider searchParams={{ q: '' }}>
           <TestComponent />
         </MarketplaceContextProvider>,
       )
@@ -2167,7 +2259,7 @@ describe('Edge Cases', () => {
 
     it('should handle empty tags array', () => {
       const TestComponent = () => {
-        const [{ tags }] = mockUseMarketplaceFilters()
+        const tags = useMarketplaceContext(v => v.filterPluginTags)
         return <div data-testid="tags">{tags.length === 0 ? 'no tags' : tags.join(',')}</div>
       }
 
@@ -2208,15 +2300,15 @@ describe('Edge Cases', () => {
 
       // Test with special characters
       fireEvent.change(input, { target: { value: 'test@#$%^&*()' } })
-      expect(mockSetUrlFilters).toHaveBeenCalledWith({ q: 'test@#$%^&*()' })
+      expect(screen.getByTestId('search-display')).toHaveTextContent('test@#$%^&*()')
 
       // Test with unicode characters
       fireEvent.change(input, { target: { value: '测试中文' } })
-      expect(mockSetUrlFilters).toHaveBeenCalledWith({ q: '测试中文' })
+      expect(screen.getByTestId('search-display')).toHaveTextContent('测试中文')
 
       // Test with emojis
       fireEvent.change(input, { target: { value: '🔍 search' } })
-      expect(mockSetUrlFilters).toHaveBeenCalledWith({ q: '🔍 search' })
+      expect(screen.getByTestId('search-display')).toHaveTextContent('🔍 search')
     })
   })
 
@@ -2237,19 +2329,20 @@ describe('Edge Cases', () => {
       fireEvent.change(input, { target: { value: 'abcd' } })
       fireEvent.change(input, { target: { value: 'abcde' } })
 
-      // Final call should be with 'abcde'
-      expect(mockSetUrlFilters).toHaveBeenLastCalledWith({ q: 'abcde' })
+      // Final value should be the last one
+      expect(screen.getByTestId('search-display')).toHaveTextContent('abcde')
     })
 
     it('should handle rapid type changes', () => {
       const TestComponent = () => {
-        const [{ category: activeType }, setUrlFilters] = mockUseMarketplaceFilters()
+        const activeType = useMarketplaceContext(v => v.activePluginType)
+        const handleChange = useMarketplaceContext(v => v.handleActivePluginTypeChange)
 
         return (
           <div>
-            <button data-testid="type-tool" onClick={() => setUrlFilters({ category: 'tool' }, { history: 'push' })}>Tool</button>
-            <button data-testid="type-model" onClick={() => setUrlFilters({ category: 'model' }, { history: 'push' })}>Model</button>
-            <button data-testid="type-all" onClick={() => setUrlFilters({ category: 'all' }, { history: 'push' })}>All</button>
+            <button data-testid="type-tool" onClick={() => handleChange('tool')}>Tool</button>
+            <button data-testid="type-model" onClick={() => handleChange('model')}>Model</button>
+            <button data-testid="type-all" onClick={() => handleChange('all')}>All</button>
             <div data-testid="active-type">{activeType}</div>
           </div>
         )
@@ -2267,8 +2360,7 @@ describe('Edge Cases', () => {
       fireEvent.click(screen.getByTestId('type-all'))
       fireEvent.click(screen.getByTestId('type-tool'))
 
-      // Verify last call was with 'tool'
-      expect(mockSetUrlFilters).toHaveBeenLastCalledWith({ category: 'tool' }, { history: 'push' })
+      expect(screen.getByTestId('active-type')).toHaveTextContent('tool')
     })
   })
 
@@ -2277,14 +2369,15 @@ describe('Edge Cases', () => {
       const longText = 'a'.repeat(1000)
 
       const TestComponent = () => {
-        const [{ q: searchText }, setUrlFilters] = mockUseMarketplaceFilters()
+        const searchText = useMarketplaceContext(v => v.searchPluginText)
+        const handleChange = useMarketplaceContext(v => v.handleSearchPluginTextChange)
 
         return (
           <div>
             <input
               data-testid="search-input"
               value={searchText}
-              onChange={e => setUrlFilters({ q: e.target.value })}
+              onChange={e => handleChange(e.target.value)}
             />
             <div data-testid="search-length">{searchText.length}</div>
           </div>
@@ -2299,21 +2392,21 @@ describe('Edge Cases', () => {
 
       fireEvent.change(screen.getByTestId('search-input'), { target: { value: longText } })
 
-      // setUrlFilters is called with the long text
-      expect(mockSetUrlFilters).toHaveBeenCalledWith({ q: longText })
+      expect(screen.getByTestId('search-length')).toHaveTextContent('1000')
     })
 
     it('should handle large number of tags', () => {
       const manyTags = Array.from({ length: 100 }, (_, i) => `tag-${i}`)
 
       const TestComponent = () => {
-        const [{ tags }, setUrlFilters] = mockUseMarketplaceFilters()
+        const tags = useMarketplaceContext(v => v.filterPluginTags)
+        const handleChange = useMarketplaceContext(v => v.handleFilterPluginTagsChange)
 
         return (
           <div>
             <button
               data-testid="add-many-tags"
-              onClick={() => setUrlFilters({ tags: manyTags })}
+              onClick={() => handleChange(manyTags)}
             >
               Add Tags
             </button>
@@ -2330,8 +2423,7 @@ describe('Edge Cases', () => {
 
       fireEvent.click(screen.getByTestId('add-many-tags'))
 
-      // setUrlFilters is called with all tags
-      expect(mockSetUrlFilters).toHaveBeenCalledWith({ tags: manyTags })
+      expect(screen.getByTestId('tags-count')).toHaveTextContent('100')
     })
   })
 
@@ -2633,7 +2725,7 @@ describe('PluginTypeSwitch Component', () => {
 
     it('should call handleActivePluginTypeChange on option click', () => {
       const TestWrapper = () => {
-        const [{ category: activeType }] = mockUseMarketplaceFilters()
+        const activeType = useMarketplaceContext(v => v.activePluginType)
         return (
           <div>
             <PluginTypeSwitch />
@@ -2649,16 +2741,15 @@ describe('PluginTypeSwitch Component', () => {
       )
 
       fireEvent.click(screen.getByText('plugin.category.tools'))
-      // Now uses useMarketplaceCategory directly, so it calls setCategory(value, options)
-      expect(mockSetUrlFilters).toHaveBeenCalledWith('tool', { history: 'push' })
+      expect(screen.getByTestId('active-type-display')).toHaveTextContent('tool')
     })
 
-    it('should call setUrlFilters when option is clicked', () => {
+    it('should highlight active option with correct classes', () => {
       const TestWrapper = () => {
-        const [, setUrlFilters] = mockUseMarketplaceFilters()
+        const handleChange = useMarketplaceContext(v => v.handleActivePluginTypeChange)
         return (
           <div>
-            <button onClick={() => setUrlFilters({ category: 'model' }, { history: 'push' })} data-testid="set-model">Set Model</button>
+            <button onClick={() => handleChange('model')} data-testid="set-model">Set Model</button>
             <PluginTypeSwitch />
           </div>
         )
@@ -2671,26 +2762,27 @@ describe('PluginTypeSwitch Component', () => {
       )
 
       fireEvent.click(screen.getByTestId('set-model'))
-      expect(mockSetUrlFilters).toHaveBeenCalledWith({ category: 'model' }, { history: 'push' })
+      const modelOption = screen.getByText('plugin.category.models').closest('div')
+      expect(modelOption).toHaveClass('shadow-xs')
     })
   })
 
   describe('Popstate handling', () => {
-    it('should handle popstate event', () => {
+    it('should handle popstate event when showSearchParams is true', () => {
       const originalHref = window.location.href
 
       const TestWrapper = () => {
-        const [{ category: activeType }] = mockUseMarketplaceFilters()
+        const activeType = useMarketplaceContext(v => v.activePluginType)
         return (
           <div>
-            <PluginTypeSwitch />
+            <PluginTypeSwitch showSearchParams />
             <div data-testid="active-type">{activeType}</div>
           </div>
         )
       }
 
       render(
-        <MarketplaceContextProvider>
+        <MarketplaceContextProvider showSearchParams>
           <TestWrapper />
         </MarketplaceContextProvider>,
       )
@@ -2700,6 +2792,31 @@ describe('PluginTypeSwitch Component', () => {
 
       expect(screen.getByTestId('active-type')).toBeInTheDocument()
       expect(window.location.href).toBe(originalHref)
+    })
+
+    it('should not handle popstate when showSearchParams is false', () => {
+      const TestWrapper = () => {
+        const activeType = useMarketplaceContext(v => v.activePluginType)
+        return (
+          <div>
+            <PluginTypeSwitch showSearchParams={false} />
+            <div data-testid="active-type">{activeType}</div>
+          </div>
+        )
+      }
+
+      render(
+        <MarketplaceContextProvider showSearchParams={false}>
+          <TestWrapper />
+        </MarketplaceContextProvider>,
+      )
+
+      expect(screen.getByTestId('active-type')).toHaveTextContent('all')
+
+      const popstateEvent = new PopStateEvent('popstate')
+      window.dispatchEvent(popstateEvent)
+
+      expect(screen.getByTestId('active-type')).toHaveTextContent('all')
     })
   })
 })
@@ -2716,15 +2833,135 @@ describe('Context Advanced', () => {
   })
 
   describe('URL filter synchronization', () => {
-    it('should update URL filters when type changes', () => {
+    it('should update URL filters when showSearchParams is true and type changes', () => {
       render(
-        <MarketplaceContextProvider>
+        <MarketplaceContextProvider showSearchParams>
           <PluginTypeChangeTestComponent />
         </MarketplaceContextProvider>,
       )
 
       fireEvent.click(screen.getByTestId('change-type'))
       expect(mockSetUrlFilters).toHaveBeenCalled()
+    })
+
+    it('should not update URL filters when showSearchParams is false', () => {
+      render(
+        <MarketplaceContextProvider showSearchParams={false}>
+          <PluginTypeChangeTestComponent />
+        </MarketplaceContextProvider>,
+      )
+
+      fireEvent.click(screen.getByTestId('change-type'))
+      expect(mockSetUrlFilters).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('handlePageChange', () => {
+    it('should invoke fetchNextPage when hasNextPage is true', () => {
+      mockHasNextPage = true
+
+      render(
+        <MarketplaceContextProvider>
+          <PageChangeTestComponent />
+        </MarketplaceContextProvider>,
+      )
+
+      fireEvent.click(screen.getByTestId('next-page'))
+      expect(mockFetchNextPage).toHaveBeenCalled()
+    })
+
+    it('should not invoke fetchNextPage when hasNextPage is false', () => {
+      mockHasNextPage = false
+
+      render(
+        <MarketplaceContextProvider>
+          <PageChangeTestComponent />
+        </MarketplaceContextProvider>,
+      )
+
+      fireEvent.click(screen.getByTestId('next-page'))
+      expect(mockFetchNextPage).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('setMarketplaceCollectionsFromClient', () => {
+    it('should provide setMarketplaceCollectionsFromClient function', () => {
+      const TestComponent = () => {
+        const setCollections = useMarketplaceContext(v => v.setMarketplaceCollectionsFromClient)
+
+        return (
+          <div>
+            <button
+              data-testid="set-collections"
+              onClick={() => setCollections([{ name: 'test', label: {}, description: {}, rule: '', created_at: '', updated_at: '' }])}
+            >
+              Set Collections
+            </button>
+          </div>
+        )
+      }
+
+      render(
+        <MarketplaceContextProvider>
+          <TestComponent />
+        </MarketplaceContextProvider>,
+      )
+
+      expect(screen.getByTestId('set-collections')).toBeInTheDocument()
+      // The function should be callable without throwing
+      expect(() => fireEvent.click(screen.getByTestId('set-collections'))).not.toThrow()
+    })
+  })
+
+  describe('setMarketplaceCollectionPluginsMapFromClient', () => {
+    it('should provide setMarketplaceCollectionPluginsMapFromClient function', () => {
+      const TestComponent = () => {
+        const setPluginsMap = useMarketplaceContext(v => v.setMarketplaceCollectionPluginsMapFromClient)
+
+        return (
+          <div>
+            <button
+              data-testid="set-plugins-map"
+              onClick={() => setPluginsMap({ 'test-collection': [] })}
+            >
+              Set Plugins Map
+            </button>
+          </div>
+        )
+      }
+
+      render(
+        <MarketplaceContextProvider>
+          <TestComponent />
+        </MarketplaceContextProvider>,
+      )
+
+      expect(screen.getByTestId('set-plugins-map')).toBeInTheDocument()
+      // The function should be callable without throwing
+      expect(() => fireEvent.click(screen.getByTestId('set-plugins-map'))).not.toThrow()
+    })
+  })
+
+  describe('handleQueryPlugins', () => {
+    it('should provide handleQueryPlugins function that can be called', () => {
+      const TestComponent = () => {
+        const handleQueryPlugins = useMarketplaceContext(v => v.handleQueryPlugins)
+        return (
+          <button data-testid="query-plugins" onClick={() => handleQueryPlugins()}>
+            Query Plugins
+          </button>
+        )
+      }
+
+      render(
+        <MarketplaceContextProvider>
+          <TestComponent />
+        </MarketplaceContextProvider>,
+      )
+
+      expect(screen.getByTestId('query-plugins')).toBeInTheDocument()
+      fireEvent.click(screen.getByTestId('query-plugins'))
+      expect(screen.getByTestId('query-plugins')).toBeInTheDocument()
     })
   })
 
@@ -2742,6 +2979,23 @@ describe('Context Advanced', () => {
       )
 
       expect(screen.getByTestId('loading')).toHaveTextContent('false')
+    })
+  })
+
+  describe('isSuccessCollections state', () => {
+    it('should expose isSuccessCollections state', () => {
+      const TestComponent = () => {
+        const isSuccess = useMarketplaceContext(v => v.isSuccessCollections)
+        return <div data-testid="success">{isSuccess.toString()}</div>
+      }
+
+      render(
+        <MarketplaceContextProvider>
+          <TestComponent />
+        </MarketplaceContextProvider>,
+      )
+
+      expect(screen.getByTestId('success')).toHaveTextContent('false')
     })
   })
 
