@@ -875,6 +875,7 @@ def clear_free_plan_tenant_expired_logs(days: int, batch: int, tenant_ids: list[
 @click.option("--workers", default=1, show_default=True, type=int, help="Concurrent workflow runs to archive.")
 @click.option("--limit", default=None, type=int, help="Maximum number of runs to archive.")
 @click.option("--dry-run", is_flag=True, help="Preview without archiving.")
+@click.option("--delete-after-archive", is_flag=True, help="Delete runs and related data after archiving.")
 def archive_workflow_runs(
     tenant_ids: str | None,
     before_days: int,
@@ -884,6 +885,7 @@ def archive_workflow_runs(
     workers: int,
     limit: int | None,
     dry_run: bool,
+    delete_after_archive: bool,
 ):
     """
     Archive workflow runs for paid plan tenants older than the specified days.
@@ -927,6 +929,7 @@ def archive_workflow_runs(
         tenant_ids=[tid.strip() for tid in tenant_ids.split(",")] if tenant_ids else None,
         limit=limit,
         dry_run=dry_run,
+        delete_after_archive=delete_after_archive,
     )
     summary = archiver.run()
     click.echo(

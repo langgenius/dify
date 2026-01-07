@@ -125,6 +125,7 @@ class WorkflowRunArchiver:
         tenant_ids: Sequence[str] | None = None,
         limit: int | None = None,
         dry_run: bool = False,
+        delete_after_archive: bool = False,
         workflow_run_repo: APIWorkflowRunRepository | None = None,
     ):
         """
@@ -139,6 +140,7 @@ class WorkflowRunArchiver:
             tenant_ids: Optional tenant IDs for grayscale rollout
             limit: Maximum number of runs to archive (None for unlimited)
             dry_run: If True, only preview without making changes
+            delete_after_archive: If True, delete runs and related data after archiving
         """
         self.days = days
         self.batch_size = batch_size
@@ -160,6 +162,7 @@ class WorkflowRunArchiver:
         self.tenant_ids = sorted(set(tenant_ids)) if tenant_ids else []
         self.limit = limit
         self.dry_run = dry_run
+        self.delete_after_archive = delete_after_archive
         self.workflow_run_repo = workflow_run_repo
 
     def run(self) -> ArchiveSummary:
@@ -389,11 +392,20 @@ class WorkflowRunArchiver:
                 archived_log_count = repo.create_archive_logs(session, run, app_logs, trigger_metadata)
                 session.commit()
 
+                deleted_counts = None
+                if self.delete_after_archive:
+                    deleted_counts = repo.delete_runs_with_related(
+                        [run],
+                        delete_node_executions=self._delete_node_executions,
+                        delete_trigger_logs=self._delete_trigger_logs,
+                    )
+
                 logger.info(
-                    "Archived workflow run %s: tables=%s, archived_logs=%s",
+                    "Archived workflow run %s: tables=%s, archived_logs=%s, deleted=%s",
                     run.id,
                     {s.table_name: s.row_count for s in table_stats},
                     archived_log_count,
+                    deleted_counts,
                 )
 
                 result.tables = table_stats
