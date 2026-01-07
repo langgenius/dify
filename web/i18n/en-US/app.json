@@ -1,5 +1,4 @@
 {
-  "_test_ci_trigger": "This is a test key for CI trigger - will be reverted, first time to update",
   "accessControl": "Web App Access Control",
   "accessControlDialog.accessItems.anyone": "Anyone with the link",
   "accessControlDialog.accessItems.external": "Authenticated external users",
