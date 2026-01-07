@@ -7,7 +7,6 @@ to S3-compatible object storage.
 
 import base64
 import datetime
-import gzip
 import hashlib
 import logging
 from collections.abc import Generator
@@ -39,7 +38,7 @@ class ArchiveStorage:
     """
     S3-compatible storage client for archiving or exporting.
 
-    This client provides methods for storing and retrieving archived data in JSONL and JSONL+gzip formats.
+    This client provides methods for storing and retrieving archived data in JSONL format.
     """
 
     def __init__(self, bucket: str):
@@ -249,29 +248,6 @@ class ArchiveStorage:
         return base64.b64encode(hashlib.md5(data).digest()).decode()
 
     @staticmethod
-    def serialize_to_jsonl_gz(records: list[dict[str, Any]]) -> bytes:
-        """
-        Serialize records to gzipped JSONL format.
-
-        Args:
-            records: List of dictionaries to serialize
-
-        Returns:
-            Gzipped JSONL bytes
-        """
-        lines = []
-        for record in records:
-            # Convert datetime objects to ISO format strings
-            serialized = ArchiveStorage._serialize_record(record)
-            lines.append(orjson.dumps(serialized))
-
-        jsonl_content = b"\n".join(lines)
-        if jsonl_content:
-            jsonl_content += b"\n"
-
-        return gzip.compress(jsonl_content)
-
-    @staticmethod
     def serialize_to_jsonl(records: list[dict[str, Any]]) -> bytes:
         """
         Serialize records to JSONL format.
@@ -307,26 +283,6 @@ class ArchiveStorage:
         records = []
 
         for line in data.splitlines():
-            if line:
-                records.append(orjson.loads(line))
-
-        return records
-
-    @staticmethod
-    def deserialize_from_jsonl_gz(data: bytes) -> list[dict[str, Any]]:
-        """
-        Deserialize gzipped JSONL data to records.
-
-        Args:
-            data: Gzipped JSONL bytes
-
-        Returns:
-            List of dictionaries
-        """
-        jsonl_content = gzip.decompress(data)
-        records = []
-
-        for line in jsonl_content.splitlines():
             if line:
                 records.append(orjson.loads(line))
 

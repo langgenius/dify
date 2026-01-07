@@ -268,8 +268,8 @@ def test_serialization_roundtrip():
         {"id": "2", "value": 123},
     ]
 
-    data = ArchiveStorage.serialize_to_jsonl_gz(records)
-    decoded = ArchiveStorage.deserialize_from_jsonl_gz(data)
+    data = ArchiveStorage.serialize_to_jsonl(records)
+    decoded = ArchiveStorage.deserialize_from_jsonl(data)
 
     assert decoded[0]["id"] == "1"
     assert decoded[0]["payload"]["nested"] == "value"
