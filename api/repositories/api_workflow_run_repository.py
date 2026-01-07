@@ -332,6 +332,19 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         """
         ...
 
+    def get_archived_runs_by_time_range(
+        self,
+        session: Session,
+        tenant_ids: Sequence[str] | None,
+        start_date: datetime,
+        end_date: datetime,
+        limit: int,
+    ) -> Sequence[WorkflowRun]:
+        """
+        Get archived workflow runs in a time range.
+        """
+        ...
+
     def create_workflow_pause(
         self,
         workflow_run_id: str,

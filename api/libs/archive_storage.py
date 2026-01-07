@@ -294,6 +294,25 @@ class ArchiveStorage:
         return jsonl_content
 
     @staticmethod
+    def deserialize_from_jsonl(data: bytes) -> list[dict[str, Any]]:
+        """
+        Deserialize JSONL data to records.
+
+        Args:
+            data: JSONL bytes
+
+        Returns:
+            List of dictionaries
+        """
+        records = []
+
+        for line in data.splitlines():
+            if line:
+                records.append(orjson.loads(line))
+
+        return records
+
+    @staticmethod
     def deserialize_from_jsonl_gz(data: bytes) -> list[dict[str, Any]]:
         """
         Deserialize gzipped JSONL data to records.

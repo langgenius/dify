@@ -8,8 +8,8 @@ back to the database.
 import io
 import json
 import logging
-import tarfile
 import time
+import zipfile
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
@@ -28,10 +28,12 @@ from libs.archive_storage import (
 )
 from models.trigger import WorkflowTriggerLog
 from models.workflow import (
+    WorkflowAppLog,
     WorkflowNodeExecutionModel,
     WorkflowNodeExecutionOffload,
     WorkflowPause,
     WorkflowPauseReason,
+    WorkflowRun,
 )
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.factory import DifyAPIRepositoryFactory
@@ -41,6 +43,8 @@ logger = logging.getLogger(__name__)
 
 # Mapping of table names to SQLAlchemy models
 TABLE_MODELS = {
+    "workflow_runs": WorkflowRun,
+    "workflow_app_logs": WorkflowAppLog,
     "workflow_node_executions": WorkflowNodeExecutionModel,
     "workflow_node_execution_offload": WorkflowNodeExecutionOffload,
     "workflow_pauses": WorkflowPause,
@@ -77,7 +81,7 @@ class WorkflowRunRestore:
     """
 
     ARCHIVE_SCHEMA_VERSION = "1.0"
-    ARCHIVE_BUNDLE_NAME = f"archive.v{ARCHIVE_SCHEMA_VERSION}.tar"
+    ARCHIVE_BUNDLE_NAME = f"archive.v{ARCHIVE_SCHEMA_VERSION}.zip"
 
     def __init__(self, dry_run: bool = False):
         """
@@ -139,14 +143,14 @@ class WorkflowRunRestore:
             click.echo(click.style(result.error, fg="red"))
             return result
 
-        if not run.is_archived:
-            result.error = f"Workflow run {workflow_run_id} is not archived"
-            click.echo(click.style(result.error, fg="yellow"))
-            return result
-
         session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
 
         with session_maker() as session:
+            if not repo.get_archived_run_ids(session, [run.id]):
+                result.error = f"Workflow run {workflow_run_id} is not archived"
+                click.echo(click.style(result.error, fg="yellow"))
+                return result
+
             try:
                 created_at = run.created_at
                 prefix = (
@@ -161,9 +165,9 @@ class WorkflowRunRestore:
                     click.echo(click.style(result.error, fg="red"))
                     return result
 
-                with tarfile.open(fileobj=io.BytesIO(archive_data), mode="r") as tar:
+                with zipfile.ZipFile(io.BytesIO(archive_data), mode="r") as archive:
                     try:
-                        manifest = self._load_manifest_from_tar(tar)
+                        manifest = self._load_manifest_from_zip(archive)
                     except ValueError as e:
                         result.error = f"Archive bundle invalid: {e}"
                         click.echo(click.style(result.error, fg="red"))
@@ -187,9 +191,9 @@ class WorkflowRunRestore:
                             result.restored_counts[table_name] = row_count
                             continue
 
-                        member_path = f"{table_name}.jsonl.gz"
+                        member_path = f"{table_name}.jsonl"
                         try:
-                            fileobj = tar.extractfile(member_path)
+                            data = archive.read(member_path)
                         except KeyError:
                             click.echo(
                                 click.style(
@@ -199,18 +203,8 @@ class WorkflowRunRestore:
                             )
                             result.restored_counts[table_name] = 0
                             continue
-                        if fileobj is None:
-                            click.echo(
-                                click.style(
-                                    f"  Warning: Table data not found in archive: {member_path}",
-                                    fg="yellow",
-                                )
-                            )
-                            result.restored_counts[table_name] = 0
-                            continue
 
-                        data = fileobj.read()
-                        records = ArchiveStorage.deserialize_from_jsonl_gz(data)
+                        records = ArchiveStorage.deserialize_from_jsonl(data)
                         restored = self._restore_table_records(
                             session,
                             table_name,
@@ -236,9 +230,6 @@ class WorkflowRunRestore:
                         manifest_total,
                         restored_total,
                     )
-
-                    # Mark as not archived
-                    repo.set_runs_archived(session, [run.id], archived=False)
                     session.commit()
 
                 result.success = True
@@ -269,14 +260,12 @@ class WorkflowRunRestore:
         return self.workflow_run_repo
 
     @staticmethod
-    def _load_manifest_from_tar(tar: tarfile.TarFile) -> dict[str, Any]:
+    def _load_manifest_from_zip(archive: zipfile.ZipFile) -> dict[str, Any]:
         try:
-            fileobj = tar.extractfile("manifest.json")
+            data = archive.read("manifest.json")
         except KeyError as e:
             raise ValueError("manifest.json missing from archive bundle") from e
-        if fileobj is None:
-            raise ValueError("manifest.json missing from archive bundle")
-        return json.loads(fileobj.read().decode("utf-8"))
+        return json.loads(data.decode("utf-8"))
 
     def _restore_table_records(
         self,

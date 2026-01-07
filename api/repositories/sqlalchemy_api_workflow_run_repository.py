@@ -491,6 +491,28 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         session.add_all(archive_logs)
         return len(archive_logs)
 
+    def get_archived_runs_by_time_range(
+        self,
+        session: Session,
+        tenant_ids: Sequence[str] | None,
+        start_date: datetime,
+        end_date: datetime,
+        limit: int,
+    ) -> Sequence[WorkflowRun]:
+        stmt = (
+            select(WorkflowRun)
+            .join(WorkflowArchiveLog, WorkflowArchiveLog.workflow_run_id == WorkflowRun.id)
+            .where(
+                WorkflowArchiveLog.run_created_at >= start_date,
+                WorkflowArchiveLog.run_created_at < end_date,
+            )
+            .order_by(WorkflowArchiveLog.run_created_at.asc(), WorkflowArchiveLog.workflow_run_id.asc())
+            .limit(limit)
+        )
+        if tenant_ids:
+            stmt = stmt.where(WorkflowArchiveLog.tenant_id.in_(tenant_ids))
+        return list(session.scalars(stmt))
+
     def create_workflow_pause(
         self,
         workflow_run_id: str,
