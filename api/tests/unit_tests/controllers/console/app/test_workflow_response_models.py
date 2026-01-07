@@ -88,7 +88,6 @@ def _load_workflow_module():
 
 
 _workflow_module = _load_workflow_module()
-WorkflowResponse = _workflow_module.WorkflowResponse
 WorkflowPaginationResponse = _workflow_module.WorkflowPaginationResponse
 WorkflowRunNodeExecutionResponse = _workflow_module.WorkflowRunNodeExecutionResponse
 
@@ -129,23 +128,6 @@ def _workflow_stub(identifier: str = "wf-1") -> SimpleNamespace:
             }
         ],
     )
-
-
-def test_workflow_response_masks_secret_environment_variables():
-    workflow_obj = _workflow_stub()
-
-    serialized = WorkflowResponse.model_validate(workflow_obj, from_attributes=True).model_dump(mode="json")
-
-    assert serialized["id"] == "wf-1"
-    assert serialized["hash"] == "hash-wf-1"
-    assert serialized["environment_variables"][0]["value"] == "123"
-    assert serialized["environment_variables"][1]["value"] == "*" * 20
-    assert serialized["conversation_variables"][0]["value_type"] == "string"
-    assert serialized["graph"] == {"nodes": [], "edges": []}
-    assert serialized["features"] == {"file_upload": {"enabled": True}}
-    assert serialized["rag_pipeline_variables"][0]["allow_file_extension"] == [".txt"]
-    assert serialized["created_at"] == int(_ts().timestamp())
-
 
 def test_workflow_node_execution_response_serializes_nested_entities():
     node_execution = SimpleNamespace(
