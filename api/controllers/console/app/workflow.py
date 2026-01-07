@@ -266,7 +266,7 @@ class WorkflowRunNodeExecutionResponse(ResponseModel):
     created_at: int | None = None
     created_by_role: str | None = None
     created_by_account: SimpleAccount | None = Field(default=None)
-    created_by_end_user: SimpleEndUser | None = Field(default=None, validation_alias="created_by_end_user")
+    created_by_end_user: SimpleEndUser | None = Field(default=None)
     finished_at: int | None = None
     inputs_truncated: bool | None = None
     outputs_truncated: bool | None = None
