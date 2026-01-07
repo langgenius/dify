@@ -364,13 +364,13 @@ jobs:
             ```bash
             date +%Y%m%d-%H%M%S
             ```
-            (Note the output, e.g., "20250107-143052")
+            (Note the output, e.g., "20260115-143052")
 
             2. Then create branch using the timestamp value:
             ```bash
-            git -C ${{ github.workspace }} checkout -b chore/i18n-sync-20250107-143052
+            git -C ${{ github.workspace }} checkout -b chore/i18n-sync-20260115-143052
             ```
-            (Replace "20250107-143052" with the actual timestamp from step 1)
+            (Replace "20260115-143052" with the actual timestamp from step 1)
 
             3. Stage changes:
             ```bash
