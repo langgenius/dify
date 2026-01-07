@@ -1,8 +1,4 @@
-'use client'
-import type { Locale } from '.'
-import { camelCase, kebabCase } from 'es-toolkit/string'
-import i18n from 'i18next'
-import { initReactI18next } from 'react-i18next'
+import { kebabCase } from 'es-toolkit/string'
 import appAnnotation from '../i18n/en-US/app-annotation.json'
 import appApi from '../i18n/en-US/app-api.json'
 import appDebug from '../i18n/en-US/app-debug.json'
@@ -35,7 +31,7 @@ import tools from '../i18n/en-US/tools.json'
 import workflow from '../i18n/en-US/workflow.json'
 
 // @keep-sorted
-export const resources = {
+const resources = {
   app,
   appAnnotation,
   appApi,
@@ -82,60 +78,5 @@ export type Resources = typeof resources
 export type NamespaceCamelCase = keyof Resources
 export type NamespaceKebabCase = KebabCase<NamespaceCamelCase>
 
-const requireSilent = async (lang: Locale, namespace: NamespaceKebabCase) => {
-  let res
-  try {
-    res = (await import(`../i18n/${lang}/${namespace}.json`)).default
-  }
-  catch {
-    res = (await import(`../i18n/en-US/${namespace}.json`)).default
-  }
-
-  return res
-}
-
-const NAMESPACES = Object.keys(resources).map(kebabCase) as NamespaceKebabCase[]
-
-// Load a single namespace for a language
-export const loadNamespace = async (lang: Locale, ns: NamespaceKebabCase) => {
-  const camelNs = camelCase(ns) as NamespaceCamelCase
-  if (i18n.hasResourceBundle(lang, camelNs))
-    return
-
-  const resource = await requireSilent(lang, ns)
-  i18n.addResourceBundle(lang, camelNs, resource, true, true)
-}
-
-// Load all namespaces for a language (used when switching language)
-export const loadLangResources = async (lang: Locale) => {
-  await Promise.all(
-    NAMESPACES.map(ns => loadNamespace(lang, ns)),
-  )
-}
-
-// Initial resources: load en-US namespaces for fallback/default locale
-const getInitialTranslations = () => {
-  return {
-    'en-US': resources,
-  }
-}
-
-if (!i18n.isInitialized) {
-  i18n.use(initReactI18next).init({
-    lng: undefined,
-    fallbackLng: 'en-US',
-    resources: getInitialTranslations(),
-    defaultNS: 'common',
-    ns: Object.keys(resources),
-    keySeparator: false,
-  })
-}
-
-export const changeLanguage = async (lng?: Locale) => {
-  if (!lng)
-    return
-  await loadLangResources(lng)
-  await i18n.changeLanguage(lng)
-}
-
-export default i18n
+export const namespacesCamelCase = Object.keys(resources) as NamespaceCamelCase[]
+export const namespacesKebabCase = namespacesCamelCase.map(ns => kebabCase(ns)) as NamespaceKebabCase[]
