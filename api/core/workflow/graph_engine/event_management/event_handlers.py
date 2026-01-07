@@ -136,7 +136,11 @@ class EventHandler:
 
         # Collect the event only for the first attempt; retries remain silent
         if is_initial_attempt:
-            self._event_collector.collect(event)
+            # For response nodes, intercept the event for proper ordering
+            # For non-response nodes, the event is passed through immediately (unless part of a stream)
+            intercepted_events = self._response_coordinator.intercept_start_event(event)
+            for intercepted_event in intercepted_events:
+                self._event_collector.collect(intercepted_event)
 
     @_dispatch.register
     def _(self, event: NodeRunStreamChunkEvent) -> None:
@@ -147,7 +151,7 @@ class EventHandler:
             event: The stream chunk event
         """
         # Process with response coordinator
-        streaming_events = list(self._response_coordinator.intercept_event(event))
+        streaming_events = list(self._response_coordinator.intercept_chunk_event(event))
 
         # Collect all events
         for stream_event in streaming_events:
@@ -174,7 +178,7 @@ class EventHandler:
         self._store_node_outputs(event.node_id, event.node_run_result.outputs)
 
         # Forward to response coordinator and emit streaming events
-        streaming_events = self._response_coordinator.intercept_event(event)
+        streaming_events = self._response_coordinator.intercept_succeeded_event(event)
         for stream_event in streaming_events:
             self._event_collector.collect(stream_event)
 
@@ -203,8 +207,8 @@ class EventHandler:
         if node.execution_type == NodeExecutionType.RESPONSE:
             self._update_response_outputs(event.node_run_result.outputs)
 
-        # Collect the event
-        self._event_collector.collect(event)
+        # Note: We rely on intercept_succeeded_event to collect the event (or buffer it).
+        # So we don't call self._event_collector.collect(event) here directly anymore.
 
     @_dispatch.register
     def _(self, event: NodeRunPauseRequestedEvent) -> None:
