@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime
 from typing import Literal
 
@@ -99,7 +101,7 @@ class AccountPasswordPayload(BaseModel):
     repeat_new_password: str
 
     @model_validator(mode="after")
-    def check_passwords_match(self) -> "AccountPasswordPayload":
+    def check_passwords_match(self) -> AccountPasswordPayload:
         if self.new_password != self.repeat_new_password:
             raise RepeatPasswordNotMatchError()
         return self

@@ -1,15 +1,14 @@
 'use client'
-import { noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
 import { emailRegex } from '@/config'
-import I18NContext from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import { useWebAppStore } from '@/context/web-app-context'
 import { webAppLogin } from '@/service/common'
 import { fetchAccessToken } from '@/service/share'
@@ -21,7 +20,7 @@ type MailAndPasswordAuthProps = {
 
 export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAuthProps) {
   const { t } = useTranslation()
-  const { locale } = useContext(I18NContext)
+  const locale = useLocale()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [showPassword, setShowPassword] = useState(false)

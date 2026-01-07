@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import re
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
@@ -267,6 +269,6 @@ class VariablePool(BaseModel):
             self.add(selector, value)
 
     @classmethod
-    def empty(cls) -> "VariablePool":
+    def empty(cls) -> VariablePool:
         """Create an empty variable pool."""
         return cls(system_variables=SystemVariable.empty())

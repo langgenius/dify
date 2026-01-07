@@ -11,7 +11,6 @@ import { PluginCategoryEnum } from '@/app/components/plugins/types'
 // Note: Import after mocks are set up
 import { DEFAULT_SORT, SCROLL_BOTTOM_THRESHOLD } from './constants'
 import { MarketplaceContext, MarketplaceContextProvider, useMarketplaceContext } from './context'
-import { useMixedTranslation } from './hooks'
 import PluginTypeSwitch, { PLUGIN_TYPE_SEARCH_MAP } from './plugin-type-switch'
 import StickySearchAndSwitchWrapper from './sticky-search-and-switch-wrapper'
 import {
@@ -27,17 +26,17 @@ import {
 // Mock External Dependencies Only
 // ================================
 
-// Mock react-i18next
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 // Mock i18next-config
 vi.mock('@/i18n-config/i18next-config', () => ({
   default: {
-    getFixedT: (_locale: string) => (key: string) => key,
+    getFixedT: (_locale: string) => (key: string, options?: Record<string, unknown>) => {
+      if (options && options.ns) {
+        return `${options.ns}.${key}`
+      }
+      else {
+        return key
+      }
+    },
   },
 }))
 
@@ -191,11 +190,9 @@ vi.mock('next-themes', () => ({
   }),
 }))
 
-// Mock useI18N context
+// Mock useLocale context
 vi.mock('@/context/i18n', () => ({
-  useI18N: () => ({
-    locale: 'en-US',
-  }),
+  useLocale: () => 'en-US',
 }))
 
 // Mock i18n-config/language
@@ -600,48 +597,6 @@ describe('utils', () => {
       expect(getMarketplaceListFilterType(PLUGIN_TYPE_SEARCH_MAP.tool)).toBe('plugin')
       expect(getMarketplaceListFilterType(PLUGIN_TYPE_SEARCH_MAP.model)).toBe('plugin')
       expect(getMarketplaceListFilterType(PLUGIN_TYPE_SEARCH_MAP.agent)).toBe('plugin')
-    })
-  })
-})
-
-// ================================
-// Hooks Tests
-// ================================
-describe('hooks', () => {
-  describe('useMixedTranslation', () => {
-    it('should return translation function', () => {
-      const { result } = renderHook(() => useMixedTranslation())
-
-      expect(result.current.t).toBeDefined()
-      expect(typeof result.current.t).toBe('function')
-    })
-
-    it('should return translation key when no translation found', () => {
-      const { result } = renderHook(() => useMixedTranslation())
-
-      // The mock returns key as-is
-      expect(result.current.t('category.all', { ns: 'plugin' })).toBe('category.all')
-    })
-
-    it('should use locale from outer when provided', () => {
-      const { result } = renderHook(() => useMixedTranslation('zh-Hans'))
-
-      expect(result.current.t).toBeDefined()
-    })
-
-    it('should handle different locale values', () => {
-      const locales = ['en-US', 'zh-Hans', 'ja-JP', 'pt-BR']
-      locales.forEach((locale) => {
-        const { result } = renderHook(() => useMixedTranslation(locale))
-        expect(result.current.t).toBeDefined()
-        expect(typeof result.current.t).toBe('function')
-      })
-    })
-
-    it('should use getFixedT when localeFromOuter is provided', () => {
-      const { result } = renderHook(() => useMixedTranslation('fr-FR'))
-      // Should still return a function
-      expect(result.current.t('search', { ns: 'plugin' })).toBe('search')
     })
   })
 })
@@ -2090,17 +2045,6 @@ describe('StickySearchAndSwitchWrapper', () => {
   })
 
   describe('Props', () => {
-    it('should accept locale prop', () => {
-      render(
-        <MarketplaceContextProvider>
-          <StickySearchAndSwitchWrapper locale="zh-Hans" />
-        </MarketplaceContextProvider>,
-      )
-
-      // Component should render without errors
-      expect(screen.getByTestId('portal-elem')).toBeInTheDocument()
-    })
-
     it('should accept showSearchParams prop', () => {
       render(
         <MarketplaceContextProvider>
@@ -2758,15 +2702,15 @@ describe('PluginTypeSwitch Component', () => {
         </MarketplaceContextProvider>,
       )
 
-      // Note: The mock returns the key without namespace prefix
-      expect(screen.getByText('category.all')).toBeInTheDocument()
-      expect(screen.getByText('category.models')).toBeInTheDocument()
-      expect(screen.getByText('category.tools')).toBeInTheDocument()
-      expect(screen.getByText('category.datasources')).toBeInTheDocument()
-      expect(screen.getByText('category.triggers')).toBeInTheDocument()
-      expect(screen.getByText('category.agents')).toBeInTheDocument()
-      expect(screen.getByText('category.extensions')).toBeInTheDocument()
-      expect(screen.getByText('category.bundles')).toBeInTheDocument()
+      // Note: The global mock returns the key with namespace prefix (plugin.)
+      expect(screen.getByText('plugin.category.all')).toBeInTheDocument()
+      expect(screen.getByText('plugin.category.models')).toBeInTheDocument()
+      expect(screen.getByText('plugin.category.tools')).toBeInTheDocument()
+      expect(screen.getByText('plugin.category.datasources')).toBeInTheDocument()
+      expect(screen.getByText('plugin.category.triggers')).toBeInTheDocument()
+      expect(screen.getByText('plugin.category.agents')).toBeInTheDocument()
+      expect(screen.getByText('plugin.category.extensions')).toBeInTheDocument()
+      expect(screen.getByText('plugin.category.bundles')).toBeInTheDocument()
     })
 
     it('should apply className prop', () => {
@@ -2796,7 +2740,7 @@ describe('PluginTypeSwitch Component', () => {
         </MarketplaceContextProvider>,
       )
 
-      fireEvent.click(screen.getByText('category.tools'))
+      fireEvent.click(screen.getByText('plugin.category.tools'))
       expect(screen.getByTestId('active-type-display')).toHaveTextContent('tool')
     })
 
@@ -2818,7 +2762,7 @@ describe('PluginTypeSwitch Component', () => {
       )
 
       fireEvent.click(screen.getByTestId('set-model'))
-      const modelOption = screen.getByText('category.models').closest('div')
+      const modelOption = screen.getByText('plugin.category.models').closest('div')
       expect(modelOption).toHaveClass('shadow-xs')
     })
   })

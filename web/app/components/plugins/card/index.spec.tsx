@@ -21,34 +21,6 @@ import Card from './index'
 // Mock External Dependencies Only
 // ================================
 
-// Mock react-i18next (translation hook)
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
-// Mock useMixedTranslation hook
-vi.mock('../marketplace/hooks', () => ({
-  useMixedTranslation: (_locale?: string) => ({
-    t: (key: string, options?: { ns?: string }) => {
-      const fullKey = options?.ns ? `${options.ns}.${key}` : key
-      const translations: Record<string, string> = {
-        'plugin.marketplace.partnerTip': 'Partner plugin',
-        'plugin.marketplace.verifiedTip': 'Verified plugin',
-        'plugin.installModal.installWarning': 'Install warning message',
-      }
-      return translations[fullKey] || key
-    },
-  }),
-}))
-
-// Mock useGetLanguage context
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: () => 'en-US',
-  useI18N: () => ({ locale: 'en-US' }),
-}))
-
 // Mock useTheme hook
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: 'light' }),
@@ -527,31 +499,6 @@ describe('Card', () => {
       render(<Card payload={plugin} />)
 
       expect(screen.getByText('Model')).toBeInTheDocument()
-    })
-  })
-
-  // ================================
-  // Locale Tests
-  // ================================
-  describe('Locale', () => {
-    it('should use locale from props when provided', () => {
-      const plugin = createMockPlugin({
-        label: { 'en-US': 'English Title', 'zh-Hans': '中文标题' },
-      })
-
-      render(<Card payload={plugin} locale="zh-Hans" />)
-
-      expect(screen.getByText('中文标题')).toBeInTheDocument()
-    })
-
-    it('should fallback to default locale when prop locale not found', () => {
-      const plugin = createMockPlugin({
-        label: { 'en-US': 'English Title' },
-      })
-
-      render(<Card payload={plugin} locale="fr-FR" />)
-
-      expect(screen.getByText('English Title')).toBeInTheDocument()
     })
   })
 

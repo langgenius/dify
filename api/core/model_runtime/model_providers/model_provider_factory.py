@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import hashlib
 import logging
 from collections.abc import Sequence
@@ -38,7 +40,7 @@ class ModelProviderFactory:
         plugin_providers = self.get_plugin_model_providers()
         return [provider.declaration for provider in plugin_providers]
 
-    def get_plugin_model_providers(self) -> Sequence["PluginModelProviderEntity"]:
+    def get_plugin_model_providers(self) -> Sequence[PluginModelProviderEntity]:
         """
         Get all plugin model providers
         :return: list of plugin model providers
@@ -76,7 +78,7 @@ class ModelProviderFactory:
         plugin_model_provider_entity = self.get_plugin_model_provider(provider=provider)
         return plugin_model_provider_entity.declaration
 
-    def get_plugin_model_provider(self, provider: str) -> "PluginModelProviderEntity":
+    def get_plugin_model_provider(self, provider: str) -> PluginModelProviderEntity:
         """
         Get plugin model provider
         :param provider: provider name
@@ -285,7 +287,7 @@ class ModelProviderFactory:
         """
         Get provider icon
         :param provider: provider name
-        :param icon_type: icon type (icon_small or icon_large)
+        :param icon_type: icon type (icon_small or icon_small_dark)
         :param lang: language (zh_Hans or en_US)
         :return: provider icon
         """
@@ -309,13 +311,7 @@ class ModelProviderFactory:
             else:
                 file_name = provider_schema.icon_small_dark.en_US
         else:
-            if not provider_schema.icon_large:
-                raise ValueError(f"Provider {provider} does not have large icon.")
-
-            if lang.lower() == "zh_hans":
-                file_name = provider_schema.icon_large.zh_Hans
-            else:
-                file_name = provider_schema.icon_large.en_US
+            raise ValueError(f"Unsupported icon type: {icon_type}.")
 
         if not file_name:
             raise ValueError(f"Provider {provider} does not have icon.")
