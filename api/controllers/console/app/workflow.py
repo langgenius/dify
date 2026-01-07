@@ -1,11 +1,12 @@
 import json
 import logging
 from collections.abc import Sequence
-from typing import Any
+from datetime import datetime
+from typing import Any, TypeAlias, TypeVar
 
 from flask import abort, request
-from flask_restx import Resource, fields, marshal_with
-from pydantic import BaseModel, Field, field_validator
+from flask_restx import Resource
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator, model_validator
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
@@ -20,6 +21,7 @@ from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_generator import SKIP_PREPARE_USER_INPUTS_KEY
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.models import File
+from core.helper import encrypter
 from core.helper.trace_id_helper import get_external_trace_id
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.impl.exc import PluginInvokeError
@@ -29,13 +31,11 @@ from core.trigger.debug.event_selectors import (
     create_event_poller,
     select_trigger_debug_events,
 )
+from core.variables import SecretVariable, SegmentType, Variable
 from core.workflow.enums import NodeType
 from core.workflow.graph_engine.manager import GraphEngineManager
 from extensions.ext_database import db
 from factories import file_factory, variable_factory
-from fields.member_fields import simple_account_fields
-from fields.workflow_fields import workflow_fields, workflow_pagination_fields
-from fields.workflow_run_fields import workflow_run_node_execution_fields
 from libs import helper
 from libs.datetime_utils import naive_utc_now
 from libs.helper import TimestampField, uuid_value
@@ -52,61 +52,234 @@ logger = logging.getLogger(__name__)
 LISTENING_RETRY_IN = 2000
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
-# Register models for flask_restx to avoid dict type issues in Swagger
-# Register in dependency order: base models first, then dependent models
+JSONValue: TypeAlias = Any
+TResponseModel = TypeVar("TResponseModel", bound="ResponseModel")
 
-# Base models
-simple_account_model = console_ns.model("SimpleAccount", simple_account_fields)
 
-from fields.workflow_fields import pipeline_variable_fields, serialize_value_type
+class ResponseModel(BaseModel):
+    model_config = ConfigDict(
+        from_attributes=True,
+        extra="ignore",
+        populate_by_name=True,
+        serialize_by_alias=True,
+        protected_namespaces=(),
+    )
 
-conversation_variable_model = console_ns.model(
-    "ConversationVariable",
-    {
-        "id": fields.String,
-        "name": fields.String,
-        "value_type": fields.String(attribute=serialize_value_type),
-        "value": fields.Raw,
-        "description": fields.String,
-    },
-)
 
-pipeline_variable_model = console_ns.model("PipelineVariable", pipeline_variable_fields)
+def _to_timestamp(value: datetime | int | None) -> int | None:
+    if isinstance(value, datetime):
+        return int(value.timestamp())
+    return value
 
-# Workflow model with nested dependencies
-workflow_fields_copy = workflow_fields.copy()
-workflow_fields_copy["created_by"] = fields.Nested(simple_account_model, attribute="created_by_account")
-workflow_fields_copy["updated_by"] = fields.Nested(
-    simple_account_model, attribute="updated_by_account", allow_null=True
-)
-workflow_fields_copy["conversation_variables"] = fields.List(fields.Nested(conversation_variable_model))
-workflow_fields_copy["rag_pipeline_variables"] = fields.List(fields.Nested(pipeline_variable_model))
-workflow_model = console_ns.model("Workflow", workflow_fields_copy)
 
-# Workflow pagination model
-workflow_pagination_fields_copy = workflow_pagination_fields.copy()
-workflow_pagination_fields_copy["items"] = fields.List(fields.Nested(workflow_model), attribute="items")
-workflow_pagination_model = console_ns.model("WorkflowPagination", workflow_pagination_fields_copy)
+class SimpleAccount(ResponseModel):
+    id: str
+    name: str
+    email: str | None = None
 
-# Reuse workflow_run_node_execution_model from workflow_run.py if already registered
-# Otherwise register it here
-from fields.end_user_fields import simple_end_user_fields
 
-simple_end_user_model = None
-try:
-    simple_end_user_model = console_ns.models.get("SimpleEndUser")
-except AttributeError:
-    pass
-if simple_end_user_model is None:
-    simple_end_user_model = console_ns.model("SimpleEndUser", simple_end_user_fields)
+class SimpleEndUser(ResponseModel):
+    id: str
+    type: str | None = None
+    is_anonymous: bool | None = None
+    session_id: str | None = None
 
-workflow_run_node_execution_model = None
-try:
-    workflow_run_node_execution_model = console_ns.models.get("WorkflowRunNodeExecution")
-except AttributeError:
-    pass
-if workflow_run_node_execution_model is None:
-    workflow_run_node_execution_model = console_ns.model("WorkflowRunNodeExecution", workflow_run_node_execution_fields)
+
+ENVIRONMENT_VARIABLE_SUPPORTED_TYPES = (SegmentType.STRING, SegmentType.NUMBER, SegmentType.SECRET)
+
+
+def _resolve_segment_type(value: SegmentType | str | None) -> SegmentType:
+    if isinstance(value, SegmentType):
+        return value
+    if isinstance(value, str):
+        return SegmentType(value)
+    raise TypeError("value_type is required for variable serialization")
+
+
+def _serialize_environment_variable(raw: Any) -> dict[str, Any]:
+    if isinstance(raw, SecretVariable):
+        exposed = raw.value_type.exposed_type()
+        if exposed not in ENVIRONMENT_VARIABLE_SUPPORTED_TYPES:
+            raise ValueError(f"Unsupported environment variable value type: {exposed}")
+        return {
+            "id": raw.id,
+            "name": raw.name,
+            "value_type": exposed.value,
+            "value": encrypter.full_mask_token(),
+            "description": raw.description,
+        }
+    if isinstance(raw, Variable):
+        exposed = raw.value_type.exposed_type()
+        if exposed not in ENVIRONMENT_VARIABLE_SUPPORTED_TYPES:
+            raise ValueError(f"Unsupported environment variable value type: {exposed}")
+        return {
+            "id": raw.id,
+            "name": raw.name,
+            "value_type": exposed.value,
+            "value": raw.value,
+            "description": raw.description,
+        }
+    if isinstance(raw, dict):
+        raw_type = raw.get("value_type")
+        if raw_type is None:
+            raise ValueError("environment variable requires value_type")
+        exposed = _resolve_segment_type(raw_type).exposed_type()
+        if exposed not in ENVIRONMENT_VARIABLE_SUPPORTED_TYPES:
+            raise ValueError(f"Unsupported environment variable value type: {exposed}")
+        result = dict(raw)
+        result["value_type"] = exposed.value
+        return result
+    raise TypeError(f"Unsupported environment variable type: {type(raw)!r}")
+
+
+class EnvironmentVariable(ResponseModel):
+    id: str
+    name: str
+    value_type: str
+    value: JSONValue | None = None
+    description: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce(cls, value: Any):
+        return _serialize_environment_variable(value)
+
+
+class ConversationVariable(ResponseModel):
+    id: str
+    name: str
+    value_type: str
+    value: JSONValue | None = None
+    description: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce(cls, value: Any):
+        if isinstance(value, Variable):
+            return {
+                "id": value.id,
+                "name": value.name,
+                "value_type": value.value_type.exposed_type().value,
+                "value": value.value,
+                "description": value.description,
+            }
+        if isinstance(value, dict):
+            result = dict(value)
+            raw_type = result.get("value_type")
+            if raw_type is None:
+                raise ValueError("conversation variable requires value_type")
+            exposed = _resolve_segment_type(raw_type).exposed_type()
+            result["value_type"] = exposed.value
+            return result
+        raise TypeError(f"Unsupported conversation variable type: {type(value)!r}")
+
+
+class PipelineVariable(ResponseModel):
+    label: str | None = None
+    variable: str | None = None
+    type: str | None = None
+    belong_to_node_id: str | None = None
+    max_length: int | None = None
+    required: bool | None = None
+    unit: str | None = None
+    default_value: JSONValue | None = None
+    options: list[str] | None = None
+    placeholder: str | None = None
+    tooltips: str | None = None
+    allowed_file_types: list[str] | None = None
+    allow_file_extension: list[str] | None = None
+    allow_file_upload_methods: list[str] | None = None
+
+
+class WorkflowResponse(ResponseModel):
+    id: str
+    graph: dict[str, JSONValue] = Field(default_factory=dict, validation_alias=AliasChoices("graph_dict", "graph"))
+    features: dict[str, JSONValue] = Field(
+        default_factory=dict, validation_alias=AliasChoices("features_dict", "features")
+    )
+    hash: str | None = Field(default=None, validation_alias=AliasChoices("unique_hash", "hash"))
+    version: str
+    marked_name: str | None = None
+    marked_comment: str | None = None
+    created_by: SimpleAccount | None = Field(default=None, validation_alias="created_by_account")
+    created_at: int | None = None
+    updated_by: SimpleAccount | None = Field(default=None, validation_alias="updated_by_account")
+    updated_at: int | None = None
+    tool_published: bool | None = None
+    environment_variables: list[EnvironmentVariable] = Field(default_factory=list)
+    conversation_variables: list[ConversationVariable] = Field(default_factory=list)
+    rag_pipeline_variables: list[PipelineVariable] = Field(default_factory=list)
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return _to_timestamp(value)
+
+    @field_validator("graph", "features", mode="before")
+    @classmethod
+    def _default_dict(cls, value: Any):
+        if value is None:
+            return {}
+        return value
+
+    @field_validator("environment_variables", "conversation_variables", "rag_pipeline_variables", mode="before")
+    @classmethod
+    def _default_list(cls, value: Any):
+        if value is None:
+            return []
+        return value
+
+
+class WorkflowPaginationResponse(ResponseModel):
+    items: list[WorkflowResponse]
+    page: int
+    limit: int
+    has_more: bool
+
+    @field_validator("items", mode="before")
+    @classmethod
+    def _default_items(cls, value: Any):
+        if value is None:
+            return []
+        return value
+
+
+class WorkflowRunNodeExecutionResponse(ResponseModel):
+    id: str
+    index: int
+    predecessor_node_id: str | None = None
+    node_id: str
+    node_type: str
+    title: str | None = None
+    inputs: dict[str, JSONValue] | None = Field(default=None, validation_alias=AliasChoices("inputs_dict", "inputs"))
+    process_data: dict[str, JSONValue] | None = Field(
+        default=None, validation_alias=AliasChoices("process_data_dict", "process_data")
+    )
+    outputs: dict[str, JSONValue] | None = Field(default=None, validation_alias=AliasChoices("outputs_dict", "outputs"))
+    status: str
+    error: str | None = None
+    elapsed_time: float | None = None
+    execution_metadata: dict[str, JSONValue] = Field(
+        default_factory=dict, validation_alias=AliasChoices("execution_metadata_dict", "execution_metadata")
+    )
+    extras: dict[str, JSONValue] | None = None
+    created_at: int | None = None
+    created_by_role: str | None = None
+    created_by_account: SimpleAccount | None = Field(default=None, validation_alias="created_by_account")
+    created_by_end_user: SimpleEndUser | None = Field(default=None, validation_alias="created_by_end_user")
+    finished_at: int | None = None
+    inputs_truncated: bool | None = None
+    outputs_truncated: bool | None = None
+    process_data_truncated: bool | None = None
+
+    @field_validator("created_at", "finished_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return _to_timestamp(value)
+
+
+def _dump_response(model_cls: type[TResponseModel], payload: Any) -> dict[str, Any]:
+    return model_cls.model_validate(payload, from_attributes=True).model_dump(mode="json")
 
 
 class SyncDraftWorkflowPayload(BaseModel):
@@ -188,6 +361,12 @@ class DraftWorkflowTriggerRunAllPayload(BaseModel):
     node_ids: list[str]
 
 
+class SyncDraftWorkflowResponse(ResponseModel):
+    result: str
+    hash: str
+    updated_at: str
+
+
 def reg(cls: type[BaseModel]):
     console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
 
@@ -205,6 +384,15 @@ reg(WorkflowListQuery)
 reg(WorkflowUpdatePayload)
 reg(DraftWorkflowTriggerRunPayload)
 reg(DraftWorkflowTriggerRunAllPayload)
+reg(SyncDraftWorkflowResponse)
+reg(WorkflowResponse)
+reg(WorkflowPaginationResponse)
+reg(WorkflowRunNodeExecutionResponse)
+
+WORKFLOW_RESPONSE_SCHEMA = console_ns.models[WorkflowResponse.__name__]
+WORKFLOW_PAGINATION_SCHEMA = console_ns.models[WorkflowPaginationResponse.__name__]
+WORKFLOW_RUN_NODE_EXECUTION_SCHEMA = console_ns.models[WorkflowRunNodeExecutionResponse.__name__]
+SYNC_DRAFT_WORKFLOW_RESPONSE_SCHEMA = console_ns.models[SyncDraftWorkflowResponse.__name__]
 
 
 # TODO(QuantumGhost): Refactor existing node run API to handle file parameter parsing
@@ -230,13 +418,12 @@ class DraftWorkflowApi(Resource):
     @console_ns.doc("get_draft_workflow")
     @console_ns.doc(description="Get draft workflow for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(200, "Draft workflow retrieved successfully", workflow_model)
+    @console_ns.response(200, "Draft workflow retrieved successfully", WORKFLOW_RESPONSE_SCHEMA)
     @console_ns.response(404, "Draft workflow not found")
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @marshal_with(workflow_model)
     @edit_permission_required
     def get(self, app_model: App):
         """
@@ -250,7 +437,7 @@ class DraftWorkflowApi(Resource):
             raise DraftWorkflowNotExist()
 
         # return workflow, if not found, return None (initiate graph by frontend)
-        return workflow
+        return _dump_response(WorkflowResponse, workflow)
 
     @setup_required
     @login_required
@@ -262,14 +449,7 @@ class DraftWorkflowApi(Resource):
     @console_ns.response(
         200,
         "Draft workflow synced successfully",
-        console_ns.model(
-            "SyncDraftWorkflowResponse",
-            {
-                "result": fields.String,
-                "hash": fields.String,
-                "updated_at": fields.String,
-            },
-        ),
+        SYNC_DRAFT_WORKFLOW_RESPONSE_SCHEMA,
     )
     @console_ns.response(400, "Invalid workflow configuration")
     @console_ns.response(403, "Permission denied")
@@ -598,14 +778,13 @@ class DraftWorkflowNodeRunApi(Resource):
     @console_ns.doc(description="Run draft workflow node")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
     @console_ns.expect(console_ns.models[DraftWorkflowNodeRunPayload.__name__])
-    @console_ns.response(200, "Node run started successfully", workflow_run_node_execution_model)
+    @console_ns.response(200, "Node run started successfully", WORKFLOW_RUN_NODE_EXECUTION_SCHEMA)
     @console_ns.response(403, "Permission denied")
     @console_ns.response(404, "Node not found")
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @marshal_with(workflow_run_node_execution_model)
     @edit_permission_required
     def post(self, app_model: App, node_id: str):
         """
@@ -637,7 +816,7 @@ class DraftWorkflowNodeRunApi(Resource):
             files=files,
         )
 
-        return workflow_node_execution
+        return _dump_response(WorkflowRunNodeExecutionResponse, workflow_node_execution)
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/publish")
@@ -645,13 +824,12 @@ class PublishedWorkflowApi(Resource):
     @console_ns.doc("get_published_workflow")
     @console_ns.doc(description="Get published workflow for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(200, "Published workflow retrieved successfully", workflow_model)
+    @console_ns.response(200, "Published workflow retrieved successfully", WORKFLOW_RESPONSE_SCHEMA)
     @console_ns.response(404, "Published workflow not found")
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @marshal_with(workflow_model)
     @edit_permission_required
     def get(self, app_model: App):
         """
@@ -662,7 +840,9 @@ class PublishedWorkflowApi(Resource):
         workflow = workflow_service.get_published_workflow(app_model=app_model)
 
         # return workflow, if not found, return None
-        return workflow
+        if not workflow:
+            return None
+        return _dump_response(WorkflowResponse, workflow)
 
     @console_ns.expect(console_ns.models[PublishWorkflowPayload.__name__])
     @setup_required
@@ -797,12 +977,11 @@ class PublishedAllWorkflowApi(Resource):
     @console_ns.doc("get_all_published_workflows")
     @console_ns.doc(description="Get all published workflows for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(200, "Published workflows retrieved successfully", workflow_pagination_model)
+    @console_ns.response(200, "Published workflows retrieved successfully", WORKFLOW_PAGINATION_SCHEMA)
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @marshal_with(workflow_pagination_model)
     @edit_permission_required
     def get(self, app_model: App):
         """
@@ -831,12 +1010,15 @@ class PublishedAllWorkflowApi(Resource):
                 named_only=named_only,
             )
 
-            return {
-                "items": workflows,
-                "page": page,
-                "limit": limit,
-                "has_more": has_more,
-            }
+            return _dump_response(
+                WorkflowPaginationResponse,
+                {
+                    "items": workflows,
+                    "page": page,
+                    "limit": limit,
+                    "has_more": has_more,
+                },
+            )
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/<string:workflow_id>")
@@ -845,14 +1027,13 @@ class WorkflowByIdApi(Resource):
     @console_ns.doc(description="Update workflow by ID")
     @console_ns.doc(params={"app_id": "Application ID", "workflow_id": "Workflow ID"})
     @console_ns.expect(console_ns.models[WorkflowUpdatePayload.__name__])
-    @console_ns.response(200, "Workflow updated successfully", workflow_model)
+    @console_ns.response(200, "Workflow updated successfully", WORKFLOW_RESPONSE_SCHEMA)
     @console_ns.response(404, "Workflow not found")
     @console_ns.response(403, "Permission denied")
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @marshal_with(workflow_model)
     @edit_permission_required
     def patch(self, app_model: App, workflow_id: str):
         """
@@ -889,7 +1070,7 @@ class WorkflowByIdApi(Resource):
             # Commit the transaction in the controller
             session.commit()
 
-        return workflow
+        return _dump_response(WorkflowResponse, workflow)
 
     @setup_required
     @login_required
@@ -925,14 +1106,13 @@ class DraftWorkflowNodeLastRunApi(Resource):
     @console_ns.doc("get_draft_workflow_node_last_run")
     @console_ns.doc(description="Get last run result for draft workflow node")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @console_ns.response(200, "Node last run retrieved successfully", workflow_run_node_execution_model)
+    @console_ns.response(200, "Node last run retrieved successfully", WORKFLOW_RUN_NODE_EXECUTION_SCHEMA)
     @console_ns.response(404, "Node last run not found")
     @console_ns.response(403, "Permission denied")
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @marshal_with(workflow_run_node_execution_model)
     def get(self, app_model: App, node_id: str):
         srv = WorkflowService()
         workflow = srv.get_draft_workflow(app_model)
@@ -945,7 +1125,7 @@ class DraftWorkflowNodeLastRunApi(Resource):
         )
         if node_exec is None:
             raise NotFound("last run not found")
-        return node_exec
+        return _dump_response(WorkflowRunNodeExecutionResponse, node_exec)
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/trigger/run")
@@ -958,14 +1138,7 @@ class DraftWorkflowTriggerRunApi(Resource):
     @console_ns.doc("poll_draft_workflow_trigger_run")
     @console_ns.doc(description="Poll for trigger events and execute full workflow when event arrives")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(
-        console_ns.model(
-            "DraftWorkflowTriggerRunRequest",
-            {
-                "node_id": fields.String(required=True, description="Node ID"),
-            },
-        )
-    )
+    @console_ns.expect(console_ns.models[DraftWorkflowTriggerRunPayload.__name__])
     @console_ns.response(200, "Trigger event received and workflow executed successfully")
     @console_ns.response(403, "Permission denied")
     @console_ns.response(500, "Internal server error")
