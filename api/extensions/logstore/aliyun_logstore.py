@@ -183,15 +183,15 @@ class AliyunLogStore:
 
         # Get timeout configuration
         check_timeout = int(os.environ.get("ALIYUN_SLS_CHECK_CONNECTIVITY_TIMEOUT", 30))
-        
+
         # Pre-check endpoint connectivity to prevent indefinite hangs
         self._check_endpoint_connectivity(self.endpoint, check_timeout)
-        
+
         # Initialize SDK client
         self.client = LogClient(
             self.endpoint, self.access_key_id, self.access_key_secret, auth_version=AUTH_VERSION_4, region=self.region
         )
-        
+
         # Append Dify identification to the existing user agent
         original_user_agent = self.client._user_agent  # pyright: ignore[reportPrivateUsage]
         dify_version = dify_config.project.version
@@ -209,18 +209,18 @@ class AliyunLogStore:
         """
         Check if the SLS endpoint is reachable before creating LogClient.
         Prevents indefinite hangs when the endpoint is unreachable.
-        
+
         Args:
             endpoint: SLS endpoint URL
             timeout: Connection timeout in seconds
-            
+
         Raises:
             ConnectionError: If endpoint is not reachable
         """
         # Extract hostname from endpoint
-        hostname = endpoint.replace('https://', '').replace('http://', '').split('/')[0].split(':')[0]
+        hostname = endpoint.replace("https://", "").replace("http://", "").split("/")[0].split(":")[0]
         port = 80
-        
+
         try:
             # Use context manager to ensure socket is properly closed
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:

@@ -1,0 +1,1 @@
+"""LogStore extension unit tests."""

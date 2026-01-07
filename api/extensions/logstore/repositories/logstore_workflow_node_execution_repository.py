@@ -24,6 +24,7 @@ from core.workflow.enums import NodeType
 from core.workflow.repositories.workflow_node_execution_repository import OrderConfig, WorkflowNodeExecutionRepository
 from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from extensions.logstore.aliyun_logstore import AliyunLogStore
+from extensions.logstore.sql_escape import escape_identifier
 from libs.helper import extract_tenant_id
 from models import (
     Account,
@@ -313,6 +314,10 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         # This optimization avoids window functions for common case where we only
         # want the final state of each node execution
 
+        # Escape parameters to prevent SQL injection
+        escaped_workflow_run_id = escape_identifier(workflow_run_id)
+        escaped_tenant_id = escape_identifier(self._tenant_id)
+
         # Build ORDER BY clause
         order_clause = ""
         if order_config and order_config.order_by:
@@ -330,13 +335,14 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         sql = f"""
             SELECT *
             FROM {AliyunLogStore.workflow_node_execution_logstore}
-            WHERE workflow_run_id='{workflow_run_id}'
-              AND tenant_id='{self._tenant_id}'
+            WHERE workflow_run_id='{escaped_workflow_run_id}'
+              AND tenant_id='{escaped_tenant_id}'
               AND finished_at IS NOT NULL
         """
 
         if self._app_id:
-            sql += f" AND app_id='{self._app_id}'"
+            escaped_app_id = escape_identifier(self._app_id)
+            sql += f" AND app_id='{escaped_app_id}'"
 
         if order_clause:
             sql += f" {order_clause}"
