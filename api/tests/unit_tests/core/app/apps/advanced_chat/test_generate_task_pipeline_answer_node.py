@@ -2,6 +2,7 @@
 Tests for AdvancedChatAppGenerateTaskPipeline._handle_node_succeeded_event method,
 specifically testing the ANSWER node message_replace logic.
 """
+
 from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
@@ -121,9 +122,7 @@ class TestAnswerNodeMessageReplace:
             pipeline._message_cycle_manager.message_replace_to_stream_response = Mock()
             return pipeline
 
-    def test_answer_node_with_different_output_sends_message_replace(
-        self, pipeline, mock_application_generate_entity
-    ):
+    def test_answer_node_with_different_output_sends_message_replace(self, pipeline, mock_application_generate_entity):
         """
         Test that when an ANSWER node's final output differs from accumulated answer,
         a message_replace event is sent.
