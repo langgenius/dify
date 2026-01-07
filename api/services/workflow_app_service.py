@@ -209,10 +209,10 @@ class WorkflowAppService:
             stmt = stmt.where(WorkflowArchiveLog.run_status == status)
 
         if created_at_before:
-            stmt = stmt.where(WorkflowArchiveLog.created_at <= created_at_before)
+            stmt = stmt.where(WorkflowArchiveLog.log_created_at <= created_at_before)
 
         if created_at_after:
-            stmt = stmt.where(WorkflowArchiveLog.created_at >= created_at_after)
+            stmt = stmt.where(WorkflowArchiveLog.log_created_at >= created_at_after)
 
         if created_by_end_user_session_id:
             stmt = stmt.join(
@@ -237,7 +237,7 @@ class WorkflowAppService:
                 ),
             )
 
-        stmt = stmt.order_by(WorkflowArchiveLog.created_at.desc())
+        stmt = stmt.order_by(WorkflowArchiveLog.log_created_at.desc())
 
         count_stmt = select(func.count()).select_from(stmt.subquery())
         total = session.scalar(count_stmt) or 0
