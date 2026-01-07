@@ -101,11 +101,9 @@ jobs:
       - name: Run Claude Code for Translation Sync
         if: steps.detect_changes.outputs.CHANGED_FILES != ''
         uses: anthropics/claude-code-action@v1
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          use_oauth: false
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           timeout_minutes: 55
           prompt: |
             You are a professional i18n synchronization engineer for the Dify project.
