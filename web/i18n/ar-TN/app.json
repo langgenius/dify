@@ -1,4 +1,5 @@
 {
+  "_test_ci_trigger": "هذا مفتاح اختبار لمشغل CI - سيتم إلغاؤه، التحديث الأول",
   "accessControl": "التحكم في الوصول إلى تطبيق الويب",
   "accessControlDialog.accessItems.anyone": "أي شخص لديه الرابط",
   "accessControlDialog.accessItems.external": "المستخدمون الخارجيون Authenticated",

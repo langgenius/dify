@@ -1,4 +1,5 @@
 {
+  "_test_ci_trigger": "Это тестовый ключ для триггера CI - будет отменен, первое обновление",
   "accessControl": "Управление доступом к веб-приложению",
   "accessControlDialog.accessItems.anyone": "Кто угодно с ссылкой",
   "accessControlDialog.accessItems.external": "Аутентифицированные внешние пользователи",

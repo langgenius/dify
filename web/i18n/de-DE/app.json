@@ -1,4 +1,5 @@
 {
+  "_test_ci_trigger": "Dies ist ein Testschlüssel für CI-Auslösung - wird rückgängig gemacht, erste Aktualisierung",
   "accessControl": "Zugriffskontrolle für Webanwendungen",
   "accessControlDialog.accessItems.anyone": "Jeder mit dem Link",
   "accessControlDialog.accessItems.external": "Authentifizierte externe Benutzer",

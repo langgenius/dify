@@ -1,4 +1,5 @@
 {
+  "_test_ci_trigger": "To jest klucz testowy dla wyzwalacza CI - zostanie przywrócony, pierwsza aktualizacja",
   "accessControl": "Kontrola dostępu do aplikacji internetowej",
   "accessControlDialog.accessItems.anyone": "Każdy z linkiem",
   "accessControlDialog.accessItems.external": "Uwierzytelnieni użytkownicy zewnętrzni",

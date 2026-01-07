@@ -1,4 +1,5 @@
 {
+  "_test_ci_trigger": "Esta é uma chave de teste para acionamento de CI - será revertida, primeira atualização",
   "accessControl": "Controle de Acesso do Aplicativo Web",
   "accessControlDialog.accessItems.anyone": "Qualquer pessoa com o link",
   "accessControlDialog.accessItems.external": "Usuários externos autenticados",
