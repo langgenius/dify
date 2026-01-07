@@ -114,7 +114,7 @@ class TestAppModelValidation:
     def test_icon_type_validation(self):
         """Test icon type enum values."""
         # Assert
-        assert {t.value for t in IconType} == {"image", "emoji"}
+        assert {t.value for t in IconType} == {"image", "emoji", "link"}
 
     def test_app_desc_or_prompt_with_description(self):
         """Test desc_or_prompt property when description exists."""

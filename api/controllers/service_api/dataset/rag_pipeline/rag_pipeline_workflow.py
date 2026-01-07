@@ -174,7 +174,7 @@ class PipelineRunApi(DatasetApiResource):
                 pipeline=pipeline,
                 user=current_user,
                 args=payload.model_dump(),
-                invoke_from=InvokeFrom.PUBLISHED if payload.is_published else InvokeFrom.DEBUGGER,
+                invoke_from=InvokeFrom.PUBLISHED_PIPELINE if payload.is_published else InvokeFrom.DEBUGGER,
                 streaming=payload.response_mode == "streaming",
             )
 
