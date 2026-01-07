@@ -99,3 +99,40 @@ class WorkflowAppLogApi(Resource):
             )
 
             return workflow_app_log_pagination
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflow-archived-logs")
+class WorkflowArchivedLogApi(Resource):
+    @console_ns.doc("get_workflow_archived_logs")
+    @console_ns.doc(description="Get workflow archived execution logs")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.expect(console_ns.models[WorkflowAppLogQuery.__name__])
+    @console_ns.response(200, "Workflow archived logs retrieved successfully", workflow_app_log_pagination_model)
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.WORKFLOW])
+    @marshal_with(workflow_app_log_pagination_model)
+    def get(self, app_model: App):
+        """
+        Get workflow archived logs
+        """
+        args = WorkflowAppLogQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+
+        workflow_app_service = WorkflowAppService()
+        with Session(db.engine) as session:
+            workflow_app_log_pagination = workflow_app_service.get_paginate_workflow_archive_logs(
+                session=session,
+                app_model=app_model,
+                keyword=args.keyword,
+                status=args.status,
+                created_at_before=args.created_at__before,
+                created_at_after=args.created_at__after,
+                page=args.page,
+                limit=args.limit,
+                detail=args.detail,
+                created_by_end_user_session_id=args.created_by_end_user_session_id,
+                created_by_account=args.created_by_account,
+            )
+
+            return workflow_app_log_pagination

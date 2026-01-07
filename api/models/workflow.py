@@ -1209,6 +1209,34 @@ class WorkflowArchiveLog(TypeBase):
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
 
+    @property
+    def workflow_run(self) -> dict[str, Any]:
+        return {
+            "id": self.workflow_run_id,
+            "version": self.run_version,
+            "status": self.run_status,
+            "triggered_from": self.run_triggered_from,
+            "error": self.run_error,
+            "elapsed_time": self.run_elapsed_time,
+            "total_tokens": self.run_total_tokens,
+            "total_steps": self.run_total_steps,
+            "created_at": self.run_created_at,
+            "finished_at": self.run_finished_at,
+            "exceptions_count": self.run_exceptions_count,
+        }
+
+    @property
+    def created_by_account(self):
+        created_by_role = CreatorUserRole(self.created_by_role)
+        return db.session.get(Account, self.created_by) if created_by_role == CreatorUserRole.ACCOUNT else None
+
+    @property
+    def created_by_end_user(self):
+        from .model import EndUser
+
+        created_by_role = CreatorUserRole(self.created_by_role)
+        return db.session.get(EndUser, self.created_by) if created_by_role == CreatorUserRole.END_USER else None
+
 
 class ConversationVariable(TypeBase):
     __tablename__ = "workflow_conversation_variables"
