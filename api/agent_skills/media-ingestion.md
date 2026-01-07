@@ -28,7 +28,7 @@ storage or preprocessing logic.
 
 ### Input
 
-```json
+````json
 {
   "file_id": "string"
 }
@@ -50,3 +50,4 @@ Agent:
 1. Receives file_id
 2. Inspects metadata
 3. Triggers transcription workflow
+````
