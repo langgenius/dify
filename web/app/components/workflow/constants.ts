@@ -116,6 +116,7 @@ export const SUPPORT_OUTPUT_VARS_NODE = [
   BlockEnum.KnowledgeRetrieval,
   BlockEnum.Code,
   BlockEnum.TemplateTransform,
+  BlockEnum.Command,
   BlockEnum.HttpRequest,
   BlockEnum.Tool,
   BlockEnum.VariableAssigner,
@@ -162,6 +163,25 @@ export const KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT: Var[] = [
 export const TEMPLATE_TRANSFORM_OUTPUT_STRUCT: Var[] = [
   {
     variable: 'output',
+    type: VarType.string,
+  },
+]
+
+export const COMMAND_OUTPUT_STRUCT: Var[] = [
+  {
+    variable: 'stdout',
+    type: VarType.string,
+  },
+  {
+    variable: 'stderr',
+    type: VarType.string,
+  },
+  {
+    variable: 'exit_code',
+    type: VarType.number,
+  },
+  {
+    variable: 'pid',
     type: VarType.string,
   },
 ]

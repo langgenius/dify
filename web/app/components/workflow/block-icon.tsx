@@ -25,6 +25,7 @@ import {
   TemplatingTransform,
   VariableX,
   WebhookLine,
+  WindowCursor,
 } from '@/app/components/base/icons/src/vender/workflow'
 import { cn } from '@/utils/classnames'
 import { BlockEnum } from './types'
@@ -45,7 +46,7 @@ const DEFAULT_ICON_MAP: Record<BlockEnum, React.ComponentType<{ className: strin
   [BlockEnum.Start]: Home,
   [BlockEnum.LLM]: Llm,
   [BlockEnum.Code]: Code,
-  [BlockEnum.Command]: Code,
+  [BlockEnum.Command]: WindowCursor,
   [BlockEnum.End]: End,
   [BlockEnum.IfElse]: IfElse,
   [BlockEnum.HttpRequest]: Http,

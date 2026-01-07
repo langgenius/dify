@@ -1,6 +1,7 @@
 import type { AgentNodeType } from '../../../agent/types'
 import type { AnswerNodeType } from '../../../answer/types'
 import type { CodeNodeType } from '../../../code/types'
+import type { CommandNodeType } from '../../../command/types'
 import type { DocExtractorNodeType } from '../../../document-extractor/types'
 import type { EndNodeType } from '../../../end/types'
 import type { HttpNodeType } from '../../../http/types'
@@ -38,6 +39,7 @@ import { isArray } from 'es-toolkit/compat'
 import { produce } from 'immer'
 import {
   AGENT_OUTPUT_STRUCT,
+  COMMAND_OUTPUT_STRUCT,
   FILE_STRUCT,
   getGlobalVars,
   HTTP_REQUEST_OUTPUT_STRUCT,
@@ -432,6 +434,11 @@ const formatItem = (
 
     case BlockEnum.TemplateTransform: {
       res.vars = TEMPLATE_TRANSFORM_OUTPUT_STRUCT
+      break
+    }
+
+    case BlockEnum.Command: {
+      res.vars = COMMAND_OUTPUT_STRUCT
       break
     }
 
@@ -1744,6 +1751,20 @@ export const updateNodeVars = (
         }
         break
       }
+      case BlockEnum.Command: {
+        const payload = data as CommandNodeType
+        payload.command = replaceOldVarInText(
+          payload.command,
+          oldVarSelector,
+          newVarSelector,
+        )
+        payload.working_directory = replaceOldVarInText(
+          payload.working_directory,
+          oldVarSelector,
+          newVarSelector,
+        )
+        break
+      }
       case BlockEnum.QuestionClassifier: {
         const payload = data as QuestionClassifierNodeType
         if (
@@ -2032,6 +2053,11 @@ export const getNodeOutputVars = (
 
     case BlockEnum.TemplateTransform: {
       varsToValueSelectorList(TEMPLATE_TRANSFORM_OUTPUT_STRUCT, [id], res)
+      break
+    }
+
+    case BlockEnum.Command: {
+      varsToValueSelectorList(COMMAND_OUTPUT_STRUCT, [id], res)
       break
     }
 

@@ -5,6 +5,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
+import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import useConfig from './use-config'
@@ -63,6 +64,33 @@ const Panel: FC<NodePanelProps<CommandNodeType>> = ({
             availableNodes={availableNodesWithParent}
           />
         </Field>
+      </div>
+      <Split />
+      <div>
+        <OutputVars>
+          <>
+            <VarItem
+              name="stdout"
+              type="string"
+              description={t(`${i18nPrefix}.outputVars.stdout`, { ns: 'workflow' })}
+            />
+            <VarItem
+              name="stderr"
+              type="string"
+              description={t(`${i18nPrefix}.outputVars.stderr`, { ns: 'workflow' })}
+            />
+            <VarItem
+              name="exit_code"
+              type="number"
+              description={t(`${i18nPrefix}.outputVars.exitCode`, { ns: 'workflow' })}
+            />
+            <VarItem
+              name="pid"
+              type="number"
+              description={t(`${i18nPrefix}.outputVars.pid`, { ns: 'workflow' })}
+            />
+          </>
+        </OutputVars>
       </div>
     </div>
   )
