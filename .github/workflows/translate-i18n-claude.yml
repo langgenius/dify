@@ -154,6 +154,11 @@ jobs:
             - Use **Bash** ONLY for: git commands, gh commands, pnpm commands
             - Run bash commands ONE BY ONE, never combine with && or ||
 
+            ## EFFICIENCY RULES
+            - **ONE Edit per language file** - batch all key additions into a single Edit
+            - Insert new keys at the beginning of JSON (after `{`), lint:fix will sort them
+            - Translate ALL keys for a language mentally first, then do ONE Edit
+
             ## Context
             - Changed/target files: ${{ steps.detect_changes.outputs.CHANGED_FILES }}
             - Target languages (empty means all supported): ${{ steps.detect_changes.outputs.TARGET_LANGS }}
@@ -227,19 +232,28 @@ jobs:
             ║  PHASE 2: SYNC - Execute Changes Based on Report            ║
             ═══════════════════════════════════════════════════════════════
 
-            ### Step 2.1: Process ADD Operations
-            For each key in the ADD list:
-            1. Use Read tool to get the English value from en-US file
-            2. Translate to target language
-            3. Use Edit tool to add the key to target language JSON file (maintain alphabetical order)
+            ### Step 2.1: Process ADD Operations (BATCH per language file)
 
-            **IMPORTANT**: Always use the Edit tool to modify JSON files. NEVER use bash scripts, node, or jq.
+            **CRITICAL WORKFLOW for efficiency:**
+            1. First, translate ALL new keys for ALL languages mentally
+            2. Then, for EACH language file, do ONE Edit operation:
+               - Read the file once
+               - Insert ALL new keys at the beginning (right after the opening `{`)
+               - Don't worry about alphabetical order - lint:fix will sort them later
 
-            ### Step 2.2: Process UPDATE Operations (CRITICAL!)
-            For each key in the UPDATE list:
-            1. Get the NEW English value using Read tool
-            2. Translate to target language
-            3. Use Edit tool to **OVERWRITE** the existing translation (old one is stale!)
+            Example Edit (adding 3 keys to zh-Hans/app.json):
+            ```
+            old_string: '{\n  "accessControl"'
+            new_string: '{\n  "newKey1": "translation1",\n  "newKey2": "translation2",\n  "newKey3": "translation3",\n  "accessControl"'
+            ```
+
+            **IMPORTANT**:
+            - ONE Edit per language file (not one Edit per key!)
+            - Always use the Edit tool. NEVER use bash scripts, node, or jq.
+
+            ### Step 2.2: Process UPDATE Operations
+            For UPDATE keys, use Edit tool to replace the old value with the new translation.
+            You can batch multiple updates in one Edit if they are adjacent.
 
             ### Step 2.3: Process DELETE Operations
             For extra keys reported by i18n:check:
