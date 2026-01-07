@@ -93,7 +93,7 @@ export type MessageContent = {
 
 export type CompletionConversationGeneralDetail = {
   id: string
-  status: 'normal' | 'finished'
+  status: 'normal' | 'finished' | 'paused'
   from_source: 'api' | 'console'
   from_end_user_id: string
   from_end_user_session_id: string

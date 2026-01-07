@@ -88,7 +88,16 @@ const HandThumbIconWithCount: FC<{ count: number, iconType: 'up' | 'down' }> = (
   )
 }
 
-const statusTdRender = (statusCount: StatusCount) => {
+const statusTdRender = (status: 'normal' | 'finished' | 'paused', statusCount: StatusCount) => {
+  if (status === 'paused') {
+    return (
+      <div className="system-xs-semibold-uppercase inline-flex items-center gap-1">
+        <Indicator color="yellow" />
+        <span className="text-util-colors-warning-warning-600">Pending</span>
+      </div>
+    )
+  }
+
   if (!statusCount)
     return null
 
@@ -377,7 +386,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
       return false
     }
-  }, [allChatItems, appDetail?.id, t])
+  }, [allChatItems, appDetail?.id, notify, t])
 
   const fetchInitiated = useRef(false)
 
@@ -524,7 +533,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
     finally {
       setIsLoading(false)
     }
-  }, [allChatItems, detail.id, hasMore, isLoading, timezone, t, appDetail])
+  }, [isLoading, hasMore, appDetail?.id, detail?.id, detail?.model_config?.configs?.introduction, allChatItems, timezone, t])
 
   useEffect(() => {
     const scrollableDiv = document.getElementById('scrollableDiv')
@@ -1093,7 +1102,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                 <td className="p-3 pr-2">{renderTdValue(endUser || defaultValue, !endUser)}</td>
                 {isChatflow && (
                   <td className="w-[160px] p-3 pr-2" style={{ maxWidth: isChatMode ? 300 : 200 }}>
-                    {statusTdRender(log.status_count)}
+                    {statusTdRender(log.status, log.status_count)}
                   </td>
                 )}
                 <td className="p-3 pr-2" style={{ maxWidth: isChatMode ? 100 : 200 }}>
