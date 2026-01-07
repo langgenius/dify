@@ -110,13 +110,19 @@ jobs:
             fi
           else
             # Push trigger - detect changed files from the push
-            changed=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} -- 'web/i18n/en-US/*.json' 2>/dev/null | xargs -n1 basename 2>/dev/null | sed 's/.json$//' | tr '\n' ' ' || echo "")
+            BEFORE_SHA="${{ github.event.before }}"
+            # Handle edge case: first push or force push may have null/zero SHA
+            if [ -z "$BEFORE_SHA" ] || [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
+              # Fallback to comparing with parent commit
+              BEFORE_SHA="HEAD~1"
+            fi
+            changed=$(git diff --name-only "$BEFORE_SHA" ${{ github.sha }} -- 'web/i18n/en-US/*.json' 2>/dev/null | xargs -n1 basename 2>/dev/null | sed 's/.json$//' | tr '\n' ' ' || echo "")
             echo "CHANGED_FILES=$changed" >> $GITHUB_OUTPUT
             echo "TARGET_LANGS=" >> $GITHUB_OUTPUT
             echo "SYNC_MODE=incremental" >> $GITHUB_OUTPUT
 
             # Generate detailed diff for the push
-            git diff ${{ github.event.before }}..${{ github.sha }} -- 'web/i18n/en-US/*.json' > /tmp/i18n-diff.txt 2>/dev/null || echo "" > /tmp/i18n-diff.txt
+            git diff "$BEFORE_SHA"..${{ github.sha }} -- 'web/i18n/en-US/*.json' > /tmp/i18n-diff.txt 2>/dev/null || echo "" > /tmp/i18n-diff.txt
             if [ -s /tmp/i18n-diff.txt ]; then
               echo "DIFF_AVAILABLE=true" >> $GITHUB_OUTPUT
             else
@@ -180,8 +186,8 @@ jobs:
 
             ### Step 1.3: Run i18n:check for Each Language
             ```bash
-            cd web && pnpm install --frozen-lockfile
-            pnpm run i18n:check
+            pnpm --dir web install --frozen-lockfile
+            pnpm --dir web run i18n:check
             ```
 
             This will report:
@@ -234,7 +240,7 @@ jobs:
 
             ### Step 2.3: Process DELETE Operations
             For extra keys reported by i18n:check:
-            - Run: `cd web && pnpm run i18n:check --auto-remove`
+            - Run: `pnpm --dir web run i18n:check --auto-remove`
             - Or manually remove from target language JSON files
 
             ## Translation Guidelines
@@ -262,7 +268,7 @@ jobs:
 
             ### Step 3.1: Run Lint Fix (IMPORTANT!)
             ```bash
-            cd web && pnpm lint:fix --quiet -- 'i18n/**/*.json'
+            pnpm --dir web lint:fix --quiet -- 'i18n/**/*.json'
             ```
             This ensures:
             - JSON keys are sorted alphabetically (jsonc/sort-keys rule)
@@ -271,7 +277,7 @@ jobs:
 
             ### Step 3.2: Run Final i18n Check
             ```bash
-            cd web && pnpm run i18n:check
+            pnpm --dir web run i18n:check
             ```
 
             ### Step 3.3: Fix Any Remaining Issues
@@ -364,4 +370,4 @@ jobs:
 
           claude_args: |
             --max-turns 100
-            --allowedTools "Read,Write,Edit,Bash(git:*),Bash(gh:*),Bash(cd:*),Bash(pnpm:*),Bash(cat:*),Bash(ls:*),Glob,Grep"
+            --allowedTools "Read,Write,Edit,Bash(git:*),Bash(gh:*),Bash(pnpm:*),Bash(cat:*),Bash(ls:*),Glob,Grep"
