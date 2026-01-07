@@ -1,4 +1,5 @@
 {
+  "_test_ci_trigger": "To je testni ključ za sprožitev CI - bo razveljavljen, prva posodobitev",
   "accessControl": "Nadzor dostopa do spletne aplikacije",
   "accessControlDialog.accessItems.anyone": "Kdorkoli s povezavo",
   "accessControlDialog.accessItems.external": "Avtorizirani zunanji uporabniki",

@@ -1,4 +1,5 @@
 {
+  "_test_ci_trigger": "นี่คือคีย์ทดสอบสำหรับการเรียก CI - จะถูกยกเลิก อัปเดตครั้งแรก",
   "accessControl": "การควบคุมการเข้าถึงเว็บแอปพลิเคชัน",
   "accessControlDialog.accessItems.anyone": "ใครก็ตามที่มีลิงก์",
   "accessControlDialog.accessItems.external": "ผู้ใช้ภายนอกที่ได้รับการตรวจสอบแล้ว",

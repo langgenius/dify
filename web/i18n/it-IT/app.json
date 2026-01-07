@@ -1,4 +1,5 @@
 {
+  "_test_ci_trigger": "Questa è una chiave di test per il trigger CI - verrà annullata, primo aggiornamento",
   "accessControl": "Controllo di accesso all'app web",
   "accessControlDialog.accessItems.anyone": "Chiunque con il link",
   "accessControlDialog.accessItems.external": "Utenti esterni autenticati",

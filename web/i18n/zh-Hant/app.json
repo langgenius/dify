@@ -1,4 +1,5 @@
 {
+  "_test_ci_trigger": "這是CI觸發的測試鍵 - 將被還原，首次更新",
   "accessControl": "網頁應用程式存取控制",
   "accessControlDialog.accessItems.anyone": "擁有鏈接的人",
   "accessControlDialog.accessItems.external": "經過驗證的外部用戶",
