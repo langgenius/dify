@@ -144,10 +144,15 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          timeout_minutes: 55
           prompt: |
             You are a professional i18n synchronization engineer for the Dify project.
             Your task is to keep all language translations in sync with the English source (en-US).
+
+            ## CRITICAL TOOL RESTRICTIONS
+            - Use **Read** tool to read files (NOT cat or bash)
+            - Use **Edit** tool to modify JSON files (NOT node, jq, or bash scripts)
+            - Use **Bash** ONLY for: git commands, gh commands, pnpm commands
+            - Run bash commands ONE BY ONE, never combine with && or ||
 
             ## Context
             - Changed/target files: ${{ steps.detect_changes.outputs.CHANGED_FILES }}
@@ -166,9 +171,7 @@ jobs:
             ═══════════════════════════════════════════════════════════════
 
             ### Step 1.1: Analyze Git Diff (for incremental mode)
-            ```bash
-            cat /tmp/i18n-diff.txt 2>/dev/null || echo "No diff available"
-            ```
+            Use the Read tool to read `/tmp/i18n-diff.txt` to see the git diff.
 
             Parse the diff to categorize changes:
             - Lines with `+` (not `+++`): Added or modified values
@@ -179,9 +182,7 @@ jobs:
               * DELETE: Keys that appear only in `-` lines (removed keys)
 
             ### Step 1.2: Read Language Configuration
-            ```bash
-            cat web/i18n-config/languages.ts
-            ```
+            Use the Read tool to read `web/i18n-config/languages.ts`.
             Extract all languages with `supported: true`.
 
             ### Step 1.3: Run i18n:check for Each Language
@@ -228,15 +229,17 @@ jobs:
 
             ### Step 2.1: Process ADD Operations
             For each key in the ADD list:
-            1. Get the English value from en-US file
+            1. Use Read tool to get the English value from en-US file
             2. Translate to target language
-            3. Add to target language JSON file (maintain alphabetical order if file uses it)
+            3. Use Edit tool to add the key to target language JSON file (maintain alphabetical order)
+
+            **IMPORTANT**: Always use the Edit tool to modify JSON files. NEVER use bash scripts, node, or jq.
 
             ### Step 2.2: Process UPDATE Operations (CRITICAL!)
             For each key in the UPDATE list:
-            1. Get the NEW English value
+            1. Get the NEW English value using Read tool
             2. Translate to target language
-            3. **OVERWRITE** the existing translation (old one is stale!)
+            3. Use Edit tool to **OVERWRITE** the existing translation (old one is stale!)
 
             ### Step 2.3: Process DELETE Operations
             For extra keys reported by i18n:check:
@@ -334,18 +337,26 @@ jobs:
             If there are changes:
 
             ### Step 4.2: Create a new branch and commit
+            Run these git commands ONE BY ONE (not combined with &&):
+
+            1. Create branch:
             ```bash
-            BRANCH_NAME="chore/i18n-sync-$(date +%Y%m%d-%H%M%S)"
-            git checkout -b "$BRANCH_NAME"
+            git checkout -b "chore/i18n-sync-$(date +%Y%m%d-%H%M%S)"
+            ```
+
+            2. Stage changes:
+            ```bash
             git add web/i18n/
-            git commit -m "chore(i18n): sync translations with en-US
+            ```
 
-            - Synced translation files based on en-US changes
-            - Mode: ${{ steps.detect_changes.outputs.SYNC_MODE }}
-            - Files: ${{ steps.detect_changes.outputs.CHANGED_FILES }}
+            3. Commit (use heredoc for multi-line message):
+            ```bash
+            git commit -m "chore(i18n): sync translations with en-US - Mode: ${{ steps.detect_changes.outputs.SYNC_MODE }}"
+            ```
 
-            🤖 Generated with Claude Code GitHub Action"
-            git push origin "$BRANCH_NAME"
+            4. Push:
+            ```bash
+            git push origin HEAD
             ```
 
             ### Step 4.3: Create Pull Request
@@ -369,5 +380,5 @@ jobs:
             ```
 
           claude_args: |
-            --max-turns 100
-            --allowedTools "Read,Write,Edit,Bash(git:*),Bash(gh:*),Bash(pnpm:*),Bash(cat:*),Bash(ls:*),Glob,Grep"
+            --max-turns 150
+            --allowedTools "Read,Write,Edit,Bash(git *),Bash(git:*),Bash(gh *),Bash(gh:*),Bash(pnpm *),Bash(pnpm:*),Glob,Grep"
