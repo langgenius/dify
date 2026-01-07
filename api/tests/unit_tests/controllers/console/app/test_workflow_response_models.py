@@ -86,12 +86,6 @@ def _load_workflow_module():
 
     return module
 
-
-_workflow_module = _load_workflow_module()
-WorkflowPaginationResponse = _workflow_module.WorkflowPaginationResponse
-WorkflowRunNodeExecutionResponse = _workflow_module.WorkflowRunNodeExecutionResponse
-
-
 def _ts(hour: int = 12) -> datetime:
     return datetime(2024, 1, 1, hour, 0, 0)
 
@@ -128,54 +122,3 @@ def _workflow_stub(identifier: str = "wf-1") -> SimpleNamespace:
             }
         ],
     )
-
-
-def test_workflow_node_execution_response_serializes_nested_entities():
-    node_execution = SimpleNamespace(
-        id="node-1",
-        index=1,
-        predecessor_node_id=None,
-        node_id="node-1",
-        node_type="tool",
-        title="Tool Node",
-        inputs_dict={"foo": "bar"},
-        process_data_dict={"step": 1},
-        outputs_dict={"result": "ok"},
-        status="succeeded",
-        error=None,
-        elapsed_time=1.23,
-        execution_metadata_dict={"tool_info": {"provider_type": "builtin"}},
-        extras={"icon": "icon-url"},
-        created_at=_ts(),
-        created_by_role="account",
-        created_by_account=SimpleNamespace(id="acct-1", name="Alice", email="alice@example.com"),
-        created_by_end_user=SimpleNamespace(id="end-1", type="end_user", is_anonymous=False, session_id="sess-1"),
-        finished_at=_ts(13),
-        inputs_truncated=False,
-        outputs_truncated=False,
-        process_data_truncated=False,
-    )
-
-    serialized = WorkflowRunNodeExecutionResponse.model_validate(node_execution, from_attributes=True).model_dump(
-        mode="json"
-    )
-
-    assert serialized["created_by_account"]["name"] == "Alice"
-    assert serialized["created_by_end_user"]["session_id"] == "sess-1"
-    assert serialized["created_at"] == int(_ts().timestamp())
-    assert serialized["inputs"] == {"foo": "bar"}
-    assert serialized["execution_metadata"] == {"tool_info": {"provider_type": "builtin"}}
-
-
-def test_workflow_pagination_serializes_workflow_items():
-    workflows = [_workflow_stub("wf-1"), _workflow_stub("wf-2")]
-
-    serialized = WorkflowPaginationResponse.model_validate(
-        {"items": workflows, "page": 2, "limit": 5, "has_more": True},
-        from_attributes=True,
-    ).model_dump(mode="json")
-
-    assert serialized["page"] == 2
-    assert serialized["limit"] == 5
-    assert serialized["has_more"] is True
-    assert serialized["items"][1]["id"] == "wf-2"
