@@ -608,7 +608,7 @@ class ToolWorkflowProviderCreateApi(Resource):
             description=payload.description,
             parameters=payload.parameters,
             privacy_policy=payload.privacy_policy or "",
-            labels=payload.labels,
+            labels=payload.labels or [],
         )
 
 
