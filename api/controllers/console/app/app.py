@@ -1,10 +1,11 @@
 import re
 import uuid
-from typing import Literal
+from datetime import datetime
+from typing import Any, Literal, TypeAlias
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest
@@ -20,6 +21,7 @@ from controllers.console.wraps import (
     is_admin_or_owner_required,
     setup_required,
 )
+from core.file import helpers as file_helpers
 from core.ops.ops_trace_manager import OpsTraceManager
 from core.workflow.enums import NodeType
 from extensions.ext_database import db
@@ -37,7 +39,7 @@ from fields.app_fields import (
     WorkflowPartial,
 )
 from libs.login import current_account_with_tenant, login_required
-from models import App, Workflow
+from models import App, IconType, Workflow
 from services.app_dsl_service import AppDslService, ImportMode
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
@@ -218,8 +220,8 @@ def _to_timestamp(value: datetime | int | None) -> int | None:
 def _build_icon_url(icon_type: str | IconType | None, icon: str | None) -> str | None:
     if icon is None or icon_type is None:
         return None
-    icon_type_value = icon_type.value if isinstance(icon_type, IconType) else str(icon_type)
-    if icon_type_value.lower() != IconType.IMAGE.value:
+    icon_type_value = icon_type if isinstance(icon_type, IconType) else str(icon_type)
+    if icon_type_value.lower() != IconType.IMAGE:
         return None
     return file_helpers.get_signed_file_url(icon)
 

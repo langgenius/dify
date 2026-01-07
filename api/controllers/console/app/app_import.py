@@ -117,7 +117,7 @@ class AppImportConfirmApi(Resource):
 class AppImportCheckDependenciesApi(Resource):
     @setup_required
     @login_required
-    @get_app_model
+    @get_app_model(mode=None)
     @account_initialization_required
     @edit_permission_required
     def get(self, app_model: App):

@@ -54,7 +54,7 @@ class AppMCPServerController(Resource):
     @login_required
     @account_initialization_required
     @setup_required
-    @get_app_model
+    @get_app_model(mode=None)
     def get(self, app_model):
         server = db.session.query(AppMCPServer).where(AppMCPServer.app_id == app_model.id).first()
         return AppServer.model_validate(server, from_attributes=True).model_dump(mode="json") if server else None
@@ -66,7 +66,7 @@ class AppMCPServerController(Resource):
     @console_ns.response(201, "MCP server configuration created successfully", console_ns.models[AppServer.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @account_initialization_required
-    @get_app_model
+    @get_app_model(mode=None)
     @login_required
     @setup_required
     @edit_permission_required
