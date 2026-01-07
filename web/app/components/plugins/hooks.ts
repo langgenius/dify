@@ -1,4 +1,3 @@
-import type { TFunction } from 'i18next'
 import type { CategoryKey, TagKey } from './constants'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -13,9 +12,8 @@ export type Tag = {
   label: string
 }
 
-export const useTags = (translateFromOut?: TFunction) => {
-  const { t: translation } = useTranslation()
-  const t = translateFromOut || translation
+export const useTags = () => {
+  const { t } = useTranslation()
 
   const tags = useMemo(() => {
     return tagKeys.map((tag) => {
@@ -53,9 +51,8 @@ type Category = {
   label: string
 }
 
-export const useCategories = (translateFromOut?: TFunction, isSingle?: boolean) => {
-  const { t: translation } = useTranslation()
-  const t = translateFromOut || translation
+export const useCategories = (isSingle?: boolean) => {
+  const { t } = useTranslation()
 
   const categories = useMemo(() => {
     return categoryKeys.map((category) => {
