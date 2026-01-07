@@ -32,7 +32,7 @@ from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
-from fields.app_fields import app_detail_kernel_fields, related_app_list
+from fields.app_fields import AppDetailKernel, RelatedAppList
 from fields.dataset_fields import (
     dataset_detail_fields,
     dataset_fields,
@@ -101,11 +101,7 @@ dataset_detail_fields_copy["icon_info"] = fields.Nested(icon_info_model)
 dataset_detail_model = _get_or_create_model("DatasetDetail", dataset_detail_fields_copy)
 
 dataset_query_detail_model = _get_or_create_model("DatasetQueryDetail", dataset_query_detail_fields)
-
-app_detail_kernel_model = _get_or_create_model("AppDetailKernel", app_detail_kernel_fields)
-related_app_list_copy = related_app_list.copy()
-related_app_list_copy["data"] = fields.List(fields.Nested(app_detail_kernel_model))
-related_app_list_model = _get_or_create_model("RelatedAppList", related_app_list_copy)
+register_schema_models(console_ns, AppDetailKernel, RelatedAppList)
 
 
 def _validate_indexing_technique(value: str | None) -> str | None:
@@ -634,11 +630,10 @@ class DatasetRelatedAppListApi(Resource):
     @console_ns.doc("get_dataset_related_apps")
     @console_ns.doc(description="Get applications related to dataset")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
-    @console_ns.response(200, "Related apps retrieved successfully", related_app_list_model)
+    @console_ns.response(200, "Related apps retrieved successfully", console_ns.models[RelatedAppList.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(related_app_list_model)
     def get(self, dataset_id):
         current_user, _ = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
@@ -659,7 +654,11 @@ class DatasetRelatedAppListApi(Resource):
             if app_model:
                 related_apps.append(app_model)
 
-        return {"data": related_apps, "total": len(related_apps)}, 200
+        response = RelatedAppList(
+            data=[AppDetailKernel.model_validate(app, from_attributes=True) for app in related_apps],
+            total=len(related_apps),
+        )
+        return response.model_dump(mode="json"), 200
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/indexing-status")
