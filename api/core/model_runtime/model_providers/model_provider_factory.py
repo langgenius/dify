@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import hashlib
 import logging
 from collections.abc import Sequence
@@ -38,7 +40,7 @@ class ModelProviderFactory:
         plugin_providers = self.get_plugin_model_providers()
         return [provider.declaration for provider in plugin_providers]
 
-    def get_plugin_model_providers(self) -> Sequence["PluginModelProviderEntity"]:
+    def get_plugin_model_providers(self) -> Sequence[PluginModelProviderEntity]:
         """
         Get all plugin model providers
         :return: list of plugin model providers
@@ -76,7 +78,7 @@ class ModelProviderFactory:
         plugin_model_provider_entity = self.get_plugin_model_provider(provider=provider)
         return plugin_model_provider_entity.declaration
 
-    def get_plugin_model_provider(self, provider: str) -> "PluginModelProviderEntity":
+    def get_plugin_model_provider(self, provider: str) -> PluginModelProviderEntity:
         """
         Get plugin model provider
         :param provider: provider name

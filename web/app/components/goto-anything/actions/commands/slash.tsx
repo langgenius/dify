@@ -2,8 +2,8 @@
 import type { ActionItem } from '../types'
 import { useTheme } from 'next-themes'
 import { useEffect } from 'react'
+import { getI18n } from 'react-i18next'
 import { setLocaleOnClient } from '@/i18n-config'
-import i18n from '@/i18n-config/i18next-config'
 import { accountCommand } from './account'
 import { executeCommand } from './command-bus'
 import { communityCommand } from './community'
@@ -13,6 +13,8 @@ import { languageCommand } from './language'
 import { slashCommandRegistry } from './registry'
 import { themeCommand } from './theme'
 import { zenCommand } from './zen'
+
+const i18n = getI18n()
 
 export const slashAction: ActionItem = {
   key: '/',

@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 from collections.abc import Mapping
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from core.file.models import File
 
@@ -52,7 +54,7 @@ class SegmentType(StrEnum):
         return self in _ARRAY_TYPES
 
     @classmethod
-    def infer_segment_type(cls, value: Any) -> Optional["SegmentType"]:
+    def infer_segment_type(cls, value: Any) -> SegmentType | None:
         """
         Attempt to infer the `SegmentType` based on the Python type of the `value` parameter.
 
@@ -173,7 +175,7 @@ class SegmentType(StrEnum):
             raise AssertionError("this statement should be unreachable.")
 
     @staticmethod
-    def cast_value(value: Any, type_: "SegmentType"):
+    def cast_value(value: Any, type_: SegmentType):
         # Cast Python's `bool` type to `int` when the runtime type requires
         # an integer or number.
         #
@@ -193,7 +195,7 @@ class SegmentType(StrEnum):
             return [int(i) for i in value]
         return value
 
-    def exposed_type(self) -> "SegmentType":
+    def exposed_type(self) -> SegmentType:
         """Returns the type exposed to the frontend.
 
         The frontend treats `INTEGER` and `FLOAT` as `NUMBER`, so these are returned as `NUMBER` here.
@@ -202,7 +204,7 @@ class SegmentType(StrEnum):
             return SegmentType.NUMBER
         return self
 
-    def element_type(self) -> "SegmentType | None":
+    def element_type(self) -> SegmentType | None:
         """Return the element type of the current segment type, or `None` if the element type is undefined.
 
         Raises:
@@ -217,7 +219,7 @@ class SegmentType(StrEnum):
         return _ARRAY_ELEMENT_TYPES_MAPPING.get(self)
 
     @staticmethod
-    def get_zero_value(t: "SegmentType"):
+    def get_zero_value(t: SegmentType):
         # Lazy import to avoid circular dependency
         from factories import variable_factory
 
