@@ -1114,7 +1114,7 @@ class WorkflowAppLog(TypeBase):
     )
 
     id: Mapped[str] = mapped_column(
-        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+        StringUUID, insert_default=lambda: str(uuidv7()), default_factory=lambda: str(uuidv7()), init=False
     )
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     app_id: Mapped[str] = mapped_column(StringUUID)
@@ -1171,6 +1171,12 @@ class WorkflowArchiveLog(TypeBase):
     Workflow archive log.
 
     Stores essential workflow run snapshot data for archived app logs.
+
+    Field sources:
+    - Shared fields (tenant/app/workflow/run ids, created_by*): from WorkflowRun for consistency.
+    - log_* fields: from WorkflowAppLog when present; null if the run has no app log.
+    - run_* fields: workflow run snapshot fields from WorkflowRun.
+    - trigger_metadata: snapshot from WorkflowTriggerLog when present.
     """
 
     __tablename__ = "workflow_archive_logs"
@@ -1178,21 +1184,24 @@ class WorkflowArchiveLog(TypeBase):
         sa.PrimaryKeyConstraint("id", name="workflow_archive_log_pkey"),
         sa.Index("workflow_archive_log_app_idx", "tenant_id", "app_id"),
         sa.Index("workflow_archive_log_workflow_run_id_idx", "workflow_run_id"),
-        sa.Index("workflow_archive_log_created_at_idx", "created_at"),
+        sa.Index("workflow_archive_log_run_created_at_idx", "run_created_at"),
     )
 
     id: Mapped[str] = mapped_column(
-        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+        StringUUID, insert_default=lambda: str(uuidv7()), default_factory=lambda: str(uuidv7()), init=False
     )
+
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_run_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_from: Mapped[str] = mapped_column(String(255), nullable=False)
     created_by_role: Mapped[str] = mapped_column(String(255), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
+    log_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    log_created_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    log_created_from: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    
     run_version: Mapped[str] = mapped_column(String(255), nullable=False)
     run_status: Mapped[str] = mapped_column(String(255), nullable=False)
     run_triggered_from: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -1208,6 +1217,14 @@ class WorkflowArchiveLog(TypeBase):
     archived_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
+
+    @property
+    def created_from(self) -> str | None:
+        return self.log_created_from
+
+    @property
+    def created_at(self) -> datetime | None:
+        return self.log_created_at
 
     @property
     def workflow_run(self) -> dict[str, Any]:
