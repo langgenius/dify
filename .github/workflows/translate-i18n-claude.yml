@@ -92,6 +92,22 @@ jobs:
                 echo "DIFF_AVAILABLE=false" >> $GITHUB_OUTPUT
               fi
             fi
+          elif [ "${{ github.event_name }}" == "pull_request" ]; then
+            # PR trigger - detect changed files in the PR
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            HEAD_SHA="${{ github.sha }}"
+            changed=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" -- 'web/i18n/en-US/*.json' 2>/dev/null | xargs -n1 basename 2>/dev/null | sed 's/.json$//' | tr '\n' ' ' || echo "")
+            echo "CHANGED_FILES=$changed" >> $GITHUB_OUTPUT
+            echo "TARGET_LANGS=" >> $GITHUB_OUTPUT
+            echo "SYNC_MODE=incremental" >> $GITHUB_OUTPUT
+
+            # Generate detailed diff for the PR
+            git diff "$BASE_SHA".."$HEAD_SHA" -- 'web/i18n/en-US/*.json' > /tmp/i18n-diff.txt 2>/dev/null || echo "" > /tmp/i18n-diff.txt
+            if [ -s /tmp/i18n-diff.txt ]; then
+              echo "DIFF_AVAILABLE=true" >> $GITHUB_OUTPUT
+            else
+              echo "DIFF_AVAILABLE=false" >> $GITHUB_OUTPUT
+            fi
           else
             # Push trigger - detect changed files from the push
             changed=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} -- 'web/i18n/en-US/*.json' 2>/dev/null | xargs -n1 basename 2>/dev/null | sed 's/.json$//' | tr '\n' ' ' || echo "")
