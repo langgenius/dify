@@ -60,7 +60,6 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const page = queryParams.page > 0 ? queryParams.page : 1
   const limit = queryParams.limit > 0 ? queryParams.limit : APP_PAGE_LIMIT
 
-  // Get the app type first
   const isChatMode = appDetail.mode !== AppModeEnum.COMPLETION
 
   const query = {
@@ -77,7 +76,6 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     keyword: debouncedQueryParams.keyword || undefined,
   }
 
-  // When the details are obtained, proceed to the next request
   const { data: chatConversations, refetch: mutateChatList } = useChatConversations({
     appId: isChatMode ? appDetail.id : '',
     params: query,
@@ -115,7 +113,6 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
           : total > 0
             ? <List logs={isChatMode ? chatConversations : completionConversations} appDetail={appDetail} onRefresh={isChatMode ? mutateChatList : mutateCompletionList} />
             : <EmptyElement appDetail={appDetail} />}
-        {/* Show Pagination only if the total is more than the limit */}
         {(total && total > APP_PAGE_LIMIT)
           ? (
               <Pagination
