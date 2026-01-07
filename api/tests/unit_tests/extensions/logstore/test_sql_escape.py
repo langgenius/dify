@@ -7,7 +7,7 @@ in LogStore queries, particularly for cross-tenant access scenarios.
 
 import pytest
 
-from extensions.logstore.sql_escape import escape_identifier, escape_sql_string
+from extensions.logstore.sql_escape import escape_identifier, escape_logstore_query_value, escape_sql_string
 
 
 class TestEscapeSQLString:
@@ -309,3 +309,161 @@ class TestSQLInjectionIntegration:
         # Injection attempts are escaped
         assert "tenant'' OR ''1''=''1" in sql
         assert "app'' UNION SELECT" in sql
+
+
+# ====================================================================================
+# Tests for LogStore Query Syntax (SDK Mode)
+# ====================================================================================
+
+
+class TestLogStoreQueryEscape:
+    """Test escape_logstore_query_value for SDK mode query syntax."""
+
+    def test_normal_value(self):
+        """Test escaping normal alphanumeric value."""
+        value = "550e8400-e29b-41d4-a716-446655440000"
+        escaped = escape_logstore_query_value(value)
+
+        # Should be wrapped in double quotes
+        assert escaped == '"550e8400-e29b-41d4-a716-446655440000"'
+
+    def test_empty_value(self):
+        """Test escaping empty string."""
+        assert escape_logstore_query_value("") == '""'
+
+    def test_value_with_and_keyword(self):
+        """Test that 'and' keyword is neutralized when quoted."""
+        malicious = "value and field:evil"
+        escaped = escape_logstore_query_value(malicious)
+
+        # Should be wrapped in quotes, making 'and' a literal
+        assert escaped == '"value and field:evil"'
+
+        # Simulate using in query
+        query = f"tenant_id:{escaped}"
+        assert query == 'tenant_id:"value and field:evil"'
+
+    def test_value_with_or_keyword(self):
+        """Test that 'or' keyword is neutralized when quoted."""
+        malicious = "tenant_a or tenant_id:tenant_b"
+        escaped = escape_logstore_query_value(malicious)
+
+        assert escaped == '"tenant_a or tenant_id:tenant_b"'
+
+        query = f"tenant_id:{escaped}"
+        assert "or" in query  # Present but as literal string
+
+    def test_value_with_not_keyword(self):
+        """Test that 'not' keyword is neutralized when quoted."""
+        malicious = "not field:value"
+        escaped = escape_logstore_query_value(malicious)
+
+        assert escaped == '"not field:value"'
+
+    def test_value_with_parentheses(self):
+        """Test that parentheses are neutralized when quoted."""
+        malicious = "(tenant_a or tenant_b)"
+        escaped = escape_logstore_query_value(malicious)
+
+        assert escaped == '"(tenant_a or tenant_b)"'
+        assert "(" in escaped  # Present as literal
+        assert ")" in escaped  # Present as literal
+
+    def test_value_with_colon(self):
+        """Test that colons are neutralized when quoted."""
+        malicious = "field:value"
+        escaped = escape_logstore_query_value(malicious)
+
+        assert escaped == '"field:value"'
+        assert ":" in escaped  # Present as literal
+
+    def test_value_with_double_quotes(self):
+        """Test that internal double quotes are escaped."""
+        value_with_quotes = 'tenant"test"value'
+        escaped = escape_logstore_query_value(value_with_quotes)
+
+        # Double quotes should be escaped with backslash
+        assert escaped == '"tenant\\"test\\"value"'
+        # Should have outer quotes plus escaped inner quotes
+        assert '\\"' in escaped
+
+    def test_value_with_backslash(self):
+        """Test that backslashes are escaped."""
+        value_with_backslash = "tenant\\test"
+        escaped = escape_logstore_query_value(value_with_backslash)
+
+        # Backslash should be escaped
+        assert escaped == '"tenant\\\\test"'
+        assert "\\\\" in escaped
+
+    def test_value_with_backslash_and_quote(self):
+        """Test escaping both backslash and double quote."""
+        value = 'path\\to\\"file"'
+        escaped = escape_logstore_query_value(value)
+
+        # Both should be escaped
+        assert escaped == '"path\\\\to\\\\\\"file\\""'
+        # Verify escape order is correct
+        assert "\\\\" in escaped  # Escaped backslash
+        assert '\\"' in escaped  # Escaped double quote
+
+    def test_complex_injection_attempt(self):
+        """Test complex injection combining multiple operators."""
+        malicious = 'tenant_a" or (tenant_id:"tenant_b" and app_id:"evil")'
+        escaped = escape_logstore_query_value(malicious)
+
+        # All special chars should be literals or escaped
+        assert escaped.startswith('"')
+        assert escaped.endswith('"')
+        # Inner double quotes escaped, operators become literals
+        assert "or" in escaped
+        assert "and" in escaped
+        assert '\\"' in escaped  # Escaped quotes
+
+    def test_only_backslash(self):
+        """Test escaping a single backslash."""
+        assert escape_logstore_query_value("\\") == '"\\\\"'
+
+    def test_only_double_quote(self):
+        """Test escaping a single double quote."""
+        assert escape_logstore_query_value('"') == '"\\""'
+
+    def test_multiple_backslashes(self):
+        """Test escaping multiple consecutive backslashes."""
+        assert escape_logstore_query_value("\\\\\\") == '"\\\\\\\\\\\\"'  # 3 backslashes -> 6
+
+    def test_escape_sequence_like_input(self):
+        """Test that existing escape sequences are properly escaped."""
+        # Input looks like already escaped, but we still escape it
+        value = 'value\\"test'
+        escaped = escape_logstore_query_value(value)
+        # \\ -> \\\\, " -> \"
+        assert escaped == '"value\\\\\\"test"'
+
+
+@pytest.mark.parametrize(
+    ("attack_scenario", "field", "malicious_value"),
+    [
+        ("Cross-tenant via OR", "tenant_id", "tenant_a or tenant_id:tenant_b"),
+        ("Cross-app via AND", "app_id", "app_a and (app_id:app_b or app_id:app_c)"),
+        ("Boolean logic", "status", "succeeded or status:failed"),
+        ("Negation", "tenant_id", "not tenant_a"),
+        ("Field injection", "run_id", "run123 and tenant_id:evil_tenant"),
+        ("Parentheses grouping", "app_id", "app1 or (app_id:app2 and tenant_id:tenant2)"),
+        ("Quote breaking attempt", "tenant_id", 'tenant" or "1"="1'),
+        ("Backslash escape bypass", "app_id", "app\\ and app_id:evil"),
+    ],
+)
+def test_logstore_query_injection_scenarios(attack_scenario: str, field: str, malicious_value: str):
+    """Test that various LogStore query injection attempts are neutralized."""
+    escaped = escape_logstore_query_value(malicious_value)
+
+    # Build query
+    query = f"{field}:{escaped}"
+
+    # All operators should be within quoted string (literals)
+    assert escaped.startswith('"')
+    assert escaped.endswith('"')
+
+    # Verify the full query structure is safe
+    assert query.count(":") >= 1  # At least the main field:value separator

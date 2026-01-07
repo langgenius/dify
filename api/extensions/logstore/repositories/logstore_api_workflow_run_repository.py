@@ -23,7 +23,7 @@ from typing import Any, cast
 from sqlalchemy.orm import sessionmaker
 
 from extensions.logstore.aliyun_logstore import AliyunLogStore
-from extensions.logstore.sql_escape import escape_identifier, escape_sql_string
+from extensions.logstore.sql_escape import escape_identifier, escape_logstore_query_value, escape_sql_string
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowRun
@@ -266,8 +266,12 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
                 )
             else:
                 # Use SDK with LogStore query syntax
-                # Note: LogStore query syntax also needs escaping for special characters
-                query = f"id: {escaped_run_id} and tenant_id: {escaped_tenant_id} and app_id: {escaped_app_id}"
+                # Note: Values must be quoted in LogStore query syntax to prevent injection
+                query = (
+                    f"id:{escape_logstore_query_value(run_id)} "
+                    f"and tenant_id:{escape_logstore_query_value(tenant_id)} "
+                    f"and app_id:{escape_logstore_query_value(app_id)}"
+                )
                 from_time = 0
                 to_time = int(time.time())  # now
 
@@ -361,7 +365,8 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
                 )
             else:
                 # Use SDK with LogStore query syntax
-                query = f"id: {escaped_run_id}"
+                # Note: Values must be quoted in LogStore query syntax
+                query = f"id:{escape_logstore_query_value(run_id)}"
                 from_time = 0
                 to_time = int(time.time())  # now
 

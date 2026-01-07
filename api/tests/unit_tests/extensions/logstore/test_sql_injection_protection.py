@@ -369,23 +369,58 @@ class TestLogStoreSDKModeInjectionProtection:
         repo.logstore_client = mock_sdk_client
         return repo
 
-    def test_sdk_mode_query_syntax_injection_prevention(self, sdk_repository, mock_sdk_client):
-        """Test that SDK mode query syntax also prevents injection."""
-        malicious_run_id = "run' OR '1'='1"
-        malicious_tenant_id = "tenant' AND tenant_id LIKE '%"
+    def test_sdk_mode_query_syntax_or_injection(self, sdk_repository, mock_sdk_client):
+        """Test that SDK mode prevents OR-based cross-tenant injection."""
+        # Attempt to inject 'or' to access other tenants
+        malicious_tenant_id = "tenant_a or tenant_id:tenant_b"
 
         sdk_repository.get_workflow_run_by_id(
             tenant_id=malicious_tenant_id,
             app_id="app1",
-            run_id=malicious_run_id,
+            run_id="run123",
         )
 
         # Check LogStore query syntax
         query = mock_sdk_client.executed_queries[0]
 
-        # LogStore query uses ":" syntax, but still needs escaping
-        assert "id:" in query
-        assert "tenant_id:" in query
+        # Verify the query structure uses double quotes
+        assert 'tenant_id:"tenant_a or tenant_id:tenant_b"' in query
+        # The 'or' should be inside quotes (treated as literal)
+        assert query.count(":") >= 3  # id:, tenant_id:, app_id:
 
-        # Verify quotes are escaped
-        assert "run'' OR ''1''=''1" in query or "run' OR '1'='1" not in query
+    def test_sdk_mode_query_syntax_and_injection(self, sdk_repository, mock_sdk_client):
+        """Test that SDK mode prevents AND-based injection."""
+        # Attempt to inject 'and' condition
+        malicious_app_id = "app1 and (app_id:app2 or app_id:app3)"
+
+        sdk_repository.get_workflow_run_by_id(
+            tenant_id="tenant1",
+            app_id=malicious_app_id,
+            run_id="run123",
+        )
+
+        query = mock_sdk_client.executed_queries[0]
+
+        # Verify parentheses and 'and'/'or' are quoted (literals)
+        assert 'app_id:"app1 and (app_id:app2 or app_id:app3)"' in query
+
+    def test_sdk_mode_query_syntax_colon_injection(self, sdk_repository, mock_sdk_client):
+        """Test that SDK mode prevents colon-based field injection."""
+        # Attempt to inject additional field conditions via colon
+        malicious_run_id = "run123 and tenant_id:evil_tenant"
+
+        sdk_repository.get_workflow_run_by_id(
+            tenant_id="tenant1",
+            app_id="app1",
+            run_id=malicious_run_id,
+        )
+
+        query = mock_sdk_client.executed_queries[0]
+
+        # The malicious colon should be inside quotes (literal)
+        assert 'id:"run123 and tenant_id:evil_tenant"' in query
+        # Verify the overall query structure is correct
+        # Should be: id:"..." and tenant_id:"..." and app_id:"..."
+        assert query.startswith('id:"')
+        assert ' and tenant_id:"tenant1"' in query
+        assert ' and app_id:"app1"' in query

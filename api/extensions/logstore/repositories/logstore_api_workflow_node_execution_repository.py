@@ -14,7 +14,7 @@ from typing import Any
 from sqlalchemy.orm import sessionmaker
 
 from extensions.logstore.aliyun_logstore import AliyunLogStore
-from extensions.logstore.sql_escape import escape_identifier
+from extensions.logstore.sql_escape import escape_identifier, escape_logstore_query_value
 from models.workflow import WorkflowNodeExecutionModel
 from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
 
@@ -356,11 +356,14 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
                 )
             else:
                 # Use SDK with LogStore query syntax
+                # Note: Values must be quoted in LogStore query syntax to prevent injection
                 if tenant_id:
-                    escaped_tenant_id = escape_identifier(tenant_id)
-                    query = f"id: {escaped_execution_id} and tenant_id: {escaped_tenant_id}"
+                    query = (
+                        f"id:{escape_logstore_query_value(execution_id)} "
+                        f"and tenant_id:{escape_logstore_query_value(tenant_id)}"
+                    )
                 else:
-                    query = f"id: {escaped_execution_id}"
+                    query = f"id:{escape_logstore_query_value(execution_id)}"
 
                 from_time = 0
                 to_time = int(time.time())  # now
