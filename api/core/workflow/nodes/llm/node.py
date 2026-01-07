@@ -1720,6 +1720,7 @@ class LLMNode(Node[LLMNodeData]):
 
         # Generate model provider icon URL
         provider = self._node_data.model.provider
+        model_name = self._node_data.model.name
         model_icon = self._generate_model_provider_icon_url(provider)
         model_icon_dark = self._generate_model_provider_icon_url(provider, dark=True)
 
@@ -1734,6 +1735,7 @@ class LLMNode(Node[LLMNodeData]):
                     tool_calls=list(buffers.pending_tool_calls),
                 ),
                 provider=provider,
+                name=model_name,
                 icon=model_icon,
                 icon_dark=model_icon_dark,
                 error=error,
@@ -1848,6 +1850,7 @@ class LLMNode(Node[LLMNodeData]):
                     output=result_str,
                 ),
                 provider=tool_provider,
+                name=tool_name,
                 icon=tool_icon,
                 icon_dark=tool_icon_dark,
                 error=str(tool_error) if tool_error else None,
