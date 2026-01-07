@@ -221,13 +221,12 @@ export const useIsLogin = () => {
         await get('/account/profile', {}, {
           silent: true,
         })
-      }
-      catch (e: any) {
-        if (e.status === 401)
-          return { logged_in: false }
         return { logged_in: true }
       }
-      return { logged_in: true }
+      catch {
+        // Any error (401, 500, network error, etc.) means not logged in
+        return { logged_in: false }
+      }
     },
   })
 }
