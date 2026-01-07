@@ -12,6 +12,7 @@ from werkzeug.exceptions import BadRequest
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
+from core.file import helpers as _file_helpers
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
@@ -42,6 +43,9 @@ from services.app_dsl_service import AppDslService, ImportMode
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
+
+# Re-export file helper utilities so tests can stub deterministic URLs.
+file_helpers = _file_helpers
 
 ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
 
