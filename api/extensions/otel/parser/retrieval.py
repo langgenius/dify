@@ -109,4 +109,3 @@ class RetrievalNodeOTelParser:
             semantic_retrieval_documents = _format_retrieval_documents(retrieval_documents)
             semantic_retrieval_documents_json = _safe_json_dumps(semantic_retrieval_documents)
             span.set_attribute(RetrieverAttributes.DOCUMENT, semantic_retrieval_documents_json)
-

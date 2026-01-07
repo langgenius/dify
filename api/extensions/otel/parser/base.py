@@ -33,6 +33,7 @@ def _safe_json_dumps(obj: Any, ensure_ascii: bool = False) -> str:
     Returns:
         JSON string representation of the object
     """
+
     def _convert_value(value: Any) -> Any:
         """Recursively convert non-serializable values."""
         if value is None:
@@ -60,8 +61,9 @@ def _safe_json_dumps(obj: Any, ensure_ascii: bool = False) -> str:
         return json.dumps(converted, ensure_ascii=ensure_ascii)
     except (TypeError, ValueError) as e:
         # If conversion still fails, return error message as string
-        return json.dumps({"error": f"Failed to serialize: {type(obj).__name__}", "message": str(e)},
-                          ensure_ascii=ensure_ascii)
+        return json.dumps(
+            {"error": f"Failed to serialize: {type(obj).__name__}", "message": str(e)}, ensure_ascii=ensure_ascii
+        )
 
 
 class NodeOTelParser(Protocol):
@@ -97,4 +99,3 @@ class DefaultNodeOTelParser:
             span.set_status(Status(StatusCode.ERROR, str(error)))
         else:
             span.set_status(Status(StatusCode.OK))
-
