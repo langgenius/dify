@@ -41,6 +41,11 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
       - name: Detect changed files and generate diff
         id: detect_changes
         run: |
@@ -98,6 +103,8 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          use_oauth: false
+          timeout_minutes: 55
           prompt: |
             You are a professional i18n synchronization engineer for the Dify project.
             Your task is to keep all language translations in sync with the English source (en-US).
@@ -272,6 +279,54 @@ jobs:
             3. For UPDATE scenario: git diff is the source of truth for changed values
             4. Create a single commit with all translation changes
             5. If any translation fails, continue with others and report failures
+
+            ═══════════════════════════════════════════════════════════════
+            ║  PHASE 4: COMMIT AND CREATE PR                              ║
+            ═══════════════════════════════════════════════════════════════
+
+            After all translations are complete and verified:
+
+            ### Step 4.1: Check for changes
+            ```bash
+            git status --porcelain
+            ```
+
+            If there are changes:
+
+            ### Step 4.2: Create a new branch and commit
+            ```bash
+            BRANCH_NAME="chore/i18n-sync-$(date +%Y%m%d-%H%M%S)"
+            git checkout -b "$BRANCH_NAME"
+            git add web/i18n/
+            git commit -m "chore(i18n): sync translations with en-US
+
+            - Synced translation files based on en-US changes
+            - Mode: ${{ steps.detect_changes.outputs.SYNC_MODE }}
+            - Files: ${{ steps.detect_changes.outputs.CHANGED_FILES }}
+
+            🤖 Generated with Claude Code GitHub Action"
+            git push origin "$BRANCH_NAME"
+            ```
+
+            ### Step 4.3: Create Pull Request
+            ```bash
+            gh pr create \
+              --title "chore(i18n): sync translations with en-US" \
+              --body "## Summary
+
+            This PR was automatically generated to sync i18n translation files.
+
+            ### Changes
+            - Mode: ${{ steps.detect_changes.outputs.SYNC_MODE }}
+            - Files processed: ${{ steps.detect_changes.outputs.CHANGED_FILES }}
+
+            ### Verification
+            - [x] \`i18n:check\` passed
+            - [x] \`lint:fix\` applied
+
+            🤖 Generated with Claude Code GitHub Action" \
+              --base main
+            ```
 
           claude_args: |
             --max-turns 100
