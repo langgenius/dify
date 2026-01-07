@@ -513,6 +513,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 if workflow is None:
                     raise ValueError("Workflow not found")
 
+                # FIXME: Consolidate runtime config checking into a unified location.
                 runtime = workflow.features_dict.get("runtime")
                 graph_engine_layers = ()
                 if isinstance(runtime, dict) and runtime.get("enabled"):

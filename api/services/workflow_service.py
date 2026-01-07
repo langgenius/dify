@@ -1,4 +1,5 @@
 import json
+import logging
 import time
 import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
@@ -15,6 +16,7 @@ from core.file import File
 from core.repositories import DifyCoreRepositoryFactory
 from core.variables import Variable
 from core.variables.variables import VariableUnion
+from core.virtual_environment.factory import SandboxFactory, SandboxType
 from core.workflow.entities import WorkflowNodeExecution
 from core.workflow.enums import ErrorStrategy, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.errors import WorkflowNodeRunFailedError
@@ -45,6 +47,8 @@ from services.workflow.workflow_converter import WorkflowConverter
 
 from .errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 from .workflow_draft_variable_service import DraftVariableSaver, DraftVarLoader, WorkflowDraftVariableService
+
+logger = logging.getLogger(__name__)
 
 
 class WorkflowService:
@@ -693,22 +697,40 @@ class WorkflowService:
         else:
             enclosing_node_id = None
 
-        run = WorkflowEntry.single_step_run(
-            workflow=draft_workflow,
-            node_id=node_id,
-            user_inputs=user_inputs,
-            user_id=account.id,
-            variable_pool=variable_pool,
-            variable_loader=variable_loader,
-        )
+        # FIXME: Consolidate runtime config checking into a unified location.
+        runtime = draft_workflow.features_dict.get("runtime")
+        sandbox = None
+        if isinstance(runtime, dict) and runtime.get("enabled"):
+            sandbox = SandboxFactory.create(sandbox_type=SandboxType.DOCKER)
 
-        # run draft workflow node
-        start_at = time.perf_counter()
-        node_execution = self._handle_single_step_result(
-            invoke_node_fn=lambda: run,
-            start_at=start_at,
-            node_id=node_id,
-        )
+        try:
+            node, generator = WorkflowEntry.single_step_run(
+                workflow=draft_workflow,
+                node_id=node_id,
+                user_inputs=user_inputs,
+                user_id=account.id,
+                variable_pool=variable_pool,
+                variable_loader=variable_loader,
+            )
+
+            # FIXME: Use a proper dependency injection pattern for sandbox.
+            if sandbox:
+                node.sandbox = sandbox  # type: ignore[attr-defined]
+
+            # Run draft workflow node
+            start_at = time.perf_counter()
+            node_execution = self._handle_single_step_result(
+                invoke_node_fn=lambda: (node, generator),
+                start_at=start_at,
+                node_id=node_id,
+            )
+        finally:
+            # Release sandbox after node execution
+            if sandbox:
+                try:
+                    sandbox.release_environment()
+                except Exception:
+                    logger.exception("Failed to release sandbox")
 
         # Set workflow_id on the NodeExecution
         node_execution.workflow_id = draft_workflow.id
