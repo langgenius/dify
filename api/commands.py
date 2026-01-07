@@ -974,6 +974,7 @@ def archive_workflow_runs(
     default=None,
     help="Optional upper bound (exclusive) for created_at; must be paired with --start-after.",
 )
+@click.option("--workers", default=1, show_default=True, type=int, help="Concurrent workflow runs to restore.")
 @click.option("--limit", type=int, default=100, show_default=True, help="Maximum number of runs to restore.")
 @click.option("--dry-run", is_flag=True, help="Preview without restoring.")
 def restore_workflow_runs(
@@ -981,6 +982,7 @@ def restore_workflow_runs(
     run_id: str | None,
     start_from: datetime.datetime | None,
     end_before: datetime.datetime | None,
+    workers: int,
     limit: int,
     dry_run: bool,
 ):
@@ -1006,6 +1008,8 @@ def restore_workflow_runs(
         raise click.UsageError("--start-from and --end-before must be provided together.")
     if run_id is None and (start_from is None or end_before is None):
         raise click.UsageError("--start-from and --end-before are required for batch restore.")
+    if workers < 1:
+        raise click.BadParameter("workers must be at least 1")
 
     start_time = datetime.datetime.now(datetime.UTC)
     click.echo(
@@ -1015,7 +1019,7 @@ def restore_workflow_runs(
         )
     )
 
-    restorer = WorkflowRunRestore(dry_run=dry_run)
+    restorer = WorkflowRunRestore(dry_run=dry_run, workers=workers)
     if run_id:
         results = [restorer.restore_by_run_id(run_id)]
     else:

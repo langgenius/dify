@@ -11,6 +11,7 @@ import logging
 import time
 import zipfile
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, cast
@@ -83,14 +84,18 @@ class WorkflowRunRestore:
     ARCHIVE_SCHEMA_VERSION = "1.0"
     ARCHIVE_BUNDLE_NAME = f"archive.v{ARCHIVE_SCHEMA_VERSION}.zip"
 
-    def __init__(self, dry_run: bool = False):
+    def __init__(self, dry_run: bool = False, workers: int = 1):
         """
         Initialize the restore service.
 
         Args:
             dry_run: If True, only preview without making changes
+            workers: Number of concurrent workflow runs to restore
         """
         self.dry_run = dry_run
+        if workers < 1:
+            raise ValueError("workers must be at least 1")
+        self.workers = workers
         self.workflow_run_repo: APIWorkflowRunRepository | None = None
 
     def restore(
@@ -438,9 +443,13 @@ class WorkflowRunRestore:
             )
         )
 
-        for run in runs:
-            result = self.restore(tenant_id=run.tenant_id, workflow_run_id=run.id)
-            results.append(result)
+        with ThreadPoolExecutor(max_workers=self.workers) as executor:
+            results = list(
+                executor.map(
+                    lambda run: self.restore(tenant_id=run.tenant_id, workflow_run_id=run.id),
+                    runs,
+                )
+            )
 
         return results
 
