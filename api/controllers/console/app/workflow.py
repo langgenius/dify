@@ -426,7 +426,7 @@ class DraftWorkflowApi(Resource):
         if not workflow:
             raise DraftWorkflowNotExist()
 
-        # return workflow, if not found, return None (initiate graph by frontend)
+        # return workflow response; missing workflow is handled by DraftWorkflowNotExist above
         return _dump_response(WorkflowResponse, workflow)
 
     @setup_required
