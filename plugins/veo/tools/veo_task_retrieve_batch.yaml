@@ -1,0 +1,46 @@
+identity:
+  name: veo_task_retrieve_batch
+  author: acedatacloud
+  label:
+    en_US: Veo Retrieve Tasks (Batch)
+    zh_Hans: Veo 批量查询任务
+description:
+  human:
+    en_US: Retrieve multiple Veo tasks by task_ids.
+    zh_Hans: 通过 task_ids 批量查询 Veo 任务详情。
+  llm: Retrieve multiple Veo tasks in one request via Ace Data Cloud Veo Tasks API.
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      additionalProperties: true
+    data:
+      type: object
+      additionalProperties: true
+parameters:
+  - name: task_ids
+    type: array
+    required: true
+    label:
+      en_US: Task IDs
+      zh_Hans: 任务ID列表
+    human_description:
+      en_US: A list of task IDs (or a JSON array string / one per line).
+      zh_Hans: 任务ID数组（也支持 JSON 数组字符串或每行一个）。
+    llm_description: Provide one or more task_ids to query in batch.
+    form: form
+    input_schema:
+      type: array
+      items:
+        type: string
+extra:
+  python:
+    source: tools/veo_task_retrieve_batch.py

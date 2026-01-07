@@ -1,0 +1,158 @@
+identity:
+  name: veo_generate_video
+  author: acedatacloud
+  label:
+    en_US: Veo Generate Video
+    zh_Hans: Veo 生成视频
+description:
+  human:
+    en_US: Generate videos with Ace Data Cloud Veo Videos API.
+    zh_Hans: 通过 Ace Data Cloud Veo Videos API 生成视频。
+  llm: Generate a video from prompt / images via Ace Data Cloud Veo Videos API.
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      additionalProperties: true
+    task_id:
+      type: string
+    trace_id:
+      type: string
+    data:
+      type: array
+      items:
+        type: object
+        properties:
+          id:
+            type: string
+          video_url:
+            type: string
+          created_at:
+            type: string
+          complete_at:
+            type: string
+          state:
+            type: string
+        additionalProperties: true
+parameters:
+  - name: action
+    type: select
+    required: true
+    label:
+      en_US: Action
+      zh_Hans: 行为
+    human_description:
+      en_US: Choose how to generate the video.
+      zh_Hans: 选择视频生成方式。
+    llm_description: Use text2video for prompt-only, image2video when you provide image_urls, or get1080p to fetch a 1080p version by video_id.
+    form: form
+    options:
+      - value: text2video
+        label: { en_US: text2video, zh_Hans: 文生视频 }
+      - value: image2video
+        label: { en_US: image2video, zh_Hans: 图生视频 }
+      - value: get1080p
+        label: { en_US: get1080p, zh_Hans: 获取1080p }
+  - name: prompt
+    type: string
+    required: false
+    label:
+      en_US: Prompt
+      zh_Hans: 提示词
+    human_description:
+      en_US: Required for text2video and image2video.
+      zh_Hans: text2video / image2video 必填。
+    llm_description: Describe the video in detail (camera, scene, motion, style).
+    form: llm
+  - name: image_urls
+    type: array
+    required: false
+    label:
+      en_US: Image URLs
+      zh_Hans: 图片链接
+    human_description:
+      en_US: Required for image2video. Use 1-3 images (depending on model capability).
+      zh_Hans: image2video 必填。根据模型能力传 1-3 张图。
+    llm_description: Provide image URLs (or base64 data URLs) for image2video.
+    form: form
+    input_schema:
+      type: array
+      items:
+        type: string
+  - name: video_id
+    type: string
+    required: false
+    label:
+      en_US: Video ID
+      zh_Hans: 视频ID
+    human_description:
+      en_US: Required for get1080p.
+      zh_Hans: get1080p 必填。
+    llm_description: Provide the video id from previous generation result to fetch 1080p.
+    form: form
+  - name: model
+    type: string
+    required: false
+    label:
+      en_US: Model
+      zh_Hans: 模型
+    human_description:
+      en_US: Optional model name. Default is veo2-fast.
+      zh_Hans: 可选模型名称，不填则默认为 veo2-fast。
+    llm_description: "Optional. Examples: veo2-fast, veo2, veo3-fast, veo3, veo31-fast, veo31."
+    form: form
+  - name: aspect_ratio
+    type: select
+    required: false
+    label:
+      en_US: Aspect ratio
+      zh_Hans: 画面比例
+    human_description:
+      en_US: Optional output aspect ratio.
+      zh_Hans: 可选输出画面比例。
+    llm_description: Optional. Choose 16:9, 9:16, 1:1, 3:4, or 4:3.
+    form: form
+    options:
+      - value: "16:9"
+        label: { en_US: "16:9", zh_Hans: "16:9" }
+      - value: "9:16"
+        label: { en_US: "9:16", zh_Hans: "9:16" }
+      - value: "1:1"
+        label: { en_US: "1:1", zh_Hans: "1:1" }
+      - value: "3:4"
+        label: { en_US: "3:4", zh_Hans: "3:4" }
+      - value: "4:3"
+        label: { en_US: "4:3", zh_Hans: "4:3" }
+  - name: translation
+    type: boolean
+    required: false
+    label:
+      en_US: Auto-translate prompt
+      zh_Hans: 自动翻译提示词
+    human_description:
+      en_US: Enable automatic prompt translation.
+      zh_Hans: 是否开启提示词自动翻译。
+    llm_description: Optional. Set true to auto-translate prompt.
+    form: form
+  - name: callback_url
+    type: string
+    required: false
+    label:
+      en_US: Callback URL
+      zh_Hans: 回调地址
+    human_description:
+      en_US: Optional callback URL for async notifications.
+      zh_Hans: 可选回调地址，用于异步通知。
+    llm_description: Optional. Provide a public webhook URL for callbacks.
+    form: form
+extra:
+  python:
+    source: tools/veo_generate.py
