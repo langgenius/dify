@@ -211,21 +211,6 @@ class ResponseModel(BaseModel):
     )
 
 
-def _to_timestamp(value: datetime | int | None) -> int | None:
-    if isinstance(value, datetime):
-        return int(value.timestamp())
-    return value
-
-
-def _build_icon_url(icon_type: str | IconType | None, icon: str | None) -> str | None:
-    if icon is None or icon_type is None:
-        return None
-    icon_type_value = icon_type if isinstance(icon_type, IconType) else str(icon_type)
-    if icon_type_value.lower() != IconType.IMAGE:
-        return None
-    return file_helpers.get_signed_file_url(icon)
-
-
 register_schema_models(
     console_ns,
     AppListQuery,
