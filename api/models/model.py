@@ -2127,7 +2127,7 @@ class LLMGenerationDetail(Base):
 
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
-    def to_domain_model(self) -> "LLMGenerationDetailData":
+    def to_domain_model(self) -> LLMGenerationDetailData:
         """Convert to Pydantic domain model with proper validation."""
         from core.app.entities.llm_generation_entities import LLMGenerationDetailData
 
@@ -2144,14 +2144,14 @@ class LLMGenerationDetail(Base):
     @classmethod
     def from_domain_model(
         cls,
-        data: "LLMGenerationDetailData",
+        data: LLMGenerationDetailData,
         *,
         tenant_id: str,
         app_id: str,
         message_id: str | None = None,
         workflow_run_id: str | None = None,
         node_id: str | None = None,
-    ) -> "LLMGenerationDetail":
+    ) -> LLMGenerationDetail:
         """Create from Pydantic domain model."""
         # Enforce association mode at object creation time as well.
         message_mode = message_id is not None
