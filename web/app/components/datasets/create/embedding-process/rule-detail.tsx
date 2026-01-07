@@ -84,7 +84,13 @@ const RuleDetail: FC<RuleDetailProps> = ({ sourceData, indexingType, retrievalMe
       return '-'
 
     const enabledRules = sourceData.rules?.pre_processing_rules?.filter(rule => rule.enabled) || []
-    return enabledRules.map(rule => getRuleName(rule.id)).filter(Boolean).join(',') || '-'
+    const ruleNames = enabledRules
+      .map((rule) => {
+        const name = getRuleName(rule.id)
+        return typeof name === 'string' ? name : ''
+      })
+      .filter(name => name)
+    return ruleNames.length > 0 ? ruleNames.join(',') : '-'
   }, [sourceData, getRuleName])
 
   const fieldValueGetters: Record<string, () => string | number> = {
@@ -99,7 +105,7 @@ const RuleDetail: FC<RuleDetailProps> = ({ sourceData, indexingType, retrievalMe
 
   const effectiveRetrievalMethod = isEconomical ? 'keyword_search' : (retrievalMethod ?? 'semantic_search')
   const retrievalLabel = t(`retrieval.${effectiveRetrievalMethod}.title`, { ns: 'dataset' })
-  const retrievalIconSrc = RETRIEVAL_ICON_MAP[retrievalMethod ?? RETRIEVE_METHOD.semantic] ?? retrievalIcon.vector
+  const retrievalIconSrc = RETRIEVAL_ICON_MAP[retrievalMethod as keyof typeof RETRIEVAL_ICON_MAP] ?? retrievalIcon.vector
 
   return (
     <div className="flex flex-col gap-1">
