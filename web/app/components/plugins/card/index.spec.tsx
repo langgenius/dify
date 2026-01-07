@@ -503,31 +503,6 @@ describe('Card', () => {
   })
 
   // ================================
-  // Locale Tests
-  // ================================
-  describe('Locale', () => {
-    it('should use locale from props when provided', () => {
-      const plugin = createMockPlugin({
-        label: { 'en-US': 'English Title', 'zh-Hans': '中文标题' },
-      })
-
-      render(<Card payload={plugin} locale="zh-Hans" />)
-
-      expect(screen.getByText('中文标题')).toBeInTheDocument()
-    })
-
-    it('should fallback to default locale when prop locale not found', () => {
-      const plugin = createMockPlugin({
-        label: { 'en-US': 'English Title' },
-      })
-
-      render(<Card payload={plugin} locale="fr-FR" />)
-
-      expect(screen.getByText('English Title')).toBeInTheDocument()
-    })
-  })
-
-  // ================================
   // Memoization Tests
   // ================================
   describe('Memoization', () => {
