@@ -90,7 +90,7 @@ describe('SortDropdown', () => {
       const sortOptions: Array<{ sortBy: SortBy; label: string }> = [
         { sortBy: 'created_at', label: 'app.sort.createdAt' },
         { sortBy: 'updated_at', label: 'app.sort.updatedAt' },
-        { sortBy: 'name', label: 'Flow Name' },
+        { sortBy: 'name', label: 'app.sort.name' },
         { sortBy: 'owner_name', label: 'app.sort.ownerName' },
       ]
 
