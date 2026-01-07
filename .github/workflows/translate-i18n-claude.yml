@@ -343,5 +343,4 @@ jobs:
 
           claude_args: |
             --max-turns 100
-            --model claude-sonnet-4-5-20250929
             --allowedTools "Read,Write,Edit,Bash(git:*),Bash(gh:*),Bash(cd:*),Bash(pnpm:*),Bash(cat:*),Bash(ls:*),Glob,Grep"
