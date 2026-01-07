@@ -132,6 +132,13 @@ jobs:
             - Use **Edit** tool to modify JSON files (NOT node, jq, or bash scripts)
             - Use **Bash** ONLY for: git commands, gh commands, pnpm commands
             - Run bash commands ONE BY ONE, never combine with && or ||
+            - NEVER use `$()` command substitution - it's not supported. Split into separate commands instead.
+
+            ## WORKING DIRECTORY
+            The Claude Code sandbox runs from `${{ github.workspace }}/web` directory.
+            - For pnpm commands: just use `pnpm` (no --dir needed)
+            - For git/gh commands: use `${{ github.workspace }}` as the repo root
+            - For file paths: use absolute paths like `${{ github.workspace }}/web/i18n/`
 
             ## EFFICIENCY RULES
             - **ONE Edit per language file** - batch all key additions into a single Edit
@@ -171,8 +178,10 @@ jobs:
 
             ### Step 1.3: Run i18n:check for Each Language
             ```bash
-            pnpm --dir web install --frozen-lockfile
-            pnpm --dir web run i18n:check
+            pnpm install --frozen-lockfile
+            ```
+            ```bash
+            pnpm run i18n:check
             ```
 
             This will report:
@@ -234,7 +243,7 @@ jobs:
 
             **IMPORTANT: Special handling for zh-Hans and ja-JP**
             If zh-Hans or ja-JP files were ALSO modified in the same push:
-            - Run: `git diff HEAD~1 --name-only | grep -E "(zh-Hans|ja-JP)"`
+            - Run: `git -C ${{ github.workspace }} diff HEAD~1 --name-only` and check for zh-Hans or ja-JP files
             - If found, it means someone manually translated them. Apply these rules:
 
             1. **Missing keys**: Still ADD them (completeness required)
@@ -254,7 +263,7 @@ jobs:
 
             ### Step 2.3: Process DELETE Operations
             For extra keys reported by i18n:check:
-            - Run: `pnpm --dir web run i18n:check --auto-remove`
+            - Run: `pnpm run i18n:check --auto-remove`
             - Or manually remove from target language JSON files
 
             ## Translation Guidelines
@@ -282,7 +291,7 @@ jobs:
 
             ### Step 3.1: Run Lint Fix (IMPORTANT!)
             ```bash
-            pnpm --dir web lint:fix --quiet -- 'i18n/**/*.json'
+            pnpm lint:fix --quiet -- 'i18n/**/*.json'
             ```
             This ensures:
             - JSON keys are sorted alphabetically (jsonc/sort-keys rule)
@@ -291,7 +300,7 @@ jobs:
 
             ### Step 3.2: Run Final i18n Check
             ```bash
-            pnpm --dir web run i18n:check
+            pnpm run i18n:check
             ```
 
             ### Step 3.3: Fix Any Remaining Issues
@@ -342,39 +351,45 @@ jobs:
 
             ### Step 4.1: Check for changes
             ```bash
-            git status --porcelain
+            git -C ${{ github.workspace }} status --porcelain
             ```
 
             If there are changes:
 
             ### Step 4.2: Create a new branch and commit
-            Run these git commands ONE BY ONE (not combined with &&):
+            Run these git commands ONE BY ONE (not combined with &&).
+            **IMPORTANT**: Do NOT use `$()` command substitution. Use two separate commands:
 
-            1. Create branch:
+            1. First, get the timestamp:
             ```bash
-            git checkout -b "chore/i18n-sync-$(date +%Y%m%d-%H%M%S)"
+            date +%Y%m%d-%H%M%S
+            ```
+            (Note the output, e.g., "20250107-143052")
+
+            2. Then create branch using the timestamp value:
+            ```bash
+            git -C ${{ github.workspace }} checkout -b chore/i18n-sync-20250107-143052
+            ```
+            (Replace "20250107-143052" with the actual timestamp from step 1)
+
+            3. Stage changes:
+            ```bash
+            git -C ${{ github.workspace }} add web/i18n/
             ```
 
-            2. Stage changes:
+            4. Commit:
             ```bash
-            git add web/i18n/
+            git -C ${{ github.workspace }} commit -m "chore(i18n): sync translations with en-US - Mode: ${{ steps.detect_changes.outputs.SYNC_MODE }}"
             ```
 
-            3. Commit (use heredoc for multi-line message):
+            5. Push:
             ```bash
-            git commit -m "chore(i18n): sync translations with en-US - Mode: ${{ steps.detect_changes.outputs.SYNC_MODE }}"
-            ```
-
-            4. Push:
-            ```bash
-            git push origin HEAD
+            git -C ${{ github.workspace }} push origin HEAD
             ```
 
             ### Step 4.3: Create Pull Request
             ```bash
-            gh pr create \
-              --title "chore(i18n): sync translations with en-US" \
-              --body "## Summary
+            gh pr create --repo ${{ github.repository }} --title "chore(i18n): sync translations with en-US" --body "## Summary
 
             This PR was automatically generated to sync i18n translation files.
 
@@ -386,10 +401,9 @@ jobs:
             - [x] \`i18n:check\` passed
             - [x] \`lint:fix\` applied
 
-            🤖 Generated with Claude Code GitHub Action" \
-              --base main
+            🤖 Generated with Claude Code GitHub Action" --base main
             ```
 
           claude_args: |
             --max-turns 150
-            --allowedTools "Read,Write,Edit,Bash(git *),Bash(git:*),Bash(gh *),Bash(gh:*),Bash(pnpm *),Bash(pnpm:*),Glob,Grep"
+            --allowedTools "Read,Write,Edit,Bash(git *),Bash(git:*),Bash(gh *),Bash(gh:*),Bash(pnpm *),Bash(pnpm:*),Bash(date *),Bash(date:*),Glob,Grep"
