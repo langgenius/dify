@@ -73,7 +73,6 @@ const Answer: FC<AnswerProps> = ({
   } = item
   const hasAgentThoughts = !!agent_thoughts?.length
   const hasHumanInputs = !!humanInputFormDataList?.length || !!humanInputFilledFormDataList?.length
-  const hasHumanInputFormSubmitted = !!humanInputFilledFormDataList?.length
 
   const [containerWidth, setContainerWidth] = useState(0)
   const [contentWidth, setContentWidth] = useState(0)
@@ -179,7 +178,7 @@ const Answer: FC<AnswerProps> = ({
         )}
 
         {/* Block 2: Response Content (when human inputs exist) */}
-        {hasHumanInputFormSubmitted && (
+        {hasHumanInputs && (responding || !contentIsEmpty || hasAgentThoughts) && (
           <div className={cn('group relative mt-2 pr-10', chatAnswerContainerInner)}>
             <div className="absolute -top-2 left-6 h-3 w-0.5 bg-chat-answer-human-input-form-divider-bg" />
             <div
