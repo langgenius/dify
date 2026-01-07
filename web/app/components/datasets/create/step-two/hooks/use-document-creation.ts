@@ -7,7 +7,6 @@ import type {
   CreateDocumentReq,
   createDocumentResponse,
   CustomFile,
-  DataSourceType,
   FullDocumentDetail,
   ProcessRule,
 } from '@/models/datasets'
@@ -18,6 +17,9 @@ import { trackEvent } from '@/app/components/base/amplitude'
 import Toast from '@/app/components/base/toast'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import { DataSourceProvider } from '@/models/common'
+import {
+  DataSourceType,
+} from '@/models/datasets'
 import { getNotionInfo, getWebsiteInfo, useCreateDocument, useCreateFirstDocument } from '@/service/knowledge/use-create-dataset'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import { IndexingType } from './use-indexing-config'
@@ -170,15 +172,15 @@ export const useDocumentCreation = (options: UseDocumentCreationOptions) => {
     } as CreateDocumentReq
 
     // Add data source specific info
-    if (dataSourceType === 'upload_file') {
+    if (dataSourceType === DataSourceType.FILE) {
       params.data_source!.info_list.file_info_list = {
         file_ids: files.map(file => file.id || '').filter(Boolean),
       }
     }
-    if (dataSourceType === 'notion_import')
+    if (dataSourceType === DataSourceType.NOTION)
       params.data_source!.info_list.notion_info_list = getNotionInfo(notionPages, notionCredentialId)
 
-    if (dataSourceType === 'website_crawl') {
+    if (dataSourceType === DataSourceType.WEB) {
       params.data_source!.info_list.website_info_list = getWebsiteInfo({
         websiteCrawlProvider,
         websiteCrawlJobId,

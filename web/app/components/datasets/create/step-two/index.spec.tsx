@@ -2174,12 +2174,24 @@ describe('Integration Scenarios', () => {
       expect(unescaped).toBe(original)
     })
 
-    it('should handle complex strings', () => {
+    it('should handle complex strings without backslashes', () => {
+      // This string contains control characters but no literal backslashes.
       const original = 'Hello\nWorld\t!\r\n'
       const escaped = escape(original)
       const unescaped = unescape(escaped)
-
       expect(unescaped).toBe(original)
+    })
+
+    it('should document behavior for strings with existing backslashes', () => {
+      // When the original string already contains backslash sequences,
+      // escape/unescape are not perfectly symmetric because escape()
+      // does not escape backslashes.
+      const original = 'Hello\\nWorld'
+      const escaped = escape(original)
+      const unescaped = unescape(escaped)
+      // The unescaped value interprets "\n" as a newline, so it differs from the original.
+      expect(unescaped).toBe('Hello\nWorld')
+      expect(unescaped).not.toBe(original)
     })
   })
 })
