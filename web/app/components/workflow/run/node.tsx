@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import type {
   AgentLogItemWithChildren,
   IterationDurationMap,
+  LLMTraceItem,
   LoopDurationMap,
   LoopVariableMap,
   NodeTracing,
@@ -44,7 +45,7 @@ type Props = {
   onShowLoopDetail?: (detail: NodeTracing[][], loopDurationMap: LoopDurationMap, loopVariableMap: LoopVariableMap) => void
   onShowRetryDetail?: (detail: NodeTracing[]) => void
   onShowAgentOrToolLog?: (detail?: AgentLogItemWithChildren) => void
-  onShowLLMDetail?: (detail: NodeTracing[]) => void
+  onShowLLMDetail?: (detail: LLMTraceItem[]) => void
   notShowIterationNav?: boolean
   notShowLoopNav?: boolean
 }
@@ -99,7 +100,7 @@ const NodePanel: FC<Props> = ({
   const isRetryNode = hasRetryNode(nodeInfo.node_type) && !!nodeInfo.retryDetail?.length
   const isAgentNode = nodeInfo.node_type === BlockEnum.Agent && !!nodeInfo.agentLog?.length
   const isToolNode = nodeInfo.node_type === BlockEnum.Tool && !!nodeInfo.agentLog?.length
-  const isLLMNode = nodeInfo.node_type === BlockEnum.LLM && !!nodeInfo.generation_detail
+  const isLLMNode = nodeInfo.node_type === BlockEnum.LLM && !!nodeInfo.execution_metadata?.llm_trace?.length
 
   const inputsTitle = useMemo(() => {
     let text = t('common.input', { ns: 'workflow' })

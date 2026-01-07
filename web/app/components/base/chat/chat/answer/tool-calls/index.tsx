@@ -1,5 +1,5 @@
-import type { ToolCallItem } from '../../type'
-import ToolCallsItem from './item'
+import type { ToolCallItem } from '@/types/workflow'
+import ToolCallItemComponent from '@/app/components/workflow/run/llm-log/tool-call-item'
 
 type ToolCallsProps = {
   toolCalls: ToolCallItem[]
@@ -8,9 +8,13 @@ const ToolCalls = ({
   toolCalls,
 }: ToolCallsProps) => {
   return (
-    <div>
+    <div className="my-1 space-y-1">
       {toolCalls.map((toolCall: ToolCallItem) => (
-        <ToolCallsItem key={toolCall.tool_call_id} payload={toolCall} />
+        <ToolCallItemComponent
+          key={toolCall.tool_call_id}
+          payload={toolCall}
+          className="bg-background-gradient-bg-fill-chat-bubble-bg-2 shadow-none"
+        />
       ))}
     </div>
   )

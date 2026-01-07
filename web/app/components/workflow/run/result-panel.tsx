@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type {
   AgentLogItemWithChildren,
+  LLMTraceItem,
   NodeTracing,
 } from '@/types/workflow'
 import { useTranslation } from 'react-i18next'
@@ -46,7 +47,7 @@ export type ResultPanelProps = {
   handleShowLoopResultList?: (detail: NodeTracing[][], loopDurationMap: any) => void
   onShowRetryDetail?: (detail: NodeTracing[]) => void
   handleShowAgentOrToolLog?: (detail?: AgentLogItemWithChildren) => void
-  onShowLLMDetail?: (detail: NodeTracing[]) => void
+  onShowLLMDetail?: (detail: LLMTraceItem[]) => void
 }
 
 const ResultPanel: FC<ResultPanelProps> = ({
@@ -81,7 +82,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
   const isRetryNode = hasRetryNode(nodeInfo?.node_type) && !!nodeInfo?.retryDetail?.length
   const isAgentNode = nodeInfo?.node_type === BlockEnum.Agent && !!nodeInfo?.agentLog?.length
   const isToolNode = nodeInfo?.node_type === BlockEnum.Tool && !!nodeInfo?.agentLog?.length
-  const isLLMNode = nodeInfo?.node_type === BlockEnum.LLM && !!nodeInfo?.generation_detail
+  const isLLMNode = nodeInfo?.node_type === BlockEnum.LLM && !!nodeInfo?.execution_metadata?.llm_trace?.length
 
   return (
     <div className="bg-components-panel-bg py-2">

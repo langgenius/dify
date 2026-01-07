@@ -91,6 +91,11 @@ const TracingPanel: FC<TracingPanelProps> = ({
     agentOrToolLogItemStack,
     agentOrToolLogListMap,
     handleShowAgentOrToolLog,
+
+    showLLMDetail,
+    setShowLLMDetailFalse,
+    llmResultList,
+    handleShowLLMDetail,
   } = useLogs()
 
   const renderNode = (node: NodeTracing) => {
@@ -153,6 +158,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
             onShowLoopDetail={handleShowLoopResultList}
             onShowRetryDetail={handleShowRetryResultList}
             onShowAgentOrToolLog={handleShowAgentOrToolLog}
+            onShowLLMDetail={handleShowLLMDetail}
             hideInfo={hideNodeInfo}
             hideProcessDetail={hideNodeProcessDetail}
           />
@@ -182,6 +188,10 @@ const TracingPanel: FC<TracingPanelProps> = ({
         agentOrToolLogItemStack={agentOrToolLogItemStack}
         agentOrToolLogListMap={agentOrToolLogListMap}
         handleShowAgentOrToolLog={handleShowAgentOrToolLog}
+
+        showLLMDetail={showLLMDetail}
+        setShowLLMDetailFalse={setShowLLMDetailFalse}
+        llmResultList={llmResultList}
       />
     )
   }

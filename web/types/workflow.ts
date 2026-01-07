@@ -28,11 +28,33 @@ export type AgentLogItemWithChildren = AgentLogItem & {
   children: AgentLogItemWithChildren[]
 }
 
+export type IconObject = {
+  background: string
+  content: string
+}
+
+export type ToolCallItem = {
+  type: 'model' | 'tool' | 'thought'
+  tool_call_id?: string
+  tool_name?: string
+  tool_arguments?: string
+  tool_icon?: string | IconObject
+  tool_icon_dark?: string | IconObject
+  tool_files?: string[]
+  tool_error?: string
+  tool_output?: Record<string, any> | string
+  tool_elapsed_time?: number
+}
+
 export type ToolCallDetail = {
   id: string
   name: string
   arguments: string
-  result: string
+  output: string
+  files: string[]
+  error: string
+  elapsed_time?: number
+  status: string
 }
 export type SequenceSegment
   = | { type: 'context', start: number, end: number }
@@ -43,6 +65,18 @@ export type LLMLogItem = {
   reasoning_content: string[]
   tool_calls: ToolCallDetail[]
   sequence: SequenceSegment[]
+}
+
+export type LLMTraceItem = {
+  type: 'model' | 'tool'
+  duration: number
+  output: Record<string, any>
+  provider?: string
+  name: string
+  icon?: string | IconObject
+  icon_dark?: string | IconObject
+  error?: string
+  status?: 'success' | 'error'
 }
 
 export type NodeTracing = {
@@ -89,6 +123,7 @@ export type NodeTracing = {
       icon?: string
     }
     loop_variable_map?: Record<string, any>
+    llm_trace?: LLMTraceItem[]
   }
   metadata: {
     iterator_length: number

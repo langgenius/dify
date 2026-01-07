@@ -2,7 +2,7 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { InputVarType } from '@/app/components/workflow/types'
 import type { Annotation, MessageRating } from '@/models/log'
-import type { FileResponse } from '@/types/workflow'
+import type { FileResponse, ToolCallItem } from '@/types/workflow'
 
 export type MessageMore = {
   time: string
@@ -64,15 +64,9 @@ export type CitationItem = {
   word_count: number
 }
 
-export type ToolCallItem = {
-  is_thought?: boolean
-  tool_call_id?: string
-  tool_name?: string
-  tool_arguments?: string
-  tool_files?: string[]
-  tool_error?: string
-  tool_output?: string
-  tool_elapsed_time?: number
+export type IconObject = {
+  background: string
+  content: string
 }
 
 export type IChatItem = {

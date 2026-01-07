@@ -34,16 +34,24 @@ import { getWebAppPassport } from './webapp-auth'
 
 const TIME_OUT = 100000
 
+export type IconObject = {
+  background: string
+  content: string
+}
+
 export type IOnDataMoreInfo = {
   conversationId?: string
   taskId?: string
   messageId: string
   errorMessage?: string
   errorCode?: string
-  chunk_type?: 'text' | 'tool_call' | 'tool_result' | 'thought' | 'thought_start'
+  chunk_type?: 'text' | 'tool_call' | 'tool_result' | 'thought' | 'thought_start' | 'thought_end'
   tool_call_id?: string
   tool_name?: string
   tool_arguments?: string
+  tool_icon?: string | IconObject
+  tool_icon_dark?: string | IconObject
+
   tool_files?: string[]
   tool_error?: string
   tool_elapsed_time?: number
@@ -245,6 +253,8 @@ export const handleStream = (
                 tool_call_id: bufferObj.tool_call_id,
                 tool_name: bufferObj.tool_name,
                 tool_arguments: bufferObj.tool_arguments,
+                tool_icon: bufferObj.tool_icon,
+                tool_icon_dark: bufferObj.tool_icon_dark,
                 tool_files: bufferObj.tool_files,
                 tool_error: bufferObj.tool_error,
                 tool_elapsed_time: bufferObj.tool_elapsed_time,

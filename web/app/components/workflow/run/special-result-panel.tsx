@@ -1,6 +1,7 @@
 import type {
   AgentLogItemWithChildren,
   IterationDurationMap,
+  LLMTraceItem,
   LoopDurationMap,
   LoopVariableMap,
   NodeTracing,
@@ -33,7 +34,7 @@ export type SpecialResultPanelProps = {
 
   showLLMDetail?: boolean
   setShowLLMDetailFalse?: () => void
-  llmResultList?: NodeTracing[]
+  llmResultList?: LLMTraceItem[]
 }
 const SpecialResultPanel = ({
   showRetryDetail,

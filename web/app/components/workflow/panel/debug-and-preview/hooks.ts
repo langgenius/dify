@@ -275,6 +275,8 @@ export const useChat = (
           messageId,
           taskId,
           chunk_type,
+          tool_icon,
+          tool_icon_dark,
           tool_call_id,
           tool_name,
           tool_arguments,
@@ -288,9 +290,12 @@ export const useChat = (
             if (!responseItem.toolCalls)
               responseItem.toolCalls = []
             responseItem.toolCalls?.push({
+              type: 'tool',
               tool_call_id,
               tool_name,
               tool_arguments,
+              tool_icon,
+              tool_icon_dark,
               tool_files,
               tool_error,
               tool_elapsed_time,
@@ -305,16 +310,22 @@ export const useChat = (
           }
 
           if (chunk_type === 'thought_start') {
+            console.log(message, 'xx1')
             responseItem.toolCalls?.push({
-              is_thought: true,
+              type: 'thought',
               tool_elapsed_time,
             })
           }
 
+          if (chunk_type === 'thought_end') {
+            console.log(message, 'xx2')
+            // const currentThoughtIndex = responseItem.toolCalls?.findIndex(item => item.is_thought) ?? -1
+            // if (currentThoughtIndex > -1)
+            //   responseItem.toolCalls![currentThoughtIndex].tool_output = message
+          }
+
           if (chunk_type === 'thought') {
-            const currentThoughtIndex = responseItem.toolCalls?.findIndex(item => item.is_thought) ?? -1
-            if (currentThoughtIndex > -1)
-              responseItem.toolCalls![currentThoughtIndex].tool_output = message
+            console.log(message, 'xx3')
           }
 
           if (messageId && !hasSetResponseId) {

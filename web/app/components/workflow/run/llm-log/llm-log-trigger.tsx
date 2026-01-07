@@ -1,37 +1,37 @@
-import type { NodeTracing } from '@/types/workflow'
+import type { LLMTraceItem, NodeTracing } from '@/types/workflow'
 import {
   RiArrowRightSLine,
-  RiRestartFill,
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
+import { Thinking } from '@/app/components/base/icons/src/vender/workflow'
 
 type LLMLogTriggerProps = {
   nodeInfo: NodeTracing
-  onShowLLMDetail: (detail: NodeTracing[]) => void
+  onShowLLMDetail: (detail: LLMTraceItem[]) => void
 }
 const LLMLogTrigger = ({
   nodeInfo,
   onShowLLMDetail,
 }: LLMLogTriggerProps) => {
   const { t } = useTranslation()
-  const { retryDetail } = nodeInfo
+  const llmTrace = nodeInfo?.execution_metadata?.llm_trace || []
 
-  const handleShowRetryResultList = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleShowLLMDetail = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation()
     e.nativeEvent.stopImmediatePropagation()
-    onShowLLMDetail(retryDetail || [])
+    onShowLLMDetail(llmTrace || [])
   }
 
   return (
     <Button
       className="mb-1 flex w-full items-center justify-between"
       variant="tertiary"
-      onClick={handleShowRetryResultList}
+      onClick={handleShowLLMDetail}
     >
       <div className="flex items-center">
-        <RiRestartFill className="mr-0.5 h-4 w-4 shrink-0 text-components-button-tertiary-text" />
-        {t('nodes.common.retry.retries', { ns: 'workflow', num: retryDetail?.length })}
+        <Thinking className="mr-[5px] h-4 w-4 shrink-0 text-components-button-tertiary-text" />
+        {t('detail', { ns: 'runLog' })}
       </div>
       <RiArrowRightSLine className="h-4 w-4 shrink-0 text-components-button-tertiary-text" />
     </Button>
