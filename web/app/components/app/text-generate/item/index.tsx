@@ -8,7 +8,7 @@ import {
   RiClipboardLine,
   RiFileList3Line,
   RiPlayList2Line,
-  RiReplay15Line,
+  RiResetLeftLine,
   RiSparklingFill,
   RiSparklingLine,
   RiThumbDownLine,
@@ -123,7 +123,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   const [isQuerying, { setTrue: startQuerying, setFalse: stopQuerying }] = useBoolean(false)
 
   const childProps = {
-    isInWebApp: true,
+    isInWebApp,
     content: completionRes,
     messageId: childMessageId,
     depth: depth + 1,
@@ -373,7 +373,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                   )}
                   {isInWebApp && isError && (
                     <ActionButton onClick={onRetry}>
-                      <RiReplay15Line className="h-4 w-4" />
+                      <RiResetLeftLine className="h-4 w-4" />
                     </ActionButton>
                   )}
                   {isInWebApp && !isWorkflow && (
