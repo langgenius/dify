@@ -10,7 +10,12 @@ from controllers.console.auth.error import (
     InvalidEmailError,
 )
 from controllers.console.error import AccountBannedError
-from controllers.console.wraps import only_edition_enterprise, setup_required
+from controllers.console.wraps import (
+    decrypt_code_field,
+    decrypt_password_field,
+    only_edition_enterprise,
+    setup_required,
+)
 from controllers.web import web_ns
 from controllers.web.wraps import decode_jwt_token
 from libs.helper import email
@@ -42,6 +47,7 @@ class LoginApi(Resource):
             404: "Account not found",
         }
     )
+    @decrypt_password_field
     def post(self):
         """Authenticate user and login."""
         parser = (
@@ -181,6 +187,7 @@ class EmailCodeLoginApi(Resource):
             404: "Account not found",
         }
     )
+    @decrypt_code_field
     def post(self):
         parser = (
             reqparse.RequestParser()

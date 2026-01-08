@@ -270,7 +270,7 @@ class HostedDeepseekConfig(BaseSettings):
     )
 
     HOSTED_DEEPSEEK_PAID_ENABLED: bool = Field(
-        description="Enable paid access to hosted XAI service",
+        description="Enable paid access to hosted Deepseek service",
         default=False,
     )
 
@@ -367,7 +367,7 @@ class HostedTongyiConfig(BaseSettings):
     )
 
     HOSTED_TONGYI_TRIAL_ENABLED: bool = Field(
-        description="Enable trial access to hosted Anthropic service",
+        description="Enable trial access to hosted Tongyi service",
         default=False,
     )
 
