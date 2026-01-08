@@ -48,10 +48,10 @@ class TestSandboxLayer:
         """Test SandboxLayer initialization with default parameters."""
         layer = SandboxLayer()
 
-        assert layer._sandbox_type == SandboxType.DOCKER
-        assert layer._options == {}
-        assert layer._environments == {}
-        assert layer._sandbox is None
+        assert layer._sandbox_type is None  # pyright: ignore[reportPrivateUsage]
+        assert layer._options == {}  # pyright: ignore[reportPrivateUsage]
+        assert layer._environments == {}  # pyright: ignore[reportPrivateUsage]
+        assert layer._sandbox is None  # pyright: ignore[reportPrivateUsage]
 
     def test_init_with_custom_parameters(self):
         """Test SandboxLayer initialization with custom parameters."""
@@ -61,9 +61,9 @@ class TestSandboxLayer:
             environments={"PYTHONUNBUFFERED": "1"},
         )
 
-        assert layer._sandbox_type == SandboxType.LOCAL
-        assert layer._options == {"base_working_path": "/tmp/sandbox"}
-        assert layer._environments == {"PYTHONUNBUFFERED": "1"}
+        assert layer._sandbox_type == SandboxType.LOCAL  # pyright: ignore[reportPrivateUsage]
+        assert layer._options == {"base_working_path": "/tmp/sandbox"}  # pyright: ignore[reportPrivateUsage]
+        assert layer._environments == {"PYTHONUNBUFFERED": "1"}  # pyright: ignore[reportPrivateUsage]
 
     def test_sandbox_property_raises_when_not_initialized(self):
         """Test that accessing sandbox property raises error before initialization."""
@@ -97,6 +97,7 @@ class TestSandboxLayer:
             layer.on_graph_start()
 
             mock_create.assert_called_once_with(
+                tenant_id="default",
                 sandbox_type=SandboxType.DOCKER,
                 options={"docker_image": "python:3.11"},
                 environments={"PATH": "/usr/bin"},
@@ -110,7 +111,7 @@ class TestSandboxLayer:
             with pytest.raises(SandboxInitializationError) as exc_info:
                 layer.on_graph_start()
 
-            assert "Failed to initialize docker sandbox" in str(exc_info.value)
+            assert "Failed to initialize sandbox" in str(exc_info.value)
             assert "Docker not available" in str(exc_info.value)
 
     def test_on_event_is_noop(self):
@@ -134,7 +135,7 @@ class TestSandboxLayer:
         layer.on_graph_end(error=None)
 
         mock_sandbox.release_environment.assert_called_once()
-        assert layer._sandbox is None
+        assert layer._sandbox is None  # pyright: ignore[reportPrivateUsage]
 
     def test_on_graph_end_releases_sandbox_even_on_error(self):
         """Test that on_graph_end releases sandbox even when workflow had an error."""
@@ -148,7 +149,7 @@ class TestSandboxLayer:
         layer.on_graph_end(error=Exception("Workflow failed"))
 
         mock_sandbox.release_environment.assert_called_once()
-        assert layer._sandbox is None
+        assert layer._sandbox is None  # pyright: ignore[reportPrivateUsage]
 
     def test_on_graph_end_handles_release_failure_gracefully(self):
         """Test that on_graph_end handles release failures without raising."""
@@ -164,7 +165,7 @@ class TestSandboxLayer:
         layer.on_graph_end(error=None)
 
         mock_sandbox.release_environment.assert_called_once()
-        assert layer._sandbox is None
+        assert layer._sandbox is None  # pyright: ignore[reportPrivateUsage]
 
     def test_on_graph_end_noop_when_sandbox_not_initialized(self):
         """Test that on_graph_end is a no-op when sandbox was never initialized."""
@@ -173,7 +174,7 @@ class TestSandboxLayer:
         # Should not raise exception
         layer.on_graph_end(error=None)
 
-        assert layer._sandbox is None
+        assert layer._sandbox is None  # pyright: ignore[reportPrivateUsage]
 
     def test_on_graph_end_is_idempotent(self):
         """Test that calling on_graph_end multiple times is safe."""
@@ -215,7 +216,7 @@ class TestSandboxLayerIntegration:
         layer.on_graph_start()
 
         # Verify sandbox is created
-        assert layer._sandbox is not None
+        assert layer._sandbox is not None  # pyright: ignore[reportPrivateUsage]
         sandbox_id = layer.sandbox.metadata.id
         assert sandbox_id is not None
 
@@ -223,7 +224,7 @@ class TestSandboxLayerIntegration:
         layer.on_graph_end(error=None)
 
         # Verify sandbox is released
-        assert layer._sandbox is None
+        assert layer._sandbox is None  # pyright: ignore[reportPrivateUsage]
 
     def test_lifecycle_with_workflow_error(self, tmp_path: Path):
         """Test lifecycle when workflow encounters an error."""

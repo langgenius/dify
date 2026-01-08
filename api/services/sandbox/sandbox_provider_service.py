@@ -362,6 +362,7 @@ class SandboxProviderService:
                     config = decrypt_system_oauth_params(system_default.encrypted_config)
 
             return SandboxFactory.create(
+                tenant_id=tenant_id,
                 sandbox_type=SandboxType(provider_type),
                 options=dict(config) if config else {},
                 environments=environments or {},

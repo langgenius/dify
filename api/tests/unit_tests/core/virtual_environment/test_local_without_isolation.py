@@ -25,7 +25,7 @@ def _drain_transport(transport: TransportReadCloser) -> bytes:
 @pytest.fixture
 def local_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> LocalVirtualEnvironment:
     monkeypatch.setattr(local_without_isolation, "machine", lambda: "x86_64")
-    return LocalVirtualEnvironment({"base_working_path": str(tmp_path)})
+    return LocalVirtualEnvironment(tenant_id="test-tenant", options={"base_working_path": str(tmp_path)})
 
 
 def test_construct_environment_creates_working_path(local_env: LocalVirtualEnvironment):

@@ -113,7 +113,10 @@ class SandboxLayer(GraphEngineLayer):
                 # Fallback to explicit configuration (backward compatibility)
                 sandbox_type = self._sandbox_type or SandboxType.DOCKER
                 logger.info("Initializing sandbox, sandbox_type=%s", sandbox_type)
+                # Use a placeholder tenant_id for backward compatibility when tenant_id is not provided
+                effective_tenant_id = self._tenant_id or "default"
                 self._sandbox = SandboxFactory.create(
+                    tenant_id=effective_tenant_id,
                     sandbox_type=sandbox_type,
                     options=self._options,
                     environments=self._environments,

@@ -28,7 +28,7 @@ class FakeSandbox(VirtualEnvironment):
         self._close_streams = close_streams
         self.last_execute_command: list[str] | None = None
         self.released_connections: list[str] = []
-        super().__init__(options={}, environments={})
+        super().__init__(tenant_id="test-tenant", options={}, environments={})
 
     def _construct_environment(self, options, environments):  # type: ignore[override]
         return Metadata(id="fake", arch=Arch.ARM64)
@@ -74,6 +74,10 @@ class FakeSandbox(VirtualEnvironment):
         if self._statuses:
             return self._statuses.pop(0)
         return CommandStatus(status=CommandStatus.Status.COMPLETED, exit_code=0)
+
+    @classmethod
+    def validate(cls, options: Any) -> None:
+        pass
 
 
 def _make_node(*, command: str, working_directory: str = "") -> CommandNode:

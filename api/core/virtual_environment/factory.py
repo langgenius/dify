@@ -3,7 +3,8 @@ Sandbox factory for creating VirtualEnvironment instances.
 
 Example:
     sandbox = SandboxFactory.create(
-        SandboxType.DOCKER,
+        tenant_id="tenant-uuid",
+        sandbox_type=SandboxType.DOCKER,
         options={"docker_image": "python:3.11-slim"},
         environments={"PATH": "/usr/local/bin"},
     )
@@ -34,17 +35,21 @@ class SandboxFactory:
     @classmethod
     def create(
         cls,
+        tenant_id: str,
         sandbox_type: SandboxType,
         options: Mapping[str, Any] | None = None,
         environments: Mapping[str, str] | None = None,
+        user_id: str | None = None,
     ) -> VirtualEnvironment:
         """
         Create a VirtualEnvironment instance based on the specified type.
 
         Args:
+            tenant_id: Tenant ID associated with the sandbox (required)
             sandbox_type: Type of sandbox to create
             options: Sandbox-specific configuration options
             environments: Environment variables to set in the sandbox
+            user_id: User ID associated with the sandbox (optional)
 
         Returns:
             Configured VirtualEnvironment instance
@@ -56,7 +61,7 @@ class SandboxFactory:
         environments = environments or {}
 
         sandbox_class = cls._get_sandbox_class(sandbox_type)
-        return sandbox_class(options=options, environments=environments)
+        return sandbox_class(tenant_id=tenant_id, options=options, environments=environments, user_id=user_id)
 
     @classmethod
     def _get_sandbox_class(cls, sandbox_type: SandboxType) -> type[VirtualEnvironment]:

@@ -40,14 +40,17 @@ class TestSandboxFactory:
 
         with patch.object(SandboxFactory, "_get_sandbox_class", return_value=mock_sandbox_class):
             result = SandboxFactory.create(
+                tenant_id="test-tenant",
                 sandbox_type=SandboxType.DOCKER,
                 options={"docker_image": "python:3.11-slim"},
                 environments={"PYTHONUNBUFFERED": "1"},
             )
 
             mock_sandbox_class.assert_called_once_with(
+                tenant_id="test-tenant",
                 options={"docker_image": "python:3.11-slim"},
                 environments={"PYTHONUNBUFFERED": "1"},
+                user_id=None,
             )
             assert result is mock_sandbox_instance
 
@@ -57,9 +60,13 @@ class TestSandboxFactory:
         mock_sandbox_class = MagicMock(return_value=mock_sandbox_instance)
 
         with patch.object(SandboxFactory, "_get_sandbox_class", return_value=mock_sandbox_class):
-            SandboxFactory.create(sandbox_type=SandboxType.DOCKER, options=None, environments=None)
+            SandboxFactory.create(
+                tenant_id="test-tenant", sandbox_type=SandboxType.DOCKER, options=None, environments=None
+            )
 
-            mock_sandbox_class.assert_called_once_with(options={}, environments={})
+            mock_sandbox_class.assert_called_once_with(
+                tenant_id="test-tenant", options={}, environments={}, user_id=None
+            )
 
     def test_create_with_default_parameters(self):
         """Test sandbox creation with default parameters."""
@@ -67,9 +74,11 @@ class TestSandboxFactory:
         mock_sandbox_class = MagicMock(return_value=mock_sandbox_instance)
 
         with patch.object(SandboxFactory, "_get_sandbox_class", return_value=mock_sandbox_class):
-            result = SandboxFactory.create(sandbox_type=SandboxType.DOCKER)
+            result = SandboxFactory.create(tenant_id="test-tenant", sandbox_type=SandboxType.DOCKER)
 
-            mock_sandbox_class.assert_called_once_with(options={}, environments={})
+            mock_sandbox_class.assert_called_once_with(
+                tenant_id="test-tenant", options={}, environments={}, user_id=None
+            )
             assert result is mock_sandbox_instance
 
     def test_get_sandbox_class_docker_returns_correct_class(self):
@@ -81,7 +90,7 @@ class TestSandboxFactory:
             "core.virtual_environment.providers.docker_daemon_sandbox.DockerDaemonEnvironment",
             return_value=mock_instance,
         ) as mock_docker_class:
-            SandboxFactory.create(sandbox_type=SandboxType.DOCKER)
+            SandboxFactory.create(tenant_id="test-tenant", sandbox_type=SandboxType.DOCKER)
             mock_docker_class.assert_called_once()
 
     def test_get_sandbox_class_local_returns_correct_class(self):
@@ -92,7 +101,7 @@ class TestSandboxFactory:
             "core.virtual_environment.providers.local_without_isolation.LocalVirtualEnvironment",
             return_value=mock_instance,
         ) as mock_local_class:
-            SandboxFactory.create(sandbox_type=SandboxType.LOCAL)
+            SandboxFactory.create(tenant_id="test-tenant", sandbox_type=SandboxType.LOCAL)
             mock_local_class.assert_called_once()
 
     def test_get_sandbox_class_e2b_returns_correct_class(self):
@@ -103,13 +112,13 @@ class TestSandboxFactory:
             "core.virtual_environment.providers.e2b_sandbox.E2BEnvironment",
             return_value=mock_instance,
         ) as mock_e2b_class:
-            SandboxFactory.create(sandbox_type=SandboxType.E2B)
+            SandboxFactory.create(tenant_id="test-tenant", sandbox_type=SandboxType.E2B)
             mock_e2b_class.assert_called_once()
 
     def test_create_with_unsupported_type_raises_value_error(self):
         """Test that unsupported sandbox type raises ValueError."""
         with pytest.raises(ValueError) as exc_info:
-            SandboxFactory.create(sandbox_type="unsupported_type")  # type: ignore[arg-type]
+            SandboxFactory.create(tenant_id="test-tenant", sandbox_type="unsupported_type")  # type: ignore[arg-type]
 
         assert "Unsupported sandbox type: unsupported_type" in str(exc_info.value)
 
@@ -120,7 +129,7 @@ class TestSandboxFactory:
 
         with patch.object(SandboxFactory, "_get_sandbox_class", return_value=mock_sandbox_class):
             with pytest.raises(Exception) as exc_info:
-                SandboxFactory.create(sandbox_type=SandboxType.DOCKER)
+                SandboxFactory.create(tenant_id="test-tenant", sandbox_type=SandboxType.DOCKER)
 
             assert "Docker daemon not available" in str(exc_info.value)
 
@@ -131,6 +140,7 @@ class TestSandboxFactoryIntegration:
     def test_create_local_sandbox_integration(self, tmp_path: Path):
         """Test creating a real local sandbox."""
         sandbox = SandboxFactory.create(
+            tenant_id="test-tenant",
             sandbox_type=SandboxType.LOCAL,
             options={"base_working_path": str(tmp_path)},
             environments={},

@@ -14,11 +14,25 @@ class VirtualEnvironment(ABC):
     Base class for virtual environment implementations.
     """
 
-    def __init__(self, options: Mapping[str, Any], environments: Mapping[str, str] | None = None) -> None:
+    def __init__(
+        self,
+        tenant_id: str,
+        options: Mapping[str, Any],
+        environments: Mapping[str, str] | None = None,
+        user_id: str | None = None,
+    ) -> None:
         """
         Initialize the virtual environment with metadata.
+
+        Args:
+            tenant_id: The tenant ID associated with this environment (required).
+            options: Provider-specific configuration options.
+            environments: Environment variables to set in the virtual environment.
+            user_id: The user ID associated with this environment (optional).
         """
 
+        self.tenant_id = tenant_id
+        self.user_id = user_id
         self.options = options
         self.metadata = self._construct_environment(options, environments or {})
 
