@@ -18,7 +18,7 @@ import type { UseQueryResult } from '@tanstack/react-query'
 import type { MockedFunction } from 'vitest'
 import type { ILogsProps } from './index'
 import type { ProviderContextState } from '@/context/provider-context'
-import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunDetail } from '@/models/log'
+import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunDetail, WorkflowRunExportResponse } from '@/models/log'
 import type { App, AppIconType, AppModeEnum } from '@/types/app'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
@@ -288,9 +288,9 @@ describe('Logs Container', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockedUseProviderContext.mockReturnValue(buildProviderContext())
-    mockedUseWorkflowRunExportUrl.mockReturnValue({
-      mutateAsync: vi.fn(),
-    } as unknown as ReturnType<typeof useLogModule.useWorkflowRunExportUrl>)
+    mockedUseWorkflowRunExportUrl.mockReturnValue(
+      createMockQueryResult<WorkflowRunExportResponse>({ data: undefined }),
+    )
     mockedUseWorkflowArchivedLogs.mockReturnValue(
       createMockQueryResult<WorkflowLogsResponse>({
         data: createMockLogsResponse([], 0),

@@ -9,7 +9,7 @@ import type {
   WorkflowLogsResponse,
   WorkflowRunExportResponse,
 } from '@/models/log'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { get } from './base'
 
 const NAME_SPACE = 'log'
@@ -97,12 +97,21 @@ export const useWorkflowArchivedLogs = ({ appId, params }: WorkflowLogsParams) =
   })
 }
 
-// ============ Workflow Run Export Tasks ============
+// ============ Workflow Run Export URL ============
 
-export const useWorkflowRunExportUrl = () => {
-  return useMutation({
-    mutationKey: [NAME_SPACE, 'workflow-run-export', 'url'],
-    mutationFn: ({ appId, runId }: { appId: string, runId: string }) =>
-      get<WorkflowRunExportResponse>(`/apps/${appId}/workflow-runs/${runId}/export`),
+type WorkflowRunExportParams = {
+  appId: string
+  runId: string | null
+  enabled?: boolean
+}
+
+export const useWorkflowRunExportUrl = ({ appId, runId, enabled = true }: WorkflowRunExportParams) => {
+  const runIdValue = runId ?? ''
+  return useQuery<WorkflowRunExportResponse>({
+    queryKey: [NAME_SPACE, 'workflow-run-export', appId, runIdValue],
+    queryFn: () => get<WorkflowRunExportResponse>(`/apps/${appId}/workflow-runs/${runIdValue}/export`),
+    enabled: enabled && !!appId && !!runIdValue,
+    staleTime: 55 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
   })
 }

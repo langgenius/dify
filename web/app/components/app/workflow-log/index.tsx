@@ -8,7 +8,7 @@ import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
 import { omit } from 'es-toolkit/object'
 import * as React from 'react'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import EmptyElement from '@/app/components/app/log/empty-element'
 import Button from '@/app/components/base/button'
@@ -62,7 +62,47 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const [archivedPage, setArchivedPage] = React.useState<number>(0)
   const [archivedLimit, setArchivedLimit] = React.useState<number>(APP_PAGE_LIMIT)
   const [exportingRunId, setExportingRunId] = useState<string | null>(null)
-  const getExportUrl = useWorkflowRunExportUrl()
+  const exportUrlQuery = useWorkflowRunExportUrl({
+    appId: appDetail.id,
+    runId: exportingRunId,
+    enabled: !!exportingRunId,
+  })
+
+  useEffect(() => {
+    if (!exportingRunId)
+      return
+    if (exportUrlQuery.isFetching)
+      return
+    if (exportUrlQuery.isError) {
+      Toast.notify({
+        type: 'error',
+        message: t('filter.archived.exportFailed', { ns: 'appLog' }),
+      })
+      setExportingRunId(null)
+      return
+    }
+    if (!exportUrlQuery.data)
+      return
+
+    const { status, presigned_url: presignedUrl } = exportUrlQuery.data
+    if (status === 'success' && presignedUrl) {
+      window.open(presignedUrl, '_blank')
+    }
+    else {
+      Toast.notify({
+        type: 'error',
+        message: t('filter.archived.exportFailed', { ns: 'appLog' }),
+      })
+    }
+
+    setExportingRunId(null)
+  }, [
+    exportUrlQuery.data,
+    exportUrlQuery.isError,
+    exportUrlQuery.isFetching,
+    exportingRunId,
+    t,
+  ])
 
   const query = {
     page: currPage + 1,
@@ -99,28 +139,12 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
 
   const handleExport = useCallback(
     async (log: WorkflowAppLogDetail) => {
-      if (exportingRunId)
+      if (exportingRunId || exportUrlQuery.isFetching)
         return
       const runId = log.workflow_run.id
       setExportingRunId(runId)
-      try {
-        const task = await getExportUrl.mutateAsync({ appId: appDetail.id, runId })
-        if (task.status === 'success' && task.presigned_url)
-          window.open(task.presigned_url, '_blank')
-        else
-          throw new Error('Export URL missing')
-      }
-      catch (e) {
-        Toast.notify({
-          type: 'error',
-          message: t('filter.archived.exportFailed', { ns: 'appLog' }),
-        })
-      }
-      finally {
-        setExportingRunId(null)
-      }
     },
-    [appDetail.id, exportingRunId, getExportUrl, t],
+    [exportUrlQuery.isFetching, exportingRunId],
   )
 
   return (
