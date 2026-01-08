@@ -6,6 +6,9 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { PromptConfig } from '@/models/debug'
 import type { InstalledApp } from '@/models/explore'
 import type { SiteInfo } from '@/models/share'
+import type {
+  IOtherOptions,
+} from '@/service/base'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { RiLoader2Line } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
@@ -25,6 +28,9 @@ import Toast from '@/app/components/base/toast'
 import NoData from '@/app/components/share/text-generation/no-data'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { TEXT_GENERATION_TIMEOUT_MS } from '@/config'
+import {
+  sseGet,
+} from '@/service/base'
 import { sendCompletionMessage, sendWorkflowMessage, stopChatMessageResponding, stopWorkflowMessage, updateFeedback } from '@/service/share'
 import { TransferMethod } from '@/types/app'
 import { sleep } from '@/utils'
@@ -283,10 +289,16 @@ const Result: FC<IResultProps> = ({
     })()
 
     if (isWorkflow) {
-      sendWorkflowMessage(
-        data,
-        {
-          onWorkflowStarted: ({ workflow_run_id, task_id }) => {
+      const otherOptions: IOtherOptions = {
+        isPublicAPI: !isInstalledApp,
+        onWorkflowStarted: ({ workflow_run_id, task_id, data }) => {
+          if (data.is_resumption) {
+            setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+              draft.expand = true
+              draft.status = WorkflowRunningStatus.Running
+            }))
+          }
+          else {
             tempMessageId = workflow_run_id
             setCurrentTaskId(task_id || null)
             setIsStopping(false)
@@ -296,178 +308,239 @@ const Result: FC<IResultProps> = ({
               expand: false,
               resultText: '',
             })
-          },
-          onIterationStart: ({ data }) => {
+          }
+        },
+        onIterationStart: ({ data }) => {
+          setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+            draft.expand = true
+            draft.tracing!.push({
+              ...data,
+              status: NodeRunningStatus.Running,
+              expand: true,
+            })
+          }))
+        },
+        onIterationNext: () => {
+          setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+            draft.expand = true
+            const iterations = draft.tracing.find(item => item.node_id === data.node_id
+              && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id))!
+            iterations?.details!.push([])
+          }))
+        },
+        onIterationFinish: ({ data }) => {
+          setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+            draft.expand = true
+            const iterationsIndex = draft.tracing.findIndex(item => item.node_id === data.node_id
+              && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id))!
+            draft.tracing[iterationsIndex] = {
+              ...data,
+              expand: !!data.error,
+            }
+          }))
+        },
+        onLoopStart: ({ data }) => {
+          setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+            draft.expand = true
+            draft.tracing!.push({
+              ...data,
+              status: NodeRunningStatus.Running,
+              expand: true,
+            })
+          }))
+        },
+        onLoopNext: () => {
+          setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+            draft.expand = true
+            const loops = draft.tracing.find(item => item.node_id === data.node_id
+              && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id))!
+            loops?.details!.push([])
+          }))
+        },
+        onLoopFinish: ({ data }) => {
+          setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+            draft.expand = true
+            const loopsIndex = draft.tracing.findIndex(item => item.node_id === data.node_id
+              && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id))!
+            draft.tracing[loopsIndex] = {
+              ...data,
+              expand: !!data.error,
+            }
+          }))
+        },
+        onNodeStarted: ({ data }) => {
+          if (data.is_resumption) {
             setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
-              draft.expand = true
-              draft.tracing!.push({
-                ...data,
-                status: NodeRunningStatus.Running,
-                expand: true,
-              })
-            }))
-          },
-          onIterationNext: () => {
-            setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
-              draft.expand = true
-              const iterations = draft.tracing.find(item => item.node_id === data.node_id
-                && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id))!
-              iterations?.details!.push([])
-            }))
-          },
-          onIterationFinish: ({ data }) => {
-            setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
-              draft.expand = true
-              const iterationsIndex = draft.tracing.findIndex(item => item.node_id === data.node_id
-                && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id))!
-              draft.tracing[iterationsIndex] = {
-                ...data,
-                expand: !!data.error,
-              }
-            }))
-          },
-          onLoopStart: ({ data }) => {
-            setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
-              draft.expand = true
-              draft.tracing!.push({
-                ...data,
-                status: NodeRunningStatus.Running,
-                expand: true,
-              })
-            }))
-          },
-          onLoopNext: () => {
-            setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
-              draft.expand = true
-              const loops = draft.tracing.find(item => item.node_id === data.node_id
-                && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id))!
-              loops?.details!.push([])
-            }))
-          },
-          onLoopFinish: ({ data }) => {
-            setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
-              draft.expand = true
-              const loopsIndex = draft.tracing.findIndex(item => item.node_id === data.node_id
-                && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id))!
-              draft.tracing[loopsIndex] = {
-                ...data,
-                expand: !!data.error,
-              }
-            }))
-          },
-          onNodeStarted: ({ data }) => {
-            if (data.iteration_id)
-              return
-
-            if (data.loop_id)
-              return
-
-            setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
-              draft.expand = true
-              draft.tracing!.push({
-                ...data,
-                status: NodeRunningStatus.Running,
-                expand: true,
-              })
-            }))
-          },
-          onNodeFinished: ({ data }) => {
-            if (data.iteration_id)
-              return
-
-            if (data.loop_id)
-              return
-
-            setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
-              const currentIndex = draft.tracing!.findIndex(trace => trace.node_id === data.node_id
-                && (trace.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || trace.parallel_id === data.execution_metadata?.parallel_id))
-              if (currentIndex > -1 && draft.tracing) {
-                draft.tracing[currentIndex] = {
-                  ...(draft.tracing[currentIndex].extras
-                    ? { extras: draft.tracing[currentIndex].extras }
-                    : {}),
+              const currentIndex = draft.tracing!.findIndex(item => item.node_id === data.node_id)
+              if (currentIndex > -1) {
+                draft.expand = true
+                draft.tracing![currentIndex] = {
                   ...data,
-                  expand: !!data.error,
+                  status: NodeRunningStatus.Running,
+                  expand: true,
                 }
               }
             }))
-          },
-          onWorkflowFinished: ({ data }) => {
-            if (isTimeout) {
-              notify({ type: 'warning', message: t('warningMessage.timeoutExceeded', { ns: 'appDebug' }) })
+          }
+          else {
+            if (data.iteration_id)
               return
-            }
-            const workflowStatus = data.status as WorkflowRunningStatus | undefined
-            const markNodesStopped = (traces?: WorkflowProcess['tracing']) => {
-              if (!traces)
-                return
-              const markTrace = (trace: WorkflowProcess['tracing'][number]) => {
-                if ([NodeRunningStatus.Running, NodeRunningStatus.Waiting].includes(trace.status as NodeRunningStatus))
-                  trace.status = NodeRunningStatus.Stopped
-                trace.details?.forEach(detailGroup => detailGroup.forEach(markTrace))
-                trace.retryDetail?.forEach(markTrace)
-                trace.parallelDetail?.children?.forEach(markTrace)
-              }
-              traces.forEach(markTrace)
-            }
-            if (workflowStatus === WorkflowRunningStatus.Stopped) {
-              setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
-                draft.status = WorkflowRunningStatus.Stopped
-                markNodesStopped(draft.tracing)
-              }))
-              setRespondingFalse()
-              resetRunState()
-              onCompleted(getCompletionRes(), taskId, false)
-              isEnd = true
+
+            if (data.loop_id)
               return
-            }
-            if (data.error) {
-              notify({ type: 'error', message: data.error })
-              setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
-                draft.status = WorkflowRunningStatus.Failed
-                markNodesStopped(draft.tracing)
-              }))
-              setRespondingFalse()
-              resetRunState()
-              onCompleted(getCompletionRes(), taskId, false)
-              isEnd = true
-              return
-            }
+
             setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
-              draft.status = WorkflowRunningStatus.Succeeded
-              draft.files = getFilesInLogs(data.outputs || []) as any[]
+              draft.expand = true
+              draft.tracing!.push({
+                ...data,
+                status: NodeRunningStatus.Running,
+                expand: true,
+              })
             }))
-            if (!data.outputs) {
-              setCompletionRes('')
-            }
-            else {
-              setCompletionRes(data.outputs)
-              const isStringOutput = Object.keys(data.outputs).length === 1 && typeof data.outputs[Object.keys(data.outputs)[0]] === 'string'
-              if (isStringOutput) {
-                setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
-                  draft.resultText = data.outputs[Object.keys(data.outputs)[0]]
-                }))
+          }
+        },
+        onNodeFinished: ({ data }) => {
+          if (data.iteration_id)
+            return
+
+          if (data.loop_id)
+            return
+
+          setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+            const currentIndex = draft.tracing!.findIndex(trace => trace.node_id === data.node_id
+              && (trace.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || trace.parallel_id === data.execution_metadata?.parallel_id))
+            if (currentIndex > -1 && draft.tracing) {
+              draft.tracing[currentIndex] = {
+                ...(draft.tracing[currentIndex].extras
+                  ? { extras: draft.tracing[currentIndex].extras }
+                  : {}),
+                ...data,
+                expand: !!data.error,
               }
             }
+          }))
+        },
+        onWorkflowFinished: ({ data }) => {
+          if (isTimeout) {
+            notify({ type: 'warning', message: t('warningMessage.timeoutExceeded', { ns: 'appDebug' }) })
+            return
+          }
+          const workflowStatus = data.status as WorkflowRunningStatus | undefined
+          const markNodesStopped = (traces?: WorkflowProcess['tracing']) => {
+            if (!traces)
+              return
+            const markTrace = (trace: WorkflowProcess['tracing'][number]) => {
+              if ([NodeRunningStatus.Running, NodeRunningStatus.Waiting].includes(trace.status as NodeRunningStatus))
+                trace.status = NodeRunningStatus.Stopped
+              trace.details?.forEach(detailGroup => detailGroup.forEach(markTrace))
+              trace.retryDetail?.forEach(markTrace)
+              trace.parallelDetail?.children?.forEach(markTrace)
+            }
+            traces.forEach(markTrace)
+          }
+          if (workflowStatus === WorkflowRunningStatus.Stopped) {
+            setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+              draft.status = WorkflowRunningStatus.Stopped
+              markNodesStopped(draft.tracing)
+            }))
             setRespondingFalse()
             resetRunState()
-            setMessageId(tempMessageId)
-            onCompleted(getCompletionRes(), taskId, true)
+            onCompleted(getCompletionRes(), taskId, false)
             isEnd = true
-          },
-          onTextChunk: (params) => {
-            const { data: { text } } = params
+            return
+          }
+          if (data.error) {
+            notify({ type: 'error', message: data.error })
             setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
-              draft.resultText += text
+              draft.status = WorkflowRunningStatus.Failed
+              markNodesStopped(draft.tracing)
             }))
-          },
-          onTextReplace: (params) => {
-            const { data: { text } } = params
-            setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
-              draft.resultText = text
-            }))
-          },
+            setRespondingFalse()
+            resetRunState()
+            onCompleted(getCompletionRes(), taskId, false)
+            isEnd = true
+            return
+          }
+          setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+            draft.status = WorkflowRunningStatus.Succeeded
+            draft.files = getFilesInLogs(data.outputs || []) as any[]
+          }))
+          if (!data.outputs) {
+            setCompletionRes('')
+          }
+          else {
+            setCompletionRes(data.outputs)
+            const isStringOutput = Object.keys(data.outputs).length === 1 && typeof data.outputs[Object.keys(data.outputs)[0]] === 'string'
+            if (isStringOutput) {
+              setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+                draft.resultText = data.outputs[Object.keys(data.outputs)[0]]
+              }))
+            }
+          }
+          setRespondingFalse()
+          resetRunState()
+          setMessageId(tempMessageId)
+          onCompleted(getCompletionRes(), taskId, true)
+          isEnd = true
         },
+        onTextChunk: (params) => {
+          const { data: { text } } = params
+          setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+            draft.resultText += text
+          }))
+        },
+        onTextReplace: (params) => {
+          const { data: { text } } = params
+          setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+            draft.resultText = text
+          }))
+        },
+        onHumanInputRequired: ({ data: humanInputRequiredData }) => {
+          setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+            if (!draft.humanInputFormDataList) {
+              draft.humanInputFormDataList = [humanInputRequiredData]
+            }
+            else {
+              const currentFormIndex = draft.humanInputFormDataList.findIndex(item => item.node_id === data.node_id)
+              if (currentFormIndex > -1) {
+                draft.humanInputFormDataList[currentFormIndex] = humanInputRequiredData
+              }
+              else {
+                draft.humanInputFormDataList.push(humanInputRequiredData)
+              }
+            }
+          }))
+        },
+        onHumanInputFormFilled: ({ data: humanInputFilledFormData }) => {
+          setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+            if (draft.humanInputFormDataList?.length) {
+              const currentFormIndex = draft.humanInputFormDataList.findIndex(item => item.node_id === humanInputFilledFormData.node_id)
+              draft.humanInputFormDataList.splice(currentFormIndex, 1)
+            }
+            if (!draft.humanInputFilledFormDataList) {
+              draft.humanInputFilledFormDataList = [humanInputFilledFormData]
+            }
+            else {
+              draft.humanInputFilledFormDataList.push(humanInputFilledFormData)
+            }
+          }))
+        },
+        onWorkflowPaused: ({ data: workflowPausedData }) => {
+          const url = `/workflow/${workflowPausedData.workflow_run_id}/events`
+          sseGet(
+            url,
+            {},
+            otherOptions,
+          )
+          setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+            draft.expand = false
+            draft.status = WorkflowRunningStatus.Paused
+          }))
+        },
+      }
+      sendWorkflowMessage(
+        data,
+        otherOptions,
         isInstalledApp,
         installedAppInfo?.id,
       ).catch((error) => {

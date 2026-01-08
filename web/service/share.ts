@@ -3,23 +3,12 @@ import type {
   IOnData,
   IOnError,
   IOnFile,
-  IOnIterationFinished,
-  IOnIterationNext,
-  IOnIterationStarted,
-  IOnLoopFinished,
-  IOnLoopNext,
-  IOnLoopStarted,
   IOnMessageEnd,
   IOnMessageReplace,
-  IOnNodeFinished,
-  IOnNodeStarted,
-  IOnTextChunk,
-  IOnTextReplace,
   IOnThought,
   IOnTTSChunk,
   IOnTTSEnd,
-  IOnWorkflowFinished,
-  IOnWorkflowStarted,
+  IOtherOptions,
 } from './base'
 import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import type { ChatConfig } from '@/app/components/base/chat/types'
@@ -103,33 +92,7 @@ export const sendCompletionMessage = async (body: Record<string, any>, { onData,
 
 export const sendWorkflowMessage = async (
   body: Record<string, any>,
-  {
-    onWorkflowStarted,
-    onNodeStarted,
-    onNodeFinished,
-    onWorkflowFinished,
-    onIterationStart,
-    onIterationNext,
-    onIterationFinish,
-    onLoopStart,
-    onLoopNext,
-    onLoopFinish,
-    onTextChunk,
-    onTextReplace,
-  }: {
-    onWorkflowStarted: IOnWorkflowStarted
-    onNodeStarted: IOnNodeStarted
-    onNodeFinished: IOnNodeFinished
-    onWorkflowFinished: IOnWorkflowFinished
-    onIterationStart: IOnIterationStarted
-    onIterationNext: IOnIterationNext
-    onIterationFinish: IOnIterationFinished
-    onLoopStart: IOnLoopStarted
-    onLoopNext: IOnLoopNext
-    onLoopFinish: IOnLoopFinished
-    onTextChunk: IOnTextChunk
-    onTextReplace: IOnTextReplace
-  },
+  otherOptions: IOtherOptions,
   isInstalledApp: boolean,
   installedAppId = '',
 ) => {
@@ -139,19 +102,8 @@ export const sendWorkflowMessage = async (
       response_mode: 'streaming',
     },
   }, {
-    onNodeStarted,
-    onWorkflowStarted,
-    onWorkflowFinished,
+    ...otherOptions,
     isPublicAPI: !isInstalledApp,
-    onNodeFinished,
-    onIterationStart,
-    onIterationNext,
-    onIterationFinish,
-    onLoopStart,
-    onLoopNext,
-    onLoopFinish,
-    onTextChunk,
-    onTextReplace,
   })
 }
 
