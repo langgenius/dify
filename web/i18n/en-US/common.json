@@ -61,6 +61,8 @@
   "account.workspaceName": "Workspace Name",
   "account.workspaceNamePlaceholder": "Enter workspace name",
   "actionMsg.copySuccessfully": "Copied successfully",
+  "actionMsg.exportedSuccessfully": "Exported successfully",
+  "actionMsg.exportedUnsuccessfully": "Exported unsuccessfully",
   "actionMsg.generatedSuccessfully": "Generated successfully",
   "actionMsg.generatedUnsuccessfully": "Generated unsuccessfully",
   "actionMsg.modifiedSuccessfully": "Modified successfully",

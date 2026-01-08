@@ -55,7 +55,13 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const [queryParams, setQueryParams] = useState<QueryParam>(cachedState?.queryParams ?? defaultQueryParams)
   const [currPage, setCurrPage] = React.useState<number>(() => cachedState?.currPage ?? getPageFromParams())
   const [limit, setLimit] = React.useState<number>(cachedState?.limit ?? APP_PAGE_LIMIT)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
   const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
+
+  // Clear selection when query params change
+  useEffect(() => {
+    setSelectedIds([])
+  }, [debouncedQueryParams])
 
   useEffect(() => {
     const pageFromParams = getPageFromParams()
@@ -124,7 +130,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
         {total === undefined
           ? <Loading type="app" />
           : total > 0
-            ? <List logs={isChatMode ? chatConversations : completionConversations} appDetail={appDetail} onRefresh={isChatMode ? mutateChatList : mutateCompletionList} />
+            ? <List logs={isChatMode ? chatConversations : completionConversations} appDetail={appDetail} onRefresh={isChatMode ? mutateChatList : mutateCompletionList} selectedIds={selectedIds} onSelectedIdChange={setSelectedIds} />
             : <EmptyElement appDetail={appDetail} />}
         {/* Show Pagination only if the total is more than the limit */}
         {(total && total > APP_PAGE_LIMIT)
