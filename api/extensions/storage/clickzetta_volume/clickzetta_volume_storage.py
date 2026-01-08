@@ -390,8 +390,7 @@ class ClickZettaVolumeStorage(BaseStorage):
         """
         content = self.load_once(filename)
 
-        with Path(target_filepath).open("wb") as f:
-            f.write(content)
+        Path(target_filepath).write_bytes(content)
 
         logger.debug("File %s downloaded from ClickZetta Volume to %s", filename, target_filepath)
 
