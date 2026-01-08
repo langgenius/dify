@@ -3,12 +3,14 @@ import type { FC } from 'react'
 import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunTriggeredFrom } from '@/models/log'
 import type { App } from '@/types/app'
 import { ArrowDownIcon } from '@heroicons/react/24/outline'
+import { RiDownloadLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import Drawer from '@/app/components/base/drawer'
 import Loading from '@/app/components/base/loading'
+import Spinner from '@/app/components/base/spinner'
 import Indicator from '@/app/components/header/indicator'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
@@ -140,7 +142,7 @@ const WorkflowAppLogList: FC<ILogs> = ({
             <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('table.header.tokens', { ns: 'appLog' })}</td>
             <td className={cn('whitespace-nowrap bg-background-section-burn py-1.5 pl-3', !isWorkflow && !showExportColumn ? 'rounded-r-lg' : '')}>{t('table.header.user', { ns: 'appLog' })}</td>
             {isWorkflow && <td className={cn('whitespace-nowrap bg-background-section-burn py-1.5 pl-3', showExportColumn ? '' : 'rounded-r-lg')}>{t('table.header.triggered_from', { ns: 'appLog' })}</td>}
-            {showExportColumn && <td className="whitespace-nowrap rounded-r-lg bg-background-section-burn py-1.5 pl-3">{t('filter.archived.export', { ns: 'appLog' })}</td>}
+            {showExportColumn && <td className="whitespace-nowrap rounded-r-lg bg-background-section-burn py-1.5 pl-3"></td>}
           </tr>
         </thead>
         <tbody className="system-sm-regular text-text-secondary">
@@ -191,15 +193,20 @@ const WorkflowAppLogList: FC<ILogs> = ({
                 )}
                 {showExportColumn && (
                   <td className="p-3 pr-2 text-right">
-                    <Button
-                      size="small"
-                      variant="secondary"
-                      loading={exportLoadingRunId === log.workflow_run.id}
+                    <ActionButton
+                      size="m"
+                      state={exportLoadingRunId === log.workflow_run.id ? ActionButtonState.Disabled : undefined}
                       disabled={exportLoadingRunId === log.workflow_run.id}
-                      onClick={() => onExport?.(log)}
+                      aria-label={t('filter.archived.export', { ns: 'appLog' })}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        onExport?.(log)
+                      }}
                     >
-                      {t('filter.archived.export', { ns: 'appLog' })}
-                    </Button>
+                      {exportLoadingRunId === log.workflow_run.id
+                        ? <Spinner loading className="h-3.5 w-3.5 !border-2 text-text-disabled" />
+                        : <RiDownloadLine className="h-4 w-4" />}
+                    </ActionButton>
                   </td>
                 )}
               </tr>
