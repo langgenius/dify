@@ -4,7 +4,7 @@
 import type { IconData } from '@/app/components/base/icons/IconBase'
 import * as React from 'react'
 import IconBase from '@/app/components/base/icons/IconBase'
-import data from './MlflowIconBig.json'
+import data from './OpenaiBlue.json'
 
 const Icon = (
   {
@@ -15,6 +15,6 @@ const Icon = (
   },
 ) => <IconBase {...props} ref={ref} data={data as IconData} />
 
-Icon.displayName = 'MlflowIconBig'
+Icon.displayName = 'OpenaiBlue'
 
 export default Icon
