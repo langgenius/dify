@@ -144,7 +144,7 @@ export const getMarketplaceListCondition = (pluginType: string) => {
   return ''
 }
 
-export const getMarketplaceListFilterType = (category: string) => {
+export const getMarketplaceListFilterType = (category: ActivePluginType) => {
   if (category === PLUGIN_TYPE_SEARCH_MAP.all)
     return undefined
 
