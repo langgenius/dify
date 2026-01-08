@@ -21,7 +21,11 @@ import {
 } from '@floating-ui/react'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { LexicalTypeaheadMenuPlugin } from '@lexical/react/LexicalTypeaheadMenuPlugin'
-import { KEY_ESCAPE_COMMAND } from 'lexical'
+import {
+  $getRoot,
+  $insertNodes,
+  KEY_ESCAPE_COMMAND,
+} from 'lexical'
 import {
   Fragment,
   memo,
@@ -41,6 +45,7 @@ import { INSERT_ERROR_MESSAGE_BLOCK_COMMAND } from '../error-message-block'
 import { INSERT_LAST_RUN_BLOCK_COMMAND } from '../last-run-block'
 import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '../variable-block'
 import { INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND } from '../workflow-variable-block'
+import { $createWorkflowVariableBlockNode } from '../workflow-variable-block/node'
 import { useOptions } from './hooks'
 
 type ComponentPickerProps = {
@@ -161,6 +166,16 @@ const ComponentPicker = ({
       const needRemove = $splitNodeContainingQuery(checkForTriggerMatch(triggerString, editor)!)
       if (needRemove)
         needRemove.remove()
+
+      const root = $getRoot()
+      const firstChild = root.getFirstChild()
+      if (firstChild) {
+        const selection = firstChild.selectStart()
+        if (selection) {
+          const workflowVariableBlockNode = $createWorkflowVariableBlockNode([agent.id, 'text'], {}, undefined)
+          $insertNodes([workflowVariableBlockNode])
+        }
+      }
     })
     agentBlock?.onSelect?.(agent)
     handleClose()

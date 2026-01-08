@@ -21,6 +21,7 @@ import {
   VariableLabelInEditor,
 } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
 import { useSelectOrDelete } from '../../hooks'
 import {
@@ -66,6 +67,7 @@ const WorkflowVariableBlockComponent = ({
   )()
   const [localWorkflowNodesMap, setLocalWorkflowNodesMap] = useState<WorkflowNodesMap>(workflowNodesMap)
   const node = localWorkflowNodesMap![variables[isRagVar ? 1 : 0]]
+  const isAgentVariable = node?.type === BlockEnum.Agent
 
   const isException = isExceptionVariable(varName, node?.type)
   const variableValid = useMemo(() => {
@@ -133,6 +135,9 @@ const WorkflowVariableBlockComponent = ({
       zoom: transform[2],
     })
   }, [node, reactflow, store])
+
+  if (isAgentVariable)
+    return <span className="hidden" ref={ref} />
 
   const Item = (
     <VariableLabelInEditor

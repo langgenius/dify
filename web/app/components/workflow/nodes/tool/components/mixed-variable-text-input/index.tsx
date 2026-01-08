@@ -6,6 +6,7 @@ import type {
 import {
   memo,
   useCallback,
+  useEffect,
   useMemo,
   useState,
 } from 'react'
@@ -78,6 +79,11 @@ const MixedVariableTextInput = ({
 
   const [selectedAgent, setSelectedAgent] = useState<{ id: string, title: string } | null>(null)
 
+  useEffect(() => {
+    if (!detectedAgentFromValue && selectedAgent)
+      setSelectedAgent(null)
+  }, [detectedAgentFromValue, selectedAgent])
+
   const agentNodes = useMemo(() => {
     return availableNodes
       .filter(node => node.data.type === BlockEnum.Agent)
@@ -89,13 +95,7 @@ const MixedVariableTextInput = ({
 
   const handleAgentSelect = useCallback((agent: { id: string, title: string }) => {
     setSelectedAgent(agent)
-    if (onChange) {
-      const agentVar = `{{#${agent.id}.text#}}`
-      const newValue = value ? `${agentVar}${value}` : agentVar
-      onChange(newValue)
-      setControlPromptEditorRerenderKey(Date.now())
-    }
-  }, [onChange, value, setControlPromptEditorRerenderKey])
+  }, [])
 
   const handleAgentRemove = useCallback(() => {
     const agentNodeId = detectedAgentFromValue?.nodeId || selectedAgent?.id
