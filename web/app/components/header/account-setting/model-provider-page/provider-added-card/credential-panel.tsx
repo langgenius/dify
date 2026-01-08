@@ -27,6 +27,7 @@ import PriorityUseTip from './priority-use-tip'
 type CredentialPanelProps = {
   provider: ModelProvider
 }
+
 const CredentialPanel = ({
   provider,
 }: CredentialPanelProps) => {
@@ -79,7 +80,7 @@ const CredentialPanel = ({
       return t('modelProvider.auth.authRemoved', { ns: 'common' })
 
     return ''
-  }, [authorized, authRemoved, current_credential_name, hasCredential])
+  }, [authorized, authRemoved, current_credential_name, hasCredential, t])
 
   const color = useMemo(() => {
     if (authRemoved || !hasCredential)
