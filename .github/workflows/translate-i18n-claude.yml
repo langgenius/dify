@@ -1,10 +1,12 @@
 name: Translate i18n Files with Claude Code
 
+# Note: claude-code-action doesn't support push events directly.
+# Push events are handled by trigger-i18n-sync.yml which sends repository_dispatch.
+# See: https://github.com/langgenius/dify/issues/30743
+
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'web/i18n/en-US/*.json'
+  repository_dispatch:
+    types: [i18n-sync]
   workflow_dispatch:
     inputs:
       files:
@@ -87,26 +89,35 @@ jobs:
                 echo "DIFF_AVAILABLE=false" >> $GITHUB_OUTPUT
               fi
             fi
-          else
-            # Push trigger - detect changed files from the push
-            BEFORE_SHA="${{ github.event.before }}"
-            # Handle edge case: first push or force push may have null/zero SHA
-            if [ -z "$BEFORE_SHA" ] || [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
-              # Fallback to comparing with parent commit
-              BEFORE_SHA="HEAD~1"
+          elif [ "${{ github.event_name }}" == "repository_dispatch" ]; then
+            # Triggered by push via trigger-i18n-sync.yml workflow
+            # Validate required payload fields
+            if [ -z "${{ github.event.client_payload.changed_files }}" ]; then
+              echo "Error: repository_dispatch payload missing required 'changed_files' field" >&2
+              exit 1
             fi
-            changed=$(git diff --name-only "$BEFORE_SHA" ${{ github.sha }} -- 'web/i18n/en-US/*.json' 2>/dev/null | xargs -n1 basename 2>/dev/null | sed 's/.json$//' | tr '\n' ' ' || echo "")
-            echo "CHANGED_FILES=$changed" >> $GITHUB_OUTPUT
+            echo "CHANGED_FILES=${{ github.event.client_payload.changed_files }}" >> $GITHUB_OUTPUT
             echo "TARGET_LANGS=" >> $GITHUB_OUTPUT
-            echo "SYNC_MODE=incremental" >> $GITHUB_OUTPUT
+            echo "SYNC_MODE=${{ github.event.client_payload.sync_mode || 'incremental' }}" >> $GITHUB_OUTPUT
 
-            # Generate detailed diff for the push
-            git diff "$BEFORE_SHA"..${{ github.sha }} -- 'web/i18n/en-US/*.json' > /tmp/i18n-diff.txt 2>/dev/null || echo "" > /tmp/i18n-diff.txt
-            if [ -s /tmp/i18n-diff.txt ]; then
-              echo "DIFF_AVAILABLE=true" >> $GITHUB_OUTPUT
+            # Decode the base64-encoded diff from the trigger workflow
+            if [ -n "${{ github.event.client_payload.diff_base64 }}" ]; then
+              if ! echo "${{ github.event.client_payload.diff_base64 }}" | base64 -d > /tmp/i18n-diff.txt 2>&1; then
+                echo "Warning: Failed to decode base64 diff payload" >&2
+                echo "" > /tmp/i18n-diff.txt
+                echo "DIFF_AVAILABLE=false" >> $GITHUB_OUTPUT
+              elif [ -s /tmp/i18n-diff.txt ]; then
+                echo "DIFF_AVAILABLE=true" >> $GITHUB_OUTPUT
+              else
+                echo "DIFF_AVAILABLE=false" >> $GITHUB_OUTPUT
+              fi
             else
+              echo "" > /tmp/i18n-diff.txt
               echo "DIFF_AVAILABLE=false" >> $GITHUB_OUTPUT
             fi
+          else
+            echo "Unsupported event type: ${{ github.event_name }}"
+            exit 1
           fi
 
           # Truncate diff if too large (keep first 50KB)

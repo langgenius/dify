@@ -66,7 +66,9 @@ const Header: FC<IHeaderProps> = ({
     const listener = (event: MessageEvent) => handleMessageReceived(event)
     window.addEventListener('message', listener)
 
-    window.parent.postMessage({ type: 'dify-chatbot-iframe-ready' }, '*')
+    // Security: Use document.referrer to get parent origin
+    const targetOrigin = document.referrer ? new URL(document.referrer).origin : '*'
+    window.parent.postMessage({ type: 'dify-chatbot-iframe-ready' }, targetOrigin)
 
     return () => window.removeEventListener('message', listener)
   }, [isIframe, handleMessageReceived])
