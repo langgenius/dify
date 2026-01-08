@@ -51,7 +51,4 @@ class TestWorkflowRunArchiver:
 
         key = archiver._get_archive_key(mock_run)
 
-        assert (
-            key == "tenant-123/app_id=app-999/year=2024/month=01/workflow_run_id=run-456/"
-            f"{ARCHIVE_BUNDLE_NAME}"
-        )
+        assert key == f"tenant-123/app_id=app-999/year=2024/month=01/workflow_run_id=run-456/{ARCHIVE_BUNDLE_NAME}"
