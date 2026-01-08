@@ -1,5 +1,6 @@
 """Unit tests for the execution coordinator orchestration logic."""
 
+import pytest
 from unittest.mock import MagicMock
 
 from core.workflow.graph_engine.command_processing.command_processor import CommandProcessor
@@ -48,3 +49,13 @@ def test_handle_pause_noop_when_execution_running() -> None:
 
     worker_pool.stop.assert_not_called()
     state_manager.clear_executing.assert_not_called()
+
+
+def test_has_executing_nodes_requires_pause() -> None:
+    graph_execution = GraphExecution(workflow_id="workflow")
+    graph_execution.start()
+
+    coordinator, _, _ = _build_coordinator(graph_execution)
+
+    with pytest.raises(AssertionError):
+        coordinator.has_executing_nodes()

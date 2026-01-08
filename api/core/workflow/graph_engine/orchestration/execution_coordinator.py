@@ -94,3 +94,11 @@ class ExecutionCoordinator:
 
         self._worker_pool.stop()
         self._state_manager.clear_executing()
+
+    def has_executing_nodes(self) -> bool:
+        """Return True if any nodes are currently marked as executing."""
+        # This check is only safe once execution has already paused.
+        # Before pause, executing state can change concurrently, which makes the result unreliable.
+        if not self._graph_execution.is_paused:
+            raise AssertionError("has_executing_nodes should only be called after execution is paused")
+        return self._state_manager.get_executing_count() > 0

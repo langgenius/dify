@@ -317,8 +317,10 @@ class GraphEngine:
     def _start_execution(self, *, resume: bool = False) -> None:
         """Start execution subsystems."""
         paused_nodes: list[str] = []
+        deferred_nodes: list[str] = []
         if resume:
             paused_nodes = self._graph_runtime_state.consume_paused_nodes()
+            deferred_nodes = self._graph_runtime_state.consume_deferred_nodes()
 
         # Start worker pool (it calculates initial workers internally)
         self._worker_pool.start()
@@ -334,7 +336,11 @@ class GraphEngine:
             self._state_manager.enqueue_node(root_node.id)
             self._state_manager.start_execution(root_node.id)
         else:
-            for node_id in paused_nodes:
+            seen_nodes: set[str] = set()
+            for node_id in paused_nodes + deferred_nodes:
+                if node_id in seen_nodes:
+                    continue
+                seen_nodes.add(node_id)
                 self._state_manager.enqueue_node(node_id)
                 self._state_manager.start_execution(node_id)
 

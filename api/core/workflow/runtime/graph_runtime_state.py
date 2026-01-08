@@ -129,6 +129,7 @@ class _GraphRuntimeStateSnapshot:
     graph_execution_dump: str | None
     response_coordinator_dump: str | None
     paused_nodes: tuple[str, ...]
+    deferred_nodes: tuple[str, ...]
 
 
 class GraphRuntimeState:
@@ -177,6 +178,7 @@ class GraphRuntimeState:
         self._pending_response_coordinator_dump: str | None = None
         self._pending_graph_execution_workflow_id: str | None = None
         self._paused_nodes: set[str] = set()
+        self._deferred_nodes: set[str] = set()
         # Tracks nodes that are being resumed in the current execution cycle.
         # Populated when paused nodes are consumed during resume.
         self._resuming_nodes: set[str] = set()
@@ -321,6 +323,7 @@ class GraphRuntimeState:
             "ready_queue": self.ready_queue.dumps(),
             "graph_execution": self.graph_execution.dumps(),
             "paused_nodes": list(self._paused_nodes),
+            "deferred_nodes": list(self._deferred_nodes),
         }
 
         if self._response_coordinator is not None and self._graph is not None:
@@ -368,6 +371,23 @@ class GraphRuntimeState:
         self._paused_nodes.clear()
         # Mark these nodes as resuming so downstream handlers can annotate events.
         self._resuming_nodes.update(nodes)
+        return nodes
+
+    def register_deferred_node(self, node_id: str) -> None:
+        """Record a node that became ready during pause and should resume later."""
+
+        self._deferred_nodes.add(node_id)
+
+    def get_deferred_nodes(self) -> list[str]:
+        """Retrieve deferred nodes without mutating internal state."""
+
+        return list(self._deferred_nodes)
+
+    def consume_deferred_nodes(self) -> list[str]:
+        """Retrieve and clear deferred nodes awaiting resume."""
+
+        nodes = list(self._deferred_nodes)
+        self._deferred_nodes.clear()
         return nodes
 
     def consume_resuming_node(self, node_id: str) -> bool:
@@ -440,6 +460,7 @@ class GraphRuntimeState:
         graph_execution_payload = payload.get("graph_execution")
         response_payload = payload.get("response_coordinator")
         paused_nodes_payload = payload.get("paused_nodes", [])
+        deferred_nodes_payload = payload.get("deferred_nodes", [])
 
         return _GraphRuntimeStateSnapshot(
             start_at=start_at,
@@ -453,6 +474,7 @@ class GraphRuntimeState:
             graph_execution_dump=graph_execution_payload,
             response_coordinator_dump=response_payload,
             paused_nodes=tuple(map(str, paused_nodes_payload)),
+            deferred_nodes=tuple(map(str, deferred_nodes_payload)),
         )
 
     def _apply_snapshot(self, snapshot: _GraphRuntimeStateSnapshot) -> None:
@@ -468,6 +490,7 @@ class GraphRuntimeState:
         self._restore_graph_execution(snapshot.graph_execution_dump)
         self._restore_response_coordinator(snapshot.response_coordinator_dump)
         self._paused_nodes = set(snapshot.paused_nodes)
+        self._deferred_nodes = set(snapshot.deferred_nodes)
 
     def _restore_ready_queue(self, payload: str | None) -> None:
         if payload is not None:
