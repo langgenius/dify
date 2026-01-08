@@ -56,9 +56,9 @@ export function useMarketplaceData() {
   return {
     marketplaceCollections: collectionsQuery.data?.marketplaceCollections,
     marketplaceCollectionPluginsMap: collectionsQuery.data?.marketplaceCollectionPluginsMap,
-    plugins: pluginsQuery.data?.pages.flatMap(page => page.plugins) || [],
-    pluginsTotal: pluginsQuery.data?.pages[0]?.total || 0,
-    page: pluginsQuery.data?.pages.length || 0,
+    plugins: pluginsQuery.data?.pages.flatMap(page => page.plugins),
+    pluginsTotal: pluginsQuery.data?.pages[0]?.total,
+    page: pluginsQuery.data?.pages.length || 1,
     isLoading: collectionsQuery.isLoading || pluginsQuery.isLoading,
   }
 }
