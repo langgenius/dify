@@ -13,8 +13,8 @@ x-shared-env: &shared-api-worker-env
   APP_WEB_URL: ${APP_WEB_URL:-}
   FILES_URL: ${FILES_URL:-}
   INTERNAL_FILES_URL: ${INTERNAL_FILES_URL:-}
-  LANG: ${LANG:-en_US.UTF-8}
-  LC_ALL: ${LC_ALL:-en_US.UTF-8}
+  LANG: ${LANG:-C.UTF-8}
+  LC_ALL: ${LC_ALL:-C.UTF-8}
   PYTHONIOENCODING: ${PYTHONIOENCODING:-utf-8}
   LOG_LEVEL: ${LOG_LEVEL:-INFO}
   LOG_OUTPUT_FORMAT: ${LOG_OUTPUT_FORMAT:-text}
@@ -1157,7 +1157,8 @@ services:
       OB_CLUSTER_NAME: ${OCEANBASE_CLUSTER_NAME:-difyai}
       OB_SERVER_IP: 127.0.0.1
       MODE: mini
-      LANG: en_US.UTF-8
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
     ports:
       - "${OCEANBASE_VECTOR_PORT:-2881}:2881"
     healthcheck:

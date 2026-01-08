@@ -11,7 +11,6 @@ import { PluginCategoryEnum } from '@/app/components/plugins/types'
 // Note: Import after mocks are set up
 import { DEFAULT_SORT, SCROLL_BOTTOM_THRESHOLD } from './constants'
 import { MarketplaceContext, MarketplaceContextProvider, useMarketplaceContext } from './context'
-import { useMixedTranslation } from './hooks'
 import PluginTypeSwitch, { PLUGIN_TYPE_SEARCH_MAP } from './plugin-type-switch'
 import StickySearchAndSwitchWrapper from './sticky-search-and-switch-wrapper'
 import {
@@ -598,48 +597,6 @@ describe('utils', () => {
       expect(getMarketplaceListFilterType(PLUGIN_TYPE_SEARCH_MAP.tool)).toBe('plugin')
       expect(getMarketplaceListFilterType(PLUGIN_TYPE_SEARCH_MAP.model)).toBe('plugin')
       expect(getMarketplaceListFilterType(PLUGIN_TYPE_SEARCH_MAP.agent)).toBe('plugin')
-    })
-  })
-})
-
-// ================================
-// Hooks Tests
-// ================================
-describe('hooks', () => {
-  describe('useMixedTranslation', () => {
-    it('should return translation function', () => {
-      const { result } = renderHook(() => useMixedTranslation())
-
-      expect(result.current.t).toBeDefined()
-      expect(typeof result.current.t).toBe('function')
-    })
-
-    it('should return translation key when no translation found', () => {
-      const { result } = renderHook(() => useMixedTranslation())
-
-      // The global mock returns key with namespace prefix
-      expect(result.current.t('category.all', { ns: 'plugin' })).toBe('plugin.category.all')
-    })
-
-    it('should use locale from outer when provided', () => {
-      const { result } = renderHook(() => useMixedTranslation('zh-Hans'))
-
-      expect(result.current.t).toBeDefined()
-    })
-
-    it('should handle different locale values', () => {
-      const locales = ['en-US', 'zh-Hans', 'ja-JP', 'pt-BR']
-      locales.forEach((locale) => {
-        const { result } = renderHook(() => useMixedTranslation(locale))
-        expect(result.current.t).toBeDefined()
-        expect(typeof result.current.t).toBe('function')
-      })
-    })
-
-    it('should use getFixedT when localeFromOuter is provided', () => {
-      const { result } = renderHook(() => useMixedTranslation('fr-FR'))
-      // The global mock returns key with namespace prefix
-      expect(result.current.t('search', { ns: 'plugin' })).toBe('plugin.search')
     })
   })
 })
@@ -2088,17 +2045,6 @@ describe('StickySearchAndSwitchWrapper', () => {
   })
 
   describe('Props', () => {
-    it('should accept locale prop', () => {
-      render(
-        <MarketplaceContextProvider>
-          <StickySearchAndSwitchWrapper locale="zh-Hans" />
-        </MarketplaceContextProvider>,
-      )
-
-      // Component should render without errors
-      expect(screen.getByTestId('portal-elem')).toBeInTheDocument()
-    })
-
     it('should accept showSearchParams prop', () => {
       render(
         <MarketplaceContextProvider>
