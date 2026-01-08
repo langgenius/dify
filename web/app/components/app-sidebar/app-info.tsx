@@ -1,7 +1,10 @@
+import type { InfiniteData, QueryKey } from '@tanstack/react-query'
 import type { Operation } from './app-operations'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
+import type { AppListResponse } from '@/models/app'
+import type { App } from '@/types/app'
 import {
   RiDeleteBinLine,
   RiEditLine,
@@ -11,6 +14,7 @@ import {
   RiFileDownloadLine,
   RiFileUploadLine,
 } from '@remixicon/react'
+import { useQueryClient } from '@tanstack/react-query'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import * as React from 'react'
@@ -26,6 +30,7 @@ import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { copyApp, deleteApp, exportAppConfig, updateAppInfo } from '@/service/apps'
+import { useInvalidateAppFullList, useInvalidateAppList } from '@/service/use-apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
@@ -74,6 +79,40 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
   const [showImportDSLModal, setShowImportDSLModal] = useState<boolean>(false)
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
   const [showExportWarning, setShowExportWarning] = useState(false)
+
+  // Invalidate app lists after destructive changes (delete/switch/etc.)
+  const invalidateAppList = useInvalidateAppList()
+  const invalidateAppFullList = useInvalidateAppFullList()
+  const queryClient = useQueryClient()
+
+  const removeAppFromCachedLists = useCallback((appId: string) => {
+    // Remove from infinite app lists (all param variants)
+    const lists = queryClient.getQueriesData<InfiniteData<AppListResponse>>({ queryKey: ['apps', 'list'] })
+    lists.forEach(([key, data]) => {
+      if (!data)
+        return
+      const newPages = data.pages.map((p) => {
+        const had = p.data.some((a: App) => a.id === appId)
+        return {
+          ...p,
+          data: p.data.filter((a: App) => a.id !== appId),
+          total: typeof p.total === 'number' && had ? Math.max(0, p.total - 1) : p.total,
+        }
+      })
+      queryClient.setQueryData<InfiniteData<AppListResponse>>(key as QueryKey, { ...data, pages: newPages })
+    })
+    // Remove from full list cache
+    queryClient.setQueryData<AppListResponse>(['apps', 'full-list'], (oldData) => {
+      if (!oldData)
+        return oldData
+      const had = oldData.data.some((a: App) => a.id === appId)
+      return {
+        ...oldData,
+        data: oldData.data.filter((a: App) => a.id !== appId),
+        total: typeof oldData.total === 'number' && had ? Math.max(0, oldData.total - 1) : oldData.total,
+      }
+    })
+  }, [queryClient])
 
   const onEdit: CreateAppModalProps['onConfirm'] = useCallback(async ({
     name,
@@ -193,6 +232,11 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
       notify({ type: 'success', message: t('appDeleted', { ns: 'app' }) })
       onPlanInfoChanged()
       setAppDetail()
+      // Eagerly update caches so the list UI drops the deleted app immediately
+      removeAppFromCachedLists(appDetail.id)
+      // Ensure app list refreshes when navigating back
+      invalidateAppList()
+      invalidateAppFullList()
       replace('/apps')
     }
     catch (e: any) {
