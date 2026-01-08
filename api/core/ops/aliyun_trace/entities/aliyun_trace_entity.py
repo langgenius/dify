@@ -34,6 +34,4 @@ class SpanData(BaseModel):
     status: Status = Field(default=Status(StatusCode.UNSET), description="The status of the span.")
     start_time: int | None = Field(..., description="The start time of the span in nanoseconds.")
     end_time: int | None = Field(..., description="The end time of the span in nanoseconds.")
-    span_kind: SpanKind = Field(
-        default=SpanKind.INTERNAL, description="The OpenTelemetry SpanKind for this span."
-    )
+    span_kind: SpanKind = Field(default=SpanKind.INTERNAL, description="The OpenTelemetry SpanKind for this span.")
