@@ -36,9 +36,6 @@ import {
   getMarketplacePluginsByCollectionId,
 } from './utils'
 
-/**
- * @deprecated use useMarketplaceCollectionsAndPluginsReactive instead
- */
 export const useMarketplaceCollectionsAndPlugins = () => {
   const [queryParams, setQueryParams] = useState<CollectionsAndPluginsSearchParams>()
   const [marketplaceCollectionsOverride, setMarketplaceCollections] = useState<MarketplaceCollection[]>()
@@ -68,28 +65,6 @@ export const useMarketplaceCollectionsAndPlugins = () => {
     queryMarketplaceCollectionsAndPlugins,
     isLoading,
     isSuccess,
-  }
-}
-
-export const useMarketplaceCollectionsAndPluginsReactive = (queryParams?: CollectionsAndPluginsSearchParams) => {
-  return useQuery({
-    queryKey: marketplaceKeys.collections(queryParams),
-    queryFn: ({ signal }) => getMarketplaceCollectionsAndPlugins(queryParams, { signal }),
-    enabled: queryParams !== undefined,
-  })
-}
-
-export function useMarketplaceCollectionsData() {
-  const [activePluginType] = useActivePluginType()
-
-  const collectionsParams = useMemo(() => getCollectionsParams(activePluginType), [activePluginType])
-
-  const { data, isLoading } = useMarketplaceCollectionsAndPluginsReactive(collectionsParams)
-
-  return {
-    marketplaceCollections: data?.marketplaceCollections,
-    marketplaceCollectionPluginsMap: data?.marketplaceCollectionPluginsMap,
-    isLoading,
   }
 }
 
@@ -177,9 +152,6 @@ async function fetchMarketplacePlugins(
   }
 }
 
-/**
- * @deprecated use useMarketplacePluginsReactive instead
- */
 export function useMarketplacePlugins(initialParams?: PluginsSearchParams) {
   const queryClient = useQueryClient()
   const [queryParams, handleUpdatePlugins] = useState<PluginsSearchParams | undefined>(initialParams)
@@ -235,7 +207,56 @@ export function useMarketplacePlugins(initialParams?: PluginsSearchParams) {
   }
 }
 
-export function useMarketplacePluginsReactive(queryParams?: PluginsSearchParams) {
+export const useMarketplaceContainerScroll = (
+  callback: () => void,
+  scrollContainerId = 'marketplace-container',
+) => {
+  const handleScroll = useCallback((e: Event) => {
+    const target = e.target as HTMLDivElement
+    const {
+      scrollTop,
+      scrollHeight,
+      clientHeight,
+    } = target
+    if (scrollTop + clientHeight >= scrollHeight - SCROLL_BOTTOM_THRESHOLD && scrollTop > 0)
+      callback()
+  }, [callback])
+
+  useEffect(() => {
+    const container = document.getElementById(scrollContainerId)
+    if (container)
+      container.addEventListener('scroll', handleScroll)
+
+    return () => {
+      if (container)
+        container.removeEventListener('scroll', handleScroll)
+    }
+  }, [handleScroll])
+}
+
+const useMarketplaceCollectionsAndPluginsReactive = (queryParams?: CollectionsAndPluginsSearchParams) => {
+  return useQuery({
+    queryKey: marketplaceKeys.collections(queryParams),
+    queryFn: ({ signal }) => getMarketplaceCollectionsAndPlugins(queryParams, { signal }),
+    enabled: queryParams !== undefined,
+  })
+}
+
+function useMarketplaceCollectionsData() {
+  const [activePluginType] = useActivePluginType()
+
+  const collectionsParams = useMemo(() => getCollectionsParams(activePluginType), [activePluginType])
+
+  const { data, isLoading } = useMarketplaceCollectionsAndPluginsReactive(collectionsParams)
+
+  return {
+    marketplaceCollections: data?.marketplaceCollections,
+    marketplaceCollectionPluginsMap: data?.marketplaceCollectionPluginsMap,
+    isLoading,
+  }
+}
+
+function useMarketplacePluginsReactive(queryParams?: PluginsSearchParams) {
   const marketplacePluginsQuery = useInfiniteQuery({
     queryKey: marketplaceKeys.plugins(queryParams),
     queryFn: ({ pageParam = 1, signal }) => fetchMarketplacePlugins(queryParams, pageParam, signal),
@@ -269,35 +290,6 @@ export function useMarketplacePluginsReactive(queryParams?: PluginsSearchParams)
     page: marketplacePluginsQuery.data?.pages?.length || (marketplacePluginsQuery.isPending && hasQuery ? 1 : 0),
   }
 }
-
-export const useMarketplaceContainerScroll = (
-  callback: () => void,
-  scrollContainerId = 'marketplace-container',
-) => {
-  const handleScroll = useCallback((e: Event) => {
-    const target = e.target as HTMLDivElement
-    const {
-      scrollTop,
-      scrollHeight,
-      clientHeight,
-    } = target
-    if (scrollTop + clientHeight >= scrollHeight - SCROLL_BOTTOM_THRESHOLD && scrollTop > 0)
-      callback()
-  }, [callback])
-
-  useEffect(() => {
-    const container = document.getElementById(scrollContainerId)
-    if (container)
-      container.addEventListener('scroll', handleScroll)
-
-    return () => {
-      if (container)
-        container.removeEventListener('scroll', handleScroll)
-    }
-  }, [handleScroll])
-}
-
-export type { MarketplaceCollection, PluginsSearchParams }
 
 export function useMarketplacePluginsData() {
   const sort = useMarketplaceSortValue()
