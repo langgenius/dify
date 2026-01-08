@@ -1,6 +1,6 @@
 import logging
 
-from sqlalchemy import CursorResult, update
+from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from configs import dify_config
