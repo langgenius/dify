@@ -6,7 +6,6 @@ import type {
   MarketplaceCollection,
   PluginsSearchParams,
 } from './types'
-import type { PluginsFromMarketplaceResponse } from '@/app/components/plugins/types'
 import {
   useInfiniteQuery,
   useQuery,
@@ -18,11 +17,10 @@ import {
   useEffect,
   useState,
 } from 'react'
-import { postMarketplace } from '@/service/base'
 import { SCROLL_BOTTOM_THRESHOLD } from './constants'
 import { marketplaceKeys } from './query-keys'
 import {
-  getFormattedPlugin,
+  fetchMarketplacePlugins,
   getMarketplaceCollectionsAndPlugins,
   getMarketplacePluginsByCollectionId,
 } from './utils'
@@ -85,74 +83,6 @@ export const useMarketplacePluginsByCollectionId = (
   }
 }
 
-const normalizeParams = (pluginsSearchParams: PluginsSearchParams) => {
-  const pageSize = pluginsSearchParams.pageSize || 40
-
-  return {
-    ...pluginsSearchParams,
-    pageSize,
-  }
-}
-
-export const fetchMarketplacePlugins = async (
-  queryParams: PluginsSearchParams | undefined,
-  pageParam: number,
-  signal?: AbortSignal,
-) => {
-  if (!queryParams) {
-    return {
-      plugins: [] as Plugin[],
-      total: 0,
-      page: 1,
-      pageSize: 40,
-    }
-  }
-
-  const params = normalizeParams(queryParams)
-  const {
-    query,
-    sortBy,
-    sortOrder,
-    category,
-    tags,
-    type,
-    pageSize,
-  } = params
-  const pluginOrBundle = type === 'bundle' ? 'bundles' : 'plugins'
-
-  try {
-    const res = await postMarketplace<{ data: PluginsFromMarketplaceResponse }>(`/${pluginOrBundle}/search/advanced`, {
-      body: {
-        page: pageParam,
-        page_size: pageSize,
-        query,
-        sort_by: sortBy,
-        sort_order: sortOrder,
-        category: category !== 'all' ? category : '',
-        tags,
-        type,
-      },
-      signal,
-    })
-    const resPlugins = res.data.bundles || res.data.plugins || []
-
-    return {
-      plugins: resPlugins.map(plugin => getFormattedPlugin(plugin)),
-      total: res.data.total,
-      page: pageParam,
-      pageSize,
-    }
-  }
-  catch {
-    return {
-      plugins: [],
-      total: 0,
-      page: pageParam,
-      pageSize,
-    }
-  }
-}
-
 export function useMarketplacePlugins() {
   const queryClient = useQueryClient()
   const [queryParams, setQueryParams] = useState<PluginsSearchParams>()
@@ -177,7 +107,7 @@ export function useMarketplacePlugins() {
   }, [queryClient])
 
   const handleUpdatePlugins = (pluginsSearchParams: PluginsSearchParams) => {
-    setQueryParams(normalizeParams(pluginsSearchParams))
+    setQueryParams(pluginsSearchParams)
   }
 
   const { run: queryPluginsWithDebounced, cancel: cancelQueryPluginsWithDebounced } = useDebounceFn((pluginsSearchParams: PluginsSearchParams) => {

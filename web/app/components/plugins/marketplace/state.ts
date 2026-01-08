@@ -4,10 +4,10 @@ import { useQueryState } from 'nuqs'
 import { useCallback, useMemo } from 'react'
 import { useMarketplaceSearchMode, useMarketplaceSortValue, useSetMarketplaceSort, useSetSearchMode } from './atoms'
 import { DEFAULT_SORT, PLUGIN_TYPE_SEARCH_MAP } from './constants'
-import { fetchMarketplacePlugins, useMarketplaceContainerScroll } from './hooks'
+import { useMarketplaceContainerScroll } from './hooks'
 import { marketplaceKeys } from './query-keys'
 import { marketplaceSearchParamsParsers } from './search-params'
-import { getCollectionsParams, getMarketplaceCollectionsAndPlugins, getMarketplaceListFilterType } from './utils'
+import { fetchMarketplacePlugins, getCollectionsParams, getMarketplaceCollectionsAndPlugins, getMarketplaceListFilterType } from './utils'
 
 function useMarketplaceCollectionsAndPluginsReactive(queryParams?: CollectionsAndPluginsSearchParams) {
   return useQuery({
