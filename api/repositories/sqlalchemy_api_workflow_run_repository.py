@@ -460,41 +460,54 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         app_logs: Sequence[WorkflowAppLog],
         trigger_metadata: str | None,
     ) -> int:
-        base_data = {
-            "tenant_id": run.tenant_id,
-            "app_id": run.app_id,
-            "workflow_id": run.workflow_id,
-            "workflow_run_id": run.id,
-            "created_by_role": run.created_by_role,
-            "created_by": run.created_by,
-            "run_version": run.version,
-            "run_status": run.status,
-            "run_triggered_from": run.triggered_from,
-            "run_error": run.error,
-            "run_elapsed_time": run.elapsed_time,
-            "run_total_tokens": run.total_tokens,
-            "run_total_steps": run.total_steps,
-            "run_created_at": run.created_at,
-            "run_finished_at": run.finished_at,
-            "run_exceptions_count": run.exceptions_count,
-            "trigger_metadata": trigger_metadata,
-        }
         if not app_logs:
             archive_log = WorkflowArchiveLog(
-                **base_data,
                 log_id=None,
                 log_created_at=None,
                 log_created_from=None,
+                tenant_id=run.tenant_id,
+                app_id=run.app_id,
+                workflow_id=run.workflow_id,
+                workflow_run_id=run.id,
+                created_by_role=run.created_by_role,
+                created_by=run.created_by,
+                run_version=run.version,
+                run_status=run.status,
+                run_triggered_from=run.triggered_from,
+                run_error=run.error,
+                run_elapsed_time=run.elapsed_time,
+                run_total_tokens=run.total_tokens,
+                run_total_steps=run.total_steps,
+                run_created_at=run.created_at,
+                run_finished_at=run.finished_at,
+                run_exceptions_count=run.exceptions_count,
+                trigger_metadata=trigger_metadata,
             )
             session.add(archive_log)
             return 1
 
         archive_logs = [
             WorkflowArchiveLog(
-                **base_data,
                 log_id=app_log.id,
                 log_created_at=app_log.created_at,
                 log_created_from=app_log.created_from,
+                tenant_id=run.tenant_id,
+                app_id=run.app_id,
+                workflow_id=run.workflow_id,
+                workflow_run_id=run.id,
+                created_by_role=run.created_by_role,
+                created_by=run.created_by,
+                run_version=run.version,
+                run_status=run.status,
+                run_triggered_from=run.triggered_from,
+                run_error=run.error,
+                run_elapsed_time=run.elapsed_time,
+                run_total_tokens=run.total_tokens,
+                run_total_steps=run.total_steps,
+                run_created_at=run.created_at,
+                run_finished_at=run.finished_at,
+                run_exceptions_count=run.exceptions_count,
+                trigger_metadata=trigger_metadata,
             )
             for app_log in app_logs
         ]

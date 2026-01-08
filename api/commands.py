@@ -1023,6 +1023,8 @@ def restore_workflow_runs(
     if run_id:
         results = [restorer.restore_by_run_id(run_id)]
     else:
+        assert start_from is not None
+        assert end_before is not None
         results = restorer.restore_batch(
             parsed_tenant_ids,
             start_date=start_from,
@@ -1113,6 +1115,8 @@ def delete_archived_workflow_runs(
     if run_id:
         results = [deleter.delete_by_run_id(run_id)]
     else:
+        assert start_from is not None
+        assert end_before is not None
         results = deleter.delete_batch(
             parsed_tenant_ids,
             start_date=start_from,

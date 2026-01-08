@@ -22,7 +22,7 @@ class LogView:
     - Proxies all other attributes to the underlying `WorkflowAppLog`
     """
 
-    def __init__(self, log: WorkflowAppLog, details: dict | None):
+    def __init__(self, log: WorkflowAppLog | WorkflowArchiveLog, details: dict | None):
         self.log = log
         self.details_ = details
 
@@ -213,7 +213,7 @@ class WorkflowAppService:
             "data": items,
         }
 
-    def handle_trigger_metadata(self, tenant_id: str, meta_val: str) -> dict[str, Any]:
+    def handle_trigger_metadata(self, tenant_id: str, meta_val: str | None) -> dict[str, Any]:
         metadata: dict[str, Any] | None = self._safe_json_loads(meta_val)
         if not metadata:
             return {}
