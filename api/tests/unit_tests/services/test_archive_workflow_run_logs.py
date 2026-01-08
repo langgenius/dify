@@ -9,6 +9,8 @@ This module contains tests for:
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
+from services.retention.workflow_run.constants import ARCHIVE_BUNDLE_NAME
+
 
 class TestWorkflowRunArchiver:
     """Tests for the WorkflowRunArchiver class."""
@@ -51,5 +53,5 @@ class TestWorkflowRunArchiver:
 
         assert (
             key == "tenant-123/app_id=app-999/year=2024/month=01/workflow_run_id=run-456/"
-            f"{archiver.ARCHIVE_BUNDLE_NAME}"
+            f"{ARCHIVE_BUNDLE_NAME}"
         )

@@ -27,12 +27,11 @@ from libs.custom_inputs import time_duration
 from libs.helper import uuid_value
 from libs.login import current_user, login_required
 from models import Account, App, AppMode, EndUser, WorkflowArchiveLog, WorkflowRunTriggeredFrom
+from services.retention.workflow_run.constants import ARCHIVE_BUNDLE_NAME
 from services.workflow_run_service import WorkflowRunService
 
 # Workflow run status choices for filtering
 WORKFLOW_RUN_STATUS_CHOICES = ["running", "succeeded", "failed", "stopped", "partial-succeeded"]
-ARCHIVE_SCHEMA_VERSION = "1.0"
-ARCHIVE_BUNDLE_NAME = f"archive.v{ARCHIVE_SCHEMA_VERSION}.zip"
 EXPORT_SIGNED_URL_EXPIRE_SECONDS = 3600
 
 # Register models for flask_restx to avoid dict type issues in Swagger

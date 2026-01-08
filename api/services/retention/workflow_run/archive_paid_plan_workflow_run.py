@@ -45,6 +45,7 @@ from repositories.sqlalchemy_api_workflow_node_execution_repository import (
 )
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 from services.billing_service import BillingService
+from services.retention.workflow_run.constants import ARCHIVE_BUNDLE_NAME, ARCHIVE_SCHEMA_VERSION
 
 logger = logging.getLogger(__name__)
 
@@ -98,9 +99,6 @@ class WorkflowRunArchiver:
             ├── workflow_pause_reasons.jsonl
             └── workflow_trigger_logs.jsonl
     """
-
-    ARCHIVE_SCHEMA_VERSION = "1.0"
-    ARCHIVE_BUNDLE_NAME = f"archive.v{ARCHIVE_SCHEMA_VERSION}.zip"
 
     ARCHIVED_TABLES = [
         "workflow_runs",
@@ -471,7 +469,7 @@ class WorkflowRunArchiver:
             f"{run.tenant_id}/app_id={run.app_id}/year={created_at.strftime('%Y')}/"
             f"month={created_at.strftime('%m')}/workflow_run_id={run.id}"
         )
-        return f"{prefix}/{self.ARCHIVE_BUNDLE_NAME}"
+        return f"{prefix}/{ARCHIVE_BUNDLE_NAME}"
 
     def _generate_manifest(
         self,
@@ -480,7 +478,7 @@ class WorkflowRunArchiver:
     ) -> dict[str, Any]:
         """Generate a manifest for the archived workflow run."""
         return {
-            "schema_version": self.ARCHIVE_SCHEMA_VERSION,
+            "schema_version": ARCHIVE_SCHEMA_VERSION,
             "workflow_run_id": run.id,
             "tenant_id": run.tenant_id,
             "app_id": run.app_id,

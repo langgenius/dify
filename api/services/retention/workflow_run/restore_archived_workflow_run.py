@@ -38,6 +38,7 @@ from models.workflow import (
 )
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.factory import DifyAPIRepositoryFactory
+from services.retention.workflow_run.constants import ARCHIVE_BUNDLE_NAME
 
 logger = logging.getLogger(__name__)
 
@@ -80,9 +81,6 @@ class WorkflowRunRestore:
     database tables. It handles idempotency by skipping records that already
     exist in the database.
     """
-
-    ARCHIVE_SCHEMA_VERSION = "1.0"
-    ARCHIVE_BUNDLE_NAME = f"archive.v{ARCHIVE_SCHEMA_VERSION}.zip"
 
     def __init__(self, dry_run: bool = False, workers: int = 1):
         """
@@ -162,7 +160,7 @@ class WorkflowRunRestore:
                     f"{run.tenant_id}/app_id={run.app_id}/year={created_at.strftime('%Y')}/"
                     f"month={created_at.strftime('%m')}/workflow_run_id={run.id}"
                 )
-                archive_key = f"{prefix}/{self.ARCHIVE_BUNDLE_NAME}"
+                archive_key = f"{prefix}/{ARCHIVE_BUNDLE_NAME}"
                 try:
                     archive_data = storage.get_object(archive_key)
                 except FileNotFoundError:
