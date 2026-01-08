@@ -14,10 +14,10 @@ const ListWrapper = ({
   const { t } = useTranslation()
 
   const {
-    marketplaceCollections,
-    marketplaceCollectionPluginsMap,
     plugins,
     pluginsTotal,
+    marketplaceCollections,
+    marketplaceCollectionPluginsMap,
     isLoading,
     page,
   } = useMarketplaceData()
