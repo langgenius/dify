@@ -21,6 +21,7 @@ class HumanInputMessageFixture:
     form: HumanInputForm
     action_id: str
     action_text: str
+    node_title: str
 
 
 def create_human_input_message_fixture(db_session) -> HumanInputMessageFixture:
@@ -109,6 +110,7 @@ def create_human_input_message_fixture(db_session) -> HumanInputMessageFixture:
 
     action_id = "approve"
     action_text = "Approve request"
+    node_title = "Approval"
     form_definition = FormDefinition(
         form_content="content",
         inputs=[],
@@ -116,6 +118,8 @@ def create_human_input_message_fixture(db_session) -> HumanInputMessageFixture:
         rendered_content="Rendered block",
         timeout=1,
         timeout_unit=TimeoutUnit.HOUR,
+        node_title=node_title,
+        display_in_ui=True,
     )
     form = HumanInputForm(
         tenant_id=tenant.id,
@@ -146,4 +150,5 @@ def create_human_input_message_fixture(db_session) -> HumanInputMessageFixture:
         form=form,
         action_id=action_id,
         action_text=action_text,
+        node_title=node_title,
     )

@@ -70,6 +70,8 @@ def _build_form_params(delivery_methods: list[EmailDeliveryMethod]) -> FormCreat
         node_id="human-input-node",
         form_config=form_config,
         rendered_content="<p>Approve?</p>",
+        delivery_methods=delivery_methods,
+        display_in_ui=False,
         resolved_placeholder_values={},
     )
 
@@ -180,6 +182,8 @@ class TestHumanInputFormRepositoryImplWithContainers:
                 user_actions=[UserAction(id="approve", title="Approve")],
             ),
             rendered_content="<p>Approve?</p>",
+            delivery_methods=[],
+            display_in_ui=False,
             resolved_placeholder_values=resolved_values,
         )
 

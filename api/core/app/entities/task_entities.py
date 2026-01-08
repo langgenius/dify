@@ -277,6 +277,7 @@ class HumanInputRequiredResponse(StreamResponse):
         form_content: str
         inputs: Sequence[FormInput] = Field(default_factory=list)
         actions: Sequence[UserAction] = Field(default_factory=list)
+        display_in_ui: bool = False
         form_token: str | None = None
         resolved_placeholder_values: Mapping[str, Any] = Field(default_factory=dict)
 

@@ -20,8 +20,8 @@ from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 
-from .entities import HumanInputNodeData
-from .enums import HumanInputFormStatus, PlaceholderType
+from .entities import DeliveryChannelConfig, HumanInputNodeData
+from .enums import DeliveryMethodType, HumanInputFormStatus, PlaceholderType
 
 if TYPE_CHECKING:
     from core.workflow.entities.graph_init_params import GraphInitParams
@@ -154,24 +154,37 @@ class HumanInputNode(Node[HumanInputNodeData]):
 
         return resolved_inputs
 
-    def _should_require_form_token(self) -> bool:
+    def _should_require_console_recipient(self) -> bool:
         if self.invoke_from == InvokeFrom.DEBUGGER:
             return True
         if self.invoke_from == InvokeFrom.EXPLORE:
             return self._node_data.is_webapp_enabled()
         return False
 
+    def _display_in_ui(self) -> bool:
+        if self.invoke_from == InvokeFrom.DEBUGGER:
+            return True
+        return self._node_data.is_webapp_enabled()
+
+    def _effective_delivery_methods(self) -> Sequence[DeliveryChannelConfig]:
+        enabled_methods = [method for method in self._node_data.delivery_methods if method.enabled]
+        if self.invoke_from in {InvokeFrom.DEBUGGER, InvokeFrom.EXPLORE}:
+            return [method for method in enabled_methods if method.type != DeliveryMethodType.WEBAPP]
+        return enabled_methods
+
     def _human_input_required_event(self, form_entity: HumanInputFormEntity) -> HumanInputRequired:
         node_data = self._node_data
         resolved_placeholder_values = self._resolve_inputs()
+        display_in_ui = self._display_in_ui()
         form_token = form_entity.web_app_token
-        if self._should_require_form_token() and form_token is None:
-            raise AssertionError("Form token should be available for console execution.")
+        if display_in_ui and form_token is None:
+            raise AssertionError("Form token should be available for UI execution.")
         return HumanInputRequired(
             form_id=form_entity.id,
             form_content=form_entity.rendered_content,
             inputs=node_data.inputs,
             actions=node_data.user_actions,
+            display_in_ui=display_in_ui,
             node_id=self.id,
             node_title=node_data.title,
             form_token=form_token,
@@ -193,13 +206,16 @@ class HumanInputNode(Node[HumanInputNodeData]):
         repo = self._form_repository
         form = repo.get_form(self._workflow_execution_id, self.id)
         if form is None:
+            display_in_ui = self._display_in_ui()
             params = FormCreateParams(
                 workflow_execution_id=self._workflow_execution_id,
                 node_id=self.id,
                 form_config=self._node_data,
                 rendered_content=self._render_form_content_before_submission(),
+                delivery_methods=self._effective_delivery_methods(),
+                display_in_ui=display_in_ui,
                 resolved_placeholder_values=self._resolve_inputs(),
-                console_recipient_required=self._should_require_form_token(),
+                console_recipient_required=self._should_require_console_recipient(),
                 console_creator_account_id=(
                     self.user_id if self.invoke_from in {InvokeFrom.DEBUGGER, InvokeFrom.EXPLORE} else None
                 ),

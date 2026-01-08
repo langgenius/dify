@@ -92,6 +92,8 @@ def _build_form(db_session_with_containers, tenant, account):
         node_id="node-1",
         form_config=node_data,
         rendered_content="Rendered",
+        delivery_methods=node_data.delivery_methods,
+        display_in_ui=False,
         resolved_placeholder_values={},
     )
     return repo.create_form(params)

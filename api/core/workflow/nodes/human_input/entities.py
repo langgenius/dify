@@ -253,3 +253,9 @@ class FormDefinition(BaseModel):
 
     # this is used to store the values of the placeholders
     placeholder_values: dict[str, Any] = Field(default_factory=dict)
+
+    # node_title records the title of the HumanInput node.
+    node_title: str | None = None
+
+    # display_in_ui controls whether the form should be displayed in UI surfaces.
+    display_in_ui: bool | None = None

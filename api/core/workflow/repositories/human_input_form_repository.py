@@ -1,10 +1,10 @@
 import abc
 import dataclasses
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Any, Protocol
 
-from core.workflow.nodes.human_input.entities import HumanInputNodeData
+from core.workflow.nodes.human_input.entities import DeliveryChannelConfig, HumanInputNodeData
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 
 
@@ -29,6 +29,10 @@ class FormCreateParams:
 
     form_config: HumanInputNodeData
     rendered_content: str
+    # Delivery methods already filtered by runtime context (invoke_from).
+    delivery_methods: Sequence[DeliveryChannelConfig]
+    # UI display flag computed by runtime context.
+    display_in_ui: bool
 
     # resolved_placeholder_values saves the values for placeholders with
     # type = VARIABLE.

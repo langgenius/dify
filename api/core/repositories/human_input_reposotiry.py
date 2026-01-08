@@ -342,7 +342,7 @@ class HumanInputFormRepositoryImpl:
             )
             session.add(form_model)
             recipient_models: list[HumanInputFormRecipient] = []
-            for delivery in form_config.delivery_methods:
+            for delivery in params.delivery_methods:
                 delivery_and_recipients = self._delivery_method_to_model(
                     session=session,
                     form_id=form_id,

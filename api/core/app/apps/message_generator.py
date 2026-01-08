@@ -44,6 +44,8 @@ def _topic_msg_generator(
 ) -> Generator[Mapping[str, Any], None, None]:
     last_msg_time = time.time()
     with topic.subscribe() as sub:
+        # on_subscribe fires only after the Redis subscription is active.
+        # This is used to gate task start and reduce pub/sub race for the first event.
         if on_subscribe is not None:
             on_subscribe()
         while True:

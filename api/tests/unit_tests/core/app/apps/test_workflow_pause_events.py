@@ -126,6 +126,7 @@ def test_queue_workflow_paused_event_to_stream_responses():
             FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="field", placeholder=None),
         ],
         actions=[UserAction(id="approve", title="Approve")],
+        display_in_ui=True,
         node_id="node-id",
         node_title="Human Step",
         form_token="token",
@@ -144,6 +145,7 @@ def test_queue_workflow_paused_event_to_stream_responses():
     assert pause_resp.data.paused_nodes == ["node-id"]
     assert pause_resp.data.outputs == {"answer": "value"}
     assert pause_resp.data.reasons[0]["form_id"] == "form-1"
+    assert pause_resp.data.reasons[0]["display_in_ui"] is True
 
     assert isinstance(responses[0], HumanInputRequiredResponse)
     hi_resp = responses[0]
@@ -152,3 +154,4 @@ def test_queue_workflow_paused_event_to_stream_responses():
     assert hi_resp.data.node_title == "Human Step"
     assert hi_resp.data.inputs[0].output_variable_name == "field"
     assert hi_resp.data.actions[0].id == "approve"
+    assert hi_resp.data.display_in_ui is True
