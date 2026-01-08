@@ -83,7 +83,7 @@ export const useMarketplacePluginsByCollectionId = (
   }
 }
 
-export function useMarketplacePlugins() {
+export const useMarketplacePlugins = () => {
   const queryClient = useQueryClient()
   const [queryParams, setQueryParams] = useState<PluginsSearchParams>()
 
@@ -106,9 +106,9 @@ export function useMarketplacePlugins() {
     })
   }, [queryClient])
 
-  const handleUpdatePlugins = (pluginsSearchParams: PluginsSearchParams) => {
+  const handleUpdatePlugins = useCallback((pluginsSearchParams: PluginsSearchParams) => {
     setQueryParams(pluginsSearchParams)
-  }
+  }, [])
 
   const { run: queryPluginsWithDebounced, cancel: cancelQueryPluginsWithDebounced } = useDebounceFn((pluginsSearchParams: PluginsSearchParams) => {
     handleUpdatePlugins(pluginsSearchParams)
