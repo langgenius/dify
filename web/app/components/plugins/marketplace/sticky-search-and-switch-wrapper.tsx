@@ -8,9 +8,9 @@ type StickySearchAndSwitchWrapperProps = {
   pluginTypeSwitchClassName?: string
 }
 
-function StickySearchAndSwitchWrapper({
+const StickySearchAndSwitchWrapper = ({
   pluginTypeSwitchClassName,
-}: StickySearchAndSwitchWrapperProps) {
+}: StickySearchAndSwitchWrapperProps) => {
   const hasCustomTopClass = pluginTypeSwitchClassName?.includes('top-')
 
   return (
