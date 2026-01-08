@@ -1,5 +1,5 @@
 # base image
-FROM python:3.12-slim-bookworm AS base
+FROM python:3.14.0-slim-bookworm AS base
 
 WORKDIR /app/api
 
