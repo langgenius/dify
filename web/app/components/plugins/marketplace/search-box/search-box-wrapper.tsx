@@ -1,13 +1,13 @@
 'use client'
 
 import { useTranslation } from '#i18n'
-import { useMarketplaceSearchQuery, useMarketplaceTags } from '../hooks'
+import { useFilterPluginTags, useSearchPluginText } from '../hooks'
 import SearchBox from './index'
 
 const SearchBoxWrapper = () => {
   const { t } = useTranslation()
-  const [searchPluginText, handleSearchPluginTextChange] = useMarketplaceSearchQuery()
-  const [filterPluginTags, handleFilterPluginTagsChange] = useMarketplaceTags()
+  const [searchPluginText, handleSearchPluginTextChange] = useSearchPluginText()
+  const [filterPluginTags, handleFilterPluginTagsChange] = useFilterPluginTags()
 
   return (
     <SearchBox

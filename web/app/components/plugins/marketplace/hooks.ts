@@ -36,13 +36,13 @@ import {
   getMarketplacePluginsByCollectionId,
 } from './utils'
 
-export function useMarketplaceSearchQuery() {
+export function useSearchPluginText() {
   return useQueryState('q', marketplaceSearchParamsParsers.q)
 }
-export function useMarketplaceCategory() {
+export function useActivePluginType() {
   return useQueryState('category', marketplaceSearchParamsParsers.category)
 }
-export function useMarketplaceTags() {
+export function useFilterPluginTags() {
   return useQueryState('tags', marketplaceSearchParamsParsers.tags)
 }
 
@@ -55,7 +55,7 @@ export const useMarketplaceCollectionsAndPlugins = (queryParams?: CollectionsAnd
 }
 
 export function useMarketplaceCollectionsData() {
-  const [activePluginType] = useMarketplaceCategory()
+  const [activePluginType] = useActivePluginType()
 
   const collectionsParams = useMemo(() => getCollectionsParams(activePluginType), [activePluginType])
 
@@ -274,9 +274,9 @@ export type { MarketplaceCollection, PluginsSearchParams }
 export function useMarketplacePluginsData() {
   const sort = useMarketplaceSortValue()
 
-  const [searchPluginText] = useMarketplaceSearchQuery()
-  const [filterPluginTags] = useMarketplaceTags()
-  const [activePluginType] = useMarketplaceCategory()
+  const [searchPluginText] = useSearchPluginText()
+  const [filterPluginTags] = useFilterPluginTags()
+  const [activePluginType] = useActivePluginType()
 
   const isSearchMode = useMarketplaceSearchMode()
 
@@ -335,7 +335,7 @@ export function useMarketplaceData() {
 }
 
 export function useMarketplaceMoreClick() {
-  const [,setQ] = useMarketplaceSearchQuery()
+  const [,setQ] = useSearchPluginText()
   const setSort = useSetMarketplaceSort()
   const setSearchMode = useSetSearchMode()
 

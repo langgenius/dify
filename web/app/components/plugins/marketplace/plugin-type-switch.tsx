@@ -12,7 +12,7 @@ import { Trigger as TriggerIcon } from '@/app/components/base/icons/src/vender/p
 import { cn } from '@/utils/classnames'
 import { useSetSearchMode } from './atoms'
 import { PLUGIN_CATEGORY_WITH_COLLECTIONS, PLUGIN_TYPE_SEARCH_MAP } from './constants'
-import { useMarketplaceCategory } from './hooks'
+import { useActivePluginType } from './hooks'
 
 type PluginTypeSwitchProps = {
   className?: string
@@ -21,7 +21,7 @@ const PluginTypeSwitch = ({
   className,
 }: PluginTypeSwitchProps) => {
   const { t } = useTranslation()
-  const [activePluginType, handleActivePluginTypeChange] = useMarketplaceCategory()
+  const [activePluginType, handleActivePluginTypeChange] = useActivePluginType()
   const setSearchMode = useSetSearchMode()
 
   const options = [
