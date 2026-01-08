@@ -10,11 +10,10 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.ext_database import db
-from models.workflow import WorkflowArchiveLog, WorkflowRun
+from models.workflow import WorkflowRun
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_api_workflow_node_execution_repository import (
@@ -33,7 +32,7 @@ class DeleteResult:
     elapsed_time: float = 0.0
 
 
-class WorkflowRunDeletion:
+class ArchivedWorkflowRunDeletion:
     def __init__(self, dry_run: bool = False):
         self.dry_run = dry_run
         self.workflow_run_repo: APIWorkflowRunRepository | None = None
@@ -71,44 +70,18 @@ class WorkflowRunDeletion:
         session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
         results: list[DeleteResult] = []
 
+        repo = self._get_workflow_run_repo()
         with session_maker() as session:
-            run_id_stmt = (
-                select(
-                    WorkflowArchiveLog.workflow_run_id.label("run_id"),
-                    func.min(WorkflowArchiveLog.run_created_at).label("run_created_at"),
-                    func.min(WorkflowArchiveLog.tenant_id).label("tenant_id"),
+            runs = list(
+                repo.get_archived_runs_by_time_range(
+                    session=session,
+                    tenant_ids=tenant_ids,
+                    start_date=start_date,
+                    end_date=end_date,
+                    limit=limit,
                 )
-                .where(
-                    WorkflowArchiveLog.run_created_at >= start_date,
-                    WorkflowArchiveLog.run_created_at < end_date,
-                )
-                .group_by(WorkflowArchiveLog.workflow_run_id)
-                .order_by(func.min(WorkflowArchiveLog.run_created_at).asc(), WorkflowArchiveLog.workflow_run_id.asc())
-                .limit(limit)
             )
-            if tenant_ids:
-                run_id_stmt = run_id_stmt.where(WorkflowArchiveLog.tenant_id.in_(tenant_ids))
-
-            run_id_rows = session.execute(run_id_stmt).all()
-            run_ids = [row.run_id for row in run_id_rows]
-            if not run_ids:
-                return results
-
-            runs = list(session.scalars(select(WorkflowRun).where(WorkflowRun.id.in_(run_ids))).all())
-            run_map = {run.id: run for run in runs}
-
-        for row in run_id_rows:
-            run = run_map.get(row.run_id)
-            if not run:
-                results.append(
-                    DeleteResult(
-                        run_id=row.run_id,
-                        tenant_id=row.tenant_id or "",
-                        success=False,
-                        error="Workflow run already deleted",
-                    )
-                )
-                continue
+        for run in runs:
             results.append(self._delete_run(run))
 
         return results

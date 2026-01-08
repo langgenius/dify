@@ -1087,7 +1087,7 @@ def delete_archived_workflow_runs(
     """
     Delete archived workflow runs from the database.
     """
-    from services.retention.workflow_run.delete_archived_workflow_run import WorkflowRunDeletion
+    from services.retention.workflow_run.delete_archived_workflow_run import ArchivedWorkflowRunDeletion
 
     parsed_tenant_ids = None
     if tenant_ids:
@@ -1109,7 +1109,7 @@ def delete_archived_workflow_runs(
         )
     )
 
-    deleter = WorkflowRunDeletion(dry_run=dry_run)
+    deleter = ArchivedWorkflowRunDeletion(dry_run=dry_run)
     if run_id:
         results = [deleter.delete_by_run_id(run_id)]
     else:
