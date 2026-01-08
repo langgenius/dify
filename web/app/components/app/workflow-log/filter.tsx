@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import type { QueryParam } from './index'
 import type { I18nKeysByPrefix } from '@/types/i18n'
-import { RiCalendarLine } from '@remixicon/react'
+import { RiArchive2Line, RiCalendarLine } from '@remixicon/react'
 import dayjs from 'dayjs'
 import quarterOfYear from 'dayjs/plugin/quarterOfYear'
 import * as React from 'react'
@@ -100,11 +100,13 @@ const Filter: FC<IFilterProps> = ({
         <div className="ml-auto flex items-center">
           <Tooltip popupContent={t('filter.archived.managerOnly', { ns: 'appLog' })} disabled={isCurrentWorkspaceManager}>
             <Button
-              size="small"
-              variant="secondary"
+              size="medium"
+              variant="ghost"
+              className="flex items-center gap-1.5"
               disabled={!isCurrentWorkspaceManager}
               onClick={handleOpenArchived}
             >
+              <RiArchive2Line className="h-4 w-4" />
               {t('filter.archived.button', { ns: 'appLog' })}
             </Button>
           </Tooltip>
