@@ -20,8 +20,8 @@ import {
 import { SCROLL_BOTTOM_THRESHOLD } from './constants'
 import { marketplaceKeys } from './query-keys'
 import {
-  fetchMarketplacePlugins,
   getMarketplaceCollectionsAndPlugins,
+  getMarketplacePlugins,
   getMarketplacePluginsByCollectionId,
 } from './utils'
 
@@ -89,7 +89,7 @@ export const useMarketplacePlugins = () => {
 
   const marketplacePluginsQuery = useInfiniteQuery({
     queryKey: marketplaceKeys.plugins(queryParams),
-    queryFn: ({ pageParam = 1, signal }) => fetchMarketplacePlugins(queryParams, pageParam, signal),
+    queryFn: ({ pageParam = 1, signal }) => getMarketplacePlugins(queryParams, pageParam, signal),
     getNextPageParam: (lastPage) => {
       const nextPage = lastPage.page + 1
       const loaded = lastPage.page * lastPage.pageSize

@@ -7,7 +7,7 @@ import { DEFAULT_SORT, PLUGIN_TYPE_SEARCH_MAP } from './constants'
 import { useMarketplaceContainerScroll } from './hooks'
 import { marketplaceKeys } from './query-keys'
 import { marketplaceSearchParamsParsers } from './search-params'
-import { fetchMarketplacePlugins, getCollectionsParams, getMarketplaceCollectionsAndPlugins, getMarketplaceListFilterType } from './utils'
+import { getCollectionsParams, getMarketplaceCollectionsAndPlugins, getMarketplaceListFilterType, getMarketplacePlugins } from './utils'
 
 function useMarketplaceCollectionsAndPluginsReactive(queryParams?: CollectionsAndPluginsSearchParams) {
   return useQuery({
@@ -34,7 +34,7 @@ function useMarketplaceCollectionsData() {
 function useMarketplacePluginsReactive(queryParams?: PluginsSearchParams) {
   const marketplacePluginsQuery = useInfiniteQuery({
     queryKey: marketplaceKeys.plugins(queryParams),
-    queryFn: ({ pageParam = 1, signal }) => fetchMarketplacePlugins(queryParams, pageParam, signal),
+    queryFn: ({ pageParam = 1, signal }) => getMarketplacePlugins(queryParams, pageParam, signal),
     getNextPageParam: (lastPage) => {
       const nextPage = lastPage.page + 1
       const loaded = lastPage.page * lastPage.pageSize

@@ -133,7 +133,7 @@ export const getMarketplaceCollectionsAndPlugins = async (
   }
 }
 
-export const fetchMarketplacePlugins = async (
+export const getMarketplacePlugins = async (
   queryParams: PluginsSearchParams | undefined,
   pageParam: number,
   signal?: AbortSignal,
