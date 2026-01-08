@@ -27,6 +27,7 @@ import PriorityUseTip from './priority-use-tip'
 type CredentialPanelProps = {
   provider: ModelProvider
 }
+
 const CredentialPanel = ({
   provider,
 }: CredentialPanelProps) => {
@@ -47,6 +48,8 @@ const CredentialPanel = ({
     current_credential_name,
     notAllowedToUse,
   } = useCredentialStatus(provider)
+
+  const showPrioritySelector = systemConfig.enabled && isCustomConfigured && IS_CLOUD_EDITION
 
   const handleChangePriority = async (key: PreferredProviderTypeEnum) => {
     const res = await changeModelProviderPriority({
@@ -115,7 +118,7 @@ const CredentialPanel = ({
                 provider={provider}
               />
               {
-                systemConfig.enabled && isCustomConfigured && IS_CLOUD_EDITION && (
+                showPrioritySelector && (
                   <PrioritySelector
                     value={priorityUseType}
                     onSelect={handleChangePriority}
@@ -132,7 +135,7 @@ const CredentialPanel = ({
         )
       }
       {
-        systemConfig.enabled && isCustomConfigured && !provider.provider_credential_schema && IS_CLOUD_EDITION && (
+        showPrioritySelector && !provider.provider_credential_schema && (
           <div className="ml-1">
             <PrioritySelector
               value={priorityUseType}
