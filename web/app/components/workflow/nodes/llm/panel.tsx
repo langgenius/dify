@@ -105,7 +105,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
   }, [inputs.model.completion_params])
   return (
     <div className="mt-2">
-      <div className="space-y-4 px-4 pb-4">
+      <div className="space-y-4 px-4 pb-0">
         <Field
           title={t(`${i18nPrefix}.model`, { ns: 'workflow' })}
           required
@@ -227,56 +227,58 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
           maxIterations={inputs.max_iterations}
           hideMaxIterations
         />
-
-        {/* Advanced Settings - 折叠区 */}
-        <FieldCollapse title={t(`${i18nPrefix}.advancedSettings`, { ns: 'workflow' })}>
-          <div className="space-y-4">
-            {/* Context */}
-            <Field
-              title={t(`${i18nPrefix}.context`, { ns: 'workflow' })}
-              tooltip={t(`${i18nPrefix}.contextTooltip`, { ns: 'workflow' })!}
-            >
-              <>
-                <VarReferencePicker
-                  readonly={readOnly}
-                  nodeId={id}
-                  isShowNodeName
-                  value={inputs.context?.variable_selector || []}
-                  onChange={handleContextVarChange}
-                  filterVar={filterVar}
-                />
-                {shouldShowContextTip && (
-                  <div className="text-xs font-normal leading-[18px] text-[#DC6803]">{t(`${i18nPrefix}.notSetContextInPromptTip`, { ns: 'workflow' })}</div>
-                )}
-              </>
-            </Field>
-
-            {/* Vision: GPT4-vision and so on */}
-            <ConfigVision
-              nodeId={id}
-              readOnly={readOnly}
-              isVisionModel={isVisionModel}
-              enabled={inputs.vision?.enabled}
-              onEnabledChange={handleVisionResolutionEnabledChange}
-              config={inputs.vision?.configs}
-              onConfigChange={handleVisionResolutionChange}
-            />
-
-            {/* Max Iterations */}
-            <MaxIterations
-              value={inputs.max_iterations}
-              onChange={handleMaxIterationsChange}
-            />
-
-            {/* Reasoning Format */}
-            <ReasoningFormatConfig
-              value={inputs.reasoning_format || 'tagged'}
-              onChange={handleReasoningFormatChange}
-              readonly={readOnly}
-            />
-          </div>
-        </FieldCollapse>
       </div>
+
+      {/* Advanced Settings - 折叠区 */}
+      <FieldCollapse title={t(`${i18nPrefix}.advancedSettings`, { ns: 'workflow' })}>
+        <div className="space-y-4">
+          {/* Context */}
+          <Field
+            title={t(`${i18nPrefix}.context`, { ns: 'workflow' })}
+            tooltip={t(`${i18nPrefix}.contextTooltip`, { ns: 'workflow' })!}
+          >
+            <>
+              <VarReferencePicker
+                readonly={readOnly}
+                nodeId={id}
+                isShowNodeName
+                value={inputs.context?.variable_selector || []}
+                onChange={handleContextVarChange}
+                filterVar={filterVar}
+              />
+              {shouldShowContextTip && (
+                <div className="text-xs font-normal leading-[18px] text-[#DC6803]">{t(`${i18nPrefix}.notSetContextInPromptTip`, { ns: 'workflow' })}</div>
+              )}
+            </>
+          </Field>
+
+          {/* Vision: GPT4-vision and so on */}
+          <ConfigVision
+            nodeId={id}
+            readOnly={readOnly}
+            isVisionModel={isVisionModel}
+            enabled={inputs.vision?.enabled}
+            onEnabledChange={handleVisionResolutionEnabledChange}
+            config={inputs.vision?.configs}
+            onConfigChange={handleVisionResolutionChange}
+          />
+
+          {/* Max Iterations */}
+          <MaxIterations
+            className="flex h-10 items-center"
+            value={inputs.max_iterations}
+            onChange={handleMaxIterationsChange}
+          />
+
+          {/* Reasoning Format */}
+          <ReasoningFormatConfig
+            value={inputs.reasoning_format || 'tagged'}
+            onChange={handleReasoningFormatChange}
+            readonly={readOnly}
+          />
+        </div>
+      </FieldCollapse>
+
       <Split />
       <OutputVars
         collapsed={structuredOutputCollapsed}
