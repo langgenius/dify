@@ -36,6 +36,7 @@ from .loop import (
 
 # Node events
 from .node import (
+    ChunkType,
     NodeRunExceptionEvent,
     NodeRunFailedEvent,
     NodeRunPauseRequestedEvent,
@@ -44,10 +45,13 @@ from .node import (
     NodeRunStartedEvent,
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
+    ToolCall,
+    ToolResult,
 )
 
 __all__ = [
     "BaseGraphEvent",
+    "ChunkType",
     "GraphEngineEvent",
     "GraphNodeEventBase",
     "GraphRunAbortedEvent",
@@ -73,4 +77,6 @@ __all__ = [
     "NodeRunStartedEvent",
     "NodeRunStreamChunkEvent",
     "NodeRunSucceededEvent",
+    "ToolCall",
+    "ToolResult",
 ]
