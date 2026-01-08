@@ -111,11 +111,14 @@ class CommandNode(Node[CommandNodeData]):
             process_data = {"command": command, "working_directory": working_directory}
 
             if result.exit_code not in (None, 0):
+                error_message = (
+                    f"{result.stderr.decode('utf-8', errors='replace')}\n\nCommand exited with code {result.exit_code}"
+                )
                 return NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
                     outputs=outputs,
                     process_data=process_data,
-                    error=f"{result.stderr.decode('utf-8', errors='replace')}\n\nCommand exited with code {result.exit_code}",
+                    error=error_message,
                     error_type=CommandExecutionError.__name__,
                 )
 
