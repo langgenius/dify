@@ -213,7 +213,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
         description={t('filter.archived.list.description', { ns: 'appLog' })}
         onClose={() => setShowArchivedModal(false)}
         closable
-        containerClassName="!items-start"
+        containerClassName="!items-center"
         className="max-w-[960px]"
       >
         <div className="mt-4 flex flex-col gap-3">
