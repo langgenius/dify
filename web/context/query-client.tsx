@@ -19,7 +19,6 @@ function getQueryClient() {
 }
 
 export const TanstackQueryInitializer: FC<PropsWithChildren> = ({ children }) => {
-  // Use useState to ensure stable QueryClient across re-renders
   const [queryClient] = useState(getQueryClient)
   return (
     <QueryClientProvider client={queryClient}>

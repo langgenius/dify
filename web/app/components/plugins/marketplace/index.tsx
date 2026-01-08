@@ -2,7 +2,7 @@ import type { DehydratedState } from '@tanstack/react-query'
 import type { SearchParams } from 'nuqs'
 import { dehydrate } from '@tanstack/react-query'
 import { createLoader } from 'nuqs/server'
-import { getQueryClient } from '@/context/query-client-server'
+import { getQueryClientServer } from '@/context/query-client-server'
 import { MarketplaceClient } from './marketplace-client'
 import { marketplaceKeys } from './query-keys'
 import { marketplaceSearchParamsParsers } from './search-params'
@@ -27,7 +27,7 @@ async function Marketplace({
   if (searchParams) {
     const loadSearchParams = createLoader(marketplaceSearchParamsParsers)
     const params = await loadSearchParams(searchParams)
-    const queryClient = getQueryClient()
+    const queryClient = getQueryClientServer()
 
     await queryClient.prefetchQuery({
       queryKey: marketplaceKeys.collections(getCollectionsParams(params.category)),

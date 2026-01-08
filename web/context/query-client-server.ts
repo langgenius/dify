@@ -13,4 +13,4 @@ export function makeQueryClient() {
   })
 }
 
-export const getQueryClient = cache(makeQueryClient)
+export const getQueryClientServer = cache(makeQueryClient)
