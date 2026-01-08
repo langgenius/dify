@@ -10,9 +10,9 @@ import ToolSelectorTrigger from './trigger/tool-selector'
 // Mock external dependencies only
 // ================================
 
-// Mock useMixedTranslation hook
-vi.mock('../hooks', () => ({
-  useMixedTranslation: (_locale?: string) => ({
+// Mock i18n translation hook
+vi.mock('#i18n', () => ({
+  useTranslation: () => ({
     t: (key: string, options?: { ns?: string }) => {
       // Build full key with namespace prefix if provided
       const fullKey = options?.ns ? `${options.ns}.${key}` : key
@@ -364,13 +364,6 @@ describe('SearchBox', () => {
       expect(container.querySelector('.custom-input-class')).toBeInTheDocument()
     })
 
-    it('should pass locale to TagsFilter', () => {
-      render(<SearchBox {...defaultProps} locale="zh-CN" />)
-
-      // TagsFilter should be rendered with locale
-      expect(screen.getByTestId('portal-elem')).toBeInTheDocument()
-    })
-
     it('should handle empty placeholder', () => {
       render(<SearchBox {...defaultProps} placeholder="" />)
 
@@ -449,12 +442,6 @@ describe('SearchBoxWrapper', () => {
       expect(screen.getByRole('textbox')).toBeInTheDocument()
     })
 
-    it('should render with locale prop', () => {
-      render(<SearchBoxWrapper locale="en-US" />)
-
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
-    })
-
     it('should render in marketplace mode', () => {
       const { container } = render(<SearchBoxWrapper />)
 
@@ -498,13 +485,6 @@ describe('SearchBoxWrapper', () => {
     it('should use translation for placeholder', () => {
       render(<SearchBoxWrapper />)
 
-      expect(screen.getByPlaceholderText('Search plugins')).toBeInTheDocument()
-    })
-
-    it('should pass locale to useMixedTranslation', () => {
-      render(<SearchBoxWrapper locale="zh-CN" />)
-
-      // Translation should still work
       expect(screen.getByPlaceholderText('Search plugins')).toBeInTheDocument()
     })
   })
@@ -665,12 +645,6 @@ describe('MarketplaceTrigger', () => {
   })
 
   describe('Props Variations', () => {
-    it('should handle locale prop', () => {
-      render(<MarketplaceTrigger {...defaultProps} locale="zh-CN" />)
-
-      expect(screen.getByText('All Tags')).toBeInTheDocument()
-    })
-
     it('should handle empty tagsMap', () => {
       const { container } = render(
         <MarketplaceTrigger {...defaultProps} tagsMap={{}} tags={[]} />,
@@ -1251,7 +1225,6 @@ describe('Combined Workflows', () => {
         supportAddCustomTool
         onShowAddCustomCollectionModal={vi.fn()}
         placeholder="Search plugins"
-        locale="en-US"
         wrapperClassName="custom-wrapper"
         inputClassName="custom-input"
         autoFocus={false}
