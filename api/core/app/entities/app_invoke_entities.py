@@ -9,6 +9,7 @@ from core.app.app_config.entities import EasyUIBasedAppConfig, WorkflowUIBasedAp
 from core.entities.provider_configuration import ProviderModelBundle
 from core.file import File, FileUploadConfig
 from core.model_runtime.entities.model_entities import AIModelEntity
+from core.app.entities.agent_media import AgentMedia
 
 if TYPE_CHECKING:
     from core.ops.ops_trace_manager import TraceQueueManager
@@ -180,6 +181,13 @@ class ChatAppGenerateEntity(ConversationAppGenerateEntity, EasyUIBasedAppGenerat
     """
 
     pass
+
+class AgentChatAppGenerateEntity(ConversationAppGenerateEntity, EasyUIBasedAppGenerateEntity):
+    """
+    Agent Chat Application Generate Entity.
+    """
+
+    media: list[AgentMedia] | None = None
 
 
 class CompletionAppGenerateEntity(EasyUIBasedAppGenerateEntity):
