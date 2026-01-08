@@ -27,14 +27,12 @@ import { useMarketplaceSearchMode, useMarketplaceSortValue, useSetMarketplaceSor
 import { DEFAULT_SORT, PLUGIN_TYPE_SEARCH_MAP, SCROLL_BOTTOM_THRESHOLD } from './constants'
 import { marketplaceKeys } from './query-keys'
 import {
+  getCollectionsParams,
   getFormattedPlugin,
   getMarketplaceCollectionsAndPlugins,
-  getMarketplaceListCondition,
   getMarketplaceListFilterType,
   getMarketplacePluginsByCollectionId,
 } from './utils'
-
-const EMPTY_PARAMS = {}
 
 export const useMarketplaceCollectionsAndPlugins = (queryParams?: CollectionsAndPluginsSearchParams) => {
   return useQuery({
@@ -47,16 +45,7 @@ export const useMarketplaceCollectionsAndPlugins = (queryParams?: CollectionsAnd
 export function useMarketplaceCollectionsData() {
   const [activePluginType] = useMarketplaceCategory()
 
-  const collectionsParams: CollectionsAndPluginsSearchParams = useMemo(() => {
-    if (activePluginType === PLUGIN_TYPE_SEARCH_MAP.all) {
-      return EMPTY_PARAMS
-    }
-    return {
-      category: activePluginType === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : activePluginType,
-      condition: getMarketplaceListCondition(activePluginType),
-      type: getMarketplaceListFilterType(activePluginType),
-    }
-  }, [activePluginType])
+  const collectionsParams = useMemo(() => getCollectionsParams(activePluginType), [activePluginType])
 
   const { data, isLoading } = useMarketplaceCollectionsAndPlugins(collectionsParams)
 

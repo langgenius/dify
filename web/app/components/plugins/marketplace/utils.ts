@@ -151,3 +151,14 @@ export const getMarketplaceListFilterType = (category: string) => {
 
   return 'plugin'
 }
+
+export function getCollectionsParams(category: string): CollectionsAndPluginsSearchParams {
+  if (category === PLUGIN_TYPE_SEARCH_MAP.all) {
+    return {}
+  }
+  return {
+    category: category === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : category,
+    condition: getMarketplaceListCondition(category),
+    type: getMarketplaceListFilterType(category),
+  }
+}
