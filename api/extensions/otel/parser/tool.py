@@ -41,12 +41,7 @@ class ToolNodeOTelParser:
             span.set_attribute(ToolAttributes.TOOL_DESCRIPTION, safe_json_dumps(tool_info))
 
         if result_event and result_event.node_run_result and result_event.node_run_result.inputs:
-            span.set_attribute(
-                ToolAttributes.TOOL_CALL_ARGUMENTS, safe_json_dumps(result_event.node_run_result.inputs)
-            )
+            span.set_attribute(ToolAttributes.TOOL_CALL_ARGUMENTS, safe_json_dumps(result_event.node_run_result.inputs))
 
         if result_event and result_event.node_run_result and result_event.node_run_result.outputs:
-            span.set_attribute(
-                ToolAttributes.TOOL_CALL_RESULT, safe_json_dumps(result_event.node_run_result.outputs)
-            )
-
+            span.set_attribute(ToolAttributes.TOOL_CALL_RESULT, safe_json_dumps(result_event.node_run_result.outputs))

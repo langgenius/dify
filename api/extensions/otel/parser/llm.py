@@ -153,4 +153,3 @@ class LLMNodeOTelParser:
 
         span.set_attribute(LLMAttributes.INPUT_MESSAGE, gen_ai_input_message)
         span.set_attribute(LLMAttributes.OUTPUT_MESSAGE, gen_ai_output_message)
-
