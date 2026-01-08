@@ -14,6 +14,7 @@ from core.tools.errors import ToolSSRFError
 logger = logging.getLogger(__name__)
 
 SSRF_DEFAULT_MAX_RETRIES = dify_config.SSRF_DEFAULT_MAX_RETRIES
+RequestError = httpx.RequestError
 
 BACKOFF_FACTOR = 0.5
 STATUS_FORCELIST = [429, 500, 502, 503, 504]
@@ -31,6 +32,10 @@ class MaxRetriesExceededError(ValueError):
     """Raised when the maximum number of retries is exceeded."""
 
     pass
+
+
+request_error = httpx.RequestError
+max_retries_exceeded_error = MaxRetriesExceededError
 
 
 def _create_proxy_mounts() -> dict[str, httpx.HTTPTransport]:
