@@ -4,23 +4,22 @@ import type { FC } from 'react'
 import type { Plugin } from '../plugins/types'
 import type { SearchResult } from './actions'
 import { RiSearchLine } from '@remixicon/react'
-import { useQuery } from '@tanstack/react-query'
-import { useDebounce, useKeyPress } from 'ahooks'
+import { useKeyPress } from 'ahooks'
 import { Command } from 'cmdk'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
+import { VIBE_COMMAND_EVENT } from '@/app/components/workflow/constants'
 import { getKeyboardKeyCodeBySystem, isEventTargetInputArea, isMac } from '@/app/components/workflow/utils/common'
 import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigation'
-import { useGetLanguage } from '@/context/i18n'
 import InstallFromMarketplace from '../plugins/install-plugin/install-from-marketplace'
-import { createActions, matchAction, searchAnything } from './actions'
-import { SlashCommandProvider } from './actions/commands'
+import { executeCommand, SlashCommandProvider } from './actions/commands'
 import { slashCommandRegistry } from './actions/commands/registry'
 import CommandSelector from './command-selector'
-import { GotoAnythingProvider, useGotoAnythingContext } from './context'
+import { GotoAnythingProvider } from './context'
+import { useSearch } from './hooks/use-search'
 
 type Props = {
   onHide?: () => void
@@ -29,19 +28,21 @@ const GotoAnything: FC<Props> = ({
   onHide,
 }) => {
   const router = useRouter()
-  const defaultLocale = useGetLanguage()
-  const { isWorkflowPage, isRagPipelinePage } = useGotoAnythingContext()
   const { t } = useTranslation()
   const [show, setShow] = useState<boolean>(false)
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [cmdVal, setCmdVal] = useState<string>('_')
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Filter actions based on context
-  const Actions = useMemo(() => {
-    // Create actions based on current page context
-    return createActions(isWorkflowPage, isRagPipelinePage)
-  }, [isWorkflowPage, isRagPipelinePage])
+  const {
+    scopes,
+    searchResults: dedupedResults,
+    isLoading,
+    isError,
+    error,
+    searchMode,
+    isCommandsMode,
+  } = useSearch(searchQuery)
 
   const [activePlugin, setActivePlugin] = useState<Plugin>()
 
@@ -72,56 +73,6 @@ const GotoAnything: FC<Props> = ({
       setSearchQuery('')
     }
   })
-
-  const searchQueryDebouncedValue = useDebounce(searchQuery.trim(), {
-    wait: 300,
-  })
-
-  const isCommandsMode = searchQuery.trim() === '@' || searchQuery.trim() === '/'
-    || (searchQuery.trim().startsWith('@') && !matchAction(searchQuery.trim(), Actions))
-    || (searchQuery.trim().startsWith('/') && !matchAction(searchQuery.trim(), Actions))
-
-  const searchMode = useMemo(() => {
-    if (isCommandsMode) {
-      // Distinguish between @ (scopes) and / (commands) mode
-      if (searchQuery.trim().startsWith('@'))
-        return 'scopes'
-      else if (searchQuery.trim().startsWith('/'))
-        return 'commands'
-      return 'commands' // default fallback
-    }
-
-    const query = searchQueryDebouncedValue.toLowerCase()
-    const action = matchAction(query, Actions)
-
-    if (!action)
-      return 'general'
-
-    return action.key === '/' ? '@command' : action.key
-  }, [searchQueryDebouncedValue, Actions, isCommandsMode, searchQuery])
-
-  const { data: searchResults = [], isLoading, isError, error } = useQuery(
-    {
-      queryKey: [
-        'goto-anything',
-        'search-result',
-        searchQueryDebouncedValue,
-        searchMode,
-        isWorkflowPage,
-        isRagPipelinePage,
-        defaultLocale,
-        Actions,
-      ],
-      queryFn: async () => {
-        const query = searchQueryDebouncedValue.toLowerCase()
-        const action = matchAction(query, Actions)
-        return await searchAnything(defaultLocale, query, action, Actions)
-      },
-      enabled: !!searchQueryDebouncedValue && !isCommandsMode,
-      staleTime: 30000,
-      gcTime: 300000,
-    },
-  )
 
   // Prevent automatic selection of the first option when cmdVal is not set
   const clearSelection = () => {
@@ -158,9 +109,25 @@ const GotoAnything: FC<Props> = ({
 
     switch (result.type) {
       case 'command': {
-        // Execute slash commands
-        const action = Actions.slash
-        action?.action?.(result)
+        if (result.data.command === 'workflow.vibe') {
+          if (typeof document !== 'undefined') {
+            document.dispatchEvent(new CustomEvent(VIBE_COMMAND_EVENT, { detail: { dsl: result.data.args?.dsl } }))
+          }
+          break
+        }
+
+        // Execute slash commands using the command bus
+        // This handles both direct execution and submenu commands with args
+        const { command, args } = result.data
+
+        // Try executing via command bus first (preferred for submenu commands with args)
+        // We can't easily check if it exists in bus without potentially running it if we were to try/catch
+        // but typically search results point to valid bus commands.
+        executeCommand(command, args)
+
+        // Note: We previously checked slashCommandRegistry handlers here, but search results
+        // should return executable command strings (like 'theme.set') that are registered in the bus.
+        // The registry is mainly for the top-level command matching (e.g. /theme).
         break
       }
       case 'plugin':
@@ -177,17 +144,6 @@ const GotoAnything: FC<Props> = ({
           router.push(result.path)
     }
   }, [router])
-
-  const dedupedResults = useMemo(() => {
-    const seen = new Set<string>()
-    return searchResults.filter((result) => {
-      const key = `${result.type}-${result.id}`
-      if (seen.has(key))
-        return false
-      seen.add(key)
-      return true
-    })
-  }, [searchResults])
 
   // Group results by type
   const groupedResults = useMemo(() => dedupedResults.reduce((acc, result) => {
@@ -237,25 +193,25 @@ const GotoAnything: FC<Props> = ({
           <div className="text-sm font-medium">
             {isCommandSearch
               ? (() => {
-                  const keyMap = {
-                    app: 'gotoAnything.emptyState.noAppsFound',
-                    plugin: 'gotoAnything.emptyState.noPluginsFound',
-                    knowledge: 'gotoAnything.emptyState.noKnowledgeBasesFound',
-                    node: 'gotoAnything.emptyState.noWorkflowNodesFound',
-                  } as const
-                  return t(keyMap[commandType as keyof typeof keyMap] || 'gotoAnything.noResults', { ns: 'app' })
-                })()
+                const keyMap = {
+                  app: 'gotoAnything.emptyState.noAppsFound',
+                  plugin: 'gotoAnything.emptyState.noPluginsFound',
+                  knowledge: 'gotoAnything.emptyState.noKnowledgeBasesFound',
+                  node: 'gotoAnything.emptyState.noWorkflowNodesFound',
+                } as const
+                return t(keyMap[commandType as keyof typeof keyMap] || 'gotoAnything.noResults', { ns: 'app' })
+              })()
               : t('gotoAnything.noResults', { ns: 'app' })}
           </div>
           <div className="mt-1 text-xs text-text-quaternary">
             {isCommandSearch
               ? t('gotoAnything.emptyState.tryDifferentTerm', { ns: 'app' })
-              : t('gotoAnything.emptyState.trySpecificSearch', { ns: 'app', shortcuts: Object.values(Actions).map(action => action.shortcut).join(', ') })}
+              : t('gotoAnything.emptyState.trySpecificSearch', { ns: 'app', shortcuts: scopes.map(s => s.shortcut).join(', ') })}
           </div>
         </div>
       </div>
     )
-  }, [dedupedResults, searchQuery, Actions, searchMode, isLoading, isError, isCommandsMode])
+  }, [dedupedResults, searchQuery, scopes, searchMode, isLoading, isError, isCommandsMode])
 
   const defaultUI = useMemo(() => {
     if (searchQuery.trim())
@@ -273,7 +229,7 @@ const GotoAnything: FC<Props> = ({
         </div>
       </div>
     )
-  }, [searchQuery, Actions])
+  }, [searchQuery, scopes])
 
   useEffect(() => {
     if (show) {
@@ -380,7 +336,7 @@ const GotoAnything: FC<Props> = ({
                   <div>
                     <div className="text-sm font-medium text-red-500">{t('gotoAnything.searchFailed', { ns: 'app' })}</div>
                     <div className="mt-1 text-xs text-text-quaternary">
-                      {error.message}
+                      {error?.message}
                     </div>
                   </div>
                 </div>
@@ -389,57 +345,57 @@ const GotoAnything: FC<Props> = ({
                 <>
                   {isCommandsMode
                     ? (
-                        <CommandSelector
-                          actions={Actions}
-                          onCommandSelect={handleCommandSelect}
-                          searchFilter={searchQuery.trim().substring(1)}
-                          commandValue={cmdVal}
-                          onCommandValueChange={setCmdVal}
-                          originalQuery={searchQuery.trim()}
-                        />
-                      )
+                      <CommandSelector
+                        scopes={scopes}
+                        onCommandSelect={handleCommandSelect}
+                        searchFilter={searchQuery.trim().substring(1)}
+                        commandValue={cmdVal}
+                        onCommandValueChange={setCmdVal}
+                        originalQuery={searchQuery.trim()}
+                      />
+                    )
                     : (
-                        Object.entries(groupedResults).map(([type, results], groupIndex) => (
-                          <Command.Group
-                            key={groupIndex}
-                            heading={(() => {
-                              const typeMap = {
-                                'app': 'gotoAnything.groups.apps',
-                                'plugin': 'gotoAnything.groups.plugins',
-                                'knowledge': 'gotoAnything.groups.knowledgeBases',
-                                'workflow-node': 'gotoAnything.groups.workflowNodes',
-                                'command': 'gotoAnything.groups.commands',
-                              } as const
-                              return t(typeMap[type as keyof typeof typeMap] || `${type}s`, { ns: 'app' })
-                            })()}
-                            className="p-2 capitalize text-text-secondary"
-                          >
-                            {results.map(result => (
-                              <Command.Item
-                                key={`${result.type}-${result.id}`}
-                                value={`${result.type}-${result.id}`}
-                                className="flex cursor-pointer items-center gap-3 rounded-md p-3 will-change-[background-color] hover:bg-state-base-hover aria-[selected=true]:bg-state-base-hover-alt data-[selected=true]:bg-state-base-hover-alt"
-                                onSelect={() => handleNavigate(result)}
-                              >
-                                {result.icon}
-                                <div className="min-w-0 flex-1">
-                                  <div className="truncate font-medium text-text-secondary">
-                                    {result.title}
+                      Object.entries(groupedResults).map(([type, results], groupIndex) => (
+                        <Command.Group
+                          key={groupIndex}
+                          heading={(() => {
+                            const typeMap = {
+                              'app': 'gotoAnything.groups.apps',
+                              'plugin': 'gotoAnything.groups.plugins',
+                              'knowledge': 'gotoAnything.groups.knowledgeBases',
+                              'workflow-node': 'gotoAnything.groups.workflowNodes',
+                              'command': 'gotoAnything.groups.commands',
+                            } as const
+                            return t(typeMap[type as keyof typeof typeMap] || `${type}s`, { ns: 'app' })
+                          })()}
+                          className="p-2 capitalize text-text-secondary"
+                        >
+                          {results.map(result => (
+                            <Command.Item
+                              key={`${result.type}-${result.id}`}
+                              value={`${result.type}-${result.id}`}
+                              className="flex cursor-pointer items-center gap-3 rounded-md p-3 will-change-[background-color] hover:bg-state-base-hover aria-[selected=true]:bg-state-base-hover-alt data-[selected=true]:bg-state-base-hover-alt"
+                              onSelect={() => handleNavigate(result)}
+                            >
+                              {result.icon}
+                              <div className="min-w-0 flex-1">
+                                <div className="truncate font-medium text-text-secondary">
+                                  {result.title}
+                                </div>
+                                {result.description && (
+                                  <div className="mt-0.5 truncate text-xs text-text-quaternary">
+                                    {result.description}
                                   </div>
-                                  {result.description && (
-                                    <div className="mt-0.5 truncate text-xs text-text-quaternary">
-                                      {result.description}
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="text-xs capitalize text-text-quaternary">
-                                  {result.type}
-                                </div>
-                              </Command.Item>
-                            ))}
-                          </Command.Group>
-                        ))
-                      )}
+                                )}
+                              </div>
+                              <div className="text-xs capitalize text-text-quaternary">
+                                {result.type}
+                              </div>
+                            </Command.Item>
+                          ))}
+                        </Command.Group>
+                      ))
+                    )}
                   {!isCommandsMode && emptyResult}
                   {!isCommandsMode && defaultUI}
                 </>
@@ -451,50 +407,50 @@ const GotoAnything: FC<Props> = ({
               <div className="flex min-h-[16px] items-center justify-between">
                 {(!!dedupedResults.length || isError)
                   ? (
-                      <>
-                        <span>
-                          {isError
-                            ? (
-                                <span className="text-red-500">{t('gotoAnything.someServicesUnavailable', { ns: 'app' })}</span>
-                              )
-                            : (
-                                <>
-                                  {t('gotoAnything.resultCount', { ns: 'app', count: dedupedResults.length })}
-                                  {searchMode !== 'general' && (
-                                    <span className="ml-2 opacity-60">
-                                      {t('gotoAnything.inScope', { ns: 'app', scope: searchMode.replace('@', '') })}
-                                    </span>
-                                  )}
-                                </>
+                    <>
+                      <span>
+                        {isError
+                          ? (
+                            <span className="text-red-500">{t('gotoAnything.someServicesUnavailable', { ns: 'app' })}</span>
+                          )
+                          : (
+                            <>
+                              {t('gotoAnything.resultCount', { ns: 'app', count: dedupedResults.length })}
+                              {searchMode !== 'general' && (
+                                <span className="ml-2 opacity-60">
+                                  {t('gotoAnything.inScope', { ns: 'app', scope: searchMode.replace('@', '') })}
+                                </span>
                               )}
-                        </span>
-                        <span className="opacity-60">
-                          {searchMode !== 'general'
-                            ? t('gotoAnything.clearToSearchAll', { ns: 'app' })
-                            : t('gotoAnything.useAtForSpecific', { ns: 'app' })}
-                        </span>
-                      </>
-                    )
+                            </>
+                          )}
+                      </span>
+                      <span className="opacity-60">
+                        {searchMode !== 'general'
+                          ? t('gotoAnything.clearToSearchAll', { ns: 'app' })
+                          : t('gotoAnything.useAtForSpecific', { ns: 'app' })}
+                      </span>
+                    </>
+                  )
                   : (
-                      <>
-                        <span className="opacity-60">
-                          {(() => {
-                            if (isCommandsMode)
-                              return t('gotoAnything.selectToNavigate', { ns: 'app' })
+                    <>
+                      <span className="opacity-60">
+                        {(() => {
+                          if (isCommandsMode)
+                            return t('gotoAnything.selectToNavigate', { ns: 'app' })
 
-                            if (searchQuery.trim())
-                              return t('gotoAnything.searching', { ns: 'app' })
+                          if (searchQuery.trim())
+                            return t('gotoAnything.searching', { ns: 'app' })
 
-                            return t('gotoAnything.startTyping', { ns: 'app' })
-                          })()}
-                        </span>
-                        <span className="opacity-60">
-                          {searchQuery.trim() || isCommandsMode
-                            ? t('gotoAnything.tips', { ns: 'app' })
-                            : t('gotoAnything.pressEscToClose', { ns: 'app' })}
-                        </span>
-                      </>
-                    )}
+                          return t('gotoAnything.startTyping', { ns: 'app' })
+                        })()}
+                      </span>
+                      <span className="opacity-60">
+                        {searchQuery.trim() || isCommandsMode
+                          ? t('gotoAnything.tips', { ns: 'app' })
+                          : t('gotoAnything.pressEscToClose', { ns: 'app' })}
+                      </span>
+                    </>
+                  )}
               </div>
             </div>
           </Command>

@@ -93,6 +93,7 @@ reg(RuleCodeGeneratePayload)
 reg(RuleStructuredOutputPayload)
 reg(InstructionGeneratePayload)
 reg(InstructionTemplatePayload)
+reg(FlowchartGeneratePayload)
 
 
 @console_ns.route("/rule-generate")

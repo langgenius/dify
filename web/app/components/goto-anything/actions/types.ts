@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react'
-import type { TypeWithI18N } from '../../base/form/types'
 import type { Plugin } from '../../plugins/types'
 import type { CommonNodeType } from '../../workflow/types'
 import type { DataSet } from '@/models/datasets'
@@ -7,7 +6,7 @@ import type { App } from '@/types/app'
 
 export type SearchResultType = 'app' | 'knowledge' | 'plugin' | 'workflow-node' | 'command'
 
-export type BaseSearchResult<T = any> = {
+export type BaseSearchResult<T = unknown> = {
   id: string
   title: string
   description?: string
@@ -39,20 +38,8 @@ export type WorkflowNodeSearchResult = {
 
 export type CommandSearchResult = {
   type: 'command'
-} & BaseSearchResult<{ command: string, args?: Record<string, any> }>
+} & BaseSearchResult<{ command: string, args?: Record<string, unknown> }>
 
 export type SearchResult = AppSearchResult | PluginSearchResult | KnowledgeSearchResult | WorkflowNodeSearchResult | CommandSearchResult
 
-export type ActionItem = {
-  key: '@app' | '@knowledge' | '@plugin' | '@node' | '/'
-  shortcut: string
-  title: string | TypeWithI18N
-  description: string
-  action?: (data: SearchResult) => void
-  searchFn?: (searchTerm: string) => SearchResult[]
-  search: (
-    query: string,
-    searchTerm: string,
-    locale?: string,
-  ) => (Promise<SearchResult[]> | SearchResult[])
-}
+export type { ScopeContext, ScopeDescriptor } from './scope-registry'

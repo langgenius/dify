@@ -1,4 +1,5 @@
-import type { ActionItem, SearchResult } from './actions/types'
+import type { ScopeDescriptor } from './actions/scope-registry'
+import type { SearchResult } from './actions/types'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
@@ -35,6 +36,7 @@ const triggerKeyPress = (combo: string) => {
 let mockQueryResult = { data: [] as SearchResult[], isLoading: false, isError: false, error: null as Error | null }
 vi.mock('@tanstack/react-query', () => ({
   useQuery: () => mockQueryResult,
+  keepPreviousData: (data: unknown) => data,
 }))
 
 vi.mock('@/context/i18n', () => ({
@@ -47,33 +49,30 @@ vi.mock('./context', () => ({
   GotoAnythingProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
 
-const createActionItem = (key: ActionItem['key'], shortcut: string): ActionItem => ({
-  key,
-  shortcut,
-  title: `${key} title`,
-  description: `${key} desc`,
-  action: vi.fn(),
-  search: vi.fn(),
+type MatchAction = typeof import('./actions').matchAction
+type SearchAnything = typeof import('./actions').searchAnything
+
+const mockState = vi.hoisted(() => {
+  const state = {
+    scopes: [] as ScopeDescriptor[],
+    useGotoAnythingScopesMock: vi.fn(() => state.scopes),
+    matchActionMock: vi.fn<MatchAction>(() => undefined),
+    searchAnythingMock: vi.fn<SearchAnything>(async () => []),
+  }
+
+  return state
 })
 
-const actionsMock = {
-  slash: createActionItem('/', '/'),
-  app: createActionItem('@app', '@app'),
-  plugin: createActionItem('@plugin', '@plugin'),
-}
-
-const createActionsMock = vi.fn(() => actionsMock)
-const matchActionMock = vi.fn(() => undefined)
-const searchAnythingMock = vi.fn(async () => mockQueryResult.data)
-
 vi.mock('./actions', () => ({
-  createActions: () => createActionsMock(),
-  matchAction: () => matchActionMock(),
-  searchAnything: () => searchAnythingMock(),
+  __esModule: true,
+  matchAction: (...args: Parameters<MatchAction>) => mockState.matchActionMock(...args),
+  searchAnything: (...args: Parameters<SearchAnything>) => mockState.searchAnythingMock(...args),
+  useGotoAnythingScopes: () => mockState.useGotoAnythingScopesMock(),
 }))
 
 vi.mock('./actions/commands', () => ({
   SlashCommandProvider: () => null,
+  executeCommand: vi.fn(),
 }))
 
 vi.mock('./actions/commands/registry', () => ({
@@ -83,6 +82,20 @@ vi.mock('./actions/commands/registry', () => ({
     getAllCommands: () => [],
   },
 }))
+
+const createScope = (id: ScopeDescriptor['id'], shortcut: string): ScopeDescriptor => ({
+  id,
+  shortcut,
+  title: `${id} title`,
+  description: `${id} desc`,
+  search: vi.fn(),
+})
+
+const scopesMock = [
+  createScope('slash', '/'),
+  createScope('app', '@app'),
+  createScope('plugin', '@plugin'),
+]
 
 vi.mock('@/app/components/workflow/utils/common', () => ({
   getKeyboardKeyCodeBySystem: () => 'ctrl',
@@ -108,8 +121,10 @@ describe('GotoAnything', () => {
     routerPush.mockClear()
     Object.keys(keyPressHandlers).forEach(key => delete keyPressHandlers[key])
     mockQueryResult = { data: [], isLoading: false, isError: false, error: null }
-    matchActionMock.mockReset()
-    searchAnythingMock.mockClear()
+    mockState.scopes = scopesMock
+    mockState.matchActionMock.mockReset()
+    mockState.searchAnythingMock.mockClear()
+    mockState.searchAnythingMock.mockImplementation(async () => mockQueryResult.data)
   })
 
   it('should open modal via shortcut and navigate to selected result', async () => {

@@ -1047,5 +1047,7 @@
   "versionHistory.nameThisVersion": "命名",
   "versionHistory.releaseNotesPlaceholder": "请描述变更",
   "versionHistory.restorationTip": "版本回滚后，当前草稿将被覆盖。",
-  "versionHistory.title": "版本"
+  "versionHistory.title": "版本",
+  "vibe.refine": "调整",
+  "vibe.regenerateReminder": "请检查输入并重新生成。"
 }

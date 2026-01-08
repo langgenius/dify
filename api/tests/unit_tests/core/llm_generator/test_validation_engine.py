@@ -8,7 +8,6 @@ Tests cover:
 - ValidationEngine integration
 """
 
-
 from core.workflow.generator.validation import (
     ValidationContext,
     ValidationEngine,
@@ -135,9 +134,7 @@ class TestStructureRules:
     """Tests for structure validation rules."""
 
     def test_llm_missing_prompt_template(self):
-        ctx = ValidationContext(
-            nodes=[{"id": "llm_1", "type": "llm", "config": {}}]
-        )
+        ctx = ValidationContext(nodes=[{"id": "llm_1", "type": "llm", "config": {}}])
         engine = ValidationEngine()
         result = engine.validate(ctx)
 
@@ -169,9 +166,7 @@ class TestStructureRules:
         assert len(errors) == 0
 
     def test_http_request_missing_url(self):
-        ctx = ValidationContext(
-            nodes=[{"id": "http_1", "type": "http-request", "config": {}}]
-        )
+        ctx = ValidationContext(nodes=[{"id": "http_1", "type": "http-request", "config": {}}])
         engine = ValidationEngine()
         result = engine.validate(ctx)
 
@@ -196,9 +191,7 @@ class TestStructureRules:
         assert len(errors) == 1
 
     def test_code_node_missing_fields(self):
-        ctx = ValidationContext(
-            nodes=[{"id": "code_1", "type": "code", "config": {}}]
-        )
+        ctx = ValidationContext(nodes=[{"id": "code_1", "type": "code", "config": {}}])
         engine = ValidationEngine()
         result = engine.validate(ctx)
 
@@ -207,9 +200,7 @@ class TestStructureRules:
         assert "code.language.required" in error_rules
 
     def test_knowledge_retrieval_missing_dataset(self):
-        ctx = ValidationContext(
-            nodes=[{"id": "kb_1", "type": "knowledge-retrieval", "config": {}}]
-        )
+        ctx = ValidationContext(nodes=[{"id": "kb_1", "type": "knowledge-retrieval", "config": {}}])
         engine = ValidationEngine()
         result = engine.validate(ctx)
 
@@ -228,11 +219,7 @@ class TestSemanticRules:
                 {
                     "id": "llm_1",
                     "type": "llm",
-                    "config": {
-                        "prompt_template": [
-                            {"role": "user", "text": "Process: {{#start.query#}}"}
-                        ]
-                    },
+                    "config": {"prompt_template": [{"role": "user", "text": "Process: {{#start.query#}}"}]},
                 },
             ]
         )
@@ -250,11 +237,7 @@ class TestSemanticRules:
                 {
                     "id": "llm_1",
                     "type": "llm",
-                    "config": {
-                        "prompt_template": [
-                            {"role": "user", "text": "Process: {{#nonexistent.field#}}"}
-                        ]
-                    },
+                    "config": {"prompt_template": [{"role": "user", "text": "Process: {{#nonexistent.field#}}"}]},
                 },
             ]
         )
@@ -390,9 +373,7 @@ class TestReferenceRules:
                     "config": {"tool_key": "google/search"},
                 }
             ],
-            available_tools=[
-                {"provider_id": "google", "tool_key": "search", "is_team_authorization": False}
-            ],
+            available_tools=[{"provider_id": "google", "tool_key": "search", "is_team_authorization": False}],
         )
         engine = ValidationEngine()
         result = engine.validate(ctx)
@@ -406,9 +387,7 @@ class TestValidationResult:
     """Tests for ValidationResult classification."""
 
     def test_has_errors(self):
-        ctx = ValidationContext(
-            nodes=[{"id": "llm_1", "type": "llm", "config": {}}]
-        )
+        ctx = ValidationContext(nodes=[{"id": "llm_1", "type": "llm", "config": {}}])
         engine = ValidationEngine()
         result = engine.validate(ctx)
 
@@ -447,9 +426,7 @@ class TestValidationResult:
         assert "http_1" in by_node
 
     def test_to_dict(self):
-        ctx = ValidationContext(
-            nodes=[{"id": "llm_1", "type": "llm", "config": {}}]
-        )
+        ctx = ValidationContext(nodes=[{"id": "llm_1", "type": "llm", "config": {}}])
         engine = ValidationEngine()
         result = engine.validate(ctx)
 
@@ -531,6 +508,3 @@ class TestIntegration:
         # Check stats
         assert result.stats["total_nodes"] == 4
         assert result.stats["total_errors"] >= 3
-
-
-

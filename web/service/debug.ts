@@ -135,6 +135,12 @@ export const generateRule = (body: Record<string, any>) => {
   })
 }
 
+export const generateFlowchart = (body: Record<string, any>) => {
+  return post<FlowchartGenRes>('/flowchart-generate', {
+    body,
+  })
+}
+
 export const fetchModelParams = (providerName: string, modelId: string) => {
   return get(`workspaces/current/model-providers/${providerName}/models/parameter-rules`, {
     params: {

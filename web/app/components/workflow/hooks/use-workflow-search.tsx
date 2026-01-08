@@ -5,7 +5,7 @@ import type { CommonNodeType } from '../types'
 import type { Emoji } from '@/app/components/tools/types'
 import { useCallback, useEffect, useMemo } from 'react'
 import { useNodes } from 'reactflow'
-import { workflowNodesAction } from '@/app/components/goto-anything/actions/workflow-nodes'
+import { setWorkflowNodesSearchFn } from '@/app/components/goto-anything/actions/workflow-nodes'
 import { CollectionType } from '@/app/components/tools/types'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import {
@@ -183,16 +183,15 @@ export const useWorkflowSearch = () => {
     return results
   }, [searchableNodes, calculateScore])
 
-  // Directly set the search function on the action object
+  // Directly set the search function using the setter
   useEffect(() => {
     if (searchableNodes.length > 0) {
-      // Set the search function directly on the action
-      workflowNodesAction.searchFn = searchWorkflowNodes
+      setWorkflowNodesSearchFn(searchWorkflowNodes)
     }
 
     return () => {
       // Clean up when component unmounts
-      workflowNodesAction.searchFn = undefined
+      setWorkflowNodesSearchFn(() => [])
     }
   }, [searchableNodes, searchWorkflowNodes])
 

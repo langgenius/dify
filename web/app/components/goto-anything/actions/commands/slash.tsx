@@ -1,11 +1,13 @@
 'use client'
-import type { ActionItem } from '../types'
+import type { ScopeDescriptor } from '../types'
+import type { SlashCommandDependencies } from './types'
 import { useTheme } from 'next-themes'
 import { useEffect } from 'react'
 import { getI18n } from 'react-i18next'
 import { setLocaleOnClient } from '@/i18n-config'
+import { ACTION_KEYS } from '../../constants'
 import { accountCommand } from './account'
-import { executeCommand } from './command-bus'
+import { bananaCommand } from './banana'
 import { communityCommand } from './community'
 import { docsCommand } from './docs'
 import { forumCommand } from './forum'
@@ -16,17 +18,11 @@ import { zenCommand } from './zen'
 
 const i18n = getI18n()
 
-export const slashAction: ActionItem = {
-  key: '/',
-  shortcut: '/',
+export const slashScope: ScopeDescriptor = {
+  id: 'slash',
+  shortcut: ACTION_KEYS.SLASH,
   title: i18n.t('gotoAnything.actions.slashTitle', { ns: 'app' }),
   description: i18n.t('gotoAnything.actions.slashDesc', { ns: 'app' }),
-  action: (result) => {
-    if (result.type !== 'command')
-      return
-    const { command, args } = result.data
-    executeCommand(command, args)
-  },
   search: async (query, _searchTerm = '') => {
     // Delegate all search logic to the command registry system
     return slashCommandRegistry.search(query, i18n.language)
@@ -34,7 +30,7 @@ export const slashAction: ActionItem = {
 }
 
 // Register/unregister default handlers for slash commands with external dependencies.
-export const registerSlashCommands = (deps: Record<string, any>) => {
+export const registerSlashCommands = (deps: SlashCommandDependencies) => {
   // Register command handlers to the registry system with their respective dependencies
   slashCommandRegistry.register(themeCommand, { setTheme: deps.setTheme })
   slashCommandRegistry.register(languageCommand, { setLocale: deps.setLocale })
@@ -43,6 +39,7 @@ export const registerSlashCommands = (deps: Record<string, any>) => {
   slashCommandRegistry.register(communityCommand, {})
   slashCommandRegistry.register(accountCommand, {})
   slashCommandRegistry.register(zenCommand, {})
+  slashCommandRegistry.register(bananaCommand, {})
 }
 
 export const unregisterSlashCommands = () => {
@@ -54,6 +51,7 @@ export const unregisterSlashCommands = () => {
   slashCommandRegistry.unregister('community')
   slashCommandRegistry.unregister('account')
   slashCommandRegistry.unregister('zen')
+  slashCommandRegistry.unregister('banana')
 }
 
 export const SlashCommandProvider = () => {
