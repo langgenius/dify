@@ -94,6 +94,15 @@ export const useMarketplacePluginsByCollectionId = (
   }
 }
 
+const normalizeParams = (pluginsSearchParams: PluginsSearchParams) => {
+  const pageSize = pluginsSearchParams.pageSize || 40
+
+  return {
+    ...pluginsSearchParams,
+    pageSize,
+  }
+}
+
 async function fetchMarketplacePlugins(
   queryParams: PluginsSearchParams | undefined,
   pageParam: number,
@@ -108,6 +117,7 @@ async function fetchMarketplacePlugins(
     }
   }
 
+  const params = normalizeParams(queryParams)
   const {
     query,
     sortBy,
@@ -115,8 +125,8 @@ async function fetchMarketplacePlugins(
     category,
     tags,
     type,
-    pageSize = 40,
-  } = queryParams
+    pageSize,
+  } = params
   const pluginOrBundle = type === 'bundle' ? 'bundles' : 'plugins'
 
   try {
@@ -152,9 +162,9 @@ async function fetchMarketplacePlugins(
   }
 }
 
-export function useMarketplacePlugins(initialParams?: PluginsSearchParams) {
+export function useMarketplacePlugins() {
   const queryClient = useQueryClient()
-  const [queryParams, handleUpdatePlugins] = useState<PluginsSearchParams | undefined>(initialParams)
+  const [queryParams, setQueryParams] = useState<PluginsSearchParams>()
 
   const marketplacePluginsQuery = useInfiniteQuery({
     queryKey: marketplaceKeys.plugins(queryParams),
@@ -169,11 +179,15 @@ export function useMarketplacePlugins(initialParams?: PluginsSearchParams) {
   })
 
   const resetPlugins = useCallback(() => {
-    handleUpdatePlugins(undefined)
+    setQueryParams(undefined)
     queryClient.removeQueries({
       queryKey: ['marketplacePlugins'],
     })
   }, [queryClient])
+
+  const handleUpdatePlugins = (pluginsSearchParams: PluginsSearchParams) => {
+    setQueryParams(normalizeParams(pluginsSearchParams))
+  }
 
   const { run: queryPluginsWithDebounced, cancel: cancelQueryPluginsWithDebounced } = useDebounceFn((pluginsSearchParams: PluginsSearchParams) => {
     handleUpdatePlugins(pluginsSearchParams)
