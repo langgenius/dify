@@ -124,15 +124,8 @@ class WorkflowArchivedLogApi(Resource):
             workflow_app_log_pagination = workflow_app_service.get_paginate_workflow_archive_logs(
                 session=session,
                 app_model=app_model,
-                keyword=args.keyword,
-                status=args.status,
-                created_at_before=args.created_at__before,
-                created_at_after=args.created_at__after,
                 page=args.page,
                 limit=args.limit,
-                detail=args.detail,
-                created_by_end_user_session_id=args.created_by_end_user_session_id,
-                created_by_account=args.created_by_account,
             )
 
             return workflow_app_log_pagination

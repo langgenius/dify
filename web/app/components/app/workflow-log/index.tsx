@@ -22,6 +22,7 @@ import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import {
   useCreateWorkflowRunExportTask,
+  useWorkflowArchivedLogs,
   useWorkflowLogs,
   useWorkflowRunExportTaskStatus,
 } from '@/service/use-log'
@@ -92,10 +93,9 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     page: archivedPage + 1,
     detail: true,
     limit: archivedLimit,
-    created_at__before: dayjs().tz(timezone).subtract(3, 'month').startOf('day').format('YYYY-MM-DDTHH:mm:ssZ'),
   }
 
-  const { data: archivedLogs, isLoading: archivedLoading, refetch: refetchArchived } = useWorkflowLogs({
+  const { data: archivedLogs, isLoading: archivedLoading, refetch: refetchArchived } = useWorkflowArchivedLogs({
     appId: appDetail.id,
     params: archivedQuery,
   })

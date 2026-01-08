@@ -89,6 +89,14 @@ export const useWorkflowLogs = ({ appId, params }: WorkflowLogsParams) => {
   })
 }
 
+export const useWorkflowArchivedLogs = ({ appId, params }: WorkflowLogsParams) => {
+  return useQuery<WorkflowLogsResponse>({
+    queryKey: [NAME_SPACE, 'workflow-archived-logs', appId, params],
+    queryFn: () => get<WorkflowLogsResponse>(`/apps/${appId}/workflow-archived-logs`, { params }),
+    enabled: !!appId,
+  })
+}
+
 // ============ Workflow Run Export Tasks ============
 
 export const useCreateWorkflowRunExportTask = () => {

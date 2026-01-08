@@ -178,82 +178,33 @@ class WorkflowAppService:
         *,
         session: Session,
         app_model: App,
-        keyword: str | None = None,
-        status: WorkflowExecutionStatus | None = None,
-        created_at_before: datetime | None = None,
-        created_at_after: datetime | None = None,
         page: int = 1,
         limit: int = 20,
-        detail: bool = False,
-        created_by_end_user_session_id: str | None = None,
-        created_by_account: str | None = None,
     ):
         """
         Get paginate workflow archive logs using SQLAlchemy 2.0 style.
         """
         stmt = select(WorkflowArchiveLog).where(
-            WorkflowArchiveLog.tenant_id == app_model.tenant_id, WorkflowArchiveLog.app_id == app_model.id
+            WorkflowArchiveLog.tenant_id == app_model.tenant_id,
+            WorkflowArchiveLog.app_id == app_model.id,
+            WorkflowArchiveLog.log_id.isnot(None),
         )
 
-        if keyword:
-            keyword_uuid = self._safe_parse_uuid(keyword)
-            if keyword_uuid:
-                stmt = stmt.where(
-                    or_(
-                        WorkflowArchiveLog.workflow_run_id == str(keyword_uuid),
-                        WorkflowArchiveLog.id == str(keyword_uuid),
-                    )
-                )
-
-        if status:
-            stmt = stmt.where(WorkflowArchiveLog.run_status == status)
-
-        if created_at_before:
-            stmt = stmt.where(WorkflowArchiveLog.log_created_at <= created_at_before)
-
-        if created_at_after:
-            stmt = stmt.where(WorkflowArchiveLog.log_created_at >= created_at_after)
-
-        if created_by_end_user_session_id:
-            stmt = stmt.join(
-                EndUser,
-                and_(
-                    WorkflowArchiveLog.created_by == EndUser.id,
-                    WorkflowArchiveLog.created_by_role == CreatorUserRole.END_USER,
-                    EndUser.session_id == created_by_end_user_session_id,
-                ),
-            )
-        if created_by_account:
-            account = session.scalar(select(Account).where(Account.email == created_by_account))
-            if not account:
-                raise ValueError(f"Account not found: {created_by_account}")
-
-            stmt = stmt.join(
-                Account,
-                and_(
-                    WorkflowArchiveLog.created_by == Account.id,
-                    WorkflowArchiveLog.created_by_role == CreatorUserRole.ACCOUNT,
-                    Account.id == account.id,
-                ),
-            )
-
-        stmt = stmt.order_by(WorkflowArchiveLog.log_created_at.desc())
+        stmt = stmt.order_by(WorkflowArchiveLog.run_created_at.desc())
 
         count_stmt = select(func.count()).select_from(stmt.subquery())
         total = session.scalar(count_stmt) or 0
 
         offset_stmt = stmt.offset((page - 1) * limit).limit(limit)
 
-        if detail:
-            items = [
-                LogView(
-                    log,
-                    {"trigger_metadata": self.handle_trigger_metadata(app_model.tenant_id, log.trigger_metadata)},
-                )
-                for log in session.scalars(offset_stmt).all()
-            ]
-        else:
-            items = [LogView(log, None) for log in session.scalars(offset_stmt).all()]
+        items = [
+            LogView(
+                log,
+                {"trigger_metadata": self.handle_trigger_metadata(app_model.tenant_id, log.trigger_metadata)},
+            )
+            for log in session.scalars(offset_stmt).all()
+        ]
+        
         return {
             "page": page,
             "limit": limit,

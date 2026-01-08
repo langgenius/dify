@@ -104,6 +104,7 @@ vi.mock('@/app/components/workflow/context', () => ({
 }))
 
 const mockedUseWorkflowLogs = useLogModule.useWorkflowLogs as MockedFunction<typeof useLogModule.useWorkflowLogs>
+const mockedUseWorkflowArchivedLogs = useLogModule.useWorkflowArchivedLogs as MockedFunction<typeof useLogModule.useWorkflowArchivedLogs>
 const mockedUseCreateWorkflowRunExportTask = useLogModule.useCreateWorkflowRunExportTask as MockedFunction<typeof useLogModule.useCreateWorkflowRunExportTask>
 const mockedUseWorkflowRunExportTaskStatus = useLogModule.useWorkflowRunExportTaskStatus as MockedFunction<typeof useLogModule.useWorkflowRunExportTaskStatus>
 const mockedUseProviderContext = useProviderContext as MockedFunction<typeof useProviderContext>
@@ -293,6 +294,11 @@ describe('Logs Container', () => {
     } as unknown as ReturnType<typeof useLogModule.useCreateWorkflowRunExportTask>)
     mockedUseWorkflowRunExportTaskStatus.mockReturnValue(
       createMockQueryResult<WorkflowLogExportTaskStatus>({ data: undefined }),
+    )
+    mockedUseWorkflowArchivedLogs.mockReturnValue(
+      createMockQueryResult<WorkflowLogsResponse>({
+        data: createMockLogsResponse([], 0),
+      }),
     )
   })
 
