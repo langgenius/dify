@@ -34,16 +34,27 @@ export type IconObject = {
 }
 
 export type ToolCallItem = {
+  id: string
   type: 'model' | 'tool' | 'thought'
-  tool_call_id?: string
-  tool_name?: string
-  tool_arguments?: string
-  tool_icon?: string | IconObject
-  tool_icon_dark?: string | IconObject
-  tool_files?: string[]
-  tool_error?: string
-  tool_output?: Record<string, any> | string
-  tool_elapsed_time?: number
+  thoughtCompleted?: boolean
+  thoughtOutput?: string
+
+  toolName?: string
+  toolProvider?: string
+  toolIcon?: string | IconObject
+  toolIconDark?: string | IconObject
+  toolArguments?: string
+  toolOutput?: Record<string, any> | string
+  toolFiles?: string[]
+  toolError?: string
+  toolDuration?: number
+
+  modelName?: string
+  modelProvider?: string
+  modelOutput?: Record<string, any> | string
+  modelDuration?: number
+  modelIcon?: string | IconObject
+  modelIconDark?: string | IconObject
 }
 
 export type ToolCallDetail = {

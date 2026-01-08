@@ -9,9 +9,9 @@ const ToolCalls = ({
 }: ToolCallsProps) => {
   return (
     <div className="my-1 space-y-1">
-      {toolCalls.map((toolCall: ToolCallItem) => (
+      {toolCalls.map((toolCall: ToolCallItem, index: number) => (
         <ToolCallItemComponent
-          key={toolCall.tool_call_id}
+          key={index}
           payload={toolCall}
           className="bg-background-gradient-bg-fill-chat-bubble-bg-2 shadow-none"
         />

@@ -15,6 +15,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import { v4 as uuidV4 } from 'uuid'
 import {
   getProcessedInputs,
   processOpeningStatement,
@@ -266,6 +267,8 @@ export const useChat = (
     }
 
     let hasSetResponseId = false
+    let toolCallId = ''
+    let thoughtId = ''
 
     handleRun(
       bodyParams,
@@ -277,7 +280,6 @@ export const useChat = (
           chunk_type,
           tool_icon,
           tool_icon_dark,
-          tool_call_id,
           tool_name,
           tool_arguments,
           tool_files,
@@ -289,43 +291,52 @@ export const useChat = (
           if (chunk_type === 'tool_call') {
             if (!responseItem.toolCalls)
               responseItem.toolCalls = []
+            toolCallId = uuidV4()
             responseItem.toolCalls?.push({
+              id: toolCallId,
               type: 'tool',
-              tool_call_id,
-              tool_name,
-              tool_arguments,
-              tool_icon,
-              tool_icon_dark,
-              tool_files,
-              tool_error,
-              tool_elapsed_time,
+              toolName: tool_name,
+              toolArguments: tool_arguments,
+              toolIcon: tool_icon,
+              toolIconDark: tool_icon_dark,
             })
           }
 
           if (chunk_type === 'tool_result') {
-            const currentToolCallIndex = responseItem.toolCalls?.findIndex(item => item.tool_call_id === tool_call_id) ?? -1
+            const currentToolCallIndex = responseItem.toolCalls?.findIndex(item => item.id === toolCallId) ?? -1
 
-            if (currentToolCallIndex > -1)
-              responseItem.toolCalls![currentToolCallIndex].tool_output = message
+            if (currentToolCallIndex > -1) {
+              responseItem.toolCalls![currentToolCallIndex].toolError = tool_error
+              responseItem.toolCalls![currentToolCallIndex].toolDuration = tool_elapsed_time
+              responseItem.toolCalls![currentToolCallIndex].toolFiles = tool_files
+              responseItem.toolCalls![currentToolCallIndex].toolOutput = message
+            }
           }
 
           if (chunk_type === 'thought_start') {
-            console.log(message, 'xx1')
-            responseItem.toolCalls?.push({
+            if (!responseItem.toolCalls)
+              responseItem.toolCalls = []
+            thoughtId = uuidV4()
+            responseItem.toolCalls.push({
+              id: thoughtId,
               type: 'thought',
-              tool_elapsed_time,
+              thoughtOutput: '',
             })
           }
 
-          if (chunk_type === 'thought_end') {
-            console.log(message, 'xx2')
-            // const currentThoughtIndex = responseItem.toolCalls?.findIndex(item => item.is_thought) ?? -1
-            // if (currentThoughtIndex > -1)
-            //   responseItem.toolCalls![currentThoughtIndex].tool_output = message
+          if (chunk_type === 'thought') {
+            const currentThoughtIndex = responseItem.toolCalls?.findIndex(item => item.id === thoughtId) ?? -1
+            if (currentThoughtIndex > -1) {
+              responseItem.toolCalls![currentThoughtIndex].thoughtOutput += message
+            }
           }
 
-          if (chunk_type === 'thought') {
-            console.log(message, 'xx3')
+          if (chunk_type === 'thought_end') {
+            const currentThoughtIndex = responseItem.toolCalls?.findIndex(item => item.id === thoughtId) ?? -1
+            if (currentThoughtIndex > -1) {
+              responseItem.toolCalls![currentThoughtIndex].thoughtOutput += message
+              responseItem.toolCalls![currentThoughtIndex].thoughtCompleted = true
+            }
           }
 
           if (messageId && !hasSetResponseId) {

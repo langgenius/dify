@@ -64,11 +64,6 @@ export type CitationItem = {
   word_count: number
 }
 
-export type IconObject = {
-  background: string
-  content: string
-}
-
 export type IChatItem = {
   id: string
   content: string

@@ -651,6 +651,7 @@
   "nodes.llm.jsonSchema.warningTips.saveSchema": "请先完成当前字段的编辑",
   "nodes.llm.model": "模型",
   "nodes.llm.notSetContextInPromptTip": "要启用上下文功能，请在提示中填写上下文变量。",
+  "nodes.llm.outputVars.generation": "生成信息",
   "nodes.llm.outputVars.output": "生成内容",
   "nodes.llm.outputVars.reasoning_content": "推理内容",
   "nodes.llm.outputVars.usage": "模型用量信息",

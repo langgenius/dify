@@ -651,6 +651,7 @@
   "nodes.llm.jsonSchema.warningTips.saveSchema": "Please finish editing the current field before saving the schema",
   "nodes.llm.model": "model",
   "nodes.llm.notSetContextInPromptTip": "To enable the context feature, please fill in the context variable in PROMPT.",
+  "nodes.llm.outputVars.generation": "Generation Information",
   "nodes.llm.outputVars.output": "Generate content",
   "nodes.llm.outputVars.reasoning_content": "Reasoning Content",
   "nodes.llm.outputVars.usage": "Model Usage Information",

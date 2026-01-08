@@ -22,18 +22,30 @@ const LLMResultPanel: FC<Props> = ({
   onBack,
 }) => {
   const { t } = useTranslation()
-  const formattedList = list.map(item => ({
-    type: item.type,
-    tool_call_id: item.provider,
-    tool_name: item.name,
-    tool_arguments: item.type === 'tool' ? item.output.arguments : undefined,
-    tool_icon: item.icon,
-    tool_icon_dark: item.icon_dark,
-    tool_files: [],
-    tool_error: item.error,
-    tool_output: item.type === 'tool' ? item.output.output : item.output,
-    tool_elapsed_time: item.duration,
-  }))
+  const formattedList = list.map((item) => {
+    if (item.type === 'tool') {
+      return {
+        type: 'tool',
+        toolName: item.name,
+        toolProvider: item.provider,
+        toolIcon: item.icon,
+        toolIconDark: item.icon_dark,
+        toolArguments: item.output.arguments,
+        toolOutput: item.output.output,
+        toolDuration: item.duration,
+      }
+    }
+
+    return {
+      type: 'model',
+      modelName: item.name,
+      modelProvider: item.provider,
+      modelIcon: item.icon,
+      modelIconDark: item.icon_dark,
+      modelOutput: item.output,
+      modelDuration: item.duration,
+    }
+  })
 
   return (
     <div>
