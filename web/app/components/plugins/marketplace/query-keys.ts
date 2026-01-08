@@ -1,12 +1,8 @@
 import type { CollectionsAndPluginsSearchParams, PluginsSearchParams } from './types'
 
-// Query key factory for consistent cache keys
 export const marketplaceKeys = {
   all: ['marketplace'] as const,
-  collections: (params?: CollectionsAndPluginsSearchParams) =>
-    [...marketplaceKeys.all, 'collections', params] as const,
-  collectionPlugins: (collectionId: string, params?: CollectionsAndPluginsSearchParams) =>
-    [...marketplaceKeys.all, 'collectionPlugins', collectionId, params] as const,
-  plugins: (params?: PluginsSearchParams) =>
-    [...marketplaceKeys.all, 'plugins', params] as const,
+  collections: (params?: CollectionsAndPluginsSearchParams) => [...marketplaceKeys.all, 'collections', params] as const,
+  collectionPlugins: (collectionId: string, params?: CollectionsAndPluginsSearchParams) => [...marketplaceKeys.all, 'collectionPlugins', collectionId, params] as const,
+  plugins: (params?: PluginsSearchParams) => [...marketplaceKeys.all, 'plugins', params] as const,
 }
