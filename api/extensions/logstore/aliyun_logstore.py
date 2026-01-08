@@ -180,7 +180,10 @@ class AliyunLogStore:
         self.region: str = os.environ.get("ALIYUN_SLS_REGION", "")
         self.project_name: str = os.environ.get("ALIYUN_SLS_PROJECT_NAME", "")
         self.logstore_ttl: int = int(os.environ.get("ALIYUN_SLS_LOGSTORE_TTL", 365))
-        self.log_enabled: bool = os.environ.get("SQLALCHEMY_ECHO", "false").lower() == "true"
+        self.log_enabled: bool = (
+            os.environ.get("SQLALCHEMY_ECHO", "false").lower() == "true"
+            or os.environ.get("LOGSTORE_SQL_ECHO", "false").lower() == "true"
+        )
         self.pg_mode_enabled: bool = os.environ.get("LOGSTORE_PG_MODE_ENABLED", "true").lower() == "true"
 
         # Get timeout configuration
@@ -778,7 +781,6 @@ class AliyunLogStore:
             reverse=reverse,
         )
 
-        # Log query info if SQLALCHEMY_ECHO is enabled
         if self.log_enabled:
             logger.info(
                 "[LogStore] GET_LOGS | logstore=%s | project=%s | query=%s | "
@@ -800,7 +802,6 @@ class AliyunLogStore:
             for log in logs:
                 result.append(log.get_contents())
 
-            # Log result count if SQLALCHEMY_ECHO is enabled
             if self.log_enabled:
                 logger.info(
                     "[LogStore] GET_LOGS RESULT | logstore=%s | returned_count=%d",
@@ -875,7 +876,6 @@ class AliyunLogStore:
                 query=full_query,
             )
 
-            # Log query info if SQLALCHEMY_ECHO is enabled
             if self.log_enabled:
                 logger.info(
                     "[LogStore-SDK] EXECUTE_SQL | logstore=%s | project=%s | from_time=%d | to_time=%d | full_query=%s",
@@ -883,8 +883,7 @@ class AliyunLogStore:
                     self.project_name,
                     from_time,
                     to_time,
-                    query,
-                    sql,
+                    full_query,
                 )
 
             try:
@@ -895,7 +894,6 @@ class AliyunLogStore:
                 for log in logs:
                     result.append(log.get_contents())
 
-                # Log result count if SQLALCHEMY_ECHO is enabled
                 if self.log_enabled:
                     logger.info(
                         "[LogStore-SDK] EXECUTE_SQL RESULT | logstore=%s | returned_count=%d",
