@@ -29,14 +29,9 @@ jobs:
         id: detect
         run: |
           BEFORE_SHA="${{ github.event.before }}"
-          # Handle edge case: first push or force push may have null/zero SHA
+          # Handle edge case: force push may have null/zero SHA
           if [ -z "$BEFORE_SHA" ] || [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
             BEFORE_SHA="HEAD~1"
-          fi
-          # If HEAD~1 doesn't exist (e.g., first commit), fall back to empty tree
-          if ! git rev-parse --verify "$BEFORE_SHA" >/dev/null 2>&1; then
-            echo "Detected missing parent commit; falling back to empty tree for diff baseline."
-            BEFORE_SHA="$(git hash-object -t tree /dev/null)"
           fi
 
           # Detect changed i18n files
