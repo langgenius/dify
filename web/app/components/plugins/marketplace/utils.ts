@@ -26,12 +26,13 @@ export const getPluginIconInMarketplace = (plugin: Plugin) => {
   return `${MARKETPLACE_API_PREFIX}/plugins/${plugin.org}/${plugin.name}/icon`
 }
 
-export const getFormattedPlugin = (bundle: any) => {
+export const getFormattedPlugin = (bundle: Plugin): Plugin => {
   if (bundle.type === 'bundle') {
     return {
       ...bundle,
       icon: getPluginIconInMarketplace(bundle),
       brief: bundle.description,
+      // @ts-expect-error I do not have enough information
       label: bundle.labels,
     }
   }
