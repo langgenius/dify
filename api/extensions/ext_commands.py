@@ -10,6 +10,7 @@ def init_app(app: DifyApp):
         clear_orphaned_file_records,
         convert_to_agent_apps,
         create_tenant,
+        delete_archived_workflow_runs,
         extract_plugins,
         extract_unique_plugins,
         file_usage,
@@ -59,6 +60,7 @@ def init_app(app: DifyApp):
         transform_datasource_credentials,
         install_rag_pipeline_plugins,
         archive_workflow_runs,
+        delete_archived_workflow_runs,
         restore_workflow_runs,
     ]
     for cmd in cmds_to_register:

@@ -1076,7 +1076,7 @@ def restore_workflow_runs(
 )
 @click.option("--limit", type=int, default=100, show_default=True, help="Maximum number of runs to delete.")
 @click.option("--dry-run", is_flag=True, help="Preview without deleting.")
-def delete_workflow_runs(
+def delete_archived_workflow_runs(
     tenant_ids: str | None,
     run_id: str | None,
     start_from: datetime.datetime | None,
