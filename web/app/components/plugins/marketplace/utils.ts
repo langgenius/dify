@@ -159,7 +159,7 @@ export function getCollectionsParams(category: ActivePluginType): CollectionsAnd
     return {}
   }
   return {
-    category: category === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : category,
+    category,
     condition: getMarketplaceListCondition(category),
     type: getMarketplaceListFilterType(category),
   }
