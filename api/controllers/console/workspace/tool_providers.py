@@ -1,16 +1,15 @@
 import io
 import logging
-from urllib.parse import urlparse
+from typing import Any, Literal
 
 from flask import make_response, redirect, request, send_file
-from flask_restx import (
-    Resource,
-    reqparse,
-)
+from flask_restx import Resource
+from pydantic import BaseModel, Field, HttpUrl, model_validator
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import (
     account_initialization_required,
@@ -26,8 +25,9 @@ from core.mcp.mcp_client import MCPClient
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
+from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
 from extensions.ext_database import db
-from libs.helper import StrLen, alphanumeric, uuid_value
+from libs.helper import UUIDStrOrEmpty
 from libs.login import current_account_with_tenant, login_required
 from models.provider_ids import ToolProviderID
 
@@ -44,43 +44,185 @@ from services.tools.workflow_tools_manage_service import WorkflowToolManageServi
 logger = logging.getLogger(__name__)
 
 
-def is_valid_url(url: str) -> bool:
-    if not url:
-        return False
-
-    try:
-        parsed = urlparse(url)
-        return all([parsed.scheme, parsed.netloc]) and parsed.scheme in ["http", "https"]
-    except (ValueError, TypeError):
-        # ValueError: Invalid URL format
-        # TypeError: url is not a string
-        return False
+class ToolProviderListQuery(BaseModel):
+    type: Literal["builtin", "model", "api", "workflow", "mcp"] | None = None
 
 
-parser_tool = reqparse.RequestParser().add_argument(
-    "type",
-    type=str,
-    choices=["builtin", "model", "api", "workflow", "mcp"],
-    required=False,
-    nullable=True,
-    location="args",
+class BuiltinToolCredentialDeletePayload(BaseModel):
+    credential_id: str
+
+
+class BuiltinToolAddPayload(BaseModel):
+    credentials: dict[str, Any]
+    name: str | None = Field(default=None, max_length=30)
+    type: CredentialType
+
+
+class BuiltinToolUpdatePayload(BaseModel):
+    credential_id: str
+    credentials: dict[str, Any] | None = None
+    name: str | None = Field(default=None, max_length=30)
+
+
+class ApiToolProviderBasePayload(BaseModel):
+    credentials: dict[str, Any]
+    schema_type: ApiProviderSchemaType
+    schema_: str = Field(alias="schema")
+    provider: str
+    icon: dict[str, Any]
+    privacy_policy: str = ""
+    labels: list[str] = []
+    custom_disclaimer: str = ""
+
+
+class ApiToolProviderAddPayload(ApiToolProviderBasePayload):
+    pass
+
+
+class ApiToolProviderUpdatePayload(ApiToolProviderBasePayload):
+    original_provider: str
+
+
+class UrlQuery(BaseModel):
+    url: HttpUrl
+
+
+class ProviderQuery(BaseModel):
+    provider: str
+
+
+class ApiToolProviderDeletePayload(BaseModel):
+    provider: str
+
+
+class ApiToolSchemaPayload(BaseModel):
+    schema_: str = Field(alias="schema")
+
+
+class ApiToolTestPayload(BaseModel):
+    tool_name: str
+    provider_name: str = ""
+    credentials: dict[str, Any]
+    parameters: dict[str, Any]
+    schema_type: ApiProviderSchemaType
+    schema_: str = Field(alias="schema")
+
+
+class WorkflowToolBasePayload(BaseModel):
+    name: str = Field(pattern=r"^[a-zA-Z0-9_]+$")
+    label: str
+    description: str
+    icon: dict[str, Any]
+    parameters: list[WorkflowToolParameterConfiguration] = Field(default_factory=list)
+    privacy_policy: str = ""
+    labels: list[str] | None = None
+
+
+class WorkflowToolCreatePayload(WorkflowToolBasePayload):
+    workflow_app_id: UUIDStrOrEmpty
+
+
+class WorkflowToolUpdatePayload(WorkflowToolBasePayload):
+    workflow_tool_id: UUIDStrOrEmpty
+
+
+class WorkflowToolDeletePayload(BaseModel):
+    workflow_tool_id: UUIDStrOrEmpty
+
+
+class WorkflowToolGetQuery(BaseModel):
+    workflow_tool_id: UUIDStrOrEmpty | None = None
+    workflow_app_id: UUIDStrOrEmpty | None = None
+
+    @model_validator(mode="after")
+    def ensure_one(self) -> "WorkflowToolGetQuery":
+        if not self.workflow_tool_id and not self.workflow_app_id:
+            raise ValueError("workflow_tool_id or workflow_app_id is required")
+        return self
+
+
+class WorkflowToolListQuery(BaseModel):
+    workflow_tool_id: UUIDStrOrEmpty
+
+
+class BuiltinProviderDefaultCredentialPayload(BaseModel):
+    id: str
+
+
+class ToolOAuthCustomClientPayload(BaseModel):
+    client_params: dict[str, Any] = {}
+    enable_oauth_custom_client: bool = True
+
+
+class MCPProviderBasePayload(BaseModel):
+    server_url: str
+    name: str
+    icon: str
+    icon_type: str
+    icon_background: str = ""
+    server_identifier: str
+    configuration: MCPConfiguration
+    headers: dict[str, Any] = {}
+    authentication: MCPAuthentication | None = None
+
+
+class MCPProviderCreatePayload(MCPProviderBasePayload):
+    pass
+
+
+class MCPProviderUpdatePayload(MCPProviderBasePayload):
+    provider_id: str
+
+
+class MCPProviderDeletePayload(BaseModel):
+    provider_id: str
+
+
+class MCPAuthPayload(BaseModel):
+    provider_id: str
+    authorization_code: str | None = None
+
+
+class MCPCallbackQuery(BaseModel):
+    code: str
+    state: str
+
+
+register_schema_models(
+    console_ns,
+    BuiltinToolCredentialDeletePayload,
+    BuiltinToolAddPayload,
+    BuiltinToolUpdatePayload,
+    ApiToolProviderAddPayload,
+    ApiToolProviderUpdatePayload,
+    ApiToolProviderDeletePayload,
+    ApiToolSchemaPayload,
+    ApiToolTestPayload,
+    WorkflowToolCreatePayload,
+    WorkflowToolUpdatePayload,
+    WorkflowToolDeletePayload,
+    BuiltinProviderDefaultCredentialPayload,
+    ToolOAuthCustomClientPayload,
+    MCPProviderCreatePayload,
+    MCPProviderUpdatePayload,
+    MCPProviderDeletePayload,
+    MCPAuthPayload,
+    MCPConfiguration,
+    MCPAuthentication,
 )
 
 
 @console_ns.route("/workspaces/current/tool-providers")
 class ToolProviderListApi(Resource):
-    @console_ns.expect(parser_tool)
     @setup_required
     @login_required
     @account_initialization_required
     def get(self):
         user, tenant_id = current_account_with_tenant()
 
-        user_id = user.id
+        query = ToolProviderListQuery.model_validate(request.args.to_dict())
 
-        args = parser_tool.parse_args()
-
-        return ToolCommonService.list_tool_providers(user_id, tenant_id, args.get("type", None))
+        return ToolCommonService.list_tool_providers(user.id, tenant_id, query.type)  # type: ignore
 
 
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/tools")
@@ -110,14 +252,9 @@ class ToolBuiltinProviderInfoApi(Resource):
         return jsonable_encoder(BuiltinToolManageService.get_builtin_tool_provider_info(tenant_id, provider))
 
 
-parser_delete = reqparse.RequestParser().add_argument(
-    "credential_id", type=str, required=True, nullable=False, location="json"
-)
-
-
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/delete")
 class ToolBuiltinProviderDeleteApi(Resource):
-    @console_ns.expect(parser_delete)
+    @console_ns.expect(console_ns.models[BuiltinToolCredentialDeletePayload.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -125,77 +262,55 @@ class ToolBuiltinProviderDeleteApi(Resource):
     def post(self, provider):
         _, tenant_id = current_account_with_tenant()
 
-        args = parser_delete.parse_args()
+        payload = BuiltinToolCredentialDeletePayload.model_validate(console_ns.payload or {})
 
         return BuiltinToolManageService.delete_builtin_tool_provider(
             tenant_id,
             provider,
-            args["credential_id"],
+            payload.credential_id,
         )
-
-
-parser_add = (
-    reqparse.RequestParser()
-    .add_argument("credentials", type=dict, required=True, nullable=False, location="json")
-    .add_argument("name", type=StrLen(30), required=False, nullable=False, location="json")
-    .add_argument("type", type=str, required=True, nullable=False, location="json")
-)
 
 
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/add")
 class ToolBuiltinProviderAddApi(Resource):
-    @console_ns.expect(parser_add)
+    @console_ns.expect(console_ns.models[BuiltinToolAddPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     def post(self, provider):
         user, tenant_id = current_account_with_tenant()
 
-        user_id = user.id
-
-        args = parser_add.parse_args()
-
-        if args["type"] not in CredentialType.values():
-            raise ValueError(f"Invalid credential type: {args['type']}")
+        payload = BuiltinToolAddPayload.model_validate(console_ns.payload or {})
 
         return BuiltinToolManageService.add_builtin_tool_provider(
-            user_id=user_id,
+            user_id=user.id,
             tenant_id=tenant_id,
             provider=provider,
-            credentials=args["credentials"],
-            name=args["name"],
-            api_type=CredentialType.of(args["type"]),
+            credentials=payload.credentials,
+            name=payload.name,
+            api_type=payload.type,
         )
-
-
-parser_update = (
-    reqparse.RequestParser()
-    .add_argument("credential_id", type=str, required=True, nullable=False, location="json")
-    .add_argument("credentials", type=dict, required=False, nullable=True, location="json")
-    .add_argument("name", type=StrLen(30), required=False, nullable=True, location="json")
-)
 
 
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/update")
 class ToolBuiltinProviderUpdateApi(Resource):
-    @console_ns.expect(parser_update)
+    @console_ns.expect(console_ns.models[BuiltinToolUpdatePayload.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
     def post(self, provider):
         user, tenant_id = current_account_with_tenant()
-        user_id = user.id
 
-        args = parser_update.parse_args()
+        payload = BuiltinToolUpdatePayload.model_validate(console_ns.payload or {})
 
         result = BuiltinToolManageService.update_builtin_tool_provider(
-            user_id=user_id,
+            user_id=user.id,
             tenant_id=tenant_id,
             provider=provider,
-            credential_id=args["credential_id"],
-            credentials=args.get("credentials", None),
-            name=args.get("name", ""),
+            credential_id=payload.credential_id,
+            credentials=payload.credentials,
+            name=payload.name or "",
         )
         return result
 
@@ -225,22 +340,9 @@ class ToolBuiltinProviderIconApi(Resource):
         return send_file(io.BytesIO(icon_bytes), mimetype=mimetype, max_age=icon_cache_max_age)
 
 
-parser_api_add = (
-    reqparse.RequestParser()
-    .add_argument("credentials", type=dict, required=True, nullable=False, location="json")
-    .add_argument("schema_type", type=str, required=True, nullable=False, location="json")
-    .add_argument("schema", type=str, required=True, nullable=False, location="json")
-    .add_argument("provider", type=str, required=True, nullable=False, location="json")
-    .add_argument("icon", type=dict, required=True, nullable=False, location="json")
-    .add_argument("privacy_policy", type=str, required=False, nullable=True, location="json")
-    .add_argument("labels", type=list[str], required=False, nullable=True, location="json", default=[])
-    .add_argument("custom_disclaimer", type=str, required=False, nullable=True, location="json")
-)
-
-
 @console_ns.route("/workspaces/current/tool-provider/api/add")
 class ToolApiProviderAddApi(Resource):
-    @console_ns.expect(parser_api_add)
+    @console_ns.expect(console_ns.models[ApiToolProviderAddPayload.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -248,91 +350,61 @@ class ToolApiProviderAddApi(Resource):
     def post(self):
         user, tenant_id = current_account_with_tenant()
 
-        user_id = user.id
-
-        args = parser_api_add.parse_args()
+        payload = ApiToolProviderAddPayload.model_validate(console_ns.payload or {})
 
         return ApiToolManageService.create_api_tool_provider(
-            user_id,
+            user.id,
             tenant_id,
-            args["provider"],
-            args["icon"],
-            args["credentials"],
-            args["schema_type"],
-            args["schema"],
-            args.get("privacy_policy", ""),
-            args.get("custom_disclaimer", ""),
-            args.get("labels", []),
+            payload.provider,
+            payload.icon,
+            payload.credentials,
+            payload.schema_type,
+            payload.schema_,
+            payload.privacy_policy,
+            payload.custom_disclaimer,
+            payload.labels,
         )
-
-
-parser_remote = reqparse.RequestParser().add_argument("url", type=str, required=True, nullable=False, location="args")
 
 
 @console_ns.route("/workspaces/current/tool-provider/api/remote")
 class ToolApiProviderGetRemoteSchemaApi(Resource):
-    @console_ns.expect(parser_remote)
     @setup_required
     @login_required
     @account_initialization_required
     def get(self):
         user, tenant_id = current_account_with_tenant()
 
-        user_id = user.id
-
-        args = parser_remote.parse_args()
+        query = UrlQuery.model_validate(request.args.to_dict())
 
         return ApiToolManageService.get_api_tool_provider_remote_schema(
-            user_id,
+            user.id,
             tenant_id,
-            args["url"],
+            str(query.url),
         )
-
-
-parser_tools = reqparse.RequestParser().add_argument(
-    "provider", type=str, required=True, nullable=False, location="args"
-)
 
 
 @console_ns.route("/workspaces/current/tool-provider/api/tools")
 class ToolApiProviderListToolsApi(Resource):
-    @console_ns.expect(parser_tools)
     @setup_required
     @login_required
     @account_initialization_required
     def get(self):
         user, tenant_id = current_account_with_tenant()
 
-        user_id = user.id
-
-        args = parser_tools.parse_args()
+        query = ProviderQuery.model_validate(request.args.to_dict())
 
         return jsonable_encoder(
             ApiToolManageService.list_api_tool_provider_tools(
-                user_id,
+                user.id,
                 tenant_id,
-                args["provider"],
+                query.provider,
             )
         )
 
 
-parser_api_update = (
-    reqparse.RequestParser()
-    .add_argument("credentials", type=dict, required=True, nullable=False, location="json")
-    .add_argument("schema_type", type=str, required=True, nullable=False, location="json")
-    .add_argument("schema", type=str, required=True, nullable=False, location="json")
-    .add_argument("provider", type=str, required=True, nullable=False, location="json")
-    .add_argument("original_provider", type=str, required=True, nullable=False, location="json")
-    .add_argument("icon", type=dict, required=True, nullable=False, location="json")
-    .add_argument("privacy_policy", type=str, required=True, nullable=True, location="json")
-    .add_argument("labels", type=list[str], required=False, nullable=True, location="json")
-    .add_argument("custom_disclaimer", type=str, required=True, nullable=True, location="json")
-)
-
-
 @console_ns.route("/workspaces/current/tool-provider/api/update")
 class ToolApiProviderUpdateApi(Resource):
-    @console_ns.expect(parser_api_update)
+    @console_ns.expect(console_ns.models[ApiToolProviderUpdatePayload.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -340,33 +412,26 @@ class ToolApiProviderUpdateApi(Resource):
     def post(self):
         user, tenant_id = current_account_with_tenant()
 
-        user_id = user.id
-
-        args = parser_api_update.parse_args()
+        payload = ApiToolProviderUpdatePayload.model_validate(console_ns.payload or {})
 
         return ApiToolManageService.update_api_tool_provider(
-            user_id,
+            user.id,
             tenant_id,
-            args["provider"],
-            args["original_provider"],
-            args["icon"],
-            args["credentials"],
-            args["schema_type"],
-            args["schema"],
-            args["privacy_policy"],
-            args["custom_disclaimer"],
-            args.get("labels", []),
+            payload.provider,
+            payload.original_provider,
+            payload.icon,
+            payload.credentials,
+            payload.schema_type,
+            payload.schema_,
+            payload.privacy_policy,
+            payload.custom_disclaimer,
+            payload.labels,
         )
-
-
-parser_api_delete = reqparse.RequestParser().add_argument(
-    "provider", type=str, required=True, nullable=False, location="json"
-)
 
 
 @console_ns.route("/workspaces/current/tool-provider/api/delete")
 class ToolApiProviderDeleteApi(Resource):
-    @console_ns.expect(parser_api_delete)
+    @console_ns.expect(console_ns.models[ApiToolProviderDeletePayload.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -374,37 +439,29 @@ class ToolApiProviderDeleteApi(Resource):
     def post(self):
         user, tenant_id = current_account_with_tenant()
 
-        user_id = user.id
-
-        args = parser_api_delete.parse_args()
+        payload = ApiToolProviderDeletePayload.model_validate(console_ns.payload or {})
 
         return ApiToolManageService.delete_api_tool_provider(
-            user_id,
+            user.id,
             tenant_id,
-            args["provider"],
+            payload.provider,
         )
-
-
-parser_get = reqparse.RequestParser().add_argument("provider", type=str, required=True, nullable=False, location="args")
 
 
 @console_ns.route("/workspaces/current/tool-provider/api/get")
 class ToolApiProviderGetApi(Resource):
-    @console_ns.expect(parser_get)
     @setup_required
     @login_required
     @account_initialization_required
     def get(self):
         user, tenant_id = current_account_with_tenant()
 
-        user_id = user.id
-
-        args = parser_get.parse_args()
+        query = ProviderQuery.model_validate(request.args.to_dict())
 
         return ApiToolManageService.get_api_tool_provider(
-            user_id,
+            user.id,
             tenant_id,
-            args["provider"],
+            query.provider,
         )
 
 
@@ -423,72 +480,43 @@ class ToolBuiltinProviderCredentialsSchemaApi(Resource):
         )
 
 
-parser_schema = reqparse.RequestParser().add_argument(
-    "schema", type=str, required=True, nullable=False, location="json"
-)
-
-
 @console_ns.route("/workspaces/current/tool-provider/api/schema")
 class ToolApiProviderSchemaApi(Resource):
-    @console_ns.expect(parser_schema)
+    @console_ns.expect(console_ns.models[ApiToolSchemaPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     def post(self):
-        args = parser_schema.parse_args()
+        payload = ApiToolSchemaPayload.model_validate(console_ns.payload or {})
 
         return ApiToolManageService.parser_api_schema(
-            schema=args["schema"],
+            schema=payload.schema_,
         )
-
-
-parser_pre = (
-    reqparse.RequestParser()
-    .add_argument("tool_name", type=str, required=True, nullable=False, location="json")
-    .add_argument("provider_name", type=str, required=False, nullable=False, location="json")
-    .add_argument("credentials", type=dict, required=True, nullable=False, location="json")
-    .add_argument("parameters", type=dict, required=True, nullable=False, location="json")
-    .add_argument("schema_type", type=str, required=True, nullable=False, location="json")
-    .add_argument("schema", type=str, required=True, nullable=False, location="json")
-)
 
 
 @console_ns.route("/workspaces/current/tool-provider/api/test/pre")
 class ToolApiProviderPreviousTestApi(Resource):
-    @console_ns.expect(parser_pre)
+    @console_ns.expect(console_ns.models[ApiToolTestPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     def post(self):
-        args = parser_pre.parse_args()
+        payload = ApiToolTestPayload.model_validate(console_ns.payload or {})
         _, current_tenant_id = current_account_with_tenant()
         return ApiToolManageService.test_api_tool_preview(
             current_tenant_id,
-            args["provider_name"] or "",
-            args["tool_name"],
-            args["credentials"],
-            args["parameters"],
-            args["schema_type"],
-            args["schema"],
+            payload.provider_name,
+            payload.tool_name,
+            payload.credentials,
+            payload.parameters,
+            payload.schema_type,
+            payload.schema_,
         )
-
-
-parser_create = (
-    reqparse.RequestParser()
-    .add_argument("workflow_app_id", type=uuid_value, required=True, nullable=False, location="json")
-    .add_argument("name", type=alphanumeric, required=True, nullable=False, location="json")
-    .add_argument("label", type=str, required=True, nullable=False, location="json")
-    .add_argument("description", type=str, required=True, nullable=False, location="json")
-    .add_argument("icon", type=dict, required=True, nullable=False, location="json")
-    .add_argument("parameters", type=list[dict], required=True, nullable=False, location="json")
-    .add_argument("privacy_policy", type=str, required=False, nullable=True, location="json", default="")
-    .add_argument("labels", type=list[str], required=False, nullable=True, location="json")
-)
 
 
 @console_ns.route("/workspaces/current/tool-provider/workflow/create")
 class ToolWorkflowProviderCreateApi(Resource):
-    @console_ns.expect(parser_create)
+    @console_ns.expect(console_ns.models[WorkflowToolCreatePayload.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -496,75 +524,51 @@ class ToolWorkflowProviderCreateApi(Resource):
     def post(self):
         user, tenant_id = current_account_with_tenant()
 
-        user_id = user.id
-
-        args = parser_create.parse_args()
+        payload = WorkflowToolCreatePayload.model_validate(console_ns.payload or {})
 
         return WorkflowToolManageService.create_workflow_tool(
-            user_id=user_id,
+            user_id=user.id,
             tenant_id=tenant_id,
-            workflow_app_id=args["workflow_app_id"],
-            name=args["name"],
-            label=args["label"],
-            icon=args["icon"],
-            description=args["description"],
-            parameters=args["parameters"],
-            privacy_policy=args["privacy_policy"],
-            labels=args["labels"],
+            workflow_app_id=payload.workflow_app_id,
+            name=payload.name,
+            label=payload.label,
+            icon=payload.icon,
+            description=payload.description,
+            parameters=payload.parameters,
+            privacy_policy=payload.privacy_policy,
+            labels=payload.labels,
         )
-
-
-parser_workflow_update = (
-    reqparse.RequestParser()
-    .add_argument("workflow_tool_id", type=uuid_value, required=True, nullable=False, location="json")
-    .add_argument("name", type=alphanumeric, required=True, nullable=False, location="json")
-    .add_argument("label", type=str, required=True, nullable=False, location="json")
-    .add_argument("description", type=str, required=True, nullable=False, location="json")
-    .add_argument("icon", type=dict, required=True, nullable=False, location="json")
-    .add_argument("parameters", type=list[dict], required=True, nullable=False, location="json")
-    .add_argument("privacy_policy", type=str, required=False, nullable=True, location="json", default="")
-    .add_argument("labels", type=list[str], required=False, nullable=True, location="json")
-)
 
 
 @console_ns.route("/workspaces/current/tool-provider/workflow/update")
 class ToolWorkflowProviderUpdateApi(Resource):
-    @console_ns.expect(parser_workflow_update)
+    @console_ns.expect(console_ns.models[WorkflowToolUpdatePayload.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
     def post(self):
         user, tenant_id = current_account_with_tenant()
-        user_id = user.id
 
-        args = parser_workflow_update.parse_args()
-
-        if not args["workflow_tool_id"]:
-            raise ValueError("incorrect workflow_tool_id")
+        payload = WorkflowToolUpdatePayload.model_validate(console_ns.payload or {})
 
         return WorkflowToolManageService.update_workflow_tool(
-            user_id,
+            user.id,
             tenant_id,
-            args["workflow_tool_id"],
-            args["name"],
-            args["label"],
-            args["icon"],
-            args["description"],
-            args["parameters"],
-            args["privacy_policy"],
-            args.get("labels", []),
+            payload.workflow_tool_id,
+            payload.name,
+            payload.label,
+            payload.icon,
+            payload.description,
+            payload.parameters,
+            payload.privacy_policy,
+            payload.labels or [],
         )
-
-
-parser_workflow_delete = reqparse.RequestParser().add_argument(
-    "workflow_tool_id", type=uuid_value, required=True, nullable=False, location="json"
-)
 
 
 @console_ns.route("/workspaces/current/tool-provider/workflow/delete")
 class ToolWorkflowProviderDeleteApi(Resource):
-    @console_ns.expect(parser_workflow_delete)
+    @console_ns.expect(console_ns.models[WorkflowToolDeletePayload.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -572,78 +576,54 @@ class ToolWorkflowProviderDeleteApi(Resource):
     def post(self):
         user, tenant_id = current_account_with_tenant()
 
-        user_id = user.id
-
-        args = parser_workflow_delete.parse_args()
+        payload = WorkflowToolDeletePayload.model_validate(console_ns.payload or {})
 
         return WorkflowToolManageService.delete_workflow_tool(
-            user_id,
+            user.id,
             tenant_id,
-            args["workflow_tool_id"],
+            payload.workflow_tool_id,
         )
-
-
-parser_wf_get = (
-    reqparse.RequestParser()
-    .add_argument("workflow_tool_id", type=uuid_value, required=False, nullable=True, location="args")
-    .add_argument("workflow_app_id", type=uuid_value, required=False, nullable=True, location="args")
-)
 
 
 @console_ns.route("/workspaces/current/tool-provider/workflow/get")
 class ToolWorkflowProviderGetApi(Resource):
-    @console_ns.expect(parser_wf_get)
     @setup_required
     @login_required
     @account_initialization_required
     def get(self):
         user, tenant_id = current_account_with_tenant()
 
-        user_id = user.id
-
-        args = parser_wf_get.parse_args()
-
-        if args.get("workflow_tool_id"):
+        query = WorkflowToolGetQuery.model_validate(request.args.to_dict())
+        tool = {}
+        if query.workflow_tool_id:
             tool = WorkflowToolManageService.get_workflow_tool_by_tool_id(
-                user_id,
+                user.id,
                 tenant_id,
-                args["workflow_tool_id"],
+                query.workflow_tool_id,
             )
-        elif args.get("workflow_app_id"):
+        elif query.workflow_app_id:
             tool = WorkflowToolManageService.get_workflow_tool_by_app_id(
-                user_id,
+                user.id,
                 tenant_id,
-                args["workflow_app_id"],
+                query.workflow_app_id,
             )
-        else:
-            raise ValueError("incorrect workflow_tool_id or workflow_app_id")
-
         return jsonable_encoder(tool)
-
-
-parser_wf_tools = reqparse.RequestParser().add_argument(
-    "workflow_tool_id", type=uuid_value, required=True, nullable=False, location="args"
-)
 
 
 @console_ns.route("/workspaces/current/tool-provider/workflow/tools")
 class ToolWorkflowProviderListToolApi(Resource):
-    @console_ns.expect(parser_wf_tools)
     @setup_required
     @login_required
     @account_initialization_required
     def get(self):
         user, tenant_id = current_account_with_tenant()
-
-        user_id = user.id
-
-        args = parser_wf_tools.parse_args()
+        query = WorkflowToolListQuery.model_validate(request.args.to_dict())
 
         return jsonable_encoder(
             WorkflowToolManageService.list_single_workflow_tools(
-                user_id,
+                user.id,
                 tenant_id,
-                args["workflow_tool_id"],
+                query.workflow_tool_id,
             )
         )
 
@@ -655,14 +635,11 @@ class ToolBuiltinListApi(Resource):
     @account_initialization_required
     def get(self):
         user, tenant_id = current_account_with_tenant()
-
-        user_id = user.id
-
         return jsonable_encoder(
             [
                 provider.to_dict()
                 for provider in BuiltinToolManageService.list_builtin_tools(
-                    user_id,
+                    user.id,
                     tenant_id,
                 )
             ]
@@ -694,14 +671,11 @@ class ToolWorkflowListApi(Resource):
     @account_initialization_required
     def get(self):
         user, tenant_id = current_account_with_tenant()
-
-        user_id = user.id
-
         return jsonable_encoder(
             [
                 provider.to_dict()
                 for provider in WorkflowToolManageService.list_tenant_workflow_tools(
-                    user_id,
+                    user.id,
                     tenant_id,
                 )
             ]
@@ -810,49 +784,37 @@ class ToolOAuthCallback(Resource):
         return redirect(f"{dify_config.CONSOLE_WEB_URL}/oauth-callback")
 
 
-parser_default_cred = reqparse.RequestParser().add_argument(
-    "id", type=str, required=True, nullable=False, location="json"
-)
-
-
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/default-credential")
 class ToolBuiltinProviderSetDefaultApi(Resource):
-    @console_ns.expect(parser_default_cred)
+    @console_ns.expect(console_ns.models[BuiltinProviderDefaultCredentialPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     def post(self, provider):
         current_user, current_tenant_id = current_account_with_tenant()
-        args = parser_default_cred.parse_args()
+        payload = BuiltinProviderDefaultCredentialPayload.model_validate(console_ns.payload or {})
         return BuiltinToolManageService.set_default_provider(
-            tenant_id=current_tenant_id, user_id=current_user.id, provider=provider, id=args["id"]
+            tenant_id=current_tenant_id, user_id=current_user.id, provider=provider, id=payload.id
         )
-
-
-parser_custom = (
-    reqparse.RequestParser()
-    .add_argument("client_params", type=dict, required=False, nullable=True, location="json")
-    .add_argument("enable_oauth_custom_client", type=bool, required=False, nullable=True, location="json")
-)
 
 
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/oauth/custom-client")
 class ToolOAuthCustomClient(Resource):
-    @console_ns.expect(parser_custom)
+    @console_ns.expect(console_ns.models[ToolOAuthCustomClientPayload.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
     def post(self, provider: str):
-        args = parser_custom.parse_args()
+        payload = ToolOAuthCustomClientPayload.model_validate(console_ns.payload or {})
 
         _, tenant_id = current_account_with_tenant()
 
         return BuiltinToolManageService.save_custom_oauth_client_params(
             tenant_id=tenant_id,
             provider=provider,
-            client_params=args.get("client_params", {}),
-            enable_oauth_custom_client=args.get("enable_oauth_custom_client", True),
+            client_params=payload.client_params,
+            enable_oauth_custom_client=payload.enable_oauth_custom_client,
         )
 
     @setup_required
@@ -904,49 +866,15 @@ class ToolBuiltinProviderGetCredentialInfoApi(Resource):
         )
 
 
-parser_mcp = (
-    reqparse.RequestParser()
-    .add_argument("server_url", type=str, required=True, nullable=False, location="json")
-    .add_argument("name", type=str, required=True, nullable=False, location="json")
-    .add_argument("icon", type=str, required=True, nullable=False, location="json")
-    .add_argument("icon_type", type=str, required=True, nullable=False, location="json")
-    .add_argument("icon_background", type=str, required=False, nullable=True, location="json", default="")
-    .add_argument("server_identifier", type=str, required=True, nullable=False, location="json")
-    .add_argument("configuration", type=dict, required=False, nullable=True, location="json", default={})
-    .add_argument("headers", type=dict, required=False, nullable=True, location="json", default={})
-    .add_argument("authentication", type=dict, required=False, nullable=True, location="json", default={})
-)
-parser_mcp_put = (
-    reqparse.RequestParser()
-    .add_argument("server_url", type=str, required=True, nullable=False, location="json")
-    .add_argument("name", type=str, required=True, nullable=False, location="json")
-    .add_argument("icon", type=str, required=True, nullable=False, location="json")
-    .add_argument("icon_type", type=str, required=True, nullable=False, location="json")
-    .add_argument("icon_background", type=str, required=False, nullable=True, location="json")
-    .add_argument("provider_id", type=str, required=True, nullable=False, location="json")
-    .add_argument("server_identifier", type=str, required=True, nullable=False, location="json")
-    .add_argument("configuration", type=dict, required=False, nullable=True, location="json", default={})
-    .add_argument("headers", type=dict, required=False, nullable=True, location="json", default={})
-    .add_argument("authentication", type=dict, required=False, nullable=True, location="json", default={})
-)
-parser_mcp_delete = reqparse.RequestParser().add_argument(
-    "provider_id", type=str, required=True, nullable=False, location="json"
-)
-
-
 @console_ns.route("/workspaces/current/tool-provider/mcp")
 class ToolProviderMCPApi(Resource):
-    @console_ns.expect(parser_mcp)
+    @console_ns.expect(console_ns.models[MCPProviderCreatePayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     def post(self):
-        args = parser_mcp.parse_args()
+        payload = MCPProviderCreatePayload.model_validate(console_ns.payload or {})
         user, tenant_id = current_account_with_tenant()
-
-        # Parse and validate models
-        configuration = MCPConfiguration.model_validate(args["configuration"])
-        authentication = MCPAuthentication.model_validate(args["authentication"]) if args["authentication"] else None
 
         # 1) Create provider in a short transaction (no network I/O inside)
         with session_factory.create_session() as session, session.begin():
@@ -954,25 +882,25 @@ class ToolProviderMCPApi(Resource):
             result = service.create_provider(
                 tenant_id=tenant_id,
                 user_id=user.id,
-                server_url=args["server_url"],
-                name=args["name"],
-                icon=args["icon"],
-                icon_type=args["icon_type"],
-                icon_background=args["icon_background"],
-                server_identifier=args["server_identifier"],
-                headers=args["headers"],
-                configuration=configuration,
-                authentication=authentication,
+                server_url=payload.server_url,
+                name=payload.name,
+                icon=payload.icon,
+                icon_type=payload.icon_type,
+                icon_background=payload.icon_background,
+                server_identifier=payload.server_identifier,
+                headers=payload.headers,
+                configuration=payload.configuration,
+                authentication=payload.authentication,
             )
 
         # 2) Try to fetch tools immediately after creation so they appear without a second save.
         #    Perform network I/O outside any DB session to avoid holding locks.
         try:
             reconnect = MCPToolManageService.reconnect_with_url(
-                server_url=args["server_url"],
-                headers=args.get("headers") or {},
-                timeout=configuration.timeout,
-                sse_read_timeout=configuration.sse_read_timeout,
+                server_url=payload.server_url,
+                headers=payload.headers,
+                timeout=payload.configuration.timeout,
+                sse_read_timeout=payload.configuration.sse_read_timeout,
             )
             # Update just-created provider with authed/tools in a new short transaction
             with session_factory.create_session() as session, session.begin():
@@ -988,14 +916,14 @@ class ToolProviderMCPApi(Resource):
 
         return jsonable_encoder(result)
 
-    @console_ns.expect(parser_mcp_put)
+    @console_ns.expect(console_ns.models[MCPProviderUpdatePayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     def put(self):
-        args = parser_mcp_put.parse_args()
-        configuration = MCPConfiguration.model_validate(args["configuration"])
-        authentication = MCPAuthentication.model_validate(args["authentication"]) if args["authentication"] else None
+        payload = MCPProviderUpdatePayload.model_validate(console_ns.payload or {})
+        configuration = MCPConfiguration.model_validate(payload.configuration or {})
+        authentication = MCPAuthentication.model_validate(payload.authentication) if payload.authentication else None
         _, current_tenant_id = current_account_with_tenant()
 
         # Step 1: Get provider data for URL validation (short-lived session, no network I/O)
@@ -1003,14 +931,14 @@ class ToolProviderMCPApi(Resource):
         with Session(db.engine) as session:
             service = MCPToolManageService(session=session)
             validation_data = service.get_provider_for_url_validation(
-                tenant_id=current_tenant_id, provider_id=args["provider_id"]
+                tenant_id=current_tenant_id, provider_id=payload.provider_id
             )
 
         # Step 2: Perform URL validation with network I/O OUTSIDE of any database session
         # This prevents holding database locks during potentially slow network operations
         validation_result = MCPToolManageService.validate_server_url_standalone(
             tenant_id=current_tenant_id,
-            new_server_url=args["server_url"],
+            new_server_url=payload.server_url,
             validation_data=validation_data,
         )
 
@@ -1019,14 +947,14 @@ class ToolProviderMCPApi(Resource):
             service = MCPToolManageService(session=session)
             service.update_provider(
                 tenant_id=current_tenant_id,
-                provider_id=args["provider_id"],
-                server_url=args["server_url"],
-                name=args["name"],
-                icon=args["icon"],
-                icon_type=args["icon_type"],
-                icon_background=args["icon_background"],
-                server_identifier=args["server_identifier"],
-                headers=args["headers"],
+                provider_id=payload.provider_id,
+                server_url=payload.server_url,
+                name=payload.name,
+                icon=payload.icon,
+                icon_type=payload.icon_type,
+                icon_background=payload.icon_background,
+                server_identifier=payload.server_identifier,
+                headers=payload.headers,
                 configuration=configuration,
                 authentication=authentication,
                 validation_result=validation_result,
@@ -1034,37 +962,30 @@ class ToolProviderMCPApi(Resource):
 
         return {"result": "success"}
 
-    @console_ns.expect(parser_mcp_delete)
+    @console_ns.expect(console_ns.models[MCPProviderDeletePayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     def delete(self):
-        args = parser_mcp_delete.parse_args()
+        payload = MCPProviderDeletePayload.model_validate(console_ns.payload or {})
         _, current_tenant_id = current_account_with_tenant()
 
         with Session(db.engine) as session, session.begin():
             service = MCPToolManageService(session=session)
-            service.delete_provider(tenant_id=current_tenant_id, provider_id=args["provider_id"])
+            service.delete_provider(tenant_id=current_tenant_id, provider_id=payload.provider_id)
 
         return {"result": "success"}
 
 
-parser_auth = (
-    reqparse.RequestParser()
-    .add_argument("provider_id", type=str, required=True, nullable=False, location="json")
-    .add_argument("authorization_code", type=str, required=False, nullable=True, location="json")
-)
-
-
 @console_ns.route("/workspaces/current/tool-provider/mcp/auth")
 class ToolMCPAuthApi(Resource):
-    @console_ns.expect(parser_auth)
+    @console_ns.expect(console_ns.models[MCPAuthPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     def post(self):
-        args = parser_auth.parse_args()
-        provider_id = args["provider_id"]
+        payload = MCPAuthPayload.model_validate(console_ns.payload or {})
+        provider_id = payload.provider_id
         _, tenant_id = current_account_with_tenant()
 
         with Session(db.engine) as session, session.begin():
@@ -1102,7 +1023,7 @@ class ToolMCPAuthApi(Resource):
                 # Pass the extracted OAuth metadata hints to auth()
                 auth_result = auth(
                     provider_entity,
-                    args.get("authorization_code"),
+                    payload.authorization_code,
                     resource_metadata_url=e.resource_metadata_url,
                     scope_hint=e.scope_hint,
                 )
@@ -1167,20 +1088,12 @@ class ToolMCPUpdateApi(Resource):
             return jsonable_encoder(tools)
 
 
-parser_cb = (
-    reqparse.RequestParser()
-    .add_argument("code", type=str, required=True, nullable=False, location="args")
-    .add_argument("state", type=str, required=True, nullable=False, location="args")
-)
-
-
 @console_ns.route("/mcp/oauth/callback")
 class ToolMCPCallbackApi(Resource):
-    @console_ns.expect(parser_cb)
     def get(self):
-        args = parser_cb.parse_args()
-        state_key = args["state"]
-        authorization_code = args["code"]
+        query = MCPCallbackQuery.model_validate(request.args.to_dict())
+        state_key = query.state
+        authorization_code = query.code
 
         # Create service instance for handle_callback
         with Session(db.engine) as session, session.begin():
