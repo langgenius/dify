@@ -13,7 +13,7 @@ from json_repair import repair_json
 from configs import dify_config
 from core.file import file_manager
 from core.file.enums import FileTransferMethod
-from core.helper import ssrf_proxy
+from core.helper import encrypter, ssrf_proxy
 from core.variables.segments import ArrayFileSegment, FileSegment
 from core.workflow.runtime import VariablePool
 
@@ -386,6 +386,15 @@ class Executor:
         raw += f"Host: {url_parts.netloc}\r\n"
 
         headers = self._assembling_headers()
+        for k, v in self.headers.items():
+            if self.auth.config:
+                if self.auth.config.type in ("api-key", "bearer"):
+                    headers[k] = encrypter.obfuscated_token(v)
+                elif self.auth.type == "custom":
+                    if k == self.auth.config.header:
+                        headers[k] = encrypter.obfuscated_token(v)
+            else:
+                headers[k] = v
         body = self.node_data.body
         boundary = f"----WebKitFormBoundary{_generate_random_string(16)}"
         if body:
