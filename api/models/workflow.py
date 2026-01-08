@@ -41,8 +41,7 @@ from libs.uuid_utils import uuidv7
 from ._workflow_exc import NodeNotFoundError, WorkflowDataError
 
 if TYPE_CHECKING:
-    from .model import AppMode, UploadFile
-
+    from .model import AppMode
 
 from constants import DEFAULT_FILE_NUMBER_LIMITS, HIDDEN_VALUE
 from core.helper import encrypter
@@ -54,6 +53,7 @@ from .account import Account
 from .base import Base, DefaultFieldsMixin, TypeBase
 from .engine import db
 from .enums import CreatorUserRole, DraftVariableType, ExecutionOffLoadType
+from .model import UploadFile
 from .types import EnumText, LongText, StringUUID
 
 logger = logging.getLogger(__name__)
