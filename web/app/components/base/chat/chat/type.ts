@@ -68,6 +68,18 @@ export type CitationItem = {
   word_count: number
 }
 
+export type ExtraContent
+  = {
+    type: 'human_input'
+    submitted: false
+    form_definition: HumanInputFormData
+  }
+  | {
+    type: 'human_input'
+    submitted: true
+    form_submission_data: HumanInputFilledFormData
+  }
+
 export type IChatItem = {
   id: string
   content: string
@@ -111,6 +123,7 @@ export type IChatItem = {
   // for human input
   humanInputFormDataList?: HumanInputFormData[]
   humanInputFilledFormDataList?: HumanInputFilledFormData[]
+  extra_contents?: ExtraContent[]
 }
 
 export type Metadata = {

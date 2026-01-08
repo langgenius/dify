@@ -1,3 +1,4 @@
+import type { ExtraContent } from '../chat/type'
 import type {
   Callback,
   ChatConfig,
@@ -9,6 +10,7 @@ import type {
   AppData,
   ConversationItem,
 } from '@/models/share'
+import type { HumanInputFilledFormData, HumanInputFormData } from '@/types/workflow'
 import { useLocalStorageState } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
@@ -56,6 +58,22 @@ function getFormattedChatList(messages: any[]) {
       parentMessageId: item.parent_message_id || undefined,
     })
     const answerFiles = item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || []
+    const humanInputFormDataList: HumanInputFormData[] = []
+    const humanInputFilledFormDataList: HumanInputFilledFormData[] = []
+    if (item.status === 'paused') {
+      item.extra_contents?.forEach((content: ExtraContent) => {
+        if (content.type === 'human_input' && !content.submitted) {
+          humanInputFormDataList.push(content.form_definition)
+        }
+      })
+    }
+    else if (item.status === 'normal') {
+      item.extra_contents?.forEach((content: ExtraContent) => {
+        if (content.type === 'human_input' && content.submitted) {
+          humanInputFilledFormDataList.push(content.form_submission_data)
+        }
+      })
+    }
     newChatList.push({
       id: item.id,
       content: item.answer,
@@ -65,6 +83,8 @@ function getFormattedChatList(messages: any[]) {
       citation: item.retriever_resources,
       message_files: getProcessedFilesFromResponse(answerFiles.map((item: any) => ({ ...item, related_id: item.id, upload_file_id: item.upload_file_id }))),
       parentMessageId: `question-${item.id}`,
+      humanInputFormDataList,
+      humanInputFilledFormDataList,
     })
   })
   return newChatList

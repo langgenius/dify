@@ -144,7 +144,7 @@ const Answer: FC<AnswerProps> = ({
         {hasHumanInputs && (
           <div className={cn('group relative pr-10', chatAnswerContainerInner)}>
             <div
-              className={cn('body-lg-regular relative inline-block max-w-full rounded-2xl bg-chat-bubble-bg px-4 py-3 text-text-primary', workflowProcess && 'w-full')}
+              className={cn('body-lg-regular relative inline-block max-w-full rounded-2xl bg-chat-bubble-bg px-4 py-3 text-text-primary', (workflowProcess || hasHumanInputs) && 'w-full')}
             >
               {/** Render workflow process */}
               {
