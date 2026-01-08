@@ -1,6 +1,8 @@
 'use client'
 
-import type { Plugin } from '../types'
+import type {
+  Plugin,
+} from '../types'
 import type {
   CollectionsAndPluginsSearchParams,
   MarketplaceCollection,
@@ -87,27 +89,29 @@ export function useMarketplaceCollectionsData() {
   }
 }
 
-/**
- * Fetches plugins for a specific collection
- */
-export function useMarketplacePluginsByCollectionId(
+export const useMarketplacePluginsByCollectionId = (
   collectionId?: string,
-  params?: CollectionsAndPluginsSearchParams,
-) {
-  const query = useQuery({
-    queryKey: marketplaceKeys.collectionPlugins(collectionId || '', params),
+  query?: CollectionsAndPluginsSearchParams,
+) => {
+  const {
+    data,
+    isFetching,
+    isSuccess,
+    isPending,
+  } = useQuery({
+    queryKey: marketplaceKeys.collectionPlugins(collectionId || '', query),
     queryFn: ({ signal }) => {
       if (!collectionId)
         return Promise.resolve<Plugin[]>([])
-      return getMarketplacePluginsByCollectionId(collectionId, params, { signal })
+      return getMarketplacePluginsByCollectionId(collectionId, query, { signal })
     },
     enabled: !!collectionId,
   })
 
   return {
-    plugins: query.data || [],
-    isLoading: query.isLoading,
-    isSuccess: query.isSuccess,
+    plugins: data || [],
+    isLoading: !!collectionId && (isFetching || isPending),
+    isSuccess,
   }
 }
 
@@ -259,6 +263,35 @@ export function useMarketplacePluginsReactive(queryParams?: PluginsSearchParams)
   }
 }
 
+export const useMarketplaceContainerScroll = (
+  callback: () => void,
+  scrollContainerId = 'marketplace-container',
+) => {
+  const handleScroll = useCallback((e: Event) => {
+    const target = e.target as HTMLDivElement
+    const {
+      scrollTop,
+      scrollHeight,
+      clientHeight,
+    } = target
+    if (scrollTop + clientHeight >= scrollHeight - SCROLL_BOTTOM_THRESHOLD && scrollTop > 0)
+      callback()
+  }, [callback])
+
+  useEffect(() => {
+    const container = document.getElementById(scrollContainerId)
+    if (container)
+      container.addEventListener('scroll', handleScroll)
+
+    return () => {
+      if (container)
+        container.removeEventListener('scroll', handleScroll)
+    }
+  }, [handleScroll])
+}
+
+export type { MarketplaceCollection, PluginsSearchParams }
+
 /**
  * Reactive hook that automatically fetches plugins based on current state
  */
@@ -313,29 +346,6 @@ export function useMarketplacePluginsData() {
   }
 }
 
-/**
- * Hook for handling "More" click in collection headers
- */
-export function useMarketplaceMoreClick() {
-  const [, setUrlFilters] = useMarketplaceFilters()
-  const [, setSort] = useMarketplaceSort()
-
-  return useCallback((searchParams?: { query?: string, sort_by?: string, sort_order?: string }) => {
-    if (!searchParams)
-      return
-    const newQuery = searchParams?.query || ''
-    const newSort = {
-      sortBy: searchParams?.sort_by || DEFAULT_SORT.sortBy,
-      sortOrder: searchParams?.sort_order || DEFAULT_SORT.sortOrder,
-    }
-    setUrlFilters({ q: newQuery })
-    setSort(newSort)
-  }, [setUrlFilters, setSort])
-}
-
-/**
- * Combined hook for marketplace data
- */
 export function useMarketplaceData() {
   const collectionsData = useMarketplaceCollectionsData()
   const pluginsData = useMarketplacePluginsData()
@@ -352,31 +362,19 @@ export function useMarketplaceData() {
   }
 }
 
-/**
- * Handles scroll-based pagination
- */
-export function useMarketplaceContainerScroll(
-  callback: () => void,
-  scrollContainerId = 'marketplace-container',
-) {
-  const handleScroll = useCallback((e: Event) => {
-    const target = e.target as HTMLDivElement
-    const { scrollTop, scrollHeight, clientHeight } = target
-    if (scrollTop + clientHeight >= scrollHeight - SCROLL_BOTTOM_THRESHOLD && scrollTop > 0)
-      callback()
-  }, [callback])
+export function useMarketplaceMoreClick() {
+  const [, setUrlFilters] = useMarketplaceFilters()
+  const [, setSort] = useMarketplaceSort()
 
-  useEffect(() => {
-    const container = document.getElementById(scrollContainerId)
-    if (container)
-      container.addEventListener('scroll', handleScroll)
-
-    return () => {
-      if (container)
-        container.removeEventListener('scroll', handleScroll)
+  return useCallback((searchParams?: { query?: string, sort_by?: string, sort_order?: string }) => {
+    if (!searchParams)
+      return
+    const newQuery = searchParams?.query || ''
+    const newSort = {
+      sortBy: searchParams?.sort_by || DEFAULT_SORT.sortBy,
+      sortOrder: searchParams?.sort_order || DEFAULT_SORT.sortOrder,
     }
-  }, [handleScroll, scrollContainerId])
+    setUrlFilters({ q: newQuery })
+    setSort(newSort)
+  }, [setUrlFilters, setSort])
 }
-
-// Re-export for external usage (workflow block selector, etc.)
-export type { MarketplaceCollection, PluginsSearchParams }

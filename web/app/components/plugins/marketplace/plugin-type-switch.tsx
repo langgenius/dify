@@ -1,5 +1,4 @@
 'use client'
-
 import { useTranslation } from '#i18n'
 import {
   RiArchive2Line,
@@ -9,7 +8,6 @@ import {
   RiPuzzle2Line,
   RiSpeakAiLine,
 } from '@remixicon/react'
-import { useCallback } from 'react'
 import { Trigger as TriggerIcon } from '@/app/components/base/icons/src/vender/plugin'
 import { useMarketplaceCategory } from '@/hooks/use-query-params'
 import { cn } from '@/utils/classnames'
@@ -25,18 +23,14 @@ export const PLUGIN_TYPE_SEARCH_MAP = {
   trigger: PluginCategoryEnum.trigger,
   bundle: 'bundle',
 }
-
 type PluginTypeSwitchProps = {
   className?: string
 }
-
-function PluginTypeSwitch({ className }: PluginTypeSwitchProps) {
+const PluginTypeSwitch = ({
+  className,
+}: PluginTypeSwitchProps) => {
   const { t } = useTranslation()
-  const [activePluginType, setCategory] = useMarketplaceCategory()
-
-  const handleActivePluginTypeChange = useCallback((type: string) => {
-    setCategory(type, { history: 'push' })
-  }, [setCategory])
+  const [activePluginType, handleActivePluginTypeChange] = useMarketplaceCategory()
 
   const options = [
     {
@@ -82,25 +76,28 @@ function PluginTypeSwitch({ className }: PluginTypeSwitchProps) {
   ]
 
   return (
-    <div
-      className={cn(
-        'flex shrink-0 items-center justify-center space-x-2 bg-background-body py-3',
-        className,
-      )}
+    <div className={cn(
+      'flex shrink-0 items-center justify-center space-x-2 bg-background-body py-3',
+      className,
+    )}
     >
-      {options.map(option => (
-        <div
-          key={option.value}
-          className={cn(
-            'system-md-medium flex h-8 cursor-pointer items-center rounded-xl border border-transparent px-3 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-            activePluginType === option.value && 'border-components-main-nav-nav-button-border !bg-components-main-nav-nav-button-bg-active !text-components-main-nav-nav-button-text-active shadow-xs',
-          )}
-          onClick={() => handleActivePluginTypeChange(option.value)}
-        >
-          {option.icon}
-          {option.text}
-        </div>
-      ))}
+      {
+        options.map(option => (
+          <div
+            key={option.value}
+            className={cn(
+              'system-md-medium flex h-8 cursor-pointer items-center rounded-xl border border-transparent px-3 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
+              activePluginType === option.value && 'border-components-main-nav-nav-button-border !bg-components-main-nav-nav-button-bg-active !text-components-main-nav-nav-button-text-active shadow-xs',
+            )}
+            onClick={() => {
+              handleActivePluginTypeChange(option.value)
+            }}
+          >
+            {option.icon}
+            {option.text}
+          </div>
+        ))
+      }
     </div>
   )
 }
