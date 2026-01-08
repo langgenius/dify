@@ -64,11 +64,8 @@ class CommandNode(Node[CommandNodeData]):
                 error_type="SandboxNotInitializedError",
             )
 
-        working_directory = (self.node_data.working_directory or "").strip()
-        raw_command = (self.node_data.command or "").strip()
-
-        working_directory = self._render_template(working_directory).strip()
-        raw_command = self._render_template(raw_command).strip()
+        working_directory = self._render_template((self.node_data.working_directory or "").strip())
+        raw_command = self._render_template(self.node_data.command or "")
 
         working_directory = working_directory or None
 
@@ -118,7 +115,7 @@ class CommandNode(Node[CommandNodeData]):
                     status=WorkflowNodeExecutionStatus.FAILED,
                     outputs=outputs,
                     process_data=process_data,
-                    error=f"Command exited with code {result.exit_code}",
+                    error=f"{result.stderr.decode('utf-8', errors='replace')}\n\nCommand exited with code {result.exit_code}",
                     error_type=CommandExecutionError.__name__,
                 )
 
