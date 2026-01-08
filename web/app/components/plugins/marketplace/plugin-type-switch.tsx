@@ -12,6 +12,7 @@ import { Trigger as TriggerIcon } from '@/app/components/base/icons/src/vender/p
 import { useMarketplaceCategory } from '@/hooks/use-query-params'
 import { cn } from '@/utils/classnames'
 import { PluginCategoryEnum } from '../types'
+import { setSearchMode } from './atoms'
 
 export const PLUGIN_TYPE_SEARCH_MAP = {
   all: 'all',
@@ -91,6 +92,9 @@ const PluginTypeSwitch = ({
             )}
             onClick={() => {
               handleActivePluginTypeChange(option.value)
+              if (option.value === PLUGIN_TYPE_SEARCH_MAP.all || option.value === PLUGIN_TYPE_SEARCH_MAP.tool) {
+                setSearchMode(false)
+              }
             }}
           >
             {option.icon}

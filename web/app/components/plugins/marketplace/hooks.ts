@@ -23,7 +23,7 @@ import {
 } from 'react'
 import { useMarketplaceCategory, useMarketplaceSearchQuery, useMarketplaceTags } from '@/hooks/use-query-params'
 import { postMarketplace } from '@/service/base'
-import { useMarketplaceSortValue, useSetMarketplaceSort } from './atoms'
+import { setSearchMode, useMarketplaceSearchMode, useMarketplaceSortValue, useSetMarketplaceSort } from './atoms'
 import { DEFAULT_SORT, SCROLL_BOTTOM_THRESHOLD } from './constants'
 import { PLUGIN_TYPE_SEARCH_MAP } from './plugin-type-switch'
 import { marketplaceKeys } from './query-keys'
@@ -278,9 +278,7 @@ export function useMarketplacePluginsData() {
   const [filterPluginTags] = useMarketplaceTags()
   const [activePluginType] = useMarketplaceCategory()
 
-  const isSearchMode = !!searchPluginText
-    || filterPluginTags.length > 0
-    || (activePluginType !== PLUGIN_TYPE_SEARCH_MAP.all && activePluginType !== PLUGIN_TYPE_SEARCH_MAP.tool)
+  const isSearchMode = useMarketplaceSearchMode()
 
   const queryParams = useMemo((): PluginsSearchParams | undefined => {
     if (!isSearchMode)
@@ -350,5 +348,6 @@ export function useMarketplaceMoreClick() {
     }
     setQ(newQuery)
     setSort(newSort)
+    setSearchMode(true)
   }, [setQ, setSort])
 }
