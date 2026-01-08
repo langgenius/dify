@@ -145,12 +145,10 @@ class WorkflowRunArchiver:
         if start_from or end_before:
             if start_from is None or end_before is None:
                 raise ValueError("start_from and end_before must be provided together")
-            start_from = start_from.replace(tzinfo=datetime.UTC)
-            end_before = end_before.replace(tzinfo=datetime.UTC)
             if start_from >= end_before:
                 raise ValueError("start_from must be earlier than end_before")
-            self.start_from = start_from
-            self.end_before = end_before
+            self.start_from = start_from.replace(tzinfo=datetime.UTC)
+            self.end_before = end_before.replace(tzinfo=datetime.UTC)
         else:
             self.start_from = None
             self.end_before = datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=days)
