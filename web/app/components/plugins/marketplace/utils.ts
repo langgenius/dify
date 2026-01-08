@@ -10,7 +10,7 @@ import {
   MARKETPLACE_API_PREFIX,
 } from '@/config'
 import { getMarketplaceUrl } from '@/utils/var'
-import { PLUGIN_TYPE_SEARCH_MAP } from './plugin-type-switch'
+import { PLUGIN_TYPE_SEARCH_MAP } from './constants'
 
 type MarketplaceFetchOptions = {
   signal?: AbortSignal

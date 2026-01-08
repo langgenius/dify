@@ -24,8 +24,7 @@ import {
 import { useMarketplaceCategory, useMarketplaceSearchQuery, useMarketplaceTags } from '@/hooks/use-query-params'
 import { postMarketplace } from '@/service/base'
 import { useMarketplaceSearchMode, useMarketplaceSortValue, useSetMarketplaceSort, useSetSearchMode } from './atoms'
-import { DEFAULT_SORT, SCROLL_BOTTOM_THRESHOLD } from './constants'
-import { PLUGIN_TYPE_SEARCH_MAP } from './plugin-type-switch'
+import { DEFAULT_SORT, PLUGIN_TYPE_SEARCH_MAP, SCROLL_BOTTOM_THRESHOLD } from './constants'
 import { marketplaceKeys } from './query-keys'
 import {
   getFormattedPlugin,

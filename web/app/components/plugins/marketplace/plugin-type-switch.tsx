@@ -11,19 +11,9 @@ import {
 import { Trigger as TriggerIcon } from '@/app/components/base/icons/src/vender/plugin'
 import { useMarketplaceCategory } from '@/hooks/use-query-params'
 import { cn } from '@/utils/classnames'
-import { PluginCategoryEnum } from '../types'
 import { useSetSearchMode } from './atoms'
+import { PLUGIN_CATEGORY_WITH_COLLECTIONS, PLUGIN_TYPE_SEARCH_MAP } from './constants'
 
-export const PLUGIN_TYPE_SEARCH_MAP = {
-  all: 'all',
-  model: PluginCategoryEnum.model,
-  tool: PluginCategoryEnum.tool,
-  agent: PluginCategoryEnum.agent,
-  extension: PluginCategoryEnum.extension,
-  datasource: PluginCategoryEnum.datasource,
-  trigger: PluginCategoryEnum.trigger,
-  bundle: 'bundle',
-}
 type PluginTypeSwitchProps = {
   className?: string
 }
@@ -93,7 +83,7 @@ const PluginTypeSwitch = ({
             )}
             onClick={() => {
               handleActivePluginTypeChange(option.value)
-              if (option.value === PLUGIN_TYPE_SEARCH_MAP.all || option.value === PLUGIN_TYPE_SEARCH_MAP.tool) {
+              if (PLUGIN_CATEGORY_WITH_COLLECTIONS.has(option.value)) {
                 setSearchMode(null)
               }
             }}

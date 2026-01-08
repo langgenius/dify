@@ -12,7 +12,7 @@ import {
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
 import { useInstalledPluginList } from '@/service/use-plugins'
 import { cn } from '@/utils/classnames'
-import { PLUGIN_TYPE_SEARCH_MAP } from '../../marketplace/plugin-type-switch'
+import { PLUGIN_TYPE_SEARCH_MAP } from '../../marketplace/constants'
 import { PluginSource } from '../../types'
 import NoDataPlaceholder from './no-data-placeholder'
 import ToolItem from './tool-item'

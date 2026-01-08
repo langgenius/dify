@@ -1,8 +1,7 @@
 import type { PluginsSort } from './types'
 import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { useMarketplaceCategory, useMarketplaceSearchQuery, useMarketplaceTags } from '@/hooks/use-query-params'
-import { DEFAULT_SORT } from './constants'
-import { PLUGIN_TYPE_SEARCH_MAP } from './plugin-type-switch'
+import { DEFAULT_SORT, PLUGIN_CATEGORY_WITH_COLLECTIONS } from './constants'
 
 const marketplaceSortAtom = atom<PluginsSort>(DEFAULT_SORT)
 
@@ -28,7 +27,7 @@ export function useMarketplaceSearchMode() {
   const searchMode = useAtomValue(searchModeAtom)
   const isSearchMode = !!searchPluginText
     || filterPluginTags.length > 0
-    || (searchMode ?? (activePluginType !== PLUGIN_TYPE_SEARCH_MAP.all && activePluginType !== PLUGIN_TYPE_SEARCH_MAP.tool))
+    || (searchMode ?? (!PLUGIN_CATEGORY_WITH_COLLECTIONS.has(activePluginType)))
   return isSearchMode
 }
 

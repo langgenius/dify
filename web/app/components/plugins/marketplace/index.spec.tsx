@@ -9,9 +9,9 @@ import { PluginCategoryEnum } from '@/app/components/plugins/types'
 // ================================
 
 // Note: Import after mocks are set up
-import { DEFAULT_SORT, SCROLL_BOTTOM_THRESHOLD } from './constants'
+import { DEFAULT_SORT, PLUGIN_TYPE_SEARCH_MAP, SCROLL_BOTTOM_THRESHOLD } from './constants'
 import { MarketplaceContext, MarketplaceContextProvider, useMarketplaceContext } from './context'
-import PluginTypeSwitch, { PLUGIN_TYPE_SEARCH_MAP } from './plugin-type-switch'
+import PluginTypeSwitch from './plugin-type-switch'
 import StickySearchAndSwitchWrapper from './sticky-search-and-switch-wrapper'
 import {
   getFormattedPlugin,
