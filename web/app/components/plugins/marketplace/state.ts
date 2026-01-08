@@ -1,4 +1,4 @@
-import type { CollectionsAndPluginsSearchParams, PluginsSearchParams } from './types'
+import type { CollectionsAndPluginsSearchParams, PluginsSearchParams, SearchParamsFromCollection } from './types'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import { useCallback, useMemo } from 'react'
@@ -134,16 +134,14 @@ export function useMarketplaceMoreClick() {
   const setSort = useSetMarketplaceSort()
   const setSearchMode = useSetSearchMode()
 
-  return useCallback((searchParams?: { query?: string, sort_by?: string, sort_order?: string }) => {
+  return useCallback((searchParams?: SearchParamsFromCollection) => {
     if (!searchParams)
       return
-    const newQuery = searchParams?.query || ''
-    const newSort = {
+    setQ(searchParams?.query || '')
+    setSort({
       sortBy: searchParams?.sort_by || DEFAULT_SORT.sortBy,
       sortOrder: searchParams?.sort_order || DEFAULT_SORT.sortOrder,
-    }
-    setQ(newQuery)
-    setSort(newSort)
+    })
     setSearchMode(true)
   }, [setQ, setSort, setSearchMode])
 }
