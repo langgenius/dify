@@ -61,12 +61,8 @@ class CreditPoolService:
                     TenantCreditPool.quota_used + credits_required <= TenantCreditPool.quota_limit,
                 ]
                 stmt = update(TenantCreditPool).where(*where_conditions).values(**update_values)
-                result: CursorResult = session.execute(stmt)
+                session.execute(stmt)
                 session.commit()
-                if result.rowcount == 0:
-                    raise QuotaExceededError(
-                        f"Insufficient credits. Required: {credits_required}, Available: {pool.remaining_credits}"
-                    )
         except Exception:
             logger.exception("Failed to deduct credits for tenant %s", tenant_id)
             raise QuotaExceededError("Failed to deduct credits")
