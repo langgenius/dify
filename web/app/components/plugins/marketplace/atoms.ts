@@ -17,6 +17,10 @@ export function useSetMarketplaceSort() {
   return useSetAtom(marketplaceSortAtom)
 }
 
+/**
+ * Not all categories have collections, so we need to
+ * force the search mode for those categories.
+ */
 const searchModeAtom = atom<true | null>(null)
 
 export function useMarketplaceSearchMode() {
