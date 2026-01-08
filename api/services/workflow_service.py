@@ -16,7 +16,6 @@ from core.file import File
 from core.repositories import DifyCoreRepositoryFactory
 from core.variables import Variable
 from core.variables.variables import VariableUnion
-from core.virtual_environment.factory import SandboxFactory, SandboxType
 from core.workflow.entities import WorkflowNodeExecution
 from core.workflow.enums import ErrorStrategy, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.errors import WorkflowNodeRunFailedError
@@ -43,6 +42,7 @@ from repositories.factory import DifyAPIRepositoryFactory
 from services.billing_service import BillingService
 from services.enterprise.plugin_manager_service import PluginCredentialType
 from services.errors.app import IsDraftWorkflowError, TriggerNodeLimitExceededError, WorkflowHashNotEqualError
+from services.sandbox.sandbox_provider_service import SandboxProviderService
 from services.workflow.workflow_converter import WorkflowConverter
 
 from .errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
@@ -701,7 +701,7 @@ class WorkflowService:
         runtime = draft_workflow.features_dict.get("runtime")
         sandbox = None
         if isinstance(runtime, dict) and runtime.get("enabled"):
-            sandbox = SandboxFactory.create(sandbox_type=SandboxType.DOCKER)
+            sandbox = SandboxProviderService.create_sandbox(tenant_id=draft_workflow.tenant_id)
 
         try:
             node, generator = WorkflowEntry.single_step_run(

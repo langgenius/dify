@@ -11,7 +11,11 @@ from uuid import uuid4
 from e2b_code_interpreter import Sandbox  # type: ignore[import-untyped]
 
 from core.virtual_environment.__base.entities import Arch, CommandStatus, ConnectionHandle, FileState, Metadata
-from core.virtual_environment.__base.exec import ArchNotSupportedError, NotSupportedOperationError
+from core.virtual_environment.__base.exec import (
+    ArchNotSupportedError,
+    NotSupportedOperationError,
+    SandboxConfigValidationError,
+)
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 from core.virtual_environment.channel.queue_transport import QueueTransportReadCloser
 from core.virtual_environment.channel.transport import (
@@ -84,6 +88,21 @@ class E2BEnvironment(VirtualEnvironment):
 
     class StoreKey(StrEnum):
         SANDBOX = "sandbox"
+
+    @classmethod
+    def validate(cls, options: Mapping[str, Any]) -> None:
+        from e2b.exceptions import AuthenticationException  # type: ignore[import-untyped]
+
+        api_key = options.get(cls.OptionsKey.API_KEY, "")
+        if not api_key:
+            raise SandboxConfigValidationError("E2B API key is required")
+
+        try:
+            Sandbox.list(api_key=api_key, limit=1).next_items()
+        except AuthenticationException as e:
+            raise SandboxConfigValidationError(f"E2B authentication failed: {e}") from e
+        except Exception as e:
+            raise SandboxConfigValidationError(f"E2B connection failed: {e}") from e
 
     def _construct_environment(self, options: Mapping[str, Any], environments: Mapping[str, str]) -> Metadata:
         """

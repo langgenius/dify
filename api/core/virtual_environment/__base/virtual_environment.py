@@ -135,6 +135,16 @@ class VirtualEnvironment(ABC):
             After exuection, the 3 handles will be closed by caller.
         """
 
+    @classmethod
+    @abstractmethod
+    def validate(cls, options: Mapping[str, Any]) -> None:
+        """
+        Validate that options can connect to the provider.
+
+        Raises:
+            SandboxConfigValidationError: If validation fails
+        """
+
     @abstractmethod
     def get_command_status(self, connection_handle: ConnectionHandle, pid: str) -> CommandStatus:
         """

@@ -76,3 +76,8 @@ class SandboxFactory:
                 return LocalVirtualEnvironment
             case _:
                 raise ValueError(f"Unsupported sandbox type: {sandbox_type}")
+
+    @classmethod
+    def validate(cls, sandbox_type: SandboxType, options: Mapping[str, Any]) -> None:
+        sandbox_class = cls._get_sandbox_class(sandbox_type)
+        sandbox_class.validate(options)

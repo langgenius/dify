@@ -75,6 +75,7 @@ from .provider import (
     TenantDefaultModel,
     TenantPreferredModelProvider,
 )
+from .sandbox import SandboxProvider, SandboxProviderSystemConfig
 from .source import DataSourceApiKeyAuthBinding, DataSourceOauthBinding
 from .task import CeleryTask, CeleryTaskSet
 from .tools import (
@@ -170,6 +171,8 @@ __all__ = [
     "ProviderQuotaType",
     "ProviderType",
     "RecommendedApp",
+    "SandboxProvider",
+    "SandboxProviderSystemConfig",
     "SavedMessage",
     "Site",
     "Tag",

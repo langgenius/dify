@@ -1,6 +1,7 @@
 export const ACCOUNT_SETTING_MODAL_ACTION = 'showSettings'
 
 export const ACCOUNT_SETTING_TAB = {
+  SANDBOX_PROVIDER: 'sandbox-provider',
   PROVIDER: 'provider',
   MEMBERS: 'members',
   BILLING: 'billing',

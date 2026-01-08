@@ -515,9 +515,9 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
 
                 # FIXME: Consolidate runtime config checking into a unified location.
                 runtime = workflow.features_dict.get("runtime")
-                graph_engine_layers = ()
+                graph_engine_layers: tuple = ()
                 if isinstance(runtime, dict) and runtime.get("enabled"):
-                    graph_engine_layers = (SandboxLayer(),)
+                    graph_engine_layers = (SandboxLayer(tenant_id=application_generate_entity.app_config.tenant_id),)
 
                 # Determine system_user_id based on invocation source
                 is_external_api_call = application_generate_entity.invoke_from in {

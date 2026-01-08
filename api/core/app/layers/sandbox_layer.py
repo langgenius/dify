@@ -32,6 +32,10 @@ class SandboxLayer(GraphEngineLayer):
     - on_graph_end: Release the sandbox environment (cleanup)
 
     Example:
+        # Using tenant-specific configuration (recommended):
+        layer = SandboxLayer(tenant_id="tenant-uuid")
+
+        # Using explicit configuration (for testing/override):
         layer = SandboxLayer(
             sandbox_type=SandboxType.DOCKER,
             options={"docker_image": "python:3.11-slim"},
@@ -44,8 +48,8 @@ class SandboxLayer(GraphEngineLayer):
 
     def __init__(
         self,
-        # TODO: read from db table
-        sandbox_type: SandboxType = SandboxType.DOCKER,
+        tenant_id: str | None = None,
+        sandbox_type: SandboxType | None = None,
         options: Mapping[str, Any] | None = None,
         environments: Mapping[str, str] | None = None,
     ) -> None:
@@ -53,11 +57,17 @@ class SandboxLayer(GraphEngineLayer):
         Initialize the SandboxLayer.
 
         Args:
-            sandbox_type: Type of sandbox to create (default: DOCKER)
-            options: Sandbox-specific configuration options
-            environments: Environment variables to set in the sandbox
+            tenant_id: Tenant ID to load sandbox configuration from database.
+                      If provided, sandbox_type and options are ignored and
+                      loaded from the tenant's active sandbox provider.
+            sandbox_type: Type of sandbox to create (default: DOCKER).
+                         Only used if tenant_id is not provided.
+            options: Sandbox-specific configuration options.
+                    Only used if tenant_id is not provided.
+            environments: Environment variables to set in the sandbox.
         """
         super().__init__()
+        self._tenant_id = tenant_id
         self._sandbox_type = sandbox_type
         self._options: Mapping[str, Any] = options or {}
         self._environments: Mapping[str, str] = environments or {}
@@ -82,17 +92,33 @@ class SandboxLayer(GraphEngineLayer):
         """
         Initialize the sandbox when workflow execution starts.
 
+        If tenant_id was provided, uses SandboxProviderService to create
+        the sandbox with the tenant's active provider configuration.
+        Otherwise, falls back to explicit sandbox_type/options.
+
         Raises:
             SandboxInitializationError: If sandbox cannot be created
         """
-        logger.info("Initializing sandbox, sandbox_type=%s", self._sandbox_type)
-
         try:
-            self._sandbox = SandboxFactory.create(
-                sandbox_type=self._sandbox_type,
-                options=self._options,
-                environments=self._environments,
-            )
+            if self._tenant_id:
+                # Use SandboxProviderService to create sandbox based on tenant config
+                from services.sandbox.sandbox_provider_service import SandboxProviderService
+
+                logger.info("Initializing sandbox for tenant_id=%s", self._tenant_id)
+                self._sandbox = SandboxProviderService.create_sandbox(
+                    tenant_id=self._tenant_id,
+                    environments=self._environments,
+                )
+            else:
+                # Fallback to explicit configuration (backward compatibility)
+                sandbox_type = self._sandbox_type or SandboxType.DOCKER
+                logger.info("Initializing sandbox, sandbox_type=%s", sandbox_type)
+                self._sandbox = SandboxFactory.create(
+                    sandbox_type=sandbox_type,
+                    options=self._options,
+                    environments=self._environments,
+                )
+
             logger.info(
                 "Sandbox initialized, sandbox_id=%s, sandbox_arch=%s",
                 self._sandbox.metadata.id,
@@ -100,7 +126,7 @@ class SandboxLayer(GraphEngineLayer):
             )
         except Exception as e:
             logger.exception("Failed to initialize sandbox")
-            raise SandboxInitializationError(f"Failed to initialize {self._sandbox_type} sandbox: {e}") from e
+            raise SandboxInitializationError(f"Failed to initialize sandbox: {e}") from e
 
     def on_event(self, event: GraphEngineEvent) -> None:
         """

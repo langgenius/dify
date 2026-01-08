@@ -13,7 +13,7 @@ from docker.models.containers import Container
 
 import docker
 from core.virtual_environment.__base.entities import Arch, CommandStatus, ConnectionHandle, FileState, Metadata
-from core.virtual_environment.__base.exec import VirtualEnvironmentLaunchFailedError
+from core.virtual_environment.__base.exec import SandboxConfigValidationError, VirtualEnvironmentLaunchFailedError
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 from core.virtual_environment.channel.exec import TransportEOFError
 from core.virtual_environment.channel.socket_transport import SocketWriteCloser
@@ -203,6 +203,15 @@ class DockerDaemonEnvironment(VirtualEnvironment):
         DOCKER_SOCK = "docker_sock"
         DOCKER_IMAGE = "docker_image"
         DOCKER_COMMAND = "docker_command"
+
+    @classmethod
+    def validate(cls, options: Mapping[str, Any]) -> None:
+        docker_sock = options.get(cls.OptionsKey.DOCKER_SOCK, cls._DEFAULT_DOCKER_SOCK)
+        try:
+            client = docker.DockerClient(base_url=docker_sock)
+            client.ping()
+        except docker.errors.DockerException as e:
+            raise SandboxConfigValidationError(f"Docker connection failed: {e}") from e
 
     def _construct_environment(self, options: Mapping[str, Any], environments: Mapping[str, str]) -> Metadata:
         """

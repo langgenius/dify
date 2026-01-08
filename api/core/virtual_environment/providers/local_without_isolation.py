@@ -65,6 +65,10 @@ class LocalVirtualEnvironment(VirtualEnvironment):
     NEVER USE IT IN PRODUCTION ENVIRONMENTS.
     """
 
+    @classmethod
+    def validate(cls, options: Mapping[str, Any]) -> None:
+        pass
+
     def _construct_environment(self, options: Mapping[str, Any], environments: Mapping[str, str]) -> Metadata:
         """
         Construct the local virtual environment.

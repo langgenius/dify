@@ -14,3 +14,9 @@ class NotSupportedOperationError(Exception):
     """Exception raised when an operation is not supported."""
 
     pass
+
+
+class SandboxConfigValidationError(ValueError):
+    """Exception raised when sandbox configuration validation fails."""
+
+    pass
