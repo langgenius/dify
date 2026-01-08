@@ -1,7 +1,7 @@
 import type { PluginsSort } from './types'
 import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { DEFAULT_SORT, PLUGIN_CATEGORY_WITH_COLLECTIONS } from './constants'
-import { useActivePluginType, useFilterPluginTags, useSearchPluginText } from './hooks'
+import { useActivePluginType, useFilterPluginTags, useSearchPluginText } from './state'
 
 const marketplaceSortAtom = atom<PluginsSort>(DEFAULT_SORT)
 
