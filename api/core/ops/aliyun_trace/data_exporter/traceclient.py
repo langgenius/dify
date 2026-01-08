@@ -166,7 +166,7 @@ class SpanBuilder:
             attributes=span_data.attributes,
             events=span_data.events,
             links=span_data.links,
-            kind=trace_api.SpanKind.INTERNAL,
+            kind=span_data.span_kind,
             status=span_data.status,
             start_time=span_data.start_time,
             end_time=span_data.end_time,
