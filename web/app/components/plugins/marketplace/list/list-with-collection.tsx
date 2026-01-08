@@ -25,7 +25,7 @@ const ListWithCollection = ({
 }: ListWithCollectionProps) => {
   const { t } = useTranslation()
   const locale = useLocale()
-  const handleMoreClick = useMarketplaceMoreClick()
+  const onMoreClick = useMarketplaceMoreClick()
 
   return (
     <>
@@ -46,7 +46,7 @@ const ListWithCollection = ({
                 collection.searchable && (
                   <div
                     className="system-xs-medium flex cursor-pointer items-center text-text-accent "
-                    onClick={() => handleMoreClick(collection.search_params || {})}
+                    onClick={() => onMoreClick(collection.search_params)}
                   >
                     {t('marketplace.viewMore', { ns: 'plugin' })}
                     <RiArrowRightSLine className="h-4 w-4" />

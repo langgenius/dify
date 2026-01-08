@@ -326,7 +326,9 @@ export function useMarketplaceMoreClick() {
   const [, setUrlFilters] = useMarketplaceFilters()
   const [, setSort] = useMarketplaceSort()
 
-  return useCallback((searchParams: { query?: string, sort_by?: string, sort_order?: string }) => {
+  return useCallback((searchParams?: { query?: string, sort_by?: string, sort_order?: string }) => {
+    if (!searchParams)
+      return
     const newQuery = searchParams?.query || ''
     const newSort = {
       sortBy: searchParams?.sort_by || DEFAULT_SORT.sortBy,
