@@ -214,9 +214,9 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
         onClose={() => setShowArchivedModal(false)}
         closable
         containerClassName="!items-center"
-        className="max-w-[960px]"
+        className="flex max-h-[calc(100vh-96px)] max-w-[960px] flex-col"
       >
-        <div className="mt-4 flex flex-col gap-3">
+        <div className="mt-4 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
           {archivedLoading
             ? (
                 <div className="flex justify-center py-10">

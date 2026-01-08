@@ -102,7 +102,7 @@ const Filter: FC<IFilterProps> = ({
             <Button
               size="medium"
               variant="ghost"
-              className="flex items-center gap-1.5"
+              className="flex items-center gap-1.5 text-text-tertiary"
               disabled={!isCurrentWorkspaceManager}
               onClick={handleOpenArchived}
             >
