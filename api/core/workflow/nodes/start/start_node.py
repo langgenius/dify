@@ -1,4 +1,3 @@
-import json
 from typing import Any
 
 from jsonschema import Draft7Validator, ValidationError
@@ -47,20 +46,11 @@ class StartNode(Node[StartNodeData]):
             if not value:
                 continue
 
-            # Always parse and normalize JSON object value first, regardless of schema presence
-            try:
-                if isinstance(value, dict):
-                    json_value = value
-                else:
-                    json_value = json.loads(value)
-            except json.JSONDecodeError:
-                raise ValueError(f"{value} must be a valid JSON object")
-
-            if not isinstance(json_value, dict):
+            if not isinstance(value, dict):
                 raise ValueError(f"JSON object for '{key}' must be an object")
 
             # Overwrite with normalized dict to ensure downstream consistency
-            node_inputs[key] = json_value
+            node_inputs[key] = value
 
             # If schema exists, then validate against it
             schema = variable.json_schema
@@ -68,11 +58,6 @@ class StartNode(Node[StartNodeData]):
                 continue
 
             try:
-                json_schema = json.loads(schema)
-            except json.JSONDecodeError:
-                raise ValueError(f"{schema} must be a valid JSON object")
-
-            try:
-                Draft7Validator(json_schema).validate(json_value)
+                Draft7Validator(schema).validate(value)
             except ValidationError as e:
                 raise ValueError(f"JSON object for '{key}' does not match schema: {e.message}")

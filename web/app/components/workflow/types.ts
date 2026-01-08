@@ -223,7 +223,7 @@ export type InputVar = {
   getVarValueFromDependent?: boolean
   hide?: boolean
   isFileItem?: boolean
-  json_schema?: string // for jsonObject type
+  json_schema?: string | Record<string, any> // for jsonObject type
 } & Partial<UploadFileSetting>
 
 export type ModelConfig = {
