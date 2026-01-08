@@ -7,17 +7,23 @@ import { getCollectionsParams, getMarketplaceCollectionsAndPlugins } from './uti
 type MarketplaceProps = {
   showInstallButton?: boolean
   pluginTypeSwitchClassName?: string
+  params: {
+    q: string
+    category: string
+    tags: string[]
+  }
 }
 
 async function Marketplace({
   showInstallButton = true,
   pluginTypeSwitchClassName,
+  params,
 }: MarketplaceProps) {
   const queryClient = getQueryClient()
 
   await queryClient.prefetchQuery({
-    queryKey: marketplaceKeys.collections(getCollectionsParams('all')),
-    queryFn: () => getMarketplaceCollectionsAndPlugins(getCollectionsParams('all')),
+    queryKey: marketplaceKeys.collections(getCollectionsParams(params.category)),
+    queryFn: () => getMarketplaceCollectionsAndPlugins(getCollectionsParams(params.category)),
   })
 
   return (
