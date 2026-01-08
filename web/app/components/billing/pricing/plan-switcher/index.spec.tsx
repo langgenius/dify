@@ -11,7 +11,12 @@ vi.mock('react-i18next', async (importOriginal) => {
   return {
     ...actual,
     useTranslation: () => ({
-      t: (key: string) => mockTranslations[key] ?? key,
+      t: (key: string, options?: { ns?: string }) => {
+        if (key in mockTranslations)
+          return mockTranslations[key]
+        const prefix = options?.ns ? `${options.ns}.` : ''
+        return `${prefix}${key}`
+      },
     }),
   }
 })
@@ -85,8 +90,8 @@ describe('PlanSwitcher', () => {
     it('should render tabs when translation strings are empty', () => {
       // Arrange
       mockTranslations = {
-        'billing.plansCommon.cloud': '',
-        'billing.plansCommon.self': '',
+        'plansCommon.cloud': '',
+        'plansCommon.self': '',
       }
 
       // Act

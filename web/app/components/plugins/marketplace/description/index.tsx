@@ -1,19 +1,11 @@
-import type { Locale } from '@/i18n-config'
-import {
-  getLocaleOnServer,
-  getTranslation as translate,
-} from '@/i18n-config/server'
+import { useLocale, useTranslation } from '#i18n'
 
-type DescriptionProps = {
-  locale?: Locale
-}
-const Description = async ({
-  locale: localeFromProps,
-}: DescriptionProps) => {
-  const localeDefault = await getLocaleOnServer()
-  const { t } = await translate(localeFromProps || localeDefault, 'plugin')
-  const { t: tCommon } = await translate(localeFromProps || localeDefault, 'common')
-  const isZhHans = localeFromProps === 'zh-Hans'
+const Description = () => {
+  const { t } = useTranslation('plugin')
+  const { t: tCommon } = useTranslation('common')
+  const locale = useLocale()
+
+  const isZhHans = locale === 'zh-Hans'
 
   return (
     <>

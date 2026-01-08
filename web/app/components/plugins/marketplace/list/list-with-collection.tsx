@@ -3,9 +3,8 @@
 import type { MarketplaceCollection } from '../types'
 import type { SearchParamsFromCollection } from '@/app/components/plugins/marketplace/types'
 import type { Plugin } from '@/app/components/plugins/types'
-import type { Locale } from '@/i18n-config'
+import { useLocale, useTranslation } from '#i18n'
 import { RiArrowRightSLine } from '@remixicon/react'
-import { useMixedTranslation } from '@/app/components/plugins/marketplace/hooks'
 import { getLanguage } from '@/i18n-config/language'
 import { cn } from '@/utils/classnames'
 import CardWrapper from './card-wrapper'
@@ -14,7 +13,6 @@ type ListWithCollectionProps = {
   marketplaceCollections: MarketplaceCollection[]
   marketplaceCollectionPluginsMap: Record<string, Plugin[]>
   showInstallButton?: boolean
-  locale: Locale
   cardContainerClassName?: string
   cardRender?: (plugin: Plugin) => React.JSX.Element | null
   onMoreClick?: (searchParams?: SearchParamsFromCollection) => void
@@ -23,12 +21,12 @@ const ListWithCollection = ({
   marketplaceCollections,
   marketplaceCollectionPluginsMap,
   showInstallButton,
-  locale,
   cardContainerClassName,
   cardRender,
   onMoreClick,
 }: ListWithCollectionProps) => {
-  const { t } = useMixedTranslation(locale)
+  const { t } = useTranslation()
+  const locale = useLocale()
 
   return (
     <>
@@ -51,7 +49,7 @@ const ListWithCollection = ({
                     className="system-xs-medium flex cursor-pointer items-center text-text-accent "
                     onClick={() => onMoreClick?.(collection.search_params)}
                   >
-                    {t('plugin.marketplace.viewMore')}
+                    {t('marketplace.viewMore', { ns: 'plugin' })}
                     <RiArrowRightSLine className="h-4 w-4" />
                   </div>
                 )
@@ -72,7 +70,6 @@ const ListWithCollection = ({
                       key={plugin.plugin_id}
                       plugin={plugin}
                       showInstallButton={showInstallButton}
-                      locale={locale}
                     />
                   )
                 })

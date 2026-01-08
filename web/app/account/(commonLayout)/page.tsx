@@ -5,7 +5,7 @@ import AccountPage from './account-page'
 
 export default function Account() {
   const { t } = useTranslation()
-  useDocumentTitle(t('common.menus.account'))
+  useDocumentTitle(t('menus.account', { ns: 'common' }))
   return (
     <div className="mx-auto w-full max-w-[640px] px-6 pt-12">
       <AccountPage />

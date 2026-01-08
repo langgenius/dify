@@ -21,7 +21,7 @@ from models.model import App, EndUser
 from models.trigger import WorkflowTriggerLog
 from models.workflow import Workflow
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
-from services.errors.app import InvokeRateLimitError, QuotaExceededError, WorkflowNotFoundError
+from services.errors.app import QuotaExceededError, WorkflowNotFoundError, WorkflowQuotaLimitError
 from services.workflow.entities import AsyncTriggerResponse, TriggerData, WorkflowTaskData
 from services.workflow.queue_dispatcher import QueueDispatcherManager, QueuePriority
 from services.workflow_service import WorkflowService
@@ -141,7 +141,7 @@ class AsyncWorkflowService:
             trigger_log_repo.update(trigger_log)
             session.commit()
 
-            raise InvokeRateLimitError(
+            raise WorkflowQuotaLimitError(
                 f"Workflow execution quota limit reached for tenant {trigger_data.tenant_id}"
             ) from e
 

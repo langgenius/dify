@@ -3,7 +3,7 @@ import type {
   DefaultModel,
   DefaultModelResponse,
 } from '../declarations'
-import { RiEqualizer2Line } from '@remixicon/react'
+import { RiEqualizer2Line, RiLoader2Line } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -32,6 +32,7 @@ type SystemModelSelectorProps = {
   speech2textDefaultModel: DefaultModelResponse | undefined
   ttsDefaultModel: DefaultModelResponse | undefined
   notConfigured: boolean
+  isLoading?: boolean
 }
 const SystemModel: FC<SystemModelSelectorProps> = ({
   textGenerationDefaultModel,
@@ -40,6 +41,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
   speech2textDefaultModel,
   ttsDefaultModel,
   notConfigured,
+  isLoading,
 }) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
@@ -101,7 +103,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
       },
     })
     if (res.result === 'success') {
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       setOpen(false)
 
       changedModelTypes.forEach((modelType) => {
@@ -129,25 +131,28 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
         crossAxis: 8,
       }}
     >
-      <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
+      <PortalToFollowElemTrigger asChild onClick={() => setOpen(v => !v)}>
         <Button
           className="relative"
           variant={notConfigured ? 'primary' : 'secondary'}
           size="small"
+          disabled={isLoading}
         >
-          <RiEqualizer2Line className="mr-1 h-3.5 w-3.5" />
-          {t('common.modelProvider.systemModelSettings')}
+          {isLoading
+            ? <RiLoader2Line className="mr-1 h-3.5 w-3.5 animate-spin" />
+            : <RiEqualizer2Line className="mr-1 h-3.5 w-3.5" />}
+          {t('modelProvider.systemModelSettings', { ns: 'common' })}
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-[60]">
         <div className="w-[360px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg pt-4 shadow-xl">
           <div className="px-6 py-1">
             <div className="flex h-8 items-center text-[13px] font-medium text-text-primary">
-              {t('common.modelProvider.systemReasoningModel.key')}
+              {t('modelProvider.systemReasoningModel.key', { ns: 'common' })}
               <Tooltip
                 popupContent={(
                   <div className="w-[261px] text-text-tertiary">
-                    {t('common.modelProvider.systemReasoningModel.tip')}
+                    {t('modelProvider.systemReasoningModel.tip', { ns: 'common' })}
                   </div>
                 )}
                 triggerClassName="ml-0.5 w-4 h-4 shrink-0"
@@ -163,11 +168,11 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
           </div>
           <div className="px-6 py-1">
             <div className="flex h-8 items-center text-[13px] font-medium text-text-primary">
-              {t('common.modelProvider.embeddingModel.key')}
+              {t('modelProvider.embeddingModel.key', { ns: 'common' })}
               <Tooltip
                 popupContent={(
                   <div className="w-[261px] text-text-tertiary">
-                    {t('common.modelProvider.embeddingModel.tip')}
+                    {t('modelProvider.embeddingModel.tip', { ns: 'common' })}
                   </div>
                 )}
                 triggerClassName="ml-0.5 w-4 h-4 shrink-0"
@@ -183,11 +188,11 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
           </div>
           <div className="px-6 py-1">
             <div className="flex h-8 items-center text-[13px] font-medium text-text-primary">
-              {t('common.modelProvider.rerankModel.key')}
+              {t('modelProvider.rerankModel.key', { ns: 'common' })}
               <Tooltip
                 popupContent={(
                   <div className="w-[261px] text-text-tertiary">
-                    {t('common.modelProvider.rerankModel.tip')}
+                    {t('modelProvider.rerankModel.tip', { ns: 'common' })}
                   </div>
                 )}
                 triggerClassName="ml-0.5 w-4 h-4 shrink-0"
@@ -203,11 +208,11 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
           </div>
           <div className="px-6 py-1">
             <div className="flex h-8 items-center text-[13px] font-medium text-text-primary">
-              {t('common.modelProvider.speechToTextModel.key')}
+              {t('modelProvider.speechToTextModel.key', { ns: 'common' })}
               <Tooltip
                 popupContent={(
                   <div className="w-[261px] text-text-tertiary">
-                    {t('common.modelProvider.speechToTextModel.tip')}
+                    {t('modelProvider.speechToTextModel.tip', { ns: 'common' })}
                   </div>
                 )}
                 triggerClassName="ml-0.5 w-4 h-4 shrink-0"
@@ -223,11 +228,11 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
           </div>
           <div className="px-6 py-1">
             <div className="flex h-8 items-center text-[13px] font-medium text-text-primary">
-              {t('common.modelProvider.ttsModel.key')}
+              {t('modelProvider.ttsModel.key', { ns: 'common' })}
               <Tooltip
                 popupContent={(
                   <div className="w-[261px] text-text-tertiary">
-                    {t('common.modelProvider.ttsModel.tip')}
+                    {t('modelProvider.ttsModel.tip', { ns: 'common' })}
                   </div>
                 )}
                 triggerClassName="ml-0.5 w-4 h-4 shrink-0"
@@ -245,7 +250,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
             <Button
               onClick={() => setOpen(false)}
             >
-              {t('common.operation.cancel')}
+              {t('operation.cancel', { ns: 'common' })}
             </Button>
             <Button
               className="ml-2"
@@ -253,7 +258,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
               onClick={handleSave}
               disabled={!isCurrentWorkspaceManager}
             >
-              {t('common.operation.save')}
+              {t('operation.save', { ns: 'common' })}
             </Button>
           </div>
         </div>

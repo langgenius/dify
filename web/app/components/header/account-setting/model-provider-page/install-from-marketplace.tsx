@@ -14,7 +14,6 @@ import Divider from '@/app/components/base/divider'
 import Loading from '@/app/components/base/loading'
 import List from '@/app/components/plugins/marketplace/list'
 import ProviderCard from '@/app/components/plugins/provider-card'
-import { getLocaleOnClient } from '@/i18n-config'
 import { cn } from '@/utils/classnames'
 import { getMarketplaceUrl } from '@/utils/var'
 import {
@@ -32,7 +31,6 @@ const InstallFromMarketplace = ({
   const { t } = useTranslation()
   const { theme } = useTheme()
   const [collapse, setCollapse] = useState(false)
-  const locale = getLocaleOnClient()
   const {
     plugins: allPlugins,
     isLoading: isAllPluginsLoading,
@@ -51,12 +49,12 @@ const InstallFromMarketplace = ({
       <div className="flex items-center justify-between">
         <div className="system-md-semibold flex cursor-pointer items-center gap-1 text-text-primary" onClick={() => setCollapse(!collapse)}>
           <RiArrowDownSLine className={cn('h-4 w-4', collapse && '-rotate-90')} />
-          {t('common.modelProvider.installProvider')}
+          {t('modelProvider.installProvider', { ns: 'common' })}
         </div>
         <div className="mb-2 flex items-center pt-2">
-          <span className="system-sm-regular pr-1 text-text-tertiary">{t('common.modelProvider.discoverMore')}</span>
+          <span className="system-sm-regular pr-1 text-text-tertiary">{t('modelProvider.discoverMore', { ns: 'common' })}</span>
           <Link target="_blank" href={getMarketplaceUrl('', { theme })} className="system-sm-medium inline-flex items-center text-text-accent">
-            {t('plugin.marketplace.difyMarketplace')}
+            {t('marketplace.difyMarketplace', { ns: 'plugin' })}
             <RiArrowRightUpLine className="h-4 w-4" />
           </Link>
         </div>
@@ -69,7 +67,6 @@ const InstallFromMarketplace = ({
             marketplaceCollectionPluginsMap={{}}
             plugins={allPlugins}
             showInstallButton
-            locale={locale}
             cardContainerClassName="grid grid-cols-2 gap-2"
             cardRender={cardRender}
             emptyClassName="h-auto"
