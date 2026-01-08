@@ -1,7 +1,7 @@
 """create workflow_archive_logs
 
 Revision ID: 9d77545f524e
-Revises: 03ea244985ce
+Revises: 7df29de0f6be
 Create Date: 2026-01-06 17:18:56.292479
 
 """
@@ -12,7 +12,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = '9d77545f524e'
-down_revision = '03ea244985ce'
+down_revision = '7df29de0f6be'
 branch_labels = None
 depends_on = None
 
