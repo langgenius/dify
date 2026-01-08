@@ -75,20 +75,21 @@ class BaseAppGenerator:
         user_inputs = {**user_inputs, **files_inputs, **file_list_inputs}
 
         # Check if all files are converted to File
-        # 在构造 entity_dictionary 之后、合并 files_inputs/file_list_inputs 之前或之后做“残留类型”检查更安全
         invalid_dict_keys = [
-            k for k, v in user_inputs.items()
-            if isinstance(v, dict) and entity_dictionary[k].type not in {VariableEntityType.FILE,
-                                                                         VariableEntityType.JSON_OBJECT}
+            k
+            for k, v in user_inputs.items()
+            if isinstance(v, dict)
+            and entity_dictionary[k].type not in {VariableEntityType.FILE, VariableEntityType.JSON_OBJECT}
         ]
         if invalid_dict_keys:
             raise ValueError(f"Invalid input type for {invalid_dict_keys}")
 
         invalid_list_dict_keys = [
-            k for k, v in user_inputs.items()
+            k
+            for k, v in user_inputs.items()
             if isinstance(v, list)
-               and any(isinstance(item, dict) for item in v)
-               and entity_dictionary[k].type != VariableEntityType.FILE_LIST
+            and any(isinstance(item, dict) for item in v)
+            and entity_dictionary[k].type != VariableEntityType.FILE_LIST
         ]
         if invalid_list_dict_keys:
             raise ValueError(f"Invalid input type for {invalid_list_dict_keys}")
