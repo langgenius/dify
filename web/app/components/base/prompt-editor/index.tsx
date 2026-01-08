@@ -213,6 +213,19 @@ const PromptEditor: FC<PromptEditorProps> = ({
           isSupportFileVar={isSupportFileVar}
         />
         <ComponentPickerBlock
+          triggerString="@"
+          contextBlock={contextBlock}
+          historyBlock={historyBlock}
+          queryBlock={queryBlock}
+          variableBlock={variableBlock}
+          externalToolBlock={externalToolBlock}
+          workflowVariableBlock={workflowVariableBlock}
+          currentBlock={currentBlock}
+          errorMessageBlock={errorMessageBlock}
+          lastRunBlock={lastRunBlock}
+          isSupportFileVar={isSupportFileVar}
+        />
+        <ComponentPickerBlock
           triggerString="{"
           contextBlock={contextBlock}
           historyBlock={historyBlock}
