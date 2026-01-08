@@ -20,6 +20,8 @@ def test_get_by_message_ids_returns_human_input_content(db_session_with_containe
     assert len(results) == 1
     assert len(results[0]) == 1
     content = results[0][0]
-    assert content.action_id == fixture.action_id
-    assert content.action_text == fixture.action_text
-    assert content.rendered_content == fixture.form.rendered_content
+    assert content.submitted is True
+    assert content.form_submission_data is not None
+    assert content.form_submission_data.action_id == fixture.action_id
+    assert content.form_submission_data.action_text == fixture.action_text
+    assert content.form_submission_data.rendered_content == fixture.form.rendered_content

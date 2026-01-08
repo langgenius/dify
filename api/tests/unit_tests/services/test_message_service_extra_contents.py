@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from core.entities.execution_extra_content import HumanInputContent
+from core.entities.execution_extra_content import HumanInputContent, HumanInputFormSubmissionData
 from services import message_service
 
 
@@ -24,9 +24,14 @@ def test_attach_message_extra_contents_assigns_serialized_payload(monkeypatch: p
             "get_by_message_ids": lambda _self, message_ids: [
                 [
                     HumanInputContent(
-                        action_id="approve",
-                        action_text="Approve",
-                        rendered_content="Rendered",
+                        submitted=True,
+                        form_submission_data=HumanInputFormSubmissionData(
+                            node_id="node-1",
+                            node_title="Approval",
+                            rendered_content="Rendered",
+                            action_id="approve",
+                            action_text="Approve",
+                        ),
                     )
                 ],
                 [],
@@ -40,10 +45,15 @@ def test_attach_message_extra_contents_assigns_serialized_payload(monkeypatch: p
 
     assert messages[0].extra_contents == [
         {
-            "type": "human_input_result",
-            "action_id": "approve",
-            "action_text": "Approve",
-            "rendered_content": "Rendered",
+            "type": "human_input",
+            "submitted": True,
+            "form_submission_data": {
+                "node_id": "node-1",
+                "node_title": "Approval",
+                "rendered_content": "Rendered",
+                "action_id": "approve",
+                "action_text": "Approve",
+            },
         }
     ]
     assert messages[1].extra_contents == []

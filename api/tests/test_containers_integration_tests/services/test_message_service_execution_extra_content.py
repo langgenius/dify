@@ -24,9 +24,14 @@ def test_pagination_returns_extra_contents(db_session_with_containers):
     message = pagination.data[0]
     assert message.extra_contents == [
         {
-            "type": "human_input_result",
-            "action_id": fixture.action_id,
-            "action_text": fixture.action_text,
-            "rendered_content": fixture.form.rendered_content,
+            "type": "human_input",
+            "submitted": True,
+            "form_submission_data": {
+                "node_id": fixture.form.node_id,
+                "node_title": fixture.node_title,
+                "rendered_content": fixture.form.rendered_content,
+                "action_id": fixture.action_id,
+                "action_text": fixture.action_text,
+            },
         }
     ]

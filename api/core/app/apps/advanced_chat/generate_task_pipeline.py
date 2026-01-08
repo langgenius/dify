@@ -65,6 +65,8 @@ from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.ops.ops_trace_manager import TraceQueueManager
+from core.repositories.human_input_reposotiry import HumanInputFormRepositoryImpl
+from core.workflow.entities.pause_reason import HumanInputRequired
 from core.workflow.enums import WorkflowExecutionStatus
 from core.workflow.nodes import NodeType
 from core.workflow.repositories.draft_variable_repository import DraftVariableSaverFactory
@@ -73,7 +75,8 @@ from core.workflow.system_variable import SystemVariable
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models import Account, Conversation, EndUser, Message, MessageFile
-from models.enums import CreatorUserRole
+from models.enums import CreatorUserRole, MessageStatus
+from models.execution_extra_content import HumanInputContent
 from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
@@ -137,6 +140,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self._application_generate_entity = application_generate_entity
         self._workflow_id = workflow.id
         self._workflow_features_dict = workflow.features_dict
+        self._workflow_tenant_id = workflow.tenant_id
         self._conversation_id = conversation.id
         self._conversation_mode = conversation.mode
         self._message_id = message.id
@@ -146,6 +150,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self._workflow_run_id: str = ""
         self._draft_var_saver_factory = draft_var_saver_factory
         self._graph_runtime_state: GraphRuntimeState | None = None
+        self._message_saved_on_pause = False
         self._seed_graph_runtime_state_from_queue_manager()
 
     def process(self) -> Union[ChatbotAppBlockingResponse, Generator[ChatbotAppStreamResponse, None, None]]:
@@ -539,7 +544,22 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             event=event,
             task_id=self._application_generate_entity.task_id,
         )
+        for reason in event.reasons:
+            if isinstance(reason, HumanInputRequired):
+                self._persist_human_input_extra_content(form_id=reason.form_id, node_id=reason.node_id)
         yield from responses
+        resolved_state: GraphRuntimeState | None = None
+        try:
+            resolved_state = self._ensure_graph_runtime_initialized()
+        except ValueError:
+            resolved_state = None
+
+        with self._database_session() as session:
+            self._save_message(session=session, graph_runtime_state=resolved_state)
+            message = self._get_message(session=session)
+            if message is not None:
+                message.status = MessageStatus.PAUSED
+            self._message_saved_on_pause = True
         self._base_task_pipeline.queue_manager.publish(QueueAdvancedChatMessageEndEvent(), PublishFrom.TASK_PIPELINE)
 
     def _handle_workflow_failed_event(
@@ -629,9 +649,10 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                 reason=QueueMessageReplaceEvent.MessageReplaceReason.OUTPUT_MODERATION,
             )
 
-        # Save message
-        with self._database_session() as session:
-            self._save_message(session=session, graph_runtime_state=resolved_state)
+        # Save message unless it has already been persisted on pause.
+        if not self._message_saved_on_pause:
+            with self._database_session() as session:
+                self._save_message(session=session, graph_runtime_state=resolved_state)
 
         yield self._message_end_to_stream_response()
 
@@ -661,9 +682,52 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self, event: QueueHumanInputFormFilledEvent, **kwargs
     ) -> Generator[StreamResponse, None, None]:
         """Handle human input form filled events."""
+        self._persist_human_input_extra_content(node_id=event.node_id)
         yield self._workflow_response_converter.human_input_form_filled_to_stream_response(
             event=event, task_id=self._application_generate_entity.task_id
         )
+
+    def _persist_human_input_extra_content(self, *, node_id: str | None = None, form_id: str | None = None) -> None:
+        if not self._workflow_run_id or not self._message_id:
+            return
+
+        if form_id is None:
+            if node_id is None:
+                return
+            form_id = self._load_human_input_form_id(node_id=node_id)
+            if form_id is None:
+                logger.warning(
+                    "HumanInput form not found for workflow run %s node %s",
+                    self._workflow_run_id,
+                    node_id,
+                )
+                return
+
+        with self._database_session() as session:
+            exists_stmt = select(HumanInputContent).where(
+                HumanInputContent.workflow_run_id == self._workflow_run_id,
+                HumanInputContent.message_id == self._message_id,
+                HumanInputContent.form_id == form_id,
+            )
+            if session.scalar(exists_stmt) is not None:
+                return
+
+            content = HumanInputContent(
+                workflow_run_id=self._workflow_run_id,
+                message_id=self._message_id,
+                form_id=form_id,
+            )
+            session.add(content)
+
+    def _load_human_input_form_id(self, *, node_id: str) -> str | None:
+        form_repository = HumanInputFormRepositoryImpl(
+            session_factory=db.engine,
+            tenant_id=self._workflow_tenant_id,
+        )
+        form = form_repository.get_form(self._workflow_run_id, node_id)
+        if form is None:
+            return None
+        return form.id
 
     def _handle_agent_log_event(self, event: QueueAgentLogEvent, **kwargs) -> Generator[StreamResponse, None, None]:
         """Handle agent log events."""
@@ -800,6 +864,11 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
     def _save_message(self, *, session: Session, graph_runtime_state: GraphRuntimeState | None = None):
         message = self._get_message(session=session)
+        if message is None:
+            return
+
+        if message.status == MessageStatus.PAUSED:
+            message.status = MessageStatus.NORMAL
 
         # If there are assistant files, remove markdown image links from answer
         answer_text = self._task_state.answer

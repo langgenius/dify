@@ -32,7 +32,7 @@ from libs.login import current_account_with_tenant, login_required
 from models.model import AppMode, Conversation, Message, MessageAnnotation, MessageFeedback
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
-from services.message_service import MessageService
+from services.message_service import MessageService, _attach_message_extra_contents
 
 logger = logging.getLogger(__name__)
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
@@ -198,6 +198,7 @@ message_detail_model = console_ns.model(
         "created_at": TimestampField,
         "agent_thoughts": fields.List(fields.Nested(agent_thought_model)),
         "message_files": fields.List(fields.Nested(message_file_model)),
+        "extra_contents": fields.List(fields.Raw),
         "metadata": fields.Raw(attribute="message_metadata_dict"),
         "status": fields.String,
         "error": fields.String,
@@ -290,6 +291,7 @@ class ChatMessageListApi(Resource):
             has_more = False
 
         history_messages = list(reversed(history_messages))
+        _attach_message_extra_contents(history_messages)
 
         return InfiniteScrollPagination(data=history_messages, limit=args.limit, has_more=has_more)
 
@@ -474,4 +476,5 @@ class MessageApi(Resource):
         if not message:
             raise NotFound("Message Not Exists.")
 
+        _attach_message_extra_contents([message])
         return message

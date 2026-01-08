@@ -63,6 +63,7 @@ message_fields = {
     "answer": fields.String(attribute="re_sign_file_url_answer"),
     "feedback": fields.Nested(feedback_fields, attribute="user_feedback", allow_null=True),
     "retriever_resources": fields.List(fields.Nested(retriever_resource_fields)),
+    "extra_contents": fields.List(cls_or_instance=fields.Raw),
     "created_at": TimestampField,
     "agent_thoughts": fields.List(fields.Nested(agent_thought_fields)),
     "message_files": fields.List(fields.Nested(message_file_fields)),
