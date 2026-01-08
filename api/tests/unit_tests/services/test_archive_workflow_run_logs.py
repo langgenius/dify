@@ -53,4 +53,3 @@ class TestWorkflowRunArchiver:
             key == "tenant-123/app_id=app-999/year=2024/month=01/workflow_run_id=run-456/"
             f"{archiver.ARCHIVE_BUNDLE_NAME}"
         )
-

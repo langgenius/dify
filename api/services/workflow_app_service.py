@@ -204,7 +204,7 @@ class WorkflowAppService:
             )
             for log in session.scalars(offset_stmt).all()
         ]
-        
+
         return {
             "page": page,
             "limit": limit,
