@@ -158,10 +158,32 @@ We have a list of languages that we support in the `languages.ts` file. But some
 
 ## Utility scripts
 
-- Auto-fill translations: `pnpm run i18n:gen --file app common --lang zh-Hans ja-JP [--dry-run]`
-  - Use space-separated values; repeat `--file` / `--lang` as needed. Defaults to all en-US files and all supported locales except en-US.
-  - Protects placeholders (`{{var}}`, `${var}`, `<tag>`) before translation and restores them after.
 - Check missing/extra keys: `pnpm run i18n:check --file app billing --lang zh-Hans [--auto-remove]`
   - Use space-separated values; repeat `--file` / `--lang` as needed. Returns non-zero on missing/extra keys; `--auto-remove` deletes extra keys automatically.
 
-Workflows: `.github/workflows/translate-i18n-base-on-english.yml` auto-runs the translation generator on `web/i18n/en-US/*.json` changes to main. `i18n:check` is a manual script (not run in CI).
+## Automatic Translation
+
+Translation is handled automatically by Claude Code GitHub Actions. When changes are pushed to `web/i18n/en-US/*.json` on the main branch:
+
+1. Claude Code analyzes the git diff to detect changes
+1. Identifies three types of changes:
+   - **ADD**: New keys that need translation
+   - **UPDATE**: Modified keys that need re-translation (even if target language has existing translation)
+   - **DELETE**: Removed keys that need to be deleted from other languages
+1. Runs `i18n:check` to verify the initial sync status.
+1. Translates missing/updated keys while preserving placeholders (`{{var}}`, `${var}`, `<tag>`) and removes deleted keys.
+1. Runs `lint:fix` to sort JSON keys and `i18n:check` again to ensure everything is synchronized.
+1. Creates a PR with the translations.
+
+### Manual Trigger
+
+To manually trigger translation:
+
+1. Go to Actions > "Translate i18n Files with Claude Code"
+1. Click "Run workflow"
+1. Optionally configure:
+   - **files**: Specific files to translate (space-separated, e.g., "app common")
+   - **languages**: Specific languages to translate (space-separated, e.g., "zh-Hans ja-JP")
+   - **mode**: `incremental` (default, only changes) or `full` (check all keys)
+
+Workflow: `.github/workflows/translate-i18n-claude.yml`
