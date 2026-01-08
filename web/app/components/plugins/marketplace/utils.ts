@@ -1,3 +1,4 @@
+import type { ActivePluginType } from './constants'
 import type {
   CollectionsAndPluginsSearchParams,
   MarketplaceCollection,
@@ -153,7 +154,7 @@ export const getMarketplaceListFilterType = (category: string) => {
   return 'plugin'
 }
 
-export function getCollectionsParams(category: string): CollectionsAndPluginsSearchParams {
+export function getCollectionsParams(category: ActivePluginType): CollectionsAndPluginsSearchParams {
   if (category === PLUGIN_TYPE_SEARCH_MAP.all) {
     return {}
   }

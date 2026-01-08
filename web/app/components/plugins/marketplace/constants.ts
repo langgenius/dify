@@ -18,6 +18,8 @@ export const PLUGIN_TYPE_SEARCH_MAP = {
   bundle: 'bundle',
 }
 
+export type ActivePluginType = keyof typeof PLUGIN_TYPE_SEARCH_MAP
+
 export const PLUGIN_CATEGORY_WITH_COLLECTIONS = new Set(
   [
     PLUGIN_TYPE_SEARCH_MAP.all,
