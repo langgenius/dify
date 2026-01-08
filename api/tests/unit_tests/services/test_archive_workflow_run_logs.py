@@ -4,7 +4,6 @@ Unit tests for workflow run archiving functionality.
 This module contains tests for:
 - Archive service
 - Rollback service
-- Export service
 """
 
 from datetime import datetime
@@ -55,15 +54,3 @@ class TestWorkflowRunArchiver:
             f"{archiver.ARCHIVE_BUNDLE_NAME}"
         )
 
-
-class TestWorkflowRunExportService:
-    """Tests for the WorkflowRunExportService class."""
-
-    def test_export_service_initialization(self):
-        """Test export service can be instantiated."""
-        from services.retention.workflow_run.export_workflow_run import WorkflowRunExportService
-
-        service = WorkflowRunExportService()
-
-        assert service is not None
-        assert len(service.EXPORTED_TABLES) == 6
