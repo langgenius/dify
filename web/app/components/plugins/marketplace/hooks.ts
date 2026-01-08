@@ -25,8 +25,9 @@ import {
 } from 'react'
 import { postMarketplace } from '@/service/base'
 import { useMarketplaceSearchMode, useMarketplaceSortValue, useSetMarketplaceSort, useSetSearchMode } from './atoms'
-import { DEFAULT_SORT, marketplaceSearchParams, PLUGIN_TYPE_SEARCH_MAP, SCROLL_BOTTOM_THRESHOLD } from './constants'
+import { DEFAULT_SORT, PLUGIN_TYPE_SEARCH_MAP, SCROLL_BOTTOM_THRESHOLD } from './constants'
 import { marketplaceKeys } from './query-keys'
+import { marketplaceSearchParamsParsers } from './search-params'
 import {
   getCollectionsParams,
   getFormattedPlugin,
@@ -36,13 +37,13 @@ import {
 } from './utils'
 
 export function useMarketplaceSearchQuery() {
-  return useQueryState('q', marketplaceSearchParams.q)
+  return useQueryState('q', marketplaceSearchParamsParsers.q)
 }
 export function useMarketplaceCategory() {
-  return useQueryState('category', marketplaceSearchParams.category)
+  return useQueryState('category', marketplaceSearchParamsParsers.category)
 }
 export function useMarketplaceTags() {
-  return useQueryState('tags', marketplaceSearchParams.tags)
+  return useQueryState('tags', marketplaceSearchParamsParsers.tags)
 }
 
 export const useMarketplaceCollectionsAndPlugins = (queryParams?: CollectionsAndPluginsSearchParams) => {

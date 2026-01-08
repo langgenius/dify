@@ -3,9 +3,9 @@ import type { SearchParams } from 'nuqs'
 import { dehydrate } from '@tanstack/react-query'
 import { createLoader } from 'nuqs/server'
 import { getQueryClient } from '@/context/query-client-server'
-import { marketplaceSearchParams } from './constants'
 import { MarketplaceClient } from './marketplace-client'
 import { marketplaceKeys } from './query-keys'
+import { marketplaceSearchParamsParsers } from './search-params'
 import { getCollectionsParams, getMarketplaceCollectionsAndPlugins } from './utils'
 
 type MarketplaceProps = {
@@ -25,7 +25,7 @@ async function Marketplace({
   let dehydratedState: DehydratedState | undefined
 
   if (searchParams) {
-    const loadSearchParams = createLoader(marketplaceSearchParams)
+    const loadSearchParams = createLoader(marketplaceSearchParamsParsers)
     const params = await loadSearchParams(searchParams)
     const queryClient = getQueryClient()
 

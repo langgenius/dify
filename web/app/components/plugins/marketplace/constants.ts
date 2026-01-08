@@ -1,5 +1,3 @@
-import { parseAsArrayOf, parseAsString } from 'nuqs/server'
-
 import { PluginCategoryEnum } from '../types'
 
 export const DEFAULT_SORT = {
@@ -26,9 +24,3 @@ export const PLUGIN_CATEGORY_WITH_COLLECTIONS = new Set(
     PLUGIN_TYPE_SEARCH_MAP.tool,
   ],
 )
-
-export const marketplaceSearchParams = {
-  q: parseAsString.withDefault('').withOptions({ history: 'replace' }),
-  category: parseAsString.withDefault('all').withOptions({ history: 'replace', clearOnDefault: false }),
-  tags: parseAsArrayOf(parseAsString).withDefault([]).withOptions({ history: 'replace' }),
-}

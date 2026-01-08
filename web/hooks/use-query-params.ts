@@ -13,10 +13,8 @@
  * - Use shallow routing to avoid unnecessary re-renders
  */
 
-import type { Options } from 'nuqs'
 import {
   createParser,
-  parseAsArrayOf,
   parseAsString,
   useQueryState,
   useQueryStates,
