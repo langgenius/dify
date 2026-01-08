@@ -1,11 +1,14 @@
 import type { DehydratedState } from '@tanstack/react-query'
 import type { SearchParams } from 'nuqs'
-import { dehydrate } from '@tanstack/react-query'
+import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
 import { createLoader } from 'nuqs/server'
+import { TanstackQueryInitializer } from '@/context/query-client'
 import { getQueryClientServer } from '@/context/query-client-server'
-import { MarketplaceClient } from './marketplace-client'
+import Description from './description'
+import ListWrapper from './list/list-wrapper'
 import { marketplaceKeys } from './query-keys'
 import { marketplaceSearchParamsParsers } from './search-params'
+import StickySearchAndSwitchWrapper from './sticky-search-and-switch-wrapper'
 import { getCollectionsParams, getMarketplaceCollectionsAndPlugins } from './utils'
 
 type MarketplaceProps = {
@@ -17,11 +20,14 @@ type MarketplaceProps = {
   searchParams?: Promise<SearchParams>
 }
 
-async function Marketplace({
+/**
+ * TODO: This server component should move to marketplace's codebase so that we can get rid of Next.js
+ */
+const Marketplace = async ({
   showInstallButton = true,
   pluginTypeSwitchClassName,
   searchParams,
-}: MarketplaceProps) {
+}: MarketplaceProps) => {
   let dehydratedState: DehydratedState | undefined
 
   if (searchParams) {
@@ -37,11 +43,17 @@ async function Marketplace({
   }
 
   return (
-    <MarketplaceClient
-      showInstallButton={showInstallButton}
-      pluginTypeSwitchClassName={pluginTypeSwitchClassName}
-      dehydratedState={dehydratedState}
-    />
+    <TanstackQueryInitializer>
+      <HydrationBoundary state={dehydratedState}>
+        <Description />
+        <StickySearchAndSwitchWrapper
+          pluginTypeSwitchClassName={pluginTypeSwitchClassName}
+        />
+        <ListWrapper
+          showInstallButton={showInstallButton}
+        />
+      </HydrationBoundary>
+    </TanstackQueryInitializer>
   )
 }
 
