@@ -10,7 +10,7 @@ from opentelemetry.trace import Span
 
 from core.workflow.graph_events import GraphNodeEventBase
 from core.workflow.nodes.base.node import Node
-from extensions.otel.parser.base import DefaultNodeOTelParser, _safe_json_dumps
+from extensions.otel.parser.base import DefaultNodeOTelParser, safe_json_dumps
 from extensions.otel.semconv.gen_ai import LLMAttributes
 
 logger = logging.getLogger(__name__)
@@ -28,11 +28,11 @@ def _format_input_messages(process_data: Mapping[str, Any]) -> str:
     """
     try:
         if not isinstance(process_data, dict):
-            return _safe_json_dumps([])
+            return safe_json_dumps([])
 
         prompts = process_data.get("prompts", [])
         if not prompts:
-            return _safe_json_dumps([])
+            return safe_json_dumps([])
 
         valid_roles = {"system", "user", "assistant", "tool"}
         input_messages = []
@@ -50,10 +50,10 @@ def _format_input_messages(process_data: Mapping[str, Any]) -> str:
                 message = {"role": role, "parts": [{"type": "text", "content": text}]}
                 input_messages.append(message)
 
-        return _safe_json_dumps(input_messages)
+        return safe_json_dumps(input_messages)
     except Exception as e:
         logger.warning("Failed to format input messages: %s", e, exc_info=True)
-        return _safe_json_dumps([])
+        return safe_json_dumps([])
 
 
 def _format_output_messages(outputs: Mapping[str, Any]) -> str:
@@ -68,13 +68,13 @@ def _format_output_messages(outputs: Mapping[str, Any]) -> str:
     """
     try:
         if not isinstance(outputs, dict):
-            return _safe_json_dumps([])
+            return safe_json_dumps([])
 
         text = outputs.get("text", "")
         finish_reason = outputs.get("finish_reason", "")
 
         if not text:
-            return _safe_json_dumps([])
+            return safe_json_dumps([])
 
         valid_finish_reasons = {"stop", "length", "content_filter", "tool_call", "error"}
         if finish_reason not in valid_finish_reasons:
@@ -86,10 +86,10 @@ def _format_output_messages(outputs: Mapping[str, Any]) -> str:
             "finish_reason": finish_reason,
         }
 
-        return _safe_json_dumps([output_message])
+        return safe_json_dumps([output_message])
     except Exception as e:
         logger.warning("Failed to format output messages: %s", e, exc_info=True)
-        return _safe_json_dumps([])
+        return safe_json_dumps([])
 
 
 class LLMNodeOTelParser:
@@ -135,7 +135,7 @@ class LLMNodeOTelParser:
         # Prompts and completion
         prompts = process_data.get("prompts", [])
         if prompts:
-            prompts_json = _safe_json_dumps(prompts)
+            prompts_json = safe_json_dumps(prompts)
             span.set_attribute(LLMAttributes.PROMPT, prompts_json)
 
         text_output = str(outputs.get("text", ""))

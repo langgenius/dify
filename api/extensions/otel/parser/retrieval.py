@@ -3,6 +3,7 @@ Parser for knowledge retrieval nodes that captures retrieval-specific metadata.
 """
 
 import logging
+from typing import Any
 
 from opentelemetry.trace import Span
 
@@ -10,13 +11,13 @@ from core.variables import Segment
 from core.variables.segments import ArrayObjectSegment
 from core.workflow.graph_events import GraphNodeEventBase
 from core.workflow.nodes.base.node import Node
-from extensions.otel.parser.base import DefaultNodeOTelParser, _safe_json_dumps
+from extensions.otel.parser.base import DefaultNodeOTelParser, safe_json_dumps
 from extensions.otel.semconv.gen_ai import RetrieverAttributes
 
 logger = logging.getLogger(__name__)
 
 
-def _format_retrieval_documents(retrieval_documents: list) -> list:
+def _format_retrieval_documents(retrieval_documents: list[Any]) -> list:
     """
     Format retrieval documents for semantic conventions.
 
@@ -106,7 +107,7 @@ class RetrievalNodeOTelParser:
                     retrieval_documents = []
 
         if retrieval_documents:
-            semantic_retrieval_documents = _format_retrieval_documents(retrieval_documents)
-            semantic_retrieval_documents_json = _safe_json_dumps(semantic_retrieval_documents)
+            semantic_retrieval_documents = _format_retrieval_documents(list(retrieval_documents))
+            semantic_retrieval_documents_json = safe_json_dumps(semantic_retrieval_documents)
             span.set_attribute(RetrieverAttributes.DOCUMENT, semantic_retrieval_documents_json)
 

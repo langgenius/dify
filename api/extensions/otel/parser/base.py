@@ -16,7 +16,7 @@ from core.workflow.nodes.base.node import Node
 from extensions.otel.semconv.gen_ai import ChainAttributes
 
 
-def _safe_json_dumps(obj: Any, ensure_ascii: bool = False) -> str:
+def safe_json_dumps(obj: Any, ensure_ascii: bool = False) -> str:
     """
     Safely serialize objects to JSON, handling non-serializable types.
 
@@ -88,9 +88,9 @@ class DefaultNodeOTelParser:
         if result_event and result_event.node_run_result:
             node_run_result = result_event.node_run_result
             if node_run_result.inputs:
-                span.set_attribute(ChainAttributes.INPUT_VALUE, _safe_json_dumps(node_run_result.inputs))
+                span.set_attribute(ChainAttributes.INPUT_VALUE, safe_json_dumps(node_run_result.inputs))
             if node_run_result.outputs:
-                span.set_attribute(ChainAttributes.OUTPUT_VALUE, _safe_json_dumps(node_run_result.outputs))
+                span.set_attribute(ChainAttributes.OUTPUT_VALUE, safe_json_dumps(node_run_result.outputs))
 
         if error:
             span.record_exception(error)

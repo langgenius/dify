@@ -8,7 +8,7 @@ from core.workflow.enums import WorkflowNodeExecutionMetadataKey
 from core.workflow.graph_events import GraphNodeEventBase
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.tool.entities import ToolNodeData
-from extensions.otel.parser.base import DefaultNodeOTelParser, _safe_json_dumps
+from extensions.otel.parser.base import DefaultNodeOTelParser, safe_json_dumps
 from extensions.otel.semconv.gen_ai import ToolAttributes
 
 
@@ -38,15 +38,15 @@ class ToolNodeOTelParser:
                 tool_info = node_run_result.metadata.get(WorkflowNodeExecutionMetadataKey.TOOL_INFO, {})
 
         if tool_info:
-            span.set_attribute(ToolAttributes.TOOL_DESCRIPTION, _safe_json_dumps(tool_info))
+            span.set_attribute(ToolAttributes.TOOL_DESCRIPTION, safe_json_dumps(tool_info))
 
         if result_event and result_event.node_run_result and result_event.node_run_result.inputs:
             span.set_attribute(
-                ToolAttributes.TOOL_CALL_ARGUMENTS, _safe_json_dumps(result_event.node_run_result.inputs)
+                ToolAttributes.TOOL_CALL_ARGUMENTS, safe_json_dumps(result_event.node_run_result.inputs)
             )
 
         if result_event and result_event.node_run_result and result_event.node_run_result.outputs:
             span.set_attribute(
-                ToolAttributes.TOOL_CALL_RESULT, _safe_json_dumps(result_event.node_run_result.outputs)
+                ToolAttributes.TOOL_CALL_RESULT, safe_json_dumps(result_event.node_run_result.outputs)
             )
 
