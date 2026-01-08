@@ -123,6 +123,7 @@ class SQLAlchemyExecutionExtraContentRepository(ExecutionExtraContentRepository)
         if not submitted:
             form_token = self._resolve_form_token(recipients_by_form_id.get(form.id, []))
             return HumanInputContentDomainModel(
+                workflow_run_id=model.workflow_run_id,
                 submitted=False,
                 form_definition=HumanInputFormDefinition(
                     form_id=form.id,
@@ -162,6 +163,7 @@ class SQLAlchemyExecutionExtraContentRepository(ExecutionExtraContentRepository)
         )
 
         return HumanInputContentDomainModel(
+            workflow_run_id=model.workflow_run_id,
             submitted=True,
             form_submission_data=HumanInputFormSubmissionData(
                 node_id=form.node_id,

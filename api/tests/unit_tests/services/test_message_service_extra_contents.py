@@ -24,6 +24,7 @@ def test_attach_message_extra_contents_assigns_serialized_payload(monkeypatch: p
             "get_by_message_ids": lambda _self, message_ids: [
                 [
                     HumanInputContent(
+                        workflow_run_id="workflow-run-1",
                         submitted=True,
                         form_submission_data=HumanInputFormSubmissionData(
                             node_id="node-1",
@@ -46,6 +47,7 @@ def test_attach_message_extra_contents_assigns_serialized_payload(monkeypatch: p
     assert messages[0].extra_contents == [
         {
             "type": "human_input",
+            "workflow_run_id": "workflow-run-1",
             "submitted": True,
             "form_submission_data": {
                 "node_id": "node-1",

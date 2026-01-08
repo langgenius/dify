@@ -44,7 +44,7 @@ def _attach_message_extra_contents(messages: Sequence[Message]) -> None:
 
     for index, message in enumerate(messages):
         contents = extra_contents_lists[index] if index < len(extra_contents_lists) else []
-        message.set_extra_contents([content.to_dict() for content in contents])
+        message.set_extra_contents([content.model_dump(mode="json", exclude_none=True) for content in contents])
 
 
 class MessageService:

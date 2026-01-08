@@ -102,8 +102,9 @@ def test_get_by_message_ids_groups_contents_by_message() -> None:
     result = repository.get_by_message_ids(message_ids)
 
     assert len(result) == 2
-    assert [content.to_dict() for content in result[0]] == [
+    assert [content.model_dump(mode="json", exclude_none=True) for content in result[0]] == [
         HumanInputContentDomain(
+            workflow_run_id="workflow-run",
             submitted=True,
             form_submission_data=HumanInputFormSubmissionData(
                 node_id="node-id",
@@ -112,7 +113,7 @@ def test_get_by_message_ids_groups_contents_by_message() -> None:
                 action_id="approve",
                 action_text="Approve",
             ),
-        ).to_dict()
+        ).model_dump(mode="json", exclude_none=True)
     ]
     assert result[1] == []
 
@@ -165,6 +166,7 @@ def test_get_by_message_ids_returns_unsubmitted_form_definition() -> None:
     assert len(result[0]) == 1
     domain_content = result[0][0]
     assert domain_content.submitted is False
+    assert domain_content.workflow_run_id == "workflow-run"
     assert domain_content.form_definition is not None
     form_definition = domain_content.form_definition
     assert form_definition.form_id == "form-1"

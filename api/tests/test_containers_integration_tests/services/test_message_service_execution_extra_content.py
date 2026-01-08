@@ -25,6 +25,7 @@ def test_pagination_returns_extra_contents(db_session_with_containers):
     assert message.extra_contents == [
         {
             "type": "human_input",
+            "workflow_run_id": fixture.message.workflow_run_id,
             "submitted": True,
             "form_submission_data": {
                 "node_id": fixture.form.node_id,
