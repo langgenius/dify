@@ -367,7 +367,7 @@ class HostedTongyiConfig(BaseSettings):
     )
 
     HOSTED_TONGYI_TRIAL_ENABLED: bool = Field(
-        description="Enable trial access to hosted Anthropic service",
+        description="Enable trial access to hosted Tongyi service",
         default=False,
     )
 
