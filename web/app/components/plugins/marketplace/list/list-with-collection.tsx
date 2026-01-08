@@ -6,7 +6,7 @@ import { useLocale, useTranslation } from '#i18n'
 import { RiArrowRightSLine } from '@remixicon/react'
 import { getLanguage } from '@/i18n-config/language'
 import { cn } from '@/utils/classnames'
-import { useMarketplaceMoreClick } from '../hooks'
+import { useMarketplaceMoreClick } from '../state'
 import CardWrapper from './card-wrapper'
 
 type ListWithCollectionProps = {

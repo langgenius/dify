@@ -1,8 +1,8 @@
 'use client'
 import { useTranslation } from '#i18n'
 import Loading from '@/app/components/base/loading'
-import { useMarketplaceData } from '../hooks'
 import SortDropdown from '../sort-dropdown'
+import { useMarketplaceData } from '../state'
 import List from './index'
 
 type ListWrapperProps = {
