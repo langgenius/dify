@@ -1,5 +1,3 @@
-'use client'
-
 import type {
   Plugin,
 } from '../types'
