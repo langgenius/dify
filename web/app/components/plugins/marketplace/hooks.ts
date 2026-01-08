@@ -12,6 +12,7 @@ import type { PluginsFromMarketplaceResponse } from '@/app/components/plugins/ty
 import {
   useInfiniteQuery,
   useQuery,
+  useQueryClient,
 } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import {
@@ -152,9 +153,10 @@ async function fetchMarketplacePlugins(
 }
 
 export function useMarketplacePlugins(initialParams?: PluginsSearchParams) {
-  const [queryParams, setQueryParams] = useState<PluginsSearchParams | undefined>(initialParams)
+  const queryClient = useQueryClient()
+  const [queryParams, handleUpdatePlugins] = useState<PluginsSearchParams | undefined>(initialParams)
 
-  const query = useInfiniteQuery({
+  const marketplacePluginsQuery = useInfiniteQuery({
     queryKey: marketplaceKeys.plugins(queryParams),
     queryFn: ({ pageParam = 1, signal }) => fetchMarketplacePlugins(queryParams, pageParam, signal),
     getNextPageParam: (lastPage) => {
@@ -166,38 +168,47 @@ export function useMarketplacePlugins(initialParams?: PluginsSearchParams) {
     enabled: !!queryParams,
   })
 
-  const { run: queryPluginsDebounced, cancel: cancelDebounced } = useDebounceFn(
-    (params: PluginsSearchParams) => setQueryParams(params),
-    { wait: 500 },
+  const resetPlugins = useCallback(() => {
+    handleUpdatePlugins(undefined)
+    queryClient.removeQueries({
+      queryKey: ['marketplacePlugins'],
+    })
+  }, [queryClient])
+
+  const { run: queryPluginsWithDebounced, cancel: cancelQueryPluginsWithDebounced } = useDebounceFn((pluginsSearchParams: PluginsSearchParams) => {
+    handleUpdatePlugins(pluginsSearchParams)
+  }, {
+    wait: 500,
+  })
+
+  const hasQuery = !!queryParams
+  const hasData = marketplacePluginsQuery.data !== undefined
+  const plugins = hasQuery && hasData
+    ? marketplacePluginsQuery.data.pages.flatMap(page => page.plugins)
+    : undefined
+  const total = hasQuery && hasData ? marketplacePluginsQuery.data.pages?.[0]?.total : undefined
+  const isPluginsLoading = hasQuery && (
+    marketplacePluginsQuery.isPending
+    || (marketplacePluginsQuery.isFetching && !marketplacePluginsQuery.data)
   )
-
-  const plugins = useMemo(() => {
-    if (!queryParams || !query.data)
-      return undefined
-    return query.data.pages.flatMap(page => page.plugins)
-  }, [queryParams, query.data])
-
-  const total = queryParams && query.data ? query.data.pages[0]?.total : undefined
 
   return {
     plugins,
     total,
-    queryPlugins: setQueryParams,
-    queryPluginsDebounced,
-    queryPluginsWithDebounced: queryPluginsDebounced,
-    cancelDebounced,
-    cancelQueryPluginsWithDebounced: cancelDebounced,
-    resetPlugins: useCallback(() => setQueryParams(undefined), []),
-    isLoading: !!queryParams && query.isPending,
-    isFetchingNextPage: query.isFetchingNextPage,
-    hasNextPage: query.hasNextPage,
-    fetchNextPage: query.fetchNextPage,
-    page: query.data?.pages?.length || 0,
+    resetPlugins,
+    queryPlugins: handleUpdatePlugins,
+    queryPluginsWithDebounced,
+    cancelQueryPluginsWithDebounced,
+    isLoading: isPluginsLoading,
+    isFetchingNextPage: marketplacePluginsQuery.isFetchingNextPage,
+    hasNextPage: marketplacePluginsQuery.hasNextPage,
+    fetchNextPage: marketplacePluginsQuery.fetchNextPage,
+    page: marketplacePluginsQuery.data?.pages?.length || (marketplacePluginsQuery.isPending && hasQuery ? 1 : 0),
   }
 }
 
 export function useMarketplacePluginsReactive(queryParams?: PluginsSearchParams) {
-  const query = useInfiniteQuery({
+  const marketplacePluginsQuery = useInfiniteQuery({
     queryKey: marketplaceKeys.plugins(queryParams),
     queryFn: ({ pageParam = 1, signal }) => fetchMarketplacePlugins(queryParams, pageParam, signal),
     getNextPageParam: (lastPage) => {
@@ -209,22 +220,25 @@ export function useMarketplacePluginsReactive(queryParams?: PluginsSearchParams)
     enabled: !!queryParams,
   })
 
-  const plugins = useMemo(() => {
-    if (!queryParams || !query.data)
-      return undefined
-    return query.data.pages.flatMap(page => page.plugins)
-  }, [queryParams, query.data])
-
-  const total = queryParams && query.data ? query.data.pages[0]?.total : undefined
+  const hasQuery = !!queryParams
+  const hasData = marketplacePluginsQuery.data !== undefined
+  const plugins = hasQuery && hasData
+    ? marketplacePluginsQuery.data.pages.flatMap(page => page.plugins)
+    : undefined
+  const total = hasQuery && hasData ? marketplacePluginsQuery.data.pages?.[0]?.total : undefined
+  const isPluginsLoading = hasQuery && (
+    marketplacePluginsQuery.isPending
+    || (marketplacePluginsQuery.isFetching && !marketplacePluginsQuery.data)
+  )
 
   return {
     plugins,
     total,
-    isLoading: !!queryParams && query.isPending,
-    isFetchingNextPage: query.isFetchingNextPage,
-    hasNextPage: query.hasNextPage,
-    fetchNextPage: query.fetchNextPage,
-    page: query.data?.pages?.length || 0,
+    isLoading: isPluginsLoading,
+    isFetchingNextPage: marketplacePluginsQuery.isFetchingNextPage,
+    hasNextPage: marketplacePluginsQuery.hasNextPage,
+    fetchNextPage: marketplacePluginsQuery.fetchNextPage,
+    page: marketplacePluginsQuery.data?.pages?.length || (marketplacePluginsQuery.isPending && hasQuery ? 1 : 0),
   }
 }
 
