@@ -1,4 +1,4 @@
-import type { NamespaceCamelCase, Resources } from '../i18n-config/i18next-config'
+import type { NamespaceCamelCase, Resources } from '../i18n-config/resources'
 import 'i18next'
 
 declare module 'i18next' {
