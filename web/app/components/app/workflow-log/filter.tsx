@@ -99,16 +99,18 @@ const Filter: FC<IFilterProps> = ({
       {showArchivedButton && (
         <div className="ml-auto flex items-center">
           <Tooltip popupContent={t('filter.archived.managerOnly', { ns: 'appLog' })} disabled={isCurrentWorkspaceManager}>
-            <Button
-              size="medium"
-              variant="ghost"
-              className="flex items-center gap-1.5 text-text-tertiary"
-              disabled={!isCurrentWorkspaceManager}
-              onClick={handleOpenArchived}
-            >
-              <RiArchive2Line className="h-4 w-4" />
-              {t('filter.archived.button', { ns: 'appLog' })}
-            </Button>
+            <span className="inline-flex">
+              <Button
+                size="medium"
+                variant="ghost"
+                className="flex items-center gap-1.5 text-text-tertiary"
+                disabled={!isCurrentWorkspaceManager}
+                onClick={handleOpenArchived}
+              >
+                <RiArchive2Line className="h-4 w-4" />
+                {t('filter.archived.button', { ns: 'appLog' })}
+              </Button>
+            </span>
           </Tooltip>
         </div>
       )}
