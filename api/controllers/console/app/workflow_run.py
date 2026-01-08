@@ -1,14 +1,15 @@
+from datetime import UTC, datetime, timedelta
 from typing import Literal, cast
-from uuid import uuid4
 
 from flask import request
 from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import select
 
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.error import WorkflowRunExportRateLimitError
 from controllers.console.wraps import account_initialization_required, setup_required
+from extensions.ext_database import db
 from fields.end_user_fields import simple_end_user_fields
 from fields.member_fields import simple_account_fields
 from fields.workflow_run_fields import (
@@ -21,18 +22,18 @@ from fields.workflow_run_fields import (
     workflow_run_node_execution_list_fields,
     workflow_run_pagination_fields,
 )
+from libs.archive_storage import ArchiveStorageNotConfiguredError, get_archive_storage
 from libs.custom_inputs import time_duration
-from libs.helper import RateLimiter, uuid_value
+from libs.helper import uuid_value
 from libs.login import current_user, login_required
-from models import Account, App, AppMode, EndUser, WorkflowRunTriggeredFrom
-from services.retention.workflow_run.export_workflow_run import WorkflowRunExportTaskService
+from models import Account, App, AppMode, EndUser, WorkflowArchiveLog, WorkflowRunTriggeredFrom
 from services.workflow_run_service import WorkflowRunService
-from tasks.workflow_run_export_task import export_workflow_run_task
 
 # Workflow run status choices for filtering
 WORKFLOW_RUN_STATUS_CHOICES = ["running", "succeeded", "failed", "stopped", "partial-succeeded"]
-
-EXPORT_TASK_RATE_LIMITER = RateLimiter("workflow_run_export_task", max_attempts=3, time_window=60)
+ARCHIVE_SCHEMA_VERSION = "1.0"
+ARCHIVE_BUNDLE_NAME = f"archive.v{ARCHIVE_SCHEMA_VERSION}.zip"
+EXPORT_SIGNED_URL_EXPIRE_SECONDS = 3600
 
 # Register models for flask_restx to avoid dict type issues in Swagger
 # Register in dependency order: base models first, then dependent models
@@ -99,11 +100,10 @@ workflow_run_node_execution_list_model = console_ns.model(
     "WorkflowRunNodeExecutionList", workflow_run_node_execution_list_fields_copy
 )
 
-workflow_run_export_task_fields = console_ns.model(
-    "WorkflowRunExportTaskStatus",
+workflow_run_export_fields = console_ns.model(
+    "WorkflowRunExport",
     {
-        "task_id": fields.String(description="Export task id"),
-        "status": fields.String(description="Task status: pending/running/success/failed"),
+        "status": fields.String(description="Export status: success/failed"),
         "presigned_url": fields.String(description="Pre-signed URL for download", required=False),
         "presigned_url_expires_at": fields.String(description="Pre-signed URL expiration time", required=False),
     },
@@ -197,69 +197,54 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
         return result
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflow-runs/<uuid:run_id>/export-task")
-class WorkflowRunExportTaskApi(Resource):
-    @console_ns.doc("create_workflow_run_export_task")
-    @console_ns.doc(description="Create an async export task for a workflow run.")
+@console_ns.route("/apps/<uuid:app_id>/workflow-runs/<uuid:run_id>/export")
+class WorkflowRunExportApi(Resource):
+    @console_ns.doc("get_workflow_run_export_url")
+    @console_ns.doc(description="Generate a download URL for an archived workflow run.")
     @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
-    @console_ns.response(202, "Task created", workflow_run_export_task_fields)
+    @console_ns.response(200, "Export URL generated", workflow_run_export_fields)
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model()
-    def post(self, app_model: App, run_id: str):
+    def get(self, app_model: App, run_id: str):
         tenant_id = str(app_model.tenant_id)
         app_id = str(app_model.id)
         run_id_str = str(run_id)
-        export_task_service = WorkflowRunExportTaskService()
 
-        # If a task already exists for this run, return its status to keep export idempotent.
-        existing_task_id = export_task_service.get_task_id_for_run(tenant_id, app_id, run_id_str)
-        if existing_task_id:
-            status = export_task_service.get_public_task_status(existing_task_id)
-            if status:
-                return status, 200
-
-        new_task_id = str(uuid4())
-        task_id = export_task_service.reserve_task_for_run(tenant_id, app_id, run_id_str, new_task_id)
-
-        # If another request just reserved, return its status or pending stub.
-        if task_id != new_task_id:
-            status = export_task_service.get_public_task_status(task_id)
-            if status:
-                return status, 200
-
-        if EXPORT_TASK_RATE_LIMITER.is_rate_limited(tenant_id):
-            raise WorkflowRunExportRateLimitError()
-        EXPORT_TASK_RATE_LIMITER.increment_rate_limit(tenant_id)
-
-        # Mark pending and enqueue
-        export_task_service.set_task_status(
-            task_id,
-            "pending",
-            {"tenant_id": tenant_id, "app_id": app_id, "run_id": run_id_str},
+        run_created_at = db.session.scalar(
+            select(WorkflowArchiveLog.run_created_at)
+            .where(
+                WorkflowArchiveLog.tenant_id == tenant_id,
+                WorkflowArchiveLog.app_id == app_id,
+                WorkflowArchiveLog.workflow_run_id == run_id_str,
+            )
+            .limit(1)
         )
-        export_workflow_run_task.apply_async(
-            args=(task_id, tenant_id, run_id_str),
+        if not run_created_at:
+            return {"code": "archive_log_not_found", "message": "workflow run archive not found"}, 404
+
+        prefix = (
+            f"{tenant_id}/app_id={app_id}/year={run_created_at.strftime('%Y')}/"
+            f"month={run_created_at.strftime('%m')}/workflow_run_id={run_id_str}"
         )
-        return {"task_id": task_id, "status": "pending"}, 202
+        archive_key = f"{prefix}/{ARCHIVE_BUNDLE_NAME}"
 
+        try:
+            archive_storage = get_archive_storage()
+        except ArchiveStorageNotConfiguredError as e:
+            return {"code": "archive_storage_not_configured", "message": str(e)}, 500
 
-@console_ns.route("/workflow-run-export-tasks/<string:task_id>")
-class WorkflowRunExportTaskStatusApi(Resource):
-    @console_ns.doc("get_workflow_run_export_task_status")
-    @console_ns.doc(description="Get status of a workflow run export task.")
-    @console_ns.response(200, "Task status", workflow_run_export_task_fields)
-    @console_ns.response(404, "Task not found")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def get(self, task_id: str):
-        export_task_service = WorkflowRunExportTaskService()
-        status = export_task_service.get_public_task_status(task_id)
-        if not status:
-            return {"code": "not_found", "message": "task not found"}, 404
-        return status
+        presigned_url = archive_storage.generate_presigned_url(
+            archive_key,
+            expires_in=EXPORT_SIGNED_URL_EXPIRE_SECONDS,
+        )
+        expires_at = datetime.now(UTC) + timedelta(seconds=EXPORT_SIGNED_URL_EXPIRE_SECONDS)
+        return {
+            "status": "success",
+            "presigned_url": presigned_url,
+            "presigned_url_expires_at": expires_at.isoformat(),
+        }, 200
 
 
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflow-runs/count")

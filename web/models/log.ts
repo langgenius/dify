@@ -286,9 +286,8 @@ export type WorkflowLogsRequest = {
   limit: number // The default value is 20 and the range is 1-100
 }
 
-export type WorkflowLogExportTaskStatus = {
-  task_id: string
-  status: 'pending' | 'running' | 'success' | 'failed'
+export type WorkflowRunExportResponse = {
+  status: 'success' | 'failed'
   presigned_url?: string
   presigned_url_expires_at?: string
 }

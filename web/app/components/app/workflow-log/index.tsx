@@ -8,7 +8,7 @@ import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
 import { omit } from 'es-toolkit/object'
 import * as React from 'react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import EmptyElement from '@/app/components/app/log/empty-element'
 import Button from '@/app/components/base/button'
@@ -21,10 +21,9 @@ import { APP_PAGE_LIMIT } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import {
-  useCreateWorkflowRunExportTask,
   useWorkflowArchivedLogs,
   useWorkflowLogs,
-  useWorkflowRunExportTaskStatus,
+  useWorkflowRunExportUrl,
 } from '@/service/use-log'
 import Filter, { TIME_PERIOD_MAPPING } from './filter'
 import List from './list'
@@ -63,10 +62,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const [archivedPage, setArchivedPage] = React.useState<number>(0)
   const [archivedLimit, setArchivedLimit] = React.useState<number>(APP_PAGE_LIMIT)
   const [exportingRunId, setExportingRunId] = useState<string | null>(null)
-  const [exportTaskId, setExportTaskId] = useState<string | null>(null)
-  const exportPollAttemptsRef = useRef(0)
-  const createExportTask = useCreateWorkflowRunExportTask()
-  const exportTaskStatus = useWorkflowRunExportTaskStatus(exportTaskId || '', !!exportTaskId)
+  const getExportUrl = useWorkflowRunExportUrl()
 
   const query = {
     page: currPage + 1,
@@ -101,79 +97,30 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   })
   const archivedTotal = archivedLogs?.total
 
-  useEffect(() => {
-    exportPollAttemptsRef.current = 0
-  }, [exportTaskId])
-
-  useEffect(() => {
-    // Handle terminal export task outcomes (success or failure).
-    if (!exportTaskStatus.data || !exportingRunId)
-      return
-
-    const { status, presigned_url: presignedUrl } = exportTaskStatus.data
-    if (status === 'success' && presignedUrl) {
-      window.open(presignedUrl, '_blank')
-      setExportingRunId(null)
-      setExportTaskId(null)
-    }
-    else if (status === 'failed') {
-      Toast.notify({
-        type: 'error',
-        message: t('filter.archived.exportFailed', { ns: 'appLog' }),
-      })
-      setExportingRunId(null)
-      setExportTaskId(null)
-    }
-  }, [exportTaskStatus.data, exportingRunId])
-
-  useEffect(() => {
-    // Guard against polling forever by failing after a few refetches.
-    if (!exportTaskId)
-      return
-    const status = exportTaskStatus.data?.status
-    if (status === 'success' || status === 'failed')
-      return
-
-    if (exportTaskStatus.dataUpdatedAt) {
-      exportPollAttemptsRef.current += 1
-      const MAX_ATTEMPTS = 5
-      if (exportPollAttemptsRef.current >= MAX_ATTEMPTS) {
-        Toast.notify({
-          type: 'error',
-          message: t('filter.archived.exportFailed', { ns: 'appLog' }),
-        })
-        setExportingRunId(null)
-        setExportTaskId(null)
-      }
-    }
-  }, [exportTaskStatus.dataUpdatedAt, exportTaskStatus.data?.status, exportTaskId])
-
   const handleExport = useCallback(
     async (log: WorkflowAppLogDetail) => {
-      if (exportingRunId || exportTaskId)
+      if (exportingRunId)
         return
       const runId = log.workflow_run.id
       setExportingRunId(runId)
       try {
-        const task = await createExportTask.mutateAsync({ appId: appDetail.id, runId })
-        if (task.status === 'success' && task.presigned_url) {
+        const task = await getExportUrl.mutateAsync({ appId: appDetail.id, runId })
+        if (task.status === 'success' && task.presigned_url)
           window.open(task.presigned_url, '_blank')
-          setExportingRunId(null)
-          setExportTaskId(null)
-          return
-        }
-        setExportTaskId(task.task_id)
+        else
+          throw new Error('Export URL missing')
       }
       catch (e) {
         Toast.notify({
           type: 'error',
           message: t('filter.archived.exportFailed', { ns: 'appLog' }),
         })
+      }
+      finally {
         setExportingRunId(null)
-        setExportTaskId(null)
       }
     },
-    [appDetail.id, createExportTask, exportTaskId, exportingRunId, t],
+    [appDetail.id, exportingRunId, getExportUrl, t],
   )
 
   return (
