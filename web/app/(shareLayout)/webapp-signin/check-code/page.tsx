@@ -14,6 +14,7 @@ import { useWebAppStore } from '@/context/web-app-context'
 import { sendWebAppEMailLoginCode, webAppEmailLoginWithCode } from '@/service/common'
 import { fetchAccessToken } from '@/service/share'
 import { setWebAppAccessToken, setWebAppPassport } from '@/service/webapp-auth'
+import { encryptVerificationCode } from '@/utils/encryption'
 
 export default function CheckCode() {
   const { t } = useTranslation()
@@ -64,7 +65,7 @@ export default function CheckCode() {
         return
       }
       setIsLoading(true)
-      const ret = await webAppEmailLoginWithCode({ email, code, token })
+      const ret = await webAppEmailLoginWithCode({ email, code: encryptVerificationCode(code), token })
       if (ret.result === 'success') {
         setWebAppAccessToken(ret.data.access_token)
         const { access_token } = await fetchAccessToken({
