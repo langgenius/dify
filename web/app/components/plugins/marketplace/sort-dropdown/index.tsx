@@ -1,4 +1,5 @@
 'use client'
+import { useTranslation } from '#i18n'
 import {
   RiArrowDownSLine,
   RiCheckLine,
@@ -9,16 +10,10 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { useMixedTranslation } from '@/app/components/plugins/marketplace/hooks'
 import { useMarketplaceContext } from '../context'
 
-type SortDropdownProps = {
-  locale?: string
-}
-const SortDropdown = ({
-  locale,
-}: SortDropdownProps) => {
-  const { t } = useMixedTranslation(locale)
+const SortDropdown = () => {
+  const { t } = useTranslation()
   const options = [
     {
       value: 'install_count',

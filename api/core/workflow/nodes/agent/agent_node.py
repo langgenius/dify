@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, cast
@@ -167,7 +169,7 @@ class AgentNode(Node[AgentNodeData]):
         variable_pool: VariablePool,
         node_data: AgentNodeData,
         for_log: bool = False,
-        strategy: "PluginAgentStrategy",
+        strategy: PluginAgentStrategy,
     ) -> dict[str, Any]:
         """
         Generate parameters based on the given tool parameters, variable pool, and node data.
@@ -328,7 +330,7 @@ class AgentNode(Node[AgentNodeData]):
     def _generate_credentials(
         self,
         parameters: dict[str, Any],
-    ) -> "InvokeCredentials":
+    ) -> InvokeCredentials:
         """
         Generate credentials based on the given agent parameters.
         """
@@ -442,9 +444,7 @@ class AgentNode(Node[AgentNodeData]):
                     model_schema.features.remove(feature)
         return model_schema
 
-    def _filter_mcp_type_tool(
-        self, strategy: "PluginAgentStrategy", tools: list[dict[str, Any]]
-    ) -> list[dict[str, Any]]:
+    def _filter_mcp_type_tool(self, strategy: PluginAgentStrategy, tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """
         Filter MCP type tool
         :param strategy: plugin agent strategy

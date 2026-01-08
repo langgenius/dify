@@ -12,6 +12,7 @@ import type {
 } from '@/models/app'
 import type { App, AppModeEnum } from '@/types/app'
 import {
+  keepPreviousData,
   useInfiniteQuery,
   useQuery,
   useQueryClient,
@@ -107,6 +108,7 @@ export const useInfiniteAppList = (params: AppListParams, options?: { enabled?: 
     queryFn: ({ pageParam = normalizedParams.page }) => get<AppListResponse>('/apps', { params: { ...normalizedParams, page: pageParam } }),
     getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
     initialPageParam: normalizedParams.page,
+    placeholderData: keepPreviousData,
     ...options,
   })
 }
