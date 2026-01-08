@@ -13,28 +13,18 @@ import { getMarketplaceListCondition } from '@/app/components/plugins/marketplac
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { useAllToolProviders } from '@/service/use-tools'
 
-export function useMarketplace(searchPluginText: string, filterPluginTags: string[]) {
+export const useMarketplace = (searchPluginText: string, filterPluginTags: string[]) => {
   const { data: toolProvidersData, isSuccess } = useAllToolProviders()
   const exclude = useMemo(() => {
     if (isSuccess)
       return toolProvidersData?.filter(toolProvider => !!toolProvider.plugin_id).map(toolProvider => toolProvider.plugin_id!)
-    return undefined
   }, [isSuccess, toolProvidersData])
-
-  const isSearchMode = !!searchPluginText || filterPluginTags.length > 0
-
-  // Collections query (only when not searching)
-  const collectionsQuery = useMarketplaceCollectionsAndPlugins(
-    {
-      category: PluginCategoryEnum.tool,
-      condition: getMarketplaceListCondition(PluginCategoryEnum.tool),
-      exclude,
-      type: 'plugin',
-    },
-    { enabled: !isSearchMode && isSuccess },
-  )
-
-  // Plugins search
+  const {
+    isLoading,
+    marketplaceCollections,
+    marketplaceCollectionPluginsMap,
+    queryMarketplaceCollectionsAndPlugins,
+  } = useMarketplaceCollectionsAndPlugins()
   const {
     plugins,
     resetPlugins,
@@ -45,7 +35,6 @@ export function useMarketplace(searchPluginText: string, filterPluginTags: strin
     hasNextPage,
     page: pluginsPage,
   } = useMarketplacePlugins()
-
   const searchPluginTextRef = useRef(searchPluginText)
   const filterPluginTagsRef = useRef(filterPluginTags)
 
@@ -53,12 +42,8 @@ export function useMarketplace(searchPluginText: string, filterPluginTags: strin
     searchPluginTextRef.current = searchPluginText
     filterPluginTagsRef.current = filterPluginTags
   }, [searchPluginText, filterPluginTags])
-
   useEffect(() => {
-    if (!isSuccess)
-      return
-
-    if (isSearchMode) {
+    if ((searchPluginText || filterPluginTags.length) && isSuccess) {
       if (searchPluginText) {
         queryPluginsWithDebounced({
           category: PluginCategoryEnum.tool,
@@ -67,37 +52,48 @@ export function useMarketplace(searchPluginText: string, filterPluginTags: strin
           exclude,
           type: 'plugin',
         })
+        return
       }
-      else {
-        queryPlugins({
+      queryPlugins({
+        category: PluginCategoryEnum.tool,
+        query: searchPluginText,
+        tags: filterPluginTags,
+        exclude,
+        type: 'plugin',
+      })
+    }
+    else {
+      if (isSuccess) {
+        queryMarketplaceCollectionsAndPlugins({
           category: PluginCategoryEnum.tool,
-          query: searchPluginText,
-          tags: filterPluginTags,
+          condition: getMarketplaceListCondition(PluginCategoryEnum.tool),
           exclude,
           type: 'plugin',
         })
+        resetPlugins()
       }
     }
-    else {
-      resetPlugins()
-    }
-  }, [searchPluginText, filterPluginTags, queryPlugins, queryPluginsWithDebounced, resetPlugins, exclude, isSuccess, isSearchMode])
+  }, [searchPluginText, filterPluginTags, queryPlugins, queryMarketplaceCollectionsAndPlugins, queryPluginsWithDebounced, resetPlugins, exclude, isSuccess])
 
   const handleScroll = useCallback((e: Event) => {
     const target = e.target as HTMLDivElement
-    const { scrollTop, scrollHeight, clientHeight } = target
+    const {
+      scrollTop,
+      scrollHeight,
+      clientHeight,
+    } = target
     if (scrollTop + clientHeight >= scrollHeight - SCROLL_BOTTOM_THRESHOLD && scrollTop > 0) {
-      const searchText = searchPluginTextRef.current
-      const tags = filterPluginTagsRef.current
-      if (hasNextPage && (!!searchText || !!tags.length))
+      const searchPluginText = searchPluginTextRef.current
+      const filterPluginTags = filterPluginTagsRef.current
+      if (hasNextPage && (!!searchPluginText || !!filterPluginTags.length))
         fetchNextPage()
     }
-  }, [fetchNextPage, hasNextPage])
+  }, [exclude, fetchNextPage, hasNextPage, plugins, queryPlugins])
 
   return {
-    isLoading: collectionsQuery.isLoading || isPluginsLoading,
-    marketplaceCollections: collectionsQuery.data?.marketplaceCollections,
-    marketplaceCollectionPluginsMap: collectionsQuery.data?.marketplaceCollectionPluginsMap,
+    isLoading: isLoading || isPluginsLoading,
+    marketplaceCollections,
+    marketplaceCollectionPluginsMap,
     plugins,
     handleScroll,
     page: Math.max(pluginsPage || 0, 1),
