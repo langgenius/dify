@@ -1,7 +1,8 @@
 """Unit tests for the execution coordinator orchestration logic."""
 
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 
 from core.workflow.graph_engine.command_processing.command_processor import CommandProcessor
 from core.workflow.graph_engine.domain.graph_execution import GraphExecution
