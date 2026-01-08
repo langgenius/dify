@@ -1,11 +1,11 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import type { AppData } from '@/models/share'
+import type { TryAppInfo } from '@/service/try-app'
+import * as React from 'react'
+import useDocumentTitle from '@/hooks/use-document-title'
 import Chat from './chat'
 import TextGeneration from './text-generation'
-import type { AppData } from '@/models/share'
-import useDocumentTitle from '@/hooks/use-document-title'
-import type { TryAppInfo } from '@/service/try-app'
 
 type Props = {
   appId: string
@@ -22,14 +22,14 @@ const TryApp: FC<Props> = ({
 
   useDocumentTitle(appDetail?.site?.title || '')
   return (
-    <div className='flex h-full w-full'>
+    <div className="flex h-full w-full">
       {isChat && (
-        <Chat appId={appId} appDetail={appDetail} className='h-full grow' />
+        <Chat appId={appId} appDetail={appDetail} className="h-full grow" />
       )}
       {isCompletion && (
         <TextGeneration
           appId={appId}
-          className='h-full grow'
+          className="h-full grow"
           isWorkflow={mode === 'workflow'}
           appData={{
             app_id: appId,

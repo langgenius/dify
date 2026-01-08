@@ -1,0 +1,22 @@
+{
+  "appCustomize.nameRequired": "Numele aplicației este obligatoriu",
+  "appCustomize.subTitle": "Pictogramă și nume aplicație",
+  "appCustomize.title": "Creați o aplicație din {{name}}",
+  "category.Agent": "Agent",
+  "category.Assistant": "Asistent",
+  "category.Entertainment": "Divertisment",
+  "category.HR": "Resurse Umane",
+  "category.Programming": "Programare",
+  "category.Recommended": "Recomandat",
+  "category.Translate": "Traducere",
+  "category.Workflow": "Flux de lucru",
+  "category.Writing": "Scriere",
+  "sidebar.action.delete": "Ștergeți",
+  "sidebar.action.pin": "Fixați",
+  "sidebar.action.rename": "Redenumire",
+  "sidebar.action.unpin": "Deblocați",
+  "sidebar.chat": "Chat",
+  "sidebar.delete.content": "Sunteți sigur că doriți să ștergeți această aplicație?",
+  "sidebar.delete.title": "Ștergeți aplicația",
+  "title": "Explorați"
+}

@@ -1,15 +1,16 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
-import Modal from '@/app/components/base/modal/index'
-import Tab, { TypeEnum } from './tab'
-import Button from '../../base/button'
 import { RiCloseLine } from '@remixicon/react'
-import AppInfo from './app-info'
-import App from './app'
-import Preview from './preview'
-import { useGetTryAppInfo } from '@/service/use-try-app'
+import * as React from 'react'
+import { useState } from 'react'
 import Loading from '@/app/components/base/loading'
+import Modal from '@/app/components/base/modal/index'
+import { useGetTryAppInfo } from '@/service/use-try-app'
+import Button from '../../base/button'
+import App from './app'
+import AppInfo from './app-info'
+import Preview from './preview'
+import Tab, { TypeEnum } from './tab'
 
 type Props = {
   appId: string
@@ -31,31 +32,33 @@ const TryApp: FC<Props> = ({
     <Modal
       isShow
       onClose={onClose}
-      className='h-[calc(100vh-32px)] min-w-[1280px] max-w-[calc(100vw-32px)] overflow-x-auto p-2'
+      className="h-[calc(100vh-32px)] min-w-[1280px] max-w-[calc(100vw-32px)] overflow-x-auto p-2"
     >
-      {isLoading ? (<div className='flex h-full items-center justify-center'>
-        <Loading type='area' />
-      </div>) : (
-        <div className='flex h-full flex-col'>
-          <div className='flex shrink-0 justify-between pl-4'>
+      {isLoading ? (
+        <div className="flex h-full items-center justify-center">
+          <Loading type="area" />
+        </div>
+      ) : (
+        <div className="flex h-full flex-col">
+          <div className="flex shrink-0 justify-between pl-4">
             <Tab
               value={type}
               onChange={setType}
             />
             <Button
-              size='large'
-              variant='tertiary'
-              className='flex size-7 items-center justify-center rounded-[10px] p-0 text-components-button-tertiary-text'
+              size="large"
+              variant="tertiary"
+              className="flex size-7 items-center justify-center rounded-[10px] p-0 text-components-button-tertiary-text"
               onClick={onClose}
             >
-              <RiCloseLine className='size-5' onClick={onClose} />
+              <RiCloseLine className="size-5" onClick={onClose} />
             </Button>
           </div>
           {/* Main content */}
-          <div className='mt-2 flex h-0 grow justify-between space-x-2'>
+          <div className="mt-2 flex h-0 grow justify-between space-x-2">
             {type === TypeEnum.TRY ? <App appId={appId} appDetail={appDetail!} /> : <Preview appId={appId} appDetail={appDetail!} />}
             <AppInfo
-              className='w-[360px] shrink-0'
+              className="w-[360px] shrink-0"
               appDetail={appDetail!}
               appId={appId}
               category={category}

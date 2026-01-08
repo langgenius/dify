@@ -1,10 +1,10 @@
 import type { FC } from 'react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { RiArrowRightLine } from '@remixicon/react'
-import { useCarousel } from '@/app/components/base/carousel'
-import { IndicatorButton } from './indicator-button'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from '@/utils/classnames'
+import { useCarousel } from '@/app/components/base/carousel'
+import { cn } from '@/utils/classnames'
+import { IndicatorButton } from './indicator-button'
 
 export type BannerData = {
   id: string
@@ -49,13 +49,15 @@ export const BannerItem: FC<BannerItemProps> = ({ banner, autoplayDelay, isPause
 
   const indicatorsWidth = useMemo(() => {
     const count = slideInfo.totalSlides
-    if (count === 0) return 0
+    if (count === 0)
+      return 0
     // Calculate: indicator buttons + gaps + extra spacing (3 * 20px for divider and padding)
     return (count + 2) * INDICATOR_WIDTH + (count - 1) * INDICATOR_GAP
   }, [slideInfo.totalSlides])
 
   const viewMoreStyle = useMemo(() => {
-    if (!maxWidth) return undefined
+    if (!maxWidth)
+      return undefined
     return {
       maxWidth: `${maxWidth}px`,
       minWidth: indicatorsWidth ? `${Math.min(maxWidth - indicatorsWidth, MIN_VIEW_MORE_WIDTH)}px` : undefined,
@@ -154,7 +156,7 @@ export const BannerItem: FC<BannerItemProps> = ({ banner, autoplayDelay, isPause
                 <RiArrowRightLine className="h-3 w-3 text-text-primary-on-surface" />
               </div>
               <span className="system-sm-semibold-uppercase text-text-accent">
-                {t('explore.banner.viewMore')}
+                {t('banner.viewMore', { ns: 'explore' })}
               </span>
             </div>
 

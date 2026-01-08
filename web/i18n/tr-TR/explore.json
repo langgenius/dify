@@ -1,0 +1,22 @@
+{
+  "appCustomize.nameRequired": "Uygulama ismi gereklidir",
+  "appCustomize.subTitle": "Uygulama simgesi ve ismi",
+  "appCustomize.title": "{{name}} uygulamasından uygulama oluştur",
+  "category.Agent": "Aracı",
+  "category.Assistant": "Asistan",
+  "category.Entertainment": "Eğlence",
+  "category.HR": "İK",
+  "category.Programming": "Programlama",
+  "category.Recommended": "Tavsiye edilir",
+  "category.Translate": "Çeviri",
+  "category.Workflow": "İş Akışı",
+  "category.Writing": "Yazma",
+  "sidebar.action.delete": "Sil",
+  "sidebar.action.pin": "Sabitle",
+  "sidebar.action.rename": "Yeniden Adlandır",
+  "sidebar.action.unpin": "Sabitlemeyi Kaldır",
+  "sidebar.chat": "Sohbet",
+  "sidebar.delete.content": "Bu uygulamayı silmek istediğinizden emin misiniz?",
+  "sidebar.delete.title": "Uygulamayı sil",
+  "title": "Keşfet"
+}

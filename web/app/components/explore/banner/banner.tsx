@@ -1,10 +1,12 @@
 import type { FC } from 'react'
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import type { BannerData } from './banner-item'
+import * as React from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Carousel } from '@/app/components/base/carousel'
+import { useLocale } from '@/context/i18n'
 import { useGetBanners } from '@/service/use-explore'
 import Loading from '../../base/loading'
-import { type BannerData, BannerItem } from './banner-item'
-import { useI18N } from '@/context/i18n'
+import { BannerItem } from './banner-item'
 
 const AUTOPLAY_DELAY = 5000
 const MIN_LOADING_HEIGHT = 168
@@ -20,7 +22,7 @@ const LoadingState: FC = () => (
 )
 
 const Banner: FC = () => {
-  const { locale } = useI18N()
+  const locale = useLocale()
   const { data: banners, isLoading, isError } = useGetBanners(locale)
   const [isHovered, setIsHovered] = useState(false)
   const [isResizing, setIsResizing] = useState(false)

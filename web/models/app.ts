@@ -1,16 +1,18 @@
 import type {
   AliyunConfig,
   ArizeConfig,
+  DatabricksConfig,
   LangFuseConfig,
   LangSmithConfig,
+  MLflowConfig,
   OpikConfig,
   PhoenixConfig,
   TencentConfig,
   TracingProvider,
   WeaveConfig,
 } from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type'
-import type { App, AppModeEnum, AppTemplate, SiteConfig } from '@/types/app'
 import type { Dependency } from '@/app/components/plugins/types'
+import type { App, AppModeEnum, AppTemplate, SiteConfig } from '@/types/app'
 
 export enum DSLImportMode {
   YAML_CONTENT = 'yaml-content',
@@ -54,15 +56,15 @@ export type CreateAppResponse = App
 export type UpdateAppSiteCodeResponse = { app_id: string } & SiteConfig
 
 export type AppDailyMessagesResponse = {
-  data: Array<{ date: string; message_count: number }>
+  data: Array<{ date: string, message_count: number }>
 }
 
 export type AppDailyConversationsResponse = {
-  data: Array<{ date: string; conversation_count: number }>
+  data: Array<{ date: string, conversation_count: number }>
 }
 
 export type WorkflowDailyConversationsResponse = {
-  data: Array<{ date: string; runs: number }>
+  data: Array<{ date: string, runs: number }>
 }
 
 export type AppStatisticsResponse = {
@@ -70,11 +72,11 @@ export type AppStatisticsResponse = {
 }
 
 export type AppDailyEndUsersResponse = {
-  data: Array<{ date: string; terminal_count: number }>
+  data: Array<{ date: string, terminal_count: number }>
 }
 
 export type AppTokenCostsResponse = {
-  data: Array<{ date: string; token_count: number; total_price: number; currency: number }>
+  data: Array<{ date: string, token_count: number, total_price: number, currency: number }>
 }
 
 export type UpdateAppModelConfigResponse = { result: string }
@@ -119,7 +121,7 @@ export type TracingStatus = {
 
 export type TracingConfig = {
   tracing_provider: TracingProvider
-  tracing_config: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | TencentConfig
+  tracing_config: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | DatabricksConfig | MLflowConfig | OpikConfig | WeaveConfig | AliyunConfig | TencentConfig
 }
 
 export type WebhookTriggerResponse = {

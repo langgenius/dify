@@ -1,3 +1,4 @@
+from enum import StrEnum
 from typing import Annotated, Any, Literal
 
 from pydantic import AfterValidator, BaseModel, Field, field_validator
@@ -96,3 +97,8 @@ class LoopState(BaseLoopState):
         Get current output.
         """
         return self.current_output
+
+
+class LoopCompletedReason(StrEnum):
+    LOOP_BREAK = "loop_break"
+    LOOP_COMPLETED = "loop_completed"

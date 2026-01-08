@@ -1,6 +1,6 @@
-import { createContext } from 'use-context-selector'
-import { noop } from 'lodash-es'
 import type { CurrentTryAppParams } from './explore-context'
+import { noop } from 'es-toolkit/function'
+import { createContext } from 'use-context-selector'
 
 type Props = {
   currentApp?: CurrentTryAppParams

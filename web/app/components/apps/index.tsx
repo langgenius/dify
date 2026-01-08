@@ -1,23 +1,23 @@
 'use client'
-import { useEducationInit } from '@/app/education-apply/hooks'
-import List from './list'
-import useDocumentTitle from '@/hooks/use-document-title'
-import { useTranslation } from 'react-i18next'
-import AppListContext from '@/context/app-list-context'
-import { useCallback, useState } from 'react'
-import type { CurrentTryAppParams } from '@/context/explore-context'
-import TryApp from '../explore/try-app'
 import type { CreateAppModalProps } from '../explore/create-app-modal'
-import CreateAppModal from '../explore/create-app-modal'
-import { fetchAppDetail } from '@/service/explore'
-import { DSLImportMode } from '@/models/app'
+import type { CurrentTryAppParams } from '@/context/explore-context'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useEducationInit } from '@/app/education-apply/hooks'
+import AppListContext from '@/context/app-list-context'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { useImportDSL } from '@/hooks/use-import-dsl'
+import { DSLImportMode } from '@/models/app'
+import { fetchAppDetail } from '@/service/explore'
 import DSLConfirmModal from '../app/create-from-dsl-modal/dsl-confirm-modal'
+import CreateAppModal from '../explore/create-app-modal'
+import TryApp from '../explore/try-app'
+import List from './list'
 
 const Apps = () => {
   const { t } = useTranslation()
 
-  useDocumentTitle(t('common.menus.apps'))
+  useDocumentTitle(t('menus.apps', { ns: 'common' }))
   useEducationInit()
 
   const [currentTryAppParams, setCurrentTryAppParams] = useState<CurrentTryAppParams | undefined>(undefined)
@@ -98,11 +98,13 @@ const Apps = () => {
       isShowTryAppPanel,
       setShowTryAppPanel,
       controlHideCreateFromTemplatePanel,
-    }}>
-      <div className='relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body'>
+    }}
+    >
+      <div className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">
         <List controlRefreshList={controlRefreshList} />
         {isShowTryAppPanel && (
-          <TryApp appId={currentTryAppParams?.appId || ''}
+          <TryApp
+            appId={currentTryAppParams?.appId || ''}
             category={currentTryAppParams?.app?.category}
             onClose={hideTryAppPanel}
             onCreate={handleShowFromTryApp}
@@ -134,7 +136,7 @@ const Apps = () => {
             onHide={() => setIsShowCreateModal(false)}
           />
         )}
-      </div >
+      </div>
     </AppListContext.Provider>
   )
 }

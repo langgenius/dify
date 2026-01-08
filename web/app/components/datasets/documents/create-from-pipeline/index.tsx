@@ -1,41 +1,46 @@
 'use client'
-import { useCallback, useMemo, useRef, useState } from 'react'
-import DataSourceOptions from './data-source-options'
-import type { CrawlResultItem, DocumentItem, CustomFile as File, FileIndexingEstimateResponse } from '@/models/datasets'
-import LocalFile from '@/app/components/datasets/documents/create-from-pipeline/data-source/local-file'
-import { useProviderContextSelector } from '@/context/provider-context'
-import type { NotionPage } from '@/models/common'
-import OnlineDocuments from '@/app/components/datasets/documents/create-from-pipeline/data-source/online-documents'
-import VectorSpaceFull from '@/app/components/billing/vector-space-full'
-import WebsiteCrawl from '@/app/components/datasets/documents/create-from-pipeline/data-source/website-crawl'
-import OnlineDrive from '@/app/components/datasets/documents/create-from-pipeline/data-source/online-drive'
-import Actions from './actions'
-import { useTranslation } from 'react-i18next'
 import type { Datasource } from '@/app/components/rag-pipeline/components/panel/test-run/types'
-import LeftHeader from './left-header'
-import { usePublishedPipelineInfo, useRunPublishedPipeline } from '@/service/use-pipeline'
-import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import Loading from '@/app/components/base/loading'
-import type { Node } from '@/app/components/workflow/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-import FilePreview from './preview/file-preview'
-import OnlineDocumentPreview from './preview/online-document-preview'
-import WebsitePreview from './preview/web-preview'
-import ProcessDocuments from './process-documents'
-import ChunkPreview from './preview/chunk-preview'
-import Processing from './processing'
+import type { Node } from '@/app/components/workflow/types'
+import type { NotionPage } from '@/models/common'
+import type { CrawlResultItem, DocumentItem, CustomFile as File, FileIndexingEstimateResponse } from '@/models/datasets'
 import type {
   InitialDocumentDetail,
   OnlineDriveFile,
   PublishedPipelineRunPreviewResponse,
   PublishedPipelineRunResponse,
 } from '@/models/pipeline'
+import { useBoolean } from 'ahooks'
+import { useCallback, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { trackEvent } from '@/app/components/base/amplitude'
+import Divider from '@/app/components/base/divider'
+import Loading from '@/app/components/base/loading'
+import PlanUpgradeModal from '@/app/components/billing/plan-upgrade-modal'
+import VectorSpaceFull from '@/app/components/billing/vector-space-full'
+import LocalFile from '@/app/components/datasets/documents/create-from-pipeline/data-source/local-file'
+import OnlineDocuments from '@/app/components/datasets/documents/create-from-pipeline/data-source/online-documents'
+import OnlineDrive from '@/app/components/datasets/documents/create-from-pipeline/data-source/online-drive'
+import WebsiteCrawl from '@/app/components/datasets/documents/create-from-pipeline/data-source/website-crawl'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { useProviderContextSelector } from '@/context/provider-context'
 import { DatasourceType } from '@/models/pipeline'
-import { TransferMethod } from '@/types/app'
-import { useAddDocumentsSteps, useLocalFile, useOnlineDocument, useOnlineDrive, useWebsiteCrawl } from './hooks'
-import DataSourceProvider from './data-source/store/provider'
-import { useDataSourceStore } from './data-source/store'
 import { useFileUploadConfig } from '@/service/use-common'
+import { usePublishedPipelineInfo, useRunPublishedPipeline } from '@/service/use-pipeline'
+import { TransferMethod } from '@/types/app'
+import UpgradeCard from '../../create/step-one/upgrade-card'
+import Actions from './actions'
+import DataSourceOptions from './data-source-options'
+import { useDataSourceStore } from './data-source/store'
+import DataSourceProvider from './data-source/store/provider'
+import { useAddDocumentsSteps, useLocalFile, useOnlineDocument, useOnlineDrive, useWebsiteCrawl } from './hooks'
+import LeftHeader from './left-header'
+import ChunkPreview from './preview/chunk-preview'
+import FilePreview from './preview/file-preview'
+import OnlineDocumentPreview from './preview/online-document-preview'
+import WebsitePreview from './preview/web-preview'
+import ProcessDocuments from './process-documents'
+import Processing from './processing'
 
 const CreateFormPipeline = () => {
   const { t } = useTranslation()
@@ -57,7 +62,7 @@ const CreateFormPipeline = () => {
   const {
     steps,
     currentStep,
-    handleNextStep,
+    handleNextStep: doHandleNextStep,
     handleBackStep,
   } = useAddDocumentsSteps()
   const {
@@ -102,10 +107,38 @@ const CreateFormPipeline = () => {
       return onlineDriveFileList.length > 0 && isVectorSpaceFull && enableBilling
     return false
   }, [allFileLoaded, datasource, datasourceType, enableBilling, isVectorSpaceFull, onlineDocuments.length, onlineDriveFileList.length, websitePages.length])
-  const notSupportBatchUpload = enableBilling && plan.type === 'sandbox'
+  const supportBatchUpload = !enableBilling || plan.type !== 'sandbox'
+
+  const [isShowPlanUpgradeModal, {
+    setTrue: showPlanUpgradeModal,
+    setFalse: hidePlanUpgradeModal,
+  }] = useBoolean(false)
+  const handleNextStep = useCallback(() => {
+    if (!supportBatchUpload) {
+      let isMultiple = false
+      if (datasourceType === DatasourceType.localFile && localFileList.length > 1)
+        isMultiple = true
+
+      if (datasourceType === DatasourceType.onlineDocument && onlineDocuments.length > 1)
+        isMultiple = true
+
+      if (datasourceType === DatasourceType.websiteCrawl && websitePages.length > 1)
+        isMultiple = true
+
+      if (datasourceType === DatasourceType.onlineDrive && selectedFileIds.length > 1)
+        isMultiple = true
+
+      if (isMultiple) {
+        showPlanUpgradeModal()
+        return
+      }
+    }
+    doHandleNextStep()
+  }, [datasourceType, doHandleNextStep, localFileList.length, onlineDocuments.length, selectedFileIds.length, showPlanUpgradeModal, supportBatchUpload, websitePages.length])
 
   const nextBtnDisabled = useMemo(() => {
-    if (!datasource) return true
+    if (!datasource)
+      return true
     if (datasourceType === DatasourceType.localFile)
       return isShowVectorSpaceFull || !localFileList.length || !allFileLoaded
     if (datasourceType === DatasourceType.onlineDocument)
@@ -133,6 +166,7 @@ const CreateFormPipeline = () => {
         return item.type !== 'bucket'
       }).length > 0
     }
+    return false
   }, [currentWorkspace?.pages.length, datasourceType, onlineDriveFileList])
 
   const totalOptions = useMemo(() => {
@@ -154,9 +188,10 @@ const CreateFormPipeline = () => {
 
   const tip = useMemo(() => {
     if (datasourceType === DatasourceType.onlineDocument)
-      return t('datasetPipeline.addDocuments.selectOnlineDocumentTip', { count: 50 })
+      return t('addDocuments.selectOnlineDocumentTip', { ns: 'datasetPipeline', count: 50 })
     if (datasourceType === DatasourceType.onlineDrive) {
-      return t('datasetPipeline.addDocuments.selectOnlineDriveTip', {
+      return t('addDocuments.selectOnlineDriveTip', {
+        ns: 'datasetPipeline',
         count: fileUploadConfig.batch_count_limit,
         fileSize: fileUploadConfig.file_size_limit,
       })
@@ -311,6 +346,10 @@ const CreateFormPipeline = () => {
         setBatchId((res as PublishedPipelineRunResponse).batch || '')
         setDocuments((res as PublishedPipelineRunResponse).documents || [])
         handleNextStep()
+        trackEvent('dataset_document_added', {
+          data_source_type: datasourceType,
+          indexing_technique: 'pipeline',
+        })
       },
     })
   }, [dataSourceStore, datasource, datasourceType, handleNextStep, pipelineId, runPublishedPipeline])
@@ -389,13 +428,14 @@ const CreateFormPipeline = () => {
   }, [PagesMapAndSelectedPagesId, currentWorkspace?.pages, dataSourceStore, datasourceType])
 
   const clearDataSourceData = useCallback((dataSource: Datasource) => {
-    if (dataSource.nodeData.provider_type === DatasourceType.onlineDocument)
+    const providerType = dataSource.nodeData.provider_type
+    if (providerType === DatasourceType.onlineDocument)
       clearOnlineDocumentData()
-    else if (dataSource.nodeData.provider_type === DatasourceType.websiteCrawl)
+    else if (providerType === DatasourceType.websiteCrawl)
       clearWebsiteCrawlData()
-    else if (dataSource.nodeData.provider_type === DatasourceType.onlineDrive)
+    else if (providerType === DatasourceType.onlineDrive)
       clearOnlineDriveData()
-  }, [])
+  }, [clearOnlineDocumentData, clearOnlineDriveData, clearWebsiteCrawlData])
 
   const handleSwitchDataSource = useCallback((dataSource: Datasource) => {
     const {
@@ -406,35 +446,35 @@ const CreateFormPipeline = () => {
     setCurrentCredentialId('')
     currentNodeIdRef.current = dataSource.nodeId
     setDatasource(dataSource)
-  }, [dataSourceStore])
+  }, [clearDataSourceData, dataSourceStore])
 
   const handleCredentialChange = useCallback((credentialId: string) => {
     const { setCurrentCredentialId } = dataSourceStore.getState()
     clearDataSourceData(datasource!)
     setCurrentCredentialId(credentialId)
-  }, [dataSourceStore, datasource])
+  }, [clearDataSourceData, dataSourceStore, datasource])
 
   if (isFetchingPipelineInfo) {
     return (
-      <Loading type='app' />
+      <Loading type="app" />
     )
   }
 
   return (
     <div
-      className='relative flex h-[calc(100vh-56px)] w-full min-w-[1024px] overflow-x-auto rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle'
+      className="relative flex h-[calc(100vh-56px)] w-full min-w-[1024px] overflow-x-auto rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle"
     >
-      <div className='h-full min-w-0 flex-1'>
-        <div className='flex h-full flex-col px-14'>
+      <div className="h-full min-w-0 flex-1">
+        <div className="flex h-full flex-col px-14">
           <LeftHeader
             steps={steps}
-            title={t('datasetPipeline.addDocuments.title')}
+            title={t('addDocuments.title', { ns: 'datasetPipeline' })}
             currentStep={currentStep}
           />
-          <div className='grow overflow-y-auto'>
+          <div className="grow overflow-y-auto">
             {
               currentStep === 1 && (
-                <div className='flex flex-col gap-y-5 pt-4'>
+                <div className="flex flex-col gap-y-5 pt-4">
                   <DataSourceOptions
                     datasourceNodeId={datasource?.nodeId || ''}
                     onSelect={handleSwitchDataSource}
@@ -443,7 +483,7 @@ const CreateFormPipeline = () => {
                   {datasourceType === DatasourceType.localFile && (
                     <LocalFile
                       allowedExtensions={datasource!.nodeData.fileExtensions || []}
-                      notSupportBatchUpload={notSupportBatchUpload}
+                      supportBatchUpload={supportBatchUpload}
                     />
                   )}
                   {datasourceType === DatasourceType.onlineDocument && (
@@ -479,6 +519,14 @@ const CreateFormPipeline = () => {
                     handleNextStep={handleNextStep}
                     tip={tip}
                   />
+                  {
+                    !supportBatchUpload && datasourceType === DatasourceType.localFile && localFileList.length > 0 && (
+                      <>
+                        <Divider type="horizontal" className="my-4 h-px bg-divider-subtle" />
+                        <UpgradeCard />
+                      </>
+                    )
+                  }
                 </div>
               )
             }
@@ -509,8 +557,8 @@ const CreateFormPipeline = () => {
       {/* Preview */}
       {
         currentStep === 1 && (
-          <div className='h-full min-w-0 flex-1'>
-            <div className='flex h-full flex-col pl-2 pt-2'>
+          <div className="h-full min-w-0 flex-1">
+            <div className="flex h-full flex-col pl-2 pt-2">
               {currentLocalFile && (
                 <FilePreview
                   file={currentLocalFile}
@@ -536,8 +584,8 @@ const CreateFormPipeline = () => {
       }
       {
         currentStep === 2 && (
-          <div className='h-full min-w-0 flex-1'>
-            <div className='flex h-full flex-col pl-2 pt-2'>
+          <div className="h-full min-w-0 flex-1">
+            <div className="flex h-full flex-col pl-2 pt-2">
               <ChunkPreview
                 dataSourceType={datasourceType as DatasourceType}
                 localFiles={localFileList.map(file => file.file)}
@@ -557,6 +605,14 @@ const CreateFormPipeline = () => {
           </div>
         )
       }
+      {isShowPlanUpgradeModal && (
+        <PlanUpgradeModal
+          show
+          onClose={hidePlanUpgradeModal}
+          title={t('upgrade.uploadMultiplePages.title', { ns: 'billing' })!}
+          description={t('upgrade.uploadMultiplePages.description', { ns: 'billing' })!}
+        />
+      )}
     </div>
   )
 }

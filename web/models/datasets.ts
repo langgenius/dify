@@ -1,12 +1,13 @@
 import type { DataSourceNotionPage, DataSourceProvider } from './common'
-import type { AppIconType, AppModeEnum, RetrievalConfig, TransferMethod } from '@/types/app'
+import type { DatasourceType } from './pipeline'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
-import type { MetadataFilteringVariableType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import type { MetadataItemWithValue } from '@/app/components/datasets/metadata/types'
+import type { MetadataFilteringVariableType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import type { AppIconType, AppModeEnum, RetrievalConfig, TransferMethod } from '@/types/app'
+import type { I18nKeysByPrefix } from '@/types/i18n'
 import { ExternalKnowledgeBase, General, ParentChild, Qa } from '@/app/components/base/icons/src/public/knowledge/dataset-card'
 import { GeneralChunk, ParentChildChunk, QuestionAndAnswer } from '@/app/components/base/icons/src/vender/knowledge'
-import type { DatasourceType } from './pipeline'
 
 export enum DataSourceType {
   FILE = 'upload_file',
@@ -50,6 +51,7 @@ export type DataSet = {
   permission: DatasetPermission
   data_source_type: DataSourceType
   indexing_technique: IndexingType
+  author_name?: string
   created_by: string
   updated_by: string
   updated_at: number
@@ -84,7 +86,8 @@ export type DataSet = {
   pipeline_id?: string
   is_published?: boolean // Indicates if the pipeline is published
   runtime_mode: 'rag_pipeline' | 'general'
-  enable_api: boolean
+  enable_api: boolean // Indicates if the service API is enabled
+  is_multimodal: boolean // Indicates if the dataset supports multimodal
 }
 
 export type ExternalAPIItem = {
@@ -96,7 +99,7 @@ export type ExternalAPIItem = {
     endpoint: string
     api_key: string
   }
-  dataset_bindings: { id: string; name: string }[]
+  dataset_bindings: { id: string, name: string }[]
   created_by: string
   created_at: string
 }
@@ -154,7 +157,7 @@ export type CrawlOptions = {
 
 export type CrawlResultItem = {
   title: string
-  content: string
+  markdown: string
   description: string
   source_url: string
 }
@@ -222,7 +225,7 @@ export type IndexingEstimateResponse = {
   total_price: number
   currency: string
   total_segments: number
-  preview: Array<{ content: string; child_chunks: string[] }>
+  preview: Array<{ content: string, child_chunks: string[] }>
   qa_preview?: QA[]
 }
 
@@ -358,7 +361,7 @@ export type OnlineDocumentInfo = {
     page_name: string
     parent_id: string
     type: string
-  },
+  }
 }
 
 export type OnlineDriveInfo = {
@@ -540,6 +543,15 @@ export type SegmentsQuery = {
   enabled?: boolean | 'all'
 }
 
+export type Attachment = {
+  id: string
+  name: string
+  size: number
+  extension: string
+  mime_type: string
+  source_url: string
+}
+
 export type SegmentDetailModel = {
   id: string
   position: number
@@ -565,6 +577,7 @@ export type SegmentDetailModel = {
   answer?: string
   child_chunks?: ChildChunkDetail[]
   updated_at: number
+  attachments: Attachment[]
 }
 
 export type SegmentsResponse = {
@@ -576,14 +589,20 @@ export type SegmentsResponse = {
   page: number
 }
 
+export type Query = {
+  content: string
+  content_type: 'text_query' | 'image_query'
+  file_info: Attachment | null
+}
+
 export type HitTestingRecord = {
   id: string
-  content: string
   source: 'app' | 'hit_testing' | 'plugin'
   source_app_id: string
   created_by_role: 'account' | 'end_user'
   created_by: string
   created_at: number
+  queries: Query[]
 }
 
 export type HitTestingChildChunk = {
@@ -597,7 +616,8 @@ export type HitTesting = {
   content: Segment
   score: number
   tsne_position: TsnePosition
-  child_chunks?: HitTestingChildChunk[] | null
+  child_chunks: HitTestingChildChunk[] | null
+  files: Attachment[]
 }
 
 export type ExternalKnowledgeBaseHitTesting = {
@@ -679,6 +699,7 @@ export type SegmentUpdater = {
   answer?: string
   keywords?: string[]
   regenerate_child_chunks?: boolean
+  attachment_ids?: string[]
 }
 
 export type ErrorDocsResponse = {
@@ -784,7 +805,9 @@ export const DOC_FORM_ICON: Record<ChunkingMode.text | ChunkingMode.qa | Chunkin
   [ChunkingMode.parentChild]: ParentChildChunk,
 }
 
-export const DOC_FORM_TEXT: Record<ChunkingMode, string> = {
+type ChunkingModeText = I18nKeysByPrefix<'dataset', 'chunkingMode.'>
+
+export const DOC_FORM_TEXT: Record<ChunkingMode, ChunkingModeText> = {
   [ChunkingMode.text]: 'general',
   [ChunkingMode.qa]: 'qa',
   [ChunkingMode.parentChild]: 'parentChild',
@@ -812,4 +835,25 @@ export type CreateDatasetResponse = {
 export type IndexingStatusBatchRequest = {
   datasetId: string
   batchId: string
+}
+
+export type HitTestingRecordsRequest = {
+  datasetId: string
+  page: number
+  limit: number
+}
+
+export type HitTestingRequest = {
+  query: string
+  attachment_ids: string[]
+  retrieval_model: RetrievalConfig
+}
+
+export type ExternalKnowledgeBaseHitTestingRequest = {
+  query: string
+  external_retrieval_model: {
+    top_k: number
+    score_threshold: number
+    score_threshold_enabled: boolean
+  }
 }

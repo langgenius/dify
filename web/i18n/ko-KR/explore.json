@@ -1,0 +1,22 @@
+{
+  "appCustomize.nameRequired": "앱 이름은 필수입니다",
+  "appCustomize.subTitle": "앱 아이콘 및 이름",
+  "appCustomize.title": "{{name}}으로 앱 만들기",
+  "category.Agent": "에이전트",
+  "category.Assistant": "어시스턴트",
+  "category.Entertainment": "오락",
+  "category.HR": "인사",
+  "category.Programming": "프로그래밍",
+  "category.Recommended": "추천",
+  "category.Translate": "번역",
+  "category.Workflow": "워크플로우",
+  "category.Writing": "작성",
+  "sidebar.action.delete": "삭제",
+  "sidebar.action.pin": "고정",
+  "sidebar.action.rename": "이름 변경",
+  "sidebar.action.unpin": "고정 해제",
+  "sidebar.chat": "채팅",
+  "sidebar.delete.content": "이 앱을 삭제해도 괜찮습니까?",
+  "sidebar.delete.title": "앱 삭제",
+  "title": "탐색"
+}

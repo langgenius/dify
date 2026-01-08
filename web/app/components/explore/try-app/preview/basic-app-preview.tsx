@@ -1,34 +1,31 @@
 'use client'
 import type { FC } from 'react'
-import React, { useMemo, useState } from 'react'
-import { clone } from 'lodash-es'
-
-import Loading from '@/app/components/base/loading'
-
+import type { Features as FeaturesData, FileUpload } from '@/app/components/base/features/types'
+import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { ModelConfig } from '@/models/debug'
 import type { ModelConfig as BackendModelConfig, PromptVariable } from '@/types/app'
-import ConfigContext from '@/context/debug-configuration'
+import { noop } from 'es-toolkit/function'
+import { clone } from 'es-toolkit/object'
+import * as React from 'react'
+import { useMemo, useState } from 'react'
 import Config from '@/app/components/app/configuration/config'
 import Debug from '@/app/components/app/configuration/debug'
-import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { ModelModeType, Resolution, TransferMethod } from '@/types/app'
-import type { ModelConfig } from '@/models/debug'
-import { PromptMode } from '@/models/debug'
-import { ANNOTATION_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
-
 import { FeaturesProvider } from '@/app/components/base/features'
-import type { Features as FeaturesData, FileUpload } from '@/app/components/base/features/types'
+import Loading from '@/app/components/base/loading'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
+import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
-
+import { ANNOTATION_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
+import ConfigContext from '@/context/debug-configuration'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { PromptMode } from '@/models/debug'
+import { useAllToolProviders } from '@/service/use-tools'
 import { useGetTryAppDataSets, useGetTryAppInfo } from '@/service/use-try-app'
-import { noop } from 'lodash-es'
+import { ModelModeType, Resolution, TransferMethod } from '@/types/app'
 import { correctModelProvider, correctToolProvider } from '@/utils'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
-import { useTextGenerationCurrentProviderAndModelAndModelList } from '../../../header/account-setting/model-provider-page/hooks'
-import { useAllToolProviders } from '@/service/use-tools'
 import { basePath } from '@/utils/var'
+import { useTextGenerationCurrentProviderAndModelAndModelList } from '../../../header/account-setting/model-provider-page/hooks'
 
 type Props = {
   appId: string
@@ -110,19 +107,19 @@ const BasicAppPreview: FC<Props> = ({
             ...(
               modelConfig.external_data_tools?.length
                 ? modelConfig.external_data_tools.map((item: any) => {
-                  return {
-                    external_data_tool: {
-                      variable: item.variable as string,
-                      label: item.label as string,
-                      enabled: item.enabled,
-                      type: item.type as string,
-                      config: item.config,
-                      required: true,
-                      icon: item.icon,
-                      icon_background: item.icon_background,
-                    },
-                  }
-                })
+                    return {
+                      external_data_tool: {
+                        variable: item.variable as string,
+                        label: item.label as string,
+                        enabled: item.enabled,
+                        type: item.type as string,
+                        config: item.config,
+                        required: true,
+                        icon: item.icon,
+                        icon_background: item.icon_background,
+                      },
+                    }
+                  })
                 : []
             ),
           ],
@@ -154,10 +151,12 @@ const BasicAppPreview: FC<Props> = ({
             ...tool,
             isDeleted: appDetail?.deleted_tools?.some((deletedTool: any) => deletedTool.id === tool.id && deletedTool.tool_name === tool.tool_name),
             notAuthor: toolInCollectionList?.is_team_authorization === false,
-            ...(tool.provider_type === 'builtin' ? {
-              provider_id: correctToolProvider(tool.provider_name, !!toolInCollectionList),
-              provider_name: correctToolProvider(tool.provider_name, !!toolInCollectionList),
-            } : {}),
+            ...(tool.provider_type === 'builtin'
+              ? {
+                  provider_id: correctToolProvider(tool.provider_name, !!toolInCollectionList),
+                  provider_name: correctToolProvider(tool.provider_name, !!toolInCollectionList),
+                }
+              : {}),
           }
         }),
       } : DEFAULT_AGENT_SETTING,
@@ -248,9 +247,11 @@ const BasicAppPreview: FC<Props> = ({
   }, [modelConfig])
 
   if (isLoading) {
-    return <div className='flex h-full items-center justify-center'>
-      <Loading type='area' />
-    </div>
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loading type="area" />
+      </div>
+    )
   }
   const value = {
     readonly: true,
@@ -332,26 +333,28 @@ const BasicAppPreview: FC<Props> = ({
     <ConfigContext.Provider value={value as any}>
       <FeaturesProvider features={featuresData}>
         <div className="flex h-full w-full flex-col bg-components-panel-on-panel-item-bg">
-          <div className='relative flex h-[200px] grow'>
-            <div className={'flex h-full w-full shrink-0 flex-col sm:w-1/2'}>
+          <div className="relative flex h-[200px] grow">
+            <div className="flex h-full w-full shrink-0 flex-col sm:w-1/2">
               <Config />
             </div>
-            {!isMobile && <div className="relative flex h-full w-1/2 grow flex-col overflow-y-auto " style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
-              <div className='flex grow flex-col rounded-tl-2xl border-l-[0.5px] border-t-[0.5px] border-components-panel-border bg-chatbot-bg '>
-                <Debug
-                  isAPIKeySet
-                  onSetting={noop}
-                  inputs={inputs}
-                  modelParameterParams={{
-                    setModel: noop,
-                    onCompletionParamsChange: noop,
-                  }}
-                  debugWithMultipleModel={false}
-                  multipleModelConfigs={[]}
-                  onMultipleModelConfigsChange={noop}
-                />
+            {!isMobile && (
+              <div className="relative flex h-full w-1/2 grow flex-col overflow-y-auto " style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
+                <div className="flex grow flex-col rounded-tl-2xl border-l-[0.5px] border-t-[0.5px] border-components-panel-border bg-chatbot-bg ">
+                  <Debug
+                    isAPIKeySet
+                    onSetting={noop}
+                    inputs={inputs}
+                    modelParameterParams={{
+                      setModel: noop,
+                      onCompletionParamsChange: noop,
+                    }}
+                    debugWithMultipleModel={false}
+                    multipleModelConfigs={[]}
+                    onMultipleModelConfigsChange={noop}
+                  />
+                </div>
               </div>
-            </div>}
+            )}
           </div>
         </div>
       </FeaturesProvider>

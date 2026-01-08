@@ -1,15 +1,15 @@
+import type { FileUpload } from '@/app/components/base/features/types'
+import {
+  RiAttachmentLine,
+} from '@remixicon/react'
 import {
   memo,
   useCallback,
 } from 'react'
-import {
-  RiAttachmentLine,
-} from '@remixicon/react'
-import FileFromLinkOrLocal from '../file-from-link-or-local'
 import ActionButton from '@/app/components/base/action-button'
-import cn from '@/utils/classnames'
-import type { FileUpload } from '@/app/components/base/features/types'
 import { TransferMethod } from '@/types/app'
+import { cn } from '@/utils/classnames'
+import FileFromLinkOrLocal from '../file-from-link-or-local'
 
 type FileUploaderInChatInputProps = {
   fileConfig: FileUpload
@@ -22,16 +22,16 @@ const FileUploaderInChatInput = ({
   const renderTrigger = useCallback((open: boolean) => {
     return (
       <ActionButton
-        size='l'
+        size="l"
         className={cn(open && 'bg-state-base-hover')}
         disabled={readonly}
       >
-        <RiAttachmentLine className='h-5 w-5' />
+        <RiAttachmentLine className="h-5 w-5" />
       </ActionButton>
     )
   }, [])
 
-  if(readonly)
+  if (readonly)
     return renderTrigger(false)
 
   return (

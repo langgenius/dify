@@ -1,0 +1,22 @@
+{
+  "appCustomize.nameRequired": "App-Name ist erforderlich",
+  "appCustomize.subTitle": "App-Symbol & Name",
+  "appCustomize.title": "App aus {{name}} erstellen",
+  "category.Agent": "Agent",
+  "category.Assistant": "Assistent",
+  "category.Entertainment": "Unterhaltung",
+  "category.HR": "Personalwesen",
+  "category.Programming": "Programmieren",
+  "category.Recommended": "Empfohlen",
+  "category.Translate": "Übersetzen",
+  "category.Workflow": "Arbeitsablauf",
+  "category.Writing": "Schreiben",
+  "sidebar.action.delete": "Löschen",
+  "sidebar.action.pin": "Anheften",
+  "sidebar.action.rename": "Umbenennen",
+  "sidebar.action.unpin": "Lösen",
+  "sidebar.chat": "Chat",
+  "sidebar.delete.content": "Sind Sie sicher, dass Sie diese App löschen möchten?",
+  "sidebar.delete.title": "App löschen",
+  "title": "Entdecken"
+}

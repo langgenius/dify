@@ -1,0 +1,22 @@
+{
+  "appCustomize.nameRequired": "Назва програми обов’язкова",
+  "appCustomize.subTitle": "Значок програми та назва",
+  "appCustomize.title": "Створити додаток з {{name}}",
+  "category.Agent": "Агент",
+  "category.Assistant": "Помічник",
+  "category.Entertainment": "Розваги",
+  "category.HR": "HR",
+  "category.Programming": "Програмування",
+  "category.Recommended": "Рекомендовано",
+  "category.Translate": "Переклад",
+  "category.Workflow": "Робочий процес",
+  "category.Writing": "Написання",
+  "sidebar.action.delete": "Видалити",
+  "sidebar.action.pin": "Закріпити",
+  "sidebar.action.rename": "Перейменувати",
+  "sidebar.action.unpin": "Відкріпити",
+  "sidebar.chat": "Чат",
+  "sidebar.delete.content": "Ви впевнені, що хочете видалити цю програму?",
+  "sidebar.delete.title": "Видалити додаток",
+  "title": "Досліджувати"
+}

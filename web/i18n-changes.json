@@ -1,0 +1,369 @@
+{
+  "de-DE": {
+    "explore": {
+      "added": {},
+      "modified": {},
+      "deleted": [
+        "sidebar.discovery",
+        "sidebar.workspace",
+        "apps.title",
+        "apps.description",
+        "apps.allCategories",
+        "appCard.addToWorkspace"
+      ]
+    }
+  },
+  "en-US": {
+    "common": {
+      "added": {
+        "chat.inputDisabledPlaceholder": "Preview Only"
+      },
+      "modified": {},
+      "deleted": []
+    },
+    "explore": {
+      "added": {
+        "sidebar.title": "App gallery",
+        "sidebar.webApps": "Web apps",
+        "sidebar.noApps.title": "No web apps",
+        "sidebar.noApps.description": "Published web apps will appear here",
+        "sidebar.noApps.learnMore": "Learn more",
+        "apps.resultNum": "{{num}} results",
+        "apps.resetFilter": "Clear filter",
+        "appCard.try": "Details",
+        "tryApp.tabHeader.try": "Try it",
+        "tryApp.tabHeader.detail": "Orchestration Details",
+        "tryApp.createFromSampleApp": "Create from this sample app",
+        "tryApp.category": "Category",
+        "tryApp.requirements": "Requirements",
+        "tryApp.tryInfo": "This is a sample app. You can try up to 5 messages. To keep using it, click \"Create form this sample app\" and set it up!",
+        "banner.viewMore": "VIEW MORE"
+      },
+      "modified": {
+        "apps.title": "Try Dify's curated apps to find AI solutions for your business",
+        "apps.allCategories": "All",
+        "appCard.addToWorkspace": "Use template"
+      },
+      "deleted": [
+        "sidebar.discovery",
+        "sidebar.workspace",
+        "apps.description",
+        "appCard.customize"
+      ]
+    }
+  },
+  "es-ES": {
+    "explore": {
+      "added": {},
+      "modified": {},
+      "deleted": [
+        "sidebar.discovery",
+        "sidebar.workspace",
+        "apps.title",
+        "apps.description",
+        "apps.allCategories",
+        "appCard.addToWorkspace"
+      ]
+    }
+  },
+  "fa-IR": {
+    "explore": {
+      "added": {},
+      "modified": {},
+      "deleted": [
+        "sidebar.discovery",
+        "sidebar.workspace",
+        "apps.title",
+        "apps.description",
+        "apps.allCategories",
+        "appCard.addToWorkspace"
+      ]
+    }
+  },
+  "fr-FR": {
+    "explore": {
+      "added": {},
+      "modified": {},
+      "deleted": [
+        "sidebar.discovery",
+        "sidebar.workspace",
+        "apps.title",
+        "apps.description",
+        "apps.allCategories",
+        "appCard.addToWorkspace"
+      ]
+    }
+  },
+  "hi-IN": {
+    "explore": {
+      "added": {},
+      "modified": {},
+      "deleted": [
+        "sidebar.discovery",
+        "sidebar.workspace",
+        "apps.title",
+        "apps.description",
+        "apps.allCategories",
+        "appCard.addToWorkspace"
+      ]
+    }
+  },
+  "id-ID": {
+    "explore": {
+      "added": {},
+      "modified": {},
+      "deleted": [
+        "sidebar.workspace",
+        "sidebar.discovery",
+        "apps.allCategories",
+        "apps.description",
+        "apps.title",
+        "appCard.addToWorkspace"
+      ]
+    }
+  },
+  "it-IT": {
+    "explore": {
+      "added": {},
+      "modified": {},
+      "deleted": [
+        "sidebar.discovery",
+        "sidebar.workspace",
+        "apps.title",
+        "apps.description",
+        "apps.allCategories",
+        "appCard.addToWorkspace"
+      ]
+    }
+  },
+  "ja-JP": {
+    "common": {
+      "added": {
+        "chat.inputDisabledPlaceholder": "プレビューのみ"
+      },
+      "modified": {},
+      "deleted": []
+    },
+    "explore": {
+      "added": {
+        "sidebar.title": "アプリギャラリー",
+        "sidebar.webApps": "Webアプリ",
+        "sidebar.noApps.title": "Webアプリなし",
+        "sidebar.noApps.description": "公開されたWebアプリがここに表示されます",
+        "sidebar.noApps.learnMore": "詳細",
+        "apps.resultNum": "{{num}}件の結果",
+        "apps.resetFilter": "クリア",
+        "appCard.try": "詳細",
+        "tryApp.tabHeader.try": "お試し",
+        "tryApp.tabHeader.detail": "オーケストレーション詳細",
+        "tryApp.createFromSampleApp": "テンプレートから作成",
+        "tryApp.category": "カテゴリー",
+        "tryApp.requirements": "必要項目",
+        "tryApp.tryInfo": "これはサンプルアプリです。最大5件のメッセージまでお試しいただけます。引き続き利用するには、「テンプレートから作成」 をクリックして設定を行ってください。",
+        "banner.viewMore": "もっと見る"
+      },
+      "modified": {
+        "apps.title": "Difyの厳選アプリを試して、ビジネス向けのAIソリューションを見つけましょう",
+        "apps.allCategories": "全て",
+        "appCard.addToWorkspace": "テンプレートを使用"
+      },
+      "deleted": [
+        "sidebar.discovery",
+        "sidebar.workspace",
+        "apps.description"
+      ]
+    }
+  },
+  "ko-KR": {
+    "explore": {
+      "added": {},
+      "modified": {},
+      "deleted": [
+        "sidebar.discovery",
+        "sidebar.workspace",
+        "apps.title",
+        "apps.description",
+        "apps.allCategories",
+        "appCard.addToWorkspace"
+      ]
+    }
+  },
+  "pl-PL": {
+    "explore": {
+      "added": {},
+      "modified": {},
+      "deleted": [
+        "sidebar.discovery",
+        "sidebar.workspace",
+        "apps.title",
+        "apps.description",
+        "apps.allCategories",
+        "appCard.addToWorkspace"
+      ]
+    }
+  },
+  "pt-BR": {
+    "explore": {
+      "added": {},
+      "modified": {},
+      "deleted": [
+        "sidebar.discovery",
+        "sidebar.workspace",
+        "apps.title",
+        "apps.description",
+        "apps.allCategories",
+        "appCard.addToWorkspace"
+      ]
+    }
+  },
+  "ro-RO": {
+    "explore": {
+      "added": {},
+      "modified": {},
+      "deleted": [
+        "sidebar.discovery",
+        "sidebar.workspace",
+        "apps.title",
+        "apps.description",
+        "apps.allCategories",
+        "appCard.addToWorkspace"
+      ]
+    }
+  },
+  "ru-RU": {
+    "explore": {
+      "added": {},
+      "modified": {},
+      "deleted": [
+        "sidebar.discovery",
+        "sidebar.workspace",
+        "apps.title",
+        "apps.description",
+        "apps.allCategories",
+        "appCard.addToWorkspace"
+      ]
+    }
+  },
+  "sl-SI": {
+    "explore": {
+      "added": {},
+      "modified": {},
+      "deleted": [
+        "sidebar.discovery",
+        "sidebar.workspace",
+        "apps.title",
+        "apps.description",
+        "apps.allCategories",
+        "appCard.addToWorkspace"
+      ]
+    }
+  },
+  "th-TH": {
+    "explore": {
+      "added": {},
+      "modified": {},
+      "deleted": [
+        "sidebar.discovery",
+        "sidebar.workspace",
+        "apps.title",
+        "apps.description",
+        "apps.allCategories",
+        "appCard.addToWorkspace"
+      ]
+    }
+  },
+  "tr-TR": {
+    "explore": {
+      "added": {},
+      "modified": {},
+      "deleted": [
+        "sidebar.discovery",
+        "sidebar.workspace",
+        "apps.title",
+        "apps.description",
+        "apps.allCategories",
+        "appCard.addToWorkspace"
+      ]
+    }
+  },
+  "uk-UA": {
+    "explore": {
+      "added": {},
+      "modified": {},
+      "deleted": [
+        "sidebar.discovery",
+        "sidebar.workspace",
+        "apps.title",
+        "apps.description",
+        "apps.allCategories",
+        "appCard.addToWorkspace"
+      ]
+    }
+  },
+  "vi-VN": {
+    "explore": {
+      "added": {},
+      "modified": {},
+      "deleted": [
+        "sidebar.discovery",
+        "sidebar.workspace",
+        "apps.title",
+        "apps.description",
+        "apps.allCategories",
+        "appCard.addToWorkspace"
+      ]
+    }
+  },
+  "zh-Hans": {
+    "common": {
+      "added": {
+        "chat.inputDisabledPlaceholder": "仅供试用"
+      },
+      "modified": {},
+      "deleted": []
+    },
+    "explore": {
+      "added": {
+        "sidebar.title": "应用库",
+        "sidebar.webApps": "WEB APPS",
+        "sidebar.noApps.title": "没有 web apps",
+        "sidebar.noApps.description": "已发布的 web apps 将出现在此处",
+        "sidebar.noApps.learnMore": "了解更多",
+        "apps.resultNum": "{{num}} 个结果",
+        "apps.resetFilter": "清除筛选",
+        "appCard.try": "详情",
+        "tryApp.tabHeader.try": "试用",
+        "tryApp.tabHeader.detail": "编排详情",
+        "tryApp.createFromSampleApp": "从此模板创建应用",
+        "tryApp.category": "分类",
+        "tryApp.requirements": "必须配置项",
+        "tryApp.tryInfo": "这是一个示例应用，您可以试用最多 5 条消息。如需继续使用，请点击 “从此模板创建应用” 并完成配置！",
+        "banner.viewMore": "查看更多"
+      },
+      "modified": {
+        "apps.title": "试用 Dify 精选示例应用，为您的业务寻找 AI 解决方案",
+        "apps.allCategories": "所有",
+        "appCard.addToWorkspace": "使用模板"
+      },
+      "deleted": [
+        "sidebar.discovery",
+        "sidebar.workspace",
+        "apps.description"
+      ]
+    }
+  },
+  "zh-Hant": {
+    "explore": {
+      "added": {},
+      "modified": {},
+      "deleted": [
+        "sidebar.discovery",
+        "sidebar.workspace",
+        "apps.title",
+        "apps.description",
+        "apps.allCategories",
+        "appCard.addToWorkspace"
+      ]
+    }
+  }
+}

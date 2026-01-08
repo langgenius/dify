@@ -10,12 +10,14 @@ import uuid
 from collections.abc import Generator, Mapping
 from datetime import datetime
 from hashlib import sha256
-from typing import TYPE_CHECKING, Any, Optional, Union, cast
+from typing import TYPE_CHECKING, Annotated, Any, Optional, Union, cast
+from uuid import UUID
 from zoneinfo import available_timezones
 
 from flask import Response, stream_with_context
 from flask_restx import fields
 from pydantic import BaseModel
+from pydantic.functional_validators import AfterValidator
 
 from configs import dify_config
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
@@ -28,6 +30,38 @@ if TYPE_CHECKING:
     from models.model import EndUser
 
 logger = logging.getLogger(__name__)
+
+
+def escape_like_pattern(pattern: str) -> str:
+    """
+    Escape special characters in a string for safe use in SQL LIKE patterns.
+
+    This function escapes the special characters used in SQL LIKE patterns:
+    - Backslash (\\) -> \\
+    - Percent (%) -> \\%
+    - Underscore (_) -> \\_
+
+    The escaped pattern can then be safely used in SQL LIKE queries with the
+    ESCAPE '\\' clause to prevent SQL injection via LIKE wildcards.
+
+    Args:
+        pattern: The string pattern to escape
+
+    Returns:
+        Escaped string safe for use in SQL LIKE queries
+
+    Examples:
+        >>> escape_like_pattern("50% discount")
+        '50\\% discount'
+        >>> escape_like_pattern("test_data")
+        'test\\_data'
+        >>> escape_like_pattern("path\\to\\file")
+        'path\\\\to\\\\file'
+    """
+    if not pattern:
+        return pattern
+    # Escape backslash first, then percent and underscore
+    return pattern.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
 def extract_tenant_id(user: Union["Account", "EndUser"]) -> str | None:
@@ -103,7 +137,10 @@ def email(email):
     raise ValueError(error)
 
 
-def uuid_value(value):
+EmailStr = Annotated[str, AfterValidator(email)]
+
+
+def uuid_value(value: Any) -> str:
     if value == "":
         return str(value)
 
@@ -113,6 +150,19 @@ def uuid_value(value):
     except ValueError:
         error = f"{value} is not a valid uuid."
         raise ValueError(error)
+
+
+def normalize_uuid(value: str | UUID) -> str:
+    if not value:
+        return ""
+
+    try:
+        return uuid_value(value)
+    except ValueError as exc:
+        raise ValueError("must be a valid UUID") from exc
+
+
+UUIDStrOrEmpty = Annotated[str, AfterValidator(normalize_uuid)]
 
 
 def alphanumeric(value: str):
@@ -177,6 +227,15 @@ def timezone(timezone_string):
     raise ValueError(error)
 
 
+def convert_datetime_to_date(field, target_timezone: str = ":tz"):
+    if dify_config.DB_TYPE == "postgresql":
+        return f"DATE(DATE_TRUNC('day', {field} AT TIME ZONE 'UTC' AT TIME ZONE {target_timezone}))"
+    elif dify_config.DB_TYPE in ["mysql", "oceanbase", "seekdb"]:
+        return f"DATE(CONVERT_TZ({field}, 'UTC', {target_timezone}))"
+    else:
+        raise NotImplementedError(f"Unsupported database type: {dify_config.DB_TYPE}")
+
+
 def generate_string(n):
     letters_digits = string.ascii_letters + string.digits
     result = ""
@@ -202,7 +261,11 @@ def generate_text_hash(text: str) -> str:
 
 def compact_generate_response(response: Union[Mapping, Generator, RateLimitGenerator]) -> Response:
     if isinstance(response, dict):
-        return Response(response=json.dumps(jsonable_encoder(response)), status=200, mimetype="application/json")
+        return Response(
+            response=json.dumps(jsonable_encoder(response)),
+            status=200,
+            content_type="application/json; charset=utf-8",
+        )
     else:
 
         def generate() -> Generator:

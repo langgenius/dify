@@ -1,14 +1,14 @@
 import time
 import uuid
-from unittest import mock
 from uuid import uuid4
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.variables import ArrayStringVariable, StringVariable
-from core.workflow.conversation_variable_updater import ConversationVariableUpdater
 from core.workflow.entities import GraphInitParams
 from core.workflow.graph import Graph
+from core.workflow.graph_events.node import NodeRunSucceededEvent
 from core.workflow.nodes.node_factory import DifyNodeFactory
+from core.workflow.nodes.variable_assigner.common import helpers as common_helpers
 from core.workflow.nodes.variable_assigner.v1 import VariableAssignerNode
 from core.workflow.nodes.variable_assigner.v1.node_data import WriteMode
 from core.workflow.runtime import GraphRuntimeState, VariablePool
@@ -30,7 +30,13 @@ def test_overwrite_string_variable():
         "nodes": [
             {"data": {"type": "start", "title": "Start"}, "id": "start"},
             {
-                "data": {"type": "assigner", "version": "1", "title": "Variable Assigner", "items": []},
+                "data": {
+                    "type": "assigner",
+                    "title": "Variable Assigner",
+                    "assigned_variable_selector": ["conversation", "test_conversation_variable"],
+                    "write_mode": "over-write",
+                    "input_variable_selector": ["node_id", "test_string_variable"],
+                },
                 "id": "assigner",
             },
         ],
@@ -80,9 +86,6 @@ def test_overwrite_string_variable():
     )
     graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
 
-    mock_conv_var_updater = mock.Mock(spec=ConversationVariableUpdater)
-    mock_conv_var_updater_factory = mock.Mock(return_value=mock_conv_var_updater)
-
     node_config = {
         "id": "node_id",
         "data": {
@@ -98,23 +101,14 @@ def test_overwrite_string_variable():
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
         config=node_config,
-        conv_var_updater_factory=mock_conv_var_updater_factory,
     )
 
-    # Initialize node data
-    node.init_node_data(node_config["data"])
-
-    list(node.run())
-    expected_var = StringVariable(
-        id=conversation_variable.id,
-        name=conversation_variable.name,
-        description=conversation_variable.description,
-        selector=conversation_variable.selector,
-        value_type=conversation_variable.value_type,
-        value=input_variable.value,
-    )
-    mock_conv_var_updater.update.assert_called_once_with(conversation_id=conversation_id, variable=expected_var)
-    mock_conv_var_updater.flush.assert_called_once()
+    events = list(node.run())
+    succeeded_event = next(event for event in events if isinstance(event, NodeRunSucceededEvent))
+    updated_variables = common_helpers.get_updated_variables(succeeded_event.node_run_result.process_data)
+    assert updated_variables is not None
+    assert updated_variables[0].name == conversation_variable.name
+    assert updated_variables[0].new_value == input_variable.value
 
     got = variable_pool.get(["conversation", conversation_variable.name])
     assert got is not None
@@ -134,7 +128,13 @@ def test_append_variable_to_array():
         "nodes": [
             {"data": {"type": "start", "title": "Start"}, "id": "start"},
             {
-                "data": {"type": "assigner", "version": "1", "title": "Variable Assigner", "items": []},
+                "data": {
+                    "type": "assigner",
+                    "title": "Variable Assigner",
+                    "assigned_variable_selector": ["conversation", "test_conversation_variable"],
+                    "write_mode": "append",
+                    "input_variable_selector": ["node_id", "test_string_variable"],
+                },
                 "id": "assigner",
             },
         ],
@@ -182,9 +182,6 @@ def test_append_variable_to_array():
     )
     graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
 
-    mock_conv_var_updater = mock.Mock(spec=ConversationVariableUpdater)
-    mock_conv_var_updater_factory = mock.Mock(return_value=mock_conv_var_updater)
-
     node_config = {
         "id": "node_id",
         "data": {
@@ -200,25 +197,14 @@ def test_append_variable_to_array():
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
         config=node_config,
-        conv_var_updater_factory=mock_conv_var_updater_factory,
     )
 
-    # Initialize node data
-    node.init_node_data(node_config["data"])
-
-    list(node.run())
-    expected_value = list(conversation_variable.value)
-    expected_value.append(input_variable.value)
-    expected_var = ArrayStringVariable(
-        id=conversation_variable.id,
-        name=conversation_variable.name,
-        description=conversation_variable.description,
-        selector=conversation_variable.selector,
-        value_type=conversation_variable.value_type,
-        value=expected_value,
-    )
-    mock_conv_var_updater.update.assert_called_once_with(conversation_id=conversation_id, variable=expected_var)
-    mock_conv_var_updater.flush.assert_called_once()
+    events = list(node.run())
+    succeeded_event = next(event for event in events if isinstance(event, NodeRunSucceededEvent))
+    updated_variables = common_helpers.get_updated_variables(succeeded_event.node_run_result.process_data)
+    assert updated_variables is not None
+    assert updated_variables[0].name == conversation_variable.name
+    assert updated_variables[0].new_value == ["the first value", "the second value"]
 
     got = variable_pool.get(["conversation", conversation_variable.name])
     assert got is not None
@@ -237,7 +223,13 @@ def test_clear_array():
         "nodes": [
             {"data": {"type": "start", "title": "Start"}, "id": "start"},
             {
-                "data": {"type": "assigner", "version": "1", "title": "Variable Assigner", "items": []},
+                "data": {
+                    "type": "assigner",
+                    "title": "Variable Assigner",
+                    "assigned_variable_selector": ["conversation", "test_conversation_variable"],
+                    "write_mode": "clear",
+                    "input_variable_selector": [],
+                },
                 "id": "assigner",
             },
         ],
@@ -275,9 +267,6 @@ def test_clear_array():
     )
     graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
 
-    mock_conv_var_updater = mock.Mock(spec=ConversationVariableUpdater)
-    mock_conv_var_updater_factory = mock.Mock(return_value=mock_conv_var_updater)
-
     node_config = {
         "id": "node_id",
         "data": {
@@ -293,23 +282,14 @@ def test_clear_array():
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
         config=node_config,
-        conv_var_updater_factory=mock_conv_var_updater_factory,
     )
 
-    # Initialize node data
-    node.init_node_data(node_config["data"])
-
-    list(node.run())
-    expected_var = ArrayStringVariable(
-        id=conversation_variable.id,
-        name=conversation_variable.name,
-        description=conversation_variable.description,
-        selector=conversation_variable.selector,
-        value_type=conversation_variable.value_type,
-        value=[],
-    )
-    mock_conv_var_updater.update.assert_called_once_with(conversation_id=conversation_id, variable=expected_var)
-    mock_conv_var_updater.flush.assert_called_once()
+    events = list(node.run())
+    succeeded_event = next(event for event in events if isinstance(event, NodeRunSucceededEvent))
+    updated_variables = common_helpers.get_updated_variables(succeeded_event.node_run_result.process_data)
+    assert updated_variables is not None
+    assert updated_variables[0].name == conversation_variable.name
+    assert updated_variables[0].new_value == []
 
     got = variable_pool.get(["conversation", conversation_variable.name])
     assert got is not None

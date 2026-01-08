@@ -16,20 +16,27 @@ import type {
   IOnWorkflowFinished,
   IOnWorkflowStarted,
 } from './base'
-import {
-  del as consoleDel, get as consoleGet, patch as consolePatch, post as consolePost,
-  delPublic as del, getPublic as get, patchPublic as patch, postPublic as post, ssePost,
-} from './base'
 import type { FeedbackType } from '@/app/components/base/chat/chat/type'
+import type { ChatConfig } from '@/app/components/base/chat/types'
+import type { AccessMode } from '@/models/access-control'
 import type {
   AppConversationData,
   AppData,
   AppMeta,
   ConversationItem,
 } from '@/models/share'
-import type { ChatConfig } from '@/app/components/base/chat/types'
-import type { AccessMode } from '@/models/access-control'
 import { WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
+import {
+  del as consoleDel,
+  get as consoleGet,
+  patch as consolePatch,
+  post as consolePost,
+  delPublic as del,
+  getPublic as get,
+  patchPublic as patch,
+  postPublic as post,
+  ssePost,
+} from './base'
 import { getWebAppAccessToken } from './webapp-auth'
 
 export enum AppSourceType {
@@ -71,18 +78,19 @@ export const stopChatMessageResponding = async (appId: string, taskId: string, a
   return getAction('post', appSourceType)(getUrl(`chat-messages/${taskId}/stop`, appSourceType, installedAppId))
 }
 
-export const sendCompletionMessage = async (body: Record<string, any>, { onData, onCompleted, onError, onMessageReplace }: {
+export const sendCompletionMessage = async (body: Record<string, any>, { onData, onCompleted, onError, onMessageReplace, getAbortController }: {
   onData: IOnData
   onCompleted: IOnCompleted
   onError: IOnError
   onMessageReplace: IOnMessageReplace
+  getAbortController?: (abortController: AbortController) => void
 }, appSourceType: AppSourceType, installedAppId = '') => {
   return ssePost(getUrl('completion-messages', appSourceType, installedAppId), {
     body: {
       ...body,
       response_mode: 'streaming',
     },
-  }, { onData, onCompleted, isPublicAPI: getIsPublicAPI(appSourceType), onError, onMessageReplace })
+  }, { onData, onCompleted, isPublicAPI: getIsPublicAPI(appSourceType), onError, onMessageReplace, getAbortController })
 }
 
 export const sendWorkflowMessage = async (
@@ -137,6 +145,12 @@ export const sendWorkflowMessage = async (
     onTextChunk,
     onTextReplace,
   })
+}
+
+export const stopWorkflowMessage = async (_appId: string, taskId: string, appSourceType: AppSourceType, installedAppId = '') => {
+  if (!taskId)
+    return
+  return getAction('post', appSourceType)(getUrl(`workflows/tasks/${taskId}/stop`, appSourceType, installedAppId))
 }
 
 export const fetchAppInfo = async () => {
@@ -241,7 +255,7 @@ export const fetchAppMeta = async (appSourceType: AppSourceType, installedAppId 
   return (getAction('get', appSourceType))(getUrl('meta', appSourceType, installedAppId)) as Promise<AppMeta>
 }
 
-export const updateFeedback = async ({ url, body }: { url: string; body: FeedbackType }, appSourceType: AppSourceType, installedAppId = '') => {
+export const updateFeedback = async ({ url, body }: { url: string, body: FeedbackType }, appSourceType: AppSourceType, installedAppId = '') => {
   return (getAction('post', appSourceType))(getUrl(url, appSourceType, installedAppId), { body })
 }
 
@@ -275,8 +289,12 @@ export const audioToText = (url: string, appSourceType: AppSourceType, body: For
   return (getAction('post', appSourceType))(url, { body }, { bodyStringify: false, deleteContentType: true }) as Promise<{ text: string }>
 }
 
-export const textToAudioStream = (url: string, appSourceType: AppSourceType, header: { content_type: string }, body: { streaming: boolean; voice?: string; message_id?: string; text?: string | null | undefined }) => {
+export const textToAudioStream = (url: string, appSourceType: AppSourceType, header: { content_type: string }, body: { streaming: boolean, voice?: string, message_id?: string, text?: string | null | undefined }) => {
   return (getAction('post', appSourceType))(url, { body, header }, { needAllResponseContent: true })
+}
+
+export const textToAudio = (url: string, appSourceType: AppSourceType, body: FormData) => {
+  return (getAction('post', appSourceType))(url, { body }, { bodyStringify: false, deleteContentType: true }) as Promise<{ data: string }>
 }
 
 export const fetchAccessToken = async ({ userId, appCode }: { userId?: string, appCode: string }) => {

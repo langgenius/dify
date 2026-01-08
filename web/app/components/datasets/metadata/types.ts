@@ -25,7 +25,7 @@ export type MetadataItemInBatchEdit = MetadataItemWithValue & {
   isMultipleValue?: boolean
 }
 
-export type MetadataBatchEditToServer = { document_id: string, metadata_list: MetadataItemWithValue[] }[]
+export type MetadataBatchEditToServer = { document_id: string, metadata_list: MetadataItemWithValue[], partial_update?: boolean }[]
 
 export enum UpdateType {
   changeValue = 'changeValue',

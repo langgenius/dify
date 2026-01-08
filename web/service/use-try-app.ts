@@ -1,7 +1,7 @@
-import { useQuery } from '@tanstack/react-query'
-import { fetchTryAppDatasets, fetchTryAppFlowPreview, fetchTryAppInfo } from './try-app'
-import { AppSourceType, fetchAppParams } from './share'
 import type { DataSetListResponse } from '@/models/datasets'
+import { useQuery } from '@tanstack/react-query'
+import { AppSourceType, fetchAppParams } from './share'
+import { fetchTryAppDatasets, fetchTryAppFlowPreview, fetchTryAppInfo } from './try-app'
 
 const NAME_SPACE = 'try-app'
 

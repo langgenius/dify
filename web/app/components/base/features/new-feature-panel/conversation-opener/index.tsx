@@ -1,16 +1,17 @@
-import React, { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { produce } from 'immer'
+import type { OnFeaturesChange } from '@/app/components/base/features/types'
+import type { InputVar } from '@/app/components/workflow/types'
+import type { PromptVariable } from '@/models/debug'
 import { RiEditLine } from '@remixicon/react'
-import { LoveMessage } from '@/app/components/base/icons/src/vender/features'
-import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
+import { produce } from 'immer'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
-import type { OnFeaturesChange } from '@/app/components/base/features/types'
+import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
 import { FeatureEnum } from '@/app/components/base/features/types'
+import { LoveMessage } from '@/app/components/base/icons/src/vender/features'
 import { useModalContext } from '@/context/modal-context'
-import type { PromptVariable } from '@/models/debug'
-import type { InputVar } from '@/app/components/workflow/types'
 
 type Props = {
   disabled?: boolean
@@ -80,12 +81,12 @@ const ConversationOpener = ({
 
   return (
     <FeatureCard
-      icon={
-        <div className='shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-light-blue-light-500 p-1 shadow-xs'>
-          <LoveMessage className='h-4 w-4 text-text-primary-on-surface' />
+      icon={(
+        <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-light-blue-light-500 p-1 shadow-xs">
+          <LoveMessage className="h-4 w-4 text-text-primary-on-surface" />
         </div>
-      }
-      title={t('appDebug.feature.conversationOpener.title')}
+      )}
+      title={t('feature.conversationOpener.title', { ns: 'appDebug' })}
       value={!!opening?.enabled}
       onChange={state => handleChange(FeatureEnum.opening, state)}
       onMouseEnter={() => setIsHovering(true)}
@@ -94,19 +95,19 @@ const ConversationOpener = ({
     >
       <>
         {!opening?.enabled && (
-          <div className='system-xs-regular line-clamp-2 min-h-8 text-text-tertiary'>{t('appDebug.feature.conversationOpener.description')}</div>
+          <div className="system-xs-regular line-clamp-2 min-h-8 text-text-tertiary">{t('feature.conversationOpener.description', { ns: 'appDebug' })}</div>
         )}
         {!!opening?.enabled && (
           <>
             {!isHovering && (
-              <div className='system-xs-regular line-clamp-2 min-h-8 text-text-tertiary'>
-                {opening.opening_statement || t('appDebug.openingStatement.placeholder')}
+              <div className="system-xs-regular line-clamp-2 min-h-8 text-text-tertiary">
+                {opening.opening_statement || t('openingStatement.placeholder', { ns: 'appDebug' })}
               </div>
             )}
             {isHovering && (
-              <Button className='w-full' onClick={handleOpenOpeningModal} disabled={disabled}>
-                <RiEditLine className='mr-1 h-4 w-4' />
-                {t('appDebug.openingStatement.writeOpener')}
+              <Button className="w-full" onClick={handleOpenOpeningModal} disabled={disabled}>
+                <RiEditLine className="mr-1 h-4 w-4" />
+                {t('openingStatement.writeOpener', { ns: 'appDebug' })}
               </Button>
             )}
           </>

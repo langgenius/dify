@@ -1,11 +1,11 @@
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type { ToolNodeType } from '@/app/components/workflow/nodes/tool/types'
+import type { TryAppInfo } from '@/service/try-app'
+import type { AgentTool } from '@/types/app'
+import { uniqBy } from 'es-toolkit/compat'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { MARKETPLACE_API_PREFIX } from '@/config'
-import type { TryAppInfo } from '@/service/try-app'
 import { useGetTryAppFlowPreview } from '@/service/use-try-app'
-import type { AgentTool } from '@/types/app'
-import { uniqBy } from 'lodash-es'
 
 type Params = {
   appDetail: TryAppInfo
@@ -27,7 +27,7 @@ const useGetRequirements = ({ appDetail, appId }: Params) => {
   const { data: flowData } = useGetTryAppFlowPreview(appId, isBasic)
 
   const requirements: RequirementItem[] = []
-  if(isBasic) {
+  if (isBasic) {
     const modelProviderAndName = appDetail.model_config.model.provider.split('/')
     const name = appDetail.model_config.model.provider.split('/').pop() || ''
     requirements.push({
@@ -35,7 +35,7 @@ const useGetRequirements = ({ appDetail, appId }: Params) => {
       iconUrl: getIconUrl(modelProviderAndName[0], modelProviderAndName[1]),
     })
   }
-  if(isAgent) {
+  if (isAgent) {
     requirements.push(...appDetail.model_config.agent_mode.tools.filter(data => (data as AgentTool).enabled).map((data) => {
       const tool = data as AgentTool
       const modelProviderAndName = tool.provider_id.split('/')
@@ -45,7 +45,7 @@ const useGetRequirements = ({ appDetail, appId }: Params) => {
       }
     }))
   }
-  if(isAdvanced && flowData && flowData?.graph?.nodes?.length > 0) {
+  if (isAdvanced && flowData && flowData?.graph?.nodes?.length > 0) {
     const nodes = flowData.graph.nodes
     const llmNodes = nodes.filter(node => node.data.type === BlockEnum.LLM)
     requirements.push(...llmNodes.map((node) => {

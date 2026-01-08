@@ -1,27 +1,28 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
-import cn from '@/utils/classnames'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import type { Task } from '../../../share/text-generation/types'
+import type { MoreLikeThisConfig, PromptConfig, TextToSpeechConfig } from '@/models/debug'
+import type { AppData, SiteInfo } from '@/models/share'
+import type { VisionFile, VisionSettings } from '@/types/app'
+import { useBoolean } from 'ahooks'
+import { noop } from 'es-toolkit/function'
+import * as React from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Alert from '@/app/components/base/alert'
 import AppIcon from '@/app/components/base/app-icon'
 import Loading from '@/app/components/base/loading'
-import { appDefaultIconBackground } from '@/config'
-import RunOnce from '../../../share/text-generation/run-once'
-import { useWebAppStore } from '@/context/web-app-context'
-import type { AppData, SiteInfo } from '@/models/share'
-import { useGetTryAppParams } from '@/service/use-try-app'
-import type { MoreLikeThisConfig, PromptConfig, TextToSpeechConfig } from '@/models/debug'
-import { userInputsFormToPromptVariables } from '@/utils/model-config'
-import type { VisionFile, VisionSettings } from '@/types/app'
-import { Resolution, TransferMethod } from '@/types/app'
-import { useBoolean } from 'ahooks'
-import { noop } from 'lodash-es'
-import type { Task } from '../../../share/text-generation/types'
 import Res from '@/app/components/share/text-generation/result'
-import { AppSourceType } from '@/service/share'
 import { TaskStatus } from '@/app/components/share/text-generation/types'
-import Alert from '@/app/components/base/alert'
-import { useTranslation } from 'react-i18next'
+import { appDefaultIconBackground } from '@/config'
+import { useWebAppStore } from '@/context/web-app-context'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { AppSourceType } from '@/service/share'
+import { useGetTryAppParams } from '@/service/use-try-app'
+import { Resolution, TransferMethod } from '@/types/app'
+import { cn } from '@/utils/classnames'
+import { userInputsFormToPromptVariables } from '@/utils/model-config'
+import RunOnce from '../../../share/text-generation/run-once'
 
 type Props = {
   appId: string
@@ -81,12 +82,14 @@ const TextGeneration: FC<Props> = ({
   const [resultExisted, setResultExisted] = useState(false)
 
   useEffect(() => {
-    if (!appData) return
+    if (!appData)
+      return
     updateAppInfo(appData)
   }, [appData, updateAppInfo])
 
   useEffect(() => {
-    if (!tryAppParams) return
+    if (!tryAppParams)
+      return
     updateAppParams(tryAppParams)
   }, [tryAppParams, updateAppParams])
 
@@ -125,29 +128,31 @@ const TextGeneration: FC<Props> = ({
     setTrue: hideTryNotice,
   }] = useBoolean(false)
 
-  const renderRes = (task?: Task) => (<Res
-    key={task?.id}
-    isWorkflow={!!isWorkflow}
-    isCallBatchAPI={false}
-    isPC={isPC}
-    isMobile={!isPC}
-    appSourceType={AppSourceType.tryApp}
-    appId={appId}
-    isError={task?.status === TaskStatus.failed}
-    promptConfig={promptConfig}
-    moreLikeThisEnabled={!!moreLikeThisConfig?.enabled}
-    inputs={inputs}
-    controlSend={controlSend}
-    onShowRes={showResultPanel}
-    handleSaveMessage={noop}
-    taskId={task?.id}
-    onCompleted={handleCompleted}
-    visionConfig={visionConfig}
-    completionFiles={completionFiles}
-    isShowTextToSpeech={!!textToSpeechConfig?.enabled}
-    siteInfo={siteInfo}
-    onRunStart={() => setResultExisted(true)}
-  />)
+  const renderRes = (task?: Task) => (
+    <Res
+      key={task?.id}
+      isWorkflow={!!isWorkflow}
+      isCallBatchAPI={false}
+      isPC={isPC}
+      isMobile={!isPC}
+      appSourceType={AppSourceType.tryApp}
+      appId={appId}
+      isError={task?.status === TaskStatus.failed}
+      promptConfig={promptConfig}
+      moreLikeThisEnabled={!!moreLikeThisConfig?.enabled}
+      inputs={inputs}
+      controlSend={controlSend}
+      onShowRes={showResultPanel}
+      handleSaveMessage={noop}
+      taskId={task?.id}
+      onCompleted={handleCompleted}
+      visionConfig={visionConfig}
+      completionFiles={completionFiles}
+      isShowTextToSpeech={!!textToSpeechConfig?.enabled}
+      siteInfo={siteInfo}
+      onRunStart={() => setResultExisted(true)}
+    />
+  )
 
   const renderResWrap = (
     <div
@@ -158,9 +163,10 @@ const TextGeneration: FC<Props> = ({
     >
       <div className={cn(
         'flex h-0 grow flex-col overflow-y-auto p-6',
-      )}>
+      )}
+      >
         {isCompleted && !isHideTryNotice && (
-          <Alert className='mb-3 shrink-0' message={t('explore.tryApp.tryInfo')} onHide={hideTryNotice} />
+          <Alert className="mb-3 shrink-0" message={t('tryApp.tryInfo', { ns: 'explore' })} onHide={hideTryNotice} />
         )}
         {renderRes()}
       </div>
@@ -170,7 +176,7 @@ const TextGeneration: FC<Props> = ({
   if (!siteInfo || !promptConfig) {
     return (
       <div className={cn('flex h-screen items-center', className)}>
-        <Loading type='app' />
+        <Loading type="app" />
       </div>
     )
   }
@@ -182,16 +188,18 @@ const TextGeneration: FC<Props> = ({
       !isPC && 'flex-col',
       'h-full rounded-2xl shadow-md',
       className,
-    )}>
+    )}
+    >
       {/* Left */}
       <div className={cn(
         'relative flex h-full shrink-0 flex-col',
         isPC && 'w-[600px] max-w-[50%]',
         'rounded-l-2xl bg-components-panel-bg',
-      )}>
+      )}
+      >
         {/* Header */}
         <div className={cn('shrink-0 space-y-4 pb-2', isPC ? ' p-8 pb-0' : 'p-4 pb-0')}>
-          <div className='flex items-center gap-3'>
+          <div className="flex items-center gap-3">
             <AppIcon
               size={isPC ? 'large' : 'small'}
               iconType={siteInfo.icon_type}
@@ -199,10 +207,10 @@ const TextGeneration: FC<Props> = ({
               background={siteInfo.icon_background || appDefaultIconBackground}
               imageUrl={siteInfo.icon_url}
             />
-            <div className='system-md-semibold grow truncate text-text-secondary'>{siteInfo.title}</div>
+            <div className="system-md-semibold grow truncate text-text-secondary">{siteInfo.title}</div>
           </div>
           {siteInfo.description && (
-            <div className='system-xs-regular text-text-tertiary'>{siteInfo.description}</div>
+            <div className="system-xs-regular text-text-tertiary">{siteInfo.description}</div>
           )}
         </div>
         {/* form */}
@@ -210,7 +218,8 @@ const TextGeneration: FC<Props> = ({
           'h-0 grow overflow-y-auto',
           isPC ? 'px-8' : 'px-4',
           !isPC && resultExisted && customConfig?.remove_webapp_brand && 'rounded-b-2xl border-b-[0.5px] border-divider-regular',
-        )}>
+        )}
+        >
           <RunOnce
             siteInfo={siteInfo}
             inputs={inputs}
@@ -240,7 +249,7 @@ const TextGeneration: FC<Props> = ({
                 showResultPanel()
             }}
           >
-            <div className='h-1 w-8 cursor-grab rounded bg-divider-solid' />
+            <div className="h-1 w-8 cursor-grab rounded bg-divider-solid" />
           </div>
         )}
         {renderResWrap}

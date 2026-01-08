@@ -342,9 +342,11 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                 self._task_state.llm_result.message.content = current_content
 
                 if isinstance(event, QueueLLMChunkEvent):
+                    event_type = self._message_cycle_manager.get_message_event_type(message_id=self._message_id)
                     yield self._message_cycle_manager.message_to_stream_response(
                         answer=cast(str, delta_text),
                         message_id=self._message_id,
+                        event_type=event_type,
                     )
                 else:
                     yield self._agent_message_to_stream_response(
@@ -360,7 +362,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         if publisher:
             publisher.publish(None)
         if self._conversation_name_generate_thread:
-            self._conversation_name_generate_thread.join()
+            logger.debug("Conversation name generation running as daemon thread")
 
     def _save_message(self, *, session: Session, trace_manager: TraceQueueManager | None = None):
         """

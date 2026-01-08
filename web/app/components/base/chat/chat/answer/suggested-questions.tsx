@@ -1,8 +1,8 @@
 import type { FC } from 'react'
-import { memo } from 'react'
 import type { ChatItem } from '../../types'
+import { memo } from 'react'
+import { cn } from '@/utils/classnames'
 import { useChatContext } from '../context'
-import cn from '@/utils/classnames'
 
 type SuggestedQuestionsProps = {
   item: ChatItem
@@ -21,7 +21,7 @@ const SuggestedQuestions: FC<SuggestedQuestionsProps> = ({
     return null
 
   return (
-    <div className='flex flex-wrap'>
+    <div className="flex flex-wrap">
       {suggestedQuestions.filter(q => !!q && q.trim()).map((question, index) => (
         <div
           key={index}
@@ -32,7 +32,8 @@ const SuggestedQuestions: FC<SuggestedQuestionsProps> = ({
           onClick={() => !readonly && onSend?.(question)}
         >
           {question}
-        </div>),
+        </div>
+      ),
       )}
     </div>
   )

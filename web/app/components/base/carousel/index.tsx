@@ -1,7 +1,8 @@
-import cn from '@/utils/classnames'
+import type { UseEmblaCarouselType } from 'embla-carousel-react'
 import Autoplay from 'embla-carousel-autoplay'
-import useEmblaCarousel, { type UseEmblaCarouselType } from 'embla-carousel-react'
+import useEmblaCarousel from 'embla-carousel-react'
 import * as React from 'react'
+import { cn } from '@/utils/classnames'
 
 type CarouselApi = UseEmblaCarouselType[1]
 type UseCarouselParameters = Parameters<typeof useEmblaCarousel>
@@ -9,19 +10,19 @@ type CarouselOptions = UseCarouselParameters[0]
 type CarouselPlugin = UseCarouselParameters[1]
 
 type CarouselProps = {
-  opts?: CarouselOptions;
-  plugins?: CarouselPlugin;
-  orientation?: 'horizontal' | 'vertical';
+  opts?: CarouselOptions
+  plugins?: CarouselPlugin
+  orientation?: 'horizontal' | 'vertical'
 }
 
 type CarouselContextValue = {
-  carouselRef: ReturnType<typeof useEmblaCarousel>[0];
-  api: ReturnType<typeof useEmblaCarousel>[1];
-  scrollPrev: () => void;
-  scrollNext: () => void;
-  selectedIndex: number;
-  canScrollPrev: boolean;
-  canScrollNext: boolean;
+  carouselRef: ReturnType<typeof useEmblaCarousel>[0]
+  api: ReturnType<typeof useEmblaCarousel>[1]
+  scrollPrev: () => void
+  scrollNext: () => void
+  selectedIndex: number
+  canScrollPrev: boolean
+  canScrollNext: boolean
 } & CarouselProps
 
 const CarouselContext = React.createContext<CarouselContextValue | null>(null)
@@ -36,14 +37,14 @@ function useCarousel() {
 }
 
 type TCarousel = {
-  Content: typeof CarouselContent;
-  Item: typeof CarouselItem;
-  Previous: typeof CarouselPrevious;
-  Next: typeof CarouselNext;
-  Dot: typeof CarouselDot;
-  Plugin: typeof CarouselPlugins;
+  Content: typeof CarouselContent
+  Item: typeof CarouselItem
+  Previous: typeof CarouselPrevious
+  Next: typeof CarouselNext
+  Dot: typeof CarouselDot
+  Plugin: typeof CarouselPlugins
 } & React.ForwardRefExoticComponent<
-    React.HTMLAttributes<HTMLDivElement> & CarouselProps & React.RefAttributes<CarouselContextValue>
+  React.HTMLAttributes<HTMLDivElement> & CarouselProps & React.RefAttributes<CarouselContextValue>
 >
 
 const Carousel: TCarousel = React.forwardRef(
@@ -159,7 +160,7 @@ const CarouselItem = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLD
 CarouselItem.displayName = 'CarouselItem'
 
 type CarouselActionProps = {
-  children?: React.ReactNode;
+  children?: React.ReactNode
 } & Omit<React.HTMLAttributes<HTMLButtonElement>, 'disabled' | 'onClick'>
 
 const CarouselPrevious = React.forwardRef<HTMLButtonElement, CarouselActionProps>(

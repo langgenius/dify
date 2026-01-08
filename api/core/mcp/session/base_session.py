@@ -68,13 +68,7 @@ class RequestResponder(Generic[ReceiveRequestT, SendResultT]):
         request_id: RequestId,
         request_meta: RequestParams.Meta | None,
         request: ReceiveRequestT,
-        session: """BaseSession[
-            SendRequestT,
-            SendNotificationT,
-            SendResultT,
-            ReceiveRequestT,
-            ReceiveNotificationT
-        ]""",
+        session: """BaseSession[SendRequestT, SendNotificationT, SendResultT, ReceiveRequestT, ReceiveNotificationT]""",
         on_complete: Callable[["RequestResponder[ReceiveRequestT, SendResultT]"], Any],
     ):
         self.request_id = request_id
@@ -149,7 +143,7 @@ class BaseSession(
     messages when entered.
     """
 
-    _response_streams: dict[RequestId, queue.Queue[JSONRPCResponse | JSONRPCError]]
+    _response_streams: dict[RequestId, queue.Queue[JSONRPCResponse | JSONRPCError | HTTPStatusError]]
     _request_id: int
     _in_flight: dict[RequestId, RequestResponder[ReceiveRequestT, SendResultT]]
     _receive_request_type: type[ReceiveRequestT]
@@ -230,7 +224,7 @@ class BaseSession(
         request_id = self._request_id
         self._request_id = request_id + 1
 
-        response_queue: queue.Queue[JSONRPCResponse | JSONRPCError] = queue.Queue()
+        response_queue: queue.Queue[JSONRPCResponse | JSONRPCError | HTTPStatusError] = queue.Queue()
         self._response_streams[request_id] = response_queue
 
         try:
@@ -261,11 +255,17 @@ class BaseSession(
                         message="No response received",
                     )
                 )
+            elif isinstance(response_or_error, HTTPStatusError):
+                # HTTPStatusError from streamable_client with preserved response object
+                if response_or_error.response.status_code == 401:
+                    raise MCPAuthError(response=response_or_error.response)
+                else:
+                    raise MCPConnectionError(
+                        ErrorData(code=response_or_error.response.status_code, message=str(response_or_error))
+                    )
             elif isinstance(response_or_error, JSONRPCError):
                 if response_or_error.error.code == 401:
-                    raise MCPAuthError(
-                        ErrorData(code=response_or_error.error.code, message=response_or_error.error.message)
-                    )
+                    raise MCPAuthError(message=response_or_error.error.message)
                 else:
                     raise MCPConnectionError(
                         ErrorData(code=response_or_error.error.code, message=response_or_error.error.message)
@@ -327,13 +327,17 @@ class BaseSession(
                 if isinstance(message, HTTPStatusError):
                     response_queue = self._response_streams.get(self._request_id - 1)
                     if response_queue is not None:
-                        response_queue.put(
-                            JSONRPCError(
-                                jsonrpc="2.0",
-                                id=self._request_id - 1,
-                                error=ErrorData(code=message.response.status_code, message=message.args[0]),
+                        # For 401 errors, pass the HTTPStatusError directly to preserve response object
+                        if message.response.status_code == 401:
+                            response_queue.put(message)
+                        else:
+                            response_queue.put(
+                                JSONRPCError(
+                                    jsonrpc="2.0",
+                                    id=self._request_id - 1,
+                                    error=ErrorData(code=message.response.status_code, message=message.args[0]),
+                                )
                             )
-                        )
                     else:
                         self._handle_incoming(RuntimeError(f"Received response with an unknown request ID: {message}"))
                 elif isinstance(message, Exception):

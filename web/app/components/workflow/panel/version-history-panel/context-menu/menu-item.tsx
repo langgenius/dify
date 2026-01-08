@@ -1,6 +1,7 @@
-import React, { type FC } from 'react'
+import type { FC } from 'react'
 import type { VersionHistoryContextMenuOptions } from '../../../types'
-import cn from '@/utils/classnames'
+import * as React from 'react'
+import { cn } from '@/utils/classnames'
 
 type MenuItemProps = {
   item: {
@@ -29,7 +30,8 @@ const MenuItem: FC<MenuItemProps> = ({
       <div className={cn(
         'system-md-regular flex-1 text-text-primary',
         isDestructive && 'hover:text-text-destructive',
-      )}>
+      )}
+      >
         {item.name}
       </div>
     </div>
