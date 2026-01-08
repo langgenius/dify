@@ -20,7 +20,7 @@ import {
 } from 'react'
 import { useMarketplaceFilters } from '@/hooks/use-query-params'
 import { postMarketplace } from '@/service/base'
-import { useMarketplaceSort } from './atoms'
+import { useMarketplaceSort, useMarketplaceSortValue } from './atoms'
 import { DEFAULT_SORT, SCROLL_BOTTOM_THRESHOLD } from './constants'
 import { PLUGIN_TYPE_SEARCH_MAP } from './plugin-type-switch'
 import { marketplaceKeys } from './query-keys'
@@ -264,7 +264,7 @@ export function useMarketplacePluginsReactive(queryParams?: PluginsSearchParams)
  */
 export function useMarketplacePluginsData() {
   const [urlFilters] = useMarketplaceFilters()
-  const [sort, setSort] = useMarketplaceSort()
+  const sort = useMarketplaceSortValue()
 
   const searchPluginText = urlFilters.q
   const filterPluginTags = urlFilters.tags
@@ -297,10 +297,6 @@ export function useMarketplacePluginsData() {
     page: pluginsPage,
   } = useMarketplacePluginsReactive(queryParams)
 
-  const handleSortChange = useCallback((newSort: typeof sort) => {
-    setSort(newSort)
-  }, [setSort])
-
   const handlePageChange = useCallback(() => {
     if (hasNextPage)
       fetchNextPage()
@@ -314,8 +310,6 @@ export function useMarketplacePluginsData() {
     pluginsTotal,
     page: Math.max(pluginsPage, 1),
     isLoading: isPluginsLoading,
-    sort,
-    handleSortChange,
   }
 }
 
@@ -347,20 +341,13 @@ export function useMarketplaceData() {
   const pluginsData = useMarketplacePluginsData()
 
   return {
-    // Collections data
     marketplaceCollections: collectionsData.marketplaceCollections,
     marketplaceCollectionPluginsMap: collectionsData.marketplaceCollectionPluginsMap,
 
-    // Plugins data
     plugins: pluginsData.plugins,
     pluginsTotal: pluginsData.pluginsTotal,
     page: pluginsData.page,
 
-    // Sort
-    sort: pluginsData.sort,
-    handleSortChange: pluginsData.handleSortChange,
-
-    // Loading state
     isLoading: collectionsData.isLoading || pluginsData.isLoading,
   }
 }
