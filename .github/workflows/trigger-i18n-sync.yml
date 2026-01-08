@@ -35,18 +35,18 @@ jobs:
           fi
 
           # Detect changed i18n files
-          changed=$(git diff --name-only "$BEFORE_SHA" ${{ github.sha }} -- 'web/i18n/en-US/*.json' 2>/dev/null | xargs -n1 basename 2>/dev/null | sed 's/.json$//' | tr '\n' ' ' || echo "")
+          changed=$(git diff --name-only "$BEFORE_SHA" "${{ github.sha }}" -- 'web/i18n/en-US/*.json' 2>/dev/null | xargs -n1 basename 2>/dev/null | sed 's/.json$//' | tr '\n' ' ' || echo "")
           echo "changed_files=$changed" >> $GITHUB_OUTPUT
 
           # Generate diff for context
-          git diff "$BEFORE_SHA"..${{ github.sha }} -- 'web/i18n/en-US/*.json' > /tmp/i18n-diff.txt 2>/dev/null || echo "" > /tmp/i18n-diff.txt
+          git diff "$BEFORE_SHA" "${{ github.sha }}" -- 'web/i18n/en-US/*.json' > /tmp/i18n-diff.txt 2>/dev/null || echo "" > /tmp/i18n-diff.txt
 
-          # Truncate if too large (keep first 30KB to stay within payload limits)
-          head -c 30000 /tmp/i18n-diff.txt > /tmp/i18n-diff-truncated.txt
+          # Truncate if too large (keep first 50KB to match receiving workflow)
+          head -c 50000 /tmp/i18n-diff.txt > /tmp/i18n-diff-truncated.txt
           mv /tmp/i18n-diff-truncated.txt /tmp/i18n-diff.txt
 
-          # Base64 encode the diff for safe JSON transport
-          diff_base64=$(base64 -w 0 < /tmp/i18n-diff.txt 2>/dev/null || base64 < /tmp/i18n-diff.txt)
+          # Base64 encode the diff for safe JSON transport (portable, single-line)
+          diff_base64=$(base64 < /tmp/i18n-diff.txt | tr -d '\n')
           echo "diff_base64=$diff_base64" >> $GITHUB_OUTPUT
 
           if [ -n "$changed" ]; then

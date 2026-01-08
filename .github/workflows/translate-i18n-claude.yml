@@ -91,14 +91,21 @@ jobs:
             fi
           elif [ "${{ github.event_name }}" == "repository_dispatch" ]; then
             # Triggered by push via trigger-i18n-sync.yml workflow
+            # Validate required payload fields
+            if [ -z "${{ github.event.client_payload.changed_files }}" ]; then
+              echo "Warning: repository_dispatch payload missing 'changed_files' field" >&2
+            fi
             echo "CHANGED_FILES=${{ github.event.client_payload.changed_files }}" >> $GITHUB_OUTPUT
             echo "TARGET_LANGS=" >> $GITHUB_OUTPUT
-            echo "SYNC_MODE=${{ github.event.client_payload.sync_mode }}" >> $GITHUB_OUTPUT
+            echo "SYNC_MODE=${{ github.event.client_payload.sync_mode || 'incremental' }}" >> $GITHUB_OUTPUT
 
             # Decode the base64-encoded diff from the trigger workflow
             if [ -n "${{ github.event.client_payload.diff_base64 }}" ]; then
-              echo "${{ github.event.client_payload.diff_base64 }}" | base64 -d > /tmp/i18n-diff.txt 2>/dev/null || echo "" > /tmp/i18n-diff.txt
-              if [ -s /tmp/i18n-diff.txt ]; then
+              if ! echo "${{ github.event.client_payload.diff_base64 }}" | base64 -d > /tmp/i18n-diff.txt 2>&1; then
+                echo "Warning: Failed to decode base64 diff payload" >&2
+                echo "" > /tmp/i18n-diff.txt
+                echo "DIFF_AVAILABLE=false" >> $GITHUB_OUTPUT
+              elif [ -s /tmp/i18n-diff.txt ]; then
                 echo "DIFF_AVAILABLE=true" >> $GITHUB_OUTPUT
               else
                 echo "DIFF_AVAILABLE=false" >> $GITHUB_OUTPUT
