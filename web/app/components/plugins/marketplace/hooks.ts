@@ -21,9 +21,9 @@ import {
   useMemo,
   useState,
 } from 'react'
-import { useMarketplaceCategory, useMarketplaceFilters } from '@/hooks/use-query-params'
+import { useMarketplaceCategory, useMarketplaceSearchQuery, useMarketplaceTags } from '@/hooks/use-query-params'
 import { postMarketplace } from '@/service/base'
-import { useMarketplaceSort, useMarketplaceSortValue } from './atoms'
+import { useMarketplaceSortValue, useSetMarketplaceSort } from './atoms'
 import { DEFAULT_SORT, SCROLL_BOTTOM_THRESHOLD } from './constants'
 import { PLUGIN_TYPE_SEARCH_MAP } from './plugin-type-switch'
 import { marketplaceKeys } from './query-keys'
@@ -271,22 +271,17 @@ export const useMarketplaceContainerScroll = (
 
 export type { MarketplaceCollection, PluginsSearchParams }
 
-/**
- * Reactive hook that automatically fetches plugins based on current state
- */
 export function useMarketplacePluginsData() {
-  const [urlFilters] = useMarketplaceFilters()
   const sort = useMarketplaceSortValue()
 
-  const searchPluginText = urlFilters.q
-  const filterPluginTags = urlFilters.tags
-  const activePluginType = urlFilters.category
+  const [searchPluginText] = useMarketplaceSearchQuery()
+  const [filterPluginTags] = useMarketplaceTags()
+  const [activePluginType] = useMarketplaceCategory()
 
   const isSearchMode = !!searchPluginText
     || filterPluginTags.length > 0
     || (activePluginType !== PLUGIN_TYPE_SEARCH_MAP.all && activePluginType !== PLUGIN_TYPE_SEARCH_MAP.tool)
 
-  // Compute query params reactively - TanStack Query will auto-refetch when this changes
   const queryParams = useMemo((): PluginsSearchParams | undefined => {
     if (!isSearchMode)
       return undefined
@@ -342,8 +337,8 @@ export function useMarketplaceData() {
 }
 
 export function useMarketplaceMoreClick() {
-  const [, setUrlFilters] = useMarketplaceFilters()
-  const [, setSort] = useMarketplaceSort()
+  const [,setQ] = useMarketplaceSearchQuery()
+  const setSort = useSetMarketplaceSort()
 
   return useCallback((searchParams?: { query?: string, sort_by?: string, sort_order?: string }) => {
     if (!searchParams)
@@ -353,7 +348,7 @@ export function useMarketplaceMoreClick() {
       sortBy: searchParams?.sort_by || DEFAULT_SORT.sortBy,
       sortOrder: searchParams?.sort_order || DEFAULT_SORT.sortOrder,
     }
-    setUrlFilters({ q: newQuery })
+    setQ(newQuery)
     setSort(newSort)
-  }, [setUrlFilters, setSort])
+  }, [setQ, setSort])
 }
