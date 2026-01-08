@@ -8,7 +8,7 @@ import SortDropdown from './index'
 // Mock external dependencies only
 // ================================
 
-// Mock useMixedTranslation hook
+// Mock i18n translation hook
 const mockTranslation = vi.fn((key: string, options?: { ns?: string }) => {
   // Build full key with namespace prefix if provided
   const fullKey = options?.ns ? `${options.ns}.${key}` : key
@@ -22,8 +22,8 @@ const mockTranslation = vi.fn((key: string, options?: { ns?: string }) => {
   return translations[fullKey] || key
 })
 
-vi.mock('../hooks', () => ({
-  useMixedTranslation: (_locale?: string) => ({
+vi.mock('#i18n', () => ({
+  useTranslation: () => ({
     t: mockTranslation,
   }),
 }))
@@ -142,36 +142,6 @@ describe('SortDropdown', () => {
       render(<SortDropdown />)
 
       expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
-    })
-  })
-
-  // ================================
-  // Props Testing
-  // ================================
-  describe('Props', () => {
-    it('should accept locale prop', () => {
-      render(<SortDropdown locale="zh-CN" />)
-
-      expect(screen.getByTestId('portal-wrapper')).toBeInTheDocument()
-    })
-
-    it('should call useMixedTranslation with provided locale', () => {
-      render(<SortDropdown locale="ja-JP" />)
-
-      // Translation function should be called for labels
-      expect(mockTranslation).toHaveBeenCalledWith('marketplace.sortBy', { ns: 'plugin' })
-    })
-
-    it('should render without locale prop (undefined)', () => {
-      render(<SortDropdown />)
-
-      expect(screen.getByText('Sort by')).toBeInTheDocument()
-    })
-
-    it('should render with empty string locale', () => {
-      render(<SortDropdown locale="" />)
-
-      expect(screen.getByText('Sort by')).toBeInTheDocument()
     })
   })
 
@@ -617,13 +587,6 @@ describe('SortDropdown', () => {
       expect(mockTranslation).toHaveBeenCalledWith('marketplace.sortOption.recentlyUpdated', { ns: 'plugin' })
       expect(mockTranslation).toHaveBeenCalledWith('marketplace.sortOption.newlyReleased', { ns: 'plugin' })
       expect(mockTranslation).toHaveBeenCalledWith('marketplace.sortOption.firstReleased', { ns: 'plugin' })
-    })
-
-    it('should pass locale to useMixedTranslation', () => {
-      render(<SortDropdown locale="pt-BR" />)
-
-      // Verify component renders with locale
-      expect(screen.getByTestId('portal-wrapper')).toBeInTheDocument()
     })
   })
 
