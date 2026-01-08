@@ -93,7 +93,8 @@ jobs:
             # Triggered by push via trigger-i18n-sync.yml workflow
             # Validate required payload fields
             if [ -z "${{ github.event.client_payload.changed_files }}" ]; then
-              echo "Warning: repository_dispatch payload missing 'changed_files' field" >&2
+              echo "Error: repository_dispatch payload missing required 'changed_files' field" >&2
+              exit 1
             fi
             echo "CHANGED_FILES=${{ github.event.client_payload.changed_files }}" >> $GITHUB_OUTPUT
             echo "TARGET_LANGS=" >> $GITHUB_OUTPUT
