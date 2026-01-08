@@ -19,6 +19,48 @@ export type GenRes = {
   error?: string
 }
 
+export type ToolRecommendation = {
+  requested_capability: string
+  unconfigured_tools: Array<{
+    provider_id: string
+    tool_name: string
+    description: string
+  }>
+  configured_alternatives: Array<{
+    provider_id: string
+    tool_name: string
+    description: string
+  }>
+  recommendation: string
+}
+
+export type BackendNodeSpec = {
+  id: string
+  type: string
+  title?: string
+  config?: Record<string, any>
+  position?: { x: number, y: number }
+}
+
+export type BackendEdgeSpec = {
+  source: string
+  target: string
+  sourceHandle?: string
+  targetHandle?: string
+}
+
+export type FlowchartGenRes = {
+  intent?: 'generate' | 'off_topic' | 'error'
+  flowchart: string
+  nodes?: BackendNodeSpec[]
+  edges?: BackendEdgeSpec[]
+  message?: string
+  warnings?: string[]
+  suggestions?: string[]
+  tool_recommendations?: ToolRecommendation[]
+  error?: string
+}
+
 export type CodeGenRes = {
   code: string
   language: string[]

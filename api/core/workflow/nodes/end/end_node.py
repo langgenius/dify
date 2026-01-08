@@ -1,3 +1,5 @@
+from typing import Any
+
 from core.workflow.enums import NodeExecutionType, NodeType, WorkflowNodeExecutionStatus
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.node import Node
@@ -8,6 +10,24 @@ from core.workflow.nodes.end.entities import EndNodeData
 class EndNode(Node[EndNodeData]):
     node_type = NodeType.END
     execution_type = NodeExecutionType.RESPONSE
+
+    @classmethod
+    def get_default_config_schema(cls) -> dict[str, Any] | None:
+        return {
+            "description": "Workflow exit point - defines output variables",
+            "required": ["outputs"],
+            "parameters": {
+                "outputs": {
+                    "type": "array",
+                    "description": "Output variables to return",
+                    "item_schema": {
+                        "variable": "string - output variable name",
+                        "type": "enum: string, number, object, array",
+                        "value_selector": "array - path to source value, e.g. ['node_id', 'field']",
+                    },
+                },
+            },
+        }
 
     @classmethod
     def version(cls) -> str:

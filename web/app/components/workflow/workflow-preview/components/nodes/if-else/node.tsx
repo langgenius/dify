@@ -65,7 +65,7 @@ const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
             </div>
             <div className="space-y-0.5">
               {caseItem.conditions.map((condition, i) => (
-                <div key={condition.id} className="relative">
+                <div key={condition.id || i} className="relative">
                   {
                     checkIsConditionSet(condition)
                       ? (

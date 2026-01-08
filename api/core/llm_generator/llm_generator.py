@@ -1,6 +1,5 @@
 import json
 import logging
-import re
 from collections.abc import Sequence
 from typing import Protocol, cast
 
@@ -12,8 +11,6 @@ from core.llm_generator.prompts import (
     CONVERSATION_TITLE_PROMPT,
     GENERATOR_QA_PROMPT,
     JAVASCRIPT_CODE_GENERATOR_PROMPT_TEMPLATE,
-    LLM_MODIFY_CODE_SYSTEM,
-    LLM_MODIFY_PROMPT_SYSTEM,
     PYTHON_CODE_GENERATOR_PROMPT_TEMPLATE,
     SUGGESTED_QUESTIONS_MAX_TOKENS,
     SUGGESTED_QUESTIONS_TEMPERATURE,
@@ -30,6 +27,7 @@ from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
+from core.workflow.generator import WorkflowGenerator
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models import App, Message, WorkflowNodeExecutionModel
@@ -284,6 +282,35 @@ class LLMGenerator:
         rule_config["error"] = f"Failed to {error_step}. Error: {error}" if error else ""
 
         return rule_config
+
+    @classmethod
+    def generate_workflow_flowchart(
+        cls,
+        tenant_id: str,
+        instruction: str,
+        model_config: dict,
+        available_nodes: Sequence[dict[str, object]] | None = None,
+        existing_nodes: Sequence[dict[str, object]] | None = None,
+        available_tools: Sequence[dict[str, object]] | None = None,
+        selected_node_ids: Sequence[str] | None = None,
+        previous_workflow: dict[str, object] | None = None,
+        regenerate_mode: bool = False,
+        preferred_language: str | None = None,
+        available_models: Sequence[dict[str, object]] | None = None,
+    ):
+        return WorkflowGenerator.generate_workflow_flowchart(
+            tenant_id=tenant_id,
+            instruction=instruction,
+            model_config=model_config,
+            available_nodes=available_nodes,
+            existing_nodes=existing_nodes,
+            available_tools=available_tools,
+            selected_node_ids=selected_node_ids,
+            previous_workflow=previous_workflow,
+            regenerate_mode=regenerate_mode,
+            preferred_language=preferred_language,
+            available_models=available_models,
+        )
 
     @classmethod
     def generate_code(cls, tenant_id: str, instruction: str, model_config: dict, code_language: str = "javascript"):
