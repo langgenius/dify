@@ -94,44 +94,6 @@ export function useAccountSettingModal<T extends string = string>() {
   return [{ isOpen, payload: currentTab }, setState] as const
 }
 
-export function useMarketplaceSearchQuery() {
-  return useQueryState('q', parseAsString.withDefault('').withOptions({ history: 'replace' }))
-}
-export function useMarketplaceCategory() {
-  return useQueryState('category', parseAsString.withDefault('all').withOptions({ history: 'replace', clearOnDefault: false }))
-}
-export function useMarketplaceTags() {
-  return useQueryState('tags', parseAsArrayOf(parseAsString).withDefault([]).withOptions({ history: 'replace' }))
-}
-export function useMarketplaceFilters() {
-  const [q, setQ] = useMarketplaceSearchQuery()
-  const [category, setCategory] = useMarketplaceCategory()
-  const [tags, setTags] = useMarketplaceTags()
-
-  const setFilters = useCallback(
-    (
-      updates: Partial<{ q: string, category: string, tags: string[] }> | null,
-      options?: Options,
-    ) => {
-      if (updates === null) {
-        setQ(null, options)
-        setCategory(null, options)
-        setTags(null, options)
-        return
-      }
-      if ('q' in updates)
-        setQ(updates.q!, options)
-      if ('category' in updates)
-        setCategory(updates.category!, options)
-      if ('tags' in updates)
-        setTags(updates.tags!, options)
-    },
-    [setQ, setCategory, setTags],
-  )
-
-  return [{ q, category, tags }, setFilters] as const
-}
-
 /**
  * Plugin Installation Query Parameters
  */

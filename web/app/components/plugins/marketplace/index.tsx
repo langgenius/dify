@@ -1,5 +1,8 @@
+import type { SearchParams } from 'nuqs'
 import { dehydrate } from '@tanstack/react-query'
+import { createLoader } from 'nuqs/server'
 import { getQueryClient } from '@/context/query-client-server'
+import { marketplaceSearchParams } from './constants'
 import { MarketplaceClient } from './marketplace-client'
 import { marketplaceKeys } from './query-keys'
 import { getCollectionsParams, getMarketplaceCollectionsAndPlugins } from './utils'
@@ -7,18 +10,17 @@ import { getCollectionsParams, getMarketplaceCollectionsAndPlugins } from './uti
 type MarketplaceProps = {
   showInstallButton?: boolean
   pluginTypeSwitchClassName?: string
-  params: {
-    q: string
-    category: string
-    tags: string[]
-  }
+  searchParams: Promise<SearchParams>
 }
+
+const loadSearchParams = createLoader(marketplaceSearchParams)
 
 async function Marketplace({
   showInstallButton = true,
   pluginTypeSwitchClassName,
-  params,
+  searchParams,
 }: MarketplaceProps) {
+  const params = await loadSearchParams(searchParams)
   const queryClient = getQueryClient()
 
   await queryClient.prefetchQuery({

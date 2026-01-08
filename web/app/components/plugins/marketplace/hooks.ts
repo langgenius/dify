@@ -15,16 +15,17 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
+import { useQueryState } from 'nuqs'
+
 import {
   useCallback,
   useEffect,
   useMemo,
   useState,
 } from 'react'
-import { useMarketplaceCategory, useMarketplaceSearchQuery, useMarketplaceTags } from '@/hooks/use-query-params'
 import { postMarketplace } from '@/service/base'
 import { useMarketplaceSearchMode, useMarketplaceSortValue, useSetMarketplaceSort, useSetSearchMode } from './atoms'
-import { DEFAULT_SORT, PLUGIN_TYPE_SEARCH_MAP, SCROLL_BOTTOM_THRESHOLD } from './constants'
+import { DEFAULT_SORT, marketplaceSearchParams, PLUGIN_TYPE_SEARCH_MAP, SCROLL_BOTTOM_THRESHOLD } from './constants'
 import { marketplaceKeys } from './query-keys'
 import {
   getCollectionsParams,
@@ -33,6 +34,16 @@ import {
   getMarketplaceListFilterType,
   getMarketplacePluginsByCollectionId,
 } from './utils'
+
+export function useMarketplaceSearchQuery() {
+  return useQueryState('q', marketplaceSearchParams.q)
+}
+export function useMarketplaceCategory() {
+  return useQueryState('category', marketplaceSearchParams.category)
+}
+export function useMarketplaceTags() {
+  return useQueryState('tags', marketplaceSearchParams.tags)
+}
 
 export const useMarketplaceCollectionsAndPlugins = (queryParams?: CollectionsAndPluginsSearchParams) => {
   return useQuery({

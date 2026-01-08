@@ -1,7 +1,7 @@
 'use client'
 
 import { useTranslation } from '#i18n'
-import { useMarketplaceSearchQuery, useMarketplaceTags } from '@/hooks/use-query-params'
+import { useMarketplaceSearchQuery, useMarketplaceTags } from '../hooks'
 import SearchBox from './index'
 
 const SearchBoxWrapper = () => {
