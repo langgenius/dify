@@ -270,7 +270,7 @@ class HostedDeepseekConfig(BaseSettings):
     )
 
     HOSTED_DEEPSEEK_PAID_ENABLED: bool = Field(
-        description="Enable paid access to hosted XAI service",
+        description="Enable paid access to hosted Deepseek service",
         default=False,
     )
 
