@@ -5,7 +5,7 @@ Web App Human Input Form APIs.
 import logging
 
 from flask import Response
-from flask_restx import reqparse
+from flask_restx import Resource, reqparse
 
 from controllers.web import web_ns
 from controllers.web.error import NotFoundError
@@ -24,10 +24,12 @@ def _jsonify_form_definition(form: Form) -> Response:
 
 
 @web_ns.route("/form/human_input/<string:form_token>")
-class HumanInputFormApi(WebApiResource):
+# class HumanInputFormApi(WebApiResource):
+class HumanInputFormApi(Resource):
     """API for getting and submitting human input forms via the web app."""
 
-    def get(self, _app_model: App, _end_user: EndUser, form_token: str):
+    # def get(self, _app_model: App, _end_user: EndUser, form_token: str):
+    def get(self, form_token: str):
         """
         Get human input form definition by token.
 
@@ -44,7 +46,8 @@ class HumanInputFormApi(WebApiResource):
 
         return _jsonify_form_definition(form)
 
-    def post(self, _app_model: App, _end_user: EndUser, form_token: str):
+    # def post(self, _app_model: App, _end_user: EndUser, form_token: str):
+    def post(self, form_token: str):
         """
         Submit human input form by token.
 
@@ -70,7 +73,8 @@ class HumanInputFormApi(WebApiResource):
                 form_token=form_token,
                 selected_action_id=args["action"],
                 form_data=args["inputs"],
-                submission_end_user_id=_end_user.id,
+                submission_end_user_id=None,
+                # submission_end_user_id=_end_user.id,
             )
         except FormNotFoundError:
             raise NotFoundError("Form not found")
