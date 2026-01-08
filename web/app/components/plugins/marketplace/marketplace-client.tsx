@@ -2,7 +2,7 @@
 
 import type { DehydratedState } from '@tanstack/react-query'
 import { HydrationBoundary } from '@tanstack/react-query'
-import { TanstackQueryInner } from '@/context/query-client'
+import { TanstackQueryInitializer } from '@/context/query-client'
 import Description from './description'
 import ListWrapper from './list/list-wrapper'
 import StickySearchAndSwitchWrapper from './sticky-search-and-switch-wrapper'
@@ -19,7 +19,7 @@ export function MarketplaceClient({
   dehydratedState,
 }: MarketplaceClientProps) {
   return (
-    <TanstackQueryInner>
+    <TanstackQueryInitializer>
       <HydrationBoundary state={dehydratedState}>
         <Description />
         <StickySearchAndSwitchWrapper
@@ -27,6 +27,6 @@ export function MarketplaceClient({
         />
         <ListWrapper showInstallButton={showInstallButton} />
       </HydrationBoundary>
-    </TanstackQueryInner>
+    </TanstackQueryInitializer>
   )
 }

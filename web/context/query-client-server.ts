@@ -13,8 +13,4 @@ export function makeQueryClient() {
   })
 }
 
-/**
- * Get QueryClient for server components
- * Uses React cache() to ensure the same instance is reused within a single request
- */
 export const getQueryClient = cache(makeQueryClient)

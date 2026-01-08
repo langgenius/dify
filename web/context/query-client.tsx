@@ -11,16 +11,14 @@ let browserQueryClient: QueryClient | undefined
 
 function getQueryClient() {
   if (typeof window === 'undefined') {
-    // Server: always make a new query client
     return makeQueryClient()
   }
-  // Browser: make a new query client if we don't already have one
   if (!browserQueryClient)
     browserQueryClient = makeQueryClient()
   return browserQueryClient
 }
 
-export const TanstackQueryInner: FC<PropsWithChildren> = ({ children }) => {
+export const TanstackQueryInitializer: FC<PropsWithChildren> = ({ children }) => {
   // Use useState to ensure stable QueryClient across re-renders
   const [queryClient] = useState(getQueryClient)
   return (
@@ -30,8 +28,3 @@ export const TanstackQueryInner: FC<PropsWithChildren> = ({ children }) => {
     </QueryClientProvider>
   )
 }
-
-/**
- * @deprecated Use TanstackQueryInner instead for new code
- */
-export const TanstackQueryInitializer = TanstackQueryInner
