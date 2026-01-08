@@ -3,6 +3,7 @@ Parser for knowledge retrieval nodes that captures retrieval-specific metadata.
 """
 
 import logging
+from collections.abc import Sequence
 from typing import Any
 
 from opentelemetry.trace import Span
@@ -90,23 +91,23 @@ class RetrievalNodeOTelParser:
 
         # Extract and format retrieval documents from outputs
         result_value = outputs.get("result") if outputs else None
-        retrieval_documents = []
+        retrieval_documents: list[Any] = []
         if result_value:
             if isinstance(result_value, ArrayObjectSegment):
-                retrieval_documents = result_value.value
+                retrieval_documents = list(result_value.value)
             elif isinstance(result_value, list):
                 retrieval_documents = result_value
             elif isinstance(result_value, Segment):
                 if hasattr(result_value, "value"):
                     value = result_value.value
-                    if isinstance(value, list):
-                        retrieval_documents = value
+                    if isinstance(value, (list, Sequence)):
+                        retrieval_documents = list(value)
                     else:
                         retrieval_documents = []
                 else:
                     retrieval_documents = []
 
         if retrieval_documents:
-            semantic_retrieval_documents = _format_retrieval_documents(list(retrieval_documents))
+            semantic_retrieval_documents = _format_retrieval_documents(retrieval_documents)
             semantic_retrieval_documents_json = safe_json_dumps(semantic_retrieval_documents)
             span.set_attribute(RetrieverAttributes.DOCUMENT, semantic_retrieval_documents_json)
