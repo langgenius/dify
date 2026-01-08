@@ -9,7 +9,6 @@ from typing import Any
 from opentelemetry.trace import Span
 
 from core.variables import Segment
-from core.variables.segments import ArrayObjectSegment
 from core.workflow.graph_events import GraphNodeEventBase
 from core.workflow.nodes.base.node import Node
 from extensions.otel.parser.base import DefaultNodeOTelParser, safe_json_dumps
@@ -93,19 +92,12 @@ class RetrievalNodeOTelParser:
         result_value = outputs.get("result") if outputs else None
         retrieval_documents: list[Any] = []
         if result_value:
-            if isinstance(result_value, ArrayObjectSegment):
-                retrieval_documents = list(result_value.value)
-            elif isinstance(result_value, list):
-                retrieval_documents = result_value
-            elif isinstance(result_value, Segment):
-                if hasattr(result_value, "value"):
-                    value = result_value.value
-                    if isinstance(value, (list, Sequence)):
-                        retrieval_documents = list(value)
-                    else:
-                        retrieval_documents = []
-                else:
-                    retrieval_documents = []
+            value_to_check = result_value
+            if isinstance(result_value, Segment):
+                value_to_check = result_value.value
+
+            if isinstance(value_to_check, (list, Sequence)):
+                retrieval_documents = list(value_to_check)
 
         if retrieval_documents:
             semantic_retrieval_documents = _format_retrieval_documents(retrieval_documents)
