@@ -33,7 +33,7 @@ class TestWorkflowRunArchiver:
 
         assert archiver.days == 90
         assert archiver.batch_size == 100
-        assert archiver.tenant_ids == {"test-tenant"}
+        assert archiver.tenant_ids == ["test-tenant"]
         assert archiver.limit == 50
         assert archiver.dry_run is True
 

@@ -15,7 +15,6 @@ from sqlalchemy.orm import Session, sessionmaker
 from extensions.ext_database import db
 from models.workflow import WorkflowRun
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
-from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_api_workflow_node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
 )
@@ -133,6 +132,8 @@ class ArchivedWorkflowRunDeletion:
     def _get_workflow_run_repo(self) -> APIWorkflowRunRepository:
         if self.workflow_run_repo is not None:
             return self.workflow_run_repo
+
+        from repositories.factory import DifyAPIRepositoryFactory
 
         self.workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(
             sessionmaker(bind=db.engine, expire_on_commit=False)

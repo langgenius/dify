@@ -17,8 +17,11 @@ class TestArchivedWorkflowRunDeletion:
         session_maker = MagicMock()
         session_maker.return_value.__enter__.return_value = session
         session_maker.return_value.__exit__.return_value = None
+        mock_db = MagicMock()
+        mock_db.engine = MagicMock()
 
         with (
+            patch("services.retention.workflow_run.delete_archived_workflow_run.db", mock_db),
             patch(
                 "services.retention.workflow_run.delete_archived_workflow_run.sessionmaker", return_value=session_maker
             ),
@@ -46,8 +49,11 @@ class TestArchivedWorkflowRunDeletion:
         session_maker = MagicMock()
         session_maker.return_value.__enter__.return_value = session
         session_maker.return_value.__exit__.return_value = None
+        mock_db = MagicMock()
+        mock_db.engine = MagicMock()
 
         with (
+            patch("services.retention.workflow_run.delete_archived_workflow_run.db", mock_db),
             patch(
                 "services.retention.workflow_run.delete_archived_workflow_run.sessionmaker", return_value=session_maker
             ),
@@ -76,8 +82,11 @@ class TestArchivedWorkflowRunDeletion:
         session_maker = MagicMock()
         session_maker.return_value.__enter__.return_value = session
         session_maker.return_value.__exit__.return_value = None
+        mock_db = MagicMock()
+        mock_db.engine = MagicMock()
 
         with (
+            patch("services.retention.workflow_run.delete_archived_workflow_run.db", mock_db),
             patch(
                 "services.retention.workflow_run.delete_archived_workflow_run.sessionmaker", return_value=session_maker
             ),
@@ -108,8 +117,11 @@ class TestArchivedWorkflowRunDeletion:
         session_maker.return_value.__exit__.return_value = None
         start_date = MagicMock()
         end_date = MagicMock()
+        mock_db = MagicMock()
+        mock_db.engine = MagicMock()
 
         with (
+            patch("services.retention.workflow_run.delete_archived_workflow_run.db", mock_db),
             patch(
                 "services.retention.workflow_run.delete_archived_workflow_run.sessionmaker", return_value=session_maker
             ),
