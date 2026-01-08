@@ -1,80 +1,34 @@
-import type { CollectionsAndPluginsSearchParams, PluginsSearchParams, SearchParamsFromCollection } from './types'
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import type { PluginsSearchParams, SearchParamsFromCollection } from './types'
 import { useQueryState } from 'nuqs'
 import { useCallback, useMemo } from 'react'
 import { useMarketplaceSearchMode, useMarketplaceSortValue, useSetMarketplaceSort, useSetSearchMode } from './atoms'
 import { DEFAULT_SORT, PLUGIN_TYPE_SEARCH_MAP } from './constants'
 import { useMarketplaceContainerScroll } from './hooks'
-import { marketplaceKeys } from './query-keys'
+import { useMarketplaceCollectionsAndPlugins, useMarketplacePlugins } from './query'
 import { marketplaceSearchParamsParsers } from './search-params'
-import { getCollectionsParams, getMarketplaceCollectionsAndPlugins, getMarketplaceListFilterType, getMarketplacePlugins } from './utils'
+import { getCollectionsParams, getMarketplaceListFilterType } from './utils'
 
-function useMarketplaceCollectionsAndPluginsReactive(queryParams?: CollectionsAndPluginsSearchParams) {
-  return useQuery({
-    queryKey: marketplaceKeys.collections(queryParams),
-    queryFn: ({ signal }) => getMarketplaceCollectionsAndPlugins(queryParams, { signal }),
-    enabled: queryParams !== undefined,
-  })
+export function useSearchPluginText() {
+  return useQueryState('q', marketplaceSearchParamsParsers.q)
+}
+export function useActivePluginType() {
+  return useQueryState('category', marketplaceSearchParamsParsers.category)
+}
+export function useFilterPluginTags() {
+  return useQueryState('tags', marketplaceSearchParamsParsers.tags)
 }
 
-function useMarketplaceCollectionsData() {
-  const [activePluginType] = useActivePluginType()
-
-  const collectionsParams = useMemo(() => getCollectionsParams(activePluginType), [activePluginType])
-
-  const { data, isLoading } = useMarketplaceCollectionsAndPluginsReactive(collectionsParams)
-
-  return {
-    marketplaceCollections: data?.marketplaceCollections,
-    marketplaceCollectionPluginsMap: data?.marketplaceCollectionPluginsMap,
-    isLoading,
-  }
-}
-
-function useMarketplacePluginsReactive(queryParams?: PluginsSearchParams) {
-  const marketplacePluginsQuery = useInfiniteQuery({
-    queryKey: marketplaceKeys.plugins(queryParams),
-    queryFn: ({ pageParam = 1, signal }) => getMarketplacePlugins(queryParams, pageParam, signal),
-    getNextPageParam: (lastPage) => {
-      const nextPage = lastPage.page + 1
-      const loaded = lastPage.page * lastPage.pageSize
-      return loaded < (lastPage.total || 0) ? nextPage : undefined
-    },
-    initialPageParam: 1,
-    enabled: !!queryParams,
-  })
-
-  const hasQuery = !!queryParams
-  const hasData = marketplacePluginsQuery.data !== undefined
-  const plugins = hasQuery && hasData
-    ? marketplacePluginsQuery.data.pages.flatMap(page => page.plugins)
-    : undefined
-  const total = hasQuery && hasData ? marketplacePluginsQuery.data.pages?.[0]?.total : undefined
-  const isPluginsLoading = hasQuery && (
-    marketplacePluginsQuery.isPending
-    || (marketplacePluginsQuery.isFetching && !marketplacePluginsQuery.data)
-  )
-
-  return {
-    plugins,
-    total,
-    isLoading: isPluginsLoading,
-    isFetchingNextPage: marketplacePluginsQuery.isFetchingNextPage,
-    hasNextPage: marketplacePluginsQuery.hasNextPage,
-    fetchNextPage: marketplacePluginsQuery.fetchNextPage,
-    page: marketplacePluginsQuery.data?.pages?.length || (marketplacePluginsQuery.isPending && hasQuery ? 1 : 0),
-  }
-}
-
-function useMarketplacePluginsData() {
-  const sort = useMarketplaceSortValue()
-
+export function useMarketplaceData() {
   const [searchPluginText] = useSearchPluginText()
   const [filterPluginTags] = useFilterPluginTags()
   const [activePluginType] = useActivePluginType()
 
-  const isSearchMode = useMarketplaceSearchMode()
+  const collectionsQuery = useMarketplaceCollectionsAndPlugins(
+    getCollectionsParams(activePluginType),
+  )
 
+  const sort = useMarketplaceSortValue()
+  const isSearchMode = useMarketplaceSearchMode()
   const queryParams = useMemo((): PluginsSearchParams | undefined => {
     if (!isSearchMode)
       return undefined
@@ -88,14 +42,8 @@ function useMarketplacePluginsData() {
     }
   }, [isSearchMode, searchPluginText, activePluginType, filterPluginTags, sort])
 
-  const {
-    plugins,
-    total: pluginsTotal,
-    isLoading: isPluginsLoading,
-    fetchNextPage,
-    hasNextPage,
-    page: pluginsPage,
-  } = useMarketplacePluginsReactive(queryParams)
+  const pluginsQuery = useMarketplacePlugins(queryParams)
+  const { hasNextPage, fetchNextPage } = pluginsQuery
 
   const handlePageChange = useCallback(() => {
     if (hasNextPage)
@@ -106,26 +54,12 @@ function useMarketplacePluginsData() {
   useMarketplaceContainerScroll(handlePageChange)
 
   return {
-    plugins,
-    pluginsTotal,
-    page: Math.max(pluginsPage, 1),
-    isLoading: isPluginsLoading,
-  }
-}
-
-export function useMarketplaceData() {
-  const collectionsData = useMarketplaceCollectionsData()
-  const pluginsData = useMarketplacePluginsData()
-
-  return {
-    marketplaceCollections: collectionsData.marketplaceCollections,
-    marketplaceCollectionPluginsMap: collectionsData.marketplaceCollectionPluginsMap,
-
-    plugins: pluginsData.plugins,
-    pluginsTotal: pluginsData.pluginsTotal,
-    page: pluginsData.page,
-
-    isLoading: collectionsData.isLoading || pluginsData.isLoading,
+    marketplaceCollections: collectionsQuery.data?.marketplaceCollections,
+    marketplaceCollectionPluginsMap: collectionsQuery.data?.marketplaceCollectionPluginsMap,
+    plugins: pluginsQuery.data?.pages.flatMap(page => page.plugins) || [],
+    pluginsTotal: pluginsQuery.data?.pages[0]?.total || 0,
+    page: pluginsQuery.data?.pages.length || 0,
+    isLoading: collectionsQuery.isLoading || pluginsQuery.isLoading,
   }
 }
 
@@ -144,14 +78,4 @@ export function useMarketplaceMoreClick() {
     })
     setSearchMode(true)
   }, [setQ, setSort, setSearchMode])
-}
-
-export function useSearchPluginText() {
-  return useQueryState('q', marketplaceSearchParamsParsers.q)
-}
-export function useActivePluginType() {
-  return useQueryState('category', marketplaceSearchParamsParsers.category)
-}
-export function useFilterPluginTags() {
-  return useQueryState('tags', marketplaceSearchParamsParsers.tags)
 }

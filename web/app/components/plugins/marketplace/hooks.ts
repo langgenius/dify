@@ -18,13 +18,16 @@ import {
   useState,
 } from 'react'
 import { SCROLL_BOTTOM_THRESHOLD } from './constants'
-import { marketplaceKeys } from './query-keys'
+import { marketplaceKeys } from './query'
 import {
   getMarketplaceCollectionsAndPlugins,
   getMarketplacePlugins,
   getMarketplacePluginsByCollectionId,
 } from './utils'
 
+/**
+ * @deprecated Use useMarketplaceCollectionsAndPlugins from query.ts instead
+ */
 export const useMarketplaceCollectionsAndPlugins = () => {
   const [queryParams, setQueryParams] = useState<CollectionsAndPluginsSearchParams>()
   const [marketplaceCollectionsOverride, setMarketplaceCollections] = useState<MarketplaceCollection[]>()
@@ -82,7 +85,9 @@ export const useMarketplacePluginsByCollectionId = (
     isSuccess,
   }
 }
-
+/**
+ * @deprecated Use useMarketplacePlugins from query.ts instead
+ */
 export const useMarketplacePlugins = () => {
   const queryClient = useQueryClient()
   const [queryParams, setQueryParams] = useState<PluginsSearchParams>()
