@@ -1,3 +1,4 @@
+import type { AgentBlockType } from '@/app/components/base/prompt-editor/types'
 import type {
   Node,
   NodeOutPutVar,
@@ -6,6 +7,7 @@ import {
   memo,
   useCallback,
   useMemo,
+  useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import PromptEditor from '@/app/components/base/prompt-editor'
@@ -74,19 +76,44 @@ const MixedVariableTextInput = ({
     return null
   }, [value, nodesByIdMap])
 
+  const [selectedAgent, setSelectedAgent] = useState<{ id: string, title: string } | null>(null)
+
+  const agentNodes = useMemo(() => {
+    return availableNodes
+      .filter(node => node.data.type === BlockEnum.Agent)
+      .map(node => ({
+        id: node.id,
+        title: node.data.title,
+      }))
+  }, [availableNodes])
+
+  const handleAgentSelect = useCallback((agent: { id: string, title: string }) => {
+    setSelectedAgent(agent)
+    if (onChange) {
+      const agentVar = `{{#${agent.id}.text#}}`
+      const newValue = value ? `${agentVar}${value}` : agentVar
+      onChange(newValue)
+      setControlPromptEditorRerenderKey(Date.now())
+    }
+  }, [onChange, value, setControlPromptEditorRerenderKey])
+
   const handleAgentRemove = useCallback(() => {
-    if (!detectedAgentFromValue || !onChange)
+    const agentNodeId = detectedAgentFromValue?.nodeId || selectedAgent?.id
+    if (!agentNodeId || !onChange)
       return
 
     const pattern = /\{\{#([^#]+)#\}\}/g
     const valueWithoutAgentVars = value.replace(pattern, (match, variablePath) => {
       const nodeId = variablePath.split('.')[0]
-      return nodeId === detectedAgentFromValue.nodeId ? '' : match
+      return nodeId === agentNodeId ? '' : match
     }).trim()
 
     onChange(valueWithoutAgentVars)
+    setSelectedAgent(null)
     setControlPromptEditorRerenderKey(Date.now())
-  }, [detectedAgentFromValue, value, onChange, setControlPromptEditorRerenderKey])
+  }, [detectedAgentFromValue?.nodeId, selectedAgent?.id, value, onChange, setControlPromptEditorRerenderKey])
+
+  const displayedAgent = detectedAgentFromValue || (selectedAgent ? { nodeId: selectedAgent.id, name: selectedAgent.title } : null)
 
   return (
     <div className={cn(
@@ -95,9 +122,9 @@ const MixedVariableTextInput = ({
       'focus-within:border-components-input-border-active focus-within:bg-components-input-bg-active focus-within:shadow-xs',
     )}
     >
-      {detectedAgentFromValue && (
+      {displayedAgent && (
         <AgentHeaderBar
-          agentName={detectedAgentFromValue.name}
+          agentName={displayedAgent.name}
           onRemove={handleAgentRemove}
           onViewInternals={onViewInternals}
         />
@@ -127,7 +154,12 @@ const MixedVariableTextInput = ({
           showManageInputField,
           onManageInputField,
         }}
-        placeholder={<Placeholder disableVariableInsertion={disableVariableInsertion} />}
+        agentBlock={{
+          show: agentNodes.length > 0 && !displayedAgent,
+          agentNodes,
+          onSelect: handleAgentSelect,
+        } as AgentBlockType}
+        placeholder={<Placeholder disableVariableInsertion={disableVariableInsertion} hasSelectedAgent={!!displayedAgent} />}
         onChange={onChange}
       />
     </div>

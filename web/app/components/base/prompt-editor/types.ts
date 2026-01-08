@@ -73,6 +73,17 @@ export type WorkflowVariableBlockType = {
   onManageInputField?: () => void
 }
 
+export type AgentNode = {
+  id: string
+  title: string
+}
+
+export type AgentBlockType = {
+  show?: boolean
+  agentNodes?: AgentNode[]
+  onSelect?: (agent: AgentNode) => void
+}
+
 export type MenuTextMatch = {
   leadOffset: number
   matchingString: string

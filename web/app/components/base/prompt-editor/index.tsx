@@ -5,6 +5,7 @@ import type {
 } from 'lexical'
 import type { FC } from 'react'
 import type {
+  AgentBlockType,
   ContextBlockType,
   CurrentBlockType,
   ErrorMessageBlockType,
@@ -103,6 +104,7 @@ export type PromptEditorProps = {
   currentBlock?: CurrentBlockType
   errorMessageBlock?: ErrorMessageBlockType
   lastRunBlock?: LastRunBlockType
+  agentBlock?: AgentBlockType
   isSupportFileVar?: boolean
 }
 
@@ -128,6 +130,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
   currentBlock,
   errorMessageBlock,
   lastRunBlock,
+  agentBlock,
   isSupportFileVar,
 }) => {
   const { eventEmitter } = useEventEmitterContextContext()
@@ -139,6 +142,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
       {
         replace: TextNode,
         with: (node: TextNode) => new CustomTextNode(node.__text),
+        withKlass: CustomTextNode,
       },
       ContextBlockNode,
       HistoryBlockNode,
@@ -212,19 +216,22 @@ const PromptEditor: FC<PromptEditorProps> = ({
           lastRunBlock={lastRunBlock}
           isSupportFileVar={isSupportFileVar}
         />
-        <ComponentPickerBlock
-          triggerString="@"
-          contextBlock={contextBlock}
-          historyBlock={historyBlock}
-          queryBlock={queryBlock}
-          variableBlock={variableBlock}
-          externalToolBlock={externalToolBlock}
-          workflowVariableBlock={workflowVariableBlock}
-          currentBlock={currentBlock}
-          errorMessageBlock={errorMessageBlock}
-          lastRunBlock={lastRunBlock}
-          isSupportFileVar={isSupportFileVar}
-        />
+        {(!agentBlock || agentBlock.show) && (
+          <ComponentPickerBlock
+            triggerString="@"
+            contextBlock={contextBlock}
+            historyBlock={historyBlock}
+            queryBlock={queryBlock}
+            variableBlock={variableBlock}
+            externalToolBlock={externalToolBlock}
+            workflowVariableBlock={workflowVariableBlock}
+            currentBlock={currentBlock}
+            errorMessageBlock={errorMessageBlock}
+            lastRunBlock={lastRunBlock}
+            agentBlock={agentBlock}
+            isSupportFileVar={isSupportFileVar}
+          />
+        )}
         <ComponentPickerBlock
           triggerString="{"
           contextBlock={contextBlock}

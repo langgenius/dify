@@ -171,6 +171,7 @@
   "common.needConnectTip": "接続されていないステップがあります",
   "common.needOutputNode": "出力ノードを追加する必要があります",
   "common.needStartNode": "少なくとも1つのスタートノードを追加する必要があります",
+  "common.noAgentNodes": "利用可能なエージェントノードがありません",
   "common.noHistory": "履歴がありません",
   "common.noVar": "変数がありません",
   "common.notRunning": "まだ実行されていません",

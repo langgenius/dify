@@ -173,6 +173,7 @@
   "common.needConnectTip": "This step is not connected to anything",
   "common.needOutputNode": "The Output node must be added",
   "common.needStartNode": "At least one start node must be added",
+  "common.noAgentNodes": "No agent nodes available",
   "common.noHistory": "No History",
   "common.noVar": "No variable",
   "common.notRunning": "Not running yet",

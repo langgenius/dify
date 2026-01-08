@@ -1,6 +1,7 @@
 import type { MenuRenderFn } from '@lexical/react/LexicalTypeaheadMenuPlugin'
 import type { TextNode } from 'lexical'
 import type {
+  AgentBlockType,
   ContextBlockType,
   CurrentBlockType,
   ErrorMessageBlockType,
@@ -29,7 +30,9 @@ import {
 } from 'react'
 import ReactDOM from 'react-dom'
 import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
+import AgentNodeList from '@/app/components/workflow/nodes/_base/components/agent-node-list'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useBasicTypeaheadTriggerMatch } from '../../hooks'
 import { $splitNodeContainingQuery } from '../../utils'
@@ -51,6 +54,7 @@ type ComponentPickerProps = {
   currentBlock?: CurrentBlockType
   errorMessageBlock?: ErrorMessageBlockType
   lastRunBlock?: LastRunBlockType
+  agentBlock?: AgentBlockType
   isSupportFileVar?: boolean
 }
 const ComponentPicker = ({
@@ -64,6 +68,7 @@ const ComponentPicker = ({
   currentBlock,
   errorMessageBlock,
   lastRunBlock,
+  agentBlock,
   isSupportFileVar,
 }: ComponentPickerProps) => {
   const { eventEmitter } = useEventEmitterContextContext()
@@ -151,12 +156,31 @@ const ComponentPicker = ({
     editor.dispatchCommand(KEY_ESCAPE_COMMAND, escapeEvent)
   }, [editor])
 
+  const handleSelectAgent = useCallback((agent: { id: string, title: string }) => {
+    editor.update(() => {
+      const needRemove = $splitNodeContainingQuery(checkForTriggerMatch(triggerString, editor)!)
+      if (needRemove)
+        needRemove.remove()
+    })
+    agentBlock?.onSelect?.(agent)
+    handleClose()
+  }, [editor, checkForTriggerMatch, triggerString, agentBlock, handleClose])
+
+  const isAgentTrigger = triggerString === '@' && agentBlock?.show
+  const agentNodes = agentBlock?.agentNodes || []
+
   const renderMenu = useCallback<MenuRenderFn<PickerBlockMenuOption>>((
     anchorElementRef,
     { options, selectedIndex, selectOptionAndCleanUp, setHighlightedIndex },
   ) => {
-    if (!(anchorElementRef.current && (allFlattenOptions.length || workflowVariableBlock?.show)))
-      return null
+    if (isAgentTrigger) {
+      if (!(anchorElementRef.current && agentNodes.length))
+        return null
+    }
+    else {
+      if (!(anchorElementRef.current && (allFlattenOptions.length || workflowVariableBlock?.show)))
+        return null
+    }
 
     setTimeout(() => {
       if (anchorElementRef.current)
@@ -167,9 +191,6 @@ const ComponentPicker = ({
       <>
         {
           ReactDOM.createPortal(
-            // The `LexicalMenu` will try to calculate the position of the floating menu based on the first child.
-            // Since we use floating ui, we need to wrap it with a div to prevent the position calculation being affected.
-            // See https://github.com/facebook/lexical/blob/ac97dfa9e14a73ea2d6934ff566282d7f758e8bb/packages/lexical-react/src/shared/LexicalMenu.ts#L493
             <div className="h-0 w-0">
               <div
                 className="w-[260px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg"
@@ -179,56 +200,73 @@ const ComponentPicker = ({
                 }}
                 ref={refs.setFloating}
               >
-                {
-                  workflowVariableBlock?.show && (
-                    <div className="p-1">
-                      <VarReferenceVars
-                        searchBoxClassName="mt-1"
-                        vars={workflowVariableOptions}
-                        onChange={(variables: string[]) => {
-                          handleSelectWorkflowVariable(variables)
-                        }}
-                        maxHeightClass="max-h-[34vh]"
-                        isSupportFileVar={isSupportFileVar}
+                {isAgentTrigger
+                  ? (
+                      <AgentNodeList
+                        nodes={agentNodes.map(node => ({
+                          ...node,
+                          type: BlockEnum.Agent,
+                        }))}
+                        onSelect={handleSelectAgent}
                         onClose={handleClose}
                         onBlur={handleClose}
-                        showManageInputField={workflowVariableBlock.showManageInputField}
-                        onManageInputField={workflowVariableBlock.onManageInputField}
+                        maxHeightClass="max-h-[34vh]"
                         autoFocus={false}
-                        isInCodeGeneratorInstructionEditor={currentBlock?.generatorType === GeneratorType.code}
                       />
-                    </div>
-                  )
-                }
-                {
-                  workflowVariableBlock?.show && !!options.length && (
-                    <div className="my-1 h-px w-full -translate-x-1 bg-divider-subtle"></div>
-                  )
-                }
-                <div>
-                  {
-                    options.map((option, index) => (
-                      <Fragment key={option.key}>
+                    )
+                  : (
+                      <>
                         {
-                          // Divider
-                          index !== 0 && options.at(index - 1)?.group !== option.group && (
+                          workflowVariableBlock?.show && (
+                            <div className="p-1">
+                              <VarReferenceVars
+                                searchBoxClassName="mt-1"
+                                vars={workflowVariableOptions}
+                                onChange={(variables: string[]) => {
+                                  handleSelectWorkflowVariable(variables)
+                                }}
+                                maxHeightClass="max-h-[34vh]"
+                                isSupportFileVar={isSupportFileVar}
+                                onClose={handleClose}
+                                onBlur={handleClose}
+                                showManageInputField={workflowVariableBlock.showManageInputField}
+                                onManageInputField={workflowVariableBlock.onManageInputField}
+                                autoFocus={false}
+                                isInCodeGeneratorInstructionEditor={currentBlock?.generatorType === GeneratorType.code}
+                              />
+                            </div>
+                          )
+                        }
+                        {
+                          workflowVariableBlock?.show && !!options.length && (
                             <div className="my-1 h-px w-full -translate-x-1 bg-divider-subtle"></div>
                           )
                         }
-                        {option.renderMenuOption({
-                          queryString,
-                          isSelected: selectedIndex === index,
-                          onSelect: () => {
-                            selectOptionAndCleanUp(option)
-                          },
-                          onSetHighlight: () => {
-                            setHighlightedIndex(index)
-                          },
-                        })}
-                      </Fragment>
-                    ))
-                  }
-                </div>
+                        <div>
+                          {
+                            options.map((option, index) => (
+                              <Fragment key={option.key}>
+                                {
+                                  index !== 0 && options.at(index - 1)?.group !== option.group && (
+                                    <div className="my-1 h-px w-full -translate-x-1 bg-divider-subtle"></div>
+                                  )
+                                }
+                                {option.renderMenuOption({
+                                  queryString,
+                                  isSelected: selectedIndex === index,
+                                  onSelect: () => {
+                                    selectOptionAndCleanUp(option)
+                                  },
+                                  onSetHighlight: () => {
+                                    setHighlightedIndex(index)
+                                  },
+                                })}
+                              </Fragment>
+                            ))
+                          }
+                        </div>
+                      </>
+                    )}
               </div>
             </div>,
             anchorElementRef.current,
@@ -236,7 +274,7 @@ const ComponentPicker = ({
         }
       </>
     )
-  }, [allFlattenOptions.length, workflowVariableBlock?.show, floatingStyles, isPositioned, refs, workflowVariableOptions, isSupportFileVar, handleClose, currentBlock?.generatorType, handleSelectWorkflowVariable, queryString, workflowVariableBlock?.showManageInputField, workflowVariableBlock?.onManageInputField])
+  }, [isAgentTrigger, agentNodes, allFlattenOptions.length, workflowVariableBlock?.show, floatingStyles, isPositioned, refs, handleSelectAgent, handleClose, workflowVariableOptions, isSupportFileVar, currentBlock?.generatorType, handleSelectWorkflowVariable, queryString, workflowVariableBlock?.showManageInputField, workflowVariableBlock?.onManageInputField])
 
   return (
     <LexicalTypeaheadMenuPlugin

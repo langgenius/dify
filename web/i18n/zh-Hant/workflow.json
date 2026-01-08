@@ -171,6 +171,7 @@
   "common.needConnectTip": "此節點尚未連接到其他節點",
   "common.needOutputNode": "必須新增輸出節點",
   "common.needStartNode": "至少必須新增一個起始節點",
+  "common.noAgentNodes": "沒有可用的代理節點",
   "common.noHistory": "無歷史記錄",
   "common.noVar": "沒有變數",
   "common.notRunning": "尚未運行",
