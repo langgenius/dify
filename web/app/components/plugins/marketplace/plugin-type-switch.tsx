@@ -1,4 +1,5 @@
 'use client'
+import type { ActivePluginType } from './constants'
 import { useTranslation } from '#i18n'
 import {
   RiArchive2Line,
@@ -24,7 +25,11 @@ const PluginTypeSwitch = ({
   const [activePluginType, handleActivePluginTypeChange] = useActivePluginType()
   const setSearchMode = useSetSearchMode()
 
-  const options = [
+  const options: Array<{
+    value: ActivePluginType
+    text: string
+    icon: React.ReactNode | null
+  }> = [
     {
       value: PLUGIN_TYPE_SEARCH_MAP.all,
       text: t('category.all', { ns: 'plugin' }),

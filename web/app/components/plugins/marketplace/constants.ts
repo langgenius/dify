@@ -16,11 +16,13 @@ export const PLUGIN_TYPE_SEARCH_MAP = {
   datasource: PluginCategoryEnum.datasource,
   trigger: PluginCategoryEnum.trigger,
   bundle: 'bundle',
-}
+} as const
 
-export type ActivePluginType = keyof typeof PLUGIN_TYPE_SEARCH_MAP
+type ValueOf<T> = T[keyof T]
 
-export const PLUGIN_CATEGORY_WITH_COLLECTIONS = new Set(
+export type ActivePluginType = ValueOf<typeof PLUGIN_TYPE_SEARCH_MAP>
+
+export const PLUGIN_CATEGORY_WITH_COLLECTIONS = new Set<ActivePluginType>(
   [
     PLUGIN_TYPE_SEARCH_MAP.all,
     PLUGIN_TYPE_SEARCH_MAP.tool,
