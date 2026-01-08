@@ -89,18 +89,20 @@ class ToolNode(Node[ToolNodeData]):
             )
             return
 
-        # get parameters
+        # get parameters (use virtual_node_outputs from base class)
         tool_parameters = tool_runtime.get_merged_runtime_parameters() or []
         parameters = self._generate_parameters(
             tool_parameters=tool_parameters,
             variable_pool=self.graph_runtime_state.variable_pool,
             node_data=self.node_data,
+            virtual_node_outputs=self.virtual_node_outputs,
         )
         parameters_for_log = self._generate_parameters(
             tool_parameters=tool_parameters,
             variable_pool=self.graph_runtime_state.variable_pool,
             node_data=self.node_data,
             for_log=True,
+            virtual_node_outputs=self.virtual_node_outputs,
         )
         # get conversation id
         conversation_id = self.graph_runtime_state.variable_pool.get(["sys", SystemVariableKey.CONVERSATION_ID])
@@ -176,6 +178,7 @@ class ToolNode(Node[ToolNodeData]):
         variable_pool: "VariablePool",
         node_data: ToolNodeData,
         for_log: bool = False,
+        virtual_node_outputs: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
         Generate parameters based on the given tool parameters, variable pool, and node data.
@@ -184,12 +187,17 @@ class ToolNode(Node[ToolNodeData]):
             tool_parameters (Sequence[ToolParameter]): The list of tool parameters.
             variable_pool (VariablePool): The variable pool containing the variables.
             node_data (ToolNodeData): The data associated with the tool node.
+            for_log (bool): Whether to generate parameters for logging.
+            virtual_node_outputs (dict[str, Any] | None): Outputs from virtual sub-nodes.
+                Maps local_id -> outputs dict. Virtual node outputs are also in variable_pool
+                with global IDs like "{parent_id}.{local_id}".
 
         Returns:
             Mapping[str, Any]: A dictionary containing the generated parameters.
 
         """
         tool_parameters_dictionary = {parameter.name: parameter for parameter in tool_parameters}
+        virtual_node_outputs = virtual_node_outputs or {}
 
         result: dict[str, Any] = {}
         for parameter_name in node_data.tool_parameters:
@@ -199,14 +207,25 @@ class ToolNode(Node[ToolNodeData]):
                 continue
             tool_input = node_data.tool_parameters[parameter_name]
             if tool_input.type == "variable":
-                variable = variable_pool.get(tool_input.value)
-                if variable is None:
-                    if parameter.required:
-                        raise ToolParameterError(f"Variable {tool_input.value} does not exist")
-                    continue
-                parameter_value = variable.value
+                # Check if this references a virtual node output (local ID like [ext_1, text])
+                selector = tool_input.value
+                if len(selector) >= 2 and selector[0] in virtual_node_outputs:
+                    # Reference to virtual node output
+                    local_id = selector[0]
+                    var_name = selector[1]
+                    outputs = virtual_node_outputs.get(local_id, {})
+                    parameter_value = outputs.get(var_name)
+                else:
+                    # Normal variable reference
+                    variable = variable_pool.get(selector)
+                    if variable is None:
+                        if parameter.required:
+                            raise ToolParameterError(f"Variable {selector} does not exist")
+                        continue
+                    parameter_value = variable.value
             elif tool_input.type in {"mixed", "constant"}:
-                segment_group = variable_pool.convert_template(str(tool_input.value))
+                template = str(tool_input.value)
+                segment_group = variable_pool.convert_template(template)
                 parameter_value = segment_group.log if for_log else segment_group.text
             else:
                 raise ToolParameterError(f"Unknown tool input type '{tool_input.type}'")
