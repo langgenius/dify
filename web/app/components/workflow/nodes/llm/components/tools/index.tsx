@@ -10,11 +10,13 @@ type ToolsProps = {
   nodeId: string
   tools?: ToolValue[]
   maxIterations?: number
+  hideMaxIterations?: boolean
 }
 const Tools = ({
   nodeId,
   tools = [],
   maxIterations = 10,
+  hideMaxIterations = false,
 }: ToolsProps) => {
   const { t } = useTranslation()
   const {
@@ -42,10 +44,12 @@ const Tools = ({
         onChange={handleToolsChange}
         supportCollapse
       />
-      <MaxIterations
-        value={maxIterations}
-        onChange={handleMaxIterationsChange}
-      />
+      {!hideMaxIterations && (
+        <MaxIterations
+          value={maxIterations}
+          onChange={handleMaxIterationsChange}
+        />
+      )}
     </BoxGroup>
   )
 }

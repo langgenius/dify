@@ -634,6 +634,7 @@
   "nodes.listFilter.outputVars.result": "Filter result",
   "nodes.listFilter.selectVariableKeyPlaceholder": "Select sub variable key",
   "nodes.llm.addMessage": "Add Message",
+  "nodes.llm.advancedSettings": "Advanced Settings",
   "nodes.llm.context": "context",
   "nodes.llm.contextTooltip": "You can import Knowledge as context",
   "nodes.llm.files": "Files",

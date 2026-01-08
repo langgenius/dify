@@ -10,6 +10,7 @@ import Switch from '@/app/components/base/switch'
 import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import { FieldCollapse } from '@/app/components/workflow/nodes/_base/components/collapse'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
@@ -23,6 +24,8 @@ import ConfigPrompt from './components/config-prompt'
 import ReasoningFormatConfig from './components/reasoning-format-config'
 import StructureOutput from './components/structure-output'
 import Tools from './components/tools'
+import MaxIterations from './components/tools/max-iterations'
+import { useNodeTools } from './components/tools/use-node-tools'
 import useConfig from './use-config'
 
 const i18nPrefix = 'nodes.llm'
@@ -66,6 +69,10 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     filterJinja2InputVar,
     handleReasoningFormatChange,
   } = useConfig(id, data)
+
+  const {
+    handleMaxIterationsChange,
+  } = useNodeTools(id)
 
   const model = inputs.model
 
@@ -116,26 +123,6 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             debugWithMultipleModel={false}
             readonly={readOnly}
           />
-        </Field>
-
-        {/* knowledge */}
-        <Field
-          title={t(`${i18nPrefix}.context`, { ns: 'workflow' })}
-          tooltip={t(`${i18nPrefix}.contextTooltip`, { ns: 'workflow' })!}
-        >
-          <>
-            <VarReferencePicker
-              readonly={readOnly}
-              nodeId={id}
-              isShowNodeName
-              value={inputs.context?.variable_selector || []}
-              onChange={handleContextVarChange}
-              filterVar={filterVar}
-            />
-            {shouldShowContextTip && (
-              <div className="text-xs font-normal leading-[18px] text-[#DC6803]">{t(`${i18nPrefix}.notSetContextInPromptTip`, { ns: 'workflow' })}</div>
-            )}
-          </>
         </Field>
 
         {/* Prompt */}
@@ -238,26 +225,57 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
           nodeId={id}
           tools={inputs.tools}
           maxIterations={inputs.max_iterations}
+          hideMaxIterations
         />
 
-        {/* Vision: GPT4-vision and so on */}
-        <ConfigVision
-          nodeId={id}
-          readOnly={readOnly}
-          isVisionModel={isVisionModel}
-          enabled={inputs.vision?.enabled}
-          onEnabledChange={handleVisionResolutionEnabledChange}
-          config={inputs.vision?.configs}
-          onConfigChange={handleVisionResolutionChange}
-        />
+        {/* Advanced Settings - 折叠区 */}
+        <FieldCollapse title={t(`${i18nPrefix}.advancedSettings`, { ns: 'workflow' })}>
+          <div className="space-y-4">
+            {/* Context */}
+            <Field
+              title={t(`${i18nPrefix}.context`, { ns: 'workflow' })}
+              tooltip={t(`${i18nPrefix}.contextTooltip`, { ns: 'workflow' })!}
+            >
+              <>
+                <VarReferencePicker
+                  readonly={readOnly}
+                  nodeId={id}
+                  isShowNodeName
+                  value={inputs.context?.variable_selector || []}
+                  onChange={handleContextVarChange}
+                  filterVar={filterVar}
+                />
+                {shouldShowContextTip && (
+                  <div className="text-xs font-normal leading-[18px] text-[#DC6803]">{t(`${i18nPrefix}.notSetContextInPromptTip`, { ns: 'workflow' })}</div>
+                )}
+              </>
+            </Field>
 
-        {/* Reasoning Format */}
-        <ReasoningFormatConfig
-          // Default to tagged for backward compatibility
-          value={inputs.reasoning_format || 'tagged'}
-          onChange={handleReasoningFormatChange}
-          readonly={readOnly}
-        />
+            {/* Vision: GPT4-vision and so on */}
+            <ConfigVision
+              nodeId={id}
+              readOnly={readOnly}
+              isVisionModel={isVisionModel}
+              enabled={inputs.vision?.enabled}
+              onEnabledChange={handleVisionResolutionEnabledChange}
+              config={inputs.vision?.configs}
+              onConfigChange={handleVisionResolutionChange}
+            />
+
+            {/* Max Iterations */}
+            <MaxIterations
+              value={inputs.max_iterations}
+              onChange={handleMaxIterationsChange}
+            />
+
+            {/* Reasoning Format */}
+            <ReasoningFormatConfig
+              value={inputs.reasoning_format || 'tagged'}
+              onChange={handleReasoningFormatChange}
+              readonly={readOnly}
+            />
+          </div>
+        </FieldCollapse>
       </div>
       <Split />
       <OutputVars
