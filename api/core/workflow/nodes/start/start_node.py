@@ -43,25 +43,36 @@ class StartNode(Node[StartNodeData]):
             if value is None and variable.required:
                 raise ValueError(f"{key} is required in input form")
 
+            # If no value provided, skip further processing for this key
+            if not value:
+                continue
+
+            # Always parse and normalize JSON object value first, regardless of schema presence
+            try:
+                if isinstance(value, dict):
+                    json_value = value
+                else:
+                    json_value = json.loads(value)
+            except json.JSONDecodeError:
+                raise ValueError(f"{value} must be a valid JSON object")
+
+            if not isinstance(json_value, dict):
+                raise ValueError(f"JSON object for '{key}' must be an object")
+
+            # Overwrite with normalized dict to ensure downstream consistency
+            node_inputs[key] = json_value
+
+            # If schema exists, then validate against it
             schema = variable.json_schema
             if not schema:
                 continue
 
-            if not value:
-                continue
-
             try:
                 json_schema = json.loads(schema)
-            except json.JSONDecodeError as e:
+            except json.JSONDecodeError:
                 raise ValueError(f"{schema} must be a valid JSON object")
-
-            try:
-                json_value = json.loads(value)
-            except json.JSONDecodeError as e:
-                raise ValueError(f"{value} must be a valid JSON object")
 
             try:
                 Draft7Validator(json_schema).validate(json_value)
             except ValidationError as e:
                 raise ValueError(f"JSON object for '{key}' does not match schema: {e.message}")
-            node_inputs[key] = json_value
