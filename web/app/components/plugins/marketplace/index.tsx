@@ -1,3 +1,4 @@
+import type { DehydratedState } from '@tanstack/react-query'
 import type { SearchParams } from 'nuqs'
 import { dehydrate } from '@tanstack/react-query'
 import { createLoader } from 'nuqs/server'
@@ -10,29 +11,36 @@ import { getCollectionsParams, getMarketplaceCollectionsAndPlugins } from './uti
 type MarketplaceProps = {
   showInstallButton?: boolean
   pluginTypeSwitchClassName?: string
-  searchParams: Promise<SearchParams>
+  /**
+   * Pass the search params from the request to prefetch data on the server
+   */
+  searchParams?: Promise<SearchParams>
 }
-
-const loadSearchParams = createLoader(marketplaceSearchParams)
 
 async function Marketplace({
   showInstallButton = true,
   pluginTypeSwitchClassName,
   searchParams,
 }: MarketplaceProps) {
-  const params = await loadSearchParams(searchParams)
-  const queryClient = getQueryClient()
+  let dehydratedState: DehydratedState | undefined
 
-  await queryClient.prefetchQuery({
-    queryKey: marketplaceKeys.collections(getCollectionsParams(params.category)),
-    queryFn: () => getMarketplaceCollectionsAndPlugins(getCollectionsParams(params.category)),
-  })
+  if (searchParams) {
+    const loadSearchParams = createLoader(marketplaceSearchParams)
+    const params = await loadSearchParams(searchParams)
+    const queryClient = getQueryClient()
+
+    await queryClient.prefetchQuery({
+      queryKey: marketplaceKeys.collections(getCollectionsParams(params.category)),
+      queryFn: () => getMarketplaceCollectionsAndPlugins(getCollectionsParams(params.category)),
+    })
+    dehydratedState = dehydrate(queryClient)
+  }
 
   return (
     <MarketplaceClient
       showInstallButton={showInstallButton}
       pluginTypeSwitchClassName={pluginTypeSwitchClassName}
-      dehydratedState={dehydrate(queryClient)}
+      dehydratedState={dehydratedState}
     />
   )
 }

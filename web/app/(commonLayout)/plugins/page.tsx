@@ -1,13 +1,12 @@
-import type { SearchParams } from 'nuqs'
 import Marketplace from '@/app/components/plugins/marketplace'
 import PluginPage from '@/app/components/plugins/plugin-page'
 import PluginsPanel from '@/app/components/plugins/plugin-page/plugins-panel'
 
-const PluginList = async ({ searchParams}: { searchParams: Promise<SearchParams> }) => {
+const PluginList = () => {
   return (
     <PluginPage
       plugins={<PluginsPanel />}
-      marketplace={<Marketplace searchParams={searchParams} pluginTypeSwitchClassName="top-[60px]" />}
+      marketplace={<Marketplace pluginTypeSwitchClassName="top-[60px]" />}
     />
   )
 }
