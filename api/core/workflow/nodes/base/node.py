@@ -229,6 +229,7 @@ class Node(Generic[NodeDataT]):
         self._node_id = node_id
         self._node_execution_id: str = ""
         self._start_at = naive_utc_now()
+        self._virtual_node_outputs: dict[str, Any] = {}  # Outputs from virtual sub-nodes
 
         raw_node_data = config.get("data") or {}
         if not isinstance(raw_node_data, Mapping):
@@ -270,9 +271,51 @@ class Node(Generic[NodeDataT]):
         """Check if execution should be stopped."""
         return self.graph_runtime_state.stop_event.is_set()
 
+    def _execute_virtual_nodes(self) -> Generator[GraphNodeEventBase, None, dict[str, Any]]:
+        """
+        Execute all virtual sub-nodes defined in node configuration.
+
+        Virtual nodes are complete node definitions that execute before the main node.
+        Each virtual node:
+        - Has its own global ID: "{parent_id}.{local_id}"
+        - Generates standard node events
+        - Stores outputs in the variable pool (via event handling)
+        - Supports retry via parent node's retry config
+
+        Returns:
+            dict mapping local_id -> outputs dict
+        """
+        from .virtual_node_executor import VirtualNodeExecutor
+
+        virtual_nodes = self.node_data.virtual_nodes
+        if not virtual_nodes:
+            return {}
+
+        executor = VirtualNodeExecutor(
+            graph_init_params=self._graph_init_params,
+            graph_runtime_state=self.graph_runtime_state,
+            parent_node_id=self._node_id,
+            parent_retry_config=self.retry_config,
+        )
+
+        return (yield from executor.execute_virtual_nodes(virtual_nodes))
+
+    @property
+    def virtual_node_outputs(self) -> dict[str, Any]:
+        """
+        Get the outputs from virtual sub-nodes.
+
+        Returns:
+            dict mapping local_id -> outputs dict
+        """
+        return self._virtual_node_outputs
+
     def run(self) -> Generator[GraphNodeEventBase, None, None]:
         execution_id = self.ensure_execution_id()
         self._start_at = naive_utc_now()
+
+        # Step 1: Execute virtual sub-nodes before main node execution
+        self._virtual_node_outputs = yield from self._execute_virtual_nodes()
 
         # Create and push start event with required fields
         start_event = NodeRunStartedEvent(

@@ -125,6 +125,11 @@ class EventHandler:
         Args:
             event: The node started event
         """
+        # Check if this is a virtual node (extraction node)
+        if self._is_virtual_node(event.node_id):
+            self._handle_virtual_node_started(event)
+            return
+
         # Track execution in domain model
         node_execution = self._graph_execution.get_or_create_node_execution(event.node_id)
         is_initial_attempt = node_execution.retry_count == 0
@@ -164,6 +169,11 @@ class EventHandler:
         Args:
             event: The node succeeded event
         """
+        # Check if this is a virtual node (extraction node)
+        if self._is_virtual_node(event.node_id):
+            self._handle_virtual_node_success(event)
+            return
+
         # Update domain model
         node_execution = self._graph_execution.get_or_create_node_execution(event.node_id)
         node_execution.mark_taken()
@@ -226,6 +236,11 @@ class EventHandler:
         Args:
             event: The node failed event
         """
+        # Check if this is a virtual node (extraction node)
+        if self._is_virtual_node(event.node_id):
+            self._handle_virtual_node_failed(event)
+            return
+
         # Update domain model
         node_execution = self._graph_execution.get_or_create_node_execution(event.node_id)
         node_execution.mark_failed(event.error)
@@ -345,3 +360,57 @@ class EventHandler:
                     self._graph_runtime_state.set_output("answer", value)
             else:
                 self._graph_runtime_state.set_output(key, value)
+
+    def _is_virtual_node(self, node_id: str) -> bool:
+        """
+        Check if node_id represents a virtual sub-node.
+
+        Virtual nodes have IDs in the format: {parent_node_id}.{local_id}
+        We check if the part before '.' exists in graph nodes.
+        """
+        if "." in node_id:
+            parent_id = node_id.rsplit(".", 1)[0]
+            return parent_id in self._graph.nodes
+        return False
+
+    def _handle_virtual_node_started(self, event: NodeRunStartedEvent) -> None:
+        """
+        Handle virtual node started event.
+
+        Virtual nodes don't need full execution tracking, just collect the event.
+        """
+        # Track in response coordinator for stream ordering
+        self._response_coordinator.track_node_execution(event.node_id, event.id)
+
+        # Collect the event
+        self._event_collector.collect(event)
+
+    def _handle_virtual_node_success(self, event: NodeRunSucceededEvent) -> None:
+        """
+        Handle virtual node success event.
+
+        Virtual nodes (extraction nodes) need special handling:
+        - Store outputs in variable pool (for reference by other nodes)
+        - Accumulate token usage
+        - Collect the event for logging
+        - Do NOT process edges or enqueue next nodes (parent node handles that)
+        """
+        self._accumulate_node_usage(event.node_run_result.llm_usage)
+
+        # Store outputs in variable pool
+        self._store_node_outputs(event.node_id, event.node_run_result.outputs)
+
+        # Collect the event
+        self._event_collector.collect(event)
+
+    def _handle_virtual_node_failed(self, event: NodeRunFailedEvent) -> None:
+        """
+        Handle virtual node failed event.
+
+        Virtual nodes (extraction nodes) failures are collected for logging,
+        but the parent node is responsible for handling the error.
+        """
+        self._accumulate_node_usage(event.node_run_result.llm_usage)
+
+        # Collect the event for logging
+        self._event_collector.collect(event)
