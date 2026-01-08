@@ -11,11 +11,11 @@ import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import EmptyElement from '@/app/components/app/log/empty-element'
-import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
 import Modal from '@/app/components/base/modal'
 import Pagination from '@/app/components/base/pagination'
 import Toast from '@/app/components/base/toast'
+import PlanUpgradeModal from '@/app/components/billing/plan-upgrade-modal'
 import { Plan } from '@/app/components/billing/type'
 import { APP_PAGE_LIMIT } from '@/config'
 import { useAppContext } from '@/context/app-context'
@@ -192,19 +192,12 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
           : null}
       </div>
 
-      <Modal
-        isShow={showUpgradeModal}
+      <PlanUpgradeModal
+        show={showUpgradeModal}
         title={t('filter.archived.upgrade.title', { ns: 'appLog' })}
         description={t('filter.archived.upgrade.description', { ns: 'appLog' })}
         onClose={() => setShowUpgradeModal(false)}
-        closable
-      >
-        <div className="mt-6 flex justify-end">
-          <Button size="small" onClick={() => setShowUpgradeModal(false)}>
-            {t('operation.close', { ns: 'common' })}
-          </Button>
-        </div>
-      </Modal>
+      />
 
       {/* Export archived logs modal */}
       <Modal
