@@ -11,9 +11,10 @@ from pydantic import BaseModel
 
 from core.file.models import File
 from core.variables import Segment
+from core.workflow.enums import NodeType
 from core.workflow.graph_events import GraphNodeEventBase
 from core.workflow.nodes.base.node import Node
-from extensions.otel.semconv.gen_ai import ChainAttributes
+from extensions.otel.semconv.gen_ai import ChainAttributes, GenAIAttributes
 
 
 def safe_json_dumps(obj: Any, ensure_ascii: bool = False) -> str:
@@ -85,6 +86,21 @@ class DefaultNodeOTelParser:
             span.set_attribute("node.execution_id", node.execution_id)
         if hasattr(node, "node_type") and node.node_type:
             span.set_attribute("node.type", node.node_type.value)
+
+        span.set_attribute(GenAIAttributes.FRAMEWORK, "dify")
+
+        node_type = getattr(node, "node_type", None)
+        if isinstance(node_type, NodeType):
+            if node_type == NodeType.LLM:
+                span.set_attribute(GenAIAttributes.SPAN_KIND, "LLM")
+            elif node_type == NodeType.KNOWLEDGE_RETRIEVAL:
+                span.set_attribute(GenAIAttributes.SPAN_KIND, "RETRIEVER")
+            elif node_type == NodeType.TOOL:
+                span.set_attribute(GenAIAttributes.SPAN_KIND, "TOOL")
+            else:
+                span.set_attribute(GenAIAttributes.SPAN_KIND, "TASK")
+        else:
+            span.set_attribute(GenAIAttributes.SPAN_KIND, "TASK")
 
         # Extract inputs and outputs from result_event
         if result_event and result_event.node_run_result:
