@@ -1,6 +1,6 @@
 import logging
 
-from sqlalchemy import update
+from sqlalchemy import CursorResult, update
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -61,7 +61,7 @@ class CreditPoolService:
                     TenantCreditPool.quota_used + credits_required <= TenantCreditPool.quota_limit,
                 ]
                 stmt = update(TenantCreditPool).where(*where_conditions).values(**update_values)
-                result = session.execute(stmt)
+                result: CursorResult = session.execute(stmt)
                 session.commit()
                 if result.rowcount == 0:
                     raise QuotaExceededError(
