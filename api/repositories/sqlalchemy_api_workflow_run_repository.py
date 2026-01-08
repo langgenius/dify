@@ -480,7 +480,12 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             "trigger_metadata": trigger_metadata,
         }
         if not app_logs:
-            archive_log = WorkflowArchiveLog(**base_data)
+            archive_log = WorkflowArchiveLog(
+                **base_data,
+                log_id=None,
+                log_created_at=None,
+                log_created_from=None,
+            )
             session.add(archive_log)
             return 1
 
