@@ -24,7 +24,7 @@ const Marketplace = async ({
   return (
     <TanstackQueryInitializer>
       <HydrateQueryClient searchParams={searchParams}>
-        <HydrateMarketplaceAtoms enable={!!searchParams}>
+        <HydrateMarketplaceAtoms preserveSearchStateInQuery={!!searchParams}>
           <Description />
           <StickySearchAndSwitchWrapper
             pluginTypeSwitchClassName={pluginTypeSwitchClassName}
