@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import re
 import uuid
@@ -5,13 +7,13 @@ from collections.abc import Mapping
 from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum, auto
-from typing import TYPE_CHECKING, Any, Literal, Optional, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 from uuid import uuid4
 
 import sqlalchemy as sa
 from flask import request
-from flask_login import UserMixin
-from sqlalchemy import Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
+from flask_login import UserMixin  # type: ignore[import-untyped]
+from sqlalchemy import BigInteger, Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from configs import dify_config
@@ -54,7 +56,7 @@ class AppMode(StrEnum):
     RAG_PIPELINE = "rag-pipeline"
 
     @classmethod
-    def value_of(cls, value: str) -> "AppMode":
+    def value_of(cls, value: str) -> AppMode:
         """
         Get value of given mode.
 
@@ -70,6 +72,7 @@ class AppMode(StrEnum):
 class IconType(StrEnum):
     IMAGE = auto()
     EMOJI = auto()
+    LINK = auto()
 
 
 class App(Base):
@@ -81,7 +84,7 @@ class App(Base):
     name: Mapped[str] = mapped_column(String(255))
     description: Mapped[str] = mapped_column(LongText, default=sa.text("''"))
     mode: Mapped[str] = mapped_column(String(255))
-    icon_type: Mapped[str | None] = mapped_column(String(255))  # image, emoji
+    icon_type: Mapped[str | None] = mapped_column(String(255))  # image, emoji, link
     icon = mapped_column(String(255))
     icon_background: Mapped[str | None] = mapped_column(String(255))
     app_model_config_id = mapped_column(StringUUID, nullable=True)
@@ -120,19 +123,19 @@ class App(Base):
                 return ""
 
     @property
-    def site(self) -> Optional["Site"]:
+    def site(self) -> Site | None:
         site = db.session.query(Site).where(Site.app_id == self.id).first()
         return site
 
     @property
-    def app_model_config(self) -> Optional["AppModelConfig"]:
+    def app_model_config(self) -> AppModelConfig | None:
         if self.app_model_config_id:
             return db.session.query(AppModelConfig).where(AppModelConfig.id == self.app_model_config_id).first()
 
         return None
 
     @property
-    def workflow(self) -> Optional["Workflow"]:
+    def workflow(self) -> Workflow | None:
         if self.workflow_id:
             from .workflow import Workflow
 
@@ -287,7 +290,7 @@ class App(Base):
         return deleted_tools
 
     @property
-    def tags(self) -> list["Tag"]:
+    def tags(self) -> list[Tag]:
         tags = (
             db.session.query(Tag)
             .join(TagBinding, Tag.id == TagBinding.tag_id)
@@ -1193,7 +1196,7 @@ class Message(Base):
         return json.loads(self.message_metadata) if self.message_metadata else {}
 
     @property
-    def agent_thoughts(self) -> list["MessageAgentThought"]:
+    def agent_thoughts(self) -> list[MessageAgentThought]:
         return (
             db.session.query(MessageAgentThought)
             .where(MessageAgentThought.message_id == self.id)
@@ -1306,7 +1309,7 @@ class Message(Base):
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "Message":
+    def from_dict(cls, data: dict[str, Any]) -> Message:
         return cls(
             id=data["id"],
             app_id=data["app_id"],
@@ -1419,14 +1422,19 @@ class MessageAnnotation(Base):
     app_id: Mapped[str] = mapped_column(StringUUID)
     conversation_id: Mapped[str | None] = mapped_column(StringUUID, sa.ForeignKey("conversations.id"))
     message_id: Mapped[str | None] = mapped_column(StringUUID)
-    question = mapped_column(LongText, nullable=True)
-    content = mapped_column(LongText, nullable=False)
+    question: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    content: Mapped[str] = mapped_column(LongText, nullable=False)
     hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
-    account_id = mapped_column(StringUUID, nullable=False)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = mapped_column(
+    account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
+
+    @property
+    def question_text(self) -> str:
+        """Return a non-null question string, falling back to the answer content."""
+        return self.question or self.content
 
     @property
     def account(self):
@@ -1528,7 +1536,7 @@ class OperationLog(TypeBase):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     action: Mapped[str] = mapped_column(String(255), nullable=False)
-    content: Mapped[Any] = mapped_column(sa.JSON)
+    content: Mapped[Any | None] = mapped_column(sa.JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
@@ -2065,3 +2073,29 @@ class TraceAppConfig(TypeBase):
             "created_at": str(self.created_at) if self.created_at else None,
             "updated_at": str(self.updated_at) if self.updated_at else None,
         }
+
+
+class TenantCreditPool(Base):
+    __tablename__ = "tenant_credit_pools"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="tenant_credit_pool_pkey"),
+        sa.Index("tenant_credit_pool_tenant_id_idx", "tenant_id"),
+        sa.Index("tenant_credit_pool_pool_type_idx", "pool_type"),
+    )
+
+    id = mapped_column(StringUUID, primary_key=True, server_default=text("uuid_generate_v4()"))
+    tenant_id = mapped_column(StringUUID, nullable=False)
+    pool_type = mapped_column(String(40), nullable=False, default="trial", server_default="trial")
+    quota_limit = mapped_column(BigInteger, nullable=False, default=0)
+    quota_used = mapped_column(BigInteger, nullable=False, default=0)
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    updated_at = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
+
+    @property
+    def remaining_credits(self) -> int:
+        return max(0, self.quota_limit - self.quota_used)
+
+    def has_sufficient_credits(self, required_credits: int) -> bool:
+        return self.remaining_credits >= required_credits

@@ -1069,6 +1069,11 @@ class TenantService:
 
         logger.info("Triggering default plugin auto-install for new tenant. tenant_id=%s", tenant.id)
         PluginBootstrapService.install_default_plugins(str(tenant.id))
+
+        from services.credit_pool_service import CreditPoolService
+
+        CreditPoolService.create_default_pool(tenant.id)
+
         return tenant
 
     @staticmethod

@@ -4,7 +4,7 @@ import type {
   GetValuesOptions,
 } from '../types'
 import { useCallback } from 'react'
-import { getTransformedValuesWhenSecretInputPristine } from '../utils'
+import { getTransformedValuesWhenSecretInputPristine } from '../utils/secret-input'
 import { useCheckValidated } from './use-check-validated'
 
 export const useGetFormValues = (form: AnyFormApi, formSchemas: FormSchema[]) => {

@@ -13,7 +13,6 @@ type SearchBoxProps = {
   tags: string[]
   onTagsChange: (tags: string[]) => void
   placeholder?: string
-  locale?: string
   supportAddCustomTool?: boolean
   usedInMarketplace?: boolean
   onShowAddCustomCollectionModal?: () => void
@@ -28,7 +27,6 @@ const SearchBox = ({
   tags,
   onTagsChange,
   placeholder = '',
-  locale,
   usedInMarketplace = false,
   supportAddCustomTool,
   onShowAddCustomCollectionModal,
@@ -49,7 +47,6 @@ const SearchBox = ({
                 tags={tags}
                 onTagsChange={onTagsChange}
                 usedInMarketplace
-                locale={locale}
               />
               <Divider type="vertical" className="mx-1 h-3.5" />
               <div className="flex grow items-center gap-x-2 p-1">
@@ -109,7 +106,6 @@ const SearchBox = ({
               <TagsFilter
                 tags={tags}
                 onTagsChange={onTagsChange}
-                locale={locale}
               />
             </>
           )

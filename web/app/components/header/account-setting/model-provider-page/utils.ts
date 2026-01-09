@@ -17,7 +17,25 @@ import {
   ModelTypeEnum,
 } from './declarations'
 
-export const MODEL_PROVIDER_QUOTA_GET_PAID = ['langgenius/anthropic/anthropic', 'langgenius/openai/openai', 'langgenius/azure_openai/azure_openai']
+export enum ModelProviderQuotaGetPaid {
+  ANTHROPIC = 'langgenius/anthropic/anthropic',
+  OPENAI = 'langgenius/openai/openai',
+  // AZURE_OPENAI = 'langgenius/azure_openai/azure_openai',
+  GEMINI = 'langgenius/gemini/google',
+  X = 'langgenius/x/x',
+  DEEPSEEK = 'langgenius/deepseek/deepseek',
+  TONGYI = 'langgenius/tongyi/tongyi',
+}
+export const MODEL_PROVIDER_QUOTA_GET_PAID = [ModelProviderQuotaGetPaid.ANTHROPIC, ModelProviderQuotaGetPaid.OPENAI, ModelProviderQuotaGetPaid.GEMINI, ModelProviderQuotaGetPaid.X, ModelProviderQuotaGetPaid.DEEPSEEK, ModelProviderQuotaGetPaid.TONGYI]
+
+export const modelNameMap = {
+  [ModelProviderQuotaGetPaid.OPENAI]: 'OpenAI',
+  [ModelProviderQuotaGetPaid.ANTHROPIC]: 'Anthropic',
+  [ModelProviderQuotaGetPaid.GEMINI]: 'Gemini',
+  [ModelProviderQuotaGetPaid.X]: 'xAI',
+  [ModelProviderQuotaGetPaid.DEEPSEEK]: 'DeepSeek',
+  [ModelProviderQuotaGetPaid.TONGYI]: 'Tongyi',
+}
 
 export const isNullOrUndefined = (value: any) => {
   return value === undefined || value === null

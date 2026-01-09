@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from abc import ABC
 from collections.abc import Mapping, Sequence
 from enum import StrEnum, auto
@@ -17,7 +19,7 @@ class PromptMessageRole(StrEnum):
     TOOL = auto()
 
     @classmethod
-    def value_of(cls, value: str) -> "PromptMessageRole":
+    def value_of(cls, value: str) -> PromptMessageRole:
         """
         Get value of given mode.
 
