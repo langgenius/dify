@@ -32,10 +32,12 @@ export type BeforeRunFormProps = {
   showSpecialResultPanel?: boolean
   existVarValuesInForms: Record<string, any>[]
   filteredExistVarForms: FormProps[]
-  generatedFormContentData?: Record<string, any>
   showGeneratedForm?: boolean
   handleShowGeneratedForm?: (data: Record<string, any>) => void
   handleHideGeneratedForm?: () => void
+  formData?: any
+  handleSubmitHumanInputForm?: (data: any) => Promise<void>
+  handleAfterHumanInputStepRun?: () => void
 } & Partial<SpecialResultPanelProps>
 
 function formatValue(value: string | any, type: InputVarType) {
@@ -73,14 +75,17 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
   forms,
   filteredExistVarForms,
   existVarValuesInForms,
-  generatedFormContentData,
   showGeneratedForm = false,
   handleShowGeneratedForm,
   handleHideGeneratedForm,
+  formData,
+  handleSubmitHumanInputForm,
+  handleAfterHumanInputStepRun,
 }) => {
   const { t } = useTranslation()
 
   const isHumanInput = nodeType === BlockEnum.HumanInput
+  const showBackButton = filteredExistVarForms.length > 0
 
   const isFileLoaded = (() => {
     if (!forms || forms.length === 0)
@@ -154,6 +159,11 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
       onRun(submitData)
   }
 
+  const handleHumanInputFormSubmit = async (data: any) => {
+    await handleSubmitHumanInputForm?.(data)
+    handleAfterHumanInputStepRun?.()
+  }
+
   const hasRun = useRef(false)
   useEffect(() => {
     // React 18 run twice in dev mode
@@ -162,7 +172,9 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
     hasRun.current = true
     if (filteredExistVarForms.length === 0 && !isHumanInput)
       onRun({})
-  }, [filteredExistVarForms, onRun])
+    if (filteredExistVarForms.length === 0 && isHumanInput)
+      handleShowGeneratedForm?.({})
+  }, [filteredExistVarForms, handleShowGeneratedForm, isHumanInput, onRun])
 
   if (filteredExistVarForms.length === 0 && !isHumanInput)
     return null
@@ -187,14 +199,13 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
             ))}
           </div>
         )}
-        {showGeneratedForm && generatedFormContentData && (
+        {showGeneratedForm && formData && (
           <SingleRunForm
             nodeName={nodeName}
+            showBackButton={showBackButton}
             handleBack={handleHideGeneratedForm}
-            showBackButton={generatedFormContentData.showBackButton}
-            formContent={generatedFormContentData.formContent}
-            inputFields={generatedFormContentData.inputFields}
-            userActions={generatedFormContentData.userActions}
+            data={formData}
+            onSubmit={handleHumanInputFormSubmit}
           />
         )}
         {!showGeneratedForm && (
