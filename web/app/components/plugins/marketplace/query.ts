@@ -2,6 +2,9 @@ import type { CollectionsAndPluginsSearchParams, PluginsSearchParams } from './t
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { getMarketplaceCollectionsAndPlugins, getMarketplacePlugins } from './utils'
 
+// TODO: Avoid manual maintenance of query keys and better service management,
+// https://github.com/langgenius/dify/issues/30342
+
 export const marketplaceKeys = {
   all: ['marketplace'] as const,
   collections: (params?: CollectionsAndPluginsSearchParams) => [...marketplaceKeys.all, 'collections', params] as const,
