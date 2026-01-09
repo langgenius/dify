@@ -99,7 +99,12 @@ class WorkflowRunArchiver:
             ├── workflow_pause_reasons.jsonl
             └── workflow_trigger_logs.jsonl
     """
+from core.workflow.enums import WorkflowExecutionStatus, WorkflowType
 
+ARCHIVED_TYPE = [
+    WorkflowType.WORKFLOW.value,
+    WorkflowType.RAG_PIPELINE.value,
+]
     ARCHIVED_TABLES = [
         "workflow_runs",
         "workflow_app_logs",
