@@ -47,6 +47,9 @@ const { mockMarketplaceData, mockMoreClick } = vi.hoisted(() => {
 
 vi.mock('../state', () => ({
   useMarketplaceData: () => mockMarketplaceData,
+}))
+
+vi.mock('../atoms', () => ({
   useMarketplaceMoreClick: () => mockMoreClick,
 }))
 

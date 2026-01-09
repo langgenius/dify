@@ -11,6 +11,7 @@ type MarketplaceProps = {
   pluginTypeSwitchClassName?: string
   /**
    * Pass the search params from the request to prefetch data on the server
+   * and preserve the search params in the URL.
    */
   searchParams?: Promise<SearchParams>
 }

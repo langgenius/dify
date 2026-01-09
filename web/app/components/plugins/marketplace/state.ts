@@ -1,8 +1,7 @@
-import type { PluginsSearchParams, SearchParamsFromCollection } from './types'
-import { useAtomValue, useSetAtom } from 'jotai'
+import type { PluginsSearchParams } from './types'
 import { useCallback, useMemo } from 'react'
-import { marketplaceSortAtom, searchModeAtom, useActivePluginType, useFilterPluginTags, useMarketplaceSearchMode, useSearchPluginText } from './atoms'
-import { DEFAULT_SORT, PLUGIN_TYPE_SEARCH_MAP } from './constants'
+import { useActivePluginType, useFilterPluginTags, useMarketplaceSearchMode, useMarketplaceSortValue, useSearchPluginText } from './atoms'
+import { PLUGIN_TYPE_SEARCH_MAP } from './constants'
 import { useMarketplaceContainerScroll } from './hooks'
 import { useMarketplaceCollectionsAndPlugins, useMarketplacePlugins } from './query'
 import { getCollectionsParams, getMarketplaceListFilterType } from './utils'
@@ -16,7 +15,7 @@ export function useMarketplaceData() {
     getCollectionsParams(activePluginType),
   )
 
-  const sort = useAtomValue(marketplaceSortAtom)
+  const sort = useMarketplaceSortValue()
   const isSearchMode = useMarketplaceSearchMode()
   const queryParams = useMemo((): PluginsSearchParams | undefined => {
     if (!isSearchMode)
@@ -50,21 +49,4 @@ export function useMarketplaceData() {
     page: pluginsQuery.data?.pages.length || 1,
     isLoading: collectionsQuery.isLoading || pluginsQuery.isLoading,
   }
-}
-
-export function useMarketplaceMoreClick() {
-  const [,setQ] = useSearchPluginText()
-  const setSort = useSetAtom(marketplaceSortAtom)
-  const setSearchMode = useSetAtom(searchModeAtom)
-
-  return useCallback((searchParams?: SearchParamsFromCollection) => {
-    if (!searchParams)
-      return
-    setQ(searchParams?.query || '')
-    setSort({
-      sortBy: searchParams?.sort_by || DEFAULT_SORT.sortBy,
-      sortOrder: searchParams?.sort_order || DEFAULT_SORT.sortOrder,
-    })
-    setSearchMode(true)
-  }, [setQ, setSort, setSearchMode])
 }

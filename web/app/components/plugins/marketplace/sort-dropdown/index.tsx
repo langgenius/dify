@@ -4,14 +4,13 @@ import {
   RiArrowDownSLine,
   RiCheckLine,
 } from '@remixicon/react'
-import { useAtom } from 'jotai'
 import { useState } from 'react'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { marketplaceSortAtom } from '../atoms'
+import { useMarketplaceSort } from '../atoms'
 
 const SortDropdown = () => {
   const { t } = useTranslation()
@@ -37,7 +36,7 @@ const SortDropdown = () => {
       text: t('marketplace.sortOption.firstReleased', { ns: 'plugin' }),
     },
   ]
-  const [sort, handleSortChange] = useAtom(marketplaceSortAtom)
+  const [sort, handleSortChange] = useMarketplaceSort()
   const [open, setOpen] = useState(false)
   const selectedOption = options.find(option => option.value === sort.sortBy && option.order === sort.sortOrder) ?? options[0]
 
