@@ -1529,7 +1529,7 @@ class LLMNode(Node[LLMNodeData]):
         model_instance: ModelInstance,
         prompt_messages: Sequence[PromptMessage],
         stop: Sequence[str] | None,
-        files: Sequence["File"],
+        files: Sequence[File],
         variable_pool: VariablePool,
         node_inputs: dict[str, Any],
         process_data: dict[str, Any],
@@ -1636,7 +1636,7 @@ class LLMNode(Node[LLMNodeData]):
 
         return tool_instances
 
-    def _extract_prompt_files(self, variable_pool: VariablePool) -> list["File"]:
+    def _extract_prompt_files(self, variable_pool: VariablePool) -> list[File]:
         """Extract files from prompt template variables."""
         from core.variables import ArrayFileVariable, FileVariable
 
