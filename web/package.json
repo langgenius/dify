@@ -3,7 +3,13 @@
   "type": "module",
   "version": "1.11.2",
   "private": true,
-  "packageManager": "pnpm@10.26.2+sha512.0e308ff2005fc7410366f154f625f6631ab2b16b1d2e70238444dd6ae9d630a8482d92a451144debc492416896ed16f7b114a86ec68b8404b2443869e68ffda6",
+  "packageManager": "pnpm@10.27.0+sha512.72d699da16b1179c14ba9e64dc71c9a40988cbdc65c264cb0e489db7de917f20dcf4d64d8723625f2969ba52d4b7e2a1170682d9ac2a5dcaeaab732b7e16f04a",
+  "imports": {
+    "#i18n": {
+      "react-server": "./i18n-config/lib.server.ts",
+      "default": "./i18n-config/lib.client.ts"
+    }
+  },
   "engines": {
     "node": ">=v22.11.0"
   },
@@ -34,7 +40,6 @@
     "gen-icons": "node ./scripts/gen-icons.mjs && eslint --fix app/components/base/icons/src/",
     "uglify-embed": "node ./bin/uglify-embed",
     "i18n:check": "tsx ./scripts/check-i18n.js",
-    "i18n:gen": "tsx ./scripts/auto-gen-i18n.js",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest --watch",
@@ -47,14 +52,13 @@
     "knip": "knip"
   },
   "dependencies": {
-    "@amplitude/analytics-browser": "^2.31.3",
+    "@amplitude/analytics-browser": "^2.33.1",
     "@amplitude/plugin-session-replay-browser": "^1.23.6",
     "@emoji-mart/data": "^1.2.1",
     "@floating-ui/react": "^0.26.28",
     "@formatjs/intl-localematcher": "^0.5.10",
     "@headlessui/react": "2.2.1",
     "@heroicons/react": "^2.2.0",
-    "@hookform/resolvers": "^5.2.2",
     "@lexical/code": "^0.38.2",
     "@lexical/link": "^0.38.2",
     "@lexical/list": "^0.38.2",
@@ -117,7 +121,6 @@
     "react-18-input-autosize": "^3.0.0",
     "react-dom": "19.2.3",
     "react-easy-crop": "^5.5.3",
-    "react-hook-form": "^7.65.0",
     "react-hotkeys-hook": "^4.6.2",
     "react-i18next": "^16.5.0",
     "react-markdown": "^9.1.0",
@@ -192,7 +195,6 @@
     "@vitest/coverage-v8": "4.0.16",
     "autoprefixer": "^10.4.21",
     "babel-loader": "^10.0.0",
-    "bing-translate-api": "^4.1.0",
     "code-inspector-plugin": "1.2.9",
     "cross-env": "^10.1.0",
     "eslint": "^9.39.2",

@@ -1,9 +1,8 @@
-from collections.abc import Callable, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, TypeAlias
+from collections.abc import Mapping, Sequence
+from typing import TYPE_CHECKING, Any
 
 from core.variables import SegmentType, Variable
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID
-from core.workflow.conversation_variable_updater import ConversationVariableUpdater
 from core.workflow.entities import GraphInitParams
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.node_events import NodeRunResult
@@ -11,19 +10,14 @@ from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.variable_assigner.common import helpers as common_helpers
 from core.workflow.nodes.variable_assigner.common.exc import VariableOperatorNodeError
 
-from ..common.impl import conversation_variable_updater_factory
 from .node_data import VariableAssignerData, WriteMode
 
 if TYPE_CHECKING:
     from core.workflow.runtime import GraphRuntimeState
 
 
-_CONV_VAR_UPDATER_FACTORY: TypeAlias = Callable[[], ConversationVariableUpdater]
-
-
 class VariableAssignerNode(Node[VariableAssignerData]):
     node_type = NodeType.VARIABLE_ASSIGNER
-    _conv_var_updater_factory: _CONV_VAR_UPDATER_FACTORY
 
     def __init__(
         self,
@@ -31,7 +25,6 @@ class VariableAssignerNode(Node[VariableAssignerData]):
         config: Mapping[str, Any],
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
-        conv_var_updater_factory: _CONV_VAR_UPDATER_FACTORY = conversation_variable_updater_factory,
     ):
         super().__init__(
             id=id,
@@ -39,7 +32,6 @@ class VariableAssignerNode(Node[VariableAssignerData]):
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
-        self._conv_var_updater_factory = conv_var_updater_factory
 
     @classmethod
     def version(cls) -> str:
@@ -96,16 +88,7 @@ class VariableAssignerNode(Node[VariableAssignerData]):
         # Over write the variable.
         self.graph_runtime_state.variable_pool.add(assigned_variable_selector, updated_variable)
 
-        # TODO: Move database operation to the pipeline.
-        # Update conversation variable.
-        conversation_id = self.graph_runtime_state.variable_pool.get(["sys", "conversation_id"])
-        if not conversation_id:
-            raise VariableOperatorNodeError("conversation_id not found")
-        conv_var_updater = self._conv_var_updater_factory()
-        conv_var_updater.update(conversation_id=conversation_id.text, variable=updated_variable)
-        conv_var_updater.flush()
         updated_variables = [common_helpers.variable_to_processed_data(assigned_variable_selector, updated_variable)]
-
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             inputs={

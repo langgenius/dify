@@ -874,7 +874,7 @@ class RagPipelineService:
             variable_pool = node_instance.graph_runtime_state.variable_pool
             invoke_from = variable_pool.get(["sys", SystemVariableKey.INVOKE_FROM])
             if invoke_from:
-                if invoke_from.value == InvokeFrom.PUBLISHED:
+                if invoke_from.value == InvokeFrom.PUBLISHED_PIPELINE:
                     document_id = variable_pool.get(["sys", SystemVariableKey.DOCUMENT_ID])
                     if document_id:
                         document = db.session.query(Document).where(Document.id == document_id.value).first()
@@ -1318,7 +1318,7 @@ class RagPipelineService:
                 "datasource_info_list": [json.loads(document_pipeline_execution_log.datasource_info)],
                 "original_document_id": document.id,
             },
-            invoke_from=InvokeFrom.PUBLISHED,
+            invoke_from=InvokeFrom.PUBLISHED_PIPELINE,
             streaming=False,
             call_depth=0,
             workflow_thread_pool_id=None,

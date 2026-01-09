@@ -341,7 +341,7 @@
   "modelProvider.card.callTimes": "Số lần gọi",
   "modelProvider.card.modelAPI": "Các mô hình {{modelName}} đang sử dụng Khóa API.",
   "modelProvider.card.modelNotSupported": "Các mô hình {{modelName}} chưa được cài đặt.",
-  "modelProvider.card.modelSupported": "{{modelName}} mô hình đang sử dụng hạn mức này.",
+  "modelProvider.card.modelSupported": "Các mô hình {{modelName}} đang sử dụng hạn mức này.",
   "modelProvider.card.onTrial": "Thử nghiệm",
   "modelProvider.card.paid": "Đã thanh toán",
   "modelProvider.card.priorityUse": "Ưu tiên sử dụng",

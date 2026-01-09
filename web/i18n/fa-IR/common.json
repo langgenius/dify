@@ -339,7 +339,7 @@
   "modelProvider.callTimes": "تعداد فراخوانی",
   "modelProvider.card.buyQuota": "خرید سهمیه",
   "modelProvider.card.callTimes": "تعداد فراخوانی",
-  "modelProvider.card.modelAPI": "مدل‌های {{modelName}} در حال استفاده از کلید API هستند.",
+  "modelProvider.card.modelAPI": "مدل‌های {{modelName}} از کلید API استفاده می‌کنند.",
   "modelProvider.card.modelNotSupported": "مدل‌های {{modelName}} نصب نشده‌اند.",
   "modelProvider.card.modelSupported": "مدل‌های {{modelName}} از این سهمیه استفاده می‌کنند.",
   "modelProvider.card.onTrial": "در حال آزمایش",
