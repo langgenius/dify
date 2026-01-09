@@ -41,7 +41,7 @@ type CreateAppProps = {
   defaultAppMode?: AppModeEnum
 }
 
-type RuntimeMode = 'classical' | 'new'
+type RuntimeMode = 'sandboxed' | 'classic'
 
 type RuntimeOption = {
   label: string
@@ -63,7 +63,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [isAppTypeExpanded, setIsAppTypeExpanded] = useState(false)
-  const [runtimeMode, setRuntimeMode] = useState<RuntimeMode>('classical')
+  const [runtimeMode, setRuntimeMode] = useState<RuntimeMode>('sandboxed')
 
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
@@ -76,7 +76,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
       setIsAppTypeExpanded(true)
 
     if (appMode !== AppModeEnum.WORKFLOW && appMode !== AppModeEnum.ADVANCED_CHAT)
-      setRuntimeMode('classical')
+      setRuntimeMode('classic')
   }, [appMode])
 
   const onCreate = useCallback(async () => {
@@ -101,7 +101,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
         mode: appMode,
       })
 
-      if (runtimeMode === 'new' && (appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT))
+      if (runtimeMode === 'sandboxed' && (appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT))
         localStorage.setItem(`${WORKFLOW_RUNTIME_STORAGE_KEY_PREFIX}${app.id}`, '1')
 
       // Track app creation success
@@ -287,21 +287,21 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                   <CustomSelect<RuntimeOption>
                     options={[
                       {
-                        label: t('newApp.runtimeOptionNew', { ns: 'app' }),
-                        value: 'new',
-                        description: t('newApp.runtimeOptionNewDescription', { ns: 'app' }),
+                        label: t('newApp.runtimeOptionSandboxed', { ns: 'app' }),
+                        value: 'sandboxed',
+                        description: t('newApp.runtimeOptionSandboxedDescription', { ns: 'app' }),
                         recommended: true,
                       },
                       {
-                        label: t('newApp.runtimeOptionClassical', { ns: 'app' }),
-                        value: 'classical',
-                        description: t('newApp.runtimeOptionClassicalDescription', { ns: 'app' }),
+                        label: t('newApp.runtimeOptionClassic', { ns: 'app' }),
+                        value: 'classic',
+                        description: t('newApp.runtimeOptionClassicDescription', { ns: 'app' }),
                       },
                     ]}
                     value={runtimeMode}
                     onChange={value => setRuntimeMode(value as RuntimeMode)}
                     triggerProps={{
-                      className: '!h-8 !rounded-lg !bg-components-input-bg-normal !px-2 !py-1',
+                      className: 'px-3',
                     }}
                     popupProps={{
                       wrapperClassName: 'z-[60]',
