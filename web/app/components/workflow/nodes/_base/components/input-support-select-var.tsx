@@ -22,6 +22,7 @@ type Props = {
   placeholder?: string
   placeholderClassName?: string
   promptMinHeightClassName?: string
+  promptWrapperClassName?: string
   value: string
   onChange: (value: string) => void
   onFocusChange?: (value: boolean) => void
@@ -38,6 +39,7 @@ const Editor: FC<Props> = ({
   placeholder,
   placeholderClassName,
   promptMinHeightClassName = 'min-h-[20px]',
+  promptWrapperClassName,
   value,
   onChange,
   onFocusChange,
@@ -65,6 +67,7 @@ const Editor: FC<Props> = ({
       <>
         <PromptEditor
           instanceId={instanceId}
+          wrapperClassName={promptWrapperClassName}
           className={cn(promptMinHeightClassName, '!leading-[18px]')}
           placeholder={placeholder}
           placeholderClassName={placeholderClassName}
