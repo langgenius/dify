@@ -94,7 +94,7 @@ export const useShareConversations = (params: ShareConversationsParams, options:
     refetchOnReconnect,
     refetchOnWindowFocus,
   } = options
-  const isEnabled = enabled && (params.appSourceType !== AppSourceType.installedApp || !!params.appId)
+  const isEnabled = enabled && params.appSourceType !== AppSourceType.tryApp && (params.appSourceType !== AppSourceType.installedApp || !!params.appId)
   return useQuery<AppConversationData>({
     queryKey: shareQueryKeys.conversationList(params),
     queryFn: () => fetchConversations(
@@ -116,7 +116,7 @@ export const useShareChatList = (params: ShareChatListParams, options: ShareQuer
     refetchOnReconnect,
     refetchOnWindowFocus,
   } = options
-  const isEnabled = enabled && (params.appSourceType !== AppSourceType.installedApp || !!params.appId) && !!params.conversationId
+  const isEnabled = enabled && params.appSourceType !== AppSourceType.tryApp && (params.appSourceType !== AppSourceType.installedApp || !!params.appId) && !!params.conversationId
   return useQuery({
     queryKey: shareQueryKeys.chatList(params),
     queryFn: () => fetchChatList(params.conversationId, params.appSourceType, params.appId),
