@@ -2,15 +2,17 @@
 import type { FC } from 'react'
 import type { QueryParam } from './index'
 import type { I18nKeysByPrefix } from '@/types/i18n'
-import { RiCalendarLine } from '@remixicon/react'
+import { Menu, MenuButton, MenuItems, Transition } from '@headlessui/react'
+import { RiArrowDownSLine, RiCalendarLine } from '@remixicon/react'
 import dayjs from 'dayjs'
 import quarterOfYear from 'dayjs/plugin/quarterOfYear'
-import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Chip from '@/app/components/base/chip'
+import { FileDownload02 } from '@/app/components/base/icons/src/vender/line/files'
 import Input from '@/app/components/base/input'
 import Sort from '@/app/components/base/sort'
 import { useAnnotationsCount } from '@/service/use-log'
+import { cn } from '@/utils/classnames'
 
 dayjs.extend(quarterOfYear)
 
@@ -35,11 +37,15 @@ type IFilterProps = {
   appId: string
   queryParams: QueryParam
   setQueryParams: (v: QueryParam) => void
+  showExport?: boolean
+  onExport?: (format: 'jsonl' | 'csv') => void
+  exporting?: boolean
 }
 
-const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryParams }: IFilterProps) => {
+const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryParams, showExport, onExport, exporting }: IFilterProps) => {
   const { data, isLoading } = useAnnotationsCount(appId)
   const { t } = useTranslation()
+
   if (isLoading || !data)
     return null
   return (
@@ -95,6 +101,61 @@ const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryPara
               setQueryParams({ ...queryParams, sort_by: value as string })
             }}
           />
+        </>
+      )}
+      {showExport && (
+        <>
+          <div className="h-3.5 w-px bg-divider-regular"></div>
+          <Menu as="div" className="relative">
+            <MenuButton
+              disabled={exporting}
+              className={cn(
+                'flex min-h-8 items-center gap-1.5 rounded-lg bg-components-input-bg-normal px-2.5 py-1.5 text-components-button-secondary-text hover:bg-state-base-hover-alt disabled:cursor-not-allowed disabled:opacity-50',
+              )}
+            >
+              <FileDownload02 className="h-4 w-4 text-text-tertiary" />
+              <span className="system-sm-regular text-text-secondary">{t('operation.exportAll', { ns: 'common' })}</span>
+              <RiArrowDownSLine className="h-4 w-4 text-text-tertiary" />
+            </MenuButton>
+            <Transition
+              enter="transition ease-out duration-100"
+              enterFrom="transform opacity-0 scale-95"
+              enterTo="transform opacity-100 scale-100"
+              leave="transition ease-in duration-75"
+              leaveFrom="transform opacity-100 scale-100"
+              leaveTo="transform opacity-0 scale-95"
+            >
+              <MenuItems
+                className={cn(
+                  'absolute z-[1002] mt-1 min-w-[140px] origin-top-right rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg',
+                  'focus:outline-none',
+                )}
+              >
+                <div className="p-1">
+                  <button
+                    type="button"
+                    disabled={exporting}
+                    className={cn(
+                      'flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-components-button-secondary-text hover:bg-state-base-hover disabled:cursor-not-allowed disabled:opacity-50',
+                    )}
+                    onClick={() => onExport?.('jsonl')}
+                  >
+                    <span className="system-sm-regular">JSONL</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={exporting}
+                    className={cn(
+                      'flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-components-button-secondary-text hover:bg-state-base-hover disabled:cursor-not-allowed disabled:opacity-50',
+                    )}
+                    onClick={() => onExport?.('csv')}
+                  >
+                    <span className="system-sm-regular">CSV</span>
+                  </button>
+                </div>
+              </MenuItems>
+            </Transition>
+          </Menu>
         </>
       )}
     </div>

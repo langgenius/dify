@@ -9,7 +9,10 @@ import type {
   WorkflowLogsResponse,
 } from '@/models/log'
 import { useQuery } from '@tanstack/react-query'
+import Cookies from 'js-cookie'
+import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/config'
 import { get } from './base'
+import { getBaseOptions } from './fetch'
 
 const NAME_SPACE = 'log'
 
@@ -86,4 +89,68 @@ export const useWorkflowLogs = ({ appId, params }: WorkflowLogsParams) => {
     queryFn: () => get<WorkflowLogsResponse>(`/apps/${appId}/workflow-app-logs`, { params }),
     enabled: !!appId,
   })
+}
+
+// ============ Export Conversations ============
+
+export const exportChatConversations = async (
+  appId: string,
+  format: 'jsonl' | 'csv' = 'jsonl',
+  filters?: {
+    keyword?: string
+    start?: string
+    end?: string
+    annotation_status?: string
+    sort_by?: string
+  },
+) => {
+  const baseOptions = getBaseOptions()
+  const params = new URLSearchParams({ format })
+
+  if (filters?.keyword)
+    params.append('keyword', filters.keyword)
+  if (filters?.start)
+    params.append('start', filters.start)
+  if (filters?.end)
+    params.append('end', filters.end)
+  if (filters?.annotation_status)
+    params.append('annotation_status', filters.annotation_status)
+  if (filters?.sort_by)
+    params.append('sort_by', filters.sort_by)
+
+  const url = `${API_PREFIX}/apps/${appId}/chat-conversations/export?${params.toString()}`
+
+  const response = await fetch(url, {
+    ...baseOptions,
+    method: 'GET',
+    headers: new Headers({
+      ...((baseOptions.headers as Headers) ?? {}),
+      [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '',
+    }),
+  })
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.message || 'Export failed')
+  }
+
+  // Get filename from Content-Disposition header
+  const contentDisposition = response.headers.get('Content-Disposition')
+  let filename = `conversations_export.${format}`
+  if (contentDisposition) {
+    const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/)
+    if (filenameMatch)
+      filename = filenameMatch[1]
+  }
+
+  // Create download link
+  const blob = await response.blob()
+  const url_blob = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url_blob
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url_blob)
 }
