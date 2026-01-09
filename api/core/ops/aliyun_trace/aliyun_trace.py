@@ -1,6 +1,7 @@
 import logging
 from collections.abc import Sequence
 
+from opentelemetry.trace import SpanKind
 from sqlalchemy.orm import sessionmaker
 
 from core.ops.aliyun_trace.data_exporter.traceclient import (
@@ -151,6 +152,7 @@ class AliyunDataTrace(BaseTraceInstance):
             ),
             status=status,
             links=trace_metadata.links,
+            span_kind=SpanKind.SERVER,
         )
         self.trace_client.add_span(message_span)
 
@@ -456,6 +458,7 @@ class AliyunDataTrace(BaseTraceInstance):
                 ),
                 status=status,
                 links=trace_metadata.links,
+                span_kind=SpanKind.SERVER,
             )
             self.trace_client.add_span(message_span)
 
@@ -475,6 +478,7 @@ class AliyunDataTrace(BaseTraceInstance):
             ),
             status=status,
             links=trace_metadata.links,
+            span_kind=SpanKind.SERVER if message_span_id is None else SpanKind.INTERNAL,
         )
         self.trace_client.add_span(workflow_span)
 
