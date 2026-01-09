@@ -1395,6 +1395,60 @@ def file_usage(
             click.echo(click.style(f"Use --offset {offset + limit} to see next page", fg="white"))
 
 
+@click.command("setup-sandbox-system-config", help="Setup system-level sandbox provider configuration.")
+@click.option(
+    "--provider-type", prompt=True, type=click.Choice(["e2b", "docker", "local"]), help="Sandbox provider type"
+)
+@click.option("--config", prompt=True, help='Configuration JSON (e.g., {"api_key": "xxx"} for e2b)')
+def setup_sandbox_system_config(provider_type: str, config: str):
+    """
+    Setup system-level sandbox provider configuration.
+
+    Examples:
+        flask setup-sandbox-system-config --provider-type e2b --config '{"api_key": "e2b_xxx"}'
+        flask setup-sandbox-system-config --provider-type docker --config '{"docker_sock": "unix:///var/run/docker.sock"}'
+        flask setup-sandbox-system-config --provider-type local --config '{}'
+    """
+    from models.sandbox import SandboxProviderSystemConfig
+    from services.sandbox.sandbox_provider_service import PROVIDER_CONFIG_MODELS
+
+    try:
+        click.echo(click.style(f"Validating config: {config}", fg="yellow"))
+        config_dict = TypeAdapter(dict[str, Any]).validate_json(config)
+        click.echo(click.style("Config validated successfully.", fg="green"))
+
+        click.echo(click.style(f"Validating config schema for provider type: {provider_type}", fg="yellow"))
+        model_class = PROVIDER_CONFIG_MODELS.get(provider_type)
+        if model_class:
+            model_class.model_validate(config_dict)
+        click.echo(click.style("Config schema validated successfully.", fg="green"))
+
+        click.echo(click.style("Encrypting config...", fg="yellow"))
+        click.echo(click.style(f"Using SECRET_KEY: `{dify_config.SECRET_KEY}`", fg="yellow"))
+        encrypted_config = encrypt_system_params(config_dict)
+        click.echo(click.style("Config encrypted successfully.", fg="green"))
+    except Exception as e:
+        click.echo(click.style(f"Error validating/encrypting config: {str(e)}", fg="red"))
+        return
+
+    deleted_count = db.session.query(SandboxProviderSystemConfig).filter_by(provider_type=provider_type).delete()
+    if deleted_count > 0:
+        click.echo(
+            click.style(
+                f"Deleted {deleted_count} existing system config for provider type: {provider_type}", fg="yellow"
+            )
+        )
+
+    system_config = SandboxProviderSystemConfig(
+        provider_type=provider_type,
+        encrypted_config=encrypted_config,
+    )
+    db.session.add(system_config)
+    db.session.commit()
+    click.echo(click.style(f"Sandbox system config setup successfully. id: {system_config.id}", fg="green"))
+    click.echo(click.style(f"Provider type: {provider_type}", fg="green"))
+
+
 @click.command("setup-system-tool-oauth-client", help="Setup system tool oauth client.")
 @click.option("--provider", prompt=True, help="Provider name")
 @click.option("--client-params", prompt=True, help="Client Params")

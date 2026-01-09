@@ -120,29 +120,24 @@ class SandboxProviderService:
 
     @classmethod
     def list_providers(cls, tenant_id: str) -> list[SandboxProviderInfo]:
-        available_types = cls.get_available_provider_types()
         result: list[SandboxProviderInfo] = []
 
         with Session(db.engine, expire_on_commit=False) as session:
-            tenant_configs = session.query(SandboxProvider).filter(SandboxProvider.tenant_id == tenant_id).all()
-            tenant_config_map = {cfg.provider_type: cfg for cfg in tenant_configs}
+            tenant_configs = {
+                cfg.provider_type: cfg
+                for cfg in session.query(SandboxProvider).filter(SandboxProvider.tenant_id == tenant_id).all()
+            }
+            system_defaults = {cfg.provider_type for cfg in session.query(SandboxProviderSystemConfig).all()}
 
-            system_defaults = session.query(SandboxProviderSystemConfig).all()
-            system_default_map = {cfg.provider_type: cfg for cfg in system_defaults}
-
-            for provider_type in available_types:
+            for provider_type in cls.get_available_provider_types():
+                tenant_config = tenant_configs.get(provider_type)
+                schema = PROVIDER_CONFIG_SCHEMAS.get(provider_type, [])
                 metadata = PROVIDER_METADATA.get(provider_type, {})
-                config_schema = PROVIDER_CONFIG_SCHEMAS.get(provider_type, [])
-
-                tenant_config = tenant_config_map.get(provider_type)
-                system_default = system_default_map.get(provider_type)
 
                 config: Mapping[str, Any] = {}
                 if tenant_config and tenant_config.config:
-                    schema = PROVIDER_CONFIG_SCHEMAS.get(provider_type, [])
                     encrypter, _ = create_sandbox_config_encrypter(tenant_id, schema, provider_type)
-                    decrypted = encrypter.decrypt(tenant_config.config)
-                    config = masked_config(schema, decrypted)
+                    config = masked_config(schema, encrypter.decrypt(tenant_config.config))
 
                 result.append(
                     SandboxProviderInfo(
@@ -150,11 +145,11 @@ class SandboxProviderService:
                         label=metadata.get("label", provider_type),
                         description=metadata.get("description", ""),
                         icon=metadata.get("icon", provider_type),
-                        is_system_configured=system_default is not None,
+                        is_system_configured=provider_type in system_defaults and tenant_config is None,
                         is_tenant_configured=tenant_config is not None,
                         is_active=tenant_config.is_active if tenant_config else False,
                         config=config,
-                        config_schema=[{"name": c.name, "type": c.type.value} for c in config_schema],
+                        config_schema=[{"name": c.name, "type": c.type.value} for c in schema],
                     )
                 )
 
@@ -242,9 +237,6 @@ class SandboxProviderService:
 
             if not config:
                 return {"result": "success"}
-
-            if config.is_active:
-                raise ValueError("Cannot delete config for the active provider. Switch to another provider first.")
 
             session.delete(config)
             session.commit()
