@@ -7,7 +7,7 @@ from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
 from controllers.common import fields
-from controllers.common.fields import build_site_model
+from controllers.common.fields import Site as SiteResponse
 from controllers.console import api
 from controllers.console.app.error import (
     AppUnavailableError,
@@ -387,7 +387,6 @@ class TrialSitApi(Resource):
 
     @trial_feature_enable
     @get_app_model_with_trial
-    @service_api_ns.marshal_with(build_site_model(service_api_ns))
     def get(self, app_model):
         """Retrieve app site info.
 
@@ -402,7 +401,7 @@ class TrialSitApi(Resource):
         if app_model.tenant.status == TenantStatus.ARCHIVE:
             raise Forbidden()
 
-        return site
+        return SiteResponse.model_validate(site).model_dump(mode="json")
 
 
 class TrialAppParameterApi(Resource):
