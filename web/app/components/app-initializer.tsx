@@ -9,8 +9,8 @@ import {
   EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION,
   EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
 } from '@/app/education-apply/constants'
-import { fetchSetupStatus } from '@/service/common'
 import { sendGAEvent } from '@/utils/gtag'
+import { fetchSetupStatusWithCache } from '@/utils/setup-status'
 import { resolvePostLoginRedirect } from '../signin/utils/post-login-redirect'
 import { trackEvent } from './base/amplitude'
 
@@ -33,15 +33,8 @@ export const AppInitializer = ({
 
   const isSetupFinished = useCallback(async () => {
     try {
-      if (localStorage.getItem('setup_status') === 'finished')
-        return true
-      const setUpStatus = await fetchSetupStatus()
-      if (setUpStatus.step !== 'finished') {
-        localStorage.removeItem('setup_status')
-        return false
-      }
-      localStorage.setItem('setup_status', 'finished')
-      return true
+      const setUpStatus = await fetchSetupStatusWithCache()
+      return setUpStatus.step === 'finished'
     }
     catch (error) {
       console.error(error)

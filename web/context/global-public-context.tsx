@@ -1,12 +1,13 @@
 'use client'
 import type { FC, PropsWithChildren } from 'react'
 import type { SystemFeatures } from '@/types/feature'
-import { useQuery } from '@tanstack/react-query'
+import { useQueries } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { create } from 'zustand'
 import Loading from '@/app/components/base/loading'
 import { getSystemFeatures } from '@/service/common'
 import { defaultSystemFeatures } from '@/types/feature'
+import { fetchSetupStatusWithCache } from '@/utils/setup-status'
 
 type GlobalPublicStore = {
   isGlobalPending: boolean
@@ -25,21 +26,35 @@ export const useGlobalPublicStore = create<GlobalPublicStore>(set => ({
 const GlobalPublicStoreProvider: FC<PropsWithChildren> = ({
   children,
 }) => {
-  const { isPending, data } = useQuery({
-    queryKey: ['systemFeatures'],
-    queryFn: getSystemFeatures,
+  // Fetch systemFeatures and setupStatus in parallel to reduce waterfall
+  // setupStatus is cached in localStorage for AppInitializer to read
+  const [featuresQuery, _setupStatusQuery] = useQueries({
+    queries: [
+      {
+        queryKey: ['systemFeatures'],
+        queryFn: getSystemFeatures,
+      },
+      {
+        queryKey: ['setupStatus'],
+        queryFn: fetchSetupStatusWithCache,
+        staleTime: Infinity, // Once fetched, no need to refetch
+      },
+    ],
   })
+
   const { setSystemFeatures, setIsGlobalPending: setIsPending } = useGlobalPublicStore()
-  useEffect(() => {
-    if (data)
-      setSystemFeatures({ ...defaultSystemFeatures, ...data })
-  }, [data, setSystemFeatures])
 
   useEffect(() => {
-    setIsPending(isPending)
-  }, [isPending, setIsPending])
+    if (featuresQuery.data)
+      setSystemFeatures({ ...defaultSystemFeatures, ...featuresQuery.data })
+  }, [featuresQuery.data, setSystemFeatures])
 
-  if (isPending)
+  useEffect(() => {
+    setIsPending(featuresQuery.isPending)
+  }, [featuresQuery.isPending, setIsPending])
+
+  // Only block on systemFeatures, setupStatus is prefetched for AppInitializer
+  if (featuresQuery.isPending)
     return <div className="flex h-screen w-screen items-center justify-center"><Loading /></div>
   return <>{children}</>
 }
