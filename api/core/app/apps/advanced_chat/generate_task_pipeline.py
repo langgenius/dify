@@ -4,6 +4,7 @@ import re
 import time
 from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
+from dataclasses import dataclass, field
 from threading import Thread
 from typing import Any, Union
 
@@ -19,6 +20,7 @@ from core.app.entities.app_invoke_entities import (
     InvokeFrom,
 )
 from core.app.entities.queue_entities import (
+    ChunkType,
     MessageQueueMessage,
     QueueAdvancedChatMessageEndEvent,
     QueueAgentLogEvent,
@@ -70,11 +72,120 @@ from core.workflow.runtime import GraphRuntimeState
 from core.workflow.system_variable import SystemVariable
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
-from models import Account, Conversation, EndUser, Message, MessageFile
+from models import Account, Conversation, EndUser, LLMGenerationDetail, Message, MessageFile
 from models.enums import CreatorUserRole
 from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class StreamEventBuffer:
+    """
+    Buffer for recording stream events in order to reconstruct the generation sequence.
+    Records the exact order of text chunks, thoughts, and tool calls as they stream.
+    """
+
+    # Accumulated reasoning content (each thought block is a separate element)
+    reasoning_content: list[str] = field(default_factory=list)
+    # Current reasoning buffer (accumulates until we see a different event type)
+    _current_reasoning: str = ""
+    # Tool calls with their details
+    tool_calls: list[dict] = field(default_factory=list)
+    # Tool call ID to index mapping for updating results
+    _tool_call_id_map: dict[str, int] = field(default_factory=dict)
+    # Sequence of events in stream order
+    sequence: list[dict] = field(default_factory=list)
+    # Current position in answer text
+    _content_position: int = 0
+    # Track last event type to detect transitions
+    _last_event_type: str | None = None
+
+    def _flush_current_reasoning(self) -> None:
+        """Flush accumulated reasoning to the list and add to sequence."""
+        if self._current_reasoning.strip():
+            self.reasoning_content.append(self._current_reasoning.strip())
+            self.sequence.append({"type": "reasoning", "index": len(self.reasoning_content) - 1})
+            self._current_reasoning = ""
+
+    def record_text_chunk(self, text: str) -> None:
+        """Record a text chunk event."""
+        if not text:
+            return
+
+        # Flush any pending reasoning first
+        if self._last_event_type == "thought":
+            self._flush_current_reasoning()
+
+        text_len = len(text)
+        start_pos = self._content_position
+
+        # If last event was also content, extend it; otherwise create new
+        if self.sequence and self.sequence[-1].get("type") == "content":
+            self.sequence[-1]["end"] = start_pos + text_len
+        else:
+            self.sequence.append({"type": "content", "start": start_pos, "end": start_pos + text_len})
+
+        self._content_position += text_len
+        self._last_event_type = "content"
+
+    def record_thought_chunk(self, text: str) -> None:
+        """Record a thought/reasoning chunk event."""
+        if not text:
+            return
+
+        # Accumulate thought content
+        self._current_reasoning += text
+        self._last_event_type = "thought"
+
+    def record_tool_call(self, tool_call_id: str, tool_name: str, tool_arguments: str) -> None:
+        """Record a tool call event."""
+        if not tool_call_id:
+            return
+
+        # Flush any pending reasoning first
+        if self._last_event_type == "thought":
+            self._flush_current_reasoning()
+
+        # Check if this tool call already exists (we might get multiple chunks)
+        if tool_call_id in self._tool_call_id_map:
+            idx = self._tool_call_id_map[tool_call_id]
+            # Update arguments if provided
+            if tool_arguments:
+                self.tool_calls[idx]["arguments"] = tool_arguments
+        else:
+            # New tool call
+            tool_call = {
+                "id": tool_call_id or "",
+                "name": tool_name or "",
+                "arguments": tool_arguments or "",
+                "result": "",
+                "elapsed_time": None,
+            }
+            self.tool_calls.append(tool_call)
+            idx = len(self.tool_calls) - 1
+            self._tool_call_id_map[tool_call_id] = idx
+            self.sequence.append({"type": "tool_call", "index": idx})
+
+        self._last_event_type = "tool_call"
+
+    def record_tool_result(self, tool_call_id: str, result: str, tool_elapsed_time: float | None = None) -> None:
+        """Record a tool result event (update existing tool call)."""
+        if not tool_call_id:
+            return
+        if tool_call_id in self._tool_call_id_map:
+            idx = self._tool_call_id_map[tool_call_id]
+            self.tool_calls[idx]["result"] = result
+            self.tool_calls[idx]["elapsed_time"] = tool_elapsed_time
+
+    def finalize(self) -> None:
+        """Finalize the buffer, flushing any pending data."""
+        if self._last_event_type == "thought":
+            self._flush_current_reasoning()
+
+    def has_data(self) -> bool:
+        """Check if there's any meaningful data recorded."""
+        return bool(self.reasoning_content or self.tool_calls or self.sequence)
 
 
 class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
@@ -144,6 +255,8 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self._workflow_run_id: str = ""
         self._draft_var_saver_factory = draft_var_saver_factory
         self._graph_runtime_state: GraphRuntimeState | None = None
+        # Stream event buffer for recording generation sequence
+        self._stream_buffer = StreamEventBuffer()
         self._seed_graph_runtime_state_from_queue_manager()
 
     def process(self) -> Union[ChatbotAppBlockingResponse, Generator[ChatbotAppStreamResponse, None, None]]:
@@ -358,6 +471,25 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         if node_finish_resp:
             yield node_finish_resp
 
+        # For ANSWER nodes, check if we need to send a message_replace event
+        # Only send if the final output differs from the accumulated task_state.answer
+        # This happens when variables were updated by variable_assigner during workflow execution
+        if event.node_type == NodeType.ANSWER and event.outputs:
+            final_answer = event.outputs.get("answer")
+            if final_answer is not None and final_answer != self._task_state.answer:
+                logger.info(
+                    "ANSWER node final output '%s' differs from accumulated answer '%s', sending message_replace event",
+                    final_answer,
+                    self._task_state.answer,
+                )
+                # Update the task state answer
+                self._task_state.answer = str(final_answer)
+                # Send message_replace event to update the UI
+                yield self._message_cycle_manager.message_replace_to_stream_response(
+                    answer=str(final_answer),
+                    reason="variable_update",
+                )
+
     def _handle_node_failed_events(
         self,
         event: Union[QueueNodeFailedEvent, QueueNodeExceptionEvent],
@@ -383,7 +515,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         queue_message: Union[WorkflowQueueMessage, MessageQueueMessage] | None = None,
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
-        """Handle text chunk events."""
+        """Handle text chunk events and record to stream buffer for sequence reconstruction."""
         delta_text = event.text
         if delta_text is None:
             return
@@ -405,9 +537,52 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         if tts_publisher and queue_message:
             tts_publisher.publish(queue_message)
 
-        self._task_state.answer += delta_text
+        tool_call = event.tool_call
+        tool_result = event.tool_result
+        tool_payload = tool_call or tool_result
+        tool_call_id = tool_payload.id if tool_payload and tool_payload.id else ""
+        tool_name = tool_payload.name if tool_payload and tool_payload.name else ""
+        tool_arguments = tool_call.arguments if tool_call and tool_call.arguments else ""
+        tool_files = tool_result.files if tool_result else []
+        tool_elapsed_time = tool_result.elapsed_time if tool_result else None
+        tool_icon = tool_payload.icon if tool_payload else None
+        tool_icon_dark = tool_payload.icon_dark if tool_payload else None
+        # Record stream event based on chunk type
+        chunk_type = event.chunk_type or ChunkType.TEXT
+        match chunk_type:
+            case ChunkType.TEXT:
+                self._stream_buffer.record_text_chunk(delta_text)
+                self._task_state.answer += delta_text
+            case ChunkType.THOUGHT:
+                # Reasoning should not be part of final answer text
+                self._stream_buffer.record_thought_chunk(delta_text)
+            case ChunkType.TOOL_CALL:
+                self._stream_buffer.record_tool_call(
+                    tool_call_id=tool_call_id,
+                    tool_name=tool_name,
+                    tool_arguments=tool_arguments,
+                )
+            case ChunkType.TOOL_RESULT:
+                self._stream_buffer.record_tool_result(
+                    tool_call_id=tool_call_id,
+                    result=delta_text,
+                    tool_elapsed_time=tool_elapsed_time,
+                )
+                self._task_state.answer += delta_text
+            case _:
+                pass
         yield self._message_cycle_manager.message_to_stream_response(
-            answer=delta_text, message_id=self._message_id, from_variable_selector=event.from_variable_selector
+            answer=delta_text,
+            message_id=self._message_id,
+            from_variable_selector=event.from_variable_selector,
+            chunk_type=event.chunk_type.value if event.chunk_type else None,
+            tool_call_id=tool_call_id or None,
+            tool_name=tool_name or None,
+            tool_arguments=tool_arguments or None,
+            tool_files=tool_files,
+            tool_elapsed_time=tool_elapsed_time,
+            tool_icon=tool_icon,
+            tool_icon_dark=tool_icon_dark,
         )
 
     def _handle_iteration_start_event(
@@ -775,6 +950,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
         # If there are assistant files, remove markdown image links from answer
         answer_text = self._task_state.answer
+        answer_text = self._strip_think_blocks(answer_text)
         if self._recorded_files:
             # Remove markdown image links since we're storing files separately
             answer_text = re.sub(r"!\[.*?\]\(.*?\)", "", answer_text).strip()
@@ -825,6 +1001,54 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             for file in self._recorded_files
         ]
         session.add_all(message_files)
+
+        # Save generation detail (reasoning/tool calls/sequence) from stream buffer
+        self._save_generation_detail(session=session, message=message)
+
+    @staticmethod
+    def _strip_think_blocks(text: str) -> str:
+        """Remove <think>...</think> blocks (including their content) from text."""
+        if not text or "<think" not in text.lower():
+            return text
+
+        clean_text = re.sub(r"<think[^>]*>.*?</think>", "", text, flags=re.IGNORECASE | re.DOTALL)
+        clean_text = re.sub(r"\n\s*\n", "\n\n", clean_text).strip()
+        return clean_text
+
+    def _save_generation_detail(self, *, session: Session, message: Message) -> None:
+        """
+        Save LLM generation detail for Chatflow using stream event buffer.
+        The buffer records the exact order of events as they streamed,
+        allowing accurate reconstruction of the generation sequence.
+        """
+        # Finalize the stream buffer to flush any pending data
+        self._stream_buffer.finalize()
+
+        # Only save if there's meaningful data
+        if not self._stream_buffer.has_data():
+            return
+
+        reasoning_content = self._stream_buffer.reasoning_content
+        tool_calls = self._stream_buffer.tool_calls
+        sequence = self._stream_buffer.sequence
+
+        # Check if generation detail already exists for this message
+        existing = session.query(LLMGenerationDetail).filter_by(message_id=message.id).first()
+
+        if existing:
+            existing.reasoning_content = json.dumps(reasoning_content) if reasoning_content else None
+            existing.tool_calls = json.dumps(tool_calls) if tool_calls else None
+            existing.sequence = json.dumps(sequence) if sequence else None
+        else:
+            generation_detail = LLMGenerationDetail(
+                tenant_id=self._application_generate_entity.app_config.tenant_id,
+                app_id=self._application_generate_entity.app_config.app_id,
+                message_id=message.id,
+                reasoning_content=json.dumps(reasoning_content) if reasoning_content else None,
+                tool_calls=json.dumps(tool_calls) if tool_calls else None,
+                sequence=json.dumps(sequence) if sequence else None,
+            )
+            session.add(generation_detail)
 
     def _seed_graph_runtime_state_from_queue_manager(self) -> None:
         """Bootstrap the cached runtime state from the queue manager when present."""

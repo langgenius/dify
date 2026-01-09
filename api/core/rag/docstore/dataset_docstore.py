@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections.abc import Sequence
 from typing import Any
 
@@ -22,7 +24,7 @@ class DatasetDocumentStore:
         self._document_id = document_id
 
     @classmethod
-    def from_dict(cls, config_dict: dict[str, Any]) -> "DatasetDocumentStore":
+    def from_dict(cls, config_dict: dict[str, Any]) -> DatasetDocumentStore:
         return cls(**config_dict)
 
     def to_dict(self) -> dict[str, Any]:

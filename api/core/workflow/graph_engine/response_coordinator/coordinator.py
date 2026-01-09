@@ -16,7 +16,13 @@ from pydantic import BaseModel, Field
 
 from core.workflow.enums import NodeExecutionType, NodeState
 from core.workflow.graph import Graph
-from core.workflow.graph_events import NodeRunStreamChunkEvent, NodeRunSucceededEvent
+from core.workflow.graph_events import (
+    ChunkType,
+    NodeRunStreamChunkEvent,
+    NodeRunSucceededEvent,
+    ToolCall,
+    ToolResult,
+)
 from core.workflow.nodes.base.template import TextSegment, VariableSegment
 from core.workflow.runtime import VariablePool
 
@@ -321,11 +327,24 @@ class ResponseStreamCoordinator:
         selector: Sequence[str],
         chunk: str,
         is_final: bool = False,
+        chunk_type: ChunkType = ChunkType.TEXT,
+        tool_call: ToolCall | None = None,
+        tool_result: ToolResult | None = None,
     ) -> NodeRunStreamChunkEvent:
         """Create a stream chunk event with consistent structure.
 
         For selectors with special prefixes (sys, env, conversation), we use the
         active response node's information since these are not actual node IDs.
+
+        Args:
+            node_id: The node ID to attribute the event to
+            execution_id: The execution ID for this node
+            selector: The variable selector
+            chunk: The chunk content
+            is_final: Whether this is the final chunk
+            chunk_type: The semantic type of the chunk being streamed
+            tool_call: Structured data for tool_call chunks
+            tool_result: Structured data for tool_result chunks
         """
         # Check if this is a special selector that doesn't correspond to a node
         if selector and selector[0] not in self._graph.nodes and self._active_session:
@@ -338,6 +357,9 @@ class ResponseStreamCoordinator:
                 selector=selector,
                 chunk=chunk,
                 is_final=is_final,
+                chunk_type=chunk_type,
+                tool_call=tool_call,
+                tool_result=tool_result,
             )
 
         # Standard case: selector refers to an actual node
@@ -349,6 +371,9 @@ class ResponseStreamCoordinator:
             selector=selector,
             chunk=chunk,
             is_final=is_final,
+            chunk_type=chunk_type,
+            tool_call=tool_call,
+            tool_result=tool_result,
         )
 
     def _process_variable_segment(self, segment: VariableSegment) -> tuple[Sequence[NodeRunStreamChunkEvent], bool]:
@@ -356,6 +381,8 @@ class ResponseStreamCoordinator:
 
         Handles both regular node selectors and special system selectors (sys, env, conversation).
         For special selectors, we attribute the output to the active response node.
+
+        For object-type variables, automatically streams all child fields that have stream events.
         """
         events: list[NodeRunStreamChunkEvent] = []
         source_selector_prefix = segment.selector[0] if segment.selector else ""
@@ -364,59 +391,80 @@ class ResponseStreamCoordinator:
         # Determine which node to attribute the output to
         # For special selectors (sys, env, conversation), use the active response node
         # For regular selectors, use the source node
-        if self._active_session and source_selector_prefix not in self._graph.nodes:
-            # Special selector - use active response node
-            output_node_id = self._active_session.node_id
-        else:
-            # Regular node selector
-            output_node_id = source_selector_prefix
+        active_session = self._active_session
+        special_selector = bool(active_session and source_selector_prefix not in self._graph.nodes)
+        output_node_id = active_session.node_id if special_selector and active_session else source_selector_prefix
         execution_id = self._get_or_create_execution_id(output_node_id)
 
-        # Stream all available chunks
-        while self._has_unread_stream(segment.selector):
-            if event := self._pop_stream_chunk(segment.selector):
-                # For special selectors, we need to update the event to use
-                # the active response node's information
-                if self._active_session and source_selector_prefix not in self._graph.nodes:
-                    response_node = self._graph.nodes[self._active_session.node_id]
-                    # Create a new event with the response node's information
-                    # but keep the original selector
-                    updated_event = NodeRunStreamChunkEvent(
-                        id=execution_id,
-                        node_id=response_node.id,
-                        node_type=response_node.node_type,
-                        selector=event.selector,  # Keep original selector
-                        chunk=event.chunk,
-                        is_final=event.is_final,
-                    )
-                    events.append(updated_event)
-                else:
-                    # Regular node selector - use event as is
-                    events.append(event)
+        # Check if there's a direct stream for this selector
+        has_direct_stream = (
+            tuple(segment.selector) in self._stream_buffers or tuple(segment.selector) in self._closed_streams
+        )
 
-        # Check if this is the last chunk by looking ahead
-        stream_closed = self._is_stream_closed(segment.selector)
-        # Check if stream is closed to determine if segment is complete
-        if stream_closed:
-            is_complete = True
+        stream_targets = [segment.selector] if has_direct_stream else sorted(self._find_child_streams(segment.selector))
 
-        elif value := self._variable_pool.get(segment.selector):
-            # Process scalar value
-            is_last_segment = bool(
-                self._active_session and self._active_session.index == len(self._active_session.template.segments) - 1
-            )
-            events.append(
-                self._create_stream_chunk_event(
-                    node_id=output_node_id,
-                    execution_id=execution_id,
-                    selector=segment.selector,
-                    chunk=value.markdown,
-                    is_final=is_last_segment,
+        if stream_targets:
+            all_complete = True
+
+            for target_selector in stream_targets:
+                while self._has_unread_stream(target_selector):
+                    if event := self._pop_stream_chunk(target_selector):
+                        events.append(
+                            self._rewrite_stream_event(
+                                event=event,
+                                output_node_id=output_node_id,
+                                execution_id=execution_id,
+                                special_selector=bool(special_selector),
+                            )
+                        )
+
+                if not self._is_stream_closed(target_selector):
+                    all_complete = False
+
+            is_complete = all_complete
+
+        # Fallback: check if scalar value exists in variable pool
+        if not is_complete and not has_direct_stream:
+            if value := self._variable_pool.get(segment.selector):
+                # Process scalar value
+                is_last_segment = bool(
+                    self._active_session
+                    and self._active_session.index == len(self._active_session.template.segments) - 1
                 )
-            )
-            is_complete = True
+                events.append(
+                    self._create_stream_chunk_event(
+                        node_id=output_node_id,
+                        execution_id=execution_id,
+                        selector=segment.selector,
+                        chunk=value.markdown,
+                        is_final=is_last_segment,
+                    )
+                )
+                is_complete = True
 
         return events, is_complete
+
+    def _rewrite_stream_event(
+        self,
+        event: NodeRunStreamChunkEvent,
+        output_node_id: str,
+        execution_id: str,
+        special_selector: bool,
+    ) -> NodeRunStreamChunkEvent:
+        """Rewrite event to attribute to active response node when selector is special."""
+        if not special_selector:
+            return event
+
+        return self._create_stream_chunk_event(
+            node_id=output_node_id,
+            execution_id=execution_id,
+            selector=event.selector,
+            chunk=event.chunk,
+            is_final=event.is_final,
+            chunk_type=event.chunk_type,
+            tool_call=event.tool_call,
+            tool_result=event.tool_result,
+        )
 
     def _process_text_segment(self, segment: TextSegment) -> Sequence[NodeRunStreamChunkEvent]:
         """Process a text segment. Returns (events, is_complete)."""
@@ -512,6 +560,36 @@ class ResponseStreamCoordinator:
             return events
 
     # ============= Internal Stream Management Methods =============
+
+    def _find_child_streams(self, parent_selector: Sequence[str]) -> list[tuple[str, ...]]:
+        """Find all child stream selectors that are descendants of the parent selector.
+
+        For example, if parent_selector is ['llm', 'generation'], this will find:
+        - ['llm', 'generation', 'content']
+        - ['llm', 'generation', 'tool_calls']
+        - ['llm', 'generation', 'tool_results']
+        - ['llm', 'generation', 'thought']
+
+        Args:
+            parent_selector: The parent selector to search for children
+
+        Returns:
+            List of child selector tuples found in stream buffers or closed streams
+        """
+        parent_key = tuple(parent_selector)
+        parent_len = len(parent_key)
+        child_streams: set[tuple[str, ...]] = set()
+
+        # Search in both active buffers and closed streams
+        all_selectors = set(self._stream_buffers.keys()) | self._closed_streams
+
+        for selector_key in all_selectors:
+            # Check if this selector is a direct child of the parent
+            # Direct child means: len(child) == len(parent) + 1 and child starts with parent
+            if len(selector_key) == parent_len + 1 and selector_key[:parent_len] == parent_key:
+                child_streams.add(selector_key)
+
+        return sorted(child_streams)
 
     def _append_stream_chunk(self, selector: Sequence[str], event: NodeRunStreamChunkEvent) -> None:
         """

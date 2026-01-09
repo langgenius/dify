@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import importlib
 import logging
 import operator
@@ -46,6 +48,9 @@ from core.workflow.node_events import (
     RunRetrieverResourceEvent,
     StreamChunkEvent,
     StreamCompletedEvent,
+    ThoughtChunkEvent,
+    ToolCallChunkEvent,
+    ToolResultChunkEvent,
 )
 from core.workflow.runtime import GraphRuntimeState
 from libs.datetime_utils import naive_utc_now
@@ -59,7 +64,7 @@ logger = logging.getLogger(__name__)
 
 
 class Node(Generic[NodeDataT]):
-    node_type: ClassVar["NodeType"]
+    node_type: ClassVar[NodeType]
     execution_type: NodeExecutionType = NodeExecutionType.EXECUTABLE
     _node_data_type: ClassVar[type[BaseNodeData]] = BaseNodeData
 
@@ -198,14 +203,14 @@ class Node(Generic[NodeDataT]):
         return None
 
     # Global registry populated via __init_subclass__
-    _registry: ClassVar[dict["NodeType", dict[str, type["Node"]]]] = {}
+    _registry: ClassVar[dict[NodeType, dict[str, type[Node]]]] = {}
 
     def __init__(
         self,
         id: str,
         config: Mapping[str, Any],
-        graph_init_params: "GraphInitParams",
-        graph_runtime_state: "GraphRuntimeState",
+        graph_init_params: GraphInitParams,
+        graph_runtime_state: GraphRuntimeState,
     ) -> None:
         self._graph_init_params = graph_init_params
         self.id = id
@@ -241,7 +246,7 @@ class Node(Generic[NodeDataT]):
         return
 
     @property
-    def graph_init_params(self) -> "GraphInitParams":
+    def graph_init_params(self) -> GraphInitParams:
         return self._graph_init_params
 
     @property
@@ -263,6 +268,10 @@ class Node(Generic[NodeDataT]):
         :return:
         """
         raise NotImplementedError
+
+    def _should_stop(self) -> bool:
+        """Check if execution should be stopped."""
+        return self.graph_runtime_state.stop_event.is_set()
 
     def run(self) -> Generator[GraphNodeEventBase, None, None]:
         execution_id = self.ensure_execution_id()
@@ -332,6 +341,21 @@ class Node(Generic[NodeDataT]):
                     yield event
                 else:
                     yield event
+
+                if self._should_stop():
+                    error_message = "Execution cancelled"
+                    yield NodeRunFailedEvent(
+                        id=self.execution_id,
+                        node_id=self._node_id,
+                        node_type=self.node_type,
+                        start_at=self._start_at,
+                        node_run_result=NodeRunResult(
+                            status=WorkflowNodeExecutionStatus.FAILED,
+                            error=error_message,
+                        ),
+                        error=error_message,
+                    )
+                    return
         except Exception as e:
             logger.exception("Node %s failed to run", self._node_id)
             result = NodeRunResult(
@@ -438,7 +462,7 @@ class Node(Generic[NodeDataT]):
         raise NotImplementedError("subclasses of BaseNode must implement `version` method.")
 
     @classmethod
-    def get_node_type_classes_mapping(cls) -> Mapping["NodeType", Mapping[str, type["Node"]]]:
+    def get_node_type_classes_mapping(cls) -> Mapping[NodeType, Mapping[str, type[Node]]]:
         """Return mapping of NodeType -> {version -> Node subclass} using __init_subclass__ registry.
 
         Import all modules under core.workflow.nodes so subclasses register themselves on import.
@@ -543,6 +567,8 @@ class Node(Generic[NodeDataT]):
 
     @_dispatch.register
     def _(self, event: StreamChunkEvent) -> NodeRunStreamChunkEvent:
+        from core.workflow.graph_events import ChunkType
+
         return NodeRunStreamChunkEvent(
             id=self.execution_id,
             node_id=self._node_id,
@@ -550,6 +576,60 @@ class Node(Generic[NodeDataT]):
             selector=event.selector,
             chunk=event.chunk,
             is_final=event.is_final,
+            chunk_type=ChunkType(event.chunk_type.value),
+            tool_call=event.tool_call,
+            tool_result=event.tool_result,
+        )
+
+    @_dispatch.register
+    def _(self, event: ToolCallChunkEvent) -> NodeRunStreamChunkEvent:
+        from core.workflow.graph_events import ChunkType
+
+        return NodeRunStreamChunkEvent(
+            id=self._node_execution_id,
+            node_id=self._node_id,
+            node_type=self.node_type,
+            selector=event.selector,
+            chunk=event.chunk,
+            is_final=event.is_final,
+            chunk_type=ChunkType.TOOL_CALL,
+            tool_call=event.tool_call,
+        )
+
+    @_dispatch.register
+    def _(self, event: ToolResultChunkEvent) -> NodeRunStreamChunkEvent:
+        from core.workflow.entities import ToolResult, ToolResultStatus
+        from core.workflow.graph_events import ChunkType
+
+        tool_result = event.tool_result or ToolResult()
+        status: ToolResultStatus = tool_result.status or ToolResultStatus.SUCCESS
+        tool_result = tool_result.model_copy(
+            update={"status": status, "files": tool_result.files or []},
+        )
+
+        return NodeRunStreamChunkEvent(
+            id=self._node_execution_id,
+            node_id=self._node_id,
+            node_type=self.node_type,
+            selector=event.selector,
+            chunk=event.chunk,
+            is_final=event.is_final,
+            chunk_type=ChunkType.TOOL_RESULT,
+            tool_result=tool_result,
+        )
+
+    @_dispatch.register
+    def _(self, event: ThoughtChunkEvent) -> NodeRunStreamChunkEvent:
+        from core.workflow.graph_events import ChunkType
+
+        return NodeRunStreamChunkEvent(
+            id=self._node_execution_id,
+            node_id=self._node_id,
+            node_type=self.node_type,
+            selector=event.selector,
+            chunk=event.chunk,
+            is_final=event.is_final,
+            chunk_type=ChunkType.THOUGHT,
         )
 
     @_dispatch.register

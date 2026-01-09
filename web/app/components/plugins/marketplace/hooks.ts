@@ -18,8 +18,6 @@ import {
   useEffect,
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
-import i18n from '@/i18n-config/i18next-config'
 import { postMarketplace } from '@/service/base'
 import { SCROLL_BOTTOM_THRESHOLD } from './constants'
 import {
@@ -215,21 +213,6 @@ export const useMarketplacePlugins = () => {
     hasNextPage: marketplacePluginsQuery.hasNextPage,
     fetchNextPage: marketplacePluginsQuery.fetchNextPage,
     page: marketplacePluginsQuery.data?.pages?.length || (marketplacePluginsQuery.isPending && hasQuery ? 1 : 0),
-  }
-}
-
-/**
- * ! Support zh-Hans, pt-BR, ja-JP and en-US for Marketplace page
- * ! For other languages, use en-US as fallback
- */
-export const useMixedTranslation = (localeFromOuter?: string) => {
-  let t = useTranslation().t
-
-  if (localeFromOuter)
-    t = i18n.getFixedT(localeFromOuter)
-
-  return {
-    t,
   }
 }
 

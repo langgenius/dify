@@ -59,6 +59,7 @@ class MessageListItem(ResponseModel):
     message_files: list[MessageFile]
     status: str
     error: str | None = None
+    generation_detail: JSONValueType | None = Field(default=None, validation_alias="generation_detail_dict")
 
     @field_validator("inputs", mode="before")
     @classmethod

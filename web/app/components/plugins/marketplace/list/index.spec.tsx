@@ -1,6 +1,5 @@
 import type { MarketplaceCollection, SearchParamsFromCollection } from '../types'
 import type { Plugin } from '@/app/components/plugins/types'
-import type { Locale } from '@/i18n-config'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
@@ -12,9 +11,9 @@ import ListWrapper from './list-wrapper'
 // Mock External Dependencies Only
 // ================================
 
-// Mock useMixedTranslation hook
-vi.mock('../hooks', () => ({
-  useMixedTranslation: (_locale?: string) => ({
+// Mock i18n translation hook
+vi.mock('#i18n', () => ({
+  useTranslation: () => ({
     t: (key: string, options?: { ns?: string, num?: number }) => {
       // Build full key with namespace prefix if provided
       const fullKey = options?.ns ? `${options.ns}.${key}` : key
@@ -28,6 +27,7 @@ vi.mock('../hooks', () => ({
       return translations[fullKey] || key
     },
   }),
+  useLocale: () => 'en-US',
 }))
 
 // Mock useMarketplaceContext with controllable values
@@ -148,15 +148,15 @@ vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () =
 
 // Mock SortDropdown component
 vi.mock('../sort-dropdown', () => ({
-  default: ({ locale }: { locale: Locale }) => (
-    <div data-testid="sort-dropdown" data-locale={locale}>Sort</div>
+  default: () => (
+    <div data-testid="sort-dropdown">Sort</div>
   ),
 }))
 
 // Mock Empty component
 vi.mock('../empty', () => ({
-  default: ({ className, locale }: { className?: string, locale?: string }) => (
-    <div data-testid="empty-component" className={className} data-locale={locale}>
+  default: ({ className }: { className?: string }) => (
+    <div data-testid="empty-component" className={className}>
       No plugins found
     </div>
   ),
@@ -233,7 +233,6 @@ describe('List', () => {
     marketplaceCollectionPluginsMap: {} as Record<string, Plugin[]>,
     plugins: undefined,
     showInstallButton: false,
-    locale: 'en-US' as Locale,
     cardContainerClassName: '',
     cardRender: undefined,
     onMoreClick: undefined,
@@ -349,18 +348,6 @@ describe('List', () => {
       )
 
       expect(screen.getByTestId('empty-component')).toHaveClass('custom-empty-class')
-    })
-
-    it('should pass locale to Empty component', () => {
-      render(
-        <List
-          {...defaultProps}
-          plugins={[]}
-          locale={'zh-CN' as Locale}
-        />,
-      )
-
-      expect(screen.getByTestId('empty-component')).toHaveAttribute('data-locale', 'zh-CN')
     })
 
     it('should pass showInstallButton to CardWrapper', () => {
@@ -508,7 +495,6 @@ describe('ListWithCollection', () => {
     marketplaceCollections: [] as MarketplaceCollection[],
     marketplaceCollectionPluginsMap: {} as Record<string, Plugin[]>,
     showInstallButton: false,
-    locale: 'en-US' as Locale,
     cardContainerClassName: '',
     cardRender: undefined,
     onMoreClick: undefined,
@@ -820,7 +806,6 @@ describe('ListWrapper', () => {
     marketplaceCollections: [] as MarketplaceCollection[],
     marketplaceCollectionPluginsMap: {} as Record<string, Plugin[]>,
     showInstallButton: false,
-    locale: 'en-US' as Locale,
   }
 
   beforeEach(() => {
@@ -900,14 +885,6 @@ describe('ListWrapper', () => {
       render(<ListWrapper {...defaultProps} />)
 
       expect(screen.queryByTestId('sort-dropdown')).not.toBeInTheDocument()
-    })
-
-    it('should pass locale to SortDropdown', () => {
-      mockContextValues.plugins = createMockPluginList(1)
-
-      render(<ListWrapper {...defaultProps} locale={'zh-CN' as Locale} />)
-
-      expect(screen.getByTestId('sort-dropdown')).toHaveAttribute('data-locale', 'zh-CN')
     })
   })
 
@@ -1169,7 +1146,6 @@ describe('CardWrapper (via List integration)', () => {
           marketplaceCollections={[]}
           marketplaceCollectionPluginsMap={{}}
           plugins={[plugin]}
-          locale="en-US"
         />,
       )
 
@@ -1188,7 +1164,6 @@ describe('CardWrapper (via List integration)', () => {
           marketplaceCollections={[]}
           marketplaceCollectionPluginsMap={{}}
           plugins={[plugin]}
-          locale="en-US"
         />,
       )
 
@@ -1209,7 +1184,6 @@ describe('CardWrapper (via List integration)', () => {
           marketplaceCollections={[]}
           marketplaceCollectionPluginsMap={{}}
           plugins={plugins}
-          locale="en-US"
         />,
       )
 
@@ -1231,7 +1205,6 @@ describe('CardWrapper (via List integration)', () => {
           marketplaceCollectionPluginsMap={{}}
           plugins={[plugin]}
           showInstallButton={true}
-          locale="en-US"
         />,
       )
 
@@ -1252,7 +1225,6 @@ describe('CardWrapper (via List integration)', () => {
           marketplaceCollectionPluginsMap={{}}
           plugins={[plugin]}
           showInstallButton={true}
-          locale="en-US"
         />,
       )
 
@@ -1274,7 +1246,6 @@ describe('CardWrapper (via List integration)', () => {
           marketplaceCollectionPluginsMap={{}}
           plugins={[plugin]}
           showInstallButton={true}
-          locale="en-US"
         />,
       )
 
@@ -1293,7 +1264,6 @@ describe('CardWrapper (via List integration)', () => {
           marketplaceCollectionPluginsMap={{}}
           plugins={[plugin]}
           showInstallButton={true}
-          locale="en-US"
         />,
       )
 
@@ -1310,7 +1280,6 @@ describe('CardWrapper (via List integration)', () => {
           marketplaceCollectionPluginsMap={{}}
           plugins={[plugin]}
           showInstallButton={true}
-          locale="en-US"
         />,
       )
 
@@ -1327,7 +1296,6 @@ describe('CardWrapper (via List integration)', () => {
           marketplaceCollectionPluginsMap={{}}
           plugins={[plugin]}
           showInstallButton={true}
-          locale="en-US"
         />,
       )
 
@@ -1354,7 +1322,6 @@ describe('CardWrapper (via List integration)', () => {
           marketplaceCollectionPluginsMap={{}}
           plugins={[plugin]}
           showInstallButton={false}
-          locale="en-US"
         />,
       )
 
@@ -1375,7 +1342,6 @@ describe('CardWrapper (via List integration)', () => {
           marketplaceCollectionPluginsMap={{}}
           plugins={[plugin]}
           showInstallButton={false}
-          locale="en-US"
         />,
       )
 
@@ -1390,7 +1356,6 @@ describe('CardWrapper (via List integration)', () => {
           marketplaceCollections={[]}
           marketplaceCollectionPluginsMap={{}}
           plugins={[plugin]}
-          locale="en-US"
         />,
       )
 
@@ -1414,7 +1379,6 @@ describe('CardWrapper (via List integration)', () => {
           marketplaceCollections={[]}
           marketplaceCollectionPluginsMap={{}}
           plugins={[plugin]}
-          locale="en-US"
         />,
       )
 
@@ -1432,7 +1396,6 @@ describe('CardWrapper (via List integration)', () => {
           marketplaceCollections={[]}
           marketplaceCollectionPluginsMap={{}}
           plugins={[plugin]}
-          locale="en-US"
         />,
       )
 
@@ -1450,7 +1413,6 @@ describe('CardWrapper (via List integration)', () => {
           marketplaceCollections={[]}
           marketplaceCollectionPluginsMap={{}}
           plugins={[plugin]}
-          locale="en-US"
         />,
       )
 
@@ -1482,7 +1444,6 @@ describe('Combined Workflows', () => {
       <ListWrapper
         marketplaceCollections={[]}
         marketplaceCollectionPluginsMap={{}}
-        locale="en-US"
       />,
     )
 
@@ -1501,7 +1462,6 @@ describe('Combined Workflows', () => {
       <ListWrapper
         marketplaceCollections={[]}
         marketplaceCollectionPluginsMap={{}}
-        locale="en-US"
       />,
     )
 
@@ -1521,7 +1481,6 @@ describe('Combined Workflows', () => {
       <ListWrapper
         marketplaceCollections={[]}
         marketplaceCollectionPluginsMap={{}}
-        locale="en-US"
       />,
     )
 
@@ -1535,7 +1494,6 @@ describe('Combined Workflows', () => {
       <ListWrapper
         marketplaceCollections={[]}
         marketplaceCollectionPluginsMap={{}}
-        locale="en-US"
       />,
     )
 
@@ -1551,7 +1509,6 @@ describe('Combined Workflows', () => {
       <ListWrapper
         marketplaceCollections={[]}
         marketplaceCollectionPluginsMap={{}}
-        locale="en-US"
       />,
     )
 
@@ -1569,7 +1526,6 @@ describe('Combined Workflows', () => {
       <ListWrapper
         marketplaceCollections={[]}
         marketplaceCollectionPluginsMap={{}}
-        locale="en-US"
       />,
     )
 
@@ -1601,7 +1557,6 @@ describe('Accessibility', () => {
       <ListWithCollection
         marketplaceCollections={collections}
         marketplaceCollectionPluginsMap={pluginsMap}
-        locale="en-US"
       />,
     )
 
@@ -1625,7 +1580,6 @@ describe('Accessibility', () => {
         marketplaceCollections={collections}
         marketplaceCollectionPluginsMap={pluginsMap}
         onMoreClick={onMoreClick}
-        locale="en-US"
       />,
     )
 
@@ -1642,7 +1596,6 @@ describe('Accessibility', () => {
         marketplaceCollections={[]}
         marketplaceCollectionPluginsMap={{}}
         plugins={plugins}
-        locale="en-US"
       />,
     )
 
@@ -1668,7 +1621,6 @@ describe('Performance', () => {
         marketplaceCollections={[]}
         marketplaceCollectionPluginsMap={{}}
         plugins={plugins}
-        locale="en-US"
       />,
     )
     const endTime = performance.now()
@@ -1689,7 +1641,6 @@ describe('Performance', () => {
       <ListWithCollection
         marketplaceCollections={collections}
         marketplaceCollectionPluginsMap={pluginsMap}
-        locale="en-US"
       />,
     )
     const endTime = performance.now()
