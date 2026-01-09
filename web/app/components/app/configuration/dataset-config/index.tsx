@@ -276,7 +276,7 @@ const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
     >
       {hasData
         ? (
-            <div className={cn('mt-1 flex flex-wrap justify-between px-3 pb-3', readonly && 'grid-cols-2 gap-1')}>
+            <div className={cn('mt-1 grid grid-cols-1 px-3 pb-3', readonly && 'grid-cols-2 gap-1')}>
               {formattedDataset.map(item => (
                 <CardItem
                   key={item.id}
@@ -284,6 +284,7 @@ const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
                   onRemove={onRemove}
                   onSave={handleSave}
                   editable={item.editable}
+                  readonly={readonly}
                 />
               ))}
             </div>

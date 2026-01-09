@@ -190,7 +190,7 @@ const AgentTools: FC = () => {
           </div>
         )}
       >
-        <div className={cn('grid grid-cols-1 flex-wrap items-center justify-between gap-1 2xl:grid-cols-2', readonly && 'grid-cols-2')}>
+        <div className={cn('grid grid-cols-1 items-center gap-1 2xl:grid-cols-2', readonly && 'cursor-not-allowed grid-cols-2')}>
           {tools.map((item: AgentTool & { icon: any, collection?: Collection }, index) => (
             <div
               key={index}
