@@ -1,18 +1,16 @@
 """add workflow_run_created_at_id_idx
 
 Revision ID: 905527cc8fd3
-Revises: 03ea244985ce
-Create Date: 2025-12-18 16:30:02.462084
+Revises: 7df29de0f6be
+Create Date: 2025-01-09 16:30:02.462084
 
 """
 from alembic import op
 import models as models
-import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = '905527cc8fd3'
-down_revision = '03ea244985ce'
+down_revision = '7df29de0f6be'
 branch_labels = None
 depends_on = None
 
