@@ -9,6 +9,7 @@ import type {
 } from '@/types/workflow'
 import { get, post } from './base'
 import { getFlowPrefix } from './utils'
+import { sanitizeWorkflowDraftPayload } from './workflow-payload'
 
 export const fetchWorkflowDraft = (url: string) => {
   return get(url, {}, { silent: true }) as Promise<FetchWorkflowDraftResponse>
@@ -18,7 +19,8 @@ export const syncWorkflowDraft = ({ url, params }: {
   url: string
   params: Pick<FetchWorkflowDraftResponse, 'graph' | 'features' | 'environment_variables' | 'conversation_variables'>
 }) => {
-  return post<CommonResponse & { updated_at: number, hash: string }>(url, { body: params }, { silent: true })
+  const sanitized = sanitizeWorkflowDraftPayload(params)
+  return post<CommonResponse & { updated_at: number, hash: string }>(url, { body: sanitized }, { silent: true })
 }
 
 export const fetchNodesDefaultConfigs = (url: string) => {

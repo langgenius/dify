@@ -209,7 +209,6 @@ type IDetailPanel = {
 
 function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   const MIN_ITEMS_FOR_SCROLL_LOADING = 8
-  const SCROLL_THRESHOLD_PX = 50
   const SCROLL_DEBOUNCE_MS = 200
   const { userProfile: { timezone } } = useAppContext()
   const { formatTime } = useTimestamp()
@@ -228,69 +227,103 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   const [hasMore, setHasMore] = useState(true)
   const [varValues, setVarValues] = useState<Record<string, string>>({})
   const isLoadingRef = useRef(false)
+  const abortControllerRef = useRef<AbortController | null>(null)
+  const requestIdRef = useRef(0)
+  const lastLoadTimeRef = useRef(0)
+  const retryCountRef = useRef(0)
+  const oldestAnswerIdRef = useRef<string | undefined>(undefined)
+  const MAX_RETRY_COUNT = 3
 
   const [allChatItems, setAllChatItems] = useState<IChatItem[]>([])
   const [chatItemTree, setChatItemTree] = useState<ChatItemInTree[]>([])
   const [threadChatItems, setThreadChatItems] = useState<IChatItem[]>([])
 
   const fetchData = useCallback(async () => {
-    if (isLoadingRef.current)
+    if (isLoadingRef.current || !hasMore)
       return
+
+    // Cancel any in-flight request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+
+    const controller = new AbortController()
+    abortControllerRef.current = controller
+    const currentRequestId = ++requestIdRef.current
 
     try {
       isLoadingRef.current = true
-
-      if (!hasMore)
-        return
 
       const params: ChatMessagesRequest = {
         conversation_id: detail.id,
         limit: 10,
       }
-      // Use the oldest answer item ID for pagination
-      const answerItems = allChatItems.filter(item => item.isAnswer)
-      const oldestAnswerItem = answerItems[answerItems.length - 1]
-      if (oldestAnswerItem?.id)
-        params.first_id = oldestAnswerItem.id
+      // Use ref for pagination anchor to avoid stale closure issues
+      if (oldestAnswerIdRef.current)
+        params.first_id = oldestAnswerIdRef.current
+
       const messageRes = await fetchChatMessages({
         url: `/apps/${appDetail?.id}/chat-messages`,
         params,
       })
+
+      // Ignore stale responses
+      if (currentRequestId !== requestIdRef.current || controller.signal.aborted)
+        return
       if (messageRes.data.length > 0) {
         const varValues = messageRes.data.at(-1)!.inputs
         setVarValues(varValues)
       }
       setHasMore(messageRes.has_more)
 
-      const newAllChatItems = [
-        ...getFormattedChatList(messageRes.data, detail.id, timezone!, t('dateTimeFormat', { ns: 'appLog' }) as string),
-        ...allChatItems,
-      ]
-      setAllChatItems(newAllChatItems)
+      const newItems = getFormattedChatList(messageRes.data, detail.id, timezone!, t('dateTimeFormat', { ns: 'appLog' }) as string)
 
-      let tree = buildChatItemTree(newAllChatItems)
-      if (messageRes.has_more === false && detail?.model_config?.configs?.introduction) {
-        tree = [{
-          id: 'introduction',
-          isAnswer: true,
-          isOpeningStatement: true,
-          content: detail?.model_config?.configs?.introduction ?? 'hello',
-          feedbackDisabled: true,
-          children: tree,
-        }]
-      }
-      setChatItemTree(tree)
-
-      const lastMessageId = newAllChatItems.length > 0 ? newAllChatItems[newAllChatItems.length - 1].id : undefined
-      setThreadChatItems(getThreadMessages(tree, lastMessageId))
+      // Use functional update to avoid stale state issues
+      setAllChatItems((prevItems: IChatItem[]) => {
+        const existingIds = new Set(prevItems.map(item => item.id))
+        const uniqueNewItems = newItems.filter(item => !existingIds.has(item.id))
+        return [...uniqueNewItems, ...prevItems]
+      })
     }
-    catch (err) {
+    catch (err: unknown) {
+      if (err instanceof Error && err.name === 'AbortError')
+        return
       console.error('fetchData execution failed:', err)
     }
     finally {
       isLoadingRef.current = false
+      if (abortControllerRef.current === controller)
+        abortControllerRef.current = null
     }
-  }, [allChatItems, detail.id, hasMore, timezone, t, appDetail, detail?.model_config?.configs?.introduction])
+  }, [detail.id, hasMore, timezone, t, appDetail, detail?.model_config?.configs?.introduction])
+
+  // Derive chatItemTree, threadChatItems, and oldestAnswerIdRef from allChatItems
+  useEffect(() => {
+    if (allChatItems.length === 0)
+      return
+
+    let tree = buildChatItemTree(allChatItems)
+    if (!hasMore && detail?.model_config?.configs?.introduction) {
+      tree = [{
+        id: 'introduction',
+        isAnswer: true,
+        isOpeningStatement: true,
+        content: detail?.model_config?.configs?.introduction ?? 'hello',
+        feedbackDisabled: true,
+        children: tree,
+      }]
+    }
+    setChatItemTree(tree)
+
+    const lastMessageId = allChatItems.length > 0 ? allChatItems[allChatItems.length - 1].id : undefined
+    setThreadChatItems(getThreadMessages(tree, lastMessageId))
+
+    // Update pagination anchor ref with the oldest answer ID
+    const answerItems = allChatItems.filter(item => item.isAnswer)
+    const oldestAnswer = answerItems[answerItems.length - 1]
+    if (oldestAnswer?.id)
+      oldestAnswerIdRef.current = oldestAnswer.id
+  }, [allChatItems, hasMore, detail?.model_config?.configs?.introduction])
 
   const switchSibling = useCallback((siblingMessageId: string) => {
     const newThreadChatItems = getThreadMessages(chatItemTree, siblingMessageId)
@@ -397,6 +430,12 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
     if (isLoading || !hasMore || !appDetail?.id || !detail.id)
       return
 
+    // Throttle using ref to persist across re-renders
+    const now = Date.now()
+    if (now - lastLoadTimeRef.current < SCROLL_DEBOUNCE_MS)
+      return
+    lastLoadTimeRef.current = now
+
     setIsLoading(true)
 
     try {
@@ -405,15 +444,9 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
         limit: 10,
       }
 
-      // Use the earliest response item as the first_id
-      const answerItems = allChatItems.filter(item => item.isAnswer)
-      const oldestAnswerItem = answerItems[answerItems.length - 1]
-      if (oldestAnswerItem?.id) {
-        params.first_id = oldestAnswerItem.id
-      }
-      else if (allChatItems.length > 0 && allChatItems[0]?.id) {
-        const firstId = allChatItems[0].id.replace('question-', '').replace('answer-', '')
-        params.first_id = firstId
+      // Use ref for pagination anchor to avoid stale closure issues
+      if (oldestAnswerIdRef.current) {
+        params.first_id = oldestAnswerIdRef.current
       }
 
       const messageRes = await fetchChatMessages({
@@ -423,6 +456,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
 
       if (!messageRes.data || messageRes.data.length === 0) {
         setHasMore(false)
+        retryCountRef.current = 0
         return
       }
 
@@ -440,91 +474,36 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
         t('dateTimeFormat', { ns: 'appLog' }) as string,
       )
 
-      // Check for duplicate messages
-      const existingIds = new Set(allChatItems.map(item => item.id))
-      const uniqueNewItems = newItems.filter(item => !existingIds.has(item.id))
+      // Use functional update to get latest state and avoid stale closures
+      setAllChatItems((prevItems: IChatItem[]) => {
+        const existingIds = new Set(prevItems.map(item => item.id))
+        const uniqueNewItems = newItems.filter(item => !existingIds.has(item.id))
 
-      if (uniqueNewItems.length === 0) {
-        if (allChatItems.length > 1) {
-          const nextId = allChatItems[1].id.replace('question-', '').replace('answer-', '')
-
-          const retryParams = {
-            ...params,
-            first_id: nextId,
+        // If no unique items and we haven't exceeded retry limit, signal retry needed
+        if (uniqueNewItems.length === 0) {
+          if (retryCountRef.current < MAX_RETRY_COUNT && prevItems.length > 1) {
+            retryCountRef.current++
+            return prevItems
           }
-
-          const retryRes = await fetchChatMessages({
-            url: `/apps/${appDetail.id}/chat-messages`,
-            params: retryParams,
-          })
-
-          if (retryRes.data && retryRes.data.length > 0) {
-            const retryItems = getFormattedChatList(
-              retryRes.data,
-              detail.id,
-              timezone!,
-              t('dateTimeFormat', { ns: 'appLog' }) as string,
-            )
-
-            const retryUniqueItems = retryItems.filter(item => !existingIds.has(item.id))
-            if (retryUniqueItems.length > 0) {
-              const newAllChatItems = [
-                ...retryUniqueItems,
-                ...allChatItems,
-              ]
-
-              setAllChatItems(newAllChatItems)
-
-              let tree = buildChatItemTree(newAllChatItems)
-              if (retryRes.has_more === false && detail?.model_config?.configs?.introduction) {
-                tree = [{
-                  id: 'introduction',
-                  isAnswer: true,
-                  isOpeningStatement: true,
-                  content: detail?.model_config?.configs?.introduction ?? 'hello',
-                  feedbackDisabled: true,
-                  children: tree,
-                }]
-              }
-              setChatItemTree(tree)
-              setHasMore(retryRes.has_more)
-              setThreadChatItems(getThreadMessages(tree, newAllChatItems.at(-1)?.id))
-              return
-            }
+          else {
+            retryCountRef.current = 0
+            return prevItems
           }
         }
-      }
 
-      const newAllChatItems = [
-        ...uniqueNewItems,
-        ...allChatItems,
-      ]
-
-      setAllChatItems(newAllChatItems)
-
-      let tree = buildChatItemTree(newAllChatItems)
-      if (messageRes.has_more === false && detail?.model_config?.configs?.introduction) {
-        tree = [{
-          id: 'introduction',
-          isAnswer: true,
-          isOpeningStatement: true,
-          content: detail?.model_config?.configs?.introduction ?? 'hello',
-          feedbackDisabled: true,
-          children: tree,
-        }]
-      }
-      setChatItemTree(tree)
-
-      setThreadChatItems(getThreadMessages(tree, newAllChatItems.at(-1)?.id))
+        retryCountRef.current = 0
+        return [...uniqueNewItems, ...prevItems]
+      })
     }
     catch (error) {
       console.error(error)
       setHasMore(false)
+      retryCountRef.current = 0
     }
     finally {
       setIsLoading(false)
     }
-  }, [allChatItems, detail.id, hasMore, isLoading, timezone, t, appDetail])
+  }, [detail.id, hasMore, isLoading, timezone, t, appDetail, detail?.model_config?.configs?.introduction])
 
   useEffect(() => {
     const scrollableDiv = document.getElementById('scrollableDiv')
@@ -556,24 +535,11 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
     if (!scrollContainer)
       return
 
-    let lastLoadTime = 0
-    const throttleDelay = 200
-
     const handleScroll = () => {
       const currentScrollTop = scrollContainer!.scrollTop
-      const scrollHeight = scrollContainer!.scrollHeight
-      const clientHeight = scrollContainer!.clientHeight
+      const isNearTop = currentScrollTop < 30
 
-      const distanceFromTop = currentScrollTop
-      const distanceFromBottom = scrollHeight - currentScrollTop - clientHeight
-
-      const now = Date.now()
-
-      const isNearTop = distanceFromTop < 30
-      // eslint-disable-next-line sonarjs/no-unused-vars
-      const _distanceFromBottom = distanceFromBottom < 30
-      if (isNearTop && hasMore && !isLoading && (now - lastLoadTime > throttleDelay)) {
-        lastLoadTime = now
+      if (isNearTop && hasMore && !isLoading) {
         loadMoreMessages()
       }
     }
@@ -618,36 +584,6 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
     const raf = requestAnimationFrame(adjustModalWidth)
     return () => cancelAnimationFrame(raf)
   }, [])
-
-  // Add scroll listener to ensure loading is triggered
-  useEffect(() => {
-    if (threadChatItems.length >= MIN_ITEMS_FOR_SCROLL_LOADING && hasMore) {
-      const scrollableDiv = document.getElementById('scrollableDiv')
-
-      if (scrollableDiv) {
-        let loadingTimeout: NodeJS.Timeout | null = null
-
-        const handleScroll = () => {
-          const { scrollTop } = scrollableDiv
-
-          // Trigger loading when scrolling near the top
-          if (scrollTop < SCROLL_THRESHOLD_PX && !isLoadingRef.current) {
-            if (loadingTimeout)
-              clearTimeout(loadingTimeout)
-
-            loadingTimeout = setTimeout(fetchData, SCROLL_DEBOUNCE_MS) // 200ms debounce
-          }
-        }
-
-        scrollableDiv.addEventListener('scroll', handleScroll)
-        return () => {
-          scrollableDiv.removeEventListener('scroll', handleScroll)
-          if (loadingTimeout)
-            clearTimeout(loadingTimeout)
-        }
-      }
-    }
-  }, [threadChatItems.length, hasMore, fetchData])
 
   return (
     <div ref={ref} className="flex h-full flex-col rounded-xl border-[0.5px] border-components-panel-border">
