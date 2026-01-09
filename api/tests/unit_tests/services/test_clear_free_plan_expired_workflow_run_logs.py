@@ -3,8 +3,8 @@ from typing import Any
 
 import pytest
 
-from services.retention.workflow_run import clear_free_plan_expired_workflow_run_logs as cleanup_module
 from services.billing_service import SubscriptionPlan
+from services.retention.workflow_run import clear_free_plan_expired_workflow_run_logs as cleanup_module
 from services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs import WorkflowRunCleanup
 
 

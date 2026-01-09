@@ -210,7 +210,7 @@ class WorkflowExecutionStatus(StrEnum):
 
     def is_ended(self) -> bool:
         return self in _END_STATE
-    
+
     @classmethod
     def ended_values(cls) -> list[str]:
         return [status.value for status in _END_STATE]
