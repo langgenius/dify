@@ -38,11 +38,7 @@ def test_doris_connection():
     try:
         # Test 1: Create vector store instance
         print("\n1. Creating DorisVector instance...")
-        vector_store = DorisVector(
-            collection_name="test_collection",
-            config=config,
-            attributes=[]
-        )
+        vector_store = DorisVector(collection_name="test_collection", config=config, attributes=[])
         print("   ✓ DorisVector instance created")
 
         # Test 2: Create collection with sample data
@@ -50,15 +46,15 @@ def test_doris_connection():
         sample_docs = [
             Document(
                 page_content="Apache Doris is a high-performance analytical database.",
-                metadata={"doc_id": "doc1", "document_id": "test1", "source": "test"}
+                metadata={"doc_id": "doc1", "document_id": "test1", "source": "test"},
             ),
             Document(
                 page_content="Vector search enables semantic similarity matching.",
-                metadata={"doc_id": "doc2", "document_id": "test1", "source": "test"}
+                metadata={"doc_id": "doc2", "document_id": "test1", "source": "test"},
             ),
             Document(
                 page_content="HNSW is an efficient algorithm for approximate nearest neighbor search.",
-                metadata={"doc_id": "doc3", "document_id": "test1", "source": "test"}
+                metadata={"doc_id": "doc3", "document_id": "test1", "source": "test"},
             ),
         ]
 
@@ -114,6 +110,7 @@ def test_doris_connection():
     except Exception as e:
         print(f"\n✗ Test failed with error: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -128,13 +125,7 @@ def wait_for_doris():
 
     while retry_count < max_retries:
         try:
-            conn = mysql.connector.connect(
-                host="localhost",
-                port=9030,
-                user="root",
-                password="",
-                connect_timeout=5
-            )
+            conn = mysql.connector.connect(host="localhost", port=9030, user="root", password="", connect_timeout=5)
             cursor = conn.cursor()
             cursor.execute("SHOW DATABASES")
             cursor.close()
@@ -156,12 +147,7 @@ def create_database():
     import mysql.connector
 
     try:
-        conn = mysql.connector.connect(
-            host="localhost",
-            port=9030,
-            user="root",
-            password=""
-        )
+        conn = mysql.connector.connect(host="localhost", port=9030, user="root", password="")
         cursor = conn.cursor()
         cursor.execute("CREATE DATABASE IF NOT EXISTS dify")
         cursor.close()
