@@ -4,13 +4,13 @@ QueueBasedGraphEngine - Main orchestrator for queue-based workflow execution.
 This engine uses a modular architecture with separated packages following
 Domain-Driven Design principles for improved maintainability and testability.
 """
+from __future__ import annotations
 
 import logging
 import queue
 import threading
 from collections.abc import Generator
 from typing import TYPE_CHECKING, cast, final
-
 from core.workflow.context import capture_current_context
 from core.workflow.enums import NodeExecutionType
 from core.workflow.graph import Graph
