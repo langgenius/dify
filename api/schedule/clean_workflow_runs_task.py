@@ -4,7 +4,7 @@ import click
 
 import app
 from configs import dify_config
-from services.clear_free_plan_expired_workflow_run_logs import WorkflowRunCleanup
+from services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs import WorkflowRunCleanup
 
 
 @app.celery.task(queue="retention")
