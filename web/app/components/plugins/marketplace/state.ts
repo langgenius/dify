@@ -8,7 +8,8 @@ import { useMarketplaceCollectionsAndPlugins, useMarketplacePlugins } from './qu
 import { getCollectionsParams, getMarketplaceListFilterType } from './utils'
 
 export function useMarketplaceData() {
-  const [searchPluginText] = useSearchPluginText()
+  const [searchPluginTextOriginal] = useSearchPluginText()
+  const searchPluginText = useDebounce(searchPluginTextOriginal, { wait: 500 })
   const [filterPluginTags] = useFilterPluginTags()
   const [activePluginType] = useActivePluginType()
 
@@ -31,8 +32,7 @@ export function useMarketplaceData() {
     }
   }, [isSearchMode, searchPluginText, activePluginType, filterPluginTags, sort])
 
-  const deferredQueryParams = useDebounce(queryParams, { wait: 500 })
-  const pluginsQuery = useMarketplacePlugins(deferredQueryParams)
+  const pluginsQuery = useMarketplacePlugins(queryParams)
   const { hasNextPage, fetchNextPage } = pluginsQuery
 
   const handlePageChange = useCallback(() => {
