@@ -100,6 +100,7 @@ class WorkflowRunArchiver:
             ├── workflow_pause_reasons.jsonl
             └── workflow_trigger_logs.jsonl
     """
+
     ARCHIVED_TYPE = [
         WorkflowType.WORKFLOW,
         WorkflowType.RAG_PIPELINE,
