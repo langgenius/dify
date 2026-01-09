@@ -83,7 +83,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
     if (!isJsonObject || !tempPayload.json_schema)
       return ''
     try {
-      return JSON.stringify(JSON.parse(tempPayload.json_schema), null, 2)
+      return tempPayload.json_schema
     }
     catch {
       return ''
