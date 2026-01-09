@@ -6,8 +6,6 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
-import { useGetLanguage } from '@/context/i18n'
-import { renderI18nObject } from '@/i18n-config'
 import { useInstalledLatestVersion, useInstalledPluginList, useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import Loading from '../../base/loading'
 import { PluginSource } from '../types'
@@ -16,7 +14,13 @@ import Empty from './empty'
 import FilterManagement from './filter-management'
 import List from './list'
 
-const matchesSearchQuery = (plugin: PluginDetail & { latest_version: string }, query: string, locale: string): boolean => {
+const matchesI18nObject = (obj: Record<string, string> | undefined, query: string): boolean => {
+  if (!obj)
+    return false
+  return Object.values(obj).some(value => value?.toLowerCase().includes(query))
+}
+
+const matchesSearchQuery = (plugin: PluginDetail & { latest_version: string }, query: string): boolean => {
   if (!query)
     return true
   const lowerQuery = query.toLowerCase()
@@ -30,20 +34,17 @@ const matchesSearchQuery = (plugin: PluginDetail & { latest_version: string }, q
   // Match declaration name
   if (declaration.name?.toLowerCase().includes(lowerQuery))
     return true
-  // Match localized label
-  const label = renderI18nObject(declaration.label, locale)
-  if (label?.toLowerCase().includes(lowerQuery))
+  // Match label in all locales
+  if (matchesI18nObject(declaration.label, lowerQuery))
     return true
-  // Match localized description
-  const description = renderI18nObject(declaration.description, locale)
-  if (description?.toLowerCase().includes(lowerQuery))
+  // Match description in all locales
+  if (matchesI18nObject(declaration.description, lowerQuery))
     return true
   return false
 }
 
 const PluginsPanel = () => {
   const { t } = useTranslation()
-  const locale = useGetLanguage()
   const filters = usePluginPageContext(v => v.filters) as FilterState
   const setFilters = usePluginPageContext(v => v.setFilters)
   const { data: pluginList, isLoading: isPluginListLoading, isFetching, isLastPage, loadNextPage } = useInstalledPluginList()
@@ -77,11 +78,11 @@ const PluginsPanel = () => {
       return (
         (categories.length === 0 || categories.includes(plugin.declaration.category))
         && (tags.length === 0 || tags.some(tag => plugin.declaration.tags.includes(tag)))
-        && matchesSearchQuery(plugin, searchQuery, locale)
+        && matchesSearchQuery(plugin, searchQuery)
       )
     })
     return filteredList
-  }, [pluginListWithLatestVersion, filters, locale])
+  }, [pluginListWithLatestVersion, filters])
 
   const currentPluginDetail = useMemo(() => {
     const detail = pluginListWithLatestVersion.find(plugin => plugin.plugin_id === currentPluginID)
