@@ -17,7 +17,7 @@ class SandboxManager:
     contention in hot paths like `get()`.
     """
 
-    # FIXME: Prefer a workflow-level context on GraphRuntimeState to store workflow-scoped shared objects.
+    # FIXME:(sandbox) Prefer a workflow-level context on GraphRuntimeState to store workflow-scoped shared objects.
 
     _NUM_SHARDS: Final[int] = 1024
     _SHARD_MASK: Final[int] = _NUM_SHARDS - 1

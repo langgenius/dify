@@ -488,7 +488,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 if workflow is None:
                     raise ValueError("Workflow not found")
 
-                # FIXME: Consolidate runtime config checking into a unified location.
+                # FIXME:(sandbox) Consolidate runtime config checking into a unified location.
                 runtime = workflow.features_dict.get("runtime")
                 if isinstance(runtime, dict) and runtime.get("enabled"):
                     graph_engine_layers = (
