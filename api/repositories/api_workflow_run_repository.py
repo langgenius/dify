@@ -41,6 +41,7 @@ from typing import Protocol
 from sqlalchemy.orm import Session
 
 from core.workflow.entities.pause_reason import PauseReason
+from core.workflow.enums import WorkflowType
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.enums import WorkflowRunTriggeredFrom
@@ -257,13 +258,15 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
 
     def get_runs_batch_by_time_range(
         self,
-        start_after: datetime | None,
+        start_from: datetime | None,
         end_before: datetime,
         last_seen: tuple[datetime, str] | None,
         batch_size: int,
+        run_types: Sequence[WorkflowType] | None = None,
+        tenant_ids: Sequence[str] | None = None,
     ) -> Sequence[WorkflowRun]:
         """
-        Fetch a batch of workflow runs within a time window using keyset pagination.
+        Fetch ended workflow runs in a time window for archival and clean batching.
         """
         ...
 
