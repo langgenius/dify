@@ -1,17 +1,15 @@
 'use client'
 
-import SearchBoxWrapper from './search-box/search-box-wrapper'
+import { cn } from '@/utils/classnames'
 import PluginTypeSwitch from './plugin-type-switch'
-import cn from '@/utils/classnames'
+import SearchBoxWrapper from './search-box/search-box-wrapper'
 
 type StickySearchAndSwitchWrapperProps = {
-  locale?: string
   pluginTypeSwitchClassName?: string
   showSearchParams?: boolean
 }
 
 const StickySearchAndSwitchWrapper = ({
-  locale,
   pluginTypeSwitchClassName,
   showSearchParams,
 }: StickySearchAndSwitchWrapperProps) => {
@@ -25,9 +23,8 @@ const StickySearchAndSwitchWrapper = ({
         pluginTypeSwitchClassName,
       )}
     >
-      <SearchBoxWrapper locale={locale} />
+      <SearchBoxWrapper />
       <PluginTypeSwitch
-        locale={locale}
         showSearchParams={showSearchParams}
       />
     </div>

@@ -27,9 +27,9 @@ type License = {
 
 export type SystemFeatures = {
   plugin_installation_permission: {
-    plugin_installation_scope: InstallationScope,
+    plugin_installation_scope: InstallationScope
     restrict_to_marketplace_only: boolean
-  },
+  }
   sso_enforced_for_signin: boolean
   sso_enforced_for_signin_protocol: SSOProtocol | ''
   sso_enforced_for_web: boolean
@@ -131,4 +131,5 @@ export enum DatasetAttr {
   NEXT_PUBLIC_ZENDESK_FIELD_ID_EMAIL = 'next-public-zendesk-field-id-email',
   NEXT_PUBLIC_ZENDESK_FIELD_ID_WORKSPACE_ID = 'next-public-zendesk-field-id-workspace-id',
   NEXT_PUBLIC_ZENDESK_FIELD_ID_PLAN = 'next-public-zendesk-field-id-plan',
+  DATA_PUBLIC_BATCH_CONCURRENCY = 'data-public-batch-concurrency',
 }

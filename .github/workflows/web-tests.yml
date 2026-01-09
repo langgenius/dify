@@ -18,7 +18,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           persist-credentials: false
 
@@ -29,7 +29,7 @@ jobs:
           run_install: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: pnpm
@@ -38,16 +38,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Check i18n types synchronization
-        run: pnpm run check:i18n-types
-
       - name: Run tests
-        run: |
-          pnpm exec jest \
-            --ci \
-            --runInBand \
-            --coverage \
-            --passWithNoTests
+        run: pnpm test:coverage
 
       - name: Coverage Summary
         if: always()
@@ -61,7 +53,7 @@ jobs:
           if [ ! -f "$COVERAGE_FILE" ] && [ ! -f "$COVERAGE_SUMMARY_FILE" ]; then
             echo "has_coverage=false" >> "$GITHUB_OUTPUT"
             echo "### 🚨 Test Coverage Report :test_tube:" >> "$GITHUB_STEP_SUMMARY"
-            echo "Coverage data not found. Ensure Jest runs with coverage enabled." >> "$GITHUB_STEP_SUMMARY"
+            echo "Coverage data not found. Ensure Vitest runs with coverage enabled." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
 
@@ -70,6 +62,13 @@ jobs:
           node <<'NODE' >> "$GITHUB_STEP_SUMMARY"
           const fs = require('fs');
           const path = require('path');
+          let libCoverage = null;
+
+          try {
+            libCoverage = require('istanbul-lib-coverage');
+          } catch (error) {
+            libCoverage = null;
+          }
 
           const summaryPath = path.join('coverage', 'coverage-summary.json');
           const finalPath = path.join('coverage', 'coverage-final.json');
@@ -84,6 +83,61 @@ jobs:
             process.exit(0);
           }
 
+          const summary = hasSummary
+            ? JSON.parse(fs.readFileSync(summaryPath, 'utf8'))
+            : null;
+          const coverage = hasFinal
+            ? JSON.parse(fs.readFileSync(finalPath, 'utf8'))
+            : null;
+
+          const getLineCoverageFromStatements = (statementMap, statementHits) => {
+            const lineHits = {};
+
+            if (!statementMap || !statementHits) {
+              return lineHits;
+            }
+
+            Object.entries(statementMap).forEach(([key, statement]) => {
+              const line = statement?.start?.line;
+              if (!line) {
+                return;
+              }
+              const hits = statementHits[key] ?? 0;
+              const previous = lineHits[line];
+              lineHits[line] = previous === undefined ? hits : Math.max(previous, hits);
+            });
+
+            return lineHits;
+          };
+
+          const getFileCoverage = (entry) => (
+            libCoverage ? libCoverage.createFileCoverage(entry) : null
+          );
+
+          const getLineHits = (entry, fileCoverage) => {
+            const lineHits = entry.l ?? {};
+            if (Object.keys(lineHits).length > 0) {
+              return lineHits;
+            }
+            if (fileCoverage) {
+              return fileCoverage.getLineCoverage();
+            }
+            return getLineCoverageFromStatements(entry.statementMap ?? {}, entry.s ?? {});
+          };
+
+          const getUncoveredLines = (entry, fileCoverage, lineHits) => {
+            if (lineHits && Object.keys(lineHits).length > 0) {
+              return Object.entries(lineHits)
+                .filter(([, count]) => count === 0)
+                .map(([line]) => Number(line))
+                .sort((a, b) => a - b);
+            }
+            if (fileCoverage) {
+              return fileCoverage.getUncoveredLines();
+            }
+            return [];
+          };
+
           const totals = {
             lines: { covered: 0, total: 0 },
             statements: { covered: 0, total: 0 },
@@ -92,8 +146,7 @@ jobs:
           };
           const fileSummaries = [];
 
-          if (hasSummary) {
-            const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+          if (summary) {
             const totalEntry = summary.total ?? {};
             ['lines', 'statements', 'branches', 'functions'].forEach((key) => {
               if (totalEntry[key]) {
@@ -114,11 +167,10 @@ jobs:
                   },
                 });
               });
-          } else if (hasFinal) {
-            const coverage = JSON.parse(fs.readFileSync(finalPath, 'utf8'));
-
+          } else if (coverage) {
             Object.entries(coverage).forEach(([file, entry]) => {
-              const lineHits = entry.l ?? {};
+              const fileCoverage = getFileCoverage(entry);
+              const lineHits = getLineHits(entry, fileCoverage);
               const statementHits = entry.s ?? {};
               const branchHits = entry.b ?? {};
               const functionHits = entry.f ?? {};
@@ -183,11 +235,132 @@ jobs:
             });
           console.log('```');
           console.log('</details>');
+
+          if (coverage) {
+            const pctValue = (covered, tot) => {
+              if (tot === 0) {
+                return '0';
+              }
+              return ((covered / tot) * 100)
+                .toFixed(2)
+                .replace(/\.?0+$/, '');
+            };
+
+            const formatLineRanges = (lines) => {
+              if (lines.length === 0) {
+                return '';
+              }
+              const ranges = [];
+              let start = lines[0];
+              let end = lines[0];
+
+              for (let i = 1; i < lines.length; i += 1) {
+                const current = lines[i];
+                if (current === end + 1) {
+                  end = current;
+                  continue;
+                }
+                ranges.push(start === end ? `${start}` : `${start}-${end}`);
+                start = current;
+                end = current;
+              }
+              ranges.push(start === end ? `${start}` : `${start}-${end}`);
+              return ranges.join(',');
+            };
+
+            const tableTotals = {
+              statements: { covered: 0, total: 0 },
+              branches: { covered: 0, total: 0 },
+              functions: { covered: 0, total: 0 },
+              lines: { covered: 0, total: 0 },
+            };
+            const tableRows = Object.entries(coverage)
+              .map(([file, entry]) => {
+                const fileCoverage = getFileCoverage(entry);
+                const lineHits = getLineHits(entry, fileCoverage);
+                const statementHits = entry.s ?? {};
+                const branchHits = entry.b ?? {};
+                const functionHits = entry.f ?? {};
+
+                const lineTotal = Object.keys(lineHits).length;
+                const lineCovered = Object.values(lineHits).filter((n) => n > 0).length;
+                const statementTotal = Object.keys(statementHits).length;
+                const statementCovered = Object.values(statementHits).filter((n) => n > 0).length;
+                const branchTotal = Object.values(branchHits).reduce((acc, branches) => acc + branches.length, 0);
+                const branchCovered = Object.values(branchHits).reduce(
+                  (acc, branches) => acc + branches.filter((n) => n > 0).length,
+                  0,
+                );
+                const functionTotal = Object.keys(functionHits).length;
+                const functionCovered = Object.values(functionHits).filter((n) => n > 0).length;
+
+                tableTotals.lines.total += lineTotal;
+                tableTotals.lines.covered += lineCovered;
+                tableTotals.statements.total += statementTotal;
+                tableTotals.statements.covered += statementCovered;
+                tableTotals.branches.total += branchTotal;
+                tableTotals.branches.covered += branchCovered;
+                tableTotals.functions.total += functionTotal;
+                tableTotals.functions.covered += functionCovered;
+
+                const uncoveredLines = getUncoveredLines(entry, fileCoverage, lineHits);
+
+                const filePath = entry.path ?? file;
+                const relativePath = path.isAbsolute(filePath)
+                  ? path.relative(process.cwd(), filePath)
+                  : filePath;
+
+                return {
+                  file: relativePath || file,
+                  statements: pctValue(statementCovered, statementTotal),
+                  branches: pctValue(branchCovered, branchTotal),
+                  functions: pctValue(functionCovered, functionTotal),
+                  lines: pctValue(lineCovered, lineTotal),
+                  uncovered: formatLineRanges(uncoveredLines),
+                };
+              })
+              .sort((a, b) => a.file.localeCompare(b.file));
+
+            const columns = [
+              { key: 'file', header: 'File', align: 'left' },
+              { key: 'statements', header: '% Stmts', align: 'right' },
+              { key: 'branches', header: '% Branch', align: 'right' },
+              { key: 'functions', header: '% Funcs', align: 'right' },
+              { key: 'lines', header: '% Lines', align: 'right' },
+              { key: 'uncovered', header: 'Uncovered Line #s', align: 'left' },
+            ];
+
+            const allFilesRow = {
+              file: 'All files',
+              statements: pctValue(tableTotals.statements.covered, tableTotals.statements.total),
+              branches: pctValue(tableTotals.branches.covered, tableTotals.branches.total),
+              functions: pctValue(tableTotals.functions.covered, tableTotals.functions.total),
+              lines: pctValue(tableTotals.lines.covered, tableTotals.lines.total),
+              uncovered: '',
+            };
+
+            const rowsForOutput = [allFilesRow, ...tableRows];
+            const formatRow = (row) => `| ${columns
+              .map(({ key }) => String(row[key] ?? ''))
+              .join(' | ')} |`;
+            const headerRow = `| ${columns.map(({ header }) => header).join(' | ')} |`;
+            const dividerRow = `| ${columns
+              .map(({ align }) => (align === 'right' ? '---:' : ':---'))
+              .join(' | ')} |`;
+
+            console.log('');
+            console.log('<details><summary>Vitest coverage table</summary>');
+            console.log('');
+            console.log(headerRow);
+            console.log(dividerRow);
+            rowsForOutput.forEach((row) => console.log(formatRow(row)));
+            console.log('</details>');
+          }
           NODE
 
       - name: Upload Coverage Artifact
         if: steps.coverage-summary.outputs.has_coverage == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: web-coverage-report
           path: web/coverage

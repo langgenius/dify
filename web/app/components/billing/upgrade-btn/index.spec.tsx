@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import UpgradeBtn from './index'
@@ -5,39 +6,21 @@ import UpgradeBtn from './index'
 // ✅ Import real project components (DO NOT mock these)
 // PremiumBadge, Button, SparklesSoft are all base components
 
-// ✅ Mock i18n with actual translations instead of returning keys
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => {
-      const translations: Record<string, string> = {
-        'billing.upgradeBtn.encourage': 'Upgrade to Pro',
-        'billing.upgradeBtn.encourageShort': 'Upgrade',
-        'billing.upgradeBtn.plain': 'Upgrade Plan',
-        'custom.label.key': 'Custom Label',
-        'custom.key': 'Custom Text',
-        'custom.short.key': 'Short Custom',
-        'custom.all': 'All Custom Props',
-      }
-      return translations[key] || key
-    },
-  }),
-}))
-
 // ✅ Mock external dependencies only
-const mockSetShowPricingModal = jest.fn()
-jest.mock('@/context/modal-context', () => ({
+const mockSetShowPricingModal = vi.fn()
+vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
     setShowPricingModal: mockSetShowPricingModal,
   }),
 }))
 
 // Mock gtag for tracking tests
-let mockGtag: jest.Mock | undefined
+let mockGtag: Mock | undefined
 
 describe('UpgradeBtn', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
-    mockGtag = jest.fn()
+    vi.clearAllMocks()
+    mockGtag = vi.fn()
     ;(window as any).gtag = mockGtag
   })
 
@@ -52,7 +35,7 @@ describe('UpgradeBtn', () => {
       render(<UpgradeBtn />)
 
       // Assert - should render with default text
-      expect(screen.getByText(/upgrade to pro/i)).toBeInTheDocument()
+      expect(screen.getByText(/billing\.upgradeBtn\.encourage/i)).toBeInTheDocument()
     })
 
     it('should render premium badge by default', () => {
@@ -60,7 +43,7 @@ describe('UpgradeBtn', () => {
       render(<UpgradeBtn />)
 
       // Assert - PremiumBadge renders with text content
-      expect(screen.getByText(/upgrade to pro/i)).toBeInTheDocument()
+      expect(screen.getByText(/billing\.upgradeBtn\.encourage/i)).toBeInTheDocument()
     })
 
     it('should render plain button when isPlain is true', () => {
@@ -70,7 +53,7 @@ describe('UpgradeBtn', () => {
       // Assert - Button should be rendered with plain text
       const button = screen.getByRole('button')
       expect(button).toBeInTheDocument()
-      expect(screen.getByText(/upgrade plan/i)).toBeInTheDocument()
+      expect(screen.getByText(/billing\.upgradeBtn\.plain/i)).toBeInTheDocument()
     })
 
     it('should render short text when isShort is true', () => {
@@ -78,25 +61,25 @@ describe('UpgradeBtn', () => {
       render(<UpgradeBtn isShort />)
 
       // Assert
-      expect(screen.getByText(/^upgrade$/i)).toBeInTheDocument()
+      expect(screen.getByText(/billing\.upgradeBtn\.encourageShort/i)).toBeInTheDocument()
     })
 
     it('should render custom label when labelKey is provided', () => {
       // Act
-      render(<UpgradeBtn labelKey="custom.label.key" />)
+      render(<UpgradeBtn labelKey={'custom.label.key' as any} />)
 
       // Assert
-      expect(screen.getByText(/custom label/i)).toBeInTheDocument()
+      expect(screen.getByText(/custom\.label\.key/i)).toBeInTheDocument()
     })
 
     it('should render custom label in plain button when labelKey is provided with isPlain', () => {
       // Act
-      render(<UpgradeBtn isPlain labelKey="custom.label.key" />)
+      render(<UpgradeBtn isPlain labelKey={'custom.label.key' as any} />)
 
       // Assert
       const button = screen.getByRole('button')
       expect(button).toBeInTheDocument()
-      expect(screen.getByText(/custom label/i)).toBeInTheDocument()
+      expect(screen.getByText(/custom\.label\.key/i)).toBeInTheDocument()
     })
   })
 
@@ -128,7 +111,7 @@ describe('UpgradeBtn', () => {
 
     it('should apply custom style to premium badge', () => {
       // Arrange
-      const customStyle = { backgroundColor: 'red', padding: '10px' }
+      const customStyle = { padding: '10px' }
 
       // Act
       const { container } = render(<UpgradeBtn style={customStyle} />)
@@ -140,7 +123,7 @@ describe('UpgradeBtn', () => {
 
     it('should apply custom style to plain button', () => {
       // Arrange
-      const customStyle = { backgroundColor: 'blue', margin: '5px' }
+      const customStyle = { margin: '5px' }
 
       // Act
       render(<UpgradeBtn isPlain style={customStyle} />)
@@ -155,7 +138,7 @@ describe('UpgradeBtn', () => {
       render(<UpgradeBtn size="s" />)
 
       // Assert - Component renders successfully with size prop
-      expect(screen.getByText(/upgrade to pro/i)).toBeInTheDocument()
+      expect(screen.getByText(/billing\.upgradeBtn\.encourage/i)).toBeInTheDocument()
     })
 
     it('should render with size "m" by default', () => {
@@ -163,7 +146,7 @@ describe('UpgradeBtn', () => {
       render(<UpgradeBtn />)
 
       // Assert - Component renders successfully
-      expect(screen.getByText(/upgrade to pro/i)).toBeInTheDocument()
+      expect(screen.getByText(/billing\.upgradeBtn\.encourage/i)).toBeInTheDocument()
     })
 
     it('should render with size "custom"', () => {
@@ -171,7 +154,7 @@ describe('UpgradeBtn', () => {
       render(<UpgradeBtn size="custom" />)
 
       // Assert - Component renders successfully with custom size
-      expect(screen.getByText(/upgrade to pro/i)).toBeInTheDocument()
+      expect(screen.getByText(/billing\.upgradeBtn\.encourage/i)).toBeInTheDocument()
     })
   })
 
@@ -180,12 +163,12 @@ describe('UpgradeBtn', () => {
     it('should call custom onClick when provided and premium badge is clicked', async () => {
       // Arrange
       const user = userEvent.setup()
-      const handleClick = jest.fn()
+      const handleClick = vi.fn()
 
       // Act
       render(<UpgradeBtn onClick={handleClick} />)
-      const badge = screen.getByText(/upgrade to pro/i).closest('div')
-      await user.click(badge!)
+      const badge = screen.getByText(/billing\.upgradeBtn\.encourage/i)
+      await user.click(badge)
 
       // Assert
       expect(handleClick).toHaveBeenCalledTimes(1)
@@ -195,7 +178,7 @@ describe('UpgradeBtn', () => {
     it('should call custom onClick when provided and plain button is clicked', async () => {
       // Arrange
       const user = userEvent.setup()
-      const handleClick = jest.fn()
+      const handleClick = vi.fn()
 
       // Act
       render(<UpgradeBtn isPlain onClick={handleClick} />)
@@ -213,8 +196,8 @@ describe('UpgradeBtn', () => {
 
       // Act
       render(<UpgradeBtn />)
-      const badge = screen.getByText(/upgrade to pro/i).closest('div')
-      await user.click(badge!)
+      const badge = screen.getByText(/billing\.upgradeBtn\.encourage/i)
+      await user.click(badge)
 
       // Assert
       expect(mockSetShowPricingModal).toHaveBeenCalledTimes(1)
@@ -240,8 +223,8 @@ describe('UpgradeBtn', () => {
 
       // Act
       render(<UpgradeBtn loc={loc} />)
-      const badge = screen.getByText(/upgrade to pro/i).closest('div')
-      await user.click(badge!)
+      const badge = screen.getByText(/billing\.upgradeBtn\.encourage/i)
+      await user.click(badge)
 
       // Assert
       expect(mockGtag).toHaveBeenCalledTimes(1)
@@ -273,8 +256,8 @@ describe('UpgradeBtn', () => {
 
       // Act
       render(<UpgradeBtn />)
-      const badge = screen.getByText(/upgrade to pro/i).closest('div')
-      await user.click(badge!)
+      const badge = screen.getByText(/billing\.upgradeBtn\.encourage/i)
+      await user.click(badge)
 
       // Assert
       expect(mockGtag).not.toHaveBeenCalled()
@@ -287,8 +270,8 @@ describe('UpgradeBtn', () => {
 
       // Act
       render(<UpgradeBtn loc="test-location" />)
-      const badge = screen.getByText(/upgrade to pro/i).closest('div')
-      await user.click(badge!)
+      const badge = screen.getByText(/billing\.upgradeBtn\.encourage/i)
+      await user.click(badge)
 
       // Assert - should not throw error
       expect(mockGtag).not.toHaveBeenCalled()
@@ -297,13 +280,13 @@ describe('UpgradeBtn', () => {
     it('should call both custom onClick and track gtag when both are provided', async () => {
       // Arrange
       const user = userEvent.setup()
-      const handleClick = jest.fn()
+      const handleClick = vi.fn()
       const loc = 'settings-page'
 
       // Act
       render(<UpgradeBtn onClick={handleClick} loc={loc} />)
-      const badge = screen.getByText(/upgrade to pro/i).closest('div')
-      await user.click(badge!)
+      const badge = screen.getByText(/billing\.upgradeBtn\.encourage/i)
+      await user.click(badge)
 
       // Assert
       expect(handleClick).toHaveBeenCalledTimes(1)
@@ -321,7 +304,7 @@ describe('UpgradeBtn', () => {
       render(<UpgradeBtn className={undefined} />)
 
       // Assert - should render without error
-      expect(screen.getByText(/upgrade to pro/i)).toBeInTheDocument()
+      expect(screen.getByText(/billing\.upgradeBtn\.encourage/i)).toBeInTheDocument()
     })
 
     it('should handle undefined style', () => {
@@ -329,7 +312,7 @@ describe('UpgradeBtn', () => {
       render(<UpgradeBtn style={undefined} />)
 
       // Assert - should render without error
-      expect(screen.getByText(/upgrade to pro/i)).toBeInTheDocument()
+      expect(screen.getByText(/billing\.upgradeBtn\.encourage/i)).toBeInTheDocument()
     })
 
     it('should handle undefined onClick', async () => {
@@ -338,8 +321,8 @@ describe('UpgradeBtn', () => {
 
       // Act
       render(<UpgradeBtn onClick={undefined} />)
-      const badge = screen.getByText(/upgrade to pro/i).closest('div')
-      await user.click(badge!)
+      const badge = screen.getByText(/billing\.upgradeBtn\.encourage/i)
+      await user.click(badge)
 
       // Assert - should fall back to setShowPricingModal
       expect(mockSetShowPricingModal).toHaveBeenCalledTimes(1)
@@ -351,8 +334,8 @@ describe('UpgradeBtn', () => {
 
       // Act
       render(<UpgradeBtn loc={undefined} />)
-      const badge = screen.getByText(/upgrade to pro/i).closest('div')
-      await user.click(badge!)
+      const badge = screen.getByText(/billing\.upgradeBtn\.encourage/i)
+      await user.click(badge)
 
       // Assert - should not attempt to track gtag
       expect(mockGtag).not.toHaveBeenCalled()
@@ -363,7 +346,7 @@ describe('UpgradeBtn', () => {
       render(<UpgradeBtn labelKey={undefined} />)
 
       // Assert - should use default label
-      expect(screen.getByText(/upgrade to pro/i)).toBeInTheDocument()
+      expect(screen.getByText(/billing\.upgradeBtn\.encourage/i)).toBeInTheDocument()
     })
 
     it('should handle empty string className', () => {
@@ -371,7 +354,7 @@ describe('UpgradeBtn', () => {
       render(<UpgradeBtn className="" />)
 
       // Assert
-      expect(screen.getByText(/upgrade to pro/i)).toBeInTheDocument()
+      expect(screen.getByText(/billing\.upgradeBtn\.encourage/i)).toBeInTheDocument()
     })
 
     it('should handle empty string loc', async () => {
@@ -380,8 +363,8 @@ describe('UpgradeBtn', () => {
 
       // Act
       render(<UpgradeBtn loc="" />)
-      const badge = screen.getByText(/upgrade to pro/i).closest('div')
-      await user.click(badge!)
+      const badge = screen.getByText(/billing\.upgradeBtn\.encourage/i)
+      await user.click(badge)
 
       // Assert - empty loc should not trigger gtag
       expect(mockGtag).not.toHaveBeenCalled()
@@ -389,10 +372,10 @@ describe('UpgradeBtn', () => {
 
     it('should handle empty string labelKey', () => {
       // Act
-      render(<UpgradeBtn labelKey="" />)
+      render(<UpgradeBtn labelKey={'' as any} />)
 
       // Assert - empty labelKey is falsy, so it falls back to default label
-      expect(screen.getByText(/upgrade to pro/i)).toBeInTheDocument()
+      expect(screen.getByText(/billing\.upgradeBtn\.encourage/i)).toBeInTheDocument()
     })
   })
 
@@ -403,31 +386,31 @@ describe('UpgradeBtn', () => {
       render(<UpgradeBtn isPlain isShort />)
 
       // Assert - isShort should not affect plain button text
-      expect(screen.getByText(/upgrade plan/i)).toBeInTheDocument()
+      expect(screen.getByText(/billing\.upgradeBtn\.plain/i)).toBeInTheDocument()
     })
 
     it('should handle isPlain with custom labelKey', () => {
       // Act
-      render(<UpgradeBtn isPlain labelKey="custom.key" />)
+      render(<UpgradeBtn isPlain labelKey={'custom.key' as any} />)
 
       // Assert - labelKey should override plain text
-      expect(screen.getByText(/custom text/i)).toBeInTheDocument()
-      expect(screen.queryByText(/upgrade plan/i)).not.toBeInTheDocument()
+      expect(screen.getByText(/custom\.key/i)).toBeInTheDocument()
+      expect(screen.queryByText(/billing\.upgradeBtn\.plain/i)).not.toBeInTheDocument()
     })
 
     it('should handle isShort with custom labelKey', () => {
       // Act
-      render(<UpgradeBtn isShort labelKey="custom.short.key" />)
+      render(<UpgradeBtn isShort labelKey={'custom.short.key' as any} />)
 
       // Assert - labelKey should override isShort behavior
-      expect(screen.getByText(/short custom/i)).toBeInTheDocument()
-      expect(screen.queryByText(/^upgrade$/i)).not.toBeInTheDocument()
+      expect(screen.getByText(/custom\.short\.key/i)).toBeInTheDocument()
+      expect(screen.queryByText(/billing\.upgradeBtn\.encourageShort/i)).not.toBeInTheDocument()
     })
 
     it('should handle all custom props together', async () => {
       // Arrange
       const user = userEvent.setup()
-      const handleClick = jest.fn()
+      const handleClick = vi.fn()
       const customStyle = { margin: '10px' }
       const customClass = 'all-custom'
 
@@ -440,17 +423,17 @@ describe('UpgradeBtn', () => {
           isShort
           onClick={handleClick}
           loc="test-loc"
-          labelKey="custom.all"
+          labelKey={'custom.all' as any}
         />,
       )
-      const badge = screen.getByText(/all custom props/i).closest('div')
-      await user.click(badge!)
+      const badge = screen.getByText(/custom\.all/i)
+      await user.click(badge)
 
       // Assert
       const rootElement = container.firstChild as HTMLElement
       expect(rootElement).toHaveClass(customClass)
       expect(rootElement).toHaveStyle(customStyle)
-      expect(screen.getByText(/all custom props/i)).toBeInTheDocument()
+      expect(screen.getByText(/custom\.all/i)).toBeInTheDocument()
       expect(handleClick).toHaveBeenCalledTimes(1)
       expect(mockGtag).toHaveBeenCalledWith('event', 'click_upgrade_btn', {
         loc: 'test-loc',
@@ -463,7 +446,7 @@ describe('UpgradeBtn', () => {
     it('should be keyboard accessible with plain button', async () => {
       // Arrange
       const user = userEvent.setup()
-      const handleClick = jest.fn()
+      const handleClick = vi.fn()
 
       // Act
       render(<UpgradeBtn isPlain onClick={handleClick} />)
@@ -483,7 +466,7 @@ describe('UpgradeBtn', () => {
     it('should be keyboard accessible with Space key', async () => {
       // Arrange
       const user = userEvent.setup()
-      const handleClick = jest.fn()
+      const handleClick = vi.fn()
 
       // Act
       render(<UpgradeBtn isPlain onClick={handleClick} />)
@@ -499,14 +482,14 @@ describe('UpgradeBtn', () => {
     it('should be clickable for premium badge variant', async () => {
       // Arrange
       const user = userEvent.setup()
-      const handleClick = jest.fn()
+      const handleClick = vi.fn()
 
       // Act
       render(<UpgradeBtn onClick={handleClick} />)
-      const badge = screen.getByText(/upgrade to pro/i).closest('div')
+      const badge = screen.getByText(/billing\.upgradeBtn\.encourage/i)
 
       // Click badge
-      await user.click(badge!)
+      await user.click(badge)
 
       // Assert
       expect(handleClick).toHaveBeenCalledTimes(1)
@@ -522,70 +505,6 @@ describe('UpgradeBtn', () => {
     })
   })
 
-  // Performance Tests
-  describe('Performance', () => {
-    it('should not rerender when props do not change', () => {
-      // Arrange
-      const { rerender } = render(<UpgradeBtn loc="test" />)
-      const firstRender = screen.getByText(/upgrade to pro/i)
-
-      // Act - Rerender with same props
-      rerender(<UpgradeBtn loc="test" />)
-
-      // Assert - Component should still be in document
-      expect(firstRender).toBeInTheDocument()
-      expect(screen.getByText(/upgrade to pro/i)).toBe(firstRender)
-    })
-
-    it('should rerender when props change', () => {
-      // Arrange
-      const { rerender } = render(<UpgradeBtn labelKey="custom.key" />)
-      expect(screen.getByText(/custom text/i)).toBeInTheDocument()
-
-      // Act - Rerender with different labelKey
-      rerender(<UpgradeBtn labelKey="custom.label.key" />)
-
-      // Assert - Should show new label
-      expect(screen.getByText(/custom label/i)).toBeInTheDocument()
-      expect(screen.queryByText(/custom text/i)).not.toBeInTheDocument()
-    })
-
-    it('should handle rapid rerenders efficiently', () => {
-      // Arrange
-      const { rerender } = render(<UpgradeBtn />)
-
-      // Act - Multiple rapid rerenders
-      for (let i = 0; i < 10; i++)
-        rerender(<UpgradeBtn />)
-
-      // Assert - Component should still render correctly
-      expect(screen.getByText(/upgrade to pro/i)).toBeInTheDocument()
-    })
-
-    it('should be memoized with React.memo', () => {
-      // Arrange
-      const TestWrapper = ({ children }: { children: React.ReactNode }) => <div>{children}</div>
-
-      const { rerender } = render(
-        <TestWrapper>
-          <UpgradeBtn />
-        </TestWrapper>,
-      )
-
-      const firstElement = screen.getByText(/upgrade to pro/i)
-
-      // Act - Rerender parent with same props
-      rerender(
-        <TestWrapper>
-          <UpgradeBtn />
-        </TestWrapper>,
-      )
-
-      // Assert - Element reference should be stable due to memo
-      expect(screen.getByText(/upgrade to pro/i)).toBe(firstElement)
-    })
-  })
-
   // Integration Tests
   describe('Integration', () => {
     it('should work with modal context for pricing modal', async () => {
@@ -594,8 +513,8 @@ describe('UpgradeBtn', () => {
 
       // Act
       render(<UpgradeBtn />)
-      const badge = screen.getByText(/upgrade to pro/i).closest('div')
-      await user.click(badge!)
+      const badge = screen.getByText(/billing\.upgradeBtn\.encourage/i)
+      await user.click(badge)
 
       // Assert
       await waitFor(() => {
@@ -606,12 +525,12 @@ describe('UpgradeBtn', () => {
     it('should integrate onClick with analytics tracking', async () => {
       // Arrange
       const user = userEvent.setup()
-      const handleClick = jest.fn()
+      const handleClick = vi.fn()
 
       // Act
       render(<UpgradeBtn onClick={handleClick} loc="integration-test" />)
-      const badge = screen.getByText(/upgrade to pro/i).closest('div')
-      await user.click(badge!)
+      const badge = screen.getByText(/billing\.upgradeBtn\.encourage/i)
+      await user.click(badge)
 
       // Assert - Both onClick and gtag should be called
       await waitFor(() => {

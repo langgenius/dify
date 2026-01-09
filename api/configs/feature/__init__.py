@@ -587,6 +587,11 @@ class LoggingConfig(BaseSettings):
         default="INFO",
     )
 
+    LOG_OUTPUT_FORMAT: Literal["text", "json"] = Field(
+        description="Log output format: 'text' for human-readable, 'json' for structured JSON logs.",
+        default="text",
+    )
+
     LOG_FILE: str | None = Field(
         description="File path for log output.",
         default=None,

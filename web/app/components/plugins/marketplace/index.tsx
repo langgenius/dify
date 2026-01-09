@@ -1,14 +1,13 @@
-import { MarketplaceContextProvider } from './context'
-import Description from './description'
-import StickySearchAndSwitchWrapper from './sticky-search-and-switch-wrapper'
-import ListWrapper from './list/list-wrapper'
 import type { MarketplaceCollection, SearchParams } from './types'
 import type { Plugin } from '@/app/components/plugins/types'
-import { getMarketplaceCollectionsAndPlugins } from './utils'
 import { TanstackQueryInitializer } from '@/context/query-client'
+import { MarketplaceContextProvider } from './context'
+import Description from './description'
+import ListWrapper from './list/list-wrapper'
+import StickySearchAndSwitchWrapper from './sticky-search-and-switch-wrapper'
+import { getMarketplaceCollectionsAndPlugins } from './utils'
 
 type MarketplaceProps = {
-  locale: string
   showInstallButton?: boolean
   shouldExclude?: boolean
   searchParams?: SearchParams
@@ -17,7 +16,6 @@ type MarketplaceProps = {
   showSearchParams?: boolean
 }
 const Marketplace = async ({
-  locale,
   showInstallButton = true,
   shouldExclude,
   searchParams,
@@ -41,14 +39,12 @@ const Marketplace = async ({
         scrollContainerId={scrollContainerId}
         showSearchParams={showSearchParams}
       >
-        <Description locale={locale} />
+        <Description />
         <StickySearchAndSwitchWrapper
-          locale={locale}
           pluginTypeSwitchClassName={pluginTypeSwitchClassName}
           showSearchParams={showSearchParams}
         />
         <ListWrapper
-          locale={locale}
           marketplaceCollections={marketplaceCollections}
           marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap}
           showInstallButton={showInstallButton}

@@ -1,14 +1,14 @@
+import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   memo,
   useCallback,
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
-import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
-import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
 
 type EmbeddingModelProps = {
   embeddingModel?: string
@@ -49,7 +49,7 @@ const EmbeddingModel = ({
   return (
     <Field
       fieldTitleProps={{
-        title: t('datasetSettings.form.embeddingModel'),
+        title: t('form.embeddingModel', { ns: 'datasetSettings' }),
       }}
     >
       <ModelSelector

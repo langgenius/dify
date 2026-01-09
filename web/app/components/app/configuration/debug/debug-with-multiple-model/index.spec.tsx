@@ -1,16 +1,16 @@
-import '@testing-library/jest-dom'
 import type { CSSProperties } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
-import DebugWithMultipleModel from './index'
-import type { DebugWithMultipleModelContextType } from './context'
-import { APP_CHAT_WITH_MULTIPLE_MODEL } from '../types'
 import type { ModelAndParameter } from '../types'
-import type { Inputs, ModelConfig } from '@/models/debug'
-import { DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
+import type { DebugWithMultipleModelContextType } from './context'
+import type { InputForm } from '@/app/components/base/chat/chat/type'
 import type { FeatureStoreState } from '@/app/components/base/features/store'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
-import type { InputForm } from '@/app/components/base/chat/chat/type'
-import { AppModeEnum, ModelModeType, type PromptVariable, Resolution, TransferMethod } from '@/types/app'
+import type { Inputs, ModelConfig } from '@/models/debug'
+import type { PromptVariable } from '@/types/app'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
+import { AppModeEnum, ModelModeType, Resolution, TransferMethod } from '@/types/app'
+import { APP_CHAT_WITH_MULTIPLE_MODEL } from '../types'
+import DebugWithMultipleModel from './index'
 
 type PromptVariableWithMeta = Omit<PromptVariable, 'type' | 'required'> & {
   type: PromptVariable['type'] | 'api'
@@ -18,12 +18,12 @@ type PromptVariableWithMeta = Omit<PromptVariable, 'type' | 'required'> & {
   hide?: boolean
 }
 
-const mockUseDebugConfigurationContext = jest.fn()
-const mockUseFeaturesSelector = jest.fn()
-const mockUseEventEmitterContext = jest.fn()
-const mockUseAppStoreSelector = jest.fn()
-const mockEventEmitter = { emit: jest.fn() }
-const mockSetShowAppConfigureFeaturesModal = jest.fn()
+const mockUseDebugConfigurationContext = vi.fn()
+const mockUseFeaturesSelector = vi.fn()
+const mockUseEventEmitterContext = vi.fn()
+const mockUseAppStoreSelector = vi.fn()
+const mockEventEmitter = { emit: vi.fn() }
+const mockSetShowAppConfigureFeaturesModal = vi.fn()
 let capturedChatInputProps: MockChatInputAreaProps | null = null
 let modelIdCounter = 0
 let featureState: FeatureStoreState
@@ -51,28 +51,23 @@ const mockFiles: FileEntity[] = [
   },
 ]
 
-jest.mock('@/context/debug-configuration', () => ({
-  __esModule: true,
+vi.mock('@/context/debug-configuration', () => ({
   useDebugConfigurationContext: () => mockUseDebugConfigurationContext(),
 }))
 
-jest.mock('@/app/components/base/features/hooks', () => ({
-  __esModule: true,
+vi.mock('@/app/components/base/features/hooks', () => ({
   useFeatures: (selector: (state: FeatureStoreState) => unknown) => mockUseFeaturesSelector(selector),
 }))
 
-jest.mock('@/context/event-emitter', () => ({
-  __esModule: true,
+vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => mockUseEventEmitterContext(),
 }))
 
-jest.mock('@/app/components/app/store', () => ({
-  __esModule: true,
+vi.mock('@/app/components/app/store', () => ({
   useStore: (selector: (state: { setShowAppConfigureFeaturesModal: typeof mockSetShowAppConfigureFeaturesModal }) => unknown) => mockUseAppStoreSelector(selector),
 }))
 
-jest.mock('./debug-item', () => ({
-  __esModule: true,
+vi.mock('./debug-item', () => ({
   default: ({
     modelAndParameter,
     className,
@@ -83,24 +78,24 @@ jest.mock('./debug-item', () => ({
     style?: CSSProperties
   }) => (
     <div
-      data-testid='debug-item'
+      data-testid="debug-item"
       data-model-id={modelAndParameter.id}
       className={className}
       style={style}
     >
-      DebugItem-{modelAndParameter.id}
+      DebugItem-
+      {modelAndParameter.id}
     </div>
   ),
 }))
 
-jest.mock('@/app/components/base/chat/chat/chat-input-area', () => ({
-  __esModule: true,
+vi.mock('@/app/components/base/chat/chat/chat-input-area', () => ({
   default: (props: MockChatInputAreaProps) => {
     capturedChatInputProps = props
     return (
-      <div data-testid='chat-input-area'>
-        <button type='button' onClick={() => props.onSend?.('test message', mockFiles)}>send</button>
-        <button type='button' onClick={() => props.onFeatureBarClick?.(true)}>feature</button>
+      <div data-testid="chat-input-area">
+        <button type="button" onClick={() => props.onSend?.('test message', mockFiles)}>send</button>
+        <button type="button" onClick={() => props.onFeatureBarClick?.(true)}>feature</button>
       </div>
     )
   },
@@ -118,9 +113,9 @@ const createFeatureState = (): FeatureStoreState => ({
       },
     },
   },
-  setFeatures: jest.fn(),
+  setFeatures: vi.fn(),
   showFeaturesModal: false,
-  setShowFeaturesModal: jest.fn(),
+  setShowFeaturesModal: vi.fn(),
 })
 
 const createModelConfig = (promptVariables: PromptVariableWithMeta[] = []): ModelConfig => ({
@@ -178,8 +173,8 @@ const createModelAndParameter = (overrides: Partial<ModelAndParameter> = {}): Mo
 
 const createProps = (overrides: Partial<DebugWithMultipleModelContextType> = {}): DebugWithMultipleModelContextType => ({
   multipleModelConfigs: [createModelAndParameter()],
-  onMultipleModelConfigsChange: jest.fn(),
-  onDebugWithMultipleModelChange: jest.fn(),
+  onMultipleModelConfigsChange: vi.fn(),
+  onDebugWithMultipleModelChange: vi.fn(),
   ...overrides,
 })
 
@@ -190,7 +185,7 @@ const renderComponent = (props?: Partial<DebugWithMultipleModelContextType>) => 
 
 describe('DebugWithMultipleModel', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     capturedChatInputProps = null
     modelIdCounter = 0
     featureState = createFeatureState()
@@ -274,7 +269,7 @@ describe('DebugWithMultipleModel', () => {
 
   describe('props and callbacks', () => {
     it('should call onMultipleModelConfigsChange when provided', () => {
-      const onMultipleModelConfigsChange = jest.fn()
+      const onMultipleModelConfigsChange = vi.fn()
       renderComponent({ onMultipleModelConfigsChange })
 
       // Context provider should pass through the callback
@@ -282,7 +277,7 @@ describe('DebugWithMultipleModel', () => {
     })
 
     it('should call onDebugWithMultipleModelChange when provided', () => {
-      const onDebugWithMultipleModelChange = jest.fn()
+      const onDebugWithMultipleModelChange = vi.fn()
       renderComponent({ onDebugWithMultipleModelChange })
 
       // Context provider should pass through the callback
@@ -478,7 +473,7 @@ describe('DebugWithMultipleModel', () => {
   describe('sending flow', () => {
     it('should emit chat event when allowed to send', () => {
       // Arrange
-      const checkCanSend = jest.fn(() => true)
+      const checkCanSend = vi.fn(() => true)
       const multipleModelConfigs = [createModelAndParameter(), createModelAndParameter()]
       renderComponent({ multipleModelConfigs, checkCanSend })
 
@@ -512,7 +507,7 @@ describe('DebugWithMultipleModel', () => {
 
     it('should block sending when checkCanSend returns false', () => {
       // Arrange
-      const checkCanSend = jest.fn(() => false)
+      const checkCanSend = vi.fn(() => false)
       renderComponent({ checkCanSend })
 
       // Act
@@ -559,13 +554,16 @@ describe('DebugWithMultipleModel', () => {
       expect(singleItem.style.width).toBe('')
 
       // Change to 2 models
-      rerender(<DebugWithMultipleModel {...createProps({
-        multipleModelConfigs: [createModelAndParameter(), createModelAndParameter()],
-      })} />)
+      rerender(
+        <DebugWithMultipleModel {...createProps({
+          multipleModelConfigs: [createModelAndParameter(), createModelAndParameter()],
+        })}
+        />,
+      )
 
       const twoItems = screen.getAllByTestId('debug-item')
-      expect(twoItems[0].style.width).toBe('calc(50% - 4px - 24px)')
-      expect(twoItems[1].style.width).toBe('calc(50% - 4px - 24px)')
+      expect(twoItems[0].style.width).toBe('calc(50% - 28px)')
+      expect(twoItems[1].style.width).toBe('calc(50% - 28px)')
     })
   })
 
@@ -604,13 +602,13 @@ describe('DebugWithMultipleModel', () => {
       // Assert
       expect(items).toHaveLength(2)
       expectItemLayout(items[0], {
-        width: 'calc(50% - 4px - 24px)',
+        width: 'calc(50% - 28px)',
         height: '100%',
         transform: 'translateX(0) translateY(0)',
         classes: ['mr-2'],
       })
       expectItemLayout(items[1], {
-        width: 'calc(50% - 4px - 24px)',
+        width: 'calc(50% - 28px)',
         height: '100%',
         transform: 'translateX(calc(100% + 8px)) translateY(0)',
         classes: [],
@@ -628,19 +626,19 @@ describe('DebugWithMultipleModel', () => {
       // Assert
       expect(items).toHaveLength(3)
       expectItemLayout(items[0], {
-        width: 'calc(33.3% - 5.33px - 16px)',
+        width: 'calc(33.3% - 21.33px)',
         height: '100%',
         transform: 'translateX(0) translateY(0)',
         classes: ['mr-2'],
       })
       expectItemLayout(items[1], {
-        width: 'calc(33.3% - 5.33px - 16px)',
+        width: 'calc(33.3% - 21.33px)',
         height: '100%',
         transform: 'translateX(calc(100% + 8px)) translateY(0)',
         classes: ['mr-2'],
       })
       expectItemLayout(items[2], {
-        width: 'calc(33.3% - 5.33px - 16px)',
+        width: 'calc(33.3% - 21.33px)',
         height: '100%',
         transform: 'translateX(calc(200% + 16px)) translateY(0)',
         classes: [],
@@ -663,25 +661,25 @@ describe('DebugWithMultipleModel', () => {
       // Assert
       expect(items).toHaveLength(4)
       expectItemLayout(items[0], {
-        width: 'calc(50% - 4px - 24px)',
+        width: 'calc(50% - 28px)',
         height: 'calc(50% - 4px)',
         transform: 'translateX(0) translateY(0)',
         classes: ['mr-2', 'mb-2'],
       })
       expectItemLayout(items[1], {
-        width: 'calc(50% - 4px - 24px)',
+        width: 'calc(50% - 28px)',
         height: 'calc(50% - 4px)',
         transform: 'translateX(calc(100% + 8px)) translateY(0)',
         classes: ['mb-2'],
       })
       expectItemLayout(items[2], {
-        width: 'calc(50% - 4px - 24px)',
+        width: 'calc(50% - 28px)',
         height: 'calc(50% - 4px)',
         transform: 'translateX(0) translateY(calc(100% + 8px))',
         classes: ['mr-2'],
       })
       expectItemLayout(items[3], {
-        width: 'calc(50% - 4px - 24px)',
+        width: 'calc(50% - 28px)',
         height: 'calc(50% - 4px)',
         transform: 'translateX(calc(100% + 8px)) translateY(calc(100% + 8px))',
         classes: [],

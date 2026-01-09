@@ -1,7 +1,7 @@
-import { useCallback } from 'react'
 import type { EditorState } from 'lexical'
-import { WorkflowHistoryEvent, useNodeDataUpdate, useWorkflowHistory } from '../hooks'
 import type { NoteTheme } from './types'
+import { useCallback } from 'react'
+import { useNodeDataUpdate, useWorkflowHistory, WorkflowHistoryEvent } from '../hooks'
 
 export const useNote = (id: string) => {
   const { handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()

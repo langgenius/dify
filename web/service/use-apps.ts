@@ -1,4 +1,4 @@
-import { get, post } from './base'
+import type { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
 import type {
   ApiKeysListResponse,
   AppDailyConversationsResponse,
@@ -11,13 +11,14 @@ import type {
   WorkflowDailyConversationsResponse,
 } from '@/models/app'
 import type { App, AppModeEnum } from '@/types/app'
-import { useInvalid } from './use-base'
 import {
+  keepPreviousData,
   useInfiniteQuery,
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
-import type { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
+import { get, post } from './base'
+import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'apps'
 
@@ -107,6 +108,7 @@ export const useInfiniteAppList = (params: AppListParams, options?: { enabled?: 
     queryFn: ({ pageParam = normalizedParams.page }) => get<AppListResponse>('/apps', { params: { ...normalizedParams, page: pageParam } }),
     getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
     initialPageParam: normalizedParams.page,
+    placeholderData: keepPreviousData,
     ...options,
   })
 }

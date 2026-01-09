@@ -1,40 +1,37 @@
-import React from 'react'
 import { render, screen } from '@testing-library/react'
+import * as React from 'react'
+
+// Import after mocks
+import Apps from './index'
 
 // Track mock calls
 let documentTitleCalls: string[] = []
 let educationInitCalls: number = 0
 
 // Mock useDocumentTitle hook
-jest.mock('@/hooks/use-document-title', () => ({
-  __esModule: true,
+vi.mock('@/hooks/use-document-title', () => ({
   default: (title: string) => {
     documentTitleCalls.push(title)
   },
 }))
 
 // Mock useEducationInit hook
-jest.mock('@/app/education-apply/hooks', () => ({
+vi.mock('@/app/education-apply/hooks', () => ({
   useEducationInit: () => {
     educationInitCalls++
   },
 }))
 
 // Mock List component
-jest.mock('./list', () => ({
-  __esModule: true,
+vi.mock('./list', () => ({
   default: () => {
-    const React = require('react')
     return React.createElement('div', { 'data-testid': 'apps-list' }, 'Apps List')
   },
 }))
 
-// Import after mocks
-import Apps from './index'
-
 describe('Apps', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     documentTitleCalls = []
     educationInitCalls = 0
   })

@@ -1,7 +1,7 @@
-import { BlockEnum } from '../../types'
 import type { NodeDefault } from '../../types'
-import { genNodeMetaData } from '../../utils'
 import type { WebhookTriggerNodeType } from './types'
+import { BlockEnum } from '../../types'
+import { genNodeMetaData } from '../../utils'
 import { isValidParameterType } from './utils/parameter-type-utils'
 import { createWebhookRawVariable } from './utils/raw-variable'
 
@@ -31,7 +31,7 @@ const nodeDefault: NodeDefault<WebhookTriggerNodeType> = {
     if (!payload.webhook_url || payload.webhook_url.trim() === '') {
       return {
         isValid: false,
-        errorMessage: t('workflow.nodes.triggerWebhook.validation.webhookUrlRequired'),
+        errorMessage: t('nodes.triggerWebhook.validation.webhookUrlRequired', { ns: 'workflow' }),
       }
     }
 
@@ -46,7 +46,8 @@ const nodeDefault: NodeDefault<WebhookTriggerNodeType> = {
       if (!isValidParameterType(param.type)) {
         return {
           isValid: false,
-          errorMessage: t('workflow.nodes.triggerWebhook.validation.invalidParameterType', {
+          errorMessage: t('nodes.triggerWebhook.validation.invalidParameterType', {
+            ns: 'workflow',
             name: param.name,
             type: param.type,
           }),
