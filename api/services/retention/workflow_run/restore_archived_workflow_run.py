@@ -96,25 +96,11 @@ class WorkflowRunRestore:
         self.workers = workers
         self.workflow_run_repo: APIWorkflowRunRepository | None = None
 
-    def restore(
-        self,
-        tenant_id: str,
-        workflow_run_id: str,
-    ) -> RestoreResult:
-        """
-        Restore a single workflow run's archived data.
-
-        Args:
-            tenant_id: Tenant ID
-            workflow_run_id: Workflow run ID to restore
-
-        Returns:
-            RestoreResult with statistics about the operation
-        """
+    def _restore_from_run(self, run: WorkflowRun) -> RestoreResult:
         start_time = time.time()
         result = RestoreResult(
-            run_id=workflow_run_id,
-            tenant_id=tenant_id,
+            run_id=run.id,
+            tenant_id=run.tenant_id,
             success=False,
             restored_counts={},
         )
@@ -122,7 +108,7 @@ class WorkflowRunRestore:
         click.echo(
             click.style(
                 f"{'[DRY RUN] ' if self.dry_run else ''}Starting restore for "
-                f"workflow run {workflow_run_id} (tenant={tenant_id})",
+                f"workflow run {run.id} (tenant={run.tenant_id})",
                 fg="white",
             )
         )
@@ -132,42 +118,26 @@ class WorkflowRunRestore:
         except ArchiveStorageNotConfiguredError as e:
             result.error = str(e)
             click.echo(click.style(f"Archive storage not configured: {e}", fg="red"))
+            result.elapsed_time = time.time() - start_time
             return result
 
-        repo = self._get_workflow_run_repo()
-        run = repo.get_workflow_run_by_id_without_tenant(workflow_run_id)
-        if not run:
-            result.error = f"Workflow run {workflow_run_id} not found"
+        created_at = run.created_at
+        prefix = (
+            f"{run.tenant_id}/app_id={run.app_id}/year={created_at.strftime('%Y')}/"
+            f"month={created_at.strftime('%m')}/workflow_run_id={run.id}"
+        )
+        archive_key = f"{prefix}/{ARCHIVE_BUNDLE_NAME}"
+        try:
+            archive_data = storage.get_object(archive_key)
+        except FileNotFoundError:
+            result.error = f"Archive bundle not found: {archive_key}"
             click.echo(click.style(result.error, fg="red"))
-            return result
-
-        if run.tenant_id != tenant_id:
-            result.error = f"Workflow run {workflow_run_id} does not belong to tenant {tenant_id}"
-            click.echo(click.style(result.error, fg="red"))
+            result.elapsed_time = time.time() - start_time
             return result
 
         session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-
         with session_maker() as session:
-            if not repo.get_archived_run_ids(session, [run.id]):
-                result.error = f"Workflow run {workflow_run_id} is not archived"
-                click.echo(click.style(result.error, fg="yellow"))
-                return result
-
             try:
-                created_at = run.created_at
-                prefix = (
-                    f"{run.tenant_id}/app_id={run.app_id}/year={created_at.strftime('%Y')}/"
-                    f"month={created_at.strftime('%m')}/workflow_run_id={run.id}"
-                )
-                archive_key = f"{prefix}/{ARCHIVE_BUNDLE_NAME}"
-                try:
-                    archive_data = storage.get_object(archive_key)
-                except FileNotFoundError:
-                    result.error = f"Archive bundle not found: {archive_key}"
-                    click.echo(click.style(result.error, fg="red"))
-                    return result
-
                 with zipfile.ZipFile(io.BytesIO(archive_data), mode="r") as archive:
                     try:
                         manifest = self._load_manifest_from_zip(archive)
@@ -239,13 +209,13 @@ class WorkflowRunRestore:
                 click.echo(
                     click.style(
                         f"{'[DRY RUN] Would complete' if self.dry_run else 'Completed'} restore for "
-                        f"workflow run {workflow_run_id}: restored={result.restored_counts}",
+                        f"workflow run {run.id}: restored={result.restored_counts}",
                         fg="green",
                     )
                 )
 
             except Exception as e:
-                logger.exception("Failed to restore workflow run %s", workflow_run_id)
+                logger.exception("Failed to restore workflow run %s", run.id)
                 result.error = str(e)
                 session.rollback()
                 click.echo(click.style(f"Restore failed: {e}", fg="red"))
@@ -442,12 +412,7 @@ class WorkflowRunRestore:
         )
 
         with ThreadPoolExecutor(max_workers=self.workers) as executor:
-            results = list(
-                executor.map(
-                    lambda run: self.restore(tenant_id=run.tenant_id, workflow_run_id=run.id),
-                    runs,
-                )
-            )
+            results = list(executor.map(self._restore_from_run, runs))
 
         return results
 
@@ -471,4 +436,4 @@ class WorkflowRunRestore:
                 error=f"Workflow run {run_id} not found",
             )
 
-        return self.restore(tenant_id=run.tenant_id, workflow_run_id=run_id)
+        return self._restore_from_run(run)
