@@ -1,8 +1,8 @@
 """add table explore banner and trial
 
 Revision ID: f9f6d18a37f9
-Revises: ae662b25d9bc
-Create Date: 2025-10-23 11:10:18.079355
+Revises: 7df29de0f6be
+Create Date: 2026-01-09 11:10:18.079355
 
 """
 from alembic import op
@@ -12,7 +12,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = 'f9f6d18a37f9'
-down_revision = 'ae662b25d9bc'
+down_revision = '7df29de0f6be'
 branch_labels = None
 depends_on = None
 
