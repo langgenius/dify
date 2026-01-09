@@ -254,6 +254,8 @@ class ToolEngine:
                         ensure_ascii=False,
                     )
                 )
+            elif response.type == ToolInvokeMessage.MessageType.BINARY_LINK:
+                parts.append("A result with a file link has been returned, please tell user to check it.")
             else:
                 parts.append(str(response.message))
 
@@ -310,6 +312,16 @@ class ToolEngine:
                         else "application/octet-stream",
                         url=cast(ToolInvokeMessage.TextMessage, response.message).text,
                     )
+            elif response.type == ToolInvokeMessage.MessageType.BINARY_LINK:
+                # check if there is a mime type in meta
+                if response.meta and "mime_type" in response.meta:
+                    result = ToolInvokeMessageBinary(
+                        mimetype=response.meta.get("mime_type", "application/octet-stream")
+                        if response.meta
+                        else "application/octet-stream",
+                        url=cast(ToolInvokeMessage.TextMessage, response.message).text,
+                    )
+                    yield result
 
     @staticmethod
     def _create_message_files(
