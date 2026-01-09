@@ -9,7 +9,7 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import TypedDict, cast
 
-from sqlalchemy import asc, delete, desc, select, tuple_
+from sqlalchemy import asc, delete, desc, func, select, tuple_
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -351,3 +351,40 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         )
 
         return node_executions_deleted, offloads_deleted
+
+    @staticmethod
+    def count_by_runs(session: Session, runs: Sequence[RunContext]) -> tuple[int, int]:
+        """
+        Count node executions (and offloads) for the given workflow runs using indexed columns.
+        """
+        if not runs:
+            return 0, 0
+
+        tuple_values = [
+            (run["tenant_id"], run["app_id"], run["workflow_id"], run["triggered_from"], run["run_id"]) for run in runs
+        ]
+        tuple_filter = tuple_(
+            WorkflowNodeExecutionModel.tenant_id,
+            WorkflowNodeExecutionModel.app_id,
+            WorkflowNodeExecutionModel.workflow_id,
+            WorkflowNodeExecutionModel.triggered_from,
+            WorkflowNodeExecutionModel.workflow_run_id,
+        ).in_(tuple_values)
+
+        node_executions_count = (
+            session.scalar(select(func.count()).select_from(WorkflowNodeExecutionModel).where(tuple_filter)) or 0
+        )
+        offloads_count = (
+            session.scalar(
+                select(func.count())
+                .select_from(WorkflowNodeExecutionOffload)
+                .join(
+                    WorkflowNodeExecutionModel,
+                    WorkflowNodeExecutionOffload.node_execution_id == WorkflowNodeExecutionModel.id,
+                )
+                .where(tuple_filter)
+            )
+            or 0
+        )
+
+        return int(node_executions_count), int(offloads_count)

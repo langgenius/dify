@@ -27,11 +27,26 @@ class FakeRun:
 
 
 class FakeRepo:
-    def __init__(self, batches: list[list[FakeRun]], delete_result: dict[str, int] | None = None) -> None:
+    def __init__(
+        self,
+        batches: list[list[FakeRun]],
+        delete_result: dict[str, int] | None = None,
+        count_result: dict[str, int] | None = None,
+    ) -> None:
         self.batches = batches
         self.call_idx = 0
         self.deleted: list[list[str]] = []
+        self.counted: list[list[str]] = []
         self.delete_result = delete_result or {
+            "runs": 0,
+            "node_executions": 0,
+            "offloads": 0,
+            "app_logs": 0,
+            "trigger_logs": 0,
+            "pauses": 0,
+            "pause_reasons": 0,
+        }
+        self.count_result = count_result or {
             "runs": 0,
             "node_executions": 0,
             "offloads": 0,
@@ -59,6 +74,14 @@ class FakeRepo:
     ) -> dict[str, int]:
         self.deleted.append([run.id for run in runs])
         result = self.delete_result.copy()
+        result["runs"] = len(runs)
+        return result
+
+    def count_runs_with_related(
+        self, runs: list[FakeRun], count_node_executions=None, count_trigger_logs=None
+    ) -> dict[str, int]:
+        self.counted.append([run.id for run in runs])
+        result = self.count_result.copy()
         result["runs"] = len(runs)
         return result
 
@@ -231,7 +254,18 @@ def test_run_exits_on_empty_batch(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_run_dry_run_skips_deletions(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
     cutoff = datetime.datetime.now()
-    repo = FakeRepo(batches=[[FakeRun("run-free", "t_free", cutoff)]])
+    repo = FakeRepo(
+        batches=[[FakeRun("run-free", "t_free", cutoff)]],
+        count_result={
+            "runs": 0,
+            "node_executions": 2,
+            "offloads": 1,
+            "app_logs": 3,
+            "trigger_logs": 4,
+            "pauses": 5,
+            "pause_reasons": 6,
+        },
+    )
     cleanup = create_cleanup(monkeypatch, repo=repo, days=30, batch_size=10, dry_run=True)
 
     monkeypatch.setattr(cleanup_module.dify_config, "BILLING_ENABLED", False)
@@ -239,9 +273,17 @@ def test_run_dry_run_skips_deletions(monkeypatch: pytest.MonkeyPatch, capsys: py
     cleanup.run()
 
     assert repo.deleted == []
+    assert repo.counted == [["run-free"]]
     captured = capsys.readouterr().out
     assert "Dry run mode enabled" in captured
     assert "would delete 1 runs" in captured
+    assert "related records" in captured
+    assert "node_executions 2" in captured
+    assert "offloads 1" in captured
+    assert "app_logs 3" in captured
+    assert "trigger_logs 4" in captured
+    assert "pauses 5" in captured
+    assert "pause_reasons 6" in captured
 
 
 def test_between_sets_window_bounds(monkeypatch: pytest.MonkeyPatch) -> None:
