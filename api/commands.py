@@ -972,7 +972,7 @@ def archive_workflow_runs(
     "--end-before",
     type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
     default=None,
-    help="Optional upper bound (exclusive) for created_at; must be paired with --start-after.",
+    help="Optional upper bound (exclusive) for created_at; must be paired with --start-from.",
 )
 @click.option("--workers", default=1, show_default=True, type=int, help="Concurrent workflow runs to restore.")
 @click.option("--limit", type=int, default=100, show_default=True, help="Maximum number of runs to restore.")
