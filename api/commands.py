@@ -1,7 +1,9 @@
 import base64
+import datetime
 import json
 import logging
 import secrets
+import time
 from typing import Any
 
 import click
@@ -45,6 +47,7 @@ from services.clear_free_plan_tenant_expired_logs import ClearFreePlanTenantExpi
 from services.plugin.data_migration import PluginDataMigration
 from services.plugin.plugin_migration import PluginMigration
 from services.plugin.plugin_service import PluginService
+from services.sandbox_messages_clean_service import SandboxMessagesCleanService
 from tasks.remove_app_and_related_data_task import delete_draft_variables_batch
 
 logger = logging.getLogger(__name__)
@@ -2111,3 +2114,76 @@ def migrate_oss(
             except Exception as e:
                 db.session.rollback()
                 click.echo(click.style(f"Failed to update DB storage_type: {str(e)}", fg="red"))
+
+
+@click.command("clean-expired-sandbox-messages", help="Clean expired sandbox messages.")
+@click.option("--batch-size", default=1000, show_default=True, help="Batch size for selecting messages.")
+@click.option(
+    "--graceful-period",
+    default=21,
+    show_default=True,
+    help="Graceful period in days after subscription expiration.",
+)
+@click.option(
+    "--start-from",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    default=None,
+    help="Optional lower bound (inclusive) for created_at; must be paired with --end-before.",
+)
+@click.option(
+    "--end-before",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    default=None,
+    help="Optional upper bound (exclusive) for created_at; must be paired with --start-after.",
+)
+@click.option("--dry-run", is_flag=True, default=False, help="Show messages logs would be cleaned without deleteing")
+def clean_expired_sandbox_messages(
+    batch_size: int,
+    graceful_period: int,
+    start_from: datetime.datetime,
+    end_before: datetime.datetime,
+    dry_run: bool,
+):
+    """
+    Clean expired messages and related data for sandbox tenants.
+    """
+    if not dify_config.BILLING_ENABLED:
+        click.echo(click.style("Billing is not enabled. Skipping sandbox messages cleanup.", fg="yellow"))
+        return
+
+    click.echo(click.style("clean_messages: start clean messages.", fg="green"))
+
+    start_at = time.perf_counter()
+
+    try:
+        stats = SandboxMessagesCleanService.clean_sandbox_messages_by_time_range(
+            start_from=start_from,
+            end_before=end_before,
+            graceful_period=graceful_period,
+            batch_size=batch_size,
+            dry_run=dry_run,
+        )
+
+        end_at = time.perf_counter()
+        click.echo(
+            click.style(
+                f"clean_messages: completed successfully\n"
+                f"  - Latency: {end_at - start_at:.2f}s\n"
+                f"  - Batches processed: {stats['batches']}\n"
+                f"  - Messages found: {stats['total_messages']}\n"
+                f"  - Messages deleted: {stats['total_deleted']}",
+                fg="green",
+            )
+        )
+    except Exception as e:
+        end_at = time.perf_counter()
+        logger.exception("clean_messages failed")
+        click.echo(
+            click.style(
+                f"clean_messages: failed after {end_at - start_at:.2f}s - {str(e)}",
+                fg="red",
+            )
+        )
+        raise
+
+    click.echo(click.style("Sandbox messages cleanup completed.", fg="green"))

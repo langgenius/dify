@@ -1,90 +1,54 @@
-import datetime
 import logging
 import time
 
 import click
-from sqlalchemy.exc import SQLAlchemyError
 
 import app
 from configs import dify_config
-from enums.cloud_plan import CloudPlan
-from extensions.ext_database import db
-from extensions.ext_redis import redis_client
-from models.model import (
-    App,
-    Message,
-    MessageAgentThought,
-    MessageAnnotation,
-    MessageChain,
-    MessageFeedback,
-    MessageFile,
-)
-from models.web import SavedMessage
-from services.feature_service import FeatureService
+from services.sandbox_messages_clean_service import SandboxMessagesCleanService
 
 logger = logging.getLogger(__name__)
 
 
-@app.celery.task(queue="dataset")
+@app.celery.task(queue="retention")
 def clean_messages():
-    click.echo(click.style("Start clean messages.", fg="green"))
-    start_at = time.perf_counter()
-    plan_sandbox_clean_message_day = datetime.datetime.now() - datetime.timedelta(
-        days=dify_config.PLAN_SANDBOX_CLEAN_MESSAGE_DAY_SETTING
-    )
-    while True:
-        try:
-            # Main query with join and filter
-            messages = (
-                db.session.query(Message)
-                .where(Message.created_at < plan_sandbox_clean_message_day)
-                .order_by(Message.created_at.desc())
-                .limit(100)
-                .all()
-            )
+    """
+    Clean expired messages from sandbox plan tenants.
 
-        except SQLAlchemyError:
-            raise
-        if not messages:
-            break
-        for message in messages:
-            app = db.session.query(App).filter_by(id=message.app_id).first()
-            if not app:
-                logger.warning(
-                    "Expected App record to exist, but none was found, app_id=%s, message_id=%s",
-                    message.app_id,
-                    message.id,
-                )
-                continue
-            features_cache_key = f"features:{app.tenant_id}"
-            plan_cache = redis_client.get(features_cache_key)
-            if plan_cache is None:
-                features = FeatureService.get_features(app.tenant_id)
-                redis_client.setex(features_cache_key, 600, features.billing.subscription.plan)
-                plan = features.billing.subscription.plan
-            else:
-                plan = plan_cache.decode()
-            if plan == CloudPlan.SANDBOX:
-                # clean related message
-                db.session.query(MessageFeedback).where(MessageFeedback.message_id == message.id).delete(
-                    synchronize_session=False
-                )
-                db.session.query(MessageAnnotation).where(MessageAnnotation.message_id == message.id).delete(
-                    synchronize_session=False
-                )
-                db.session.query(MessageChain).where(MessageChain.message_id == message.id).delete(
-                    synchronize_session=False
-                )
-                db.session.query(MessageAgentThought).where(MessageAgentThought.message_id == message.id).delete(
-                    synchronize_session=False
-                )
-                db.session.query(MessageFile).where(MessageFile.message_id == message.id).delete(
-                    synchronize_session=False
-                )
-                db.session.query(SavedMessage).where(SavedMessage.message_id == message.id).delete(
-                    synchronize_session=False
-                )
-                db.session.query(Message).where(Message.id == message.id).delete()
-                db.session.commit()
-    end_at = time.perf_counter()
-    click.echo(click.style(f"Cleaned messages from db success latency: {end_at - start_at}", fg="green"))
+    This task uses SandboxMessagesCleanService to efficiently clean messages in batches.
+    """
+    if not dify_config.BILLING_ENABLED:
+        click.echo(click.style("Billing is not enabled. Skipping sandbox messages cleanup.", fg="yellow"))
+        return
+
+    click.echo(click.style("clean_messages: start clean messages.", fg="green"))
+    start_at = time.perf_counter()
+
+    try:
+        stats = SandboxMessagesCleanService.clean_sandbox_messages_by_days(
+            days=dify_config.SANDBOX_EXPIRED_RECORDS_RETENTION_DAYS,
+            graceful_period=dify_config.SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD,
+            batch_size=dify_config.SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_SIZE,
+        )
+
+        end_at = time.perf_counter()
+        click.echo(
+            click.style(
+                f"clean_messages: completed successfully\n"
+                f"  - Latency: {end_at - start_at:.2f}s\n"
+                f"  - Batches processed: {stats['batches']}\n"
+                f"  - Messages found: {stats['total_messages']}\n"
+                f"  - Messages deleted: {stats['total_deleted']}",
+                fg="green",
+            )
+        )
+    except Exception as e:
+        end_at = time.perf_counter()
+        logger.exception("clean_messages failed")
+        click.echo(
+            click.style(
+                f"clean_messages: failed after {end_at - start_at:.2f}s - {str(e)}",
+                fg="red",
+            )
+        )
+        raise
