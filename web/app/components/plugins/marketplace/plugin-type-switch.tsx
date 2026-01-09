@@ -9,11 +9,11 @@ import {
   RiPuzzle2Line,
   RiSpeakAiLine,
 } from '@remixicon/react'
+import { useSetAtom } from 'jotai'
 import { Trigger as TriggerIcon } from '@/app/components/base/icons/src/vender/plugin'
 import { cn } from '@/utils/classnames'
-import { useSetSearchMode } from './atoms'
+import { searchModeAtom, useActivePluginType } from './atoms'
 import { PLUGIN_CATEGORY_WITH_COLLECTIONS, PLUGIN_TYPE_SEARCH_MAP } from './constants'
-import { useActivePluginType } from './state'
 
 type PluginTypeSwitchProps = {
   className?: string
@@ -23,7 +23,7 @@ const PluginTypeSwitch = ({
 }: PluginTypeSwitchProps) => {
   const { t } = useTranslation()
   const [activePluginType, handleActivePluginTypeChange] = useActivePluginType()
-  const setSearchMode = useSetSearchMode()
+  const setSearchMode = useSetAtom(searchModeAtom)
 
   const options: Array<{
     value: ActivePluginType

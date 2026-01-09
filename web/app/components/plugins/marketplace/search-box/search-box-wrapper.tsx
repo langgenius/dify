@@ -1,7 +1,7 @@
 'use client'
 
 import { useTranslation } from '#i18n'
-import { useFilterPluginTags, useSearchPluginText } from '../state'
+import { useFilterPluginTags, useSearchPluginText } from '../atoms'
 import SearchBox from './index'
 
 const SearchBoxWrapper = () => {

@@ -1,22 +1,11 @@
 import type { PluginsSearchParams, SearchParamsFromCollection } from './types'
-import { useQueryState } from 'nuqs'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useMemo } from 'react'
-import { useMarketplaceSearchMode, useMarketplaceSortValue, useSetMarketplaceSort, useSetSearchMode } from './atoms'
+import { marketplaceSortAtom, searchModeAtom, useActivePluginType, useFilterPluginTags, useMarketplaceSearchMode, useSearchPluginText } from './atoms'
 import { DEFAULT_SORT, PLUGIN_TYPE_SEARCH_MAP } from './constants'
 import { useMarketplaceContainerScroll } from './hooks'
 import { useMarketplaceCollectionsAndPlugins, useMarketplacePlugins } from './query'
-import { marketplaceSearchParamsParsers } from './search-params'
 import { getCollectionsParams, getMarketplaceListFilterType } from './utils'
-
-export function useSearchPluginText() {
-  return useQueryState('q', marketplaceSearchParamsParsers.q)
-}
-export function useActivePluginType() {
-  return useQueryState('category', marketplaceSearchParamsParsers.category)
-}
-export function useFilterPluginTags() {
-  return useQueryState('tags', marketplaceSearchParamsParsers.tags)
-}
 
 export function useMarketplaceData() {
   const [searchPluginText] = useSearchPluginText()
@@ -27,7 +16,7 @@ export function useMarketplaceData() {
     getCollectionsParams(activePluginType),
   )
 
-  const sort = useMarketplaceSortValue()
+  const sort = useAtomValue(marketplaceSortAtom)
   const isSearchMode = useMarketplaceSearchMode()
   const queryParams = useMemo((): PluginsSearchParams | undefined => {
     if (!isSearchMode)
@@ -65,8 +54,8 @@ export function useMarketplaceData() {
 
 export function useMarketplaceMoreClick() {
   const [,setQ] = useSearchPluginText()
-  const setSort = useSetMarketplaceSort()
-  const setSearchMode = useSetSearchMode()
+  const setSort = useSetAtom(marketplaceSortAtom)
+  const setSearchMode = useSetAtom(searchModeAtom)
 
   return useCallback((searchParams?: SearchParamsFromCollection) => {
     if (!searchParams)
