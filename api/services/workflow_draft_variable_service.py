@@ -458,7 +458,6 @@ class WorkflowDraftVariableService:
 
         storage.delete(upload_file.key)
         self._session.delete(upload_file)
-        self._session.delete(upload_file)
         self._session.delete(variable)
 
     def delete_workflow_variables(self, app_id: str):
