@@ -1,10 +1,12 @@
 name: Translate i18n Files with Claude Code
 
+# Note: claude-code-action doesn't support push events directly.
+# Push events are handled by trigger-i18n-sync.yml which sends repository_dispatch.
+# See: https://github.com/langgenius/dify/issues/30743
+
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'web/i18n/en-US/*.json'
+  repository_dispatch:
+    types: [i18n-sync]
   workflow_dispatch:
     inputs:
       files:
@@ -87,26 +89,35 @@ jobs:
                 echo "DIFF_AVAILABLE=false" >> $GITHUB_OUTPUT
               fi
             fi
-          else
-            # Push trigger - detect changed files from the push
-            BEFORE_SHA="${{ github.event.before }}"
-            # Handle edge case: first push or force push may have null/zero SHA
-            if [ -z "$BEFORE_SHA" ] || [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
-              # Fallback to comparing with parent commit
-              BEFORE_SHA="HEAD~1"
+          elif [ "${{ github.event_name }}" == "repository_dispatch" ]; then
+            # Triggered by push via trigger-i18n-sync.yml workflow
+            # Validate required payload fields
+            if [ -z "${{ github.event.client_payload.changed_files }}" ]; then
+              echo "Error: repository_dispatch payload missing required 'changed_files' field" >&2
+              exit 1
             fi
-            changed=$(git diff --name-only "$BEFORE_SHA" ${{ github.sha }} -- 'web/i18n/en-US/*.json' 2>/dev/null | xargs -n1 basename 2>/dev/null | sed 's/.json$//' | tr '\n' ' ' || echo "")
-            echo "CHANGED_FILES=$changed" >> $GITHUB_OUTPUT
+            echo "CHANGED_FILES=${{ github.event.client_payload.changed_files }}" >> $GITHUB_OUTPUT
             echo "TARGET_LANGS=" >> $GITHUB_OUTPUT
-            echo "SYNC_MODE=incremental" >> $GITHUB_OUTPUT
+            echo "SYNC_MODE=${{ github.event.client_payload.sync_mode || 'incremental' }}" >> $GITHUB_OUTPUT
 
-            # Generate detailed diff for the push
-            git diff "$BEFORE_SHA"..${{ github.sha }} -- 'web/i18n/en-US/*.json' > /tmp/i18n-diff.txt 2>/dev/null || echo "" > /tmp/i18n-diff.txt
-            if [ -s /tmp/i18n-diff.txt ]; then
-              echo "DIFF_AVAILABLE=true" >> $GITHUB_OUTPUT
+            # Decode the base64-encoded diff from the trigger workflow
+            if [ -n "${{ github.event.client_payload.diff_base64 }}" ]; then
+              if ! echo "${{ github.event.client_payload.diff_base64 }}" | base64 -d > /tmp/i18n-diff.txt 2>&1; then
+                echo "Warning: Failed to decode base64 diff payload" >&2
+                echo "" > /tmp/i18n-diff.txt
+                echo "DIFF_AVAILABLE=false" >> $GITHUB_OUTPUT
+              elif [ -s /tmp/i18n-diff.txt ]; then
+                echo "DIFF_AVAILABLE=true" >> $GITHUB_OUTPUT
+              else
+                echo "DIFF_AVAILABLE=false" >> $GITHUB_OUTPUT
+              fi
             else
+              echo "" > /tmp/i18n-diff.txt
               echo "DIFF_AVAILABLE=false" >> $GITHUB_OUTPUT
             fi
+          else
+            echo "Unsupported event type: ${{ github.event_name }}"
+            exit 1
           fi
 
           # Truncate diff if too large (keep first 50KB)
@@ -132,6 +143,14 @@ jobs:
             - Use **Edit** tool to modify JSON files (NOT node, jq, or bash scripts)
             - Use **Bash** ONLY for: git commands, gh commands, pnpm commands
             - Run bash commands ONE BY ONE, never combine with && or ||
+            - NEVER use `$()` command substitution - it's not supported. Split into separate commands instead.
+
+            ## WORKING DIRECTORY & ABSOLUTE PATHS
+            Claude Code sandbox working directory may vary. Always use absolute paths:
+            - For pnpm: `pnpm --dir ${{ github.workspace }}/web <command>`
+            - For git: `git -C ${{ github.workspace }} <command>`
+            - For gh: `gh --repo ${{ github.repository }} <command>`
+            - For file paths: `${{ github.workspace }}/web/i18n/`
 
             ## EFFICIENCY RULES
             - **ONE Edit per language file** - batch all key additions into a single Edit
@@ -142,8 +161,8 @@ jobs:
             - Changed/target files: ${{ steps.detect_changes.outputs.CHANGED_FILES }}
             - Target languages (empty means all supported): ${{ steps.detect_changes.outputs.TARGET_LANGS }}
             - Sync mode: ${{ steps.detect_changes.outputs.SYNC_MODE }}
-            - Translation files are located in: web/i18n/{locale}/{filename}.json
-            - Language configuration is in: web/i18n-config/languages.ts
+            - Translation files are located in: ${{ github.workspace }}/web/i18n/{locale}/{filename}.json
+            - Language configuration is in: ${{ github.workspace }}/web/i18n-config/languages.ts
             - Git diff is available: ${{ steps.detect_changes.outputs.DIFF_AVAILABLE }}
 
             ## CRITICAL DESIGN: Verify First, Then Sync
@@ -166,13 +185,15 @@ jobs:
               * DELETE: Keys that appear only in `-` lines (removed keys)
 
             ### Step 1.2: Read Language Configuration
-            Use the Read tool to read `web/i18n-config/languages.ts`.
+            Use the Read tool to read `${{ github.workspace }}/web/i18n-config/languages.ts`.
             Extract all languages with `supported: true`.
 
             ### Step 1.3: Run i18n:check for Each Language
             ```bash
-            pnpm --dir web install --frozen-lockfile
-            pnpm --dir web run i18n:check
+            pnpm --dir ${{ github.workspace }}/web install --frozen-lockfile
+            ```
+            ```bash
+            pnpm --dir ${{ github.workspace }}/web run i18n:check
             ```
 
             This will report:
@@ -234,7 +255,7 @@ jobs:
 
             **IMPORTANT: Special handling for zh-Hans and ja-JP**
             If zh-Hans or ja-JP files were ALSO modified in the same push:
-            - Run: `git diff HEAD~1 --name-only | grep -E "(zh-Hans|ja-JP)"`
+            - Run: `git -C ${{ github.workspace }} diff HEAD~1 --name-only` and check for zh-Hans or ja-JP files
             - If found, it means someone manually translated them. Apply these rules:
 
             1. **Missing keys**: Still ADD them (completeness required)
@@ -254,7 +275,7 @@ jobs:
 
             ### Step 2.3: Process DELETE Operations
             For extra keys reported by i18n:check:
-            - Run: `pnpm --dir web run i18n:check --auto-remove`
+            - Run: `pnpm --dir ${{ github.workspace }}/web run i18n:check --auto-remove`
             - Or manually remove from target language JSON files
 
             ## Translation Guidelines
@@ -282,7 +303,7 @@ jobs:
 
             ### Step 3.1: Run Lint Fix (IMPORTANT!)
             ```bash
-            pnpm --dir web lint:fix --quiet -- 'i18n/**/*.json'
+            pnpm --dir ${{ github.workspace }}/web lint:fix --quiet -- 'i18n/**/*.json'
             ```
             This ensures:
             - JSON keys are sorted alphabetically (jsonc/sort-keys rule)
@@ -291,7 +312,7 @@ jobs:
 
             ### Step 3.2: Run Final i18n Check
             ```bash
-            pnpm --dir web run i18n:check
+            pnpm --dir ${{ github.workspace }}/web run i18n:check
             ```
 
             ### Step 3.3: Fix Any Remaining Issues
@@ -342,39 +363,45 @@ jobs:
 
             ### Step 4.1: Check for changes
             ```bash
-            git status --porcelain
+            git -C ${{ github.workspace }} status --porcelain
             ```
 
             If there are changes:
 
             ### Step 4.2: Create a new branch and commit
-            Run these git commands ONE BY ONE (not combined with &&):
+            Run these git commands ONE BY ONE (not combined with &&).
+            **IMPORTANT**: Do NOT use `$()` command substitution. Use two separate commands:
 
-            1. Create branch:
+            1. First, get the timestamp:
             ```bash
-            git checkout -b "chore/i18n-sync-$(date +%Y%m%d-%H%M%S)"
+            date +%Y%m%d-%H%M%S
+            ```
+            (Note the output, e.g., "20260115-143052")
+
+            2. Then create branch using the timestamp value:
+            ```bash
+            git -C ${{ github.workspace }} checkout -b chore/i18n-sync-20260115-143052
+            ```
+            (Replace "20260115-143052" with the actual timestamp from step 1)
+
+            3. Stage changes:
+            ```bash
+            git -C ${{ github.workspace }} add web/i18n/
             ```
 
-            2. Stage changes:
+            4. Commit:
             ```bash
-            git add web/i18n/
+            git -C ${{ github.workspace }} commit -m "chore(i18n): sync translations with en-US - Mode: ${{ steps.detect_changes.outputs.SYNC_MODE }}"
             ```
 
-            3. Commit (use heredoc for multi-line message):
+            5. Push:
             ```bash
-            git commit -m "chore(i18n): sync translations with en-US - Mode: ${{ steps.detect_changes.outputs.SYNC_MODE }}"
-            ```
-
-            4. Push:
-            ```bash
-            git push origin HEAD
+            git -C ${{ github.workspace }} push origin HEAD
             ```
 
             ### Step 4.3: Create Pull Request
             ```bash
-            gh pr create \
-              --title "chore(i18n): sync translations with en-US" \
-              --body "## Summary
+            gh pr create --repo ${{ github.repository }} --title "chore(i18n): sync translations with en-US" --body "## Summary
 
             This PR was automatically generated to sync i18n translation files.
 
@@ -386,10 +413,9 @@ jobs:
             - [x] \`i18n:check\` passed
             - [x] \`lint:fix\` applied
 
-            🤖 Generated with Claude Code GitHub Action" \
-              --base main
+            🤖 Generated with Claude Code GitHub Action" --base main
             ```
 
           claude_args: |
             --max-turns 150
-            --allowedTools "Read,Write,Edit,Bash(git *),Bash(git:*),Bash(gh *),Bash(gh:*),Bash(pnpm *),Bash(pnpm:*),Glob,Grep"
+            --allowedTools "Read,Write,Edit,Bash(git *),Bash(git:*),Bash(gh *),Bash(gh:*),Bash(pnpm *),Bash(pnpm:*),Bash(date *),Bash(date:*),Glob,Grep"
