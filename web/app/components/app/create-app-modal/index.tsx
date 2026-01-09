@@ -1,7 +1,7 @@
 'use client'
 
 import type { AppIconSelection } from '../../base/app-icon-picker'
-import { RiArrowRightLine, RiArrowRightSLine, RiCommandLine, RiCornerDownLeftLine, RiExchange2Fill } from '@remixicon/react'
+import { RiArrowRightLine, RiArrowRightSLine, RiCheckLine, RiCommandLine, RiCornerDownLeftLine, RiExchange2Fill } from '@remixicon/react'
 
 import { useDebounceFn, useKeyPress } from 'ahooks'
 import Image from 'next/image'
@@ -12,11 +12,13 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { trackEvent } from '@/app/components/base/amplitude'
 import AppIcon from '@/app/components/base/app-icon'
+import Badge from '@/app/components/base/badge'
 import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import FullScreenModal from '@/app/components/base/fullscreen-modal'
 import { BubbleTextMod, ChatBot, ListSparkle, Logic } from '@/app/components/base/icons/src/vender/solid/communication'
 import Input from '@/app/components/base/input'
+import CustomSelect from '@/app/components/base/select/custom'
 import Textarea from '@/app/components/base/textarea'
 import { ToastContext } from '@/app/components/base/toast'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
@@ -40,6 +42,13 @@ type CreateAppProps = {
 }
 
 type RuntimeMode = 'classical' | 'new'
+
+type RuntimeOption = {
+  label: string
+  value: RuntimeMode
+  description: string
+  recommended?: boolean
+}
 
 const WORKFLOW_RUNTIME_STORAGE_KEY_PREFIX = 'workflow:sandbox-runtime:'
 
@@ -275,45 +284,51 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                   <div className="system-sm-semibold mb-2 text-text-secondary">
                     {t('newApp.runtimeLabel', { ns: 'app' })}
                   </div>
-                  <div className="flex gap-3">
-                    <button
-                      type="button"
-                      className={cn(
-                        'flex h-10 flex-1 items-center gap-2 rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg px-3',
-                        runtimeMode === 'new' && 'border-components-option-card-option-border-selected bg-components-option-card-option-selected-bg',
-                      )}
-                      onClick={() => setRuntimeMode('new')}
-                    >
-                      <div
-                        className={cn(
-                          'h-4 w-4 rounded-full border border-components-radio-border bg-components-radio-bg shadow-xs',
-                          runtimeMode === 'new' && 'border-[5px] border-components-radio-border-checked',
+                  <CustomSelect<RuntimeOption>
+                    options={[
+                      {
+                        label: t('newApp.runtimeOptionNew', { ns: 'app' }),
+                        value: 'new',
+                        description: t('newApp.runtimeOptionNewDescription', { ns: 'app' }),
+                        recommended: true,
+                      },
+                      {
+                        label: t('newApp.runtimeOptionClassical', { ns: 'app' }),
+                        value: 'classical',
+                        description: t('newApp.runtimeOptionClassicalDescription', { ns: 'app' }),
+                      },
+                    ]}
+                    value={runtimeMode}
+                    onChange={value => setRuntimeMode(value as RuntimeMode)}
+                    triggerProps={{
+                      className: '!h-8 !rounded-lg !bg-components-input-bg-normal !px-2 !py-1',
+                    }}
+                    popupProps={{
+                      wrapperClassName: 'z-[60]',
+                      className: 'w-full',
+                      itemClassName: '!h-auto !py-2 !items-start',
+                    }}
+                    CustomOption={(option, selected) => (
+                      <>
+                        <RiCheckLine className={cn(
+                          'mr-2 h-4 w-4 shrink-0 text-text-accent',
+                          !selected && 'opacity-0',
                         )}
-                      />
-                      <div className="system-sm-medium text-text-secondary">
-                        {t('newApp.runtimeOptionNew', { ns: 'app' })}
-                      </div>
-                    </button>
-
-                    <button
-                      type="button"
-                      className={cn(
-                        'flex h-10 flex-1 items-center gap-2 rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg px-3',
-                        runtimeMode === 'classical' && 'border-components-option-card-option-border-selected bg-components-option-card-option-selected-bg',
-                      )}
-                      onClick={() => setRuntimeMode('classical')}
-                    >
-                      <div
-                        className={cn(
-                          'h-4 w-4 rounded-full border border-components-radio-border bg-components-radio-bg shadow-xs',
-                          runtimeMode === 'classical' && 'border-[5px] border-components-radio-border-checked',
-                        )}
-                      />
-                      <div className="system-sm-medium text-text-secondary">
-                        {t('newApp.runtimeOptionClassical', { ns: 'app' })}
-                      </div>
-                    </button>
-                  </div>
+                        />
+                        <div className="flex flex-1 flex-col gap-0.5">
+                          <div className="flex items-center gap-1">
+                            <span className="system-sm-semibold text-text-secondary">{option.label}</span>
+                            {option.recommended && (
+                              <Badge className="!h-4 !px-1">
+                                {t('newApp.recommended', { ns: 'app' })}
+                              </Badge>
+                            )}
+                          </div>
+                          <span className="system-xs-regular text-text-tertiary">{option.description}</span>
+                        </div>
+                      </>
+                    )}
+                  />
                 </div>
               )}
 
