@@ -14,7 +14,6 @@ from services.plugin.plugin_service import PluginService
 from services.workflow.entities import TriggerMetadata
 
 
-# Since the workflow_app_log table has exceeded 100 million records, we use an additional details field to extend it
 class LogView:
     """Lightweight wrapper for WorkflowAppLog with computed details.
 
@@ -22,7 +21,7 @@ class LogView:
     - Proxies all other attributes to the underlying `WorkflowAppLog`
     """
 
-    def __init__(self, log: WorkflowAppLog | WorkflowArchiveLog, details: dict | None):
+    def __init__(self, log: WorkflowAppLog, details: dict | None):
         self.log = log
         self.details_ = details
 
@@ -197,13 +196,46 @@ class WorkflowAppService:
 
         offset_stmt = stmt.offset((page - 1) * limit).limit(limit)
 
-        items = [
-            LogView(
-                log,
-                {"trigger_metadata": self.handle_trigger_metadata(app_model.tenant_id, log.trigger_metadata)},
+        logs = list(session.scalars(offset_stmt).all())
+        account_ids = {log.created_by for log in logs if log.created_by_role == CreatorUserRole.ACCOUNT}
+        end_user_ids = {log.created_by for log in logs if log.created_by_role == CreatorUserRole.END_USER}
+
+        accounts_by_id = {}
+        if account_ids:
+            accounts_by_id = {
+                account.id: account
+                for account in session.scalars(select(Account).where(Account.id.in_(account_ids))).all()
+            }
+
+        end_users_by_id = {}
+        if end_user_ids:
+            end_users_by_id = {
+                end_user.id: end_user
+                for end_user in session.scalars(select(EndUser).where(EndUser.id.in_(end_user_ids))).all()
+            }
+
+        items = []
+        for log in logs:
+            if log.created_by_role == CreatorUserRole.ACCOUNT:
+                created_by_account = accounts_by_id.get(log.created_by)
+                created_by_end_user = None
+            elif log.created_by_role == CreatorUserRole.END_USER:
+                created_by_account = None
+                created_by_end_user = end_users_by_id.get(log.created_by)
+            else:
+                created_by_account = None
+                created_by_end_user = None
+
+            items.append(
+                {
+                    "id": log.id,
+                    "workflow_run": log.workflow_run_summary,
+                    "trigger_metadata": self.handle_trigger_metadata(app_model.tenant_id, log.trigger_metadata),
+                    "created_by_account": created_by_account,
+                    "created_by_end_user": created_by_end_user,
+                    "created_at": log.log_created_at,
+                }
             )
-            for log in session.scalars(offset_stmt).all()
-        ]
 
         return {
             "page": page,

@@ -11,7 +11,10 @@ from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.workflow.enums import WorkflowExecutionStatus
 from extensions.ext_database import db
-from fields.workflow_app_log_fields import build_workflow_app_log_pagination_model
+from fields.workflow_app_log_fields import (
+    build_workflow_app_log_pagination_model,
+    build_workflow_archived_log_pagination_model,
+)
 from libs.login import login_required
 from models import App
 from models.model import AppMode
@@ -61,6 +64,7 @@ console_ns.schema_model(
 
 # Register model for flask_restx to avoid dict type issues in Swagger
 workflow_app_log_pagination_model = build_workflow_app_log_pagination_model(console_ns)
+workflow_archived_log_pagination_model = build_workflow_archived_log_pagination_model(console_ns)
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflow-app-logs")
@@ -107,12 +111,12 @@ class WorkflowArchivedLogApi(Resource):
     @console_ns.doc(description="Get workflow archived execution logs")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[WorkflowAppLogQuery.__name__])
-    @console_ns.response(200, "Workflow archived logs retrieved successfully", workflow_app_log_pagination_model)
+    @console_ns.response(200, "Workflow archived logs retrieved successfully", workflow_archived_log_pagination_model)
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW])
-    @marshal_with(workflow_app_log_pagination_model)
+    @marshal_with(workflow_archived_log_pagination_model)
     def get(self, app_model: App):
         """
         Get workflow archived logs
