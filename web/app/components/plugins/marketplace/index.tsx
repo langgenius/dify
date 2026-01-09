@@ -1,55 +1,39 @@
-import type { MarketplaceCollection, SearchParams } from './types'
-import type { Plugin } from '@/app/components/plugins/types'
+import type { SearchParams } from 'nuqs'
 import { TanstackQueryInitializer } from '@/context/query-client'
-import { MarketplaceContextProvider } from './context'
 import Description from './description'
+import { HydrateMarketplaceAtoms } from './hydration-client'
+import { HydrateQueryClient } from './hydration-server'
 import ListWrapper from './list/list-wrapper'
 import StickySearchAndSwitchWrapper from './sticky-search-and-switch-wrapper'
-import { getMarketplaceCollectionsAndPlugins } from './utils'
 
 type MarketplaceProps = {
   showInstallButton?: boolean
-  shouldExclude?: boolean
-  searchParams?: SearchParams
   pluginTypeSwitchClassName?: string
-  scrollContainerId?: string
-  showSearchParams?: boolean
+  /**
+   * Pass the search params from the request to prefetch data on the server
+   * and preserve the search params in the URL.
+   */
+  searchParams?: Promise<SearchParams>
 }
+
 const Marketplace = async ({
   showInstallButton = true,
-  shouldExclude,
-  searchParams,
   pluginTypeSwitchClassName,
-  scrollContainerId,
-  showSearchParams = true,
+  searchParams,
 }: MarketplaceProps) => {
-  let marketplaceCollections: MarketplaceCollection[] = []
-  let marketplaceCollectionPluginsMap: Record<string, Plugin[]> = {}
-  if (!shouldExclude) {
-    const marketplaceCollectionsAndPluginsData = await getMarketplaceCollectionsAndPlugins()
-    marketplaceCollections = marketplaceCollectionsAndPluginsData.marketplaceCollections
-    marketplaceCollectionPluginsMap = marketplaceCollectionsAndPluginsData.marketplaceCollectionPluginsMap
-  }
-
   return (
     <TanstackQueryInitializer>
-      <MarketplaceContextProvider
-        searchParams={searchParams}
-        shouldExclude={shouldExclude}
-        scrollContainerId={scrollContainerId}
-        showSearchParams={showSearchParams}
-      >
-        <Description />
-        <StickySearchAndSwitchWrapper
-          pluginTypeSwitchClassName={pluginTypeSwitchClassName}
-          showSearchParams={showSearchParams}
-        />
-        <ListWrapper
-          marketplaceCollections={marketplaceCollections}
-          marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap}
-          showInstallButton={showInstallButton}
-        />
-      </MarketplaceContextProvider>
+      <HydrateQueryClient searchParams={searchParams}>
+        <HydrateMarketplaceAtoms preserveSearchStateInQuery={!!searchParams}>
+          <Description />
+          <StickySearchAndSwitchWrapper
+            pluginTypeSwitchClassName={pluginTypeSwitchClassName}
+          />
+          <ListWrapper
+            showInstallButton={showInstallButton}
+          />
+        </HydrateMarketplaceAtoms>
+      </HydrateQueryClient>
     </TanstackQueryInitializer>
   )
 }

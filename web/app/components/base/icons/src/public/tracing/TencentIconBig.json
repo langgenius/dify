@@ -1,14 +1,16 @@
 {
   "icon": {
     "type": "element",
+    "isRootNode": true,
     "name": "svg",
     "attributes": {
-      "width": "80px",
-      "height": "18px",
+      "width": "120px",
+      "height": "27px",
       "viewBox": "0 0 80 18",
-      "version": "1.1"
+      "version": "1.1",
+      "xmlns": "http://www.w3.org/2000/svg",
+      "xmlns:xlink": "http://www.w3.org/1999/xlink"
     },
-    "isRootNode": true,
     "children": [
       {
         "type": "element",

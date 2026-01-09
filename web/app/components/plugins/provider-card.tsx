@@ -92,7 +92,7 @@ const ProviderCardComponent: FC<Props> = ({
             manifest={payload}
             uniqueIdentifier={payload.latest_package_identifier}
             onClose={hideInstallFromMarketplace}
-            onSuccess={() => hideInstallFromMarketplace()}
+            onSuccess={hideInstallFromMarketplace}
           />
         )
       }

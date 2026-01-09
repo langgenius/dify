@@ -262,7 +262,7 @@ vi.mock('@/app/components/base/icons/src/vender/other', () => ({
 }))
 
 // Mock PLUGIN_TYPE_SEARCH_MAP
-vi.mock('../../marketplace/plugin-type-switch', () => ({
+vi.mock('../../marketplace/constants', () => ({
   PLUGIN_TYPE_SEARCH_MAP: {
     all: 'all',
     model: 'model',

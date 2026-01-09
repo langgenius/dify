@@ -13,6 +13,7 @@ import { useWebAppStore } from '@/context/web-app-context'
 import { webAppLogin } from '@/service/common'
 import { fetchAccessToken } from '@/service/share'
 import { setWebAppAccessToken, setWebAppPassport } from '@/service/webapp-auth'
+import { encryptPassword } from '@/utils/encryption'
 
 type MailAndPasswordAuthProps = {
   isEmailSetup: boolean
@@ -71,7 +72,7 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
       setIsLoading(true)
       const loginData: Record<string, any> = {
         email,
-        password,
+        password: encryptPassword(password),
         language: locale,
         remember_me: true,
       }

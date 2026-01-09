@@ -1,4 +1,5 @@
 'use client'
+import type { ActivePluginType } from './constants'
 import { useTranslation } from '#i18n'
 import {
   RiArchive2Line,
@@ -8,35 +9,27 @@ import {
   RiPuzzle2Line,
   RiSpeakAiLine,
 } from '@remixicon/react'
-import { useCallback, useEffect } from 'react'
+import { useSetAtom } from 'jotai'
 import { Trigger as TriggerIcon } from '@/app/components/base/icons/src/vender/plugin'
 import { cn } from '@/utils/classnames'
-import { PluginCategoryEnum } from '../types'
-import { useMarketplaceContext } from './context'
+import { searchModeAtom, useActivePluginType } from './atoms'
+import { PLUGIN_CATEGORY_WITH_COLLECTIONS, PLUGIN_TYPE_SEARCH_MAP } from './constants'
 
-export const PLUGIN_TYPE_SEARCH_MAP = {
-  all: 'all',
-  model: PluginCategoryEnum.model,
-  tool: PluginCategoryEnum.tool,
-  agent: PluginCategoryEnum.agent,
-  extension: PluginCategoryEnum.extension,
-  datasource: PluginCategoryEnum.datasource,
-  trigger: PluginCategoryEnum.trigger,
-  bundle: 'bundle',
-}
 type PluginTypeSwitchProps = {
   className?: string
-  showSearchParams?: boolean
 }
 const PluginTypeSwitch = ({
   className,
-  showSearchParams,
 }: PluginTypeSwitchProps) => {
   const { t } = useTranslation()
-  const activePluginType = useMarketplaceContext(s => s.activePluginType)
-  const handleActivePluginTypeChange = useMarketplaceContext(s => s.handleActivePluginTypeChange)
+  const [activePluginType, handleActivePluginTypeChange] = useActivePluginType()
+  const setSearchMode = useSetAtom(searchModeAtom)
 
-  const options = [
+  const options: Array<{
+    value: ActivePluginType
+    text: string
+    icon: React.ReactNode | null
+  }> = [
     {
       value: PLUGIN_TYPE_SEARCH_MAP.all,
       text: t('category.all', { ns: 'plugin' }),
@@ -79,23 +72,6 @@ const PluginTypeSwitch = ({
     },
   ]
 
-  const handlePopState = useCallback(() => {
-    if (!showSearchParams)
-      return
-    // nuqs handles popstate automatically
-    const url = new URL(window.location.href)
-    const category = url.searchParams.get('category') || PLUGIN_TYPE_SEARCH_MAP.all
-    handleActivePluginTypeChange(category)
-  }, [showSearchParams, handleActivePluginTypeChange])
-
-  useEffect(() => {
-    // nuqs manages popstate internally, but we keep this for URL sync
-    window.addEventListener('popstate', handlePopState)
-    return () => {
-      window.removeEventListener('popstate', handlePopState)
-    }
-  }, [handlePopState])
-
   return (
     <div className={cn(
       'flex shrink-0 items-center justify-center space-x-2 bg-background-body py-3',
@@ -112,6 +88,9 @@ const PluginTypeSwitch = ({
             )}
             onClick={() => {
               handleActivePluginTypeChange(option.value)
+              if (PLUGIN_CATEGORY_WITH_COLLECTIONS.has(option.value)) {
+                setSearchMode(null)
+              }
             }}
           >
             {option.icon}

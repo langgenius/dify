@@ -799,7 +799,7 @@ class TriggerProviderService:
         user_id: str,
         provider_id: TriggerProviderID,
         subscription_id: str,
-        credentials: Mapping[str, Any],
+        credentials: dict[str, Any],
     ) -> dict[str, Any]:
         """
         Verify credentials for an existing subscription without updating it.
