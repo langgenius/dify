@@ -14,23 +14,23 @@ from configs import dify_config
 logger = logging.getLogger(__name__)
 
 
-class OAuthEncryptionError(Exception):
-    """OAuth encryption/decryption specific error"""
+class EncryptionError(Exception):
+    """Encryption/decryption specific error"""
 
     pass
 
 
-class SystemOAuthEncrypter:
+class SystemEncrypter:
     """
-    A simple OAuth parameters encrypter using AES-CBC encryption.
+    A simple parameters encrypter using AES-CBC encryption.
 
-    This class provides methods to encrypt and decrypt OAuth parameters
+    This class provides methods to encrypt and decrypt parameters
     using AES-CBC mode with a key derived from the application's SECRET_KEY.
     """
 
     def __init__(self, secret_key: str | None = None):
         """
-        Initialize the OAuth encrypter.
+        Initialize the encrypter.
 
         Args:
             secret_key: Optional secret key. If not provided, uses dify_config.SECRET_KEY
@@ -43,19 +43,19 @@ class SystemOAuthEncrypter:
         # Generate a fixed 256-bit key using SHA-256
         self.key = hashlib.sha256(secret_key.encode()).digest()
 
-    def encrypt_oauth_params(self, oauth_params: Mapping[str, Any]) -> str:
+    def encrypt_params(self, params: Mapping[str, Any]) -> str:
         """
-        Encrypt OAuth parameters.
+        Encrypt parameters.
 
         Args:
-            oauth_params: OAuth parameters dictionary, e.g., {"client_id": "xxx", "client_secret": "xxx"}
+            params: parameters dictionary, e.g., {"client_id": "xxx", "client_secret": "xxx"}
 
         Returns:
             Base64-encoded encrypted string
 
         Raises:
-            OAuthEncryptionError: If encryption fails
-            ValueError: If oauth_params is invalid
+            EncryptionError: If encryption fails
+            ValueError: If params is invalid
         """
 
         try:
@@ -66,7 +66,7 @@ class SystemOAuthEncrypter:
             cipher = AES.new(self.key, AES.MODE_CBC, iv)
 
             # Encrypt data
-            padded_data = pad(TypeAdapter(dict).dump_json(dict(oauth_params)), AES.block_size)
+            padded_data = pad(TypeAdapter(dict).dump_json(dict(params)), AES.block_size)
             encrypted_data = cipher.encrypt(padded_data)
 
             # Combine IV and encrypted data
@@ -76,20 +76,20 @@ class SystemOAuthEncrypter:
             return base64.b64encode(combined).decode()
 
         except Exception as e:
-            raise OAuthEncryptionError(f"Encryption failed: {str(e)}") from e
+            raise EncryptionError(f"Encryption failed: {str(e)}") from e
 
-    def decrypt_oauth_params(self, encrypted_data: str) -> Mapping[str, Any]:
+    def decrypt_params(self, encrypted_data: str) -> Mapping[str, Any]:
         """
-        Decrypt OAuth parameters.
+        Decrypt parameters.
 
         Args:
             encrypted_data: Base64-encoded encrypted string
 
         Returns:
-            Decrypted OAuth parameters dictionary
+            Decrypted parameters dictionary
 
         Raises:
-            OAuthEncryptionError: If decryption fails
+            EncryptionError: If decryption fails
             ValueError: If encrypted_data is invalid
         """
         if not isinstance(encrypted_data, str):
@@ -118,70 +118,70 @@ class SystemOAuthEncrypter:
             unpadded_data = unpad(decrypted_data, AES.block_size)
 
             # Parse JSON
-            oauth_params: Mapping[str, Any] = TypeAdapter(Mapping[str, Any]).validate_json(unpadded_data)
+            params: Mapping[str, Any] = TypeAdapter(Mapping[str, Any]).validate_json(unpadded_data)
 
-            if not isinstance(oauth_params, dict):
+            if not isinstance(params, dict):
                 raise ValueError("Decrypted data is not a valid dictionary")
 
-            return oauth_params
+            return params
 
         except Exception as e:
-            raise OAuthEncryptionError(f"Decryption failed: {str(e)}") from e
+            raise EncryptionError(f"Decryption failed: {str(e)}") from e
 
 
 # Factory function for creating encrypter instances
-def create_system_oauth_encrypter(secret_key: str | None = None) -> SystemOAuthEncrypter:
+def create_system_encrypter(secret_key: str | None = None) -> SystemEncrypter:
     """
-    Create an OAuth encrypter instance.
+    Create an encrypter instance.
 
     Args:
         secret_key: Optional secret key. If not provided, uses dify_config.SECRET_KEY
 
     Returns:
-        SystemOAuthEncrypter instance
+        SystemEncrypter instance
     """
-    return SystemOAuthEncrypter(secret_key=secret_key)
+    return SystemEncrypter(secret_key=secret_key)
 
 
 # Global encrypter instance (for backward compatibility)
-_oauth_encrypter: SystemOAuthEncrypter | None = None
+_encrypter: SystemEncrypter | None = None
 
 
-def get_system_oauth_encrypter() -> SystemOAuthEncrypter:
+def get_system_encrypter() -> SystemEncrypter:
     """
-    Get the global OAuth encrypter instance.
+    Get the global encrypter instance.
 
     Returns:
-        SystemOAuthEncrypter instance
+        SystemEncrypter instance
     """
-    global _oauth_encrypter
-    if _oauth_encrypter is None:
-        _oauth_encrypter = SystemOAuthEncrypter()
-    return _oauth_encrypter
+    global _encrypter
+    if _encrypter is None:
+        _encrypter = SystemEncrypter()
+    return _encrypter
 
 
 # Convenience functions for backward compatibility
-def encrypt_system_oauth_params(oauth_params: Mapping[str, Any]) -> str:
+def encrypt_system_params(params: Mapping[str, Any]) -> str:
     """
-    Encrypt OAuth parameters using the global encrypter.
+    Encrypt parameters using the global encrypter.
 
     Args:
-        oauth_params: OAuth parameters dictionary
+        params: parameters dictionary
 
     Returns:
         Base64-encoded encrypted string
     """
-    return get_system_oauth_encrypter().encrypt_oauth_params(oauth_params)
+    return get_system_encrypter().encrypt_params(params)
 
 
-def decrypt_system_oauth_params(encrypted_data: str) -> Mapping[str, Any]:
+def decrypt_system_params(encrypted_data: str) -> Mapping[str, Any]:
     """
-    Decrypt OAuth parameters using the global encrypter.
+    Decrypt parameters using the global encrypter.
 
     Args:
         encrypted_data: Base64-encoded encrypted string
 
     Returns:
-        Decrypted OAuth parameters dictionary
+        Decrypted parameters dictionary
     """
-    return get_system_oauth_encrypter().decrypt_oauth_params(encrypted_data)
+    return get_system_encrypter().decrypt_params(encrypted_data)
