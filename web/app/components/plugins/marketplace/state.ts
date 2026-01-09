@@ -33,12 +33,12 @@ export function useMarketplaceData() {
   }, [isSearchMode, searchPluginText, activePluginType, filterPluginTags, sort])
 
   const pluginsQuery = useMarketplacePlugins(queryParams)
-  const { hasNextPage, fetchNextPage } = pluginsQuery
+  const { hasNextPage, fetchNextPage, isFetching } = pluginsQuery
 
   const handlePageChange = useCallback(() => {
-    if (hasNextPage)
+    if (hasNextPage && !isFetching)
       fetchNextPage()
-  }, [fetchNextPage, hasNextPage])
+  }, [fetchNextPage, hasNextPage, isFetching])
 
   // Scroll pagination
   useMarketplaceContainerScroll(handlePageChange)
