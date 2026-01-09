@@ -1,4 +1,5 @@
 import type { PluginsSearchParams } from './types'
+import { useDebounce } from 'ahooks'
 import { useCallback, useMemo } from 'react'
 import { useActivePluginType, useFilterPluginTags, useMarketplaceSearchMode, useMarketplaceSortValue, useSearchPluginText } from './atoms'
 import { PLUGIN_TYPE_SEARCH_MAP } from './constants'
@@ -30,7 +31,8 @@ export function useMarketplaceData() {
     }
   }, [isSearchMode, searchPluginText, activePluginType, filterPluginTags, sort])
 
-  const pluginsQuery = useMarketplacePlugins(queryParams)
+  const deferredQueryParams = useDebounce(queryParams, { wait: 500 })
+  const pluginsQuery = useMarketplacePlugins(deferredQueryParams)
   const { hasNextPage, fetchNextPage } = pluginsQuery
 
   const handlePageChange = useCallback(() => {
