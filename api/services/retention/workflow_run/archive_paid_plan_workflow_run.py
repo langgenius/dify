@@ -31,6 +31,7 @@ from sqlalchemy import inspect
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from core.workflow.enums import WorkflowType
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from libs.archive_storage import (
@@ -99,12 +100,10 @@ class WorkflowRunArchiver:
             ├── workflow_pause_reasons.jsonl
             └── workflow_trigger_logs.jsonl
     """
-from core.workflow.enums import WorkflowExecutionStatus, WorkflowType
-
-ARCHIVED_TYPE = [
-    WorkflowType.WORKFLOW.value,
-    WorkflowType.RAG_PIPELINE.value,
-]
+    ARCHIVED_TYPE = [
+        WorkflowType.WORKFLOW.value,
+        WorkflowType.RAG_PIPELINE.value,
+    ]
     ARCHIVED_TABLES = [
         "workflow_runs",
         "workflow_app_logs",
@@ -296,6 +295,7 @@ ARCHIVED_TYPE = [
             end_before=self.end_before,
             last_seen=last_seen,
             batch_size=self.batch_size,
+            run_types=self.ARCHIVED_TYPE,
             tenant_ids=self.tenant_ids or None,
         )
 

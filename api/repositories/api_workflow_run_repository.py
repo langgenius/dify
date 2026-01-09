@@ -261,6 +261,7 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         end_before: datetime,
         last_seen: tuple[datetime, str] | None,
         batch_size: int,
+        run_types: Sequence[str],
         tenant_ids: Sequence[str] | None = None,
     ) -> Sequence[WorkflowRun]:
         """
