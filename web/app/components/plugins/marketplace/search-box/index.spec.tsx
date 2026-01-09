@@ -36,7 +36,7 @@ const { mockSearchPluginText, mockHandleSearchPluginTextChange, mockFilterPlugin
   }
 })
 
-vi.mock('../state', () => ({
+vi.mock('../atoms', () => ({
   useSearchPluginText: () => [mockSearchPluginText, mockHandleSearchPluginTextChange],
   useFilterPluginTags: () => [mockFilterPluginTags, mockHandleFilterPluginTagsChange],
 }))
