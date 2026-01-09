@@ -15,7 +15,6 @@
 
 import {
   createParser,
-  parseAsArrayOf,
   parseAsString,
   useQueryState,
   useQueryStates,
@@ -91,39 +90,6 @@ export function useAccountSettingModal<T extends string = string>() {
   const currentTab = (isOpen ? accountState.tab : null) as T | null
 
   return [{ isOpen, payload: currentTab }, setState] as const
-}
-
-/**
- * Marketplace Search Query Parameters
- */
-export type MarketplaceFilters = {
-  q: string // search query
-  category: string // plugin category
-  tags: string[] // array of tags
-}
-
-/**
- * Hook to manage marketplace search/filter state via URL
- * Provides atomic updates - all params update together
- *
- * @example
- * const [filters, setFilters] = useMarketplaceFilters()
- * setFilters({ q: 'search', category: 'tool', tags: ['ai'] }) // Updates all at once
- * setFilters({ q: '' }) // Only updates q, keeps others
- * setFilters(null) // Clears all marketplace params
- */
-export function useMarketplaceFilters() {
-  return useQueryStates(
-    {
-      q: parseAsString.withDefault(''),
-      category: parseAsString.withDefault('all').withOptions({ clearOnDefault: false }),
-      tags: parseAsArrayOf(parseAsString).withDefault([]),
-    },
-    {
-      // Update URL without pushing to history (replaceState behavior)
-      history: 'replace',
-    },
-  )
 }
 
 /**
