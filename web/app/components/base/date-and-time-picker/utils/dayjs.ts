@@ -1,7 +1,9 @@
-import dayjs, { type Dayjs } from 'dayjs'
+import type { Dayjs } from 'dayjs'
 import type { Day } from '../types'
-import utc from 'dayjs/plugin/utc'
+import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
+import utc from 'dayjs/plugin/utc'
+import { IS_PROD } from '@/config'
 import tz from '@/utils/timezone.json'
 
 dayjs.extend(utc)
@@ -107,7 +109,18 @@ export const convertTimezoneToOffsetStr = (timezone?: string) => {
   const tzItem = tz.find(item => item.value === timezone)
   if (!tzItem)
     return DEFAULT_OFFSET_STR
-  return `UTC${tzItem.name.charAt(0)}${tzItem.name.charAt(2)}`
+  // Extract offset from name format like "-11:00 Niue Time" or "+05:30 India Time"
+  // Name format is always "{offset}:{minutes} {timezone name}"
+  const offsetMatch = tzItem.name.match(/^([+-]?\d{1,2}):(\d{2})/)
+  if (!offsetMatch)
+    return DEFAULT_OFFSET_STR
+  // Parse hours and minutes separately
+  const hours = Number.parseInt(offsetMatch[1], 10)
+  const minutes = Number.parseInt(offsetMatch[2], 10)
+  const sign = hours >= 0 ? '+' : ''
+  // If minutes are non-zero, include them in the output (e.g., "UTC+5:30")
+  // Otherwise, only show hours (e.g., "UTC+8")
+  return minutes !== 0 ? `UTC${sign}${hours}:${offsetMatch[2]}` : `UTC${sign}${hours}`
 }
 
 export const isDayjsObject = (value: unknown): value is Dayjs => dayjs.isDayjs(value)
@@ -119,14 +132,17 @@ export type ToDayjsOptions = {
 }
 
 const warnParseFailure = (value: string) => {
-  if (process.env.NODE_ENV !== 'production')
+  if (!IS_PROD)
     console.warn('[TimePicker] Failed to parse time value', value)
 }
 
 const normalizeMillisecond = (value: string | undefined) => {
-  if (!value) return 0
-  if (value.length === 3) return Number(value)
-  if (value.length > 3) return Number(value.slice(0, 3))
+  if (!value)
+    return 0
+  if (value.length === 3)
+    return Number(value)
+  if (value.length > 3)
+    return Number(value.slice(0, 3))
   return Number(value.padEnd(3, '0'))
 }
 
@@ -150,7 +166,7 @@ export const toDayjs = (value: string | Dayjs | undefined, options: ToDayjsOptio
 
   if (format) {
     const parsedWithFormat = tzName
-      ? dayjs.tz(trimmed, format, tzName, true)
+      ? dayjs(trimmed, format, true).tz(tzName, true)
       : dayjs(trimmed, format, true)
     if (parsedWithFormat.isValid())
       return parsedWithFormat
@@ -191,7 +207,7 @@ export const toDayjs = (value: string | Dayjs | undefined, options: ToDayjsOptio
   const candidateFormats = formats ?? COMMON_PARSE_FORMATS
   for (const fmt of candidateFormats) {
     const parsed = tzName
-      ? dayjs.tz(trimmed, fmt, tzName, true)
+      ? dayjs(trimmed, fmt, true).tz(tzName, true)
       : dayjs(trimmed, fmt, true)
     if (parsed.isValid())
       return parsed
@@ -207,7 +223,8 @@ export const toDayjs = (value: string | Dayjs | undefined, options: ToDayjsOptio
 
 // Parse date with multiple format support
 export const parseDateWithFormat = (dateString: string, format?: string): Dayjs | null => {
-  if (!dateString) return null
+  if (!dateString)
+    return null
 
   // If format is specified, use it directly
   if (format) {
@@ -231,7 +248,8 @@ export const parseDateWithFormat = (dateString: string, format?: string): Dayjs 
 
 // Format date output with localization support
 export const formatDateForOutput = (date: Dayjs, includeTime: boolean = false, _locale: string = 'en-US'): string => {
-  if (!date || !date.isValid()) return ''
+  if (!date || !date.isValid())
+    return ''
 
   if (includeTime) {
     // Output format with time

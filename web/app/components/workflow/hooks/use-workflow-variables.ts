@@ -1,29 +1,34 @@
-import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useWorkflowStore } from '../store'
-import { getVarType, toNodeAvailableVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import type { Type } from '../nodes/llm/types'
 import type {
   Node,
   NodeOutPutVar,
   ValueSelector,
   Var,
 } from '@/app/components/workflow/types'
-import { useIsChatMode } from './use-workflow'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
-import { useStore } from '@/app/components/workflow/store'
-import type { Type } from '../nodes/llm/types'
+import { getVarType, toNodeAvailableVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import {
+  useAllBuiltInTools,
+  useAllCustomTools,
+  useAllMCPTools,
+  useAllWorkflowTools,
+} from '@/service/use-tools'
 import useMatchSchemaType from '../nodes/_base/components/variable/use-match-schema-type'
+import { useWorkflowStore } from '../store'
+import { useIsChatMode } from './use-workflow'
 
 export const useWorkflowVariables = () => {
   const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
   const { schemaTypeDefinitions } = useMatchSchemaType()
 
-  const buildInTools = useStore(s => s.buildInTools)
-  const customTools = useStore(s => s.customTools)
-  const workflowTools = useStore(s => s.workflowTools)
-  const mcpTools = useStore(s => s.mcpTools)
-  const dataSourceList = useStore(s => s.dataSourceList)
+  const { data: buildInTools } = useAllBuiltInTools()
+  const { data: customTools } = useAllCustomTools()
+  const { data: workflowTools } = useAllWorkflowTools()
+  const { data: mcpTools } = useAllMCPTools()
+
   const getNodeAvailableVars = useCallback(({
     parentNode,
     beforeNodes,
@@ -43,6 +48,7 @@ export const useWorkflowVariables = () => {
       conversationVariables,
       environmentVariables,
       ragPipelineVariables,
+      dataSourceList,
     } = workflowStore.getState()
     return toNodeAvailableVars({
       parentNode,
@@ -54,15 +60,15 @@ export const useWorkflowVariables = () => {
       ragVariables: ragPipelineVariables,
       filterVar,
       allPluginInfoList: {
-        buildInTools,
-        customTools,
-        workflowTools,
-        mcpTools,
-        dataSourceList: dataSourceList ?? [],
+        buildInTools: buildInTools || [],
+        customTools: customTools || [],
+        workflowTools: workflowTools || [],
+        mcpTools: mcpTools || [],
+        dataSourceList: dataSourceList || [],
       },
       schemaTypeDefinitions,
     })
-  }, [t, workflowStore, schemaTypeDefinitions, buildInTools])
+  }, [t, workflowStore, schemaTypeDefinitions, buildInTools, customTools, workflowTools, mcpTools])
 
   const getCurrentVariableType = useCallback(({
     parentNode,
@@ -87,10 +93,6 @@ export const useWorkflowVariables = () => {
       conversationVariables,
       environmentVariables,
       ragPipelineVariables,
-      buildInTools,
-      customTools,
-      workflowTools,
-      mcpTools,
       dataSourceList,
     } = workflowStore.getState()
     return getVarType({
@@ -105,16 +107,16 @@ export const useWorkflowVariables = () => {
       conversationVariables,
       ragVariables: ragPipelineVariables,
       allPluginInfoList: {
-        buildInTools,
-        customTools,
-        workflowTools,
-        mcpTools,
+        buildInTools: buildInTools || [],
+        customTools: customTools || [],
+        workflowTools: workflowTools || [],
+        mcpTools: mcpTools || [],
         dataSourceList: dataSourceList ?? [],
       },
       schemaTypeDefinitions,
       preferSchemaType,
     })
-  }, [workflowStore, getVarType, schemaTypeDefinitions])
+  }, [workflowStore, getVarType, schemaTypeDefinitions, buildInTools, customTools, workflowTools, mcpTools])
 
   return {
     getNodeAvailableVars,
@@ -135,8 +137,8 @@ export const useWorkflowVariableType = () => {
     nodeId,
     valueSelector,
   }: {
-    nodeId: string,
-    valueSelector: ValueSelector,
+    nodeId: string
+    valueSelector: ValueSelector
   }) => {
     const node = getNodes().find(n => n.id === nodeId)
     const isInIteration = !!node?.data.isInIteration

@@ -1,52 +1,51 @@
-import {
-  useCallback,
-} from 'react'
-import { uniqBy } from 'lodash-es'
-import {
-  getIncomers,
-  getOutgoers,
-  useStoreApi,
-} from 'reactflow'
 import type {
   Connection,
 } from 'reactflow'
+import type { IterationNodeType } from '../nodes/iteration/types'
+import type { LoopNodeType } from '../nodes/loop/types'
 import type {
   BlockEnum,
   Edge,
   Node,
   ValueSelector,
 } from '../types'
+import { uniqBy } from 'es-toolkit/compat'
 import {
-  WorkflowRunningStatus,
-} from '../types'
+  useCallback,
+} from 'react'
+import {
+  getIncomers,
+  getOutgoers,
+  useStoreApi,
+} from 'reactflow'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
+import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
+import { AppModeEnum } from '@/types/app'
+import { useNodesMetaData } from '.'
+import {
+  SUPPORT_OUTPUT_VARS_NODE,
+} from '../constants'
+import { findUsedVarNodes, getNodeOutputVars, updateNodeVars } from '../nodes/_base/components/variable/utils'
+import { CUSTOM_NOTE_NODE } from '../note-node/constants'
+
 import {
   useStore,
   useWorkflowStore,
 } from '../store'
 import {
-  SUPPORT_OUTPUT_VARS_NODE,
-} from '../constants'
-import type { IterationNodeType } from '../nodes/iteration/types'
-import type { LoopNodeType } from '../nodes/loop/types'
-import { CUSTOM_NOTE_NODE } from '../note-node/constants'
-import { findUsedVarNodes, getNodeOutputVars, updateNodeVars } from '../nodes/_base/components/variable/utils'
-import { useAvailableBlocks } from './use-available-blocks'
-import { useStore as useAppStore } from '@/app/components/app/store'
+  WorkflowRunningStatus,
+} from '../types'
 import {
-  fetchAllBuiltInTools,
-  fetchAllCustomTools,
-  fetchAllMCPTools,
-  fetchAllWorkflowTools,
-} from '@/service/tools'
-import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
-import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
-import { basePath } from '@/utils/var'
-import { useNodesMetaData } from '.'
+  getWorkflowEntryNode,
+  isWorkflowEntryNode,
+} from '../utils/workflow-entry'
+import { useAvailableBlocks } from './use-available-blocks'
 
 export const useIsChatMode = () => {
   const appDetail = useAppStore(s => s.appDetail)
 
-  return appDetail?.mode === 'advanced-chat'
+  return appDetail?.mode === AppModeEnum.ADVANCED_CHAT
 }
 
 export const useWorkflow = () => {
@@ -69,6 +68,7 @@ export const useWorkflow = () => {
       edges,
     } = store.getState()
     const nodes = getNodes()
+    // let startNode = getWorkflowEntryNode(nodes)
     const currentNode = nodes.find(node => node.id === nodeId)
 
     let startNodes = nodes.filter(node => nodesMap?.[node.data.type as BlockEnum]?.metaData.isStart) || []
@@ -238,6 +238,33 @@ export const useWorkflow = () => {
     return nodes.filter(node => node.parentId === nodeId)
   }, [store])
 
+  const isFromStartNode = useCallback((nodeId: string) => {
+    const { getNodes } = store.getState()
+    const nodes = getNodes()
+    const currentNode = nodes.find(node => node.id === nodeId)
+
+    if (!currentNode)
+      return false
+
+    if (isWorkflowEntryNode(currentNode.data.type))
+      return true
+
+    const checkPreviousNodes = (node: Node) => {
+      const previousNodes = getBeforeNodeById(node.id)
+
+      for (const prevNode of previousNodes) {
+        if (isWorkflowEntryNode(prevNode.data.type))
+          return true
+        if (checkPreviousNodes(prevNode))
+          return true
+      }
+
+      return false
+    }
+
+    return checkPreviousNodes(currentNode)
+  }, [store, getBeforeNodeById])
+
   const handleOutVarRenameChange = useCallback((nodeId: string, oldValeSelector: ValueSelector, newVarSelector: ValueSelector) => {
     const { getNodes, setNodes } = store.getState()
     const allNodes = getNodes()
@@ -397,6 +424,13 @@ export const useWorkflow = () => {
     return !hasCycle(targetNode)
   }, [store, getAvailableBlocks])
 
+  const getNode = useCallback((nodeId?: string) => {
+    const { getNodes } = store.getState()
+    const nodes = getNodes()
+
+    return nodes.find(node => node.id === nodeId) || getWorkflowEntryNode(nodes)
+  }, [store])
+
   return {
     getNodeById,
     getTreeLeafNodes,
@@ -413,51 +447,8 @@ export const useWorkflow = () => {
     getLoopNodeChildren,
     getRootNodesById,
     getStartNodes,
-  }
-}
-
-export const useFetchToolsData = () => {
-  const workflowStore = useWorkflowStore()
-
-  const handleFetchAllTools = useCallback(async (type: string) => {
-    if (type === 'builtin') {
-      const buildInTools = await fetchAllBuiltInTools()
-
-      if (basePath) {
-        buildInTools.forEach((item) => {
-          if (typeof item.icon == 'string' && !item.icon.includes(basePath))
-            item.icon = `${basePath}${item.icon}`
-        })
-      }
-      workflowStore.setState({
-        buildInTools: buildInTools || [],
-      })
-    }
-    if (type === 'custom') {
-      const customTools = await fetchAllCustomTools()
-
-      workflowStore.setState({
-        customTools: customTools || [],
-      })
-    }
-    if (type === 'workflow') {
-      const workflowTools = await fetchAllWorkflowTools()
-
-      workflowStore.setState({
-        workflowTools: workflowTools || [],
-      })
-    }
-    if (type === 'mcp') {
-      const mcpTools = await fetchAllMCPTools()
-
-      workflowStore.setState({
-        mcpTools: mcpTools || [],
-      })
-    }
-  }, [workflowStore])
-
-  return {
-    handleFetchAllTools,
+    isFromStartNode,
+    getNode,
   }
 }
 
@@ -481,14 +472,14 @@ export const useNodesReadOnly = () => {
   const historyWorkflowData = useStore(s => s.historyWorkflowData)
   const isRestoring = useStore(s => s.isRestoring)
 
-  const getNodesReadOnly = useCallback(() => {
+  const getNodesReadOnly = useCallback((): boolean => {
     const {
       workflowRunningData,
       historyWorkflowData,
       isRestoring,
     } = workflowStore.getState()
 
-    return workflowRunningData?.result.status === WorkflowRunningStatus.Running || historyWorkflowData || isRestoring
+    return !!(workflowRunningData?.result.status === WorkflowRunningStatus.Running || historyWorkflowData || isRestoring)
   }, [workflowStore])
 
   return {

@@ -1,25 +1,25 @@
+import type { CategoryKey, TagKey } from './constants'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { TFunction } from 'i18next'
 import {
   categoryKeys,
   tagKeys,
 } from './constants'
+import { PluginCategoryEnum } from './types'
 
 export type Tag = {
-  name: string
+  name: TagKey
   label: string
 }
 
-export const useTags = (translateFromOut?: TFunction) => {
-  const { t: translation } = useTranslation()
-  const t = translateFromOut || translation
+export const useTags = () => {
+  const { t } = useTranslation()
 
   const tags = useMemo(() => {
     return tagKeys.map((tag) => {
       return {
         name: tag,
-        label: t(`pluginTags.tags.${tag}`),
+        label: t(`tags.${tag}`, { ns: 'pluginTags' }),
       }
     })
   }, [t])
@@ -47,60 +47,27 @@ export const useTags = (translateFromOut?: TFunction) => {
 }
 
 type Category = {
-  name: string
+  name: CategoryKey
   label: string
 }
 
-export const useCategories = (translateFromOut?: TFunction) => {
-  const { t: translation } = useTranslation()
-  const t = translateFromOut || translation
+export const useCategories = (isSingle?: boolean) => {
+  const { t } = useTranslation()
 
   const categories = useMemo(() => {
     return categoryKeys.map((category) => {
-      if (category === 'agent-strategy') {
+      if (category === PluginCategoryEnum.agent) {
         return {
-          name: 'agent-strategy',
-          label: t('plugin.category.agents'),
+          name: PluginCategoryEnum.agent,
+          label: isSingle ? t('categorySingle.agent', { ns: 'plugin' }) : t('category.agents', { ns: 'plugin' }),
         }
       }
       return {
         name: category,
-        label: t(`plugin.category.${category}s`),
+        label: isSingle ? t(`categorySingle.${category}`, { ns: 'plugin' }) : t(`category.${category}s`, { ns: 'plugin' }),
       }
     })
-  }, [t])
-
-  const categoriesMap = useMemo(() => {
-    return categories.reduce((acc, category) => {
-      acc[category.name] = category
-      return acc
-    }, {} as Record<string, Category>)
-  }, [categories])
-
-  return {
-    categories,
-    categoriesMap,
-  }
-}
-
-export const useSingleCategories = (translateFromOut?: TFunction) => {
-  const { t: translation } = useTranslation()
-  const t = translateFromOut || translation
-
-  const categories = useMemo(() => {
-    return categoryKeys.map((category) => {
-      if (category === 'agent-strategy') {
-        return {
-          name: 'agent-strategy',
-          label: t('plugin.categorySingle.agent'),
-        }
-      }
-      return {
-        name: category,
-        label: t(`plugin.categorySingle.${category}`),
-      }
-    })
-  }, [t])
+  }, [t, isSingle])
 
   const categoriesMap = useMemo(() => {
     return categories.reduce((acc, category) => {
@@ -123,8 +90,8 @@ export const PLUGIN_PAGE_TABS_MAP = {
 export const usePluginPageTabs = () => {
   const { t } = useTranslation()
   const tabs = [
-    { value: PLUGIN_PAGE_TABS_MAP.plugins, text: t('common.menus.plugins') },
-    { value: PLUGIN_PAGE_TABS_MAP.marketplace, text: t('common.menus.exploreMarketplace') },
+    { value: PLUGIN_PAGE_TABS_MAP.plugins, text: t('menus.plugins', { ns: 'common' }) },
+    { value: PLUGIN_PAGE_TABS_MAP.marketplace, text: t('menus.exploreMarketplace', { ns: 'common' }) },
   ]
   return tabs
 }

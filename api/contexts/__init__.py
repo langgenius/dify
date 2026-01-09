@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from core.model_runtime.entities.model_entities import AIModelEntity
     from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
     from core.tools.plugin_tool.provider import PluginToolProviderController
+    from core.trigger.provider import PluginTriggerProviderController
 
 
 """
@@ -40,4 +41,12 @@ datasource_plugin_providers: RecyclableContextVar[dict[str, "DatasourcePluginPro
 
 datasource_plugin_providers_lock: RecyclableContextVar[Lock] = RecyclableContextVar(
     ContextVar("datasource_plugin_providers_lock")
+)
+
+plugin_trigger_providers: RecyclableContextVar[dict[str, "PluginTriggerProviderController"]] = RecyclableContextVar(
+    ContextVar("plugin_trigger_providers")
+)
+
+plugin_trigger_providers_lock: RecyclableContextVar[Lock] = RecyclableContextVar(
+    ContextVar("plugin_trigger_providers_lock")
 )

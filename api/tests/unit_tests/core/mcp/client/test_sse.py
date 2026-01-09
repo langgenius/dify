@@ -139,7 +139,9 @@ def test_sse_client_error_handling():
     with patch("core.mcp.client.sse_client.create_ssrf_proxy_mcp_http_client") as mock_client_factory:
         with patch("core.mcp.client.sse_client.ssrf_proxy_sse_connect") as mock_sse_connect:
             # Mock 401 HTTP error
-            mock_error = httpx.HTTPStatusError("Unauthorized", request=Mock(), response=Mock(status_code=401))
+            mock_response = Mock(status_code=401)
+            mock_response.headers = {"WWW-Authenticate": 'Bearer realm="example"'}
+            mock_error = httpx.HTTPStatusError("Unauthorized", request=Mock(), response=mock_response)
             mock_sse_connect.side_effect = mock_error
 
             with pytest.raises(MCPAuthError):
@@ -150,7 +152,9 @@ def test_sse_client_error_handling():
     with patch("core.mcp.client.sse_client.create_ssrf_proxy_mcp_http_client") as mock_client_factory:
         with patch("core.mcp.client.sse_client.ssrf_proxy_sse_connect") as mock_sse_connect:
             # Mock other HTTP error
-            mock_error = httpx.HTTPStatusError("Server Error", request=Mock(), response=Mock(status_code=500))
+            mock_response = Mock(status_code=500)
+            mock_response.headers = {}
+            mock_error = httpx.HTTPStatusError("Server Error", request=Mock(), response=mock_response)
             mock_sse_connect.side_effect = mock_error
 
             with pytest.raises(MCPConnectionError):

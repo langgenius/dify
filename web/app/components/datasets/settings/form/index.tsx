@@ -1,42 +1,39 @@
 'use client'
-import { useCallback, useRef, useState } from 'react'
-import { useMount } from 'ahooks'
+import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
+import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { Member } from '@/models/common'
+import type { IconInfo } from '@/models/datasets'
+import type { AppIconType, RetrievalConfig } from '@/types/app'
+import { RiAlertFill } from '@remixicon/react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import PermissionSelector from '../permission-selector'
-import IndexMethod from '../index-method'
-import RetrievalSettings from '../../external-knowledge-base/create/RetrievalSettings'
-import { IndexingType } from '../../create/step-two'
-import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
-import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
+import AppIcon from '@/app/components/base/app-icon'
+import AppIconPicker from '@/app/components/base/app-icon-picker'
 import Button from '@/app/components/base/button'
+import Divider from '@/app/components/base/divider'
+import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
-import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
-import { updateDatasetSetting } from '@/service/datasets'
-import type { IconInfo } from '@/models/datasets'
-import { ChunkingMode, DatasetPermission } from '@/models/datasets'
-import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import type { AppIconType, RetrievalConfig } from '@/types/app'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
-import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
-import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
-import {
-  useModelList,
-  useModelListAndDefaultModelAndCurrentProviderAndModel,
-} from '@/app/components/header/account-setting/model-provider-page/hooks'
-import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { fetchMembers } from '@/service/common'
-import type { Member } from '@/models/common'
-import AppIcon from '@/app/components/base/app-icon'
-import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
-import AppIconPicker from '@/app/components/base/app-icon-picker'
-import Divider from '@/app/components/base/divider'
-import ChunkStructure from '../chunk-structure'
 import Toast from '@/app/components/base/toast'
-import { RiAlertFill } from '@remixicon/react'
+import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
+import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
+import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDocLink } from '@/context/i18n'
+import { ChunkingMode, DatasetPermission } from '@/models/datasets'
+import { updateDatasetSetting } from '@/service/datasets'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
+import { useMembers } from '@/service/use-common'
+import { IndexingType } from '../../create/step-two'
+import RetrievalSettings from '../../external-knowledge-base/create/RetrievalSettings'
+import ChunkStructure from '../chunk-structure'
+import IndexMethod from '../index-method'
+import PermissionSelector from '../permission-selector'
+import { checkShowMultiModalTip } from '../utils'
 
 const rowClass = 'flex gap-x-1'
 const labelClass = 'flex items-center shrink-0 w-[180px] h-7 pt-1'
@@ -71,27 +68,18 @@ const Form = () => {
   const [embeddingModel, setEmbeddingModel] = useState<DefaultModel>(
     currentDataset?.embedding_model
       ? {
-        provider: currentDataset.embedding_model_provider,
-        model: currentDataset.embedding_model,
-      }
+          provider: currentDataset.embedding_model_provider,
+          model: currentDataset.embedding_model,
+        }
       : {
-        provider: '',
-        model: '',
-      },
+          provider: '',
+          model: '',
+        },
   )
-  const {
-    modelList: rerankModelList,
-  } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
+  const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
   const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
+  const { data: membersData } = useMembers()
   const previousAppIcon = useRef(DEFAULT_APP_ICON)
-
-  const getMembers = async () => {
-    const { accounts } = await fetchMembers({ url: '/workspaces/current/members', params: {} })
-    if (!accounts)
-      setMemberList([])
-    else
-      setMemberList(accounts)
-  }
 
   const handleOpenAppIconPicker = useCallback(() => {
     setShowAppIconPicker(true)
@@ -114,7 +102,7 @@ const Form = () => {
     setShowAppIconPicker(false)
   }, [])
 
-  const handleSettingsChange = useCallback((data: { top_k?: number; score_threshold?: number; score_threshold_enabled?: boolean }) => {
+  const handleSettingsChange = useCallback((data: { top_k?: number, score_threshold?: number, score_threshold_enabled?: boolean }) => {
     if (data.top_k !== undefined)
       setTopK(data.top_k)
     if (data.score_threshold !== undefined)
@@ -123,16 +111,19 @@ const Form = () => {
       setScoreThresholdEnabled(data.score_threshold_enabled)
   }, [])
 
-  useMount(() => {
-    getMembers()
-  })
+  useEffect(() => {
+    if (!membersData?.accounts)
+      setMemberList([])
+    else
+      setMemberList(membersData.accounts)
+  }, [membersData])
 
   const invalidDatasetList = useInvalidDatasetList()
   const handleSave = async () => {
     if (loading)
       return
     if (!name?.trim()) {
-      Toast.notify({ type: 'error', message: t('datasetSettings.form.nameError') })
+      Toast.notify({ type: 'error', message: t('form.nameError', { ns: 'datasetSettings' }) })
       return
     }
     if (
@@ -142,12 +133,12 @@ const Form = () => {
         indexMethod,
       })
     ) {
-      Toast.notify({ type: 'error', message: t('appDebug.datasetConfig.rerankModelRequired') })
+      Toast.notify({ type: 'error', message: t('datasetConfig.rerankModelRequired', { ns: 'appDebug' }) })
       return
     }
     if (retrievalConfig.weights) {
-      retrievalConfig.weights.vector_setting.embedding_provider_name = currentDataset?.embedding_model_provider || ''
-      retrievalConfig.weights.vector_setting.embedding_model_name = currentDataset?.embedding_model || ''
+      retrievalConfig.weights.vector_setting.embedding_provider_name = embeddingModel.provider || ''
+      retrievalConfig.weights.vector_setting.embedding_model_name = embeddingModel.model || ''
     }
     try {
       setLoading(true)
@@ -187,14 +178,14 @@ const Form = () => {
         })
       }
       await updateDatasetSetting(requestParams)
-      Toast.notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       if (mutateDatasets) {
         await mutateDatasets()
         invalidDatasetList()
       }
     }
     catch {
-      Toast.notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+      Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
     }
     finally {
       setLoading(false)
@@ -203,18 +194,32 @@ const Form = () => {
 
   const isShowIndexMethod = currentDataset && currentDataset.doc_form !== ChunkingMode.parentChild && currentDataset.indexing_technique && indexMethod
 
+  const showMultiModalTip = useMemo(() => {
+    return checkShowMultiModalTip({
+      embeddingModel,
+      rerankingEnable: retrievalConfig.reranking_enable,
+      rerankModel: {
+        rerankingProviderName: retrievalConfig.reranking_model.reranking_provider_name,
+        rerankingModelName: retrievalConfig.reranking_model.reranking_model_name,
+      },
+      indexMethod,
+      embeddingModelList,
+      rerankModelList,
+    })
+  }, [embeddingModel, rerankModelList, retrievalConfig.reranking_enable, retrievalConfig.reranking_model, embeddingModelList, indexMethod])
+
   return (
-    <div className='flex w-full flex-col gap-y-4 px-20 py-8 sm:w-[960px]'>
+    <div className="flex w-full flex-col gap-y-4 px-20 py-8 sm:w-[960px]">
       {/* Dataset name and icon */}
       <div className={rowClass}>
         <div className={labelClass}>
-          <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.nameAndIcon')}</div>
+          <div className="system-sm-semibold text-text-secondary">{t('form.nameAndIcon', { ns: 'datasetSettings' })}</div>
         </div>
-        <div className='flex grow items-center gap-x-2'>
+        <div className="flex grow items-center gap-x-2">
           <AppIcon
-            size='small'
+            size="small"
             onClick={handleOpenAppIconPicker}
-            className='cursor-pointer'
+            className="cursor-pointer"
             iconType={iconInfo.icon_type as AppIconType}
             icon={iconInfo.icon}
             background={iconInfo.icon_background}
@@ -231,13 +236,13 @@ const Form = () => {
       {/* Dataset description */}
       <div className={rowClass}>
         <div className={labelClass}>
-          <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.desc')}</div>
+          <div className="system-sm-semibold text-text-secondary">{t('form.desc', { ns: 'datasetSettings' })}</div>
         </div>
-        <div className='grow'>
+        <div className="grow">
           <Textarea
             disabled={!currentDataset?.embedding_available}
-            className='resize-none'
-            placeholder={t('datasetSettings.form.descPlaceholder') || ''}
+            className="resize-none"
+            placeholder={t('form.descPlaceholder', { ns: 'datasetSettings' }) || ''}
             value={description}
             onChange={e => setDescription(e.target.value)}
           />
@@ -246,9 +251,9 @@ const Form = () => {
       {/* Permissions */}
       <div className={rowClass}>
         <div className={labelClass}>
-          <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.permissions')}</div>
+          <div className="system-sm-semibold text-text-secondary">{t('form.permissions', { ns: 'datasetSettings' })}</div>
         </div>
-        <div className='grow'>
+        <div className="grow">
           <PermissionSelector
             disabled={!currentDataset?.embedding_available || isCurrentWorkspaceDatasetOperator}
             permission={permission}
@@ -263,28 +268,28 @@ const Form = () => {
         currentDataset?.doc_form && (
           <>
             <Divider
-              type='horizontal'
-              className='my-1 h-px bg-divider-subtle'
+              type="horizontal"
+              className="my-1 h-px bg-divider-subtle"
             />
             {/* Chunk Structure */}
             <div className={rowClass}>
-              <div className='flex w-[180px] shrink-0 flex-col'>
-                <div className='system-sm-semibold flex h-8 items-center text-text-secondary'>
-                  {t('datasetSettings.form.chunkStructure.title')}
+              <div className="flex w-[180px] shrink-0 flex-col">
+                <div className="system-sm-semibold flex h-8 items-center text-text-secondary">
+                  {t('form.chunkStructure.title', { ns: 'datasetSettings' })}
                 </div>
-                <div className='body-xs-regular text-text-tertiary'>
+                <div className="body-xs-regular text-text-tertiary">
                   <a
-                    target='_blank'
-                    rel='noopener noreferrer'
+                    target="_blank"
+                    rel="noopener noreferrer"
                     href={docLink('/guides/knowledge-base/create-knowledge-and-upload-documents/chunking-and-cleaning-text')}
-                    className='text-text-accent'
+                    className="text-text-accent"
                   >
-                    {t('datasetSettings.form.chunkStructure.learnMore')}
+                    {t('form.chunkStructure.learnMore', { ns: 'datasetSettings' })}
                   </a>
-                  {t('datasetSettings.form.chunkStructure.description')}
+                  {t('form.chunkStructure.description', { ns: 'datasetSettings' })}
                 </div>
               </div>
-              <div className='grow'>
+              <div className="grow">
                 <ChunkStructure
                   chunkStructure={currentDataset?.doc_form}
                 />
@@ -295,16 +300,16 @@ const Form = () => {
       }
       {(isShowIndexMethod || indexMethod === 'high_quality') && (
         <Divider
-          type='horizontal'
-          className='my-1 h-px bg-divider-subtle'
+          type="horizontal"
+          className="my-1 h-px bg-divider-subtle"
         />
       )}
       {isShowIndexMethod && (
         <div className={rowClass}>
           <div className={labelClass}>
-            <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.indexMethod')}</div>
+            <div className="system-sm-semibold text-text-secondary">{t('form.indexMethod', { ns: 'datasetSettings' })}</div>
           </div>
-          <div className='grow'>
+          <div className="grow">
             <IndexMethod
               value={indexMethod}
               disabled={!currentDataset?.embedding_available}
@@ -314,13 +319,13 @@ const Form = () => {
               onKeywordNumberChange={setKeywordNumber}
             />
             {currentDataset.indexing_technique === IndexingType.ECONOMICAL && indexMethod === IndexingType.QUALIFIED && (
-              <div className='relative mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-2 shadow-xs shadow-shadow-shadow-3'>
-                <div className='absolute left-0 top-0 flex h-full w-full items-center bg-toast-warning-bg opacity-40' />
-                <div className='p-1'>
-                  <RiAlertFill className='size-4 text-text-warning-secondary' />
+              <div className="relative mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-2 shadow-xs shadow-shadow-shadow-3">
+                <div className="absolute left-0 top-0 flex h-full w-full items-center bg-toast-warning-bg opacity-40" />
+                <div className="p-1">
+                  <RiAlertFill className="size-4 text-text-warning-secondary" />
                 </div>
-                <span className='system-xs-medium text-text-primary'>
-                  {t('datasetSettings.form.upgradeHighQualityTip')}
+                <span className="system-xs-medium text-text-primary">
+                  {t('form.upgradeHighQualityTip', { ns: 'datasetSettings' })}
                 </span>
               </div>
             )}
@@ -330,11 +335,11 @@ const Form = () => {
       {indexMethod === IndexingType.QUALIFIED && (
         <div className={rowClass}>
           <div className={labelClass}>
-            <div className='system-sm-semibold text-text-secondary'>
-              {t('datasetSettings.form.embeddingModel')}
+            <div className="system-sm-semibold text-text-secondary">
+              {t('form.embeddingModel', { ns: 'datasetSettings' })}
             </div>
           </div>
-          <div className='grow'>
+          <div className="grow">
             <ModelSelector
               defaultModel={embeddingModel}
               modelList={embeddingModelList}
@@ -346,123 +351,123 @@ const Form = () => {
       {/* Retrieval Method Config */}
       {currentDataset?.provider === 'external'
         ? (
-          <>
-            <Divider
-              type='horizontal'
-              className='my-1 h-px bg-divider-subtle'
-            />
-            <div className={rowClass}>
-              <div className={labelClass}>
-                <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.retrievalSetting.title')}</div>
-              </div>
-              <RetrievalSettings
-                topK={topK}
-                scoreThreshold={scoreThreshold}
-                scoreThresholdEnabled={scoreThresholdEnabled}
-                onChange={handleSettingsChange}
-                isInRetrievalSetting={true}
-              />
-            </div>
-            <Divider
-              type='horizontal'
-              className='my-1 h-px bg-divider-subtle'
-            />
-            <div className={rowClass}>
-              <div className={labelClass}>
-                <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.externalKnowledgeAPI')}</div>
-              </div>
-              <div className='w-full'>
-                <div className='flex h-full items-center gap-1 rounded-lg bg-components-input-bg-normal px-3 py-2'>
-                  <ApiConnectionMod className='h-4 w-4 text-text-secondary' />
-                  <div className='system-sm-medium overflow-hidden text-ellipsis text-text-secondary'>
-                    {currentDataset?.external_knowledge_info.external_knowledge_api_name}
-                  </div>
-                  <div className='system-xs-regular text-text-tertiary'>·</div>
-                  <div className='system-xs-regular text-text-tertiary'>
-                    {currentDataset?.external_knowledge_info.external_knowledge_api_endpoint}
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className={rowClass}>
-              <div className={labelClass}>
-                <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.externalKnowledgeID')}</div>
-              </div>
-              <div className='w-full'>
-                <div className='flex h-full items-center gap-1 rounded-lg bg-components-input-bg-normal px-3 py-2'>
-                  <div className='system-xs-regular text-text-tertiary'>
-                    {currentDataset?.external_knowledge_info.external_knowledge_id}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </>
-        )
-        // eslint-disable-next-line sonarjs/no-nested-conditional
-        : indexMethod
-          ? (
             <>
               <Divider
-                type='horizontal'
-                className='my-1 h-px bg-divider-subtle'
+                type="horizontal"
+                className="my-1 h-px bg-divider-subtle"
               />
               <div className={rowClass}>
                 <div className={labelClass}>
-                  <div className='flex w-[180px] shrink-0 flex-col'>
-                    <div className='system-sm-semibold flex h-7 items-center pt-1 text-text-secondary'>
-                      {t('datasetSettings.form.retrievalSetting.title')}
+                  <div className="system-sm-semibold text-text-secondary">{t('form.retrievalSetting.title', { ns: 'datasetSettings' })}</div>
+                </div>
+                <RetrievalSettings
+                  topK={topK}
+                  scoreThreshold={scoreThreshold}
+                  scoreThresholdEnabled={scoreThresholdEnabled}
+                  onChange={handleSettingsChange}
+                  isInRetrievalSetting={true}
+                />
+              </div>
+              <Divider
+                type="horizontal"
+                className="my-1 h-px bg-divider-subtle"
+              />
+              <div className={rowClass}>
+                <div className={labelClass}>
+                  <div className="system-sm-semibold text-text-secondary">{t('form.externalKnowledgeAPI', { ns: 'datasetSettings' })}</div>
+                </div>
+                <div className="w-full">
+                  <div className="flex h-full items-center gap-1 rounded-lg bg-components-input-bg-normal px-3 py-2">
+                    <ApiConnectionMod className="h-4 w-4 text-text-secondary" />
+                    <div className="system-sm-medium overflow-hidden text-ellipsis text-text-secondary">
+                      {currentDataset?.external_knowledge_info.external_knowledge_api_name}
                     </div>
-                    <div className='body-xs-regular text-text-tertiary'>
-                      <a
-                        target='_blank'
-                        rel='noopener noreferrer'
-                        href={docLink('/guides/knowledge-base/create-knowledge-and-upload-documents/setting-indexing-methods#setting-the-retrieval-setting', {
-                          'zh-Hans': '/guides/knowledge-base/create-knowledge-and-upload-documents/setting-indexing-methods#指定检索方式',
-                          'ja-JP': '/guides/knowledge-base/create-knowledge-and-upload-documents/setting-indexing-methods#検索方法の指定',
-                        })}
-                        className='text-text-accent'
-                      >
-                        {t('datasetSettings.form.retrievalSetting.learnMore')}
-                      </a>
-                      {t('datasetSettings.form.retrievalSetting.description')}
+                    <div className="system-xs-regular text-text-tertiary">·</div>
+                    <div className="system-xs-regular text-text-tertiary">
+                      {currentDataset?.external_knowledge_info.external_knowledge_api_endpoint}
                     </div>
                   </div>
                 </div>
-                <div className='grow'>
-                  {indexMethod === IndexingType.QUALIFIED
-                    ? (
-                      <RetrievalMethodConfig
-                        value={retrievalConfig}
-                        onChange={setRetrievalConfig}
-                      />
-                    )
-                    : (
-                      <EconomicalRetrievalMethodConfig
-                        value={retrievalConfig}
-                        onChange={setRetrievalConfig}
-                      />
-                    )}
+              </div>
+              <div className={rowClass}>
+                <div className={labelClass}>
+                  <div className="system-sm-semibold text-text-secondary">{t('form.externalKnowledgeID', { ns: 'datasetSettings' })}</div>
+                </div>
+                <div className="w-full">
+                  <div className="flex h-full items-center gap-1 rounded-lg bg-components-input-bg-normal px-3 py-2">
+                    <div className="system-xs-regular text-text-tertiary">
+                      {currentDataset?.external_knowledge_info.external_knowledge_id}
+                    </div>
+                  </div>
                 </div>
               </div>
             </>
           )
-          : null
-      }
+        // eslint-disable-next-line sonarjs/no-nested-conditional
+        : indexMethod
+          ? (
+              <>
+                <Divider
+                  type="horizontal"
+                  className="my-1 h-px bg-divider-subtle"
+                />
+                <div className={rowClass}>
+                  <div className={labelClass}>
+                    <div className="flex w-[180px] shrink-0 flex-col">
+                      <div className="system-sm-semibold flex h-7 items-center pt-1 text-text-secondary">
+                        {t('form.retrievalSetting.title', { ns: 'datasetSettings' })}
+                      </div>
+                      <div className="body-xs-regular text-text-tertiary">
+                        <a
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          href={docLink('/guides/knowledge-base/create-knowledge-and-upload-documents/setting-indexing-methods#setting-the-retrieval-setting', {
+                            'zh-Hans': '/guides/knowledge-base/create-knowledge-and-upload-documents/setting-indexing-methods#指定检索方式',
+                            'ja-JP': '/guides/knowledge-base/create-knowledge-and-upload-documents/setting-indexing-methods#検索方法の指定',
+                          })}
+                          className="text-text-accent"
+                        >
+                          {t('form.retrievalSetting.learnMore', { ns: 'datasetSettings' })}
+                        </a>
+                        {t('form.retrievalSetting.description', { ns: 'datasetSettings' })}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grow">
+                    {indexMethod === IndexingType.QUALIFIED
+                      ? (
+                          <RetrievalMethodConfig
+                            value={retrievalConfig}
+                            onChange={setRetrievalConfig}
+                            showMultiModalTip={showMultiModalTip}
+                          />
+                        )
+                      : (
+                          <EconomicalRetrievalMethodConfig
+                            value={retrievalConfig}
+                            onChange={setRetrievalConfig}
+                          />
+                        )}
+                  </div>
+                </div>
+              </>
+            )
+          : null}
       <Divider
-        type='horizontal'
-        className='my-1 h-px bg-divider-subtle'
+        type="horizontal"
+        className="my-1 h-px bg-divider-subtle"
       />
       <div className={rowClass}>
         <div className={labelClass} />
-        <div className='grow'>
+        <div className="grow">
           <Button
-            className='min-w-24'
-            variant='primary'
+            className="min-w-24"
+            variant="primary"
             loading={loading}
             disabled={loading}
             onClick={handleSave}
           >
-            {t('datasetSettings.form.save')}
+            {t('form.save', { ns: 'datasetSettings' })}
           </Button>
         </div>
       </div>

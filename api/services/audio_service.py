@@ -82,54 +82,51 @@ class AudioService:
         message_id: str | None = None,
         is_draft: bool = False,
     ):
-        from app import app
-
         def invoke_tts(text_content: str, app_model: App, voice: str | None = None, is_draft: bool = False):
-            with app.app_context():
-                if voice is None:
-                    if app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
-                        if is_draft:
-                            workflow = WorkflowService().get_draft_workflow(app_model=app_model)
-                        else:
-                            workflow = app_model.workflow
-                        if (
-                            workflow is None
-                            or "text_to_speech" not in workflow.features_dict
-                            or not workflow.features_dict["text_to_speech"].get("enabled")
-                        ):
+            if voice is None:
+                if app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
+                    if is_draft:
+                        workflow = WorkflowService().get_draft_workflow(app_model=app_model)
+                    else:
+                        workflow = app_model.workflow
+                    if (
+                        workflow is None
+                        or "text_to_speech" not in workflow.features_dict
+                        or not workflow.features_dict["text_to_speech"].get("enabled")
+                    ):
+                        raise ValueError("TTS is not enabled")
+
+                    voice = workflow.features_dict["text_to_speech"].get("voice")
+                else:
+                    if not is_draft:
+                        if app_model.app_model_config is None:
+                            raise ValueError("AppModelConfig not found")
+                        text_to_speech_dict = app_model.app_model_config.text_to_speech_dict
+
+                        if not text_to_speech_dict.get("enabled"):
                             raise ValueError("TTS is not enabled")
 
-                        voice = workflow.features_dict["text_to_speech"].get("voice")
-                    else:
-                        if not is_draft:
-                            if app_model.app_model_config is None:
-                                raise ValueError("AppModelConfig not found")
-                            text_to_speech_dict = app_model.app_model_config.text_to_speech_dict
+                        voice = text_to_speech_dict.get("voice")
 
-                            if not text_to_speech_dict.get("enabled"):
-                                raise ValueError("TTS is not enabled")
-
-                            voice = text_to_speech_dict.get("voice")
-
-                model_manager = ModelManager()
-                model_instance = model_manager.get_default_model_instance(
-                    tenant_id=app_model.tenant_id, model_type=ModelType.TTS
-                )
-                try:
-                    if not voice:
-                        voices = model_instance.get_tts_voices()
-                        if voices:
-                            voice = voices[0].get("value")
-                            if not voice:
-                                raise ValueError("Sorry, no voice available.")
-                        else:
+            model_manager = ModelManager()
+            model_instance = model_manager.get_default_model_instance(
+                tenant_id=app_model.tenant_id, model_type=ModelType.TTS
+            )
+            try:
+                if not voice:
+                    voices = model_instance.get_tts_voices()
+                    if voices:
+                        voice = voices[0].get("value")
+                        if not voice:
                             raise ValueError("Sorry, no voice available.")
+                    else:
+                        raise ValueError("Sorry, no voice available.")
 
-                    return model_instance.invoke_tts(
-                        content_text=text_content.strip(), user=end_user, tenant_id=app_model.tenant_id, voice=voice
-                    )
-                except Exception as e:
-                    raise e
+                return model_instance.invoke_tts(
+                    content_text=text_content.strip(), user=end_user, tenant_id=app_model.tenant_id, voice=voice
+                )
+            except Exception as e:
+                raise e
 
         if message_id:
             try:

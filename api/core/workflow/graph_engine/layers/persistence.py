@@ -216,7 +216,6 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
     def _handle_graph_run_paused(self, event: GraphRunPausedEvent) -> None:
         execution = self._get_workflow_execution()
         execution.status = WorkflowExecutionStatus.PAUSED
-        execution.error_message = event.reason or "Workflow execution paused"
         execution.outputs = event.outputs
         self._populate_completion_statistics(execution, update_finished=False)
 
@@ -296,7 +295,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             domain_execution,
             event.node_run_result,
             WorkflowNodeExecutionStatus.PAUSED,
-            error=event.reason,
+            error="",
             update_outputs=False,
         )
 
@@ -338,8 +337,6 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         if update_finished:
             execution.finished_at = naive_utc_now()
         runtime_state = self.graph_runtime_state
-        if runtime_state is None:
-            return
         execution.total_tokens = runtime_state.total_tokens
         execution.total_steps = runtime_state.node_run_steps
         execution.outputs = execution.outputs or runtime_state.outputs
@@ -405,6 +402,4 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
 
     def _system_variables(self) -> Mapping[str, Any]:
         runtime_state = self.graph_runtime_state
-        if runtime_state is None:
-            return {}
         return runtime_state.variable_pool.get_by_prefix(SYSTEM_VARIABLE_NODE_ID)

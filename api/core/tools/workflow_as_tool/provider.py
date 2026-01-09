@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections.abc import Mapping
 
 from pydantic import Field
@@ -5,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import VariableEntity, VariableEntityType
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
+from core.db.session_factory import session_factory
 from core.plugin.entities.parameters import PluginParameterOption
 from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -31,6 +34,7 @@ VARIABLE_TO_PARAMETER_TYPE_MAPPING = {
     VariableEntityType.PARAGRAPH: ToolParameter.ToolParameterType.STRING,
     VariableEntityType.SELECT: ToolParameter.ToolParameterType.SELECT,
     VariableEntityType.NUMBER: ToolParameter.ToolParameterType.NUMBER,
+    VariableEntityType.CHECKBOX: ToolParameter.ToolParameterType.BOOLEAN,
     VariableEntityType.FILE: ToolParameter.ToolParameterType.FILE,
     VariableEntityType.FILE_LIST: ToolParameter.ToolParameterType.FILES,
 }
@@ -45,34 +49,30 @@ class WorkflowToolProviderController(ToolProviderController):
         self.provider_id = provider_id
 
     @classmethod
-    def from_db(cls, db_provider: WorkflowToolProvider) -> "WorkflowToolProviderController":
-        with Session(db.engine, expire_on_commit=False) as session, session.begin():
-            provider = session.get(WorkflowToolProvider, db_provider.id) if db_provider.id else None
-            if not provider:
-                raise ValueError("workflow provider not found")
-            app = session.get(App, provider.app_id)
+    def from_db(cls, db_provider: WorkflowToolProvider) -> WorkflowToolProviderController:
+        with session_factory.create_session() as session, session.begin():
+            app = session.get(App, db_provider.app_id)
             if not app:
                 raise ValueError("app not found")
 
-            user = session.get(Account, provider.user_id) if provider.user_id else None
-
+            user = session.get(Account, db_provider.user_id) if db_provider.user_id else None
             controller = WorkflowToolProviderController(
                 entity=ToolProviderEntity(
                     identity=ToolProviderIdentity(
                         author=user.name if user else "",
-                        name=provider.label,
-                        label=I18nObject(en_US=provider.label, zh_Hans=provider.label),
-                        description=I18nObject(en_US=provider.description, zh_Hans=provider.description),
-                        icon=provider.icon,
+                        name=db_provider.label,
+                        label=I18nObject(en_US=db_provider.label, zh_Hans=db_provider.label),
+                        description=I18nObject(en_US=db_provider.description, zh_Hans=db_provider.description),
+                        icon=db_provider.icon,
                     ),
                     credentials_schema=[],
                     plugin_id=None,
                 ),
-                provider_id=provider.id or "",
+                provider_id=db_provider.id,
             )
 
             controller.tools = [
-                controller._get_db_provider_tool(provider, app, session=session, user=user),
+                controller._get_db_provider_tool(db_provider, app, session=session, user=user),
             ]
 
         return controller
@@ -140,6 +140,7 @@ class WorkflowToolProviderController(ToolProviderController):
                         form=parameter.form,
                         llm_description=parameter.description,
                         required=variable.required,
+                        default=variable.default,
                         options=options,
                         placeholder=I18nObject(en_US="", zh_Hans=""),
                     )
@@ -160,6 +161,20 @@ class WorkflowToolProviderController(ToolProviderController):
             else:
                 raise ValueError("variable not found")
 
+        # get output schema from workflow
+        outputs = WorkflowToolConfigurationUtils.get_workflow_graph_output(graph)
+
+        reserved_keys = {"json", "text", "files"}
+
+        properties = {}
+        for output in outputs:
+            if output.variable not in reserved_keys:
+                properties[output.variable] = {
+                    "type": output.value_type,
+                    "description": "",
+                }
+        output_schema = {"type": "object", "properties": properties}
+
         return WorkflowTool(
             workflow_as_tool_id=db_provider.id,
             entity=ToolEntity(
@@ -175,6 +190,7 @@ class WorkflowToolProviderController(ToolProviderController):
                     llm=db_provider.description,
                 ),
                 parameters=workflow_tool_parameters,
+                output_schema=output_schema,
             ),
             runtime=ToolRuntime(
                 tenant_id=db_provider.tenant_id,
@@ -204,7 +220,7 @@ class WorkflowToolProviderController(ToolProviderController):
                 session.query(WorkflowToolProvider)
                 .where(
                     WorkflowToolProvider.tenant_id == tenant_id,
-                    WorkflowToolProvider.app_id == self.provider_id,
+                    WorkflowToolProvider.id == self.provider_id,
                 )
                 .first()
             )

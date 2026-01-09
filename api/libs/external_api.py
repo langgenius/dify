@@ -1,5 +1,4 @@
 import re
-import sys
 from collections.abc import Mapping
 from typing import Any
 
@@ -9,9 +8,8 @@ from werkzeug.exceptions import HTTPException
 from werkzeug.http import HTTP_STATUS_CODES
 
 from configs import dify_config
-from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_CSRF_TOKEN, COOKIE_NAME_REFRESH_TOKEN
 from core.errors.error import AppInvokeQuotaExceededError
-from libs.token import is_secure
+from libs.token import build_force_logout_cookie_headers
 
 
 def http_status_message(code):
@@ -73,15 +71,7 @@ def register_external_error_handlers(api: Api):
                 error_code = getattr(e, "error_code", None)
                 if error_code == "unauthorized_and_force_logout":
                     # Add Set-Cookie headers to clear auth cookies
-
-                    secure = is_secure()
-                    # response is not accessible, so we need to do it ugly
-                    common_part = "Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly"
-                    headers["Set-Cookie"] = [
-                        f'{COOKIE_NAME_ACCESS_TOKEN}=""; {common_part}{"; Secure" if secure else ""}; SameSite=Lax',
-                        f'{COOKIE_NAME_CSRF_TOKEN}=""; {common_part}{"; Secure" if secure else ""}; SameSite=Lax',
-                        f'{COOKIE_NAME_REFRESH_TOKEN}=""; {common_part}{"; Secure" if secure else ""}; SameSite=Lax',
-                    ]
+                    headers["Set-Cookie"] = build_force_logout_cookie_headers()
             return data, status_code, headers
 
     _ = handle_http_exception
@@ -118,11 +108,8 @@ def register_external_error_handlers(api: Api):
         data.setdefault("code", "unknown")
         data.setdefault("status", status_code)
 
-        # Log stack
-        exc_info: Any = sys.exc_info()
-        if exc_info[1] is None:
-            exc_info = (None, None, None)
-        current_app.log_exception(exc_info)
+        # Note: Exception logging is handled by Flask/Flask-RESTX framework automatically
+        # Explicit log_exception call removed to avoid duplicate log entries
 
         return data, status_code
 

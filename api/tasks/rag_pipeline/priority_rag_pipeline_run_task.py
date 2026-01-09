@@ -12,8 +12,10 @@ from celery import shared_task  # type: ignore
 from flask import current_app, g
 from sqlalchemy.orm import Session, sessionmaker
 
+from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
+from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from core.repositories.factory import DifyCoreRepositoryFactory
 from extensions.ext_database import db
 from models import Account, Tenant
@@ -21,6 +23,8 @@ from models.dataset import Pipeline
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
 from services.file_service import FileService
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="priority_pipeline")
@@ -43,6 +47,8 @@ def priority_rag_pipeline_run_task(
         )
         rag_pipeline_invoke_entities = json.loads(rag_pipeline_invoke_entities_content)
 
+        logger.info("tenant %s received %d rag pipeline invoke entities", tenant_id, len(rag_pipeline_invoke_entities))
+
         # Get Flask app object for thread context
         flask_app = current_app._get_current_object()  # type: ignore
 
@@ -62,13 +68,34 @@ def priority_rag_pipeline_run_task(
         end_at = time.perf_counter()
         logging.info(
             click.style(
-                f"tenant_id: {tenant_id} , Rag pipeline run completed. Latency: {end_at - start_at}s", fg="green"
+                f"tenant_id: {tenant_id}, Rag pipeline run completed. Latency: {end_at - start_at}s", fg="green"
             )
         )
     except Exception:
         logging.exception(click.style(f"Error running rag pipeline, tenant_id: {tenant_id}", fg="red"))
         raise
     finally:
+        tenant_isolated_task_queue = TenantIsolatedTaskQueue(tenant_id, "pipeline")
+
+        # Check if there are waiting tasks in the queue
+        # Use rpop to get the next task from the queue (FIFO order)
+        next_file_ids = tenant_isolated_task_queue.pull_tasks(count=dify_config.TENANT_ISOLATED_TASK_CONCURRENCY)
+        logger.info("priority rag pipeline tenant isolation queue %s next files: %s", tenant_id, next_file_ids)
+
+        if next_file_ids:
+            for next_file_id in next_file_ids:
+                # Process the next waiting task
+                # Keep the flag set to indicate a task is running
+                tenant_isolated_task_queue.set_task_waiting_time()
+                priority_rag_pipeline_run_task.delay(  # type: ignore
+                    rag_pipeline_invoke_entities_file_id=next_file_id.decode("utf-8")
+                    if isinstance(next_file_id, bytes)
+                    else next_file_id,
+                    tenant_id=tenant_id,
+                )
+        else:
+            # No more waiting tasks, clear the flag
+            tenant_isolated_task_queue.delete_task_key()
         file_service = FileService(db.engine)
         file_service.delete_file(rag_pipeline_invoke_entities_file_id)
         db.session.close()
@@ -151,7 +178,7 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
                 workflow_id=workflow_id,
                 user=account,
                 application_generate_entity=entity,
-                invoke_from=InvokeFrom.PUBLISHED,
+                invoke_from=InvokeFrom.PUBLISHED_PIPELINE,
                 workflow_execution_repository=workflow_execution_repository,
                 workflow_node_execution_repository=workflow_node_execution_repository,
                 streaming=streaming,

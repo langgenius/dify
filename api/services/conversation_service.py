@@ -6,16 +6,18 @@ from typing import Any, Union
 from sqlalchemy import asc, desc, func, or_, select
 from sqlalchemy.orm import Session
 
+from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.db.session_factory import session_factory
 from core.llm_generator.llm_generator import LLMGenerator
 from core.variables.types import SegmentType
-from core.workflow.nodes.variable_assigner.common.impl import conversation_variable_updater_factory
 from extensions.ext_database import db
 from factories import variable_factory
 from libs.datetime_utils import naive_utc_now
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account, ConversationVariable
 from models.model import App, Conversation, EndUser, Message
+from services.conversation_variable_updater import ConversationVariableUpdater
 from services.errors.conversation import (
     ConversationNotExistsError,
     ConversationVariableNotExistsError,
@@ -118,7 +120,7 @@ class ConversationService:
         app_model: App,
         conversation_id: str,
         user: Union[Account, EndUser] | None,
-        name: str,
+        name: str | None,
         auto_generate: bool,
     ):
         conversation = cls.get_conversation(app_model, conversation_id, user)
@@ -202,6 +204,7 @@ class ConversationService:
         user: Union[Account, EndUser] | None,
         limit: int,
         last_id: str | None,
+        variable_name: str | None = None,
     ) -> InfiniteScrollPagination:
         conversation = cls.get_conversation(app_model, conversation_id, user)
 
@@ -212,7 +215,27 @@ class ConversationService:
             .order_by(ConversationVariable.created_at)
         )
 
-        with Session(db.engine) as session:
+        # Apply variable_name filter if provided
+        if variable_name:
+            # Filter using JSON extraction to match variable names case-insensitively
+            from libs.helper import escape_like_pattern
+
+            escaped_variable_name = escape_like_pattern(variable_name)
+            # Filter using JSON extraction to match variable names case-insensitively
+            if dify_config.DB_TYPE in ["mysql", "oceanbase", "seekdb"]:
+                stmt = stmt.where(
+                    func.json_extract(ConversationVariable.data, "$.name").ilike(
+                        f"%{escaped_variable_name}%", escape="\\"
+                    )
+                )
+            elif dify_config.DB_TYPE == "postgresql":
+                stmt = stmt.where(
+                    func.json_extract_path_text(ConversationVariable.data, "name").ilike(
+                        f"%{escaped_variable_name}%", escape="\\"
+                    )
+                )
+
+        with session_factory.create_session() as session:
             if last_id:
                 last_variable = session.scalar(stmt.where(ConversationVariable.id == last_id))
                 if not last_variable:
@@ -279,7 +302,7 @@ class ConversationService:
             .where(ConversationVariable.id == variable_id)
         )
 
-        with Session(db.engine) as session:
+        with session_factory.create_session() as session:
             existing_variable = session.scalar(stmt)
             if not existing_variable:
                 raise ConversationVariableNotExistsError()
@@ -314,7 +337,7 @@ class ConversationService:
             updated_variable = variable_factory.build_conversation_variable_from_mapping(updated_variable_dict)
 
             # Use the conversation variable updater to persist the changes
-            updater = conversation_variable_updater_factory()
+            updater = ConversationVariableUpdater(session_factory.get_session_maker())
             updater.update(conversation_id, updated_variable)
             updater.flush()
 

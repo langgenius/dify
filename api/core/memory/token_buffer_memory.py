@@ -1,6 +1,7 @@
 from collections.abc import Sequence
 
 from sqlalchemy import select
+from sqlalchemy.orm import sessionmaker
 
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.file import file_manager
@@ -18,7 +19,9 @@ from core.prompt.utils.extract_thread_messages import extract_thread_messages
 from extensions.ext_database import db
 from factories import file_factory
 from models.model import AppMode, Conversation, Message, MessageFile
-from models.workflow import Workflow, WorkflowRun
+from models.workflow import Workflow
+from repositories.api_workflow_run_repository import APIWorkflowRunRepository
+from repositories.factory import DifyAPIRepositoryFactory
 
 
 class TokenBufferMemory:
@@ -29,6 +32,14 @@ class TokenBufferMemory:
     ):
         self.conversation = conversation
         self.model_instance = model_instance
+        self._workflow_run_repo: APIWorkflowRunRepository | None = None
+
+    @property
+    def workflow_run_repo(self) -> APIWorkflowRunRepository:
+        if self._workflow_run_repo is None:
+            session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+            self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+        return self._workflow_run_repo
 
     def _build_prompt_message_with_files(
         self,
@@ -50,7 +61,16 @@ class TokenBufferMemory:
         if self.conversation.mode in {AppMode.AGENT_CHAT, AppMode.COMPLETION, AppMode.CHAT}:
             file_extra_config = FileUploadConfigManager.convert(self.conversation.model_config)
         elif self.conversation.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
-            workflow_run = db.session.scalar(select(WorkflowRun).where(WorkflowRun.id == message.workflow_run_id))
+            app = self.conversation.app
+            if not app:
+                raise ValueError("App not found for conversation")
+
+            if not message.workflow_run_id:
+                raise ValueError("Workflow run ID not found")
+
+            workflow_run = self.workflow_run_repo.get_workflow_run_by_id(
+                tenant_id=app.tenant_id, app_id=app.id, run_id=message.workflow_run_id
+            )
             if not workflow_run:
                 raise ValueError(f"Workflow run not found: {message.workflow_run_id}")
             workflow = db.session.scalar(select(Workflow).where(Workflow.id == workflow_run.workflow_id))

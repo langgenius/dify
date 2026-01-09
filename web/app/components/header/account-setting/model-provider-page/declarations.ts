@@ -14,7 +14,8 @@ export enum FormTypeEnum {
   secretInput = 'secret-input',
   select = 'select',
   radio = 'radio',
-  boolean = 'checkbox',
+  checkbox = 'checkbox',
+  boolean = 'boolean',
   files = 'files',
   file = 'file',
   modelSelector = 'model-selector',
@@ -129,17 +130,17 @@ export type CredentialFormSchemaBase = {
 }
 
 export type CredentialFormSchemaTextInput = CredentialFormSchemaBase & {
-  max_length?: number;
-  placeholder?: TypeWithI18N,
+  max_length?: number
+  placeholder?: TypeWithI18N
   template?: {
     enabled: boolean
-  },
+  }
   auto_generate?: {
     type: string
   }
 }
-export type CredentialFormSchemaNumberInput = CredentialFormSchemaBase & { min?: number; max?: number; placeholder?: TypeWithI18N }
-export type CredentialFormSchemaSelect = CredentialFormSchemaBase & { options: FormOption[]; placeholder?: TypeWithI18N }
+export type CredentialFormSchemaNumberInput = CredentialFormSchemaBase & { min?: number, max?: number, placeholder?: TypeWithI18N }
+export type CredentialFormSchemaSelect = CredentialFormSchemaBase & { options: FormOption[], placeholder?: TypeWithI18N }
 export type CredentialFormSchemaRadio = CredentialFormSchemaBase & { options: FormOption[] }
 export type CredentialFormSchemaSecretInput = CredentialFormSchemaBase & { placeholder?: TypeWithI18N }
 export type CredentialFormSchema = CredentialFormSchemaTextInput | CredentialFormSchemaSelect | CredentialFormSchemaRadio | CredentialFormSchemaSecretInput
@@ -216,7 +217,7 @@ export type ModelProvider = {
     url: TypeWithI18N
   }
   icon_small: TypeWithI18N
-  icon_large: TypeWithI18N
+  icon_small_dark?: TypeWithI18N
   background?: string
   supported_model_types: ModelTypeEnum[]
   configurate_methods: ConfigurationMethodEnum[]
@@ -252,8 +253,8 @@ export type ModelProvider = {
 
 export type Model = {
   provider: string
-  icon_large: TypeWithI18N
   icon_small: TypeWithI18N
+  icon_small_dark?: TypeWithI18N
   label: TypeWithI18N
   models: ModelItem[]
   status: ModelStatusEnum
@@ -264,7 +265,6 @@ export type DefaultModelResponse = {
   model_type: ModelTypeEnum
   provider: {
     provider: string
-    icon_large: TypeWithI18N
     icon_small: TypeWithI18N
   }
 }

@@ -1,9 +1,11 @@
+import hashlib
 import logging
+import time
 from threading import Thread
 from typing import Union
 
 from flask import Flask, current_app
-from sqlalchemy import select
+from sqlalchemy import exists, select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -31,6 +33,7 @@ from core.app.entities.task_entities import (
 from core.llm_generator.llm_generator import LLMGenerator
 from core.tools.signature import sign_tool_file
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from models.model import AppMode, Conversation, MessageAnnotation, MessageFile
 from services.annotation_service import AppAnnotationService
 
@@ -51,6 +54,20 @@ class MessageCycleManager:
     ):
         self._application_generate_entity = application_generate_entity
         self._task_state = task_state
+        self._message_has_file: set[str] = set()
+
+    def get_message_event_type(self, message_id: str) -> StreamEvent:
+        if message_id in self._message_has_file:
+            return StreamEvent.MESSAGE_FILE
+
+        with Session(db.engine, expire_on_commit=False) as session:
+            has_file = session.query(exists().where(MessageFile.message_id == message_id)).scalar()
+
+        if has_file:
+            self._message_has_file.add(message_id)
+            return StreamEvent.MESSAGE_FILE
+
+        return StreamEvent.MESSAGE
 
     def generate_conversation_name(self, *, conversation_id: str, query: str) -> Thread | None:
         """
@@ -68,6 +85,8 @@ class MessageCycleManager:
 
         if auto_generate_conversation_name and is_first_message:
             # start generate thread
+            # time.sleep not block other logic
+            time.sleep(1)
             thread = Thread(
                 target=self._generate_conversation_name_worker,
                 kwargs={
@@ -76,7 +95,7 @@ class MessageCycleManager:
                     "query": query,
                 },
             )
-
+            thread.daemon = True
             thread.start()
 
             return thread
@@ -98,15 +117,23 @@ class MessageCycleManager:
                     return
 
                 # generate conversation name
-                try:
-                    name = LLMGenerator.generate_conversation_name(
-                        app_model.tenant_id, query, conversation_id, conversation.app_id
-                    )
-                    conversation.name = name
-                except Exception:
-                    if dify_config.DEBUG:
-                        logger.exception("generate conversation name failed, conversation_id: %s", conversation_id)
+                query_hash = hashlib.md5(query.encode()).hexdigest()[:16]
+                cache_key = f"conv_name:{conversation_id}:{query_hash}"
 
+                cached_name = redis_client.get(cache_key)
+                if cached_name:
+                    name = cached_name.decode("utf-8")
+                else:
+                    try:
+                        name = LLMGenerator.generate_conversation_name(
+                            app_model.tenant_id, query, conversation_id, conversation.app_id
+                        )
+                        redis_client.setex(cache_key, 3600, name)
+                    except Exception:
+                        if dify_config.DEBUG:
+                            logger.exception("generate conversation name failed, conversation_id: %s", conversation_id)
+                        name = query[:47] + "..." if len(query) > 50 else query
+                conversation.name = name
                 db.session.commit()
                 db.session.close()
 
@@ -140,7 +167,27 @@ class MessageCycleManager:
         if not self._application_generate_entity.app_config.additional_features:
             raise ValueError("Additional features not found")
         if self._application_generate_entity.app_config.additional_features.show_retrieve_source:
-            self._task_state.metadata.retriever_resources = event.retriever_resources
+            merged_resources = [r for r in self._task_state.metadata.retriever_resources or [] if r]
+            existing_ids = {(r.dataset_id, r.document_id) for r in merged_resources if r.dataset_id and r.document_id}
+
+            # Add new unique resources from the event
+            for resource in event.retriever_resources or []:
+                if not resource:
+                    continue
+
+                is_duplicate = (
+                    resource.dataset_id
+                    and resource.document_id
+                    and (resource.dataset_id, resource.document_id) in existing_ids
+                )
+
+                if not is_duplicate:
+                    merged_resources.append(resource)
+
+            for i, resource in enumerate(merged_resources, 1):
+                resource.position = i
+
+            self._task_state.metadata.retriever_resources = merged_resources
 
     def message_file_to_stream_response(self, event: QueueMessageFileEvent) -> MessageFileStreamResponse | None:
         """
@@ -181,7 +228,11 @@ class MessageCycleManager:
         return None
 
     def message_to_stream_response(
-        self, answer: str, message_id: str, from_variable_selector: list[str] | None = None
+        self,
+        answer: str,
+        message_id: str,
+        from_variable_selector: list[str] | None = None,
+        event_type: StreamEvent | None = None,
     ) -> MessageStreamResponse:
         """
         Message to stream response.
@@ -189,16 +240,12 @@ class MessageCycleManager:
         :param message_id: message id
         :return:
         """
-        with Session(db.engine, expire_on_commit=False) as session:
-            message_file = session.scalar(select(MessageFile).where(MessageFile.id == message_id))
-        event_type = StreamEvent.MESSAGE_FILE if message_file else StreamEvent.MESSAGE
-
         return MessageStreamResponse(
             task_id=self._application_generate_entity.task_id,
             id=message_id,
             answer=answer,
             from_variable_selector=from_variable_selector,
-            event=event_type,
+            event=event_type or StreamEvent.MESSAGE,
         )
 
     def message_replace_to_stream_response(self, answer: str, reason: str = "") -> MessageReplaceStreamResponse:

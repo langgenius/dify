@@ -21,6 +21,7 @@ from core.file.enums import FileTransferMethod, FileType
 from core.file.models import File
 from core.variables.segments import (
     ArrayFileSegment,
+    ArrayNumberSegment,
     ArraySegment,
     FileSegment,
     FloatSegment,
@@ -30,6 +31,7 @@ from core.variables.segments import (
     StringSegment,
 )
 from services.variable_truncator import (
+    DummyVariableTruncator,
     MaxDepthExceededError,
     TruncationResult,
     UnknownTypeError,
@@ -516,6 +518,55 @@ class TestEdgeCases:
         assert isinstance(result.result, StringSegment)
 
 
+class TestTruncateJsonPrimitives:
+    """Test _truncate_json_primitives method with different data types."""
+
+    @pytest.fixture
+    def truncator(self):
+        return VariableTruncator()
+
+    def test_truncate_json_primitives_file_type(self, truncator, file):
+        """Test that File objects are handled correctly in _truncate_json_primitives."""
+        # Test File object is returned as-is without truncation
+        result = truncator._truncate_json_primitives(file, 1000)
+
+        assert result.value == file
+        assert result.truncated is False
+        # Size should be calculated correctly
+        expected_size = VariableTruncator.calculate_json_size(file)
+        assert result.value_size == expected_size
+
+    def test_truncate_json_primitives_file_type_small_budget(self, truncator, file):
+        """Test that File objects are returned as-is even with small budget."""
+        # Even with a small size budget, File objects should not be truncated
+        result = truncator._truncate_json_primitives(file, 10)
+
+        assert result.value == file
+        assert result.truncated is False
+
+    def test_truncate_json_primitives_file_type_in_array(self, truncator, file):
+        """Test File objects in arrays are handled correctly."""
+        array_with_files = [file, file]
+        result = truncator._truncate_json_primitives(array_with_files, 1000)
+
+        assert isinstance(result.value, list)
+        assert len(result.value) == 2
+        assert result.value[0] == file
+        assert result.value[1] == file
+        assert result.truncated is False
+
+    def test_truncate_json_primitives_file_type_in_object(self, truncator, file):
+        """Test File objects in objects are handled correctly."""
+        obj_with_files = {"file1": file, "file2": file}
+        result = truncator._truncate_json_primitives(obj_with_files, 1000)
+
+        assert isinstance(result.value, dict)
+        assert len(result.value) == 2
+        assert result.value["file1"] == file
+        assert result.value["file2"] == file
+        assert result.truncated is False
+
+
 class TestIntegrationScenarios:
     """Test realistic integration scenarios."""
 
@@ -596,3 +647,32 @@ class TestIntegrationScenarios:
         truncated_mapping, truncated = truncator.truncate_variable_mapping(mapping)
         assert truncated is False
         assert truncated_mapping == mapping
+
+
+def test_dummy_variable_truncator_methods():
+    """Test DummyVariableTruncator methods work correctly."""
+    truncator = DummyVariableTruncator()
+
+    # Test truncate_variable_mapping
+    test_data: dict[str, Any] = {
+        "key1": "value1",
+        "key2": ["item1", "item2"],
+        "large_array": list(range(2000)),
+    }
+    result, is_truncated = truncator.truncate_variable_mapping(test_data)
+
+    assert result == test_data
+    assert not is_truncated
+
+    # Test truncate method
+    segment = StringSegment(value="test string")
+    result = truncator.truncate(segment)
+    assert isinstance(result, TruncationResult)
+    assert result.result == segment
+    assert result.truncated is False
+
+    segment = ArrayNumberSegment(value=list(range(2000)))
+    result = truncator.truncate(segment)
+    assert isinstance(result, TruncationResult)
+    assert result.result == segment
+    assert result.truncated is False

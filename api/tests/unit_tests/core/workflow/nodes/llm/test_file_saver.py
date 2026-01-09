@@ -78,7 +78,7 @@ class TestFileSaverImpl:
             file_binary=_PNG_DATA,
             mimetype=mime_type,
         )
-        mocked_sign_file.assert_called_once_with(mock_tool_file.id, ".png")
+        mocked_sign_file.assert_called_once_with(tool_file_id=mock_tool_file.id, extension=".png", for_external=True)
 
     def test_save_remote_url_request_failed(self, monkeypatch: pytest.MonkeyPatch):
         _TEST_URL = "https://example.com/image.png"

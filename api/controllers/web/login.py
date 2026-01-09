@@ -10,15 +10,20 @@ from controllers.console.auth.error import (
     InvalidEmailError,
 )
 from controllers.console.error import AccountBannedError
-from controllers.console.wraps import only_edition_enterprise, setup_required
+from controllers.console.wraps import (
+    decrypt_code_field,
+    decrypt_password_field,
+    only_edition_enterprise,
+    setup_required,
+)
 from controllers.web import web_ns
 from controllers.web.wraps import decode_jwt_token
 from libs.helper import email
 from libs.passport import PassportService
 from libs.password import valid_password
 from libs.token import (
-    clear_access_token_from_cookie,
-    extract_access_token,
+    clear_webapp_access_token_from_cookie,
+    extract_webapp_access_token,
 )
 from services.account_service import AccountService
 from services.app_service import AppService
@@ -42,6 +47,7 @@ class LoginApi(Resource):
             404: "Account not found",
         }
     )
+    @decrypt_password_field
     def post(self):
         """Authenticate user and login."""
         parser = (
@@ -81,7 +87,8 @@ class LoginStatusApi(Resource):
     )
     def get(self):
         app_code = request.args.get("app_code")
-        token = extract_access_token(request)
+        user_id = request.args.get("user_id")
+        token = extract_webapp_access_token(request)
         if not app_code:
             return {
                 "logged_in": bool(token),
@@ -103,7 +110,7 @@ class LoginStatusApi(Resource):
                 user_logged_in = False
 
         try:
-            _ = decode_jwt_token(app_code=app_code)
+            _ = decode_jwt_token(app_code=app_code, user_id=user_id)
             app_logged_in = True
         except Exception:
             app_logged_in = False
@@ -128,7 +135,7 @@ class LogoutApi(Resource):
         response = make_response({"result": "success"})
         # enterprise SSO sets same site to None in https deployment
         # so we need to logout by calling api
-        clear_access_token_from_cookie(response, samesite="None")
+        clear_webapp_access_token_from_cookie(response, samesite="None")
         return response
 
 
@@ -180,6 +187,7 @@ class EmailCodeLoginApi(Resource):
             404: "Account not found",
         }
     )
+    @decrypt_code_field
     def post(self):
         parser = (
             reqparse.RequestParser()

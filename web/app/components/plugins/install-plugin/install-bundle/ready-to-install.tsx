@@ -1,14 +1,15 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useState } from 'react'
+import type { Dependency, InstallStatus, Plugin } from '../../types'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
 import { InstallStep } from '../../types'
 import Install from './steps/install'
 import Installed from './steps/installed'
-import type { Dependency, InstallStatusResponse, Plugin } from '../../types'
 
 type Props = {
   step: InstallStep
-  onStepChange: (step: InstallStep) => void,
+  onStepChange: (step: InstallStep) => void
   onStartToInstall: () => void
   setIsInstalling: (isInstalling: boolean) => void
   allPlugins: Dependency[]
@@ -26,8 +27,8 @@ const ReadyToInstall: FC<Props> = ({
   isFromMarketPlace,
 }) => {
   const [installedPlugins, setInstalledPlugins] = useState<Plugin[]>([])
-  const [installStatus, setInstallStatus] = useState<InstallStatusResponse[]>([])
-  const handleInstalled = useCallback((plugins: Plugin[], installStatus: InstallStatusResponse[]) => {
+  const [installStatus, setInstallStatus] = useState<InstallStatus[]>([])
+  const handleInstalled = useCallback((plugins: Plugin[], installStatus: InstallStatus[]) => {
     setInstallStatus(installStatus)
     setInstalledPlugins(plugins)
     onStepChange(InstallStep.installed)

@@ -35,7 +35,10 @@ class ExternalDatasetService:
             .order_by(ExternalKnowledgeApis.created_at.desc())
         )
         if search:
-            query = query.where(ExternalKnowledgeApis.name.ilike(f"%{search}%"))
+            from libs.helper import escape_like_pattern
+
+            escaped_search = escape_like_pattern(search)
+            query = query.where(ExternalKnowledgeApis.name.ilike(f"%{escaped_search}%", escape="\\"))
 
         external_knowledge_apis = db.paginate(
             select=query, page=page, per_page=per_page, max_per_page=100, error_out=False
@@ -62,7 +65,7 @@ class ExternalDatasetService:
             tenant_id=tenant_id,
             created_by=user_id,
             updated_by=user_id,
-            name=args.get("name"),
+            name=str(args.get("name")),
             description=args.get("description", ""),
             settings=json.dumps(args.get("settings"), ensure_ascii=False),
         )
@@ -163,7 +166,7 @@ class ExternalDatasetService:
         external_knowledge_api = (
             db.session.query(ExternalKnowledgeApis).filter_by(id=external_knowledge_api_id, tenant_id=tenant_id).first()
         )
-        if external_knowledge_api is None:
+        if external_knowledge_api is None or external_knowledge_api.settings is None:
             raise ValueError("api template not found")
         settings = json.loads(external_knowledge_api.settings)
         for setting in settings:
@@ -257,12 +260,16 @@ class ExternalDatasetService:
 
         db.session.add(dataset)
         db.session.flush()
+        if args.get("external_knowledge_id") is None:
+            raise ValueError("external_knowledge_id is required")
+        if args.get("external_knowledge_api_id") is None:
+            raise ValueError("external_knowledge_api_id is required")
 
         external_knowledge_binding = ExternalKnowledgeBindings(
             tenant_id=tenant_id,
             dataset_id=dataset.id,
-            external_knowledge_api_id=args.get("external_knowledge_api_id"),
-            external_knowledge_id=args.get("external_knowledge_id"),
+            external_knowledge_api_id=args.get("external_knowledge_api_id") or "",
+            external_knowledge_id=args.get("external_knowledge_id") or "",
             created_by=user_id,
         )
         db.session.add(external_knowledge_binding)
@@ -290,7 +297,7 @@ class ExternalDatasetService:
             .filter_by(id=external_knowledge_binding.external_knowledge_api_id)
             .first()
         )
-        if not external_knowledge_api:
+        if external_knowledge_api is None or external_knowledge_api.settings is None:
             raise ValueError("external api template not found")
 
         settings = json.loads(external_knowledge_api.settings)
@@ -320,4 +327,5 @@ class ExternalDatasetService:
         )
         if response.status_code == 200:
             return cast(list[Any], response.json().get("records", []))
-        return []
+        else:
+            raise ValueError(response.text)

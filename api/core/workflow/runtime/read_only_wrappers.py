@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from typing import Any
 
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.variables.segments import Segment
+from core.workflow.system_variable import SystemVariableReadOnlyView
 
 from .graph_runtime_state import GraphRuntimeState
 from .variable_pool import VariablePool
@@ -17,9 +18,9 @@ class ReadOnlyVariablePoolWrapper:
     def __init__(self, variable_pool: VariablePool) -> None:
         self._variable_pool = variable_pool
 
-    def get(self, node_id: str, variable_key: str) -> Segment | None:
+    def get(self, selector: Sequence[str], /) -> Segment | None:
         """Return a copy of a variable value if present."""
-        value = self._variable_pool.get([node_id, variable_key])
+        value = self._variable_pool.get(selector)
         return deepcopy(value) if value is not None else None
 
     def get_all_by_node(self, node_id: str) -> Mapping[str, object]:
@@ -41,6 +42,10 @@ class ReadOnlyGraphRuntimeStateWrapper:
     def __init__(self, state: GraphRuntimeState) -> None:
         self._state = state
         self._variable_pool_wrapper = ReadOnlyVariablePoolWrapper(state.variable_pool)
+
+    @property
+    def system_variable(self) -> SystemVariableReadOnlyView:
+        return self._state.variable_pool.system_variables.as_view()
 
     @property
     def variable_pool(self) -> ReadOnlyVariablePoolWrapper:

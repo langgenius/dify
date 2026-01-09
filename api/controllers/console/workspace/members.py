@@ -1,7 +1,8 @@
 from urllib import parse
 
 from flask import abort, request
-from flask_restx import Resource, marshal_with, reqparse
+from flask_restx import Resource, marshal_with
+from pydantic import BaseModel, Field
 
 import services
 from configs import dify_config
@@ -31,6 +32,42 @@ from services.account_service import AccountService, RegisterService, TenantServ
 from services.errors.account import AccountAlreadyInTenantError
 from services.feature_service import FeatureService
 
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
+
+class MemberInvitePayload(BaseModel):
+    emails: list[str] = Field(default_factory=list)
+    role: TenantAccountRole
+    language: str | None = None
+
+
+class MemberRoleUpdatePayload(BaseModel):
+    role: str
+
+
+class OwnerTransferEmailPayload(BaseModel):
+    language: str | None = None
+
+
+class OwnerTransferCheckPayload(BaseModel):
+    code: str
+    token: str
+
+
+class OwnerTransferPayload(BaseModel):
+    token: str
+
+
+def reg(cls: type[BaseModel]):
+    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
+
+
+reg(MemberInvitePayload)
+reg(MemberRoleUpdatePayload)
+reg(OwnerTransferEmailPayload)
+reg(OwnerTransferCheckPayload)
+reg(OwnerTransferPayload)
+
 
 @console_ns.route("/workspaces/current/members")
 class MemberListApi(Resource):
@@ -52,22 +89,18 @@ class MemberListApi(Resource):
 class MemberInviteEmailApi(Resource):
     """Invite a new member by email."""
 
+    @console_ns.expect(console_ns.models[MemberInvitePayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("members")
     def post(self):
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("emails", type=list, required=True, location="json")
-            .add_argument("role", type=str, required=True, default="admin", location="json")
-            .add_argument("language", type=str, required=False, location="json")
-        )
-        args = parser.parse_args()
+        payload = console_ns.payload or {}
+        args = MemberInvitePayload.model_validate(payload)
 
-        invitee_emails = args["emails"]
-        invitee_role = args["role"]
-        interface_language = args["language"]
+        invitee_emails = args.emails
+        invitee_role = args.role
+        interface_language = args.language
         if not TenantAccountRole.is_non_owner_role(invitee_role):
             return {"code": "invalid-role", "message": "Invalid role"}, 400
         current_user, _ = current_account_with_tenant()
@@ -147,13 +180,14 @@ class MemberCancelInviteApi(Resource):
 class MemberUpdateRoleApi(Resource):
     """Update member role."""
 
+    @console_ns.expect(console_ns.models[MemberRoleUpdatePayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     def put(self, member_id):
-        parser = reqparse.RequestParser().add_argument("role", type=str, required=True, location="json")
-        args = parser.parse_args()
-        new_role = args["role"]
+        payload = console_ns.payload or {}
+        args = MemberRoleUpdatePayload.model_validate(payload)
+        new_role = args.role
 
         if not TenantAccountRole.is_valid_role(new_role):
             return {"code": "invalid-role", "message": "Invalid role"}, 400
@@ -195,13 +229,14 @@ class DatasetOperatorMemberListApi(Resource):
 class SendOwnerTransferEmailApi(Resource):
     """Send owner transfer email."""
 
+    @console_ns.expect(console_ns.models[OwnerTransferEmailPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @is_allow_transfer_owner
     def post(self):
-        parser = reqparse.RequestParser().add_argument("language", type=str, required=False, location="json")
-        args = parser.parse_args()
+        payload = console_ns.payload or {}
+        args = OwnerTransferEmailPayload.model_validate(payload)
         ip_address = extract_remote_ip(request)
         if AccountService.is_email_send_ip_limit(ip_address):
             raise EmailSendIpLimitError()
@@ -212,7 +247,7 @@ class SendOwnerTransferEmailApi(Resource):
         if not TenantService.is_owner(current_user, current_user.current_tenant):
             raise NotOwnerError()
 
-        if args["language"] is not None and args["language"] == "zh-Hans":
+        if args.language is not None and args.language == "zh-Hans":
             language = "zh-Hans"
         else:
             language = "en-US"
@@ -231,17 +266,14 @@ class SendOwnerTransferEmailApi(Resource):
 
 @console_ns.route("/workspaces/current/members/owner-transfer-check")
 class OwnerTransferCheckApi(Resource):
+    @console_ns.expect(console_ns.models[OwnerTransferCheckPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @is_allow_transfer_owner
     def post(self):
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("code", type=str, required=True, location="json")
-            .add_argument("token", type=str, required=True, nullable=False, location="json")
-        )
-        args = parser.parse_args()
+        payload = console_ns.payload or {}
+        args = OwnerTransferCheckPayload.model_validate(payload)
         # check if the current user is the owner of the workspace
         current_user, _ = current_account_with_tenant()
         if not current_user.current_tenant:
@@ -255,22 +287,22 @@ class OwnerTransferCheckApi(Resource):
         if is_owner_transfer_error_rate_limit:
             raise OwnerTransferLimitError()
 
-        token_data = AccountService.get_owner_transfer_data(args["token"])
+        token_data = AccountService.get_owner_transfer_data(args.token)
         if token_data is None:
             raise InvalidTokenError()
 
         if user_email != token_data.get("email"):
             raise InvalidEmailError()
 
-        if args["code"] != token_data.get("code"):
+        if args.code != token_data.get("code"):
             AccountService.add_owner_transfer_error_rate_limit(user_email)
             raise EmailCodeError()
 
         # Verified, revoke the first token
-        AccountService.revoke_owner_transfer_token(args["token"])
+        AccountService.revoke_owner_transfer_token(args.token)
 
         # Refresh token data by generating a new token
-        _, new_token = AccountService.generate_owner_transfer_token(user_email, code=args["code"], additional_data={})
+        _, new_token = AccountService.generate_owner_transfer_token(user_email, code=args.code, additional_data={})
 
         AccountService.reset_owner_transfer_error_rate_limit(user_email)
         return {"is_valid": True, "email": token_data.get("email"), "token": new_token}
@@ -278,15 +310,14 @@ class OwnerTransferCheckApi(Resource):
 
 @console_ns.route("/workspaces/current/members/<uuid:member_id>/owner-transfer")
 class OwnerTransfer(Resource):
+    @console_ns.expect(console_ns.models[OwnerTransferPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @is_allow_transfer_owner
     def post(self, member_id):
-        parser = reqparse.RequestParser().add_argument(
-            "token", type=str, required=True, nullable=False, location="json"
-        )
-        args = parser.parse_args()
+        payload = console_ns.payload or {}
+        args = OwnerTransferPayload.model_validate(payload)
 
         # check if the current user is the owner of the workspace
         current_user, _ = current_account_with_tenant()
@@ -298,14 +329,14 @@ class OwnerTransfer(Resource):
         if current_user.id == str(member_id):
             raise CannotTransferOwnerToSelfError()
 
-        transfer_token_data = AccountService.get_owner_transfer_data(args["token"])
+        transfer_token_data = AccountService.get_owner_transfer_data(args.token)
         if not transfer_token_data:
             raise InvalidTokenError()
 
         if transfer_token_data.get("email") != current_user.email:
             raise InvalidEmailError()
 
-        AccountService.revoke_owner_transfer_token(args["token"])
+        AccountService.revoke_owner_transfer_token(args.token)
 
         member = db.session.get(Account, str(member_id))
         if not member:

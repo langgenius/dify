@@ -1,23 +1,28 @@
-import { fetchNodeInspectVars } from '@/service/workflow'
-import { useWorkflowStore } from '@/app/components/workflow/store'
-import type { ValueSelector } from '@/app/components/workflow/types'
+import type { Node, ValueSelector } from '@/app/components/workflow/types'
+import type { SchemaTypeDefinition } from '@/service/use-common'
+import type { FlowType } from '@/types/common'
 import type { VarInInspect } from '@/types/workflow'
-import { VarInInspectType } from '@/types/workflow'
+import { produce } from 'immer'
 import { useCallback } from 'react'
+import { useStoreApi } from 'reactflow'
+import { useEdgesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-edges-interactions-without-sync'
+import { useNodesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-nodes-interactions-without-sync'
 import {
   isConversationVar,
   isENV,
   isSystemVar,
   toNodeOutputVars,
 } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import { produce } from 'immer'
-import type { Node } from '@/app/components/workflow/types'
-import { useNodesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-nodes-interactions-without-sync'
-import { useEdgesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-edges-interactions-without-sync'
-import type { FlowType } from '@/types/common'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import useFLow from '@/service/use-flow'
-import { useStoreApi } from 'reactflow'
-import type { SchemaTypeDefinition } from '@/service/use-common'
+import {
+  useAllBuiltInTools,
+  useAllCustomTools,
+  useAllMCPTools,
+  useAllWorkflowTools,
+} from '@/service/use-tools'
+import { fetchNodeInspectVars } from '@/service/workflow'
+import { VarInInspectType } from '@/types/workflow'
 
 type Params = {
   flowId: string
@@ -51,6 +56,11 @@ export const useInspectVarsCrudCommon = ({
   const { mutateAsync: doEditInspectorVar } = useEditInspectorVar(flowId)
   const { handleCancelNodeSuccessStatus } = useNodesInteractionsWithoutSync()
   const { handleEdgeCancelRunningStatus } = useEdgesInteractionsWithoutSync()
+  const { data: buildInTools } = useAllBuiltInTools()
+  const { data: customTools } = useAllCustomTools()
+  const { data: workflowTools } = useAllWorkflowTools()
+  const { data: mcpTools } = useAllMCPTools()
+
   const getNodeInspectVars = useCallback((nodeId: string) => {
     const { nodesWithInspectVars } = workflowStore.getState()
     const node = nodesWithInspectVars.find(node => node.nodeId === nodeId)
@@ -98,10 +108,6 @@ export const useInspectVarsCrudCommon = ({
   const fetchInspectVarValue = useCallback(async (selector: ValueSelector, schemaTypeDefinitions: SchemaTypeDefinition[]) => {
     const {
       setNodeInspectVars,
-      buildInTools,
-      customTools,
-      workflowTools,
-      mcpTools,
       dataSourceList,
     } = workflowStore.getState()
     const nodeId = selector[0]
@@ -119,11 +125,11 @@ export const useInspectVarsCrudCommon = ({
     const nodeArr = getNodes()
     const currentNode = nodeArr.find(node => node.id === nodeId)
     const allPluginInfoList = {
-      buildInTools,
-      customTools,
-      workflowTools,
-      mcpTools,
-      dataSourceList: dataSourceList ?? [],
+      buildInTools: buildInTools || [],
+      customTools: customTools || [],
+      workflowTools: workflowTools || [],
+      mcpTools: mcpTools || [],
+      dataSourceList: dataSourceList || [],
     }
     const currentNodeOutputVars = toNodeOutputVars([currentNode], false, () => true, [], [], [], allPluginInfoList, schemaTypeDefinitions)
     const vars = await fetchNodeInspectVars(flowType, flowId, nodeId)
@@ -135,7 +141,7 @@ export const useInspectVarsCrudCommon = ({
       }
     })
     setNodeInspectVars(nodeId, varsWithSchemaType)
-  }, [workflowStore, flowType, flowId, invalidateSysVarValues, invalidateConversationVarValues])
+  }, [workflowStore, flowType, flowId, invalidateSysVarValues, invalidateConversationVarValues, buildInTools, customTools, workflowTools, mcpTools])
 
   // after last run would call this
   const appendNodeInspectVars = useCallback((nodeId: string, payload: VarInInspect[], allNodes: Node[]) => {

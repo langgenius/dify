@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import dataclasses
+from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from typing import Any, Generic, TypeAlias, TypeVar, overload
 
@@ -66,7 +69,17 @@ class TruncationResult:
     truncated: bool
 
 
-class VariableTruncator:
+class BaseTruncator(ABC):
+    @abstractmethod
+    def truncate(self, segment: Segment) -> TruncationResult:
+        pass
+
+    @abstractmethod
+    def truncate_variable_mapping(self, v: Mapping[str, Any]) -> tuple[Mapping[str, Any], bool]:
+        pass
+
+
+class VariableTruncator(BaseTruncator):
     """
     Handles variable truncation with structure-preserving strategies.
 
@@ -95,7 +108,7 @@ class VariableTruncator:
         self._max_size_bytes = max_size_bytes
 
     @classmethod
-    def default(cls) -> "VariableTruncator":
+    def default(cls) -> VariableTruncator:
         return VariableTruncator(
             max_size_bytes=dify_config.WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE,
             array_element_limit=dify_config.WORKFLOW_VARIABLE_TRUNCATION_ARRAY_LENGTH,
@@ -283,7 +296,7 @@ class VariableTruncator:
                 break
 
             remaining_budget = target_size - used_size
-            if item is None or isinstance(item, (str, list, dict, bool, int, float)):
+            if item is None or isinstance(item, (str, list, dict, bool, int, float, UpdatedVariable)):
                 part_result = self._truncate_json_primitives(item, remaining_budget)
             else:
                 raise UnknownTypeError(f"got unknown type {type(item)} in array truncation")
@@ -374,6 +387,11 @@ class VariableTruncator:
         return _PartResult(truncated_obj, used_size, truncated)
 
     @overload
+    def _truncate_json_primitives(
+        self, val: UpdatedVariable, target_size: int
+    ) -> _PartResult[Mapping[str, object]]: ...
+
+    @overload
     def _truncate_json_primitives(self, val: str, target_size: int) -> _PartResult[str]: ...
 
     @overload
@@ -394,9 +412,12 @@ class VariableTruncator:
     @overload
     def _truncate_json_primitives(self, val: None, target_size: int) -> _PartResult[None]: ...
 
+    @overload
+    def _truncate_json_primitives(self, val: File, target_size: int) -> _PartResult[File]: ...
+
     def _truncate_json_primitives(
         self,
-        val: UpdatedVariable | str | list[object] | dict[str, object] | bool | int | float | None,
+        val: UpdatedVariable | File | str | list[object] | dict[str, object] | bool | int | float | None,
         target_size: int,
     ) -> _PartResult[Any]:
         """Truncate a value within an object to fit within budget."""
@@ -409,7 +430,45 @@ class VariableTruncator:
             return self._truncate_array(val, target_size)
         elif isinstance(val, dict):
             return self._truncate_object(val, target_size)
+        elif isinstance(val, File):
+            # File objects should not be truncated, return as-is
+            return _PartResult(val, self.calculate_json_size(val), False)
         elif val is None or isinstance(val, (bool, int, float)):
             return _PartResult(val, self.calculate_json_size(val), False)
         else:
             raise AssertionError("this statement should be unreachable.")
+
+
+class DummyVariableTruncator(BaseTruncator):
+    """
+    A no-op variable truncator that doesn't truncate any data.
+
+    This is used for Service API calls where truncation should be disabled
+    to maintain backward compatibility and provide complete data.
+    """
+
+    def truncate_variable_mapping(self, v: Mapping[str, Any]) -> tuple[Mapping[str, Any], bool]:
+        """
+        Return original mapping without truncation.
+
+        Args:
+            v: The variable mapping to process
+
+        Returns:
+            Tuple of (original_mapping, False) where False indicates no truncation occurred
+        """
+        return v, False
+
+    def truncate(self, segment: Segment) -> TruncationResult:
+        """
+        Return original segment without truncation.
+
+        Args:
+            segment: The segment to process
+
+        Returns:
+            The original segment unchanged
+        """
+        # For Service API, we want to preserve the original segment
+        # without any truncation, so just return it as-is
+        return TruncationResult(result=segment, truncated=False)
