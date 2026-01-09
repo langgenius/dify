@@ -697,11 +697,17 @@ class WorkflowService:
         else:
             enclosing_node_id = None
 
-        # FIXME: Consolidate runtime config checking into a unified location.
+        # TODO: Consolidate runtime config checking into a unified location.
         runtime = draft_workflow.features_dict.get("runtime")
         sandbox = None
+        single_step_execution_id: str | None = None
         if isinstance(runtime, dict) and runtime.get("enabled"):
             sandbox = SandboxProviderService.create_sandbox(tenant_id=draft_workflow.tenant_id)
+            single_step_execution_id = f"single-step-{uuid.uuid4()}"
+            from core.virtual_environment.sandbox_manager import SandboxManager
+
+            SandboxManager.register(single_step_execution_id, sandbox)
+            variable_pool.system_variables.workflow_execution_id = single_step_execution_id
 
         try:
             node, generator = WorkflowEntry.single_step_run(
@@ -713,10 +719,6 @@ class WorkflowService:
                 variable_loader=variable_loader,
             )
 
-            # FIXME: Use a proper dependency injection pattern for sandbox.
-            if sandbox:
-                node.sandbox = sandbox  # type: ignore[attr-defined]
-
             # Run draft workflow node
             start_at = time.perf_counter()
             node_execution = self._handle_single_step_result(
@@ -725,12 +727,15 @@ class WorkflowService:
                 node_id=node_id,
             )
         finally:
-            # Release sandbox after node execution
-            if sandbox:
-                try:
-                    sandbox.release_environment()
-                except Exception:
-                    logger.exception("Failed to release sandbox")
+            if single_step_execution_id:
+                from core.virtual_environment.sandbox_manager import SandboxManager
+
+                sandbox = SandboxManager.unregister(single_step_execution_id)
+                if sandbox:
+                    try:
+                        sandbox.release_environment()
+                    except Exception:
+                        logger.exception("Failed to release sandbox")
 
         # Set workflow_id on the NodeExecution
         node_execution.workflow_id = draft_workflow.id

@@ -6,6 +6,7 @@ from typing import Any
 
 from core.virtual_environment.__base.command_future import CommandCancelledError, CommandTimeoutError
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
+from core.virtual_environment.sandbox_manager import SandboxManager
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base import variable_template_parser
@@ -21,13 +22,13 @@ COMMAND_NODE_TIMEOUT_SECONDS = 60
 
 
 class CommandNode(Node[CommandNodeData]):
-    # FIXME: This is a temporary solution for sandbox injection from SandboxLayer.
-    # The sandbox is dynamically attached by SandboxLayer.on_node_run_start() before
-    # node execution and cleared by on_node_run_end(). A cleaner approach would be
-    # to pass sandbox through GraphRuntimeState or use a proper dependency injection pattern.
-    sandbox: VirtualEnvironment | None = None
-
     node_type = NodeType.COMMAND
+
+    def _get_sandbox(self) -> VirtualEnvironment | None:
+        workflow_execution_id = self.graph_runtime_state.variable_pool.system_variables.workflow_execution_id
+        if not workflow_execution_id:
+            return None
+        return SandboxManager.get(workflow_execution_id)
 
     def _render_template(self, template: str) -> str:
         parser = VariableTemplateParser(template=template)
@@ -57,7 +58,8 @@ class CommandNode(Node[CommandNodeData]):
         return "1"
 
     def _run(self) -> NodeRunResult:
-        if not isinstance(self.sandbox, VirtualEnvironment):
+        sandbox = self._get_sandbox()
+        if sandbox is None:
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 error="Sandbox not available for CommandNode.",
@@ -77,15 +79,15 @@ class CommandNode(Node[CommandNodeData]):
             )
 
         timeout = COMMAND_NODE_TIMEOUT_SECONDS if COMMAND_NODE_TIMEOUT_SECONDS > 0 else None
-        connection_handle = self.sandbox.establish_connection()
+        connection_handle = sandbox.establish_connection()
 
         try:
-            # FIXME: VirtualEnvironment.run_command lacks native cwd support.
+            # TODO: VirtualEnvironment.run_command lacks native cwd support.
             # Once the interface adds a `cwd` parameter, remove this shell hack
             # and pass working_directory directly to run_command.
             if working_directory:
                 check_cmd = ["test", "-d", working_directory]
-                check_future = self.sandbox.run_command(connection_handle, check_cmd)
+                check_future = sandbox.run_command(connection_handle, check_cmd)
                 check_result = check_future.result(timeout=timeout)
 
                 if check_result.exit_code != 0:
@@ -99,7 +101,7 @@ class CommandNode(Node[CommandNodeData]):
             else:
                 command = shlex.split(raw_command)
 
-            future = self.sandbox.run_command(connection_handle, command)
+            future = sandbox.run_command(connection_handle, command)
             result = future.result(timeout=timeout)
 
             outputs: dict[str, Any] = {
@@ -149,7 +151,7 @@ class CommandNode(Node[CommandNodeData]):
             )
         finally:
             with contextlib.suppress(Exception):
-                self.sandbox.release_connection(connection_handle)
+                sandbox.release_connection(connection_handle)
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(

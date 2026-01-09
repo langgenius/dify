@@ -1,11 +1,15 @@
 import time
+from collections.abc import Mapping
 from io import BytesIO
 from typing import Any
+
+import pytest
 
 from core.virtual_environment.__base.entities import Arch, CommandStatus, ConnectionHandle, FileState, Metadata
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 from core.virtual_environment.channel.queue_transport import QueueTransportReadCloser
 from core.virtual_environment.channel.transport import NopTransportWriteCloser
+from core.virtual_environment.sandbox_manager import SandboxManager
 from core.workflow.entities import GraphInitParams
 from core.workflow.enums import WorkflowNodeExecutionStatus
 from core.workflow.nodes.command.node import CommandNode
@@ -30,7 +34,7 @@ class FakeSandbox(VirtualEnvironment):
         self.released_connections: list[str] = []
         super().__init__(tenant_id="test-tenant", options={}, environments={})
 
-    def _construct_environment(self, options, environments):  # type: ignore[override]
+    def _construct_environment(self, options: Mapping[str, Any], environments: Mapping[str, str]) -> Metadata:
         return Metadata(id="fake", arch=Arch.ARM64)
 
     def upload_file(self, path: str, content: BytesIO) -> None:
@@ -51,7 +55,9 @@ class FakeSandbox(VirtualEnvironment):
     def release_environment(self) -> None:
         return
 
-    def execute_command(self, connection_handle: ConnectionHandle, command: list[str], environments=None):  # type: ignore[override]
+    def execute_command(
+        self, connection_handle: ConnectionHandle, command: list[str], environments: Mapping[str, str] | None = None
+    ) -> tuple[str, NopTransportWriteCloser, QueueTransportReadCloser, QueueTransportReadCloser]:
         _ = connection_handle
         _ = environments
         self.last_execute_command = command
@@ -76,12 +82,22 @@ class FakeSandbox(VirtualEnvironment):
         return CommandStatus(status=CommandStatus.Status.COMPLETED, exit_code=0)
 
     @classmethod
-    def validate(cls, options: Any) -> None:
+    def validate(cls, options: Mapping[str, Any]) -> None:
         pass
 
 
-def _make_node(*, command: str, working_directory: str = "") -> CommandNode:
-    variable_pool = VariablePool(system_variables=SystemVariable.empty(), user_inputs={})
+@pytest.fixture(autouse=True)
+def clean_sandbox_manager():
+    SandboxManager.clear()
+    yield
+    SandboxManager.clear()
+
+
+def _make_node(
+    *, command: str, working_directory: str = "", workflow_execution_id: str = "test-workflow-exec-id"
+) -> CommandNode:
+    system_variables = SystemVariable(workflow_execution_id=workflow_execution_id)
+    variable_pool = VariablePool(system_variables=system_variables, user_inputs={})
     runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
     init_params = GraphInitParams(
         tenant_id="t",
@@ -110,11 +126,16 @@ def _make_node(*, command: str, working_directory: str = "") -> CommandNode:
 
 
 def test_command_node_success_executes_in_sandbox():
-    node = _make_node(command="echo {{#pre_node_id.number#}}", working_directory="dir-{{#pre_node_id.number#}}")
+    workflow_execution_id = "test-exec-success"
+    node = _make_node(
+        command="echo {{#pre_node_id.number#}}",
+        working_directory="dir-{{#pre_node_id.number#}}",
+        workflow_execution_id=workflow_execution_id,
+    )
     node.graph_runtime_state.variable_pool.add(("pre_node_id", "number"), 42)
 
     sandbox = FakeSandbox(stdout=b"ok\n", stderr=b"")
-    node.sandbox = sandbox
+    SandboxManager.register(workflow_execution_id, sandbox)
 
     result = node._run()  # pyright: ignore[reportPrivateUsage]
 
@@ -124,18 +145,19 @@ def test_command_node_success_executes_in_sandbox():
     assert result.outputs["exit_code"] == 0
 
     assert sandbox.last_execute_command is not None
-    assert sandbox.last_execute_command[:2] == ["sh", "-lc"]
+    assert sandbox.last_execute_command[:2] == ["sh", "-c"]
     assert "cd dir-42 && echo 42" in sandbox.last_execute_command[2]
 
 
 def test_command_node_nonzero_exit_code_returns_failed_result():
-    node = _make_node(command="false")
+    workflow_execution_id = "test-exec-nonzero"
+    node = _make_node(command="false", workflow_execution_id=workflow_execution_id)
     sandbox = FakeSandbox(
         stdout=b"out",
         stderr=b"err",
         statuses=[CommandStatus(status=CommandStatus.Status.COMPLETED, exit_code=2)],
     )
-    node.sandbox = sandbox
+    SandboxManager.register(workflow_execution_id, sandbox)
 
     result = node._run()  # pyright: ignore[reportPrivateUsage]
 
@@ -149,17 +171,29 @@ def test_command_node_timeout_returns_failed_result_and_closes_transports(monkey
 
     monkeypatch.setattr(command_node_module, "COMMAND_NODE_TIMEOUT_SECONDS", 1)
 
-    node = _make_node(command="sleep 10")
+    workflow_execution_id = "test-exec-timeout"
+    node = _make_node(command="sleep 10", workflow_execution_id=workflow_execution_id)
     sandbox = FakeSandbox(
         stdout=b"",
         stderr=b"",
         statuses=[CommandStatus(status=CommandStatus.Status.RUNNING, exit_code=None)] * 1000,
         close_streams=False,
     )
-    node.sandbox = sandbox
+    SandboxManager.register(workflow_execution_id, sandbox)
 
     result = node._run()  # pyright: ignore[reportPrivateUsage]
 
     assert result.status == WorkflowNodeExecutionStatus.FAILED
     assert result.error_type == "CommandTimeoutError"
     assert "timed out" in result.error
+
+
+def test_command_node_no_sandbox_returns_failed():
+    workflow_execution_id = "test-exec-no-sandbox"
+    node = _make_node(command="echo hello", workflow_execution_id=workflow_execution_id)
+
+    result = node._run()  # pyright: ignore[reportPrivateUsage]
+
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
+    assert result.error_type == "SandboxNotInitializedError"
+    assert "Sandbox not available" in result.error
