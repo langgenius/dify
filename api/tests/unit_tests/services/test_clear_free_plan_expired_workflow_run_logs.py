@@ -119,7 +119,7 @@ def test_filter_free_tenants_billing_disabled(monkeypatch: pytest.MonkeyPatch) -
     def fail_bulk(_: list[str]) -> dict[str, SubscriptionPlan]:
         raise RuntimeError("should not call")
 
-    monkeypatch.setattr(cleanup_module.BillingService, "get_plan_bulk", staticmethod(fail_bulk))
+    monkeypatch.setattr(cleanup_module.BillingService, "get_plan_bulk_with_cache", staticmethod(fail_bulk))
 
     tenants = {"t1", "t2"}
     free = cleanup._filter_free_tenants(tenants)
@@ -131,12 +131,15 @@ def test_filter_free_tenants_bulk_mixed(monkeypatch: pytest.MonkeyPatch) -> None
     cleanup = create_cleanup(monkeypatch, repo=FakeRepo([]), days=30, batch_size=10)
 
     monkeypatch.setattr(cleanup_module.dify_config, "BILLING_ENABLED", True)
-    cleanup.billing_cache["t_free"] = plan_info("sandbox", -1)
-    cleanup.billing_cache["t_paid"] = plan_info("team", -1)
     monkeypatch.setattr(
         cleanup_module.BillingService,
-        "get_plan_bulk",
-        staticmethod(lambda tenant_ids: {tenant_id: plan_info("sandbox", -1) for tenant_id in tenant_ids}),
+        "get_plan_bulk_with_cache",
+        staticmethod(
+            lambda tenant_ids: {
+                tenant_id: (plan_info("team", -1) if tenant_id == "t_paid" else plan_info("sandbox", -1))
+                for tenant_id in tenant_ids
+            }
+        ),
     )
 
     free = cleanup._filter_free_tenants({"t_free", "t_paid", "t_missing"})
@@ -158,7 +161,7 @@ def test_filter_free_tenants_respects_grace_period(monkeypatch: pytest.MonkeyPat
             "long_sandbox": plan_info("sandbox", outside_grace_ts),
         }
 
-    monkeypatch.setattr(cleanup_module.BillingService, "get_plan_bulk", staticmethod(fake_bulk))
+    monkeypatch.setattr(cleanup_module.BillingService, "get_plan_bulk_with_cache", staticmethod(fake_bulk))
 
     free = cleanup._filter_free_tenants({"recently_downgraded", "long_sandbox"})
 
@@ -175,11 +178,15 @@ def test_filter_free_tenants_skips_cleanup_whitelist(monkeypatch: pytest.MonkeyP
     )
 
     monkeypatch.setattr(cleanup_module.dify_config, "BILLING_ENABLED", True)
-    cleanup.billing_cache["tenant_whitelist"] = plan_info("sandbox", -1)
     monkeypatch.setattr(
         cleanup_module.BillingService,
-        "get_plan_bulk",
-        staticmethod(lambda tenant_ids: {tenant_id: plan_info("sandbox", -1) for tenant_id in tenant_ids}),
+        "get_plan_bulk_with_cache",
+        staticmethod(
+            lambda tenant_ids: {
+                tenant_id: (plan_info("team", -1) if tenant_id == "t_paid" else plan_info("sandbox", -1))
+                for tenant_id in tenant_ids
+            }
+        ),
     )
 
     tenants = {"tenant_whitelist", "tenant_regular"}
@@ -194,7 +201,7 @@ def test_filter_free_tenants_bulk_failure(monkeypatch: pytest.MonkeyPatch) -> No
     monkeypatch.setattr(cleanup_module.dify_config, "BILLING_ENABLED", True)
     monkeypatch.setattr(
         cleanup_module.BillingService,
-        "get_plan_bulk",
+        "get_plan_bulk_with_cache",
         staticmethod(lambda tenant_ids: (_ for _ in ()).throw(RuntimeError("boom"))),
     )
 
@@ -216,11 +223,9 @@ def test_run_deletes_only_free_tenants(monkeypatch: pytest.MonkeyPatch) -> None:
     cleanup = create_cleanup(monkeypatch, repo=repo, days=30, batch_size=10)
 
     monkeypatch.setattr(cleanup_module.dify_config, "BILLING_ENABLED", True)
-    cleanup.billing_cache["t_free"] = plan_info("sandbox", -1)
-    cleanup.billing_cache["t_paid"] = plan_info("team", -1)
     monkeypatch.setattr(
         cleanup_module.BillingService,
-        "get_plan_bulk",
+        "get_plan_bulk_with_cache",
         staticmethod(lambda tenant_ids: {tenant_id: plan_info("sandbox", -1) for tenant_id in tenant_ids}),
     )
 
@@ -237,7 +242,7 @@ def test_run_skips_when_no_free_tenants(monkeypatch: pytest.MonkeyPatch) -> None
     monkeypatch.setattr(cleanup_module.dify_config, "BILLING_ENABLED", True)
     monkeypatch.setattr(
         cleanup_module.BillingService,
-        "get_plan_bulk",
+        "get_plan_bulk_with_cache",
         staticmethod(lambda tenant_ids: {tenant_id: plan_info("team", 1893456000) for tenant_id in tenant_ids}),
     )
 

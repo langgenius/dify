@@ -43,7 +43,6 @@ class WorkflowRunCleanup:
             raise ValueError("batch_size must be greater than 0.")
 
         self.batch_size = batch_size
-        self.billing_cache: dict[str, SubscriptionPlan | None] = {}
         self._cleanup_whitelist: set[str] | None = None
         self.dry_run = dry_run
         self.free_plan_grace_period_days = dify_config.SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD
@@ -183,28 +182,20 @@ class WorkflowRunCleanup:
 
         cleanup_whitelist = self._get_cleanup_whitelist()
 
-        uncached_tenants = [tenant_id for tenant_id in tenant_id_list if tenant_id not in self.billing_cache]
-
-        if uncached_tenants:
-            try:
-                bulk_info = BillingService.get_plan_bulk(uncached_tenants)
-            except Exception:
-                bulk_info = {}
-                logger.exception("Failed to fetch billing plans in bulk for tenants: %s", uncached_tenants)
-
-            for tenant_id in uncached_tenants:
-                info = bulk_info.get(tenant_id)
-                if info is None:
-                    logger.warning("Missing billing info for tenant %s in bulk resp; treating as non-free", tenant_id)
-                self.billing_cache[tenant_id] = info
+        try:
+            bulk_info = BillingService.get_plan_bulk_with_cache(tenant_id_list)
+        except Exception:
+            bulk_info = {}
+            logger.exception("Failed to fetch billing plans in bulk for tenants: %s", tenant_id_list)
 
         eligible_free_tenants: set[str] = set()
         for tenant_id in tenant_id_list:
             if tenant_id in cleanup_whitelist:
                 continue
 
-            info = self.billing_cache.get(tenant_id)
-            if not info:
+            info = bulk_info.get(tenant_id)
+            if info is None:
+                logger.warning("Missing billing info for tenant %s in bulk resp; treating as non-free", tenant_id)
                 continue
 
             if info.get("plan") != CloudPlan.SANDBOX:
