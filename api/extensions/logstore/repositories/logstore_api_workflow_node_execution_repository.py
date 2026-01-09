@@ -14,6 +14,7 @@ from typing import Any
 from sqlalchemy.orm import sessionmaker
 
 from extensions.logstore.aliyun_logstore import AliyunLogStore
+from extensions.logstore.repositories import safe_float, safe_int
 from extensions.logstore.sql_escape import escape_identifier, escape_logstore_query_value
 from models.workflow import WorkflowNodeExecutionModel
 from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
@@ -53,9 +54,8 @@ def _dict_to_workflow_node_execution_model(data: dict[str, Any]) -> WorkflowNode
     model.created_by_role = data.get("created_by_role") or ""
     model.created_by = data.get("created_by") or ""
 
-    # Numeric fields with defaults
-    model.index = int(data.get("index", 0))
-    model.elapsed_time = float(data.get("elapsed_time", 0))
+    model.index = safe_int(data.get("index", 0))
+    model.elapsed_time = safe_float(data.get("elapsed_time", 0))
 
     # Optional fields
     model.workflow_run_id = data.get("workflow_run_id")

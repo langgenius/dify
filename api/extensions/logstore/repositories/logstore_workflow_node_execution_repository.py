@@ -24,6 +24,7 @@ from core.workflow.enums import NodeType
 from core.workflow.repositories.workflow_node_execution_repository import OrderConfig, WorkflowNodeExecutionRepository
 from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from extensions.logstore.aliyun_logstore import AliyunLogStore
+from extensions.logstore.repositories import safe_float, safe_int
 from extensions.logstore.sql_escape import escape_identifier
 from libs.helper import extract_tenant_id
 from models import (
@@ -74,7 +75,7 @@ def _dict_to_workflow_node_execution(data: dict[str, Any]) -> WorkflowNodeExecut
         node_execution_id=data.get("node_execution_id"),
         workflow_id=data.get("workflow_id", ""),
         workflow_execution_id=data.get("workflow_run_id"),
-        index=int(data.get("index", 0)),
+        index=safe_int(data.get("index", 0)),
         predecessor_node_id=data.get("predecessor_node_id"),
         node_id=data.get("node_id", ""),
         node_type=NodeType(data.get("node_type", "start")),
@@ -84,7 +85,7 @@ def _dict_to_workflow_node_execution(data: dict[str, Any]) -> WorkflowNodeExecut
         outputs=outputs,
         status=status,
         error=data.get("error"),
-        elapsed_time=float(data.get("elapsed_time", 0.0)),
+        elapsed_time=safe_float(data.get("elapsed_time", 0.0)),
         metadata=domain_metadata,
         created_at=created_at,
         finished_at=finished_at,

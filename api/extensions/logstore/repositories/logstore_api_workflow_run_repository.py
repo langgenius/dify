@@ -23,6 +23,7 @@ from typing import Any, cast
 from sqlalchemy.orm import sessionmaker
 
 from extensions.logstore.aliyun_logstore import AliyunLogStore
+from extensions.logstore.repositories import safe_float, safe_int
 from extensions.logstore.sql_escape import escape_identifier, escape_logstore_query_value, escape_sql_string
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.enums import WorkflowRunTriggeredFrom
@@ -65,10 +66,9 @@ def _dict_to_workflow_run(data: dict[str, Any]) -> WorkflowRun:
     model.created_by_role = data.get("created_by_role") or ""
     model.created_by = data.get("created_by") or ""
 
-    # Numeric fields with defaults
-    model.total_tokens = int(data.get("total_tokens", 0))
-    model.total_steps = int(data.get("total_steps", 0))
-    model.exceptions_count = int(data.get("exceptions_count", 0))
+    model.total_tokens = safe_int(data.get("total_tokens", 0))
+    model.total_steps = safe_int(data.get("total_steps", 0))
+    model.exceptions_count = safe_int(data.get("exceptions_count", 0))
 
     # Optional fields
     model.graph = data.get("graph")
@@ -103,7 +103,8 @@ def _dict_to_workflow_run(data: dict[str, Any]) -> WorkflowRun:
     if model.finished_at and model.created_at:
         model.elapsed_time = (model.finished_at - model.created_at).total_seconds()
     else:
-        model.elapsed_time = float(data.get("elapsed_time", 0))
+        # Use safe conversion to handle 'null' strings and None values
+        model.elapsed_time = safe_float(data.get("elapsed_time", 0))
 
     return model
 
