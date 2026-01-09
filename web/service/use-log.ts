@@ -6,6 +6,7 @@ import type {
   CompletionConversationFullDetailResponse,
   CompletionConversationsRequest,
   CompletionConversationsResponse,
+  WorkflowArchivedLogsResponse,
   WorkflowLogsResponse,
   WorkflowRunExportResponse,
 } from '@/models/log'
@@ -90,9 +91,9 @@ export const useWorkflowLogs = ({ appId, params }: WorkflowLogsParams) => {
 }
 
 export const useWorkflowArchivedLogs = ({ appId, params }: WorkflowLogsParams) => {
-  return useQuery<WorkflowLogsResponse>({
+  return useQuery<WorkflowArchivedLogsResponse>({
     queryKey: [NAME_SPACE, 'workflow-archived-logs', appId, params],
-    queryFn: () => get<WorkflowLogsResponse>(`/apps/${appId}/workflow-archived-logs`, { params }),
+    queryFn: () => get<WorkflowArchivedLogsResponse>(`/apps/${appId}/workflow-archived-logs`, { params }),
     enabled: !!appId,
   })
 }

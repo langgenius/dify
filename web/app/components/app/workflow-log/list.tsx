@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunTriggeredFrom } from '@/models/log'
+import type { WorkflowLogListItem, WorkflowLogListResponse, WorkflowRunTriggeredFrom } from '@/models/log'
 import type { App } from '@/types/app'
 import { ArrowDownIcon } from '@heroicons/react/24/outline'
 import { RiDownloadLine } from '@remixicon/react'
@@ -20,12 +20,12 @@ import DetailPanel from './detail'
 import TriggerByDisplay from './trigger-by-display'
 
 type ILogs = {
-  logs?: WorkflowLogsResponse
+  logs?: WorkflowLogListResponse
   appDetail?: App
   onRefresh: () => void
   disableInteraction?: boolean
   showExportColumn?: boolean
-  onExport?: (log: WorkflowAppLogDetail) => void
+  onExport?: (log: WorkflowLogListItem) => void
   exportLoadingRunId?: string
 }
 
@@ -47,9 +47,9 @@ const WorkflowAppLogList: FC<ILogs> = ({
   const isMobile = media === MediaType.mobile
 
   const [showDrawer, setShowDrawer] = useState<boolean>(false)
-  const [currentLog, setCurrentLog] = useState<WorkflowAppLogDetail | undefined>()
+  const [currentLog, setCurrentLog] = useState<WorkflowLogListItem | undefined>()
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
-  const [localLogs, setLocalLogs] = useState<WorkflowAppLogDetail[]>(logs?.data || [])
+  const [localLogs, setLocalLogs] = useState<WorkflowLogListItem[]>(logs?.data || [])
 
   useEffect(() => {
     if (!logs?.data) {
@@ -146,8 +146,9 @@ const WorkflowAppLogList: FC<ILogs> = ({
           </tr>
         </thead>
         <tbody className="system-sm-regular text-text-secondary">
-          {localLogs.map((log: WorkflowAppLogDetail) => {
+          {localLogs.map((log: WorkflowLogListItem) => {
             const endUser = log.created_by_end_user ? log.created_by_end_user.session_id : log.created_by_account ? log.created_by_account.name : defaultValue
+            const triggerMetadata = log.details?.trigger_metadata || log.trigger_metadata
             return (
               <tr
                 key={log.id}
@@ -188,7 +189,7 @@ const WorkflowAppLogList: FC<ILogs> = ({
                 </td>
                 {isWorkflow && (
                   <td className="p-3 pr-2">
-                    <TriggerByDisplay triggeredFrom={log.workflow_run.triggered_from as WorkflowRunTriggeredFrom} triggerMetadata={log.details?.trigger_metadata} />
+                    <TriggerByDisplay triggeredFrom={log.workflow_run.triggered_from as WorkflowRunTriggeredFrom} triggerMetadata={triggerMetadata} />
                   </td>
                 )}
                 {showExportColumn && (

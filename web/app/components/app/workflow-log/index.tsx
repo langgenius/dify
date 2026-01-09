@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { WorkflowAppLogDetail } from '@/models/log'
+import type { WorkflowLogListItem } from '@/models/log'
 import type { App } from '@/types/app'
 import { useDebounce } from 'ahooks'
 import dayjs from 'dayjs'
@@ -127,7 +127,6 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
 
   const archivedQuery = {
     page: archivedPage + 1,
-    detail: true,
     limit: archivedLimit,
   }
 
@@ -138,7 +137,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const archivedTotal = archivedLogs?.total
 
   const handleExport = useCallback(
-    async (log: WorkflowAppLogDetail) => {
+    async (log: WorkflowLogListItem) => {
       if (exportingRunId || exportUrlQuery.isFetching)
         return
       const runId = log.workflow_run.id

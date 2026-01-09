@@ -237,10 +237,31 @@ export type WorkflowLogDetails = {
   trigger_metadata?: TriggerMetadata
 }
 
+export type WorkflowRunStatus = 'running' | 'succeeded' | 'failed' | 'stopped' | 'partial-succeeded'
+
+export type WorkflowRunSummary = {
+  id: string
+  status: WorkflowRunStatus
+  triggered_from?: WorkflowRunTriggeredFrom
+  elapsed_time: number
+  total_tokens: number
+}
+
+export type WorkflowLogListItem = {
+  id: string
+  workflow_run: WorkflowRunSummary
+  details?: WorkflowLogDetails
+  trigger_metadata?: TriggerMetadata
+  created_by_account?: AccountInfo
+  created_by_end_user?: EndUserInfo
+  created_at: number
+  read_at?: number
+}
+
 export type WorkflowRunDetail = {
   id: string
   version: string
-  status: 'running' | 'succeeded' | 'failed' | 'stopped'
+  status: WorkflowRunStatus
   error?: string
   triggered_from?: WorkflowRunTriggeredFrom
   elapsed_time: number
@@ -261,24 +282,26 @@ export type EndUserInfo = {
   is_anonymous: boolean
   session_id: string
 }
-export type WorkflowAppLogDetail = {
-  id: string
+
+export type WorkflowAppLogDetail = WorkflowLogListItem & {
   workflow_run: WorkflowRunDetail
-  details?: WorkflowLogDetails
   created_from: 'service-api' | 'web-app' | 'explore'
   created_by_role: 'account' | 'end_user'
-  created_by_account?: AccountInfo
-  created_by_end_user?: EndUserInfo
-  created_at: number
-  read_at?: number
 }
-export type WorkflowLogsResponse = {
-  data: Array<WorkflowAppLogDetail>
+
+export type WorkflowLogListResponse<TLog = WorkflowLogListItem> = {
+  data: Array<TLog>
   has_more: boolean
   limit: number
   total: number
   page: number
 }
+
+export type WorkflowLogsResponse = WorkflowLogListResponse<WorkflowAppLogDetail>
+
+export type WorkflowArchivedLogDetail = WorkflowLogListItem
+
+export type WorkflowArchivedLogsResponse = WorkflowLogListResponse<WorkflowArchivedLogDetail>
 export type WorkflowLogsRequest = {
   keyword: string
   status: string
@@ -302,7 +325,7 @@ export type WorkflowRunDetailResponse = {
   }
   inputs: string
   inputs_truncated: boolean
-  status: 'running' | 'succeeded' | 'failed' | 'stopped'
+  status: WorkflowRunStatus
   outputs?: string
   outputs_truncated: boolean
   outputs_full_content?: {
