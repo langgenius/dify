@@ -11,6 +11,7 @@ import queue
 import threading
 from collections.abc import Generator
 from typing import TYPE_CHECKING, cast, final
+
 from core.workflow.context import capture_current_context
 from core.workflow.enums import NodeExecutionType
 from core.workflow.graph import Graph
