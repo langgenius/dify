@@ -32,7 +32,7 @@ from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
 from core.workflow.entities.pause_reason import HumanInputRequired, PauseReason, SchedulingPause
-from core.workflow.enums import WorkflowExecutionStatus
+from core.workflow.enums import WorkflowExecutionStatus, WorkflowType
 from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
 from libs.helper import convert_datetime_to_date
@@ -322,31 +322,42 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
 
     def get_runs_batch_by_time_range(
         self,
-        start_after: datetime | None,
+        start_from: datetime | None,
         end_before: datetime,
         last_seen: tuple[datetime, str] | None,
         batch_size: int,
+        run_types: Sequence[WorkflowType] | None = None,
+        tenant_ids: Sequence[str] | None = None,
     ) -> Sequence[WorkflowRun]:
+        """
+        Fetch ended workflow runs in a time window for archival and clean batching.
+
+        Query scope:
+        - created_at in [start_from, end_before)
+        - type in run_types (when provided)
+        - status is an ended state
+        - optional tenant_id filter and cursor (last_seen) for pagination
+        """
         with self._session_maker() as session:
             stmt = (
                 select(WorkflowRun)
                 .where(
                     WorkflowRun.created_at < end_before,
-                    WorkflowRun.status.in_(
-                        [
-                            WorkflowExecutionStatus.SUCCEEDED.value,
-                            WorkflowExecutionStatus.FAILED.value,
-                            WorkflowExecutionStatus.STOPPED.value,
-                            WorkflowExecutionStatus.PARTIAL_SUCCEEDED.value,
-                        ]
-                    ),
+                    WorkflowRun.status.in_(WorkflowExecutionStatus.ended_values()),
                 )
                 .order_by(WorkflowRun.created_at.asc(), WorkflowRun.id.asc())
                 .limit(batch_size)
             )
+            if run_types is not None:
+                if not run_types:
+                    return []
+                stmt = stmt.where(WorkflowRun.type.in_(run_types))
 
-            if start_after:
-                stmt = stmt.where(WorkflowRun.created_at >= start_after)
+            if start_from:
+                stmt = stmt.where(WorkflowRun.created_at >= start_from)
+
+            if tenant_ids:
+                stmt = stmt.where(WorkflowRun.tenant_id.in_(tenant_ids))
 
             if last_seen:
                 stmt = stmt.where(

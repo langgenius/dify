@@ -13,7 +13,12 @@ from sqlalchemy import asc, delete, desc, func, select, tuple_
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload
+from models.enums import WorkflowRunTriggeredFrom
+from models.workflow import (
+    WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionOffload,
+    WorkflowNodeExecutionTriggeredFrom,
+)
 from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
 
 
@@ -43,6 +48,26 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
             session_maker: SQLAlchemy sessionmaker for creating database sessions
         """
         self._session_maker = session_maker
+
+    @staticmethod
+    def _map_run_triggered_from_to_node_triggered_from(triggered_from: str) -> str:
+        """
+        Map workflow run triggered_from values to workflow node execution triggered_from values.
+        """
+        if triggered_from in {
+            WorkflowRunTriggeredFrom.APP_RUN.value,
+            WorkflowRunTriggeredFrom.DEBUGGING.value,
+            WorkflowRunTriggeredFrom.SCHEDULE.value,
+            WorkflowRunTriggeredFrom.PLUGIN.value,
+            WorkflowRunTriggeredFrom.WEBHOOK.value,
+        }:
+            return WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value
+        if triggered_from in {
+            WorkflowRunTriggeredFrom.RAG_PIPELINE_RUN.value,
+            WorkflowRunTriggeredFrom.RAG_PIPELINE_DEBUGGING.value,
+        }:
+            return WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN.value
+        return ""
 
     def get_node_last_execution(
         self,
@@ -310,7 +335,16 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
             return 0, 0
 
         tuple_values = [
-            (run["tenant_id"], run["app_id"], run["workflow_id"], run["triggered_from"], run["run_id"]) for run in runs
+            (
+                run["tenant_id"],
+                run["app_id"],
+                run["workflow_id"],
+                DifyAPISQLAlchemyWorkflowNodeExecutionRepository._map_run_triggered_from_to_node_triggered_from(
+                    run["triggered_from"]
+                ),
+                run["run_id"],
+            )
+            for run in runs
         ]
 
         node_execution_ids = session.scalars(
@@ -361,7 +395,16 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
             return 0, 0
 
         tuple_values = [
-            (run["tenant_id"], run["app_id"], run["workflow_id"], run["triggered_from"], run["run_id"]) for run in runs
+            (
+                run["tenant_id"],
+                run["app_id"],
+                run["workflow_id"],
+                DifyAPISQLAlchemyWorkflowNodeExecutionRepository._map_run_triggered_from_to_node_triggered_from(
+                    run["triggered_from"]
+                ),
+                run["run_id"],
+            )
+            for run in runs
         ]
         tuple_filter = tuple_(
             WorkflowNodeExecutionModel.tenant_id,

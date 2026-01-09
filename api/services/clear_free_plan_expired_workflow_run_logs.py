@@ -77,7 +77,7 @@ class WorkflowRunCleanup:
 
         while True:
             run_rows = self.workflow_run_repo.get_runs_batch_by_time_range(
-                start_after=self.window_start,
+                start_from=self.window_start,
                 end_before=self.window_end,
                 last_seen=last_seen,
                 batch_size=self.batch_size,
