@@ -319,7 +319,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         end_before: datetime,
         last_seen: tuple[datetime, str] | None,
         batch_size: int,
-        run_types: Sequence[WorkflowType],
+        run_types: Sequence[WorkflowType] | None = None,
         tenant_ids: Sequence[str] | None = None,
     ) -> Sequence[WorkflowRun]:
         """
@@ -327,23 +327,24 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
 
         Query scope:
         - created_at in [start_from, end_before)
-        - type in run_types
+        - type in run_types (when provided)
         - status is an ended state
         - optional tenant_id filter and cursor (last_seen) for pagination
         """
         with self._session_maker() as session:
-            if not run_types:
-                return []
             stmt = (
                 select(WorkflowRun)
                 .where(
                     WorkflowRun.created_at < end_before,
-                    WorkflowRun.type.in_(run_types),
                     WorkflowRun.status.in_(WorkflowExecutionStatus.ended_values()),
                 )
                 .order_by(WorkflowRun.created_at.asc(), WorkflowRun.id.asc())
                 .limit(batch_size)
             )
+            if run_types is not None:
+                if not run_types:
+                    return []
+                stmt = stmt.where(WorkflowRun.type.in_(run_types))
 
             if start_from:
                 stmt = stmt.where(WorkflowRun.created_at >= start_from)
