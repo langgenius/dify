@@ -6,7 +6,7 @@ from flask_restx import Resource, marshal, marshal_with, reqparse
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
-from controllers.common import fields
+from controllers.common.fields import Parameters as ParametersResponse
 from controllers.common.fields import Site as SiteResponse
 from controllers.console import api
 from controllers.console.app.error import (
@@ -408,7 +408,6 @@ class TrialAppParameterApi(Resource):
 
     @trial_feature_enable
     @get_app_model_with_trial
-    @marshal_with(fields.parameters_fields)
     def get(self, app_model):
         """Retrieve app parameters."""
 
@@ -431,7 +430,8 @@ class TrialAppParameterApi(Resource):
 
             user_input_form = features_dict.get("user_input_form", [])
 
-        return get_parameters_from_feature_dict(features_dict=features_dict, user_input_form=user_input_form)
+        parameters = get_parameters_from_feature_dict(features_dict=features_dict, user_input_form=user_input_form)
+        return ParametersResponse.model_validate(parameters).model_dump(mode="json")
 
 
 class AppApi(Resource):
