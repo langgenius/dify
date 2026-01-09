@@ -101,8 +101,8 @@ class WorkflowRunArchiver:
             └── workflow_trigger_logs.jsonl
     """
     ARCHIVED_TYPE = [
-        WorkflowType.WORKFLOW.value,
-        WorkflowType.RAG_PIPELINE.value,
+        WorkflowType.WORKFLOW,
+        WorkflowType.RAG_PIPELINE,
     ]
     ARCHIVED_TABLES = [
         "workflow_runs",

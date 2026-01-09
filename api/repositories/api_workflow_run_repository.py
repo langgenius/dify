@@ -41,6 +41,7 @@ from typing import Protocol
 from sqlalchemy.orm import Session
 
 from core.workflow.entities.pause_reason import PauseReason
+from core.workflow.enums import WorkflowType
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.enums import WorkflowRunTriggeredFrom
@@ -261,7 +262,7 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         end_before: datetime,
         last_seen: tuple[datetime, str] | None,
         batch_size: int,
-        run_types: Sequence[str],
+        run_types: Sequence[WorkflowType],
         tenant_ids: Sequence[str] | None = None,
     ) -> Sequence[WorkflowRun]:
         """

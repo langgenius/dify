@@ -32,7 +32,7 @@ from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
 from core.workflow.entities.pause_reason import HumanInputRequired, PauseReason, SchedulingPause
-from core.workflow.enums import WorkflowExecutionStatus
+from core.workflow.enums import WorkflowExecutionStatus, WorkflowType
 from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
 from libs.helper import convert_datetime_to_date
@@ -319,7 +319,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         end_before: datetime,
         last_seen: tuple[datetime, str] | None,
         batch_size: int,
-        run_types: Sequence[str],
+        run_types: Sequence[WorkflowType],
         tenant_ids: Sequence[str] | None = None,
     ) -> Sequence[WorkflowRun]:
         """
