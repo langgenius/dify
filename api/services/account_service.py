@@ -1359,6 +1359,11 @@ class RegisterService:
             raise ValueError("Inviter is required")
 
         """Invite new member"""
+        # Check workspace permission for member invitations
+        from libs.workspace_permission import check_workspace_member_invite_permission
+
+        check_workspace_member_invite_permission(tenant.id)
+
         with Session(db.engine) as session:
             account = session.query(Account).filter_by(email=email).first()
 
