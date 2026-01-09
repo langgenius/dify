@@ -13,7 +13,7 @@ description:
   llm: A tool for running code and getting the result back. Only native packages are allowed, network/IO operations are disabled. and you must use print() or console.log() to output the result or result will be empty.
 parameters:
   - name: language
-    type: string
+    type: select
     required: true
     label:
       en_US: Language
@@ -24,7 +24,8 @@ parameters:
       zh_Hans: 代码的编程语言
       pt_BR: A linguagem de programação do código
     llm_description: language of the code, only "python3" and "javascript" are supported
-    form: llm
+    form: form
+    default: python3
     options:
       - value: python3
         label:
