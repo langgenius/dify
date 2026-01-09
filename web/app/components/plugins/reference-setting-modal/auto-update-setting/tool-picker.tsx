@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import type { ActivePluginType } from '../../marketplace/constants'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -73,7 +74,7 @@ const ToolPicker: FC<Props> = ({
     },
   ]
 
-  const [pluginType, setPluginType] = useState(PLUGIN_TYPE_SEARCH_MAP.all)
+  const [pluginType, setPluginType] = useState<ActivePluginType>(PLUGIN_TYPE_SEARCH_MAP.all)
   const [query, setQuery] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const { data, isLoading } = useInstalledPluginList()
