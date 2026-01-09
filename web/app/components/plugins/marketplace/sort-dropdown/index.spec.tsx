@@ -1,4 +1,3 @@
-import type { MarketplaceContextValue } from '../context'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -28,18 +27,12 @@ vi.mock('#i18n', () => ({
   }),
 }))
 
-// Mock marketplace context with controllable values
-let mockSort = { sortBy: 'install_count', sortOrder: 'DESC' }
+// Mock marketplace atoms with controllable values
+let mockSort: { sortBy: string, sortOrder: string } = { sortBy: 'install_count', sortOrder: 'DESC' }
 const mockHandleSortChange = vi.fn()
 
-vi.mock('../context', () => ({
-  useMarketplaceContext: (selector: (value: MarketplaceContextValue) => unknown) => {
-    const contextValue = {
-      sort: mockSort,
-      handleSortChange: mockHandleSortChange,
-    } as unknown as MarketplaceContextValue
-    return selector(contextValue)
-  },
+vi.mock('../atoms', () => ({
+  useMarketplaceSort: () => [mockSort, mockHandleSortChange],
 }))
 
 // Mock portal component with controllable open state
