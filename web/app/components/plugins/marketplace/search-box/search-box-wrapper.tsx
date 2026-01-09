@@ -1,15 +1,13 @@
 'use client'
 
 import { useTranslation } from '#i18n'
-import { useMarketplaceContext } from '../context'
+import { useFilterPluginTags, useSearchPluginText } from '../atoms'
 import SearchBox from './index'
 
 const SearchBoxWrapper = () => {
   const { t } = useTranslation()
-  const searchPluginText = useMarketplaceContext(v => v.searchPluginText)
-  const handleSearchPluginTextChange = useMarketplaceContext(v => v.handleSearchPluginTextChange)
-  const filterPluginTags = useMarketplaceContext(v => v.filterPluginTags)
-  const handleFilterPluginTagsChange = useMarketplaceContext(v => v.handleFilterPluginTagsChange)
+  const [searchPluginText, handleSearchPluginTextChange] = useSearchPluginText()
+  const [filterPluginTags, handleFilterPluginTagsChange] = useFilterPluginTags()
 
   return (
     <SearchBox
