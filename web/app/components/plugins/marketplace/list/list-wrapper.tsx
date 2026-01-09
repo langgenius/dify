@@ -1,46 +1,26 @@
 'use client'
-import type { Plugin } from '../../types'
-import type { MarketplaceCollection } from '../types'
 import { useTranslation } from '#i18n'
-import { useEffect } from 'react'
 import Loading from '@/app/components/base/loading'
-import { useMarketplaceContext } from '../context'
 import SortDropdown from '../sort-dropdown'
+import { useMarketplaceData } from '../state'
 import List from './index'
 
 type ListWrapperProps = {
-  marketplaceCollections: MarketplaceCollection[]
-  marketplaceCollectionPluginsMap: Record<string, Plugin[]>
   showInstallButton?: boolean
 }
 const ListWrapper = ({
-  marketplaceCollections,
-  marketplaceCollectionPluginsMap,
   showInstallButton,
 }: ListWrapperProps) => {
   const { t } = useTranslation()
-  const plugins = useMarketplaceContext(v => v.plugins)
-  const pluginsTotal = useMarketplaceContext(v => v.pluginsTotal)
-  const marketplaceCollectionsFromClient = useMarketplaceContext(v => v.marketplaceCollectionsFromClient)
-  const marketplaceCollectionPluginsMapFromClient = useMarketplaceContext(v => v.marketplaceCollectionPluginsMapFromClient)
-  const isLoading = useMarketplaceContext(v => v.isLoading)
-  const isSuccessCollections = useMarketplaceContext(v => v.isSuccessCollections)
-  const handleQueryPlugins = useMarketplaceContext(v => v.handleQueryPlugins)
-  const searchPluginText = useMarketplaceContext(v => v.searchPluginText)
-  const filterPluginTags = useMarketplaceContext(v => v.filterPluginTags)
-  const page = useMarketplaceContext(v => v.page)
-  const handleMoreClick = useMarketplaceContext(v => v.handleMoreClick)
 
-  useEffect(() => {
-    if (
-      !marketplaceCollectionsFromClient?.length
-      && isSuccessCollections
-      && !searchPluginText
-      && !filterPluginTags.length
-    ) {
-      handleQueryPlugins()
-    }
-  }, [handleQueryPlugins, marketplaceCollections, marketplaceCollectionsFromClient, isSuccessCollections, searchPluginText, filterPluginTags])
+  const {
+    plugins,
+    pluginsTotal,
+    marketplaceCollections,
+    marketplaceCollectionPluginsMap,
+    isLoading,
+    page,
+  } = useMarketplaceData()
 
   return (
     <div
@@ -66,11 +46,10 @@ const ListWrapper = ({
       {
         (!isLoading || page > 1) && (
           <List
-            marketplaceCollections={marketplaceCollectionsFromClient || marketplaceCollections}
-            marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMapFromClient || marketplaceCollectionPluginsMap}
+            marketplaceCollections={marketplaceCollections || []}
+            marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap || {}}
             plugins={plugins}
             showInstallButton={showInstallButton}
-            onMoreClick={handleMoreClick}
           />
         )
       }

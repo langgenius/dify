@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   useRouter,
+  useSearchParams,
 } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { useDebounceFn } from 'ahooks'
@@ -33,6 +34,16 @@ import { AppCardSkeleton } from './app-card-skeleton'
 import Empty from './empty'
 import Footer from './footer'
 
+// Define valid tabs at module scope to avoid re-creation on each render and stale closures
+const validTabs = new Set<string | AppModeEnum>([
+  'all',
+  AppModeEnum.WORKFLOW,
+  AppModeEnum.ADVANCED_CHAT,
+  AppModeEnum.CHAT,
+  AppModeEnum.AGENT_CHAT,
+  AppModeEnum.COMPLETION,
+])
+
 const TagManagementModal = dynamic(() => import('@/app/components/base/tag-management'), {
   ssr: false,
 })
@@ -44,12 +55,42 @@ const List = () => {
   const { t } = useTranslation()
   const { systemFeatures } = useGlobalPublicStore()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, isLoadingCurrentWorkspace } = useAppContext()
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
-  const [activeTab, setActiveTab] = useTabSearchParams({
-    defaultTab: 'all',
-  })
-  const { query: { tagIDs = [], keywords = '', isCreatedByMe: queryIsCreatedByMe = true, sortBy, sortOrder }, setQuery } = useAppsQueryState()
+  const [activeTab, setActiveTab] = useQueryState(
+    'category',
+    parseAsString.withDefault('all').withOptions({ history: 'push' }),
+  )
+
+  // valid tabs for apps list; anything else should fallback to 'all'
+
+  // 1) Normalize legacy/incorrect query params like ?mode=discover -> ?category=all
+  useEffect(() => {
+    // avoid running on server
+    if (typeof window === 'undefined')
+      return
+    const mode = searchParams.get('mode')
+    if (!mode)
+      return
+    const url = new URL(window.location.href)
+    url.searchParams.delete('mode')
+    if (validTabs.has(mode)) {
+      // migrate to category key
+      url.searchParams.set('category', mode)
+    }
+    else {
+      url.searchParams.set('category', 'all')
+    }
+    router.replace(url.pathname + url.search)
+  }, [router, searchParams])
+
+  // 2) If category has an invalid value (e.g., 'discover'), reset to 'all'
+  useEffect(() => {
+    if (!validTabs.has(activeTab))
+      setActiveTab('all')
+  }, [activeTab, setActiveTab])
+  const { query: { tagIDs = [], keywords = '', isCreatedByMe: queryIsCreatedByMe = false }, setQuery } = useAppsQueryState()
   const [isCreatedByMe, setIsCreatedByMe] = useState(queryIsCreatedByMe)
   const [tagFilterValue, setTagFilterValue] = useState<string[]>(tagIDs)
   const [searchKeywords, setSearchKeywords] = useState(keywords)
