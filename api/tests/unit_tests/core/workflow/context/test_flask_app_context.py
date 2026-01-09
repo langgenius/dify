@@ -23,7 +23,7 @@ class TestFlaskAppContext:
     def test_flask_app_context_initialization(self, mock_flask_app):
         """Test FlaskAppContext initialization."""
         # Import here to avoid Flask dependency in test environment
-        from core.context.flask_app_context import FlaskAppContext
+        from context.flask_app_context import FlaskAppContext
 
         ctx = FlaskAppContext(mock_flask_app)
 
@@ -31,7 +31,7 @@ class TestFlaskAppContext:
 
     def test_flask_app_context_get_config(self, mock_flask_app):
         """Test get_config returns Flask app config value."""
-        from core.context.flask_app_context import FlaskAppContext
+        from context.flask_app_context import FlaskAppContext
 
         ctx = FlaskAppContext(mock_flask_app)
 
@@ -39,7 +39,7 @@ class TestFlaskAppContext:
 
     def test_flask_app_context_get_config_default(self, mock_flask_app):
         """Test get_config returns default when key not found."""
-        from core.context.flask_app_context import FlaskAppContext
+        from context.flask_app_context import FlaskAppContext
 
         ctx = FlaskAppContext(mock_flask_app)
 
@@ -47,7 +47,7 @@ class TestFlaskAppContext:
 
     def test_flask_app_context_get_extension(self, mock_flask_app):
         """Test get_extension returns Flask extension."""
-        from core.context.flask_app_context import FlaskAppContext
+        from context.flask_app_context import FlaskAppContext
 
         ctx = FlaskAppContext(mock_flask_app)
         db_ext = mock_flask_app.extensions["db"]
@@ -56,7 +56,7 @@ class TestFlaskAppContext:
 
     def test_flask_app_context_get_extension_not_found(self, mock_flask_app):
         """Test get_extension returns None when extension not found."""
-        from core.context.flask_app_context import FlaskAppContext
+        from context.flask_app_context import FlaskAppContext
 
         ctx = FlaskAppContext(mock_flask_app)
 
@@ -64,7 +64,7 @@ class TestFlaskAppContext:
 
     def test_flask_app_context_enter(self, mock_flask_app):
         """Test enter method enters Flask app context."""
-        from core.context.flask_app_context import FlaskAppContext
+        from context.flask_app_context import FlaskAppContext
 
         ctx = FlaskAppContext(mock_flask_app)
 
@@ -91,7 +91,7 @@ class TestFlaskExecutionContext:
 
     def test_initialization(self, mock_flask_app):
         """Test FlaskExecutionContext initialization."""
-        from core.context.flask_app_context import FlaskExecutionContext
+        from context.flask_app_context import FlaskExecutionContext
 
         context_vars = contextvars.copy_context()
         user = MagicMock()
@@ -107,7 +107,7 @@ class TestFlaskExecutionContext:
 
     def test_app_context_property(self, mock_flask_app):
         """Test app_context property returns FlaskAppContext."""
-        from core.context.flask_app_context import FlaskAppContext, FlaskExecutionContext
+        from context.flask_app_context import FlaskAppContext, FlaskExecutionContext
 
         ctx = FlaskExecutionContext(
             flask_app=mock_flask_app,
@@ -119,7 +119,7 @@ class TestFlaskExecutionContext:
 
     def test_context_manager_protocol(self, mock_flask_app):
         """Test FlaskExecutionContext supports context manager protocol."""
-        from core.context.flask_app_context import FlaskExecutionContext
+        from context.flask_app_context import FlaskExecutionContext
 
         ctx = FlaskExecutionContext(
             flask_app=mock_flask_app,
@@ -146,7 +146,7 @@ class TestCaptureFlaskContext:
         mock_app._get_current_object = MagicMock(return_value=mock_app)
         mock_current_app._get_current_object = MagicMock(return_value=mock_app)
 
-        from core.context.flask_app_context import capture_flask_context
+        from context.flask_app_context import capture_flask_context
 
         ctx = capture_flask_context()
 
@@ -164,7 +164,7 @@ class TestCaptureFlaskContext:
         mock_user.id = "user_123"
         mock_g._login_user = mock_user
 
-        from core.context.flask_app_context import capture_flask_context
+        from context.flask_app_context import capture_flask_context
 
         ctx = capture_flask_context()
 
@@ -180,7 +180,7 @@ class TestCaptureFlaskContext:
         explicit_user = MagicMock()
         explicit_user.id = "user_456"
 
-        from core.context.flask_app_context import capture_flask_context
+        from context.flask_app_context import capture_flask_context
 
         ctx = capture_flask_context(user=explicit_user)
 
@@ -197,7 +197,7 @@ class TestCaptureFlaskContext:
         test_var = contextvars.ContextVar("test_var")
         test_var.set("test_value")
 
-        from core.context.flask_app_context import capture_flask_context
+        from context.flask_app_context import capture_flask_context
 
         ctx = capture_flask_context()
 
@@ -239,7 +239,7 @@ class TestFlaskExecutionContextIntegration:
         test_var.set("new_value")
 
         # Create FlaskExecutionContext and enter it
-        from core.context.flask_app_context import FlaskExecutionContext
+        from context.flask_app_context import FlaskExecutionContext
 
         ctx = FlaskExecutionContext(
             flask_app=mock_flask_app,
@@ -256,7 +256,7 @@ class TestFlaskExecutionContextIntegration:
 
     def test_enter_enters_flask_app_context(self, mock_flask_app):
         """Test that enter enters Flask app context."""
-        from core.context.flask_app_context import FlaskExecutionContext
+        from context.flask_app_context import FlaskExecutionContext
 
         ctx = FlaskExecutionContext(
             flask_app=mock_flask_app,
@@ -279,7 +279,7 @@ class TestFlaskExecutionContextIntegration:
         # So we need to test the actual behavior.
 
         # Create FlaskExecutionContext with user in constructor
-        from core.context.flask_app_context import FlaskExecutionContext
+        from context.flask_app_context import FlaskExecutionContext
 
         ctx = FlaskExecutionContext(
             flask_app=mock_flask_app,
@@ -300,7 +300,7 @@ class TestFlaskExecutionContextIntegration:
 
     def test_enter_method_as_context_manager(self, mock_flask_app):
         """Test enter method returns a proper context manager."""
-        from core.context.flask_app_context import FlaskExecutionContext
+        from context.flask_app_context import FlaskExecutionContext
 
         ctx = FlaskExecutionContext(
             flask_app=mock_flask_app,

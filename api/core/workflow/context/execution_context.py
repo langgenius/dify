@@ -211,6 +211,6 @@ def capture_current_context() -> IExecutionContext:
     Returns:
         IExecutionContext with captured context
     """
-    from core.context import capture_current_context
+    from context import capture_current_context
 
     return capture_current_context()

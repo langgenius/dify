@@ -72,7 +72,7 @@ def create_app() -> DifyApp:
 
 def initialize_extensions(app: DifyApp):
     # Initialize Flask context capture for workflow execution
-    from core.context.flask_app_context import init_flask_context
+    from context.flask_app_context import init_flask_context
     from extensions import (
         ext_app_metrics,
         ext_blueprints,
