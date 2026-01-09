@@ -1,8 +1,4 @@
 import type { EmailConfig } from '../../types'
-import type {
-  Node,
-  NodeOutPutVar,
-} from '@/app/components/workflow/types'
 import { RiBugLine, RiCloseLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/compat'
 import { memo, useCallback, useState } from 'react'
@@ -24,8 +20,6 @@ type EmailConfigureModalProps = {
   onClose: () => void
   onConfirm: (data: any) => void
   config?: EmailConfig
-  nodesOutputVars?: NodeOutPutVar[]
-  availableNodes?: Node[]
 }
 
 const EmailConfigureModal = ({
@@ -33,8 +27,6 @@ const EmailConfigureModal = ({
   onClose,
   onConfirm,
   config,
-  nodesOutputVars = [],
-  availableNodes = [],
 }: EmailConfigureModalProps) => {
   const { t } = useTranslation()
   const { userProfile } = useAppContext()
@@ -43,7 +35,7 @@ const EmailConfigureModal = ({
   const [body, setBody] = useState(config?.body || '')
   const [debugMode, setDebugMode] = useState(config?.debug_mode || false)
 
-  const checkValidConfig = () => {
+  const checkValidConfig = useCallback(() => {
     if (!subject.trim()) {
       Toast.notify({
         type: 'error',
@@ -73,7 +65,7 @@ const EmailConfigureModal = ({
       return false
     }
     return true
-  }
+  }, [recipients, subject, body, t])
 
   const handleConfirm = useCallback(() => {
     if (!checkValidConfig())
@@ -84,7 +76,7 @@ const EmailConfigureModal = ({
       body,
       debug_mode: debugMode,
     })
-  }, [recipients, subject, body, debugMode, onConfirm])
+  }, [checkValidConfig, onConfirm, recipients, subject, body, debugMode])
 
   return (
     <Modal
@@ -118,8 +110,6 @@ const EmailConfigureModal = ({
           <MailBodyInput
             value={body}
             onChange={setBody}
-            nodesOutputVars={nodesOutputVars}
-            availableNodes={availableNodes}
           />
         </div>
         <div>

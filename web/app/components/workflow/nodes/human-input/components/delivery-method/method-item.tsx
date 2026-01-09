@@ -29,6 +29,7 @@ type Props = {
   method: DeliveryMethod
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
+  formContent?: string
   onChange: (method: DeliveryMethod) => void
   onDelete: (type: DeliveryMethodType) => void
 }
@@ -38,6 +39,7 @@ const DeliveryMethodItem: React.FC<Props> = ({
   method,
   nodesOutputVars,
   availableNodes,
+  formContent,
   onChange,
   onDelete,
 }) => {
@@ -125,8 +127,6 @@ const DeliveryMethodItem: React.FC<Props> = ({
         <EmailConfigureModal
           isShow={showEmailModal}
           config={method.config as EmailConfig}
-          nodesOutputVars={nodesOutputVars}
-          availableNodes={availableNodes}
           onClose={() => setShowEmailModal(false)}
           onConfirm={(data) => {
             handleConfigChange(data)
@@ -140,13 +140,10 @@ const DeliveryMethodItem: React.FC<Props> = ({
           deliveryId={method.id}
           isShow={showTestEmailModal}
           config={method.config as EmailConfig}
+          formContent={formContent}
           nodesOutputVars={nodesOutputVars}
           availableNodes={availableNodes}
           onClose={() => setShowTestEmailModal(false)}
-          onConfirm={(data) => {
-            handleConfigChange(data)
-            setShowTestEmailModal(false)
-          }}
         />
       )}
     </>

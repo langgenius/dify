@@ -34,8 +34,8 @@ type EmailConfigureModalProps = {
   deliveryId: string
   isShow: boolean
   onClose: () => void
-  onConfirm: (data: any) => void
   config?: EmailConfig
+  formContent?: string
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
 }
@@ -67,8 +67,8 @@ const EmailSenderModal = ({
   deliveryId,
   isShow,
   onClose,
-  onConfirm,
   config,
+  formContent,
   nodesOutputVars = [],
   availableNodes = [],
 }: EmailConfigureModalProps) => {
@@ -86,7 +86,7 @@ const EmailSenderModal = ({
   const accounts = members?.accounts || []
 
   const generatedInputs = useMemo(() => {
-    const valueSelectors = doGetInputVars(config?.body || '')
+    const valueSelectors = doGetInputVars(formContent || '')
     const variables = unionBy(valueSelectors, item => item.join('.')).map((item) => {
       const varInfo = getNodeInfoById(availableNodes, item[0])?.data
 
@@ -120,7 +120,7 @@ const EmailSenderModal = ({
       }
     })
     return varInputs
-  }, [availableNodes, config?.body, nodesOutputVars])
+  }, [availableNodes, formContent, nodesOutputVars])
 
   const [inputs, setInputs] = useState<Record<string, any>>({})
   const [collapsed, setCollapsed] = useState(true)
@@ -147,7 +147,7 @@ const EmailSenderModal = ({
     finally {
       setSendingEmail(false)
     }
-  }, [appDetail, onConfirm, nodeId, deliveryId, testEmailSender])
+  }, [appDetail, nodeId, deliveryId, testEmailSender])
 
   if (done) {
     return (

@@ -17,6 +17,7 @@ type Props = {
   value: DeliveryMethod[]
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
+  formContent?: string
   onChange: (value: DeliveryMethod[]) => void
 }
 
@@ -25,6 +26,7 @@ const DeliveryMethodForm: React.FC<Props> = ({
   value,
   nodesOutputVars,
   availableNodes,
+  formContent,
   onChange,
 }) => {
   const { t } = useTranslation()
@@ -78,6 +80,7 @@ const DeliveryMethodForm: React.FC<Props> = ({
               onDelete={handleMethodDelete}
               nodesOutputVars={nodesOutputVars}
               availableNodes={availableNodes}
+              formContent={formContent}
             />
           ))}
         </div>
