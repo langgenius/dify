@@ -114,7 +114,7 @@ class TestGetRunsBatchByTimeRange(TestDifyAPISQLAlchemyWorkflowRunRepository):
         mock_session.scalars.return_value = scalar_result
 
         repository.get_runs_batch_by_time_range(
-            start_after=None,
+            start_from=None,
             end_before=datetime(2024, 1, 1),
             last_seen=None,
             batch_size=50,

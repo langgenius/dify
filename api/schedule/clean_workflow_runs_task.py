@@ -28,7 +28,7 @@ def clean_workflow_runs_task() -> None:
     WorkflowRunCleanup(
         days=dify_config.SANDBOX_EXPIRED_RECORDS_RETENTION_DAYS,
         batch_size=dify_config.SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_SIZE,
-        start_after=None,
+        start_from=None,
         end_before=None,
     ).run()
 

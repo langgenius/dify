@@ -58,7 +58,7 @@ class FakeRepo:
 
     def get_runs_batch_by_time_range(
         self,
-        start_after: datetime.datetime | None,
+        start_from: datetime.datetime | None,
         end_before: datetime.datetime,
         last_seen: tuple[datetime.datetime, str] | None,
         batch_size: int,
@@ -292,31 +292,31 @@ def test_run_dry_run_skips_deletions(monkeypatch: pytest.MonkeyPatch, capsys: py
 
 
 def test_between_sets_window_bounds(monkeypatch: pytest.MonkeyPatch) -> None:
-    start_after = datetime.datetime(2024, 5, 1, 0, 0, 0)
+    start_from = datetime.datetime(2024, 5, 1, 0, 0, 0)
     end_before = datetime.datetime(2024, 6, 1, 0, 0, 0)
     cleanup = create_cleanup(
-        monkeypatch, repo=FakeRepo([]), days=30, batch_size=10, start_after=start_after, end_before=end_before
+        monkeypatch, repo=FakeRepo([]), days=30, batch_size=10, start_from=start_from, end_before=end_before
     )
 
-    assert cleanup.window_start == start_after
+    assert cleanup.window_start == start_from
     assert cleanup.window_end == end_before
 
 
 def test_between_requires_both_boundaries(monkeypatch: pytest.MonkeyPatch) -> None:
     with pytest.raises(ValueError):
         create_cleanup(
-            monkeypatch, repo=FakeRepo([]), days=30, batch_size=10, start_after=datetime.datetime.now(), end_before=None
+            monkeypatch, repo=FakeRepo([]), days=30, batch_size=10, start_from=datetime.datetime.now(), end_before=None
         )
     with pytest.raises(ValueError):
         create_cleanup(
-            monkeypatch, repo=FakeRepo([]), days=30, batch_size=10, start_after=None, end_before=datetime.datetime.now()
+            monkeypatch, repo=FakeRepo([]), days=30, batch_size=10, start_from=None, end_before=datetime.datetime.now()
         )
 
 
 def test_between_requires_end_after_start(monkeypatch: pytest.MonkeyPatch) -> None:
-    start_after = datetime.datetime(2024, 6, 1, 0, 0, 0)
+    start_from = datetime.datetime(2024, 6, 1, 0, 0, 0)
     end_before = datetime.datetime(2024, 5, 1, 0, 0, 0)
     with pytest.raises(ValueError):
         create_cleanup(
-            monkeypatch, repo=FakeRepo([]), days=30, batch_size=10, start_after=start_after, end_before=end_before
+            monkeypatch, repo=FakeRepo([]), days=30, batch_size=10, start_from=start_from, end_before=end_before
         )

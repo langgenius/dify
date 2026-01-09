@@ -858,7 +858,7 @@ def clear_free_plan_tenant_expired_logs(days: int, batch: int, tenant_ids: list[
 @click.option("--days", default=30, show_default=True, help="Delete workflow runs created before N days ago.")
 @click.option("--batch-size", default=200, show_default=True, help="Batch size for selecting workflow runs.")
 @click.option(
-    "--start-after",
+    "--start-from",
     type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
     default=None,
     help="Optional lower bound (inclusive) for created_at; must be paired with --end-before.",
@@ -867,7 +867,7 @@ def clear_free_plan_tenant_expired_logs(days: int, batch: int, tenant_ids: list[
     "--end-before",
     type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
     default=None,
-    help="Optional upper bound (exclusive) for created_at; must be paired with --start-after.",
+    help="Optional upper bound (exclusive) for created_at; must be paired with --start-from.",
 )
 @click.option(
     "--dry-run",
@@ -877,15 +877,15 @@ def clear_free_plan_tenant_expired_logs(days: int, batch: int, tenant_ids: list[
 def clean_workflow_runs(
     days: int,
     batch_size: int,
-    start_after: datetime.datetime | None,
+    start_from: datetime.datetime | None,
     end_before: datetime.datetime | None,
     dry_run: bool,
 ):
     """
     Clean workflow runs and related workflow data for free tenants.
     """
-    if (start_after is None) ^ (end_before is None):
-        raise click.UsageError("--start-after and --end-before must be provided together.")
+    if (start_from is None) ^ (end_before is None):
+        raise click.UsageError("--start-from and --end-before must be provided together.")
 
     start_time = datetime.datetime.now(datetime.UTC)
     click.echo(click.style(f"Starting workflow run cleanup at {start_time.isoformat()}.", fg="white"))
@@ -893,7 +893,7 @@ def clean_workflow_runs(
     WorkflowRunCleanup(
         days=days,
         batch_size=batch_size,
-        start_after=start_after,
+        start_from=start_from,
         end_before=end_before,
         dry_run=dry_run,
     ).run()

@@ -24,20 +24,20 @@ class WorkflowRunCleanup:
         self,
         days: int,
         batch_size: int,
-        start_after: datetime.datetime | None = None,
+        start_from: datetime.datetime | None = None,
         end_before: datetime.datetime | None = None,
         workflow_run_repo: APIWorkflowRunRepository | None = None,
         dry_run: bool = False,
     ):
-        if (start_after is None) ^ (end_before is None):
-            raise ValueError("start_after and end_before must be both set or both omitted.")
+        if (start_from is None) ^ (end_before is None):
+            raise ValueError("start_from and end_before must be both set or both omitted.")
 
         computed_cutoff = datetime.datetime.now() - datetime.timedelta(days=days)
-        self.window_start = start_after
+        self.window_start = start_from
         self.window_end = end_before or computed_cutoff
 
         if self.window_start and self.window_end <= self.window_start:
-            raise ValueError("end_before must be greater than start_after.")
+            raise ValueError("end_before must be greater than start_from.")
 
         if batch_size <= 0:
             raise ValueError("batch_size must be greater than 0.")
