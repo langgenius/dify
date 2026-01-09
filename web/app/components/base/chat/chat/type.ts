@@ -73,6 +73,7 @@ export type ExtraContent
     type: 'human_input'
     submitted: false
     form_definition: HumanInputFormData
+    workflow_run_id: string
   }
   | {
     type: 'human_input'
