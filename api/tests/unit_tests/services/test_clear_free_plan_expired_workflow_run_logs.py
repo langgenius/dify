@@ -226,7 +226,12 @@ def test_run_deletes_only_free_tenants(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         cleanup_module.BillingService,
         "get_plan_bulk_with_cache",
-        staticmethod(lambda tenant_ids: {tenant_id: plan_info("sandbox", -1) for tenant_id in tenant_ids}),
+        staticmethod(
+            lambda tenant_ids: {
+                tenant_id: (plan_info("team", -1) if tenant_id == "t_paid" else plan_info("sandbox", -1))
+                for tenant_id in tenant_ids
+            }
+        ),
     )
 
     cleanup.run()
