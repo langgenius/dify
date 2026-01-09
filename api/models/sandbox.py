@@ -40,10 +40,6 @@ class SandboxProviderSystemConfig(TypeBase):
         init=False,
     )
 
-    @property
-    def config(self) -> Mapping[str, Any]:
-        return cast(Mapping[str, Any], json.loads(self.encrypted_config or "{}"))
-
 
 class SandboxProvider(TypeBase):
     """

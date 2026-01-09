@@ -21,7 +21,7 @@ from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.models.document import Document
-from core.tools.utils.system_oauth_encryption import encrypt_system_oauth_params
+from core.tools.utils.system_encryption import encrypt_system_params
 from events.app_event import app_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -1147,7 +1147,7 @@ def remove_orphaned_files_on_storage(force: bool):
             click.echo(click.style(f"- Scanning files on storage path {storage_path}", fg="white"))
             files = storage.scan(path=storage_path, files=True, directories=False)
             all_files_on_storage.extend(files)
-        except FileNotFoundError as e:
+        except FileNotFoundError:
             click.echo(click.style(f"  -> Skipping path {storage_path} as it does not exist.", fg="yellow"))
             continue
         except Exception as e:
@@ -1414,7 +1414,7 @@ def setup_system_tool_oauth_client(provider, client_params):
 
         click.echo(click.style(f"Encrypting client params: {client_params}", fg="yellow"))
         click.echo(click.style(f"Using SECRET_KEY: `{dify_config.SECRET_KEY}`", fg="yellow"))
-        oauth_client_params = encrypt_system_oauth_params(client_params_dict)
+        oauth_client_params = encrypt_system_params(client_params_dict)
         click.echo(click.style("Client params encrypted successfully.", fg="green"))
     except Exception as e:
         click.echo(click.style(f"Error parsing client params: {str(e)}", fg="red"))
@@ -1463,7 +1463,7 @@ def setup_system_trigger_oauth_client(provider, client_params):
 
         click.echo(click.style(f"Encrypting client params: {client_params}", fg="yellow"))
         click.echo(click.style(f"Using SECRET_KEY: `{dify_config.SECRET_KEY}`", fg="yellow"))
-        oauth_client_params = encrypt_system_oauth_params(client_params_dict)
+        oauth_client_params = encrypt_system_params(client_params_dict)
         click.echo(click.style("Client params encrypted successfully.", fg="green"))
     except Exception as e:
         click.echo(click.style(f"Error parsing client params: {str(e)}", fg="red"))

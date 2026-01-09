@@ -19,8 +19,8 @@ from sqlalchemy.orm import Session
 from configs import dify_config
 from constants import HIDDEN_VALUE
 from core.entities.provider_entities import BasicProviderConfig
-from core.tools.utils.system_oauth_encryption import (
-    decrypt_system_oauth_params,
+from core.tools.utils.system_encryption import (
+    decrypt_system_params,
 )
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 from core.virtual_environment.factory import SandboxFactory, SandboxType
@@ -317,6 +317,7 @@ class SandboxProviderService:
         environments: Mapping[str, str] | None = None,
     ) -> VirtualEnvironment:
         with Session(db.engine, expire_on_commit=False) as session:
+            # Get config: tenant config > system default > raise error
             tenant_config = (
                 session.query(SandboxProvider)
                 .filter(
@@ -325,45 +326,25 @@ class SandboxProviderService:
                 )
                 .first()
             )
-
+            config: Mapping[str, Any] = {}
+            provider_type = None
             if tenant_config:
+                schema = PROVIDER_CONFIG_SCHEMAS.get(tenant_config.provider_type, [])
+                encrypter, _ = create_sandbox_config_encrypter(tenant_id, schema, tenant_config.provider_type)
+                config = encrypter.decrypt(tenant_config.config)
                 provider_type = tenant_config.provider_type
             else:
-                provider_type = (
-                    SandboxProviderType.DOCKER if dify_config.EDITION == "SELF_HOSTED" else SandboxProviderType.E2B
-                )
-                logger.warning(
-                    "No active sandbox provider for tenant %s, using default: %s",
-                    tenant_id,
-                    provider_type,
-                )
+                system_default = session.query(SandboxProviderSystemConfig).first()
+                if system_default:
+                    config = decrypt_system_params(system_default.encrypted_config)
+                    provider_type = system_default.provider_type
 
-            # Get effective config: tenant config > system default > empty
-            config: Mapping[str, Any] = {}
-            provider_config = (
-                session.query(SandboxProvider)
-                .filter(
-                    SandboxProvider.tenant_id == tenant_id,
-                    SandboxProvider.provider_type == provider_type,
-                )
-                .first()
-            )
-            if provider_config and provider_config.config:
-                schema = PROVIDER_CONFIG_SCHEMAS.get(provider_type, [])
-                encrypter, _ = create_sandbox_config_encrypter(tenant_id, schema, provider_type)
-                config = encrypter.decrypt(provider_config.config)
-            else:
-                system_default = (
-                    session.query(SandboxProviderSystemConfig)
-                    .filter(SandboxProviderSystemConfig.provider_type == provider_type)
-                    .first()
-                )
-                if system_default and system_default.encrypted_config:
-                    config = decrypt_system_oauth_params(system_default.encrypted_config)
+            if not config or not provider_type:
+                raise ValueError(f"No active sandbox provider for tenant {tenant_id} or system default")
 
             return SandboxFactory.create(
                 tenant_id=tenant_id,
                 sandbox_type=SandboxType(provider_type),
-                options=dict(config) if config else {},
+                options=dict(config),
                 environments=environments or {},
             )
