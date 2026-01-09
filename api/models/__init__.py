@@ -61,6 +61,7 @@ from .model import (
     Site,
     Tag,
     TagBinding,
+    TenantCreditPool,
     TraceAppConfig,
     UploadFile,
 )
@@ -182,6 +183,7 @@ __all__ = [
     "Tenant",
     "TenantAccountJoin",
     "TenantAccountRole",
+    "TenantCreditPool",
     "TenantDefaultModel",
     "TenantPreferredModelProvider",
     "TenantStatus",
