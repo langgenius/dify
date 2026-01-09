@@ -8,6 +8,7 @@ based on configuration, including error handling.
 from unittest.mock import MagicMock, patch
 
 import pytest
+from cachetools import LRUCache
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
@@ -242,3 +243,125 @@ class TestRepositoryFactory:
                 triggered_from=triggered_from,
             )
             assert result is mock_repository_instance
+
+    # ----------------------- New tests for caching behavior -----------------------
+
+    @patch("core.repositories.factory.dify_config")
+    def test_node_repo_cached_for_same_user_app_trigger(self, mock_config):
+        """The factory should return the same instance for identical cache key."""
+        mock_config.CORE_WORKFLOW_NODE_EXECUTION_REPOSITORY = "unittest.mock.MagicMock"
+
+        mock_session_factory = MagicMock(spec=sessionmaker)
+        mock_user = MagicMock(spec=EndUser)
+        mock_user.id = "user-1"
+        app_id = "app-1"
+        triggered_from = WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP
+
+        constructed_instances: list[WorkflowNodeExecutionRepository] = []
+
+        def repo_ctor(**kwargs):
+            inst = MagicMock(spec=WorkflowNodeExecutionRepository)
+            constructed_instances.append(inst)
+            return inst
+
+        # Isolate cache for this test
+        with patch.object(DifyCoreRepositoryFactory, "_instances", new=LRUCache(maxsize=16)):
+            with patch("core.repositories.factory.import_string", return_value=repo_ctor) as import_mock:
+                r1 = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+                    session_factory=mock_session_factory,
+                    user=mock_user,
+                    app_id=app_id,
+                    triggered_from=triggered_from,
+                )
+                r2 = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+                    session_factory=mock_session_factory,
+                    user=mock_user,
+                    app_id=app_id,
+                    triggered_from=triggered_from,
+                )
+
+        # Only constructed once; same instance returned both times
+        assert r1 is r2
+        assert len(constructed_instances) == 1
+
+    @patch("core.repositories.factory.dify_config")
+    def test_node_repo_cache_key_differs_by_user_app_and_trigger(self, mock_config):
+        """Different (user, app_id, triggered_from) combinations yield different instances."""
+        mock_config.CORE_WORKFLOW_NODE_EXECUTION_REPOSITORY = "unittest.mock.MagicMock"
+
+        mock_session_factory = MagicMock(spec=sessionmaker)
+        user1 = MagicMock(spec=EndUser)
+        user1.id = "user-1"
+        user2 = MagicMock(spec=EndUser)
+        user2.id = "user-2"
+
+        def repo_ctor(**kwargs):
+            return MagicMock(spec=WorkflowNodeExecutionRepository)
+
+        with patch.object(DifyCoreRepositoryFactory, "_instances", new=LRUCache(maxsize=32)):
+            with patch("core.repositories.factory.import_string", return_value=repo_ctor):
+                r1 = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+                    session_factory=mock_session_factory,
+                    user=user1,
+                    app_id="app-1",
+                    triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+                )
+                r2 = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+                    session_factory=mock_session_factory,
+                    user=user1,
+                    app_id="app-1",
+                    triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+                )
+                r3 = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+                    session_factory=mock_session_factory,
+                    user=user1,
+                    app_id="app-2",
+                    triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+                )
+                r4 = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+                    session_factory=mock_session_factory,
+                    user=user2,
+                    app_id="app-1",
+                    triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+                )
+
+        assert r1 is not r2
+        assert r1 is not r3
+        assert r1 is not r4
+        assert r2 is not r3
+        assert r2 is not r4
+        assert r3 is not r4
+
+    @patch("core.repositories.factory.dify_config")
+    def test_node_repo_cache_key_normalizes_empty_app_id(self, mock_config):
+        """None and empty string app_id should map to the same cache key ('none')."""
+        mock_config.CORE_WORKFLOW_NODE_EXECUTION_REPOSITORY = "unittest.mock.MagicMock"
+
+        mock_session_factory = MagicMock(spec=sessionmaker)
+        mock_user = MagicMock(spec=EndUser)
+        mock_user.id = "user-1"
+
+        constructed = []
+
+        def repo_ctor(**kwargs):
+            inst = MagicMock(spec=WorkflowNodeExecutionRepository)
+            constructed.append(inst)
+            return inst
+
+        with patch.object(DifyCoreRepositoryFactory, "_instances", new=LRUCache(maxsize=16)):
+            with patch("core.repositories.factory.import_string", return_value=repo_ctor):
+                r_none = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+                    session_factory=mock_session_factory,
+                    user=mock_user,
+                    app_id=None,  # type: ignore[arg-type]
+                    triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+                )
+                r_empty = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+                    session_factory=mock_session_factory,
+                    user=mock_user,
+                    app_id="",
+                    triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+                )
+
+        assert r_none is r_empty
+        assert len(constructed) == 1
