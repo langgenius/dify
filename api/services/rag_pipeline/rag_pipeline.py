@@ -36,7 +36,7 @@ from core.rag.entities.event import (
 )
 from core.repositories.factory import DifyCoreRepositoryFactory
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
-from core.variables.variables import Variable
+from core.variables.variables import VariableBase
 from core.workflow.entities.workflow_node_execution import (
     WorkflowNodeExecution,
     WorkflowNodeExecutionStatus,
@@ -270,8 +270,8 @@ class RagPipelineService:
         graph: dict,
         unique_hash: str | None,
         account: Account,
-        environment_variables: Sequence[Variable],
-        conversation_variables: Sequence[Variable],
+        environment_variables: Sequence[VariableBase],
+        conversation_variables: Sequence[VariableBase],
         rag_pipeline_variables: list,
     ) -> Workflow:
         """

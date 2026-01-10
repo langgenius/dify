@@ -24,7 +24,7 @@ from core.app.layers.conversation_variable_persist_layer import ConversationVari
 from core.db.session_factory import session_factory
 from core.moderation.base import ModerationError
 from core.moderation.input_moderation import InputModeration
-from core.variables.variables import VariableUnion
+from core.variables.variables import Variable
 from core.workflow.enums import WorkflowType
 from core.workflow.graph_engine.command_channels.redis_channel import RedisChannel
 from core.workflow.graph_engine.layers.base import GraphEngineLayer
@@ -149,8 +149,8 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 system_variables=system_inputs,
                 user_inputs=inputs,
                 environment_variables=self._workflow.environment_variables,
-                # Based on the definition of `VariableUnion`,
-                # `list[Variable]` can be safely used as `list[VariableUnion]` since they are compatible.
+                # Based on the definition of `Variable`,
+                # `VariableBase` instances can be safely used as `Variable` since they are compatible.
                 conversation_variables=conversation_variables,
             )
 
@@ -318,7 +318,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             trace_manager=app_generate_entity.trace_manager,
         )
 
-    def _initialize_conversation_variables(self) -> list[VariableUnion]:
+    def _initialize_conversation_variables(self) -> list[Variable]:
         """
         Initialize conversation variables for the current conversation.
 
@@ -343,7 +343,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             conversation_variables = [var.to_variable() for var in existing_variables]
 
             session.commit()
-            return cast(list[VariableUnion], conversation_variables)
+            return cast(list[Variable], conversation_variables)
 
     def _load_existing_conversation_variables(self, session: Session) -> list[ConversationVariable]:
         """
