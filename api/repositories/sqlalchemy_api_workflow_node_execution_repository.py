@@ -7,13 +7,18 @@ using SQLAlchemy 2.0 style queries for WorkflowNodeExecutionModel operations.
 
 from collections.abc import Sequence
 from datetime import datetime
-from typing import cast
+from typing import TypedDict, cast
 
-from sqlalchemy import asc, delete, desc, select
+from sqlalchemy import asc, delete, desc, func, select, tuple_
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.workflow import WorkflowNodeExecutionModel
+from models.enums import WorkflowRunTriggeredFrom
+from models.workflow import (
+    WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionOffload,
+    WorkflowNodeExecutionTriggeredFrom,
+)
 from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
 
 
@@ -43,6 +48,26 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
             session_maker: SQLAlchemy sessionmaker for creating database sessions
         """
         self._session_maker = session_maker
+
+    @staticmethod
+    def _map_run_triggered_from_to_node_triggered_from(triggered_from: str) -> str:
+        """
+        Map workflow run triggered_from values to workflow node execution triggered_from values.
+        """
+        if triggered_from in {
+            WorkflowRunTriggeredFrom.APP_RUN.value,
+            WorkflowRunTriggeredFrom.DEBUGGING.value,
+            WorkflowRunTriggeredFrom.SCHEDULE.value,
+            WorkflowRunTriggeredFrom.PLUGIN.value,
+            WorkflowRunTriggeredFrom.WEBHOOK.value,
+        }:
+            return WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value
+        if triggered_from in {
+            WorkflowRunTriggeredFrom.RAG_PIPELINE_RUN.value,
+            WorkflowRunTriggeredFrom.RAG_PIPELINE_DEBUGGING.value,
+        }:
+            return WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN.value
+        return ""
 
     def get_node_last_execution(
         self,
@@ -290,3 +315,119 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
             result = cast(CursorResult, session.execute(stmt))
             session.commit()
             return result.rowcount
+
+    class RunContext(TypedDict):
+        run_id: str
+        tenant_id: str
+        app_id: str
+        workflow_id: str
+        triggered_from: str
+
+    @staticmethod
+    def delete_by_runs(session: Session, runs: Sequence[RunContext]) -> tuple[int, int]:
+        """
+        Delete node executions (and offloads) for the given workflow runs using indexed columns.
+
+        Uses the composite index on (tenant_id, app_id, workflow_id, triggered_from, workflow_run_id)
+        by filtering on those columns with tuple IN.
+        """
+        if not runs:
+            return 0, 0
+
+        tuple_values = [
+            (
+                run["tenant_id"],
+                run["app_id"],
+                run["workflow_id"],
+                DifyAPISQLAlchemyWorkflowNodeExecutionRepository._map_run_triggered_from_to_node_triggered_from(
+                    run["triggered_from"]
+                ),
+                run["run_id"],
+            )
+            for run in runs
+        ]
+
+        node_execution_ids = session.scalars(
+            select(WorkflowNodeExecutionModel.id).where(
+                tuple_(
+                    WorkflowNodeExecutionModel.tenant_id,
+                    WorkflowNodeExecutionModel.app_id,
+                    WorkflowNodeExecutionModel.workflow_id,
+                    WorkflowNodeExecutionModel.triggered_from,
+                    WorkflowNodeExecutionModel.workflow_run_id,
+                ).in_(tuple_values)
+            )
+        ).all()
+
+        if not node_execution_ids:
+            return 0, 0
+
+        offloads_deleted = (
+            cast(
+                CursorResult,
+                session.execute(
+                    delete(WorkflowNodeExecutionOffload).where(
+                        WorkflowNodeExecutionOffload.node_execution_id.in_(node_execution_ids)
+                    )
+                ),
+            ).rowcount
+            or 0
+        )
+
+        node_executions_deleted = (
+            cast(
+                CursorResult,
+                session.execute(
+                    delete(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id.in_(node_execution_ids))
+                ),
+            ).rowcount
+            or 0
+        )
+
+        return node_executions_deleted, offloads_deleted
+
+    @staticmethod
+    def count_by_runs(session: Session, runs: Sequence[RunContext]) -> tuple[int, int]:
+        """
+        Count node executions (and offloads) for the given workflow runs using indexed columns.
+        """
+        if not runs:
+            return 0, 0
+
+        tuple_values = [
+            (
+                run["tenant_id"],
+                run["app_id"],
+                run["workflow_id"],
+                DifyAPISQLAlchemyWorkflowNodeExecutionRepository._map_run_triggered_from_to_node_triggered_from(
+                    run["triggered_from"]
+                ),
+                run["run_id"],
+            )
+            for run in runs
+        ]
+        tuple_filter = tuple_(
+            WorkflowNodeExecutionModel.tenant_id,
+            WorkflowNodeExecutionModel.app_id,
+            WorkflowNodeExecutionModel.workflow_id,
+            WorkflowNodeExecutionModel.triggered_from,
+            WorkflowNodeExecutionModel.workflow_run_id,
+        ).in_(tuple_values)
+
+        node_executions_count = (
+            session.scalar(select(func.count()).select_from(WorkflowNodeExecutionModel).where(tuple_filter)) or 0
+        )
+        offloads_count = (
+            session.scalar(
+                select(func.count())
+                .select_from(WorkflowNodeExecutionOffload)
+                .join(
+                    WorkflowNodeExecutionModel,
+                    WorkflowNodeExecutionOffload.node_execution_id == WorkflowNodeExecutionModel.id,
+                )
+                .where(tuple_filter)
+            )
+            or 0
+        )
+
+        return int(node_executions_count), int(offloads_count)
