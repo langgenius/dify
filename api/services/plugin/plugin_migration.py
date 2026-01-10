@@ -472,7 +472,7 @@ class PluginMigration:
         while True:
             # paginate
             tenants = db.paginate(sa.select(Tenant).order_by(Tenant.created_at.desc()), page=page, per_page=100)
-            if tenants.items is None or len(tenants.items) == 0:
+            if not tenants.items:
                 break
 
             for tenant in tenants:
