@@ -132,6 +132,7 @@
   "dataSource.notion.pagesAuthorized": "Pagini autorizate",
   "dataSource.notion.remove": "Elimină",
   "dataSource.notion.selector.addPages": "Adăugați pagini",
+  "dataSource.notion.selector.childPagesIncluded": "+{{count}} pagini copil incluse",
   "dataSource.notion.selector.noSearchResult": "Niciun rezultat la căutare",
   "dataSource.notion.selector.pageSelected": "Pagini selectate",
   "dataSource.notion.selector.preview": "PREVIZUALIZARE",

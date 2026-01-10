@@ -132,6 +132,7 @@
   "dataSource.notion.pagesAuthorized": "페이지가 허가됨",
   "dataSource.notion.remove": "제거하기",
   "dataSource.notion.selector.addPages": "페이지 추가하기",
+  "dataSource.notion.selector.childPagesIncluded": "+{{count}}개의 하위 페이지 포함",
   "dataSource.notion.selector.noSearchResult": "검색 결과 없음",
   "dataSource.notion.selector.pageSelected": "페이지 선택됨",
   "dataSource.notion.selector.preview": "미리보기",

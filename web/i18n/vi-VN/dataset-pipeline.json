@@ -65,6 +65,8 @@
   "onlineDrive.notConnectedTip": "Để đồng bộ với {{name}}, trước tiên phải thiết lập kết nối với {{name}}.",
   "onlineDrive.notSupportedFileType": "Loại tệp này không được hỗ trợ",
   "onlineDrive.resetKeywords": "Đặt lại từ khóa",
+  "onlineDrive.viewMode.flatList": "Chế độ xem danh sách phẳng",
+  "onlineDrive.viewMode.treeView": "Chế độ xem cây",
   "operations.backToDataSource": "Quay lại nguồn dữ liệu",
   "operations.choose": "Chọn",
   "operations.convert": "Convert",

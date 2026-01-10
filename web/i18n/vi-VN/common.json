@@ -132,6 +132,7 @@
   "dataSource.notion.pagesAuthorized": "Các trang được ủy quyền",
   "dataSource.notion.remove": "Xóa",
   "dataSource.notion.selector.addPages": "Thêm trang",
+  "dataSource.notion.selector.childPagesIncluded": "+{{count}} trang con được bao gồm",
   "dataSource.notion.selector.noSearchResult": "Không có kết quả tìm kiếm",
   "dataSource.notion.selector.pageSelected": "Các trang đã chọn",
   "dataSource.notion.selector.preview": "Xem trước",

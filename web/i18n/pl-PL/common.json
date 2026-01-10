@@ -132,6 +132,7 @@
   "dataSource.notion.pagesAuthorized": "Strony autoryzowane",
   "dataSource.notion.remove": "Usuń",
   "dataSource.notion.selector.addPages": "Dodaj strony",
+  "dataSource.notion.selector.childPagesIncluded": "+{{count}} stron podrzędnych włączonych",
   "dataSource.notion.selector.noSearchResult": "Brak wyników wyszukiwania",
   "dataSource.notion.selector.pageSelected": "Zaznaczone strony",
   "dataSource.notion.selector.preview": "PODGLĄD",

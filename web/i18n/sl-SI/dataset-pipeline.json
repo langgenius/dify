@@ -65,6 +65,8 @@
   "onlineDrive.notConnectedTip": "Za sinhronizacijo z {{name}} je treba najprej vzpostaviti povezavo z {{name}}.",
   "onlineDrive.notSupportedFileType": "Ta vrsta datoteke ni podprta",
   "onlineDrive.resetKeywords": "Ponastavitev ključnih besed",
+  "onlineDrive.viewMode.flatList": "Ploščat seznam",
+  "onlineDrive.viewMode.treeView": "Pogled drevesa",
   "operations.backToDataSource": "Nazaj na vir podatkov",
   "operations.choose": "Izbrati",
   "operations.convert": "Pretvoriti",

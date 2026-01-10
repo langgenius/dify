@@ -79,7 +79,7 @@ const OnlineDocumentPreview = ({
         </div>
       )}
       {!isPending && content && (
-        <div className="body-md-regular grow overflow-hidden px-6 py-5 text-text-secondary">
+        <div className="body-md-regular grow overflow-y-auto px-6 py-5 text-text-secondary">
           <Markdown content={content} />
         </div>
       )}

@@ -65,6 +65,8 @@
   "onlineDrive.notConnectedTip": "Per sincronizzarsi con {{name}}, è necessario prima stabilire la connessione a {{name}}.",
   "onlineDrive.notSupportedFileType": "Questo tipo di file non è supportato",
   "onlineDrive.resetKeywords": "Reimposta le parole chiave",
+  "onlineDrive.viewMode.flatList": "Visualizzazione a elenco piatto",
+  "onlineDrive.viewMode.treeView": "Visualizzazione ad albero",
   "operations.backToDataSource": "Torna all'origine dati",
   "operations.choose": "Scegliere",
   "operations.convert": "Convertire",
