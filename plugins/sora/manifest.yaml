@@ -1,0 +1,38 @@
+version: 0.0.1
+type: plugin
+author: acedatacloud
+name: sora
+label:
+  en_US: Sora
+  ja_JP: Sora
+  zh_Hans: Sora
+  pt_BR: Sora
+description:
+  en_US: Generate videos via Ace Data Cloud Sora Videos API.
+  ja_JP: Ace Data Cloud Sora Videos API を使って動画生成を行います。
+  zh_Hans: 通过 Ace Data Cloud Sora Videos API 生成视频。
+  pt_BR: Gere vídeos via Ace Data Cloud Sora Videos API.
+icon: icon.jpg
+icon_dark: icon.jpg
+resource:
+  memory: 268435456
+  permission:
+    tool:
+      enabled: true
+plugins:
+  tools:
+    - provider/sora.yaml
+meta:
+  version: 0.0.1
+  arch:
+    - amd64
+    - arm64
+  runner:
+    language: python
+    version: "3.12"
+    entrypoint: main
+  minimum_dify_version: null
+created_at: 2026-01-09T00:00:00+08:00
+privacy: PRIVACY.md
+verified: false
+

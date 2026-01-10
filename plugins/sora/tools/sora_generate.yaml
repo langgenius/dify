@@ -1,0 +1,181 @@
+identity:
+  name: sora_generate_video
+  author: acedatacloud
+  label:
+    en_US: Sora Generate Video
+    zh_Hans: Sora 生成视频
+description:
+  human:
+    en_US: Generate videos with Ace Data Cloud Sora Videos API.
+    zh_Hans: 通过 Ace Data Cloud Sora Videos API 生成视频。
+  llm: Generate a video from prompt (and optional images) via Ace Data Cloud Sora Videos API.
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      additionalProperties: true
+    task_id:
+      type: string
+    trace_id:
+      type: string
+    data:
+      type: array
+      items:
+        type: object
+        properties:
+          id:
+            type: string
+          video_url:
+            type: string
+          state:
+            type: string
+        additionalProperties: true
+parameters:
+  - name: prompt
+    type: string
+    required: true
+    label:
+      en_US: Prompt
+      zh_Hans: 提示词
+    human_description:
+      en_US: Describe the video you want to generate.
+      zh_Hans: 描述你想生成的视频内容。
+    llm_description: Describe the scene, motion, camera movement, and style in detail.
+    form: llm
+  - name: model
+    type: select
+    required: true
+    label:
+      en_US: Model
+      zh_Hans: 模型
+    human_description:
+      en_US: Choose a Sora model.
+      zh_Hans: 选择 Sora 模型。
+    llm_description: Use sora-2 or sora-2-pro.
+    form: form
+    options:
+      - value: sora-2
+        label: { en_US: sora-2, zh_Hans: sora-2 }
+      - value: sora-2-pro
+        label: { en_US: sora-2-pro, zh_Hans: sora-2-pro }
+  - name: duration
+    type: select
+    required: false
+    label:
+      en_US: Duration (seconds)
+      zh_Hans: 时长（秒）
+    human_description:
+      en_US: Optional video duration.
+      zh_Hans: 可选视频时长。
+    llm_description: Optional. Choose 10/15/25 (25s may require sora-2-pro).
+    form: form
+    options:
+      - value: 10
+        label: { en_US: "10", zh_Hans: "10" }
+      - value: 15
+        label: { en_US: "15", zh_Hans: "15" }
+      - value: 25
+        label: { en_US: "25", zh_Hans: "25" }
+  - name: size
+    type: select
+    required: false
+    label:
+      en_US: Size
+      zh_Hans: 清晰度
+    human_description:
+      en_US: Optional output size.
+      zh_Hans: 可选输出清晰度。
+    llm_description: Optional. Choose small or large.
+    form: form
+    options:
+      - value: small
+        label: { en_US: small, zh_Hans: small }
+      - value: large
+        label: { en_US: large, zh_Hans: large }
+  - name: orientation
+    type: select
+    required: false
+    label:
+      en_US: Orientation
+      zh_Hans: 画幅方向
+    human_description:
+      en_US: Optional output orientation.
+      zh_Hans: 可选输出画幅方向。
+    llm_description: Optional. Choose landscape or portrait.
+    form: form
+    options:
+      - value: landscape
+        label: { en_US: landscape, zh_Hans: landscape }
+      - value: portrait
+        label: { en_US: portrait, zh_Hans: portrait }
+  - name: image_urls
+    type: array
+    required: false
+    label:
+      en_US: Image URLs
+      zh_Hans: 图片链接
+    human_description:
+      en_US: Optional reference images (for image-to-video).
+      zh_Hans: 可选参考图片链接（图生视频）。
+    llm_description: Provide image URLs (or base64 data URLs) to guide the video generation.
+    form: form
+    input_schema:
+      type: array
+      items:
+        type: string
+  - name: character_url
+    type: string
+    required: false
+    label:
+      en_US: Character Video URL
+      zh_Hans: 角色视频链接
+    human_description:
+      en_US: Optional character source video URL.
+      zh_Hans: 可选角色来源视频链接。
+    llm_description: Optional. Provide a video URL used for character creation (must not contain real people).
+    form: form
+  - name: character_start
+    type: number
+    required: false
+    label:
+      en_US: Character Start (seconds)
+      zh_Hans: 角色起始时间（秒）
+    human_description:
+      en_US: Optional character start time.
+      zh_Hans: 可选角色起始时间。
+    llm_description: Optional. Start time range (seconds) for the character to appear.
+    form: form
+  - name: character_end
+    type: number
+    required: false
+    label:
+      en_US: Character End (seconds)
+      zh_Hans: 角色结束时间（秒）
+    human_description:
+      en_US: Optional character end time.
+      zh_Hans: 可选角色结束时间。
+    llm_description: Optional. End time range (seconds) for the character to appear.
+    form: form
+  - name: callback_url
+    type: string
+    required: false
+    label:
+      en_US: Callback URL
+      zh_Hans: 回调地址
+    human_description:
+      en_US: Optional callback URL for async notifications.
+      zh_Hans: 可选回调地址，用于异步通知。
+    llm_description: Optional. Provide a public webhook URL for callbacks.
+    form: form
+extra:
+  python:
+    source: tools/sora_generate.py
+
