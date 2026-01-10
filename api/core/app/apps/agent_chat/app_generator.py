@@ -136,6 +136,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         media: list[AgentMedia] = []
 
         for f in file_objs:
+<<<<<<< HEAD
             if f.content_type and (
                 f.content_type.startswith("audio/")
                 or f.content_type.startswith("video/")
@@ -149,7 +150,29 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                         size=f.size,
                         duration=getattr(f, "duration", None),
                     )
+=======
+            if not f.content_type:
+                continue
+        
+            if not (f.content_type.startswith("audio/") or f.content_type.startswith("video/")):
+                continue
+        
+            if not isinstance(f.id, str) or not isinstance(f.filename, str):
+                continue
+        
+            media.append(
+                AgentMedia(
+                    file_id=f.id,
+                    media_type=f.content_type,
+                    filename=f.filename,
+                    content_type=f.content_type,
+                    size=f.size,
+                    duration=getattr(f, "duration", None),
+>>>>>>> 1eec0b543 (Resolve InspectMediaTool invoke API and generator contract)
                 )
+            )
+        
+
 
         # -------------------------
         # App config & tracing
