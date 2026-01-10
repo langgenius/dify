@@ -29,6 +29,7 @@ import { CheckModal } from '@/hooks/use-pay'
 import { useInfiniteAppList } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
 import { cn } from '@/utils/classnames'
+import { isServer } from '@/utils/client'
 import AppCard from './app-card'
 import { AppCardSkeleton } from './app-card-skeleton'
 import Empty from './empty'
@@ -71,7 +72,7 @@ const List = () => {
   // 1) Normalize legacy/incorrect query params like ?mode=discover -> ?category=all
   useEffect(() => {
     // avoid running on server
-    if (typeof window === 'undefined')
+    if (isServer)
       return
     const mode = searchParams.get('mode')
     if (!mode)
