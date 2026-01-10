@@ -1,10 +1,10 @@
 import type { Locale } from '@/i18n-config/language'
-import { atom, useAtomValue } from 'jotai'
+import { useTranslation } from '#i18n'
 import { getDocLanguage, getLanguage, getPricingPageLanguage } from '@/i18n-config/language'
 
-export const localeAtom = atom<Locale>('en-US')
 export const useLocale = () => {
-  return useAtomValue(localeAtom)
+  const { i18n } = useTranslation()
+  return i18n.language as Locale
 }
 
 export const useGetLanguage = () => {
