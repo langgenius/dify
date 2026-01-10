@@ -1,0 +1,157 @@
+identity:
+  name: seedance_generate_video
+  author: acedatacloud
+  label:
+    en_US: Seedance Generate Video
+    zh_Hans: Seedance 生成视频
+description:
+  human:
+    en_US: Generate a video with Ace Data Cloud Seedance Videos API.
+    zh_Hans: 通过 Ace Data Cloud Seedance Videos API 生成视频。
+  llm: Generate a video from prompt (optionally with frame/reference images) via Ace Data Cloud Seedance Videos API.
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      additionalProperties: true
+    task_id:
+      type: string
+    trace_id:
+      type: string
+    data:
+      type: array
+      items:
+        type: object
+        additionalProperties: true
+parameters:
+  - name: prompt
+    type: string
+    required: true
+    label:
+      en_US: Prompt
+      zh_Hans: 提示词
+    human_description:
+      en_US: Text prompt used to generate the video.
+      zh_Hans: 用于生成视频的提示词。
+    llm_description: Describe the video you want to generate in detail (scene, motion, camera, style).
+    form: llm
+  - name: model
+    type: select
+    required: false
+    label:
+      en_US: Model
+      zh_Hans: 模型
+    human_description:
+      en_US: Optional model name. Default is doubao-seedance-1-0-pro-250528.
+      zh_Hans: 可选模型名称，不填则默认为 doubao-seedance-1-0-pro-250528。
+    llm_description: Optional. Choose a supported Seedance model.
+    form: form
+    options:
+      - value: doubao-seedance-1-0-pro-250528
+        label: { en_US: doubao-seedance-1-0-pro-250528 (default), zh_Hans: doubao-seedance-1-0-pro-250528（默认） }
+      - value: doubao-seedance-1-0-pro-fast-251015
+        label: { en_US: doubao-seedance-1-0-pro-fast-251015, zh_Hans: doubao-seedance-1-0-pro-fast-251015 }
+      - value: doubao-seedance-1-5-pro-251215
+        label: { en_US: doubao-seedance-1-5-pro-251215, zh_Hans: doubao-seedance-1-5-pro-251215 }
+      - value: doubao-seedance-1-0-lite-t2v-250428
+        label: { en_US: doubao-seedance-1-0-lite-t2v-250428, zh_Hans: doubao-seedance-1-0-lite-t2v-250428 }
+      - value: doubao-seedance-1-0-lite-i2v-250428
+        label: { en_US: doubao-seedance-1-0-lite-i2v-250428, zh_Hans: doubao-seedance-1-0-lite-i2v-250428 }
+  - name: first_frame_url
+    type: string
+    required: false
+    label:
+      en_US: First Frame URL
+      zh_Hans: 首帧图片链接
+    human_description:
+      en_US: Optional. Provide a first frame reference image URL.
+      zh_Hans: 可选，提供首帧参考图片链接。
+    llm_description: Optional. Provide a public image URL or a base64 data URL for the first frame.
+    form: form
+  - name: last_frame_url
+    type: string
+    required: false
+    label:
+      en_US: Last Frame URL
+      zh_Hans: 尾帧图片链接
+    human_description:
+      en_US: Optional. Provide a last frame reference image URL.
+      zh_Hans: 可选，提供尾帧参考图片链接。
+    llm_description: Optional. Provide a public image URL or a base64 data URL for the last frame.
+    form: form
+  - name: reference_image_urls
+    type: array
+    required: false
+    label:
+      en_US: Reference Image URLs
+      zh_Hans: 参考图片链接列表
+    human_description:
+      en_US: Optional. Provide one or more reference images.
+      zh_Hans: 可选，提供一张或多张参考图片链接。
+    llm_description: Optional. Provide one or more image URLs (or base64 data URLs) as reference images.
+    form: form
+    input_schema:
+      type: array
+      items:
+        type: string
+  - name: return_last_frame
+    type: boolean
+    required: false
+    label:
+      en_US: Return last frame
+      zh_Hans: 返回最后一帧
+    human_description:
+      en_US: Whether to return last frame URL (if supported).
+      zh_Hans: 是否返回最后一帧链接（若支持）。
+    llm_description: Optional. Set true to request last frame URL.
+    form: form
+  - name: service_tier
+    type: select
+    required: false
+    label:
+      en_US: Service tier
+      zh_Hans: 服务档位
+    human_description:
+      en_US: Optional. Choose default or flex.
+      zh_Hans: 可选，选择 default 或 flex。
+    llm_description: Optional. Choose default or flex.
+    form: form
+    options:
+      - value: default
+        label: { en_US: default, zh_Hans: default }
+      - value: flex
+        label: { en_US: flex, zh_Hans: flex }
+  - name: execution_expires_after
+    type: number
+    required: false
+    label:
+      en_US: Execution expires after (seconds)
+      zh_Hans: 执行超时（秒）
+    human_description:
+      en_US: Optional. Task timeout threshold in seconds (3600-259200).
+      zh_Hans: 可选，任务执行超时秒数（3600-259200）。
+    llm_description: Optional. Provide an integer seconds value.
+    form: form
+  - name: callback_url
+    type: string
+    required: false
+    label:
+      en_US: Callback URL
+      zh_Hans: 回调地址
+    human_description:
+      en_US: Optional callback URL for async notifications.
+      zh_Hans: 可选回调地址，用于异步通知。
+    llm_description: Optional. Provide a public webhook URL for callbacks.
+    form: form
+extra:
+  python:
+    source: tools/seedance_generate.py
+
