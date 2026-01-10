@@ -46,6 +46,7 @@ class Dataset(Base):
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="dataset_pkey"),
         sa.Index("dataset_tenant_idx", "tenant_id"),
+        sa.Index("dataset_tenant_name_idx", "tenant_id", "name"),
         adjusted_json_index("retrieval_model_idx", "retrieval_model"),
     )
 
