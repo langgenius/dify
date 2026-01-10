@@ -1,0 +1,41 @@
+identity:
+  author: "acedatacloud"
+  name: "seedream"
+  label:
+    en_US: "Seedream"
+    zh_Hans: "Seedream"
+    pt_BR: "Seedream"
+    ja_JP: "Seedream"
+  description:
+    en_US: "Generate and edit images via Ace Data Cloud Seedream Images API."
+    zh_Hans: "通过 Ace Data Cloud Seedream Images API 生成与编辑图片。"
+    pt_BR: "Gere e edite imagens via Ace Data Cloud Seedream Images API."
+    ja_JP: "Ace Data Cloud Seedream Images API を使って画像生成・編集を行います。"
+  icon: "icon.jpg"
+  icon_dark: "icon.jpg"
+  tags:
+    - image
+
+credentials_for_provider:
+  acedata_bearer_token:
+    type: secret-input
+    required: true
+    label:
+      en_US: Ace Data Cloud Bearer Token
+      zh_Hans: Ace Data Cloud Token
+    placeholder:
+      en_US: Paste your token (without "Bearer ")
+      zh_Hans: 粘贴 Token（不需要带 Bearer）
+    help:
+      en_US: Acquire a token from the Ace Data Cloud console.
+      zh_Hans: 从 Ace Data Cloud 控制台获取 Token。
+    url: https://platform.acedata.cloud/documents/seedream-images-integration
+
+tools:
+  - tools/seedream_generate.yaml
+  - tools/seedream_edit.yaml
+
+extra:
+  python:
+    source: provider/seedream.py
+
