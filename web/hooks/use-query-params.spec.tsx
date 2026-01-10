@@ -12,6 +12,13 @@ import {
   usePricingModal,
 } from './use-query-params'
 
+// Mock isServer to allow runtime control in tests
+const mockIsServer = vi.hoisted(() => ({ value: false }))
+vi.mock('@/utils/client', () => ({
+  get isServer() { return mockIsServer.value },
+  get isClient() { return !mockIsServer.value },
+}))
+
 const renderWithAdapter = <T,>(hook: () => T, searchParams = '') => {
   const onUrlUpdate = vi.fn<(event: UrlUpdateEvent) => void>()
   const wrapper = ({ children }: { children: ReactNode }) => (
@@ -463,16 +470,17 @@ describe('clearQueryParams', () => {
     replaceSpy.mockRestore()
   })
 
-  it('should no-op when window is undefined', () => {
+  it('should no-op when running on server', () => {
     // Arrange
     const replaceSpy = vi.spyOn(window.history, 'replaceState')
-    vi.stubGlobal('window', undefined)
+    mockIsServer.value = true
 
     // Act
-    expect(() => clearQueryParams('foo')).not.toThrow()
+    clearQueryParams('foo')
 
     // Assert
     expect(replaceSpy).not.toHaveBeenCalled()
     replaceSpy.mockRestore()
+    mockIsServer.value = false
   })
 })
