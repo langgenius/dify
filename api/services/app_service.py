@@ -68,8 +68,40 @@ class AppService:
             else:
                 return None
 
+        # Determine sort order
+        sort_by = args.get("sort_by", "created_at")
+        sort_order = args.get("sort_order", "desc")
+
+        # Map sort_by field to the corresponding database column
+        sort_field_map = {
+            "created_at": App.created_at,
+            "updated_at": App.updated_at,
+            "name": App.name,
+            "owner_name": Account.name,
+        }
+
+        # Build the query
+        query = sa.select(App).where(*filters)
+
+        # Handle sorting
+        if sort_by == "owner_name":
+            # Join with Account table for owner name sorting
+            query = query.join(Account, App.created_by == Account.id)
+            sort_column = Account.name
+        else:
+            sort_column = sort_field_map.get(sort_by, App.created_at)
+
+        # Apply sort order
+        order_func = sa.desc if sort_order == "desc" else sa.asc
+
+        if sort_by == "owner_name":
+            # Primary sort by owner name, secondary by updated_at desc
+            query = query.order_by(order_func(sort_column), App.updated_at.desc())
+        else:
+            query = query.order_by(order_func(sort_column))
+
         app_models = db.paginate(
-            sa.select(App).where(*filters).order_by(App.created_at.desc()),
+            query,
             page=args["page"],
             per_page=args["limit"],
             error_out=False,
