@@ -1,0 +1,124 @@
+identity:
+  name: serp_google
+  author: acedatacloud
+  label:
+    en_US: Google SERP
+    zh_Hans: Google SERP
+description:
+  human:
+    en_US: Get structured Google SERP results via Ace Data Cloud Google SERP API.
+    zh_Hans: 通过 Ace Data Cloud Google SERP API 获取结构化 Google 搜索结果。
+  llm: Fetch structured Google search results (search/images/news/maps/places/videos).
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      additionalProperties: true
+    trace_id:
+      type: string
+    data:
+      type: object
+      additionalProperties: true
+parameters:
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Query
+      zh_Hans: 关键词
+    human_description:
+      en_US: Search query string.
+      zh_Hans: 搜索关键词。
+    llm_description: Provide the exact keyword(s) to search on Google.
+    form: llm
+  - name: type
+    type: select
+    required: false
+    label:
+      en_US: Type
+      zh_Hans: 类型
+    human_description:
+      en_US: Search resource type. Default is search.
+      zh_Hans: 搜索资源类型，默认为 search。
+    llm_description: Optional. Choose the SERP resource type.
+    form: form
+    options:
+      - value: search
+        label: { en_US: search (default), zh_Hans: search（默认） }
+      - value: images
+        label: { en_US: images, zh_Hans: images }
+      - value: news
+        label: { en_US: news, zh_Hans: news }
+      - value: maps
+        label: { en_US: maps, zh_Hans: maps }
+      - value: places
+        label: { en_US: places, zh_Hans: places }
+      - value: videos
+        label: { en_US: videos, zh_Hans: videos }
+  - name: country
+    type: string
+    required: false
+    label:
+      en_US: Country
+      zh_Hans: 国家
+    human_description:
+      en_US: Country code (e.g., US, CN). Default is US.
+      zh_Hans: 国家简写（例如 US、CN），默认 US。
+    llm_description: Optional. Provide a 2-letter country code like US or CN.
+    form: form
+  - name: language
+    type: string
+    required: false
+    label:
+      en_US: Language
+      zh_Hans: 语言
+    human_description:
+      en_US: Language code (e.g., en, zh-CN). Default is en.
+      zh_Hans: 语言代码（例如 en、zh-CN），默认 en。
+    llm_description: Optional. Provide a language code like en or zh-CN.
+    form: form
+  - name: range
+    type: string
+    required: false
+    label:
+      en_US: Date Range
+      zh_Hans: 时间范围
+    human_description:
+      en_US: Date range constraint of the search results.
+      zh_Hans: 搜索结果的时间范围限制。
+    llm_description: Optional. Provide a date range supported by the API (see docs).
+    form: form
+  - name: number
+    type: number
+    required: false
+    label:
+      en_US: Number
+      zh_Hans: 数量
+    human_description:
+      en_US: Number of results per page. Default is 10.
+      zh_Hans: 每页结果数量，默认 10。
+    llm_description: Optional. Provide an integer number like 10.
+    form: form
+  - name: page
+    type: number
+    required: false
+    label:
+      en_US: Page
+      zh_Hans: 页码
+    human_description:
+      en_US: Page number. Default is 1.
+      zh_Hans: 页码，默认 1。
+    llm_description: Optional. Provide an integer page number like 1.
+    form: form
+extra:
+  python:
+    source: tools/serp_google.py
+

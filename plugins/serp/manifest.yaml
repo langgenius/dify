@@ -1,0 +1,38 @@
+version: 0.0.1
+type: plugin
+author: acedatacloud
+name: serp
+label:
+  en_US: SERP
+  ja_JP: SERP
+  zh_Hans: SERP
+  pt_BR: SERP
+description:
+  en_US: Fetch Google SERP results via Ace Data Cloud Google SERP API.
+  ja_JP: Ace Data Cloud Google SERP API を使って Google 検索結果を取得します。
+  zh_Hans: 通过 Ace Data Cloud Google SERP API 获取 Google 搜索结果。
+  pt_BR: Busque resultados SERP do Google via Ace Data Cloud Google SERP API.
+icon: icon.jpg
+icon_dark: icon.jpg
+resource:
+  memory: 268435456
+  permission:
+    tool:
+      enabled: true
+plugins:
+  tools:
+    - provider/serp.yaml
+meta:
+  version: 0.0.1
+  arch:
+    - amd64
+    - arm64
+  runner:
+    language: python
+    version: "3.12"
+    entrypoint: main
+  minimum_dify_version: null
+created_at: 2026-01-10T00:00:00.000000+08:00
+privacy: PRIVACY.md
+verified: false
+
