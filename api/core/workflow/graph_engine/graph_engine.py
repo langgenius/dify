@@ -7,15 +7,13 @@ Domain-Driven Design principles for improved maintainability and testability.
 
 from __future__ import annotations
 
-import contextvars
 import logging
 import queue
 import threading
 from collections.abc import Generator
 from typing import TYPE_CHECKING, cast, final
 
-from flask import Flask, current_app
-
+from core.workflow.context import capture_current_context
 from core.workflow.enums import NodeExecutionType
 from core.workflow.graph import Graph
 from core.workflow.graph_events import (
@@ -159,17 +157,8 @@ class GraphEngine:
         self._layers: list[GraphEngineLayer] = []
 
         # === Worker Pool Setup ===
-        # Capture Flask app context for worker threads
-        flask_app: Flask | None = None
-        try:
-            app = current_app._get_current_object()  # type: ignore
-            if isinstance(app, Flask):
-                flask_app = app
-        except RuntimeError:
-            pass
-
-        # Capture context variables for worker threads
-        context_vars = contextvars.copy_context()
+        # Capture execution context for worker threads
+        execution_context = capture_current_context()
 
         # Create worker pool for parallel node execution
         self._worker_pool = WorkerPool(
@@ -177,8 +166,7 @@ class GraphEngine:
             event_queue=self._event_queue,
             graph=self._graph,
             layers=self._layers,
-            flask_app=flask_app,
-            context_vars=context_vars,
+            execution_context=execution_context,
             min_workers=self._min_workers,
             max_workers=self._max_workers,
             scale_up_threshold=self._scale_up_threshold,
