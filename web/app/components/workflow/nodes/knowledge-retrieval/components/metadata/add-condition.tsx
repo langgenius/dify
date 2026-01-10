@@ -1,22 +1,22 @@
+import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import type { MetadataInDoc } from '@/models/datasets'
+import {
+  RiAddLine,
+} from '@remixicon/react'
 import {
   useCallback,
   useMemo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiAddLine,
-} from '@remixicon/react'
-import MetadataIcon from './metadata-icon'
+import Button from '@/app/components/base/button'
+import Input from '@/app/components/base/input'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import Button from '@/app/components/base/button'
-import Input from '@/app/components/base/input'
-import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import type { MetadataInDoc } from '@/models/datasets'
+import MetadataIcon from './metadata-icon'
 
 const AddCondition = ({
   metadataList,
@@ -39,7 +39,7 @@ const AddCondition = ({
     <PortalToFollowElem
       open={open}
       onOpenChange={setOpen}
-      placement='bottom-start'
+      placement="bottom-start"
       offset={{
         mainAxis: 3,
         crossAxis: 0,
@@ -47,41 +47,41 @@ const AddCondition = ({
     >
       <PortalToFollowElemTrigger onClick={() => setOpen(!open)}>
         <Button
-          size='small'
-          variant='secondary'
+          size="small"
+          variant="secondary"
         >
-          <RiAddLine className='h-3.5 w-3.5' />
-          {t('workflow.nodes.knowledgeRetrieval.metadata.panel.add')}
+          <RiAddLine className="h-3.5 w-3.5" />
+          {t('nodes.knowledgeRetrieval.metadata.panel.add', { ns: 'workflow' })}
         </Button>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-10'>
-        <div className='w-[320px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg'>
-          <div className='p-2 pb-1'>
+      <PortalToFollowElemContent className="z-10">
+        <div className="w-[320px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg">
+          <div className="p-2 pb-1">
             <Input
               showLeftIcon
-              placeholder={t('workflow.nodes.knowledgeRetrieval.metadata.panel.search')}
+              placeholder={t('nodes.knowledgeRetrieval.metadata.panel.search', { ns: 'workflow' })}
               value={searchText}
               onChange={e => setSearchText(e.target.value)}
             />
           </div>
-          <div className='p-1'>
+          <div className="p-1">
             {
               filteredMetadataList?.map(metadata => (
                 <div
                   key={metadata.name}
-                  className='system-sm-medium flex h-6 cursor-pointer items-center rounded-md px-3 text-text-secondary hover:bg-state-base-hover'
+                  className="system-sm-medium flex h-6 cursor-pointer items-center rounded-md px-3 text-text-secondary hover:bg-state-base-hover"
                 >
-                  <div className='mr-1 p-[1px]'>
+                  <div className="mr-1 p-[1px]">
                     <MetadataIcon type={metadata.type} />
                   </div>
                   <div
-                    className='grow truncate'
+                    className="grow truncate"
                     title={metadata.name}
                     onClick={() => handleAddConditionWrapped(metadata)}
                   >
                     {metadata.name}
                   </div>
-                  <div className='system-xs-regular shrink-0 text-text-tertiary'>{metadata.type}</div>
+                  <div className="system-xs-regular shrink-0 text-text-tertiary">{metadata.type}</div>
                 </div>
               ))
             }

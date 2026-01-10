@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import json
+import threading
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from dataclasses import dataclass
@@ -10,6 +11,7 @@ from typing import Any, Protocol
 from pydantic.json import pydantic_encoder
 
 from core.model_runtime.entities.llm_entities import LLMUsage
+from core.workflow.entities.pause_reason import PauseReason
 from core.workflow.runtime.variable_pool import VariablePool
 
 
@@ -46,7 +48,11 @@ class ReadyQueueProtocol(Protocol):
 
 
 class GraphExecutionProtocol(Protocol):
-    """Structural interface for graph execution aggregate."""
+    """Structural interface for graph execution aggregate.
+
+    Defines the minimal set of attributes and methods required from a GraphExecution entity
+    for runtime orchestration and state management.
+    """
 
     workflow_id: str
     started: bool
@@ -54,6 +60,7 @@ class GraphExecutionProtocol(Protocol):
     aborted: bool
     error: Exception | None
     exceptions_count: int
+    pause_reasons: list[PauseReason]
 
     def start(self) -> None:
         """Transition execution into the running state."""
@@ -162,6 +169,7 @@ class GraphRuntimeState:
         self._pending_response_coordinator_dump: str | None = None
         self._pending_graph_execution_workflow_id: str | None = None
         self._paused_nodes: set[str] = set()
+        self.stop_event: threading.Event = threading.Event()
 
         if graph is not None:
             self.attach_graph(graph)

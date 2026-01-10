@@ -1,13 +1,13 @@
+import type { ToolNodeType } from '../nodes/tool/types'
 import type {
   InputVar,
   ToolWithProvider,
 } from '../types'
-import type { ToolNodeType } from '../nodes/tool/types'
+import type { StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
-import { canFindTool } from '@/utils'
-import type { StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
+import { canFindTool } from '@/utils'
 
 export const getToolCheckParams = (
   toolData: ToolNodeType,

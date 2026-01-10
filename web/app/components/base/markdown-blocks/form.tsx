@@ -1,13 +1,14 @@
-import React, { useEffect, useState } from 'react'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
 import Button from '@/app/components/base/button'
-import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
+import { useChatContext } from '@/app/components/base/chat/chat/context'
+import Checkbox from '@/app/components/base/checkbox'
 import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
 import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
-import Checkbox from '@/app/components/base/checkbox'
-import Select from '@/app/components/base/select'
-import { useChatContext } from '@/app/components/base/chat/chat/context'
 import { formatDateForOutput } from '@/app/components/base/date-and-time-picker/utils/dayjs'
+import Input from '@/app/components/base/input'
+import Select from '@/app/components/base/select'
+import Textarea from '@/app/components/base/textarea'
 
 enum DATA_FORMAT {
   TEXT = 'text',
@@ -56,7 +57,7 @@ const MarkdownForm = ({ node }: any) => {
         let value = formValues[child.properties.name]
 
         if (child.tagName === SUPPORTED_TAGS.INPUT
-            && (child.properties.type === SUPPORTED_TYPES.DATE || child.properties.type === SUPPORTED_TYPES.DATETIME)) {
+          && (child.properties.type === SUPPORTED_TYPES.DATE || child.properties.type === SUPPORTED_TYPES.DATETIME)) {
           if (value && typeof value.format === 'function') {
             // Format date output consistently
             const includeTime = child.properties.type === SUPPORTED_TYPES.DATETIME
@@ -88,7 +89,7 @@ const MarkdownForm = ({ node }: any) => {
   return (
     <form
       autoComplete="off"
-      className='flex flex-col self-stretch'
+      className="flex flex-col self-stretch"
       onSubmit={(e: any) => {
         e.preventDefault()
         e.stopPropagation()
@@ -150,7 +151,7 @@ const MarkdownForm = ({ node }: any) => {
           }
           if (child.properties.type === SUPPORTED_TYPES.CHECKBOX) {
             return (
-              <div className='mt-2 flex h-6 items-center space-x-2' key={index}>
+              <div className="mt-2 flex h-6 items-center space-x-2" key={index}>
                 <Checkbox
                   key={index}
                   checked={formValues[child.properties.name]}
@@ -249,16 +250,21 @@ const MarkdownForm = ({ node }: any) => {
             <Button
               variant={variant}
               size={size}
-              className='mt-4'
+              className="mt-4"
               key={index}
               onClick={onSubmit}
             >
-              <span className='text-[13px]'>{child.children[0]?.value || ''}</span>
+              <span className="text-[13px]">{child.children[0]?.value || ''}</span>
             </Button>
           )
         }
 
-        return <p key={index}>Unsupported tag: {child.tagName}</p>
+        return (
+          <p key={index}>
+            Unsupported tag:
+            {child.tagName}
+          </p>
+        )
       })}
     </form>
   )

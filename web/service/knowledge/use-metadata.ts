@@ -1,9 +1,9 @@
 import type { BuiltInMetadataItem, MetadataBatchEditToServer, MetadataItemWithValueLength } from '@/app/components/datasets/metadata/types'
-import { del, get, patch, post } from '../base'
-import { useDocumentListKey, useInvalidDocumentList } from './use-document'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useInvalid } from '../use-base'
 import type { DocumentDetailResponse } from '@/models/datasets'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { del, get, patch, post } from '../base'
+import { useInvalid } from '../use-base'
+import { useDocumentListKey, useInvalidDocumentList } from './use-document'
 
 const NAME_SPACE = 'dataset-metadata'
 

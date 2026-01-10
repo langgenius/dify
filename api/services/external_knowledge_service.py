@@ -35,7 +35,10 @@ class ExternalDatasetService:
             .order_by(ExternalKnowledgeApis.created_at.desc())
         )
         if search:
-            query = query.where(ExternalKnowledgeApis.name.ilike(f"%{search}%"))
+            from libs.helper import escape_like_pattern
+
+            escaped_search = escape_like_pattern(search)
+            query = query.where(ExternalKnowledgeApis.name.ilike(f"%{escaped_search}%", escape="\\"))
 
         external_knowledge_apis = db.paginate(
             select=query, page=page, per_page=per_page, max_per_page=100, error_out=False
@@ -324,4 +327,5 @@ class ExternalDatasetService:
         )
         if response.status_code == 200:
             return cast(list[Any], response.json().get("records", []))
-        return []
+        else:
+            raise ValueError(response.text)

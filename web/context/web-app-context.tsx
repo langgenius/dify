@@ -1,15 +1,15 @@
 'use client'
 
-import type { ChatConfig } from '@/app/components/base/chat/types'
-import Loading from '@/app/components/base/loading'
-import { AccessMode } from '@/models/access-control'
-import type { AppData, AppMeta } from '@/models/share'
-import { useGetWebAppAccessModeByCode } from '@/service/use-share'
-import { usePathname, useSearchParams } from 'next/navigation'
 import type { FC, PropsWithChildren } from 'react'
+import type { ChatConfig } from '@/app/components/base/chat/types'
+import type { AppData, AppMeta } from '@/models/share'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { useEffect } from 'react'
 import { create } from 'zustand'
 import { getProcessedSystemVariablesFromUrlParams } from '@/app/components/base/chat/utils'
+import Loading from '@/app/components/base/loading'
+import { AccessMode } from '@/models/access-control'
+import { useGetWebAppAccessModeByCode } from '@/service/use-share'
 import { useGlobalPublicStore } from './global-public-context'
 
 type WebAppStore = {
@@ -112,9 +112,11 @@ const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
   }, [accessModeResult, updateWebAppAccessMode, shareCode])
 
   if (isGlobalPending || isLoading) {
-    return <div className='flex h-full w-full items-center justify-center'>
-      <Loading />
-    </div>
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <Loading />
+      </div>
+    )
   }
   return (
     <>
