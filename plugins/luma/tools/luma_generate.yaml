@@ -1,0 +1,161 @@
+identity:
+  name: luma_generate_video
+  author: acedatacloud
+  label:
+    en_US: Luma Generate Video
+    zh_Hans: Luma 生成视频
+description:
+  human:
+    en_US: Generate a video via Ace Data Cloud Luma Videos API.
+    zh_Hans: 通过 Ace Data Cloud Luma Videos API 生成视频。
+  llm: Generate a video (generate/extend) via Ace Data Cloud Luma Videos API.
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      additionalProperties: true
+    task_id:
+      type: string
+    trace_id:
+      type: string
+    data:
+      type: object
+      additionalProperties: true
+parameters:
+  - name: action
+    type: select
+    required: true
+    label:
+      en_US: Action
+      zh_Hans: 行为
+    human_description:
+      en_US: Choose how to generate the video.
+      zh_Hans: 选择生成方式。
+    llm_description: Use generate for first creation, extend to continue from a previous video (provide video_id or video_url).
+    form: form
+    options:
+      - value: generate
+        label: { en_US: generate, zh_Hans: 生成 }
+      - value: extend
+        label: { en_US: extend, zh_Hans: 扩展 }
+  - name: prompt
+    type: string
+    required: false
+    label:
+      en_US: Prompt
+      zh_Hans: 提示词
+    human_description:
+      en_US: Required for generate. Optional for extend.
+      zh_Hans: generate 必填，extend 可选。
+    llm_description: Describe the video in detail (scene, motion, camera, style).
+    form: llm
+  - name: aspect_ratio
+    type: string
+    required: false
+    label:
+      en_US: Aspect ratio
+      zh_Hans: 画面比例
+    human_description:
+      en_US: Optional output aspect ratio (e.g. 16:9).
+      zh_Hans: 可选输出比例（如 16:9）。
+    llm_description: "Optional. Example: 16:9."
+    form: form
+  - name: start_image_url
+    type: string
+    required: false
+    label:
+      en_US: Start image URL
+      zh_Hans: 首帧图片链接
+    human_description:
+      en_US: Optional. The first frame reference image URL.
+      zh_Hans: 可选，首帧参考图片链接。
+    llm_description: Optional URL to an image used as the first frame.
+    form: form
+  - name: end_image_url
+    type: string
+    required: false
+    label:
+      en_US: End image URL
+      zh_Hans: 尾帧图片链接
+    human_description:
+      en_US: Optional. The last frame reference image URL.
+      zh_Hans: 可选，尾帧参考图片链接。
+    llm_description: Optional URL to an image used as the last frame.
+    form: form
+  - name: video_id
+    type: string
+    required: false
+    label:
+      en_US: Video ID
+      zh_Hans: 视频ID
+    human_description:
+      en_US: For extend. If specified, will use video_id instead of video_url.
+      zh_Hans: extend 用。若填写则优先使用 video_id。
+    llm_description: For extend.
+    form: form
+  - name: video_url
+    type: string
+    required: false
+    label:
+      en_US: Video URL
+      zh_Hans: 视频链接
+    human_description:
+      en_US: For extend. Provide the URL of an existing video.
+      zh_Hans: extend 用。传入已有视频链接。
+    llm_description: For extend.
+    form: form
+  - name: enhancement
+    type: boolean
+    required: false
+    label:
+      en_US: Enhancement
+      zh_Hans: 清晰度增强
+    human_description:
+      en_US: Optional enhancement switch.
+      zh_Hans: 可选清晰度增强开关。
+    llm_description: Optional.
+    form: form
+  - name: loop
+    type: boolean
+    required: false
+    label:
+      en_US: Loop
+      zh_Hans: 循环视频
+    human_description:
+      en_US: Optional loop switch.
+      zh_Hans: 可选循环开关。
+    llm_description: Optional.
+    form: form
+  - name: timeout
+    type: number
+    required: false
+    label:
+      en_US: Timeout (seconds)
+      zh_Hans: 超时（秒）
+    human_description:
+      en_US: Optional timeout value forwarded to the API.
+      zh_Hans: 可选超时参数，会透传到 API。
+    llm_description: Optional.
+    form: form
+  - name: callback_url
+    type: string
+    required: false
+    label:
+      en_US: Callback URL
+      zh_Hans: 回调地址
+    human_description:
+      en_US: Optional callback URL for async notifications.
+      zh_Hans: 可选回调地址，用于异步通知。
+    llm_description: Optional.
+    form: form
+extra:
+  python:
+    source: tools/luma_generate.py
