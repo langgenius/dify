@@ -6,6 +6,7 @@ from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
+from uuid import UUID
 from werkzeug.exceptions import NotFound
 
 from controllers.console import console_ns
@@ -467,22 +468,34 @@ class ChatConversationApi(Resource):
 
             escaped_keyword = escape_like_pattern(args.keyword)
             keyword_filter = f"%{escaped_keyword}%"
+
+            is_valid_uuid = False
+            try:
+                UUID(args.keyword)
+                is_valid_uuid = True
+            except (ValueError, AttributeError):
+                pass
+
+            search_conditions = [
+                Message.query.ilike(keyword_filter, escape="\\"),
+                Message.answer.ilike(keyword_filter, escape="\\"),
+                Conversation.name.ilike(keyword_filter, escape="\\"),
+                Conversation.introduction.ilike(keyword_filter, escape="\\"),
+                subquery.c.from_end_user_session_id.ilike(keyword_filter, escape="\\"),
+            ]
+
+            if is_valid_uuid:
+                search_conditions.append(Conversation.id == args.keyword)
+            else:
+                search_conditions.append(sa.cast(Conversation.id, sa.String).ilike(keyword_filter, escape="\\"))
+
             query = (
                 query.join(
                     Message,
                     Message.conversation_id == Conversation.id,
                 )
                 .join(subquery, subquery.c.conversation_id == Conversation.id)
-                .where(
-                    or_(
-                        Message.query.ilike(keyword_filter, escape="\\"),
-                        Message.answer.ilike(keyword_filter, escape="\\"),
-                        Conversation.name.ilike(keyword_filter, escape="\\"),
-                        Conversation.introduction.ilike(keyword_filter, escape="\\"),
-                        subquery.c.from_end_user_session_id.ilike(keyword_filter, escape="\\"),
-                        sa.cast(Conversation.id, sa.String).ilike(keyword_filter, escape="\\"),
-                    ),
-                )
+                .where(or_(*search_conditions))
                 .group_by(Conversation.id)
             )
 
