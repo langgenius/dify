@@ -1,0 +1,111 @@
+identity:
+  name: hailuo_generate_video
+  author: acedatacloud
+  label:
+    en_US: Hailuo Generate Video
+    zh_Hans: Hailuo 生成视频
+description:
+  human:
+    en_US: Generate videos with Ace Data Cloud Hailuo Videos API.
+    zh_Hans: 通过 Ace Data Cloud Hailuo Videos API 生成视频。
+  llm: Generate a video from prompt / images via Ace Data Cloud Hailuo Videos API.
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      additionalProperties: true
+    task_id:
+      type: string
+    trace_id:
+      type: string
+    data:
+      type: array
+      items:
+        type: object
+        additionalProperties: true
+parameters:
+  - name: action
+    type: select
+    required: true
+    label:
+      en_US: Action
+      zh_Hans: 行为
+    human_description:
+      en_US: Choose how to generate the video.
+      zh_Hans: 选择视频生成方式。
+    llm_description: Only generate is supported for Hailuo videos.
+    form: form
+    options:
+      - value: generate
+        label: { en_US: generate, zh_Hans: 生成 }
+  - name: prompt
+    type: string
+    required: true
+    label:
+      en_US: Prompt
+      zh_Hans: 提示词
+    human_description:
+      en_US: Required prompt for video generation.
+      zh_Hans: 生成视频的提示词（必填）。
+    llm_description: Describe the video in detail (camera, scene, motion, style).
+    form: llm
+  - name: model
+    type: select
+    required: false
+    label:
+      en_US: Model
+      zh_Hans: 模型
+    human_description:
+      en_US: Optional model name.
+      zh_Hans: 可选模型名称。
+    llm_description: "Optional. minimax-t2v for text-to-video, minimax-i2v for image-to-video (requires first_image_url)."
+    form: form
+    options:
+      - value: minimax-t2v
+        label: { en_US: minimax-t2v, zh_Hans: 文生视频 }
+      - value: minimax-i2v
+        label: { en_US: minimax-i2v, zh_Hans: 图生视频 }
+  - name: first_image_url
+    type: string
+    required: false
+    label:
+      en_US: First Image URL
+      zh_Hans: 首帧图片链接
+    human_description:
+      en_US: Required for minimax-i2v.
+      zh_Hans: minimax-i2v 必填。
+    llm_description: Provide a URL to the first-frame image (not base64).
+    form: form
+  - name: mirror
+    type: boolean
+    required: false
+    label:
+      en_US: Mirror
+      zh_Hans: 镜像
+    human_description:
+      en_US: Optional. Mirror the output.
+      zh_Hans: 可选。对输出进行镜像。
+    llm_description: Optional. Set true to mirror output.
+    form: form
+  - name: callback_url
+    type: string
+    required: false
+    label:
+      en_US: Callback URL
+      zh_Hans: 回调地址
+    human_description:
+      en_US: Optional callback URL for async notifications.
+      zh_Hans: 可选回调地址，用于异步通知。
+    llm_description: Optional. Provide a public webhook URL for callbacks.
+    form: form
+extra:
+  python:
+    source: tools/hailuo_generate.py

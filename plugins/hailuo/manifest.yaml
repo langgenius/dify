@@ -1,0 +1,37 @@
+version: 0.0.1
+type: plugin
+author: acedatacloud
+name: hailuo
+label:
+  en_US: Hailuo
+  ja_JP: Hailuo
+  zh_Hans: Hailuo
+  pt_BR: Hailuo
+description:
+  en_US: Generate videos via Ace Data Cloud Hailuo Videos API.
+  ja_JP: Ace Data Cloud Hailuo Videos API を使って動画生成を行います。
+  zh_Hans: 通过 Ace Data Cloud Hailuo Videos API 生成视频。
+  pt_BR: Gere vídeos via Ace Data Cloud Hailuo Videos API.
+icon: icon.jpg
+icon_dark: icon.jpg
+resource:
+  memory: 268435456
+  permission:
+    tool:
+      enabled: true
+plugins:
+  tools:
+    - provider/hailuo.yaml
+meta:
+  version: 0.0.1
+  arch:
+    - amd64
+    - arm64
+  runner:
+    language: python
+    version: "3.12"
+    entrypoint: main
+  minimum_dify_version: null
+created_at: 2026-01-09T00:00:00+08:00
+privacy: PRIVACY.md
+verified: false
