@@ -6,10 +6,10 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validat
 
 from constants import UUID_NIL
 from core.app.app_config.entities import EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
+from core.app.entities.agent_media import AgentMedia
 from core.entities.provider_configuration import ProviderModelBundle
 from core.file import File, FileUploadConfig
 from core.model_runtime.entities.model_entities import AIModelEntity
-from core.app.entities.agent_media import AgentMedia
 
 if TYPE_CHECKING:
     from core.ops.ops_trace_manager import TraceQueueManager
@@ -181,6 +181,7 @@ class ChatAppGenerateEntity(ConversationAppGenerateEntity, EasyUIBasedAppGenerat
     """
 
     pass
+
 
 class AgentChatAppGenerateEntity(ConversationAppGenerateEntity, EasyUIBasedAppGenerateEntity):
     """

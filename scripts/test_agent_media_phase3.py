@@ -7,12 +7,15 @@ API = ROOT / "api"
 MEDIA_TOOL = API / "core" / "tools" / "media" / "inspect_media.py"
 AGENT_RUNNER = API / "core" / "agent" / "base_agent_runner.py"
 
+
 def fail(msg):
     print("❌ FAIL:", msg)
     sys.exit(1)
 
+
 def ok(msg):
     print("  PASS:", msg)
+
 
 print("=======================================")
 print("Phase 3: Agent Media Tool Integration Test")

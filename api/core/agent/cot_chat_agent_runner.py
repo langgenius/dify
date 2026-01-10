@@ -31,7 +31,7 @@ class CotChatAgentRunner(CotAgentRunner):
             .replace("{{tools}}", json.dumps(jsonable_encoder(self._prompt_messages_tools)))
             .replace("{{tool_names}}", ", ".join([tool.name for tool in self._prompt_messages_tools]))
         )
-             # ✅ MEDIA INJECTION (Phase-2)
+        # ✅ MEDIA INJECTION (Phase-2)
         media = self.application_generate_entity.inputs.get("_media")
         if media:
             system_prompt += "\n\nAvailable media files:\n"

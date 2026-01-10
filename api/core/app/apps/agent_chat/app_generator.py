@@ -137,7 +137,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             if f.content_type and (f.content_type.startswith("audio/") or f.content_type.startswith("video/")):
                 media.append(
                     AgentMedia(
-                        file_id=f.id, 
+                        file_id=f.id,
                         media_type=f.content_type,
                         filename=f.filename,
                         content_type=f.content_type,

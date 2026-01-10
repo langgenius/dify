@@ -17,8 +17,10 @@ print("=" * 60)
 # --------------------------------------------------
 tool_mod = types.ModuleType("core.tools.__base.tool")
 
+
 class FakeTool:
     pass
+
 
 tool_mod.Tool = FakeTool
 sys.modules["core.tools.__base.tool"] = tool_mod
@@ -28,10 +30,12 @@ sys.modules["core.tools.__base.tool"] = tool_mod
 # --------------------------------------------------
 entities_mod = types.ModuleType("core.tools.entities.tool_entities")
 
+
 class ToolEntity:
     def __init__(self, identity=None, description=None):
         self.identity = identity
         self.description = description
+
 
 class ToolIdentity:
     def __init__(self, name, provider=None, provider_type=None, icon=None, tags=None):
@@ -41,13 +45,16 @@ class ToolIdentity:
         self.icon = icon
         self.tags = tags or []
 
+
 class ToolDescription:
     def __init__(self, human=None, llm=None):
         self.human = human
         self.llm = llm
 
+
 class ToolProviderType:
     BUILT_IN = "builtin"
+
 
 class ToolInvokeMeta:
     def __init__(self, error=None):
@@ -60,6 +67,7 @@ class ToolInvokeMeta:
     @classmethod
     def error_instance(cls, msg):
         return cls(error=msg)
+
 
 entities_mod.ToolEntity = ToolEntity
 entities_mod.ToolIdentity = ToolIdentity
@@ -74,8 +82,10 @@ sys.modules["core.tools.entities.tool_entities"] = entities_mod
 # --------------------------------------------------
 values_mod = types.ModuleType("core.tools.entities.values")
 
+
 class ToolLabelEnum:
     MEDIA = "media"
+
 
 values_mod.ToolLabelEnum = ToolLabelEnum
 sys.modules["core.tools.entities.values"] = values_mod
@@ -87,6 +97,7 @@ sys.modules["core.tools.entities.values"] = values_mod
 # STEP 4: Stub FileService (FULL)
 # --------------------------------------------------
 svc_mod = types.ModuleType("services.file_service")
+
 
 class FakeFileService:
     @staticmethod
@@ -100,6 +111,7 @@ class FakeFileService:
                 duration=None,
             )
         return None
+
 
 svc_mod.FileService = FakeFileService
 sys.modules["services.file_service"] = svc_mod
@@ -116,6 +128,7 @@ sys.path.insert(0, API)
 # STEP 6: Import tool safely
 # --------------------------------------------------
 import core.tools.media.inspect_media as inspect_media
+
 InspectMediaTool = inspect_media.InspectMediaTool
 
 print("  Module imported safely")
@@ -131,6 +144,7 @@ fake_file = SimpleNamespace(
     duration=None,
 )
 
+
 # --------------------------------------------------
 # STEP 8: Monkey-patch file_manager
 # --------------------------------------------------
@@ -138,6 +152,7 @@ class FakeFileManager:
     @staticmethod
     def get_file(file_id):
         return fake_file if file_id == "file_123" else None
+
 
 inspect_media.file_manager = FakeFileManager
 

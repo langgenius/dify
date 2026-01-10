@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional, Dict, Literal
-
+from typing import Literal, Optional
 
 MediaType = Literal["audio", "video", "image", "document", "other"]
 MediaStatus = Literal["uploaded", "processing", "ready", "failed"]
@@ -26,9 +25,9 @@ class AgentMedia:
     status: MediaStatus = "uploaded"
 
     # Optional metadata
-    duration: Optional[float] = None
-    metadata: Dict[str, str] = field(default_factory=dict)
+    duration: float | None = None
+    metadata: dict[str, str] = field(default_factory=dict)
 
     # Processing results (optional, populated by downstream steps)
-    transcript_file_id: Optional[str] = None
-    extracted_text_file_id: Optional[str] = None
+    transcript_file_id: str | None = None
+    extracted_text_file_id: str | None = None
