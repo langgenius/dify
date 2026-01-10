@@ -480,6 +480,7 @@ class ChatConversationApi(Resource):
                         Conversation.name.ilike(keyword_filter, escape="\\"),
                         Conversation.introduction.ilike(keyword_filter, escape="\\"),
                         subquery.c.from_end_user_session_id.ilike(keyword_filter, escape="\\"),
+                        sa.cast(Conversation.id, sa.String).ilike(keyword_filter, escape="\\"),
                     ),
                 )
                 .group_by(Conversation.id)
