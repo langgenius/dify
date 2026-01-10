@@ -356,6 +356,8 @@
   "variableConfig.uploadFileTypes": "Upload File Types",
   "variableConfig.uploadMethod": "Upload Method",
   "variableConfig.varName": "Variable Name",
+  "variableConfig.variableDescription": "Variable Description",
+  "variableConfig.variableDescriptionPlaceholder": "Enter a description for this variable",
   "variableTable.action": "Actions",
   "variableTable.key": "Variable Key",
   "variableTable.name": "User Input Field Name",

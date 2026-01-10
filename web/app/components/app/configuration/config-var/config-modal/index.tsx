@@ -355,11 +355,11 @@ const ConfigModal: FC<IConfigModalProps> = ({
               placeholder={t('variableConfig.inputPlaceholder', { ns: 'appDebug' })!}
             />
           </Field>
-          <Field title={t('appDebug.variableConfig.variableDescription')}>
+          <Field title={t('variableConfig.variableDescription', { ns: 'appDebug' })}>
             <Input
               value={var_description as string}
               onChange={e => handlePayloadChange('var_description')(e.target.value)}
-              placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
+              placeholder={t('variableConfig.variableDescriptionPlaceholder', { ns: 'appDebug' })!}
             />
           </Field>
 
