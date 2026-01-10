@@ -1,15 +1,16 @@
-from collections.abc import Generator
 from typing import Any
+from collections.abc import Generator
 
-from core.file import file_manager
-from core.i18n import I18nObject
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import (
     ToolDescription,
     ToolEntity,
     ToolIdentity,
+    ToolDescription,
     ToolInvokeMessage,
 )
+from core.file import file_manager
+from core.i18n import I18nObject
 
 
 class InspectMediaTool(Tool):
@@ -59,18 +60,14 @@ class InspectMediaTool(Tool):
                 name="inspect_media",
                 provider="media",
                 author="dify",
-                label=I18nObject.from_dict(
-                    {
-                        "en-US": "Inspect Media",
-                    }
-                ),
+                label=I18nObject.from_dict({
+                    "en-US": "Inspect Media",
+                }),
             ),
             description=ToolDescription(
-                human=I18nObject.from_dict(
-                    {
-                        "en-US": "Inspect uploaded media files",
-                    }
-                ),
+                human=I18nObject.from_dict({
+                    "en-US": "Inspect uploaded media files",
+                }),
                 llm=(
                     "Use this tool to inspect uploaded media files. "
                     "It returns metadata such as filename, content type, "
