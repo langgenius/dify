@@ -198,14 +198,6 @@ class CompletionAppGenerateEntity(EasyUIBasedAppGenerateEntity):
     pass
 
 
-class AgentChatAppGenerateEntity(ConversationAppGenerateEntity, EasyUIBasedAppGenerateEntity):
-    """
-    Agent Chat Application Generate Entity.
-    """
-
-    pass
-
-
 class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):
     """
     Advanced Chat Application Generate Entity.
