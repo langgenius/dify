@@ -142,7 +142,8 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             ):
                 media.append(
                     AgentMedia(
-                        file_id=f.id,
+                        file_id=f.id, 
+                        media_type=f.content_type,
                         filename=f.filename,
                         content_type=f.content_type,
                         size=f.size,
