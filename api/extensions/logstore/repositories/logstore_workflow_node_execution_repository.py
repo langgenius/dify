@@ -24,6 +24,8 @@ from core.workflow.enums import NodeType
 from core.workflow.repositories.workflow_node_execution_repository import OrderConfig, WorkflowNodeExecutionRepository
 from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from extensions.logstore.aliyun_logstore import AliyunLogStore
+from extensions.logstore.repositories import safe_float, safe_int
+from extensions.logstore.sql_escape import escape_identifier
 from libs.helper import extract_tenant_id
 from models import (
     Account,
@@ -73,7 +75,7 @@ def _dict_to_workflow_node_execution(data: dict[str, Any]) -> WorkflowNodeExecut
         node_execution_id=data.get("node_execution_id"),
         workflow_id=data.get("workflow_id", ""),
         workflow_execution_id=data.get("workflow_run_id"),
-        index=int(data.get("index", 0)),
+        index=safe_int(data.get("index", 0)),
         predecessor_node_id=data.get("predecessor_node_id"),
         node_id=data.get("node_id", ""),
         node_type=NodeType(data.get("node_type", "start")),
@@ -83,7 +85,7 @@ def _dict_to_workflow_node_execution(data: dict[str, Any]) -> WorkflowNodeExecut
         outputs=outputs,
         status=status,
         error=data.get("error"),
-        elapsed_time=float(data.get("elapsed_time", 0.0)),
+        elapsed_time=safe_float(data.get("elapsed_time", 0.0)),
         metadata=domain_metadata,
         created_at=created_at,
         finished_at=finished_at,
@@ -147,7 +149,7 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
 
         # Control flag for dual-write (write to both LogStore and SQL database)
         # Set to True to enable dual-write for safe migration, False to use LogStore only
-        self._enable_dual_write = os.environ.get("LOGSTORE_DUAL_WRITE_ENABLED", "true").lower() == "true"
+        self._enable_dual_write = os.environ.get("LOGSTORE_DUAL_WRITE_ENABLED", "false").lower() == "true"
 
     def _to_logstore_model(self, domain_model: WorkflowNodeExecution) -> Sequence[tuple[str, str]]:
         logger.debug(
@@ -313,6 +315,10 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         # This optimization avoids window functions for common case where we only
         # want the final state of each node execution
 
+        # Escape parameters to prevent SQL injection
+        escaped_workflow_run_id = escape_identifier(workflow_run_id)
+        escaped_tenant_id = escape_identifier(self._tenant_id)
+
         # Build ORDER BY clause
         order_clause = ""
         if order_config and order_config.order_by:
@@ -330,13 +336,14 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         sql = f"""
             SELECT *
             FROM {AliyunLogStore.workflow_node_execution_logstore}
-            WHERE workflow_run_id='{workflow_run_id}'
-              AND tenant_id='{self._tenant_id}'
+            WHERE workflow_run_id='{escaped_workflow_run_id}'
+              AND tenant_id='{escaped_tenant_id}'
               AND finished_at IS NOT NULL
         """
 
         if self._app_id:
-            sql += f" AND app_id='{self._app_id}'"
+            escaped_app_id = escape_identifier(self._app_id)
+            sql += f" AND app_id='{escaped_app_id}'"
 
         if order_clause:
             sql += f" {order_clause}"
