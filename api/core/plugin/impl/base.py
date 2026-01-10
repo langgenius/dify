@@ -52,6 +52,7 @@ else:
 T = TypeVar("T", bound=(BaseModel | dict[str, Any] | list[Any] | bool | str))
 
 logger = logging.getLogger(__name__)
+_httpx_client = httpx.Client(timeout=plugin_daemon_request_timeout)
 
 
 class BasePluginClient:
@@ -83,7 +84,7 @@ class BasePluginClient:
             request_kwargs["content"] = prepared_data
 
         try:
-            response = httpx.request(**request_kwargs)
+            response = _httpx_client.request(**request_kwargs)
         except httpx.RequestError:
             logger.exception("Request to Plugin Daemon Service failed")
             raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed")
@@ -170,7 +171,7 @@ class BasePluginClient:
             stream_kwargs["content"] = prepared_data
 
         try:
-            with httpx.stream(**stream_kwargs) as response:
+            with _httpx_client.stream(**stream_kwargs) as response:
                 for raw_line in response.iter_lines():
                     if not raw_line:
                         continue
