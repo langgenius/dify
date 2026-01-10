@@ -4,6 +4,7 @@ from mimetypes import guess_type
 
 from packaging.version import InvalidVersion, Version
 from pydantic import BaseModel
+from pydantic_core import ValidationError
 from yarl import URL
 
 from configs import dify_config
@@ -21,6 +22,7 @@ from core.plugin.entities.plugin import (
 from core.plugin.entities.plugin_daemon import (
     PluginDecodeResponse,
     PluginInstallTask,
+    PluginInstallTaskStartResponse,
     PluginListResponse,
     PluginVerification,
 )
@@ -738,13 +740,104 @@ class PluginService:
 
         manager = PluginInstaller()
 
+        decoded: list[PluginDecodeResponse] = []
         for plugin_unique_identifier in plugin_unique_identifiers:
             resp = manager.decode_plugin_from_identifier(tenant_id, plugin_unique_identifier)
             PluginService._check_plugin_installation_scope(resp.verification)
+            decoded.append(resp)
+
+        def _plugin_id_from_manifest(manifest: PluginDeclaration) -> str | None:
+            if not manifest.author:
+                return None
+            return f"{manifest.author}/{manifest.name}"
+
+        def _get_installed_plugin_by_plugin_id(plugin_id: str) -> PluginInstallation | None:
+            try:
+                installations = manager.fetch_plugin_installation_by_ids(tenant_id, [plugin_id])
+                return installations[0] if installations else None
+            except Exception:
+                logger.exception(
+                    "Failed to fetch plugin installation for idempotent install. tenant_id=%s plugin_id=%s",
+                    tenant_id,
+                    plugin_id,
+                )
+                return None
+
+        # Single install: be smart (upgrade when older version exists, no-op when already installed).
+        if len(decoded) == 1:
+            new = decoded[0]
+            plugin_id = _plugin_id_from_manifest(new.manifest)
+            if plugin_id:
+                installed = _get_installed_plugin_by_plugin_id(plugin_id)
+                if installed:
+                    try:
+                        if Version(installed.version) >= Version(new.manifest.version):
+                            logger.info(
+                                "Skip plugin install (already installed). "
+                                "tenant_id=%s plugin_id=%s installed=%s target=%s",
+                                tenant_id,
+                                plugin_id,
+                                installed.version,
+                                new.manifest.version,
+                            )
+                            return PluginInstallTaskStartResponse(all_installed=True, task_id="")
+                    except (InvalidVersion, ValidationError):
+                        if installed.version == new.manifest.version:
+                            logger.info(
+                                "Skip plugin install (already installed, non-semver). "
+                                "tenant_id=%s plugin_id=%s version=%s",
+                                tenant_id,
+                                plugin_id,
+                                installed.version,
+                            )
+                            return PluginInstallTaskStartResponse(all_installed=True, task_id="")
+
+                    logger.info(
+                        "Upgrade plugin via package install endpoint. tenant_id=%s plugin_id=%s from=%s to=%s",
+                        tenant_id,
+                        plugin_id,
+                        installed.version,
+                        new.manifest.version,
+                    )
+                    return manager.upgrade_plugin(
+                        tenant_id,
+                        installed.plugin_unique_identifier,
+                        new.unique_identifier,
+                        PluginInstallationSource.Package,
+                        {},
+                    )
+
+        # Multi install: skip already-installed plugin_ids (avoid duplicate-key failures).
+        to_install: list[str] = []
+        skipped: list[str] = []
+        for resp in decoded:
+            plugin_id = _plugin_id_from_manifest(resp.manifest)
+            if plugin_id:
+                installed = _get_installed_plugin_by_plugin_id(plugin_id)
+                if installed:
+                    skipped.append(plugin_id)
+                    continue
+            to_install.append(resp.unique_identifier)
+
+        if not to_install:
+            logger.info(
+                "Skip plugin install (all already installed). tenant_id=%s requested=%s skipped=%s",
+                tenant_id,
+                list(plugin_unique_identifiers),
+                skipped,
+            )
+            return PluginInstallTaskStartResponse(all_installed=True, task_id="")
+
+        if skipped:
+            logger.info(
+                "Plugin install: skipping already-installed plugins. tenant_id=%s skipped=%s",
+                tenant_id,
+                skipped,
+            )
 
         return manager.install_from_identifiers(
             tenant_id,
-            plugin_unique_identifiers,
+            to_install,
             PluginInstallationSource.Package,
             [{}],
         )
@@ -820,8 +913,7 @@ class PluginService:
         manager = PluginInstaller()
 
         # collect actual plugin_unique_identifiers
-        actual_plugin_unique_identifiers = []
-        metas = []
+        items: list[tuple[PluginDecodeResponse, dict]] = []
         features = FeatureService.get_system_features()
 
         # check if already downloaded
@@ -829,11 +921,8 @@ class PluginService:
             try:
                 manager.fetch_plugin_manifest(tenant_id, plugin_unique_identifier)
                 plugin_decode_response = manager.decode_plugin_from_identifier(tenant_id, plugin_unique_identifier)
-                # check if the plugin is available to install
                 PluginService._check_plugin_installation_scope(plugin_decode_response.verification)
-                # already downloaded, skip
-                actual_plugin_unique_identifiers.append(plugin_unique_identifier)
-                metas.append({"plugin_unique_identifier": plugin_unique_identifier})
+                items.append((plugin_decode_response, {"plugin_unique_identifier": plugin_unique_identifier}))
             except Exception:
                 # plugin not installed, download and upload pkg
                 pkg = download_plugin_pkg(plugin_unique_identifier)
@@ -845,8 +934,97 @@ class PluginService:
                 # check if the plugin is available to install
                 PluginService._check_plugin_installation_scope(response.verification)
                 # use response plugin_unique_identifier
-                actual_plugin_unique_identifiers.append(response.unique_identifier)
-                metas.append({"plugin_unique_identifier": response.unique_identifier})
+                items.append((response, {"plugin_unique_identifier": plugin_unique_identifier}))
+
+        def _plugin_id_from_manifest(manifest: PluginDeclaration) -> str | None:
+            if not manifest.author:
+                return None
+            return f"{manifest.author}/{manifest.name}"
+
+        def _get_installed_plugin_by_plugin_id(plugin_id: str) -> PluginInstallation | None:
+            try:
+                installations = manager.fetch_plugin_installation_by_ids(tenant_id, [plugin_id])
+                return installations[0] if installations else None
+            except Exception:
+                logger.exception(
+                    "Failed to fetch plugin installation for idempotent install. tenant_id=%s plugin_id=%s",
+                    tenant_id,
+                    plugin_id,
+                )
+                return None
+
+        # If caller sends a single plugin, upgrade/no-op here to be tolerant to stale UI state.
+        if len(items) == 1:
+            resp, meta = items[0]
+            plugin_id = _plugin_id_from_manifest(resp.manifest)
+            if plugin_id:
+                installed = _get_installed_plugin_by_plugin_id(plugin_id)
+                if installed:
+                    try:
+                        if Version(installed.version) >= Version(resp.manifest.version):
+                            logger.info(
+                                "Skip marketplace install (already installed). "
+                                "tenant_id=%s plugin_id=%s installed=%s target=%s",
+                                tenant_id,
+                                plugin_id,
+                                installed.version,
+                                resp.manifest.version,
+                            )
+                            return PluginInstallTaskStartResponse(all_installed=True, task_id="")
+                    except (InvalidVersion, ValidationError):
+                        if installed.version == resp.manifest.version:
+                            logger.info(
+                                "Skip marketplace install (already installed, non-semver). "
+                                "tenant_id=%s plugin_id=%s version=%s",
+                                tenant_id,
+                                plugin_id,
+                                installed.version,
+                            )
+                            return PluginInstallTaskStartResponse(all_installed=True, task_id="")
+
+                    logger.info(
+                        "Upgrade plugin via marketplace install endpoint. tenant_id=%s plugin_id=%s from=%s to=%s",
+                        tenant_id,
+                        plugin_id,
+                        installed.version,
+                        resp.manifest.version,
+                    )
+                    return manager.upgrade_plugin(
+                        tenant_id,
+                        installed.plugin_unique_identifier,
+                        resp.unique_identifier,
+                        PluginInstallationSource.Marketplace,
+                        meta,
+                    )
+
+        actual_plugin_unique_identifiers: list[str] = []
+        metas: list[dict] = []
+        skipped: list[str] = []
+        for resp, meta in items:
+            plugin_id = _plugin_id_from_manifest(resp.manifest)
+            if plugin_id:
+                installed = _get_installed_plugin_by_plugin_id(plugin_id)
+                if installed:
+                    skipped.append(plugin_id)
+                    continue
+            actual_plugin_unique_identifiers.append(resp.unique_identifier)
+            metas.append(meta)
+
+        if skipped:
+            logger.info(
+                "Marketplace install: skipping already-installed plugins. tenant_id=%s skipped=%s",
+                tenant_id,
+                skipped,
+            )
+
+        if not actual_plugin_unique_identifiers:
+            logger.info(
+                "Skip marketplace install (all already installed). tenant_id=%s requested=%s skipped=%s",
+                tenant_id,
+                list(plugin_unique_identifiers),
+                skipped,
+            )
+            return PluginInstallTaskStartResponse(all_installed=True, task_id="")
 
         return manager.install_from_identifiers(
             tenant_id,
