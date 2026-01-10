@@ -1,0 +1,38 @@
+version: 0.0.1
+type: plugin
+author: acedatacloud
+name: flux
+label:
+  en_US: Flux
+  ja_JP: Flux
+  zh_Hans: Flux
+  pt_BR: Flux
+description:
+  en_US: Generate and edit images via Ace Data Cloud Flux Images Generation API.
+  ja_JP: Ace Data Cloud Flux Images Generation API を使って画像生成・編集を行います。
+  zh_Hans: 通过 Ace Data Cloud Flux Images Generation API 生成与编辑图片。
+  pt_BR: Gere e edite imagens via Ace Data Cloud Flux Images Generation API.
+icon: icon.jpg
+icon_dark: icon.jpg
+resource:
+  memory: 268435456
+  permission:
+    tool:
+      enabled: true
+plugins:
+  tools:
+    - provider/flux.yaml
+meta:
+  version: 0.0.1
+  arch:
+    - amd64
+    - arm64
+  runner:
+    language: python
+    version: "3.12"
+    entrypoint: main
+  minimum_dify_version: null
+created_at: 2026-01-09T00:00:00.000000+08:00
+privacy: PRIVACY.md
+verified: false
+

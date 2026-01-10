@@ -1,0 +1,103 @@
+identity:
+  name: flux_edit_image
+  author: acedatacloud
+  label:
+    en_US: Flux Edit Image
+    zh_Hans: Flux 编辑图片
+description:
+  human:
+    en_US: Edit an image with Ace Data Cloud Flux Images Generation API.
+    zh_Hans: 通过 Ace Data Cloud Flux Images Generation API 编辑图片。
+  llm: Edit an image from prompt + image_url via Ace Data Cloud Flux Images Generation API.
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      additionalProperties: true
+    task_id:
+      type: string
+    trace_id:
+      type: string
+    data:
+      type: array
+      items:
+        type: object
+        properties:
+          image_url:
+            type: string
+          prompt:
+            type: string
+        additionalProperties: true
+parameters:
+  - name: prompt
+    type: string
+    required: true
+    label:
+      en_US: Prompt
+      zh_Hans: 提示词
+    human_description:
+      en_US: Text prompt describing how to edit the image.
+      zh_Hans: 描述如何编辑图片的提示词。
+    llm_description: Describe how to edit the input image.
+    form: llm
+  - name: image_url
+    type: string
+    required: true
+    label:
+      en_US: Image URL
+      zh_Hans: 图片链接
+    human_description:
+      en_US: Public URL of the image to edit.
+      zh_Hans: 需要编辑的图片公网链接。
+    llm_description: Provide a public URL to the source image.
+    form: form
+  - name: model
+    type: select
+    required: false
+    label:
+      en_US: Model
+      zh_Hans: 模型
+    human_description:
+      en_US: Optional model name for edit. Default is flux-kontext-pro.
+      zh_Hans: 可选编辑模型，不填则默认为 flux-kontext-pro。
+    llm_description: Optional. Use flux-kontext-pro or flux-kontext-max for editing.
+    form: form
+    options:
+      - value: flux-kontext-pro
+        label: { en_US: flux-kontext-pro (default), zh_Hans: flux-kontext-pro（默认） }
+      - value: flux-kontext-max
+        label: { en_US: flux-kontext-max, zh_Hans: flux-kontext-max }
+  - name: size
+    type: string
+    required: false
+    label:
+      en_US: Size
+      zh_Hans: 尺寸
+    human_description:
+      en_US: Optional output size (e.g., 1024x1024).
+      zh_Hans: 可选输出尺寸（例如 1024x1024）。
+    llm_description: Optional. Use a supported size.
+    form: form
+  - name: callback_url
+    type: string
+    required: false
+    label:
+      en_US: Callback URL
+      zh_Hans: 回调地址
+    human_description:
+      en_US: Optional callback URL for async notifications.
+      zh_Hans: 可选回调地址，用于异步通知。
+    llm_description: Optional. Provide a public webhook URL for callbacks.
+    form: form
+extra:
+  python:
+    source: tools/flux_edit.py
+

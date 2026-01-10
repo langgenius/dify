@@ -1,0 +1,111 @@
+identity:
+  name: flux_generate_image
+  author: acedatacloud
+  label:
+    en_US: Flux Generate Image
+    zh_Hans: Flux 生成图片
+description:
+  human:
+    en_US: Generate images with Ace Data Cloud Flux Images Generation API.
+    zh_Hans: 通过 Ace Data Cloud Flux Images Generation API 生成图片。
+  llm: Generate images from prompt via Ace Data Cloud Flux Images Generation API.
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      additionalProperties: true
+    task_id:
+      type: string
+    trace_id:
+      type: string
+    data:
+      type: array
+      items:
+        type: object
+        properties:
+          image_url:
+            type: string
+          prompt:
+            type: string
+        additionalProperties: true
+parameters:
+  - name: prompt
+    type: string
+    required: true
+    label:
+      en_US: Prompt
+      zh_Hans: 提示词
+    human_description:
+      en_US: Text prompt used to generate the images.
+      zh_Hans: 用于生成图片的提示词。
+    llm_description: Describe the image you want to generate in detail.
+    form: llm
+  - name: model
+    type: select
+    required: false
+    label:
+      en_US: Model
+      zh_Hans: 模型
+    human_description:
+      en_US: Optional model name. Default is flux-dev.
+      zh_Hans: 可选模型名称，不填则默认为 flux-dev。
+    llm_description: Optional. Choose one of the supported Flux models.
+    form: form
+    options:
+      - value: flux-dev
+        label: { en_US: flux-dev (default), zh_Hans: flux-dev（默认） }
+      - value: flux-pro
+        label: { en_US: flux-pro, zh_Hans: flux-pro }
+      - value: flux-pro-1.1
+        label: { en_US: flux-pro-1.1, zh_Hans: flux-pro-1.1 }
+      - value: flux-pro-1.1-ultra
+        label: { en_US: flux-pro-1.1-ultra, zh_Hans: flux-pro-1.1-ultra }
+      - value: flux-kontext-pro
+        label: { en_US: flux-kontext-pro, zh_Hans: flux-kontext-pro }
+      - value: flux-kontext-max
+        label: { en_US: flux-kontext-max, zh_Hans: flux-kontext-max }
+  - name: size
+    type: string
+    required: false
+    label:
+      en_US: Size
+      zh_Hans: 尺寸
+    human_description:
+      en_US: Optional output size (e.g., 1024x1024).
+      zh_Hans: 可选输出尺寸（例如 1024x1024）。
+    llm_description: Optional. Use 1024x1024 or another supported size.
+    form: form
+  - name: count
+    type: number
+    required: false
+    label:
+      en_US: Count
+      zh_Hans: 数量
+    human_description:
+      en_US: Optional number of images to generate. Default is 1.
+      zh_Hans: 可选生成图片数量，默认 1。
+    llm_description: Optional. Provide an integer between 1 and 4 if supported.
+    form: form
+  - name: callback_url
+    type: string
+    required: false
+    label:
+      en_US: Callback URL
+      zh_Hans: 回调地址
+    human_description:
+      en_US: Optional callback URL for async notifications.
+      zh_Hans: 可选回调地址，用于异步通知。
+    llm_description: Optional. Provide a public webhook URL for callbacks.
+    form: form
+extra:
+  python:
+    source: tools/flux_generate.py
+
