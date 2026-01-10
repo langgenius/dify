@@ -476,7 +476,7 @@ class ChatConversationApi(Resource):
             except (ValueError, AttributeError):
                 pass
 
-            search_conditions = [
+            search_conditions: list[sa.ColumnElement[bool]] = [
                 Message.query.ilike(keyword_filter, escape="\\"),
                 Message.answer.ilike(keyword_filter, escape="\\"),
                 Conversation.name.ilike(keyword_filter, escape="\\"),
