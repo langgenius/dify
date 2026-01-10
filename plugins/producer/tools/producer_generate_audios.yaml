@@ -1,0 +1,159 @@
+identity:
+  name: producer_generate_audios
+  author: acedatacloud
+  label:
+    en_US: Producer Generate Audios
+    zh_Hans: Producer 生成歌曲
+description:
+  human:
+    en_US: Generate audios with Ace Data Cloud Producer Audios API.
+    zh_Hans: 通过 Ace Data Cloud Producer Audios API 生成歌曲。
+  llm: Generate audios via Ace Data Cloud Producer Audios API. Returns a task_id and audio metadata (audio_url/image_url/lyric/etc).
+output_schema:
+  type: object
+  properties:
+    success: { type: boolean }
+    error:
+      type: object
+      properties:
+        code: { type: string }
+        message: { type: string }
+      additionalProperties: true
+    task_id: { type: string }
+    trace_id: { type: string }
+    data:
+      type: array
+      items:
+        type: object
+        additionalProperties: true
+parameters:
+  - name: action
+    type: string
+    required: true
+    label: { en_US: Action, zh_Hans: 行为 }
+    human_description:
+      en_US: Generation action, e.g. generate/cover/extend/upload_cover/upload_extend/replace_section/swap_vocals/swap_instrumentals/variation.
+      zh_Hans: 生成行为，如 generate/cover/extend/upload_cover/upload_extend/replace_section/swap_vocals/swap_instrumentals/variation。
+    llm_description: Required. Typical values are generate, cover, extend, upload_cover, upload_extend, replace_section, swap_vocals, swap_instrumentals, variation.
+    form: form
+  - name: prompt
+    type: string
+    required: false
+    label: { en_US: Prompt, zh_Hans: 提示词 }
+    human_description:
+      en_US: Used when generating from a prompt (custom=false).
+      zh_Hans: custom=false 时使用提示词生成。
+    llm_description: Optional. Usually required when custom is false and action is generate.
+    form: llm
+  - name: model
+    type: string
+    required: false
+    label: { en_US: Model, zh_Hans: 模型 }
+    human_description:
+      en_US: Optional model name, e.g. FUZZ-2.0 Pro.
+      zh_Hans: 可选模型名，例如 FUZZ-2.0 Pro。
+    form: form
+  - name: custom
+    type: boolean
+    required: false
+    label: { en_US: Custom Mode, zh_Hans: 自定义模式 }
+    human_description:
+      en_US: If true, generate from lyric/title and other custom parameters.
+      zh_Hans: 为 true 时使用自定义参数（如 lyric/title）生成。
+    form: form
+  - name: instrumental
+    type: boolean
+    required: false
+    label: { en_US: Instrumental, zh_Hans: 纯音乐 }
+    human_description:
+      en_US: Generate instrumental-only audios.
+      zh_Hans: 生成纯音乐。
+    form: form
+  - name: lyric
+    type: string
+    required: false
+    label: { en_US: Lyric, zh_Hans: 歌词 }
+    human_description:
+      en_US: Used when custom is true.
+      zh_Hans: custom=true 时使用。
+    form: llm
+  - name: title
+    type: string
+    required: false
+    label: { en_US: Title, zh_Hans: 标题 }
+    form: form
+  - name: audio_id
+    type: string
+    required: false
+    label: { en_US: Audio ID, zh_Hans: 音频ID }
+    human_description:
+      en_US: Required for cover/extend/upload_* and other edit actions.
+      zh_Hans: cover/extend/upload_* 等编辑动作需要 audio_id。
+    form: form
+  - name: continue_at
+    type: number
+    required: false
+    label: { en_US: Continue At (seconds), zh_Hans: 续写时间(秒) }
+    human_description:
+      en_US: Used for extend.
+      zh_Hans: 用于 extend。
+    form: form
+  - name: replace_section_start
+    type: number
+    required: false
+    label: { en_US: Replace Start (seconds), zh_Hans: 替换开始(秒) }
+    form: form
+  - name: replace_section_end
+    type: number
+    required: false
+    label: { en_US: Replace End (seconds), zh_Hans: 替换结束(秒) }
+    form: form
+  - name: lyrics_strength
+    type: number
+    required: false
+    label: { en_US: Lyrics Strength, zh_Hans: 歌词强度 }
+    human_description:
+      en_US: 0-1, default 0.7.
+      zh_Hans: 0-1，默认 0.7。
+    form: form
+  - name: sound_strength
+    type: number
+    required: false
+    label: { en_US: Sound Strength, zh_Hans: 音频提示词强度 }
+    human_description:
+      en_US: 0.2-1, default 0.7.
+      zh_Hans: 0.2-1，默认 0.7。
+    form: form
+  - name: cover_strength
+    type: number
+    required: false
+    label: { en_US: Cover Strength, zh_Hans: 翻唱强度 }
+    human_description:
+      en_US: 0.2-1, default 1.
+      zh_Hans: 0.2-1，默认 1。
+    form: form
+  - name: weirdness
+    type: number
+    required: false
+    label: { en_US: Weirdness, zh_Hans: 风格奇特度 }
+    human_description:
+      en_US: 0-1, default 0.5.
+      zh_Hans: 0-1，默认 0.5。
+    form: form
+  - name: seed
+    type: string
+    required: false
+    label: { en_US: Seed, zh_Hans: 种子 }
+    form: form
+  - name: callback_url
+    type: string
+    required: false
+    label: { en_US: Callback URL, zh_Hans: 回调地址 }
+    human_description:
+      en_US: Optional callback URL for async notifications.
+      zh_Hans: 可选回调地址，用于异步通知。
+    form: form
+extra:
+  python:
+    source: tools/producer_generate_audios.py
+

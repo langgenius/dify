@@ -1,0 +1,43 @@
+identity:
+  author: "acedatacloud"
+  name: "producer"
+  label:
+    en_US: "Producer"
+    zh_Hans: "Producer"
+    pt_BR: "Producer"
+    ja_JP: "Producer"
+  description:
+    en_US: "Generate music and assets via Ace Data Cloud Producer APIs."
+    zh_Hans: "通过 Ace Data Cloud Producer API 生成音乐及相关素材。"
+    pt_BR: "Gere músicas e assets via Ace Data Cloud Producer APIs."
+    ja_JP: "Ace Data Cloud Producer API を使って音楽・関連素材を生成します。"
+  icon: "icon.png"
+  icon_dark: "icon.png"
+  tags:
+    - audio
+
+credentials_for_provider:
+  acedata_bearer_token:
+    type: secret-input
+    required: true
+    label:
+      en_US: Ace Data Cloud Bearer Token
+      zh_Hans: Ace Data Cloud Token
+    placeholder:
+      en_US: Paste your token (without "Bearer ")
+      zh_Hans: 粘贴 Token（不需要带 Bearer）
+    help:
+      en_US: Acquire a token from the Ace Data Cloud console.
+      zh_Hans: 从 Ace Data Cloud 控制台获取 Token。
+    url: https://platform.acedata.cloud/documents/producer-audios-integration
+
+tools:
+  - tools/producer_generate_audios.yaml
+  - tools/producer_generate_lyrics.yaml
+  - tools/producer_upload_reference_audio.yaml
+  - tools/producer_get_video.yaml
+  - tools/producer_get_wav.yaml
+
+extra:
+  python:
+    source: provider/producer.py

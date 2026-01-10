@@ -1,0 +1,39 @@
+identity:
+  name: producer_get_video
+  author: acedatacloud
+  label:
+    en_US: Producer Get Video
+    zh_Hans: Producer 获取视频
+description:
+  human:
+    en_US: Get the generated song video URL by audio_id.
+    zh_Hans: 通过 audio_id 获取生成歌曲的视频链接。
+  llm: Retrieve a video_url for a given audio_id via Ace Data Cloud Producer Videos API.
+output_schema:
+  type: object
+  properties:
+    success: { type: boolean }
+    error:
+      type: object
+      properties:
+        code: { type: string }
+        message: { type: string }
+      additionalProperties: true
+    task_id: { type: string }
+    trace_id: { type: string }
+    data:
+      type: object
+      additionalProperties: true
+parameters:
+  - name: audio_id
+    type: string
+    required: true
+    label: { en_US: Audio ID, zh_Hans: 音频ID }
+    human_description:
+      en_US: Producer audio id.
+      zh_Hans: Producer 生成的歌曲 ID。
+    form: form
+extra:
+  python:
+    source: tools/producer_get_video.py
+
