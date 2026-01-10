@@ -1,4 +1,5 @@
 from typing import Literal
+from uuid import UUID
 
 import sqlalchemy as sa
 from flask import abort, request
@@ -467,21 +468,34 @@ class ChatConversationApi(Resource):
 
             escaped_keyword = escape_like_pattern(args.keyword)
             keyword_filter = f"%{escaped_keyword}%"
+
+            is_valid_uuid = False
+            try:
+                UUID(args.keyword)
+                is_valid_uuid = True
+            except (ValueError, AttributeError):
+                pass
+
+            search_conditions: list[sa.ColumnElement[bool]] = [
+                Message.query.ilike(keyword_filter, escape="\\"),
+                Message.answer.ilike(keyword_filter, escape="\\"),
+                Conversation.name.ilike(keyword_filter, escape="\\"),
+                Conversation.introduction.ilike(keyword_filter, escape="\\"),
+                subquery.c.from_end_user_session_id.ilike(keyword_filter, escape="\\"),
+            ]
+
+            if is_valid_uuid:
+                search_conditions.append(Conversation.id == args.keyword)
+            else:
+                search_conditions.append(sa.cast(Conversation.id, sa.String).ilike(keyword_filter, escape="\\"))
+
             query = (
                 query.join(
                     Message,
                     Message.conversation_id == Conversation.id,
                 )
                 .join(subquery, subquery.c.conversation_id == Conversation.id)
-                .where(
-                    or_(
-                        Message.query.ilike(keyword_filter, escape="\\"),
-                        Message.answer.ilike(keyword_filter, escape="\\"),
-                        Conversation.name.ilike(keyword_filter, escape="\\"),
-                        Conversation.introduction.ilike(keyword_filter, escape="\\"),
-                        subquery.c.from_end_user_session_id.ilike(keyword_filter, escape="\\"),
-                    ),
-                )
+                .where(or_(*search_conditions))
                 .group_by(Conversation.id)
             )
 
