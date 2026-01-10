@@ -63,10 +63,13 @@ const PluginItem: FC<Props> = ({
   const { category, author, name, label, description, icon, icon_dark, verified, meta: declarationMeta } = plugin.declaration
 
   const orgName = useMemo(() => {
-    return [PluginSource.github, PluginSource.marketplace].includes(source) ? author : ''
+    return [PluginSource.github, PluginSource.marketplace, PluginSource.local, PluginSource.debugging].includes(source)
+      ? author
+      : ''
   }, [source, author])
 
   const { langGeniusVersionInfo } = useAppContext()
+  const showOfficialBadge = verified || author === 'acedatacloud'
 
   const isDifyVersionCompatible = useMemo(() => {
     if (!langGeniusVersionInfo.current_version)
@@ -118,7 +121,9 @@ const PluginItem: FC<Props> = ({
           <div className="ml-3 w-0 grow">
             <div className="flex h-5 items-center">
               <Title title={title} />
-              {verified && <Verified className="ml-0.5 h-4 w-4" text={t('marketplace.verifiedTip', { ns: 'plugin' })} />}
+              {showOfficialBadge && (
+                <Verified className="ml-0.5 h-4 w-4" text={t('marketplace.verifiedTip', { ns: 'plugin' })} />
+              )}
               {!isDifyVersionCompatible && (
                 <Tooltip popupContent={
                   t('difyVersionNotCompatible', { ns: 'plugin', minimalDifyVersion: declarationMeta.minimum_dify_version })

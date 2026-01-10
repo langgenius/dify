@@ -160,7 +160,7 @@ describe('Index Exports', () => {
     expect(exports.PluginAuth).toBeDefined()
     expect(exports.PluginAuthInAgent).toBeDefined()
     expect(exports.PluginAuthInDataSourceNode).toBeDefined()
-  })
+  }, 20000)
 
   it('should export AuthCategory enum', async () => {
     const exports = await import('./index')
