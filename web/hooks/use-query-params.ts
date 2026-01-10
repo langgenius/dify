@@ -21,7 +21,6 @@ import {
 } from 'nuqs'
 import { useCallback } from 'react'
 import { ACCOUNT_SETTING_MODAL_ACTION } from '@/app/components/header/account-setting/constants'
-import { isServer } from '@/utils/client'
 
 /**
  * Modal State Query Parameters
@@ -177,7 +176,7 @@ export function usePluginInstallation() {
  * clearQueryParams(['param1', 'param2'])
  */
 export function clearQueryParams(keys: string | string[]) {
-  if (isServer)
+  if (typeof window === 'undefined')
     return
 
   const url = new URL(window.location.href)
