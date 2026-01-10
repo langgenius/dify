@@ -1,4 +1,5 @@
 from typing import Literal
+from uuid import UUID
 
 import sqlalchemy as sa
 from flask import abort, request
@@ -6,7 +7,6 @@ from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
-from uuid import UUID
 from werkzeug.exceptions import NotFound
 
 from controllers.console import console_ns
