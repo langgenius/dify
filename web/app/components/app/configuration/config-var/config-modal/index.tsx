@@ -259,9 +259,9 @@ const ConfigModal: FC<IConfigModalProps> = ({
     const moreInfo = tempPayload.variable === payload?.variable
       ? undefined
       : {
-        type: ChangeType.changeVarName,
-        payload: { beforeKey: payload?.variable || '', afterKey: tempPayload.variable },
-      }
+          type: ChangeType.changeVarName,
+          payload: { beforeKey: payload?.variable || '', afterKey: tempPayload.variable },
+        }
 
     const isVariableNameValid = checkVariableName(tempPayload.variable)
     if (!isVariableNameValid)
