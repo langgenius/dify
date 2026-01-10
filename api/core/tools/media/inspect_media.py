@@ -1,16 +1,15 @@
 from typing import Any
+from collections.abc import Generator
 
 from core.tools.__base.tool import Tool
-from core.tools.entities.tool_entities import ToolInvokeMeta
-from services.file_service import FileService
 from core.tools.entities.tool_entities import (
     ToolEntity,
     ToolIdentity,
     ToolDescription,
-    ToolProviderType,
+    ToolInvokeMessage,
 )
-from core.tools.entities.values import ToolLabelEnum
-
+from core.file import file_manager
+from core.i18n import I18nObject
 
 
 class InspectMediaTool(Tool):
@@ -28,13 +27,20 @@ class InspectMediaTool(Tool):
         "required": ["file_id"],
     }
 
-    def invoke(self, tool_parameters: dict[str, Any]) -> tuple[str, ToolInvokeMeta]:
+    def invoke(
+        self,
+        user_id: str,
+        tool_parameters: dict[str, Any],
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
+    ) -> Generator[ToolInvokeMessage, None, None]:
         file_id = tool_parameters.get("file_id")
 
-        file = FileService.get_file_by_id(file_id)
+        file = file_manager.get_file(file_id)
         if not file:
-            msg = f"Media file not found: {file_id}"
-            return msg, ToolInvokeMeta.error_instance(msg)
+            yield ToolInvokeMessage.error(f"Media file not found: {file_id}")
+            return
 
         result = {
             "file_id": file.id,
@@ -44,9 +50,7 @@ class InspectMediaTool(Tool):
             "duration": getattr(file, "duration", None),
         }
 
-        return result, ToolInvokeMeta.success_instance()
-
-
+        yield ToolInvokeMessage.success(result)
 
     @classmethod
     def get_entity(cls) -> ToolEntity:
@@ -54,12 +58,15 @@ class InspectMediaTool(Tool):
             identity=ToolIdentity(
                 name="inspect_media",
                 provider="media",
-                provider_type=ToolProviderType.BUILT_IN,
-                icon="🖼️",
-                tags=[ToolLabelEnum.MEDIA],
+                author="dify",
+                label=I18nObject.from_dict({
+                    "en-US": "Inspect Media",
+                }),
             ),
             description=ToolDescription(
-                human="Inspect uploaded media files",
+                human=I18nObject.from_dict({
+                    "en-US": "Inspect uploaded media files",
+                }),
                 llm=(
                     "Use this tool to inspect uploaded media files. "
                     "It returns metadata such as filename, content type, "
