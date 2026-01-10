@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Literal, Optional
+from typing import Literal
 
 MediaType = Literal["audio", "video", "image", "document", "other"]
 MediaStatus = Literal["uploaded", "processing", "ready", "failed"]
