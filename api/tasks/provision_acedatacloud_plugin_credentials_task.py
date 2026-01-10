@@ -1,15 +1,21 @@
+import json
 import logging
 
 from celery import shared_task
+from packaging.version import InvalidVersion, Version
 from sqlalchemy.orm import Session
 
 from configs import dify_config
-from core.helper import ssrf_proxy
+from core.helper import encrypter, ssrf_proxy
+from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
+from core.plugin.entities.plugin import PluginEntity
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.tool import PluginToolManager
 from extensions.ext_database import db
+from models.provider import Provider, ProviderCredential, ProviderType
 from models.provider_ids import ToolProviderID
 from models.tools import BuiltinToolProvider
+from services.plugin.plugin_service import PluginService
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 
 logger = logging.getLogger(__name__)
@@ -17,6 +23,240 @@ logger = logging.getLogger(__name__)
 ACEDATACLOUD_PLUGIN_ORG = "acedatacloud"
 ACEDATACLOUD_CREDENTIAL_NAME = "AceDataCloud Auto"
 ACEDATACLOUD_CREDENTIAL_FIELD = "acedata_bearer_token"
+
+ACEDATACLOUD_OFFICIAL_MODEL_PROVIDER_PLUGIN_IDS = (
+    "langgenius/openai",
+    "langgenius/gemini",
+    "langgenius/anthropic",
+    "langgenius/deepseek",
+    "langgenius/x",
+)
+
+ACEDATACLOUD_OFFICIAL_MODEL_PROVIDER_IDS = (
+    "langgenius/openai/openai",
+    "langgenius/gemini/google",
+    "langgenius/anthropic/anthropic",
+    "langgenius/deepseek/deepseek",
+    "langgenius/x/x",
+)
+
+ACEDATACLOUD_MODEL_PROVIDER_SECRET_FIELDS = frozenset(
+    {
+        "openai_api_key",
+        "google_api_key",
+        "anthropic_api_key",
+        "api_key",
+    }
+)
+
+
+def _normalize_base_url(url: str) -> str:
+    url = (url or "").strip()
+    if not url:
+        return "https://api.acedata.cloud"
+    if not (url.startswith("http://") or url.startswith("https://")):
+        url = f"https://{url}"
+    return url.rstrip("/")
+
+
+def _is_version_newer(*, latest: str, current: str) -> bool:
+    try:
+        return Version(latest) > Version(current)
+    except InvalidVersion:
+        return latest != current
+
+
+def _ensure_official_model_provider_plugins(*, tenant_id: str) -> None:
+    if not dify_config.MARKETPLACE_ENABLED:
+        logger.info(
+            "AceDataCloud model providers: marketplace disabled, skip plugin install/upgrade. tenant_id=%s",
+            tenant_id,
+        )
+        return
+
+    plugin_ids = list(ACEDATACLOUD_OFFICIAL_MODEL_PROVIDER_PLUGIN_IDS)
+    plugin_id_set = set(plugin_ids)
+    try:
+        installed = PluginService.list(tenant_id)
+    except Exception:
+        logger.exception(
+            "AceDataCloud model providers: failed to list installed plugins, skip install/upgrade. tenant_id=%s",
+            tenant_id,
+        )
+        return
+
+    installed_by_plugin_id: dict[str, PluginEntity] = {}
+    for plugin in installed:
+        if plugin.plugin_id not in plugin_id_set:
+            continue
+
+        previous = installed_by_plugin_id.get(plugin.plugin_id)
+        if not previous or _is_version_newer(latest=plugin.version, current=previous.version):
+            installed_by_plugin_id[plugin.plugin_id] = plugin
+
+    latest_map = PluginService.fetch_latest_plugin_version(plugin_ids)
+    to_install: list[str] = []
+
+    for plugin_id in plugin_ids:
+        latest = latest_map.get(plugin_id)
+        if not latest:
+            logger.warning(
+                "AceDataCloud model providers: no latest manifest from marketplace. tenant_id=%s plugin_id=%s",
+                tenant_id,
+                plugin_id,
+            )
+            continue
+
+        installed_plugin = installed_by_plugin_id.get(plugin_id)
+        if not installed_plugin:
+            to_install.append(latest.unique_identifier)
+            continue
+
+        if _is_version_newer(latest=latest.version, current=installed_plugin.version):
+            logger.info(
+                "AceDataCloud model providers: upgrading plugin. tenant_id=%s plugin_id=%s %s->%s",
+                tenant_id,
+                plugin_id,
+                installed_plugin.version,
+                latest.version,
+            )
+            try:
+                PluginService.upgrade_plugin_with_marketplace(
+                    tenant_id=tenant_id,
+                    original_plugin_unique_identifier=installed_plugin.plugin_unique_identifier,
+                    new_plugin_unique_identifier=latest.unique_identifier,
+                )
+            except Exception:
+                logger.exception(
+                    "AceDataCloud model providers: upgrade failed, skip. tenant_id=%s plugin_id=%s",
+                    tenant_id,
+                    plugin_id,
+                )
+
+    if not to_install:
+        return
+
+    logger.info(
+        "AceDataCloud model providers: installing missing plugins. tenant_id=%s plugins=%s",
+        tenant_id,
+        to_install,
+    )
+    try:
+        PluginService.install_from_marketplace_pkg(tenant_id=tenant_id, plugin_unique_identifiers=to_install)
+    except Exception:
+        logger.exception(
+            "AceDataCloud model providers: failed to install missing plugins. tenant_id=%s",
+            tenant_id,
+        )
+
+
+def _encrypt_model_provider_credentials(*, tenant_id: str, credentials: dict[str, str]) -> dict[str, str]:
+    encrypted: dict[str, str] = {}
+    for key, value in credentials.items():
+        if key in ACEDATACLOUD_MODEL_PROVIDER_SECRET_FIELDS:
+            encrypted[key] = encrypter.encrypt_token(tenant_id, value)
+            continue
+        encrypted[key] = value
+    return encrypted
+
+
+def _model_provider_credentials(*, token: str) -> dict[str, dict[str, str]]:
+    base_url = _normalize_base_url(dify_config.ACEDATACLOUD_MODEL_PROVIDER_API_BASE_URL)
+    return {
+        "langgenius/openai/openai": {
+            "openai_api_key": token,
+            "openai_api_base": base_url,
+        },
+        "langgenius/gemini/google": {
+            "google_api_key": token,
+            "google_base_url": base_url,
+        },
+        "langgenius/anthropic/anthropic": {
+            "anthropic_api_key": token,
+            "anthropic_api_url": base_url,
+        },
+        "langgenius/deepseek/deepseek": {
+            "api_key": token,
+            "endpoint_url": base_url,
+        },
+        "langgenius/x/x": {
+            "api_key": token,
+            "endpoint_url": base_url,
+        },
+    }
+
+
+def _upsert_model_provider_credentials(*, tenant_id: str, provider: str, credentials: dict[str, str]) -> None:
+    encrypted = _encrypt_model_provider_credentials(tenant_id=tenant_id, credentials=credentials)
+    encrypted_config = json.dumps(encrypted)
+
+    with Session(db.engine) as session:
+        existing_credential: ProviderCredential | None = (
+            session.query(ProviderCredential)
+            .where(
+                ProviderCredential.tenant_id == tenant_id,
+                ProviderCredential.provider_name == provider,
+                ProviderCredential.credential_name == ACEDATACLOUD_CREDENTIAL_NAME,
+            )
+            .order_by(ProviderCredential.created_at.desc())
+            .first()
+        )
+
+        if existing_credential:
+            logger.info(
+                "AceDataCloud model providers: updating credentials. tenant_id=%s provider=%s credential_id=%s",
+                tenant_id,
+                provider,
+                existing_credential.id,
+            )
+            existing_credential.encrypted_config = encrypted_config
+            credential_id = existing_credential.id
+        else:
+            logger.info(
+                "AceDataCloud model providers: creating credentials. tenant_id=%s provider=%s", tenant_id, provider
+            )
+            record = ProviderCredential(
+                tenant_id=tenant_id,
+                provider_name=provider,
+                credential_name=ACEDATACLOUD_CREDENTIAL_NAME,
+                encrypted_config=encrypted_config,
+            )
+            session.add(record)
+            session.flush()
+            credential_id = record.id
+
+        provider_record: Provider | None = (
+            session.query(Provider)
+            .where(
+                Provider.tenant_id == tenant_id,
+                Provider.provider_name == provider,
+                Provider.provider_type == ProviderType.CUSTOM,
+            )
+            .order_by(Provider.created_at.desc())
+            .first()
+        )
+
+        if not provider_record:
+            provider_record = Provider(
+                tenant_id=tenant_id,
+                provider_name=provider,
+                provider_type=ProviderType.CUSTOM,
+                is_valid=True,
+                credential_id=credential_id,
+            )
+            session.add(provider_record)
+            session.flush()
+        else:
+            provider_record.is_valid = True
+            provider_record.credential_id = credential_id
+
+        session.commit()
+
+        ProviderCredentialsCache(
+            tenant_id=tenant_id,
+            identity_id=provider_record.id,
+            cache_type=ProviderCredentialsCacheType.PROVIDER,
+        ).delete()
 
 
 def _platform_headers(*, user_id: str, access_token: str) -> dict[str, str]:
@@ -153,42 +393,94 @@ def _get_or_create_platform_token(*, user_id: str, access_token: str) -> str:
 def _upsert_provider_credentials(*, tenant_id: str, account_id: str, provider_id: str, token: str) -> None:
     credentials = {ACEDATACLOUD_CREDENTIAL_FIELD: token}
     provider_id_entity = ToolProviderID(provider_id)
+    provider_name = provider_id_entity.provider_name
 
-    with Session(db.engine) as session:
-        existing = (
-            session.query(BuiltinToolProvider)
-            .where(BuiltinToolProvider.tenant_id == tenant_id, BuiltinToolProvider.provider == provider_id)
-            .order_by(BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
-            .first()
-        )
-        if not existing:
-            existing = (
+    def _set_default(*, credential_id: str) -> None:
+        with Session(db.engine) as session:
+            session.query(BuiltinToolProvider).where(
+                BuiltinToolProvider.tenant_id == tenant_id,
+                (BuiltinToolProvider.provider == provider_id) | (BuiltinToolProvider.provider == provider_name),
+            ).update({"is_default": False})
+            session.query(BuiltinToolProvider).where(BuiltinToolProvider.id == credential_id).update(
+                {"is_default": True}
+            )
+            session.commit()
+
+    def _log_effective_state(*, credential_id: str, action: str) -> None:
+        with Session(db.engine) as session:
+            rows = (
                 session.query(BuiltinToolProvider)
                 .where(
                     BuiltinToolProvider.tenant_id == tenant_id,
-                    BuiltinToolProvider.provider == provider_id_entity.provider_name,
+                    (BuiltinToolProvider.provider == provider_id) | (BuiltinToolProvider.provider == provider_name),
                 )
+                .order_by(BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
+                .all()
+            )
+        logger.info(
+            "AceDataCloud credentials: %s done. tenant_id=%s provider=%s provider_name=%s credential_id=%s "
+            "credentials_total=%s default_id=%s providers=%s",
+            action,
+            tenant_id,
+            provider_id,
+            provider_name,
+            credential_id,
+            len(rows),
+            next((r.id for r in rows if r.is_default), None),
+            [{"id": r.id, "provider": r.provider, "name": r.name, "is_default": r.is_default} for r in rows],
+        )
+
+    with Session(db.engine) as session:
+        existing_auto = (
+            session.query(BuiltinToolProvider)
+            .where(BuiltinToolProvider.tenant_id == tenant_id, BuiltinToolProvider.provider == provider_id)
+            .where(BuiltinToolProvider.name == ACEDATACLOUD_CREDENTIAL_NAME)
+            .order_by(BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
+            .first()
+        )
+        existing_legacy_auto = None
+        if not existing_auto:
+            existing_legacy_auto = (
+                session.query(BuiltinToolProvider)
+                .where(
+                    BuiltinToolProvider.tenant_id == tenant_id,
+                    BuiltinToolProvider.provider == provider_name,
+                )
+                .where(BuiltinToolProvider.name == ACEDATACLOUD_CREDENTIAL_NAME)
                 .order_by(BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
                 .first()
             )
 
-    if existing:
+    if existing_auto:
         logger.info(
             "AceDataCloud credentials: updating. tenant_id=%s provider=%s credential_id=%s",
             tenant_id,
             provider_id,
-            existing.id,
+            existing_auto.id,
         )
         BuiltinToolManageService.update_builtin_tool_provider(
             user_id=account_id,
             tenant_id=tenant_id,
             provider=provider_id,
-            credential_id=existing.id,
+            credential_id=existing_auto.id,
             credentials=credentials,
-            name=existing.name,
+            name=existing_auto.name,
             validate=False,
         )
+        _set_default(credential_id=existing_auto.id)
+        _log_effective_state(credential_id=existing_auto.id, action="update")
         return
+
+    if existing_legacy_auto:
+        logger.info(
+            "AceDataCloud credentials: legacy credential exists under provider_name; "
+            "will create canonical and override. "
+            "tenant_id=%s provider=%s provider_name=%s legacy_credential_id=%s",
+            tenant_id,
+            provider_id,
+            provider_name,
+            existing_legacy_auto.id,
+        )
 
     logger.info("AceDataCloud credentials: creating. tenant_id=%s provider=%s", tenant_id, provider_id)
     BuiltinToolManageService.add_builtin_tool_provider(
@@ -200,6 +492,29 @@ def _upsert_provider_credentials(*, tenant_id: str, account_id: str, provider_id
         api_type=CredentialType.API_KEY,
         validate=False,
     )
+
+    with Session(db.engine) as session:
+        created = (
+            session.query(BuiltinToolProvider)
+            .where(
+                BuiltinToolProvider.tenant_id == tenant_id,
+                BuiltinToolProvider.provider == provider_id,
+                BuiltinToolProvider.name == ACEDATACLOUD_CREDENTIAL_NAME,
+            )
+            .order_by(BuiltinToolProvider.created_at.desc())
+            .first()
+        )
+    if not created:
+        logger.error(
+            "AceDataCloud credentials: created credential not found after insert. tenant_id=%s provider=%s name=%s",
+            tenant_id,
+            provider_id,
+            ACEDATACLOUD_CREDENTIAL_NAME,
+        )
+        return
+
+    _set_default(credential_id=created.id)
+    _log_effective_state(credential_id=created.id, action="create")
 
 
 @shared_task(
@@ -232,6 +547,25 @@ def provision_acedatacloud_plugin_credentials_task(
         account_id,
         acedatacloud_user_id,
     )
+
+    _ensure_official_model_provider_plugins(tenant_id=tenant_id)
+
+    token = _get_or_create_platform_token(user_id=acedatacloud_user_id, access_token=acedatacloud_access_token)
+    logger.info("AceDataCloud credentials: got token. tenant_id=%s user_id=%s", tenant_id, acedatacloud_user_id)
+
+    model_provider_credentials = _model_provider_credentials(token=token)
+    for provider in ACEDATACLOUD_OFFICIAL_MODEL_PROVIDER_IDS:
+        creds = model_provider_credentials.get(provider)
+        if not creds:
+            continue
+        try:
+            _upsert_model_provider_credentials(tenant_id=tenant_id, provider=provider, credentials=creds)
+        except Exception:
+            logger.exception(
+                "AceDataCloud model providers: failed to upsert credentials. tenant_id=%s provider=%s",
+                tenant_id,
+                provider,
+            )
 
     manager = PluginToolManager()
     providers = manager.fetch_tool_providers(tenant_id)
@@ -288,22 +622,30 @@ def provision_acedatacloud_plugin_credentials_task(
             raise RuntimeError("AceDataCloud providers not ready yet")
         return
 
-    token = _get_or_create_platform_token(user_id=acedatacloud_user_id, access_token=acedatacloud_access_token)
-    logger.info("AceDataCloud credentials: got token. tenant_id=%s user_id=%s", tenant_id, acedatacloud_user_id)
-
     logger.info(
         "AceDataCloud credentials: provisioning providers. tenant_id=%s providers=%s",
         tenant_id,
         sorted(acedatacloud_provider_ids),
     )
+    provisioned: list[str] = []
+    failed: list[str] = []
     for provider_id in acedatacloud_provider_ids:
         try:
             _upsert_provider_credentials(
                 tenant_id=tenant_id, account_id=account_id, provider_id=provider_id, token=token
             )
+            provisioned.append(provider_id)
         except Exception:
+            failed.append(provider_id)
             logger.exception(
                 "AceDataCloud credentials: failed to upsert provider. tenant_id=%s provider=%s",
                 tenant_id,
                 provider_id,
             )
+
+    logger.info(
+        "AceDataCloud credentials: finished. tenant_id=%s provisioned=%s failed=%s",
+        tenant_id,
+        provisioned,
+        failed,
+    )

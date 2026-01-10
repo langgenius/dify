@@ -6,9 +6,11 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.helper.encrypter import decrypt_token
+from core.plugin.impl.tool import PluginToolManager
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models import AccountIntegrate
+from models.tools import BuiltinToolProvider
 from services.plugin.plugin_service import PluginService
 
 logger = logging.getLogger(__name__)
@@ -57,6 +59,52 @@ def _load_acedatacloud_access_token(*, tenant_id: str, account_id: str) -> tuple
             return None, None
 
         return account_integrate.open_id, access_token
+
+
+def _should_enqueue_acedatacloud_provision_when_no_installs(*, tenant_id: str) -> tuple[bool, list[str]]:
+    """
+    When plugin sync installs nothing, still provision if any AceDataCloud plugin providers are present but
+    have no canonical credentials row (provider stored as full provider id).
+    """
+    try:
+        manager = PluginToolManager()
+        providers = manager.fetch_tool_providers(tenant_id)
+        acedatacloud_provider_ids = sorted(
+            {
+                p.declaration.identity.name
+                for p in providers
+                if isinstance(p.plugin_id, str)
+                and p.plugin_id.lower().startswith("acedatacloud/")
+                and isinstance(p.declaration.identity.name, str)
+                and p.declaration.identity.name
+            }
+        )
+    except Exception:
+        logger.exception(
+            "GitHub latest release sync on login: failed to discover providers for AceDataCloud provision check. "
+            "tenant_id=%s",
+            tenant_id,
+        )
+        return False, []
+
+    if not acedatacloud_provider_ids:
+        return False, []
+
+    missing: list[str] = []
+    with Session(db.engine) as session:
+        for provider_id in acedatacloud_provider_ids:
+            exists = (
+                session.query(BuiltinToolProvider.id)
+                .where(
+                    BuiltinToolProvider.tenant_id == tenant_id,
+                    BuiltinToolProvider.provider == provider_id,
+                )
+                .first()
+            )
+            if not exists:
+                missing.append(provider_id)
+
+    return len(missing) > 0, missing
 
 
 @shared_task(queue="plugin")
@@ -128,13 +176,32 @@ def sync_github_latest_release_plugins_on_login_task(*, tenant_id: str, account_
     )
 
     if installed_total <= 0:
+        if not dify_config.ACEDATACLOUD_AUTO_PROVISION_PLUGIN_CREDENTIALS:
+            logger.info(
+                "GitHub latest release sync on login: skip AceDataCloud provision (disabled). "
+                "tenant_id=%s account_id=%s",
+                tenant_id,
+                account_id,
+            )
+            return
+
+        should_enqueue, missing = _should_enqueue_acedatacloud_provision_when_no_installs(tenant_id=tenant_id)
+        if not should_enqueue:
+            logger.info(
+                "GitHub latest release sync on login: skip AceDataCloud provision "
+                "(no plugin changes, no missing credentials). tenant_id=%s account_id=%s",
+                tenant_id,
+                account_id,
+            )
+            return
+
         logger.info(
-            "GitHub latest release sync on login: skip AceDataCloud provision (no plugin changes). "
-            "tenant_id=%s account_id=%s",
+            "GitHub latest release sync on login: enqueue AceDataCloud provision "
+            "(no plugin changes, missing credentials). tenant_id=%s account_id=%s missing=%s",
             tenant_id,
             account_id,
+            missing,
         )
-        return
 
     if not dify_config.ACEDATACLOUD_AUTO_PROVISION_PLUGIN_CREDENTIALS:
         return

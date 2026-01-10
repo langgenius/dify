@@ -887,10 +887,18 @@ class AuthConfig(BaseSettings):
         default="https://platform.acedata.cloud",
     )
 
+    ACEDATACLOUD_MODEL_PROVIDER_API_BASE_URL: str = Field(
+        description=(
+            "AceDataCloud service API base url, used as the custom base url when auto-provisioning "
+            "official model provider plugins (e.g. OpenAI/Gemini/Anthropic/DeepSeek/xAI)."
+        ),
+        default="https://api.acedata.cloud",
+    )
+
     ACEDATACLOUD_AUTO_PROVISION_PLUGIN_CREDENTIALS: bool = Field(
         description=(
             "When enabled, after AceDataCloud OAuth login Dify will fetch the user's API token from "
-            "AceDataCloud platform and auto-create/update tool credentials for installed AceDataCloud plugins."
+            "AceDataCloud platform and auto-create/update credentials for plugins (including default model providers)."
         ),
         default=False,
     )
