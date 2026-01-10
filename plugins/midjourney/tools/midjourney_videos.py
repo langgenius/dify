@@ -40,7 +40,10 @@ class MidjourneyVideosTool(Tool):
         )
 
         try:
-            result = client.videos(payload=payload, timeout_s=1800)
+            mode = payload.get("mode")
+            mode = mode.strip().lower() if isinstance(mode, str) else ""
+            timeout_s = {"turbo": 600, "fast": 900, "relax": 1200}.get(mode or "fast", 900)
+            result = client.videos(payload=payload, timeout_s=timeout_s)
         except AceDataMidjourneyError as e:
             yield self.create_variable_message("success", False)
             yield self.create_variable_message("error", {"code": e.code, "message": e.message})

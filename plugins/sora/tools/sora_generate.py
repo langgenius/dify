@@ -65,6 +65,7 @@ class SoraGenerateVideoTool(Tool):
             bearer_token=str(self.runtime.credentials["acedata_bearer_token"])
         )
         try:
+            timeout_s = 3660 if model.strip() == "sora-2-pro" else 1860
             result = client.generate_video(
                 prompt=prompt.strip(),
                 model=model.strip(),
@@ -76,7 +77,7 @@ class SoraGenerateVideoTool(Tool):
                 character_start=float(character_start) if character_start is not None else None,
                 character_end=float(character_end) if character_end is not None else None,
                 callback_url=callback_url,
-                timeout_s=1800,
+                timeout_s=timeout_s,
             )
         except AceDataSoraError as e:
             yield self.create_variable_message("success", False)

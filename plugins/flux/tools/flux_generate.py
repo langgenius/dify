@@ -43,7 +43,7 @@ class FluxGenerateImageTool(Tool):
                 size=size,
                 count=count,
                 callback_url=callback_url,
-                timeout_s=1800,
+                timeout_s=150,
             )
         except AceDataFluxError as e:
             yield self.create_variable_message("success", False)

@@ -84,7 +84,7 @@ class SeedreamGenerateImageTool(Tool):
             bearer_token=str(self.runtime.credentials["acedata_bearer_token"])
         )
         try:
-            result = client.generate_images(payload=payload, timeout_s=1800)
+            result = client.generate_images(payload=payload, timeout_s=150)
         except AceDataSeedreamError as e:
             yield self.create_variable_message("success", False)
             yield self.create_variable_message("error", {"code": e.code, "message": e.message})
@@ -98,4 +98,3 @@ class SeedreamGenerateImageTool(Tool):
         yield self.create_variable_message("task_id", result.task_id)
         yield self.create_variable_message("trace_id", result.trace_id)
         yield self.create_variable_message("data", result.data)
-

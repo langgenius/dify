@@ -71,7 +71,7 @@ class AceDataSeedanceClient:
         return_last_frame: bool | None = None,
         service_tier: str | None = None,
         execution_expires_after: int | None = None,
-        timeout_s: int = 1800,
+        timeout_s: int = 600,
     ) -> AceDataSeedanceVideosResult:
         if not prompt or not prompt.strip():
             raise ValueError("`prompt` is required.")

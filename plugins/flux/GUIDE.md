@@ -101,7 +101,7 @@ Study these examples to understand plugin implementation:
    REMOTE_INSTALL_KEY=your-debug-key
    ```
 
-2. Run your plugin:
+2. Run your plugin: 
    ```bash
    python -m main
    ```
@@ -125,4 +125,3 @@ Package a `.difypkg` and distribute it via your preferred channel (private distr
 ## Privacy Policy
 
 If publishing to the Marketplace, provide a privacy policy in [PRIVACY.md](PRIVACY.md).
-

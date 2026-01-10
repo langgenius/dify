@@ -25,7 +25,7 @@ class SunoCreateVoxAudioTool(Tool):
                 audio_id=audio_id,
                 vocal_start=vocal_start,
                 vocal_end=vocal_end,
-                timeout_s=600,
+                timeout_s=1800,
             )
         except AceDataSunoError as e:
             yield self.create_variable_message("success", False)

@@ -72,17 +72,17 @@ class AceDataSunoClient:
     def generate_audios(self, *, payload: dict[str, Any], timeout_s: int = 1800) -> AceDataSunoListResult:
         return self._post_list(path="/suno/audios", payload=payload, timeout_s=timeout_s)
 
-    def generate_lyrics(self, *, prompt: str, timeout_s: int = 600) -> AceDataSunoObjectResult:
+    def generate_lyrics(self, *, prompt: str, timeout_s: int = 1800) -> AceDataSunoObjectResult:
         return self._post_object(path="/suno/lyrics", payload={"prompt": prompt}, timeout_s=timeout_s)
 
-    def upload_reference_audio(self, *, audio_url: str, timeout_s: int = 600) -> AceDataSunoObjectResult:
+    def upload_reference_audio(self, *, audio_url: str, timeout_s: int = 1800) -> AceDataSunoObjectResult:
         return self._post_object(path="/suno/upload", payload={"audio_url": audio_url}, timeout_s=timeout_s)
 
-    def get_mp4(self, *, audio_id: str, timeout_s: int = 600) -> AceDataSunoObjectResult:
+    def get_mp4(self, *, audio_id: str, timeout_s: int = 1800) -> AceDataSunoObjectResult:
         return self._post_object(path="/suno/mp4", payload={"audio_id": audio_id}, timeout_s=timeout_s)
 
     def wav(
-        self, *, audio_id: str, callback_url: str | None = None, timeout_s: int = 600
+        self, *, audio_id: str, callback_url: str | None = None, timeout_s: int = 1800
     ) -> AceDataSunoListResult:
         payload: dict[str, Any] = {"audio_id": audio_id}
         if callback_url:
@@ -90,21 +90,21 @@ class AceDataSunoClient:
         return self._post_list(path="/suno/wav", payload=payload, timeout_s=timeout_s)
 
     def midi(
-        self, *, audio_id: str, callback_url: str | None = None, timeout_s: int = 600
+        self, *, audio_id: str, callback_url: str | None = None, timeout_s: int = 1800
     ) -> AceDataSunoListResult:
         payload: dict[str, Any] = {"audio_id": audio_id}
         if callback_url:
             payload["callback_url"] = callback_url
         return self._post_list(path="/suno/midi", payload=payload, timeout_s=timeout_s)
 
-    def timing(self, *, audio_id: str, timeout_s: int = 600) -> AceDataSunoObjectResult:
+    def timing(self, *, audio_id: str, timeout_s: int = 1800) -> AceDataSunoObjectResult:
         return self._post_object(path="/suno/timing", payload={"audio_id": audio_id}, timeout_s=timeout_s)
 
-    def style(self, *, prompt: str, timeout_s: int = 600) -> AceDataSunoObjectResult:
+    def style(self, *, prompt: str, timeout_s: int = 150) -> AceDataSunoObjectResult:
         return self._post_object(path="/suno/style", payload={"prompt": prompt}, timeout_s=timeout_s)
 
     def vox(
-        self, *, audio_id: str, vocal_start: float | None, vocal_end: float | None, timeout_s: int = 600
+        self, *, audio_id: str, vocal_start: float | None, vocal_end: float | None, timeout_s: int = 1800
     ) -> AceDataSunoObjectResult:
         payload: dict[str, Any] = {"audio_id": audio_id}
         if vocal_start is not None:
@@ -122,7 +122,7 @@ class AceDataSunoClient:
         vox_audio_id: str | None = None,
         vocal_start: float | None = None,
         vocal_end: float | None = None,
-        timeout_s: int = 600,
+        timeout_s: int = 1800,
     ) -> AceDataSunoObjectResult:
         payload: dict[str, Any] = {"audio_id": audio_id, "name": name}
         if description:

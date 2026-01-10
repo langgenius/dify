@@ -125,4 +125,3 @@ Package a `.difypkg` and distribute it via your preferred channel (private distr
 ## Privacy Policy
 
 If publishing to the Marketplace, provide a privacy policy in [PRIVACY.md](PRIVACY.md).
-

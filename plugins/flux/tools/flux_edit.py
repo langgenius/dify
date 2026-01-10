@@ -38,7 +38,7 @@ class FluxEditImageTool(Tool):
                 model=model,
                 size=size,
                 callback_url=callback_url,
-                timeout_s=1800,
+                timeout_s=150,
             )
         except AceDataFluxError as e:
             yield self.create_variable_message("success", False)
@@ -53,4 +53,3 @@ class FluxEditImageTool(Tool):
         yield self.create_variable_message("task_id", result.task_id)
         yield self.create_variable_message("trace_id", result.trace_id)
         yield self.create_variable_message("data", result.data)
-

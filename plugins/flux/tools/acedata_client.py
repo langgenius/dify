@@ -60,7 +60,7 @@ class AceDataFluxClient:
         size: str | None = None,
         count: int | None = None,
         callback_url: str | None = None,
-        timeout_s: int = 1800,
+        timeout_s: int = 150,
     ) -> AceDataFluxImagesResult:
         payload: dict[str, Any] = {"action": "generate", "prompt": prompt}
         if model:
@@ -81,7 +81,7 @@ class AceDataFluxClient:
         model: str | None = None,
         size: str | None = None,
         callback_url: str | None = None,
-        timeout_s: int = 1800,
+        timeout_s: int = 150,
     ) -> AceDataFluxImagesResult:
         payload: dict[str, Any] = {"action": "edit", "prompt": prompt, "image_url": image_url}
         if model:

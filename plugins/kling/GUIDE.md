@@ -72,7 +72,6 @@ meta:
     language: python
     version: "3.12"
     entrypoint: main
-  minimum_dify_version: null
 ```
 
 **Restrictions:**

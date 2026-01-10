@@ -82,7 +82,7 @@ class SeedanceGenerateVideoTool(Tool):
                 service_tier=service_tier,
                 execution_expires_after=execution_expires_after,
                 callback_url=callback_url,
-                timeout_s=1800,
+                timeout_s=600,
             )
         except AceDataSeedanceError as e:
             yield self.create_variable_message("success", False)
@@ -94,4 +94,3 @@ class SeedanceGenerateVideoTool(Tool):
         yield self.create_variable_message("task_id", result.task_id)
         yield self.create_variable_message("trace_id", result.trace_id)
         yield self.create_variable_message("data", result.data)
-

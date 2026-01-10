@@ -18,7 +18,7 @@ class SunoGetTimingTool(Tool):
 
         client = AceDataSunoClient(bearer_token=str(self.runtime.credentials["acedata_bearer_token"]))
         try:
-            result = client.timing(audio_id=audio_id, timeout_s=600)
+            result = client.timing(audio_id=audio_id, timeout_s=1800)
         except AceDataSunoError as e:
             yield self.create_variable_message("success", False)
             yield self.create_variable_message("error", {"code": e.code, "message": e.message})

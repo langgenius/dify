@@ -82,7 +82,17 @@ meta:
 </details>
 
 <details>
-<summary><b>2. Testing & Debugging</b></summary>
+<summary><b>2. Implementation Examples</b></summary>
+
+Study these examples to understand plugin implementation:
+
+- [OpenAI](https://github.com/langgenius/dify-plugin-sdks/tree/main/python/examples/openai) - Model provider
+- [Google Search](https://github.com/langgenius/dify-plugin-sdks/tree/main/python/examples/google) - Tool provider
+- [Neko](https://github.com/langgenius/dify-plugin-sdks/tree/main/python/examples/neko) - Endpoint group
+</details>
+
+<details>
+<summary><b>3. Testing & Debugging</b></summary>
 
 1. Copy `.env.example` to `.env` and configure:
    ```
@@ -91,7 +101,7 @@ meta:
    REMOTE_INSTALL_KEY=your-debug-key
    ```
 
-2. Run your plugin:
+2. Run your plugin: 
    ```bash
    python -m main
    ```
@@ -99,7 +109,19 @@ meta:
 3. Refresh your Dify instance to see the plugin (marked as "debugging")
 </details>
 
+<details>
+<summary><b>4. Publishing</b></summary>
+
+#### Manual Packaging
+```bash
+dify-plugin plugin package ./YOUR_PLUGIN_DIR
+```
+
+#### Publishing
+
+Package a `.difypkg` and distribute it via your preferred channel (private distribution, GitHub releases, or Marketplace).
+</details>
+
 ## Privacy Policy
 
 If publishing to the Marketplace, provide a privacy policy in [PRIVACY.md](PRIVACY.md).
-

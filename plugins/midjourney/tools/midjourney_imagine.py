@@ -14,6 +14,24 @@ from tools.acedata_client import (
 
 
 class MidjourneyImagineTool(Tool):
+    @staticmethod
+    def _resolve_timeout_s(payload: dict[str, Any]) -> int:
+        mode = payload.get("mode")
+        mode = mode.strip().lower() if isinstance(mode, str) else ""
+
+        mode_defaults = {"turbo": 600, "fast": 900, "relax": 1200}
+        timeout_s = mode_defaults.get(mode or "fast", 900)
+
+        requested = payload.get("timeout")
+        if isinstance(requested, int):
+            timeout_s = requested
+        elif isinstance(requested, float) and requested.is_integer():
+            timeout_s = int(requested)
+
+        if timeout_s <= 0:
+            timeout_s = mode_defaults.get(mode or "fast", 900)
+        return min(timeout_s, 1200)
+
     def _invoke(
         self, tool_parameters: dict[str, Any]
     ) -> Generator[ToolInvokeMessage, None, None]:
@@ -35,7 +53,7 @@ class MidjourneyImagineTool(Tool):
         )
 
         try:
-            result = client.imagine(payload=payload, timeout_s=1800)
+            result = client.imagine(payload=payload, timeout_s=self._resolve_timeout_s(payload))
         except AceDataMidjourneyError as e:
             yield self.create_variable_message("success", False)
             yield self.create_variable_message("error", {"code": e.code, "message": e.message})

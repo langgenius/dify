@@ -64,7 +64,7 @@ class AceDataSoraClient:
         character_start: float | None = None,
         character_end: float | None = None,
         callback_url: str | None = None,
-        timeout_s: int = 1800,
+        timeout_s: int = 1860,
     ) -> AceDataSoraVideosResult:
         payload: dict[str, Any] = {"prompt": prompt, "model": model}
         if duration is not None:
@@ -220,4 +220,3 @@ def parse_task_ids(value: Any) -> list[str]:
         return [line.strip() for line in text.splitlines() if line.strip()]
 
     raise ValueError("`task_ids` must be an array of strings or a string (one ID per line).")
-

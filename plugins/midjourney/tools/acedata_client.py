@@ -56,7 +56,7 @@ class AceDataMidjourneyClient:
         self,
         *,
         payload: dict[str, Any],
-        timeout_s: int = 1800,
+        timeout_s: int = 1200,
         accept: AceDataAccept = "application/json",
     ) -> dict[str, Any]:
         return self._post(path="/midjourney/imagine", payload=payload, timeout_s=timeout_s, accept=accept)
@@ -65,7 +65,7 @@ class AceDataMidjourneyClient:
         self,
         *,
         payload: dict[str, Any],
-        timeout_s: int = 1800,
+        timeout_s: int = 1200,
         accept: AceDataAccept = "application/json",
     ) -> dict[str, Any]:
         return self._post(path="/midjourney/edits", payload=payload, timeout_s=timeout_s, accept=accept)
@@ -74,7 +74,7 @@ class AceDataMidjourneyClient:
         self,
         *,
         payload: dict[str, Any],
-        timeout_s: int = 1800,
+        timeout_s: int = 1200,
         accept: AceDataAccept = "application/json",
     ) -> dict[str, Any]:
         return self._post(path="/midjourney/videos", payload=payload, timeout_s=timeout_s, accept=accept)

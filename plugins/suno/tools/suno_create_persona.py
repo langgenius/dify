@@ -39,7 +39,7 @@ class SunoCreatePersonaTool(Tool):
                 vox_audio_id=vox_audio_id,
                 vocal_start=vocal_start,
                 vocal_end=vocal_end,
-                timeout_s=600,
+                timeout_s=1800,
             )
         except AceDataSunoError as e:
             yield self.create_variable_message("success", False)

@@ -52,7 +52,7 @@ class AceDataSeedreamClient:
         self._base_url = base_url.rstrip("/")
 
     def generate_images(
-        self, *, payload: dict[str, Any], timeout_s: int = 1800
+        self, *, payload: dict[str, Any], timeout_s: int = 150
     ) -> AceDataSeedreamImagesResult:
         body = self._post(path="/seedream/images", payload=payload, timeout_s=timeout_s)
 
@@ -143,4 +143,3 @@ def parse_image_inputs(value: Any) -> list[str]:
         return [line.strip() for line in text.splitlines() if line.strip()]
 
     raise ValueError("`image_urls` must be an array of strings or a string (one URL per line).")
-

@@ -35,7 +35,7 @@ class MidjourneyEditsTool(Tool):
         )
 
         try:
-            result = client.edits(payload=payload, timeout_s=1800)
+            result = client.edits(payload=payload, timeout_s=1200)
         except AceDataMidjourneyError as e:
             yield self.create_variable_message("success", False)
             yield self.create_variable_message("error", {"code": e.code, "message": e.message})
