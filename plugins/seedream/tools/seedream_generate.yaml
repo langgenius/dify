@@ -1,0 +1,191 @@
+identity:
+  name: seedream_generate_image
+  author: acedatacloud
+  label:
+    en_US: Seedream Generate Image
+    zh_Hans: Seedream 生成图片
+description:
+  human:
+    en_US: Generate image(s) with Ace Data Cloud Seedream Images API.
+    zh_Hans: 通过 Ace Data Cloud Seedream Images API 生成图片。
+  llm: Generate image(s) from prompt via Ace Data Cloud Seedream Images API.
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      additionalProperties: true
+    task_id:
+      type: string
+    trace_id:
+      type: string
+    data:
+      type: array
+      items:
+        type: object
+        properties:
+          image_url:
+            type: string
+          prompt:
+            type: string
+          size:
+            type: string
+        additionalProperties: true
+parameters:
+  - name: prompt
+    type: string
+    required: true
+    label:
+      en_US: Prompt
+      zh_Hans: 提示词
+    human_description:
+      en_US: Text prompt used to generate the image(s).
+      zh_Hans: 用于生成图片的提示词。
+    llm_description: Describe the image you want to generate in detail.
+    form: llm
+  - name: model
+    type: select
+    required: false
+    label:
+      en_US: Model
+      zh_Hans: 模型
+    human_description:
+      en_US: Optional model name. Default is doubao-seedream-4-0-250828.
+      zh_Hans: 可选模型名称，不填则默认为 doubao-seedream-4-0-250828。
+    llm_description: Optional. Choose a supported Seedream model.
+    form: form
+    options:
+      - value: doubao-seedream-4-0-250828
+        label:
+          en_US: doubao-seedream-4-0-250828 (default)
+          zh_Hans: doubao-seedream-4-0-250828（默认）
+      - value: doubao-seedream-4-5-251128
+        label:
+          en_US: doubao-seedream-4-5-251128
+          zh_Hans: doubao-seedream-4-5-251128
+      - value: doubao-seedream-3-0-t2i-250415
+        label:
+          en_US: doubao-seedream-3-0-t2i-250415
+          zh_Hans: doubao-seedream-3-0-t2i-250415
+      - value: doubao-seededit-3-0-i2i-250628
+        label:
+          en_US: doubao-seededit-3-0-i2i-250628
+          zh_Hans: doubao-seededit-3-0-i2i-250628
+  - name: size
+    type: select
+    required: false
+    label:
+      en_US: Size
+      zh_Hans: 尺寸
+    human_description:
+      en_US: Optional image size like 1K/2K/4K/adaptive or 2048x2048 depending on model.
+      zh_Hans: 可选图像尺寸，如 1K/2K/4K/adaptive 或 2048x2048（取决于模型）。
+    llm_description: Optional.
+    form: form
+    options:
+      - value: 1K
+        label: { en_US: 1K, zh_Hans: 1K }
+      - value: 2K
+        label: { en_US: 2K, zh_Hans: 2K }
+      - value: 4K
+        label: { en_US: 4K, zh_Hans: 4K }
+      - value: adaptive
+        label: { en_US: adaptive, zh_Hans: adaptive }
+  - name: seed
+    type: number
+    required: false
+    label:
+      en_US: Seed
+      zh_Hans: 随机种子
+    human_description:
+      en_US: Optional seed for reproducibility (supported by some models).
+      zh_Hans: 可选随机数种子（部分模型支持）。
+    llm_description: Optional. Integer only.
+    form: form
+  - name: sequential_image_generation
+    type: select
+    required: false
+    label:
+      en_US: Sequential image generation
+      zh_Hans: 组图
+    human_description:
+      en_US: Optional. Use disabled/enabled depending on model support.
+      zh_Hans: 可选，根据模型支持情况填写 disabled/enabled。
+    llm_description: Optional.
+    form: form
+    options:
+      - value: disabled
+        label: { en_US: disabled, zh_Hans: disabled }
+      - value: enabled
+        label: { en_US: enabled, zh_Hans: enabled }
+  - name: stream
+    type: boolean
+    required: false
+    label:
+      en_US: Stream
+      zh_Hans: 流式输出
+    human_description:
+      en_US: Optional. Stream output (only supported by some models).
+      zh_Hans: 可选，流式输出（仅部分模型支持）。
+    llm_description: Optional.
+    form: form
+  - name: guidance_scale
+    type: number
+    required: false
+    label:
+      en_US: Guidance scale
+      zh_Hans: 文本权重
+    human_description:
+      en_US: Optional prompt weight (only supported by some models).
+      zh_Hans: 可选文本权重（仅部分模型支持）。
+    llm_description: Optional.
+    form: form
+  - name: response_format
+    type: select
+    required: false
+    label:
+      en_US: Response format
+      zh_Hans: 返回格式
+    human_description:
+      en_US: Optional. url or b64_json.
+      zh_Hans: 可选，url 或 b64_json。
+    llm_description: Optional.
+    form: form
+    options:
+      - value: url
+        label: { en_US: url, zh_Hans: url }
+      - value: b64_json
+        label: { en_US: b64_json, zh_Hans: b64_json }
+  - name: watermark
+    type: boolean
+    required: false
+    label:
+      en_US: Watermark
+      zh_Hans: 水印
+    human_description:
+      en_US: Optional. Add watermark or not.
+      zh_Hans: 可选，是否添加水印。
+    llm_description: Optional.
+    form: form
+  - name: callback_url
+    type: string
+    required: false
+    label:
+      en_US: Callback URL
+      zh_Hans: 回调地址
+    human_description:
+      en_US: Optional. If provided, the task result will be POSTed to this URL.
+      zh_Hans: 可选，若提供则任务完成后会回调该地址。
+    llm_description: Optional.
+    form: form
+extra:
+  python:
+    source: tools/seedream_generate.py
+

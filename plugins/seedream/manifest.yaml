@@ -1,0 +1,38 @@
+version: 0.0.1
+type: plugin
+author: acedatacloud
+name: seedream
+label:
+  en_US: Seedream
+  ja_JP: Seedream
+  zh_Hans: Seedream
+  pt_BR: Seedream
+description:
+  en_US: Generate and edit images via Ace Data Cloud Seedream Images API.
+  ja_JP: Ace Data Cloud Seedream Images API を使って画像生成・編集を行います。
+  zh_Hans: 通过 Ace Data Cloud Seedream Images API 生成与编辑图片。
+  pt_BR: Gere e edite imagens via Ace Data Cloud Seedream Images API.
+icon: icon.jpg
+icon_dark: icon.jpg
+resource:
+  memory: 268435456
+  permission:
+    tool:
+      enabled: true
+plugins:
+  tools:
+    - provider/seedream.yaml
+meta:
+  version: 0.0.1
+  arch:
+    - amd64
+    - arm64
+  runner:
+    language: python
+    version: "3.12"
+    entrypoint: main
+  minimum_dify_version: null
+created_at: 2026-01-09T00:00:00+08:00
+privacy: PRIVACY.md
+verified: false
+
