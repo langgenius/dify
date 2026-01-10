@@ -2,9 +2,11 @@ class InvokeError(ValueError):
     """Base class for all LLM exceptions."""
 
     description: str | None = None
+    error_code: str | None = None
 
-    def __init__(self, description: str | None = None):
+    def __init__(self, description: str | None = None, error_code: str | None = None):
         self.description = description
+        self.error_code = error_code
 
     def __str__(self):
         return self.description or self.__class__.__name__

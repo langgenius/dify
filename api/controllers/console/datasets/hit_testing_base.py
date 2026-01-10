@@ -89,7 +89,7 @@ class DatasetsHitTestingBase:
                 "in the Settings -> Model Provider."
             )
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description, error_code=e.error_code)
         except ValueError as e:
             raise ValueError(str(e))
         except Exception as e:

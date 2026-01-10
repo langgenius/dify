@@ -23,6 +23,7 @@ from core.model_runtime.errors.invoke import (
     InvokeRateLimitError,
     InvokeServerUnavailableError,
 )
+from core.model_runtime.errors.upstream import maybe_convert_upstream_error
 from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
 
 
@@ -70,6 +71,10 @@ class AIModel(BaseModel):
         :param error: model invoke error
         :return: unified error
         """
+        converted = maybe_convert_upstream_error(provider_name=self.provider_name, error=error)
+        if converted is not None:
+            return converted
+
         for invoke_error, model_errors in self._invoke_error_mapping.items():
             if isinstance(error, tuple(model_errors)):
                 if invoke_error == InvokeAuthorizationError:

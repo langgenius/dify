@@ -75,7 +75,7 @@ class ChatAudioApi(InstalledAppResource):
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description, error_code=e.error_code)
         except ValueError as e:
             raise e
         except Exception as e:
@@ -118,7 +118,7 @@ class ChatTextApi(InstalledAppResource):
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description, error_code=e.error_code)
         except ValueError as e:
             raise e
         except Exception as e:

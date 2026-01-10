@@ -129,4 +129,9 @@ class AppGenerateResponseConverter(ABC):
                 "status": 500,
             }
 
+        if isinstance(e, InvokeError):
+            error_code = e.error_code
+            if error_code is not None:
+                data["code"] = error_code
+
         return data

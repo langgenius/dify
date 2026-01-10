@@ -163,7 +163,7 @@ class MessageMoreLikeThisApi(InstalledAppResource):
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description, error_code=e.error_code)
         except ValueError as e:
             raise e
         except Exception:
@@ -202,7 +202,7 @@ class MessageSuggestedQuestionApi(InstalledAppResource):
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description, error_code=e.error_code)
         except Exception:
             logger.exception("internal server error.")
             raise InternalServerError()

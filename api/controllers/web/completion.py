@@ -114,7 +114,7 @@ class CompletionApi(WebApiResource):
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description, error_code=e.error_code)
         except ValueError as e:
             raise e
         except Exception as e:
@@ -199,7 +199,7 @@ class ChatApi(WebApiResource):
         except InvokeRateLimitError as ex:
             raise InvokeRateLimitHttpError(ex.description)
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description, error_code=e.error_code)
         except ValueError as e:
             raise e
         except Exception as e:
