@@ -1038,6 +1038,16 @@ class DataSetConfig(BaseSettings):
         default=0,
     )
 
+    RERANK_TOPK_MULTIPLIER: PositiveInt = Field(
+        description="Multiplier applied to dataset top_k when rerank is enabled",
+        default=3,
+    )
+
+    RERANK_TOPK_CAP: PositiveInt = Field(
+        description="Maximum candidate count after rerank top_k expansion",
+        default=10,
+    )
+
 
 class WorkspaceConfig(BaseSettings):
     """
