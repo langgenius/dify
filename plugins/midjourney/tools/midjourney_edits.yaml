@@ -1,0 +1,109 @@
+identity:
+  name: midjourney_edits
+  author: acedatacloud
+  label:
+    en_US: Midjourney Edits
+    zh_Hans: Midjourney 图片编辑
+description:
+  human:
+    en_US: Edit an image via Ace Data Cloud Midjourney Edits API.
+    zh_Hans: 通过 Ace Data Cloud Midjourney Edits API 编辑图片生成。
+  llm: Edit an image with a prompt and an image_url via Midjourney Edits API.
+output_schema:
+  type: object
+  properties:
+    success: { type: boolean }
+    error:
+      type: object
+      properties:
+        code: { type: string }
+        message: { type: string }
+      additionalProperties: true
+    task_id: { type: string }
+    trace_id: { type: string }
+    data:
+      type: object
+      additionalProperties: true
+parameters:
+  - name: prompt
+    type: string
+    required: true
+    label: { en_US: Prompt, zh_Hans: 提示词 }
+    human_description:
+      en_US: Text prompt used to edit the image.
+      zh_Hans: 用于编辑图片的提示词。
+    llm_description: Describe the changes you want to apply.
+    form: llm
+  - name: image_url
+    type: string
+    required: true
+    label: { en_US: Image URL, zh_Hans: 图片URL }
+    human_description:
+      en_US: Input image URL to edit.
+      zh_Hans: 需要编辑的图片链接。
+    llm_description: Provide a direct image URL (not a webpage).
+    form: form
+  - name: action
+    type: string
+    required: false
+    label: { en_US: Action, zh_Hans: 操作 }
+    human_description:
+      en_US: Edit action, default is generate.
+      zh_Hans: 编辑行为，默认 generate。
+    llm_description: Optional.
+    form: form
+  - name: mask
+    type: string
+    required: false
+    label: { en_US: Mask, zh_Hans: 蒙版 }
+    human_description:
+      en_US: Optional mask for targeted edits.
+      zh_Hans: 可选蒙版，用于指定编辑区域。
+    llm_description: Optional.
+    form: form
+  - name: split_images
+    type: boolean
+    required: false
+    label: { en_US: Split images, zh_Hans: 拆分图片 }
+    human_description:
+      en_US: Return sub_image_urls when supported.
+      zh_Hans: 返回 sub_image_urls（如支持）。
+    llm_description: Optional boolean.
+    form: form
+  - name: mode
+    type: select
+    required: false
+    label: { en_US: Mode, zh_Hans: 模式 }
+    human_description:
+      en_US: Generation mode.
+      zh_Hans: 生成模式。
+    llm_description: Optional. fast/relax/turbo.
+    form: form
+    options:
+      - value: fast
+        label: { en_US: fast (default), zh_Hans: fast（默认） }
+      - value: relax
+        label: { en_US: relax, zh_Hans: relax }
+      - value: turbo
+        label: { en_US: turbo, zh_Hans: turbo }
+  - name: callback_url
+    type: string
+    required: false
+    label: { en_US: Callback URL, zh_Hans: 回调地址 }
+    human_description:
+      en_US: Async callback URL (optional).
+      zh_Hans: 异步回调地址（可选）。
+    llm_description: Optional.
+    form: form
+  - name: application_id
+    type: string
+    required: false
+    label: { en_US: Application ID, zh_Hans: 应用ID }
+    human_description:
+      en_US: Optional application_id for attribution.
+      zh_Hans: 可选 application_id，用于归因。
+    llm_description: Optional.
+    form: form
+extra:
+  python:
+    source: tools/midjourney_edits.py

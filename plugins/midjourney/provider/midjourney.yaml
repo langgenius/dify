@@ -1,0 +1,44 @@
+identity:
+  author: "acedatacloud"
+  name: "midjourney"
+  label:
+    en_US: "Midjourney"
+    zh_Hans: "Midjourney"
+    pt_BR: "Midjourney"
+    ja_JP: "Midjourney"
+  description:
+    en_US: "Generate images and videos via Ace Data Cloud Midjourney APIs."
+    zh_Hans: "通过 Ace Data Cloud Midjourney API 生成图片与视频。"
+    pt_BR: "Gere imagens e vídeos via APIs Midjourney da Ace Data Cloud."
+    ja_JP: "Ace Data Cloud Midjourney API を使って画像/動画生成を行います。"
+  icon: "icon.jpg"
+  icon_dark: "icon.jpg"
+  tags:
+    - image
+    - video
+
+credentials_for_provider:
+  acedata_bearer_token:
+    type: secret-input
+    required: true
+    label:
+      en_US: Ace Data Cloud Bearer Token
+      zh_Hans: Ace Data Cloud Token
+    placeholder:
+      en_US: Paste your token (without "Bearer ")
+      zh_Hans: 粘贴 Token（不需要带 Bearer）
+    help:
+      en_US: Acquire a token from the Ace Data Cloud console.
+      zh_Hans: 从 Ace Data Cloud 控制台获取 Token。
+    url: https://platform.acedata.cloud/documents/b0e32002-2707-41cc-b103-a15b1f1efdc1
+
+tools:
+  - tools/midjourney_imagine.yaml
+  - tools/midjourney_edits.yaml
+  - tools/midjourney_describe.yaml
+  - tools/midjourney_translate.yaml
+  - tools/midjourney_videos.yaml
+
+extra:
+  python:
+    source: provider/midjourney.py

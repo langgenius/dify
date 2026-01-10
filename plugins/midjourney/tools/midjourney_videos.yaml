@@ -1,0 +1,146 @@
+identity:
+  name: midjourney_videos
+  author: acedatacloud
+  label:
+    en_US: Midjourney Videos
+    zh_Hans: Midjourney 视频
+description:
+  human:
+    en_US: Generate or extend videos via Ace Data Cloud Midjourney Videos API.
+    zh_Hans: 通过 Ace Data Cloud Midjourney Videos API 生成或扩展视频。
+  llm: Generate or extend Midjourney videos.
+output_schema:
+  type: object
+  properties:
+    success: { type: boolean }
+    error:
+      type: object
+      properties:
+        code: { type: string }
+        message: { type: string }
+      additionalProperties: true
+    task_id: { type: string }
+    trace_id: { type: string }
+    data:
+      type: object
+      additionalProperties: true
+parameters:
+  - name: action
+    type: select
+    required: false
+    label: { en_US: Action, zh_Hans: 操作 }
+    human_description:
+      en_US: generate (default) or extend.
+      zh_Hans: generate（默认）或 extend。
+    llm_description: Optional. Choose generate or extend.
+    form: form
+    options:
+      - value: generate
+        label: { en_US: generate (default), zh_Hans: generate（默认） }
+      - value: extend
+        label: { en_US: extend, zh_Hans: extend }
+  - name: prompt
+    type: string
+    required: true
+    label: { en_US: Prompt, zh_Hans: 提示词 }
+    human_description:
+      en_US: Video prompt.
+      zh_Hans: 视频提示词。
+    llm_description: Describe the video you want to generate/extend.
+    form: llm
+  - name: image_url
+    type: string
+    required: false
+    label: { en_US: Start Image URL, zh_Hans: 首帧图片URL }
+    human_description:
+      en_US: Required when action=generate.
+      zh_Hans: action=generate 时必填。
+    llm_description: Provide a direct image URL for the first frame.
+    form: form
+  - name: end_image_url
+    type: string
+    required: false
+    label: { en_US: End Image URL, zh_Hans: 尾帧图片URL }
+    human_description:
+      en_US: Optional end frame reference.
+      zh_Hans: 可选尾帧参考图。
+    llm_description: Optional.
+    form: form
+  - name: video_id
+    type: string
+    required: false
+    label: { en_US: Video ID, zh_Hans: 视频ID }
+    human_description:
+      en_US: Required when action=extend.
+      zh_Hans: action=extend 时必填。
+    llm_description: The video_id from a previous result.
+    form: form
+  - name: video_index
+    type: number
+    required: false
+    label: { en_US: Video index, zh_Hans: 视频索引 }
+    human_description:
+      en_US: Optional. Index of video_urls to extend (0-based).
+      zh_Hans: 可选，要扩展的 video_urls 索引（从 0 开始）。
+    llm_description: Optional integer.
+    form: form
+  - name: mode
+    type: select
+    required: false
+    label: { en_US: Mode, zh_Hans: 模式 }
+    human_description:
+      en_US: Generation mode.
+      zh_Hans: 生成模式。
+    llm_description: Optional. fast/relax/turbo.
+    form: form
+    options:
+      - value: fast
+        label: { en_US: fast (default), zh_Hans: fast（默认） }
+      - value: relax
+        label: { en_US: relax, zh_Hans: relax }
+      - value: turbo
+        label: { en_US: turbo, zh_Hans: turbo }
+  - name: resolution
+    type: select
+    required: false
+    label: { en_US: Resolution, zh_Hans: 清晰度 }
+    human_description:
+      en_US: Video resolution (default 720p).
+      zh_Hans: 视频清晰度（默认 720p）。
+    llm_description: Optional.
+    form: form
+    options:
+      - value: 720p
+        label: { en_US: 720p (default), zh_Hans: 720p（默认） }
+      - value: 1080p
+        label: { en_US: 1080p, zh_Hans: 1080p }
+  - name: loop
+    type: boolean
+    required: false
+    label: { en_US: Loop, zh_Hans: 循环 }
+    human_description:
+      en_US: Generate loop video.
+      zh_Hans: 是否生成循环视频。
+    llm_description: Optional boolean.
+    form: form
+  - name: callback_url
+    type: string
+    required: false
+    label: { en_US: Callback URL, zh_Hans: 回调地址 }
+    human_description:
+      en_US: Async callback URL (optional).
+      zh_Hans: 异步回调地址（可选）。
+    llm_description: Optional.
+    form: form
+  - name: application_id
+    type: string
+    required: false
+    label: { en_US: Application ID, zh_Hans: 应用ID }
+    human_description:
+      en_US: Optional application_id for attribution.
+      zh_Hans: 可选 application_id，用于归因。
+    llm_description: Optional.
+    form: form
+extra:
+  python:
+    source: tools/midjourney_videos.py

@@ -1,0 +1,118 @@
+identity:
+  name: midjourney_imagine
+  author: acedatacloud
+  label:
+    en_US: Midjourney Imagine
+    zh_Hans: Midjourney 文生图/变换
+description:
+  human:
+    en_US: Generate or transform images via Ace Data Cloud Midjourney Imagine API.
+    zh_Hans: 通过 Ace Data Cloud Midjourney Imagine API 进行文生图与图片变换。
+  llm: Generate or transform an image with Midjourney Imagine API.
+output_schema:
+  type: object
+  properties:
+    success: { type: boolean }
+    error:
+      type: object
+      properties:
+        code: { type: string }
+        message: { type: string }
+      additionalProperties: true
+    task_id: { type: string }
+    trace_id: { type: string }
+    data:
+      type: object
+      additionalProperties: true
+parameters:
+  - name: prompt
+    type: string
+    required: false
+    label: { en_US: Prompt, zh_Hans: 提示词 }
+    human_description:
+      en_US: Text prompt used to generate the image (required when action=generate).
+      zh_Hans: 生成图片的提示词（action=generate 时必填）。
+    llm_description: Describe the image you want to generate.
+    form: llm
+  - name: action
+    type: string
+    required: false
+    label: { en_US: Action, zh_Hans: 操作 }
+    human_description:
+      en_US: Operation action. Default is generate; e.g. upscale1/variation2/zoom_out_2x.
+      zh_Hans: 操作类型，默认 generate，也可填 upscale1/variation2/zoom_out_2x 等。
+    llm_description: Optional. Use generate for first run, otherwise pass an action from the previous result.
+    form: form
+  - name: image_id
+    type: string
+    required: false
+    label: { en_US: Image ID, zh_Hans: 图片ID }
+    human_description:
+      en_US: Required when action is not generate.
+      zh_Hans: action 非 generate 时必填。
+    llm_description: The image_id from a previous result.
+    form: form
+  - name: mode
+    type: select
+    required: false
+    label: { en_US: Mode, zh_Hans: 模式 }
+    human_description:
+      en_US: Generation mode.
+      zh_Hans: 生成模式。
+    llm_description: Optional. fast/relax/turbo.
+    form: form
+    options:
+      - value: fast
+        label: { en_US: fast (default), zh_Hans: fast（默认） }
+      - value: relax
+        label: { en_US: relax, zh_Hans: relax }
+      - value: turbo
+        label: { en_US: turbo, zh_Hans: turbo }
+  - name: timeout
+    type: number
+    required: false
+    label: { en_US: Timeout (s), zh_Hans: 超时秒数 }
+    human_description:
+      en_US: Request timeout for the Imagine API.
+      zh_Hans: Imagine 接口的超时秒数。
+    llm_description: Optional. Integer seconds.
+    form: form
+  - name: translation
+    type: boolean
+    required: false
+    label: { en_US: Auto translate, zh_Hans: 自动翻译 }
+    human_description:
+      en_US: Auto translate non-English prompt.
+      zh_Hans: 自动翻译非英文提示词。
+    llm_description: Optional boolean.
+    form: form
+  - name: split_images
+    type: boolean
+    required: false
+    label: { en_US: Split 2x2, zh_Hans: 拆分2x2 }
+    human_description:
+      en_US: Split a 2x2 grid into single images when supported.
+      zh_Hans: 将 2x2 预览图拆分为单张（如支持）。
+    llm_description: Optional boolean.
+    form: form
+  - name: callback_url
+    type: string
+    required: false
+    label: { en_US: Callback URL, zh_Hans: 回调地址 }
+    human_description:
+      en_US: Async callback URL (optional).
+      zh_Hans: 异步回调地址（可选）。
+    llm_description: Optional.
+    form: form
+  - name: application_id
+    type: string
+    required: false
+    label: { en_US: Application ID, zh_Hans: 应用ID }
+    human_description:
+      en_US: Optional application_id for attribution.
+      zh_Hans: 可选 application_id，用于归因。
+    llm_description: Optional.
+    form: form
+extra:
+  python:
+    source: tools/midjourney_imagine.py
