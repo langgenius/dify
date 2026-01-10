@@ -8,6 +8,7 @@ from configs import dify_config
 from core.helper.encrypter import decrypt_token
 from core.plugin.impl.tool import PluginToolManager
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from models import AccountIntegrate
 from models.tools import BuiltinToolProvider
@@ -117,6 +118,17 @@ def sync_github_latest_release_plugins_on_login_task(*, tenant_id: str, account_
         )
         return
 
+    lock_key = f"plugin:sync_github_latest_release_on_login:tenant:{tenant_id}"
+    lock = redis_client.lock(name=lock_key, timeout=60 * 30)
+    if not lock.acquire(blocking=False):
+        logger.info(
+            "GitHub latest release sync on login: skipped (sync already running). tenant_id=%s account_id=%s lock=%s",
+            tenant_id,
+            account_id,
+            lock_key,
+        )
+        return
+
     repos = (
         dify_config.PLUGIN_SYNC_GITHUB_LATEST_RELEASE_ON_LOGIN_REPOS or dify_config.DEFAULT_TENANT_GITHUB_RELEASE_REPOS
     )
@@ -127,6 +139,15 @@ def sync_github_latest_release_plugins_on_login_task(*, tenant_id: str, account_
             tenant_id,
             account_id,
         )
+        try:
+            lock.release()
+        except Exception:
+            logger.exception(
+                "GitHub latest release sync on login: failed to release lock. tenant_id=%s account_id=%s lock=%s",
+                tenant_id,
+                account_id,
+                lock_key,
+            )
         return
     logger.info(
         "GitHub latest release sync on login: resolved repos. tenant_id=%s account_id=%s repos=%s",
@@ -135,109 +156,124 @@ def sync_github_latest_release_plugins_on_login_task(*, tenant_id: str, account_
         repos,
     )
 
-    logger.info(
-        "GitHub latest release sync on login: start. tenant_id=%s account_id=%s repos=%s",
-        tenant_id,
-        account_id,
-        repos,
-    )
-    installed_total = 0
-    for repo in repos:
-        try:
+    try:
+        logger.info(
+            "GitHub latest release sync on login: start. tenant_id=%s account_id=%s repos=%s",
+            tenant_id,
+            account_id,
+            repos,
+        )
+        installed_total = 0
+        for repo in repos:
+            try:
+                logger.info(
+                    "GitHub latest release sync on login: syncing repo. tenant_id=%s account_id=%s repo=%s",
+                    tenant_id,
+                    account_id,
+                    repo,
+                )
+                installed_count = PluginService.sync_latest_release_plugins_for_tenant(tenant_id=tenant_id, repo=repo)
+                installed_total += installed_count
+                logger.info(
+                    "GitHub latest release sync on login: repo synced. tenant_id=%s account_id=%s repo=%s installed=%s",
+                    tenant_id,
+                    account_id,
+                    repo,
+                    installed_count,
+                )
+            except Exception:
+                logger.exception(
+                    "GitHub latest release sync on login: repo failed. tenant_id=%s account_id=%s repo=%s",
+                    tenant_id,
+                    account_id,
+                    repo,
+                )
+
+        logger.info(
+            "GitHub latest release sync on login: finished. tenant_id=%s account_id=%s repos=%s installed_total=%s",
+            tenant_id,
+            account_id,
+            repos,
+            installed_total,
+        )
+
+        if installed_total <= 0:
+            if not dify_config.ACEDATACLOUD_AUTO_PROVISION_PLUGIN_CREDENTIALS:
+                logger.info(
+                    "GitHub latest release sync on login: skip AceDataCloud provision (disabled). "
+                    "tenant_id=%s account_id=%s",
+                    tenant_id,
+                    account_id,
+                )
+                return
+
+            should_enqueue, missing = _should_enqueue_acedatacloud_provision_when_no_installs(tenant_id=tenant_id)
+            if not should_enqueue:
+                logger.info(
+                    "GitHub latest release sync on login: skip AceDataCloud provision "
+                    "(no plugin changes, no missing credentials). tenant_id=%s account_id=%s",
+                    tenant_id,
+                    account_id,
+                )
+                return
+
             logger.info(
-                "GitHub latest release sync on login: syncing repo. tenant_id=%s account_id=%s repo=%s",
+                "GitHub latest release sync on login: enqueue AceDataCloud provision "
+                "(no plugin changes, missing credentials). tenant_id=%s account_id=%s missing=%s",
                 tenant_id,
                 account_id,
-                repo,
-            )
-            installed_count = PluginService.sync_latest_release_plugins_for_tenant(tenant_id=tenant_id, repo=repo)
-            installed_total += installed_count
-            logger.info(
-                "GitHub latest release sync on login: repo synced. tenant_id=%s account_id=%s repo=%s installed=%s",
-                tenant_id,
-                account_id,
-                repo,
-                installed_count,
-            )
-        except Exception:
-            logger.exception(
-                "GitHub latest release sync on login: repo failed. tenant_id=%s account_id=%s repo=%s",
-                tenant_id,
-                account_id,
-                repo,
+                missing,
             )
 
-    logger.info(
-        "GitHub latest release sync on login: finished. tenant_id=%s account_id=%s repos=%s installed_total=%s",
-        tenant_id,
-        account_id,
-        repos,
-        installed_total,
-    )
-
-    if installed_total <= 0:
         if not dify_config.ACEDATACLOUD_AUTO_PROVISION_PLUGIN_CREDENTIALS:
+            return
+
+        acedatacloud_user_id, acedatacloud_access_token = _load_acedatacloud_access_token(
+            tenant_id=tenant_id,
+            account_id=account_id,
+        )
+        if not acedatacloud_user_id or not acedatacloud_access_token:
             logger.info(
-                "GitHub latest release sync on login: skip AceDataCloud provision (disabled). "
+                "GitHub latest release sync on login: skip AceDataCloud provision (no token). "
                 "tenant_id=%s account_id=%s",
                 tenant_id,
                 account_id,
             )
             return
 
-        should_enqueue, missing = _should_enqueue_acedatacloud_provision_when_no_installs(tenant_id=tenant_id)
-        if not should_enqueue:
+        try:
+            from tasks.provision_acedatacloud_plugin_credentials_task import (
+                provision_acedatacloud_plugin_credentials_task,
+            )
+
             logger.info(
-                "GitHub latest release sync on login: skip AceDataCloud provision "
-                "(no plugin changes, no missing credentials). tenant_id=%s account_id=%s",
+                "GitHub latest release sync on login: enqueue AceDataCloud provision. "
+                "tenant_id=%s account_id=%s user_id=%s token=%s",
+                tenant_id,
+                account_id,
+                acedatacloud_user_id,
+                _mask_token(acedatacloud_access_token),
+            )
+            provision_acedatacloud_plugin_credentials_task.delay(
+                tenant_id=str(tenant_id),
+                account_id=str(account_id),
+                acedatacloud_user_id=str(acedatacloud_user_id),
+                acedatacloud_access_token=str(acedatacloud_access_token),
+            )
+        except Exception:
+            logger.exception(
+                "GitHub latest release sync on login: failed to enqueue AceDataCloud provision. "
+                "tenant_id=%s account_id=%s",
                 tenant_id,
                 account_id,
             )
-            return
-
-        logger.info(
-            "GitHub latest release sync on login: enqueue AceDataCloud provision "
-            "(no plugin changes, missing credentials). tenant_id=%s account_id=%s missing=%s",
-            tenant_id,
-            account_id,
-            missing,
-        )
-
-    if not dify_config.ACEDATACLOUD_AUTO_PROVISION_PLUGIN_CREDENTIALS:
-        return
-
-    acedatacloud_user_id, acedatacloud_access_token = _load_acedatacloud_access_token(
-        tenant_id=tenant_id,
-        account_id=account_id,
-    )
-    if not acedatacloud_user_id or not acedatacloud_access_token:
-        logger.info(
-            "GitHub latest release sync on login: skip AceDataCloud provision (no token). tenant_id=%s account_id=%s",
-            tenant_id,
-            account_id,
-        )
-        return
-
-    try:
-        from tasks.provision_acedatacloud_plugin_credentials_task import provision_acedatacloud_plugin_credentials_task
-
-        logger.info(
-            "GitHub latest release sync on login: enqueue AceDataCloud provision. "
-            "tenant_id=%s account_id=%s user_id=%s token=%s",
-            tenant_id,
-            account_id,
-            acedatacloud_user_id,
-            _mask_token(acedatacloud_access_token),
-        )
-        provision_acedatacloud_plugin_credentials_task.delay(
-            tenant_id=str(tenant_id),
-            account_id=str(account_id),
-            acedatacloud_user_id=str(acedatacloud_user_id),
-            acedatacloud_access_token=str(acedatacloud_access_token),
-        )
-    except Exception:
-        logger.exception(
-            "GitHub latest release sync on login: failed to enqueue AceDataCloud provision. tenant_id=%s account_id=%s",
-            tenant_id,
-            account_id,
-        )
+    finally:
+        try:
+            lock.release()
+        except Exception:
+            logger.exception(
+                "GitHub latest release sync on login: failed to release lock. tenant_id=%s account_id=%s lock=%s",
+                tenant_id,
+                account_id,
+                lock_key,
+            )

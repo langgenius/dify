@@ -6,7 +6,7 @@ metadata:
   name: dify-plugin-daemon
   namespace: acedatacloud
 spec:
-  replicas: 1
+  replicas: 3
   revisionHistoryLimit: 1
   selector:
     matchLabels:
@@ -109,29 +109,36 @@ spec:
               protocol: TCP
           resources:
             limits:
-              cpu: "1"
-              memory: 2Gi
+              cpu: "2"
+              memory: 4Gi
             requests:
-              cpu: 200m
-              memory: 256Mi
+              cpu: 500m
+              memory: 1Gi
           securityContext:
             privileged: false
+          startupProbe:
+            httpGet:
+              path: /health/check
+              port: 5002
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
           readinessProbe:
             httpGet:
               path: /health/check
               port: 5002
             initialDelaySeconds: 5
             periodSeconds: 10
-            timeoutSeconds: 3
-            failureThreshold: 6
+            timeoutSeconds: 5
+            failureThreshold: 12
           livenessProbe:
             httpGet:
               path: /health/check
               port: 5002
             initialDelaySeconds: 15
             periodSeconds: 20
-            timeoutSeconds: 3
-            failureThreshold: 3
+            timeoutSeconds: 5
+            failureThreshold: 6
           volumeMounts:
             - mountPath: /app/storage
               name: dify-storage
@@ -145,7 +152,16 @@ spec:
       restartPolicy: Always
       nodeSelector:
         kubernetes.io/os: linux
-      terminationGracePeriodSeconds: 30
+      terminationGracePeriodSeconds: 60
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: dify-plugin-daemon
+                topologyKey: kubernetes.io/hostname
       volumes:
         - name: dify-storage
           persistentVolumeClaim:
