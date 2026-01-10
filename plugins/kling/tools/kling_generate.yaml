@@ -1,0 +1,208 @@
+identity:
+  name: kling_generate_video
+  author: acedatacloud
+  label:
+    en_US: Kling Generate Video
+    zh_Hans: Kling 生成视频
+description:
+  human:
+    en_US: Generate a video with Ace Data Cloud Kling Videos API.
+    zh_Hans: 通过 Ace Data Cloud Kling Videos API 生成视频。
+  llm: Generate a video from prompt / images via Ace Data Cloud Kling Videos API.
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      additionalProperties: true
+    task_id:
+      type: string
+    trace_id:
+      type: string
+    data:
+      type: object
+      additionalProperties: true
+parameters:
+  - name: action
+    type: select
+    required: true
+    label:
+      en_US: Action
+      zh_Hans: 行为
+    human_description:
+      en_US: Choose how to generate the video.
+      zh_Hans: 选择视频生成方式。
+    llm_description: Use text2video for prompt-only, image2video when you provide start_image_url, or extend to continue a previous video by video_id.
+    form: form
+    options:
+      - value: text2video
+        label: { en_US: text2video, zh_Hans: 文生视频 }
+      - value: image2video
+        label: { en_US: image2video, zh_Hans: 图生视频 }
+      - value: extend
+        label: { en_US: extend, zh_Hans: 扩展视频 }
+  - name: prompt
+    type: string
+    required: false
+    label:
+      en_US: Prompt
+      zh_Hans: 提示词
+    human_description:
+      en_US: Required for text2video / image2video / extend.
+      zh_Hans: text2video / image2video / extend 必填。
+    llm_description: Describe the video in detail (camera, scene, motion, style).
+    form: llm
+  - name: start_image_url
+    type: string
+    required: false
+    label:
+      en_US: Start Image URL
+      zh_Hans: 首帧图片链接
+    human_description:
+      en_US: Required for image2video.
+      zh_Hans: image2video 必填。
+    llm_description: Provide a URL to the first-frame image for image2video.
+    form: form
+  - name: end_image_url
+    type: string
+    required: false
+    label:
+      en_US: End Image URL
+      zh_Hans: 尾帧图片链接
+    human_description:
+      en_US: Optional for image2video.
+      zh_Hans: image2video 可选。
+    llm_description: Optional URL to an ending frame image.
+    form: form
+  - name: video_id
+    type: string
+    required: false
+    label:
+      en_US: Video ID
+      zh_Hans: 视频ID
+    human_description:
+      en_US: Required for extend.
+      zh_Hans: extend 必填。
+    llm_description: Provide the video_id from a previous result when using extend.
+    form: form
+  - name: model
+    type: string
+    required: false
+    label:
+      en_US: Model
+      zh_Hans: 模型
+    human_description:
+      en_US: Optional model name (e.g., kling-v2-5-turbo).
+      zh_Hans: 可选模型名称（如 kling-v2-5-turbo）。
+    llm_description: "Optional. Examples: kling-v1, kling-v1-6, kling-v2-master, kling-v2-1-master, kling-v2-5-turbo."
+    form: form
+  - name: mode
+    type: select
+    required: false
+    label:
+      en_US: Mode
+      zh_Hans: 模式
+    human_description:
+      en_US: Optional generation mode.
+      zh_Hans: 可选生成模式。
+    llm_description: Optional. std for standard, pro for fast.
+    form: form
+    options:
+      - value: std
+        label: { en_US: std, zh_Hans: 标准 }
+      - value: pro
+        label: { en_US: pro, zh_Hans: 极速 }
+  - name: duration
+    type: number
+    required: false
+    label:
+      en_US: Duration
+      zh_Hans: 时长
+    human_description:
+      en_US: Optional duration in seconds (commonly 5 or 10).
+      zh_Hans: 可选视频时长（常用 5 或 10）。
+    llm_description: Optional. Use 5 or 10 if supported by the selected model/action.
+    form: form
+  - name: aspect_ratio
+    type: select
+    required: false
+    label:
+      en_US: Aspect ratio
+      zh_Hans: 画面比例
+    human_description:
+      en_US: Optional output aspect ratio.
+      zh_Hans: 可选输出画面比例。
+    llm_description: Optional. Choose 16:9, 9:16, or 1:1.
+    form: form
+    options:
+      - value: "16:9"
+        label: { en_US: "16:9", zh_Hans: "16:9" }
+      - value: "9:16"
+        label: { en_US: "9:16", zh_Hans: "9:16" }
+      - value: "1:1"
+        label: { en_US: "1:1", zh_Hans: "1:1" }
+  - name: cfg_scale
+    type: number
+    required: false
+    label:
+      en_US: CFG scale
+      zh_Hans: 相关性强度
+    human_description:
+      en_US: Optional. Range [0, 1]; higher is closer to prompt.
+      zh_Hans: 可选，范围 [0,1]，越大越贴合提示词。
+    llm_description: Optional. Range [0, 1].
+    form: form
+  - name: camera_control
+    type: string
+    required: false
+    label:
+      en_US: Camera control
+      zh_Hans: 相机控制
+    human_description:
+      en_US: Optional camera motion control (string or JSON object string).
+      zh_Hans: 可选相机运动控制（字符串或 JSON 对象字符串）。
+    llm_description: Optional. Provide a preset string, or a JSON object string for detailed control.
+    form: form
+  - name: negative_prompt
+    type: string
+    required: false
+    label:
+      en_US: Negative prompt
+      zh_Hans: 反向提示词
+    human_description:
+      en_US: Optional negative prompt (up to 200 chars).
+      zh_Hans: 可选反向提示词（最多 200 字符）。
+    llm_description: Optional. What you do NOT want in the video.
+    form: llm
+  - name: mirror
+    type: boolean
+    required: false
+    label:
+      en_US: Mirror
+      zh_Hans: 镜像
+    human_description:
+      en_US: Optional. Mirror the output.
+      zh_Hans: 可选。对输出进行镜像。
+    llm_description: Optional. Set true to mirror output.
+    form: form
+  - name: callback_url
+    type: string
+    required: false
+    label:
+      en_US: Callback URL
+      zh_Hans: 回调地址
+    human_description:
+      en_US: Optional callback URL for async notifications.
+      zh_Hans: 可选回调地址，用于异步通知。
+    llm_description: Optional. Provide a public webhook URL for callbacks.
+    form: form
+extra:
+  python:
+    source: tools/kling_generate.py
