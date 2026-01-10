@@ -301,6 +301,7 @@ describe('FeaturesTrigger', () => {
         variable: '__image',
         required: false,
         label: 'files',
+        var_description: '',
       })
     })
 
