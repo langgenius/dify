@@ -1,0 +1,48 @@
+identity:
+  author: "acedatacloud"
+  name: "suno"
+  label:
+    en_US: "Suno"
+    zh_Hans: "Suno"
+    pt_BR: "Suno"
+    ja_JP: "Suno"
+  description:
+    en_US: "Generate music via Ace Data Cloud Suno APIs."
+    zh_Hans: "通过 Ace Data Cloud Suno API 生成音乐。"
+    pt_BR: "Gere músicas via Ace Data Cloud Suno APIs."
+    ja_JP: "Ace Data Cloud Suno API を使って音楽生成を行います。"
+  icon: "icon.jpg"
+  icon_dark: "icon.jpg"
+  tags:
+    - audio
+
+credentials_for_provider:
+  acedata_bearer_token:
+    type: secret-input
+    required: true
+    label:
+      en_US: Ace Data Cloud Bearer Token
+      zh_Hans: Ace Data Cloud Token
+    placeholder:
+      en_US: Paste your token (without "Bearer ")
+      zh_Hans: 粘贴 Token（不需要带 Bearer）
+    help:
+      en_US: Acquire a token from the Ace Data Cloud console.
+      zh_Hans: 从 Ace Data Cloud 控制台获取 Token。
+    url: https://platform.acedata.cloud/documents/suno-audios-integration
+
+tools:
+  - tools/suno_generate_audios.yaml
+  - tools/suno_generate_lyrics.yaml
+  - tools/suno_upload_reference_audio.yaml
+  - tools/suno_get_mp4.yaml
+  - tools/suno_get_wav.yaml
+  - tools/suno_get_midi.yaml
+  - tools/suno_get_timing.yaml
+  - tools/suno_enhance_style.yaml
+  - tools/suno_create_persona.yaml
+  - tools/suno_create_vox_audio.yaml
+
+extra:
+  python:
+    source: provider/suno.py

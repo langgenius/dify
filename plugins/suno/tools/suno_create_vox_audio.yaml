@@ -1,0 +1,46 @@
+identity:
+  name: suno_create_vox_audio
+  author: acedatacloud
+  label:
+    en_US: Suno Create Vox Audio
+    zh_Hans: Suno 创建 Vox 音频
+description:
+  human:
+    en_US: Create a vox_audio_id from an audio_id and time range via Suno Vox API.
+    zh_Hans: 通过 Suno Vox API 基于 audio_id 和时间范围创建 vox_audio_id。
+  llm: Create a vox audio clip id for Persona-v2-vox creation.
+output_schema:
+  type: object
+  properties:
+    success: { type: boolean }
+    error:
+      type: object
+      properties:
+        code: { type: string }
+        message: { type: string }
+      additionalProperties: true
+    task_id: { type: string }
+    trace_id: { type: string }
+    data:
+      type: object
+      additionalProperties: true
+parameters:
+  - name: audio_id
+    type: string
+    required: true
+    label: { en_US: Audio ID, zh_Hans: 音频ID }
+    form: form
+  - name: vocal_start
+    type: number
+    required: false
+    label: { en_US: Vocal Start (s), zh_Hans: 人声开始(秒) }
+    form: form
+  - name: vocal_end
+    type: number
+    required: false
+    label: { en_US: Vocal End (s), zh_Hans: 人声结束(秒) }
+    form: form
+extra:
+  python:
+    source: tools/suno_create_vox_audio.py
+

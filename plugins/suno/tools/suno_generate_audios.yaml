@@ -1,0 +1,159 @@
+identity:
+  name: suno_generate_audios
+  author: acedatacloud
+  label:
+    en_US: Suno Generate Audios
+    zh_Hans: Suno 生成歌曲
+description:
+  human:
+    en_US: Generate songs with Ace Data Cloud Suno Audios API.
+    zh_Hans: 通过 Ace Data Cloud Suno Audios API 生成歌曲。
+  llm: Generate songs via Ace Data Cloud Suno Audios API. Returns a task_id and song metadata (audio_url/image_url/lyric/etc).
+output_schema:
+  type: object
+  properties:
+    success: { type: boolean }
+    error:
+      type: object
+      properties:
+        code: { type: string }
+        message: { type: string }
+      additionalProperties: true
+    task_id: { type: string }
+    trace_id: { type: string }
+    data:
+      type: array
+      items:
+        type: object
+        additionalProperties: true
+parameters:
+  - name: action
+    type: string
+    required: true
+    label: { en_US: Action, zh_Hans: 行为 }
+    human_description:
+      en_US: Generation action, e.g. generate/extend/cover/stems/all_stems/concat/remaster.
+      zh_Hans: 生成行为，如 generate/extend/cover/stems/all_stems/concat/remaster。
+    llm_description: Required. Typical values are generate, extend, upload_extend, cover, upload_cover, stems, all_stems, concat, remaster.
+    form: form
+  - name: prompt
+    type: string
+    required: false
+    label: { en_US: Prompt, zh_Hans: 提示词 }
+    human_description:
+      en_US: Used when custom is false.
+      zh_Hans: custom 为 false 时使用。
+    llm_description: Optional. Required when custom is false.
+    form: llm
+  - name: model
+    type: string
+    required: false
+    label: { en_US: Model, zh_Hans: 模型 }
+    human_description:
+      en_US: Optional model name, e.g. chirp-v5.
+      zh_Hans: 可选模型名，如 chirp-v5。
+    form: form
+  - name: custom
+    type: boolean
+    required: false
+    label: { en_US: Custom Mode, zh_Hans: 自定义模式 }
+    human_description:
+      en_US: If true, use lyric/title/style instead of prompt.
+      zh_Hans: 为 true 时使用 lyric/title/style 生成。
+    form: form
+  - name: instrumental
+    type: boolean
+    required: false
+    label: { en_US: Instrumental, zh_Hans: 纯音乐 }
+    human_description:
+      en_US: Generate instrumental-only songs.
+      zh_Hans: 生成纯音乐。
+    form: form
+  - name: lyric
+    type: string
+    required: false
+    label: { en_US: Lyric, zh_Hans: 歌词 }
+    human_description:
+      en_US: Used when custom is true.
+      zh_Hans: custom 为 true 时使用。
+    form: llm
+  - name: lyric_prompt
+    type: string
+    required: false
+    label: { en_US: Lyric Prompt, zh_Hans: 歌词提示词 }
+    human_description:
+      en_US: Used when custom is true but lyric is empty.
+      zh_Hans: custom 为 true 且 lyric 为空时，用于生成歌词。
+    form: llm
+  - name: title
+    type: string
+    required: false
+    label: { en_US: Title, zh_Hans: 标题 }
+    form: form
+  - name: style
+    type: string
+    required: false
+    label: { en_US: Style, zh_Hans: 风格 }
+    form: form
+  - name: style_negative
+    type: string
+    required: false
+    label: { en_US: Negative Style, zh_Hans: 排除风格 }
+    form: form
+  - name: audio_id
+    type: string
+    required: false
+    label: { en_US: Audio ID, zh_Hans: 音频ID }
+    human_description:
+      en_US: Required for extend/cover/stems/all_stems/concat/remaster and other edit actions.
+      zh_Hans: extend/cover/stems/all_stems/concat/remaster 等编辑动作必填。
+    form: form
+  - name: continue_at
+    type: number
+    required: false
+    label: { en_US: Continue At (seconds), zh_Hans: 继续时间(秒) }
+    human_description:
+      en_US: Used for extend. Example 213.5 means continue at 3m33.5s.
+      zh_Hans: 用于 extend。例 213.5 表示从 3 分 33.5 秒继续。
+    form: form
+  - name: audio_weight
+    type: number
+    required: false
+    label: { en_US: Audio Weight, zh_Hans: 参考音频占比 }
+    human_description:
+      en_US: 0-1, larger means stronger reference.
+      zh_Hans: 0-1，越大越依赖参考音频。
+    form: form
+  - name: persona_id
+    type: string
+    required: false
+    label: { en_US: Persona ID, zh_Hans: Persona ID }
+    human_description:
+      en_US: Optional persona_id for artist consistency.
+      zh_Hans: 可选 persona_id，用于歌手风格一致性。
+    form: form
+  - name: vocal_gender
+    type: select
+    required: false
+    label: { en_US: Vocal Gender, zh_Hans: 人声性别 }
+    human_description:
+      en_US: Optional. f for female, m for male (v4.5+).
+      zh_Hans: 可选。f 女声，m 男声（v4.5+）。
+    form: form
+    options:
+      - value: f
+        label: { en_US: Female, zh_Hans: 女声 }
+      - value: m
+        label: { en_US: Male, zh_Hans: 男声 }
+  - name: callback_url
+    type: string
+    required: false
+    label: { en_US: Callback URL, zh_Hans: 回调地址 }
+    human_description:
+      en_US: Optional callback URL for async notifications.
+      zh_Hans: 可选回调地址，用于异步通知。
+    form: form
+extra:
+  python:
+    source: tools/suno_generate_audios.py
+

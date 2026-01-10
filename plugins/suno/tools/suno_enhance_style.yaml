@@ -1,0 +1,39 @@
+identity:
+  name: suno_enhance_style
+  author: acedatacloud
+  label:
+    en_US: Suno Enhance Style
+    zh_Hans: Suno 风格增强
+description:
+  human:
+    en_US: Enhance a style prompt via Suno Style API.
+    zh_Hans: 通过 Suno Style API 增强风格提示词。
+  llm: Provide a short style prompt and get upsampled_tags.
+output_schema:
+  type: object
+  properties:
+    success: { type: boolean }
+    error:
+      type: object
+      properties:
+        code: { type: string }
+        message: { type: string }
+      additionalProperties: true
+    task_id: { type: string }
+    trace_id: { type: string }
+    data:
+      type: object
+      additionalProperties: true
+parameters:
+  - name: prompt
+    type: string
+    required: true
+    label: { en_US: Style Prompt, zh_Hans: 风格提示词 }
+    human_description:
+      en_US: A short style prompt to enhance.
+      zh_Hans: 需要增强的风格提示词。
+    form: llm
+extra:
+  python:
+    source: tools/suno_enhance_style.py
+

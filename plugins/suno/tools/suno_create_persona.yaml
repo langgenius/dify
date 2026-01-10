@@ -1,0 +1,61 @@
+identity:
+  name: suno_create_persona
+  author: acedatacloud
+  label:
+    en_US: Suno Create Persona
+    zh_Hans: Suno 创建 Persona
+description:
+  human:
+    en_US: Create a persona_id based on an existing audio_id via Suno Persona API.
+    zh_Hans: 通过 Suno Persona API 基于已有 audio_id 创建 persona_id。
+  llm: Create a persona_id for artist consistency (optionally using vox params).
+output_schema:
+  type: object
+  properties:
+    success: { type: boolean }
+    error:
+      type: object
+      properties:
+        code: { type: string }
+        message: { type: string }
+      additionalProperties: true
+    task_id: { type: string }
+    trace_id: { type: string }
+    data:
+      type: object
+      additionalProperties: true
+parameters:
+  - name: audio_id
+    type: string
+    required: true
+    label: { en_US: Audio ID, zh_Hans: 音频ID }
+    form: form
+  - name: name
+    type: string
+    required: true
+    label: { en_US: Name, zh_Hans: 名称 }
+    form: form
+  - name: description
+    type: string
+    required: false
+    label: { en_US: Description, zh_Hans: 描述 }
+    form: form
+  - name: vox_audio_id
+    type: string
+    required: false
+    label: { en_US: Vox Audio ID, zh_Hans: Vox 音频ID }
+    form: form
+  - name: vocal_start
+    type: number
+    required: false
+    label: { en_US: Vocal Start (s), zh_Hans: 人声开始(秒) }
+    form: form
+  - name: vocal_end
+    type: number
+    required: false
+    label: { en_US: Vocal End (s), zh_Hans: 人声结束(秒) }
+    form: form
+extra:
+  python:
+    source: tools/suno_create_persona.py
+

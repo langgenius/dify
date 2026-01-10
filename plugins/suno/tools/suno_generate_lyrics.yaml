@@ -1,0 +1,40 @@
+identity:
+  name: suno_generate_lyrics
+  author: acedatacloud
+  label:
+    en_US: Suno Generate Lyrics
+    zh_Hans: Suno 生成歌词
+description:
+  human:
+    en_US: Generate lyrics with Ace Data Cloud Suno Lyrics API.
+    zh_Hans: 通过 Ace Data Cloud Suno Lyrics API 生成歌词。
+  llm: Generate lyrics from a prompt via Ace Data Cloud Suno Lyrics API.
+output_schema:
+  type: object
+  properties:
+    success: { type: boolean }
+    error:
+      type: object
+      properties:
+        code: { type: string }
+        message: { type: string }
+      additionalProperties: true
+    task_id: { type: string }
+    trace_id: { type: string }
+    data:
+      type: object
+      additionalProperties: true
+parameters:
+  - name: prompt
+    type: string
+    required: true
+    label: { en_US: Prompt, zh_Hans: 提示词 }
+    human_description:
+      en_US: Describe what the song is about.
+      zh_Hans: 描述歌曲主题与风格。
+    llm_description: Required. Provide a clear theme and vibe for the lyrics.
+    form: llm
+extra:
+  python:
+    source: tools/suno_generate_lyrics.py
+

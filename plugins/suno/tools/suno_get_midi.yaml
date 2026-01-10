@@ -1,0 +1,43 @@
+identity:
+  name: suno_get_midi
+  author: acedatacloud
+  label:
+    en_US: Suno Get MIDI
+    zh_Hans: Suno 获取 MIDI
+description:
+  human:
+    en_US: Get MIDI data for an audio_id via Suno MIDI API.
+    zh_Hans: 通过 Suno MIDI API 获取 audio_id 对应的 MIDI 数据。
+  llm: Retrieve MIDI instruments/notes for a given audio_id.
+output_schema:
+  type: object
+  properties:
+    success: { type: boolean }
+    error:
+      type: object
+      properties:
+        code: { type: string }
+        message: { type: string }
+      additionalProperties: true
+    task_id: { type: string }
+    trace_id: { type: string }
+    data:
+      type: array
+      items:
+        type: object
+        additionalProperties: true
+parameters:
+  - name: audio_id
+    type: string
+    required: true
+    label: { en_US: Audio ID, zh_Hans: 音频ID }
+    form: form
+  - name: callback_url
+    type: string
+    required: false
+    label: { en_US: Callback URL, zh_Hans: 回调地址 }
+    form: form
+extra:
+  python:
+    source: tools/suno_get_midi.py
+

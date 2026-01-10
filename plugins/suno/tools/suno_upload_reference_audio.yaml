@@ -1,0 +1,39 @@
+identity:
+  name: suno_upload_reference_audio
+  author: acedatacloud
+  label:
+    en_US: Suno Upload Reference Audio
+    zh_Hans: Suno 上传参考音频
+description:
+  human:
+    en_US: Upload a reference audio URL to Suno Upload API to obtain an audio_id.
+    zh_Hans: 上传参考音频 URL 到 Suno Upload API 获取 audio_id。
+  llm: Upload a public audio URL and get an audio_id for follow-up actions such as upload_extend/upload_cover.
+output_schema:
+  type: object
+  properties:
+    success: { type: boolean }
+    error:
+      type: object
+      properties:
+        code: { type: string }
+        message: { type: string }
+      additionalProperties: true
+    task_id: { type: string }
+    trace_id: { type: string }
+    data:
+      type: object
+      additionalProperties: true
+parameters:
+  - name: audio_url
+    type: string
+    required: true
+    label: { en_US: Audio URL, zh_Hans: 音频链接 }
+    human_description:
+      en_US: Publicly accessible MP3 URL.
+      zh_Hans: 可公开访问的 MP3 链接。
+    form: form
+extra:
+  python:
+    source: tools/suno_upload_reference_audio.py
+

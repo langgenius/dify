@@ -1,0 +1,36 @@
+identity:
+  name: suno_get_timing
+  author: acedatacloud
+  label:
+    en_US: Suno Get Timing
+    zh_Hans: Suno 获取 Timing
+description:
+  human:
+    en_US: Get aligned lyrics timing data for an audio_id via Suno Timing API.
+    zh_Hans: 通过 Suno Timing API 获取 audio_id 对应的歌词时间线。
+  llm: Retrieve aligned_words timeline data for a given audio_id.
+output_schema:
+  type: object
+  properties:
+    success: { type: boolean }
+    error:
+      type: object
+      properties:
+        code: { type: string }
+        message: { type: string }
+      additionalProperties: true
+    task_id: { type: string }
+    trace_id: { type: string }
+    data:
+      type: object
+      additionalProperties: true
+parameters:
+  - name: audio_id
+    type: string
+    required: true
+    label: { en_US: Audio ID, zh_Hans: 音频ID }
+    form: form
+extra:
+  python:
+    source: tools/suno_get_timing.py
+
