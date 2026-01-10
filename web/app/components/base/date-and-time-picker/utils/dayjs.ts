@@ -111,7 +111,7 @@ export const convertTimezoneToOffsetStr = (timezone?: string) => {
     return DEFAULT_OFFSET_STR
   // Extract offset from name format like "-11:00 Niue Time" or "+05:30 India Time"
   // Name format is always "{offset}:{minutes} {timezone name}"
-  const offsetMatch = tzItem.name.match(/^([+-]?\d{1,2}):(\d{2})/)
+  const offsetMatch = /^([+-]?\d{1,2}):(\d{2})/.exec(tzItem.name)
   if (!offsetMatch)
     return DEFAULT_OFFSET_STR
   // Parse hours and minutes separately
