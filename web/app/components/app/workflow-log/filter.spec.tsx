@@ -7,6 +7,7 @@
  * - Keyword search
  */
 
+import type { ComponentProps } from 'react'
 import type { QueryParam } from './index'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -32,12 +33,32 @@ const createDefaultQueryParams = (overrides: Partial<QueryParam> = {}): QueryPar
   ...overrides,
 })
 
+const defaultPeriodKeys = Object.keys(TIME_PERIOD_MAPPING)
+const defaultFilterProps = {
+  periodKeys: defaultPeriodKeys,
+  clearPeriod: '9',
+  isCurrentWorkspaceManager: false,
+  isFreePlan: false,
+  isTeamOrProfessional: false,
+}
+
 // ============================================================================
 // Tests
 // ============================================================================
 
 describe('Filter', () => {
   const defaultSetQueryParams = vi.fn()
+
+  const renderFilter = (overrides: Partial<ComponentProps<typeof Filter>> = {}) => {
+    return render(
+      <Filter
+        queryParams={createDefaultQueryParams()}
+        setQueryParams={defaultSetQueryParams}
+        {...defaultFilterProps}
+        {...overrides}
+      />,
+    )
+  }
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -48,12 +69,7 @@ describe('Filter', () => {
   // --------------------------------------------------------------------------
   describe('Rendering', () => {
     it('should render without crashing', () => {
-      render(
-        <Filter
-          queryParams={createDefaultQueryParams()}
-          setQueryParams={defaultSetQueryParams}
-        />,
-      )
+      renderFilter()
 
       // Should render status chip, period chip, and search input
       expect(screen.getByText('All')).toBeInTheDocument()
@@ -61,12 +77,7 @@ describe('Filter', () => {
     })
 
     it('should render all filter components', () => {
-      render(
-        <Filter
-          queryParams={createDefaultQueryParams()}
-          setQueryParams={defaultSetQueryParams}
-        />,
-      )
+      renderFilter()
 
       // Status chip
       expect(screen.getByText('All')).toBeInTheDocument()
@@ -82,12 +93,7 @@ describe('Filter', () => {
   // --------------------------------------------------------------------------
   describe('Status Filter', () => {
     it('should display current status value', () => {
-      render(
-        <Filter
-          queryParams={createDefaultQueryParams({ status: 'succeeded' })}
-          setQueryParams={defaultSetQueryParams}
-        />,
-      )
+      renderFilter({ queryParams: createDefaultQueryParams({ status: 'succeeded' }) })
 
       // Chip should show Success for succeeded status
       expect(screen.getByText('Success')).toBeInTheDocument()
@@ -96,12 +102,7 @@ describe('Filter', () => {
     it('should open status dropdown when clicked', async () => {
       const user = userEvent.setup()
 
-      render(
-        <Filter
-          queryParams={createDefaultQueryParams()}
-          setQueryParams={defaultSetQueryParams}
-        />,
-      )
+      renderFilter()
 
       await user.click(screen.getByText('All'))
 
@@ -118,12 +119,7 @@ describe('Filter', () => {
       const user = userEvent.setup()
       const setQueryParams = vi.fn()
 
-      render(
-        <Filter
-          queryParams={createDefaultQueryParams()}
-          setQueryParams={setQueryParams}
-        />,
-      )
+      renderFilter({ setQueryParams })
 
       await user.click(screen.getByText('All'))
       await user.click(await screen.findByText('Success'))
@@ -137,12 +133,7 @@ describe('Filter', () => {
     it('should track status selection event', async () => {
       const user = userEvent.setup()
 
-      render(
-        <Filter
-          queryParams={createDefaultQueryParams()}
-          setQueryParams={defaultSetQueryParams}
-        />,
-      )
+      renderFilter()
 
       await user.click(screen.getByText('All'))
       await user.click(await screen.findByText('Fail'))
@@ -157,12 +148,10 @@ describe('Filter', () => {
       const user = userEvent.setup()
       const setQueryParams = vi.fn()
 
-      const { container } = render(
-        <Filter
-          queryParams={createDefaultQueryParams({ status: 'succeeded' })}
-          setQueryParams={setQueryParams}
-        />,
-      )
+      const { container } = renderFilter({
+        queryParams: createDefaultQueryParams({ status: 'succeeded' }),
+        setQueryParams,
+      })
 
       // Find the clear icon (div with group/clear class) in the status chip
       const clearIcon = container.querySelector('.group\\/clear')
@@ -183,12 +172,7 @@ describe('Filter', () => {
       ['stopped', 'Stop'],
       ['partial-succeeded', 'Partial Success'],
     ])('should display correct label for %s status', (statusValue, expectedLabel) => {
-      render(
-        <Filter
-          queryParams={createDefaultQueryParams({ status: statusValue })}
-          setQueryParams={defaultSetQueryParams}
-        />,
-      )
+      renderFilter({ queryParams: createDefaultQueryParams({ status: statusValue }) })
 
       expect(screen.getByText(expectedLabel)).toBeInTheDocument()
     })
@@ -199,12 +183,7 @@ describe('Filter', () => {
   // --------------------------------------------------------------------------
   describe('Time Period Filter', () => {
     it('should display current period value', () => {
-      render(
-        <Filter
-          queryParams={createDefaultQueryParams({ period: '1' })}
-          setQueryParams={defaultSetQueryParams}
-        />,
-      )
+      renderFilter({ queryParams: createDefaultQueryParams({ period: '1' }) })
 
       expect(screen.getByText('appLog.filter.period.today')).toBeInTheDocument()
     })
@@ -212,20 +191,16 @@ describe('Filter', () => {
     it('should open period dropdown when clicked', async () => {
       const user = userEvent.setup()
 
-      render(
-        <Filter
-          queryParams={createDefaultQueryParams()}
-          setQueryParams={defaultSetQueryParams}
-        />,
-      )
+      renderFilter()
 
       await user.click(screen.getByText('appLog.filter.period.last7days'))
 
       // Should show all period options
       await waitFor(() => {
         expect(screen.getByText('appLog.filter.period.today')).toBeInTheDocument()
-        expect(screen.getByText('appLog.filter.period.last4weeks')).toBeInTheDocument()
+        expect(screen.getByText('appLog.filter.period.last30days')).toBeInTheDocument()
         expect(screen.getByText('appLog.filter.period.last3months')).toBeInTheDocument()
+        expect(screen.getByText('appLog.filter.period.last12months')).toBeInTheDocument()
         expect(screen.getByText('appLog.filter.period.allTime')).toBeInTheDocument()
       })
     })
@@ -234,12 +209,7 @@ describe('Filter', () => {
       const user = userEvent.setup()
       const setQueryParams = vi.fn()
 
-      render(
-        <Filter
-          queryParams={createDefaultQueryParams()}
-          setQueryParams={setQueryParams}
-        />,
-      )
+      renderFilter({ setQueryParams })
 
       await user.click(screen.getByText('appLog.filter.period.last7days'))
       await user.click(await screen.findByText('appLog.filter.period.allTime'))
@@ -254,12 +224,10 @@ describe('Filter', () => {
       const user = userEvent.setup()
       const setQueryParams = vi.fn()
 
-      render(
-        <Filter
-          queryParams={createDefaultQueryParams({ period: '2' })}
-          setQueryParams={setQueryParams}
-        />,
-      )
+      renderFilter({
+        queryParams: createDefaultQueryParams({ period: '2' }),
+        setQueryParams,
+      })
 
       // Find the period chip's clear button
       const periodChip = screen.getByText('appLog.filter.period.last7days').closest('div')
@@ -280,12 +248,7 @@ describe('Filter', () => {
   // --------------------------------------------------------------------------
   describe('Keyword Search', () => {
     it('should display current keyword value', () => {
-      render(
-        <Filter
-          queryParams={createDefaultQueryParams({ keyword: 'test search' })}
-          setQueryParams={defaultSetQueryParams}
-        />,
-      )
+      renderFilter({ queryParams: createDefaultQueryParams({ keyword: 'test search' }) })
 
       expect(screen.getByDisplayValue('test search')).toBeInTheDocument()
     })
@@ -304,6 +267,7 @@ describe('Filter', () => {
           <Filter
             queryParams={queryParams}
             setQueryParams={handleSetQueryParams}
+            {...defaultFilterProps}
           />
         )
       }
@@ -323,12 +287,10 @@ describe('Filter', () => {
       const user = userEvent.setup()
       const setQueryParams = vi.fn()
 
-      const { container } = render(
-        <Filter
-          queryParams={createDefaultQueryParams({ keyword: 'test' })}
-          setQueryParams={setQueryParams}
-        />,
-      )
+      const { container } = renderFilter({
+        queryParams: createDefaultQueryParams({ keyword: 'test' }),
+        setQueryParams,
+      })
 
       // The Input component renders a clear icon div inside the input wrapper
       // when showClearIcon is true and value exists
@@ -350,12 +312,7 @@ describe('Filter', () => {
     it('should update on direct input change', () => {
       const setQueryParams = vi.fn()
 
-      render(
-        <Filter
-          queryParams={createDefaultQueryParams()}
-          setQueryParams={setQueryParams}
-        />,
-      )
+      renderFilter({ setQueryParams })
 
       const input = screen.getByPlaceholderText('common.operation.search')
       fireEvent.change(input, { target: { value: 'new search' } })
@@ -380,8 +337,8 @@ describe('Filter', () => {
       expect(TIME_PERIOD_MAPPING['2']).toEqual({ value: 7, name: 'last7days' })
     })
 
-    it('should have correct mapping for last 4 weeks', () => {
-      expect(TIME_PERIOD_MAPPING['3']).toEqual({ value: 28, name: 'last4weeks' })
+    it('should have correct mapping for last 30 days', () => {
+      expect(TIME_PERIOD_MAPPING['3']).toEqual({ value: 30, name: 'last30days' })
     })
 
     it('should have correct mapping for all time', () => {
@@ -395,7 +352,7 @@ describe('Filter', () => {
     it.each([
       ['1', 'today', 0],
       ['2', 'last7days', 7],
-      ['3', 'last4weeks', 28],
+      ['3', 'last30days', 30],
       ['9', 'allTime', -1],
     ])('TIME_PERIOD_MAPPING[%s] should have name=%s and correct value', (key, name, expectedValue) => {
       const mapping = TIME_PERIOD_MAPPING[key]
@@ -412,24 +369,14 @@ describe('Filter', () => {
   // --------------------------------------------------------------------------
   describe('Edge Cases', () => {
     it('should handle undefined keyword gracefully', () => {
-      render(
-        <Filter
-          queryParams={createDefaultQueryParams({ keyword: undefined })}
-          setQueryParams={defaultSetQueryParams}
-        />,
-      )
+      renderFilter({ queryParams: createDefaultQueryParams({ keyword: undefined }) })
 
       const input = screen.getByPlaceholderText('common.operation.search')
       expect(input).toHaveValue('')
     })
 
     it('should handle empty string keyword', () => {
-      render(
-        <Filter
-          queryParams={createDefaultQueryParams({ keyword: '' })}
-          setQueryParams={defaultSetQueryParams}
-        />,
-      )
+      renderFilter({ queryParams: createDefaultQueryParams({ keyword: '' }) })
 
       const input = screen.getByPlaceholderText('common.operation.search')
       expect(input).toHaveValue('')
@@ -439,12 +386,10 @@ describe('Filter', () => {
       const user = userEvent.setup()
       const setQueryParams = vi.fn()
 
-      render(
-        <Filter
-          queryParams={createDefaultQueryParams({ keyword: 'test', period: '3' })}
-          setQueryParams={setQueryParams}
-        />,
-      )
+      renderFilter({
+        queryParams: createDefaultQueryParams({ keyword: 'test', period: '3' }),
+        setQueryParams,
+      })
 
       await user.click(screen.getByText('All'))
       await user.click(await screen.findByText('Success'))
@@ -460,12 +405,10 @@ describe('Filter', () => {
       const user = userEvent.setup()
       const setQueryParams = vi.fn()
 
-      render(
-        <Filter
-          queryParams={createDefaultQueryParams({ keyword: 'test', status: 'failed' })}
-          setQueryParams={setQueryParams}
-        />,
-      )
+      renderFilter({
+        queryParams: createDefaultQueryParams({ keyword: 'test', status: 'failed' }),
+        setQueryParams,
+      })
 
       await user.click(screen.getByText('appLog.filter.period.last7days'))
       await user.click(await screen.findByText('appLog.filter.period.today'))
@@ -481,12 +424,10 @@ describe('Filter', () => {
       const user = userEvent.setup()
       const setQueryParams = vi.fn()
 
-      render(
-        <Filter
-          queryParams={createDefaultQueryParams({ status: 'failed', period: '3' })}
-          setQueryParams={setQueryParams}
-        />,
-      )
+      renderFilter({
+        queryParams: createDefaultQueryParams({ status: 'failed', period: '3' }),
+        setQueryParams,
+      })
 
       const input = screen.getByPlaceholderText('common.operation.search')
       await user.type(input, 'a')
@@ -504,16 +445,13 @@ describe('Filter', () => {
   // --------------------------------------------------------------------------
   describe('Integration', () => {
     it('should render with all filters visible simultaneously', () => {
-      render(
-        <Filter
-          queryParams={createDefaultQueryParams({
-            status: 'succeeded',
-            period: '1',
-            keyword: 'integration test',
-          })}
-          setQueryParams={defaultSetQueryParams}
-        />,
-      )
+      renderFilter({
+        queryParams: createDefaultQueryParams({
+          status: 'succeeded',
+          period: '1',
+          keyword: 'integration test',
+        }),
+      })
 
       expect(screen.getByText('Success')).toBeInTheDocument()
       expect(screen.getByText('appLog.filter.period.today')).toBeInTheDocument()
@@ -521,12 +459,7 @@ describe('Filter', () => {
     })
 
     it('should have proper layout with flex and gap', () => {
-      const { container } = render(
-        <Filter
-          queryParams={createDefaultQueryParams()}
-          setQueryParams={defaultSetQueryParams}
-        />,
-      )
+      const { container } = renderFilter()
 
       const filterContainer = container.firstChild as HTMLElement
       expect(filterContainer).toHaveClass('flex')
