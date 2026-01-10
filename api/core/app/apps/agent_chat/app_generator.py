@@ -19,8 +19,8 @@ from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
-from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, InvokeFrom
 from core.app.entities.agent_media import AgentMedia
+from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, InvokeFrom
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
@@ -117,9 +117,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         # File parsing (existing)
         # -------------------------
         files = args.get("files") or []
-        file_extra_config = FileUploadConfigManager.convert(
-            override_model_config_dict or app_model_config.to_dict()
-        )
+        file_extra_config = FileUploadConfigManager.convert(override_model_config_dict or app_model_config.to_dict())
 
         if file_extra_config:
             file_objs = file_factory.build_from_mappings(
@@ -136,11 +134,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         media: list[AgentMedia] = []
 
         for f in file_objs:
-<<<<<<< HEAD
-            if f.content_type and (
-                f.content_type.startswith("audio/")
-                or f.content_type.startswith("video/")
-            ):
+            if f.content_type and (f.content_type.startswith("audio/") or f.content_type.startswith("video/")):
                 media.append(
                     AgentMedia(
                         file_id=f.id, 
@@ -150,29 +144,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                         size=f.size,
                         duration=getattr(f, "duration", None),
                     )
-=======
-            if not f.content_type:
-                continue
-        
-            if not (f.content_type.startswith("audio/") or f.content_type.startswith("video/")):
-                continue
-        
-            if not isinstance(f.id, str) or not isinstance(f.filename, str):
-                continue
-        
-            media.append(
-                AgentMedia(
-                    file_id=f.id,
-                    media_type=f.content_type,
-                    filename=f.filename,
-                    content_type=f.content_type,
-                    size=f.size,
-                    duration=getattr(f, "duration", None),
->>>>>>> 1eec0b543 (Resolve InspectMediaTool invoke API and generator contract)
                 )
-            )
-        
-
 
         # -------------------------
         # App config & tracing
@@ -203,9 +175,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             query=query,
             files=list(file_objs),
             media=media or None,
-            parent_message_id=args.get("parent_message_id")
-            if invoke_from != InvokeFrom.SERVICE_API
-            else UUID_NIL,
+            parent_message_id=args.get("parent_message_id") if invoke_from != InvokeFrom.SERVICE_API else UUID_NIL,
             user_id=user.id,
             stream=streaming,
             invoke_from=invoke_from,
@@ -214,9 +184,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             trace_manager=trace_manager,
         )
 
-        (conversation, message) = self._init_generate_records(
-            application_generate_entity, conversation
-        )
+        (conversation, message) = self._init_generate_records(application_generate_entity, conversation)
 
         queue_manager = MessageBasedAppQueueManager(
             task_id=application_generate_entity.task_id,
@@ -252,9 +220,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             stream=streaming,
         )
 
-        return AgentChatAppGenerateResponseConverter.convert(
-            response=response, invoke_from=invoke_from
-        )
+        return AgentChatAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
 
     def _generate_worker(
         self,
@@ -296,4 +262,3 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             finally:
                 db.session.close()
-
