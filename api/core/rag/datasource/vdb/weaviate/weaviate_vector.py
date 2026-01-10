@@ -66,6 +66,8 @@ class WeaviateVector(BaseVector):
     in a Weaviate collection.
     """
 
+    _DOCUMENT_ID_PROPERTY = "document_id"
+
     def __init__(self, collection_name: str, config: WeaviateConfig, attributes: list):
         """
         Initializes the Weaviate vector store.
@@ -78,6 +80,18 @@ class WeaviateVector(BaseVector):
         super().__init__(collection_name)
         self._client = self._init_client(config)
         self._attributes = attributes
+
+    def __del__(self):
+        """
+        Destructor to properly close the Weaviate client connection.
+        Prevents connection leaks and resource warnings.
+        """
+        if hasattr(self, "_client") and self._client is not None:
+            try:
+                self._client.close()
+            except Exception as e:
+                # Ignore errors during cleanup as object is being destroyed
+                logger.warning("Error closing Weaviate client %s", e, exc_info=True)
 
     def _init_client(self, config: WeaviateConfig) -> weaviate.WeaviateClient:
         """
@@ -167,13 +181,18 @@ class WeaviateVector(BaseVector):
 
             try:
                 if not self._client.collections.exists(self._collection_name):
+                    tokenization = (
+                        wc.Tokenization(dify_config.WEAVIATE_TOKENIZATION)
+                        if dify_config.WEAVIATE_TOKENIZATION
+                        else wc.Tokenization.WORD
+                    )
                     self._client.collections.create(
                         name=self._collection_name,
                         properties=[
                             wc.Property(
                                 name=Field.TEXT_KEY.value,
                                 data_type=wc.DataType.TEXT,
-                                tokenization=wc.Tokenization.WORD,
+                                tokenization=tokenization,
                             ),
                             wc.Property(name="document_id", data_type=wc.DataType.TEXT),
                             wc.Property(name="doc_id", data_type=wc.DataType.TEXT),
@@ -336,15 +355,12 @@ class WeaviateVector(BaseVector):
             return []
 
         col = self._client.collections.use(self._collection_name)
-        props = list({*self._attributes, "document_id", Field.TEXT_KEY.value})
+        props = list({*self._attributes, self._DOCUMENT_ID_PROPERTY, Field.TEXT_KEY.value})
 
         where = None
         doc_ids = kwargs.get("document_ids_filter") or []
         if doc_ids:
-            ors = [Filter.by_property("document_id").equal(x) for x in doc_ids]
-            where = ors[0]
-            for f in ors[1:]:
-                where = where | f
+            where = Filter.by_property(self._DOCUMENT_ID_PROPERTY).contains_any(doc_ids)
 
         top_k = int(kwargs.get("top_k", 4))
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
@@ -391,10 +407,7 @@ class WeaviateVector(BaseVector):
         where = None
         doc_ids = kwargs.get("document_ids_filter") or []
         if doc_ids:
-            ors = [Filter.by_property("document_id").equal(x) for x in doc_ids]
-            where = ors[0]
-            for f in ors[1:]:
-                where = where | f
+            where = Filter.by_property(self._DOCUMENT_ID_PROPERTY).contains_any(doc_ids)
 
         top_k = int(kwargs.get("top_k", 4))
 

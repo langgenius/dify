@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import json
 import logging
 from collections.abc import Generator, Mapping, Sequence
 from datetime import datetime
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, Union, cast
 from uuid import uuid4
 
 import sqlalchemy as sa
@@ -29,6 +31,7 @@ from core.workflow.constants import (
     CONVERSATION_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
 )
+from core.workflow.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType, SchedulingPause
 from core.workflow.enums import NodeType
 from extensions.ext_storage import Storage
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
@@ -66,7 +69,7 @@ class WorkflowType(StrEnum):
     RAG_PIPELINE = "rag-pipeline"
 
     @classmethod
-    def value_of(cls, value: str) -> "WorkflowType":
+    def value_of(cls, value: str) -> WorkflowType:
         """
         Get value of given mode.
 
@@ -79,7 +82,7 @@ class WorkflowType(StrEnum):
         raise ValueError(f"invalid workflow type value {value}")
 
     @classmethod
-    def from_app_mode(cls, app_mode: Union[str, "AppMode"]) -> "WorkflowType":
+    def from_app_mode(cls, app_mode: Union[str, AppMode]) -> WorkflowType:
         """
         Get workflow type from app mode.
 
@@ -96,7 +99,7 @@ class _InvalidGraphDefinitionError(Exception):
     pass
 
 
-class Workflow(Base):
+class Workflow(Base):  # bug
     """
     Workflow, for `Workflow App` and `Chat App workflow mode`.
 
@@ -180,7 +183,7 @@ class Workflow(Base):
         rag_pipeline_variables: list[dict],
         marked_name: str = "",
         marked_comment: str = "",
-    ) -> "Workflow":
+    ) -> Workflow:
         workflow = Workflow()
         workflow.id = str(uuid4())
         workflow.tenant_id = tenant_id
@@ -618,7 +621,7 @@ class WorkflowRun(Base):
     finished_at: Mapped[datetime | None] = mapped_column(DateTime)
     exceptions_count: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"), nullable=True)
 
-    pause: Mapped[Optional["WorkflowPause"]] = orm.relationship(
+    pause: Mapped[WorkflowPause | None] = orm.relationship(
         "WorkflowPause",
         primaryjoin="WorkflowRun.id == foreign(WorkflowPause.workflow_run_id)",
         uselist=False,
@@ -688,7 +691,7 @@ class WorkflowRun(Base):
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "WorkflowRun":
+    def from_dict(cls, data: dict[str, Any]) -> WorkflowRun:
         return cls(
             id=data.get("id"),
             tenant_id=data.get("tenant_id"),
@@ -840,7 +843,7 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
     created_by: Mapped[str] = mapped_column(StringUUID)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime)
 
-    offload_data: Mapped[list["WorkflowNodeExecutionOffload"]] = orm.relationship(
+    offload_data: Mapped[list[WorkflowNodeExecutionOffload]] = orm.relationship(
         "WorkflowNodeExecutionOffload",
         primaryjoin="WorkflowNodeExecutionModel.id == foreign(WorkflowNodeExecutionOffload.node_execution_id)",
         uselist=True,
@@ -850,13 +853,13 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
 
     @staticmethod
     def preload_offload_data(
-        query: Select[tuple["WorkflowNodeExecutionModel"]] | orm.Query["WorkflowNodeExecutionModel"],
+        query: Select[tuple[WorkflowNodeExecutionModel]] | orm.Query[WorkflowNodeExecutionModel],
     ):
         return query.options(orm.selectinload(WorkflowNodeExecutionModel.offload_data))
 
     @staticmethod
     def preload_offload_data_and_files(
-        query: Select[tuple["WorkflowNodeExecutionModel"]] | orm.Query["WorkflowNodeExecutionModel"],
+        query: Select[tuple[WorkflowNodeExecutionModel]] | orm.Query[WorkflowNodeExecutionModel],
     ):
         return query.options(
             orm.selectinload(WorkflowNodeExecutionModel.offload_data).options(
@@ -869,16 +872,20 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
     @property
     def created_by_account(self):
         created_by_role = CreatorUserRole(self.created_by_role)
-        # TODO(-LAN-): Avoid using db.session.get() here.
-        return db.session.get(Account, self.created_by) if created_by_role == CreatorUserRole.ACCOUNT else None
+        if created_by_role == CreatorUserRole.ACCOUNT:
+            stmt = select(Account).where(Account.id == self.created_by)
+            return db.session.scalar(stmt)
+        return None
 
     @property
     def created_by_end_user(self):
         from .model import EndUser
 
         created_by_role = CreatorUserRole(self.created_by_role)
-        # TODO(-LAN-): Avoid using db.session.get() here.
-        return db.session.get(EndUser, self.created_by) if created_by_role == CreatorUserRole.END_USER else None
+        if created_by_role == CreatorUserRole.END_USER:
+            stmt = select(EndUser).where(EndUser.id == self.created_by)
+            return db.session.scalar(stmt)
+        return None
 
     @property
     def inputs_dict(self):
@@ -902,22 +909,32 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
     @property
     def extras(self) -> dict[str, Any]:
         from core.tools.tool_manager import ToolManager
+        from core.trigger.trigger_manager import TriggerManager
 
         extras: dict[str, Any] = {}
-        if self.execution_metadata_dict:
-            if self.node_type == NodeType.TOOL and "tool_info" in self.execution_metadata_dict:
-                tool_info: dict[str, Any] = self.execution_metadata_dict["tool_info"]
+        execution_metadata = self.execution_metadata_dict
+        if execution_metadata:
+            if self.node_type == NodeType.TOOL and "tool_info" in execution_metadata:
+                tool_info: dict[str, Any] = execution_metadata["tool_info"]
                 extras["icon"] = ToolManager.get_tool_icon(
                     tenant_id=self.tenant_id,
                     provider_type=tool_info["provider_type"],
                     provider_id=tool_info["provider_id"],
                 )
-            elif self.node_type == NodeType.DATASOURCE and "datasource_info" in self.execution_metadata_dict:
-                datasource_info = self.execution_metadata_dict["datasource_info"]
+            elif self.node_type == NodeType.DATASOURCE and "datasource_info" in execution_metadata:
+                datasource_info = execution_metadata["datasource_info"]
                 extras["icon"] = datasource_info.get("icon")
+            elif self.node_type == NodeType.TRIGGER_PLUGIN and "trigger_info" in execution_metadata:
+                trigger_info = execution_metadata["trigger_info"] or {}
+                provider_id = trigger_info.get("provider_id")
+                if provider_id:
+                    extras["icon"] = TriggerManager.get_trigger_plugin_icon(
+                        tenant_id=self.tenant_id,
+                        provider_id=provider_id,
+                    )
         return extras
 
-    def _get_offload_by_type(self, type_: ExecutionOffLoadType) -> Optional["WorkflowNodeExecutionOffload"]:
+    def _get_offload_by_type(self, type_: ExecutionOffLoadType) -> WorkflowNodeExecutionOffload | None:
         return next(iter([i for i in self.offload_data if i.type_ == type_]), None)
 
     @property
@@ -1031,7 +1048,7 @@ class WorkflowNodeExecutionOffload(Base):
         back_populates="offload_data",
     )
 
-    file: Mapped[Optional["UploadFile"]] = orm.relationship(
+    file: Mapped[UploadFile | None] = orm.relationship(
         foreign_keys=[file_id],
         lazy="raise",
         uselist=False,
@@ -1049,7 +1066,7 @@ class WorkflowAppLogCreatedFrom(StrEnum):
     INSTALLED_APP = "installed-app"
 
     @classmethod
-    def value_of(cls, value: str) -> "WorkflowAppLogCreatedFrom":
+    def value_of(cls, value: str) -> WorkflowAppLogCreatedFrom:
         """
         Get value of given mode.
 
@@ -1098,7 +1115,9 @@ class WorkflowAppLog(TypeBase):
         sa.Index("workflow_app_log_workflow_run_id_idx", "workflow_run_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+    )
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     app_id: Mapped[str] = mapped_column(StringUUID)
     workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -1164,7 +1183,7 @@ class ConversationVariable(TypeBase):
     )
 
     @classmethod
-    def from_variable(cls, *, app_id: str, conversation_id: str, variable: Variable) -> "ConversationVariable":
+    def from_variable(cls, *, app_id: str, conversation_id: str, variable: Variable) -> ConversationVariable:
         obj = cls(
             id=variable.id,
             app_id=app_id,
@@ -1317,7 +1336,7 @@ class WorkflowDraftVariable(Base):
     )
 
     # Relationship to WorkflowDraftVariableFile
-    variable_file: Mapped[Optional["WorkflowDraftVariableFile"]] = orm.relationship(
+    variable_file: Mapped[WorkflowDraftVariableFile | None] = orm.relationship(
         foreign_keys=[file_id],
         lazy="raise",
         uselist=False,
@@ -1487,8 +1506,9 @@ class WorkflowDraftVariable(Base):
         node_execution_id: str | None,
         description: str = "",
         file_id: str | None = None,
-    ) -> "WorkflowDraftVariable":
+    ) -> WorkflowDraftVariable:
         variable = WorkflowDraftVariable()
+        variable.id = str(uuid4())
         variable.created_at = naive_utc_now()
         variable.updated_at = naive_utc_now()
         variable.description = description
@@ -1509,7 +1529,7 @@ class WorkflowDraftVariable(Base):
         name: str,
         value: Segment,
         description: str = "",
-    ) -> "WorkflowDraftVariable":
+    ) -> WorkflowDraftVariable:
         variable = cls._new(
             app_id=app_id,
             node_id=CONVERSATION_VARIABLE_NODE_ID,
@@ -1530,7 +1550,7 @@ class WorkflowDraftVariable(Base):
         value: Segment,
         node_execution_id: str,
         editable: bool = False,
-    ) -> "WorkflowDraftVariable":
+    ) -> WorkflowDraftVariable:
         variable = cls._new(
             app_id=app_id,
             node_id=SYSTEM_VARIABLE_NODE_ID,
@@ -1553,7 +1573,7 @@ class WorkflowDraftVariable(Base):
         visible: bool = True,
         editable: bool = True,
         file_id: str | None = None,
-    ) -> "WorkflowDraftVariable":
+    ) -> WorkflowDraftVariable:
         variable = cls._new(
             app_id=app_id,
             node_id=node_id,
@@ -1649,7 +1669,7 @@ class WorkflowDraftVariableFile(Base):
     )
 
     # Relationship to UploadFile
-    upload_file: Mapped["UploadFile"] = orm.relationship(
+    upload_file: Mapped[UploadFile] = orm.relationship(
         foreign_keys=[upload_file_id],
         lazy="raise",
         uselist=False,
@@ -1716,7 +1736,7 @@ class WorkflowPause(DefaultFieldsMixin, Base):
     state_object_key: Mapped[str] = mapped_column(String(length=255), nullable=False)
 
     # Relationship to WorkflowRun
-    workflow_run: Mapped["WorkflowRun"] = orm.relationship(
+    workflow_run: Mapped[WorkflowRun] = orm.relationship(
         foreign_keys=[workflow_run_id],
         # require explicit preloading.
         lazy="raise",
@@ -1724,3 +1744,68 @@ class WorkflowPause(DefaultFieldsMixin, Base):
         primaryjoin="WorkflowPause.workflow_run_id == WorkflowRun.id",
         back_populates="pause",
     )
+
+
+class WorkflowPauseReason(DefaultFieldsMixin, Base):
+    __tablename__ = "workflow_pause_reasons"
+
+    # `pause_id` represents the identifier of the pause,
+    # correspond to the `id` field of `WorkflowPause`.
+    pause_id: Mapped[str] = mapped_column(StringUUID, nullable=False, index=True)
+
+    type_: Mapped[PauseReasonType] = mapped_column(EnumText(PauseReasonType), nullable=False)
+
+    # form_id is not empty if and if only type_ == PauseReasonType.HUMAN_INPUT_REQUIRED
+    #
+    form_id: Mapped[str] = mapped_column(
+        String(36),
+        nullable=False,
+        default="",
+    )
+
+    # message records the text description of this pause reason. For example,
+    # "The workflow has been paused due to scheduling."
+    #
+    # Empty message means that this pause reason is not speified.
+    message: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+        default="",
+    )
+
+    # `node_id` is the identifier of node causing the pasue, correspond to
+    # `Node.id`. Empty `node_id` means that this pause reason is not caused by any specific node
+    # (E.G. time slicing pauses.)
+    node_id: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+        default="",
+    )
+
+    # Relationship to WorkflowPause
+    pause: Mapped[WorkflowPause] = orm.relationship(
+        foreign_keys=[pause_id],
+        # require explicit preloading.
+        lazy="raise",
+        uselist=False,
+        primaryjoin="WorkflowPauseReason.pause_id == WorkflowPause.id",
+    )
+
+    @classmethod
+    def from_entity(cls, pause_reason: PauseReason) -> WorkflowPauseReason:
+        if isinstance(pause_reason, HumanInputRequired):
+            return cls(
+                type_=PauseReasonType.HUMAN_INPUT_REQUIRED, form_id=pause_reason.form_id, node_id=pause_reason.node_id
+            )
+        elif isinstance(pause_reason, SchedulingPause):
+            return cls(type_=PauseReasonType.SCHEDULED_PAUSE, message=pause_reason.message, node_id="")
+        else:
+            raise AssertionError(f"Unknown pause reason type: {pause_reason}")
+
+    def to_entity(self) -> PauseReason:
+        if self.type_ == PauseReasonType.HUMAN_INPUT_REQUIRED:
+            return HumanInputRequired(form_id=self.form_id, node_id=self.node_id)
+        elif self.type_ == PauseReasonType.SCHEDULED_PAUSE:
+            return SchedulingPause(message=self.message)
+        else:
+            raise AssertionError(f"Unknown pause reason type: {self.type_}")

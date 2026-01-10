@@ -1,21 +1,21 @@
 'use client'
-import React, { type Reducer, useEffect, useReducer } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { Reducer } from 'react'
 import Link from 'next/link'
-import useSWR from 'swr'
 import { useRouter, useSearchParams } from 'next/navigation'
-import Input from '../components/base/input'
+import * as React from 'react'
+import { useReducer } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-import Tooltip from '@/app/components/base/tooltip'
 import { SimpleSelect } from '@/app/components/base/select'
-import { timezones } from '@/utils/timezone'
-import { LanguagesSupported, languages } from '@/i18n-config/language'
-import { oneMoreStep } from '@/service/common'
 import Toast from '@/app/components/base/toast'
+import Tooltip from '@/app/components/base/tooltip'
 import { useDocLink } from '@/context/i18n'
+import { languages, LanguagesSupported } from '@/i18n-config/language'
+import { useOneMoreStep } from '@/service/use-common'
+import { timezones } from '@/utils/timezone'
+import Input from '../components/base/input'
 
 type IState = {
-  formState: 'processing' | 'error' | 'success' | 'initial'
   invitation_code: string
   interface_language: string
   timezone: string
@@ -23,10 +23,9 @@ type IState = {
 
 type IAction
   = | { type: 'failed', payload: null }
-  | { type: 'invitation_code', value: string }
-  | { type: 'interface_language', value: string }
-  | { type: 'timezone', value: string }
-  | { type: 'formState', value: 'processing' }
+    | { type: 'invitation_code', value: string }
+    | { type: 'interface_language', value: string }
+    | { type: 'timezone', value: string }
 
 const reducer: Reducer<IState, IAction> = (state: IState, action: IAction) => {
   switch (action.type) {
@@ -36,11 +35,8 @@ const reducer: Reducer<IState, IAction> = (state: IState, action: IAction) => {
       return { ...state, interface_language: action.value }
     case 'timezone':
       return { ...state, timezone: action.value }
-    case 'formState':
-      return { ...state, formState: action.value }
     case 'failed':
       return {
-        formState: 'initial',
         invitation_code: '',
         interface_language: 'en-US',
         timezone: 'Asia/Shanghai',
@@ -57,54 +53,53 @@ const OneMoreStep = () => {
   const searchParams = useSearchParams()
 
   const [state, dispatch] = useReducer(reducer, {
-    formState: 'initial',
     invitation_code: searchParams.get('invitation_code') || '',
     interface_language: 'en-US',
     timezone: 'Asia/Shanghai',
   })
-  const { data, error } = useSWR(state.formState === 'processing'
-    ? {
-      url: '/account/init',
-      body: {
+  const { mutateAsync: submitOneMoreStep, isPending } = useOneMoreStep()
+
+  const handleSubmit = async () => {
+    if (isPending)
+      return
+    try {
+      await submitOneMoreStep({
         invitation_code: state.invitation_code,
         interface_language: state.interface_language,
         timezone: state.timezone,
-      },
+      })
+      router.push('/apps')
     }
-    : null, oneMoreStep)
-
-  useEffect(() => {
-    if (error && error.status === 400) {
-      Toast.notify({ type: 'error', message: t('login.invalidInvitationCode') })
+    catch (error: any) {
+      if (error && error.status === 400)
+        Toast.notify({ type: 'error', message: t('invalidInvitationCode', { ns: 'login' }) })
       dispatch({ type: 'failed', payload: null })
     }
-    if (data)
-      router.push('/apps')
-  }, [data, error])
+  }
 
   return (
     <>
       <div className="mx-auto w-full">
-        <h2 className="title-4xl-semi-bold text-text-secondary">{t('login.oneMoreStep')}</h2>
-        <p className='body-md-regular mt-1 text-text-tertiary'>{t('login.createSample')}</p>
+        <h2 className="title-4xl-semi-bold text-text-secondary">{t('oneMoreStep', { ns: 'login' })}</h2>
+        <p className="body-md-regular mt-1 text-text-tertiary">{t('createSample', { ns: 'login' })}</p>
       </div>
 
       <div className="mx-auto mt-6 w-full">
         <div className="relative">
           <div className="mb-5">
             <label className="system-md-semibold my-2 flex items-center justify-between text-text-secondary">
-              {t('login.invitationCode')}
+              {t('invitationCode', { ns: 'login' })}
               <Tooltip
-                popupContent={
-                  <div className='w-[256px] text-xs font-medium'>
-                    <div className='font-medium'>{t('login.sendUsMail')}</div>
-                    <div className='cursor-pointer text-xs font-medium text-text-accent-secondary'>
+                popupContent={(
+                  <div className="w-[256px] text-xs font-medium">
+                    <div className="font-medium">{t('sendUsMail', { ns: 'login' })}</div>
+                    <div className="cursor-pointer text-xs font-medium text-text-accent-secondary">
                       <a href="mailto:request-invitation@langgenius.ai">request-invitation@langgenius.ai</a>
                     </div>
                   </div>
-                }
+                )}
               >
-                <span className='cursor-pointer text-text-accent-secondary'>{t('login.dontHave')}</span>
+                <span className="cursor-pointer text-text-accent-secondary">{t('dontHave', { ns: 'login' })}</span>
               </Tooltip>
             </label>
             <div className="mt-1">
@@ -112,16 +107,16 @@ const OneMoreStep = () => {
                 id="invitation_code"
                 value={state.invitation_code}
                 type="text"
-                placeholder={t('login.invitationCodePlaceholder') || ''}
+                placeholder={t('invitationCodePlaceholder', { ns: 'login' }) || ''}
                 onChange={(e) => {
                   dispatch({ type: 'invitation_code', value: e.target.value.trim() })
                 }}
               />
             </div>
           </div>
-          <div className='mb-5'>
+          <div className="mb-5">
             <label htmlFor="name" className="system-md-semibold my-2 text-text-secondary">
-              {t('login.interfaceLanguage')}
+              {t('interfaceLanguage', { ns: 'login' })}
             </label>
             <div className="mt-1">
               <SimpleSelect
@@ -133,9 +128,9 @@ const OneMoreStep = () => {
               />
             </div>
           </div>
-          <div className='mb-4'>
+          <div className="mb-4">
             <label htmlFor="timezone" className="system-md-semibold text-text-tertiary">
-              {t('login.timezone')}
+              {t('timezone', { ns: 'login' })}
             </label>
             <div className="mt-1">
               <SimpleSelect
@@ -149,24 +144,25 @@ const OneMoreStep = () => {
           </div>
           <div>
             <Button
-              variant='primary'
-              className='w-full'
-              disabled={state.formState === 'processing'}
-              onClick={() => {
-                dispatch({ type: 'formState', value: 'processing' })
-              }}
+              variant="primary"
+              className="w-full"
+              disabled={isPending}
+              onClick={handleSubmit}
             >
-              {t('login.go')}
+              {t('go', { ns: 'login' })}
             </Button>
           </div>
           <div className="system-xs-regular mt-2 block w-full text-text-tertiary">
-            {t('login.license.tip')}
+            {t('license.tip', { ns: 'login' })}
             &nbsp;
             <Link
-              className='system-xs-medium text-text-accent-secondary'
-              target='_blank' rel='noopener noreferrer'
+              className="system-xs-medium text-text-accent-secondary"
+              target="_blank"
+              rel="noopener noreferrer"
               href={docLink('/policies/agreement/README')}
-            >{t('login.license.link')}</Link>
+            >
+              {t('license.link', { ns: 'login' })}
+            </Link>
           </div>
         </div>
       </div>

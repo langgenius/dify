@@ -1,10 +1,10 @@
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
-import { PortalSelect } from '@/app/components/base/select'
-import { InputVarType } from '@/app/components/workflow/types'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
+import Input from '@/app/components/base/input'
+import { PortalSelect } from '@/app/components/base/select'
+import Textarea from '@/app/components/base/textarea'
+import { InputVarType } from '@/app/components/workflow/types'
 
 type Props = {
   inputsForms: any[]
@@ -108,12 +108,12 @@ const AppInputsForm = ({
     return null
 
   return (
-    <div className='flex flex-col gap-4 px-4 py-2'>
+    <div className="flex flex-col gap-4 px-4 py-2">
       {inputsForms.map(form => (
         <div key={form.variable}>
-          <div className='system-sm-semibold mb-1 flex h-6 items-center gap-1 text-text-secondary'>
-            <div className='truncate'>{form.label}</div>
-            {!form.required && <span className='system-xs-regular text-text-tertiary'>{t('workflow.panel.optional')}</span>}
+          <div className="system-sm-semibold mb-1 flex h-6 items-center gap-1 text-text-secondary">
+            <div className="truncate">{form.label}</div>
+            {!form.required && <span className="system-xs-regular text-text-tertiary">{t('panel.optional', { ns: 'workflow' })}</span>}
           </div>
           {renderField(form)}
         </div>

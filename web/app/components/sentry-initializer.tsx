@@ -1,16 +1,16 @@
 'use client'
 
-import { useEffect } from 'react'
 import * as Sentry from '@sentry/react'
+import { useEffect } from 'react'
 
-const isDevelopment = process.env.NODE_ENV === 'development'
+import { IS_DEV } from '@/config'
 
 const SentryInitializer = ({
   children,
 }: { children: React.ReactElement }) => {
   useEffect(() => {
     const SENTRY_DSN = document?.body?.getAttribute('data-public-sentry-dsn')
-    if (!isDevelopment && SENTRY_DSN) {
+    if (!IS_DEV && SENTRY_DSN) {
       Sentry.init({
         dsn: SENTRY_DSN,
         integrations: [

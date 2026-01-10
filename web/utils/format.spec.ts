@@ -1,75 +1,75 @@
 import { downloadFile, formatFileSize, formatNumber, formatNumberAbbreviated, formatTime } from './format'
 
 describe('formatNumber', () => {
-  test('should correctly format integers', () => {
+  it('should correctly format integers', () => {
     expect(formatNumber(1234567)).toBe('1,234,567')
   })
-  test('should correctly format decimals', () => {
+  it('should correctly format decimals', () => {
     expect(formatNumber(1234567.89)).toBe('1,234,567.89')
   })
-  test('should correctly handle string input', () => {
+  it('should correctly handle string input', () => {
     expect(formatNumber('1234567')).toBe('1,234,567')
   })
-  test('should correctly handle zero', () => {
+  it('should correctly handle zero', () => {
     expect(formatNumber(0)).toBe(0)
   })
-  test('should correctly handle negative numbers', () => {
+  it('should correctly handle negative numbers', () => {
     expect(formatNumber(-1234567)).toBe('-1,234,567')
   })
-  test('should correctly handle empty input', () => {
+  it('should correctly handle empty input', () => {
     expect(formatNumber('')).toBe('')
   })
 })
 describe('formatFileSize', () => {
-  test('should return the input if it is falsy', () => {
+  it('should return the input if it is falsy', () => {
     expect(formatFileSize(0)).toBe(0)
   })
-  test('should format bytes correctly', () => {
+  it('should format bytes correctly', () => {
     expect(formatFileSize(500)).toBe('500.00 bytes')
   })
-  test('should format kilobytes correctly', () => {
+  it('should format kilobytes correctly', () => {
     expect(formatFileSize(1500)).toBe('1.46 KB')
   })
-  test('should format megabytes correctly', () => {
+  it('should format megabytes correctly', () => {
     expect(formatFileSize(1500000)).toBe('1.43 MB')
   })
-  test('should format gigabytes correctly', () => {
+  it('should format gigabytes correctly', () => {
     expect(formatFileSize(1500000000)).toBe('1.40 GB')
   })
-  test('should format terabytes correctly', () => {
+  it('should format terabytes correctly', () => {
     expect(formatFileSize(1500000000000)).toBe('1.36 TB')
   })
-  test('should format petabytes correctly', () => {
+  it('should format petabytes correctly', () => {
     expect(formatFileSize(1500000000000000)).toBe('1.33 PB')
   })
 })
 describe('formatTime', () => {
-  test('should return the input if it is falsy', () => {
+  it('should return the input if it is falsy', () => {
     expect(formatTime(0)).toBe(0)
   })
-  test('should format seconds correctly', () => {
+  it('should format seconds correctly', () => {
     expect(formatTime(30)).toBe('30.00 sec')
   })
-  test('should format minutes correctly', () => {
+  it('should format minutes correctly', () => {
     expect(formatTime(90)).toBe('1.50 min')
   })
-  test('should format hours correctly', () => {
+  it('should format hours correctly', () => {
     expect(formatTime(3600)).toBe('1.00 h')
   })
-  test('should handle large numbers', () => {
+  it('should handle large numbers', () => {
     expect(formatTime(7200)).toBe('2.00 h')
   })
 })
 describe('downloadFile', () => {
-  test('should create a link and trigger a download correctly', () => {
+  it('should create a link and trigger a download correctly', () => {
     // Mock data
     const blob = new Blob(['test content'], { type: 'text/plain' })
     const fileName = 'test-file.txt'
     const mockUrl = 'blob:mockUrl'
 
     // Mock URL.createObjectURL
-    const createObjectURLMock = jest.fn().mockReturnValue(mockUrl)
-    const revokeObjectURLMock = jest.fn()
+    const createObjectURLMock = vi.fn().mockReturnValue(mockUrl)
+    const revokeObjectURLMock = vi.fn()
     Object.defineProperty(window.URL, 'createObjectURL', { value: createObjectURLMock })
     Object.defineProperty(window.URL, 'revokeObjectURL', { value: revokeObjectURLMock })
 
@@ -77,11 +77,11 @@ describe('downloadFile', () => {
     const mockLink = {
       href: '',
       download: '',
-      click: jest.fn(),
-      remove: jest.fn(),
+      click: vi.fn(),
+      remove: vi.fn(),
     }
-    const createElementMock = jest.spyOn(document, 'createElement').mockReturnValue(mockLink as any)
-    const appendChildMock = jest.spyOn(document.body, 'appendChild').mockImplementation((node: Node) => {
+    const createElementMock = vi.spyOn(document, 'createElement').mockReturnValue(mockLink as any)
+    const appendChildMock = vi.spyOn(document.body, 'appendChild').mockImplementation((node: Node) => {
       return node
     })
 
@@ -99,7 +99,7 @@ describe('downloadFile', () => {
     expect(revokeObjectURLMock).toHaveBeenCalledWith(mockUrl)
 
     // Clean up mocks
-    jest.restoreAllMocks()
+    vi.restoreAllMocks()
   })
 })
 

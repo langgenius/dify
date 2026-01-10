@@ -1,4 +1,4 @@
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/workflow/store'
 import { useDraftPipelineProcessingParams } from '@/service/use-pipeline'
@@ -19,9 +19,9 @@ const ProcessDocuments = ({
   }, !!pipelineId && !!dataSourceNodeId)
 
   return (
-    <div className='flex flex-col'>
-      <div className='system-sm-semibold-uppercase px-4 pt-2 text-text-secondary'>
-        {t('datasetPipeline.inputFieldPanel.preview.stepTwoTitle')}
+    <div className="flex flex-col">
+      <div className="system-sm-semibold-uppercase px-4 pt-2 text-text-secondary">
+        {t('inputFieldPanel.preview.stepTwoTitle', { ns: 'datasetPipeline' })}
       </div>
       <Form variables={paramsConfig?.variables || []} />
     </div>

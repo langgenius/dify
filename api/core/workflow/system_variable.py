@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections.abc import Mapping, Sequence
 from types import MappingProxyType
 from typing import Any
@@ -70,7 +72,7 @@ class SystemVariable(BaseModel):
         return data
 
     @classmethod
-    def empty(cls) -> "SystemVariable":
+    def empty(cls) -> SystemVariable:
         return cls()
 
     def to_dict(self) -> dict[SystemVariableKey, Any]:
@@ -114,7 +116,7 @@ class SystemVariable(BaseModel):
             d[SystemVariableKey.TIMESTAMP] = self.timestamp
         return d
 
-    def as_view(self) -> "SystemVariableReadOnlyView":
+    def as_view(self) -> SystemVariableReadOnlyView:
         return SystemVariableReadOnlyView(self)
 
 

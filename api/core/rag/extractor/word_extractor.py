@@ -7,10 +7,11 @@ import re
 import tempfile
 import uuid
 from urllib.parse import urlparse
-from xml.etree import ElementTree
 
 import httpx
 from docx import Document as DocxDocument
+from docx.oxml.ns import qn
+from docx.text.run import Run
 
 from configs import dify_config
 from core.helper import ssrf_proxy
@@ -83,23 +84,46 @@ class WordExtractor(BaseExtractor):
     def _extract_images_from_docx(self, doc):
         image_count = 0
         image_map = {}
+        base_url = dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL
 
-        for rel in doc.part.rels.values():
+        for r_id, rel in doc.part.rels.items():
             if "image" in rel.target_ref:
                 image_count += 1
                 if rel.is_external:
                     url = rel.target_ref
-                    response = ssrf_proxy.get(url)
+                    if not self._is_valid_url(url):
+                        continue
+                    try:
+                        response = ssrf_proxy.get(url)
+                    except Exception as e:
+                        logger.warning("Failed to download image from URL: %s: %s", url, str(e))
+                        continue
                     if response.status_code == 200:
-                        image_ext = mimetypes.guess_extension(response.headers["Content-Type"])
+                        image_ext = mimetypes.guess_extension(response.headers.get("Content-Type", ""))
                         if image_ext is None:
                             continue
                         file_uuid = str(uuid.uuid4())
-                        file_key = "image_files/" + self.tenant_id + "/" + file_uuid + "." + image_ext
+                        file_key = "image_files/" + self.tenant_id + "/" + file_uuid + image_ext
                         mime_type, _ = mimetypes.guess_type(file_key)
                         storage.save(file_key, response.content)
-                    else:
-                        continue
+                        # save file to db
+                        upload_file = UploadFile(
+                            tenant_id=self.tenant_id,
+                            storage_type=dify_config.STORAGE_TYPE,
+                            key=file_key,
+                            name=file_key,
+                            size=0,
+                            extension=str(image_ext),
+                            mime_type=mime_type or "",
+                            created_by=self.user_id,
+                            created_by_role=CreatorUserRole.ACCOUNT,
+                            created_at=naive_utc_now(),
+                            used=True,
+                            used_by=self.user_id,
+                            used_at=naive_utc_now(),
+                        )
+                        db.session.add(upload_file)
+                        image_map[r_id] = f"![image]({base_url}/files/{upload_file.id}/file-preview)"
                 else:
                     image_ext = rel.target_ref.split(".")[-1]
                     if image_ext is None:
@@ -110,27 +134,25 @@ class WordExtractor(BaseExtractor):
                     mime_type, _ = mimetypes.guess_type(file_key)
 
                     storage.save(file_key, rel.target_part.blob)
-                # save file to db
-                upload_file = UploadFile(
-                    tenant_id=self.tenant_id,
-                    storage_type=dify_config.STORAGE_TYPE,
-                    key=file_key,
-                    name=file_key,
-                    size=0,
-                    extension=str(image_ext),
-                    mime_type=mime_type or "",
-                    created_by=self.user_id,
-                    created_by_role=CreatorUserRole.ACCOUNT,
-                    created_at=naive_utc_now(),
-                    used=True,
-                    used_by=self.user_id,
-                    used_at=naive_utc_now(),
-                )
-
-                db.session.add(upload_file)
-                db.session.commit()
-                image_map[rel.target_part] = f"![image]({dify_config.FILES_URL}/files/{upload_file.id}/file-preview)"
-
+                    # save file to db
+                    upload_file = UploadFile(
+                        tenant_id=self.tenant_id,
+                        storage_type=dify_config.STORAGE_TYPE,
+                        key=file_key,
+                        name=file_key,
+                        size=0,
+                        extension=str(image_ext),
+                        mime_type=mime_type or "",
+                        created_by=self.user_id,
+                        created_by_role=CreatorUserRole.ACCOUNT,
+                        created_at=naive_utc_now(),
+                        used=True,
+                        used_by=self.user_id,
+                        used_at=naive_utc_now(),
+                    )
+                    db.session.add(upload_file)
+                    image_map[rel.target_part] = f"![image]({base_url}/files/{upload_file.id}/file-preview)"
+        db.session.commit()
         return image_map
 
     def _table_to_markdown(self, table, image_map):
@@ -186,11 +208,17 @@ class WordExtractor(BaseExtractor):
                     image_id = blip.get("{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed")
                     if not image_id:
                         continue
-                    image_part = paragraph.part.rels[image_id].target_part
-
-                    if image_part in image_map:
-                        image_link = image_map[image_part]
-                        paragraph_content.append(image_link)
+                    rel = paragraph.part.rels.get(image_id)
+                    if rel is None:
+                        continue
+                    # For external images, use image_id as key; for internal, use target_part
+                    if rel.is_external:
+                        if image_id in image_map:
+                            paragraph_content.append(image_map[image_id])
+                    else:
+                        image_part = rel.target_part
+                        if image_part in image_map:
+                            paragraph_content.append(image_map[image_part])
             else:
                 paragraph_content.append(run.text)
         return "".join(paragraph_content).strip()
@@ -202,32 +230,20 @@ class WordExtractor(BaseExtractor):
 
         image_map = self._extract_images_from_docx(doc)
 
-        hyperlinks_url = None
-        url_pattern = re.compile(r"http://[^\s+]+//|https://[^\s+]+")
-        for para in doc.paragraphs:
-            for run in para.runs:
-                if run.text and hyperlinks_url:
-                    result = f"  [{run.text}]({hyperlinks_url})  "
-                    run.text = result
-                    hyperlinks_url = None
-                if "HYPERLINK" in run.element.xml:
-                    try:
-                        xml = ElementTree.XML(run.element.xml)
-                        x_child = [c for c in xml.iter() if c is not None]
-                        for x in x_child:
-                            if x is None:
-                                continue
-                            if x.tag.endswith("instrText"):
-                                if x.text is None:
-                                    continue
-                                for i in url_pattern.findall(x.text):
-                                    hyperlinks_url = str(i)
-                    except Exception:
-                        logger.exception("Failed to parse HYPERLINK xml")
-
         def parse_paragraph(paragraph):
-            paragraph_content = []
-            for run in paragraph.runs:
+            def append_image_link(image_id, has_drawing, target_buffer):
+                """Helper to append image link from image_map based on relationship type."""
+                rel = doc.part.rels[image_id]
+                if rel.is_external:
+                    if image_id in image_map and not has_drawing:
+                        target_buffer.append(image_map[image_id])
+                else:
+                    image_part = rel.target_part
+                    if image_part in image_map and not has_drawing:
+                        target_buffer.append(image_map[image_part])
+
+            def process_run(run, target_buffer):
+                # Helper to extract text and embedded images from a run element and append them to target_buffer
                 if hasattr(run.element, "tag") and isinstance(run.element.tag, str) and run.element.tag.endswith("r"):
                     # Process drawing type images
                     drawing_elements = run.element.findall(
@@ -243,10 +259,18 @@ class WordExtractor(BaseExtractor):
                                 "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed"
                             )
                             if embed_id:
-                                image_part = doc.part.related_parts.get(embed_id)
-                                if image_part in image_map:
-                                    has_drawing = True
-                                    paragraph_content.append(image_map[image_part])
+                                rel = doc.part.rels.get(embed_id)
+                                if rel is not None and rel.is_external:
+                                    # External image: use embed_id as key
+                                    if embed_id in image_map:
+                                        has_drawing = True
+                                        target_buffer.append(image_map[embed_id])
+                                else:
+                                    # Internal image: use target_part as key
+                                    image_part = doc.part.related_parts.get(embed_id)
+                                    if image_part in image_map:
+                                        has_drawing = True
+                                        target_buffer.append(image_map[image_part])
                     # Process pict type images
                     shape_elements = run.element.findall(
                         ".//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}pict"
@@ -261,9 +285,7 @@ class WordExtractor(BaseExtractor):
                                 "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id"
                             )
                             if image_id and image_id in doc.part.rels:
-                                image_part = doc.part.rels[image_id].target_part
-                                if image_part in image_map and not has_drawing:
-                                    paragraph_content.append(image_map[image_part])
+                                append_image_link(image_id, has_drawing, target_buffer)
                         # Find imagedata element in VML
                         image_data = shape.find(".//{urn:schemas-microsoft-com:vml}imagedata")
                         if image_data is not None:
@@ -271,11 +293,93 @@ class WordExtractor(BaseExtractor):
                                 "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id"
                             )
                             if image_id and image_id in doc.part.rels:
-                                image_part = doc.part.rels[image_id].target_part
-                                if image_part in image_map and not has_drawing:
-                                    paragraph_content.append(image_map[image_part])
+                                append_image_link(image_id, has_drawing, target_buffer)
                 if run.text.strip():
-                    paragraph_content.append(run.text.strip())
+                    target_buffer.append(run.text.strip())
+
+            def process_hyperlink(hyperlink_elem, target_buffer):
+                # Helper to extract text from a hyperlink element and append it to target_buffer
+                r_id = hyperlink_elem.get(qn("r:id"))
+
+                # Extract text from runs inside the hyperlink
+                link_text_parts = []
+                for run_elem in hyperlink_elem.findall(qn("w:r")):
+                    run = Run(run_elem, paragraph)
+                    # Hyperlink text may be split across multiple runs (e.g., with different formatting),
+                    # so collect all run texts first
+                    if run.text:
+                        link_text_parts.append(run.text)
+
+                link_text = "".join(link_text_parts).strip()
+
+                # Resolve URL
+                if r_id:
+                    try:
+                        rel = doc.part.rels.get(r_id)
+                        if rel and rel.is_external:
+                            link_text = f"[{link_text or rel.target_ref}]({rel.target_ref})"
+                    except Exception:
+                        logger.exception("Failed to resolve URL for hyperlink with r:id: %s", r_id)
+
+                if link_text:
+                    target_buffer.append(link_text)
+
+            paragraph_content = []
+            # State for legacy HYPERLINK fields
+            hyperlink_field_url = None
+            hyperlink_field_text_parts: list = []
+            is_collecting_field_text = False
+            # Iterate through paragraph elements in document order
+            for child in paragraph._element:
+                tag = child.tag
+                if tag == qn("w:r"):
+                    # Regular run
+                    run = Run(child, paragraph)
+
+                    # Check for fldChar (begin/end/separate) and instrText for legacy hyperlinks
+                    fld_chars = child.findall(qn("w:fldChar"))
+                    instr_texts = child.findall(qn("w:instrText"))
+
+                    # Handle Fields
+                    if fld_chars or instr_texts:
+                        # Process instrText to find HYPERLINK "url"
+                        for instr in instr_texts:
+                            if instr.text and "HYPERLINK" in instr.text:
+                                # Quick regex to extract URL
+                                match = re.search(r'HYPERLINK\s+"([^"]+)"', instr.text, re.IGNORECASE)
+                                if match:
+                                    hyperlink_field_url = match.group(1)
+
+                        # Process fldChar
+                        for fld_char in fld_chars:
+                            fld_char_type = fld_char.get(qn("w:fldCharType"))
+                            if fld_char_type == "begin":
+                                # Start of a field: reset legacy link state
+                                hyperlink_field_url = None
+                                hyperlink_field_text_parts = []
+                                is_collecting_field_text = False
+                            elif fld_char_type == "separate":
+                                # Separator: if we found a URL, start collecting visible text
+                                if hyperlink_field_url:
+                                    is_collecting_field_text = True
+                            elif fld_char_type == "end":
+                                # End of field
+                                if is_collecting_field_text and hyperlink_field_url:
+                                    # Create markdown link and append to main content
+                                    display_text = "".join(hyperlink_field_text_parts).strip()
+                                    if display_text:
+                                        link_md = f"[{display_text}]({hyperlink_field_url})"
+                                        paragraph_content.append(link_md)
+                                # Reset state
+                                hyperlink_field_url = None
+                                hyperlink_field_text_parts = []
+                                is_collecting_field_text = False
+
+                    # Decide where to append content
+                    target_buffer = hyperlink_field_text_parts if is_collecting_field_text else paragraph_content
+                    process_run(run, target_buffer)
+                elif tag == qn("w:hyperlink"):
+                    process_hyperlink(child, paragraph_content)
             return "".join(paragraph_content) if paragraph_content else ""
 
         paragraphs = doc.paragraphs.copy()

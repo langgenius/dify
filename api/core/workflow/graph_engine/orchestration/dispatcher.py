@@ -44,6 +44,7 @@ class Dispatcher:
         event_queue: queue.Queue[GraphNodeEventBase],
         event_handler: "EventHandler",
         execution_coordinator: ExecutionCoordinator,
+        stop_event: threading.Event,
         event_emitter: EventManager | None = None,
     ) -> None:
         """
@@ -61,7 +62,7 @@ class Dispatcher:
         self._event_emitter = event_emitter
 
         self._thread: threading.Thread | None = None
-        self._stop_event = threading.Event()
+        self._stop_event = stop_event
         self._start_time: float | None = None
 
     def start(self) -> None:
@@ -69,16 +70,14 @@ class Dispatcher:
         if self._thread and self._thread.is_alive():
             return
 
-        self._stop_event.clear()
         self._start_time = time.time()
         self._thread = threading.Thread(target=self._dispatcher_loop, name="GraphDispatcher", daemon=True)
         self._thread.start()
 
     def stop(self) -> None:
         """Stop the dispatcher thread."""
-        self._stop_event.set()
         if self._thread and self._thread.is_alive():
-            self._thread.join(timeout=10.0)
+            self._thread.join(timeout=2.0)
 
     def _dispatcher_loop(self) -> None:
         """Main dispatcher loop."""

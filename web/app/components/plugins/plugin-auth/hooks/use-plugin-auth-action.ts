@@ -1,3 +1,4 @@
+import type { PluginPayload } from '../types'
 import {
   useCallback,
   useRef,
@@ -5,7 +6,6 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useToastContext } from '@/app/components/base/toast'
-import type { PluginPayload } from '../types'
 import {
   useDeletePluginCredentialHook,
   useSetPluginDefaultCredentialHook,
@@ -50,7 +50,7 @@ export const usePluginAuthAction = (
       await deletePluginCredential({ credential_id: pendingOperationCredentialId.current })
       notify({
         type: 'success',
-        message: t('common.api.actionSuccess'),
+        message: t('api.actionSuccess', { ns: 'common' }),
       })
       onUpdate?.()
       setDeleteCredentialId(null)
@@ -77,7 +77,7 @@ export const usePluginAuthAction = (
       await setPluginDefaultCredential(id)
       notify({
         type: 'success',
-        message: t('common.api.actionSuccess'),
+        message: t('api.actionSuccess', { ns: 'common' }),
       })
       onUpdate?.()
     }
@@ -97,7 +97,7 @@ export const usePluginAuthAction = (
       await updatePluginCredential(payload)
       notify({
         type: 'success',
-        message: t('common.api.actionSuccess'),
+        message: t('api.actionSuccess', { ns: 'common' }),
       })
       onUpdate?.()
     }

@@ -21,3 +21,4 @@ class RetrievalSourceMetadata(BaseModel):
     page: int | None = None
     doc_metadata: dict[str, Any] | None = None
     title: str | None = None
+    files: list[dict[str, Any]] | None = None

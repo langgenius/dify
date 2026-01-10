@@ -142,6 +142,9 @@ export type IWorkspace = {
 export type ICurrentWorkspace = Omit<IWorkspace, 'current'> & {
   role: 'owner' | 'admin' | 'editor' | 'dataset_operator' | 'normal'
   providers: Provider[]
+  trial_credits: number
+  trial_credits_used: number
+  next_credit_reset_date: number
   trial_end_reason?: string
   custom_config?: {
     remove_webapp_brand?: boolean
@@ -232,6 +235,9 @@ export type PluginProvider = {
 export type FileUploadConfigResponse = {
   batch_count_limit: number
   image_file_size_limit?: number | string // default is 10MB
+  image_file_batch_limit: number // default is 10, for dataset attachment upload only
+  single_chunk_attachment_limit: number // default is 10, for dataset attachment upload only
+  attachment_image_file_size_limit: number // default is 2MB, for dataset attachment upload only
   file_size_limit: number // default is 15MB
   audio_file_size_limit?: number // default is 50MB
   video_file_size_limit?: number // default is 100MB
@@ -265,7 +271,7 @@ export type CodeBasedExtensionForm = {
   label: I18nText
   variable: string
   required: boolean
-  options: { label: I18nText; value: string }[]
+  options: { label: I18nText, value: string }[]
   default: string
   placeholder: string
   max_length?: number

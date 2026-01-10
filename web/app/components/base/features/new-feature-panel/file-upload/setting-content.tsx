@@ -1,14 +1,15 @@
-import React, { useCallback, useMemo, useState } from 'react'
-import { produce } from 'immer'
-import { useTranslation } from 'react-i18next'
-import { RiCloseLine } from '@remixicon/react'
-import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/file-upload-setting'
-import Button from '@/app/components/base/button'
-import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import type { UploadFileSetting } from '@/app/components/workflow/types'
-import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { RiCloseLine } from '@remixicon/react'
+import { produce } from 'immer'
+import * as React from 'react'
+import { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
+import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/file-upload-setting'
+import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 
 type SettingContentProps = {
   imageUpload?: boolean
@@ -56,9 +57,9 @@ const SettingContent = ({
 
   return (
     <>
-      <div className='mb-4 flex items-center justify-between'>
-        <div className='system-xl-semibold text-text-primary'>{!imageUpload ? t('appDebug.feature.fileUpload.modalTitle') : t('appDebug.feature.imageUpload.modalTitle')}</div>
-        <div className='cursor-pointer p-1' onClick={onClose}><RiCloseLine className='h-4 w-4 text-text-tertiary'/></div>
+      <div className="mb-4 flex items-center justify-between">
+        <div className="system-xl-semibold text-text-primary">{!imageUpload ? t('feature.fileUpload.modalTitle', { ns: 'appDebug' }) : t('feature.imageUpload.modalTitle', { ns: 'appDebug' })}</div>
+        <div className="cursor-pointer p-1" onClick={onClose}><RiCloseLine className="h-4 w-4 text-text-tertiary" /></div>
       </div>
       <FileUploadSetting
         isMultiple
@@ -67,19 +68,19 @@ const SettingContent = ({
         payload={tempPayload}
         onChange={(p: UploadFileSetting) => setTempPayload(p)}
       />
-      <div className='mt-4 flex items-center justify-end'>
+      <div className="mt-4 flex items-center justify-end">
         <Button
           onClick={onClose}
-          className='mr-2'
+          className="mr-2"
         >
-          {t('common.operation.cancel')}
+          {t('operation.cancel', { ns: 'common' })}
         </Button>
         <Button
-          variant='primary'
+          variant="primary"
           onClick={handleChange}
           disabled={tempPayload.allowed_file_types.length === 0}
         >
-          {t('common.operation.save')}
+          {t('operation.save', { ns: 'common' })}
         </Button>
       </div>
     </>
