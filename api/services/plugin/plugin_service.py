@@ -219,7 +219,7 @@ class PluginService:
     @staticmethod
     def _upload_pkgs_from_github_release_assets(
         *, tenant_id: str, repo: str, release: "PluginService.GithubRelease"
-    ) -> list[PluginDecodeResponse]:
+    ) -> tuple[list[PluginDecodeResponse], list[str]]:
         """
         Download and upload all .difypkg assets from a supported GitHub release.
         """
@@ -227,17 +227,17 @@ class PluginService:
 
         manager = PluginInstaller()
         decoded_list: list[PluginDecodeResponse] = []
+        failed_assets: list[str] = []
+        difypkg_assets = [a for a in release.assets if a.name.endswith(".difypkg")]
         logger.info(
-            "Uploading GitHub release .difypkg assets. tenant_id=%s repo=%s tag=%s verify_signature=%s",
+            "Uploading GitHub release .difypkg assets. tenant_id=%s repo=%s tag=%s verify_signature=%s assets=%s",
             tenant_id,
             repo,
             release.tag_name,
             verify_signature,
+            len(difypkg_assets),
         )
-        for asset in release.assets:
-            if not asset.name.endswith(".difypkg"):
-                continue
-
+        for asset in difypkg_assets:
             logger.info(
                 "Downloading GitHub release asset. tenant_id=%s repo=%s tag=%s asset=%s",
                 tenant_id,
@@ -245,31 +245,43 @@ class PluginService:
                 release.tag_name,
                 asset.name,
             )
-            pkg = download_with_size_limit(asset.browser_download_url, dify_config.PLUGIN_MAX_PACKAGE_SIZE)
-            response = PluginService._upload_pkg_bytes_and_check(
-                manager=manager,
-                tenant_id=tenant_id,
-                pkg=pkg,
-                verify_signature=verify_signature,
-            )
-            decoded_list.append(response)
-            logger.info(
-                "Uploaded GitHub release asset. tenant_id=%s repo=%s tag=%s asset=%s identifier=%s",
-                tenant_id,
-                repo,
-                release.tag_name,
-                asset.name,
-                response.unique_identifier,
-            )
+            try:
+                pkg = download_with_size_limit(asset.browser_download_url, dify_config.PLUGIN_MAX_PACKAGE_SIZE)
+                response = PluginService._upload_pkg_bytes_and_check(
+                    manager=manager,
+                    tenant_id=tenant_id,
+                    pkg=pkg,
+                    verify_signature=verify_signature,
+                )
+                decoded_list.append(response)
+                logger.info(
+                    "Uploaded GitHub release asset. tenant_id=%s repo=%s tag=%s asset=%s identifier=%s",
+                    tenant_id,
+                    repo,
+                    release.tag_name,
+                    asset.name,
+                    response.unique_identifier,
+                )
+            except Exception:
+                failed_assets.append(asset.name)
+                logger.exception(
+                    "Failed to upload GitHub release asset, skip. tenant_id=%s repo=%s tag=%s asset=%s url=%s",
+                    tenant_id,
+                    repo,
+                    release.tag_name,
+                    asset.name,
+                    asset.browser_download_url,
+                )
 
         logger.info(
-            "Uploaded GitHub release assets done. tenant_id=%s repo=%s tag=%s plugins=%s",
+            "Uploaded GitHub release assets done. tenant_id=%s repo=%s tag=%s plugins=%s failed=%s",
             tenant_id,
             repo,
             release.tag_name,
             len(decoded_list),
+            len(failed_assets),
         )
-        return decoded_list
+        return decoded_list, failed_assets
 
     @staticmethod
     def should_install_decoded_plugin(*, installed: Sequence[PluginEntity], decoded: PluginDecodeResponse) -> bool:
@@ -345,7 +357,7 @@ class PluginService:
             logger.exception("Failed to list installed plugins for sync. tenant_id=%s repo=%s", tenant_id, repo)
             installed = []
 
-        decoded_list = PluginService._upload_pkgs_from_github_release_assets(
+        decoded_list, failed_assets = PluginService._upload_pkgs_from_github_release_assets(
             tenant_id=tenant_id,
             repo=repo,
             release=release,
@@ -365,6 +377,16 @@ class PluginService:
             if PluginService.should_install_decoded_plugin(installed=installed, decoded=d)
         ]
         if not to_install:
+            if failed_assets:
+                logger.warning(
+                    "GitHub latest release sync: nothing to install, but some assets failed to upload; will retry. "
+                    "tenant_id=%s repo=%s tag=%s failed=%s",
+                    tenant_id,
+                    repo,
+                    release.tag_name,
+                    failed_assets,
+                )
+                return 0
             logger.info(
                 "GitHub latest release sync: nothing to install. tenant_id=%s repo=%s tag=%s",
                 tenant_id,
@@ -381,9 +403,44 @@ class PluginService:
             release.tag_name,
             len(to_install),
         )
-        PluginService.install_from_local_pkg(tenant_id, to_install)
+        installed_count = 0
+        failed_installs: list[str] = []
+        for unique_identifier in to_install:
+            try:
+                PluginService.install_from_local_pkg(tenant_id, [unique_identifier])
+                installed_count += 1
+                logger.info(
+                    "GitHub latest release sync: installed. tenant_id=%s repo=%s tag=%s identifier=%s",
+                    tenant_id,
+                    repo,
+                    release.tag_name,
+                    unique_identifier,
+                )
+            except Exception:
+                failed_installs.append(unique_identifier)
+                logger.exception(
+                    "GitHub latest release sync: install failed, skip. tenant_id=%s repo=%s tag=%s identifier=%s",
+                    tenant_id,
+                    repo,
+                    release.tag_name,
+                    unique_identifier,
+                )
+
+        if failed_assets or failed_installs:
+            logger.warning(
+                "GitHub latest release sync: completed with failures; will retry. tenant_id=%s repo=%s tag=%s "
+                "installed=%s failed_assets=%s failed_installs=%s",
+                tenant_id,
+                repo,
+                release.tag_name,
+                installed_count,
+                failed_assets,
+                failed_installs,
+            )
+            return installed_count
+
         redis_client.setex(tag_key, sync_ttl_s, release.tag_name)
-        return len(to_install)
+        return installed_count
 
     @staticmethod
     def _check_marketplace_only_permission():

@@ -685,6 +685,7 @@ class TestTenantService:
             patch(
                 "services.plugin.plugin_bootstrap_service.PluginBootstrapService.install_default_plugins"
             ) as mock_install_default_plugins,
+            patch("services.credit_pool_service.CreditPoolService.create_default_pool") as mock_create_default_pool,
         ):
             tenant_instance = MagicMock()
             tenant_instance.id = "tenant-123"
@@ -697,6 +698,7 @@ class TestTenantService:
             TenantService.create_tenant(name="Test Workspace")
 
             mock_install_default_plugins.assert_called_once_with("tenant-123")
+            mock_create_default_pool.assert_called_once_with("tenant-123")
 
     # ==================== Member Management Tests ====================
 

@@ -16,6 +16,7 @@ identity:
   tags:
     - image
     - videos
+    - productivity
 
 credentials_for_provider:
   acedata_bearer_token:

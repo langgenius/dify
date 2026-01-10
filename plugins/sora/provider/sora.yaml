@@ -15,6 +15,7 @@ identity:
   icon_dark: "icon.jpg"
   tags:
     - videos
+    - productivity
 
 credentials_for_provider:
   acedata_bearer_token:
