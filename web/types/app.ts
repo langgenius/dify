@@ -446,6 +446,11 @@ export type VisionFile = {
   url: string
   upload_file_id: string
   belongs_to?: string
+  mime_type?: string
+  filename?: string
+  size?: number
+  related_id?: string
+  extension?: string
 }
 
 export type RetrievalConfig = {
