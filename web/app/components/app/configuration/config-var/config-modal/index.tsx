@@ -165,21 +165,21 @@ const ConfigModal: FC<IConfigModalProps> = ({
     },
     ...(supportFile
       ? [
-        {
-          name: t('variableConfig.single-file', { ns: 'appDebug' }),
-          value: InputVarType.singleFile,
-        },
-        {
-          name: t('variableConfig.multi-files', { ns: 'appDebug' }),
-          value: InputVarType.multiFiles,
-        },
-      ]
+          {
+            name: t('variableConfig.single-file', { ns: 'appDebug' }),
+            value: InputVarType.singleFile,
+          },
+          {
+            name: t('variableConfig.multi-files', { ns: 'appDebug' }),
+            value: InputVarType.multiFiles,
+          },
+        ]
       : []),
     ...((!isBasicApp)
       ? [{
-        name: t('variableConfig.json', { ns: 'appDebug' }),
-        value: InputVarType.jsonObject,
-      }]
+          name: t('variableConfig.json', { ns: 'appDebug' }),
+          value: InputVarType.jsonObject,
+        }]
       : []),
   ]
 
