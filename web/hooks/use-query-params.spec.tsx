@@ -435,6 +435,7 @@ describe('clearQueryParams', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals()
+    mockIsServer.value = false
   })
 
   it('should remove a single key when provided one key', () => {
@@ -481,6 +482,5 @@ describe('clearQueryParams', () => {
     // Assert
     expect(replaceSpy).not.toHaveBeenCalled()
     replaceSpy.mockRestore()
-    mockIsServer.value = false
   })
 })
