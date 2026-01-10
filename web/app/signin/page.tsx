@@ -1,13 +1,12 @@
 'use client'
-import { useSearchParams } from 'next/navigation'
+import { parseAsString, useQueryState } from 'nuqs'
 import { useEffect } from 'react'
 import usePSInfo from '../components/billing/partner-stack/use-ps-info'
 import NormalForm from './normal-form'
 import OneMoreStep from './one-more-step'
 
 const SignIn = () => {
-  const searchParams = useSearchParams()
-  const step = searchParams.get('step')
+  const [step] = useQueryState('step', parseAsString)
   const { saveOrUpdate } = usePSInfo()
 
   useEffect(() => {

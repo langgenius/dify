@@ -1,12 +1,13 @@
 import { useBoolean } from 'ahooks'
 import Cookies from 'js-cookie'
-import { useSearchParams } from 'next/navigation'
+import { parseAsString, useQueryState } from 'nuqs'
 import { useCallback } from 'react'
 import { PARTNER_STACK_CONFIG } from '@/config'
 import { useBindPartnerStackInfo } from '@/service/use-billing'
 
 const usePSInfo = () => {
-  const searchParams = useSearchParams()
+  const [partnerKey] = useQueryState('ps_partner_key', parseAsString)
+  const [clickId] = useQueryState('ps_xid', parseAsString)
   const psInfoInCookie = (() => {
     try {
       return JSON.parse(Cookies.get(PARTNER_STACK_CONFIG.cookieName) || '{}')
@@ -16,8 +17,8 @@ const usePSInfo = () => {
       return {}
     }
   })()
-  const psPartnerKey = searchParams.get('ps_partner_key') || psInfoInCookie?.partnerKey
-  const psClickId = searchParams.get('ps_xid') || psInfoInCookie?.clickId
+  const psPartnerKey = partnerKey || psInfoInCookie?.partnerKey
+  const psClickId = clickId || psInfoInCookie?.clickId
   const isPSChanged = psInfoInCookie?.partnerKey !== psPartnerKey || psInfoInCookie?.clickId !== psClickId
   const [hasBind, {
     setTrue: setBind,
