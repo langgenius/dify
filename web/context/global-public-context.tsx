@@ -26,9 +26,10 @@ export const useGlobalPublicStore = create<GlobalPublicStore>(set => ({
 const GlobalPublicStoreProvider: FC<PropsWithChildren> = ({
   children,
 }) => {
-  // Fetch systemFeatures and setupStatus in parallel to reduce waterfall
-  // setupStatus is cached in localStorage for AppInitializer to read
-  const [featuresQuery, _setupStatusQuery] = useQueries({
+  // Fetch systemFeatures and setupStatus in parallel to reduce waterfall.
+  // setupStatus is prefetched here and cached in localStorage for AppInitializer.
+  // We only destructure featuresQuery since setupStatus result is not used directly.
+  const [featuresQuery] = useQueries({
     queries: [
       {
         queryKey: ['systemFeatures'],
