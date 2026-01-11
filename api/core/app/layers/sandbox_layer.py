@@ -1,7 +1,9 @@
 import logging
 from collections.abc import Mapping
+from io import BytesIO
 from typing import Any
 
+from core.sandbox import DIFY_CLI_PATH, DifyCliLocator
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 from core.virtual_environment.sandbox_manager import SandboxManager
 from core.workflow.graph_engine.layers.base import GraphEngineLayer
@@ -62,9 +64,28 @@ class SandboxLayer(GraphEngineLayer):
                 sandbox.metadata.id,
                 sandbox.metadata.arch,
             )
+            self._upload_cli(sandbox)
         except Exception as e:
             logger.exception("Failed to initialize sandbox")
             raise SandboxInitializationError(f"Failed to initialize sandbox: {e}") from e
+
+    def _upload_cli(self, sandbox: VirtualEnvironment) -> None:
+        locator = DifyCliLocator()
+        binary = locator.resolve(sandbox.metadata.os, sandbox.metadata.arch)
+
+        sandbox.upload_file(DIFY_CLI_PATH, BytesIO(binary.path.read_bytes()))
+
+        connection_handle = sandbox.establish_connection()
+        try:
+            future = sandbox.run_command(connection_handle, ["chmod", "+x", DIFY_CLI_PATH])
+            result = future.result(timeout=10)
+            if result.exit_code not in (0, None):
+                stderr = result.stderr.decode("utf-8", errors="replace") if result.stderr else ""
+                raise RuntimeError(f"Failed to mark dify CLI as executable: {stderr}")
+
+            logger.info("Dify CLI uploaded to sandbox, path=%s", DIFY_CLI_PATH)
+        finally:
+            sandbox.release_connection(connection_handle)
 
     def on_event(self, event: GraphEngineEvent) -> None:
         pass

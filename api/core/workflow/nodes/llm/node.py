@@ -13,7 +13,6 @@ from sqlalchemy import select
 
 from core.agent.entities import AgentLog, AgentResult, AgentToolEntity, ExecutionContext
 from core.agent.patterns import StrategyFactory
-from core.agent.sandbox_session import SandboxSession
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.file import File, FileTransferMethod, FileType, file_manager
 from core.helper.code_executor import CodeExecutor, CodeLanguage
@@ -51,6 +50,7 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
+from core.sandbox import SandboxSession
 from core.tools.__base.tool import Tool
 from core.tools.signature import sign_upload_file
 from core.tools.tool_manager import ToolManager
