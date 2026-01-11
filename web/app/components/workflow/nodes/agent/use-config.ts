@@ -163,9 +163,11 @@ const useConfig = (id: string, payload: AgentNodeType) => {
       VarKindType.array,
       VarKindType.number,
       VarKindType.string,
+      VarKindType.boolean,
       VarKindType.secret,
       VarKindType.arrayString,
       VarKindType.arrayNumber,
+      VarKindType.arrayBoolean,
       VarKindType.file,
       VarKindType.arrayFile,
     ].includes(varPayload.type)
