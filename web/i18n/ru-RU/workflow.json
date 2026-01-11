@@ -368,6 +368,7 @@
   "nodes.agent.toolbox": "ящик для инструментов",
   "nodes.agent.tools": "Инструменты",
   "nodes.agent.unsupportedStrategy": "Неподдерживаемая стратегия",
+  "nodes.agent.vision": "зрение",
   "nodes.answer.answer": "Ответ",
   "nodes.answer.outputVars": "Выходные переменные",
   "nodes.assigner.append": "Добавить",

@@ -368,6 +368,7 @@
   "nodes.agent.toolbox": "hộp công cụ",
   "nodes.agent.tools": "Công cụ",
   "nodes.agent.unsupportedStrategy": "Chiến lược không được hỗ trợ",
+  "nodes.agent.vision": "tầm nhìn",
   "nodes.answer.answer": "Trả lời",
   "nodes.answer.outputVars": "Biến đầu ra",
   "nodes.assigner.append": "Thêm vào",

@@ -368,6 +368,7 @@
   "nodes.agent.toolbox": "caja de herramientas",
   "nodes.agent.tools": "Herramientas",
   "nodes.agent.unsupportedStrategy": "Estrategia no respaldada",
+  "nodes.agent.vision": "visión",
   "nodes.answer.answer": "Respuesta",
   "nodes.answer.outputVars": "Variables de salida",
   "nodes.assigner.append": "Anexar",

@@ -368,6 +368,7 @@
   "nodes.agent.toolbox": "صندوق الأدوات",
   "nodes.agent.tools": "الأدوات",
   "nodes.agent.unsupportedStrategy": "استراتيجية غير مدعومة",
+  "nodes.agent.vision": "الرؤية",
   "nodes.answer.answer": "إجابة",
   "nodes.answer.outputVars": "متغيرات الإخراج",
   "nodes.assigner.append": "إلحاق",

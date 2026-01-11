@@ -368,6 +368,7 @@
   "nodes.agent.toolbox": "Toolbox",
   "nodes.agent.tools": "Perkakas",
   "nodes.agent.unsupportedStrategy": "Strategi yang tidak didukung",
+  "nodes.agent.vision": "penglihatan",
   "nodes.answer.answer": "Menjawab",
   "nodes.answer.outputVars": "Variabel Keluaran",
   "nodes.assigner.append": "Menambahkan",

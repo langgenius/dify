@@ -368,6 +368,7 @@
   "nodes.agent.toolbox": "delovna orodja",
   "nodes.agent.tools": "Orodja",
   "nodes.agent.unsupportedStrategy": "Nepodprta strategija",
+  "nodes.agent.vision": "vizija",
   "nodes.answer.answer": "Odgovor",
   "nodes.answer.outputVars": "Izhodne spremenljivke",
   "nodes.assigner.append": "Dodaj",

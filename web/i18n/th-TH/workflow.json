@@ -368,6 +368,7 @@
   "nodes.agent.toolbox": "เครื่อง มือ",
   "nodes.agent.tools": "เครื่อง มือ",
   "nodes.agent.unsupportedStrategy": "กลยุทธ์ที่ไม่รองรับ",
+  "nodes.agent.vision": "การมองเห็น",
   "nodes.answer.answer": "ตอบ",
   "nodes.answer.outputVars": "ตัวแปรเอาต์พุต",
   "nodes.assigner.append": "ผนวก",

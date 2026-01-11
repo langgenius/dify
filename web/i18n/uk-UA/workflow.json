@@ -368,6 +368,7 @@
   "nodes.agent.toolbox": "ящик для інструментів",
   "nodes.agent.tools": "Інструмент",
   "nodes.agent.unsupportedStrategy": "Стратегія без підтримки",
+  "nodes.agent.vision": "бачення",
   "nodes.answer.answer": "Відповідь",
   "nodes.answer.outputVars": "Змінні виходу",
   "nodes.assigner.append": "Додати",

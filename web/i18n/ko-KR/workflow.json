@@ -368,6 +368,7 @@
   "nodes.agent.toolbox": "도구",
   "nodes.agent.tools": "도구",
   "nodes.agent.unsupportedStrategy": "지원되지 않는 전략",
+  "nodes.agent.vision": "비전",
   "nodes.answer.answer": "답변",
   "nodes.answer.outputVars": "출력 변수",
   "nodes.assigner.append": "추가",

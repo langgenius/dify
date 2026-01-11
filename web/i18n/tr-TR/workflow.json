@@ -368,6 +368,7 @@
   "nodes.agent.toolbox": "Araç",
   "nodes.agent.tools": "Araçları",
   "nodes.agent.unsupportedStrategy": "Desteklenmeyen strateji",
+  "nodes.agent.vision": "görsel",
   "nodes.answer.answer": "Yanıt",
   "nodes.answer.outputVars": "Çıktı Değişkenleri",
   "nodes.assigner.append": "Ekle",

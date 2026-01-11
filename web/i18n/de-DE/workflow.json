@@ -368,6 +368,7 @@
   "nodes.agent.toolbox": "Werkzeugkasten",
   "nodes.agent.tools": "Werkzeuge",
   "nodes.agent.unsupportedStrategy": "Nicht unterstützte Strategie",
+  "nodes.agent.vision": "Vision",
   "nodes.answer.answer": "Antwort",
   "nodes.answer.outputVars": "Ausgabevariablen",
   "nodes.assigner.append": "Anhängen",
