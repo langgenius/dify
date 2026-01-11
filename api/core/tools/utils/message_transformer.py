@@ -11,6 +11,7 @@ import pytz
 from core.file import File, FileTransferMethod, FileType
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool_file_manager import ToolFileManager
+from factories.file_factory import build_from_mapping
 from libs.login import current_user
 from models import Account
 
@@ -157,7 +158,10 @@ class ToolFileMessageTransformer:
                             )
                     else:
                         yield message
-
+                elif isinstance(file, dict) and file.get("transfer_method") == FileTransferMethod.REMOTE_URL:
+                    meta["file"] = build_from_mapping(mapping=file, tenant_id=tenant_id)
+                    message.meta = meta
+                    yield message
             elif message.type == ToolInvokeMessage.MessageType.JSON:
                 if isinstance(message.message, ToolInvokeMessage.JsonMessage):
                     message.message.json_object = safe_json_value(message.message.json_object)
