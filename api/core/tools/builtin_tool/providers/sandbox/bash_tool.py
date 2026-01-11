@@ -41,7 +41,6 @@ class SandboxBashTool(Tool):
             description=ToolDescription(
                 human=I18nObject(
                     en_US="Execute bash commands in the sandbox environment",
-                    zh_Hans="在沙盒环境中执行 bash 命令",
                 ),
                 llm="Execute bash commands in the sandbox environment. "
                 "Use this tool to run shell commands, scripts, or interact with the system. "
