@@ -91,7 +91,7 @@ export enum FeatureEnum {
   moderation = 'moderation',
   file = 'file',
   annotationReply = 'annotationReply',
-  runtime = 'runtime',
+  sandbox = 'sandbox',
 }
 
 export type Features = {
@@ -104,7 +104,7 @@ export type Features = {
   [FeatureEnum.moderation]?: SensitiveWordAvoidance
   [FeatureEnum.file]?: FileUpload
   [FeatureEnum.annotationReply]?: AnnotationReplyConfig
-  [FeatureEnum.runtime]?: Runtime
+  [FeatureEnum.sandbox]?: Runtime
 }
 
 export type OnFeaturesChange = (features?: Features) => void

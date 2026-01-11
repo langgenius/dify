@@ -99,7 +99,7 @@ export const useWorkflowInit = () => {
                 },
                 features: {
                   retriever_resource: { enabled: true },
-                  runtime: { enabled: enableSandboxRuntime },
+                  sandbox: { enabled: enableSandboxRuntime },
                 },
                 environment_variables: [],
                 conversation_variables: [],

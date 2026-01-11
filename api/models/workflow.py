@@ -37,12 +37,12 @@ from extensions.ext_storage import Storage
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
+from models.workflow_features import WorkflowFeature, WorkflowFeatures
 
 from ._workflow_exc import NodeNotFoundError, WorkflowDataError
 
 if TYPE_CHECKING:
     from .model import AppMode, UploadFile
-
 
 from constants import DEFAULT_FILE_NUMBER_LIMITS, HIDDEN_VALUE
 from core.helper import encrypter
@@ -344,6 +344,9 @@ class Workflow(Base):  # bug
     @property
     def features_dict(self) -> dict[str, Any]:
         return json.loads(self.features) if self.features else {}
+
+    def get_feature(self, key: WorkflowFeatures) -> WorkflowFeature:
+        return WorkflowFeature.from_dict(self.features_dict.get(key.value))
 
     def walk_nodes(
         self, specific_node_type: NodeType | None = None

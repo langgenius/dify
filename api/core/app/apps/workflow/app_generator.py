@@ -38,6 +38,7 @@ from factories import file_factory
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, App, EndUser, Workflow, WorkflowNodeExecutionTriggeredFrom
 from models.enums import WorkflowRunTriggeredFrom
+from models.workflow_features import WorkflowFeatures
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
 
 SKIP_PREPARE_USER_INPUTS_KEY = "_skip_prepare_user_inputs"
@@ -488,9 +489,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 if workflow is None:
                     raise ValueError("Workflow not found")
 
-                # FIXME:(sandbox) Consolidate runtime config checking into a unified location.
-                runtime = workflow.features_dict.get("runtime")
-                if isinstance(runtime, dict) and runtime.get("enabled"):
+                if workflow.get_feature(WorkflowFeatures.SANDBOX).enabled:
                     graph_engine_layers = (
                         *graph_engine_layers,
                         SandboxLayer(tenant_id=application_generate_entity.app_config.tenant_id),

@@ -41,6 +41,7 @@ from factories import file_factory
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, App, Conversation, EndUser, Message, Workflow, WorkflowNodeExecutionTriggeredFrom
 from models.enums import WorkflowRunTriggeredFrom
+from models.workflow_features import WorkflowFeatures
 from services.conversation_service import ConversationService
 from services.workflow_draft_variable_service import (
     DraftVarLoader,
@@ -513,10 +514,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 if workflow is None:
                     raise ValueError("Workflow not found")
 
-                # FIXME:(sandbox) Consolidate runtime config checking into a unified location.
-                runtime = workflow.features_dict.get("runtime")
                 graph_engine_layers: tuple = ()
-                if isinstance(runtime, dict) and runtime.get("enabled"):
+                if workflow.get_feature(WorkflowFeatures.SANDBOX).enabled:
                     graph_engine_layers = (SandboxLayer(tenant_id=application_generate_entity.app_config.tenant_id),)
 
                 # Determine system_user_id based on invocation source

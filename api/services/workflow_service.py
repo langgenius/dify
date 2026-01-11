@@ -38,6 +38,7 @@ from models import Account
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
+from models.workflow_features import WorkflowFeatures
 from repositories.factory import DifyAPIRepositoryFactory
 from services.billing_service import BillingService
 from services.enterprise.plugin_manager_service import PluginCredentialType
@@ -697,11 +698,9 @@ class WorkflowService:
         else:
             enclosing_node_id = None
 
-        # TODO: Consolidate runtime config checking into a unified location.
-        runtime = draft_workflow.features_dict.get("runtime")
         sandbox = None
         single_step_execution_id: str | None = None
-        if isinstance(runtime, dict) and runtime.get("enabled"):
+        if draft_workflow.get_feature(WorkflowFeatures.SANDBOX).enabled:
             sandbox = SandboxProviderService.create_sandbox(tenant_id=draft_workflow.tenant_id)
             single_step_execution_id = f"single-step-{uuid.uuid4()}"
             from core.virtual_environment.sandbox_manager import SandboxManager

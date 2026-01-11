@@ -54,7 +54,7 @@ export const createFeaturesStore = (initProps?: Partial<FeaturesState>) => {
       annotationReply: {
         enabled: false,
       },
-      runtime: {
+      sandbox: {
         enabled: false,
       },
     },
