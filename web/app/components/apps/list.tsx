@@ -125,7 +125,7 @@ const List = () => {
     name: searchKeywords,
     tag_ids: tagIDs,
     is_created_by_me: isCreatedByMe,
-    ...(activeTab !== 'all' ? { mode: activeTab as AppModeEnum } : {}),
+    ...(activeTab !== 'all' && validTabs.has(activeTab) ? { mode: activeTab as AppModeEnum } : {}),
   }
 
   const {
