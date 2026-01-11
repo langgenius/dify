@@ -268,7 +268,6 @@ export const useModelProviders = () => {
     queryKey: commonQueryKeys.modelProviders,
     queryFn: () => get<{ data: ModelProvider[] }>('/workspaces/current/model-providers'),
     staleTime: 0,
-    gcTime: 0,
   })
 }
 
