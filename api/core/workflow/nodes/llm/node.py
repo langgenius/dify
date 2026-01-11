@@ -61,6 +61,7 @@ from core.variables import (
     ObjectSegment,
     StringSegment,
 )
+from core.virtual_environment.sandbox_manager import SandboxManager
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.entities import GraphInitParams, ToolCall, ToolResult, ToolResultStatus
 from core.workflow.entities.tool_entities import ToolCallResult
@@ -261,18 +262,33 @@ class LLMNode(Node[LLMNodeData]):
             generation_data: LLMGenerationData | None = None
             structured_output: LLMStructuredOutput | None = None
 
-            # Check if tools are configured
             if self.tool_call_enabled:
-                # Use tool-enabled invocation (Agent V2 style)
-                generator = self._invoke_llm_with_tools(
-                    model_instance=model_instance,
-                    prompt_messages=prompt_messages,
-                    stop=stop,
-                    files=files,
-                    variable_pool=variable_pool,
-                    node_inputs=node_inputs,
-                    process_data=process_data,
+                workflow_execution_id = variable_pool.system_variables.workflow_execution_id
+                is_sandbox_runtime = (
+                    workflow_execution_id is not None
+                    and SandboxManager.is_sandbox_runtime(workflow_execution_id)
                 )
+
+                if is_sandbox_runtime:
+                    generator = self._invoke_llm_with_sandbox(
+                        model_instance=model_instance,
+                        prompt_messages=prompt_messages,
+                        stop=stop,
+                        files=files,
+                        variable_pool=variable_pool,
+                        node_inputs=node_inputs,
+                        process_data=process_data,
+                    )
+                else:
+                    generator = self._invoke_llm_with_tools(
+                        model_instance=model_instance,
+                        prompt_messages=prompt_messages,
+                        stop=stop,
+                        files=files,
+                        variable_pool=variable_pool,
+                        node_inputs=node_inputs,
+                        process_data=process_data,
+                    )
             else:
                 # Use traditional LLM invocation
                 generator = LLMNode.invoke_llm(
@@ -1565,7 +1581,52 @@ class LLMNode(Node[LLMNodeData]):
             stream=True,
         )
 
-        # Process outputs and return generation result
+        result = yield from self._process_tool_outputs(outputs)
+        return result
+
+    def _invoke_llm_with_sandbox(
+        self,
+        model_instance: ModelInstance,
+        prompt_messages: Sequence[PromptMessage],
+        stop: Sequence[str] | None,
+        files: Sequence[File],
+        variable_pool: VariablePool,
+        node_inputs: dict[str, Any],
+        process_data: dict[str, Any],
+    ) -> Generator[NodeEventBase, None, LLMGenerationData]:
+        from core.agent.entities import AgentEntity
+
+        workflow_execution_id = variable_pool.system_variables.workflow_execution_id
+        if not workflow_execution_id:
+            raise LLMNodeError("workflow_execution_id is required for sandbox runtime mode")
+
+        configured_tools = self._prepare_tool_instances(variable_pool)
+
+        bash_tool = SandboxManager.get_bash_tool(
+            workflow_execution_id=workflow_execution_id,
+            tenant_id=self.tenant_id,
+            configured_tools=configured_tools,
+        )
+
+        prompt_files = self._extract_prompt_files(variable_pool)
+
+        strategy = StrategyFactory.create_strategy(
+            model_features=[],
+            model_instance=model_instance,
+            tools=[bash_tool],
+            files=prompt_files,
+            max_iterations=self._node_data.max_iterations or 10,
+            context=ExecutionContext(user_id=self.user_id, app_id=self.app_id, tenant_id=self.tenant_id),
+            agent_strategy=AgentEntity.Strategy.CHAIN_OF_THOUGHT,
+        )
+
+        outputs = strategy.run(
+            prompt_messages=list(prompt_messages),
+            model_parameters=self._node_data.model.completion_params,
+            stop=list(stop or []),
+            stream=True,
+        )
+
         result = yield from self._process_tool_outputs(outputs)
         return result
 
