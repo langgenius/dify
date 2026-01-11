@@ -3,6 +3,7 @@
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
+import pytest
 from sqlalchemy.orm import Session
 
 from core.app.apps.advanced_chat.app_runner import AdvancedChatAppRunner
@@ -12,6 +13,14 @@ from factories import variable_factory
 from models import ConversationVariable, Workflow
 
 
+@pytest.fixture
+def _mock_session_factory():
+    with patch("core.app.apps.advanced_chat.app_runner.session_factory") as mock_session_factory:
+        mock_session_factory.get_session_maker.return_value = MagicMock()
+        yield mock_session_factory
+
+
+@pytest.mark.usefixtures("_mock_session_factory")
 class TestAdvancedChatAppRunnerConversationVariables:
     """Test that AdvancedChatAppRunner correctly handles conversation variables."""
 
