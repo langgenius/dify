@@ -4,11 +4,18 @@ import subprocess
 from collections.abc import Mapping, Sequence
 from functools import cached_property
 from io import BytesIO
-from platform import machine
+from platform import machine, system
 from typing import Any
 from uuid import uuid4
 
-from core.virtual_environment.__base.entities import Arch, CommandStatus, ConnectionHandle, FileState, Metadata
+from core.virtual_environment.__base.entities import (
+    Arch,
+    CommandStatus,
+    ConnectionHandle,
+    FileState,
+    Metadata,
+    OperatingSystem,
+)
 from core.virtual_environment.__base.exec import ArchNotSupportedError
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 from core.virtual_environment.channel.pipe_transport import PipeReadCloser, PipeWriteCloser
@@ -81,6 +88,7 @@ class LocalVirtualEnvironment(VirtualEnvironment):
         return Metadata(
             id=id,
             arch=self._get_os_architecture(),
+            os=self._get_operating_system(),
         )
 
     def release_environment(self) -> None:
@@ -249,6 +257,16 @@ class LocalVirtualEnvironment(VirtualEnvironment):
                 return Arch.ARM64
             case _:
                 raise ArchNotSupportedError(f"Unsupported architecture: {arch}")
+
+    def _get_operating_system(self) -> OperatingSystem:
+        os_name = system().lower()
+        match os_name:
+            case "linux":
+                return OperatingSystem.LINUX
+            case "darwin":
+                return OperatingSystem.DARWIN
+            case _:
+                raise ArchNotSupportedError(f"Unsupported operating system: {os_name}")
 
     @cached_property
     def _base_working_path(self) -> str:

@@ -14,6 +14,15 @@ class Arch(StrEnum):
     AMD64 = "amd64"
 
 
+class OperatingSystem(StrEnum):
+    """
+    Operating system types for virtual environments.
+    """
+
+    LINUX = "linux"
+    DARWIN = "darwin"
+
+
 class Metadata(BaseModel):
     """
     Returned metadata about a virtual environment.
@@ -21,6 +30,7 @@ class Metadata(BaseModel):
 
     id: str = Field(description="The unique identifier of the virtual environment.")
     arch: Arch = Field(description="Which architecture was used to create the virtual environment.")
+    os: OperatingSystem = Field(description="The operating system of the virtual environment.")
     store: Mapping[str, Any] = Field(
         default_factory=dict, description="The store information of the virtual environment., Additional data."
     )

@@ -10,7 +10,14 @@ from uuid import uuid4
 
 from e2b_code_interpreter import Sandbox  # type: ignore[import-untyped]
 
-from core.virtual_environment.__base.entities import Arch, CommandStatus, ConnectionHandle, FileState, Metadata
+from core.virtual_environment.__base.entities import (
+    Arch,
+    CommandStatus,
+    ConnectionHandle,
+    FileState,
+    Metadata,
+    OperatingSystem,
+)
 from core.virtual_environment.__base.exec import (
     ArchNotSupportedError,
     NotSupportedOperationError,
@@ -116,11 +123,13 @@ class E2BEnvironment(VirtualEnvironment):
             envs=dict(environments),
         )
         info = sandbox.get_info(api_key=options.get(self.OptionsKey.API_KEY, ""))
-        output = sandbox.commands.run("uname -m").stdout.strip()
+        arch_output = sandbox.commands.run("uname -m").stdout.strip()
+        os_output = sandbox.commands.run("uname -s").stdout.strip()
 
         return Metadata(
             id=info.sandbox_id,
-            arch=self._convert_architecture(output),
+            arch=self._convert_architecture(arch_output),
+            os=self._convert_operating_system(os_output),
             store={
                 self.StoreKey.SANDBOX: sandbox,
             },
@@ -254,9 +263,6 @@ class E2BEnvironment(VirtualEnvironment):
         return self.options.get(self.OptionsKey.API_KEY, "")
 
     def _convert_architecture(self, arch_str: str) -> Arch:
-        """
-        Convert architecture string to standard format.
-        """
         arch_map = {
             "x86_64": Arch.AMD64,
             "aarch64": Arch.ARM64,
@@ -270,3 +276,13 @@ class E2BEnvironment(VirtualEnvironment):
             return arch_map[arch_str]
 
         raise ArchNotSupportedError(f"Unsupported architecture: {arch_str}")
+
+    def _convert_operating_system(self, os_str: str) -> OperatingSystem:
+        os_map = {
+            "Linux": OperatingSystem.LINUX,
+            "Darwin": OperatingSystem.DARWIN,
+        }
+        if os_str in os_map:
+            return os_map[os_str]
+
+        raise ArchNotSupportedError(f"Unsupported operating system: {os_str}")

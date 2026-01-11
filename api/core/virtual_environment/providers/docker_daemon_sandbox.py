@@ -15,7 +15,14 @@ import docker.errors
 from docker.models.containers import Container
 
 import docker
-from core.virtual_environment.__base.entities import Arch, CommandStatus, ConnectionHandle, FileState, Metadata
+from core.virtual_environment.__base.entities import (
+    Arch,
+    CommandStatus,
+    ConnectionHandle,
+    FileState,
+    Metadata,
+    OperatingSystem,
+)
 from core.virtual_environment.__base.exec import SandboxConfigValidationError, VirtualEnvironmentLaunchFailedError
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 from core.virtual_environment.channel.exec import TransportEOFError
@@ -288,6 +295,7 @@ class DockerDaemonEnvironment(VirtualEnvironment):
         return Metadata(
             id=container.id,
             arch=self._get_container_architecture(container),
+            os=OperatingSystem.LINUX,
         )
 
     @classmethod

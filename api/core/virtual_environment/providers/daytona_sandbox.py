@@ -29,7 +29,14 @@ class _CommandRecord(TypedDict):
     exit_code: int | None
 
 
-from core.virtual_environment.__base.entities import Arch, CommandStatus, ConnectionHandle, FileState, Metadata
+from core.virtual_environment.__base.entities import (
+    Arch,
+    CommandStatus,
+    ConnectionHandle,
+    FileState,
+    Metadata,
+    OperatingSystem,
+)
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 from core.virtual_environment.channel.queue_transport import QueueTransportReadCloser
 from core.virtual_environment.channel.transport import (
@@ -117,6 +124,7 @@ class DaytonaEnvironment(VirtualEnvironment):
         return Metadata(
             id=sandbox.id,
             arch=Arch.AMD64,
+            os=OperatingSystem.LINUX,
             store={
                 self.StoreKey.DAYTONA: daytona,
                 self.StoreKey.SANDBOX: sandbox,
