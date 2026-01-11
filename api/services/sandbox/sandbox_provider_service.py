@@ -23,7 +23,7 @@ from core.tools.utils.system_encryption import (
     decrypt_system_params,
 )
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
-from core.virtual_environment.factory import SandboxFactory, SandboxType
+from core.virtual_environment.factory import VMFactory, VMType
 from extensions.ext_database import db
 from models.sandbox import SandboxProvider, SandboxProviderSystemConfig
 from services.sandbox.encryption import create_sandbox_config_encrypter, masked_config
@@ -172,7 +172,7 @@ class SandboxProviderService:
         if model_class:
             model_class.model_validate(config)
 
-        SandboxFactory.validate(SandboxType(provider_type), config)
+        VMFactory.validate(VMType(provider_type), config)
 
     @classmethod
     def save_config(
@@ -334,9 +334,9 @@ class SandboxProviderService:
             if not config or not provider_type:
                 raise ValueError(f"No active sandbox provider for tenant {tenant_id} or system default")
 
-            return SandboxFactory.create(
+            return VMFactory.create(
                 tenant_id=tenant_id,
-                sandbox_type=SandboxType(provider_type),
+                vm_type=VMType(provider_type),
                 options=dict(config),
                 environments=environments or {},
             )

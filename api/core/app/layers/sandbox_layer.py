@@ -4,8 +4,8 @@ from io import BytesIO
 from typing import Any
 
 from core.sandbox import DIFY_CLI_PATH, DifyCliLocator
+from core.sandbox.manager import SandboxManager
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
-from core.virtual_environment.sandbox_manager import SandboxManager
 from core.workflow.graph_engine.layers.base import GraphEngineLayer
 from core.workflow.graph_events.base import GraphEngineEvent
 

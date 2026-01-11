@@ -14,6 +14,7 @@ from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfig
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.file import File
 from core.repositories import DifyCoreRepositoryFactory
+from core.sandbox.manager import SandboxManager
 from core.variables import Variable
 from core.variables.variables import VariableUnion
 from core.workflow.entities import WorkflowNodeExecution
@@ -703,7 +704,6 @@ class WorkflowService:
         if draft_workflow.get_feature(WorkflowFeatures.SANDBOX).enabled:
             sandbox = SandboxProviderService.create_sandbox(tenant_id=draft_workflow.tenant_id)
             single_step_execution_id = f"single-step-{uuid.uuid4()}"
-            from core.virtual_environment.sandbox_manager import SandboxManager
 
             SandboxManager.register(single_step_execution_id, sandbox)
             variable_pool.system_variables.workflow_execution_id = single_step_execution_id
@@ -727,8 +727,6 @@ class WorkflowService:
             )
         finally:
             if single_step_execution_id:
-                from core.virtual_environment.sandbox_manager import SandboxManager
-
                 sandbox = SandboxManager.unregister(single_step_execution_id)
                 if sandbox:
                     try:

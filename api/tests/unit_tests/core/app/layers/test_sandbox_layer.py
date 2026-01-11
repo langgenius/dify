@@ -3,9 +3,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from core.app.layers.sandbox_layer import SandboxInitializationError, SandboxLayer
+from core.sandbox.manager import SandboxManager
 from core.virtual_environment.__base.entities import Arch
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
-from core.virtual_environment.sandbox_manager import SandboxManager
 from core.workflow.graph_engine.layers.base import GraphEngineLayerNotInitializedError
 from core.workflow.graph_events.graph import (
     GraphRunFailedEvent,

@@ -3,17 +3,15 @@ from __future__ import annotations
 import json
 import logging
 from io import BytesIO
-from typing import TYPE_CHECKING
+from types import TracebackType
 
 from core.sandbox.constants import DIFY_CLI_CONFIG_PATH, DIFY_CLI_PATH
 from core.sandbox.dify_cli import DifyCliConfig
-
-if TYPE_CHECKING:
-    from types import TracebackType
-
-    from core.tools.__base.tool import Tool
-    from core.tools.builtin_tool.providers.sandbox.bash_tool import SandboxBashTool
-    from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
+from core.sandbox.manager import SandboxManager
+from core.session.inner_api import InnerApiSessionManager
+from core.tools.__base.tool import Tool
+from core.tools.builtin_tool.providers.sandbox.bash_tool import SandboxBashTool
+from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 
 logger = logging.getLogger(__name__)
 
@@ -37,10 +35,6 @@ class SandboxSession:
         self._session_id: str | None = None
 
     def __enter__(self) -> SandboxSession:
-        from core.session.inner_api import InnerApiSessionManager
-        from core.tools.builtin_tool.providers.sandbox.bash_tool import SandboxBashTool
-        from core.virtual_environment.sandbox_manager import SandboxManager
-
         sandbox = SandboxManager.get(self._workflow_execution_id)
         if sandbox is None:
             raise RuntimeError(f"Sandbox not found for workflow_execution_id={self._workflow_execution_id}")

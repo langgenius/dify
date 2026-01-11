@@ -5,11 +5,11 @@ from typing import Any
 
 import pytest
 
+from core.sandbox.manager import SandboxManager
 from core.virtual_environment.__base.entities import Arch, CommandStatus, ConnectionHandle, FileState, Metadata
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 from core.virtual_environment.channel.queue_transport import QueueTransportReadCloser
 from core.virtual_environment.channel.transport import NopTransportWriteCloser
-from core.virtual_environment.sandbox_manager import SandboxManager
 from core.workflow.entities import GraphInitParams
 from core.workflow.enums import WorkflowNodeExecutionStatus
 from core.workflow.nodes.command.node import CommandNode

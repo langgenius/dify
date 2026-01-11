@@ -51,6 +51,7 @@ from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptT
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.sandbox import SandboxSession
+from core.sandbox.manager import SandboxManager
 from core.tools.__base.tool import Tool
 from core.tools.signature import sign_upload_file
 from core.tools.tool_manager import ToolManager
@@ -62,7 +63,6 @@ from core.variables import (
     ObjectSegment,
     StringSegment,
 )
-from core.virtual_environment.sandbox_manager import SandboxManager
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.entities import GraphInitParams, ToolCall, ToolResult, ToolResultStatus
 from core.workflow.entities.tool_entities import ToolCallResult
@@ -1588,8 +1588,6 @@ class LLMNode(Node[LLMNodeData]):
         stop: Sequence[str] | None,
         variable_pool: VariablePool,
     ) -> Generator[NodeEventBase, None, LLMGenerationData]:
-        from core.agent.entities import AgentEntity
-
         workflow_execution_id = variable_pool.system_variables.workflow_execution_id
         if not workflow_execution_id:
             raise LLMNodeError("workflow_execution_id is required for sandbox runtime mode")
@@ -1613,7 +1611,6 @@ class LLMNode(Node[LLMNodeData]):
                 files=prompt_files,
                 max_iterations=self._node_data.max_iterations or 10,
                 context=ExecutionContext(user_id=self.user_id, app_id=self.app_id, tenant_id=self.tenant_id),
-                agent_strategy=AgentEntity.Strategy.CHAIN_OF_THOUGHT,
             )
 
             outputs = strategy.run(

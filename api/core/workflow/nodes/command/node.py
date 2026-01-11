@@ -4,9 +4,9 @@ import shlex
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+from core.sandbox.manager import SandboxManager
 from core.virtual_environment.__base.command_future import CommandCancelledError, CommandTimeoutError
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
-from core.virtual_environment.sandbox_manager import SandboxManager
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base import variable_template_parser

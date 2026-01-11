@@ -5,9 +5,9 @@ from typing import Any
 
 import pytest
 
+from core.sandbox.manager import SandboxManager
 from core.virtual_environment.__base.entities import Arch, CommandStatus, ConnectionHandle, FileState, Metadata
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
-from core.virtual_environment.sandbox_manager import SandboxManager
 
 
 class FakeVirtualEnvironment(VirtualEnvironment):
