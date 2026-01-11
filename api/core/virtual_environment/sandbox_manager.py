@@ -2,11 +2,7 @@ from __future__ import annotations
 
 import logging
 import threading
-from typing import TYPE_CHECKING, Final
-
-if TYPE_CHECKING:
-    from core.tools.__base.tool import Tool
-    from core.tools.builtin_tool.providers.sandbox.bash_tool import SandboxBashTool
+from typing import Final
 
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 
@@ -108,28 +104,3 @@ class SandboxManager:
     @classmethod
     def count(cls) -> int:
         return sum(len(shard) for shard in cls._shards)
-
-    @classmethod
-    def get_bash_tool(
-        cls,
-        workflow_execution_id: str,
-        tenant_id: str,
-        configured_tools: list[Tool],
-    ) -> SandboxBashTool:
-        from core.tools.builtin_tool.providers.sandbox.bash_tool import SandboxBashTool
-
-        sandbox = cls.get(workflow_execution_id)
-        if sandbox is None:
-            raise RuntimeError(f"Sandbox not found for workflow_execution_id={workflow_execution_id}")
-
-        cls._initialize_tools_in_sandbox(sandbox, configured_tools)
-
-        return SandboxBashTool(sandbox=sandbox, tenant_id=tenant_id)
-
-    @classmethod
-    def _initialize_tools_in_sandbox(
-        cls,
-        sandbox: VirtualEnvironment,
-        configured_tools: list[Tool],
-    ) -> None:
-        raise NotImplementedError("TODO: Initialize configured tools in sandbox environment")

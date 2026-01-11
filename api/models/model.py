@@ -2197,4 +2197,3 @@ class TenantCreditPool(Base):
 
     def has_sufficient_credits(self, required_credits: int) -> bool:
         return self.remaining_credits >= required_credits
-

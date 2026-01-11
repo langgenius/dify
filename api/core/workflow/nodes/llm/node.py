@@ -13,6 +13,7 @@ from sqlalchemy import select
 
 from core.agent.entities import AgentLog, AgentResult, AgentToolEntity, ExecutionContext
 from core.agent.patterns import StrategyFactory
+from core.agent.sandbox_session import SandboxSession
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.file import File, FileTransferMethod, FileType, file_manager
 from core.helper.code_executor import CodeExecutor, CodeLanguage
@@ -264,9 +265,8 @@ class LLMNode(Node[LLMNodeData]):
 
             if self.tool_call_enabled:
                 workflow_execution_id = variable_pool.system_variables.workflow_execution_id
-                is_sandbox_runtime = (
-                    workflow_execution_id is not None
-                    and SandboxManager.is_sandbox_runtime(workflow_execution_id)
+                is_sandbox_runtime = workflow_execution_id is not None and SandboxManager.is_sandbox_runtime(
+                    workflow_execution_id
                 )
 
                 if is_sandbox_runtime:
@@ -274,10 +274,7 @@ class LLMNode(Node[LLMNodeData]):
                         model_instance=model_instance,
                         prompt_messages=prompt_messages,
                         stop=stop,
-                        files=files,
                         variable_pool=variable_pool,
-                        node_inputs=node_inputs,
-                        process_data=process_data,
                     )
                 else:
                     generator = self._invoke_llm_with_tools(
@@ -1589,10 +1586,7 @@ class LLMNode(Node[LLMNodeData]):
         model_instance: ModelInstance,
         prompt_messages: Sequence[PromptMessage],
         stop: Sequence[str] | None,
-        files: Sequence[File],
         variable_pool: VariablePool,
-        node_inputs: dict[str, Any],
-        process_data: dict[str, Any],
     ) -> Generator[NodeEventBase, None, LLMGenerationData]:
         from core.agent.entities import AgentEntity
 
@@ -1602,32 +1596,38 @@ class LLMNode(Node[LLMNodeData]):
 
         configured_tools = self._prepare_tool_instances(variable_pool)
 
-        bash_tool = SandboxManager.get_bash_tool(
+        result: LLMGenerationData | None = None
+
+        with SandboxSession(
             workflow_execution_id=workflow_execution_id,
             tenant_id=self.tenant_id,
-            configured_tools=configured_tools,
-        )
+            user_id=self.user_id,
+            tools=configured_tools,
+        ) as sandbox_session:
+            prompt_files = self._extract_prompt_files(variable_pool)
 
-        prompt_files = self._extract_prompt_files(variable_pool)
+            strategy = StrategyFactory.create_strategy(
+                model_features=[],
+                model_instance=model_instance,
+                tools=[sandbox_session.bash_tool],
+                files=prompt_files,
+                max_iterations=self._node_data.max_iterations or 10,
+                context=ExecutionContext(user_id=self.user_id, app_id=self.app_id, tenant_id=self.tenant_id),
+                agent_strategy=AgentEntity.Strategy.CHAIN_OF_THOUGHT,
+            )
 
-        strategy = StrategyFactory.create_strategy(
-            model_features=[],
-            model_instance=model_instance,
-            tools=[bash_tool],
-            files=prompt_files,
-            max_iterations=self._node_data.max_iterations or 10,
-            context=ExecutionContext(user_id=self.user_id, app_id=self.app_id, tenant_id=self.tenant_id),
-            agent_strategy=AgentEntity.Strategy.CHAIN_OF_THOUGHT,
-        )
+            outputs = strategy.run(
+                prompt_messages=list(prompt_messages),
+                model_parameters=self._node_data.model.completion_params,
+                stop=list(stop or []),
+                stream=True,
+            )
 
-        outputs = strategy.run(
-            prompt_messages=list(prompt_messages),
-            model_parameters=self._node_data.model.completion_params,
-            stop=list(stop or []),
-            stream=True,
-        )
+            result = yield from self._process_tool_outputs(outputs)
 
-        result = yield from self._process_tool_outputs(outputs)
+        if result is None:
+            raise LLMNodeError("SandboxSession exited unexpectedly")
+
         return result
 
     def _get_model_features(self, model_instance: ModelInstance) -> list[ModelFeature]:
