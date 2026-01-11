@@ -35,6 +35,7 @@ dependencies = [
     "jsonschema>=4.25.1",
     "langfuse~=2.51.3",
     "langsmith~=0.1.77",
+    "langdetect~=1.0.9",
     "markdown~=3.5.1",
     "mlflow-skinny>=3.0.0",
     "numpy~=1.26.4",
