@@ -429,6 +429,7 @@ class ToolInvokeMeta(BaseModel):
     time_cost: float = Field(..., description="The time cost of the tool invoke")
     error: str | None = None
     tool_config: dict | None = None
+    extra: dict | None = None
 
     @classmethod
     def empty(cls) -> ToolInvokeMeta:
@@ -449,6 +450,7 @@ class ToolInvokeMeta(BaseModel):
             "time_cost": self.time_cost,
             "error": self.error,
             "tool_config": self.tool_config,
+            "extra": self.extra,
         }
 
 
