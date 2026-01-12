@@ -39,6 +39,12 @@
   "form.retrievalSettings": "Retrieval Settings",
   "form.save": "Save",
   "form.searchModel": "Search model",
+  "form.summaryAutoGen": "Summary Auto-Gen",
+  "form.summaryAutoGenEnableTip": "Once enabled, summaries will be generated automatically for newly added documents. Existing documents can still be summarized manually.",
+  "form.summaryAutoGenTip": "Summaries are automatically generated for newly added documents. Existing documents can still be summarized manually.",
+  "form.summaryInstructions": "Instructions",
+  "form.summaryInstructionsPlaceholder": "Describe the rules or style for auto-generated summaries…",
+  "form.summaryModel": "Summary Model",
   "form.upgradeHighQualityTip": "Once upgrading to High Quality mode, reverting to Economical mode is not available",
   "title": "Knowledge settings"
 }

@@ -42,6 +42,13 @@ export type IconInfo = {
   icon_url?: string
 }
 
+export type SummaryIndexSetting = {
+  enable?: boolean
+  model_name?: string
+  model_provider_name?: string
+  summary_prompt?: string
+}
+
 export type DataSet = {
   id: string
   name: string
@@ -88,6 +95,7 @@ export type DataSet = {
   runtime_mode: 'rag_pipeline' | 'general'
   enable_api: boolean // Indicates if the service API is enabled
   is_multimodal: boolean // Indicates if the dataset supports multimodal
+  summary_index_setting?: SummaryIndexSetting
 }
 
 export type ExternalAPIItem = {
@@ -262,6 +270,7 @@ export type ProcessRuleResponse = {
   mode: ProcessMode
   rules: Rules
   limits: Limits
+  summary_index_setting?: SummaryIndexSetting
 }
 
 export type Rules = {
@@ -467,6 +476,7 @@ export type NotionPage = {
 export type ProcessRule = {
   mode: ProcessMode
   rules: Rules
+  summary_index_setting?: SummaryIndexSetting
 }
 
 export type createDocumentResponse = {

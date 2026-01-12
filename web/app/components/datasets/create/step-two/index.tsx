@@ -2,7 +2,7 @@
 import type { FC, PropsWithChildren } from 'react'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { NotionPage } from '@/models/common'
-import type { CrawlOptions, CrawlResultItem, CreateDocumentReq, createDocumentResponse, CustomFile, DocumentItem, FullDocumentDetail, ParentMode, PreProcessingRule, ProcessRule, Rules } from '@/models/datasets'
+import type { CrawlOptions, CrawlResultItem, CreateDocumentReq, createDocumentResponse, CustomFile, DocumentItem, FullDocumentDetail, ParentMode, PreProcessingRule, ProcessRule, Rules, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import {
   RiAlertFill,
@@ -12,7 +12,7 @@ import {
 import { noop } from 'es-toolkit/function'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import Badge from '@/app/components/base/badge'
@@ -29,8 +29,8 @@ import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
-import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
 
+import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel, useModelList, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
@@ -51,6 +51,7 @@ import { PreviewSlice } from '../../formatted-text/flavours/preview-slice'
 import { FormattedText } from '../../formatted-text/formatted'
 import PreviewContainer from '../../preview/container'
 import { PreviewHeader } from '../../preview/header'
+import SummaryIndexSetting from '../../settings/summary-index-setting'
 import { checkShowMultiModalTip } from '../../settings/utils'
 import FileList from '../assets/file-list-3-fill.svg'
 import Note from '../assets/note-mod.svg'
@@ -174,6 +175,18 @@ const StepTwo = ({
   const [limitMaxChunkLength, setLimitMaxChunkLength] = useState(MAXIMUM_CHUNK_TOKEN_LENGTH)
   const [overlap, setOverlap] = useState(DEFAULT_OVERLAP)
   const [rules, setRules] = useState<PreProcessingRule[]>([])
+  const [summaryIndexSetting, setSummaryIndexSetting] = useState<SummaryIndexSettingType | undefined>(currentDataset?.summary_index_setting)
+  const summaryIndexSettingRef = useRef<SummaryIndexSettingType | undefined>(currentDataset?.summary_index_setting)
+  const handleSummaryIndexSettingChange = useCallback((payload?: SummaryIndexSettingType, reset?: boolean) => {
+    if (reset) {
+      setSummaryIndexSetting(payload)
+      summaryIndexSettingRef.current = payload
+    }
+    else {
+      setSummaryIndexSetting({ ...summaryIndexSettingRef.current, ...payload })
+      summaryIndexSettingRef.current = { ...summaryIndexSettingRef.current, ...payload }
+    }
+  }, [setSummaryIndexSetting, summaryIndexSettingRef])
   const [defaultConfig, setDefaultConfig] = useState<Rules>()
   const hasSetIndexType = !!indexingType
   const [indexType, setIndexType] = useState<IndexingType>(() => {
@@ -250,6 +263,7 @@ const StepTwo = ({
           },
         },
         mode: 'hierarchical',
+        summary_index_setting: summaryIndexSetting,
       } as ProcessRule
     }
     return {
@@ -262,6 +276,7 @@ const StepTwo = ({
         },
       }, // api will check this. It will be removed after api refactored.
       mode: segmentationType,
+      summary_index_setting: summaryIndexSetting,
     } as ProcessRule
   }
 
@@ -352,6 +367,7 @@ const StepTwo = ({
       setMaxChunkLength(defaultConfig.segmentation.max_tokens)
       setOverlap(defaultConfig.segmentation.chunk_overlap!)
       setRules(defaultConfig.pre_processing_rules)
+      handleSummaryIndexSettingChange(currentDataset?.summary_index_setting, true)
     }
     setParentChildConfig(defaultParentChildConfig)
   }
@@ -492,6 +508,7 @@ const StepTwo = ({
       setMaxChunkLength(data.rules.segmentation.max_tokens)
       setOverlap(data.rules.segmentation.chunk_overlap!)
       setRules(data.rules.pre_processing_rules)
+      handleSummaryIndexSettingChange(data.summary_index_setting, true)
       setDefaultConfig(data.rules)
       setLimitMaxChunkLength(data.limits.indexing_max_segmentation_tokens_length)
     },
@@ -509,6 +526,7 @@ const StepTwo = ({
       setMaxChunkLength(max)
       setOverlap(overlap!)
       setRules(rules.pre_processing_rules)
+      handleSummaryIndexSettingChange(documentDetail.summary_index_setting)
       setDefaultConfig(rules)
 
       if (isHierarchicalDocument) {
@@ -728,6 +746,13 @@ const StepTwo = ({
                       )}
                     </>
                   )}
+                  <div className="mt-4">
+                    <SummaryIndexSetting
+                      entry="create-document"
+                      summaryIndexSetting={summaryIndexSetting}
+                      onSummaryIndexSettingChange={handleSummaryIndexSettingChange}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -878,6 +903,13 @@ const StepTwo = ({
                         <label className="system-sm-regular ml-2 cursor-pointer text-text-secondary">{getRuleName(rule.id)}</label>
                       </div>
                     ))}
+                  </div>
+                  <div className="mt-4">
+                    <SummaryIndexSetting
+                      entry="create-document"
+                      summaryIndexSetting={summaryIndexSetting}
+                      onSummaryIndexSettingChange={handleSummaryIndexSettingChange}
+                    />
                   </div>
                 </div>
               </div>
