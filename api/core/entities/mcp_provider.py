@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 from datetime import datetime
 from enum import StrEnum
@@ -75,7 +77,7 @@ class MCPProviderEntity(BaseModel):
     updated_at: datetime
 
     @classmethod
-    def from_db_model(cls, db_provider: "MCPToolProvider") -> "MCPProviderEntity":
+    def from_db_model(cls, db_provider: MCPToolProvider) -> MCPProviderEntity:
         """Create entity from database model with decryption"""
 
         return cls(

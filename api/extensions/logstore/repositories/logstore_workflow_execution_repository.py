@@ -22,6 +22,18 @@ from models.enums import WorkflowRunTriggeredFrom
 logger = logging.getLogger(__name__)
 
 
+def to_serializable(obj):
+    """
+    Convert non-JSON-serializable objects into JSON-compatible formats.
+
+    - Uses `to_dict()` if it's a callable method.
+    - Falls back to string representation.
+    """
+    if hasattr(obj, "to_dict") and callable(obj.to_dict):
+        return obj.to_dict()
+    return str(obj)
+
+
 class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
     def __init__(
         self,
@@ -69,6 +81,11 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
         # Set to True to enable dual-write for safe migration, False to use LogStore only
         self._enable_dual_write = os.environ.get("LOGSTORE_DUAL_WRITE_ENABLED", "true").lower() == "true"
 
+        # Control flag for whether to write the `graph` field to LogStore.
+        # If LOGSTORE_ENABLE_PUT_GRAPH_FIELD is "true", write the full `graph` field;
+        # otherwise write an empty {} instead. Defaults to writing the `graph` field.
+        self._enable_put_graph_field = os.environ.get("LOGSTORE_ENABLE_PUT_GRAPH_FIELD", "true").lower() == "true"
+
     def _to_logstore_model(self, domain_model: WorkflowExecution) -> list[tuple[str, str]]:
         """
         Convert a domain model to a logstore model (List[Tuple[str, str]]).
@@ -108,9 +125,24 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
             ),
             ("type", domain_model.workflow_type.value),
             ("version", domain_model.workflow_version),
-            ("graph", json.dumps(domain_model.graph, ensure_ascii=False) if domain_model.graph else "{}"),
-            ("inputs", json.dumps(domain_model.inputs, ensure_ascii=False) if domain_model.inputs else "{}"),
-            ("outputs", json.dumps(domain_model.outputs, ensure_ascii=False) if domain_model.outputs else "{}"),
+            (
+                "graph",
+                json.dumps(domain_model.graph, ensure_ascii=False, default=to_serializable)
+                if domain_model.graph and self._enable_put_graph_field
+                else "{}",
+            ),
+            (
+                "inputs",
+                json.dumps(domain_model.inputs, ensure_ascii=False, default=to_serializable)
+                if domain_model.inputs
+                else "{}",
+            ),
+            (
+                "outputs",
+                json.dumps(domain_model.outputs, ensure_ascii=False, default=to_serializable)
+                if domain_model.outputs
+                else "{}",
+            ),
             ("status", domain_model.status.value),
             ("error_message", domain_model.error_message or ""),
             ("total_tokens", str(domain_model.total_tokens)),

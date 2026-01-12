@@ -397,7 +397,7 @@
   "modelProvider.quotaTip": "Token gratuiti rimanenti disponibili",
   "modelProvider.rerankModel.key": "Modello di Rerank",
   "modelProvider.rerankModel.tip": "Il modello di rerank riordinerà la lista dei documenti candidati basandosi sulla corrispondenza semantica con la query dell'utente, migliorando i risultati del ranking semantico",
-  "modelProvider.resetDate": "Reimposta su {{date}}",
+  "modelProvider.resetDate": "Ripristina il {{date}}",
   "modelProvider.searchModel": "Modello di ricerca",
   "modelProvider.selectModel": "Seleziona il tuo modello",
   "modelProvider.selector.emptySetting": "Per favore vai alle impostazioni per configurare",
