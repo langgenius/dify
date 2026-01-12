@@ -558,8 +558,6 @@
   "nodes.humanInput.editor.previewTip": "In preview mode, action buttons are not functional.",
   "nodes.humanInput.errorMsg.noDeliveryMethod": "Please select at least one delivery method",
   "nodes.humanInput.errorMsg.noDeliveryMethodEnabled": "Please enable at least one delivery method",
-  "nodes.humanInput.errorMsg.noFormContent": "Please add form content",
-  "nodes.humanInput.errorMsg.noFormContentInputField": "Please add at least one input field in form content",
   "nodes.humanInput.errorMsg.noUserActions": "Please add at least one user action",
   "nodes.humanInput.formContent.hotkeyTip": "Press <Key/> to insert variable, <CtrlKey/><Key/> to insert input field",
   "nodes.humanInput.formContent.preview": "Preview",

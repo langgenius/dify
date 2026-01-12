@@ -558,8 +558,6 @@
   "nodes.humanInput.editor.previewTip": "在预览模式下，操作按钮无法使用。",
   "nodes.humanInput.errorMsg.noDeliveryMethod": "请至少选择一种提交方式",
   "nodes.humanInput.errorMsg.noDeliveryMethodEnabled": "请至少启用一种提交方式",
-  "nodes.humanInput.errorMsg.noFormContent": "请添加表单内容",
-  "nodes.humanInput.errorMsg.noFormContentInputField": "请在表单内容中添加至少一个输入字段",
   "nodes.humanInput.errorMsg.noUserActions": "请添加至少一个用户操作",
   "nodes.humanInput.formContent.hotkeyTip": "按 <Key/> 插入变量，按 <CtrlKey/><Key/> 插入输入字段",
   "nodes.humanInput.formContent.preview": "预览",
