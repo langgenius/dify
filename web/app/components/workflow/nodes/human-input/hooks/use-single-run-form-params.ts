@@ -92,8 +92,8 @@ const useSingleRunFormParams = ({
   }, [fetchURL])
 
   const handleShowGeneratedForm = async (formValue: Record<string, any>) => {
-    await handleFetchFormContent(formValue)
     setShowGeneratedForm(true)
+    await handleFetchFormContent(formValue)
   }
 
   const handleHideGeneratedForm = () => {
