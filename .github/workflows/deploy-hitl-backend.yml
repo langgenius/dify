@@ -1,4 +1,4 @@
-name: Deploy Trigger Dev
+name: Deploy HITL backend
 
 permissions:
   contents: read
