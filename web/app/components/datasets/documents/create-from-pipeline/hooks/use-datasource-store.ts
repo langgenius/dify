@@ -1,69 +1,12 @@
-import type { DataSourceOption } from '@/app/components/rag-pipeline/components/panel/test-run/types'
-import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-import type { Node } from '@/app/components/workflow/types'
 import type { DataSourceNotionPageMap, DataSourceNotionWorkspace } from '@/models/common'
-import { useCallback, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useCallback, useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { BlockEnum } from '@/app/components/workflow/types'
 import { CrawlStep } from '@/models/datasets'
-import { useDataSourceStore, useDataSourceStoreWithSelector } from './data-source/store'
-import { AddDocumentsStep } from './types'
+import { useDataSourceStore, useDataSourceStoreWithSelector } from '../data-source/store'
 
-export const useAddDocumentsSteps = () => {
-  const { t } = useTranslation()
-  const [currentStep, setCurrentStep] = useState(1)
-
-  const handleNextStep = useCallback(() => {
-    setCurrentStep(preStep => preStep + 1)
-  }, [])
-
-  const handleBackStep = useCallback(() => {
-    setCurrentStep(preStep => preStep - 1)
-  }, [])
-
-  const steps = [
-    {
-      label: t('addDocuments.steps.chooseDatasource', { ns: 'datasetPipeline' }),
-      value: AddDocumentsStep.dataSource,
-    },
-    {
-      label: t('addDocuments.steps.processDocuments', { ns: 'datasetPipeline' }),
-      value: AddDocumentsStep.processDocuments,
-    },
-    {
-      label: t('addDocuments.steps.processingDocuments', { ns: 'datasetPipeline' }),
-      value: AddDocumentsStep.processingDocuments,
-    },
-  ]
-
-  return {
-    steps,
-    currentStep,
-    handleNextStep,
-    handleBackStep,
-  }
-}
-
-export const useDatasourceOptions = (pipelineNodes: Node<DataSourceNodeType>[]) => {
-  const datasourceNodes = pipelineNodes.filter(node => node.data.type === BlockEnum.DataSource)
-
-  const options = useMemo(() => {
-    const options: DataSourceOption[] = []
-    datasourceNodes.forEach((node) => {
-      const label = node.data.title
-      options.push({
-        label,
-        value: node.id,
-        data: node.data,
-      })
-    })
-    return options
-  }, [datasourceNodes])
-
-  return options
-}
-
+/**
+ * Hook for local file datasource store operations
+ */
 export const useLocalFile = () => {
   const {
     localFileList,
@@ -89,6 +32,9 @@ export const useLocalFile = () => {
   }
 }
 
+/**
+ * Hook for online document datasource store operations
+ */
 export const useOnlineDocument = () => {
   const {
     documentsData,
@@ -147,6 +93,9 @@ export const useOnlineDocument = () => {
   }
 }
 
+/**
+ * Hook for website crawl datasource store operations
+ */
 export const useWebsiteCrawl = () => {
   const {
     websitePages,
@@ -186,6 +135,9 @@ export const useWebsiteCrawl = () => {
   }
 }
 
+/**
+ * Hook for online drive datasource store operations
+ */
 export const useOnlineDrive = () => {
   const {
     onlineDriveFileList,
