@@ -386,14 +386,14 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
 
         return node_executions_deleted, offloads_deleted
 
-    @staticmethod  
+    @staticmethod
     def count_by_runs(session: Session, runs: Sequence[RunContext]) -> tuple[int, int]:
         """
         Count node executions (and offloads) for the given workflow runs using indexed columns.
         """
         if not runs:
             return 0, 0
-        
+
         tuple_values = [
             (
                 run["tenant_id"],

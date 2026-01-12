@@ -574,7 +574,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         if tenant_ids:
             stmt = stmt.where(WorkflowArchiveLog.tenant_id.in_(tenant_ids))
         return list(session.scalars(stmt))
-    
+
     def count_runs_with_related(
         self,
         runs: Sequence[WorkflowRun],

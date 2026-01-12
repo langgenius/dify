@@ -368,7 +368,7 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         Return workflow runs that already have archive logs, for cleanup of `workflow_runs`.
         """
         ...
-        
+
     def count_runs_with_related(
         self,
         runs: Sequence[WorkflowRun],
