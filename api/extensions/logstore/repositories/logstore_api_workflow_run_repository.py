@@ -484,9 +484,10 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
                 # Group by id and select max log_version for each
                 runs_by_id: dict[str, dict[str, Any]] = {}
                 for row in results:
-                    run_id = row.get("id")
-                    if not run_id:
+                    row_run_id = row.get("id")
+                    if not row_run_id:
                         continue
+                    run_id = str(row_run_id)
                     log_version = int(row.get("log_version", 0))
                     if run_id not in runs_by_id or log_version > int(runs_by_id[run_id].get("log_version", 0)):
                         runs_by_id[run_id] = row
