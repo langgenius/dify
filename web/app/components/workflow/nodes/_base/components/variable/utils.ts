@@ -1311,7 +1311,6 @@ const replaceOldVarInText = (
   )
 }
 
-// todo: add human-input node support
 export const getNodeUsedVars = (node: Node): ValueSelector[] => {
   const { data } = node
   const { type } = data
@@ -1503,12 +1502,18 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       res = valueSelectors
       break
     }
+
+    case BlockEnum.HumanInput: {
+      const payload = data as HumanInputNodeType
+      const formContent = payload.form_content
+      res = matchNotSystemVars([formContent])
+      break
+    }
   }
   return res || []
 }
 
 // can be used in iteration node
-// todo: add human-input node
 export const getNodeUsedVarPassToServerKey = (
   node: Node,
   valueSelector: ValueSelector,
@@ -1602,6 +1607,11 @@ export const getNodeUsedVarPassToServerKey = (
       res = 'query'
       break
     }
+
+    case BlockEnum.HumanInput: {
+      res = `#${valueSelector.join('.')}#`
+      break
+    }
   }
   return res
 }
@@ -1619,7 +1629,6 @@ export const findUsedVarNodes = (
   return res
 }
 
-// todo: add human-input node
 export const updateNodeVars = (
   oldNode: Node,
   oldVarSelector: ValueSelector,
@@ -1937,6 +1946,15 @@ export const updateNodeVars = (
         const payload = data as ListFilterNodeType
         if (payload.variable.join('.') === oldVarSelector.join('.'))
           payload.variable = newVarSelector
+        break
+      }
+      case BlockEnum.HumanInput: {
+        const payload = data as HumanInputNodeType
+        payload.form_content = replaceOldVarInText(
+          payload.form_content,
+          oldVarSelector,
+          newVarSelector,
+        )
         break
       }
     }
