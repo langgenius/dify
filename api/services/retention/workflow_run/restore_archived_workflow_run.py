@@ -113,13 +113,13 @@ class WorkflowRunRestore:
             restored_counts={},
         )
 
-        click.echo(
-            click.style(
-                f"{'[DRY RUN] ' if self.dry_run else ''}Starting restore for "
-                f"workflow run {run_id} (tenant={run.tenant_id})",
-                fg="white",
+        if not self.dry_run:
+            click.echo(
+                click.style(
+                    f"Starting restore for workflow run {run_id} (tenant={run.tenant_id})",
+                    fg="white",
+                )
             )
-        )
 
         try:
             storage = get_archive_storage()
@@ -161,12 +161,6 @@ class WorkflowRunRestore:
                             continue
 
                         if self.dry_run:
-                            click.echo(
-                                click.style(
-                                    f"  [DRY RUN] Would restore {row_count} records to {table_name}",
-                                    fg="yellow",
-                                )
-                            )
                             result.restored_counts[table_name] = row_count
                             continue
 
@@ -191,12 +185,13 @@ class WorkflowRunRestore:
                             schema_version=schema_version,
                         )
                         result.restored_counts[table_name] = restored
-                        click.echo(
-                            click.style(
-                                f"  Restored {restored}/{len(records)} records to {table_name}",
-                                fg="green",
+                        if not self.dry_run:
+                            click.echo(
+                                click.style(
+                                    f"  Restored {restored}/{len(records)} records to {table_name}",
+                                    fg="green",
+                                )
                             )
-                        )
 
                 # Verify row counts match manifest
                 manifest_total = sum(info.get("row_count", 0) for info in tables.values())
@@ -212,13 +207,13 @@ class WorkflowRunRestore:
                     session.commit()
 
                 result.success = True
-                click.echo(
-                    click.style(
-                        f"{'[DRY RUN] Would complete' if self.dry_run else 'Completed'} restore for "
-                        f"workflow run {run_id}: restored={result.restored_counts}",
-                        fg="green",
+                if not self.dry_run:
+                    click.echo(
+                        click.style(
+                            f"Completed restore for workflow run {run_id}: restored={result.restored_counts}",
+                            fg="green",
+                        )
                     )
-                )
 
             except Exception as e:
                 logger.exception("Failed to restore workflow run %s", run_id)
@@ -418,10 +413,25 @@ class WorkflowRunRestore:
         )
 
         def _restore_with_session(archive_log: WorkflowArchiveLog) -> RestoreResult:
-            return self._restore_from_run(archive_log, session_maker=session_maker)
+            return self._restore_from_run(
+                archive_log,
+                session_maker=session_maker,
+            )
 
         with ThreadPoolExecutor(max_workers=self.workers) as executor:
             results = list(executor.map(_restore_with_session, archive_logs))
+
+        if self.dry_run:
+            total_counts: dict[str, int] = {}
+            for result in results:
+                for table_name, count in result.restored_counts.items():
+                    total_counts[table_name] = total_counts.get(table_name, 0) + count
+            click.echo(
+                click.style(
+                    f"[DRY RUN] Would restore {len(results)} workflow runs: totals={total_counts}",
+                    fg="yellow",
+                )
+            )
 
         return results
 
@@ -446,4 +456,12 @@ class WorkflowRunRestore:
             )
 
         session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-        return self._restore_from_run(archive_log, session_maker=session_maker)
+        result = self._restore_from_run(archive_log, session_maker=session_maker)
+        if self.dry_run and result.success:
+            click.echo(
+                click.style(
+                    f"[DRY RUN] Would restore workflow run {run_id}: totals={result.restored_counts}",
+                    fg="yellow",
+                )
+            )
+        return result
