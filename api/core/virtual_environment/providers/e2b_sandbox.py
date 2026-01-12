@@ -216,7 +216,7 @@ class E2BEnvironment(VirtualEnvironment):
         stdout_stream = QueueTransportReadCloser()
         stderr_stream = QueueTransportReadCloser()
 
-        working_dir = cwd or self._WORKDIR
+        working_dir = os.path.join(self._WORKDIR, cwd) if cwd else self._WORKDIR
 
         threading.Thread(
             target=self._cmd_thread,

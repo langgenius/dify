@@ -12,8 +12,7 @@ logger = logging.getLogger(__name__)
 
 class SandboxInitializer(ABC):
     @abstractmethod
-    def initialize(self, env: VirtualEnvironment) -> None:
-        ...
+    def initialize(self, env: VirtualEnvironment) -> None: ...
 
 
 class DifyCliInitializer(SandboxInitializer):

@@ -461,7 +461,7 @@ class DockerDaemonEnvironment(VirtualEnvironment):
             raise RuntimeError("Docker container ID is not available for exec.")
         api_client = self.get_docker_api_client(self.get_docker_sock())
 
-        working_dir = cwd or self._working_dir
+        working_dir = self._container_path(cwd) if cwd else self._working_dir
 
         exec_info: dict[str, object] = cast(
             dict[str, object],

@@ -177,7 +177,7 @@ class LocalVirtualEnvironment(VirtualEnvironment):
         environments: Mapping[str, str] | None = None,
         cwd: str | None = None,
     ) -> tuple[str, TransportWriteCloser, TransportReadCloser, TransportReadCloser]:
-        working_path = cwd or self.get_working_path()
+        working_path = os.path.join(self.get_working_path(), cwd) if cwd else self.get_working_path()
         stdin_read_fd, stdin_write_fd = os.pipe()
         stdout_read_fd, stdout_write_fd = os.pipe()
         stderr_read_fd, stderr_write_fd = os.pipe()

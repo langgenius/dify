@@ -33,18 +33,18 @@ class SandboxBashTool(Tool):
             parameters=[
                 ToolParameter.get_simple_instance(
                     name="command",
-                    llm_description="The bash command to execute in the sandbox environment",
+                    llm_description="The bash command to execute in current working directory",
                     typ=ToolParameter.ToolParameterType.STRING,
                     required=True,
                 ),
             ],
             description=ToolDescription(
                 human=I18nObject(
-                    en_US="Execute bash commands in the sandbox environment",
+                    en_US="Execute bash commands in current working directory",
                 ),
-                llm="Execute bash commands in the sandbox environment. "
+                llm="Execute bash commands in current working directory. "
                 "Use this tool to run shell commands, scripts, or interact with the system. "
-                "The command will be executed in an isolated sandbox environment.",
+                "The command will be executed in the current working directory.",
             ),
         )
 

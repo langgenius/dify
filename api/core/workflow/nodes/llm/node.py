@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from sqlalchemy import select
 
-from core.agent.entities import AgentLog, AgentResult, AgentToolEntity, ExecutionContext
+from core.agent.entities import AgentEntity, AgentLog, AgentResult, AgentToolEntity, ExecutionContext
 from core.agent.patterns import StrategyFactory
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.file import File, FileTransferMethod, FileType, file_manager
@@ -1610,6 +1610,7 @@ class LLMNode(Node[LLMNodeData]):
                 tools=[sandbox_session.bash_tool],
                 files=prompt_files,
                 max_iterations=self._node_data.max_iterations or 100,
+                agent_strategy=AgentEntity.Strategy.CHAIN_OF_THOUGHT,
                 context=ExecutionContext(user_id=self.user_id, app_id=self.app_id, tenant_id=self.tenant_id),
             )
 

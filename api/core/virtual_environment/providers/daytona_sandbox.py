@@ -197,7 +197,7 @@ class DaytonaEnvironment(VirtualEnvironment):
         stderr_stream = QueueTransportReadCloser()
         pid = uuid4().hex
 
-        working_dir = cwd or self._working_dir
+        working_dir = self._workspace_path(cwd) if cwd else self._working_dir
 
         thread = threading.Thread(
             target=self._exec_thread,
