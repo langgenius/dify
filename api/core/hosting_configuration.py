@@ -56,6 +56,10 @@ class HostingConfiguration:
         self.provider_map[f"{DEFAULT_PLUGIN_ID}/minimax/minimax"] = self.init_minimax()
         self.provider_map[f"{DEFAULT_PLUGIN_ID}/spark/spark"] = self.init_spark()
         self.provider_map[f"{DEFAULT_PLUGIN_ID}/zhipuai/zhipuai"] = self.init_zhipuai()
+        self.provider_map[f"{DEFAULT_PLUGIN_ID}/gemini/google"] = self.init_gemini()
+        self.provider_map[f"{DEFAULT_PLUGIN_ID}/x/x"] = self.init_xai()
+        self.provider_map[f"{DEFAULT_PLUGIN_ID}/deepseek/deepseek"] = self.init_deepseek()
+        self.provider_map[f"{DEFAULT_PLUGIN_ID}/tongyi/tongyi"] = self.init_tongyi()
 
         self.moderation_config = self.init_moderation_config()
 
@@ -128,7 +132,7 @@ class HostingConfiguration:
         quotas: list[HostingQuota] = []
 
         if dify_config.HOSTED_OPENAI_TRIAL_ENABLED:
-            hosted_quota_limit = dify_config.HOSTED_OPENAI_QUOTA_LIMIT
+            hosted_quota_limit = 0
             trial_models = self.parse_restrict_models_from_env("HOSTED_OPENAI_TRIAL_MODELS")
             trial_quota = TrialHostingQuota(quota_limit=hosted_quota_limit, restrict_models=trial_models)
             quotas.append(trial_quota)
@@ -156,18 +160,49 @@ class HostingConfiguration:
             quota_unit=quota_unit,
         )
 
-    @staticmethod
-    def init_anthropic() -> HostingProvider:
-        quota_unit = QuotaUnit.TOKENS
+    def init_gemini(self) -> HostingProvider:
+        quota_unit = QuotaUnit.CREDITS
+        quotas: list[HostingQuota] = []
+
+        if dify_config.HOSTED_GEMINI_TRIAL_ENABLED:
+            hosted_quota_limit = 0
+            trial_models = self.parse_restrict_models_from_env("HOSTED_GEMINI_TRIAL_MODELS")
+            trial_quota = TrialHostingQuota(quota_limit=hosted_quota_limit, restrict_models=trial_models)
+            quotas.append(trial_quota)
+
+        if dify_config.HOSTED_GEMINI_PAID_ENABLED:
+            paid_models = self.parse_restrict_models_from_env("HOSTED_GEMINI_PAID_MODELS")
+            paid_quota = PaidHostingQuota(restrict_models=paid_models)
+            quotas.append(paid_quota)
+
+        if len(quotas) > 0:
+            credentials = {
+                "google_api_key": dify_config.HOSTED_GEMINI_API_KEY,
+            }
+
+            if dify_config.HOSTED_GEMINI_API_BASE:
+                credentials["google_base_url"] = dify_config.HOSTED_GEMINI_API_BASE
+
+            return HostingProvider(enabled=True, credentials=credentials, quota_unit=quota_unit, quotas=quotas)
+
+        return HostingProvider(
+            enabled=False,
+            quota_unit=quota_unit,
+        )
+
+    def init_anthropic(self) -> HostingProvider:
+        quota_unit = QuotaUnit.CREDITS
         quotas: list[HostingQuota] = []
 
         if dify_config.HOSTED_ANTHROPIC_TRIAL_ENABLED:
-            hosted_quota_limit = dify_config.HOSTED_ANTHROPIC_QUOTA_LIMIT
-            trial_quota = TrialHostingQuota(quota_limit=hosted_quota_limit)
+            hosted_quota_limit = 0
+            trail_models = self.parse_restrict_models_from_env("HOSTED_ANTHROPIC_TRIAL_MODELS")
+            trial_quota = TrialHostingQuota(quota_limit=hosted_quota_limit, restrict_models=trail_models)
             quotas.append(trial_quota)
 
         if dify_config.HOSTED_ANTHROPIC_PAID_ENABLED:
-            paid_quota = PaidHostingQuota()
+            paid_models = self.parse_restrict_models_from_env("HOSTED_ANTHROPIC_PAID_MODELS")
+            paid_quota = PaidHostingQuota(restrict_models=paid_models)
             quotas.append(paid_quota)
 
         if len(quotas) > 0:
@@ -177,6 +212,94 @@ class HostingConfiguration:
 
             if dify_config.HOSTED_ANTHROPIC_API_BASE:
                 credentials["anthropic_api_url"] = dify_config.HOSTED_ANTHROPIC_API_BASE
+
+            return HostingProvider(enabled=True, credentials=credentials, quota_unit=quota_unit, quotas=quotas)
+
+        return HostingProvider(
+            enabled=False,
+            quota_unit=quota_unit,
+        )
+
+    def init_tongyi(self) -> HostingProvider:
+        quota_unit = QuotaUnit.CREDITS
+        quotas: list[HostingQuota] = []
+
+        if dify_config.HOSTED_TONGYI_TRIAL_ENABLED:
+            hosted_quota_limit = 0
+            trail_models = self.parse_restrict_models_from_env("HOSTED_TONGYI_TRIAL_MODELS")
+            trial_quota = TrialHostingQuota(quota_limit=hosted_quota_limit, restrict_models=trail_models)
+            quotas.append(trial_quota)
+
+        if dify_config.HOSTED_TONGYI_PAID_ENABLED:
+            paid_models = self.parse_restrict_models_from_env("HOSTED_TONGYI_PAID_MODELS")
+            paid_quota = PaidHostingQuota(restrict_models=paid_models)
+            quotas.append(paid_quota)
+
+        if len(quotas) > 0:
+            credentials = {
+                "dashscope_api_key": dify_config.HOSTED_TONGYI_API_KEY,
+                "use_international_endpoint": dify_config.HOSTED_TONGYI_USE_INTERNATIONAL_ENDPOINT,
+            }
+
+            return HostingProvider(enabled=True, credentials=credentials, quota_unit=quota_unit, quotas=quotas)
+
+        return HostingProvider(
+            enabled=False,
+            quota_unit=quota_unit,
+        )
+
+    def init_xai(self) -> HostingProvider:
+        quota_unit = QuotaUnit.CREDITS
+        quotas: list[HostingQuota] = []
+
+        if dify_config.HOSTED_XAI_TRIAL_ENABLED:
+            hosted_quota_limit = 0
+            trail_models = self.parse_restrict_models_from_env("HOSTED_XAI_TRIAL_MODELS")
+            trial_quota = TrialHostingQuota(quota_limit=hosted_quota_limit, restrict_models=trail_models)
+            quotas.append(trial_quota)
+
+        if dify_config.HOSTED_XAI_PAID_ENABLED:
+            paid_models = self.parse_restrict_models_from_env("HOSTED_XAI_PAID_MODELS")
+            paid_quota = PaidHostingQuota(restrict_models=paid_models)
+            quotas.append(paid_quota)
+
+        if len(quotas) > 0:
+            credentials = {
+                "api_key": dify_config.HOSTED_XAI_API_KEY,
+            }
+
+            if dify_config.HOSTED_XAI_API_BASE:
+                credentials["endpoint_url"] = dify_config.HOSTED_XAI_API_BASE
+
+            return HostingProvider(enabled=True, credentials=credentials, quota_unit=quota_unit, quotas=quotas)
+
+        return HostingProvider(
+            enabled=False,
+            quota_unit=quota_unit,
+        )
+
+    def init_deepseek(self) -> HostingProvider:
+        quota_unit = QuotaUnit.CREDITS
+        quotas: list[HostingQuota] = []
+
+        if dify_config.HOSTED_DEEPSEEK_TRIAL_ENABLED:
+            hosted_quota_limit = 0
+            trail_models = self.parse_restrict_models_from_env("HOSTED_DEEPSEEK_TRIAL_MODELS")
+            trial_quota = TrialHostingQuota(quota_limit=hosted_quota_limit, restrict_models=trail_models)
+            quotas.append(trial_quota)
+
+        if dify_config.HOSTED_DEEPSEEK_PAID_ENABLED:
+            paid_models = self.parse_restrict_models_from_env("HOSTED_DEEPSEEK_PAID_MODELS")
+            paid_quota = PaidHostingQuota(restrict_models=paid_models)
+            quotas.append(paid_quota)
+
+        if len(quotas) > 0:
+            credentials = {
+                "api_key": dify_config.HOSTED_DEEPSEEK_API_KEY,
+            }
+
+            if dify_config.HOSTED_DEEPSEEK_API_BASE:
+                credentials["endpoint_url"] = dify_config.HOSTED_DEEPSEEK_API_BASE
 
             return HostingProvider(enabled=True, credentials=credentials, quota_unit=quota_unit, quotas=quotas)
 

@@ -1,7 +1,6 @@
 'use client'
 import type { Plugin } from '../../types'
 import type { MarketplaceCollection } from '../types'
-import type { Locale } from '@/i18n-config'
 import { cn } from '@/utils/classnames'
 import Empty from '../empty'
 import CardWrapper from './card-wrapper'
@@ -12,10 +11,8 @@ type ListProps = {
   marketplaceCollectionPluginsMap: Record<string, Plugin[]>
   plugins?: Plugin[]
   showInstallButton?: boolean
-  locale: Locale
   cardContainerClassName?: string
   cardRender?: (plugin: Plugin) => React.JSX.Element | null
-  onMoreClick?: () => void
   emptyClassName?: string
 }
 const List = ({
@@ -23,10 +20,8 @@ const List = ({
   marketplaceCollectionPluginsMap,
   plugins,
   showInstallButton,
-  locale,
   cardContainerClassName,
   cardRender,
-  onMoreClick,
   emptyClassName,
 }: ListProps) => {
   return (
@@ -37,10 +32,8 @@ const List = ({
             marketplaceCollections={marketplaceCollections}
             marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap}
             showInstallButton={showInstallButton}
-            locale={locale}
             cardContainerClassName={cardContainerClassName}
             cardRender={cardRender}
-            onMoreClick={onMoreClick}
           />
         )
       }
@@ -61,7 +54,6 @@ const List = ({
                     key={`${plugin.org}/${plugin.name}`}
                     plugin={plugin}
                     showInstallButton={showInstallButton}
-                    locale={locale}
                   />
                 )
               })
@@ -71,7 +63,7 @@ const List = ({
       }
       {
         plugins && !plugins.length && (
-          <Empty className={emptyClassName} locale={locale} />
+          <Empty className={emptyClassName} />
         )
       }
     </>

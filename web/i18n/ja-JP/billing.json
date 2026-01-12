@@ -96,7 +96,7 @@
   "plansCommon.memberAfter": "メンバー",
   "plansCommon.messageRequest.title": "{{count,number}}メッセージクレジット",
   "plansCommon.messageRequest.titlePerMonth": "{{count,number}}メッセージクレジット/月",
-  "plansCommon.messageRequest.tooltip": "メッセージクレジットは、Dify でさまざまな OpenAI モデルを簡単にお試しいただくためのものです。モデルタイプに応じてクレジットが消費され、使い切った後はご自身の OpenAI API キーに切り替えていただけます。",
+  "plansCommon.messageRequest.tooltip": "メッセージクレジットは、DifyでOpenAI、Anthropic、Gemini、xAI、DeepSeek、Tongyiなどのさまざまなモデルを簡単に試すために提供されています。クレジットはモデルの種類に基づいて消費されます。使い切ったら、独自のAPIキーに切り替えることができます。",
   "plansCommon.modelProviders": "OpenAI/Anthropic/Llama2/Azure OpenAI/Hugging Face/Replicateをサポート",
   "plansCommon.month": "月",
   "plansCommon.mostPopular": "人気",
