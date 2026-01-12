@@ -20,6 +20,7 @@ from configs import dify_config
 from constants import HIDDEN_VALUE
 from core.entities.provider_entities import BasicProviderConfig
 from core.sandbox.factory import VMFactory, VMType
+from core.sandbox.initializer import DifyCliInitializer
 from core.tools.utils.system_encryption import (
     decrypt_system_params,
 )
@@ -339,4 +340,5 @@ class SandboxProviderService:
                 vm_type=VMType(provider_type),
                 options=dict(config),
                 environments=environments or {},
+                initializers=[DifyCliInitializer()],
             )

@@ -11,6 +11,7 @@ from core.sandbox.dify_cli import (
     DifyCliLocator,
     DifyCliToolConfig,
 )
+from core.sandbox.initializer import DifyCliInitializer, SandboxInitializer
 from core.sandbox.session import SandboxSession
 
 __all__ = [
@@ -21,7 +22,9 @@ __all__ = [
     "DifyCliBinary",
     "DifyCliConfig",
     "DifyCliEnvConfig",
+    "DifyCliInitializer",
     "DifyCliLocator",
     "DifyCliToolConfig",
+    "SandboxInitializer",
     "SandboxSession",
 ]
