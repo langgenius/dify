@@ -25,6 +25,7 @@ def _apply_cors_once(bp, /, **cors_kwargs):
 def init_app(app: DifyApp):
     # register blueprint routers
 
+    from controllers.cli_api import bp as cli_api_bp
     from controllers.console import bp as console_app_bp
     from controllers.files import bp as files_bp
     from controllers.inner_api import bp as inner_api_bp
@@ -88,6 +89,7 @@ def init_app(app: DifyApp):
     app.register_blueprint(files_bp)
 
     app.register_blueprint(inner_api_bp)
+    app.register_blueprint(cli_api_bp)
     app.register_blueprint(mcp_bp)
 
     # Register trigger blueprint with CORS for webhook calls

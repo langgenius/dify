@@ -9,7 +9,7 @@ from core.sandbox.bash_tool import SandboxBashTool
 from core.sandbox.constants import DIFY_CLI_CONFIG_PATH, DIFY_CLI_PATH
 from core.sandbox.dify_cli import DifyCliConfig
 from core.sandbox.manager import SandboxManager
-from core.session.inner_api import InnerApiSessionManager
+from core.session.cli_api import CliApiSessionManager
 from core.tools.__base.tool import Tool
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 
@@ -39,11 +39,11 @@ class SandboxSession:
         if sandbox is None:
             raise RuntimeError(f"Sandbox not found for workflow_execution_id={self._workflow_execution_id}")
 
-        session = InnerApiSessionManager().create(tenant_id=self._tenant_id, user_id=self._user_id)
+        session = CliApiSessionManager().create(tenant_id=self._tenant_id, user_id=self._user_id)
         self._session_id = session.id
 
         try:
-            config = DifyCliConfig.create(self._session_id, self._tools)
+            config = DifyCliConfig.create(session, self._tools)
             config_json = json.dumps(config.model_dump(mode="json"), ensure_ascii=False)
 
             sandbox.upload_file(DIFY_CLI_CONFIG_PATH, BytesIO(config_json.encode("utf-8")))
@@ -58,7 +58,7 @@ class SandboxSession:
                 sandbox.release_connection(connection_handle)
 
         except Exception:
-            InnerApiSessionManager().delete(session.id)
+            CliApiSessionManager().delete(session.id)
             self._session_id = None
             raise
 
@@ -85,11 +85,9 @@ class SandboxSession:
         return self._bash_tool
 
     def cleanup(self) -> None:
-        from core.session.inner_api import InnerApiSessionManager
-
         if self._session_id is None:
             return
 
-        InnerApiSessionManager().delete(self._session_id)
+        CliApiSessionManager().delete(self._session_id)
         logger.debug("Cleaned up SandboxSession session_id=%s", self._session_id)
         self._session_id = None

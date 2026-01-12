@@ -1,10 +1,10 @@
-from .inner_api import InnerApiSession, InnerApiSessionManager
+from .cli_api import CliApiSession, CliApiSessionManager
 from .session import BaseSession, RedisSessionStorage, SessionManager, SessionStorage
 
 __all__ = [
     "BaseSession",
-    "InnerApiSession",
-    "InnerApiSessionManager",
+    "CliApiSession",
+    "CliApiSessionManager",
     "RedisSessionStorage",
     "SessionManager",
     "SessionStorage",

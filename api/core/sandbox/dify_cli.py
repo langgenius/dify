@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING, Any
 from pydantic import BaseModel, Field
 
 from core.sandbox.constants import DIFY_CLI_PATH_PATTERN
+from core.session.cli_api import CliApiSession
+from core.tools.entities.tool_entities import ToolProviderType
 from core.virtual_environment.__base.entities import Arch, OperatingSystem
 
 if TYPE_CHECKING:
@@ -48,8 +50,9 @@ class DifyCliLocator:
 
 class DifyCliEnvConfig(BaseModel):
     files_url: str
-    inner_api_url: str
-    inner_api_session_id: str
+    cli_api_url: str
+    cli_api_session_id: str
+    cli_api_secret: str
 
 
 class DifyCliToolConfig(BaseModel):
@@ -59,9 +62,21 @@ class DifyCliToolConfig(BaseModel):
     parameters: list[dict[str, Any]]
 
     @classmethod
+    def transform_provider_type(cls, tool_provider_type: ToolProviderType) -> str:
+        provider_type = tool_provider_type
+        match tool_provider_type:
+            case ToolProviderType.BUILT_IN | ToolProviderType.PLUGIN:
+                provider_type = "builtin"
+            case ToolProviderType.MCP | ToolProviderType.WORKFLOW | ToolProviderType.API:
+                provider_type = provider_type
+            case _:
+                raise ValueError(f"Invalid tool provider type: {tool_provider_type}")
+        return provider_type
+
+    @classmethod
     def create_from_tool(cls, tool: Tool) -> DifyCliToolConfig:
         return cls(
-            provider_type=tool.tool_provider_type().value,
+            provider_type=cls.transform_provider_type(tool.tool_provider_type()),
             identity=tool.entity.identity.model_dump(),
             description=tool.entity.description.model_dump() if tool.entity.description else {},
             parameters=[param.model_dump() for param in tool.entity.parameters],
@@ -73,14 +88,17 @@ class DifyCliConfig(BaseModel):
     tools: list[DifyCliToolConfig]
 
     @classmethod
-    def create(cls, session_id: str, tools: list[Tool]) -> DifyCliConfig:
+    def create(cls, session: CliApiSession, tools: list[Tool]) -> DifyCliConfig:
         from configs import dify_config
+
+        cli_api_url = dify_config.CLI_API_URL
 
         return cls(
             env=DifyCliEnvConfig(
                 files_url=dify_config.FILES_URL,
-                inner_api_url=dify_config.CONSOLE_API_URL,
-                inner_api_session_id=session_id,
+                cli_api_url=cli_api_url,
+                cli_api_session_id=session.id,
+                cli_api_secret=session.secret,
             ),
             tools=[DifyCliToolConfig.create_from_tool(tool) for tool in tools],
         )
