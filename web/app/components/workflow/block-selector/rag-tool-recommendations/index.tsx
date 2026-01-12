@@ -11,6 +11,7 @@ import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid
 import Loading from '@/app/components/base/loading'
 import { getFormattedPlugin } from '@/app/components/plugins/marketplace/utils'
 import { useRAGRecommendedPlugins } from '@/service/use-tools'
+import { isServer } from '@/utils/client'
 import { getMarketplaceUrl } from '@/utils/var'
 import List from './list'
 
@@ -29,14 +30,14 @@ const RAGToolRecommendations = ({
 }: RAGToolRecommendationsProps) => {
   const { t } = useTranslation()
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
-    if (typeof window === 'undefined')
+    if (isServer)
       return false
     const stored = window.localStorage.getItem(STORAGE_KEY)
     return stored === 'true'
   })
 
   useEffect(() => {
-    if (typeof window === 'undefined')
+    if (isServer)
       return
     const stored = window.localStorage.getItem(STORAGE_KEY)
     if (stored !== null)
@@ -44,7 +45,7 @@ const RAGToolRecommendations = ({
   }, [])
 
   useEffect(() => {
-    if (typeof window === 'undefined')
+    if (isServer)
       return
     window.localStorage.setItem(STORAGE_KEY, String(isCollapsed))
   }, [isCollapsed])
