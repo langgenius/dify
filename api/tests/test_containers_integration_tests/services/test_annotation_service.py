@@ -115,7 +115,7 @@ class TestAnnotationService:
             tenant_id,
         )
 
-    def _create_test_conversation(self, app, account: Account, fake: Faker):
+    def _create_test_conversation(self, app: App, account: Account, fake: Faker):
         """
         Helper method to create a test conversation with all required fields.
         """
