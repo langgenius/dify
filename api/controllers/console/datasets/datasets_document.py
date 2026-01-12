@@ -7,7 +7,7 @@ from typing import Literal, cast
 import sqlalchemy as sa
 from flask import request
 from flask_restx import Resource, fields, marshal, marshal_with
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import asc, desc, select
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -102,6 +102,15 @@ class DocumentRetryPayload(BaseModel):
 
 class DocumentRenamePayload(BaseModel):
     name: str
+
+
+class DocumentDatasetListParam(BaseModel):
+    page: int = Field(1, title="Page", description="Page number.")
+    limit: int = Field(20, title="Limit", description="Page size.")
+    search: str | None = Field(None, alias="keyword", title="Search", description="Search keyword.")
+    sort_by: str = Field("-created_at", alias="sort", title="SortBy", description="Sort by field.")
+    status: str | None = Field(None, title="Status", description="Document status.")
+    fetch_val: str = Field("false", alias="fetch")
 
 
 register_schema_models(
@@ -225,14 +234,16 @@ class DatasetDocumentListApi(Resource):
     def get(self, dataset_id):
         current_user, current_tenant_id = current_account_with_tenant()
         dataset_id = str(dataset_id)
-        page = request.args.get("page", default=1, type=int)
-        limit = request.args.get("limit", default=20, type=int)
-        search = request.args.get("keyword", default=None, type=str)
-        sort = request.args.get("sort", default="-created_at", type=str)
-        status = request.args.get("status", default=None, type=str)
+        raw_args = request.args.to_dict()
+        param = DocumentDatasetListParam.model_validate(raw_args)
+        page = param.page
+        limit = param.limit
+        search = param.search
+        sort = param.sort_by
+        status = param.status
         # "yes", "true", "t", "y", "1" convert to True, while others convert to False.
         try:
-            fetch_val = request.args.get("fetch", default="false")
+            fetch_val = param.fetch_val
             if isinstance(fetch_val, bool):
                 fetch = fetch_val
             else:
