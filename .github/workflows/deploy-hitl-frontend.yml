@@ -2,9 +2,8 @@ name: Deploy Dev
 
 on:
   workflow_run:
-    workflows: ["Build and Push API & Web"]
+    workflows: ["Build and Push Web (HITL Web)"]
     branches:
-      - "deploy/dev"
       - "feat/hitl-frontend"
     types:
       - completed
