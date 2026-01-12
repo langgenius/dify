@@ -1603,14 +1603,15 @@ class LLMNode(Node[LLMNodeData]):
             tools=configured_tools,
         ) as sandbox_session:
             prompt_files = self._extract_prompt_files(variable_pool)
+            model_features = self._get_model_features(model_instance)
 
             strategy = StrategyFactory.create_strategy(
-                model_features=[],
+                model_features=model_features,
                 model_instance=model_instance,
                 tools=[sandbox_session.bash_tool],
                 files=prompt_files,
                 max_iterations=self._node_data.max_iterations or 100,
-                agent_strategy=AgentEntity.Strategy.CHAIN_OF_THOUGHT,
+                agent_strategy=AgentEntity.Strategy.FUNCTION_CALLING,
                 context=ExecutionContext(user_id=self.user_id, app_id=self.app_id, tenant_id=self.tenant_id),
             )
 
