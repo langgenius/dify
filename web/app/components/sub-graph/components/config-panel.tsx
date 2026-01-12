@@ -1,10 +1,17 @@
 'use client'
 import type { FC } from 'react'
-import type { ConfigPanelProps, WhenOutputNoneOption } from './types'
+import type { WhenOutputNoneOption } from '../types'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import { cn } from '@/utils/classnames'
+
+type ConfigPanelProps = {
+  toolNodeId: string
+  paramKey: string
+  activeTab: 'settings' | 'lastRun'
+  onTabChange: (tab: 'settings' | 'lastRun') => void
+}
 
 const outputVariables = [
   { name: 'text', type: 'string' },
