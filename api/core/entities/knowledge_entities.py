@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field, field_validator
 
 class PreviewDetail(BaseModel):
     content: str
+    summary: str | None = None
     child_chunks: list[str] | None = None
 
 

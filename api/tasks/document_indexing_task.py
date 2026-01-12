@@ -8,6 +8,7 @@ from celery import shared_task
 from configs import dify_config
 from core.entities.document_task import DocumentTask
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
+from tasks.generate_summary_index_task import generate_summary_index_task
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
@@ -100,6 +101,60 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
         indexing_runner.run(documents)
         end_at = time.perf_counter()
         logger.info(click.style(f"Processed dataset: {dataset_id} latency: {end_at - start_at}", fg="green"))
+        
+        # Trigger summary index generation for completed documents if enabled
+        # Only generate for high_quality indexing technique and when summary_index_setting is enabled
+        # Re-query dataset to get latest summary_index_setting (in case it was updated)
+        dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
+        if not dataset:
+            logger.warning(f"Dataset {dataset_id} not found after indexing")
+            return
+        
+        if dataset.indexing_technique == "high_quality":
+            summary_index_setting = dataset.summary_index_setting
+            if summary_index_setting and summary_index_setting.get("enable"):
+                # Check each document's indexing status and trigger summary generation if completed
+                for document_id in document_ids:
+                    # Re-query document to get latest status (IndexingRunner may have updated it)
+                    document = (
+                        db.session.query(Document)
+                        .where(Document.id == document_id, Document.dataset_id == dataset_id)
+                        .first()
+                    )
+                    if document:
+                        logger.info(
+                            f"Checking document {document_id} for summary generation: "
+                            f"status={document.indexing_status}, doc_form={document.doc_form}"
+                        )
+                        if document.indexing_status == "completed" and document.doc_form != "qa_model":
+                            try:
+                                generate_summary_index_task.delay(dataset.id, document_id, None)
+                                logger.info(
+                                    f"Queued summary index generation task for document {document_id} "
+                                    f"in dataset {dataset.id} after indexing completed"
+                                )
+                            except Exception as e:
+                                logger.exception(
+                                    f"Failed to queue summary index generation task for document {document_id}: {str(e)}"
+                                )
+                                # Don't fail the entire indexing process if summary task queuing fails
+                        else:
+                            logger.info(
+                                f"Skipping summary generation for document {document_id}: "
+                                f"status={document.indexing_status}, doc_form={document.doc_form}"
+                            )
+                    else:
+                        logger.warning(f"Document {document_id} not found after indexing")
+            else:
+                logger.info(
+                    f"Summary index generation skipped for dataset {dataset.id}: "
+                    f"summary_index_setting.enable={summary_index_setting.get('enable') if summary_index_setting else None}"
+                )
+        else:
+            logger.info(
+                f"Summary index generation skipped for dataset {dataset.id}: "
+                f"indexing_technique={dataset.indexing_technique} (not 'high_quality')"
+            )
     except DocumentIsPausedError as ex:
         logger.info(click.style(str(ex), fg="yellow"))
     except Exception:

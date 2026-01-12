@@ -58,12 +58,25 @@ def disable_segments_from_index_task(segment_ids: list, dataset_id: str, documen
         return
 
     try:
+        # Disable summary indexes for these segments
+        from services.summary_index_service import SummaryIndexService
+        segment_ids_list = [segment.id for segment in segments]
+        try:
+            # Get disabled_by from first segment (they should all have the same disabled_by)
+            disabled_by = segments[0].disabled_by if segments else None
+            SummaryIndexService.disable_summaries_for_segments(
+                dataset=dataset,
+                segment_ids=segment_ids_list,
+                disabled_by=disabled_by,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to disable summaries for segments: {str(e)}")
+
         index_node_ids = [segment.index_node_id for segment in segments]
         if dataset.is_multimodal:
-            segment_ids = [segment.id for segment in segments]
             segment_attachment_bindings = (
                 db.session.query(SegmentAttachmentBinding)
-                .where(SegmentAttachmentBinding.segment_id.in_(segment_ids))
+                .where(SegmentAttachmentBinding.segment_id.in_(segment_ids_list))
                 .all()
             )
             if segment_attachment_bindings:

@@ -371,6 +371,8 @@ class RetrievalService:
             include_segment_ids = set()
             segment_child_map = {}
             segment_file_map = {}
+            segment_summary_map = {}  # Map segment_id to summary content
+            summary_segment_ids = set()  # Track segments retrieved via summary
             with Session(bind=db.engine, expire_on_commit=False) as session:
                 # Process documents
                 for document in documents:
@@ -398,13 +400,25 @@ class RetrievalService:
                                 attachment_info = attachment_info_dict["attachment_info"]
                                 segment_id = attachment_info_dict["segment_id"]
                         else:
-                            child_index_node_id = document.metadata.get("doc_id")
-                            child_chunk_stmt = select(ChildChunk).where(ChildChunk.index_node_id == child_index_node_id)
-                            child_chunk = session.scalar(child_chunk_stmt)
+                            # Check if this is a summary document
+                            is_summary = document.metadata.get("is_summary", False)
+                            if is_summary:
+                                # For summary documents, find the original chunk via original_chunk_id
+                                original_chunk_id = document.metadata.get("original_chunk_id")
+                                if not original_chunk_id:
+                                    continue
+                                segment_id = original_chunk_id
+                                # Track that this segment was retrieved via summary
+                                summary_segment_ids.add(segment_id)
+                            else:
+                                # For normal documents, find by child chunk index_node_id
+                                child_index_node_id = document.metadata.get("doc_id")
+                                child_chunk_stmt = select(ChildChunk).where(ChildChunk.index_node_id == child_index_node_id)
+                                child_chunk = session.scalar(child_chunk_stmt)
 
-                            if not child_chunk:
-                                continue
-                            segment_id = child_chunk.segment_id
+                                if not child_chunk:
+                                    continue
+                                segment_id = child_chunk.segment_id
 
                         if not segment_id:
                             continue
@@ -489,16 +503,34 @@ class RetrievalService:
                                 if segment:
                                     segment_file_map[segment.id] = [attachment_info]
                         else:
-                            index_node_id = document.metadata.get("doc_id")
-                            if not index_node_id:
-                                continue
-                            document_segment_stmt = select(DocumentSegment).where(
-                                DocumentSegment.dataset_id == dataset_document.dataset_id,
-                                DocumentSegment.enabled == True,
-                                DocumentSegment.status == "completed",
-                                DocumentSegment.index_node_id == index_node_id,
-                            )
-                            segment = session.scalar(document_segment_stmt)
+                            # Check if this is a summary document
+                            is_summary = document.metadata.get("is_summary", False)
+                            if is_summary:
+                                # For summary documents, find the original chunk via original_chunk_id
+                                original_chunk_id = document.metadata.get("original_chunk_id")
+                                if not original_chunk_id:
+                                    continue
+                                # Track that this segment was retrieved via summary
+                                summary_segment_ids.add(original_chunk_id)
+                                document_segment_stmt = select(DocumentSegment).where(
+                                    DocumentSegment.dataset_id == dataset_document.dataset_id,
+                                    DocumentSegment.enabled == True,
+                                    DocumentSegment.status == "completed",
+                                    DocumentSegment.id == original_chunk_id,
+                                )
+                                segment = session.scalar(document_segment_stmt)
+                            else:
+                                # For normal documents, find by index_node_id
+                                index_node_id = document.metadata.get("doc_id")
+                                if not index_node_id:
+                                    continue
+                                document_segment_stmt = select(DocumentSegment).where(
+                                    DocumentSegment.dataset_id == dataset_document.dataset_id,
+                                    DocumentSegment.enabled == True,
+                                    DocumentSegment.status == "completed",
+                                    DocumentSegment.index_node_id == index_node_id,
+                                )
+                                segment = session.scalar(document_segment_stmt)
 
                         if not segment:
                             continue
@@ -526,6 +558,23 @@ class RetrievalService:
                 if record["segment"].id in segment_file_map:
                     record["files"] = segment_file_map[record["segment"].id]  # type: ignore[assignment]
 
+            # Batch query summaries for segments retrieved via summary (only enabled summaries)
+            if summary_segment_ids:
+                from models.dataset import DocumentSegmentSummary
+
+                summaries = (
+                    session.query(DocumentSegmentSummary)
+                    .filter(
+                        DocumentSegmentSummary.chunk_id.in_(summary_segment_ids),
+                        DocumentSegmentSummary.status == "completed",
+                        DocumentSegmentSummary.enabled == True,  # Only retrieve enabled summaries
+                    )
+                    .all()
+                )
+                for summary in summaries:
+                    if summary.summary_content:
+                        segment_summary_map[summary.chunk_id] = summary.summary_content
+
             result = []
             for record in records:
                 # Extract segment
@@ -549,9 +598,16 @@ class RetrievalService:
                     else None
                 )
 
+                # Extract summary if this segment was retrieved via summary
+                summary_content = segment_summary_map.get(segment.id)
+
                 # Create RetrievalSegments object
                 retrieval_segment = RetrievalSegments(
-                    segment=segment, child_chunks=child_chunks, score=score, files=files
+                    segment=segment,
+                    child_chunks=child_chunks,
+                    score=score,
+                    files=files,
+                    summary=summary_content,
                 )
                 result.append(retrieval_segment)
 
