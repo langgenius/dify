@@ -1,3 +1,4 @@
+import shlex
 from collections.abc import Generator
 from typing import Any
 
@@ -14,8 +15,6 @@ from core.tools.entities.tool_entities import (
 )
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 
-SANDBOX_BASH_TOOL_NAME = "bash"
-SANDBOX_BASH_TOOL_PROVIDER = "sandbox"
 COMMAND_TIMEOUT_SECONDS = 60
 
 
@@ -26,9 +25,9 @@ class SandboxBashTool(Tool):
         entity = ToolEntity(
             identity=ToolIdentity(
                 author="Dify",
-                name=SANDBOX_BASH_TOOL_NAME,
+                name="bash",
                 label=I18nObject(en_US="Bash", zh_Hans="Bash"),
-                provider=SANDBOX_BASH_TOOL_PROVIDER,
+                provider="sandbox",
             ),
             parameters=[
                 ToolParameter.get_simple_instance(
@@ -69,7 +68,7 @@ class SandboxBashTool(Tool):
 
         connection_handle = self._sandbox.establish_connection()
         try:
-            cmd_list = ["sh", "-c", command]
+            cmd_list = shlex.split(command)
             future = self._sandbox.run_command(connection_handle, cmd_list)
             timeout = COMMAND_TIMEOUT_SECONDS if COMMAND_TIMEOUT_SECONDS > 0 else None
             result = future.result(timeout=timeout)
@@ -80,10 +79,10 @@ class SandboxBashTool(Tool):
 
             output_parts: list[str] = []
             if stdout:
-                output_parts.append(f"stdout:\n{stdout}")
+                output_parts.append(f"\n{stdout}")
             if stderr:
-                output_parts.append(f"stderr:\n{stderr}")
-            output_parts.append(f"exit_code: {exit_code}")
+                output_parts.append(f"\n{stderr}")
+            output_parts.append(f"\nCommand exited with code {exit_code}")
 
             yield self.create_text_message("\n".join(output_parts))
 
