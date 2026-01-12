@@ -1,8 +1,8 @@
-name: Deploy Dev
+name: Deploy HITL frontend
 
 on:
   workflow_run:
-    workflows: ["Build and Push Web (HITL Web)"]
+    workflows: ["Build and Push API & Web"]
     branches:
       - "feat/hitl-frontend"
     types:
