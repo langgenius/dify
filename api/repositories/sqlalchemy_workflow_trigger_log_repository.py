@@ -51,14 +51,6 @@ class SQLAlchemyWorkflowTriggerLogRepository(WorkflowTriggerLogRepository):
         query = select(WorkflowTriggerLog).where(WorkflowTriggerLog.workflow_run_id == run_id)
         return list(self.session.scalars(query).all())
 
-    def delete_by_run_ids(self, run_ids: Sequence[str]) -> int:
-        """Delete trigger logs for workflow runs."""
-        if not run_ids:
-            return 0
-
-        result = self.session.execute(delete(WorkflowTriggerLog).where(WorkflowTriggerLog.workflow_run_id.in_(run_ids)))
-        return cast(CursorResult, result).rowcount or 0
-
     def get_failed_for_retry(
         self, tenant_id: str, max_retry_count: int = 3, limit: int = 100
     ) -> Sequence[WorkflowTriggerLog]:
@@ -99,6 +91,22 @@ class SQLAlchemyWorkflowTriggerLogRepository(WorkflowTriggerLogRepository):
         )
 
         return list(self.session.scalars(query).all())
+    
+    def delete_by_run_ids(self, run_ids: Sequence[str]) -> int:
+        """
+        Delete trigger logs associated with the given workflow run ids.
+
+        Args:
+            run_ids: Collection of workflow run identifiers.
+
+        Returns:
+            Number of rows deleted.
+        """
+        if not run_ids:
+            return 0
+
+        result = self.session.execute(delete(WorkflowTriggerLog).where(WorkflowTriggerLog.workflow_run_id.in_(run_ids)))
+        return cast(CursorResult, result).rowcount or 0    
 
     def count_by_run_ids(self, run_ids: Sequence[str]) -> int:
         """
