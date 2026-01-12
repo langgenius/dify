@@ -154,7 +154,7 @@ class TestAppGenerateService:
 
         return app, account
 
-    def _create_test_workflow(self, db_session_with_containers, app):
+    def _create_test_workflow(self, db_session_with_containers, app: Flask):
         """
         Helper method to create a test workflow for testing.
 

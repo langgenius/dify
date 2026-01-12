@@ -50,7 +50,7 @@ class TestPartnerTenants:
             mock_csrf.return_value = None
             yield {"db": mock_db, "csrf": mock_csrf}
 
-    def test_put_success(self, app, mock_account, mock_billing_service, mock_decorators):
+    def test_put_success(self, app: Flask, mock_account, mock_billing_service, mock_decorators):
         """Test successful partner tenants bindings sync."""
         # Arrange
         partner_key_encoded = base64.b64encode(b"partner-key-123").decode("utf-8")
@@ -80,7 +80,7 @@ class TestPartnerTenants:
             mock_account.id, "partner-key-123", click_id
         )
 
-    def test_put_invalid_partner_key_base64(self, app, mock_account, mock_billing_service, mock_decorators):
+    def test_put_invalid_partner_key_base64(self, app: Flask, mock_account, mock_billing_service, mock_decorators):
         """Test that invalid base64 partner_key raises BadRequest."""
         # Arrange
         invalid_partner_key = "invalid-base64-!@#$"
@@ -105,7 +105,7 @@ class TestPartnerTenants:
                     resource.put(invalid_partner_key)
                 assert "Invalid partner_key" in str(exc_info.value)
 
-    def test_put_missing_click_id(self, app, mock_account, mock_billing_service, mock_decorators):
+    def test_put_missing_click_id(self, app: Flask, mock_account, mock_billing_service, mock_decorators):
         """Test that missing click_id raises BadRequest."""
         # Arrange
         partner_key_encoded = base64.b64encode(b"partner-key-123").decode("utf-8")
@@ -129,7 +129,9 @@ class TestPartnerTenants:
                 with pytest.raises(BadRequest):
                     resource.put(partner_key_encoded)
 
-    def test_put_billing_service_json_decode_error(self, app, mock_account, mock_billing_service, mock_decorators):
+    def test_put_billing_service_json_decode_error(
+        self, app: Flask, mock_account, mock_billing_service, mock_decorators
+    ):
         """Test handling of billing service JSON decode error.
 
         When billing service returns non-200 status code with invalid JSON response,
@@ -175,7 +177,7 @@ class TestPartnerTenants:
                 assert isinstance(exc_info.value, json.JSONDecodeError)
                 assert "Expecting value" in str(exc_info.value)
 
-    def test_put_empty_click_id(self, app, mock_account, mock_billing_service, mock_decorators):
+    def test_put_empty_click_id(self, app: Flask, mock_account, mock_billing_service, mock_decorators):
         """Test that empty click_id raises BadRequest."""
         # Arrange
         partner_key_encoded = base64.b64encode(b"partner-key-123").decode("utf-8")
@@ -200,7 +202,7 @@ class TestPartnerTenants:
                     resource.put(partner_key_encoded)
                 assert "Invalid partner information" in str(exc_info.value)
 
-    def test_put_empty_partner_key_after_decode(self, app, mock_account, mock_billing_service, mock_decorators):
+    def test_put_empty_partner_key_after_decode(self, app: Flask, mock_account, mock_billing_service, mock_decorators):
         """Test that empty partner_key after decode raises BadRequest."""
         # Arrange
         # Base64 encode an empty string
@@ -226,7 +228,7 @@ class TestPartnerTenants:
                     resource.put(empty_partner_key_encoded)
                 assert "Invalid partner information" in str(exc_info.value)
 
-    def test_put_empty_user_id(self, app, mock_account, mock_billing_service, mock_decorators):
+    def test_put_empty_user_id(self, app: Flask, mock_account, mock_billing_service, mock_decorators):
         """Test that empty user id raises BadRequest."""
         # Arrange
         partner_key_encoded = base64.b64encode(b"partner-key-123").decode("utf-8")

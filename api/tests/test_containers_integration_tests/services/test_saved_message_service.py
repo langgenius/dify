@@ -85,7 +85,7 @@ class TestSavedMessageService:
 
         return app, account
 
-    def _create_test_end_user(self, db_session_with_containers, app):
+    def _create_test_end_user(self, db_session_with_containers, app: Flask):
         """
         Helper method to create a test end user for testing.
 
