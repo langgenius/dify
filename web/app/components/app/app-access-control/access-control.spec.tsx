@@ -125,7 +125,6 @@ const resetAccessControlStore = () => {
 const resetGlobalStore = () => {
   useGlobalPublicStore.setState({
     systemFeatures: defaultSystemFeatures,
-    isGlobalPending: false,
   })
 }
 
