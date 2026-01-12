@@ -842,7 +842,7 @@ class Conversation(Base):
 
     @property
     def status_count(self):
-        from sqlalchemy.orm import sessionmaker
+        from core.db.session_factory import get_session_maker
 
         from repositories.factory import DifyAPIRepositoryFactory
 
@@ -864,7 +864,7 @@ class Conversation(Base):
             if not app:
                 return None
 
-            session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+            session_maker = get_session_maker()
             workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
             workflow_runs = workflow_run_repo.get_workflow_runs_by_ids(
                 tenant_id=app.tenant_id,
