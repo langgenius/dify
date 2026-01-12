@@ -294,4 +294,3 @@ def test_clear_array():
     got = variable_pool.get(["conversation", conversation_variable.name])
     assert got is not None
     assert got.to_object() == []
-
