@@ -45,7 +45,7 @@ from core.workflow.enums import WorkflowType
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.enums import WorkflowRunTriggeredFrom
-from models.workflow import WorkflowAppLog, WorkflowPause, WorkflowPauseReason, WorkflowRun
+from models.workflow import WorkflowAppLog, WorkflowArchiveLog, WorkflowPause, WorkflowPauseReason, WorkflowRun
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.types import (
     AverageInteractionStats,
@@ -277,6 +277,15 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
     ) -> set[str]:
         """
         Fetch workflow run IDs that already have archive log records.
+        """
+        ...
+
+    def get_archived_log_by_run_id(
+        self,
+        run_id: str,
+    ) -> WorkflowArchiveLog | None:
+        """
+        Fetch a workflow archive log by workflow run ID.
         """
         ...
 

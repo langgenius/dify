@@ -30,6 +30,7 @@ from libs.archive_storage import (
 from models.trigger import WorkflowTriggerLog
 from models.workflow import (
     WorkflowAppLog,
+    WorkflowArchiveLog,
     WorkflowNodeExecutionModel,
     WorkflowNodeExecutionOffload,
     WorkflowPause,
@@ -96,10 +97,12 @@ class WorkflowRunRestore:
         self.workers = workers
         self.workflow_run_repo: APIWorkflowRunRepository | None = None
 
-    def _restore_from_run(self, run: WorkflowRun) -> RestoreResult:
+    def _restore_from_run(self, run: WorkflowRun | WorkflowArchiveLog) -> RestoreResult:
         start_time = time.time()
+        run_id = run.workflow_run_id if isinstance(run, WorkflowArchiveLog) else run.id
+        created_at = run.run_created_at if isinstance(run, WorkflowArchiveLog) else run.created_at
         result = RestoreResult(
-            run_id=run.id,
+            run_id=run_id,
             tenant_id=run.tenant_id,
             success=False,
             restored_counts={},
@@ -108,7 +111,7 @@ class WorkflowRunRestore:
         click.echo(
             click.style(
                 f"{'[DRY RUN] ' if self.dry_run else ''}Starting restore for "
-                f"workflow run {run.id} (tenant={run.tenant_id})",
+                f"workflow run {run_id} (tenant={run.tenant_id})",
                 fg="white",
             )
         )
@@ -121,10 +124,9 @@ class WorkflowRunRestore:
             result.elapsed_time = time.time() - start_time
             return result
 
-        created_at = run.created_at
         prefix = (
             f"{run.tenant_id}/app_id={run.app_id}/year={created_at.strftime('%Y')}/"
-            f"month={created_at.strftime('%m')}/workflow_run_id={run.id}"
+            f"month={created_at.strftime('%m')}/workflow_run_id={run_id}"
         )
         archive_key = f"{prefix}/{ARCHIVE_BUNDLE_NAME}"
         try:
@@ -209,13 +211,13 @@ class WorkflowRunRestore:
                 click.echo(
                     click.style(
                         f"{'[DRY RUN] Would complete' if self.dry_run else 'Completed'} restore for "
-                        f"workflow run {run.id}: restored={result.restored_counts}",
+                        f"workflow run {run_id}: restored={result.restored_counts}",
                         fg="green",
                     )
                 )
 
             except Exception as e:
-                logger.exception("Failed to restore workflow run %s", run.id)
+                logger.exception("Failed to restore workflow run %s", run_id)
                 result.error = str(e)
                 session.rollback()
                 click.echo(click.style(f"Restore failed: {e}", fg="red"))
@@ -424,16 +426,16 @@ class WorkflowRunRestore:
         Restore a single workflow run by run ID.
         """
         repo = self._get_workflow_run_repo()
-        run = repo.get_workflow_run_by_id_without_tenant(run_id)
+        archive_log = repo.get_archived_log_by_run_id(run_id)
 
-        if not run:
-            click.echo(click.style(f"Workflow run {run_id} not found", fg="red"))
+        if not archive_log:
+            click.echo(click.style(f"Workflow run archive {run_id} not found", fg="red"))
             return RestoreResult(
                 run_id=run_id,
                 tenant_id="",
                 success=False,
                 restored_counts={},
-                error=f"Workflow run {run_id} not found",
+                error=f"Workflow run archive {run_id} not found",
             )
 
-        return self._restore_from_run(run)
+        return self._restore_from_run(archive_log)

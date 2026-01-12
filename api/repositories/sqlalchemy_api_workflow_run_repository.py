@@ -373,6 +373,14 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         stmt = select(WorkflowArchiveLog.workflow_run_id).where(WorkflowArchiveLog.workflow_run_id.in_(run_ids))
         return set(session.scalars(stmt).all())
 
+    def get_archived_log_by_run_id(
+        self,
+        run_id: str,
+    ) -> WorkflowArchiveLog | None:
+        with self._session_maker() as session:
+            stmt = select(WorkflowArchiveLog).where(WorkflowArchiveLog.workflow_run_id == run_id).limit(1)
+            return session.scalar(stmt)
+
     def get_pause_records_by_run_id(
         self,
         session: Session,
