@@ -3,8 +3,9 @@
 set -e
 
 # Set UTF-8 encoding to address potential encoding issues in containerized environments
-export LANG=${LANG:-en_US.UTF-8}
-export LC_ALL=${LC_ALL:-en_US.UTF-8}
+# Use C.UTF-8 which is universally available in all containers
+export LANG=${LANG:-C.UTF-8}
+export LC_ALL=${LC_ALL:-C.UTF-8}
 export PYTHONIOENCODING=${PYTHONIOENCODING:-utf-8}
 
 if [[ "${MIGRATION_ENABLED}" == "true" ]]; then
