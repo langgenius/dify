@@ -5,6 +5,7 @@ export enum VarKindType {
   variable = 'variable',
   constant = 'constant',
   mixed = 'mixed',
+  mention = 'mention',
 }
 
 // Generic resource variable inputs

@@ -1,4 +1,5 @@
 import type { AgentNode } from '@/app/components/base/prompt-editor/types'
+import type { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import type {
   Node,
   NodeOutPutVar,
@@ -12,6 +13,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import PromptEditor from '@/app/components/base/prompt-editor'
+import { VarKindType as VarKindTypeEnum } from '@/app/components/workflow/nodes/_base/types'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { cn } from '@/utils/classnames'
@@ -30,7 +32,7 @@ type MixedVariableTextInputProps = {
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
   value?: string
-  onChange?: (text: string) => void
+  onChange?: (text: string, type?: VarKindType) => void
   showManageInputField?: boolean
   onManageInputField?: () => void
   disableVariableInsertion?: boolean
@@ -105,7 +107,7 @@ const MixedVariableTextInput = ({
       return nodeId === agentNodeId ? '' : match
     }).trim()
 
-    onChange(valueWithoutAgentVars)
+    onChange(valueWithoutAgentVars, VarKindTypeEnum.mixed)
     setControlPromptEditorRerenderKey(Date.now())
   }, [detectedAgentFromValue?.nodeId, value, onChange, setControlPromptEditorRerenderKey])
 
@@ -116,7 +118,7 @@ const MixedVariableTextInput = ({
     const valueWithoutTrigger = value.replace(/@$/, '')
     const newValue = `{{#${agent.id}.context#}}${valueWithoutTrigger}`
 
-    onChange(newValue)
+    onChange(newValue, VarKindTypeEnum.mention)
     setControlPromptEditorRerenderKey(Date.now())
   }, [value, onChange, setControlPromptEditorRerenderKey])
 

@@ -233,12 +233,12 @@ const FormInputItem: FC<Props> = ({
     }
   }
 
-  const handleValueChange = (newValue: any) => {
+  const handleValueChange = (newValue: any, newType?: VarKindType) => {
     onChange({
       ...value,
       [variable]: {
         ...varInput,
-        type: getVarKindType(),
+        type: newType ?? getVarKindType(),
         value: isNumber ? Number.parseFloat(newValue) : newValue,
       },
     })
