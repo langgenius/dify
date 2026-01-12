@@ -47,6 +47,7 @@ class CommandFuture:
         self._done_event = threading.Event()
         self._lock = threading.Lock()
         self._result: CommandResult | None = None
+        self._exception: BaseException | None = None
         self._cancelled = False
         self._started = False
 
@@ -68,6 +69,9 @@ class CommandFuture:
 
         if self._cancelled:
             raise CommandCancelledError("Command was cancelled")
+
+        if self._exception is not None:
+            raise self._exception
 
         assert self._result is not None
         return self._result
@@ -127,16 +131,11 @@ class CommandFuture:
                     )
                     self._done_event.set()
 
-        except Exception:
+        except Exception as e:
             logger.exception("Command execution failed for pid %s", self._pid)
             with self._lock:
                 if not self._cancelled:
-                    self._result = CommandResult(
-                        stdout=bytes(stdout_buf),
-                        stderr=b"" if is_combined_stream else bytes(stderr_buf),
-                        exit_code=None,
-                        pid=self._pid,
-                    )
+                    self._exception = e
                     self._done_event.set()
         finally:
             self._close_transports()

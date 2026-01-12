@@ -19,11 +19,11 @@ from sqlalchemy.orm import Session
 from configs import dify_config
 from constants import HIDDEN_VALUE
 from core.entities.provider_entities import BasicProviderConfig
+from core.sandbox.factory import VMFactory, VMType
 from core.tools.utils.system_encryption import (
     decrypt_system_params,
 )
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
-from core.virtual_environment.factory import VMFactory, VMType
 from extensions.ext_database import db
 from models.sandbox import SandboxProvider, SandboxProviderSystemConfig
 from services.sandbox.encryption import create_sandbox_config_encrypter, masked_config

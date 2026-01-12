@@ -250,6 +250,11 @@ class E2BEnvironment(VirtualEnvironment):
                 on_stdout=lambda data: stdout_stream_write_handler.write(data.encode()),
                 on_stderr=lambda data: stderr_stream_write_handler.write(data.encode()),
             )
+        except Exception as e:
+            # Capture exceptions and write to stderr stream so they can be retrieved via CommandFuture
+            # This prevents uncaught exceptions from being printed to console
+            error_msg = f"Command execution failed: {type(e).__name__}: {str(e)}\n"
+            stderr_stream_write_handler.write(error_msg.encode())
         finally:
             # Close the write handlers to signal EOF
             stdout_stream.close()

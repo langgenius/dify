@@ -10,8 +10,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from core.sandbox.factory import VMFactory, VMType
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
-from core.virtual_environment.factory import VMFactory, VMType
 
 
 class TestSandboxType:
