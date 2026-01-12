@@ -9,6 +9,7 @@ import {
   useEffect,
   useState,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useAppContext } from '@/context/app-context'
@@ -24,6 +25,7 @@ import {
 dayjs.extend(utc)
 dayjs.extend(timezone)
 export const useEducation = () => {
+  const { t } = useTranslation()
   const {
     mutate,
     isPending,
@@ -45,12 +47,12 @@ export const useEducation = () => {
         onError: (error: any) => {
           Toast.notify({
             type: 'error',
-            message: error?.message || 'Failed to fetch schools',
+            message: error?.message || t('api.actionFailed', { ns: 'common' }),
           })
         },
       })
     }
-  }, [mutate])
+  }, [mutate, t])
 
   const { run: querySchoolsWithDebounced } = useDebounceFn((searchParams: SearchParams) => {
     handleUpdateSchools(searchParams)
@@ -140,6 +142,7 @@ const useEducationReverifyNotice = ({
 }
 
 export const useEducationInit = () => {
+  const { t } = useTranslation()
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
   const setShowEducationExpireNoticeModal = useModalContextSelector(s => s.setShowEducationExpireNoticeModal)
   const educationVerifying = localStorage.getItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
@@ -163,7 +166,7 @@ export const useEducationInit = () => {
       onError: (error: any) => {
         Toast.notify({
           type: 'error',
-          message: error?.message || 'Failed to verify education account',
+          message: error?.message || t('api.actionFailed', { ns: 'common' }),
         })
       },
     })

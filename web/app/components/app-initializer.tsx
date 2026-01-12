@@ -45,7 +45,7 @@ export const AppInitializer = ({
     }
     catch (error) {
       console.error('Failed to check setup status:', error instanceof Error ? error.message : error)
-      return false
+      throw error
     }
   }, [])
 

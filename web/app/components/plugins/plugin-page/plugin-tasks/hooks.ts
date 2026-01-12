@@ -2,6 +2,7 @@ import type { PluginStatus } from '@/app/components/plugins/types'
 import {
   useCallback,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
 import { TaskStatus } from '@/app/components/plugins/types'
 import {
@@ -10,6 +11,7 @@ import {
 } from '@/service/use-plugins'
 
 export const usePluginTaskStatus = () => {
+  const { t } = useTranslation()
   const {
     pluginTasks,
     handleRefetch,
@@ -45,11 +47,11 @@ export const usePluginTaskStatus = () => {
       onError: (error: any) => {
         Toast.notify({
           type: 'error',
-          message: error?.message || 'Failed to clear plugin',
+          message: error?.message || t('api.actionFailed', { ns: 'common' }),
         })
       },
     })
-  }, [mutate, handleRefetch])
+  }, [mutate, handleRefetch, t])
   const totalPluginsLength = allPlugins.length
   const runningPluginsLength = runningPlugins.length
   const errorPluginsLength = errorPlugins.length
