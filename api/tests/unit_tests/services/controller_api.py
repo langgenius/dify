@@ -160,7 +160,12 @@ class ControllerApiTestDataFactory:
         return api
 
     @staticmethod
-    def create_test_client(app: Flask, api: Api, resource_class, route):
+    def create_test_client(
+        app: Flask,
+        api: Api,
+        resource_class: type,
+        route: str,
+    ):
         """
         Create a Flask test client with a resource registered.
 
