@@ -597,6 +597,7 @@ class WorkflowRun(Base):
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="workflow_run_pkey"),
         sa.Index("workflow_run_triggerd_from_idx", "tenant_id", "app_id", "triggered_from"),
+        sa.Index("workflow_run_created_at_id_idx", "created_at", "id"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
