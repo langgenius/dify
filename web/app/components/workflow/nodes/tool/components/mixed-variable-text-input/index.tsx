@@ -113,7 +113,8 @@ const MixedVariableTextInput = ({
     if (!onChange)
       return
 
-    const newValue = `{{#${agent.id}.context#}}`
+    const valueWithoutTrigger = value.replace(/@$/, '')
+    const newValue = `{{#${agent.id}.context#}}${valueWithoutTrigger}`
 
     onChange(newValue)
     setControlPromptEditorRerenderKey(Date.now())
