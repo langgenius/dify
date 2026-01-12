@@ -418,9 +418,22 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
             # Check if PG protocol is supported
             if self.logstore_client.supports_pg_protocol:
                 # Use PG protocol with SQL query (get latest version of each record)
-                # Validate and escape run_ids (they should be UUIDs)
+                # Validate and escape all UUID parameters to prevent SQL injection
                 from uuid import UUID
 
+                # Validate tenant_id and app_id as UUIDs
+                try:
+                    UUID(tenant_id)
+                    UUID(app_id)
+                except (ValueError, AttributeError):
+                    logger.warning("Invalid UUID format for tenant_id or app_id, aborting query")
+                    return {}
+
+                # Escape single quotes in tenant_id and app_id
+                safe_tenant_id = tenant_id.replace("'", "''")
+                safe_app_id = app_id.replace("'", "''")
+
+                # Validate and escape run_ids
                 validated_ids = []
                 for run_id in run_ids:
                     try:
@@ -441,8 +454,8 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
                             ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) as rn
                         FROM "{AliyunLogStore.workflow_execution_logstore}"
                         WHERE id IN ('{ids_str}') 
-                          AND tenant_id = '{tenant_id}' 
-                          AND app_id = '{app_id}' 
+                          AND tenant_id = '{safe_tenant_id}' 
+                          AND app_id = '{safe_app_id}' 
                           AND __time__ > 0
                     ) AS subquery WHERE rn = 1
                     LIMIT {len(validated_ids)}
