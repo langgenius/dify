@@ -1,4 +1,4 @@
-import type { OperationName } from './types'
+import type { OperationName } from '../types'
 import type { CommonResponse } from '@/models/common'
 import {
   RiArchive2Line,
@@ -17,6 +17,12 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
+import Confirm from '@/app/components/base/confirm'
+import Divider from '@/app/components/base/divider'
+import CustomPopover from '@/app/components/base/popover'
+import Switch from '@/app/components/base/switch'
+import { ToastContext } from '@/app/components/base/toast'
+import Tooltip from '@/app/components/base/tooltip'
 import { DataSourceType, DocumentActionType } from '@/models/datasets'
 import {
   useDocumentArchive,
@@ -31,14 +37,8 @@ import {
 } from '@/service/knowledge/use-document'
 import { asyncRunSafe } from '@/utils'
 import { cn } from '@/utils/classnames'
-import Confirm from '../../base/confirm'
-import Divider from '../../base/divider'
-import CustomPopover from '../../base/popover'
-import Switch from '../../base/switch'
-import { ToastContext } from '../../base/toast'
-import Tooltip from '../../base/tooltip'
+import s from '../style.module.css'
 import RenameModal from './rename-modal'
-import s from './style.module.css'
 
 type OperationsProps = {
   embeddingAvailable: boolean
