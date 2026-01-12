@@ -11,7 +11,7 @@ This test suite covers:
 import json
 from datetime import UTC, datetime
 from decimal import Decimal
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 from uuid import uuid4
 
 import pytest
@@ -1276,21 +1276,40 @@ class TestConversationStatusCount:
 
             return mock_result
 
+        # Mock app property
+        mock_app = MagicMock()
+        mock_app.tenant_id = str(uuid4())
+
+        # Mock repository
+        mock_repo = MagicMock()
+        mock_repo.get_workflow_runs_by_ids.return_value = {
+            workflow_run_id_1: mock_workflow_runs[0],
+            workflow_run_id_2: mock_workflow_runs[1],
+            workflow_run_id_3: mock_workflow_runs[2],
+        }
+
         # Act & Assert
-        with patch("models.model.db.session.scalars", side_effect=mock_scalars):
+        with patch("models.model.db.session.scalars", side_effect=mock_scalars), \
+             patch.object(Conversation, "app", new_callable=PropertyMock, return_value=mock_app), \
+             patch("core.db.session_factory.get_session_maker") as mock_get_session_maker, \
+             patch(
+                 "repositories.factory.DifyAPIRepositoryFactory.create_api_workflow_run_repository",
+                 return_value=mock_repo,
+             ):
             result = conversation.status_count
 
-            # Verify only 2 database queries were made (not N+1)
-            assert len(calls_made) == 2, f"Expected 2 queries, got {len(calls_made)}: {calls_made}"
+            # Verify only 1 database query was made for messages (workflow runs loaded via repository)
+            assert len(calls_made) == 1, f"Expected 1 query, got {len(calls_made)}: {calls_made}"
 
-            # Verify the first query gets messages
+            # Verify the query gets messages
             assert "messages" in calls_made[0]
             assert "conversation_id" in calls_made[0]
 
-            # Verify the second query batch loads workflow runs with proper filtering
-            assert "workflow_runs" in calls_made[1]
-            assert "app_id" in calls_made[1]  # Security filter applied
-            assert "IN" in calls_made[1]  # Batch loading with IN clause
+            # Verify repository was called with correct parameters
+            mock_repo.get_workflow_runs_by_ids.assert_called_once()
+            call_args = mock_repo.get_workflow_runs_by_ids.call_args
+            assert call_args.kwargs["app_id"] == app_id
+            assert set(call_args.kwargs["run_ids"]) == {workflow_run_id_1, workflow_run_id_2, workflow_run_id_3}
 
             # Verify correct status counts
             assert result["success"] == 1  # One SUCCEEDED
@@ -1338,13 +1357,28 @@ class TestConversationStatusCount:
 
             return mock_result
 
+        # Mock app property
+        mock_app = MagicMock()
+        mock_app.tenant_id = str(uuid4())
+
+        # Mock repository to return empty dict (workflow run filtered out by app_id)
+        mock_repo = MagicMock()
+        mock_repo.get_workflow_runs_by_ids.return_value = {}
+
         # Act
-        with patch("models.model.db.session.scalars", side_effect=mock_scalars):
+        with patch("models.model.db.session.scalars", side_effect=mock_scalars), \
+             patch.object(Conversation, "app", new_callable=PropertyMock, return_value=mock_app), \
+             patch("core.db.session_factory.get_session_maker"), \
+             patch(
+                 "repositories.factory.DifyAPIRepositoryFactory.create_api_workflow_run_repository",
+                 return_value=mock_repo,
+             ):
             result = conversation.status_count
 
-            # Assert - query should include app_id filter
-            workflow_query = calls_made[1]
-            assert "app_id" in workflow_query
+            # Assert - repository should be called with app_id filter
+            mock_repo.get_workflow_runs_by_ids.assert_called_once()
+            call_args = mock_repo.get_workflow_runs_by_ids.call_args
+            assert call_args.kwargs["app_id"] == app_id
 
             # Since workflow run has wrong app_id, it shouldn't be included in counts
             assert result["success"] == 0
@@ -1383,14 +1417,23 @@ class TestConversationStatusCount:
             ),
         ]
 
-        with patch("models.model.db.session.scalars") as mock_scalars:
+        # Mock app property
+        mock_app = MagicMock()
+        mock_app.tenant_id = str(uuid4())
+
+        # Mock repository
+        mock_repo = MagicMock()
+        mock_repo.get_workflow_runs_by_ids.return_value = {
+            workflow_run_id: mock_workflow_runs[0],
+        }
+
+        with patch("models.model.db.session.scalars") as mock_scalars, \
+             patch.object(Conversation, "app", new_callable=PropertyMock, return_value=mock_app):
             # Mock the messages query
             def mock_scalars_side_effect(query):
                 mock_result = MagicMock()
                 if "messages" in str(query):
                     mock_result.all.return_value = mock_messages
-                elif "workflow_runs" in str(query):
-                    mock_result.all.return_value = mock_workflow_runs
                 else:
                     mock_result.all.return_value = []
                 return mock_result
@@ -1398,9 +1441,14 @@ class TestConversationStatusCount:
             mock_scalars.side_effect = mock_scalars_side_effect
 
             # Act - should not raise exception
-            result = conversation.status_count
+            with patch("core.db.session_factory.get_session_maker"), \
+                 patch(
+                     "repositories.factory.DifyAPIRepositoryFactory.create_api_workflow_run_repository",
+                     return_value=mock_repo,
+                 ):
+                result = conversation.status_count
 
-            # Assert - should handle invalid status gracefully
-            assert result["success"] == 0
-            assert result["failed"] == 0
-            assert result["partial_success"] == 0
+                # Assert - should handle invalid status gracefully
+                assert result["success"] == 0
+                assert result["failed"] == 0
+                assert result["partial_success"] == 0
