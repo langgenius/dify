@@ -306,7 +306,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
           <a
             className="flex items-center text-text-accent"
             target="_blank"
-            href={docLink('/guides/knowledge-base/integrate-knowledge-within-application')}
+            href={docLink('/use-dify/knowledge/integrate-knowledge-within-application')}
           >
             <span>{t('list.learnMore', { ns: 'datasetDocuments' })}</span>
             <RiExternalLinkLine className="h-3 w-3" />

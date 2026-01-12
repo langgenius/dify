@@ -63,7 +63,7 @@ const RetrievalSetting = ({
         title: t('form.retrievalSetting.title', { ns: 'datasetSettings' }),
         subTitle: (
           <div className="body-xs-regular flex items-center text-text-tertiary">
-            <a target="_blank" rel="noopener noreferrer" href={docLink('guides/knowledge-base/create-knowledge-and-upload-documents#id-4-retrieval-settings')} className="text-text-accent">{t('form.retrievalSetting.learnMore', { ns: 'datasetSettings' })}</a>
+            <a target="_blank" rel="noopener noreferrer" href={docLink('/use-dify/knowledge/create-knowledge/introduction#id-4-retrieval-settings')} className="text-text-accent">{t('form.retrievalSetting.learnMore', { ns: 'datasetSettings' })}</a>
             &nbsp;
             {t('nodes.knowledgeBase.aboutRetrieval', { ns: 'workflow' })}
           </div>

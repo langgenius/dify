@@ -281,7 +281,7 @@ const Form = () => {
                   <a
                     target="_blank"
                     rel="noopener noreferrer"
-                    href={docLink('/guides/knowledge-base/create-knowledge-and-upload-documents/chunking-and-cleaning-text')}
+                    href={docLink('/use-dify/knowledge/create-knowledge/chunking-and-cleaning-text')}
                     className="text-text-accent"
                   >
                     {t('form.chunkStructure.learnMore', { ns: 'datasetSettings' })}
@@ -421,9 +421,9 @@ const Form = () => {
                         <a
                           target="_blank"
                           rel="noopener noreferrer"
-                          href={docLink('/guides/knowledge-base/create-knowledge-and-upload-documents/setting-indexing-methods#setting-the-retrieval-setting', {
-                            'zh-Hans': '/guides/knowledge-base/create-knowledge-and-upload-documents/setting-indexing-methods#指定检索方式',
-                            'ja-JP': '/guides/knowledge-base/create-knowledge-and-upload-documents/setting-indexing-methods#検索方法の指定',
+                          href={docLink('/use-dify/knowledge/create-knowledge/setting-indexing-methods#setting-the-retrieval-setting', {
+                            'zh-Hans': '/use-dify/knowledge/create-knowledge/setting-indexing-methods#指定检索方式',
+                            'ja-JP': '/use-dify/knowledge/create-knowledge/setting-indexing-methods#検索方法の指定',
                           })}
                           className="text-text-accent"
                         >

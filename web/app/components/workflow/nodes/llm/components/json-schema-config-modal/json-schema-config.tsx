@@ -255,7 +255,7 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
       <div className="flex items-center gap-x-2 p-6 pt-5">
         <a
           className="flex grow items-center gap-x-1 text-text-accent"
-          href={docLink('/guides/workflow/structured-outputs')}
+          href={docLink('/use-dify/getting-started/introduction')}
           target="_blank"
           rel="noopener noreferrer"
         >

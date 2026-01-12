@@ -161,7 +161,7 @@ export default function InviteSettingsPage() {
             className="system-xs-medium text-text-accent-secondary"
             target="_blank"
             rel="noopener noreferrer"
-            href={docLink('/policies/open-source')}
+            href={docLink('/use-dify/getting-started/introduction')}
           >
             {t('license.link', { ns: 'login' })}
           </Link>

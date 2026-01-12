@@ -87,7 +87,7 @@ const StepThree = ({ datasetId, datasetName, indexingType, creationCache, retrie
             <div className="text-base font-semibold text-text-secondary">{t('stepThree.sideTipTitle', { ns: 'datasetCreation' })}</div>
             <div className="text-text-tertiary">{t('stepThree.sideTipContent', { ns: 'datasetCreation' })}</div>
             <a
-              href={docLink('/guides/knowledge-base/integrate-knowledge-within-application')}
+              href={docLink('/use-dify/knowledge/integrate-knowledge-within-application')}
               target="_blank"
               rel="noreferrer noopener"
               className="system-sm-regular text-text-accent"

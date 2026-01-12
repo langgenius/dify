@@ -152,10 +152,7 @@ const ChatVariablePanel = () => {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-text-accent"
-                href={docLink('/guides/workflow/variables#conversation-variables', {
-                  'zh-Hans': '/guides/workflow/variables#会话变量',
-                  'ja-JP': '/guides/workflow/variables#会話変数',
-                })}
+                href={docLink('/use-dify/getting-started/introduction')}
               >
                 {t('chatVariable.docLink', { ns: 'workflow' })}
               </a>

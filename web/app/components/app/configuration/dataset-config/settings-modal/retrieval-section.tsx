@@ -103,7 +103,7 @@ const InternalRetrievalSection: FC<InternalRetrievalSectionProps> = ({
       <div>
         <div className="system-sm-semibold text-text-secondary">{t('form.retrievalSetting.title', { ns: 'datasetSettings' })}</div>
         <div className="text-xs font-normal leading-[18px] text-text-tertiary">
-          <a target="_blank" rel="noopener noreferrer" href={docLink('/guides/knowledge-base/create-knowledge-and-upload-documents/setting-indexing-methods#setting-the-retrieval-setting')} className="text-text-accent">{t('form.retrievalSetting.learnMore', { ns: 'datasetSettings' })}</a>
+          <a target="_blank" rel="noopener noreferrer" href={docLink('/use-dify/knowledge/create-knowledge/setting-indexing-methods#setting-the-retrieval-setting')} className="text-text-accent">{t('form.retrievalSetting.learnMore', { ns: 'datasetSettings' })}</a>
           {t('form.retrievalSetting.description', { ns: 'datasetSettings' })}
         </div>
       </div>

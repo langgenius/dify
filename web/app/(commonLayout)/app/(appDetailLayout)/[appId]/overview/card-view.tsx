@@ -59,7 +59,7 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const shouldRenderAppCards = !isWorkflowApp || hasTriggerNode === false
   const disableAppCards = !shouldRenderAppCards
 
-  const triggerDocUrl = docLink('/guides/workflow/node/start')
+  const triggerDocUrl = docLink('/use-dify/getting-started/key-concepts#workflow')
   const buildTriggerModeMessage = useCallback((featureName: string) => (
     <div className="flex flex-col gap-1">
       <div className="text-xs text-text-secondary">

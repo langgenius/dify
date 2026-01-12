@@ -25,7 +25,7 @@ const i18nPrefix = 'notice'
 const ExpireNoticeModal: React.FC<Props> = ({ expireAt, expired, onClose }) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
-  const eduDocLink = docLink('/getting-started/dify-for-education')
+  const eduDocLink = docLink('/use-dify/workspace/subscription-management#dify-for-education')
   const { formatTime } = useTimestamp()
   const setShowPricingModal = useModalContextSelector(s => s.setShowPricingModal)
   const { mutateAsync } = useEducationVerify()
