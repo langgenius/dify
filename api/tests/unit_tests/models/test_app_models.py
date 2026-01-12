@@ -1289,13 +1289,15 @@ class TestConversationStatusCount:
         }
 
         # Act & Assert
-        with patch("models.model.db.session.scalars", side_effect=mock_scalars), \
-             patch.object(Conversation, "app", new_callable=PropertyMock, return_value=mock_app), \
-             patch("core.db.session_factory.get_session_maker") as mock_get_session_maker, \
-             patch(
-                 "repositories.factory.DifyAPIRepositoryFactory.create_api_workflow_run_repository",
-                 return_value=mock_repo,
-             ):
+        with (
+            patch("models.model.db.session.scalars", side_effect=mock_scalars),
+            patch.object(Conversation, "app", new_callable=PropertyMock, return_value=mock_app),
+            patch("core.db.session_factory.get_session_maker") as mock_get_session_maker,
+            patch(
+                "repositories.factory.DifyAPIRepositoryFactory.create_api_workflow_run_repository",
+                return_value=mock_repo,
+            ),
+        ):
             result = conversation.status_count
 
             # Verify only 1 database query was made for messages (workflow runs loaded via repository)
@@ -1366,13 +1368,15 @@ class TestConversationStatusCount:
         mock_repo.get_workflow_runs_by_ids.return_value = {}
 
         # Act
-        with patch("models.model.db.session.scalars", side_effect=mock_scalars), \
-             patch.object(Conversation, "app", new_callable=PropertyMock, return_value=mock_app), \
-             patch("core.db.session_factory.get_session_maker"), \
-             patch(
-                 "repositories.factory.DifyAPIRepositoryFactory.create_api_workflow_run_repository",
-                 return_value=mock_repo,
-             ):
+        with (
+            patch("models.model.db.session.scalars", side_effect=mock_scalars),
+            patch.object(Conversation, "app", new_callable=PropertyMock, return_value=mock_app),
+            patch("core.db.session_factory.get_session_maker"),
+            patch(
+                "repositories.factory.DifyAPIRepositoryFactory.create_api_workflow_run_repository",
+                return_value=mock_repo,
+            ),
+        ):
             result = conversation.status_count
 
             # Assert - repository should be called with app_id filter
@@ -1427,8 +1431,10 @@ class TestConversationStatusCount:
             workflow_run_id: mock_workflow_runs[0],
         }
 
-        with patch("models.model.db.session.scalars") as mock_scalars, \
-             patch.object(Conversation, "app", new_callable=PropertyMock, return_value=mock_app):
+        with (
+            patch("models.model.db.session.scalars") as mock_scalars,
+            patch.object(Conversation, "app", new_callable=PropertyMock, return_value=mock_app),
+        ):
             # Mock the messages query
             def mock_scalars_side_effect(query):
                 mock_result = MagicMock()
@@ -1441,11 +1447,13 @@ class TestConversationStatusCount:
             mock_scalars.side_effect = mock_scalars_side_effect
 
             # Act - should not raise exception
-            with patch("core.db.session_factory.get_session_maker"), \
-                 patch(
-                     "repositories.factory.DifyAPIRepositoryFactory.create_api_workflow_run_repository",
-                     return_value=mock_repo,
-                 ):
+            with (
+                patch("core.db.session_factory.get_session_maker"),
+                patch(
+                    "repositories.factory.DifyAPIRepositoryFactory.create_api_workflow_run_repository",
+                    return_value=mock_repo,
+                ),
+            ):
                 result = conversation.status_count
 
                 # Assert - should handle invalid status gracefully
