@@ -1,9 +1,7 @@
 const translation = {
   title: 'Keşfet',
   sidebar: {
-    discovery: 'Keşif',
     chat: 'Sohbet',
-    workspace: 'Çalışma Alanı',
     action: {
       pin: 'Sabitle',
       unpin: 'Sabitlemeyi Kaldır',
@@ -16,12 +14,8 @@ const translation = {
     },
   },
   apps: {
-    title: 'Dify Tarafından Keşfet Uygulamaları',
-    description: 'Bu şablon uygulamalarını anında kullanın veya şablonlara dayalı kendi uygulamalarınızı özelleştirin.',
-    allCategories: 'Önerilen',
   },
   appCard: {
-    addToWorkspace: 'Çalışma Alanına Ekle',
     customize: 'Özelleştir',
   },
   appCustomize: {

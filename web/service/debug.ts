@@ -1,8 +1,8 @@
-import { get, post, ssePost } from './base'
-import type { IOnCompleted, IOnData, IOnError, IOnFile, IOnMessageEnd, IOnMessageReplace, IOnThought } from './base'
+import type { IOnCompleted, IOnData, IOnError, IOnMessageReplace } from './base'
+import type { ModelParameterRule } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ChatPromptConfig, CompletionPromptConfig } from '@/models/debug'
 import type { AppModeEnum, ModelModeType } from '@/types/app'
-import type { ModelParameterRule } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { get, post, ssePost } from './base'
 
 export type BasicAppFirstRes = {
   prompt: string
@@ -23,24 +23,6 @@ export type CodeGenRes = {
   code: string
   language: string[]
   error?: string
-}
-
-export const sendChatMessage = async (appId: string, body: Record<string, any>, { onData, onCompleted, onThought, onFile, onError, getAbortController, onMessageEnd, onMessageReplace }: {
-  onData: IOnData
-  onCompleted: IOnCompleted
-  onFile: IOnFile
-  onThought: IOnThought
-  onMessageEnd: IOnMessageEnd
-  onMessageReplace: IOnMessageReplace
-  onError: IOnError
-  getAbortController?: (abortController: AbortController) => void
-}) => {
-  return ssePost(`apps/${appId}/chat-messages`, {
-    body: {
-      ...body,
-      response_mode: 'streaming',
-    },
-  }, { onData, onCompleted, onThought, onFile, onError, getAbortController, onMessageEnd, onMessageReplace })
 }
 
 export const stopChatMessageResponding = async (appId: string, taskId: string) => {
@@ -106,8 +88,8 @@ export const fetchPromptTemplate = ({
   mode,
   modelName,
   hasSetDataSet,
-}: { appMode: AppModeEnum; mode: ModelModeType; modelName: string; hasSetDataSet: boolean }) => {
-  return get<Promise<{ chat_prompt_config: ChatPromptConfig; completion_prompt_config: CompletionPromptConfig; stop: [] }>>('/app/prompt-templates', {
+}: { appMode: AppModeEnum, mode: ModelModeType, modelName: string, hasSetDataSet: boolean }) => {
+  return get<Promise<{ chat_prompt_config: ChatPromptConfig, completion_prompt_config: CompletionPromptConfig, stop: [] }>>('/app/prompt-templates', {
     params: {
       app_mode: appMode,
       model_mode: mode,
@@ -120,6 +102,6 @@ export const fetchPromptTemplate = ({
 export const fetchTextGenerationMessage = ({
   appId,
   messageId,
-}: { appId: string; messageId: string }) => {
+}: { appId: string, messageId: string }) => {
   return get<Promise<any>>(`/apps/${appId}/messages/${messageId}`)
 }

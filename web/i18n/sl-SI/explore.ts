@@ -1,9 +1,7 @@
 const translation = {
   title: 'Razišči',
   sidebar: {
-    discovery: 'Odkritja',
     chat: 'Klepet',
-    workspace: 'Delovni prostor',
     action: {
       pin: 'Pripni',
       unpin: 'Odpni',
@@ -16,12 +14,8 @@ const translation = {
     },
   },
   apps: {
-    title: 'Razišči aplikacije Dify',
-    description: 'Uporabite te predloge aplikacij takoj ali prilagodite svoje aplikacije na podlagi predlog.',
-    allCategories: 'Priporočeno',
   },
   appCard: {
-    addToWorkspace: 'Dodaj v delovni prostor',
     customize: 'Prilagodi',
   },
   appCustomize: {

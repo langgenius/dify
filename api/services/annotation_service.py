@@ -77,7 +77,7 @@ class AppAnnotationService:
         if annotation_setting:
             add_annotation_to_index_task.delay(
                 annotation.id,
-                annotation.question,
+                question,
                 current_tenant_id,
                 app_id,
                 annotation_setting.collection_binding_id,
@@ -137,13 +137,16 @@ class AppAnnotationService:
         if not app:
             raise NotFound("App not found")
         if keyword:
+            from libs.helper import escape_like_pattern
+
+            escaped_keyword = escape_like_pattern(keyword)
             stmt = (
                 select(MessageAnnotation)
                 .where(MessageAnnotation.app_id == app_id)
                 .where(
                     or_(
-                        MessageAnnotation.question.ilike(f"%{keyword}%"),
-                        MessageAnnotation.content.ilike(f"%{keyword}%"),
+                        MessageAnnotation.question.ilike(f"%{escaped_keyword}%", escape="\\"),
+                        MessageAnnotation.content.ilike(f"%{escaped_keyword}%", escape="\\"),
                     )
                 )
                 .order_by(MessageAnnotation.created_at.desc(), MessageAnnotation.id.desc())
@@ -253,7 +256,7 @@ class AppAnnotationService:
         if app_annotation_setting:
             update_annotation_to_index_task.delay(
                 annotation.id,
-                annotation.question,
+                annotation.question_text,
                 current_tenant_id,
                 app_id,
                 app_annotation_setting.collection_binding_id,
@@ -352,7 +355,6 @@ class AppAnnotationService:
     def batch_import_app_annotations(cls, app_id, file: FileStorage):
         """
         Batch import annotations from CSV file with enhanced security checks.
-
         Security features:
         - File size validation
         - Row count limits (min/max)
@@ -361,7 +363,6 @@ class AppAnnotationService:
         - Concurrency tracking
         """
         from configs import dify_config
-
         # get app info
         current_user, current_tenant_id = current_account_with_tenant()
         app = (
@@ -445,27 +446,31 @@ class AppAnnotationService:
                     f"The CSV file must contain at least {min_records} valid annotation record(s). "
                     f"Found {len(result)} valid record(s)."
                 )
-
             # Check annotation quota limit
             features = FeatureService.get_features(current_tenant_id)
             if features.billing.enabled:
                 annotation_quota_limit = features.annotation_quota_limit
                 if annotation_quota_limit.limit < len(result) + annotation_quota_limit.size:
-                    raise ValueError("The number of annotations exceeds the limit of your subscription.")
-            # async job
+                    raise ValueError(
+                        f"The number of annotations ({len(result)}) would exceed your subscription limit. "
+                        f"Current usage: {annotation_quota_limit.size}/{annotation_quota_limit.limit}. "
+                        f"Available: {annotation_quota_limit.limit - annotation_quota_limit.size}."
+                    )
+
+            # Create async job
             job_id = str(uuid.uuid4())
             indexing_cache_key = f"app_annotation_batch_import_{str(job_id)}"
-
             # Register job in active tasks list for concurrency tracking
             current_time = int(naive_utc_now().timestamp() * 1000)
             active_jobs_key = f"annotation_import_active:{current_tenant_id}"
             redis_client.zadd(active_jobs_key, {job_id: current_time})
             redis_client.expire(active_jobs_key, 7200)  # 2 hours TTL
-
             # Set job status
             redis_client.setnx(indexing_cache_key, "waiting")
-            batch_import_annotations_task.delay(str(job_id), result, app_id, current_tenant_id, current_user.id)
+            redis_client.expire(indexing_cache_key, 3600)  # 1 hour TTL
 
+            # Send batch import task
+            batch_import_annotations_task.delay(str(job_id), result, app_id, current_tenant_id, current_user.id)
         except ValueError as e:
             return {"error_msg": str(e)}
         except Exception as e:

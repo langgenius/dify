@@ -1,3 +1,5 @@
+from typing import Any
+
 import flask_login
 from flask import make_response, request
 from flask_restx import Resource
@@ -22,7 +24,12 @@ from controllers.console.error import (
     NotAllowedCreateWorkspace,
     WorkspacesLimitExceeded,
 )
-from controllers.console.wraps import email_password_login_enabled, setup_required
+from controllers.console.wraps import (
+    decrypt_code_field,
+    decrypt_password_field,
+    email_password_login_enabled,
+    setup_required,
+)
 from events.tenant_event import tenant_was_created
 from libs.helper import EmailStr, extract_remote_ip
 from libs.login import current_account_with_tenant
@@ -79,6 +86,7 @@ class LoginApi(Resource):
     @setup_required
     @email_password_login_enabled
     @console_ns.expect(console_ns.models[LoginPayload.__name__])
+    @decrypt_password_field
     def post(self):
         """Authenticate user and login."""
         args = LoginPayload.model_validate(console_ns.payload)
@@ -90,14 +98,13 @@ class LoginApi(Resource):
         if is_login_error_rate_limit:
             raise EmailPasswordLoginLimitError()
 
-        # TODO: why invitation is re-assigned with different type?
-        invitation = args.invite_token  # type: ignore
-        if invitation:
-            invitation = RegisterService.get_invitation_if_token_valid(None, args.email, invitation)  # type: ignore
+        invitation_data: dict[str, Any] | None = None
+        if args.invite_token:
+            invitation_data = RegisterService.get_invitation_if_token_valid(None, args.email, args.invite_token)
 
         try:
-            if invitation:
-                data = invitation.get("data", {})  # type: ignore
+            if invitation_data:
+                data = invitation_data.get("data", {})
                 invitee_email = data.get("email") if data else None
                 if invitee_email != args.email:
                     raise InvalidEmailError()
@@ -218,6 +225,7 @@ class EmailCodeLoginSendEmailApi(Resource):
 class EmailCodeLoginApi(Resource):
     @setup_required
     @console_ns.expect(console_ns.models[EmailCodeLoginPayload.__name__])
+    @decrypt_code_field
     def post(self):
         args = EmailCodeLoginPayload.model_validate(console_ns.payload)
 

@@ -1,9 +1,7 @@
 const translation = {
   title: '탐색',
   sidebar: {
-    discovery: '탐색',
     chat: '채팅',
-    workspace: '작업 공간',
     action: {
       pin: '고정',
       unpin: '고정 해제',
@@ -16,12 +14,8 @@ const translation = {
     },
   },
   apps: {
-    title: 'Dify 로 앱 탐색',
-    description: '이 템플릿 앱을 즉시 사용하거나 템플릿을 기반으로 고유한 앱을 사용자 정의하세요.',
-    allCategories: '모든 카테고리',
   },
   appCard: {
-    addToWorkspace: '작업 공간에 추가',
     customize: '사용자 정의',
   },
   appCustomize: {

@@ -1,16 +1,17 @@
+import type {
+  AgentLogItemWithChildren,
+  IterationDurationMap,
+  LLMTraceItem,
+  LoopDurationMap,
+  LoopVariableMap,
+  NodeTracing,
+} from '@/types/workflow'
+import { useBoolean } from 'ahooks'
 import {
   useCallback,
   useRef,
   useState,
 } from 'react'
-import { useBoolean } from 'ahooks'
-import type {
-  AgentLogItemWithChildren,
-  IterationDurationMap,
-  LoopDurationMap,
-  LoopVariableMap,
-  NodeTracing,
-} from '@/types/workflow'
 
 export const useLogs = () => {
   const [showRetryDetail, {
@@ -79,8 +80,18 @@ export const useLogs = () => {
     }
   }, [setAgentOrToolLogItemStack, setAgentOrToolLogListMap])
 
+  const [showLLMDetail, {
+    setTrue: setShowLLMDetailTrue,
+    setFalse: setShowLLMDetailFalse,
+  }] = useBoolean(false)
+  const [llmResultList, setLLMResultList] = useState<LLMTraceItem[]>([])
+  const handleShowLLMDetail = useCallback((detail: LLMTraceItem[]) => {
+    setShowLLMDetailTrue()
+    setLLMResultList(detail)
+  }, [setShowLLMDetailTrue, setLLMResultList])
+
   return {
-    showSpecialResultPanel: showRetryDetail || showIteratingDetail || showLoopingDetail || !!agentOrToolLogItemStack.length,
+    showSpecialResultPanel: showRetryDetail || showIteratingDetail || showLoopingDetail || !!agentOrToolLogItemStack.length || showLLMDetail,
     showRetryDetail,
     setShowRetryDetailTrue,
     setShowRetryDetailFalse,
@@ -111,5 +122,12 @@ export const useLogs = () => {
     agentOrToolLogItemStack,
     agentOrToolLogListMap,
     handleShowAgentOrToolLog,
+
+    showLLMDetail,
+    setShowLLMDetailTrue,
+    setShowLLMDetailFalse,
+    llmResultList,
+    setLLMResultList,
+    handleShowLLMDetail,
   }
 }

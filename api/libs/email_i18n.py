@@ -6,6 +6,8 @@ in Dify. It follows Domain-Driven Design principles with proper type hints and
 eliminates the need for repetitive language switching logic.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from enum import StrEnum, auto
 from typing import Any, Protocol
@@ -53,7 +55,7 @@ class EmailLanguage(StrEnum):
     ZH_HANS = "zh-Hans"
 
     @classmethod
-    def from_language_code(cls, language_code: str) -> "EmailLanguage":
+    def from_language_code(cls, language_code: str) -> EmailLanguage:
         """Convert a language code to EmailLanguage with fallback to English."""
         if language_code == "zh-Hans":
             return cls.ZH_HANS

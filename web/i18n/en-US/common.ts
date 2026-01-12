@@ -672,6 +672,7 @@ const translation = {
       hitScore: 'Retrieval Score:',
     },
     inputPlaceholder: 'Talk to {{botName}}',
+    inputDisabledPlaceholder: 'Preview Only',
     thinking: 'Thinking...',
     thought: 'Thought',
     resend: 'Resend',
@@ -743,7 +744,6 @@ const translation = {
     pasteFileLinkInvalid: 'Invalid file link',
     fileExtensionNotSupport: 'File extension not supported',
     fileExtensionBlocked: 'This file type is blocked for security reasons',
-    uploadDisabled: 'File upload is disabled',
   },
   tag: {
     placeholder: 'All Tags',

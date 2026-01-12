@@ -1,0 +1,22 @@
+{
+  "appCustomize.nameRequired": "El nombre de la aplicación es obligatorio",
+  "appCustomize.subTitle": "Icono y nombre de la aplicación",
+  "appCustomize.title": "Crear aplicación a partir de {{name}}",
+  "category.Agent": "Agente",
+  "category.Assistant": "Asistente",
+  "category.Entertainment": "Entretenimiento",
+  "category.HR": "Recursos Humanos",
+  "category.Programming": "Programación",
+  "category.Recommended": "recomendado",
+  "category.Translate": "Traducción",
+  "category.Workflow": "Flujo de trabajo",
+  "category.Writing": "Escritura",
+  "sidebar.action.delete": "Eliminar",
+  "sidebar.action.pin": "Anclar",
+  "sidebar.action.rename": "Renombrar",
+  "sidebar.action.unpin": "Desanclar",
+  "sidebar.chat": "Chat",
+  "sidebar.delete.content": "¿Estás seguro de que quieres eliminar esta aplicación?",
+  "sidebar.delete.title": "Eliminar aplicación",
+  "title": "Explorar"
+}

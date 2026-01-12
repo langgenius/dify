@@ -666,6 +666,7 @@ const translation = {
       hitScore: '召回得分：',
     },
     inputPlaceholder: '和 {{botName}} 聊天',
+    inputDisabledPlaceholder: '仅供试用',
     thinking: '深度思考中...',
     thought: '已深度思考',
     resend: '重新发送',
@@ -737,7 +738,6 @@ const translation = {
     pasteFileLinkInvalid: '文件链接无效',
     fileExtensionNotSupport: '文件类型不支持',
     fileExtensionBlocked: '出于安全考虑，该文件类型已被禁止上传',
-    uploadDisabled: '文件上传已被禁用',
   },
   tag: {
     placeholder: '全部标签',

@@ -1,0 +1,22 @@
+{
+  "enabledPlugins": {
+    "feature-dev@claude-plugins-official": true,
+    "context7@claude-plugins-official": true,
+    "typescript-lsp@claude-plugins-official": true,
+    "pyright-lsp@claude-plugins-official": true,
+    "ralph-loop@claude-plugins-official": true
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx -y block-no-verify@1.1.1"
+          }
+        ]
+      }
+    ]
+  }
+}

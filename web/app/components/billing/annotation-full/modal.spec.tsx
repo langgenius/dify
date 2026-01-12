@@ -1,19 +1,10 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import AnnotationFullModal from './modal'
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
-let mockUsageProps: { className?: string } | null = null
-jest.mock('./usage', () => ({
-  __esModule: true,
+vi.mock('./usage', () => ({
   default: (props: { className?: string }) => {
-    mockUsageProps = props
     return (
-      <div data-testid='usage-component' data-classname={props.className ?? ''}>
+      <div data-testid="usage-component" data-classname={props.className ?? ''}>
         usage
       </div>
     )
@@ -21,12 +12,11 @@ jest.mock('./usage', () => ({
 }))
 
 let mockUpgradeBtnProps: { loc?: string } | null = null
-jest.mock('../upgrade-btn', () => ({
-  __esModule: true,
+vi.mock('../upgrade-btn', () => ({
   default: (props: { loc?: string }) => {
     mockUpgradeBtnProps = props
     return (
-      <button type='button' data-testid='upgrade-btn'>
+      <button type="button" data-testid="upgrade-btn">
         {props.loc}
       </button>
     )
@@ -39,9 +29,8 @@ type ModalSnapshot = {
   className?: string
 }
 let mockModalProps: ModalSnapshot | null = null
-jest.mock('../../base/modal', () => ({
-  __esModule: true,
-  default: ({ isShow, children, onClose, closable, className }: { isShow: boolean; children: React.ReactNode; onClose: () => void; closable?: boolean; className?: string }) => {
+vi.mock('../../base/modal', () => ({
+  default: ({ isShow, children, onClose, closable, className }: { isShow: boolean, children: React.ReactNode, onClose: () => void, closable?: boolean, className?: string }) => {
     mockModalProps = {
       isShow,
       closable,
@@ -50,9 +39,9 @@ jest.mock('../../base/modal', () => ({
     if (!isShow)
       return null
     return (
-      <div data-testid='annotation-full-modal' data-classname={className ?? ''}>
+      <div data-testid="annotation-full-modal" data-classname={className ?? ''}>
         {closable && (
-          <button type='button' data-testid='mock-modal-close' onClick={onClose}>
+          <button type="button" data-testid="mock-modal-close" onClick={onClose}>
             close
           </button>
         )}
@@ -64,8 +53,7 @@ jest.mock('../../base/modal', () => ({
 
 describe('AnnotationFullModal', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
-    mockUsageProps = null
+    vi.clearAllMocks()
     mockUpgradeBtnProps = null
     mockModalProps = null
   })
@@ -74,7 +62,7 @@ describe('AnnotationFullModal', () => {
   describe('Rendering', () => {
     it('should display main info when visible', () => {
       // Act
-      render(<AnnotationFullModal show onHide={jest.fn()} />)
+      render(<AnnotationFullModal show onHide={vi.fn()} />)
 
       // Assert
       expect(screen.getByText('billing.annotatedResponse.fullTipLine1')).toBeInTheDocument()
@@ -94,7 +82,7 @@ describe('AnnotationFullModal', () => {
   describe('Visibility', () => {
     it('should not render content when hidden', () => {
       // Act
-      const { container } = render(<AnnotationFullModal show={false} onHide={jest.fn()} />)
+      const { container } = render(<AnnotationFullModal show={false} onHide={vi.fn()} />)
 
       // Assert
       expect(container).toBeEmptyDOMElement()
@@ -106,7 +94,7 @@ describe('AnnotationFullModal', () => {
   describe('Close handling', () => {
     it('should trigger onHide when close control is clicked', () => {
       // Arrange
-      const onHide = jest.fn()
+      const onHide = vi.fn()
 
       // Act
       render(<AnnotationFullModal show onHide={onHide} />)

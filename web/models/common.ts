@@ -142,6 +142,9 @@ export type IWorkspace = {
 export type ICurrentWorkspace = Omit<IWorkspace, 'current'> & {
   role: 'owner' | 'admin' | 'editor' | 'dataset_operator' | 'normal'
   providers: Provider[]
+  trial_credits: number
+  trial_credits_used: number
+  next_credit_reset_date: number
   trial_end_reason?: string
   custom_config?: {
     remove_webapp_brand?: boolean
@@ -268,7 +271,7 @@ export type CodeBasedExtensionForm = {
   label: I18nText
   variable: string
   required: boolean
-  options: { label: I18nText; value: string }[]
+  options: { label: I18nText, value: string }[]
   default: string
   placeholder: string
   max_length?: number

@@ -1,80 +1,95 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useRouter } from 'next/navigation'
-import { useDebounce, useDebounceFn } from 'ahooks'
+import type { Item } from '@/app/components/base/select'
+import type { SortType } from '@/service/datasets'
 import { PlusIcon } from '@heroicons/react/24/solid'
 import { RiDraftLine, RiExternalLinkLine } from '@remixicon/react'
-import AutoDisabledDocument from '../common/document-status-with-action/auto-disabled-document'
-import List from './list'
-import s from './style.module.css'
-import Loading from '@/app/components/base/loading'
+import { useDebounce, useDebounceFn } from 'ahooks'
+import { useRouter } from 'next/navigation'
+import * as React from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import { DataSourceType } from '@/models/datasets'
+import Loading from '@/app/components/base/loading'
 import IndexFailed from '@/app/components/datasets/common/document-status-with-action/index-failed'
-import { useProviderContext } from '@/context/provider-context'
-import cn from '@/utils/classnames'
-import { useDocumentList, useInvalidDocumentDetail, useInvalidDocumentList } from '@/service/knowledge/use-document'
-import { useInvalid } from '@/service/use-base'
-import { useChildSegmentListKey, useSegmentListKey } from '@/service/knowledge/use-segment'
-import useDocumentListQueryState from './hooks/use-document-list-query-state'
-import useEditDocumentMetadata from '../metadata/hooks/use-edit-dataset-metadata'
-import DatasetMetadataDrawer from '../metadata/metadata-dataset/dataset-metadata-drawer'
-import StatusWithAction from '../common/document-status-with-action/status-with-action'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDocLink } from '@/context/i18n'
+import { useProviderContext } from '@/context/provider-context'
+import { DataSourceType } from '@/models/datasets'
+import { useDocumentList, useInvalidDocumentDetail, useInvalidDocumentList } from '@/service/knowledge/use-document'
+import { useChildSegmentListKey, useSegmentListKey } from '@/service/knowledge/use-segment'
+import { useInvalid } from '@/service/use-base'
+import { cn } from '@/utils/classnames'
 import Chip from '../../base/chip'
 import Sort from '../../base/sort'
-import type { SortType } from '@/service/datasets'
-import type { Item } from '@/app/components/base/select'
-import { useIndexStatus } from './status-item/hooks'
+import AutoDisabledDocument from '../common/document-status-with-action/auto-disabled-document'
+import StatusWithAction from '../common/document-status-with-action/status-with-action'
+import useEditDocumentMetadata from '../metadata/hooks/use-edit-dataset-metadata'
+import DatasetMetadataDrawer from '../metadata/metadata-dataset/dataset-metadata-drawer'
+import useDocumentListQueryState from './hooks/use-document-list-query-state'
+import List from './list'
 import { normalizeStatusForQuery, sanitizeStatusValue } from './status-filter'
+import { useIndexStatus } from './status-item/hooks'
+import s from './style.module.css'
 
 const FolderPlusIcon = ({ className }: React.SVGProps<SVGElement>) => {
-  return <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
-    <path d="M10.8332 5.83333L9.90355 3.9741C9.63601 3.439 9.50222 3.17144 9.30265 2.97597C9.12615 2.80311 8.91344 2.67164 8.6799 2.59109C8.41581 2.5 8.11668 2.5 7.51841 2.5H4.33317C3.39975 2.5 2.93304 2.5 2.57652 2.68166C2.26292 2.84144 2.00795 3.09641 1.84816 3.41002C1.6665 3.76654 1.6665 4.23325 1.6665 5.16667V5.83333M1.6665 5.83333H14.3332C15.7333 5.83333 16.4334 5.83333 16.9681 6.10582C17.4386 6.3455 17.821 6.72795 18.0607 7.19836C18.3332 7.73314 18.3332 8.4332 18.3332 9.83333V13.5C18.3332 14.9001 18.3332 15.6002 18.0607 16.135C17.821 16.6054 17.4386 16.9878 16.9681 17.2275C16.4334 17.5 15.7333 17.5 14.3332 17.5H5.6665C4.26637 17.5 3.56631 17.5 3.03153 17.2275C2.56112 16.9878 2.17867 16.6054 1.93899 16.135C1.6665 15.6002 1.6665 14.9001 1.6665 13.5V5.83333ZM9.99984 14.1667V9.16667M7.49984 11.6667H12.4998" stroke="#667085" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
+      <path d="M10.8332 5.83333L9.90355 3.9741C9.63601 3.439 9.50222 3.17144 9.30265 2.97597C9.12615 2.80311 8.91344 2.67164 8.6799 2.59109C8.41581 2.5 8.11668 2.5 7.51841 2.5H4.33317C3.39975 2.5 2.93304 2.5 2.57652 2.68166C2.26292 2.84144 2.00795 3.09641 1.84816 3.41002C1.6665 3.76654 1.6665 4.23325 1.6665 5.16667V5.83333M1.6665 5.83333H14.3332C15.7333 5.83333 16.4334 5.83333 16.9681 6.10582C17.4386 6.3455 17.821 6.72795 18.0607 7.19836C18.3332 7.73314 18.3332 8.4332 18.3332 9.83333V13.5C18.3332 14.9001 18.3332 15.6002 18.0607 16.135C17.821 16.6054 17.4386 16.9878 16.9681 17.2275C16.4334 17.5 15.7333 17.5 14.3332 17.5H5.6665C4.26637 17.5 3.56631 17.5 3.03153 17.2275C2.56112 16.9878 2.17867 16.6054 1.93899 16.135C1.6665 15.6002 1.6665 14.9001 1.6665 13.5V5.83333ZM9.99984 14.1667V9.16667M7.49984 11.6667H12.4998" stroke="#667085" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
 }
 
 const ThreeDotsIcon = ({ className }: React.SVGProps<SVGElement>) => {
-  return <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
-    <path d="M5 6.5V5M8.93934 7.56066L10 6.5M10.0103 11.5H11.5103" stroke="#374151" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
+      <path d="M5 6.5V5M8.93934 7.56066L10 6.5M10.0103 11.5H11.5103" stroke="#374151" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
 }
 
 const NotionIcon = ({ className }: React.SVGProps<SVGElement>) => {
-  return <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
-    <g clipPath="url(#clip0_2164_11263)">
-      <path fillRule="evenodd" clipRule="evenodd" d="M3.5725 18.2611L1.4229 15.5832C0.905706 14.9389 0.625 14.1466 0.625 13.3312V3.63437C0.625 2.4129 1.60224 1.39936 2.86295 1.31328L12.8326 0.632614C13.5569 0.583164 14.2768 0.775682 14.8717 1.17794L18.3745 3.5462C19.0015 3.97012 19.375 4.66312 19.375 5.40266V16.427C19.375 17.6223 18.4141 18.6121 17.1798 18.688L6.11458 19.3692C5.12958 19.4298 4.17749 19.0148 3.5725 18.2611Z" fill="white" />
-      <path d="M7.03006 8.48669V8.35974C7.03006 8.03794 7.28779 7.77104 7.61997 7.74886L10.0396 7.58733L13.3857 12.5147V8.19009L12.5244 8.07528V8.01498C12.5244 7.68939 12.788 7.42074 13.1244 7.4035L15.326 7.29073V7.60755C15.326 7.75628 15.2154 7.88349 15.0638 7.90913L14.534 7.99874V15.0023L13.8691 15.231C13.3136 15.422 12.6952 15.2175 12.3772 14.7377L9.12879 9.83574V14.5144L10.1287 14.7057L10.1147 14.7985C10.0711 15.089 9.82028 15.3087 9.51687 15.3222L7.03006 15.4329C6.99718 15.1205 7.23132 14.841 7.55431 14.807L7.88143 14.7727V8.53453L7.03006 8.48669Z" fill="black" />
-      <path fillRule="evenodd" clipRule="evenodd" d="M12.9218 1.85424L2.95217 2.53491C2.35499 2.57568 1.89209 3.05578 1.89209 3.63437V13.3312C1.89209 13.8748 2.07923 14.403 2.42402 14.8325L4.57362 17.5104C4.92117 17.9434 5.46812 18.1818 6.03397 18.147L17.0991 17.4658C17.6663 17.4309 18.1078 16.9762 18.1078 16.427V5.40266C18.1078 5.06287 17.9362 4.74447 17.6481 4.54969L14.1453 2.18143C13.7883 1.94008 13.3564 1.82457 12.9218 1.85424ZM3.44654 3.78562C3.30788 3.68296 3.37387 3.46909 3.54806 3.4566L12.9889 2.77944C13.2897 2.75787 13.5886 2.8407 13.8318 3.01305L15.7261 4.35508C15.798 4.40603 15.7642 4.51602 15.6752 4.52086L5.67742 5.0646C5.37485 5.08106 5.0762 4.99217 4.83563 4.81406L3.44654 3.78562ZM5.20848 6.76919C5.20848 6.4444 5.47088 6.1761 5.80642 6.15783L16.3769 5.58216C16.7039 5.56435 16.9792 5.81583 16.9792 6.13239V15.6783C16.9792 16.0025 16.7177 16.2705 16.3829 16.2896L5.8793 16.8872C5.51537 16.9079 5.20848 16.6283 5.20848 16.2759V6.76919Z" fill="black" />
-    </g>
-    <defs>
-      <clipPath id="clip0_2164_11263">
-        <rect width="20" height="20" fill="white" />
-      </clipPath>
-    </defs>
-  </svg>
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
+      <g clipPath="url(#clip0_2164_11263)">
+        <path fillRule="evenodd" clipRule="evenodd" d="M3.5725 18.2611L1.4229 15.5832C0.905706 14.9389 0.625 14.1466 0.625 13.3312V3.63437C0.625 2.4129 1.60224 1.39936 2.86295 1.31328L12.8326 0.632614C13.5569 0.583164 14.2768 0.775682 14.8717 1.17794L18.3745 3.5462C19.0015 3.97012 19.375 4.66312 19.375 5.40266V16.427C19.375 17.6223 18.4141 18.6121 17.1798 18.688L6.11458 19.3692C5.12958 19.4298 4.17749 19.0148 3.5725 18.2611Z" fill="white" />
+        <path d="M7.03006 8.48669V8.35974C7.03006 8.03794 7.28779 7.77104 7.61997 7.74886L10.0396 7.58733L13.3857 12.5147V8.19009L12.5244 8.07528V8.01498C12.5244 7.68939 12.788 7.42074 13.1244 7.4035L15.326 7.29073V7.60755C15.326 7.75628 15.2154 7.88349 15.0638 7.90913L14.534 7.99874V15.0023L13.8691 15.231C13.3136 15.422 12.6952 15.2175 12.3772 14.7377L9.12879 9.83574V14.5144L10.1287 14.7057L10.1147 14.7985C10.0711 15.089 9.82028 15.3087 9.51687 15.3222L7.03006 15.4329C6.99718 15.1205 7.23132 14.841 7.55431 14.807L7.88143 14.7727V8.53453L7.03006 8.48669Z" fill="black" />
+        <path fillRule="evenodd" clipRule="evenodd" d="M12.9218 1.85424L2.95217 2.53491C2.35499 2.57568 1.89209 3.05578 1.89209 3.63437V13.3312C1.89209 13.8748 2.07923 14.403 2.42402 14.8325L4.57362 17.5104C4.92117 17.9434 5.46812 18.1818 6.03397 18.147L17.0991 17.4658C17.6663 17.4309 18.1078 16.9762 18.1078 16.427V5.40266C18.1078 5.06287 17.9362 4.74447 17.6481 4.54969L14.1453 2.18143C13.7883 1.94008 13.3564 1.82457 12.9218 1.85424ZM3.44654 3.78562C3.30788 3.68296 3.37387 3.46909 3.54806 3.4566L12.9889 2.77944C13.2897 2.75787 13.5886 2.8407 13.8318 3.01305L15.7261 4.35508C15.798 4.40603 15.7642 4.51602 15.6752 4.52086L5.67742 5.0646C5.37485 5.08106 5.0762 4.99217 4.83563 4.81406L3.44654 3.78562ZM5.20848 6.76919C5.20848 6.4444 5.47088 6.1761 5.80642 6.15783L16.3769 5.58216C16.7039 5.56435 16.9792 5.81583 16.9792 6.13239V15.6783C16.9792 16.0025 16.7177 16.2705 16.3829 16.2896L5.8793 16.8872C5.51537 16.9079 5.20848 16.6283 5.20848 16.2759V6.76919Z" fill="black" />
+      </g>
+      <defs>
+        <clipPath id="clip0_2164_11263">
+          <rect width="20" height="20" fill="white" />
+        </clipPath>
+      </defs>
+    </svg>
+  )
 }
 
-const EmptyElement: FC<{ canAdd: boolean; onClick: () => void; type?: 'upload' | 'sync' }> = ({ canAdd = true, onClick, type = 'upload' }) => {
+const EmptyElement: FC<{ canAdd: boolean, onClick: () => void, type?: 'upload' | 'sync' }> = ({ canAdd = true, onClick, type = 'upload' }) => {
   const { t } = useTranslation()
-  return <div className={s.emptyWrapper}>
-    <div className={s.emptyElement}>
-      <div className={s.emptySymbolIconWrapper}>
-        {type === 'upload' ? <FolderPlusIcon /> : <NotionIcon />}
+  return (
+    <div className={s.emptyWrapper}>
+      <div className={s.emptyElement}>
+        <div className={s.emptySymbolIconWrapper}>
+          {type === 'upload' ? <FolderPlusIcon /> : <NotionIcon />}
+        </div>
+        <span className={s.emptyTitle}>
+          {t('list.empty.title', { ns: 'datasetDocuments' })}
+          <ThreeDotsIcon className="relative -left-1.5 -top-3 inline" />
+        </span>
+        <div className={s.emptyTip}>
+          {t(`list.empty.${type}.tip`, { ns: 'datasetDocuments' })}
+        </div>
+        {type === 'upload' && canAdd && (
+          <Button onClick={onClick} className={s.addFileBtn} variant="secondary-accent">
+            <PlusIcon className={s.plusIcon} />
+            {t('list.addFile', { ns: 'datasetDocuments' })}
+          </Button>
+        )}
       </div>
-      <span className={s.emptyTitle}>{t('datasetDocuments.list.empty.title')}<ThreeDotsIcon className='relative -left-1.5 -top-3 inline' /></span>
-      <div className={s.emptyTip}>
-        {t(`datasetDocuments.list.empty.${type}.tip`)}
-      </div>
-      {type === 'upload' && canAdd && <Button onClick={onClick} className={s.addFileBtn} variant='secondary-accent'>
-        <PlusIcon className={s.plusIcon} />{t('datasetDocuments.list.addFile')}
-      </Button>}
     </div>
-  </div>
+  )
 }
 
 type IDocumentsProps = {
@@ -105,7 +120,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const debouncedSearchValue = useDebounce(searchValue, { wait: 500 })
 
   const statusFilterItems: Item[] = useMemo(() => [
-    { value: 'all', name: t('datasetDocuments.list.index.all') as string },
+    { value: 'all', name: t('list.index.all', { ns: 'datasetDocuments' }) as string },
     { value: 'queuing', name: DOC_INDEX_STATUS_MAP.queuing.text },
     { value: 'indexing', name: DOC_INDEX_STATUS_MAP.indexing.text },
     { value: 'paused', name: DOC_INDEX_STATUS_MAP.paused.text },
@@ -117,8 +132,8 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   ], [DOC_INDEX_STATUS_MAP, t])
   const normalizedStatusFilterValue = useMemo(() => normalizeStatusForQuery(statusFilterValue), [statusFilterValue])
   const sortItems: Item[] = useMemo(() => [
-    { value: 'created_at', name: t('datasetDocuments.list.sort.uploadTime') as string },
-    { value: 'hit_count', name: t('datasetDocuments.list.sort.hitCount') as string },
+    { value: 'created_at', name: t('list.sort.uploadTime', { ns: 'datasetDocuments' }) as string },
+    { value: 'hit_count', name: t('list.sort.hitCount', { ns: 'datasetDocuments' }) as string },
   ], [t])
 
   // Initialize search value from URL on mount
@@ -283,26 +298,26 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   })
 
   return (
-    <div className='flex h-full flex-col'>
-      <div className='flex flex-col justify-center gap-1 px-6 pt-4'>
-        <h1 className='text-base font-semibold text-text-primary'>{t('datasetDocuments.list.title')}</h1>
-        <div className='flex items-center space-x-0.5 text-sm font-normal text-text-tertiary'>
-          <span>{t('datasetDocuments.list.desc')}</span>
+    <div className="flex h-full flex-col">
+      <div className="flex flex-col justify-center gap-1 px-6 pt-4">
+        <h1 className="text-base font-semibold text-text-primary">{t('list.title', { ns: 'datasetDocuments' })}</h1>
+        <div className="flex items-center space-x-0.5 text-sm font-normal text-text-tertiary">
+          <span>{t('list.desc', { ns: 'datasetDocuments' })}</span>
           <a
-            className='flex items-center text-text-accent'
-            target='_blank'
+            className="flex items-center text-text-accent"
+            target="_blank"
             href={docLink('/guides/knowledge-base/integrate-knowledge-within-application')}
           >
-            <span>{t('datasetDocuments.list.learnMore')}</span>
-            <RiExternalLinkLine className='h-3 w-3' />
+            <span>{t('list.learnMore', { ns: 'datasetDocuments' })}</span>
+            <RiExternalLinkLine className="h-3 w-3" />
           </a>
         </div>
       </div>
-      <div className='flex h-0 grow flex-col px-6 pt-4'>
-        <div className='flex flex-wrap items-center justify-between'>
-          <div className='flex items-center gap-2'>
+      <div className="flex h-0 grow flex-col px-6 pt-4">
+        <div className="flex flex-wrap items-center justify-between">
+          <div className="flex items-center gap-2">
             <Chip
-              className='w-[160px]'
+              className="w-[160px]"
               showLeftIcon={false}
               value={statusFilterValue}
               items={statusFilterItems}
@@ -323,12 +338,12 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
             <Input
               showLeftIcon
               showClearIcon
-              wrapperClassName='!w-[200px]'
+              wrapperClassName="!w-[200px]"
               value={inputValue}
               onChange={e => handleInputChange(e.target.value)}
               onClear={() => handleInputChange('')}
             />
-            <div className='h-3.5 w-px bg-divider-regular'></div>
+            <div className="h-3.5 w-px bg-divider-regular"></div>
             <Sort
               order={sortValue.startsWith('-') ? '-' : ''}
               value={sortValue.replace('-', '')}
@@ -343,14 +358,14 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
               }}
             />
           </div>
-          <div className='flex !h-8 items-center justify-center gap-2'>
+          <div className="flex !h-8 items-center justify-center gap-2">
             {!isFreePlan && <AutoDisabledDocument datasetId={datasetId} />}
             <IndexFailed datasetId={datasetId} />
-            {!embeddingAvailable && <StatusWithAction type='warning' description={t('dataset.embeddingModelNotAvailable')} />}
+            {!embeddingAvailable && <StatusWithAction type="warning" description={t('embeddingModelNotAvailable', { ns: 'dataset' })} />}
             {embeddingAvailable && (
-              <Button variant='secondary' className='shrink-0' onClick={showEditMetadataModal}>
-                <RiDraftLine className='mr-1 size-4' />
-                {t('dataset.metadata.metadata')}
+              <Button variant="secondary" className="shrink-0" onClick={showEditMetadataModal}>
+                <RiDraftLine className="mr-1 size-4" />
+                {t('metadata.metadata', { ns: 'dataset' })}
               </Button>
             )}
             {isShowEditMetadataModal && (
@@ -366,47 +381,46 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
               />
             )}
             {embeddingAvailable && (
-              <Button variant='primary' onClick={routeToDocCreate} className='shrink-0'>
+              <Button variant="primary" onClick={routeToDocCreate} className="shrink-0">
                 <PlusIcon className={cn('mr-2 h-4 w-4 stroke-current')} />
-                {isDataSourceNotion && t('datasetDocuments.list.addPages')}
-                {isDataSourceWeb && t('datasetDocuments.list.addUrl')}
-                {(!dataset?.data_source_type || isDataSourceFile) && t('datasetDocuments.list.addFile')}
+                {isDataSourceNotion && t('list.addPages', { ns: 'datasetDocuments' })}
+                {isDataSourceWeb && t('list.addUrl', { ns: 'datasetDocuments' })}
+                {(!dataset?.data_source_type || isDataSourceFile) && t('list.addFile', { ns: 'datasetDocuments' })}
               </Button>
             )}
           </div>
         </div>
         {isListLoading
-          ? <Loading type='app' />
+          ? <Loading type="app" />
           // eslint-disable-next-line sonarjs/no-nested-conditional
           : total > 0
             ? (
-              <List
-                embeddingAvailable={embeddingAvailable}
-                documents={documentsList || []}
-                datasetId={datasetId}
-                onUpdate={handleUpdate}
-                selectedIds={selectedIds}
-                onSelectedIdChange={setSelectedIds}
-                statusFilterValue={normalizedStatusFilterValue}
-                remoteSortValue={sortValue}
-                pagination={{
-                  total,
-                  limit,
-                  onLimitChange: handleLimitChange,
-                  current: currPage,
-                  onChange: handlePageChange,
-                }}
-                onManageMetadata={showEditMetadataModal}
-              />
-            )
+                <List
+                  embeddingAvailable={embeddingAvailable}
+                  documents={documentsList || []}
+                  datasetId={datasetId}
+                  onUpdate={handleUpdate}
+                  selectedIds={selectedIds}
+                  onSelectedIdChange={setSelectedIds}
+                  statusFilterValue={normalizedStatusFilterValue}
+                  remoteSortValue={sortValue}
+                  pagination={{
+                    total,
+                    limit,
+                    onLimitChange: handleLimitChange,
+                    current: currPage,
+                    onChange: handlePageChange,
+                  }}
+                  onManageMetadata={showEditMetadataModal}
+                />
+              )
             : (
-              <EmptyElement
-                canAdd={embeddingAvailable}
-                onClick={routeToDocCreate}
-                type={isDataSourceNotion ? 'sync' : 'upload'}
-              />
-            )
-        }
+                <EmptyElement
+                  canAdd={embeddingAvailable}
+                  onClick={routeToDocCreate}
+                  type={isDataSourceNotion ? 'sync' : 'upload'}
+                />
+              )}
       </div>
     </div>
   )

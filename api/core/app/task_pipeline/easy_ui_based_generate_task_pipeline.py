@@ -1,4 +1,5 @@
 import logging
+import re
 import time
 from collections.abc import Generator
 from threading import Thread
@@ -58,7 +59,7 @@ from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from events.message_event import message_was_created
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
-from models.model import AppMode, Conversation, Message, MessageAgentThought
+from models.model import AppMode, Conversation, LLMGenerationDetail, Message, MessageAgentThought
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +68,8 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
     """
     EasyUIBasedGenerateTaskPipeline is a class that generate stream output and state management for Application.
     """
+
+    _THINK_PATTERN = re.compile(r"<think[^>]*>(.*?)</think>", re.IGNORECASE | re.DOTALL)
 
     _task_state: EasyUITaskState
     _application_generate_entity: Union[ChatAppGenerateEntity, CompletionAppGenerateEntity, AgentChatAppGenerateEntity]
@@ -342,9 +345,11 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                 self._task_state.llm_result.message.content = current_content
 
                 if isinstance(event, QueueLLMChunkEvent):
+                    event_type = self._message_cycle_manager.get_message_event_type(message_id=self._message_id)
                     yield self._message_cycle_manager.message_to_stream_response(
                         answer=cast(str, delta_text),
                         message_id=self._message_id,
+                        event_type=event_type,
                     )
                 else:
                     yield self._agent_message_to_stream_response(
@@ -407,10 +412,135 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                 )
             )
 
+        # Save LLM generation detail if there's reasoning_content
+        self._save_generation_detail(session=session, message=message, llm_result=llm_result)
+
         message_was_created.send(
             message,
             application_generate_entity=self._application_generate_entity,
         )
+
+    def _save_generation_detail(self, *, session: Session, message: Message, llm_result: LLMResult) -> None:
+        """
+        Save LLM generation detail for Completion/Chat/Agent-Chat applications.
+        For Agent-Chat, also merges MessageAgentThought records.
+        """
+        import json
+
+        reasoning_list: list[str] = []
+        tool_calls_list: list[dict] = []
+        sequence: list[dict] = []
+        answer = message.answer or ""
+
+        # Check if this is Agent-Chat mode by looking for agent thoughts
+        agent_thoughts = (
+            session.query(MessageAgentThought)
+            .filter_by(message_id=message.id)
+            .order_by(MessageAgentThought.position.asc())
+            .all()
+        )
+
+        if agent_thoughts:
+            # Agent-Chat mode: merge MessageAgentThought records
+            content_pos = 0
+            cleaned_answer_parts: list[str] = []
+            for thought in agent_thoughts:
+                # Add thought/reasoning
+                if thought.thought:
+                    reasoning_text = thought.thought
+                    if "<think" in reasoning_text.lower():
+                        clean_text, extracted_reasoning = self._split_reasoning_from_answer(reasoning_text)
+                        if extracted_reasoning:
+                            reasoning_text = extracted_reasoning
+                            thought.thought = clean_text or extracted_reasoning
+                    reasoning_list.append(reasoning_text)
+                    sequence.append({"type": "reasoning", "index": len(reasoning_list) - 1})
+
+                # Add tool calls
+                if thought.tool:
+                    tool_calls_list.append(
+                        {
+                            "name": thought.tool,
+                            "arguments": thought.tool_input or "",
+                            "result": thought.observation or "",
+                        }
+                    )
+                    sequence.append({"type": "tool_call", "index": len(tool_calls_list) - 1})
+
+                # Add answer content if present
+                if thought.answer:
+                    content_text = thought.answer
+                    if "<think" in content_text.lower():
+                        clean_answer, extracted_reasoning = self._split_reasoning_from_answer(content_text)
+                        if extracted_reasoning:
+                            reasoning_list.append(extracted_reasoning)
+                            sequence.append({"type": "reasoning", "index": len(reasoning_list) - 1})
+                        content_text = clean_answer
+                        thought.answer = clean_answer or content_text
+
+                    if content_text:
+                        start = content_pos
+                        end = content_pos + len(content_text)
+                        sequence.append({"type": "content", "start": start, "end": end})
+                        content_pos = end
+                        cleaned_answer_parts.append(content_text)
+
+            if cleaned_answer_parts:
+                merged_answer = "".join(cleaned_answer_parts)
+                message.answer = merged_answer
+                llm_result.message.content = merged_answer
+        else:
+            # Completion/Chat mode: use reasoning_content from llm_result
+            reasoning_content = llm_result.reasoning_content
+            if not reasoning_content and answer:
+                # Extract reasoning from <think> blocks and clean the final answer
+                clean_answer, reasoning_content = self._split_reasoning_from_answer(answer)
+                if reasoning_content:
+                    answer = clean_answer
+                    llm_result.message.content = clean_answer
+                    llm_result.reasoning_content = reasoning_content
+                    message.answer = clean_answer
+            if reasoning_content:
+                reasoning_list = [reasoning_content]
+                # Content comes first, then reasoning
+                if answer:
+                    sequence.append({"type": "content", "start": 0, "end": len(answer)})
+                sequence.append({"type": "reasoning", "index": 0})
+
+        # Only save if there's meaningful generation detail
+        if not reasoning_list and not tool_calls_list:
+            return
+
+        # Check if generation detail already exists
+        existing = session.query(LLMGenerationDetail).filter_by(message_id=message.id).first()
+
+        if existing:
+            existing.reasoning_content = json.dumps(reasoning_list) if reasoning_list else None
+            existing.tool_calls = json.dumps(tool_calls_list) if tool_calls_list else None
+            existing.sequence = json.dumps(sequence) if sequence else None
+        else:
+            generation_detail = LLMGenerationDetail(
+                tenant_id=self._application_generate_entity.app_config.tenant_id,
+                app_id=self._application_generate_entity.app_config.app_id,
+                message_id=message.id,
+                reasoning_content=json.dumps(reasoning_list) if reasoning_list else None,
+                tool_calls=json.dumps(tool_calls_list) if tool_calls_list else None,
+                sequence=json.dumps(sequence) if sequence else None,
+            )
+            session.add(generation_detail)
+
+    @classmethod
+    def _split_reasoning_from_answer(cls, text: str) -> tuple[str, str]:
+        """
+        Extract reasoning segments from <think> blocks and return (clean_text, reasoning).
+        """
+        matches = cls._THINK_PATTERN.findall(text)
+        reasoning_content = "\n".join(match.strip() for match in matches) if matches else ""
+
+        clean_text = cls._THINK_PATTERN.sub("", text)
+        clean_text = re.sub(r"\n\s*\n", "\n\n", clean_text).strip()
+
+        return clean_text, reasoning_content or ""
 
     def _handle_stop(self, event: QueueStopEvent):
         """

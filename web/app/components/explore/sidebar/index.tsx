@@ -1,18 +1,22 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useState } from 'react'
+import { RiAppsFill, RiExpandRightLine, RiLayoutLeft2Line } from '@remixicon/react'
+import { useBoolean } from 'ahooks'
+import Link from 'next/link'
+import { useSelectedLayoutSegments } from 'next/navigation'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import { useSelectedLayoutSegments } from 'next/navigation'
-import Link from 'next/link'
-import Toast from '../../base/toast'
-import Item from './app-nav-item'
-import cn from '@/utils/classnames'
-import ExploreContext from '@/context/explore-context'
 import Confirm from '@/app/components/base/confirm'
 import Divider from '@/app/components/base/divider'
+import ExploreContext from '@/context/explore-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useGetInstalledApps, useUninstallApp, useUpdateAppPinStatus } from '@/service/use-explore'
+import { cn } from '@/utils/classnames'
+import Toast from '../../base/toast'
+import Item from './app-nav-item'
+import NoApps from './no-apps'
 
 const SelectedDiscoveryIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="current" xmlns="http://www.w3.org/2000/svg">
@@ -44,6 +48,9 @@ const SideBar: FC<IExploreSideBarProps> = ({
 
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
+  const [isFold, {
+    toggle: toggleIsFold,
+  }] = useBoolean(false)
 
   const [showConfirm, setShowConfirm] = useState(false)
   const [currId, setCurrId] = useState('')
@@ -53,7 +60,7 @@ const SideBar: FC<IExploreSideBarProps> = ({
     setShowConfirm(false)
     Toast.notify({
       type: 'success',
-      message: t('common.api.remove'),
+      message: t('api.remove', { ns: 'common' }),
     })
   }
 
@@ -61,7 +68,7 @@ const SideBar: FC<IExploreSideBarProps> = ({
     await updatePinStatus({ appId: id, isPinned })
     Toast.notify({
       type: 'success',
-      message: t('common.api.success'),
+      message: t('api.success', { ns: 'common' }),
     })
   }
 
@@ -83,22 +90,31 @@ const SideBar: FC<IExploreSideBarProps> = ({
 
   const pinnedAppsCount = installedApps.filter(({ is_pinned }) => is_pinned).length
   return (
-    <div className='w-fit shrink-0 cursor-pointer border-r border-divider-burn px-4 pt-6 sm:w-[216px]'>
+    <div className={cn('relative w-fit shrink-0 cursor-pointer px-3 pt-6 sm:w-[240px]', isFold && 'sm:w-[56px]')}>
       <div className={cn(isDiscoverySelected ? 'text-text-accent' : 'text-text-tertiary')}>
         <Link
-          href='/explore/apps'
-          className={cn(isDiscoverySelected ? ' bg-components-main-nav-nav-button-bg-active' : 'font-medium hover:bg-state-base-hover',
-            'flex h-9 items-center gap-2 rounded-lg px-3 mobile:w-fit mobile:justify-center mobile:px-2 pc:w-full pc:justify-start')}
-          style={isDiscoverySelected ? { boxShadow: '0px 1px 2px rgba(16, 24, 40, 0.05)' } : {}}
+          href="/explore/apps"
+          className={cn(isDiscoverySelected ? 'bg-state-base-active' : 'hover:bg-state-base-hover', 'flex h-8 items-center gap-2 rounded-lg px-1 mobile:w-fit mobile:justify-center pc:w-full pc:justify-start')}
         >
-          {isDiscoverySelected ? <SelectedDiscoveryIcon /> : <DiscoveryIcon />}
-          {!isMobile && <div className='text-sm'>{t('explore.sidebar.discovery')}</div>}
+          <div className="flex size-6 shrink-0 items-center justify-center rounded-md bg-components-icon-bg-blue-solid">
+            <RiAppsFill className="size-3.5 text-components-avatar-shape-fill-stop-100" />
+          </div>
+          {!isMobile && !isFold && <div className={cn('truncate', isDiscoverySelected ? 'system-sm-semibold text-components-menu-item-text-active' : 'system-sm-regular text-components-menu-item-text')}>{t('sidebar.title', { ns: 'explore' })}</div>}
         </Link>
       </div>
+
+      {installedApps.length === 0 && !isMobile && !isFold
+        && (
+          <div className="mt-5">
+            <NoApps />
+          </div>
+        )}
+
       {installedApps.length > 0 && (
-        <div className='mt-10'>
-          <p className='break-all pl-2 text-xs font-medium uppercase text-text-tertiary mobile:px-0'>{t('explore.sidebar.workspace')}</p>
-          <div className='mt-3 space-y-1 overflow-y-auto overflow-x-hidden'
+        <div className="mt-5">
+          {!isMobile && !isFold && <p className="system-xs-medium-uppercase mb-1.5 break-all pl-2 uppercase text-text-tertiary mobile:px-0">{t('sidebar.webApps', { ns: 'explore' })}</p>}
+          <div
+            className="space-y-0.5 overflow-y-auto overflow-x-hidden"
             style={{
               height: 'calc(100vh - 250px)',
             }}
@@ -106,7 +122,7 @@ const SideBar: FC<IExploreSideBarProps> = ({
             {installedApps.map(({ id, is_pinned, uninstallable, app: { name, icon_type, icon, icon_url, icon_background } }, index) => (
               <React.Fragment key={id}>
                 <Item
-                  isMobile={isMobile}
+                  isMobile={isMobile || isFold}
                   name={name}
                   icon_type={icon_type}
                   icon={icon}
@@ -128,10 +144,21 @@ const SideBar: FC<IExploreSideBarProps> = ({
           </div>
         </div>
       )}
+
+      {!isMobile && (
+        <div className="absolute bottom-3 left-3 flex size-8 cursor-pointer items-center justify-center text-text-tertiary" onClick={toggleIsFold}>
+          {isFold
+            ? <RiExpandRightLine className="size-4.5" />
+            : (
+                <RiLayoutLeft2Line className="size-4.5" />
+              )}
+        </div>
+      )}
+
       {showConfirm && (
         <Confirm
-          title={t('explore.sidebar.delete.title')}
-          content={t('explore.sidebar.delete.content')}
+          title={t('sidebar.delete.title', { ns: 'explore' })}
+          content={t('sidebar.delete.content', { ns: 'explore' })}
           isShow={showConfirm}
           onConfirm={handleDelete}
           onCancel={() => setShowConfirm(false)}

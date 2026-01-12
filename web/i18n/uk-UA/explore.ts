@@ -1,9 +1,7 @@
 const translation = {
   title: 'Досліджувати',
   sidebar: {
-    discovery: 'Відкриття',
     chat: 'Чат',
-    workspace: 'Робочий простір',
     action: {
       pin: 'Закріпити',
       unpin: 'Відкріпити',
@@ -16,12 +14,8 @@ const translation = {
     },
   },
   apps: {
-    title: 'Вивчайте програми від Dify',
-    description: 'Використовуйте ці шаблони миттєво або налаштуйте власні програми на основі шаблонів.',
-    allCategories: 'Рекомендовані',
   },
   appCard: {
-    addToWorkspace: 'Додати до робочого простору',
     customize: 'Налаштувати',
   },
   appCustomize: {

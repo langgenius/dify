@@ -1,0 +1,22 @@
+{
+  "appCustomize.nameRequired": "ต้องใช้ชื่อแอป",
+  "appCustomize.subTitle": "ไอคอนและชื่อแอป",
+  "appCustomize.title": "สร้างแอปจาก {{name}}",
+  "category.Agent": "ตัวแทน",
+  "category.Assistant": "ผู้ช่วย",
+  "category.Entertainment": "ความบันเทิง",
+  "category.HR": "ชั่วโมง",
+  "category.Programming": "โปรแกรม",
+  "category.Recommended": "แนะนำ",
+  "category.Translate": "แปล",
+  "category.Workflow": "เวิร์กโฟลว์",
+  "category.Writing": "การเขียน",
+  "sidebar.action.delete": "ลบ",
+  "sidebar.action.pin": "เข็มกลัด",
+  "sidebar.action.rename": "ตั้งชื่อใหม่",
+  "sidebar.action.unpin": "ปลดหมุด",
+  "sidebar.chat": "สนทนา",
+  "sidebar.delete.content": "คุณแน่ใจหรือไม่ว่าต้องการลบแอปนี้?",
+  "sidebar.delete.title": "ลบแอป",
+  "title": "สํารวจ"
+}

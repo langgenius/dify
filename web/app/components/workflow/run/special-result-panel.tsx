@@ -1,14 +1,16 @@
-import { RetryResultPanel } from './retry-log'
-import { IterationResultPanel } from './iteration-log'
-import { LoopResultPanel } from './loop-log'
-import { AgentResultPanel } from './agent-log'
 import type {
   AgentLogItemWithChildren,
   IterationDurationMap,
+  LLMTraceItem,
   LoopDurationMap,
   LoopVariableMap,
   NodeTracing,
 } from '@/types/workflow'
+import { AgentResultPanel } from './agent-log'
+import { IterationResultPanel } from './iteration-log'
+import { LLMResultPanel } from './llm-log'
+import { LoopResultPanel } from './loop-log'
+import { RetryResultPanel } from './retry-log'
 
 export type SpecialResultPanelProps = {
   showRetryDetail?: boolean
@@ -29,6 +31,10 @@ export type SpecialResultPanelProps = {
   agentOrToolLogItemStack?: AgentLogItemWithChildren[]
   agentOrToolLogListMap?: Record<string, AgentLogItemWithChildren[]>
   handleShowAgentOrToolLog?: (detail?: AgentLogItemWithChildren) => void
+
+  showLLMDetail?: boolean
+  setShowLLMDetailFalse?: () => void
+  llmResultList?: LLMTraceItem[]
 }
 const SpecialResultPanel = ({
   showRetryDetail,
@@ -49,17 +55,30 @@ const SpecialResultPanel = ({
   agentOrToolLogItemStack,
   agentOrToolLogListMap,
   handleShowAgentOrToolLog,
+
+  showLLMDetail,
+  setShowLLMDetailFalse,
+  llmResultList,
 }: SpecialResultPanelProps) => {
   return (
     <div onClick={(e) => {
       e.stopPropagation()
       e.nativeEvent.stopImmediatePropagation()
-    }}>
+    }}
+    >
       {
         !!showRetryDetail && !!retryResultList?.length && setShowRetryDetailFalse && (
           <RetryResultPanel
             list={retryResultList}
             onBack={setShowRetryDetailFalse}
+          />
+        )
+      }
+      {
+        !!showLLMDetail && !!llmResultList?.length && setShowLLMDetailFalse && (
+          <LLMResultPanel
+            list={llmResultList}
+            onBack={setShowLLMDetailFalse}
           />
         )
       }

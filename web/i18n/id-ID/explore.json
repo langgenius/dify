@@ -1,0 +1,22 @@
+{
+  "appCustomize.nameRequired": "Nama aplikasi diperlukan",
+  "appCustomize.subTitle": "Ikon & nama aplikasi",
+  "appCustomize.title": "Buat aplikasi dari {{name}}",
+  "category.Agent": "Agen",
+  "category.Assistant": "Asisten",
+  "category.Entertainment": "Hiburan",
+  "category.HR": "HR",
+  "category.Programming": "Pemrograman",
+  "category.Recommended": "Direkomendasikan",
+  "category.Translate": "Terjemah",
+  "category.Workflow": "Alur Kerja",
+  "category.Writing": "Tulisan",
+  "sidebar.action.delete": "Hapus",
+  "sidebar.action.pin": "Sematkan",
+  "sidebar.action.rename": "Ganti nama",
+  "sidebar.action.unpin": "Lepaskan sematan",
+  "sidebar.chat": "Mengobrol",
+  "sidebar.delete.content": "Apakah Anda yakin ingin menghapus aplikasi ini?",
+  "sidebar.delete.title": "Hapus aplikasi",
+  "title": "Menjelajahi"
+}

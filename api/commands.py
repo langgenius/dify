@@ -1,8 +1,10 @@
 import base64
+import datetime
 import json
 import logging
 import secrets
 from typing import Any
+from uuid import uuid4
 
 import click
 import sqlalchemy as sa
@@ -22,6 +24,7 @@ from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.models.document import Document
 from core.tools.utils.system_oauth_encryption import encrypt_system_oauth_params
+from core.workflow.entities.pause_reason import PauseReasonType
 from events.app_event import app_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -34,13 +37,25 @@ from libs.rsa import generate_key_pair
 from models import Tenant
 from models.dataset import Dataset, DatasetCollectionBinding, DatasetMetadata, DatasetMetadataBinding, DocumentSegment
 from models.dataset import Document as DatasetDocument
+from models.enums import CreatorUserRole, ExecutionOffLoadType
 from models.model import Account, App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation, UploadFile
 from models.oauth import DatasourceOauthParamConfig, DatasourceProvider
 from models.provider import Provider, ProviderModel
 from models.provider_ids import DatasourceProviderID, ToolProviderID
 from models.source import DataSourceApiKeyAuthBinding, DataSourceOauthBinding
 from models.tools import ToolOAuthSystemClient
+from models.trigger import AppTriggerType, WorkflowTriggerLog, WorkflowTriggerStatus
+from models.workflow import (
+    WorkflowAppLog,
+    WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionOffload,
+    WorkflowNodeExecutionTriggeredFrom,
+    WorkflowPause,
+    WorkflowPauseReason,
+    WorkflowRun,
+)
 from services.account_service import AccountService, RegisterService, TenantService
+from services.clear_free_plan_expired_workflow_run_logs import WorkflowRunCleanup
 from services.clear_free_plan_tenant_expired_logs import ClearFreePlanTenantExpiredLogs
 from services.plugin.data_migration import PluginDataMigration
 from services.plugin.plugin_migration import PluginMigration
@@ -235,7 +250,7 @@ def migrate_annotation_vector_database():
                 if annotations:
                     for annotation in annotations:
                         document = Document(
-                            page_content=annotation.question,
+                            page_content=annotation.question_text,
                             metadata={"annotation_id": annotation.id, "app_id": app.id, "doc_id": annotation.id},
                         )
                         documents.append(document)
@@ -852,6 +867,218 @@ def clear_free_plan_tenant_expired_logs(days: int, batch: int, tenant_ids: list[
     click.echo(click.style("Clear free plan tenant expired logs completed.", fg="green"))
 
 
+@click.command("clean-workflow-runs", help="Clean expired workflow runs and related data for free tenants.")
+@click.option("--days", default=30, show_default=True, help="Delete workflow runs created before N days ago.")
+@click.option("--batch-size", default=200, show_default=True, help="Batch size for selecting workflow runs.")
+@click.option(
+    "--start-after",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    default=None,
+    help="Optional lower bound (inclusive) for created_at; must be paired with --end-before.",
+)
+@click.option(
+    "--end-before",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    default=None,
+    help="Optional upper bound (exclusive) for created_at; must be paired with --start-after.",
+)
+def clean_workflow_runs(
+    days: int,
+    batch_size: int,
+    start_after: datetime.datetime | None,
+    end_before: datetime.datetime | None,
+):
+    """
+    Clean workflow runs and related workflow data for free tenants.
+    """
+    if (start_after is None) ^ (end_before is None):
+        raise click.UsageError("--start-after and --end-before must be provided together.")
+
+    click.echo(click.style("Starting workflow run cleanup.", fg="white"))
+
+    WorkflowRunCleanup(
+        days=days,
+        batch_size=batch_size,
+        start_after=start_after,
+        end_before=end_before,
+    ).run()
+
+    click.echo(click.style("Workflow run cleanup completed.", fg="green"))
+
+
+@click.command(
+    "seed-expired-workflow-runs",
+    help="Test-only: create synthetic expired workflow runs (with related records) for cleanup validation.",
+)
+@click.option("--days-ago", default=40, show_default=True, help="Backdate created_at to N days ago.")
+@click.option("--limit", default=5, show_default=True, help="Number of workflow runs to create.")
+@click.option(
+    "--tenant-id",
+    default=None,
+    help="Optional tenant id to use; if omitted, a random tenant id is generated.",
+)
+def seed_expired_workflow_runs(days_ago: int, limit: int, tenant_id: str | None) -> None:
+    base_time = datetime.datetime.now() - datetime.timedelta(days=days_ago)
+    tenant = tenant_id or str(uuid4())
+
+    with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+        for i in range(limit):
+            run_id = str(uuid4())
+            app_id = str(uuid4())
+            workflow_id = str(uuid4())
+            creator_id = str(uuid4())
+            created_at = base_time - datetime.timedelta(minutes=i)
+
+            run = WorkflowRun(
+                id=run_id,
+                tenant_id=tenant,
+                app_id=app_id,
+                workflow_id=workflow_id,
+                type="workflow",
+                triggered_from="workflow-run",
+                version="v1",
+                graph="{}",
+                inputs="{}",
+                status="succeeded",
+                outputs="{}",
+                error=None,
+                elapsed_time=0.1,
+                total_tokens=0,
+                total_steps=0,
+                created_by_role="account",
+                created_by=creator_id,
+                created_at=created_at,
+                finished_at=created_at + datetime.timedelta(seconds=1),
+                exceptions_count=0,
+            )
+
+            node_execution = WorkflowNodeExecutionModel(
+                id=str(uuid4()),
+                tenant_id=tenant,
+                app_id=app_id,
+                workflow_id=workflow_id,
+                triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
+                workflow_run_id=run_id,
+                index=0,
+                predecessor_node_id=None,
+                node_execution_id=None,
+                node_id="start",
+                node_type="start",
+                title="Seeded node",
+                inputs="{}",
+                process_data="{}",
+                outputs="{}",
+                status="succeeded",
+                error=None,
+                elapsed_time=0.1,
+                execution_metadata="{}",
+                created_by_role="account",
+                created_by=creator_id,
+                created_at=created_at,
+                finished_at=created_at + datetime.timedelta(seconds=1),
+            )
+
+            offload_files: list[UploadFile] = []
+            node_execution_offloads: list[WorkflowNodeExecutionOffload] = []
+            for offload_type in (
+                ExecutionOffLoadType.INPUTS,
+                ExecutionOffLoadType.OUTPUTS,
+                ExecutionOffLoadType.PROCESS_DATA,
+            ):
+                upload_file = UploadFile(
+                    tenant_id=tenant,
+                    storage_type=StorageType.LOCAL.value,
+                    key=f"seeded/workflow-node-offload/{run_id}-{offload_type.value}.json",
+                    name=f"{run_id}-{offload_type.value}.json",
+                    size=256,
+                    extension="json",
+                    mime_type="application/json",
+                    created_by_role=CreatorUserRole.ACCOUNT,
+                    created_by=creator_id,
+                    created_at=created_at,
+                    used=True,
+                    used_by=creator_id,
+                    used_at=created_at,
+                )
+                offload_files.append(upload_file)
+                node_execution_offloads.append(
+                    WorkflowNodeExecutionOffload(
+                        tenant_id=tenant,
+                        app_id=app_id,
+                        node_execution_id=node_execution.id,
+                        type_=offload_type,
+                        file_id=upload_file.id,
+                    )
+                )
+
+            app_log = WorkflowAppLog(
+                tenant_id=tenant,
+                app_id=app_id,
+                workflow_id=workflow_id,
+                workflow_run_id=run_id,
+                created_from="service-api",
+                created_by_role="account",
+                created_by=creator_id
+            )
+
+            trigger_log = WorkflowTriggerLog(
+                tenant_id=tenant,
+                app_id=app_id,
+                workflow_id=workflow_id,
+                workflow_run_id=run_id,
+                root_node_id=None,
+                trigger_metadata="{}",
+                trigger_type=AppTriggerType.TRIGGER_WEBHOOK,
+                trigger_data="{}",
+                inputs="{}",
+                outputs="{}",
+                status=WorkflowTriggerStatus.SUCCEEDED,
+                error=None,
+                queue_name="seed",
+                celery_task_id=None,
+                created_by_role="account",
+                created_by=creator_id,
+                retry_count=0,
+                elapsed_time=0.1,
+                total_tokens=0,
+                triggered_at=created_at,
+                finished_at=created_at + datetime.timedelta(seconds=1),
+            )
+
+            pause_id = str(uuid4())
+            pause = WorkflowPause(
+                id=pause_id,
+                workflow_id=workflow_id,
+                workflow_run_id=run_id,
+                resumed_at=None,
+                state_object_key="seeded-state",
+                created_at=created_at,
+                updated_at=created_at,
+            )
+
+            pause_reason = WorkflowPauseReason(
+                pause_id=pause_id,
+                type_=PauseReasonType.HUMAN_INPUT_REQUIRED,
+                form_id=str(uuid4()),
+                message="Seeded human input required.",
+                node_id="seeded-human-input",
+                created_at=created_at,
+                updated_at=created_at,
+            )
+
+            records = [run, node_execution, app_log, trigger_log, pause, pause_reason]
+            records.extend(offload_files)
+            records.extend(node_execution_offloads)
+            session.add_all(records)
+
+        click.echo(
+            click.style(
+                f"Created {limit} synthetic workflow runs (tenant={tenant}) backdated ~{days_ago} days.",
+                fg="green",
+            )
+        )
+
+
 @click.option("-f", "--force", is_flag=True, help="Skip user confirmation and force the command to execute.")
 @click.command("clear-orphaned-file-records", help="Clear orphaned file records.")
 def clear_orphaned_file_records(force: bool):
@@ -1182,6 +1409,217 @@ def remove_orphaned_files_on_storage(force: bool):
         click.echo(click.style(f"Removed {removed_files} orphaned files without errors.", fg="green"))
     else:
         click.echo(click.style(f"Removed {removed_files} orphaned files, with {error_files} errors.", fg="yellow"))
+
+
+@click.command("file-usage", help="Query file usages and show where files are referenced.")
+@click.option("--file-id", type=str, default=None, help="Filter by file UUID.")
+@click.option("--key", type=str, default=None, help="Filter by storage key.")
+@click.option("--src", type=str, default=None, help="Filter by table.column pattern (e.g., 'documents.%' or '%.icon').")
+@click.option("--limit", type=int, default=100, help="Limit number of results (default: 100).")
+@click.option("--offset", type=int, default=0, help="Offset for pagination (default: 0).")
+@click.option("--json", "output_json", is_flag=True, help="Output results in JSON format.")
+def file_usage(
+    file_id: str | None,
+    key: str | None,
+    src: str | None,
+    limit: int,
+    offset: int,
+    output_json: bool,
+):
+    """
+    Query file usages and show where files are referenced in the database.
+
+    This command reuses the same reference checking logic as clear-orphaned-file-records
+    and displays detailed information about where each file is referenced.
+    """
+    # define tables and columns to process
+    files_tables = [
+        {"table": "upload_files", "id_column": "id", "key_column": "key"},
+        {"table": "tool_files", "id_column": "id", "key_column": "file_key"},
+    ]
+    ids_tables = [
+        {"type": "uuid", "table": "message_files", "column": "upload_file_id", "pk_column": "id"},
+        {"type": "text", "table": "documents", "column": "data_source_info", "pk_column": "id"},
+        {"type": "text", "table": "document_segments", "column": "content", "pk_column": "id"},
+        {"type": "text", "table": "messages", "column": "answer", "pk_column": "id"},
+        {"type": "text", "table": "workflow_node_executions", "column": "inputs", "pk_column": "id"},
+        {"type": "text", "table": "workflow_node_executions", "column": "process_data", "pk_column": "id"},
+        {"type": "text", "table": "workflow_node_executions", "column": "outputs", "pk_column": "id"},
+        {"type": "text", "table": "conversations", "column": "introduction", "pk_column": "id"},
+        {"type": "text", "table": "conversations", "column": "system_instruction", "pk_column": "id"},
+        {"type": "text", "table": "accounts", "column": "avatar", "pk_column": "id"},
+        {"type": "text", "table": "apps", "column": "icon", "pk_column": "id"},
+        {"type": "text", "table": "sites", "column": "icon", "pk_column": "id"},
+        {"type": "json", "table": "messages", "column": "inputs", "pk_column": "id"},
+        {"type": "json", "table": "messages", "column": "message", "pk_column": "id"},
+    ]
+
+    # Stream file usages with pagination to avoid holding all results in memory
+    paginated_usages = []
+    total_count = 0
+
+    # First, build a mapping of file_id -> storage_key from the base tables
+    file_key_map = {}
+    for files_table in files_tables:
+        query = f"SELECT {files_table['id_column']}, {files_table['key_column']} FROM {files_table['table']}"
+        with db.engine.begin() as conn:
+            rs = conn.execute(sa.text(query))
+            for row in rs:
+                file_key_map[str(row[0])] = f"{files_table['table']}:{row[1]}"
+
+    # If filtering by key or file_id, verify it exists
+    if file_id and file_id not in file_key_map:
+        if output_json:
+            click.echo(json.dumps({"error": f"File ID {file_id} not found in base tables"}))
+        else:
+            click.echo(click.style(f"File ID {file_id} not found in base tables.", fg="red"))
+        return
+
+    if key:
+        valid_prefixes = {f"upload_files:{key}", f"tool_files:{key}"}
+        matching_file_ids = [fid for fid, fkey in file_key_map.items() if fkey in valid_prefixes]
+        if not matching_file_ids:
+            if output_json:
+                click.echo(json.dumps({"error": f"Key {key} not found in base tables"}))
+            else:
+                click.echo(click.style(f"Key {key} not found in base tables.", fg="red"))
+            return
+
+    guid_regexp = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+
+    # For each reference table/column, find matching file IDs and record the references
+    for ids_table in ids_tables:
+        src_filter = f"{ids_table['table']}.{ids_table['column']}"
+
+        # Skip if src filter doesn't match (use fnmatch for wildcard patterns)
+        if src:
+            if "%" in src or "_" in src:
+                import fnmatch
+
+                # Convert SQL LIKE wildcards to fnmatch wildcards (% -> *, _ -> ?)
+                pattern = src.replace("%", "*").replace("_", "?")
+                if not fnmatch.fnmatch(src_filter, pattern):
+                    continue
+            else:
+                if src_filter != src:
+                    continue
+
+        if ids_table["type"] == "uuid":
+            # Direct UUID match
+            query = (
+                f"SELECT {ids_table['pk_column']}, {ids_table['column']} "
+                f"FROM {ids_table['table']} WHERE {ids_table['column']} IS NOT NULL"
+            )
+            with db.engine.begin() as conn:
+                rs = conn.execute(sa.text(query))
+                for row in rs:
+                    record_id = str(row[0])
+                    ref_file_id = str(row[1])
+                    if ref_file_id not in file_key_map:
+                        continue
+                    storage_key = file_key_map[ref_file_id]
+
+                    # Apply filters
+                    if file_id and ref_file_id != file_id:
+                        continue
+                    if key and not storage_key.endswith(key):
+                        continue
+
+                    # Only collect items within the requested page range
+                    if offset <= total_count < offset + limit:
+                        paginated_usages.append(
+                            {
+                                "src": f"{ids_table['table']}.{ids_table['column']}",
+                                "record_id": record_id,
+                                "file_id": ref_file_id,
+                                "key": storage_key,
+                            }
+                        )
+                    total_count += 1
+
+        elif ids_table["type"] in ("text", "json"):
+            # Extract UUIDs from text/json content
+            column_cast = f"{ids_table['column']}::text" if ids_table["type"] == "json" else ids_table["column"]
+            query = (
+                f"SELECT {ids_table['pk_column']}, {column_cast} "
+                f"FROM {ids_table['table']} WHERE {ids_table['column']} IS NOT NULL"
+            )
+            with db.engine.begin() as conn:
+                rs = conn.execute(sa.text(query))
+                for row in rs:
+                    record_id = str(row[0])
+                    content = str(row[1])
+
+                    # Find all UUIDs in the content
+                    import re
+
+                    uuid_pattern = re.compile(guid_regexp, re.IGNORECASE)
+                    matches = uuid_pattern.findall(content)
+
+                    for ref_file_id in matches:
+                        if ref_file_id not in file_key_map:
+                            continue
+                        storage_key = file_key_map[ref_file_id]
+
+                        # Apply filters
+                        if file_id and ref_file_id != file_id:
+                            continue
+                        if key and not storage_key.endswith(key):
+                            continue
+
+                        # Only collect items within the requested page range
+                        if offset <= total_count < offset + limit:
+                            paginated_usages.append(
+                                {
+                                    "src": f"{ids_table['table']}.{ids_table['column']}",
+                                    "record_id": record_id,
+                                    "file_id": ref_file_id,
+                                    "key": storage_key,
+                                }
+                            )
+                        total_count += 1
+
+    # Output results
+    if output_json:
+        result = {
+            "total": total_count,
+            "offset": offset,
+            "limit": limit,
+            "usages": paginated_usages,
+        }
+        click.echo(json.dumps(result, indent=2))
+    else:
+        click.echo(
+            click.style(f"Found {total_count} file usages (showing {len(paginated_usages)} results)", fg="white")
+        )
+        click.echo("")
+
+        if not paginated_usages:
+            click.echo(click.style("No file usages found matching the specified criteria.", fg="yellow"))
+            return
+
+        # Print table header
+        click.echo(
+            click.style(
+                f"{'Src (Table.Column)':<50} {'Record ID':<40} {'File ID':<40} {'Storage Key':<60}",
+                fg="cyan",
+            )
+        )
+        click.echo(click.style("-" * 190, fg="white"))
+
+        # Print each usage
+        for usage in paginated_usages:
+            click.echo(f"{usage['src']:<50} {usage['record_id']:<40} {usage['file_id']:<40} {usage['key']:<60}")
+
+        # Show pagination info
+        if offset + limit < total_count:
+            click.echo("")
+            click.echo(
+                click.style(
+                    f"Showing {offset + 1}-{offset + len(paginated_usages)} of {total_count} results", fg="white"
+                )
+            )
+            click.echo(click.style(f"Use --offset {offset + limit} to see next page", fg="white"))
 
 
 @click.command("setup-system-tool-oauth-client", help="Setup system tool oauth client.")

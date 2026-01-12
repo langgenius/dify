@@ -1,0 +1,22 @@
+{
+  "appCustomize.nameRequired": "ऐप का नाम आवश्यक है",
+  "appCustomize.subTitle": "ऐप आइकन और नाम",
+  "appCustomize.title": "{{name}} से ऐप बनाएँ",
+  "category.Agent": "आढ़तिया",
+  "category.Assistant": "सहायक",
+  "category.Entertainment": "मनोरंजन",
+  "category.HR": "मानव संसाधन",
+  "category.Programming": "प्रोग्रामिंग",
+  "category.Recommended": "सिफारिश की गई",
+  "category.Translate": "अनुवाद",
+  "category.Workflow": "कार्यप्रवाह",
+  "category.Writing": "लेखन",
+  "sidebar.action.delete": "हटाएं",
+  "sidebar.action.pin": "पिन करें",
+  "sidebar.action.rename": "नाम बदलें",
+  "sidebar.action.unpin": "पिन हटाएँ",
+  "sidebar.chat": "चैट",
+  "sidebar.delete.content": "क्या आप वाकई इस ऐप को हटाना चाहते हैं?",
+  "sidebar.delete.title": "ऐप हटाएं",
+  "title": "अन्वेषण करें"
+}

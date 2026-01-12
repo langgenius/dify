@@ -1,4 +1,4 @@
-from flask_restx import Api, Namespace, fields
+from flask_restx import Namespace, fields
 
 from fields.end_user_fields import simple_end_user_fields
 from fields.member_fields import simple_account_fields
@@ -19,7 +19,7 @@ workflow_run_for_log_fields = {
 }
 
 
-def build_workflow_run_for_log_model(api_or_ns: Api | Namespace):
+def build_workflow_run_for_log_model(api_or_ns: Namespace):
     return api_or_ns.model("WorkflowRunForLog", workflow_run_for_log_fields)
 
 
@@ -81,6 +81,7 @@ workflow_run_detail_fields = {
     "inputs": fields.Raw(attribute="inputs_dict"),
     "status": fields.String,
     "outputs": fields.Raw(attribute="outputs_dict"),
+    "outputs_as_generation": fields.Boolean,
     "error": fields.String,
     "elapsed_time": fields.Float,
     "total_tokens": fields.Integer,
@@ -129,6 +130,7 @@ workflow_run_node_execution_fields = {
     "inputs_truncated": fields.Boolean,
     "outputs_truncated": fields.Boolean,
     "process_data_truncated": fields.Boolean,
+    "generation_detail": fields.Raw,
 }
 
 workflow_run_node_execution_list_fields = {

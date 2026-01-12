@@ -1,3 +1,12 @@
+import type { InputForm } from '@/app/components/base/chat/chat/type'
+import type {
+  ChatItem,
+  ChatItemInTree,
+  Inputs,
+} from '@/app/components/base/chat/types'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import { uniqBy } from 'es-toolkit/compat'
+import { produce, setAutoFreeze } from 'immer'
 import {
   useCallback,
   useEffect,
@@ -6,35 +15,27 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { produce, setAutoFreeze } from 'immer'
-import { uniqBy } from 'lodash-es'
-import {
-  useSetWorkflowVarsWithValue,
-  useWorkflowRun,
-} from '../../hooks'
-import { NodeRunningStatus, WorkflowRunningStatus } from '../../types'
-import { useWorkflowStore } from '../../store'
-import { DEFAULT_ITER_TIMES, DEFAULT_LOOP_TIMES } from '../../constants'
-import type {
-  ChatItem,
-  ChatItemInTree,
-  Inputs,
-} from '@/app/components/base/chat/types'
-import type { InputForm } from '@/app/components/base/chat/chat/type'
+import { v4 as uuidV4 } from 'uuid'
 import {
   getProcessedInputs,
   processOpeningStatement,
 } from '@/app/components/base/chat/chat/utils'
-import { useToastContext } from '@/app/components/base/toast'
-import { TransferMethod } from '@/types/app'
+import { getThreadMessages } from '@/app/components/base/chat/utils'
 import {
   getProcessedFiles,
   getProcessedFilesFromResponse,
 } from '@/app/components/base/file-uploader/utils'
-import type { FileEntity } from '@/app/components/base/file-uploader/types'
-import { getThreadMessages } from '@/app/components/base/chat/utils'
+import { useToastContext } from '@/app/components/base/toast'
 import { useInvalidAllLastRun } from '@/service/use-workflow'
+import { TransferMethod } from '@/types/app'
+import { DEFAULT_ITER_TIMES, DEFAULT_LOOP_TIMES } from '../../constants'
+import {
+  useSetWorkflowVarsWithValue,
+  useWorkflowRun,
+} from '../../hooks'
 import { useHooksStore } from '../../hooks-store'
+import { useWorkflowStore } from '../../store'
+import { NodeRunningStatus, WorkflowRunningStatus } from '../../types'
 
 type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
@@ -202,7 +203,7 @@ export const useChat = (
     }: SendCallback,
   ) => {
     if (isRespondingRef.current) {
-      notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
+      notify({ type: 'info', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
       return false
     }
 
@@ -266,12 +267,77 @@ export const useChat = (
     }
 
     let hasSetResponseId = false
+    let toolCallId = ''
+    let thoughtId = ''
 
     handleRun(
       bodyParams,
       {
-        onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: any) => {
+        onData: (message: string, isFirstMessage: boolean, {
+          conversationId: newConversationId,
+          messageId,
+          taskId,
+          chunk_type,
+          tool_icon,
+          tool_icon_dark,
+          tool_name,
+          tool_arguments,
+          tool_files,
+          tool_error,
+          tool_elapsed_time,
+        }: any) => {
           responseItem.content = responseItem.content + message
+
+          if (chunk_type === 'tool_call') {
+            if (!responseItem.toolCalls)
+              responseItem.toolCalls = []
+            toolCallId = uuidV4()
+            responseItem.toolCalls?.push({
+              id: toolCallId,
+              type: 'tool',
+              toolName: tool_name,
+              toolArguments: tool_arguments,
+              toolIcon: tool_icon,
+              toolIconDark: tool_icon_dark,
+            })
+          }
+
+          if (chunk_type === 'tool_result') {
+            const currentToolCallIndex = responseItem.toolCalls?.findIndex(item => item.id === toolCallId) ?? -1
+
+            if (currentToolCallIndex > -1) {
+              responseItem.toolCalls![currentToolCallIndex].toolError = tool_error
+              responseItem.toolCalls![currentToolCallIndex].toolDuration = tool_elapsed_time
+              responseItem.toolCalls![currentToolCallIndex].toolFiles = tool_files
+              responseItem.toolCalls![currentToolCallIndex].toolOutput = message
+            }
+          }
+
+          if (chunk_type === 'thought_start') {
+            if (!responseItem.toolCalls)
+              responseItem.toolCalls = []
+            thoughtId = uuidV4()
+            responseItem.toolCalls.push({
+              id: thoughtId,
+              type: 'thought',
+              thoughtOutput: '',
+            })
+          }
+
+          if (chunk_type === 'thought') {
+            const currentThoughtIndex = responseItem.toolCalls?.findIndex(item => item.id === thoughtId) ?? -1
+            if (currentThoughtIndex > -1) {
+              responseItem.toolCalls![currentThoughtIndex].thoughtOutput += message
+            }
+          }
+
+          if (chunk_type === 'thought_end') {
+            const currentThoughtIndex = responseItem.toolCalls?.findIndex(item => item.id === thoughtId) ?? -1
+            if (currentThoughtIndex > -1) {
+              responseItem.toolCalls![currentThoughtIndex].thoughtOutput += message
+              responseItem.toolCalls![currentThoughtIndex].thoughtCompleted = true
+            }
+          }
 
           if (messageId && !hasSetResponseId) {
             questionItem.id = `question-${messageId}`

@@ -1,9 +1,7 @@
 const translation = {
   title: 'کاوش',
   sidebar: {
-    discovery: 'کشف',
     chat: 'چت',
-    workspace: 'فضای کاری',
     action: {
       pin: 'سنجاق کردن',
       unpin: 'برداشتن سنجاق',
@@ -16,12 +14,8 @@ const translation = {
     },
   },
   apps: {
-    title: 'کاوش برنامه‌ها توسط دیفی',
-    description: 'از این برنامه‌های قالبی بلافاصله استفاده کنید یا برنامه‌های خود را بر اساس این قالب‌ها سفارشی کنید.',
-    allCategories: 'پیشنهاد شده',
   },
   appCard: {
-    addToWorkspace: 'افزودن به فضای کاری',
     customize: 'سفارشی کردن',
   },
   appCustomize: {

@@ -1,9 +1,7 @@
 const translation = {
   title: 'สํารวจ',
   sidebar: {
-    discovery: 'การค้นพบ',
     chat: 'สนทนา',
-    workspace: 'พื้นที่',
     action: {
       pin: 'เข็มกลัด',
       unpin: 'ปลดหมุด',
@@ -16,12 +14,8 @@ const translation = {
     },
   },
   apps: {
-    title: 'สํารวจแอพโดย Dify',
-    description: 'ใช้แอปเทมเพลตเหล่านี้ทันทีหรือปรับแต่งแอปของคุณเองตามเทมเพลต',
-    allCategories: 'แนะ นำ',
   },
   appCard: {
-    addToWorkspace: 'เพิ่มไปยังพื้นที่ทํางาน',
     customize: 'ปรับแต่ง',
   },
   appCustomize: {

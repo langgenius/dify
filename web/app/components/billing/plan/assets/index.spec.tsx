@@ -1,11 +1,11 @@
 import { render } from '@testing-library/react'
-import { Enterprise, Professional, Sandbox, Team } from './index'
+import EnterpriseDirect from './enterprise'
 
+import { Enterprise, Professional, Sandbox, Team } from './index'
+import ProfessionalDirect from './professional'
 // Import real components for comparison
 import SandboxDirect from './sandbox'
-import ProfessionalDirect from './professional'
 import TeamDirect from './team'
-import EnterpriseDirect from './enterprise'
 
 describe('Billing Plan Assets - Integration Tests', () => {
   describe('Exports', () => {

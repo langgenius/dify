@@ -1,14 +1,15 @@
+import type { WorkflowHistoryEventMeta } from '../workflow-history-store'
+import { debounce } from 'es-toolkit/compat'
 import {
   useCallback,
-  useRef, useState,
+  useRef,
+  useState,
 } from 'react'
-import { debounce } from 'lodash-es'
+import { useTranslation } from 'react-i18next'
 import {
   useStoreApi,
 } from 'reactflow'
-import { useTranslation } from 'react-i18next'
 import { useWorkflowHistoryStore } from '../workflow-history-store'
-import type { WorkflowHistoryEventMeta } from '../workflow-history-store'
 
 /**
  * All supported Events that create a new history state.
@@ -110,33 +111,33 @@ export const useWorkflowHistory = () => {
   const getHistoryLabel = useCallback((event: WorkflowHistoryEventT) => {
     switch (event) {
       case WorkflowHistoryEvent.NodeTitleChange:
-        return t('workflow.changeHistory.nodeTitleChange')
+        return t('changeHistory.nodeTitleChange', { ns: 'workflow' })
       case WorkflowHistoryEvent.NodeDescriptionChange:
-        return t('workflow.changeHistory.nodeDescriptionChange')
+        return t('changeHistory.nodeDescriptionChange', { ns: 'workflow' })
       case WorkflowHistoryEvent.LayoutOrganize:
       case WorkflowHistoryEvent.NodeDragStop:
-        return t('workflow.changeHistory.nodeDragStop')
+        return t('changeHistory.nodeDragStop', { ns: 'workflow' })
       case WorkflowHistoryEvent.NodeChange:
-        return t('workflow.changeHistory.nodeChange')
+        return t('changeHistory.nodeChange', { ns: 'workflow' })
       case WorkflowHistoryEvent.NodeConnect:
-        return t('workflow.changeHistory.nodeConnect')
+        return t('changeHistory.nodeConnect', { ns: 'workflow' })
       case WorkflowHistoryEvent.NodePaste:
-        return t('workflow.changeHistory.nodePaste')
+        return t('changeHistory.nodePaste', { ns: 'workflow' })
       case WorkflowHistoryEvent.NodeDelete:
-        return t('workflow.changeHistory.nodeDelete')
+        return t('changeHistory.nodeDelete', { ns: 'workflow' })
       case WorkflowHistoryEvent.NodeAdd:
-        return t('workflow.changeHistory.nodeAdd')
+        return t('changeHistory.nodeAdd', { ns: 'workflow' })
       case WorkflowHistoryEvent.EdgeDelete:
       case WorkflowHistoryEvent.EdgeDeleteByDeleteBranch:
-        return t('workflow.changeHistory.edgeDelete')
+        return t('changeHistory.edgeDelete', { ns: 'workflow' })
       case WorkflowHistoryEvent.NodeResize:
-        return t('workflow.changeHistory.nodeResize')
+        return t('changeHistory.nodeResize', { ns: 'workflow' })
       case WorkflowHistoryEvent.NoteAdd:
-        return t('workflow.changeHistory.noteAdd')
+        return t('changeHistory.noteAdd', { ns: 'workflow' })
       case WorkflowHistoryEvent.NoteChange:
-        return t('workflow.changeHistory.noteChange')
+        return t('changeHistory.noteChange', { ns: 'workflow' })
       case WorkflowHistoryEvent.NoteDelete:
-        return t('workflow.changeHistory.noteDelete')
+        return t('changeHistory.noteDelete', { ns: 'workflow' })
       default:
         return 'Unknown Event'
     }

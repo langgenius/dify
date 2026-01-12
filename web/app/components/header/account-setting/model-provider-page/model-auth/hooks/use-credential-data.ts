@@ -1,10 +1,10 @@
-import { useMemo } from 'react'
-import { useGetCredential } from './use-auth-service'
 import type {
   Credential,
   CustomModelCredential,
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useMemo } from 'react'
+import { useGetCredential } from './use-auth-service'
 
 export const useCredentialData = (provider: ModelProvider, providerFormSchemaPredefined: boolean, isModelCredential?: boolean, credential?: Credential, model?: CustomModelCredential) => {
   const configFrom = useMemo(() => {

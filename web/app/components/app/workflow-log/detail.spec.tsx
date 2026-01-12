@@ -8,33 +8,26 @@
  * - Run component with detail/tracing URLs
  */
 
+import type { App, AppIconType, AppModeEnum } from '@/types/app'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import DetailPanel from './detail'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import type { App, AppIconType, AppModeEnum } from '@/types/app'
+import DetailPanel from './detail'
 
 // ============================================================================
 // Mocks
 // ============================================================================
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
-const mockRouterPush = jest.fn()
-jest.mock('next/navigation', () => ({
+const mockRouterPush = vi.fn()
+vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: mockRouterPush,
   }),
 }))
 
 // Mock the Run component as it has complex dependencies
-jest.mock('@/app/components/workflow/run', () => ({
-  __esModule: true,
-  default: ({ runDetailUrl, tracingListUrl }: { runDetailUrl: string; tracingListUrl: string }) => (
+vi.mock('@/app/components/workflow/run', () => ({
+  default: ({ runDetailUrl, tracingListUrl }: { runDetailUrl: string, tracingListUrl: string }) => (
     <div data-testid="workflow-run">
       <span data-testid="run-detail-url">{runDetailUrl}</span>
       <span data-testid="tracing-list-url">{tracingListUrl}</span>
@@ -43,19 +36,19 @@ jest.mock('@/app/components/workflow/run', () => ({
 }))
 
 // Mock WorkflowContextProvider
-jest.mock('@/app/components/workflow/context', () => ({
+vi.mock('@/app/components/workflow/context', () => ({
   WorkflowContextProvider: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="workflow-context-provider">{children}</div>
   ),
 }))
 
 // Mock ahooks for useBoolean (used by TooltipPlus)
-jest.mock('ahooks', () => ({
+vi.mock('ahooks', () => ({
   useBoolean: (initial: boolean) => {
     const setters = {
-      setTrue: jest.fn(),
-      setFalse: jest.fn(),
-      toggle: jest.fn(),
+      setTrue: vi.fn(),
+      setFalse: vi.fn(),
+      toggle: vi.fn(),
     }
     return [initial, setters] as const
   },
@@ -100,10 +93,10 @@ const createMockApp = (overrides: Partial<App> = {}): App => ({
 // ============================================================================
 
 describe('DetailPanel', () => {
-  const defaultOnClose = jest.fn()
+  const defaultOnClose = vi.fn()
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     useAppStore.setState({ appDetail: createMockApp() })
   })
 
@@ -178,7 +171,7 @@ describe('DetailPanel', () => {
   describe('User Interactions', () => {
     it('should call onClose when close button is clicked', async () => {
       const user = userEvent.setup()
-      const onClose = jest.fn()
+      const onClose = vi.fn()
 
       const { container } = render(<DetailPanel runID="run-123" onClose={onClose} />)
 

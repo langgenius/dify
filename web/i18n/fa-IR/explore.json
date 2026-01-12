@@ -1,0 +1,22 @@
+{
+  "appCustomize.nameRequired": "نام برنامه الزامی است",
+  "appCustomize.subTitle": "آیکون و نام برنامه",
+  "appCustomize.title": "ایجاد برنامه از {{name}}",
+  "category.Agent": "عامل",
+  "category.Assistant": "دستیار",
+  "category.Entertainment": "سرگرمی",
+  "category.HR": "منابع انسانی",
+  "category.Programming": "برنامه‌نویسی",
+  "category.Recommended": "توصیه شده",
+  "category.Translate": "ترجمه",
+  "category.Workflow": "گردش",
+  "category.Writing": "نوشتن",
+  "sidebar.action.delete": "حذف",
+  "sidebar.action.pin": "سنجاق کردن",
+  "sidebar.action.rename": "تغییر نام",
+  "sidebar.action.unpin": "برداشتن سنجاق",
+  "sidebar.chat": "چت",
+  "sidebar.delete.content": "آیا مطمئن هستید که می‌خواهید این برنامه را حذف کنید؟",
+  "sidebar.delete.title": "حذف برنامه",
+  "title": "کاوش"
+}

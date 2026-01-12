@@ -1,9 +1,9 @@
-import { MAX_VAR_KEY_LENGTH } from '@/config'
 import type { TFunction } from 'i18next'
-import { z } from 'zod'
 import type { SchemaOptions } from './types'
-import { PipelineInputVarType } from '@/models/pipeline'
+import { z } from 'zod'
 import { InputTypeEnum } from '@/app/components/base/form/components/field/input-type-select/types'
+import { MAX_VAR_KEY_LENGTH } from '@/config'
+import { PipelineInputVarType } from '@/models/pipeline'
 
 export const TEXT_MAX_LENGTH = 256
 
@@ -26,16 +26,16 @@ export const createInputFieldSchema = (type: PipelineInputVarType, t: TFunction,
   const commonSchema = z.object({
     type: InputTypeEnum,
     variable: z.string().nonempty({
-      message: t('appDebug.varKeyError.canNoBeEmpty', { key: t('appDebug.variableConfig.varName') }),
+      message: t('varKeyError.canNoBeEmpty', { ns: 'appDebug', key: t('variableConfig.varName', { ns: 'appDebug' }) }),
     }).max(MAX_VAR_KEY_LENGTH, {
-      message: t('appDebug.varKeyError.tooLong', { key: t('appDebug.variableConfig.varName') }),
+      message: t('varKeyError.tooLong', { ns: 'appDebug', key: t('variableConfig.varName', { ns: 'appDebug' }) }),
     }).regex(/^(?!\d)\w+/, {
-      message: t('appDebug.varKeyError.notStartWithNumber', { key: t('appDebug.variableConfig.varName') }),
-    }).regex(/^[a-zA-Z_]\w{0,29}$/, {
-      message: t('appDebug.varKeyError.notValid', { key: t('appDebug.variableConfig.varName') }),
+      message: t('varKeyError.notStartWithNumber', { ns: 'appDebug', key: t('variableConfig.varName', { ns: 'appDebug' }) }),
+    }).regex(/^[a-z_]\w{0,29}$/i, {
+      message: t('varKeyError.notValid', { ns: 'appDebug', key: t('variableConfig.varName', { ns: 'appDebug' }) }),
     }),
     label: z.string().nonempty({
-      message: t('appDebug.variableConfig.errorMsg.labelNameRequired'),
+      message: t('variableConfig.errorMsg.labelNameRequired', { ns: 'appDebug' }),
     }),
     required: z.boolean(),
     tooltips: z.string().optional(),
@@ -56,11 +56,11 @@ export const createInputFieldSchema = (type: PipelineInputVarType, t: TFunction,
   if (type === PipelineInputVarType.select) {
     return z.object({
       options: z.array(z.string()).nonempty({
-        message: t('appDebug.variableConfig.errorMsg.atLeastOneOption'),
+        message: t('variableConfig.errorMsg.atLeastOneOption', { ns: 'appDebug' }),
       }).refine(
         arr => new Set(arr).size === arr.length,
         {
-          message: t('appDebug.variableConfig.errorMsg.optionRepeat'),
+          message: t('variableConfig.errorMsg.optionRepeat', { ns: 'appDebug' }),
         },
       ),
       default: z.string().optional(),

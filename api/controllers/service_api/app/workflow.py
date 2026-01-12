@@ -3,7 +3,7 @@ from typing import Any, Literal
 
 from dateutil.parser import isoparse
 from flask import request
-from flask_restx import Api, Namespace, Resource, fields
+from flask_restx import Namespace, Resource, fields
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
@@ -78,7 +78,7 @@ workflow_run_fields = {
 }
 
 
-def build_workflow_run_model(api_or_ns: Api | Namespace):
+def build_workflow_run_model(api_or_ns: Namespace):
     """Build the workflow run model for the API or Namespace."""
     return api_or_ns.model("WorkflowRun", workflow_run_fields)
 

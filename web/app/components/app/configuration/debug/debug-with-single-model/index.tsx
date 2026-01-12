@@ -1,27 +1,27 @@
+import type { InputForm } from '@/app/components/base/chat/chat/type'
+import type { ChatConfig, ChatItem, OnSend } from '@/app/components/base/chat/types'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { memo, useCallback, useImperativeHandle, useMemo } from 'react'
-import {
-  useConfigFromDebugContext,
-  useFormattingChangedSubscription,
-} from '../hooks'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import Avatar from '@/app/components/base/avatar'
 import Chat from '@/app/components/base/chat/chat'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
+import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
+import { useFeatures } from '@/app/components/base/features/hooks'
+import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useAppContext } from '@/context/app-context'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
-import type { ChatConfig, ChatItem, OnSend } from '@/app/components/base/chat/types'
 import { useProviderContext } from '@/context/provider-context'
 import {
   fetchConversationMessages,
   fetchSuggestedQuestions,
   stopChatMessageResponding,
 } from '@/service/debug'
-import Avatar from '@/app/components/base/avatar'
-import { useAppContext } from '@/context/app-context'
-import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { useFeatures } from '@/app/components/base/features/hooks'
-import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
-import type { InputForm } from '@/app/components/base/chat/chat/type'
 import { canFindTool } from '@/utils'
-import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import {
+  useConfigFromDebugContext,
+  useFormattingChangedSubscription,
+} from '../hooks'
 
 type DebugWithSingleModelProps = {
   checkCanSend?: () => boolean
@@ -34,11 +34,12 @@ const DebugWithSingleModel = (
     ref,
     checkCanSend,
   }: DebugWithSingleModelProps & {
-    ref: React.RefObject<DebugWithSingleModelRefType>;
+    ref: React.RefObject<DebugWithSingleModelRefType>
   },
 ) => {
   const { userProfile } = useAppContext()
   const {
+    readonly,
     modelConfig,
     appId,
     inputs,
@@ -129,11 +130,7 @@ const DebugWithSingleModel = (
   const doRegenerate = useCallback((chatItem: ChatItem, editedQuestion?: { message: string, files?: FileEntity[] }) => {
     const question = editedQuestion ? chatItem : chatList.find(item => item.id === chatItem.parentMessageId)!
     const parentAnswer = chatList.find(item => item.id === question.parentMessageId)
-    doSend(editedQuestion ? editedQuestion.message : question.content,
-      editedQuestion ? editedQuestion.files : question.message_files,
-      true,
-      isValidGeneratedAnswer(parentAnswer) ? parentAnswer : null,
-    )
+    doSend(editedQuestion ? editedQuestion.message : question.content, editedQuestion ? editedQuestion.files : question.message_files, true, isValidGeneratedAnswer(parentAnswer) ? parentAnswer : null)
   }, [chatList, doSend])
 
   const allToolIcons = useMemo(() => {
@@ -154,11 +151,12 @@ const DebugWithSingleModel = (
 
   return (
     <Chat
+      readonly={readonly}
       config={config}
       chatList={chatList}
       isResponding={isResponding}
-      chatContainerClassName='px-3 pt-6'
-      chatFooterClassName='px-3 pt-10 pb-0'
+      chatContainerClassName="px-3 pt-6"
+      chatFooterClassName="px-3 pt-10 pb-0"
       showFeatureBar
       showFileUpload={false}
       onFeatureBarClick={setShowAppConfigureFeaturesModal}

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import re
 import uuid
@@ -5,13 +7,13 @@ from collections.abc import Mapping
 from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum, auto
-from typing import TYPE_CHECKING, Any, Literal, Optional, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 from uuid import uuid4
 
 import sqlalchemy as sa
 from flask import request
-from flask_login import UserMixin
-from sqlalchemy import Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
+from flask_login import UserMixin  # type: ignore[import-untyped]
+from sqlalchemy import BigInteger, Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from configs import dify_config
@@ -31,6 +33,8 @@ from .provider_ids import GenericProviderID
 from .types import LongText, StringUUID
 
 if TYPE_CHECKING:
+    from core.app.entities.llm_generation_entities import LLMGenerationDetailData
+
     from .workflow import Workflow
 
 
@@ -54,7 +58,7 @@ class AppMode(StrEnum):
     RAG_PIPELINE = "rag-pipeline"
 
     @classmethod
-    def value_of(cls, value: str) -> "AppMode":
+    def value_of(cls, value: str) -> AppMode:
         """
         Get value of given mode.
 
@@ -70,6 +74,7 @@ class AppMode(StrEnum):
 class IconType(StrEnum):
     IMAGE = auto()
     EMOJI = auto()
+    LINK = auto()
 
 
 class App(Base):
@@ -81,7 +86,7 @@ class App(Base):
     name: Mapped[str] = mapped_column(String(255))
     description: Mapped[str] = mapped_column(LongText, default=sa.text("''"))
     mode: Mapped[str] = mapped_column(String(255))
-    icon_type: Mapped[str | None] = mapped_column(String(255))  # image, emoji
+    icon_type: Mapped[str | None] = mapped_column(String(255))  # image, emoji, link
     icon = mapped_column(String(255))
     icon_background: Mapped[str | None] = mapped_column(String(255))
     app_model_config_id = mapped_column(StringUUID, nullable=True)
@@ -120,19 +125,19 @@ class App(Base):
                 return ""
 
     @property
-    def site(self) -> Optional["Site"]:
+    def site(self) -> Site | None:
         site = db.session.query(Site).where(Site.app_id == self.id).first()
         return site
 
     @property
-    def app_model_config(self) -> Optional["AppModelConfig"]:
+    def app_model_config(self) -> AppModelConfig | None:
         if self.app_model_config_id:
             return db.session.query(AppModelConfig).where(AppModelConfig.id == self.app_model_config_id).first()
 
         return None
 
     @property
-    def workflow(self) -> Optional["Workflow"]:
+    def workflow(self) -> Workflow | None:
         if self.workflow_id:
             from .workflow import Workflow
 
@@ -287,7 +292,7 @@ class App(Base):
         return deleted_tools
 
     @property
-    def tags(self) -> list["Tag"]:
+    def tags(self) -> list[Tag]:
         tags = (
             db.session.query(Tag)
             .join(TagBinding, Tag.id == TagBinding.tag_id)
@@ -598,6 +603,64 @@ class InstalledApp(TypeBase):
     def tenant(self) -> Tenant | None:
         tenant = db.session.query(Tenant).where(Tenant.id == self.tenant_id).first()
         return tenant
+
+
+class TrialApp(Base):
+    __tablename__ = "trial_apps"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="trial_app_pkey"),
+        sa.Index("trial_app_app_id_idx", "app_id"),
+        sa.Index("trial_app_tenant_id_idx", "tenant_id"),
+        sa.UniqueConstraint("app_id", name="unique_trail_app_id"),
+    )
+
+    id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    app_id = mapped_column(StringUUID, nullable=False)
+    tenant_id = mapped_column(StringUUID, nullable=False)
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    trial_limit = mapped_column(sa.Integer, nullable=False, default=3)
+
+    @property
+    def app(self) -> App | None:
+        app = db.session.query(App).where(App.id == self.app_id).first()
+        return app
+
+
+class AccountTrialAppRecord(Base):
+    __tablename__ = "account_trial_app_records"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="user_trial_app_pkey"),
+        sa.Index("account_trial_app_record_account_id_idx", "account_id"),
+        sa.Index("account_trial_app_record_app_id_idx", "app_id"),
+        sa.UniqueConstraint("account_id", "app_id", name="unique_account_trial_app_record"),
+    )
+    id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    account_id = mapped_column(StringUUID, nullable=False)
+    app_id = mapped_column(StringUUID, nullable=False)
+    count = mapped_column(sa.Integer, nullable=False, default=0)
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+
+    @property
+    def app(self) -> App | None:
+        app = db.session.query(App).where(App.id == self.app_id).first()
+        return app
+
+    @property
+    def user(self) -> Account | None:
+        user = db.session.query(Account).where(Account.id == self.account_id).first()
+        return user
+
+
+class ExporleBanner(Base):
+    __tablename__ = "exporle_banners"
+    __table_args__ = (sa.PrimaryKeyConstraint("id", name="exporler_banner_pkey"),)
+    id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    content = mapped_column(sa.JSON, nullable=False)
+    link = mapped_column(String(255), nullable=False)
+    sort = mapped_column(sa.Integer, nullable=False)
+    status = mapped_column(sa.String(255), nullable=False, server_default=sa.text("'enabled'::character varying"))
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    language = mapped_column(String(255), nullable=False, server_default=sa.text("'en-US'::character varying"))
 
 
 class OAuthProviderApp(TypeBase):
@@ -1193,13 +1256,25 @@ class Message(Base):
         return json.loads(self.message_metadata) if self.message_metadata else {}
 
     @property
-    def agent_thoughts(self) -> list["MessageAgentThought"]:
+    def agent_thoughts(self) -> list[MessageAgentThought]:
         return (
             db.session.query(MessageAgentThought)
             .where(MessageAgentThought.message_id == self.id)
             .order_by(MessageAgentThought.position.asc())
             .all()
         )
+
+    # FIXME (Novice) -- It's easy to cause N+1 query problem here.
+    @property
+    def generation_detail(self) -> dict[str, Any] | None:
+        """
+        Get LLM generation detail for this message.
+        Returns the detail as a dictionary or None if not found.
+        """
+        detail = db.session.query(LLMGenerationDetail).filter_by(message_id=self.id).first()
+        if detail:
+            return detail.to_dict()
+        return None
 
     @property
     def retriever_resources(self) -> Any:
@@ -1306,7 +1381,7 @@ class Message(Base):
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "Message":
+    def from_dict(cls, data: dict[str, Any]) -> Message:
         return cls(
             id=data["id"],
             app_id=data["app_id"],
@@ -1419,14 +1494,19 @@ class MessageAnnotation(Base):
     app_id: Mapped[str] = mapped_column(StringUUID)
     conversation_id: Mapped[str | None] = mapped_column(StringUUID, sa.ForeignKey("conversations.id"))
     message_id: Mapped[str | None] = mapped_column(StringUUID)
-    question = mapped_column(LongText, nullable=True)
-    content = mapped_column(LongText, nullable=False)
+    question: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    content: Mapped[str] = mapped_column(LongText, nullable=False)
     hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
-    account_id = mapped_column(StringUUID, nullable=False)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = mapped_column(
+    account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
+
+    @property
+    def question_text(self) -> str:
+        """Return a non-null question string, falling back to the answer content."""
+        return self.question or self.content
 
     @property
     def account(self):
@@ -1528,7 +1608,7 @@ class OperationLog(TypeBase):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     action: Mapped[str] = mapped_column(String(255), nullable=False)
-    content: Mapped[Any] = mapped_column(sa.JSON)
+    content: Mapped[Any | None] = mapped_column(sa.JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
@@ -1835,7 +1915,7 @@ class MessageChain(TypeBase):
     )
 
 
-class MessageAgentThought(Base):
+class MessageAgentThought(TypeBase):
     __tablename__ = "message_agent_thoughts"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="message_agent_thought_pkey"),
@@ -1843,34 +1923,42 @@ class MessageAgentThought(Base):
         sa.Index("message_agent_thought_message_chain_id_idx", "message_chain_id"),
     )
 
-    id = mapped_column(StringUUID, default=lambda: str(uuid4()))
-    message_id = mapped_column(StringUUID, nullable=False)
-    message_chain_id = mapped_column(StringUUID, nullable=True)
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+    )
+    message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False)
-    thought = mapped_column(LongText, nullable=True)
-    tool = mapped_column(LongText, nullable=True)
-    tool_labels_str = mapped_column(LongText, nullable=False, default=sa.text("'{}'"))
-    tool_meta_str = mapped_column(LongText, nullable=False, default=sa.text("'{}'"))
-    tool_input = mapped_column(LongText, nullable=True)
-    observation = mapped_column(LongText, nullable=True)
+    created_by_role: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    message_chain_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    thought: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    tool: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    tool_labels_str: Mapped[str] = mapped_column(LongText, nullable=False, default=sa.text("'{}'"))
+    tool_meta_str: Mapped[str] = mapped_column(LongText, nullable=False, default=sa.text("'{}'"))
+    tool_input: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    observation: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
     # plugin_id = mapped_column(StringUUID, nullable=True)  ## for future design
-    tool_process_data = mapped_column(LongText, nullable=True)
-    message = mapped_column(LongText, nullable=True)
-    message_token: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
-    message_unit_price = mapped_column(sa.Numeric, nullable=True)
-    message_price_unit = mapped_column(sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001"))
-    message_files = mapped_column(LongText, nullable=True)
-    answer = mapped_column(LongText, nullable=True)
-    answer_token: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
-    answer_unit_price = mapped_column(sa.Numeric, nullable=True)
-    answer_price_unit = mapped_column(sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001"))
-    tokens: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
-    total_price = mapped_column(sa.Numeric, nullable=True)
-    currency = mapped_column(String(255), nullable=True)
-    latency: Mapped[float | None] = mapped_column(sa.Float, nullable=True)
-    created_by_role = mapped_column(String(255), nullable=False)
-    created_by = mapped_column(StringUUID, nullable=False)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=sa.func.current_timestamp())
+    tool_process_data: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    message: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    message_token: Mapped[int | None] = mapped_column(sa.Integer, nullable=True, default=None)
+    message_unit_price: Mapped[Decimal | None] = mapped_column(sa.Numeric, nullable=True, default=None)
+    message_price_unit: Mapped[Decimal] = mapped_column(
+        sa.Numeric(10, 7), nullable=False, default=Decimal("0.001"), server_default=sa.text("0.001")
+    )
+    message_files: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    answer: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    answer_token: Mapped[int | None] = mapped_column(sa.Integer, nullable=True, default=None)
+    answer_unit_price: Mapped[Decimal | None] = mapped_column(sa.Numeric, nullable=True, default=None)
+    answer_price_unit: Mapped[Decimal] = mapped_column(
+        sa.Numeric(10, 7), nullable=False, default=Decimal("0.001"), server_default=sa.text("0.001")
+    )
+    tokens: Mapped[int | None] = mapped_column(sa.Integer, nullable=True, default=None)
+    total_price: Mapped[Decimal | None] = mapped_column(sa.Numeric, nullable=True, default=None)
+    currency: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    latency: Mapped[float | None] = mapped_column(sa.Float, nullable=True, default=None)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, init=False, server_default=sa.func.current_timestamp()
+    )
 
     @property
     def files(self) -> list[Any]:
@@ -2065,3 +2153,113 @@ class TraceAppConfig(TypeBase):
             "created_at": str(self.created_at) if self.created_at else None,
             "updated_at": str(self.updated_at) if self.updated_at else None,
         }
+
+
+class TenantCreditPool(Base):
+    __tablename__ = "tenant_credit_pools"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="tenant_credit_pool_pkey"),
+        sa.Index("tenant_credit_pool_tenant_id_idx", "tenant_id"),
+        sa.Index("tenant_credit_pool_pool_type_idx", "pool_type"),
+    )
+
+    id = mapped_column(StringUUID, primary_key=True, server_default=text("uuid_generate_v4()"))
+    tenant_id = mapped_column(StringUUID, nullable=False)
+    pool_type = mapped_column(String(40), nullable=False, default="trial", server_default="trial")
+    quota_limit = mapped_column(BigInteger, nullable=False, default=0)
+    quota_used = mapped_column(BigInteger, nullable=False, default=0)
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    updated_at = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
+
+    @property
+    def remaining_credits(self) -> int:
+        return max(0, self.quota_limit - self.quota_used)
+
+    def has_sufficient_credits(self, required_credits: int) -> bool:
+        return self.remaining_credits >= required_credits
+
+
+class LLMGenerationDetail(Base):
+    """
+    Store LLM generation details including reasoning process and tool calls.
+
+    Association (choose one):
+    - For apps with Message: use message_id (one-to-one)
+    - For Workflow: use workflow_run_id + node_id (one run may have multiple LLM nodes)
+    """
+
+    __tablename__ = "llm_generation_details"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="llm_generation_detail_pkey"),
+        sa.Index("idx_llm_generation_detail_message", "message_id"),
+        sa.Index("idx_llm_generation_detail_workflow", "workflow_run_id", "node_id"),
+        sa.CheckConstraint(
+            "(message_id IS NOT NULL AND workflow_run_id IS NULL AND node_id IS NULL)"
+            " OR "
+            "(message_id IS NULL AND workflow_run_id IS NOT NULL AND node_id IS NOT NULL)",
+            name="ck_llm_generation_detail_assoc_mode",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+
+    # Association fields (choose one)
+    message_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, unique=True)
+    workflow_run_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    node_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    # Core data as JSON strings
+    reasoning_content: Mapped[str | None] = mapped_column(LongText)
+    tool_calls: Mapped[str | None] = mapped_column(LongText)
+    sequence: Mapped[str | None] = mapped_column(LongText)
+
+    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+
+    def to_domain_model(self) -> LLMGenerationDetailData:
+        """Convert to Pydantic domain model with proper validation."""
+        from core.app.entities.llm_generation_entities import LLMGenerationDetailData
+
+        return LLMGenerationDetailData(
+            reasoning_content=json.loads(self.reasoning_content) if self.reasoning_content else [],
+            tool_calls=json.loads(self.tool_calls) if self.tool_calls else [],
+            sequence=json.loads(self.sequence) if self.sequence else [],
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for API response."""
+        return self.to_domain_model().to_response_dict()
+
+    @classmethod
+    def from_domain_model(
+        cls,
+        data: LLMGenerationDetailData,
+        *,
+        tenant_id: str,
+        app_id: str,
+        message_id: str | None = None,
+        workflow_run_id: str | None = None,
+        node_id: str | None = None,
+    ) -> LLMGenerationDetail:
+        """Create from Pydantic domain model."""
+        # Enforce association mode at object creation time as well.
+        message_mode = message_id is not None
+        workflow_mode = workflow_run_id is not None or node_id is not None
+        if message_mode and workflow_mode:
+            raise ValueError("LLMGenerationDetail cannot set both message_id and workflow_run_id/node_id.")
+        if not message_mode and not (workflow_run_id and node_id):
+            raise ValueError("LLMGenerationDetail requires either message_id or workflow_run_id+node_id.")
+
+        return cls(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            message_id=message_id,
+            workflow_run_id=workflow_run_id,
+            node_id=node_id,
+            reasoning_content=json.dumps(data.reasoning_content) if data.reasoning_content else None,
+            tool_calls=json.dumps([tc.model_dump() for tc in data.tool_calls]) if data.tool_calls else None,
+            sequence=json.dumps([seg.model_dump() for seg in data.sequence]) if data.sequence else None,
+        )

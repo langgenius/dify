@@ -1,9 +1,7 @@
 const translation = {
   title: 'Explorați',
   sidebar: {
-    discovery: 'Descoperire',
     chat: 'Chat',
-    workspace: 'Spațiu de lucru',
     action: {
       pin: 'Fixați',
       unpin: 'Deblocați',
@@ -16,12 +14,8 @@ const translation = {
     },
   },
   apps: {
-    title: 'Explorați aplicațiile Dify',
-    description: 'Utilizați aceste aplicații model imediat sau personalizați-vă propria aplicație pe baza modelelor.',
-    allCategories: 'Recomandate',
   },
   appCard: {
-    addToWorkspace: 'Adăugați la spațiul de lucru',
     customize: 'Personalizați',
   },
   appCustomize: {

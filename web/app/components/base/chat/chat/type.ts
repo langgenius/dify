@@ -1,13 +1,14 @@
-import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { Annotation, MessageRating } from '@/models/log'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { InputVarType } from '@/app/components/workflow/types'
-import type { FileResponse } from '@/types/workflow'
+import type { Annotation, MessageRating } from '@/models/log'
+import type { FileResponse, ToolCallItem } from '@/types/workflow'
 
 export type MessageMore = {
   time: string
   tokens: number
   latency: number | string
+  tokens_per_second?: number | string
 }
 
 export type FeedbackType = {
@@ -91,7 +92,7 @@ export type IChatItem = {
   useCurrentUserAvatar?: boolean
   isOpeningStatement?: boolean
   suggestedQuestions?: string[]
-  log?: { role: string; text: string; files?: FileEntity[] }[]
+  log?: { role: string, text: string, files?: FileEntity[] }[]
   agent_thoughts?: ThoughtItem[]
   message_files?: FileEntity[]
   workflow_run_id?: string
@@ -103,6 +104,7 @@ export type IChatItem = {
   siblingIndex?: number
   prevSibling?: string
   nextSibling?: string
+  toolCalls?: ToolCallItem[]
 }
 
 export type Metadata = {

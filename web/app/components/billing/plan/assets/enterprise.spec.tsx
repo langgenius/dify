@@ -154,7 +154,10 @@ describe('Enterprise Icon Component', () => {
   describe('CSS Variables', () => {
     it('should use CSS custom properties for colors', () => {
       const { container } = render(<Enterprise />)
-      const elementsWithCSSVars = container.querySelectorAll('[fill*="var("]')
+      const allFillElements = container.querySelectorAll('[fill]')
+      const elementsWithCSSVars = Array.from(allFillElements).filter(el =>
+        el.getAttribute('fill')?.startsWith('var('),
+      )
 
       expect(elementsWithCSSVars.length).toBeGreaterThan(0)
     })

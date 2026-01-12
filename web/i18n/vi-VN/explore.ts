@@ -1,9 +1,7 @@
 const translation = {
   title: 'Khám phá',
   sidebar: {
-    discovery: 'Khám phá',
     chat: 'Trò chuyện',
-    workspace: 'Không gian làm việc',
     action: {
       pin: 'Ghim',
       unpin: 'Bỏ ghim',
@@ -16,12 +14,8 @@ const translation = {
     },
   },
   apps: {
-    title: 'Khám phá ứng dụng bởi Dify',
-    description: 'Sử dụng ngay các ứng dụng mẫu này hoặc tùy chỉnh ứng dụng của bạn dựa trên các mẫu có sẵn.',
-    allCategories: 'Tất cả danh mục',
   },
   appCard: {
-    addToWorkspace: 'Thêm vào không gian làm việc',
     customize: 'Tùy chỉnh',
   },
   appCustomize: {

@@ -1,17 +1,18 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
 import type { CustomRunFormProps } from './types'
-import { DatasourceType } from '@/models/pipeline'
+import * as React from 'react'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
 import LocalFile from '@/app/components/datasets/documents/create-from-pipeline/data-source/local-file'
 import OnlineDocuments from '@/app/components/datasets/documents/create-from-pipeline/data-source/online-documents'
-import WebsiteCrawl from '@/app/components/datasets/documents/create-from-pipeline/data-source/website-crawl'
 import OnlineDrive from '@/app/components/datasets/documents/create-from-pipeline/data-source/online-drive'
 import { useDataSourceStore } from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
-import { useOnlineDocument, useOnlineDrive, useWebsiteCrawl } from '@/app/components/rag-pipeline/components/panel/test-run/preparation/hooks'
-import Button from '@/app/components/base/button'
-import { useTranslation } from 'react-i18next'
 import DataSourceProvider from '@/app/components/datasets/documents/create-from-pipeline/data-source/store/provider'
+import WebsiteCrawl from '@/app/components/datasets/documents/create-from-pipeline/data-source/website-crawl'
+import { useOnlineDocument, useOnlineDrive, useWebsiteCrawl } from '@/app/components/rag-pipeline/components/panel/test-run/preparation/hooks'
+import { DatasourceType } from '@/models/pipeline'
 import PanelWrap from '../_base/components/before-run-form/panel-wrap'
 import useBeforeRunForm from './hooks/use-before-run-form'
 
@@ -56,7 +57,7 @@ const BeforeRunForm: FC<CustomRunFormProps> = (props) => {
       nodeName={payload.title}
       onHide={onCancel}
     >
-      <div className='flex flex-col gap-y-5 px-4 pt-4'>
+      <div className="flex flex-col gap-y-5 px-4 pt-4">
         {datasourceType === DatasourceType.localFile && (
           <LocalFile
             allowedExtensions={datasourceNodeData.fileExtensions || []}
@@ -90,17 +91,17 @@ const BeforeRunForm: FC<CustomRunFormProps> = (props) => {
             supportBatchUpload={false}
           />
         )}
-        <div className='flex justify-end gap-x-2'>
+        <div className="flex justify-end gap-x-2">
           <Button onClick={onCancel}>
-            {t('common.operation.cancel')}
+            {t('operation.cancel', { ns: 'common' })}
           </Button>
           <Button
             onClick={handleRunWithSyncDraft}
-            variant='primary'
+            variant="primary"
             loading={isPending}
             disabled={isPending || startRunBtnDisabled}
           >
-            {t('workflow.singleRun.startRun')}
+            {t('singleRun.startRun', { ns: 'workflow' })}
           </Button>
         </div>
       </div>

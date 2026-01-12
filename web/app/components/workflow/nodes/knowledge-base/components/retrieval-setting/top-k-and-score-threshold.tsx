@@ -1,8 +1,8 @@
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
-import Switch from '@/app/components/base/switch'
 import { InputNumber } from '@/app/components/base/input-number'
+import Switch from '@/app/components/base/switch'
+import Tooltip from '@/app/components/base/tooltip'
 
 export type TopKAndScoreThresholdProps = {
   topK: number
@@ -58,20 +58,20 @@ const TopKAndScoreThreshold = ({
   }
 
   return (
-    <div className='grid grid-cols-2 gap-4'>
+    <div className="grid grid-cols-2 gap-4">
       <div>
-        <div className='system-xs-medium mb-0.5 flex h-6 items-center text-text-secondary'>
-          {t('appDebug.datasetConfig.top_k')}
+        <div className="system-xs-medium mb-0.5 flex h-6 items-center text-text-secondary">
+          {t('datasetConfig.top_k', { ns: 'appDebug' })}
           <Tooltip
-            triggerClassName='ml-0.5 shrink-0 w-3.5 h-3.5'
-            popupContent={t('appDebug.datasetConfig.top_kTip')}
+            triggerClassName="ml-0.5 shrink-0 w-3.5 h-3.5"
+            popupContent={t('datasetConfig.top_kTip', { ns: 'appDebug' })}
           />
         </div>
         <InputNumber
           disabled={readonly}
-          type='number'
+          type="number"
           {...TOP_K_VALUE_LIMIT}
-          size='regular'
+          size="regular"
           value={topK}
           onChange={handleTopKChange}
         />
@@ -79,26 +79,26 @@ const TopKAndScoreThreshold = ({
       {
         !hiddenScoreThreshold && (
           <div>
-            <div className='mb-0.5 flex h-6 items-center'>
+            <div className="mb-0.5 flex h-6 items-center">
               <Switch
-                className='mr-2'
+                className="mr-2"
                 defaultValue={isScoreThresholdEnabled}
                 onChange={onScoreThresholdEnabledChange}
                 disabled={readonly}
               />
-              <div className='system-sm-medium grow truncate text-text-secondary'>
-                {t('appDebug.datasetConfig.score_threshold')}
+              <div className="system-sm-medium grow truncate text-text-secondary">
+                {t('datasetConfig.score_threshold', { ns: 'appDebug' })}
               </div>
               <Tooltip
-                triggerClassName='shrink-0 ml-0.5 w-3.5 h-3.5'
-                popupContent={t('appDebug.datasetConfig.score_thresholdTip')}
+                triggerClassName="shrink-0 ml-0.5 w-3.5 h-3.5"
+                popupContent={t('datasetConfig.score_thresholdTip', { ns: 'appDebug' })}
               />
             </div>
             <InputNumber
               disabled={readonly || !isScoreThresholdEnabled}
-              type='number'
+              type="number"
               {...SCORE_THRESHOLD_VALUE_LIMIT}
-              size='regular'
+              size="regular"
               value={scoreThreshold}
               onChange={handleScoreThresholdChange}
             />
