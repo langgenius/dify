@@ -2,6 +2,7 @@ import type { PluginStatus } from '@/app/components/plugins/types'
 import {
   useCallback,
 } from 'react'
+import Toast from '@/app/components/base/toast'
 import { TaskStatus } from '@/app/components/plugins/types'
 import {
   useMutationClearTaskPlugin,
@@ -13,7 +14,7 @@ export const usePluginTaskStatus = () => {
     pluginTasks,
     handleRefetch,
   } = usePluginTaskList()
-  const { mutateAsync } = useMutationClearTaskPlugin()
+  const { mutate } = useMutationClearTaskPlugin()
   const allPlugins = pluginTasks.map(task => task.plugins.map((plugin) => {
     return {
       ...plugin,
@@ -33,13 +34,22 @@ export const usePluginTaskStatus = () => {
       successPlugins.push(plugin)
   })
 
-  const handleClearErrorPlugin = useCallback(async (taskId: string, pluginId: string) => {
-    await mutateAsync({
+  const handleClearErrorPlugin = useCallback((taskId: string, pluginId: string) => {
+    mutate({
       taskId,
       pluginId,
+    }, {
+      onSuccess: () => {
+        handleRefetch()
+      },
+      onError: (error: any) => {
+        Toast.notify({
+          type: 'error',
+          message: error?.message || 'Failed to clear plugin',
+        })
+      },
     })
-    handleRefetch()
-  }, [mutateAsync, handleRefetch])
+  }, [mutate, handleRefetch])
   const totalPluginsLength = allPlugins.length
   const runningPluginsLength = runningPlugins.length
   const errorPluginsLength = errorPlugins.length

@@ -9,6 +9,7 @@ import {
   useEffect,
   useState,
 } from 'react'
+import Toast from '@/app/components/base/toast'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useAppContext } from '@/context/app-context'
 import { useModalContextSelector } from '@/context/modal-context'
@@ -24,7 +25,7 @@ dayjs.extend(utc)
 dayjs.extend(timezone)
 export const useEducation = () => {
   const {
-    mutateAsync,
+    mutate,
     isPending,
     data,
   } = useEducationAutocomplete()
@@ -32,16 +33,24 @@ export const useEducation = () => {
   const [prevSchools, setPrevSchools] = useState<string[]>([])
   const handleUpdateSchools = useCallback((searchParams: SearchParams) => {
     if (searchParams.keywords) {
-      mutateAsync(searchParams).then((res) => {
-        const currentPage = searchParams.page || 0
-        const resSchools = res.data
-        if (currentPage > 0)
-          setPrevSchools(prevSchools => [...(prevSchools || []), ...resSchools])
-        else
-          setPrevSchools(resSchools)
+      mutate(searchParams, {
+        onSuccess: (res) => {
+          const currentPage = searchParams.page || 0
+          const resSchools = res.data
+          if (currentPage > 0)
+            setPrevSchools(prevSchools => [...(prevSchools || []), ...resSchools])
+          else
+            setPrevSchools(resSchools)
+        },
+        onError: (error: any) => {
+          Toast.notify({
+            type: 'error',
+            message: error?.message || 'Failed to fetch schools',
+          })
+        },
       })
     }
-  }, [mutateAsync])
+  }, [mutate])
 
   const { run: querySchoolsWithDebounced } = useDebounceFn((searchParams: SearchParams) => {
     handleUpdateSchools(searchParams)
@@ -144,11 +153,20 @@ export const useEducationInit = () => {
   })
 
   const router = useRouter()
-  const { mutateAsync } = useEducationVerify()
-  const handleVerify = async () => {
-    const { token } = await mutateAsync()
-    if (token)
-      router.push(`/education-apply?token=${token}`)
+  const { mutate } = useEducationVerify()
+  const handleVerify = () => {
+    mutate(undefined, {
+      onSuccess: ({ token }) => {
+        if (token)
+          router.push(`/education-apply?token=${token}`)
+      },
+      onError: (error: any) => {
+        Toast.notify({
+          type: 'error',
+          message: error?.message || 'Failed to verify education account',
+        })
+      },
+    })
   }
 
   useEffect(() => {

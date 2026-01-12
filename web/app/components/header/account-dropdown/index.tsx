@@ -21,6 +21,7 @@ import { resetUser } from '@/app/components/base/amplitude/utils'
 import Avatar from '@/app/components/base/avatar'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import ThemeSwitcher from '@/app/components/base/theme-switcher'
+import Toast from '@/app/components/base/toast'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { IS_CLOUD_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
@@ -51,19 +52,28 @@ export default function AppSelector() {
   const { isEducationAccount } = useProviderContext()
   const { setShowAccountSettingModal } = useModalContext()
 
-  const { mutateAsync: logout } = useLogout()
-  const handleLogout = async () => {
-    await logout()
-    resetUser()
-    localStorage.removeItem('setup_status')
-    // Tokens are now stored in cookies and cleared by backend
+  const { mutate: logout } = useLogout()
+  const handleLogout = () => {
+    logout(undefined, {
+      onSuccess: () => {
+        resetUser()
+        localStorage.removeItem('setup_status')
+        // Tokens are now stored in cookies and cleared by backend
 
-    // To avoid use other account's education notice info
-    localStorage.removeItem('education-reverify-prev-expire-at')
-    localStorage.removeItem('education-reverify-has-noticed')
-    localStorage.removeItem('education-expired-has-noticed')
+        // To avoid use other account's education notice info
+        localStorage.removeItem('education-reverify-prev-expire-at')
+        localStorage.removeItem('education-reverify-has-noticed')
+        localStorage.removeItem('education-expired-has-noticed')
 
-    router.push('/signin')
+        router.push('/signin')
+      },
+      onError: (error: any) => {
+        Toast.notify({
+          type: 'error',
+          message: error?.message || t('api.actionFailed', { ns: 'common' }),
+        })
+      },
+    })
   }
 
   return (

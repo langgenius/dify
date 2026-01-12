@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import Avatar from '@/app/components/base/avatar'
 import Button from '@/app/components/base/button'
 import { Triangle } from '@/app/components/base/icons/src/public/education'
+import Toast from '@/app/components/base/toast'
 import { useAppContext } from '@/context/app-context'
 import { useLogout } from '@/service/use-common'
 
@@ -11,14 +12,22 @@ const UserInfo = () => {
   const { t } = useTranslation()
   const { userProfile } = useAppContext()
 
-  const { mutateAsync: logout } = useLogout()
-  const handleLogout = async () => {
-    await logout()
+  const { mutate: logout } = useLogout()
+  const handleLogout = () => {
+    logout(undefined, {
+      onSuccess: () => {
+        localStorage.removeItem('setup_status')
+        // Tokens are now stored in cookies and cleared by backend
 
-    localStorage.removeItem('setup_status')
-    // Tokens are now stored in cookies and cleared by backend
-
-    router.push('/signin')
+        router.push('/signin')
+      },
+      onError: (error: any) => {
+        Toast.notify({
+          type: 'error',
+          message: error?.message || t('api.actionFailed', { ns: 'common' }),
+        })
+      },
+    })
   }
 
   return (

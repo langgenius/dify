@@ -44,47 +44,47 @@ export const AppInitializer = ({
       return true
     }
     catch (error) {
-      console.error(error)
+      console.error('Failed to check setup status:', error instanceof Error ? error.message : error)
       return false
     }
   }, [])
 
   useEffect(() => {
     (async () => {
-      const action = searchParams.get('action')
+      try {
+        const action = searchParams.get('action')
 
-      if (oauthNewUser === 'true') {
-        let utmInfo = null
-        const utmInfoStr = Cookies.get('utm_info')
-        if (utmInfoStr) {
-          try {
-            utmInfo = JSON.parse(utmInfoStr)
+        if (oauthNewUser === 'true') {
+          let utmInfo = null
+          const utmInfoStr = Cookies.get('utm_info')
+          if (utmInfoStr) {
+            try {
+              utmInfo = JSON.parse(utmInfoStr)
+            }
+            catch (e) {
+              console.error('Failed to parse utm_info cookie:', e instanceof Error ? e.message : e)
+            }
           }
-          catch (e) {
-            console.error('Failed to parse utm_info cookie:', e)
-          }
+
+          // Track registration event with UTM params
+          trackEvent(utmInfo ? 'user_registration_success_with_utm' : 'user_registration_success', {
+            method: 'oauth',
+            ...utmInfo,
+          })
+
+          sendGAEvent(utmInfo ? 'user_registration_success_with_utm' : 'user_registration_success', {
+            method: 'oauth',
+            ...utmInfo,
+          })
+
+          // Clean up: remove utm_info cookie and URL params
+          Cookies.remove('utm_info')
+          setOauthNewUser(null)
         }
 
-        // Track registration event with UTM params
-        trackEvent(utmInfo ? 'user_registration_success_with_utm' : 'user_registration_success', {
-          method: 'oauth',
-          ...utmInfo,
-        })
+        if (action === EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION)
+          localStorage.setItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM, 'yes')
 
-        sendGAEvent(utmInfo ? 'user_registration_success_with_utm' : 'user_registration_success', {
-          method: 'oauth',
-          ...utmInfo,
-        })
-
-        // Clean up: remove utm_info cookie and URL params
-        Cookies.remove('utm_info')
-        setOauthNewUser(null)
-      }
-
-      if (action === EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION)
-        localStorage.setItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM, 'yes')
-
-      try {
         const isFinished = await isSetupFinished()
         if (!isFinished) {
           router.replace('/install')
@@ -99,10 +99,14 @@ export const AppInitializer = ({
 
         setInit(true)
       }
-      catch {
+      catch (error) {
+        console.error('App initialization error:', error instanceof Error ? error.message : error)
         router.replace('/signin')
       }
-    })()
+    })().catch((error) => {
+      console.error('Unhandled promise rejection in AppInitializer:', error instanceof Error ? error.message : error)
+      router.replace('/signin')
+    })
   }, [isSetupFinished, router, pathname, searchParams, oauthNewUser, setOauthNewUser])
 
   return init ? children : null
