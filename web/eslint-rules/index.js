@@ -1,4 +1,5 @@
 import noAsAnyInT from './rules/no-as-any-in-t.js'
+import noDeprecatedDocLink from './rules/no-deprecated-doc-link.js'
 import noExtraKeys from './rules/no-extra-keys.js'
 import noLegacyNamespacePrefix from './rules/no-legacy-namespace-prefix.js'
 import requireNsOption from './rules/require-ns-option.js'
@@ -12,6 +13,7 @@ const plugin = {
   },
   rules: {
     'no-as-any-in-t': noAsAnyInT,
+    'no-deprecated-doc-link': noDeprecatedDocLink,
     'no-extra-keys': noExtraKeys,
     'no-legacy-namespace-prefix': noLegacyNamespacePrefix,
     'require-ns-option': requireNsOption,
