@@ -2,7 +2,7 @@
 // DON NOT EDIT IT MANUALLY
 //
 // Generated from: https://raw.githubusercontent.com/langgenius/dify-docs/refs/heads/main/docs.json
-// Generated at: 2026-01-12T07:59:44.777Z
+// Generated at: 2026-01-12T08:33:31.591Z
 
 /** @type {Map<string, string>} */
 export const docRedirects = new Map([

@@ -2,7 +2,7 @@
 // DON NOT EDIT IT MANUALLY
 //
 // Generated from: https://raw.githubusercontent.com/langgenius/dify-docs/refs/heads/main/docs.json
-// Generated at: 2026-01-12T07:59:44.775Z
+// Generated at: 2026-01-12T08:33:31.589Z
 
 // Language prefixes
 export type DocLanguage = 'en' | 'zh' | 'ja'
@@ -157,13 +157,74 @@ export type DevelopPluginPath =
   | 'develop-plugin/publishing/standards/privacy-protection-guidelines'
   | 'develop-plugin/publishing/standards/third-party-signature-verification'
 
-// API Reference paths
+// API Reference paths (English, use apiReferencePathTranslations for other languages)
 export type ApiReferencePath =
-  | 'api-reference/openapi_chat.json'
-  | 'api-reference/openapi_chatflow.json'
-  | 'api-reference/openapi_workflow.json'
-  | 'api-reference/openapi_knowledge.json'
-  | 'api-reference/openapi_completion.json'
+  | 'api-reference/annotations/create-annotation'
+  | 'api-reference/annotations/delete-annotation'
+  | 'api-reference/annotations/get-annotation-list'
+  | 'api-reference/annotations/initial-annotation-reply-settings'
+  | 'api-reference/annotations/query-initial-annotation-reply-settings-task-status'
+  | 'api-reference/annotations/update-annotation'
+  | 'api-reference/application/get-application-basic-information'
+  | 'api-reference/application/get-application-meta-information'
+  | 'api-reference/application/get-application-parameters-information'
+  | 'api-reference/application/get-application-webapp-settings'
+  | 'api-reference/chat/next-suggested-questions'
+  | 'api-reference/chat/send-chat-message'
+  | 'api-reference/chat/stop-chat-message-generation'
+  | 'api-reference/chatflow/next-suggested-questions'
+  | 'api-reference/chatflow/send-chat-message'
+  | 'api-reference/chatflow/stop-advanced-chat-message-generation'
+  | 'api-reference/chunks/add-chunks-to-a-document'
+  | 'api-reference/chunks/create-child-chunk'
+  | 'api-reference/chunks/delete-a-chunk-in-a-document'
+  | 'api-reference/chunks/delete-child-chunk'
+  | 'api-reference/chunks/get-a-chunk-details-in-a-document'
+  | 'api-reference/chunks/get-child-chunks'
+  | 'api-reference/chunks/get-chunks-from-a-document'
+  | 'api-reference/chunks/update-a-chunk-in-a-document'
+  | 'api-reference/chunks/update-child-chunk'
+  | 'api-reference/completion/create-completion-message'
+  | 'api-reference/completion/stop-generate'
+  | 'api-reference/conversations/conversation-rename'
+  | 'api-reference/conversations/delete-conversation'
+  | 'api-reference/conversations/get-conversation-history-messages'
+  | 'api-reference/conversations/get-conversation-variables'
+  | 'api-reference/conversations/get-conversations'
+  | 'api-reference/datasets/create-an-empty-knowledge-base'
+  | 'api-reference/datasets/delete-a-knowledge-base'
+  | 'api-reference/datasets/get-knowledge-base-details'
+  | 'api-reference/datasets/get-knowledge-base-list'
+  | 'api-reference/datasets/retrieve-chunks-from-a-knowledge-base-/-test-retrieval'
+  | 'api-reference/datasets/update-knowledge-base'
+  | 'api-reference/documents/create-a-document-from-a-file'
+  | 'api-reference/documents/create-a-document-from-text'
+  | 'api-reference/documents/delete-a-document'
+  | 'api-reference/documents/get-document-detail'
+  | 'api-reference/documents/get-document-embedding-status-(progress)'
+  | 'api-reference/documents/get-the-document-list-of-a-knowledge-base'
+  | 'api-reference/documents/update-a-document-with-a-file'
+  | 'api-reference/documents/update-a-document-with-text'
+  | 'api-reference/documents/update-document-status'
+  | 'api-reference/feedback/get-feedbacks-of-application'
+  | 'api-reference/feedback/message-feedback'
+  | 'api-reference/files/file-preview'
+  | 'api-reference/files/file-upload'
+  | 'api-reference/files/file-upload-for-workflow'
+  | 'api-reference/metadata-&-tags/bind-dataset-to-knowledge-base-type-tag'
+  | 'api-reference/metadata-&-tags/create-new-knowledge-base-type-tag'
+  | 'api-reference/metadata-&-tags/delete-knowledge-base-type-tag'
+  | 'api-reference/metadata-&-tags/get-knowledge-base-type-tags'
+  | 'api-reference/metadata-&-tags/modify-knowledge-base-type-tag-name'
+  | 'api-reference/metadata-&-tags/query-tags-bound-to-a-dataset'
+  | 'api-reference/metadata-&-tags/unbind-dataset-and-knowledge-base-type-tag'
+  | 'api-reference/models/get-available-embedding-models'
+  | 'api-reference/tts/speech-to-text'
+  | 'api-reference/tts/text-to-audio'
+  | 'api-reference/workflow-execution/execute-workflow'
+  | 'api-reference/workflow-execution/get-workflow-logs'
+  | 'api-reference/workflow-execution/get-workflow-run-detail'
+  | 'api-reference/workflow-execution/stop-workflow-task-generation'
 
 // Base path without language prefix
 export type DocPathWithoutLangBase =
@@ -179,3 +240,73 @@ export type DocPathWithoutLang =
 
 // Full documentation path with language prefix
 export type DifyDocPath = `${DocLanguage}/${DocPathWithoutLang}`
+
+// API Reference path translations (English -> other languages)
+export const apiReferencePathTranslations: Record<string, { zh?: string; ja?: string }> = {
+  'api-reference/annotations/create-annotation': { zh: 'api-reference/标注管理/创建标注' },
+  'api-reference/annotations/delete-annotation': { zh: 'api-reference/标注管理/删除标注' },
+  'api-reference/annotations/get-annotation-list': { zh: 'api-reference/标注管理/获取标注列表' },
+  'api-reference/annotations/initial-annotation-reply-settings': { zh: 'api-reference/标注管理/标注回复初始设置' },
+  'api-reference/annotations/query-initial-annotation-reply-settings-task-status': { zh: 'api-reference/标注管理/查询标注回复初始设置任务状态' },
+  'api-reference/annotations/update-annotation': { zh: 'api-reference/标注管理/更新标注' },
+  'api-reference/application/get-application-basic-information': { zh: 'api-reference/应用设置/获取应用基本信息', ja: 'api-reference/アプリケーション情報/アプリケーションの基本情報を取得' },
+  'api-reference/application/get-application-meta-information': { zh: 'api-reference/应用配置/获取应用meta信息', ja: 'api-reference/アプリケーション設定/アプリケーションのメタ情報を取得' },
+  'api-reference/application/get-application-parameters-information': { zh: 'api-reference/应用设置/获取应用参数', ja: 'api-reference/アプリケーション情報/アプリケーションのパラメータ情報を取得' },
+  'api-reference/application/get-application-webapp-settings': { zh: 'api-reference/应用设置/获取应用-webapp-设置', ja: 'api-reference/アプリケーション情報/アプリのwebapp設定を取得' },
+  'api-reference/chat/next-suggested-questions': { zh: 'api-reference/对话消息/获取下一轮建议问题列表', ja: 'api-reference/チャットメッセージ/次の推奨質問' },
+  'api-reference/chat/send-chat-message': { zh: 'api-reference/对话消息/发送对话消息', ja: 'api-reference/チャットメッセージ/チャットメッセージを送信' },
+  'api-reference/chat/stop-chat-message-generation': { zh: 'api-reference/对话消息/停止响应', ja: 'api-reference/チャットメッセージ/生成停止' },
+  'api-reference/chatflow/next-suggested-questions': { zh: 'api-reference/对话消息/获取下一轮建议问题列表', ja: 'api-reference/チャットメッセージ/次の推奨質問' },
+  'api-reference/chatflow/send-chat-message': { zh: 'api-reference/对话消息/发送对话消息', ja: 'api-reference/チャットメッセージ/チャットメッセージを送信' },
+  'api-reference/chatflow/stop-advanced-chat-message-generation': { zh: 'api-reference/对话消息/停止响应', ja: 'api-reference/チャットメッセージ/生成を停止' },
+  'api-reference/chunks/add-chunks-to-a-document': { zh: 'api-reference/文档块/向文档添加块', ja: 'api-reference/チャンク/ドキュメントにチャンクを追加' },
+  'api-reference/chunks/create-child-chunk': { zh: 'api-reference/文档块/创建子块', ja: 'api-reference/チャンク/子チャンクを作成' },
+  'api-reference/chunks/delete-a-chunk-in-a-document': { zh: 'api-reference/文档块/删除文档中的块', ja: 'api-reference/チャンク/ドキュメント内のチャンクを削除' },
+  'api-reference/chunks/delete-child-chunk': { zh: 'api-reference/文档块/删除子块', ja: 'api-reference/チャンク/子チャンクを削除' },
+  'api-reference/chunks/get-a-chunk-details-in-a-document': { zh: 'api-reference/文档块/获取文档中的块详情', ja: 'api-reference/チャンク/ドキュメント内のチャンク詳細を取得' },
+  'api-reference/chunks/get-child-chunks': { zh: 'api-reference/文档块/获取子块', ja: 'api-reference/チャンク/子チャンクを取得' },
+  'api-reference/chunks/get-chunks-from-a-document': { zh: 'api-reference/文档块/从文档获取块', ja: 'api-reference/チャンク/ドキュメントからチャンクを取得' },
+  'api-reference/chunks/update-a-chunk-in-a-document': { zh: 'api-reference/文档块/更新文档中的块', ja: 'api-reference/チャンク/ドキュメント内のチャンクを更新' },
+  'api-reference/chunks/update-child-chunk': { zh: 'api-reference/文档块/更新子块', ja: 'api-reference/チャンク/子チャンクを更新' },
+  'api-reference/completion/create-completion-message': { zh: 'api-reference/文本生成/发送消息', ja: 'api-reference/完了メッセージ/完了メッセージの作成' },
+  'api-reference/completion/stop-generate': { zh: 'api-reference/文本生成/停止响应', ja: 'api-reference/完了メッセージ/生成の停止' },
+  'api-reference/conversations/conversation-rename': { zh: 'api-reference/会话管理/会话重命名', ja: 'api-reference/会話管理/会話の名前を変更' },
+  'api-reference/conversations/delete-conversation': { zh: 'api-reference/会话管理/删除会话', ja: 'api-reference/会話管理/会話を削除' },
+  'api-reference/conversations/get-conversation-history-messages': { zh: 'api-reference/会话管理/获取会话历史消息', ja: 'api-reference/会話管理/会話履歴メッセージを取得' },
+  'api-reference/conversations/get-conversation-variables': { zh: 'api-reference/会话管理/获取对话变量', ja: 'api-reference/会話管理/会話変数の取得' },
+  'api-reference/conversations/get-conversations': { zh: 'api-reference/会话管理/获取会话列表', ja: 'api-reference/会話管理/会話を取得' },
+  'api-reference/datasets/create-an-empty-knowledge-base': { zh: 'api-reference/数据集/创建空知识库', ja: 'api-reference/データセット/空のナレッジベースを作成' },
+  'api-reference/datasets/delete-a-knowledge-base': { zh: 'api-reference/数据集/删除知识库', ja: 'api-reference/データセット/ナレッジベースを削除' },
+  'api-reference/datasets/get-knowledge-base-details': { zh: 'api-reference/数据集/获取知识库详情', ja: 'api-reference/データセット/ナレッジベース詳細を取得' },
+  'api-reference/datasets/get-knowledge-base-list': { zh: 'api-reference/数据集/获取知识库列表', ja: 'api-reference/データセット/ナレッジベースリストを取得' },
+  'api-reference/datasets/retrieve-chunks-from-a-knowledge-base-/-test-retrieval': { zh: 'api-reference/数据集/从知识库检索块-/-测试检索', ja: 'api-reference/データセット/ナレッジベースからチャンクを取得-/-テスト検索' },
+  'api-reference/datasets/update-knowledge-base': { zh: 'api-reference/数据集/更新知识库', ja: 'api-reference/データセット/ナレッジベースを更新' },
+  'api-reference/documents/create-a-document-from-a-file': { zh: 'api-reference/文档/从文件创建文档', ja: 'api-reference/ドキュメント/ファイルからドキュメントを作成' },
+  'api-reference/documents/create-a-document-from-text': { zh: 'api-reference/文档/从文本创建文档', ja: 'api-reference/ドキュメント/テキストからドキュメントを作成' },
+  'api-reference/documents/delete-a-document': { zh: 'api-reference/文档/删除文档', ja: 'api-reference/ドキュメント/ドキュメントを削除' },
+  'api-reference/documents/get-document-detail': { zh: 'api-reference/文档/获取文档详情', ja: 'api-reference/ドキュメント/ドキュメント詳細を取得' },
+  'api-reference/documents/get-document-embedding-status-(progress)': { zh: 'api-reference/文档/获取文档嵌入状态（进度）', ja: 'api-reference/ドキュメント/ドキュメント埋め込みステータス（進捗）を取得' },
+  'api-reference/documents/get-the-document-list-of-a-knowledge-base': { zh: 'api-reference/文档/获取知识库的文档列表', ja: 'api-reference/ドキュメント/ナレッジベースのドキュメントリストを取得' },
+  'api-reference/documents/update-a-document-with-a-file': { zh: 'api-reference/文档/用文件更新文档', ja: 'api-reference/ドキュメント/ファイルでドキュメントを更新' },
+  'api-reference/documents/update-a-document-with-text': { zh: 'api-reference/文档/用文本更新文档', ja: 'api-reference/ドキュメント/テキストでドキュメントを更新' },
+  'api-reference/documents/update-document-status': { zh: 'api-reference/文档/更新文档状态', ja: 'api-reference/ドキュメント/ドキュメントステータスを更新' },
+  'api-reference/feedback/get-feedbacks-of-application': { zh: 'api-reference/反馈/获取应用反馈列表', ja: 'api-reference/メッセージフィードバック/アプリのメッセージの「いいね」とフィードバックを取得' },
+  'api-reference/feedback/message-feedback': { zh: 'api-reference/反馈/消息反馈（点赞）', ja: 'api-reference/メッセージフィードバック/メッセージフィードバック' },
+  'api-reference/files/file-preview': { zh: 'api-reference/文件操作/文件预览', ja: 'api-reference/ファイル操作/ファイルプレビュー' },
+  'api-reference/files/file-upload': { zh: 'api-reference/文件管理/上传文件', ja: 'api-reference/ファイル操作/ファイルアップロード' },
+  'api-reference/files/file-upload-for-workflow': { zh: 'api-reference/文件操作-(workflow)/上传文件-(workflow)', ja: 'api-reference/ファイル操作-(ワークフロー)/ファイルアップロード-(ワークフロー用)' },
+  'api-reference/metadata-&-tags/bind-dataset-to-knowledge-base-type-tag': { zh: 'api-reference/元数据和标签/将数据集绑定到知识库类型标签', ja: 'api-reference/メタデータ・タグ/データセットをナレッジベースタイプタグにバインド' },
+  'api-reference/metadata-&-tags/create-new-knowledge-base-type-tag': { zh: 'api-reference/元数据和标签/创建新的知识库类型标签', ja: 'api-reference/メタデータ・タグ/新しいナレッジベースタイプタグを作成' },
+  'api-reference/metadata-&-tags/delete-knowledge-base-type-tag': { zh: 'api-reference/元数据和标签/删除知识库类型标签', ja: 'api-reference/メタデータ・タグ/ナレッジベースタイプタグを削除' },
+  'api-reference/metadata-&-tags/get-knowledge-base-type-tags': { zh: 'api-reference/元数据和标签/获取知识库类型标签', ja: 'api-reference/メタデータ・タグ/ナレッジベースタイプタグを取得' },
+  'api-reference/metadata-&-tags/modify-knowledge-base-type-tag-name': { zh: 'api-reference/元数据和标签/修改知识库类型标签名称', ja: 'api-reference/メタデータ・タグ/ナレッジベースタイプタグ名を変更' },
+  'api-reference/metadata-&-tags/query-tags-bound-to-a-dataset': { zh: 'api-reference/元数据和标签/查询绑定到数据集的标签', ja: 'api-reference/メタデータ・タグ/データセットにバインドされたタグをクエリ' },
+  'api-reference/metadata-&-tags/unbind-dataset-and-knowledge-base-type-tag': { zh: 'api-reference/元数据和标签/解绑数据集和知识库类型标签', ja: 'api-reference/メタデータ・タグ/データセットとナレッジベースタイプタグのバインドを解除' },
+  'api-reference/models/get-available-embedding-models': { zh: 'api-reference/模型/获取可用的嵌入模型', ja: 'api-reference/モデル/利用可能な埋め込みモデルを取得' },
+  'api-reference/tts/speech-to-text': { zh: 'api-reference/语音与文字转换/语音转文字', ja: 'api-reference/音声・テキスト変換/音声からテキストへ' },
+  'api-reference/tts/text-to-audio': { zh: 'api-reference/语音服务/文字转语音', ja: 'api-reference/音声変換/テキストから音声' },
+  'api-reference/workflow-execution/execute-workflow': { zh: 'api-reference/工作流执行/执行-workflow', ja: 'api-reference/ワークフロー実行/ワークフローを実行' },
+  'api-reference/workflow-execution/get-workflow-logs': { zh: 'api-reference/工作流执行/获取-workflow-日志', ja: 'api-reference/ワークフロー実行/ワークフローログを取得' },
+  'api-reference/workflow-execution/get-workflow-run-detail': { zh: 'api-reference/工作流执行/获取workflow执行情况', ja: 'api-reference/ワークフロー実行/ワークフロー実行詳細を取得' },
+  'api-reference/workflow-execution/stop-workflow-task-generation': { zh: 'api-reference/工作流执行/停止响应-(workflow-task)', ja: 'api-reference/ワークフロー実行/生成を停止-(ワークフロータスク)' },
+}

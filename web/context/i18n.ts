@@ -2,6 +2,7 @@ import type { Locale } from '@/i18n-config/language'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { useTranslation } from '#i18n'
 import { getDocLanguage, getLanguage, getPricingPageLanguage } from '@/i18n-config/language'
+import { apiReferencePathTranslations } from '@/types/doc-paths'
 
 export const useLocale = () => {
   const { i18n } = useTranslation()
@@ -30,6 +31,14 @@ export const useDocLink = (baseUrl?: string): ((path?: DocPathWithoutLang, pathM
   return (path?: DocPathWithoutLang, pathMap?: DocPathMap): string => {
     const pathUrl = path || ''
     let targetPath = (pathMap) ? pathMap[locale] || pathUrl : pathUrl
+
+    // Translate API reference paths for non-English locales
+    if (targetPath.startsWith('api-reference/') && docLanguage !== 'en') {
+      const translatedPath = apiReferencePathTranslations[targetPath]?.[docLanguage as 'zh' | 'ja']
+      if (translatedPath)
+        targetPath = translatedPath
+    }
+
     targetPath = (targetPath.startsWith('/')) ? targetPath.slice(1) : targetPath
     return `${baseDocUrl}/${docLanguage}/${targetPath}`
   }
