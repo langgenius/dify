@@ -12,6 +12,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import Action from '@/app/components/workflow/block-selector/market-place-plugin/action'
 import { useGetLanguage } from '@/context/i18n'
+import { isServer } from '@/utils/client'
 import { formatNumber } from '@/utils/format'
 import { getMarketplaceUrl } from '@/utils/var'
 import BlockIcon from '../block-icon'
@@ -42,14 +43,14 @@ const FeaturedTriggers = ({
   const language = useGetLanguage()
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT)
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
-    if (typeof window === 'undefined')
+    if (isServer)
       return false
     const stored = window.localStorage.getItem(STORAGE_KEY)
     return stored === 'true'
   })
 
   useEffect(() => {
-    if (typeof window === 'undefined')
+    if (isServer)
       return
     const stored = window.localStorage.getItem(STORAGE_KEY)
     if (stored !== null)
@@ -57,7 +58,7 @@ const FeaturedTriggers = ({
   }, [])
 
   useEffect(() => {
-    if (typeof window === 'undefined')
+    if (isServer)
       return
     window.localStorage.setItem(STORAGE_KEY, String(isCollapsed))
   }, [isCollapsed])

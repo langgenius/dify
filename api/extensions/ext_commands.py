@@ -5,6 +5,7 @@ def init_app(app: DifyApp):
     from commands import (
         add_qdrant_index,
         archive_workflow_runs,
+        clean_workflow_runs,
         cleanup_orphaned_draft_variables,
         clear_free_plan_tenant_expired_logs,
         clear_orphaned_file_records,
@@ -62,6 +63,7 @@ def init_app(app: DifyApp):
         archive_workflow_runs,
         delete_archived_workflow_runs,
         restore_workflow_runs,
+        clean_workflow_runs,
     ]
     for cmd in cmds_to_register:
         app.cli.add_command(cmd)

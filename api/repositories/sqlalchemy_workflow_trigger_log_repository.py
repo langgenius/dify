@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from typing import cast
 
-from sqlalchemy import and_, delete, select
+from sqlalchemy import and_, delete, func, select
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
@@ -99,3 +99,21 @@ class SQLAlchemyWorkflowTriggerLogRepository(WorkflowTriggerLogRepository):
         )
 
         return list(self.session.scalars(query).all())
+
+    def count_by_run_ids(self, run_ids: Sequence[str]) -> int:
+        """
+        Count trigger logs associated with the given workflow run ids.
+
+        Args:
+            run_ids: Collection of workflow run identifiers.
+
+        Returns:
+            Number of rows matched.
+        """
+        if not run_ids:
+            return 0
+
+        count = self.session.scalar(
+            select(func.count()).select_from(WorkflowTriggerLog).where(WorkflowTriggerLog.workflow_run_id.in_(run_ids))
+        )
+        return int(count or 0)

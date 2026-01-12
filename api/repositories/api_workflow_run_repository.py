@@ -368,6 +368,18 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         Return workflow runs that already have archive logs, for cleanup of `workflow_runs`.
         """
         ...
+        
+    def count_runs_with_related(
+        self,
+        runs: Sequence[WorkflowRun],
+        count_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
+        count_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+    ) -> dict[str, int]:
+        """
+        Count workflow runs and their related records (node executions, offloads, app logs,
+        trigger logs, pauses, pause reasons) without deleting data.
+        """
+        ...
 
     def create_workflow_pause(
         self,
