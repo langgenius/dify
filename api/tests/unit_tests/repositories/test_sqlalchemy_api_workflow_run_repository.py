@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from unittest.mock import Mock, patch
 
 import pytest
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.workflow.enums import WorkflowExecutionStatus
@@ -104,6 +105,42 @@ class TestDifyAPISQLAlchemyWorkflowRunRepository:
         return pause
 
 
+class TestGetRunsBatchByTimeRange(TestDifyAPISQLAlchemyWorkflowRunRepository):
+    def test_get_runs_batch_by_time_range_filters_terminal_statuses(
+        self, repository: DifyAPISQLAlchemyWorkflowRunRepository, mock_session: Mock
+    ):
+        scalar_result = Mock()
+        scalar_result.all.return_value = []
+        mock_session.scalars.return_value = scalar_result
+
+        repository.get_runs_batch_by_time_range(
+            start_from=None,
+            end_before=datetime(2024, 1, 1),
+            last_seen=None,
+            batch_size=50,
+        )
+
+        stmt = mock_session.scalars.call_args[0][0]
+        compiled_sql = str(
+            stmt.compile(
+                dialect=postgresql.dialect(),
+                compile_kwargs={"literal_binds": True},
+            )
+        )
+
+        assert "workflow_runs.status" in compiled_sql
+        for status in (
+            WorkflowExecutionStatus.SUCCEEDED,
+            WorkflowExecutionStatus.FAILED,
+            WorkflowExecutionStatus.STOPPED,
+            WorkflowExecutionStatus.PARTIAL_SUCCEEDED,
+        ):
+            assert f"'{status.value}'" in compiled_sql
+
+        assert "'running'" not in compiled_sql
+        assert "'paused'" not in compiled_sql
+
+
 class TestCreateWorkflowPause(TestDifyAPISQLAlchemyWorkflowRunRepository):
     """Test create_workflow_pause method."""
 
@@ -179,6 +216,61 @@ class TestCreateWorkflowPause(TestDifyAPISQLAlchemyWorkflowRunRepository):
                 state='{"test": "state"}',
                 pause_reasons=[],
             )
+
+
+class TestDeleteRunsWithRelated(TestDifyAPISQLAlchemyWorkflowRunRepository):
+    def test_uses_trigger_log_repository(self, repository: DifyAPISQLAlchemyWorkflowRunRepository, mock_session: Mock):
+        node_ids_result = Mock()
+        node_ids_result.all.return_value = []
+        pause_ids_result = Mock()
+        pause_ids_result.all.return_value = []
+        mock_session.scalars.side_effect = [node_ids_result, pause_ids_result]
+
+        # app_logs delete, runs delete
+        mock_session.execute.side_effect = [Mock(rowcount=0), Mock(rowcount=1)]
+
+        fake_trigger_repo = Mock()
+        fake_trigger_repo.delete_by_run_ids.return_value = 3
+
+        run = Mock(id="run-1", tenant_id="t1", app_id="a1", workflow_id="w1", triggered_from="tf")
+        counts = repository.delete_runs_with_related(
+            [run],
+            delete_node_executions=lambda session, runs: (2, 1),
+            delete_trigger_logs=lambda session, run_ids: fake_trigger_repo.delete_by_run_ids(run_ids),
+        )
+
+        fake_trigger_repo.delete_by_run_ids.assert_called_once_with(["run-1"])
+        assert counts["node_executions"] == 2
+        assert counts["offloads"] == 1
+        assert counts["trigger_logs"] == 3
+        assert counts["runs"] == 1
+
+
+class TestCountRunsWithRelated(TestDifyAPISQLAlchemyWorkflowRunRepository):
+    def test_uses_trigger_log_repository(self, repository: DifyAPISQLAlchemyWorkflowRunRepository, mock_session: Mock):
+        pause_ids_result = Mock()
+        pause_ids_result.all.return_value = ["pause-1", "pause-2"]
+        mock_session.scalars.return_value = pause_ids_result
+        mock_session.scalar.side_effect = [5, 2]
+
+        fake_trigger_repo = Mock()
+        fake_trigger_repo.count_by_run_ids.return_value = 3
+
+        run = Mock(id="run-1", tenant_id="t1", app_id="a1", workflow_id="w1", triggered_from="tf")
+        counts = repository.count_runs_with_related(
+            [run],
+            count_node_executions=lambda session, runs: (2, 1),
+            count_trigger_logs=lambda session, run_ids: fake_trigger_repo.count_by_run_ids(run_ids),
+        )
+
+        fake_trigger_repo.count_by_run_ids.assert_called_once_with(["run-1"])
+        assert counts["node_executions"] == 2
+        assert counts["offloads"] == 1
+        assert counts["trigger_logs"] == 3
+        assert counts["app_logs"] == 5
+        assert counts["pauses"] == 2
+        assert counts["pause_reasons"] == 2
+        assert counts["runs"] == 1
 
 
 class TestResumeWorkflowPause(TestDifyAPISQLAlchemyWorkflowRunRepository):
