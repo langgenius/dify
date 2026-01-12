@@ -13,6 +13,7 @@ Before starting the web frontend service, please make sure the following environ
 
 > [!TIP]
 > It is recommended to install and enable Corepack to manage package manager versions automatically:
+>
 > ```bash
 > npm install -g corepack
 > corepack enable
