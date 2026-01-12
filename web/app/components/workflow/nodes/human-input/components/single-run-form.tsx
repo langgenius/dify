@@ -34,7 +34,6 @@ const FormContent = ({
   const [inputs, setInputs] = useState(defaultInputs)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // use immer
   const handleInputsChange = (name: string, value: any) => {
     setInputs(prev => ({
       ...prev,

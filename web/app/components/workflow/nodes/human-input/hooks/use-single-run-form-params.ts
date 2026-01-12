@@ -61,18 +61,28 @@ const useSingleRunFormParams = ({
   const fetchURL = useMemo(() => {
     if (!appId)
       return ''
-    if (isWorkflowMode) {
-      return `/apps/${appId}/advanced-chat/workflows/draft/human_input/nodes/${id}/form`
+    if (!isWorkflowMode) {
+      return `/apps/${appId}/advanced-chat/workflows/draft/human-input/nodes/${id}/form`
     }
     else {
-      return `/apps/${appId}/workflows/draft/human_input/nodes/${id}/form`
+      return `/apps/${appId}/workflows/draft/human-input/nodes/${id}/form`
     }
   }, [appId, id, isWorkflowMode])
 
   const handleFetchFormContent = useCallback(async (inputs: Record<string, any>) => {
     if (!fetchURL)
       return null
-    const data = await fetchHumanInputNodeStepRunForm(fetchURL, { inputs })
+    let requestParamsObj
+    Object.keys(inputs).forEach((key) => {
+      if (inputs[key] === undefined) {
+        delete inputs[key]
+      }
+    })
+    requestParamsObj = { ...inputs }
+    if (Object.keys(requestParamsObj).length === 0) {
+      requestParamsObj = undefined
+    }
+    const data = await fetchHumanInputNodeStepRunForm(fetchURL, { inputs: requestParamsObj! })
     setFormData(data)
     return data
   }, [fetchURL])
@@ -82,8 +92,8 @@ const useSingleRunFormParams = ({
   }, [fetchURL])
 
   const handleShowGeneratedForm = async (formValue: Record<string, any>) => {
-    await handleFetchFormContent(formValue)
     setShowGeneratedForm(true)
+    await handleFetchFormContent(formValue)
   }
 
   const handleHideGeneratedForm = () => {
