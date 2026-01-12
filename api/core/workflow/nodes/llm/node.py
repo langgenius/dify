@@ -1609,7 +1609,7 @@ class LLMNode(Node[LLMNodeData]):
                 model_instance=model_instance,
                 tools=[sandbox_session.bash_tool],
                 files=prompt_files,
-                max_iterations=self._node_data.max_iterations or 10,
+                max_iterations=self._node_data.max_iterations or 100,
                 context=ExecutionContext(user_id=self.user_id, app_id=self.app_id, tenant_id=self.tenant_id),
             )
 

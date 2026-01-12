@@ -1,3 +1,4 @@
+from core.sandbox.bash_tool import SandboxBashTool
 from core.sandbox.constants import (
     DIFY_CLI_CONFIG_PATH,
     DIFY_CLI_PATH,
@@ -25,6 +26,7 @@ __all__ = [
     "DifyCliInitializer",
     "DifyCliLocator",
     "DifyCliToolConfig",
+    "SandboxBashTool",
     "SandboxInitializer",
     "SandboxSession",
 ]

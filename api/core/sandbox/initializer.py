@@ -2,20 +2,17 @@ import logging
 from abc import ABC, abstractmethod
 from io import BytesIO
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from core.sandbox.constants import DIFY_CLI_PATH
 from core.sandbox.dify_cli import DifyCliLocator
-
-if TYPE_CHECKING:
-    from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
+from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 
 logger = logging.getLogger(__name__)
 
 
 class SandboxInitializer(ABC):
     @abstractmethod
-    def initialize(self, env: "VirtualEnvironment") -> None:
+    def initialize(self, env: VirtualEnvironment) -> None:
         ...
 
 
@@ -23,7 +20,7 @@ class DifyCliInitializer(SandboxInitializer):
     def __init__(self, cli_root: str | Path | None = None) -> None:
         self._locator = DifyCliLocator(root=cli_root)
 
-    def initialize(self, env: "VirtualEnvironment") -> None:
+    def initialize(self, env: VirtualEnvironment) -> None:
         binary = self._locator.resolve(env.metadata.os, env.metadata.arch)
         env.upload_file(DIFY_CLI_PATH, BytesIO(binary.path.read_bytes()))
 

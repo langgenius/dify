@@ -5,12 +5,12 @@ import logging
 from io import BytesIO
 from types import TracebackType
 
+from core.sandbox.bash_tool import SandboxBashTool
 from core.sandbox.constants import DIFY_CLI_CONFIG_PATH, DIFY_CLI_PATH
 from core.sandbox.dify_cli import DifyCliConfig
 from core.sandbox.manager import SandboxManager
 from core.session.inner_api import InnerApiSessionManager
 from core.tools.__base.tool import Tool
-from core.tools.builtin_tool.providers.sandbox.bash_tool import SandboxBashTool
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 
 logger = logging.getLogger(__name__)
