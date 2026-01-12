@@ -1,7 +1,7 @@
 'use client'
 import type { FC, PropsWithChildren } from 'react'
 import type { SystemFeatures } from '@/types/feature'
-import { useQueries, useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { create } from 'zustand'
 import Loading from '@/app/components/base/loading'
 import { getSystemFeatures } from '@/service/common'
@@ -19,6 +19,7 @@ export const useGlobalPublicStore = create<GlobalPublicStore>(set => ({
 }))
 
 const systemFeaturesQueryKey = ['systemFeatures'] as const
+const setupStatusQueryKey = ['setupStatus'] as const
 
 async function fetchSystemFeatures() {
   const data = await getSystemFeatures()
@@ -27,12 +28,24 @@ async function fetchSystemFeatures() {
   return data
 }
 
-export function useIsSystemFeaturesPending() {
-  const { isPending } = useQuery({
+export function useSystemFeaturesQuery() {
+  return useQuery({
     queryKey: systemFeaturesQueryKey,
     queryFn: fetchSystemFeatures,
   })
+}
+
+export function useIsSystemFeaturesPending() {
+  const { isPending } = useSystemFeaturesQuery()
   return isPending
+}
+
+export function useSetupStatusQuery() {
+  return useQuery({
+    queryKey: setupStatusQueryKey,
+    queryFn: fetchSetupStatusWithCache,
+    staleTime: Infinity,
+  })
 }
 
 const GlobalPublicStoreProvider: FC<PropsWithChildren> = ({
@@ -40,23 +53,12 @@ const GlobalPublicStoreProvider: FC<PropsWithChildren> = ({
 }) => {
   // Fetch systemFeatures and setupStatus in parallel to reduce waterfall.
   // setupStatus is prefetched here and cached in localStorage for AppInitializer.
-  // We only destructure featuresQuery since setupStatus result is not used directly.
-  const [featuresQuery] = useQueries({
-    queries: [
-      {
-        queryKey: systemFeaturesQueryKey,
-        queryFn: fetchSystemFeatures,
-      },
-      {
-        queryKey: ['setupStatus'],
-        queryFn: fetchSetupStatusWithCache,
-        staleTime: Infinity, // Once fetched, no need to refetch
-      },
-    ],
-  })
+  const { isPending } = useSystemFeaturesQuery()
 
-  // Only block on systemFeatures, setupStatus is prefetched for AppInitializer
-  if (featuresQuery.isPending)
+  // Prefetch setupStatus for AppInitializer (result not needed here)
+  useSetupStatusQuery()
+
+  if (isPending)
     return <div className="flex h-screen w-screen items-center justify-center"><Loading /></div>
   return <>{children}</>
 }
