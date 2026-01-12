@@ -4,12 +4,12 @@ import { memo } from 'react'
 import ProcessDocuments from '../process-documents'
 
 type StepTwoContentProps = {
-  formRef: RefObject<any>
+  formRef: RefObject<{ submit: () => void } | null>
   dataSourceNodeId: string
   isRunning: boolean
   onProcess: () => void
   onPreview: () => void
-  onSubmit: (data: Record<string, any>) => void
+  onSubmit: (data: Record<string, unknown>) => void
   onBack: () => void
 }
 
