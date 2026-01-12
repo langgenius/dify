@@ -1,4 +1,4 @@
-import type { AgentBlockType } from '@/app/components/base/prompt-editor/types'
+import type { AgentNode } from '@/app/components/base/prompt-editor/types'
 import type {
   Node,
   NodeOutPutVar,
@@ -20,10 +20,10 @@ import AgentHeaderBar from './agent-header-bar'
 import Placeholder from './placeholder'
 
 /**
- * Matches workflow variable syntax: {{#nodeId.varName#}}
- * Example: {{#agent-123.text#}} -> captures "agent-123.text"
+ * Matches agent context variable syntax: {{#nodeId.context#}}
+ * Example: {{#agent-123.context#}} -> captures "agent-123"
  */
-const WORKFLOW_VAR_PATTERN = /\{\{#([^#]+)#\}\}/g
+const AGENT_CONTEXT_VAR_PATTERN = /\{\{#([^.#]+)\.context#\}\}/g
 
 type MixedVariableTextInputProps = {
   readOnly?: boolean
@@ -62,11 +62,16 @@ const MixedVariableTextInput = ({
     }, {} as Record<string, Node>)
   }, [availableNodes])
 
-  const detectedAgentFromValue = useMemo(() => {
+  type DetectedAgent = {
+    nodeId: string
+    name: string
+  }
+
+  const detectedAgentFromValue: DetectedAgent | null = useMemo(() => {
     if (!value)
       return null
 
-    const matches = value.matchAll(WORKFLOW_VAR_PATTERN)
+    const matches = value.matchAll(AGENT_CONTEXT_VAR_PATTERN)
     for (const match of matches) {
       const variablePath = match[1]
       const nodeId = variablePath.split('.')[0]
@@ -81,8 +86,6 @@ const MixedVariableTextInput = ({
     return null
   }, [value, nodesByIdMap])
 
-  const [selectedAgent, setSelectedAgent] = useState<{ id: string, title: string } | null>(null)
-
   const agentNodes = useMemo(() => {
     return availableNodes
       .filter(node => node.data.type === BlockEnum.Agent)
@@ -92,27 +95,30 @@ const MixedVariableTextInput = ({
       }))
   }, [availableNodes])
 
-  const handleAgentSelect = useCallback((agent: { id: string, title: string }) => {
-    setSelectedAgent(agent)
-  }, [])
-
   const handleAgentRemove = useCallback(() => {
-    const agentNodeId = detectedAgentFromValue?.nodeId || selectedAgent?.id
+    const agentNodeId = detectedAgentFromValue?.nodeId
     if (!agentNodeId || !onChange)
       return
 
-    const pattern = /\{\{#([^#]+)#\}\}/g
-    const valueWithoutAgentVars = value.replace(pattern, (match, variablePath) => {
+    const valueWithoutAgentVars = value.replace(AGENT_CONTEXT_VAR_PATTERN, (match, variablePath) => {
       const nodeId = variablePath.split('.')[0]
       return nodeId === agentNodeId ? '' : match
     }).trim()
 
     onChange(valueWithoutAgentVars)
-    setSelectedAgent(null)
     setControlPromptEditorRerenderKey(Date.now())
-  }, [detectedAgentFromValue?.nodeId, selectedAgent?.id, value, onChange, setControlPromptEditorRerenderKey])
+  }, [detectedAgentFromValue?.nodeId, value, onChange, setControlPromptEditorRerenderKey])
 
-  const displayedAgent = detectedAgentFromValue || (selectedAgent ? { nodeId: selectedAgent.id, name: selectedAgent.title } : null)
+  const handleAgentSelect = useCallback((agent: AgentNode) => {
+    if (!onChange)
+      return
+
+    console.log('handleAgentSelect', value)
+    const newValue = `{{#${agent.id}.context#}}`
+
+    onChange(newValue)
+    setControlPromptEditorRerenderKey(Date.now())
+  }, [value, onChange, setControlPromptEditorRerenderKey])
 
   const handleOpenSubGraphModal = useCallback(() => {
     setIsSubGraphModalOpen(true)
@@ -122,8 +128,8 @@ const MixedVariableTextInput = ({
     setIsSubGraphModalOpen(false)
   }, [])
 
-  const sourceVariable: ValueSelector | undefined = displayedAgent
-    ? [displayedAgent.nodeId, 'text']
+  const sourceVariable: ValueSelector | undefined = detectedAgentFromValue
+    ? [detectedAgentFromValue.nodeId, 'context']
     : undefined
 
   return (
@@ -133,9 +139,9 @@ const MixedVariableTextInput = ({
       'focus-within:border-components-input-border-active focus-within:bg-components-input-bg-active focus-within:shadow-xs',
     )}
     >
-      {displayedAgent && (
+      {detectedAgentFromValue && (
         <AgentHeaderBar
-          agentName={displayedAgent.name}
+          agentName={detectedAgentFromValue.name}
           onRemove={handleAgentRemove}
           onViewInternals={handleOpenSubGraphModal}
         />
@@ -166,22 +172,22 @@ const MixedVariableTextInput = ({
           onManageInputField,
         }}
         agentBlock={{
-          show: agentNodes.length > 0 && !displayedAgent,
+          show: agentNodes.length > 0 && !detectedAgentFromValue,
           agentNodes,
           onSelect: handleAgentSelect,
-        } as AgentBlockType}
-        placeholder={<Placeholder disableVariableInsertion={disableVariableInsertion} hasSelectedAgent={!!displayedAgent} />}
+        }}
+        placeholder={<Placeholder disableVariableInsertion={disableVariableInsertion} hasSelectedAgent={!!detectedAgentFromValue} />}
         onChange={onChange}
       />
-      {toolNodeId && displayedAgent && sourceVariable && (
+      {toolNodeId && detectedAgentFromValue && sourceVariable && (
         <SubGraphModal
           isOpen={isSubGraphModalOpen}
           onClose={handleCloseSubGraphModal}
           toolNodeId={toolNodeId}
           paramKey={paramKey}
           sourceVariable={sourceVariable}
-          agentName={displayedAgent.name}
-          agentNodeId={displayedAgent.nodeId}
+          agentName={detectedAgentFromValue.name}
+          agentNodeId={detectedAgentFromValue.nodeId}
         />
       )}
     </div>
