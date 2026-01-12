@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
+import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { RiCloseLine } from '@remixicon/react'
 import Divider from '@/app/components/base/divider'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
@@ -84,7 +85,7 @@ type InternalRetrievalSectionProps = CommonSectionProps & {
   retrievalConfig: RetrievalConfig
   showMultiModalTip: boolean
   onRetrievalConfigChange: (value: RetrievalConfig) => void
-  docLink: (path: string) => string
+  docLink: (path?: DocPathWithoutLang) => string
 }
 
 const InternalRetrievalSection: FC<InternalRetrievalSectionProps> = ({

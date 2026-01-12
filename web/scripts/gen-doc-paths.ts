@@ -154,7 +154,7 @@ async function fetchOpenAPIAndExtractPaths(openapiPath: string): Promise<Endpoin
         // Skip empty slugs
         if (slug) {
           const endpointKey = `${apiPath}_${method}`
-          pathMap.set(endpointKey, `api-reference/${segment}/${slug}`)
+          pathMap.set(endpointKey, `/api-reference/${segment}/${slug}`)
         }
       }
     }
@@ -278,7 +278,7 @@ function generateTypeDefinitions(
     lines.push(`export type ${typeName} =`)
 
     for (const p of paths) {
-      lines.push(`  | '${p}'`)
+      lines.push(`  | '/${p}'`)
     }
 
     lines.push('')

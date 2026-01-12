@@ -33,13 +33,12 @@ export const useDocLink = (baseUrl?: string): ((path?: DocPathWithoutLang, pathM
     let targetPath = (pathMap) ? pathMap[locale] || pathUrl : pathUrl
 
     // Translate API reference paths for non-English locales
-    if (targetPath.startsWith('api-reference/') && docLanguage !== 'en') {
+    if (targetPath.startsWith('/api-reference/') && docLanguage !== 'en') {
       const translatedPath = apiReferencePathTranslations[targetPath]?.[docLanguage as 'zh' | 'ja']
       if (translatedPath)
         targetPath = translatedPath
     }
 
-    targetPath = (targetPath.startsWith('/')) ? targetPath.slice(1) : targetPath
-    return `${baseDocUrl}/${docLanguage}/${targetPath}`
+    return `${baseDocUrl}/${docLanguage}${targetPath}`
   }
 }
