@@ -64,7 +64,7 @@ const FormContentPreview: FC<FormContentPreviewProps> = ({
               return (
                 <Note
                   placeholder={placeholder!}
-                  title="variableName"
+                  title={name}
                 />
               )
             })(),
