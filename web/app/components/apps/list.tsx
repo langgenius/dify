@@ -106,9 +106,10 @@ const List: FC<Props> = ({
   } = useInfiniteAppList(appListQueryParams, { enabled: !isCurrentWorkspaceDatasetOperator })
 
   useEffect(() => {
-    if (controlRefreshList > 0)
-      console.log('mute')
-    // mutate()
+    if (controlRefreshList > 0) {
+      refetch()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [controlRefreshList])
 
   const anchorRef = useRef<HTMLDivElement>(null)
