@@ -105,47 +105,55 @@ const FormContent: FC<FormContentProps> = ({
   }, {})
 
   return (
-    <div className={cn('flex grow flex-col rounded-[10px] border border-components-input-bg-normal bg-components-input-bg-normal pt-1', isFocus && 'border-components-input-border-active bg-components-input-bg-active', !isFocus && 'pb-[32px]')}>
-      <PromptEditor
-        key={editorKey}
-        value={value}
-        onChange={onChange}
-        className={cn('min-h-[80px] ', isExpand && 'h-full')}
-        wrapperClassName={cn('max-h-[300px] overflow-y-auto px-3', isExpand && 'h-0 max-h-full grow')}
-        onFocus={setFocus}
-        onBlur={setBlur}
-        hitlInputBlock={{
-          show: true,
-          formInputs,
-          nodeId,
-          onFormInputsChange,
-          onFormInputItemRename,
-          onFormInputItemRemove,
-          variables: availableVars || [],
-          workflowNodesMap,
-          getVarType,
-          readonly,
-        }}
-        workflowVariableBlock={{
-          show: true,
-          variables: availableVars || [],
-          getVarType: getVarType as any,
-          workflowNodesMap,
-        }}
-        editable={!readonly}
-        shortcutPopups={readonly
-          ? []
-          : [{
-              hotkey: ['mod', '/'],
-              Popup: ({ onClose, onInsert }) => (
-                <AddInputField
-                  nodeId={nodeId}
-                  onSave={handleInsertHITLNode(onInsert!)}
-                  onCancel={onClose}
-                />
-              ),
-            }]}
-      />
+    <div
+      className={cn(
+        'flex grow flex-col rounded-[10px] border border-components-input-bg-normal bg-components-input-bg-normal pt-1',
+        isFocus && 'border-components-input-border-active bg-components-input-bg-active',
+        !isFocus && 'pb-[32px]',
+        readonly && 'pointer-events-none',
+      )}
+    >
+      <div className={cn('max-h-[300px] overflow-y-auto px-3', isExpand && 'h-0 max-h-full grow')}>
+        <PromptEditor
+          key={editorKey}
+          value={value}
+          onChange={onChange}
+          className={cn('min-h-[80px] ', isExpand && 'h-full')}
+          onFocus={setFocus}
+          onBlur={setBlur}
+          hitlInputBlock={{
+            show: true,
+            formInputs,
+            nodeId,
+            onFormInputsChange,
+            onFormInputItemRename,
+            onFormInputItemRemove,
+            variables: availableVars || [],
+            workflowNodesMap,
+            getVarType,
+            readonly,
+          }}
+          workflowVariableBlock={{
+            show: true,
+            variables: availableVars || [],
+            getVarType: getVarType as any,
+            workflowNodesMap,
+          }}
+          editable={!readonly}
+          shortcutPopups={readonly
+            ? []
+            : [{
+                hotkey: ['mod', '/'],
+                Popup: ({ onClose, onInsert }) => (
+                  <AddInputField
+                    nodeId={nodeId}
+                    onSave={handleInsertHITLNode(onInsert!)}
+                    onCancel={onClose}
+                  />
+                ),
+              }]}
+        />
+      </div>
       {isFocus && (
         <div className="system-xs-regular flex h-8 shrink-0 items-center px-3 text-components-input-text-placeholder">
           <Trans

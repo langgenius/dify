@@ -66,7 +66,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
   const [isExpandFormContent, {
     toggle: toggleExpandFormContent,
   }] = useBoolean(false)
-  const panelWidth = useStore(state => state.panelWidth)
+  const nodePanelWidth = useStore(state => state.nodePanelWidth)
 
   const [isPreview, {
     toggle: togglePreview,
@@ -89,7 +89,12 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
         <Divider className="!my-0 !h-px !bg-divider-subtle" />
       </div>
       {/* form content */}
-      <div className={cn('px-4 py-2', isExpandFormContent && 'fixed bottom-[8px] right-[4px] top-[189px] z-10 flex flex-col bg-components-panel-bg')} style={{ width: isExpandFormContent ? panelWidth : '100%' }}>
+      <div
+        className={cn('px-4 py-2', isExpandFormContent && 'fixed bottom-[8px] right-[4px] top-[244px] z-10 flex flex-col rounded-b-2xl bg-components-panel-bg')}
+        style={{
+          width: isExpandFormContent ? nodePanelWidth : '100%',
+        }}
+      >
         <div className="mb-1 flex shrink-0 items-center justify-between">
           <div className="flex h-6 items-center gap-0.5">
             <div className="system-sm-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}.formContent.title`, { ns: 'workflow' })}</div>

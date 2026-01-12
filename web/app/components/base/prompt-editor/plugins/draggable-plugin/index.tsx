@@ -61,7 +61,7 @@ export default function DraggableBlockPlugin({
       menuComponent={
         isSupportDrag
           ? (
-              <div ref={menuRef} className={cn(DRAGGABLE_BLOCK_MENU_CLASSNAME, 'absolute right-[24px] top-[16px] cursor-grab opacity-0 will-change-transform active:cursor-move')}>
+              <div ref={menuRef} className={cn(DRAGGABLE_BLOCK_MENU_CLASSNAME, 'absolute right-6 top-4 cursor-grab opacity-0 will-change-transform active:cursor-move')}>
                 <RiDraggable className="size-3.5 text-text-tertiary" />
               </div>
             )
@@ -74,7 +74,7 @@ export default function DraggableBlockPlugin({
           // style={{ width: 500 }} // width not worked here
         >
           <div
-            className="absolute left-0 right-[-40px] top-0 h-[2px] bg-text-accent-secondary"
+            className="absolute -right-10 left-0 top-0 h-[2px] bg-text-accent-secondary"
           >
           </div>
         </div>

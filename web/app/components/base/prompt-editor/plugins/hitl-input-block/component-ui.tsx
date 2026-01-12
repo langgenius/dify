@@ -129,7 +129,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
 
         {/* Actions */}
         {!readonly && (
-          <div className="hidden h-full shrink-0 items-center space-x-1 pr-[24px] group-hover:flex">
+          <div className="hidden h-full shrink-0 items-center space-x-1 pr-8 group-hover:flex">
             <div className="flex h-full items-center" ref={editBtnRef}>
               <ActionButton size="s">
                 <RiEditLine className="size-4 text-text-tertiary" />
