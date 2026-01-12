@@ -2,7 +2,7 @@
 // DON NOT EDIT IT MANUALLY
 //
 // Generated from: https://raw.githubusercontent.com/langgenius/dify-docs/refs/heads/main/docs.json
-// Generated at: 2026-01-12T06:51:06.500Z
+// Generated at: 2026-01-12T07:59:44.775Z
 
 // Language prefixes
 export type DocLanguage = 'en' | 'zh' | 'ja'
@@ -165,12 +165,17 @@ export type ApiReferencePath =
   | 'api-reference/openapi_knowledge.json'
   | 'api-reference/openapi_completion.json'
 
-// Combined path without language prefix
-export type DocPathWithoutLang =
+// Base path without language prefix
+export type DocPathWithoutLangBase =
   | UseDifyPath
   | SelfHostPath
   | DevelopPluginPath
   | ApiReferencePath
+
+// Combined path without language prefix (supports optional #anchor)
+export type DocPathWithoutLang =
+  | DocPathWithoutLangBase
+  | `${DocPathWithoutLangBase}#${string}`
 
 // Full documentation path with language prefix
 export type DifyDocPath = `${DocLanguage}/${DocPathWithoutLang}`

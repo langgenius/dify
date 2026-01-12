@@ -165,12 +165,20 @@ function generateTypeDefinitions(groups: Record<string, Set<string>>): string {
   lines.push('')
   typeNames.push('ApiReferencePath')
 
-  // Generate combined type
-  lines.push('// Combined path without language prefix')
-  lines.push('export type DocPathWithoutLang =')
+  // Generate base combined type
+  lines.push('// Base path without language prefix')
+  lines.push('export type DocPathWithoutLangBase =')
   for (const typeName of typeNames) {
     lines.push(`  | ${typeName}`)
   }
+  lines.push('')
+
+  // Generate combined type with optional anchor support
+  lines.push('// Combined path without language prefix (supports optional #anchor)')
+  lines.push('export type DocPathWithoutLang =')
+  lines.push('  | DocPathWithoutLangBase')
+  // eslint-disable-next-line no-template-curly-in-string
+  lines.push('  | `${DocPathWithoutLangBase}#${string}`')
   lines.push('')
 
   // Generate full path type with language prefix

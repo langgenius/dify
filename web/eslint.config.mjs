@@ -35,7 +35,7 @@ export default antfu(
       },
     },
     nextjs: true,
-    ignores: ['public'],
+    ignores: ['public', 'types/doc-paths.ts'],
     typescript: {
       overrides: {
         'ts/consistent-type-definitions': ['error', 'type'],
