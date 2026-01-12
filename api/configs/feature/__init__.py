@@ -1101,6 +1101,10 @@ class CeleryScheduleTasksConfig(BaseSettings):
         description="Enable clean messages task",
         default=False,
     )
+    ENABLE_WORKFLOW_RUN_CLEANUP_TASK: bool = Field(
+        description="Enable scheduled workflow run cleanup task",
+        default=False,
+    )
     ENABLE_MAIL_CLEAN_DOCUMENT_NOTIFY_TASK: bool = Field(
         description="Enable mail clean document notify task",
         default=False,
