@@ -10,7 +10,7 @@ const initialState: Omit<SubGraphSliceShape, 'setSubGraphContext' | 'setSubGraph
   subGraphEdges: [],
 
   selectedOutputVar: [],
-  whenOutputNone: 'skip',
+  whenOutputNone: 'default',
   defaultValue: '',
 
   showDebugPanel: false,

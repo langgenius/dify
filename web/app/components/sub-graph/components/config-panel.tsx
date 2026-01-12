@@ -24,7 +24,7 @@ const ConfigPanel: FC<ConfigPanelProps> = ({
   activeTab,
 }) => {
   const { t } = useTranslation()
-  const [whenOutputNone, setWhenOutputNone] = useState<WhenOutputNoneOption>('skip')
+  const [whenOutputNone, setWhenOutputNone] = useState<WhenOutputNoneOption>('default')
 
   const handleWhenOutputNoneChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     setWhenOutputNone(e.target.value as WhenOutputNoneOption)
@@ -72,14 +72,11 @@ const ConfigPanel: FC<ConfigPanelProps> = ({
           value={whenOutputNone}
           onChange={handleWhenOutputNoneChange}
         >
-          <option value="skip">
-            {t('subGraphModal.whenOutputNone.skip', { ns: 'workflow' })}
+          <option value="default">
+            {t('subGraphModal.whenOutputNone.default', { ns: 'workflow' })}
           </option>
           <option value="error">
             {t('subGraphModal.whenOutputNone.error', { ns: 'workflow' })}
-          </option>
-          <option value="default">
-            {t('subGraphModal.whenOutputNone.default', { ns: 'workflow' })}
           </option>
         </select>
       </Field>

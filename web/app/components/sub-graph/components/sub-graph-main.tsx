@@ -35,7 +35,7 @@ const SubGraphMain: FC<SubGraphMainProps> = ({
       enabled: true,
       startNodeId: updatedNodes[0]?.id || '',
       selectedOutputVar: [],
-      whenOutputNone: 'skip',
+      whenOutputNone: 'default',
     }
 
     saveSubGraphData({

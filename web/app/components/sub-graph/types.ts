@@ -1,7 +1,7 @@
 import type { StateCreator } from 'zustand'
 import type { Edge, Node, NodeOutPutVar, ValueSelector, VarType } from '@/app/components/workflow/types'
 
-export type WhenOutputNoneOption = 'skip' | 'error' | 'default'
+export type WhenOutputNoneOption = 'error' | 'default'
 
 export type SubGraphConfig = {
   enabled: boolean

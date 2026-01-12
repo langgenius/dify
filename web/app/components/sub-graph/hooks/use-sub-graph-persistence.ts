@@ -107,7 +107,7 @@ export const useSubGraphPersistence = ({
       enabled: true,
       startNodeId: nodes[0]?.id || '',
       selectedOutputVar: [],
-      whenOutputNone: 'skip',
+      whenOutputNone: 'default',
     }
 
     saveSubGraphData({
