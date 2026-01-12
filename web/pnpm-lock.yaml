@@ -7002,8 +7002,8 @@ packages:
     resolution: {integrity: sha512-3Ybi1tAuwAP9s0r1UQ2J4n5Y0G05bJkpUIO0/bI9MhwmD70S5aTWbXGBwxHrelT+XM1k6dM0pk+SwNkpTRN7Pg==}
     engines: {node: ^10 || ^12 || >=14}
 
-  preact@10.28.0:
-    resolution: {integrity: sha512-rytDAoiXr3+t6OIP3WGlDd0ouCUG1iCWzkcY3++Nreuoi17y6T5i/zRhe6uYfoVcxq6YU+sBtJouuRDsq8vvqA==}
+  preact@10.28.2:
+    resolution: {integrity: sha512-lbteaWGzGHdlIuiJ0l2Jq454m6kcpI1zNje6d8MlGAFlYvP2GO4ibnat7P74Esfz4sPTdM6UxtTwh/d3pwM9JA==}
 
   prebuild-install@7.1.3:
     resolution: {integrity: sha512-8Mf2cbV7x1cXPUILADGI3wuhfqWvtiLA1iclTDbFRZkgRQS0NqsPZphna9V+HyTEadheuPmjaJMsbzKQFOzLug==}
@@ -10795,10 +10795,10 @@ snapshots:
 
   '@preact/signals-core@1.12.1': {}
 
-  '@preact/signals@1.3.2(preact@10.28.0)':
+  '@preact/signals@1.3.2(preact@10.28.2)':
     dependencies:
       '@preact/signals-core': 1.12.1
-      preact: 10.28.0
+      preact: 10.28.2
 
   '@radix-ui/primitive@1.1.3': {}
 
@@ -16095,7 +16095,7 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
-  preact@10.28.0: {}
+  preact@10.28.2: {}
 
   prebuild-install@7.1.3:
     dependencies:
@@ -16350,7 +16350,7 @@ snapshots:
       '@clack/core': 0.3.5
       '@clack/prompts': 0.8.2
       '@pivanov/utils': 0.0.2(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      '@preact/signals': 1.3.2(preact@10.28.0)
+      '@preact/signals': 1.3.2(preact@10.28.2)
       '@rollup/pluginutils': 5.3.0(rollup@4.53.5)
       '@types/node': 20.19.26
       bippy: 0.3.34(@types/react@19.2.7)(react@19.2.3)
@@ -16359,7 +16359,7 @@ snapshots:
       kleur: 4.1.5
       mri: 1.2.0
       playwright: 1.57.0
-      preact: 10.28.0
+      preact: 10.28.2
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
       tsx: 4.21.0
