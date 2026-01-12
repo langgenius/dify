@@ -464,9 +464,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
                     sql=sql_query,
                     logstore=AliyunLogStore.workflow_execution_logstore,
                 )
-                workflow_runs = {
-                    (run := _dict_to_workflow_run(row)).id: run for row in results
-                }
+                workflow_runs = {(run := _dict_to_workflow_run(row)).id: run for row in results}
             else:
                 # Use SDK with LogStore query syntax
                 ids_query = " or ".join([f"id: {run_id}" for run_id in run_ids])
