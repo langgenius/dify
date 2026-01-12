@@ -125,9 +125,9 @@ class EventHandler:
         Args:
             event: The node started event
         """
-        # Check if this is a virtual node (extraction node)
-        if self._is_virtual_node(event.node_id):
-            self._handle_virtual_node_started(event)
+        # Check if this is an extractor node (has parent_node_id)
+        if self._is_extractor_node(event.node_id):
+            self._handle_extractor_node_started(event)
             return
 
         # Track execution in domain model
@@ -169,9 +169,9 @@ class EventHandler:
         Args:
             event: The node succeeded event
         """
-        # Check if this is a virtual node (extraction node)
-        if self._is_virtual_node(event.node_id):
-            self._handle_virtual_node_success(event)
+        # Check if this is an extractor node (has parent_node_id)
+        if self._is_extractor_node(event.node_id):
+            self._handle_extractor_node_success(event)
             return
 
         # Update domain model
@@ -236,9 +236,9 @@ class EventHandler:
         Args:
             event: The node failed event
         """
-        # Check if this is a virtual node (extraction node)
-        if self._is_virtual_node(event.node_id):
-            self._handle_virtual_node_failed(event)
+        # Check if this is an extractor node (has parent_node_id)
+        if self._is_extractor_node(event.node_id):
+            self._handle_extractor_node_failed(event)
             return
 
         # Update domain model
@@ -361,23 +361,23 @@ class EventHandler:
             else:
                 self._graph_runtime_state.set_output(key, value)
 
-    def _is_virtual_node(self, node_id: str) -> bool:
+    def _is_extractor_node(self, node_id: str) -> bool:
         """
-        Check if node_id represents a virtual sub-node.
+        Check if node_id represents an extractor node (has parent_node_id).
 
-        Virtual nodes have IDs in the format: {parent_node_id}.{local_id}
-        We check if the part before '.' exists in graph nodes.
+        Extractor nodes extract values from list[PromptMessage] for their parent node.
+        They have a parent_node_id field pointing to their parent node.
         """
-        if "." in node_id:
-            parent_id = node_id.rsplit(".", 1)[0]
-            return parent_id in self._graph.nodes
-        return False
+        node = self._graph.nodes.get(node_id)
+        if node is None:
+            return False
+        return node.node_data.is_extractor_node
 
-    def _handle_virtual_node_started(self, event: NodeRunStartedEvent) -> None:
+    def _handle_extractor_node_started(self, event: NodeRunStartedEvent) -> None:
         """
-        Handle virtual node started event.
+        Handle extractor node started event.
 
-        Virtual nodes don't need full execution tracking, just collect the event.
+        Extractor nodes don't need full execution tracking, just collect the event.
         """
         # Track in response coordinator for stream ordering
         self._response_coordinator.track_node_execution(event.node_id, event.id)
@@ -385,11 +385,11 @@ class EventHandler:
         # Collect the event
         self._event_collector.collect(event)
 
-    def _handle_virtual_node_success(self, event: NodeRunSucceededEvent) -> None:
+    def _handle_extractor_node_success(self, event: NodeRunSucceededEvent) -> None:
         """
-        Handle virtual node success event.
+        Handle extractor node success event.
 
-        Virtual nodes (extraction nodes) need special handling:
+        Extractor nodes need special handling:
         - Store outputs in variable pool (for reference by other nodes)
         - Accumulate token usage
         - Collect the event for logging
@@ -403,11 +403,11 @@ class EventHandler:
         # Collect the event
         self._event_collector.collect(event)
 
-    def _handle_virtual_node_failed(self, event: NodeRunFailedEvent) -> None:
+    def _handle_extractor_node_failed(self, event: NodeRunFailedEvent) -> None:
         """
-        Handle virtual node failed event.
+        Handle extractor node failed event.
 
-        Virtual nodes (extraction nodes) failures are collected for logging,
+        Extractor node failures are collected for logging,
         but the parent node is responsible for handling the error.
         """
         self._accumulate_node_usage(event.node_run_result.llm_usage)

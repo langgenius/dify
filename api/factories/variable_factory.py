@@ -4,6 +4,7 @@ from uuid import uuid4
 
 from configs import dify_config
 from core.file import File
+from core.model_runtime.entities import PromptMessage
 from core.variables.exc import VariableError
 from core.variables.segments import (
     ArrayAnySegment,
@@ -11,6 +12,7 @@ from core.variables.segments import (
     ArrayFileSegment,
     ArrayNumberSegment,
     ArrayObjectSegment,
+    ArrayPromptMessageSegment,
     ArraySegment,
     ArrayStringSegment,
     BooleanSegment,
@@ -29,6 +31,7 @@ from core.variables.variables import (
     ArrayFileVariable,
     ArrayNumberVariable,
     ArrayObjectVariable,
+    ArrayPromptMessageVariable,
     ArrayStringVariable,
     BooleanVariable,
     FileVariable,
@@ -61,6 +64,7 @@ SEGMENT_TO_VARIABLE_MAP = {
     ArrayFileSegment: ArrayFileVariable,
     ArrayNumberSegment: ArrayNumberVariable,
     ArrayObjectSegment: ArrayObjectVariable,
+    ArrayPromptMessageSegment: ArrayPromptMessageVariable,
     ArrayStringSegment: ArrayStringVariable,
     BooleanSegment: BooleanVariable,
     FileSegment: FileVariable,
@@ -156,7 +160,13 @@ def build_segment(value: Any, /) -> Segment:
         return ObjectSegment(value=value)
     if isinstance(value, File):
         return FileSegment(value=value)
+    if isinstance(value, PromptMessage):
+        # Single PromptMessage should be wrapped in a list
+        return ArrayPromptMessageSegment(value=[value])
     if isinstance(value, list):
+        # Check if all items are PromptMessage
+        if value and all(isinstance(item, PromptMessage) for item in value):
+            return ArrayPromptMessageSegment(value=value)
         items = [build_segment(item) for item in value]
         types = {item.value_type for item in items}
         if all(isinstance(item, ArraySegment) for item in items):
@@ -200,6 +210,7 @@ _segment_factory: Mapping[SegmentType, type[Segment]] = {
     SegmentType.ARRAY_OBJECT: ArrayObjectSegment,
     SegmentType.ARRAY_FILE: ArrayFileSegment,
     SegmentType.ARRAY_BOOLEAN: ArrayBooleanSegment,
+    SegmentType.ARRAY_PROMPT_MESSAGE: ArrayPromptMessageSegment,
 }
 
 

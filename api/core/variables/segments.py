@@ -6,6 +6,7 @@ from typing import Annotated, Any, TypeAlias
 from pydantic import BaseModel, ConfigDict, Discriminator, Tag, field_validator
 
 from core.file import File
+from core.model_runtime.entities import PromptMessage
 
 from .types import SegmentType
 
@@ -208,6 +209,15 @@ class ArrayBooleanSegment(ArraySegment):
     value: Sequence[bool]
 
 
+class ArrayPromptMessageSegment(ArraySegment):
+    value_type: SegmentType = SegmentType.ARRAY_PROMPT_MESSAGE
+    value: Sequence[PromptMessage]
+
+    def to_object(self):
+        """Convert to JSON-serializable format for database storage and frontend."""
+        return [msg.model_dump() for msg in self.value]
+
+
 def get_segment_discriminator(v: Any) -> SegmentType | None:
     if isinstance(v, Segment):
         return v.value_type
@@ -248,6 +258,7 @@ SegmentUnion: TypeAlias = Annotated[
         | Annotated[ArrayObjectSegment, Tag(SegmentType.ARRAY_OBJECT)]
         | Annotated[ArrayFileSegment, Tag(SegmentType.ARRAY_FILE)]
         | Annotated[ArrayBooleanSegment, Tag(SegmentType.ARRAY_BOOLEAN)]
+        | Annotated[ArrayPromptMessageSegment, Tag(SegmentType.ARRAY_PROMPT_MESSAGE)]
     ),
     Discriminator(get_segment_discriminator),
 ]

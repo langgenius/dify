@@ -229,7 +229,6 @@ class Node(Generic[NodeDataT]):
         self._node_id = node_id
         self._node_execution_id: str = ""
         self._start_at = naive_utc_now()
-        self._virtual_node_outputs: dict[str, Any] = {}  # Outputs from virtual sub-nodes
 
         raw_node_data = config.get("data") or {}
         if not isinstance(raw_node_data, Mapping):
@@ -271,51 +270,81 @@ class Node(Generic[NodeDataT]):
         """Check if execution should be stopped."""
         return self.graph_runtime_state.stop_event.is_set()
 
-    def _execute_virtual_nodes(self) -> Generator[GraphNodeEventBase, None, dict[str, Any]]:
+    def _find_extractor_node_configs(self) -> list[dict[str, Any]]:
         """
-        Execute all virtual sub-nodes defined in node configuration.
-
-        Virtual nodes are complete node definitions that execute before the main node.
-        Each virtual node:
-        - Has its own global ID: "{parent_id}.{local_id}"
-        - Generates standard node events
-        - Stores outputs in the variable pool (via event handling)
-        - Supports retry via parent node's retry config
+        Find all extractor node configurations that have parent_node_id == self._node_id.
 
         Returns:
-            dict mapping local_id -> outputs dict
+            List of node configuration dicts for extractor nodes
         """
-        from .virtual_node_executor import VirtualNodeExecutor
+        nodes = self.graph_config.get("nodes", [])
+        extractor_configs = []
+        for node_config in nodes:
+            node_data = node_config.get("data", {})
+            if node_data.get("parent_node_id") == self._node_id:
+                extractor_configs.append(node_config)
+        return extractor_configs
 
-        virtual_nodes = self.node_data.virtual_nodes
-        if not virtual_nodes:
-            return {}
-
-        executor = VirtualNodeExecutor(
-            graph_init_params=self._graph_init_params,
-            graph_runtime_state=self.graph_runtime_state,
-            parent_node_id=self._node_id,
-            parent_retry_config=self.retry_config,
-        )
-
-        return (yield from executor.execute_virtual_nodes(virtual_nodes))
-
-    @property
-    def virtual_node_outputs(self) -> dict[str, Any]:
+    def _execute_extractor_nodes(self) -> Generator[GraphNodeEventBase, None, None]:
         """
-        Get the outputs from virtual sub-nodes.
+        Execute all extractor nodes associated with this node.
 
-        Returns:
-            dict mapping local_id -> outputs dict
+        Extractor nodes are nodes with parent_node_id == self._node_id.
+        They are executed before the main node to extract values from list[PromptMessage].
         """
-        return self._virtual_node_outputs
+        from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
+
+        extractor_configs = self._find_extractor_node_configs()
+        logger.debug("[Extractor] Found %d extractor nodes for parent '%s'", len(extractor_configs), self._node_id)
+        if not extractor_configs:
+            return
+
+        for config in extractor_configs:
+            node_id = config.get("id")
+            node_data = config.get("data", {})
+            node_type_str = node_data.get("type")
+
+            if not node_id or not node_type_str:
+                continue
+
+            # Get node class
+            try:
+                node_type = NodeType(node_type_str)
+            except ValueError:
+                continue
+
+            node_mapping = NODE_TYPE_CLASSES_MAPPING.get(node_type)
+            if not node_mapping:
+                continue
+
+            node_version = str(node_data.get("version", "1"))
+            node_cls = node_mapping.get(node_version) or node_mapping.get(LATEST_VERSION)
+            if not node_cls:
+                continue
+
+            # Instantiate and execute the extractor node
+            extractor_node = node_cls(
+                id=node_id,
+                config=config,
+                graph_init_params=self._graph_init_params,
+                graph_runtime_state=self.graph_runtime_state,
+            )
+
+            # Execute and process extractor node events
+            for event in extractor_node.run():
+                if isinstance(event, NodeRunSucceededEvent):
+                    # Store extractor node outputs in variable pool
+                    outputs = event.node_run_result.outputs
+                    for variable_name, variable_value in outputs.items():
+                        self.graph_runtime_state.variable_pool.add((node_id, variable_name), variable_value)
+                yield event
 
     def run(self) -> Generator[GraphNodeEventBase, None, None]:
         execution_id = self.ensure_execution_id()
         self._start_at = naive_utc_now()
 
-        # Step 1: Execute virtual sub-nodes before main node execution
-        self._virtual_node_outputs = yield from self._execute_virtual_nodes()
+        # Step 1: Execute associated extractor nodes before main node execution
+        yield from self._execute_extractor_nodes()
 
         # Create and push start event with required fields
         start_event = NodeRunStartedEvent(

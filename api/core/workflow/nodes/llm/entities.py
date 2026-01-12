@@ -1,7 +1,7 @@
 from collections.abc import Mapping, Sequence
-from typing import Any, Literal
+from typing import Annotated, Any, Literal, TypeAlias
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from core.model_runtime.entities import ImagePromptMessageContent, LLMMode
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
@@ -58,9 +58,28 @@ class LLMNodeCompletionModelPromptTemplate(CompletionModelPromptTemplate):
     jinja2_text: str | None = None
 
 
+class PromptMessageContext(BaseModel):
+    """Context variable reference in prompt template.
+
+    YAML/JSON format: { "$context": ["node_id", "variable_name"] }
+    This will be expanded to list[PromptMessage] at runtime.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    value_selector: Sequence[str] = Field(alias="$context")
+
+
+# Union type for prompt template items (static message or context variable reference)
+PromptTemplateItem: TypeAlias = Annotated[
+    LLMNodeChatModelMessage | PromptMessageContext,
+    Field(discriminator=None),
+]
+
+
 class LLMNodeData(BaseNodeData):
     model: ModelConfig
-    prompt_template: Sequence[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate
+    prompt_template: Sequence[PromptTemplateItem] | LLMNodeCompletionModelPromptTemplate
     prompt_config: PromptConfig = Field(default_factory=PromptConfig)
     memory: MemoryConfig | None = None
     context: ContextConfig

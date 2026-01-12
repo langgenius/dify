@@ -25,6 +25,12 @@ class _StubErrorHandler:
     """Minimal error handler stub for tests."""
 
 
+class _StubNodeData:
+    """Simple node data stub with is_extractor_node property."""
+
+    is_extractor_node = False
+
+
 class _StubNode:
     """Simple node stub exposing the attributes needed by the state manager."""
 
@@ -36,6 +42,7 @@ class _StubNode:
         self.error_strategy = None
         self.retry_config = RetryConfig()
         self.retry = False
+        self.node_data = _StubNodeData()
 
 
 def _build_event_handler(node_id: str) -> tuple[EventHandler, EventManager, GraphExecution]:

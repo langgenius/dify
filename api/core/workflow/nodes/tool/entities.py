@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from typing import Any, Literal, Union
 
 from pydantic import BaseModel, field_validator
@@ -5,6 +6,31 @@ from pydantic_core.core_schema import ValidationInfo
 
 from core.tools.entities.tool_entities import ToolProviderType
 from core.workflow.nodes.base.entities import BaseNodeData
+
+
+class MentionValue(BaseModel):
+    """Value structure for mention type parameters.
+
+    Used when a tool parameter needs to be extracted from conversation context
+    using an extractor LLM node.
+    """
+
+    # Variable selector for list[PromptMessage] input to extractor
+    variable_selector: Sequence[str]
+
+    # ID of the extractor LLM node
+    extractor_node_id: str
+
+    # Output variable selector from extractor node
+    # e.g., ["text"], ["structured_output", "query"]
+    output_selector: Sequence[str]
+
+    # Strategy when output is None
+    null_strategy: Literal["raise_error", "use_default"] = "raise_error"
+
+    # Default value when null_strategy is "use_default"
+    # Type should match the parameter's expected type
+    default_value: Any = None
 
 
 class ToolEntity(BaseModel):
@@ -34,8 +60,8 @@ class ToolEntity(BaseModel):
 class ToolNodeData(BaseNodeData, ToolEntity):
     class ToolInput(BaseModel):
         # TODO: check this type
-        value: Union[Any, list[str]]
-        type: Literal["mixed", "variable", "constant"]
+        value: Union[Any, list[str], MentionValue]
+        type: Literal["mixed", "variable", "constant", "mention"]
 
         @field_validator("type", mode="before")
         @classmethod
@@ -56,6 +82,17 @@ class ToolNodeData(BaseNodeData, ToolEntity):
                         raise ValueError("value must be a list of strings")
             elif typ == "constant" and not isinstance(value, str | int | float | bool | dict):
                 raise ValueError("value must be a string, int, float, bool or dict")
+            elif typ == "mention":
+                # Mention type: value should be a MentionValue or dict with required fields
+                if isinstance(value, MentionValue):
+                    pass  # Already validated by Pydantic
+                elif isinstance(value, dict):
+                    if "extractor_node_id" not in value:
+                        raise ValueError("value must contain extractor_node_id for mention type")
+                    if "output_selector" not in value:
+                        raise ValueError("value must contain output_selector for mention type")
+                else:
+                    raise ValueError("value must be a MentionValue or dict for mention type")
             return typ
 
     tool_parameters: dict[str, ToolInput]

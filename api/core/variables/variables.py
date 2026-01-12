@@ -12,6 +12,7 @@ from .segments import (
     ArrayFileSegment,
     ArrayNumberSegment,
     ArrayObjectSegment,
+    ArrayPromptMessageSegment,
     ArraySegment,
     ArrayStringSegment,
     BooleanSegment,
@@ -110,6 +111,10 @@ class ArrayBooleanVariable(ArrayBooleanSegment, ArrayVariable):
     pass
 
 
+class ArrayPromptMessageVariable(ArrayPromptMessageSegment, ArrayVariable):
+    pass
+
+
 class RAGPipelineVariable(BaseModel):
     belong_to_node_id: str = Field(description="belong to which node id, shared means public")
     type: str = Field(description="variable type, text-input, paragraph, select, number,  file, file-list")
@@ -160,6 +165,7 @@ VariableUnion: TypeAlias = Annotated[
         | Annotated[ArrayObjectVariable, Tag(SegmentType.ARRAY_OBJECT)]
         | Annotated[ArrayFileVariable, Tag(SegmentType.ARRAY_FILE)]
         | Annotated[ArrayBooleanVariable, Tag(SegmentType.ARRAY_BOOLEAN)]
+        | Annotated[ArrayPromptMessageVariable, Tag(SegmentType.ARRAY_PROMPT_MESSAGE)]
         | Annotated[SecretVariable, Tag(SegmentType.SECRET)]
     ),
     Discriminator(get_segment_discriminator),

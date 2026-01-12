@@ -1291,7 +1291,7 @@ class WorkflowDraftVariable(Base):
     # which may differ from the original value's type. Typically, they are the same,
     # but in cases where the structurally truncated  value still exceeds the size limit,
     # text slicing is applied, and the `value_type` is converted to `STRING`.
-    value_type: Mapped[SegmentType] = mapped_column(EnumText(SegmentType, length=20))
+    value_type: Mapped[SegmentType] = mapped_column(EnumText(SegmentType, length=21))
 
     # The variable's value serialized as a JSON string
     #
@@ -1665,7 +1665,7 @@ class WorkflowDraftVariableFile(Base):
 
     # The `value_type` field records the type of the original value.
     value_type: Mapped[SegmentType] = mapped_column(
-        EnumText(SegmentType, length=20),
+        EnumText(SegmentType, length=21),
         nullable=False,
     )
 

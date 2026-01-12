@@ -45,6 +45,7 @@ class SegmentType(StrEnum):
     ARRAY_OBJECT = "array[object]"
     ARRAY_FILE = "array[file]"
     ARRAY_BOOLEAN = "array[boolean]"
+    ARRAY_PROMPT_MESSAGE = "array[message]"
 
     NONE = "none"
 

@@ -20,12 +20,6 @@ class NodeRunStartedEvent(GraphNodeEventBase):
     provider_type: str = ""
     provider_id: str = ""
 
-    # Virtual node fields for extraction
-    is_virtual: bool = False
-    parent_node_id: str | None = None
-    extraction_source: str | None = None  # e.g., "llm1.context"
-    extraction_prompt: str | None = None
-
 
 class NodeRunStreamChunkEvent(GraphNodeEventBase):
     # Spec-compliant fields

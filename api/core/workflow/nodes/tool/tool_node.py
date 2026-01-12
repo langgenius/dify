@@ -1,7 +1,10 @@
+import logging
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import select
+
+logger = logging.getLogger(__name__)
 from sqlalchemy.orm import Session
 
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
@@ -89,20 +92,18 @@ class ToolNode(Node[ToolNodeData]):
             )
             return
 
-        # get parameters (use virtual_node_outputs from base class)
+        # get parameters
         tool_parameters = tool_runtime.get_merged_runtime_parameters() or []
         parameters = self._generate_parameters(
             tool_parameters=tool_parameters,
             variable_pool=self.graph_runtime_state.variable_pool,
             node_data=self.node_data,
-            virtual_node_outputs=self.virtual_node_outputs,
         )
         parameters_for_log = self._generate_parameters(
             tool_parameters=tool_parameters,
             variable_pool=self.graph_runtime_state.variable_pool,
             node_data=self.node_data,
             for_log=True,
-            virtual_node_outputs=self.virtual_node_outputs,
         )
         # get conversation id
         conversation_id = self.graph_runtime_state.variable_pool.get(["sys", SystemVariableKey.CONVERSATION_ID])
@@ -178,7 +179,6 @@ class ToolNode(Node[ToolNodeData]):
         variable_pool: "VariablePool",
         node_data: ToolNodeData,
         for_log: bool = False,
-        virtual_node_outputs: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
         Generate parameters based on the given tool parameters, variable pool, and node data.
@@ -188,16 +188,12 @@ class ToolNode(Node[ToolNodeData]):
             variable_pool (VariablePool): The variable pool containing the variables.
             node_data (ToolNodeData): The data associated with the tool node.
             for_log (bool): Whether to generate parameters for logging.
-            virtual_node_outputs (dict[str, Any] | None): Outputs from virtual sub-nodes.
-                Maps local_id -> outputs dict. Virtual node outputs are also in variable_pool
-                with global IDs like "{parent_id}.{local_id}".
 
         Returns:
             Mapping[str, Any]: A dictionary containing the generated parameters.
 
         """
         tool_parameters_dictionary = {parameter.name: parameter for parameter in tool_parameters}
-        virtual_node_outputs = virtual_node_outputs or {}
 
         result: dict[str, Any] = {}
         for parameter_name in node_data.tool_parameters:
@@ -207,22 +203,39 @@ class ToolNode(Node[ToolNodeData]):
                 continue
             tool_input = node_data.tool_parameters[parameter_name]
             if tool_input.type == "variable":
-                # Check if this references a virtual node output (local ID like [ext_1, text])
+                if not isinstance(tool_input.value, list):
+                    raise ToolParameterError(f"Invalid variable selector for parameter '{parameter_name}'")
                 selector = tool_input.value
-                if len(selector) >= 2 and selector[0] in virtual_node_outputs:
-                    # Reference to virtual node output
-                    local_id = selector[0]
-                    var_name = selector[1]
-                    outputs = virtual_node_outputs.get(local_id, {})
-                    parameter_value = outputs.get(var_name)
+                variable = variable_pool.get(selector)
+                if variable is None:
+                    if parameter.required:
+                        raise ToolParameterError(f"Variable {selector} does not exist")
+                    continue
+                parameter_value = variable.value
+            elif tool_input.type == "mention":
+                # Mention type: get value from extractor node's output
+                from .entities import MentionValue
+
+                mention_value = tool_input.value
+                if isinstance(mention_value, MentionValue):
+                    mention_config = mention_value.model_dump()
+                elif isinstance(mention_value, dict):
+                    mention_config = mention_value
                 else:
-                    # Normal variable reference
-                    variable = variable_pool.get(selector)
-                    if variable is None:
-                        if parameter.required:
-                            raise ToolParameterError(f"Variable {selector} does not exist")
+                    raise ToolParameterError(f"Invalid mention value for parameter '{parameter_name}'")
+
+                try:
+                    parameter_value, found = variable_pool.resolve_mention(
+                        mention_config, parameter_name=parameter_name
+                    )
+                    if not found and parameter.required:
+                        raise ToolParameterError(
+                            f"Extractor output not found for required parameter '{parameter_name}'"
+                        )
+                    if not found:
                         continue
-                    parameter_value = variable.value
+                except ValueError as e:
+                    raise ToolParameterError(str(e)) from e
             elif tool_input.type in {"mixed", "constant"}:
                 template = str(tool_input.value)
                 segment_group = variable_pool.convert_template(template)
@@ -507,8 +520,12 @@ class ToolNode(Node[ToolNodeData]):
                 for selector in selectors:
                     result[selector.variable] = selector.value_selector
             elif input.type == "variable":
-                selector_key = ".".join(input.value)
-                result[f"#{selector_key}#"] = input.value
+                if isinstance(input.value, list):
+                    selector_key = ".".join(input.value)
+                    result[f"#{selector_key}#"] = input.value
+            elif input.type == "mention":
+                # Mention type handled by extractor node, no direct variable reference
+                pass
             elif input.type == "constant":
                 pass
 

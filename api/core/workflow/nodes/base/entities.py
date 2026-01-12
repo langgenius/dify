@@ -167,24 +167,6 @@ class DefaultValue(BaseModel):
         return self
 
 
-class VirtualNodeConfig(BaseModel):
-    """Configuration for a virtual sub-node embedded within a parent node."""
-
-    # Local ID within parent node (e.g., "ext_1")
-    # Will be converted to global ID: "{parent_id}.{id}"
-    id: str
-
-    # Node type (e.g., "llm", "code", "tool")
-    type: str
-
-    # Full node data configuration
-    data: dict[str, Any] = {}
-
-    def get_global_id(self, parent_node_id: str) -> str:
-        """Get the global node ID by combining parent ID and local ID."""
-        return f"{parent_node_id}.{self.id}"
-
-
 class BaseNodeData(ABC, BaseModel):
     title: str
     desc: str | None = None
@@ -193,8 +175,15 @@ class BaseNodeData(ABC, BaseModel):
     default_value: list[DefaultValue] | None = None
     retry_config: RetryConfig = RetryConfig()
 
-    # Virtual sub-nodes that execute before the main node
-    virtual_nodes: list[VirtualNodeConfig] = []
+    # Parent node ID when this node is used as an extractor.
+    # If set, this node is an "attached" extractor node that extracts values
+    # from list[PromptMessage] for the parent node's parameters.
+    parent_node_id: str | None = None
+
+    @property
+    def is_extractor_node(self) -> bool:
+        """Check if this node is an extractor node (has parent_node_id)."""
+        return self.parent_node_id is not None
 
     @property
     def default_value_dict(self) -> dict[str, Any]:
