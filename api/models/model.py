@@ -843,7 +843,6 @@ class Conversation(Base):
     @property
     def status_count(self):
         from core.db.session_factory import get_session_maker
-
         from repositories.factory import DifyAPIRepositoryFactory
 
         # Get all messages with workflow_run_id for this conversation
