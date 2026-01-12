@@ -189,7 +189,7 @@ class WorkflowRunRestore:
                             click.echo(
                                 click.style(
                                     f"  Restored {restored}/{len(records)} records to {table_name}",
-                                    fg="green",
+                                    fg="white",
                                 )
                             )
 
@@ -421,15 +421,24 @@ class WorkflowRunRestore:
         with ThreadPoolExecutor(max_workers=self.workers) as executor:
             results = list(executor.map(_restore_with_session, archive_logs))
 
+        total_counts: dict[str, int] = {}
+        for result in results:
+            for table_name, count in result.restored_counts.items():
+                total_counts[table_name] = total_counts.get(table_name, 0) + count
+        success_count = sum(1 for result in results if result.success)
+
         if self.dry_run:
-            total_counts: dict[str, int] = {}
-            for result in results:
-                for table_name, count in result.restored_counts.items():
-                    total_counts[table_name] = total_counts.get(table_name, 0) + count
             click.echo(
                 click.style(
                     f"[DRY RUN] Would restore {len(results)} workflow runs: totals={total_counts}",
                     fg="yellow",
+                )
+            )
+        else:
+            click.echo(
+                click.style(
+                    f"Restored {success_count}/{len(results)} workflow runs: totals={total_counts}",
+                    fg="green",
                 )
             )
 
