@@ -118,7 +118,9 @@ class TestWebConversationService:
 
         return end_user
 
-    def _create_test_conversation(self, db_session_with_containers, app: App, user: Union[Account, EndUser], fake: Faker):
+    def _create_test_conversation(
+        self, db_session_with_containers, app: App, user: Union[Account, EndUser], fake: Faker
+    ):
         """
         Helper method to create a test conversation for testing.
 
