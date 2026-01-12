@@ -19,7 +19,7 @@ const ChatUserInput = ({
   inputs,
 }: Props) => {
   const { t } = useTranslation()
-  const { modelConfig, setInputs } = useContext(ConfigContext)
+  const { modelConfig, setInputs, readonly } = useContext(ConfigContext)
 
   const promptVariables = modelConfig.configs.prompt_variables.filter(({ key, name }) => {
     return key && key?.trim() && name && name?.trim()
@@ -89,6 +89,7 @@ const ChatUserInput = ({
                     placeholder={name}
                     autoFocus={index === 0}
                     maxLength={max_length || DEFAULT_VALUE_MAX_LEN}
+                    readOnly={readonly}
                   />
                 )}
                 {type === 'paragraph' && (
@@ -97,6 +98,7 @@ const ChatUserInput = ({
                     placeholder={name}
                     value={inputs[key] ? `${inputs[key]}` : ''}
                     onChange={(e) => { handleInputValueChange(key, e.target.value) }}
+                    readOnly={readonly}
                   />
                 )}
                 {type === 'select' && (
@@ -106,6 +108,7 @@ const ChatUserInput = ({
                     onSelect={(i) => { handleInputValueChange(key, i.value as string) }}
                     items={(options || []).map(i => ({ name: i, value: i }))}
                     allowSearch={false}
+                    disabled={readonly}
                   />
                 )}
                 {type === 'number' && (
@@ -116,6 +119,7 @@ const ChatUserInput = ({
                     placeholder={name}
                     autoFocus={index === 0}
                     maxLength={max_length || DEFAULT_VALUE_MAX_LEN}
+                    readOnly={readonly}
                   />
                 )}
                 {type === 'checkbox' && (
@@ -124,6 +128,7 @@ const ChatUserInput = ({
                     value={!!inputs[key]}
                     required={required}
                     onChange={(value) => { handleInputValueChange(key, value) }}
+                    readonly={readonly}
                   />
                 )}
               </div>

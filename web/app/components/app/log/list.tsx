@@ -39,6 +39,7 @@ import { useAppContext } from '@/context/app-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
 import { fetchChatMessages, updateLogMessageAnnotations, updateLogMessageFeedbacks } from '@/service/log'
+import { AppSourceType } from '@/service/share'
 import { useChatConversationDetail, useCompletionConversationDetail } from '@/service/use-log'
 import { AppModeEnum } from '@/types/app'
 import { cn } from '@/utils/classnames'
@@ -638,12 +639,12 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
                   </div>
                 </div>
                 <TextGeneration
+                  appSourceType={AppSourceType.webApp}
                   className="mt-2"
                   content={detail.message.answer}
                   messageId={detail.message.id}
                   isError={false}
                   onRetry={noop}
-                  isInstalledApp={false}
                   supportFeedback
                   feedback={detail.message.feedbacks.find((item: any) => item.from_source === 'admin')}
                   onFeedback={feedback => onFeedback(detail.message.id, feedback)}

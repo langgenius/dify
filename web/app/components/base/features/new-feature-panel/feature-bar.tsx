@@ -14,6 +14,7 @@ type Props = {
   showFileUpload?: boolean
   disabled?: boolean
   onFeatureBarClick?: (state: boolean) => void
+  hideEditEntrance?: boolean
 }
 
 const FeatureBar = ({
@@ -21,6 +22,7 @@ const FeatureBar = ({
   showFileUpload = true,
   disabled,
   onFeatureBarClick,
+  hideEditEntrance = false,
 }: Props) => {
   const { t } = useTranslation()
   const features = useFeatures(s => s.features)
@@ -133,10 +135,14 @@ const FeatureBar = ({
             )}
           </div>
           <div className="body-xs-regular grow text-text-tertiary">{t('feature.bar.enableText', { ns: 'appDebug' })}</div>
-          <Button className="shrink-0" variant="ghost-accent" size="small" onClick={() => onFeatureBarClick?.(true)}>
-            <div className="mx-1">{t('feature.bar.manage', { ns: 'appDebug' })}</div>
-            <RiArrowRightLine className="h-3.5 w-3.5 text-text-accent" />
-          </Button>
+          {
+            !hideEditEntrance && (
+              <Button className="shrink-0" variant="ghost-accent" size="small" onClick={() => onFeatureBarClick?.(true)}>
+                <div className="mx-1">{t('feature.bar.manage', { ns: 'appDebug' })}</div>
+                <RiArrowRightLine className="h-3.5 w-3.5 text-text-accent" />
+              </Button>
+            )
+          }
         </div>
       )}
     </div>

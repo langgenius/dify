@@ -5,6 +5,7 @@ import type {
 } from '../../types'
 import type { InputForm } from '../type'
 import type { FileUpload } from '@/app/components/base/features/types'
+import { noop } from 'es-toolkit/function'
 import { decode } from 'html-entities'
 import Recorder from 'js-audio-recorder'
 import {
@@ -30,6 +31,7 @@ import { useTextAreaHeight } from './hooks'
 import Operation from './operation'
 
 type ChatInputAreaProps = {
+  readonly?: boolean
   botName?: string
   showFeatureBar?: boolean
   showFileUpload?: boolean
@@ -45,6 +47,7 @@ type ChatInputAreaProps = {
   disabled?: boolean
 }
 const ChatInputArea = ({
+  readonly,
   botName,
   showFeatureBar,
   showFileUpload,
@@ -170,6 +173,7 @@ const ChatInputArea = ({
   const operation = (
     <Operation
       ref={holdSpaceRef}
+      readonly={readonly}
       fileConfig={visionConfig}
       speechToTextConfig={speechToTextConfig}
       onShowVoiceInput={handleShowVoiceInput}
@@ -205,7 +209,7 @@ const ChatInputArea = ({
                 className={cn(
                   'body-lg-regular w-full resize-none bg-transparent p-1 leading-6 text-text-primary outline-none',
                 )}
-                placeholder={decode(t('chat.inputPlaceholder', { ns: 'common', botName }) || '')}
+                placeholder={decode(t(readonly ? 'chat.inputDisabledPlaceholder' : 'chat.inputPlaceholder', { ns: 'common', botName }) || '')}
                 autoFocus
                 minRows={1}
                 value={query}
@@ -218,6 +222,7 @@ const ChatInputArea = ({
                 onDragLeave={handleDragFileLeave}
                 onDragOver={handleDragFileOver}
                 onDrop={handleDropFile}
+                readOnly={readonly}
               />
             </div>
             {
@@ -239,7 +244,14 @@ const ChatInputArea = ({
           )
         }
       </div>
-      {showFeatureBar && <FeatureBar showFileUpload={showFileUpload} disabled={featureBarDisabled} onFeatureBarClick={onFeatureBarClick} />}
+      {showFeatureBar && (
+        <FeatureBar
+          showFileUpload={showFileUpload}
+          disabled={featureBarDisabled}
+          onFeatureBarClick={readonly ? noop : onFeatureBarClick}
+          hideEditEntrance={readonly}
+        />
+      )}
     </>
   )
 }

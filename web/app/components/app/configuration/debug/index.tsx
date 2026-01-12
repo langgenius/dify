@@ -38,6 +38,7 @@ import ConfigContext from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useProviderContext } from '@/context/provider-context'
 import { sendCompletionMessage } from '@/service/debug'
+import { AppSourceType } from '@/service/share'
 import { AppModeEnum, ModelModeType, TransferMethod } from '@/types/app'
 import { formatBooleanInputs, promptVariablesToUserInputsForm } from '@/utils/model-config'
 import GroupName from '../base/group-name'
@@ -72,6 +73,7 @@ const Debug: FC<IDebug> = ({
 }) => {
   const { t } = useTranslation()
   const {
+    readonly,
     appId,
     mode,
     modelModeType,
@@ -416,25 +418,33 @@ const Debug: FC<IDebug> = ({
             }
             {mode !== AppModeEnum.COMPLETION && (
               <>
-                <TooltipPlus
-                  popupContent={t('operation.refresh', { ns: 'common' })}
-                >
-                  <ActionButton onClick={clearConversation}>
-                    <RefreshCcw01 className="h-4 w-4" />
-                  </ActionButton>
-                </TooltipPlus>
-                {varList.length > 0 && (
-                  <div className="relative ml-1 mr-2">
+                {
+                  !readonly && (
                     <TooltipPlus
-                      popupContent={t('panel.userInputField', { ns: 'workflow' })}
+                      popupContent={t('operation.refresh', { ns: 'common' })}
                     >
-                      <ActionButton state={expanded ? ActionButtonState.Active : undefined} onClick={() => setExpanded(!expanded)}>
-                        <RiEqualizer2Line className="h-4 w-4" />
+                      <ActionButton onClick={clearConversation}>
+                        <RefreshCcw01 className="h-4 w-4" />
                       </ActionButton>
+
                     </TooltipPlus>
-                    {expanded && <div className="absolute bottom-[-14px] right-[5px] z-10 h-3 w-3 rotate-45 border-l-[0.5px] border-t-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg" />}
-                  </div>
-                )}
+                  )
+                }
+
+                {
+                  varList.length > 0 && (
+                    <div className="relative ml-1 mr-2">
+                      <TooltipPlus
+                        popupContent={t('panel.userInputField', { ns: 'workflow' })}
+                      >
+                        <ActionButton state={expanded ? ActionButtonState.Active : undefined} onClick={() => !readonly && setExpanded(!expanded)}>
+                          <RiEqualizer2Line className="h-4 w-4" />
+                        </ActionButton>
+                      </TooltipPlus>
+                      {expanded && <div className="absolute bottom-[-14px] right-[5px] z-10 h-3 w-3 rotate-45 border-l-[0.5px] border-t-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg" />}
+                    </div>
+                  )
+                }
               </>
             )}
           </div>
@@ -444,19 +454,21 @@ const Debug: FC<IDebug> = ({
             <ChatUserInput inputs={inputs} />
           </div>
         )}
-        {mode === AppModeEnum.COMPLETION && (
-          <PromptValuePanel
-            appType={mode as AppModeEnum}
-            onSend={handleSendTextCompletion}
-            inputs={inputs}
-            visionConfig={{
-              ...features.file! as VisionSettings,
-              transfer_methods: features.file!.allowed_file_upload_methods || [],
-              image_file_size_limit: features.file?.fileUploadConfig?.image_file_size_limit,
-            }}
-            onVisionFilesChange={setCompletionFiles}
-          />
-        )}
+        {
+          mode === AppModeEnum.COMPLETION && (
+            <PromptValuePanel
+              appType={mode as AppModeEnum}
+              onSend={handleSendTextCompletion}
+              inputs={inputs}
+              visionConfig={{
+                ...features.file! as VisionSettings,
+                transfer_methods: features.file!.allowed_file_upload_methods || [],
+                image_file_size_limit: features.file?.fileUploadConfig?.image_file_size_limit,
+              }}
+              onVisionFilesChange={setCompletionFiles}
+            />
+          )
+        }
       </div>
       {
         debugWithMultipleModel && (
@@ -510,12 +522,12 @@ const Debug: FC<IDebug> = ({
                     <div className="mx-4 mt-3"><GroupName name={t('result', { ns: 'appDebug' })} /></div>
                     <div className="mx-3 mb-8">
                       <TextGeneration
+                        appSourceType={AppSourceType.webApp}
                         className="mt-2"
                         content={completionRes}
                         isLoading={!completionRes && isResponding}
                         isShowTextToSpeech={textToSpeechConfig.enabled && !!text2speechDefaultModel}
                         isResponding={isResponding}
-                        isInstalledApp={false}
                         messageId={messageId}
                         isError={false}
                         onRetry={noop}
@@ -550,13 +562,15 @@ const Debug: FC<IDebug> = ({
           </div>
         )
       }
-      {isShowFormattingChangeConfirm && (
-        <FormattingChanged
-          onConfirm={handleConfirm}
-          onCancel={handleCancel}
-        />
-      )}
-      {!isAPIKeySet && (<HasNotSetAPIKEY isTrailFinished={!IS_CE_EDITION} onSetting={onSetting} />)}
+      {
+        isShowFormattingChangeConfirm && (
+          <FormattingChanged
+            onConfirm={handleConfirm}
+            onCancel={handleCancel}
+          />
+        )
+      }
+      {!isAPIKeySet && !readonly && (<HasNotSetAPIKEY isTrailFinished={!IS_CE_EDITION} onSetting={onSetting} />)}
     </>
   )
 }

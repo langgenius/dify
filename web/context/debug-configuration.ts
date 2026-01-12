@@ -29,6 +29,7 @@ import { PromptMode } from '@/models/debug'
 import { AppModeEnum, ModelModeType, Resolution, RETRIEVE_TYPE, TransferMethod } from '@/types/app'
 
 type IDebugConfiguration = {
+  readonly?: boolean
   appId: string
   isAPIKeySet: boolean
   isTrailFinished: boolean
@@ -108,6 +109,7 @@ type IDebugConfiguration = {
 }
 
 const DebugConfigurationContext = createContext<IDebugConfiguration>({
+  readonly: false,
   appId: '',
   isAPIKeySet: false,
   isTrailFinished: false,

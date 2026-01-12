@@ -11,7 +11,7 @@
     }
   },
   "engines": {
-    "node": ">=v22.11.0"
+    "node": ">=22.12.0"
   },
   "browserslist": [
     "last 1 Chrome version",
@@ -88,6 +88,8 @@
     "echarts": "^5.6.0",
     "echarts-for-react": "^3.0.5",
     "elkjs": "^0.9.3",
+    "embla-carousel-autoplay": "^8.6.0",
+    "embla-carousel-react": "^8.6.0",
     "emoji-mart": "^5.6.0",
     "es-toolkit": "^1.43.0",
     "fast-deep-equal": "^3.1.3",
@@ -166,7 +168,7 @@
     "@storybook/addon-onboarding": "9.1.13",
     "@storybook/addon-themes": "9.1.13",
     "@storybook/nextjs": "9.1.13",
-    "@storybook/react": "9.1.13",
+    "@storybook/react": "9.1.17",
     "@tanstack/eslint-plugin-query": "^5.91.2",
     "@tanstack/react-devtools": "^0.9.0",
     "@tanstack/react-form-devtools": "^0.2.9",
