@@ -1,3 +1,4 @@
+import type { FormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
 import type { BlockEnum } from '@/app/components/workflow/types'
 import type { CommonResponse } from '@/models/common'
 import type { FlowType } from '@/types/common'
@@ -100,4 +101,27 @@ export const submitHumanInputForm = (token: string, data: {
   action: string
 }) => {
   return post(`/form/human_input/${token}`, { body: data })
+}
+
+export const fetchHumanInputNodeStepRunForm = (
+  url: string,
+  params: {
+    inputs: Record<string, any>
+  },
+) => {
+  return get<{
+    form_content: string
+    inputs: FormInputItem[]
+    user_actions: UserAction[]
+  }>(url, { params })
+}
+
+export const submitHumanInputNodeStepRunForm = (
+  url: string,
+  data: {
+    inputs: Record<string, any>
+    action: string
+  },
+) => {
+  return post<CommonResponse>(url, { body: data })
 }

@@ -1,8 +1,11 @@
 import type { HumanInputNodeType } from '../types'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import type { InputVar } from '@/app/components/workflow/types'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import { fetchHumanInputNodeStepRunForm, submitHumanInputNodeStepRunForm } from '@/service/workflow'
+import { AppModeEnum } from '@/types/app'
 import useNodeCrud from '../../_base/hooks/use-node-crud'
 import { isOutput } from '../utils'
 
@@ -24,13 +27,13 @@ const useSingleRunFormParams = ({
 }: Params) => {
   const { t } = useTranslation()
   const { inputs } = useNodeCrud<HumanInputNodeType>(id, payload)
-  const [submittedData, setSubmittedData] = useState<Record<string, any> | null>(null)
   const [showGeneratedForm, setShowGeneratedForm] = useState(false)
+  const [formData, setFormData] = useState<any>(null)
   const generatedInputs = useMemo(() => {
     if (!inputs.form_content)
       return []
     return getInputVars([inputs.form_content]).filter(item => !isOutput(item.value_selector || []))
-  }, [inputs.form_content])
+  }, [getInputVars, inputs.form_content])
 
   const forms = useMemo(() => {
     const forms: FormProps[] = [{
@@ -40,22 +43,7 @@ const useSingleRunFormParams = ({
       onChange: setRunInputData,
     }]
     return forms
-  }, [runInputData, setRunInputData, generatedInputs])
-
-  const formContentOutputFields = useMemo(() => {
-    const res = (inputs.inputs || [])
-      .filter((item) => {
-        return inputs.form_content.includes(`{{#$output.${item.output_variable_name}#}}`)
-      })
-      .map((item) => {
-        return {
-          type: item.type,
-          output_variable_name: item.output_variable_name,
-          placeholder: item.placeholder?.type === 'constant' ? item.placeholder.value : '',
-        }
-      })
-    return res
-  }, [inputs.form_content, inputs.inputs])
+  }, [t, generatedInputs, runInputData, setRunInputData])
 
   const getDependentVars = () => {
     return generatedInputs.map((item) => {
@@ -67,36 +55,34 @@ const useSingleRunFormParams = ({
     }).filter(arr => arr.length > 0)
   }
 
-  const generatedFormContentData = useMemo(() => {
-    if (!inputs.form_content)
-      return null
-    if (!generatedInputs.length) {
-      return {
-        formContent: inputs.form_content,
-        inputFields: formContentOutputFields,
-        userActions: inputs.user_actions,
-        showBackButton: false,
-      }
+  const appDetail = useAppStore(s => s.appDetail)
+  const appId = appDetail?.id
+  const isWorkflowMode = appDetail?.mode === AppModeEnum.WORKFLOW
+  const fetchURL = useMemo(() => {
+    if (!appId)
+      return ''
+    if (isWorkflowMode) {
+      return `/apps/${appId}/advanced-chat/workflows/draft/human_input/nodes/${id}/form`
     }
     else {
-      if (!submittedData)
-        return null
-      const newContent = inputs.form_content.replace(/\{\{#(.*?)#\}\}/g, (originStr, varName) => {
-        if (isOutput(varName.split('.')))
-          return originStr
-        return submittedData[`#${varName}#`] ?? ''
-      })
-      return {
-        formContent: newContent,
-        inputFields: formContentOutputFields,
-        userActions: inputs.user_actions,
-        showBackButton: true,
-      }
+      return `/apps/${appId}/workflows/draft/human_input/nodes/${id}/form`
     }
-  }, [inputs.form_content, inputs.user_actions, submittedData, formContentOutputFields])
+  }, [appId, id, isWorkflowMode])
 
-  const handleShowGeneratedForm = (formValue: Record<string, any>) => {
-    setSubmittedData(formValue)
+  const handleFetchFormContent = useCallback(async (inputs: Record<string, any>) => {
+    if (!fetchURL)
+      return null
+    const data = await fetchHumanInputNodeStepRunForm(fetchURL, { inputs })
+    setFormData(data)
+    return data
+  }, [fetchURL])
+
+  const handleSubmitHumanInputForm = useCallback(async (formData: any) => {
+    await submitHumanInputNodeStepRunForm(fetchURL, formData)
+  }, [fetchURL])
+
+  const handleShowGeneratedForm = async (formValue: Record<string, any>) => {
+    await handleFetchFormContent(formValue)
     setShowGeneratedForm(true)
   }
 
@@ -107,10 +93,12 @@ const useSingleRunFormParams = ({
   return {
     forms,
     getDependentVars,
-    generatedFormContentData,
     showGeneratedForm,
     handleShowGeneratedForm,
     handleHideGeneratedForm,
+    formData,
+    handleFetchFormContent,
+    handleSubmitHumanInputForm,
   }
 }
 

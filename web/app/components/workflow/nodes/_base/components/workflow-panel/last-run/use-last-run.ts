@@ -133,6 +133,7 @@ const useLastRun = <T>({
   const isLoopNode = blockType === BlockEnum.Loop
   const isAggregatorNode = blockType === BlockEnum.VariableAggregator
   const isCustomRunNode = isSupportCustomRunForm(blockType)
+  const isHumanInputNode = blockType === BlockEnum.HumanInput
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const {
     getData: getDataForCheckMore,
@@ -342,17 +343,11 @@ const useLastRun = <T>({
       return
     if (blockType === BlockEnum.TriggerWebhook || blockType === BlockEnum.TriggerPlugin || blockType === BlockEnum.TriggerSchedule)
       setShowVariableInspectPanel(true)
-    if (isCustomRunNode) {
+    if (isCustomRunNode || isHumanInputNode) {
       showSingleRun()
       return
     }
     const vars = singleRunParams?.getDependentVars?.()
-    // TODO human input
-    if (singleRunParams?.generatedFormContentData) {
-      singleRunParams?.handleShowGeneratedForm()
-      showSingleRun()
-      return
-    }
     // no need to input params
     if (isAggregatorNode ? checkAggregatorVarsSet(vars) : isAllVarsHasValue(vars)) {
       callRunApi({}, async () => {

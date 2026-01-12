@@ -7,58 +7,32 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import ContentItem from '@/app/components/base/chat/chat/answer/human-input-content/content-item'
-import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
+import { getButtonStyle, initializeInputs, splitByOutputVar } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
 
 type Props = {
   nodeName: string
-  formContent: string
-  inputFields: FormInputItem[]
-  userActions: UserAction[]
+  data: {
+    form_content: string
+    inputs: FormInputItem[]
+    actions: UserAction[]
+  }
   showBackButton?: boolean
   handleBack?: () => void
+  onSubmit?: (data: any) => Promise<void>
 }
 
 const FormContent = ({
   nodeName,
-  formContent,
-  inputFields,
-  userActions,
+  data,
   showBackButton,
   handleBack,
+  onSubmit,
 }: Props) => {
   const { t } = useTranslation()
-
-  const splitByOutputVar = (content: string): string[] => {
-    const outputVarRegex = /(\{\{#\$output\.[^#]+#\}\})/g
-    const parts = content.split(outputVarRegex)
-    return parts.filter(part => part.length > 0)
-  }
-
-  const initializeInputs = (formInputs: FormInputItem[]) => {
-    const initialInputs: Record<string, any> = {}
-    formInputs.forEach((item) => {
-      if (item.type === 'text-input' || item.type === 'paragraph')
-        initialInputs[item.output_variable_name] = ''
-      else
-        initialInputs[item.output_variable_name] = undefined
-    })
-    return initialInputs
-  }
-
-  const contentList = splitByOutputVar(formContent)
-  const defaultInputValues = initializeInputs(inputFields)
-  const [inputs, setInputs] = useState(defaultInputValues)
-
-  const getButtonStyle = (style: UserActionButtonType) => {
-    if (style === UserActionButtonType.Primary)
-      return 'primary'
-    if (style === UserActionButtonType.Default)
-      return 'secondary'
-    if (style === UserActionButtonType.Accent)
-      return 'secondary-accent'
-    if (style === UserActionButtonType.Ghost)
-      return 'ghost'
-  }
+  const defaultInputs = initializeInputs(data.inputs)
+  const contentList = splitByOutputVar(data.form_content)
+  const [inputs, setInputs] = useState(defaultInputs)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // use immer
   const handleInputsChange = (name: string, value: any) => {
@@ -69,7 +43,9 @@ const FormContent = ({
   }
 
   const submit = async (actionID: string) => {
-    // TODO
+    setIsSubmitting(true)
+    await onSubmit?.({ inputs, action: actionID })
+    setIsSubmitting(false)
   }
 
   return (
@@ -89,15 +65,16 @@ const FormContent = ({
           <ContentItem
             key={index}
             content={content}
-            formInputFields={inputFields}
+            formInputFields={data.inputs}
             inputs={inputs}
             onInputChange={handleInputsChange}
           />
         ))}
         <div className="flex flex-wrap gap-1 py-1">
-          {userActions.map((action: any) => (
+          {data.actions.map((action: any) => (
             <Button
               key={action.id}
+              disabled={isSubmitting}
               variant={getButtonStyle(action.button_style) as any}
               onClick={() => submit(action.id)}
             >
