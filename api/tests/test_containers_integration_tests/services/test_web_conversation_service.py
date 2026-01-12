@@ -90,7 +90,7 @@ class TestWebConversationService:
 
         return app, account
 
-    def _create_test_end_user(self, db_session_with_containers, app: Flask):
+    def _create_test_end_user(self, db_session_with_containers, app: App):
         """
         Helper method to create a test end user for testing.
 
