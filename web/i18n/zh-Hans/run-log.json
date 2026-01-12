@@ -1,0 +1,23 @@
+{
+  "actionLogs": "Action 日志",
+  "circularInvocationTip": "当前工作流中存在工具/节点的循环调用。",
+  "detail": "详情",
+  "input": "输入",
+  "meta.executor": "执行人",
+  "meta.startTime": "开始时间",
+  "meta.status": "状态",
+  "meta.steps": "运行步数",
+  "meta.time": "运行时间",
+  "meta.title": "元数据",
+  "meta.tokens": "总 token 数",
+  "meta.version": "版本",
+  "result": "结果",
+  "resultEmpty.link": "详细信息面板",
+  "resultEmpty.tipLeft": "请转到",
+  "resultEmpty.tipRight": "查看它。",
+  "resultEmpty.title": "本次运行仅输出 JSON 格式，",
+  "resultPanel.status": "状态",
+  "resultPanel.time": "运行时间",
+  "resultPanel.tokens": "总 token 数",
+  "tracing": "追踪"
+}

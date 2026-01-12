@@ -7,7 +7,7 @@ from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import QueueRetrieverResourcesEvent
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
-from core.rag.index_processor.constant.index_type import IndexType
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from models.dataset import ChildChunk, DatasetQuery, DocumentSegment
@@ -59,7 +59,7 @@ class DatasetIndexToolCallbackHandler:
                         document_id,
                     )
                     continue
-                if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
+                if dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
                     child_chunk_stmt = select(ChildChunk).where(
                         ChildChunk.index_node_id == document.metadata["doc_id"],
                         ChildChunk.dataset_id == dataset_document.dataset_id,

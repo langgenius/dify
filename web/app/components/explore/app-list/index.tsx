@@ -1,35 +1,31 @@
 'use client'
 
-import React, { useCallback, useMemo, useState } from 'react'
+import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
+import type { App } from '@/models/explore'
+import { useDebounceFn } from 'ahooks'
+import { useQueryState } from 'nuqs'
+import * as React from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import useSWR from 'swr'
-import { useDebounceFn } from 'ahooks'
-import s from './style.module.css'
-import cn from '@/utils/classnames'
-import ExploreContext from '@/context/explore-context'
-import type { App } from '@/models/explore'
-import Category from '@/app/components/explore/category'
-import AppCard from '@/app/components/explore/app-card'
-import { fetchAppDetail, fetchAppList } from '@/service/explore'
-import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
-import CreateAppModal from '@/app/components/explore/create-app-modal'
-import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
-import Loading from '@/app/components/base/loading'
+import DSLConfirmModal from '@/app/components/app/create-from-dsl-modal/dsl-confirm-modal'
 import Input from '@/app/components/base/input'
+import Loading from '@/app/components/base/loading'
+import AppCard from '@/app/components/explore/app-card'
+import Category from '@/app/components/explore/category'
+import CreateAppModal from '@/app/components/explore/create-app-modal'
+import ExploreContext from '@/context/explore-context'
+import { useImportDSL } from '@/hooks/use-import-dsl'
 import {
   DSLImportMode,
 } from '@/models/app'
-import { useImportDSL } from '@/hooks/use-import-dsl'
-import DSLConfirmModal from '@/app/components/app/create-from-dsl-modal/dsl-confirm-modal'
+import { fetchAppDetail } from '@/service/explore'
+import { useExploreAppList } from '@/service/use-explore'
+import { cn } from '@/utils/classnames'
+import s from './style.module.css'
 
 type AppsProps = {
   onSuccess?: () => void
-}
-
-export enum PageType {
-  EXPLORE = 'explore',
-  CREATE = 'create',
 }
 
 const Apps = ({
@@ -37,7 +33,7 @@ const Apps = ({
 }: AppsProps) => {
   const { t } = useTranslation()
   const { hasEditPermission } = useContext(ExploreContext)
-  const allCategoriesEn = t('explore.apps.allCategories', { lng: 'en' })
+  const allCategoriesEn = t('apps.allCategories', { ns: 'explore', lng: 'en' })
 
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
@@ -51,29 +47,21 @@ const Apps = ({
     handleSearch()
   }
 
-  const [currCategory, setCurrCategory] = useTabSearchParams({
-    defaultTab: allCategoriesEn,
-    disableSearchParams: false,
+  const [currCategory, setCurrCategory] = useQueryState('category', {
+    defaultValue: allCategoriesEn,
   })
 
   const {
-    data: { categories, allList },
-  } = useSWR(
-    ['/explore/apps'],
-    () =>
-      fetchAppList().then(({ categories, recommended_apps }) => ({
-        categories,
-        allList: recommended_apps.sort((a, b) => a.position - b.position),
-      })),
-    {
-      fallbackData: {
-        categories: [],
-        allList: [],
-      },
-    },
-  )
+    data,
+    isLoading,
+    isError,
+  } = useExploreAppList()
 
-  const filteredList = allList.filter(item => currCategory === allCategoriesEn || item.category === currCategory)
+  const filteredList = useMemo(() => {
+    if (!data)
+      return []
+    return data.allList.filter(item => currCategory === allCategoriesEn || item.category === currCategory)
+  }, [data, currCategory, allCategoriesEn])
 
   const searchFilteredList = useMemo(() => {
     if (!searchKeywords || !filteredList || filteredList.length === 0)
@@ -131,7 +119,7 @@ const Apps = ({
     })
   }, [handleImportDSLConfirm, onSuccess])
 
-  if (!categories || categories.length === 0) {
+  if (isLoading) {
     return (
       <div className="flex h-full items-center">
         <Loading type="area" />
@@ -139,19 +127,26 @@ const Apps = ({
     )
   }
 
+  if (isError || !data)
+    return null
+
+  const { categories } = data
+
   return (
     <div className={cn(
       'flex h-full flex-col border-l-[0.5px] border-divider-regular',
-    )}>
+    )}
+    >
 
-      <div className='shrink-0 px-12 pt-6'>
-        <div className={`mb-1 ${s.textGradient} text-xl font-semibold`}>{t('explore.apps.title')}</div>
-        <div className='text-sm text-text-tertiary'>{t('explore.apps.description')}</div>
+      <div className="shrink-0 px-12 pt-6">
+        <div className={`mb-1 ${s.textGradient} text-xl font-semibold`}>{t('apps.title', { ns: 'explore' })}</div>
+        <div className="text-sm text-text-tertiary">{t('apps.description', { ns: 'explore' })}</div>
       </div>
 
       <div className={cn(
         'mt-6 flex items-center justify-between px-12',
-      )}>
+      )}
+      >
         <Category
           list={categories}
           value={currCategory}
@@ -161,7 +156,7 @@ const Apps = ({
         <Input
           showLeftIcon
           showClearIcon
-          wrapperClassName='w-[200px] self-start'
+          wrapperClassName="w-[200px] self-start"
           value={keywords}
           onChange={e => handleKeywordsChange(e.target.value)}
           onClear={() => handleKeywordsChange('')}
@@ -170,12 +165,14 @@ const Apps = ({
 
       <div className={cn(
         'relative mt-4 flex flex-1 shrink-0 grow flex-col overflow-auto pb-6',
-      )}>
+      )}
+      >
         <nav
           className={cn(
             s.appList,
             'grid shrink-0 content-start gap-4 px-6 sm:px-12',
-          )}>
+          )}
+        >
           {searchFilteredList.map(app => (
             <AppCard
               key={app.app_id}

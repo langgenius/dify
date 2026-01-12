@@ -1,15 +1,15 @@
-import { useState } from 'react'
 import {
   RiCloseLine,
 } from '@remixicon/react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import RetrievalSettings from '../external-knowledge-base/create/RetrievalSettings'
-import Button from '@/app/components/base/button'
 import ActionButton from '@/app/components/base/action-button'
+import Button from '@/app/components/base/button'
+import RetrievalSettings from '../external-knowledge-base/create/RetrievalSettings'
 
 type ModifyExternalRetrievalModalProps = {
   onClose: () => void
-  onSave: (data: { top_k: number; score_threshold: number; score_threshold_enabled: boolean }) => void
+  onSave: (data: { top_k: number, score_threshold: number, score_threshold_enabled: boolean }) => void
   initialTopK: number
   initialScoreThreshold: number
   initialScoreThresholdEnabled: boolean
@@ -27,7 +27,7 @@ const ModifyExternalRetrievalModal: React.FC<ModifyExternalRetrievalModalProps> 
   const [scoreThreshold, setScoreThreshold] = useState(initialScoreThreshold)
   const [scoreThresholdEnabled, setScoreThresholdEnabled] = useState(initialScoreThresholdEnabled)
 
-  const handleSettingsChange = (data: { top_k?: number; score_threshold?: number; score_threshold_enabled?: boolean }) => {
+  const handleSettingsChange = (data: { top_k?: number, score_threshold?: number, score_threshold_enabled?: boolean }) => {
     if (data.top_k !== undefined)
       setTopK(data.top_k)
     if (data.score_threshold !== undefined)
@@ -42,16 +42,16 @@ const ModifyExternalRetrievalModal: React.FC<ModifyExternalRetrievalModalProps> 
   }
 
   return (
-    <div className='shadows-shadow-2xl absolute right-[14px] top-[36px] z-10 flex w-[320px] flex-col items-start rounded-2xl
-      border-[0.5px] border-components-panel-border bg-components-panel-bg'
+    <div className="shadows-shadow-2xl absolute right-[14px] top-[36px] z-10 flex w-[320px] flex-col items-start rounded-2xl
+      border-[0.5px] border-components-panel-border bg-components-panel-bg"
     >
-      <div className='flex items-center justify-between self-stretch p-4 pb-2'>
-        <div className='system-xl-semibold grow text-text-primary'>{t('datasetHitTesting.settingTitle')}</div>
-        <ActionButton className='ml-auto' onClick={onClose}>
-          <RiCloseLine className='h-4 w-4 shrink-0' />
+      <div className="flex items-center justify-between self-stretch p-4 pb-2">
+        <div className="system-xl-semibold grow text-text-primary">{t('settingTitle', { ns: 'datasetHitTesting' })}</div>
+        <ActionButton className="ml-auto" onClick={onClose}>
+          <RiCloseLine className="h-4 w-4 shrink-0" />
         </ActionButton>
       </div>
-      <div className='flex flex-col items-start justify-center gap-4 self-stretch p-4 pt-2'>
+      <div className="flex flex-col items-start justify-center gap-4 self-stretch p-4 pt-2">
         <RetrievalSettings
           topK={topK}
           scoreThreshold={scoreThreshold}
@@ -60,9 +60,9 @@ const ModifyExternalRetrievalModal: React.FC<ModifyExternalRetrievalModalProps> 
           isInHitTesting={true}
         />
       </div>
-      <div className='flex w-full items-end justify-end gap-1 p-4 pt-2'>
-        <Button className='min-w-[72px] shrink-0' onClick={onClose}>{t('common.operation.cancel')}</Button>
-        <Button variant='primary' className='min-w-[72px] shrink-0' onClick={handleSave}>{t('common.operation.save')}</Button>
+      <div className="flex w-full items-end justify-end gap-1 p-4 pt-2">
+        <Button className="min-w-[72px] shrink-0" onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
+        <Button variant="primary" className="min-w-[72px] shrink-0" onClick={handleSave}>{t('operation.save', { ns: 'common' })}</Button>
       </div>
     </div>
   )

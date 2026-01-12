@@ -1,4 +1,5 @@
 import json
+import logging
 from collections.abc import Mapping
 from datetime import datetime
 from typing import Any
@@ -18,6 +19,8 @@ from models.model import App
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow
 from services.tools.tools_transform_service import ToolTransformService
+
+logger = logging.getLogger(__name__)
 
 
 class WorkflowToolManageService:
@@ -64,25 +67,26 @@ class WorkflowToolManageService:
         if workflow is None:
             raise ValueError(f"Workflow not found for app {workflow_app_id}")
 
-        with Session(db.engine, expire_on_commit=False) as session, session.begin():
-            workflow_tool_provider = WorkflowToolProvider(
-                tenant_id=tenant_id,
-                user_id=user_id,
-                app_id=workflow_app_id,
-                name=name,
-                label=label,
-                icon=json.dumps(icon),
-                description=description,
-                parameter_configuration=json.dumps(parameters),
-                privacy_policy=privacy_policy,
-                version=workflow.version,
-            )
-            session.add(workflow_tool_provider)
+        workflow_tool_provider = WorkflowToolProvider(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            app_id=workflow_app_id,
+            name=name,
+            label=label,
+            icon=json.dumps(icon),
+            description=description,
+            parameter_configuration=json.dumps(parameters),
+            privacy_policy=privacy_policy,
+            version=workflow.version,
+        )
 
         try:
             WorkflowToolProviderController.from_db(workflow_tool_provider)
         except Exception as e:
             raise ValueError(str(e))
+
+        with Session(db.engine, expire_on_commit=False) as session, session.begin():
+            session.add(workflow_tool_provider)
 
         if labels is not None:
             ToolLabelManager.update_tool_labels(
@@ -198,7 +202,7 @@ class WorkflowToolManageService:
                 tools.append(ToolTransformService.workflow_provider_to_controller(provider))
             except Exception:
                 # skip deleted tools
-                pass
+                logger.exception("Failed to load workflow tool provider %s", provider.id)
 
         labels = ToolLabelManager.get_tools_labels([t for t in tools if isinstance(t, ToolProviderController)])
 

@@ -1,18 +1,18 @@
 import type { FC } from 'react'
+import type { ImageFile, VisionSettings } from '@/types/app'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Uploader from './uploader'
-import ImageLinkInput from './image-link-input'
-import cn from '@/utils/classnames'
+import { Upload03 } from '@/app/components/base/icons/src/vender/line/general'
 import { ImagePlus } from '@/app/components/base/icons/src/vender/line/images'
-import { TransferMethod } from '@/types/app'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { Upload03 } from '@/app/components/base/icons/src/vender/line/general'
-import type { ImageFile, VisionSettings } from '@/types/app'
+import { TransferMethod } from '@/types/app'
+import { cn } from '@/utils/classnames'
+import ImageLinkInput from './image-link-input'
+import Uploader from './uploader'
 
 type UploadOnlyFromLocalProps = {
   onUpload: (imageFile: ImageFile) => void
@@ -110,7 +110,7 @@ const UploaderButton: FC<UploaderButtonProps> = ({
                     )}
                   >
                     <Upload03 className="mr-1 h-4 w-4" />
-                    {t('common.imageUploader.uploadFromComputer')}
+                    {t('imageUploader.uploadFromComputer', { ns: 'common' })}
                   </div>
                 )}
               </Uploader>
@@ -134,7 +134,7 @@ const ChatImageUploader: FC<ChatImageUploaderProps> = ({
 }) => {
   const onlyUploadLocal
     = settings.transfer_methods.length === 1
-    && settings.transfer_methods[0] === TransferMethod.local_file
+      && settings.transfer_methods[0] === TransferMethod.local_file
 
   if (onlyUploadLocal) {
     return (

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Any, cast
 from urllib.parse import unquote
 
-import chardet
+import charset_normalizer
 import cloudscraper
 from readabilipy import simple_json_from_html_string
 
@@ -69,9 +69,12 @@ def get_url(url: str, user_agent: str | None = None) -> str:
     if response.status_code != 200:
         return f"URL returned status code {response.status_code}."
 
-    # Detect encoding using chardet
-    detected_encoding = chardet.detect(response.content)
-    encoding = detected_encoding["encoding"]
+    # Detect encoding using charset_normalizer
+    detected_encoding = charset_normalizer.from_bytes(response.content).best()
+    if detected_encoding:
+        encoding = detected_encoding.encoding
+    else:
+        encoding = "utf-8"
     if encoding:
         try:
             content = response.content.decode(encoding)

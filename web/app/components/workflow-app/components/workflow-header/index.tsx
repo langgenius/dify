@@ -1,19 +1,16 @@
+import type { HeaderProps } from '@/app/components/workflow/header'
 import {
   memo,
   useCallback,
   useMemo,
 } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import type { HeaderProps } from '@/app/components/workflow/header'
-import Header from '@/app/components/workflow/header'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import {
-  fetchWorkflowRunHistory,
-} from '@/service/workflow'
-import ChatVariableTrigger from './chat-variable-trigger'
-import FeaturesTrigger from './features-trigger'
+import Header from '@/app/components/workflow/header'
 import { useResetWorkflowVersionHistory } from '@/service/use-workflow'
 import { useIsChatMode } from '../../hooks'
+import ChatVariableTrigger from './chat-variable-trigger'
+import FeaturesTrigger from './features-trigger'
 
 const WorkflowHeader = () => {
   const { appDetail, setCurrentLogItem, setShowMessageLogModal } = useAppStore(useShallow(state => ({
@@ -33,7 +30,6 @@ const WorkflowHeader = () => {
     return {
       onClearLogAndMessageModal: handleClearLogAndMessageModal,
       historyUrl: isChatMode ? `/apps/${appDetail!.id}/advanced-chat/workflow-runs` : `/apps/${appDetail!.id}/workflow-runs`,
-      historyFetcher: fetchWorkflowRunHistory,
     }
   }, [appDetail, isChatMode, handleClearLogAndMessageModal])
 

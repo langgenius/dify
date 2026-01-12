@@ -1,7 +1,8 @@
-import { type ReadonlyURLSearchParams, usePathname, useRouter, useSearchParams } from 'next/navigation'
+import type { ReadonlyURLSearchParams } from 'next/navigation'
+import type { SortType } from '@/service/datasets'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useMemo } from 'react'
 import { sanitizeStatusValue } from '../status-filter'
-import type { SortType } from '@/service/datasets'
 
 const ALLOWED_SORT_VALUES: SortType[] = ['-created_at', 'created_at', '-hit_count', 'hit_count']
 

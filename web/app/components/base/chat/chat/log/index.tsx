@@ -1,6 +1,6 @@
 import type { FC } from 'react'
-import { RiFileList3Line } from '@remixicon/react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
+import { RiFileList3Line } from '@remixicon/react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import ActionButton from '@/app/components/base/action-button'
 
@@ -19,7 +19,7 @@ const Log: FC<LogProps> = ({
 
   return (
     <div
-      className='ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm'
+      className="ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm"
       onClick={(e) => {
         e.stopPropagation()
         e.nativeEvent.stopImmediatePropagation()
@@ -33,7 +33,7 @@ const Log: FC<LogProps> = ({
       }}
     >
       <ActionButton>
-        <RiFileList3Line className='h-4 w-4' />
+        <RiFileList3Line className="h-4 w-4" />
       </ActionButton>
     </div>
   )

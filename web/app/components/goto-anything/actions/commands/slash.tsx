@@ -1,26 +1,29 @@
 'use client'
-import { useEffect } from 'react'
 import type { ActionItem } from '../types'
-import { slashCommandRegistry } from './registry'
-import { executeCommand } from './command-bus'
 import { useTheme } from 'next-themes'
+import { useEffect } from 'react'
+import { getI18n } from 'react-i18next'
 import { setLocaleOnClient } from '@/i18n-config'
-import { themeCommand } from './theme'
-import { languageCommand } from './language'
-import { forumCommand } from './forum'
-import { docsCommand } from './docs'
-import { communityCommand } from './community'
 import { accountCommand } from './account'
+import { executeCommand } from './command-bus'
+import { communityCommand } from './community'
+import { docsCommand } from './docs'
+import { forumCommand } from './forum'
+import { languageCommand } from './language'
+import { slashCommandRegistry } from './registry'
+import { themeCommand } from './theme'
 import { zenCommand } from './zen'
-import i18n from '@/i18n-config/i18next-config'
+
+const i18n = getI18n()
 
 export const slashAction: ActionItem = {
   key: '/',
   shortcut: '/',
-  title: i18n.t('app.gotoAnything.actions.slashTitle'),
-  description: i18n.t('app.gotoAnything.actions.slashDesc'),
+  title: i18n.t('gotoAnything.actions.slashTitle', { ns: 'app' }),
+  description: i18n.t('gotoAnything.actions.slashDesc', { ns: 'app' }),
   action: (result) => {
-    if (result.type !== 'command') return
+    if (result.type !== 'command')
+      return
     const { command, args } = result.data
     executeCommand(command, args)
   },

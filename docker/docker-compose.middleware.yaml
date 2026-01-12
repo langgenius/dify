@@ -123,12 +123,13 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.4.1-local
+    image: langgenius/dify-plugin-daemon:0.5.2-local
     restart: always
     env_file:
       - ./middleware.env
     environment:
       # Use the shared environment variables.
+      LOG_OUTPUT_FORMAT: ${LOG_OUTPUT_FORMAT:-text}
       DB_DATABASE: ${DB_PLUGIN_DATABASE:-dify_plugin}
       REDIS_HOST: ${REDIS_HOST:-redis}
       REDIS_PORT: ${REDIS_PORT:-6379}
@@ -238,6 +239,7 @@ services:
       AUTHENTICATION_APIKEY_USERS: ${WEAVIATE_AUTHENTICATION_APIKEY_USERS:-hello@dify.ai}
       AUTHORIZATION_ADMINLIST_ENABLED: ${WEAVIATE_AUTHORIZATION_ADMINLIST_ENABLED:-true}
       AUTHORIZATION_ADMINLIST_USERS: ${WEAVIATE_AUTHORIZATION_ADMINLIST_USERS:-hello@dify.ai}
+      DISABLE_TELEMETRY: ${WEAVIATE_DISABLE_TELEMETRY:-false}
     ports:
       - "${EXPOSE_WEAVIATE_PORT:-8080}:8080"
       - "${EXPOSE_WEAVIATE_GRPC_PORT:-50051}:50051"

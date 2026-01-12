@@ -1,18 +1,19 @@
 'use client'
-import { useMixedTranslation } from '@/app/components/plugins/marketplace/hooks'
-import { useGetLanguage } from '@/context/i18n'
-import { renderI18nObject } from '@/i18n-config'
-import { getLanguage } from '@/i18n-config/language'
-import cn from '@/utils/classnames'
+import type { Plugin } from '../types'
+import { useTranslation } from '#i18n'
 import { RiAlertFill } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
+import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
+import {
+  renderI18nObject,
+} from '@/i18n-config'
 import { Theme } from '@/types/app'
+import { cn } from '@/utils/classnames'
 import Partner from '../base/badges/partner'
 import Verified from '../base/badges/verified'
 import Icon from '../card/base/card-icon'
 import { useCategories } from '../hooks'
-import type { Plugin } from '../types'
 import CornerMark from './base/corner-mark'
 import Description from './base/description'
 import OrgInfo from './base/org-info'
@@ -30,7 +31,6 @@ export type Props = {
   footer?: React.ReactNode
   isLoading?: boolean
   loadingFileName?: string
-  locale?: string
   limitedInstall?: boolean
 }
 
@@ -45,13 +45,11 @@ const Card = ({
   footer,
   isLoading = false,
   loadingFileName,
-  locale: localeFromProps,
   limitedInstall = false,
 }: Props) => {
-  const defaultLocale = useGetLanguage()
-  const locale = localeFromProps ? getLanguage(localeFromProps) : defaultLocale
-  const { t } = useMixedTranslation(localeFromProps)
-  const { categoriesMap } = useCategories(t, true)
+  const locale = useGetLanguage()
+  const { t } = useTranslation()
+  const { categoriesMap } = useCategories(true)
   const { category, type, name, org, label, brief, icon, icon_dark, verified, badges = [] } = payload
   const { theme } = useTheme()
   const iconSrc = theme === Theme.dark && icon_dark ? icon_dark : icon
@@ -79,9 +77,11 @@ const Card = ({
           <div className="ml-3 w-0 grow">
             <div className="flex h-5 items-center">
               <Title title={getLocalizedText(label)} />
-              {isPartner && <Partner className='ml-0.5 h-4 w-4' text={t('plugin.marketplace.partnerTip')} />}
-              {verified && <Verified className='ml-0.5 h-4 w-4' text={t('plugin.marketplace.verifiedTip')} />}
-              {titleLeft} {/* This can be version badge */}
+              {isPartner && <Partner className="ml-0.5 h-4 w-4" text={t('marketplace.partnerTip', { ns: 'plugin' })} />}
+              {verified && <Verified className="ml-0.5 h-4 w-4" text={t('marketplace.verifiedTip', { ns: 'plugin' })} />}
+              {titleLeft}
+              {' '}
+              {/* This can be version badge */}
             </div>
             <OrgInfo
               className="mt-0.5"
@@ -98,12 +98,14 @@ const Card = ({
         {footer && <div>{footer}</div>}
       </div>
       {limitedInstall
-        && <div className='relative flex h-8 items-center gap-x-2 px-3 after:absolute after:bottom-0 after:left-0 after:right-0 after:top-0 after:bg-toast-warning-bg after:opacity-40'>
-          <RiAlertFill className='h-3 w-3 shrink-0 text-text-warning-secondary' />
-          <p className='system-xs-regular z-10 grow text-text-secondary'>
-            {t('plugin.installModal.installWarning')}
-          </p>
-        </div>}
+        && (
+          <div className="relative flex h-8 items-center gap-x-2 px-3 after:absolute after:bottom-0 after:left-0 after:right-0 after:top-0 after:bg-toast-warning-bg after:opacity-40">
+            <RiAlertFill className="h-3 w-3 shrink-0 text-text-warning-secondary" />
+            <p className="system-xs-regular z-10 grow text-text-secondary">
+              {t('installModal.installWarning', { ns: 'plugin' })}
+            </p>
+          </div>
+        )}
     </div>
   )
 }
