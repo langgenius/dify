@@ -40,6 +40,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
 }) => {
   const { t } = useTranslation()
   const {
+    readOnly,
     inputs,
     handleDeliveryMethodChange,
     handleUserActionAdd,
@@ -82,6 +83,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
         nodesOutputVars={availableVars}
         availableNodes={availableNodesWithParent}
         onChange={handleDeliveryMethodChange}
+        readonly={readOnly}
       />
       <div className="px-4 py-2">
         <Divider className="!my-0 !h-px !bg-divider-subtle" />
@@ -95,35 +97,37 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
               popupContent={t(`${i18nPrefix}.formContent.tooltip`, { ns: 'workflow' })}
             />
           </div>
-          <div className="flex items-center ">
-            <Button
-              variant="ghost"
-              size="small"
-              className={cn(
-                'flex items-center space-x-1 px-2',
-                isPreview && 'bg-state-accent-active text-text-accent',
-              )}
-              onClick={togglePreview}
-            >
-              <RiEyeLine className="size-3.5" />
-              <div className="system-xs-medium">{t(`${i18nPrefix}.formContent.preview`, { ns: 'workflow' })}</div>
-            </Button>
-            <div className="mx-2 h-3 w-px bg-divider-regular"></div>
-            <div className="flex items-center space-x-1">
-              <div
-                className="flex size-6 cursor-pointer items-center justify-center rounded-md hover:bg-components-button-ghost-bg-hover"
-                onClick={() => {
-                  copy(inputs.form_content)
-                  Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
-                }}
+          {!readOnly && (
+            <div className="flex items-center ">
+              <Button
+                variant="ghost"
+                size="small"
+                className={cn(
+                  'flex items-center space-x-1 px-2',
+                  isPreview && 'bg-state-accent-active text-text-accent',
+                )}
+                onClick={togglePreview}
               >
-                <RiClipboardLine className="h-4 w-4 text-text-secondary" />
-              </div>
-              <div className={cn('flex size-6 cursor-pointer items-center justify-center rounded-md text-text-secondary hover:bg-components-button-ghost-bg-hover', isExpandFormContent && 'bg-state-accent-active text-text-accent')} onClick={toggleExpandFormContent}>
-                {isExpandFormContent ? <RiCollapseDiagonalLine className="h-4 w-4" /> : <RiExpandDiagonalLine className="h-4 w-4" />}
+                <RiEyeLine className="size-3.5" />
+                <div className="system-xs-medium">{t(`${i18nPrefix}.formContent.preview`, { ns: 'workflow' })}</div>
+              </Button>
+              <div className="mx-2 h-3 w-px bg-divider-regular"></div>
+              <div className="flex items-center space-x-1">
+                <div
+                  className="flex size-6 cursor-pointer items-center justify-center rounded-md hover:bg-components-button-ghost-bg-hover"
+                  onClick={() => {
+                    copy(inputs.form_content)
+                    Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
+                  }}
+                >
+                  <RiClipboardLine className="h-4 w-4 text-text-secondary" />
+                </div>
+                <div className={cn('flex size-6 cursor-pointer items-center justify-center rounded-md text-text-secondary hover:bg-components-button-ghost-bg-hover', isExpandFormContent && 'bg-state-accent-active text-text-accent')} onClick={toggleExpandFormContent}>
+                  {isExpandFormContent ? <RiCollapseDiagonalLine className="h-4 w-4" /> : <RiExpandDiagonalLine className="h-4 w-4" />}
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
         <FormContent
           editorKey={editorKey}
@@ -137,6 +141,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
           isExpand={isExpandFormContent}
           availableVars={availableVars}
           availableNodes={availableNodesWithParent}
+          readonly={readOnly}
         />
       </div>
       {/* user actions */}
@@ -148,19 +153,21 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
               popupContent={t(`${i18nPrefix}.userActions.tooltip`, { ns: 'workflow' })}
             />
           </div>
-          <div className="flex items-center px-1">
-            <ActionButton
-              onClick={() => {
-                handleUserActionAdd({
-                  id: genActionId(),
-                  title: 'Button Text',
-                  button_style: UserActionButtonType.Default,
-                })
-              }}
-            >
-              <RiAddLine className="h-4 w-4" />
-            </ActionButton>
-          </div>
+          {!readOnly && (
+            <div className="flex items-center px-1">
+              <ActionButton
+                onClick={() => {
+                  handleUserActionAdd({
+                    id: genActionId(),
+                    title: 'Button Text',
+                    button_style: UserActionButtonType.Default,
+                  })
+                }}
+              >
+                <RiAddLine className="h-4 w-4" />
+              </ActionButton>
+            </div>
+          )}
         </div>
         {!inputs.user_actions.length && (
           <div className="system-xs-regular flex items-center justify-center rounded-[10px] bg-background-section p-3 text-text-tertiary">{t(`${i18nPrefix}.userActions.emptyTip`, { ns: 'workflow' })}</div>
@@ -173,6 +180,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
                 data={action}
                 onChange={data => handleUserActionChange(index, data)}
                 onDelete={handleUserActionDelete}
+                readonly={readOnly}
               />
             ))}
           </div>
@@ -188,6 +196,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
           timeout={inputs.timeout}
           unit={inputs.timeout_unit}
           onChange={handleTimeoutChange}
+          readonly={readOnly}
         />
       </div>
       {/* output vars */}

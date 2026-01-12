@@ -30,6 +30,7 @@ type HITLInputComponentUIProps = {
     nodeId: string
     valueSelector: ValueSelector
   }) => Type
+  readonly?: boolean
 }
 
 const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
@@ -52,6 +53,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
   environmentVariables,
   conversationVariables,
   ragVariables,
+  readonly,
 }) => {
   const [isShowEditModal, {
     setTrue: showEditModal,
@@ -97,7 +99,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
 
   return (
     <div
-      className="relative flex h-8 w-full select-none items-center rounded-[8px] border-[1.5px] border-components-input-border-active bg-background-default-hover pl-1.5 pr-0.5"
+      className="group relative flex h-8 w-full select-none items-center rounded-[8px] border-[1.5px] border-components-input-border-active bg-background-default-hover pl-1.5 pr-0.5"
     >
       <div className="absolute left-2.5 top-[-12px]">
         <div className="absolute bottom-1 h-[1.5px] w-full bg-background-default-subtle"></div>
@@ -107,36 +109,40 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
         </div>
       </div>
 
-      <div className="flex w-full items-center justify-between">
-        {/* Placeholder Info */}
-        {isPlaceholderVariable && (
-          <VariableBlock
-            variables={formInput.placeholder.selector}
-            workflowNodesMap={workflowNodesMap}
-            getVarType={getVarType}
-            environmentVariables={environmentVariables}
-            conversationVariables={conversationVariables}
-            ragVariables={ragVariables}
-          />
-        )}
-        {!isPlaceholderVariable && (
-          <div className="system-xs-medium text-text-quaternary">{formInput.placeholder.value}</div>
-        )}
+      <div className="flex w-full items-center gap-x-0.5">
+        <div className="grow">
+          {/* Placeholder Info */}
+          {isPlaceholderVariable && (
+            <VariableBlock
+              variables={formInput.placeholder.selector}
+              workflowNodesMap={workflowNodesMap}
+              getVarType={getVarType}
+              environmentVariables={environmentVariables}
+              conversationVariables={conversationVariables}
+              ragVariables={ragVariables}
+            />
+          )}
+          {!isPlaceholderVariable && (
+            <div className="system-xs-medium text-text-quaternary">{formInput.placeholder.value}</div>
+          )}
+        </div>
 
         {/* Actions */}
-        <div className="flex h-full items-center space-x-1 pr-[24px]">
-          <div className="flex h-full items-center" ref={editBtnRef}>
-            <ActionButton size="s">
-              <RiEditLine className="size-4 text-text-tertiary" />
-            </ActionButton>
-          </div>
+        {!readonly && (
+          <div className="hidden h-full shrink-0 items-center space-x-1 pr-[24px] group-hover:flex">
+            <div className="flex h-full items-center" ref={editBtnRef}>
+              <ActionButton size="s">
+                <RiEditLine className="size-4 text-text-tertiary" />
+              </ActionButton>
+            </div>
 
-          <div className="flex h-full items-center" ref={removeBtnRef}>
-            <ActionButton size="s">
-              <RiDeleteBinLine className="size-4 text-text-tertiary" />
-            </ActionButton>
+            <div className="flex h-full items-center" ref={removeBtnRef}>
+              <ActionButton size="s">
+                <RiDeleteBinLine className="size-4 text-text-tertiary" />
+              </ActionButton>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {isShowEditModal && (

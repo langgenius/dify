@@ -18,6 +18,7 @@ export type HITLNodeProps = {
   environmentVariables?: Var[]
   conversationVariables?: Var[]
   ragVariables?: Var[]
+  readonly?: boolean
 }
 
 export type SerializedNode = SerializedLexicalNode & HITLNodeProps
@@ -34,6 +35,7 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
   __environmentVariables?: Var[]
   __conversationVariables?: Var[]
   __ragVariables?: Var[]
+  __readonly?: boolean
 
   isIsolated(): boolean {
     return true // This is necessary for drag-and-drop to work correctly
@@ -102,6 +104,11 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
     return self.__ragVariables || []
   }
 
+  getReadonly(): boolean {
+    const self = this.getLatest()
+    return self.__readonly || false
+  }
+
   static clone(node: HITLInputNode): HITLInputNode {
     return new HITLInputNode(
       node.__variableName,
@@ -115,6 +122,7 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
       node.__environmentVariables,
       node.__conversationVariables,
       node.__ragVariables,
+      node.__readonly,
       node.__key,
     )
   }
@@ -135,6 +143,7 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
     environmentVariables?: Var[],
     conversationVariables?: Var[],
     ragVariables?: Var[],
+    readonly?: boolean,
     key?: NodeKey,
   ) {
     super(key)
@@ -150,6 +159,7 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
     this.__environmentVariables = environmentVariables
     this.__conversationVariables = conversationVariables
     this.__ragVariables = ragVariables
+    this.__readonly = readonly
   }
 
   createDOM(): HTMLElement {
@@ -177,6 +187,7 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
         environmentVariables={this.getEnvironmentVariables()}
         conversationVariables={this.getConversationVariables()}
         ragVariables={this.getRagVariables()}
+        readonly={this.getReadonly()}
       />
     )
   }
@@ -194,6 +205,7 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
       serializedNode.environmentVariables,
       serializedNode.conversationVariables,
       serializedNode.ragVariables,
+      serializedNode.readonly,
     )
 
     return node
@@ -214,6 +226,7 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
       environmentVariables: this.getEnvironmentVariables(),
       conversationVariables: this.getConversationVariables(),
       ragVariables: this.getRagVariables(),
+      readonly: this.getReadonly(),
     }
   }
 
@@ -234,6 +247,7 @@ export function $createHITLInputNode(
   environmentVariables?: Var[],
   conversationVariables?: Var[],
   ragVariables?: Var[],
+  readonly?: boolean,
 ): HITLInputNode {
   return new HITLInputNode(
     variableName,
@@ -247,6 +261,7 @@ export function $createHITLInputNode(
     environmentVariables,
     conversationVariables,
     ragVariables,
+    readonly,
   )
 }
 

@@ -25,6 +25,7 @@ const HITLInputReplacementBlock = ({
   workflowNodesMap,
   getVarType,
   variables,
+  readonly,
 }: HITLInputBlockType) => {
   const [editor] = useLexicalComposerContext()
 
@@ -57,8 +58,9 @@ const HITLInputReplacementBlock = ({
       environmentVariables,
       conversationVariables,
       ragVariables,
+      readonly,
     ))
-  }, [nodeId, formInputs, onFormInputsChange, onFormInputItemRename, onFormInputItemRemove, workflowNodesMap, getVarType, environmentVariables, conversationVariables, ragVariables])
+  }, [nodeId, formInputs, onFormInputsChange, onFormInputItemRename, onFormInputItemRemove, workflowNodesMap, getVarType, environmentVariables, conversationVariables, ragVariables, readonly])
 
   const getMatch = useCallback((text: string) => {
     const matchArr = REGEX.exec(text)

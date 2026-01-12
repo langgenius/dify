@@ -27,6 +27,7 @@ type FormContentProps = {
   isExpand: boolean
   availableVars: NodeOutPutVar[]
   availableNodes: Node[]
+  readonly?: boolean
 }
 
 const Key: FC<{ children: React.ReactNode, className?: string }> = ({ children, className }) => {
@@ -49,6 +50,7 @@ const FormContent: FC<FormContentProps> = ({
   isExpand,
   availableVars,
   availableNodes,
+  readonly,
 }) => {
   const { t } = useTranslation()
 
@@ -122,6 +124,7 @@ const FormContent: FC<FormContentProps> = ({
           variables: availableVars || [],
           workflowNodesMap,
           getVarType,
+          readonly,
         }}
         workflowVariableBlock={{
           show: true,
@@ -129,17 +132,19 @@ const FormContent: FC<FormContentProps> = ({
           getVarType: getVarType as any,
           workflowNodesMap,
         }}
-        editable
-        shortcutPopups={[{
-          hotkey: ['mod', '/'],
-          Popup: ({ onClose, onInsert }) => (
-            <AddInputField
-              nodeId={nodeId}
-              onSave={handleInsertHITLNode(onInsert!)}
-              onCancel={onClose}
-            />
-          ),
-        }]}
+        editable={!readonly}
+        shortcutPopups={readonly
+          ? []
+          : [{
+              hotkey: ['mod', '/'],
+              Popup: ({ onClose, onInsert }) => (
+                <AddInputField
+                  nodeId={nodeId}
+                  onSave={handleInsertHITLNode(onInsert!)}
+                  onCancel={onClose}
+                />
+              ),
+            }]}
       />
       {isFocus && (
         <div className="system-xs-regular flex h-8 shrink-0 items-center px-3 text-components-input-text-placeholder">

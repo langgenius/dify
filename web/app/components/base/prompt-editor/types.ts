@@ -93,6 +93,7 @@ export type HITLInputBlockType = {
   onFormInputItemRename: (payload: FormInputItem, oldName: string) => void
   onInsert?: () => void
   onDelete?: () => void
+  readonly?: boolean
 }
 
 export type MenuTextMatch = {

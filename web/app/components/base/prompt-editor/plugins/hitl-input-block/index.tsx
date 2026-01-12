@@ -31,6 +31,7 @@ const HITLInputBlock = memo(({
   onDelete,
   workflowNodesMap,
   getVarType,
+  readonly,
 }: HITLInputBlockType) => {
   const [editor] = useLexicalComposerContext()
 
@@ -64,6 +65,10 @@ const HITLInputBlock = memo(({
             onFormInputItemRemove,
             workflowNodesMap,
             getVarType,
+            undefined,
+            undefined,
+            undefined,
+            readonly,
           )
 
           $insertNodes([currentHITLNode])

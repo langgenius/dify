@@ -19,6 +19,7 @@ type Props = {
   availableNodes?: Node[]
   formContent?: string
   onChange: (value: DeliveryMethod[]) => void
+  readonly?: boolean
 }
 
 const DeliveryMethodForm: React.FC<Props> = ({
@@ -28,6 +29,7 @@ const DeliveryMethodForm: React.FC<Props> = ({
   availableNodes,
   formContent,
   onChange,
+  readonly,
 }) => {
   const { t } = useTranslation()
 
@@ -59,12 +61,14 @@ const DeliveryMethodForm: React.FC<Props> = ({
             popupContent={t(`${i18nPrefix}.deliveryMethod.tooltip`, { ns: 'workflow' })}
           />
         </div>
-        <div className="flex items-center px-1">
-          <MethodSelector
-            data={value}
-            onAdd={handleMethodAdd}
-          />
-        </div>
+        {!readonly && (
+          <div className="flex items-center px-1">
+            <MethodSelector
+              data={value}
+              onAdd={handleMethodAdd}
+            />
+          </div>
+        )}
       </div>
       {!value.length && (
         <div className="system-xs-regular flex items-center justify-center rounded-[10px] bg-background-section p-3 text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.emptyTip`, { ns: 'workflow' })}</div>
@@ -81,6 +85,7 @@ const DeliveryMethodForm: React.FC<Props> = ({
               nodesOutputVars={nodesOutputVars}
               availableNodes={availableNodes}
               formContent={formContent}
+              readonly={readonly}
             />
           ))}
         </div>

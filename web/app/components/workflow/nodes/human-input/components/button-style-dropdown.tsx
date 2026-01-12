@@ -20,12 +20,14 @@ type Props = {
   text: string
   data: UserActionButtonType
   onChange: (state: UserActionButtonType) => void
+  readonly?: boolean
 }
 
 const ButtonStyleDropdown: FC<Props> = ({
   text = 'Button Text',
   data,
   onChange,
+  readonly,
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -44,7 +46,7 @@ const ButtonStyleDropdown: FC<Props> = ({
 
   return (
     <PortalToFollowElem
-      open={open}
+      open={open && !readonly}
       onOpenChange={setOpen}
       placement="bottom-end"
       offset={{
@@ -52,8 +54,8 @@ const ButtonStyleDropdown: FC<Props> = ({
         crossAxis: 44,
       }}
     >
-      <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
-        <div className={cn('flex cursor-pointer items-center justify-center rounded-lg bg-components-button-tertiary-bg p-1 hover:bg-components-button-tertiary-bg-hover', open && 'bg-components-button-tertiary-bg-hover')}>
+      <PortalToFollowElemTrigger onClick={() => !readonly && setOpen(v => !v)}>
+        <div className={cn('flex items-center justify-center rounded-lg bg-components-button-tertiary-bg p-1', !readonly && 'cursor-pointer hover:bg-components-button-tertiary-bg-hover', open && 'bg-components-button-tertiary-bg-hover')}>
           <Button size="small" className="pointer-events-none px-1" variant={currentStyle}>
             <RiFontSize className="h-4 w-4" />
           </Button>

@@ -25,6 +25,7 @@ type HITLInputComponentProps = {
     nodeId: string
     valueSelector: ValueSelector
   }) => Type
+  readonly?: boolean
 }
 
 const HITLInputComponent: FC<HITLInputComponentProps> = ({
@@ -40,6 +41,7 @@ const HITLInputComponent: FC<HITLInputComponentProps> = ({
   environmentVariables,
   conversationVariables,
   ragVariables,
+  readonly,
 }) => {
   const [ref] = useSelectOrDelete(nodeKey, DELETE_HITL_INPUT_BLOCK_COMMAND)
   const payload = formInputs.find(item => item.output_variable_name === varName)
@@ -75,6 +77,7 @@ const HITLInputComponent: FC<HITLInputComponentProps> = ({
         environmentVariables={environmentVariables}
         conversationVariables={conversationVariables}
         ragVariables={ragVariables}
+        readonly={readonly}
       />
     </div>
   )

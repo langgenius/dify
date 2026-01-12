@@ -16,12 +16,14 @@ type UserActionItemProps = {
   data: UserAction
   onChange: (state: UserAction) => void
   onDelete: (id: string) => void
+  readonly?: boolean
 }
 
 const UserActionItem: FC<UserActionItemProps> = ({
   data,
   onChange,
   onDelete,
+  readonly,
 }) => {
   const { t } = useTranslation()
 
@@ -47,6 +49,7 @@ const UserActionItem: FC<UserActionItemProps> = ({
           value={data.id}
           placeholder={t(`${i18nPrefix}.userActions.actionNamePlaceholder`, { ns: 'workflow' })}
           onChange={handleIDChange}
+          disabled={readonly}
         />
       </div>
       <div className="grow">
@@ -54,20 +57,24 @@ const UserActionItem: FC<UserActionItemProps> = ({
           value={data.title}
           placeholder={t(`${i18nPrefix}.userActions.buttonTextPlaceholder`, { ns: 'workflow' })}
           onChange={handleTextChange}
+          disabled={readonly}
         />
       </div>
       <ButtonStyleDropdown
         text={data.title}
         data={data.button_style}
         onChange={type => onChange({ ...data, button_style: type })}
+        readonly={readonly}
       />
-      <Button
-        className="px-2"
-        variant="tertiary"
-        onClick={() => onDelete(data.id)}
-      >
-        <RiDeleteBinLine className="h-4 w-4" />
-      </Button>
+      {!readonly && (
+        <Button
+          className="px-2"
+          variant="tertiary"
+          onClick={() => onDelete(data.id)}
+        >
+          <RiDeleteBinLine className="h-4 w-4" />
+        </Button>
+      )}
     </div>
   )
 }

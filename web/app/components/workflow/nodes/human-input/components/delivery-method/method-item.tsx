@@ -32,6 +32,7 @@ type Props = {
   formContent?: string
   onChange: (method: DeliveryMethod) => void
   onDelete: (type: DeliveryMethodType) => void
+  readonly?: boolean
 }
 
 const DeliveryMethodItem: React.FC<Props> = ({
@@ -42,6 +43,7 @@ const DeliveryMethodItem: React.FC<Props> = ({
   formContent,
   onChange,
   onDelete,
+  readonly,
 }) => {
   const { t } = useTranslation()
   const [isHovering, setIsHovering] = React.useState(false)
@@ -82,33 +84,36 @@ const DeliveryMethodItem: React.FC<Props> = ({
           {method.type === DeliveryMethodType.Email && (method.config as EmailConfig)?.debug_mode && <Badge size="s" className="!px-1 !py-0.5">DEBUG</Badge>}
         </div>
         <div className="flex items-center gap-1">
-          <div className="hidden items-end gap-1 group-hover:flex">
-            {method.type === DeliveryMethodType.Email && method.config && (
-              <>
-                <ActionButton onClick={() => setShowTestEmailModal(true)}>
-                  <RiSendPlane2Line className="h-4 w-4" />
-                </ActionButton>
-                <ActionButton onClick={() => setShowEmailModal(true)}>
-                  <RiEqualizer2Line className="h-4 w-4" />
-                </ActionButton>
-              </>
-            )}
-            <div
-              onMouseEnter={() => setIsHovering(true)}
-              onMouseLeave={() => setIsHovering(false)}
-            >
-              <ActionButton
-                state={isHovering ? ActionButtonState.Destructive : ActionButtonState.Default}
-                onClick={() => onDelete(method.type)}
+          {!readonly && (
+            <div className="hidden items-end gap-1 group-hover:flex">
+              {method.type === DeliveryMethodType.Email && method.config && (
+                <>
+                  <ActionButton onClick={() => setShowTestEmailModal(true)}>
+                    <RiSendPlane2Line className="h-4 w-4" />
+                  </ActionButton>
+                  <ActionButton onClick={() => setShowEmailModal(true)}>
+                    <RiEqualizer2Line className="h-4 w-4" />
+                  </ActionButton>
+                </>
+              )}
+              <div
+                onMouseEnter={() => setIsHovering(true)}
+                onMouseLeave={() => setIsHovering(false)}
               >
-                <RiDeleteBinLine className="h-4 w-4" />
-              </ActionButton>
+                <ActionButton
+                  state={isHovering ? ActionButtonState.Destructive : ActionButtonState.Default}
+                  onClick={() => onDelete(method.type)}
+                >
+                  <RiDeleteBinLine className="h-4 w-4" />
+                </ActionButton>
+              </div>
             </div>
-          </div>
+          )}
           {(method.config || method.type === DeliveryMethodType.WebApp) && (
             <Switch
               defaultValue={method.enabled}
               onChange={handleEnableStatusChange}
+              disabled={readonly}
             />
           )}
           {method.type === DeliveryMethodType.Email && !method.config && (
@@ -116,6 +121,7 @@ const DeliveryMethodItem: React.FC<Props> = ({
               className="-mr-1"
               size="small"
               onClick={() => setShowEmailModal(true)}
+              disabled={readonly}
             >
               {t(`${i18nPrefix}.deliveryMethod.notConfigured`, { ns: 'workflow' })}
               <Indicator color="orange" className="ml-1" />
