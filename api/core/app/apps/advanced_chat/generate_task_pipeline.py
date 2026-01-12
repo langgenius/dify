@@ -358,25 +358,6 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         if node_finish_resp:
             yield node_finish_resp
 
-        # For ANSWER nodes, check if we need to send a message_replace event
-        # Only send if the final output differs from the accumulated task_state.answer
-        # This happens when variables were updated by variable_assigner during workflow execution
-        if event.node_type == NodeType.ANSWER and event.outputs:
-            final_answer = event.outputs.get("answer")
-            if final_answer is not None and final_answer != self._task_state.answer:
-                logger.info(
-                    "ANSWER node final output '%s' differs from accumulated answer '%s', sending message_replace event",
-                    final_answer,
-                    self._task_state.answer,
-                )
-                # Update the task state answer
-                self._task_state.answer = str(final_answer)
-                # Send message_replace event to update the UI
-                yield self._message_cycle_manager.message_replace_to_stream_response(
-                    answer=str(final_answer),
-                    reason="variable_update",
-                )
-
     def _handle_node_failed_events(
         self,
         event: Union[QueueNodeFailedEvent, QueueNodeExceptionEvent],
