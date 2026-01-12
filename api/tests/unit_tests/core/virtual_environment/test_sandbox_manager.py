@@ -6,7 +6,14 @@ from typing import Any
 import pytest
 
 from core.sandbox.manager import SandboxManager
-from core.virtual_environment.__base.entities import Arch, CommandStatus, ConnectionHandle, FileState, Metadata
+from core.virtual_environment.__base.entities import (
+    Arch,
+    CommandStatus,
+    ConnectionHandle,
+    FileState,
+    Metadata,
+    OperatingSystem,
+)
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 
 
@@ -16,7 +23,7 @@ class FakeVirtualEnvironment(VirtualEnvironment):
         super().__init__(tenant_id="test-tenant", options={}, environments={})
 
     def _construct_environment(self, options: Mapping[str, Any], environments: Mapping[str, str]) -> Metadata:
-        return Metadata(id=self._sandbox_id, arch=Arch.AMD64)
+        return Metadata(id=self._sandbox_id, arch=Arch.AMD64, os=OperatingSystem.LINUX)
 
     def upload_file(self, path: str, content: BytesIO) -> None:
         raise NotImplementedError
@@ -37,7 +44,11 @@ class FakeVirtualEnvironment(VirtualEnvironment):
         pass
 
     def execute_command(
-        self, connection_handle: ConnectionHandle, command: list[str], environments: Mapping[str, str] | None = None
+        self,
+        connection_handle: ConnectionHandle,
+        command: list[str],
+        environments: Mapping[str, str] | None = None,
+        cwd: str | None = None,
     ) -> tuple[str, Any, Any, Any]:
         raise NotImplementedError
 

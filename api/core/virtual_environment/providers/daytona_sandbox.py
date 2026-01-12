@@ -185,7 +185,11 @@ class DaytonaEnvironment(VirtualEnvironment):
         return files
 
     def execute_command(
-        self, connection_handle: ConnectionHandle, command: list[str], environments: Mapping[str, str] | None = None
+        self,
+        connection_handle: ConnectionHandle,
+        command: list[str],
+        environments: Mapping[str, str] | None = None,
+        cwd: str | None = None,
     ) -> tuple[str, TransportWriteCloser, TransportReadCloser, TransportReadCloser]:
         sandbox: Sandbox = self.metadata.store[self.StoreKey.SANDBOX]
 
@@ -193,9 +197,11 @@ class DaytonaEnvironment(VirtualEnvironment):
         stderr_stream = QueueTransportReadCloser()
         pid = uuid4().hex
 
+        working_dir = cwd or self._working_dir
+
         thread = threading.Thread(
             target=self._exec_thread,
-            args=(pid, sandbox, command, environments or {}, stdout_stream, stderr_stream),
+            args=(pid, sandbox, command, environments or {}, working_dir, stdout_stream, stderr_stream),
             daemon=True,
         )
 
@@ -236,6 +242,7 @@ class DaytonaEnvironment(VirtualEnvironment):
         sandbox: Sandbox,
         command: list[str],
         environments: Mapping[str, str],
+        cwd: str,
         stdout_stream: QueueTransportReadCloser,
         stderr_stream: QueueTransportReadCloser,
     ) -> None:
@@ -249,6 +256,7 @@ class DaytonaEnvironment(VirtualEnvironment):
             response = sandbox.process.exec(
                 command=shlex.join(command),
                 env=dict(environments),
+                cwd=cwd,
             )
             exit_code = response.exit_code
             output = response.artifacts.stdout if response.artifacts and response.artifacts.stdout else response.result

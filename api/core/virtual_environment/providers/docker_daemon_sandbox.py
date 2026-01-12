@@ -449,13 +449,20 @@ class DockerDaemonEnvironment(VirtualEnvironment):
             return
 
     def execute_command(
-        self, connection_handle: ConnectionHandle, command: list[str], environments: Mapping[str, str] | None = None
+        self,
+        connection_handle: ConnectionHandle,
+        command: list[str],
+        environments: Mapping[str, str] | None = None,
+        cwd: str | None = None,
     ) -> tuple[str, TransportWriteCloser, TransportReadCloser, TransportReadCloser]:
         container = self._get_container()
         container_id = container.id
         if not isinstance(container_id, str) or not container_id:
             raise RuntimeError("Docker container ID is not available for exec.")
         api_client = self.get_docker_api_client(self.get_docker_sock())
+
+        working_dir = cwd or self._working_dir
+
         exec_info: dict[str, object] = cast(
             dict[str, object],
             api_client.exec_create(  # pyright: ignore[reportUnknownMemberType] #
@@ -465,7 +472,7 @@ class DockerDaemonEnvironment(VirtualEnvironment):
                 stdout=True,
                 stderr=True,
                 tty=False,
-                workdir=self._working_dir,
+                workdir=working_dir,
                 environment=environments,
             ),
         )

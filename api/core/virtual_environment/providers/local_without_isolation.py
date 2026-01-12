@@ -171,16 +171,13 @@ class LocalVirtualEnvironment(VirtualEnvironment):
         pass
 
     def execute_command(
-        self, connection_handle: ConnectionHandle, command: list[str], environments: Mapping[str, str] | None = None
+        self,
+        connection_handle: ConnectionHandle,
+        command: list[str],
+        environments: Mapping[str, str] | None = None,
+        cwd: str | None = None,
     ) -> tuple[str, TransportWriteCloser, TransportReadCloser, TransportReadCloser]:
-        """
-        Execute a command in the local virtual environment.
-
-        Args:
-            connection_handle (ConnectionHandle): The connection handle.
-            command (list[str]): The command to execute.
-        """
-        working_path = self.get_working_path()
+        working_path = cwd or self.get_working_path()
         stdin_read_fd, stdin_write_fd = os.pipe()
         stdout_read_fd, stdout_write_fd = os.pipe()
         stderr_read_fd, stderr_write_fd = os.pipe()

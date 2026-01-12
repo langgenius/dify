@@ -134,7 +134,11 @@ class VirtualEnvironment(ABC):
 
     @abstractmethod
     def execute_command(
-        self, connection_handle: ConnectionHandle, command: list[str], environments: Mapping[str, str] | None = None
+        self,
+        connection_handle: ConnectionHandle,
+        command: list[str],
+        environments: Mapping[str, str] | None = None,
+        cwd: str | None = None,
     ) -> tuple[str, TransportWriteCloser, TransportReadCloser, TransportReadCloser]:
         """
         Execute a command in the virtual environment.
@@ -142,6 +146,8 @@ class VirtualEnvironment(ABC):
         Args:
             connection_handle (ConnectionHandle): The handle for managing the connection.
             command (list[str]): The command to execute as a list of strings.
+            environments (Mapping[str, str] | None): Environment variables for the command.
+            cwd (str | None): Working directory for the command. If None, uses the provider's default.
 
         Returns:
             tuple[int, TransportWriteCloser, TransportReadCloser, TransportReadCloser]
@@ -176,6 +182,7 @@ class VirtualEnvironment(ABC):
         connection_handle: ConnectionHandle,
         command: list[str],
         environments: Mapping[str, str] | None = None,
+        cwd: str | None = None,
     ) -> CommandFuture:
         """
         Execute a command and return a Future for the result.
@@ -187,6 +194,7 @@ class VirtualEnvironment(ABC):
             connection_handle: The connection handle.
             command: Command as list of strings.
             environments: Environment variables.
+            cwd: Working directory for the command. If None, uses the provider's default.
 
         Returns:
             CommandFuture that can be used to get result with timeout or cancel.
@@ -195,7 +203,7 @@ class VirtualEnvironment(ABC):
             result = env.run_command(handle, ["ls", "-la"]).result(timeout=30)
         """
         pid, stdin_transport, stdout_transport, stderr_transport = self.execute_command(
-            connection_handle, command, environments
+            connection_handle, command, environments, cwd
         )
 
         return CommandFuture(

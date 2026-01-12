@@ -6,7 +6,14 @@ from typing import Any
 import pytest
 
 from core.sandbox.manager import SandboxManager
-from core.virtual_environment.__base.entities import Arch, CommandStatus, ConnectionHandle, FileState, Metadata
+from core.virtual_environment.__base.entities import (
+    Arch,
+    CommandStatus,
+    ConnectionHandle,
+    FileState,
+    Metadata,
+    OperatingSystem,
+)
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 from core.virtual_environment.channel.queue_transport import QueueTransportReadCloser
 from core.virtual_environment.channel.transport import NopTransportWriteCloser
@@ -31,11 +38,12 @@ class FakeSandbox(VirtualEnvironment):
         self._statuses = list(statuses or [])
         self._close_streams = close_streams
         self.last_execute_command: list[str] | None = None
+        self.last_execute_cwd: str | None = None
         self.released_connections: list[str] = []
         super().__init__(tenant_id="test-tenant", options={}, environments={})
 
     def _construct_environment(self, options: Mapping[str, Any], environments: Mapping[str, str]) -> Metadata:
-        return Metadata(id="fake", arch=Arch.ARM64)
+        return Metadata(id="fake", arch=Arch.ARM64, os=OperatingSystem.LINUX)
 
     def upload_file(self, path: str, content: BytesIO) -> None:
         raise NotImplementedError
@@ -56,11 +64,16 @@ class FakeSandbox(VirtualEnvironment):
         return
 
     def execute_command(
-        self, connection_handle: ConnectionHandle, command: list[str], environments: Mapping[str, str] | None = None
+        self,
+        connection_handle: ConnectionHandle,
+        command: list[str],
+        environments: Mapping[str, str] | None = None,
+        cwd: str | None = None,
     ) -> tuple[str, NopTransportWriteCloser, QueueTransportReadCloser, QueueTransportReadCloser]:
         _ = connection_handle
         _ = environments
         self.last_execute_command = command
+        self.last_execute_cwd = cwd
 
         stdout = QueueTransportReadCloser()
         stderr = QueueTransportReadCloser()
@@ -145,8 +158,8 @@ def test_command_node_success_executes_in_sandbox():
     assert result.outputs["exit_code"] == 0
 
     assert sandbox.last_execute_command is not None
-    assert sandbox.last_execute_command[:2] == ["sh", "-c"]
-    assert "cd dir-42 && echo 42" in sandbox.last_execute_command[2]
+    assert sandbox.last_execute_command == ["echo", "42"]
+    assert sandbox.last_execute_cwd == "dir-42"
 
 
 def test_command_node_nonzero_exit_code_returns_failed_result():

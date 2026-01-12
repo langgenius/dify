@@ -82,26 +82,8 @@ class CommandNode(Node[CommandNodeData]):
         connection_handle = sandbox.establish_connection()
 
         try:
-            # TODO: VirtualEnvironment.run_command lacks native cwd support.
-            # Once the interface adds a `cwd` parameter, remove this shell hack
-            # and pass working_directory directly to run_command.
-            if working_directory:
-                check_cmd = ["test", "-d", working_directory]
-                check_future = sandbox.run_command(connection_handle, check_cmd)
-                check_result = check_future.result(timeout=timeout)
-
-                if check_result.exit_code != 0:
-                    return NodeRunResult(
-                        status=WorkflowNodeExecutionStatus.FAILED,
-                        error=f"Working directory does not exist: {working_directory}",
-                        error_type="WorkingDirectoryNotFoundError",
-                    )
-
-                command = ["sh", "-c", f"cd {shlex.quote(working_directory)} && {raw_command}"]
-            else:
-                command = shlex.split(raw_command)
-
-            future = sandbox.run_command(connection_handle, command)
+            command = shlex.split(raw_command)
+            future = sandbox.run_command(connection_handle, command, cwd=working_directory)
             result = future.result(timeout=timeout)
 
             outputs: dict[str, Any] = {

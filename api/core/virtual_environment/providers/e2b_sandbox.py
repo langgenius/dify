@@ -200,7 +200,11 @@ class E2BEnvironment(VirtualEnvironment):
         ]
 
     def execute_command(
-        self, connection_handle: ConnectionHandle, command: list[str], environments: Mapping[str, str] | None = None
+        self,
+        connection_handle: ConnectionHandle,
+        command: list[str],
+        environments: Mapping[str, str] | None = None,
+        cwd: str | None = None,
     ) -> tuple[str, TransportWriteCloser, TransportReadCloser, TransportReadCloser]:
         """
         Execute a command in the E2B virtual environment.
@@ -212,9 +216,11 @@ class E2BEnvironment(VirtualEnvironment):
         stdout_stream = QueueTransportReadCloser()
         stderr_stream = QueueTransportReadCloser()
 
+        working_dir = cwd or self._WORKDIR
+
         threading.Thread(
             target=self._cmd_thread,
-            args=(sandbox, command, environments, stdout_stream, stderr_stream),
+            args=(sandbox, command, environments, working_dir, stdout_stream, stderr_stream),
         ).start()
 
         return (
@@ -235,10 +241,10 @@ class E2BEnvironment(VirtualEnvironment):
         sandbox: Sandbox,
         command: list[str],
         environments: Mapping[str, str] | None,
+        cwd: str,
         stdout_stream: QueueTransportReadCloser,
         stderr_stream: QueueTransportReadCloser,
     ) -> None:
-        """ """
         stdout_stream_write_handler = stdout_stream.get_write_handler()
         stderr_stream_write_handler = stderr_stream.get_write_handler()
 
@@ -246,7 +252,7 @@ class E2BEnvironment(VirtualEnvironment):
             sandbox.commands.run(
                 cmd=shlex.join(command),
                 envs=dict(environments or {}),
-                # stdin=True,
+                cwd=cwd,
                 on_stdout=lambda data: stdout_stream_write_handler.write(data.encode()),
                 on_stderr=lambda data: stderr_stream_write_handler.write(data.encode()),
             )
