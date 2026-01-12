@@ -13,7 +13,6 @@ import { fileURLToPath } from 'node:url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const DOCS_JSON_URL = 'https://raw.githubusercontent.com/langgenius/dify-docs/refs/heads/main/docs.json'
 const OUTPUT_PATH = path.resolve(__dirname, '../types/doc-paths.ts')
-const REDIRECTS_PATH = path.resolve(__dirname, '../eslint-rules/doc-redirects.js')
 
 type NavItem = string | NavObject | NavItem[]
 
@@ -474,13 +473,6 @@ async function main(): Promise<void> {
   await writeFile(OUTPUT_PATH, tsContent, 'utf-8')
   // eslint-disable-next-line no-console
   console.log(`Generated TypeScript types at: ${OUTPUT_PATH}`)
-
-  // Generate redirects module for ESLint rule
-  const redirects = docsJson.redirects || []
-  const redirectsContent = generateRedirectsModule(redirects)
-  await writeFile(REDIRECTS_PATH, redirectsContent, 'utf-8')
-  // eslint-disable-next-line no-console
-  console.log(`Generated redirects module at: ${REDIRECTS_PATH} (${redirects.length} redirects)`)
 }
 
 main().catch((err: Error) => {
