@@ -77,3 +77,15 @@ class CommandResult(BaseModel):
     stderr: bytes = Field(description="Standard error content.")
     exit_code: int | None = Field(description="Exit code of the command. None if unavailable.")
     pid: str = Field(description="Process ID of the executed command.")
+
+    @property
+    def is_error(self) -> bool:
+        return self.exit_code not in (None, 0) or bool(self.stderr.decode("utf-8", errors="replace"))
+
+    @property
+    def error_message(self) -> str:
+        return self.stderr.decode("utf-8", errors="replace") if self.stderr else ""
+
+    @property
+    def info_message(self) -> str:
+        return self.stdout.decode("utf-8", errors="replace") if self.stdout else ""

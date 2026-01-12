@@ -52,9 +52,8 @@ class SandboxSession:
             try:
                 future = sandbox.run_command(connection_handle, [DIFY_CLI_PATH, "init"])
                 result = future.result(timeout=30)
-                if result.exit_code not in (0, None):
-                    stderr = result.stderr.decode("utf-8", errors="replace") if result.stderr else ""
-                    raise RuntimeError(f"Failed to initialize Dify CLI in sandbox: {stderr}")
+                if result.is_error:
+                    raise RuntimeError(f"Failed to initialize Dify CLI in sandbox: {result.error_message}")
             finally:
                 sandbox.release_connection(connection_handle)
 
