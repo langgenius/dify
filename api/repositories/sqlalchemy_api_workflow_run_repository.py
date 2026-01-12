@@ -164,6 +164,29 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             stmt = select(WorkflowRun).where(WorkflowRun.id == run_id)
             return session.scalar(stmt)
 
+    def get_workflow_runs_by_ids(
+        self,
+        tenant_id: str,
+        app_id: str,
+        run_ids: Sequence[str],
+    ) -> dict[str, WorkflowRun]:
+        """
+        Get multiple workflow runs by their IDs.
+
+        Retrieves workflow runs for a specific tenant and app with batch query support.
+        """
+        if not run_ids:
+            return {}
+
+        with self._session_maker() as session:
+            stmt = select(WorkflowRun).where(
+                WorkflowRun.tenant_id == tenant_id,
+                WorkflowRun.app_id == app_id,
+                WorkflowRun.id.in_(run_ids),
+            )
+            workflow_runs = session.scalars(stmt).all()
+            return {run.id: run for run in workflow_runs}
+
     def get_workflow_runs_count(
         self,
         tenant_id: str,

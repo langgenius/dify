@@ -842,7 +842,9 @@ class Conversation(Base):
 
     @property
     def status_count(self):
-        from models.workflow import WorkflowRun
+        from sqlalchemy.orm import sessionmaker
+
+        from repositories.factory import DifyAPIRepositoryFactory
 
         # Get all messages with workflow_run_id for this conversation
         messages = db.session.scalars(
@@ -852,18 +854,23 @@ class Conversation(Base):
         if not messages:
             return None
 
-        # Batch load all workflow runs in a single query, filtered by this conversation's app_id
+        # Batch load all workflow runs using Repository (supports dual-read for SLS)
         workflow_run_ids = [msg.workflow_run_id for msg in messages if msg.workflow_run_id]
         workflow_runs = {}
 
         if workflow_run_ids:
-            workflow_runs_query = db.session.scalars(
-                select(WorkflowRun).where(
-                    WorkflowRun.id.in_(workflow_run_ids),
-                    WorkflowRun.app_id == self.app_id,  # Filter by this conversation's app_id
-                )
-            ).all()
-            workflow_runs = {run.id: run for run in workflow_runs_query}
+            # Get tenant_id from app
+            app = self.app
+            if not app:
+                return None
+
+            session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+            workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+            workflow_runs = workflow_run_repo.get_workflow_runs_by_ids(
+                tenant_id=app.tenant_id,
+                app_id=self.app_id,
+                run_ids=workflow_run_ids,
+            )
 
         status_counts = {
             WorkflowExecutionStatus.RUNNING: 0,

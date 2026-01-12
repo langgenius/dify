@@ -143,6 +143,33 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         """
         ...
 
+    def get_workflow_runs_by_ids(
+        self,
+        tenant_id: str,
+        app_id: str,
+        run_ids: Sequence[str],
+    ) -> dict[str, WorkflowRun]:
+        """
+        Get multiple workflow runs by their IDs.
+
+        Retrieves workflow runs for a specific tenant and app with batch query support.
+        Used for efficient batch loading of workflow runs when multiple IDs are known.
+
+        Args:
+            tenant_id: Tenant identifier for multi-tenant isolation
+            app_id: Application identifier
+            run_ids: Sequence of workflow run identifiers
+
+        Returns:
+            Dictionary mapping run_id to WorkflowRun object. Only includes runs that were found.
+            Missing runs are not included in the dictionary.
+
+        Note:
+            This method supports dual-read (SLS + PostgreSQL) when enabled, allowing
+            retrieval of workflow runs from both storage backends during migration.
+        """
+        ...
+
     def get_workflow_runs_count(
         self,
         tenant_id: str,

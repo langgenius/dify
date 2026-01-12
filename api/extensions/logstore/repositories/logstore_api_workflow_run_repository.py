@@ -390,6 +390,151 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
             stmt = select(WorkflowRun).where(WorkflowRun.id == run_id)
             return session.scalar(stmt)
 
+    def get_workflow_runs_by_ids(
+        self,
+        tenant_id: str,
+        app_id: str,
+        run_ids: Sequence[str],
+    ) -> dict[str, WorkflowRun]:
+        """
+        Get multiple workflow runs by their IDs.
+
+        Retrieves workflow runs for a specific tenant and app with batch query support.
+        Supports dual-read (SLS + PostgreSQL) when enabled.
+        """
+        if not run_ids:
+            return {}
+
+        logger.debug(
+            "get_workflow_runs_by_ids: tenant_id=%s, app_id=%s, run_ids_count=%s",
+            tenant_id,
+            app_id,
+            len(run_ids),
+        )
+
+        workflow_runs: dict[str, WorkflowRun] = {}
+
+        try:
+            # Check if PG protocol is supported
+            if self.logstore_client.supports_pg_protocol:
+                # Use PG protocol with SQL query (get latest version of each record)
+                # Validate and escape run_ids (they should be UUIDs)
+                from uuid import UUID
+
+                validated_ids = []
+                for run_id in run_ids:
+                    try:
+                        # Validate UUID format
+                        UUID(run_id)
+                        validated_ids.append(run_id.replace("'", "''"))  # Escape single quotes
+                    except (ValueError, AttributeError):
+                        logger.warning("Invalid UUID format in run_ids: %s", run_id)
+                        continue
+
+                if not validated_ids:
+                    return {}
+
+                ids_str = "', '".join(validated_ids)
+                sql_query = f"""
+                    SELECT * FROM (
+                        SELECT *, 
+                            ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) as rn
+                        FROM "{AliyunLogStore.workflow_execution_logstore}"
+                        WHERE id IN ('{ids_str}') 
+                          AND tenant_id = '{tenant_id}' 
+                          AND app_id = '{app_id}' 
+                          AND __time__ > 0
+                    ) AS subquery WHERE rn = 1
+                    LIMIT {len(validated_ids)}
+                """
+                results = self.logstore_client.execute_sql(
+                    sql=sql_query,
+                    logstore=AliyunLogStore.workflow_execution_logstore,
+                )
+                workflow_runs = {_dict_to_workflow_run(row).id: _dict_to_workflow_run(row) for row in results}
+            else:
+                # Use SDK with LogStore query syntax
+                ids_query = " or ".join([f"id: {run_id}" for run_id in run_ids])
+                query = f"({ids_query}) and tenant_id: {tenant_id} and app_id: {app_id}"
+                from_time = 0
+                to_time = int(time.time())
+
+                results = self.logstore_client.get_logs(
+                    logstore=AliyunLogStore.workflow_execution_logstore,
+                    from_time=from_time,
+                    to_time=to_time,
+                    query=query,
+                    line=len(run_ids) * 10,
+                    reverse=False,
+                )
+
+                # Group by id and select max log_version for each
+                runs_by_id: dict[str, dict[str, Any]] = {}
+                for row in results:
+                    run_id = row.get("id")
+                    if not run_id:
+                        continue
+                    log_version = int(row.get("log_version", 0))
+                    if run_id not in runs_by_id or log_version > int(runs_by_id[run_id].get("log_version", 0)):
+                        runs_by_id[run_id] = row
+
+                workflow_runs = {run_id: _dict_to_workflow_run(data) for run_id, data in runs_by_id.items()}
+
+            # Fallback to PostgreSQL for missing runs if dual-read is enabled
+            if self._enable_dual_read:
+                missing_ids = [run_id for run_id in run_ids if run_id not in workflow_runs]
+                if missing_ids:
+                    logger.debug(
+                        "Some workflow runs not found in LogStore, falling back to PostgreSQL: "
+                        "missing_count=%s, tenant_id=%s, app_id=%s",
+                        len(missing_ids),
+                        tenant_id,
+                        app_id,
+                    )
+                    fallback_runs = self._fallback_get_workflow_runs_by_ids(missing_ids, tenant_id, app_id)
+                    workflow_runs.update(fallback_runs)
+
+        except Exception:
+            logger.exception(
+                "Failed to get workflow runs by IDs from LogStore: tenant_id=%s, app_id=%s, run_ids_count=%s",
+                tenant_id,
+                app_id,
+                len(run_ids),
+            )
+            # Try PostgreSQL fallback on any error (only if dual-read is enabled)
+            if self._enable_dual_read:
+                try:
+                    fallback_runs = self._fallback_get_workflow_runs_by_ids(run_ids, tenant_id, app_id)
+                    return fallback_runs
+                except Exception:
+                    logger.exception(
+                        "PostgreSQL fallback also failed: tenant_id=%s, app_id=%s, run_ids_count=%s",
+                        tenant_id,
+                        app_id,
+                        len(run_ids),
+                    )
+            raise
+
+        return workflow_runs
+
+    def _fallback_get_workflow_runs_by_ids(
+        self, run_ids: Sequence[str], tenant_id: str, app_id: str
+    ) -> dict[str, WorkflowRun]:
+        """Fallback to PostgreSQL query for records not in LogStore."""
+        from sqlalchemy import select
+        from sqlalchemy.orm import Session
+
+        from extensions.ext_database import db
+
+        with Session(db.engine) as session:
+            stmt = select(WorkflowRun).where(
+                WorkflowRun.id.in_(run_ids),
+                WorkflowRun.tenant_id == tenant_id,
+                WorkflowRun.app_id == app_id,
+            )
+            workflow_runs = session.scalars(stmt).all()
+            return {run.id: run for run in workflow_runs}
+
     def get_workflow_runs_count(
         self,
         tenant_id: str,
