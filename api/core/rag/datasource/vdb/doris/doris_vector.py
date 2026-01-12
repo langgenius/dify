@@ -12,6 +12,7 @@ import base64
 import hashlib
 import json
 import logging
+import time
 import uuid
 from contextlib import contextmanager
 from typing import Any
@@ -81,7 +82,7 @@ class DorisConnectionPool:
 
     def __init__(self, config: DorisConfig) -> None:
         self.config = config
-        self._pool_config = {
+        self._pool_config: dict[str, Any] = {
             "pool_name": "doris_pool",
             "pool_size": config.max_connection,
             "pool_reset_session": True,
@@ -137,6 +138,8 @@ class DorisVector(BaseVector):
         conn = self._pool.get_connection()
         cur = conn.cursor(dictionary=True)
         try:
+            # Ensure database is selected (pool connections may lose context)
+            cur.execute(f"USE `{self._config.database}`")
             yield cur
             conn.commit()
         except Exception:
@@ -159,6 +162,38 @@ class DorisVector(BaseVector):
         self._create_collection(dimension)
         return self.add_texts(texts, embeddings)
 
+    def _wait_for_table_normal_state(self, cursor, max_wait_seconds: int = 60) -> bool:
+        """
+        Wait for the table to return to NORMAL state after schema changes.
+
+        Args:
+            cursor: Database cursor
+            max_wait_seconds: Maximum time to wait in seconds
+
+        Returns:
+            True if table is in NORMAL state, False if timeout
+        """
+        start_time = time.time()
+        while time.time() - start_time < max_wait_seconds:
+            try:
+                cursor.execute(
+                    f"SHOW ALTER TABLE COLUMN FROM `{self._config.database}` "
+                    f"WHERE TableName = '{self.table_name}' ORDER BY CreateTime DESC LIMIT 1"
+                )
+                result = cursor.fetchone()
+                if result is None:
+                    # No schema change in progress
+                    return True
+                # Check if state is FINISHED or CANCELLED
+                state = result.get("State", "") if isinstance(result, dict) else ""
+                if state in ("FINISHED", "CANCELLED", ""):
+                    return True
+            except Exception:
+                # If query fails, assume table is ready
+                return True
+            time.sleep(1)
+        return False
+
     def _create_collection(self, dimension: int):
         """
         Creates the Doris table with required schema if it doesn't exist.
@@ -166,7 +201,7 @@ class DorisVector(BaseVector):
         Uses Redis locking to prevent concurrent creation attempts.
         """
         lock_name = f"vector_indexing_lock_{self._collection_name}"
-        with redis_client.lock(lock_name, timeout=20):
+        with redis_client.lock(lock_name, timeout=120):
             cache_key = f"vector_indexing_{self._collection_name}"
             if redis_client.get(cache_key):
                 return
@@ -207,6 +242,8 @@ class DorisVector(BaseVector):
 
                     # Create inverted index for full-text search if enabled
                     if self._config.enable_text_search:
+                        # Wait for vector index creation to complete before creating text index
+                        self._wait_for_table_normal_state(cur, max_wait_seconds=60)
                         try:
                             analyzer = self._config.text_search_analyzer or "english"
                             create_text_index_sql = f"""
@@ -460,7 +497,7 @@ class DorisVector(BaseVector):
 
         # Build WHERE clause for document filtering
         where_clause = ""
-        params = []
+        params: list[Any] = []
         if document_ids_filter:
             placeholders = ",".join(["%s"] * len(document_ids_filter))
             where_clause = f"WHERE JSON_EXTRACT(meta, '$.document_id') IN ({placeholders})"
@@ -516,8 +553,8 @@ class DorisVector(BaseVector):
         document_ids_filter = kwargs.get("document_ids_filter") or []
 
         # Build WHERE clause
-        where_parts = []
-        params = []
+        where_parts: list[str] = []
+        params: list[Any] = []
 
         # Text search condition using MATCH_ANY for keyword search
         where_parts.append("text MATCH_ANY %s")

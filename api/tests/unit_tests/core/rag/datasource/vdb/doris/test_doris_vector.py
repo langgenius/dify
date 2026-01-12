@@ -296,15 +296,15 @@ class TestDorisVector(unittest.TestCase):
         dimension = 4
         doris_vector._create_collection(dimension)
 
-        # Verify execute was called with CREATE TABLE and CREATE INDEX
+        # Verify execute was called with USE, CREATE TABLE and CREATE INDEX
         execute_calls = mock_cursor.execute.call_args_list
 
-        # Check that we have at least 2 execute calls (table + vector index)
-        assert len(execute_calls) >= 2, f"Expected at least 2 execute calls, got {len(execute_calls)}"
+        # Check that we have at least 3 execute calls (USE + table + vector index)
+        assert len(execute_calls) >= 3, f"Expected at least 3 execute calls, got {len(execute_calls)}"
 
-        # Extract SQL statements from calls
-        create_table_sql = execute_calls[0][0][0]
-        create_index_sql = execute_calls[1][0][0]
+        # Extract SQL statements from calls (first call is USE database)
+        create_table_sql = execute_calls[1][0][0]
+        create_index_sql = execute_calls[2][0][0]
 
         # Verify CREATE TABLE
         assert "CREATE TABLE IF NOT EXISTS" in create_table_sql
@@ -352,14 +352,21 @@ class TestDorisVector(unittest.TestCase):
         dimension = 4
         doris_vector._create_collection(dimension)
 
-        # Verify execute was called 3 times (table + vector index + text index)
+        # Verify execute was called at least 5 times:
+        # USE + table + vector index + SHOW ALTER (wait) + text index
         execute_calls = mock_cursor.execute.call_args_list
-        assert len(execute_calls) >= 3, f"Expected at least 3 execute calls for text search, got {len(execute_calls)}"
+        assert len(execute_calls) >= 5, f"Expected at least 5 execute calls for text search, got {len(execute_calls)}"
 
-        # Extract SQL statements
-        text_index_sql = execute_calls[2][0][0]
+        # Find the text index SQL (should be the last CREATE INDEX with INVERTED)
+        text_index_sql = None
+        for call in execute_calls:
+            sql = call[0][0]
+            if "USING INVERTED" in sql:
+                text_index_sql = sql
+                break
 
-        # Verify CREATE INDEX for text search
+        # Verify CREATE INDEX for text search was found
+        assert text_index_sql is not None, "Text index SQL not found"
         assert "CREATE INDEX IF NOT EXISTS" in text_index_sql
         assert "USING INVERTED" in text_index_sql
         assert '"parser" = "english"' in text_index_sql
@@ -404,8 +411,9 @@ class TestDorisVector(unittest.TestCase):
         result = doris_vector.text_exists("doc1")
 
         assert result is True
-        mock_cursor.execute.assert_called_once()
-        call_sql = mock_cursor.execute.call_args[0][0]
+        # Execute is called twice: USE database + SELECT query
+        assert mock_cursor.execute.call_count == 2
+        call_sql = mock_cursor.execute.call_args_list[1][0][0]
         assert "SELECT id FROM" in call_sql
         assert "WHERE id = %s" in call_sql
 
@@ -442,8 +450,9 @@ class TestDorisVector(unittest.TestCase):
         doris_vector = DorisVector(self.collection_name, self.config, self.attributes)
         doris_vector.delete_by_ids(["doc1", "doc2"])
 
-        mock_cursor.execute.assert_called_once()
-        call_sql = mock_cursor.execute.call_args[0][0]
+        # Execute is called twice: USE database + DELETE query
+        assert mock_cursor.execute.call_count == 2
+        call_sql = mock_cursor.execute.call_args_list[1][0][0]
         assert "DELETE FROM" in call_sql
         assert "id IN" in call_sql
 
@@ -462,8 +471,9 @@ class TestDorisVector(unittest.TestCase):
         doris_vector = DorisVector(self.collection_name, self.config, self.attributes)
         doris_vector.delete_by_metadata_field("document_id", "dataset1")
 
-        mock_cursor.execute.assert_called_once()
-        call_sql = mock_cursor.execute.call_args[0][0]
+        # Execute is called twice: USE database + DELETE query
+        assert mock_cursor.execute.call_count == 2
+        call_sql = mock_cursor.execute.call_args_list[1][0][0]
         assert "DELETE FROM" in call_sql
         assert "JSON_EXTRACT(meta, %s)" in call_sql
 
@@ -482,8 +492,9 @@ class TestDorisVector(unittest.TestCase):
         doris_vector = DorisVector(self.collection_name, self.config, self.attributes)
         doris_vector.delete()
 
-        mock_cursor.execute.assert_called_once()
-        call_sql = mock_cursor.execute.call_args[0][0]
+        # Execute is called twice: USE database + DROP TABLE query
+        assert mock_cursor.execute.call_count == 2
+        call_sql = mock_cursor.execute.call_args_list[1][0][0]
         assert "DROP TABLE IF EXISTS" in call_sql
 
     @patch("core.rag.datasource.vdb.doris.doris_vector.DorisConnectionPool")
@@ -511,8 +522,9 @@ class TestDorisVector(unittest.TestCase):
 
         assert len(results) == 1
         assert results[0].metadata["doc_id"] == "doc1"
-        mock_cursor.execute.assert_called_once()
-        call_sql = mock_cursor.execute.call_args[0][0]
+        # Execute is called twice: USE database + SELECT query
+        assert mock_cursor.execute.call_count == 2
+        call_sql = mock_cursor.execute.call_args_list[1][0][0]
         assert "cosine_distance" in call_sql
 
     @patch("core.rag.datasource.vdb.doris.doris_vector.DorisConnectionPool")
@@ -540,8 +552,9 @@ class TestDorisVector(unittest.TestCase):
 
         assert len(results) == 1
         assert results[0].metadata["doc_id"] == "doc1"
-        mock_cursor.execute.assert_called_once()
-        call_sql = mock_cursor.execute.call_args[0][0]
+        # Execute is called twice: USE database + SELECT query
+        assert mock_cursor.execute.call_count == 2
+        call_sql = mock_cursor.execute.call_args_list[1][0][0]
         assert "MATCH_ANY" in call_sql
 
     @patch("core.rag.datasource.vdb.doris.doris_vector.DorisConnectionPool")
