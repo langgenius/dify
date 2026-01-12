@@ -113,7 +113,6 @@ const MixedVariableTextInput = ({
     if (!onChange)
       return
 
-    console.log('handleAgentSelect', value)
     const newValue = `{{#${agent.id}.context#}}`
 
     onChange(newValue)

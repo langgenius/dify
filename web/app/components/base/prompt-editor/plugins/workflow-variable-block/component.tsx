@@ -67,7 +67,7 @@ const WorkflowVariableBlockComponent = ({
   )()
   const [localWorkflowNodesMap, setLocalWorkflowNodesMap] = useState<WorkflowNodesMap>(workflowNodesMap)
   const node = localWorkflowNodesMap![variables[isRagVar ? 1 : 0]]
-  const isAgentVariable = node?.type === BlockEnum.Agent
+  const isAgentContextVariable = node?.type === BlockEnum.Agent && variables[variablesLength - 1] === 'context'
 
   const isException = isExceptionVariable(varName, node?.type)
   const variableValid = useMemo(() => {
@@ -136,7 +136,7 @@ const WorkflowVariableBlockComponent = ({
     })
   }, [node, reactflow, store])
 
-  if (isAgentVariable)
+  if (isAgentContextVariable)
     return <span className="hidden" ref={ref} />
 
   const Item = (
