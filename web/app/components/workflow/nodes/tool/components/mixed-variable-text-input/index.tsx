@@ -2,11 +2,11 @@ import type { AgentBlockType } from '@/app/components/base/prompt-editor/types'
 import type {
   Node,
   NodeOutPutVar,
+  ValueSelector,
 } from '@/app/components/workflow/types'
 import {
   memo,
   useCallback,
-  useEffect,
   useMemo,
   useState,
 } from 'react'
@@ -15,6 +15,7 @@ import PromptEditor from '@/app/components/base/prompt-editor'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { cn } from '@/utils/classnames'
+import SubGraphModal from '../sub-graph-modal'
 import AgentHeaderBar from './agent-header-bar'
 import Placeholder from './placeholder'
 
@@ -33,7 +34,8 @@ type MixedVariableTextInputProps = {
   showManageInputField?: boolean
   onManageInputField?: () => void
   disableVariableInsertion?: boolean
-  onViewInternals?: () => void
+  toolNodeId?: string
+  paramKey?: string
 }
 
 const MixedVariableTextInput = ({
@@ -45,11 +47,13 @@ const MixedVariableTextInput = ({
   showManageInputField,
   onManageInputField,
   disableVariableInsertion = false,
-  onViewInternals,
+  toolNodeId,
+  paramKey = '',
 }: MixedVariableTextInputProps) => {
   const { t } = useTranslation()
   const controlPromptEditorRerenderKey = useStore(s => s.controlPromptEditorRerenderKey)
   const setControlPromptEditorRerenderKey = useStore(s => s.setControlPromptEditorRerenderKey)
+  const [isSubGraphModalOpen, setIsSubGraphModalOpen] = useState(false)
 
   const nodesByIdMap = useMemo(() => {
     return availableNodes.reduce((acc, node) => {
@@ -78,11 +82,6 @@ const MixedVariableTextInput = ({
   }, [value, nodesByIdMap])
 
   const [selectedAgent, setSelectedAgent] = useState<{ id: string, title: string } | null>(null)
-
-  useEffect(() => {
-    if (!detectedAgentFromValue && selectedAgent)
-      setSelectedAgent(null)
-  }, [detectedAgentFromValue, selectedAgent])
 
   const agentNodes = useMemo(() => {
     return availableNodes
@@ -115,6 +114,18 @@ const MixedVariableTextInput = ({
 
   const displayedAgent = detectedAgentFromValue || (selectedAgent ? { nodeId: selectedAgent.id, name: selectedAgent.title } : null)
 
+  const handleOpenSubGraphModal = useCallback(() => {
+    setIsSubGraphModalOpen(true)
+  }, [])
+
+  const handleCloseSubGraphModal = useCallback(() => {
+    setIsSubGraphModalOpen(false)
+  }, [])
+
+  const sourceVariable: ValueSelector | undefined = displayedAgent
+    ? [displayedAgent.nodeId, 'text']
+    : undefined
+
   return (
     <div className={cn(
       'w-full rounded-lg border border-transparent bg-components-input-bg-normal',
@@ -126,7 +137,7 @@ const MixedVariableTextInput = ({
         <AgentHeaderBar
           agentName={displayedAgent.name}
           onRemove={handleAgentRemove}
-          onViewInternals={onViewInternals}
+          onViewInternals={handleOpenSubGraphModal}
         />
       )}
       <PromptEditor
@@ -162,6 +173,17 @@ const MixedVariableTextInput = ({
         placeholder={<Placeholder disableVariableInsertion={disableVariableInsertion} hasSelectedAgent={!!displayedAgent} />}
         onChange={onChange}
       />
+      {toolNodeId && displayedAgent && sourceVariable && (
+        <SubGraphModal
+          isOpen={isSubGraphModalOpen}
+          onClose={handleCloseSubGraphModal}
+          toolNodeId={toolNodeId}
+          paramKey={paramKey}
+          sourceVariable={sourceVariable}
+          agentName={displayedAgent.name}
+          agentNodeId={displayedAgent.nodeId}
+        />
+      )}
     </div>
   )
 }

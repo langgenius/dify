@@ -337,6 +337,8 @@ const FormInputItem: FC<Props> = ({
           showManageInputField={showManageInputField}
           onManageInputField={onManageInputField}
           disableVariableInsertion={disableVariableInsertion}
+          toolNodeId={nodeId}
+          paramKey={variable}
         />
       )}
       {isNumber && isConstant && (
