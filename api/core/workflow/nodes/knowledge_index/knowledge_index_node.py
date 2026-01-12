@@ -279,7 +279,7 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
                         executor.submit(process_segment, segment) for segment in segments_to_process
                     ]
                     # Wait for all tasks to complete
-                    concurrent.futures.wait(futures)
+                    concurrent.futures.wait(futures, timeout=300)
 
                 logger.info(
                     f"Successfully generated summary index for {len(segments_to_process)} segments "
