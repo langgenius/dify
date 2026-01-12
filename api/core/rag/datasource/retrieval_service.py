@@ -381,10 +381,9 @@ class RetrievalService:
             records = []
             include_segment_ids = set()
             segment_child_map = {}
-            segment_file_map = {}
 
             valid_dataset_documents = {}
-            image_doc_ids = []
+            image_doc_ids: list[Any] = []
             child_index_node_ids = []
             index_node_ids = []
             doc_to_document_map = {}
@@ -421,7 +420,7 @@ class RetrievalService:
             index_node_segments: list[DocumentSegment] = []
             segments: list[DocumentSegment] = []
             attachment_map = {}
-            child_chunk_map = {}
+            child_chunk_map: dict[Any, Any] = {}
             doc_segment_map = {}
 
             with session_factory.create_session() as session:
@@ -429,16 +428,27 @@ class RetrievalService:
 
                 for attachment in attachments:
                     segment_ids.append(attachment["segment_id"])
-                    attachment_map[attachment["segment_id"]] = attachment
-                    doc_segment_map[attachment["segment_id"]] = attachment["attachment_id"]
-
+                    if attachment["segment_id"] in attachment_map:
+                        attachment_map[attachment["segment_id"]].append(attachment["attachment_info"])
+                    else:
+                        attachment_map[attachment["segment_id"]] = [attachment["attachment_info"]]
+                    if attachment["attachment_id"] in doc_segment_map:
+                        doc_segment_map[attachment["segment_id"]].append(attachment["attachment_id"])
+                    else:
+                        doc_segment_map[attachment["segment_id"]] = [attachment["attachment_id"]]
                 child_chunk_stmt = select(ChildChunk).where(ChildChunk.index_node_id.in_(child_index_node_ids))
                 child_index_nodes = session.execute(child_chunk_stmt).scalars().all()
 
                 for i in child_index_nodes:
                     segment_ids.append(i.segment_id)
-                    child_chunk_map[i.segment_id] = i
-                    doc_segment_map[i.segment_id] = i.index_node_id
+                    if i.segment_id in child_chunk_map:
+                        child_chunk_map[i.segment_id].append(i)
+                    else:
+                        child_chunk_map[i.segment_id] = [i]
+                    if i.segment_id in doc_segment_map:
+                        doc_segment_map[i.segment_id].append(i.index_node_id)
+                    else:
+                        doc_segment_map[i.segment_id] = [i.index_node_id]
 
                 if index_node_ids:
                     document_segment_stmt = select(DocumentSegment).where(
@@ -448,7 +458,7 @@ class RetrievalService:
                     )
                     index_node_segments = session.execute(document_segment_stmt).scalars().all()  # type: ignore
                     for index_node_segment in index_node_segments:
-                        doc_segment_map[index_node_segment.id] = index_node_segment.index_node_id
+                        doc_segment_map[index_node_segment.id] = [index_node_segment.index_node_id]
                 if segment_ids:
                     document_segment_stmt = select(DocumentSegment).where(
                         DocumentSegment.enabled == True,
@@ -461,85 +471,65 @@ class RetrievalService:
                     segments.extend(index_node_segments)
 
             for segment in segments:
-                doc_id = doc_segment_map.get(segment.id)
-                child_chunk = child_chunk_map.get(segment.id)
-                attachment_info = attachment_map.get(segment.id)
+                child_chunks: list[ChildChunk] = child_chunk_map.get(segment.id, [])
+                attachment_infos: list[dict[str, Any]] = attachment_map.get(segment.id, [])
+                ds_dataset_document: DatasetDocument | None = valid_dataset_documents.get(segment.document_id)
 
-                if doc_id:
-                    document = doc_to_document_map[doc_id]
-                    ds_dataset_document: DatasetDocument | None = valid_dataset_documents.get(
-                        document.metadata.get("document_id")
-                    )
-
-                    if ds_dataset_document and ds_dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
-                        if segment.id not in include_segment_ids:
-                            include_segment_ids.add(segment.id)
-                            if child_chunk:
+                if ds_dataset_document and ds_dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
+                    if segment.id not in include_segment_ids:
+                        include_segment_ids.add(segment.id)
+                        if child_chunks or attachment_infos:
+                            child_chunk_details = []
+                            max_score = 0.0
+                            for child_chunk in child_chunks:
+                                document = doc_to_document_map[child_chunk.index_node_id]
                                 child_chunk_detail = {
                                     "id": child_chunk.id,
                                     "content": child_chunk.content,
                                     "position": child_chunk.position,
                                     "score": document.metadata.get("score", 0.0) if document else 0.0,
                                 }
-                                map_detail = {
-                                    "max_score": document.metadata.get("score", 0.0) if document else 0.0,
-                                    "child_chunks": [child_chunk_detail],
-                                }
-                                segment_child_map[segment.id] = map_detail
-                            record = {
-                                "segment": segment,
+                                child_chunk_details.append(child_chunk_detail)
+                                max_score = max(max_score, document.metadata.get("score", 0.0) if document else 0.0)
+                            for attachment_info in attachment_infos:
+                                file_document = doc_to_document_map[attachment_info["id"]]
+                                max_score = max(
+                                    max_score, file_document.metadata.get("score", 0.0) if file_document else 0.0
+                                )
+
+                            map_detail = {
+                                "max_score": max_score,
+                                "child_chunks": child_chunk_details,
                             }
-                            if attachment_info:
-                                segment_file_map[segment.id] = [attachment_info]
-                            records.append(record)
-                        else:
-                            if child_chunk:
-                                child_chunk_detail = {
-                                    "id": child_chunk.id,
-                                    "content": child_chunk.content,
-                                    "position": child_chunk.position,
-                                    "score": document.metadata.get("score", 0.0),
-                                }
-                                if segment.id in segment_child_map:
-                                    segment_child_map[segment.id]["child_chunks"].append(child_chunk_detail)  # type: ignore
-                                    segment_child_map[segment.id]["max_score"] = max(
-                                        segment_child_map[segment.id]["max_score"],
-                                        document.metadata.get("score", 0.0) if document else 0.0,
-                                    )
-                                else:
-                                    segment_child_map[segment.id] = {
-                                        "max_score": document.metadata.get("score", 0.0) if document else 0.0,
-                                        "child_chunks": [child_chunk_detail],
-                                    }
-                            if attachment_info:
-                                if segment.id in segment_file_map:
-                                    segment_file_map[segment.id].append(attachment_info)
-                                else:
-                                    segment_file_map[segment.id] = [attachment_info]
-                    else:
-                        if segment.id not in include_segment_ids:
-                            include_segment_ids.add(segment.id)
-                            record = {
-                                "segment": segment,
-                                "score": document.metadata.get("score", 0.0),  # type: ignore
-                            }
-                            if attachment_info:
-                                segment_file_map[segment.id] = [attachment_info]
-                            records.append(record)
-                        else:
-                            if attachment_info:
-                                attachment_infos = segment_file_map.get(segment.id, [])
-                                if attachment_info not in attachment_infos:
-                                    attachment_infos.append(attachment_info)
-                                segment_file_map[segment.id] = attachment_infos
+                            segment_child_map[segment.id] = map_detail
+                        record = {
+                            "segment": segment,
+                        }
+                        records.append(record)
+                else:
+                    if segment.id not in include_segment_ids:
+                        include_segment_ids.add(segment.id)
+                        max_score = 0.0
+                        document = doc_to_document_map.get(segment.index_node_id)
+                        if document:
+                            max_score = max(max_score, document.metadata.get("score", 0.0))
+                        for attachment_info in attachment_infos:
+                            file_document = doc_to_document_map.get(attachment_info["id"])
+                            if file_document:
+                                max_score = max(max_score, file_document.metadata.get("score", 0.0))
+                        record = {
+                            "segment": segment,
+                            "score": max_score,
+                        }
+                        records.append(record)
 
             # Add child chunks information to records
             for record in records:
                 if record["segment"].id in segment_child_map:
                     record["child_chunks"] = segment_child_map[record["segment"].id].get("child_chunks")  # type: ignore
                     record["score"] = segment_child_map[record["segment"].id]["max_score"]  # type: ignore
-                if record["segment"].id in segment_file_map:
-                    record["files"] = segment_file_map[record["segment"].id]  # type: ignore[assignment]
+                if record["segment"].id in attachment_map:
+                    record["files"] = attachment_map[record["segment"].id]  # type: ignore[assignment]
 
             result = []
             for record in records:
@@ -550,6 +540,9 @@ class RetrievalService:
                 child_chunks = record.get("child_chunks")
                 if not isinstance(child_chunks, list):
                     child_chunks = None
+
+                if child_chunks:
+                    child_chunks = sorted(child_chunks, key=lambda x: x.get("score", 0.0), reverse=True)
 
                 # Extract files, ensuring it's a list or None
                 files = record.get("files")
@@ -570,7 +563,7 @@ class RetrievalService:
                 )
                 result.append(retrieval_segment)
 
-            return result
+            return sorted(result, key=lambda x: x.score, reverse=True)
         except Exception as e:
             db.session.rollback()
             raise e
