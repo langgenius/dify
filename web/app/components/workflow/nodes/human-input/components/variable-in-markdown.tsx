@@ -123,14 +123,11 @@ export const Variable: React.FC<{ path: string }> = ({ path }) => {
   )
 }
 
-export const Note: React.FC<{ placeholder: FormInputItemPlaceholder, title: string }> = ({ placeholder, title }) => {
+export const Note: React.FC<{ placeholder: FormInputItemPlaceholder }> = ({ placeholder }) => {
   const isVariable = placeholder.type === 'variable'
   return (
-    <>
-      <h2>{title}</h2>
-      <div className="mt-3 rounded-[10px] bg-components-input-bg-normal px-2.5 py-2">
-        {isVariable ? <Variable path={`{{${placeholder.selector.join('.')}}}`} /> : <span>{placeholder.value}</span>}
-      </div>
-    </>
+    <div className="mt-3 rounded-[10px] bg-components-input-bg-normal px-2.5 py-2">
+      {isVariable ? <Variable path={`{{${placeholder.selector.join('.')}}}`} /> : <span>{placeholder.value}</span>}
+    </div>
   )
 }
