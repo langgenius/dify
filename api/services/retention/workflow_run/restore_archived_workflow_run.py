@@ -97,7 +97,12 @@ class WorkflowRunRestore:
         self.workers = workers
         self.workflow_run_repo: APIWorkflowRunRepository | None = None
 
-    def _restore_from_run(self, run: WorkflowRun | WorkflowArchiveLog) -> RestoreResult:
+    def _restore_from_run(
+        self,
+        run: WorkflowRun | WorkflowArchiveLog,
+        *,
+        session_maker: sessionmaker,
+    ) -> RestoreResult:
         start_time = time.time()
         run_id = run.workflow_run_id if isinstance(run, WorkflowArchiveLog) else run.id
         created_at = run.run_created_at if isinstance(run, WorkflowArchiveLog) else run.created_at
@@ -137,7 +142,6 @@ class WorkflowRunRestore:
             result.elapsed_time = time.time() - start_time
             return result
 
-        session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
         with session_maker() as session:
             try:
                 with zipfile.ZipFile(io.BytesIO(archive_data), mode="r") as archive:
@@ -398,7 +402,7 @@ class WorkflowRunRestore:
         repo = self._get_workflow_run_repo()
 
         with session_maker() as session:
-            runs = repo.get_archived_runs_by_time_range(
+            archive_logs = repo.get_archived_logs_by_time_range(
                 session=session,
                 tenant_ids=tenant_ids,
                 start_date=start_date,
@@ -408,13 +412,16 @@ class WorkflowRunRestore:
 
         click.echo(
             click.style(
-                f"Found {len(runs)} archived workflow runs to restore",
+                f"Found {len(archive_logs)} archived workflow runs to restore",
                 fg="white",
             )
         )
 
+        def _restore_with_session(archive_log: WorkflowArchiveLog) -> RestoreResult:
+            return self._restore_from_run(archive_log, session_maker=session_maker)
+
         with ThreadPoolExecutor(max_workers=self.workers) as executor:
-            results = list(executor.map(self._restore_from_run, runs))
+            results = list(executor.map(_restore_with_session, archive_logs))
 
         return results
 
@@ -438,4 +445,5 @@ class WorkflowRunRestore:
                 error=f"Workflow run archive {run_id} not found",
             )
 
-        return self._restore_from_run(archive_log)
+        session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+        return self._restore_from_run(archive_log, session_maker=session_maker)

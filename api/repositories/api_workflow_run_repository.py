@@ -280,6 +280,19 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         """
         ...
 
+    def get_archived_logs_by_time_range(
+        self,
+        session: Session,
+        tenant_ids: Sequence[str] | None,
+        start_date: datetime,
+        end_date: datetime,
+        limit: int,
+    ) -> Sequence[WorkflowArchiveLog]:
+        """
+        Fetch archived workflow logs by time range for restore.
+        """
+        ...
+
     def get_archived_log_by_run_id(
         self,
         run_id: str,
@@ -352,7 +365,7 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         limit: int,
     ) -> Sequence[WorkflowRun]:
         """
-        Get archived workflow runs in a time range.
+        Return workflow runs that already have archive logs, for cleanup of `workflow_runs`.
         """
         ...
 

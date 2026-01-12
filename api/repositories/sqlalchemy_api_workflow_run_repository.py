@@ -534,9 +534,36 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         end_date: datetime,
         limit: int,
     ) -> Sequence[WorkflowRun]:
+        """
+        Retrieves WorkflowRun records by joining workflow_archive_logs.
+
+        Used to identify runs that are already archived and ready for deletion.
+        """
         stmt = (
             select(WorkflowRun)
             .join(WorkflowArchiveLog, WorkflowArchiveLog.workflow_run_id == WorkflowRun.id)
+            .where(
+                WorkflowArchiveLog.run_created_at >= start_date,
+                WorkflowArchiveLog.run_created_at < end_date,
+            )
+            .order_by(WorkflowArchiveLog.run_created_at.asc(), WorkflowArchiveLog.workflow_run_id.asc())
+            .limit(limit)
+        )
+        if tenant_ids:
+            stmt = stmt.where(WorkflowArchiveLog.tenant_id.in_(tenant_ids))
+        return list(session.scalars(stmt))
+
+    def get_archived_logs_by_time_range(
+        self,
+        session: Session,
+        tenant_ids: Sequence[str] | None,
+        start_date: datetime,
+        end_date: datetime,
+        limit: int,
+    ) -> Sequence[WorkflowArchiveLog]:
+        # Returns WorkflowArchiveLog rows directly; use this when workflow_runs may be deleted.
+        stmt = (
+            select(WorkflowArchiveLog)
             .where(
                 WorkflowArchiveLog.run_created_at >= start_date,
                 WorkflowArchiveLog.run_created_at < end_date,
