@@ -1,4 +1,5 @@
 import base64
+import datetime
 import json
 import logging
 import secrets
@@ -45,6 +46,7 @@ from services.clear_free_plan_tenant_expired_logs import ClearFreePlanTenantExpi
 from services.plugin.data_migration import PluginDataMigration
 from services.plugin.plugin_migration import PluginMigration
 from services.plugin.plugin_service import PluginService
+from services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs import WorkflowRunCleanup
 from tasks.remove_app_and_related_data_task import delete_draft_variables_batch
 
 logger = logging.getLogger(__name__)
@@ -850,6 +852,61 @@ def clear_free_plan_tenant_expired_logs(days: int, batch: int, tenant_ids: list[
     ClearFreePlanTenantExpiredLogs.process(days, batch, tenant_ids)
 
     click.echo(click.style("Clear free plan tenant expired logs completed.", fg="green"))
+
+
+@click.command("clean-workflow-runs", help="Clean expired workflow runs and related data for free tenants.")
+@click.option("--days", default=30, show_default=True, help="Delete workflow runs created before N days ago.")
+@click.option("--batch-size", default=200, show_default=True, help="Batch size for selecting workflow runs.")
+@click.option(
+    "--start-from",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    default=None,
+    help="Optional lower bound (inclusive) for created_at; must be paired with --end-before.",
+)
+@click.option(
+    "--end-before",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    default=None,
+    help="Optional upper bound (exclusive) for created_at; must be paired with --start-from.",
+)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Preview cleanup results without deleting any workflow run data.",
+)
+def clean_workflow_runs(
+    days: int,
+    batch_size: int,
+    start_from: datetime.datetime | None,
+    end_before: datetime.datetime | None,
+    dry_run: bool,
+):
+    """
+    Clean workflow runs and related workflow data for free tenants.
+    """
+    if (start_from is None) ^ (end_before is None):
+        raise click.UsageError("--start-from and --end-before must be provided together.")
+
+    start_time = datetime.datetime.now(datetime.UTC)
+    click.echo(click.style(f"Starting workflow run cleanup at {start_time.isoformat()}.", fg="white"))
+
+    WorkflowRunCleanup(
+        days=days,
+        batch_size=batch_size,
+        start_from=start_from,
+        end_before=end_before,
+        dry_run=dry_run,
+    ).run()
+
+    end_time = datetime.datetime.now(datetime.UTC)
+    elapsed = end_time - start_time
+    click.echo(
+        click.style(
+            f"Workflow run cleanup completed. start={start_time.isoformat()} "
+            f"end={end_time.isoformat()} duration={elapsed}",
+            fg="green",
+        )
+    )
 
 
 @click.option("-f", "--force", is_flag=True, help="Skip user confirmation and force the command to execute.")
