@@ -8,13 +8,13 @@ import {
   IS_MARKETPLACE,
   MARKETPLACE_API_PREFIX,
 } from '@/config'
-import { marketPlaceRouterContract } from '@/contract/router'
+import { marketplaceRouterContract } from '@/contract/router'
 
 const getMarketplaceHeaders = () => new Headers({
   'X-Dify-Version': !IS_MARKETPLACE ? APP_VERSION : '999.0.0',
 })
 
-const link = new OpenAPILink(marketPlaceRouterContract, {
+const link = new OpenAPILink(marketplaceRouterContract, {
   url: MARKETPLACE_API_PREFIX,
   headers: () => (getMarketplaceHeaders()),
   fetch: (request, init) => {
@@ -30,5 +30,5 @@ const link = new OpenAPILink(marketPlaceRouterContract, {
   ],
 })
 
-export const markertPlaceClient: JsonifiedClient<ContractRouterClient<typeof marketPlaceRouterContract>> = createORPCClient(link)
-export const markertPlaceClientQuery = createTanstackQueryUtils(markertPlaceClient)
+export const marketplaceClient: JsonifiedClient<ContractRouterClient<typeof marketplaceRouterContract>> = createORPCClient(link)
+export const marketplaceClientQuery = createTanstackQueryUtils(marketplaceClient)

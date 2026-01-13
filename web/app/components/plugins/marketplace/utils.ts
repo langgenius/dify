@@ -9,7 +9,7 @@ import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import {
   MARKETPLACE_API_PREFIX,
 } from '@/config'
-import { markertPlaceClient } from '@/service/client'
+import { marketplaceClient } from '@/service/client'
 import { getMarketplaceUrl } from '@/utils/var'
 import { PLUGIN_TYPE_SEARCH_MAP } from './constants'
 
@@ -59,7 +59,7 @@ export const getMarketplacePluginsByCollectionId = async (
   let plugins: Plugin[] = []
 
   try {
-    const marketplaceCollectionPluginsDataJson = await markertPlaceClient.collectionPlugins({
+    const marketplaceCollectionPluginsDataJson = await marketplaceClient.collectionPlugins({
       params: {
         collectionId,
       },
@@ -84,7 +84,7 @@ export const getMarketplaceCollectionsAndPlugins = async (
   let marketplaceCollections: MarketplaceCollection[] = []
   let marketplaceCollectionPluginsMap: Record<string, Plugin[]> = {}
   try {
-    const marketplaceCollectionsDataJson = await markertPlaceClient.collections({
+    const marketplaceCollectionsDataJson = await marketplaceClient.collections({
       query: {
         ...query,
         page: 1,
@@ -137,7 +137,7 @@ export const getMarketplacePlugins = async (
   } = queryParams
 
   try {
-    const res = await markertPlaceClient.searchAdvanced({
+    const res = await marketplaceClient.searchAdvanced({
       params: {
         kind: type === 'bundle' ? 'bundles' : 'plugins',
       },
