@@ -64,7 +64,7 @@ class Dataset(TypeBase):
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    updated_at: Mapped[str] = mapped_column(
+    updated_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
     embedding_model: Mapped[str | None] = mapped_column(sa.String(255), nullable=True)
