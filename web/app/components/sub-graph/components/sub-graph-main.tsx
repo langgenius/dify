@@ -1,8 +1,7 @@
 import type { FC } from 'react'
 import type { Viewport } from 'reactflow'
-import type { SubGraphConfig } from '../types'
 import type { Edge, Node } from '@/app/components/workflow/types'
-import { useCallback, useMemo } from 'react'
+import { useMemo } from 'react'
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
 import { useAvailableNodesMetaData, useSubGraphPersistence } from '../hooks'
 import SubGraphChildren from './sub-graph-children'
@@ -23,37 +22,14 @@ const SubGraphMain: FC<SubGraphMainProps> = ({
   paramKey,
 }) => {
   const availableNodesMetaData = useAvailableNodesMetaData()
-  const {
-    saveSubGraphData,
-    loadSubGraphData,
-    updateSubGraphConfig,
-  } = useSubGraphPersistence({ toolNodeId, paramKey })
-
-  const handleNodesChange = useCallback((updatedNodes: Node[]) => {
-    const existingData = loadSubGraphData()
-    const defaultConfig: SubGraphConfig = {
-      enabled: true,
-      startNodeId: updatedNodes[0]?.id || '',
-      selectedOutputVar: [],
-      whenOutputNone: 'default',
-    }
-
-    saveSubGraphData({
-      nodes: updatedNodes,
-      edges,
-      config: existingData?.config || defaultConfig,
-    })
-  }, [edges, loadSubGraphData, saveSubGraphData])
+  const { updateSubGraphConfig } = useSubGraphPersistence({ toolNodeId, paramKey })
 
   const hooksStore = useMemo(() => {
     return {
+      interactionMode: 'subgraph',
       availableNodesMetaData,
-      doSyncWorkflowDraft: async () => {
-        handleNodesChange(nodes)
-      },
-      syncWorkflowDraftWhenPageClose: () => {
-        handleNodesChange(nodes)
-      },
+      doSyncWorkflowDraft: async () => {},
+      syncWorkflowDraftWhenPageClose: () => {},
       handleRefreshWorkflowDraft: () => {},
       handleBackupDraft: () => {},
       handleLoadBackupDraft: () => {},
@@ -86,7 +62,7 @@ const SubGraphMain: FC<SubGraphMainProps> = ({
       resetConversationVar: async () => {},
       invalidateConversationVarValues: () => {},
     }
-  }, [availableNodesMetaData, handleNodesChange, nodes])
+  }, [availableNodesMetaData])
 
   return (
     <WorkflowWithInnerContext
@@ -94,6 +70,9 @@ const SubGraphMain: FC<SubGraphMainProps> = ({
       edges={edges}
       viewport={viewport}
       hooksStore={hooksStore as any}
+      allowSelectionWhenReadOnly
+      canvasReadOnly
+      interactionMode="subgraph"
     >
       <SubGraphChildren
         toolNodeId={toolNodeId}

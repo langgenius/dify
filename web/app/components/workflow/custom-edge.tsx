@@ -25,6 +25,7 @@ import {
   useAvailableBlocks,
   useNodesInteractions,
 } from './hooks'
+import { useHooksStore } from './hooks-store'
 import { BlockEnum, NodeRunningStatus } from './types'
 import { getEdgeColor } from './utils'
 
@@ -56,6 +57,8 @@ const CustomEdge = ({
   })
   const [open, setOpen] = useState(false)
   const { handleNodeAdd } = useNodesInteractions()
+  const interactionMode = useHooksStore(s => s.interactionMode)
+  const allowGraphActions = interactionMode !== 'subgraph'
   const { availablePrevBlocks } = useAvailableBlocks((data as Edge['data'])!.targetType, (data as Edge['data'])?.isInIteration || (data as Edge['data'])?.isInLoop)
   const { availableNextBlocks } = useAvailableBlocks((data as Edge['data'])!.sourceType, (data as Edge['data'])?.isInIteration || (data as Edge['data'])?.isInLoop)
   const {
@@ -136,35 +139,37 @@ const CustomEdge = ({
           stroke,
           strokeWidth: 2,
           opacity: data._dimmed ? 0.3 : (data._waitingRun ? 0.7 : 1),
-          strokeDasharray: (data._isTemp && data.sourceType !== BlockEnum.Group && data.targetType !== BlockEnum.Group) ? '8 8' : undefined,
+          strokeDasharray: (data._isTemp && !data._isSubGraphTemp && data.sourceType !== BlockEnum.Group && data.targetType !== BlockEnum.Group) ? '8 8' : undefined,
         }}
       />
-      <EdgeLabelRenderer>
-        <div
-          className={cn(
-            'nopan nodrag hover:scale-125',
-            data?._hovering ? 'block' : 'hidden',
-            open && '!block',
-            data.isInIteration && `z-[${ITERATION_CHILDREN_Z_INDEX}]`,
-            data.isInLoop && `z-[${LOOP_CHILDREN_Z_INDEX}]`,
-          )}
-          style={{
-            position: 'absolute',
-            transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
-            pointerEvents: 'all',
-            opacity: data._waitingRun ? 0.7 : 1,
-          }}
-        >
-          <BlockSelector
-            open={open}
-            onOpenChange={handleOpenChange}
-            asChild
-            onSelect={handleInsert}
-            availableBlocksTypes={intersection(availablePrevBlocks, availableNextBlocks)}
-            triggerClassName={() => 'hover:scale-150 transition-all'}
-          />
-        </div>
-      </EdgeLabelRenderer>
+      {allowGraphActions && (
+        <EdgeLabelRenderer>
+          <div
+            className={cn(
+              'nopan nodrag hover:scale-125',
+              data?._hovering ? 'block' : 'hidden',
+              open && '!block',
+              data.isInIteration && `z-[${ITERATION_CHILDREN_Z_INDEX}]`,
+              data.isInLoop && `z-[${LOOP_CHILDREN_Z_INDEX}]`,
+            )}
+            style={{
+              position: 'absolute',
+              transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
+              pointerEvents: 'all',
+              opacity: data._waitingRun ? 0.7 : 1,
+            }}
+          >
+            <BlockSelector
+              open={open}
+              onOpenChange={handleOpenChange}
+              asChild
+              onSelect={handleInsert}
+              availableBlocksTypes={intersection(availablePrevBlocks, availableNextBlocks)}
+              triggerClassName={() => 'hover:scale-150 transition-all'}
+            />
+          </div>
+        </EdgeLabelRenderer>
+      )}
     </>
   )
 }

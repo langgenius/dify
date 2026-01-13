@@ -4,6 +4,7 @@ import { memo, useMemo } from 'react'
 import { useStore as useReactFlowStore } from 'reactflow'
 import { useShallow } from 'zustand/react/shallow'
 import { Panel as NodePanel } from '@/app/components/workflow/nodes'
+import { BlockEnum } from '@/app/components/workflow/types'
 
 type SubGraphChildrenProps = {
   toolNodeId: string
@@ -20,7 +21,7 @@ const SubGraphChildren: FC<SubGraphChildrenProps> = ({
     const nodes = s.getNodes()
     const currentNode = nodes.find(node => node.data.selected)
 
-    if (currentNode) {
+    if (currentNode?.data.type === BlockEnum.LLM) {
       return {
         id: currentNode.id,
         type: currentNode.type,

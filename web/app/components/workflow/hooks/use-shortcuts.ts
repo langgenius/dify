@@ -17,7 +17,7 @@ import {
 } from '../utils'
 import { useWorkflowHistoryStore } from '../workflow-history-store'
 
-export const useShortcuts = (): void => {
+export const useShortcuts = (enabled = true): void => {
   const {
     handleNodesCopy,
     handleNodesPaste,
@@ -66,13 +66,17 @@ export const useShortcuts = (): void => {
   }
 
   const shouldHandleShortcut = useCallback((e: KeyboardEvent) => {
+    if (!enabled)
+      return false
     return !isEventTargetInputArea(e.target as HTMLElement)
-  }, [])
+  }, [enabled])
 
   const shouldHandleCopy = useCallback(() => {
+    if (!enabled)
+      return false
     const selection = document.getSelection()
     return !selection || selection.isCollapsed
-  }, [])
+  }, [enabled])
 
   useKeyPress(['delete', 'backspace'], (e) => {
     if (shouldHandleShortcut(e)) {
@@ -282,6 +286,8 @@ export const useShortcuts = (): void => {
 
   // Listen for zen toggle event from /zen command
   useEffect(() => {
+    if (!enabled)
+      return
     const handleZenToggle = () => {
       handleToggleMaximizeCanvas()
     }
@@ -290,5 +296,5 @@ export const useShortcuts = (): void => {
     return () => {
       window.removeEventListener(ZEN_TOGGLE_EVENT, handleZenToggle)
     }
-  }, [handleToggleMaximizeCanvas])
+  }, [enabled, handleToggleMaximizeCanvas])
 }

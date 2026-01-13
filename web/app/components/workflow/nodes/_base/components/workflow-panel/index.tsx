@@ -231,6 +231,8 @@ const BasePanel: FC<BasePanelProps> = ({
   } = useNodesMetaData()
 
   const configsMap = useHooksStore(s => s.configsMap)
+  const interactionMode = useHooksStore(s => s.interactionMode)
+  const allowGraphActions = interactionMode !== 'subgraph'
   const {
     isShowSingleRun,
     hideSingleRun,
@@ -514,9 +516,9 @@ const BasePanel: FC<BasePanelProps> = ({
                   </Tooltip>
                 )
               }
-              <HelpLink nodeType={data.type} />
-              <PanelOperator id={id} data={data} showHelpLink={false} />
-              <div className="mx-3 h-3.5 w-[1px] bg-divider-regular" />
+              {allowGraphActions && <HelpLink nodeType={data.type} />}
+              {allowGraphActions && <PanelOperator id={id} data={data} showHelpLink={false} />}
+              {allowGraphActions && <div className="mx-3 h-3.5 w-[1px] bg-divider-regular" />}
               <div
                 className="flex h-6 w-6 cursor-pointer items-center justify-center"
                 onClick={() => handleNodeSelect(id, true)}
@@ -623,7 +625,7 @@ const BasePanel: FC<BasePanelProps> = ({
             </div>
             <Split />
             {
-              hasRetryNode(data.type) && (
+              allowGraphActions && hasRetryNode(data.type) && (
                 <RetryOnPanel
                   id={id}
                   data={data}
@@ -631,7 +633,7 @@ const BasePanel: FC<BasePanelProps> = ({
               )
             }
             {
-              hasErrorHandleNode(data.type) && (
+              allowGraphActions && hasErrorHandleNode(data.type) && (
                 <ErrorHandleOnPanel
                   id={id}
                   data={data}
@@ -639,7 +641,7 @@ const BasePanel: FC<BasePanelProps> = ({
               )
             }
             {
-              !!availableNextBlocks.length && (
+              allowGraphActions && !!availableNextBlocks.length && (
                 <div className="border-t-[0.5px] border-divider-regular p-4">
                   <div className="system-sm-semibold-uppercase mb-1 flex items-center text-text-secondary">
                     {t('panel.nextStep', { ns: 'workflow' }).toLocaleUpperCase()}
@@ -651,7 +653,7 @@ const BasePanel: FC<BasePanelProps> = ({
                 </div>
               )
             }
-            {readmeEntranceComponent}
+            {allowGraphActions ? readmeEntranceComponent : null}
           </div>
         )}
 

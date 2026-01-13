@@ -2,6 +2,7 @@
 
 import type { FC } from 'react'
 import type {
+  NodeMouseHandler,
   Viewport,
 } from 'reactflow'
 import type { Shape as HooksStoreShape } from './hooks-store'
@@ -102,6 +103,7 @@ import {
 } from './store'
 import SyncingDataModal from './syncing-data-modal'
 import {
+  BlockEnum,
   ControlMode,
 } from './types'
 import { setupScrollToNodeListener } from './utils/node-navigation'
@@ -134,6 +136,9 @@ export type WorkflowProps = {
   viewport?: Viewport
   children?: React.ReactNode
   onWorkflowDataUpdate?: (v: any) => void
+  allowSelectionWhenReadOnly?: boolean
+  canvasReadOnly?: boolean
+  interactionMode?: 'default' | 'subgraph'
 }
 export const Workflow: FC<WorkflowProps> = memo(({
   nodes: originalNodes,
@@ -141,6 +146,9 @@ export const Workflow: FC<WorkflowProps> = memo(({
   viewport,
   children,
   onWorkflowDataUpdate,
+  allowSelectionWhenReadOnly = false,
+  canvasReadOnly = false,
+  interactionMode = 'default',
 }) => {
   const workflowContainerRef = useRef<HTMLDivElement>(null)
   const workflowStore = useWorkflowStore()
@@ -196,7 +204,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
     if (!isEqual(oldData, nodesData)) {
       setNodesInStore(nodes)
     }
-  }, [setNodesInStore, workflowStore])
+  }, [setNodesInStore])
   useEffect(() => {
     setNodesOnlyChangeWithData(currentNodes as Node[])
   }, [currentNodes, setNodesOnlyChangeWithData])
@@ -328,7 +336,8 @@ export const Workflow: FC<WorkflowProps> = memo(({
     },
   })
 
-  useShortcuts()
+  const isSubGraph = interactionMode === 'subgraph'
+  useShortcuts(!isSubGraph)
   // Initialize workflow node search functionality
   useWorkflowSearch()
 
@@ -382,6 +391,16 @@ export const Workflow: FC<WorkflowProps> = memo(({
     }
   }
 
+  const handleNodeClickInMode = useCallback<NodeMouseHandler>(
+    (event, node) => {
+      if (isSubGraph && node.data.type !== BlockEnum.LLM)
+        return
+
+      handleNodeClick(event, node)
+    },
+    [handleNodeClick, isSubGraph],
+  )
+
   return (
     <div
       id="workflow-container"
@@ -393,18 +412,18 @@ export const Workflow: FC<WorkflowProps> = memo(({
       ref={workflowContainerRef}
     >
       <SyncingDataModal />
-      <CandidateNode />
+      {!isSubGraph && <CandidateNode />}
       <div
         className="pointer-events-none absolute left-0 top-0 z-10 flex w-12 items-center justify-center p-1 pl-2"
         style={{ height: controlHeight }}
       >
-        <Control />
+        {!isSubGraph && <Control />}
       </div>
-      <Operator handleRedo={handleHistoryForward} handleUndo={handleHistoryBack} />
-      <PanelContextmenu />
-      <NodeContextmenu />
-      <SelectionContextmenu />
-      <HelpLine />
+      {!isSubGraph && <Operator handleRedo={handleHistoryForward} handleUndo={handleHistoryBack} />}
+      {!isSubGraph && <PanelContextmenu />}
+      {!isSubGraph && <NodeContextmenu />}
+      {!isSubGraph && <SelectionContextmenu />}
+      {!isSubGraph && <HelpLine />}
       {
         !!showConfirm && (
           <Confirm
@@ -427,38 +446,38 @@ export const Workflow: FC<WorkflowProps> = memo(({
         onNodeDragStop={handleNodeDragStop}
         onNodeMouseEnter={handleNodeEnter}
         onNodeMouseLeave={handleNodeLeave}
-        onNodeClick={handleNodeClick}
-        onNodeContextMenu={handleNodeContextMenu}
-        onConnect={handleNodeConnect}
-        onConnectStart={handleNodeConnectStart}
-        onConnectEnd={handleNodeConnectEnd}
+        onNodeClick={handleNodeClickInMode}
+        onNodeContextMenu={isSubGraph ? undefined : handleNodeContextMenu}
+        onConnect={isSubGraph ? undefined : handleNodeConnect}
+        onConnectStart={isSubGraph ? undefined : handleNodeConnectStart}
+        onConnectEnd={isSubGraph ? undefined : handleNodeConnectEnd}
         onEdgeMouseEnter={handleEdgeEnter}
         onEdgeMouseLeave={handleEdgeLeave}
         onEdgesChange={handleEdgesChange}
-        onSelectionStart={handleSelectionStart}
-        onSelectionChange={handleSelectionChange}
-        onSelectionDrag={handleSelectionDrag}
-        onPaneContextMenu={handlePaneContextMenu}
-        onSelectionContextMenu={handleSelectionContextMenu}
+        onSelectionStart={isSubGraph ? undefined : handleSelectionStart}
+        onSelectionChange={isSubGraph ? undefined : handleSelectionChange}
+        onSelectionDrag={isSubGraph ? undefined : handleSelectionDrag}
+        onPaneContextMenu={isSubGraph ? undefined : handlePaneContextMenu}
+        onSelectionContextMenu={isSubGraph ? undefined : handleSelectionContextMenu}
         connectionLineComponent={CustomConnectionLine}
         // NOTE: For LOOP node, how to distinguish between ITERATION and LOOP here? Maybe both are the same?
         connectionLineContainerStyle={{ zIndex: ITERATION_CHILDREN_Z_INDEX }}
         defaultViewport={viewport}
         multiSelectionKeyCode={null}
         deleteKeyCode={null}
-        nodesDraggable={!nodesReadOnly}
-        nodesConnectable={!nodesReadOnly}
-        nodesFocusable={!nodesReadOnly}
-        edgesFocusable={!nodesReadOnly}
-        panOnScroll={controlMode === ControlMode.Pointer && !workflowReadOnly}
-        panOnDrag={controlMode === ControlMode.Hand || [1]}
-        zoomOnPinch={true}
-        zoomOnScroll={true}
-        zoomOnDoubleClick={true}
+        nodesDraggable={!(nodesReadOnly || canvasReadOnly || isSubGraph)}
+        nodesConnectable={!(nodesReadOnly || canvasReadOnly || isSubGraph)}
+        nodesFocusable={allowSelectionWhenReadOnly ? true : !nodesReadOnly}
+        edgesFocusable={isSubGraph ? false : (allowSelectionWhenReadOnly ? true : !nodesReadOnly)}
+        panOnScroll={!isSubGraph && controlMode === ControlMode.Pointer && !workflowReadOnly}
+        panOnDrag={!isSubGraph && (controlMode === ControlMode.Hand || [1])}
+        selectionOnDrag={!isSubGraph && controlMode === ControlMode.Pointer && !workflowReadOnly && !canvasReadOnly}
+        zoomOnPinch={!isSubGraph}
+        zoomOnScroll={!isSubGraph}
+        zoomOnDoubleClick={!isSubGraph}
         isValidConnection={isValidConnection}
         selectionKeyCode={null}
         selectionMode={SelectionMode.Partial}
-        selectionOnDrag={controlMode === ControlMode.Pointer && !workflowReadOnly}
         minZoom={0.25}
       >
         <Background

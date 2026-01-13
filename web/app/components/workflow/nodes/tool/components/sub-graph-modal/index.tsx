@@ -1,12 +1,19 @@
 'use client'
 import type { FC } from 'react'
 import type { SubGraphModalProps } from './types'
+import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
+import type { ToolNodeType } from '@/app/components/workflow/nodes/tool/types'
+import type { Node, PromptItem } from '@/app/components/workflow/types'
 import { Dialog, DialogPanel, Transition, TransitionChild } from '@headlessui/react'
 import { RiCloseLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
-import { Fragment, memo } from 'react'
+import { Fragment, memo, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useStoreApi } from 'reactflow'
 import { Agent } from '@/app/components/base/icons/src/vender/workflow'
+import { useNodesSyncDraft } from '@/app/components/workflow/hooks'
+import { useStore } from '@/app/components/workflow/store'
+import { PromptRole } from '@/app/components/workflow/types'
 import SubGraphCanvas from './sub-graph-canvas'
 
 const SubGraphModal: FC<SubGraphModalProps> = ({
@@ -19,6 +26,76 @@ const SubGraphModal: FC<SubGraphModalProps> = ({
   agentNodeId,
 }) => {
   const { t } = useTranslation()
+  const reactflowStore = useStoreApi()
+  const workflowNodes = useStore(state => state.nodes)
+  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+
+  const extractorNodeId = `${toolNodeId}_ext_${paramKey}`
+  const extractorNode = useMemo(() => {
+    return workflowNodes.find(node => node.id === extractorNodeId) as Node<LLMNodeType> | undefined
+  }, [extractorNodeId, workflowNodes])
+  const toolNode = useMemo(() => {
+    return workflowNodes.find(node => node.id === toolNodeId)
+  }, [toolNodeId, workflowNodes])
+  const toolParamValue = (toolNode?.data as ToolNodeType | undefined)?.tool_parameters?.[paramKey]?.value as string | undefined
+
+  const getSystemPromptText = useCallback((promptTemplate?: PromptItem[] | PromptItem) => {
+    if (!promptTemplate)
+      return ''
+    if (Array.isArray(promptTemplate)) {
+      const systemPrompt = promptTemplate.find(item => item.role === PromptRole.system)
+      return systemPrompt?.text || ''
+    }
+    return promptTemplate.text || ''
+  }, [])
+
+  const handleSave = useCallback((subGraphNodes: any[], _edges: any[]) => {
+    const extractorNodeData = subGraphNodes.find(node => node.id === extractorNodeId)
+    if (!extractorNodeData)
+      return
+
+    const systemPromptText = getSystemPromptText(extractorNodeData.data?.prompt_template)
+    const placeholder = `{{@${agentNodeId}.context@}}`
+    const nextValue = `${placeholder}${systemPromptText}`
+
+    const { getNodes, setNodes } = reactflowStore.getState()
+    const nextNodes = getNodes().map((node) => {
+      if (node.id === extractorNodeId) {
+        return {
+          ...node,
+          hidden: true,
+          data: {
+            ...node.data,
+            ...extractorNodeData.data,
+            parent_node_id: toolNodeId,
+          },
+        }
+      }
+      if (node.id === toolNodeId) {
+        const toolData = node.data as ToolNodeType
+        if (!toolData.tool_parameters?.[paramKey])
+          return node
+
+        return {
+          ...node,
+          data: {
+            ...toolData,
+            tool_parameters: {
+              ...toolData.tool_parameters,
+              [paramKey]: {
+                ...toolData.tool_parameters[paramKey],
+                value: nextValue,
+              },
+            },
+          },
+        }
+      }
+      return node
+    })
+    setNodes(nextNodes)
+    // Trigger main graph draft sync to persist changes to backend
+    handleSyncWorkflowDraft()
+  }, [agentNodeId, extractorNodeId, getSystemPromptText, handleSyncWorkflowDraft, paramKey, reactflowStore, toolNodeId])
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
@@ -58,6 +135,9 @@ const SubGraphModal: FC<SubGraphModalProps> = ({
                     sourceVariable={sourceVariable}
                     agentNodeId={agentNodeId}
                     agentName={agentName}
+                    extractorNode={extractorNode}
+                    toolParamValue={toolParamValue}
+                    onSave={handleSave}
                   />
                 </div>
               </DialogPanel>

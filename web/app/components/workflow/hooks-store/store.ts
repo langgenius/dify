@@ -23,6 +23,7 @@ export type AvailableNodesMetaData = {
   nodesMap?: Record<BlockEnum, NodeDefault<any>>
 }
 export type CommonHooksFnMap = {
+  interactionMode?: 'default' | 'subgraph'
   doSyncWorkflowDraft: (
     notRefreshWhenSyncError?: boolean,
     callback?: {
@@ -76,6 +77,7 @@ export type Shape = {
 } & CommonHooksFnMap
 
 export const createHooksStore = ({
+  interactionMode = 'default',
   doSyncWorkflowDraft = async () => noop(),
   syncWorkflowDraftWhenPageClose = noop,
   handleRefreshWorkflowDraft = noop,
@@ -118,6 +120,7 @@ export const createHooksStore = ({
 }: Partial<Shape>) => {
   return createStore<Shape>(set => ({
     refreshAll: props => set(state => ({ ...state, ...props })),
+    interactionMode,
     doSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose,
     handleRefreshWorkflowDraft,

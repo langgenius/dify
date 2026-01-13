@@ -1,11 +1,14 @@
-import type { ValueSelector } from '@/app/components/workflow/types'
+import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
+import type { Edge as WorkflowEdge, Node as WorkflowNode } from '@/app/components/workflow/types'
+
+type WorkflowValueSelector = string[]
 
 export type SubGraphModalProps = {
   isOpen: boolean
   onClose: () => void
   toolNodeId: string
   paramKey: string
-  sourceVariable: ValueSelector
+  sourceVariable: WorkflowValueSelector
   agentName: string
   agentNodeId: string
 }
@@ -13,7 +16,10 @@ export type SubGraphModalProps = {
 export type SubGraphCanvasProps = {
   toolNodeId: string
   paramKey: string
-  sourceVariable: ValueSelector
+  sourceVariable: WorkflowValueSelector
   agentNodeId: string
   agentName: string
+  extractorNode?: WorkflowNode<LLMNodeType>
+  toolParamValue?: string
+  onSave?: (nodes: WorkflowNode[], edges: WorkflowEdge[]) => void
 }

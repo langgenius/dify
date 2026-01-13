@@ -10,6 +10,9 @@ const SubGraphCanvas: FC<SubGraphCanvasProps> = ({
   sourceVariable,
   agentNodeId,
   agentName,
+  extractorNode,
+  toolParamValue,
+  onSave,
 }) => {
   return (
     <div className="h-full w-full">
@@ -19,6 +22,9 @@ const SubGraphCanvas: FC<SubGraphCanvasProps> = ({
         sourceVariable={sourceVariable}
         agentNodeId={agentNodeId}
         agentName={agentName}
+        extractorNode={extractorNode}
+        toolParamValue={toolParamValue}
+        onSave={onSave}
       />
     </div>
   )

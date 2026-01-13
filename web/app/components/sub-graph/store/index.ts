@@ -5,6 +5,7 @@ const initialState: Omit<SubGraphSliceShape, 'setSubGraphContext' | 'setSubGraph
   parameterKey: '',
   sourceAgentNodeId: '',
   sourceVariable: [],
+  subGraphReadOnly: true,
 
   subGraphNodes: [],
   subGraphEdges: [],

@@ -1,4 +1,5 @@
 import type { StateCreator } from 'zustand'
+import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type { Edge, Node, NodeOutPutVar, ValueSelector, VarType } from '@/app/components/workflow/types'
 
 export type WhenOutputNoneOption = 'error' | 'default'
@@ -25,6 +26,9 @@ export type SubGraphProps = {
   sourceVariable: ValueSelector
   agentNodeId: string
   agentName: string
+  extractorNode?: Node<LLMNodeType>
+  toolParamValue?: string
+  onSave?: (nodes: Node[], edges: Edge[]) => void
 }
 
 export type SubGraphSliceShape = {
@@ -32,6 +36,7 @@ export type SubGraphSliceShape = {
   parameterKey: string
   sourceAgentNodeId: string
   sourceVariable: ValueSelector
+  subGraphReadOnly: boolean
 
   subGraphNodes: Node[]
   subGraphEdges: Edge[]
