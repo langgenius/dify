@@ -24,7 +24,7 @@ export function middleware(request: NextRequest) {
   if (!isWhiteListEnabled)
     return wrapResponseWithXFrameOptions(response, pathname)
 
-  const whiteList = `${process.env.NEXT_PUBLIC_CSP_WHITELIST} ${NECESSARY_DOMAIN}`
+  const whiteList = `${process.env.NEXT_PUBLIC_CSP_WHITELIST || ''} ${NECESSARY_DOMAIN}`
   const imgWhiteList = process.env.NEXT_PUBLIC_CSP_IMG_WHITELIST || ''
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
   const csp = `'nonce-${nonce}'`
