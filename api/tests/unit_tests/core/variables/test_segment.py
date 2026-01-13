@@ -35,7 +35,6 @@ from core.variables.variables import (
     SecretVariable,
     StringVariable,
     Variable,
-    VariableUnion,
 )
 from core.workflow.runtime import VariablePool
 from core.workflow.system_variable import SystemVariable
@@ -96,7 +95,7 @@ class _Segments(BaseModel):
 
 
 class _Variables(BaseModel):
-    variables: list[VariableUnion]
+    variables: list[Variable]
 
 
 def create_test_file(
@@ -194,7 +193,7 @@ class TestSegmentDumpAndLoad:
         # Create one instance of each variable type
         test_file = create_test_file()
 
-        all_variables: list[VariableUnion] = [
+        all_variables: list[Variable] = [
             NoneVariable(name="none_var"),
             StringVariable(value="test string", name="string_var"),
             IntegerVariable(value=42, name="int_var"),

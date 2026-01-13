@@ -38,7 +38,7 @@ from core.variables.variables import (
     ObjectVariable,
     SecretVariable,
     StringVariable,
-    Variable,
+    VariableBase,
 )
 from core.workflow.constants import (
     CONVERSATION_VARIABLE_NODE_ID,
@@ -72,25 +72,25 @@ SEGMENT_TO_VARIABLE_MAP = {
 }
 
 
-def build_conversation_variable_from_mapping(mapping: Mapping[str, Any], /) -> Variable:
+def build_conversation_variable_from_mapping(mapping: Mapping[str, Any], /) -> VariableBase:
     if not mapping.get("name"):
         raise VariableError("missing name")
     return _build_variable_from_mapping(mapping=mapping, selector=[CONVERSATION_VARIABLE_NODE_ID, mapping["name"]])
 
 
-def build_environment_variable_from_mapping(mapping: Mapping[str, Any], /) -> Variable:
+def build_environment_variable_from_mapping(mapping: Mapping[str, Any], /) -> VariableBase:
     if not mapping.get("name"):
         raise VariableError("missing name")
     return _build_variable_from_mapping(mapping=mapping, selector=[ENVIRONMENT_VARIABLE_NODE_ID, mapping["name"]])
 
 
-def build_pipeline_variable_from_mapping(mapping: Mapping[str, Any], /) -> Variable:
+def build_pipeline_variable_from_mapping(mapping: Mapping[str, Any], /) -> VariableBase:
     if not mapping.get("variable"):
         raise VariableError("missing variable")
     return mapping["variable"]
 
 
-def _build_variable_from_mapping(*, mapping: Mapping[str, Any], selector: Sequence[str]) -> Variable:
+def _build_variable_from_mapping(*, mapping: Mapping[str, Any], selector: Sequence[str]) -> VariableBase:
     """
     This factory function is used to create the environment variable or the conversation variable,
     not support the File type.
@@ -100,7 +100,7 @@ def _build_variable_from_mapping(*, mapping: Mapping[str, Any], selector: Sequen
     if (value := mapping.get("value")) is None:
         raise VariableError("missing value")
 
-    result: Variable
+    result: VariableBase
     match value_type:
         case SegmentType.STRING:
             result = StringVariable.model_validate(mapping)
@@ -134,7 +134,7 @@ def _build_variable_from_mapping(*, mapping: Mapping[str, Any], selector: Sequen
         raise VariableError(f"variable size {result.size} exceeds limit {dify_config.MAX_VARIABLE_SIZE}")
     if not result.selector:
         result = result.model_copy(update={"selector": selector})
-    return cast(Variable, result)
+    return cast(VariableBase, result)
 
 
 def build_segment(value: Any, /) -> Segment:
@@ -285,8 +285,8 @@ def segment_to_variable(
     id: str | None = None,
     name: str | None = None,
     description: str = "",
-) -> Variable:
-    if isinstance(segment, Variable):
+) -> VariableBase:
+    if isinstance(segment, VariableBase):
         return segment
     name = name or selector[-1]
     id = id or str(uuid4())
@@ -297,7 +297,7 @@ def segment_to_variable(
 
     variable_class = SEGMENT_TO_VARIABLE_MAP[segment_type]
     return cast(
-        Variable,
+        VariableBase,
         variable_class(
             id=id,
             name=name,
