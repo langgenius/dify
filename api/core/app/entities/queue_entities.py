@@ -190,6 +190,8 @@ class QueueTextChunkEvent(AppQueueEvent):
     """iteration id if node is in iteration"""
     in_loop_id: str | None = None
     """loop id if node is in loop"""
+    in_mention_parent_id: str | None = None
+    """parent node id if this is an extractor node event"""
 
 
 class QueueAgentMessageEvent(AppQueueEvent):
@@ -229,6 +231,8 @@ class QueueRetrieverResourcesEvent(AppQueueEvent):
     """iteration id if node is in iteration"""
     in_loop_id: str | None = None
     """loop id if node is in loop"""
+    in_mention_parent_id: str | None = None
+    """parent node id if this is an extractor node event"""
 
 
 class QueueAnnotationReplyEvent(AppQueueEvent):
@@ -306,6 +310,8 @@ class QueueNodeStartedEvent(AppQueueEvent):
     node_run_index: int = 1  # FIXME(-LAN-): may not used
     in_iteration_id: str | None = None
     in_loop_id: str | None = None
+    in_mention_parent_id: str | None = None
+    """parent node id if this is an extractor node event"""
     start_at: datetime
     agent_strategy: AgentNodeStrategyInit | None = None
 
@@ -328,6 +334,8 @@ class QueueNodeSucceededEvent(AppQueueEvent):
     """iteration id if node is in iteration"""
     in_loop_id: str | None = None
     """loop id if node is in loop"""
+    in_mention_parent_id: str | None = None
+    """parent node id if this is an extractor node event"""
     start_at: datetime
 
     inputs: Mapping[str, object] = Field(default_factory=dict)
@@ -383,6 +391,8 @@ class QueueNodeExceptionEvent(AppQueueEvent):
     """iteration id if node is in iteration"""
     in_loop_id: str | None = None
     """loop id if node is in loop"""
+    in_mention_parent_id: str | None = None
+    """parent node id if this is an extractor node event"""
     start_at: datetime
 
     inputs: Mapping[str, object] = Field(default_factory=dict)
@@ -407,6 +417,8 @@ class QueueNodeFailedEvent(AppQueueEvent):
     """iteration id if node is in iteration"""
     in_loop_id: str | None = None
     """loop id if node is in loop"""
+    in_mention_parent_id: str | None = None
+    """parent node id if this is an extractor node event"""
     start_at: datetime
 
     inputs: Mapping[str, object] = Field(default_factory=dict)

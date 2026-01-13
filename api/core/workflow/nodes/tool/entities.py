@@ -1,22 +1,26 @@
+import re
 from collections.abc import Sequence
-from typing import Any, Literal, Union
+from typing import Any, Literal, Self, Union
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 from pydantic_core.core_schema import ValidationInfo
 
 from core.tools.entities.tool_entities import ToolProviderType
 from core.workflow.nodes.base.entities import BaseNodeData
 
+# Pattern to match a single variable reference like {{#llm.context#}}
+SINGLE_VARIABLE_PATTERN = re.compile(r"^\s*\{\{#[a-zA-Z0-9_]+(?:\.[a-zA-Z_][a-zA-Z0-9_]*)+#\}\}\s*$")
 
-class MentionValue(BaseModel):
-    """Value structure for mention type parameters.
 
-    Used when a tool parameter needs to be extracted from conversation context
-    using an extractor LLM node.
+class MentionConfig(BaseModel):
+    """Configuration for extracting value from context variable.
+
+    Used when a tool parameter needs to be extracted from list[PromptMessage]
+    context using an extractor LLM node.
     """
 
-    # Variable selector for list[PromptMessage] input to extractor
-    variable_selector: Sequence[str]
+    # Instruction for the extractor LLM to extract the value
+    instruction: str
 
     # ID of the extractor LLM node
     extractor_node_id: str
@@ -60,8 +64,10 @@ class ToolEntity(BaseModel):
 class ToolNodeData(BaseNodeData, ToolEntity):
     class ToolInput(BaseModel):
         # TODO: check this type
-        value: Union[Any, list[str], MentionValue]
+        value: Union[Any, list[str]]
         type: Literal["mixed", "variable", "constant", "mention"]
+        # Required config for mention type, extracting value from context variable
+        mention_config: MentionConfig | None = None
 
         @field_validator("type", mode="before")
         @classmethod
@@ -74,6 +80,9 @@ class ToolNodeData(BaseNodeData, ToolEntity):
 
             if typ == "mixed" and not isinstance(value, str):
                 raise ValueError("value must be a string")
+            elif typ == "mention":
+                # Skip here, will be validated in model_validator
+                pass
             elif typ == "variable":
                 if not isinstance(value, list):
                     raise ValueError("value must be a list")
@@ -82,18 +91,30 @@ class ToolNodeData(BaseNodeData, ToolEntity):
                         raise ValueError("value must be a list of strings")
             elif typ == "constant" and not isinstance(value, str | int | float | bool | dict):
                 raise ValueError("value must be a string, int, float, bool or dict")
-            elif typ == "mention":
-                # Mention type: value should be a MentionValue or dict with required fields
-                if isinstance(value, MentionValue):
-                    pass  # Already validated by Pydantic
-                elif isinstance(value, dict):
-                    if "extractor_node_id" not in value:
-                        raise ValueError("value must contain extractor_node_id for mention type")
-                    if "output_selector" not in value:
-                        raise ValueError("value must contain output_selector for mention type")
-                else:
-                    raise ValueError("value must be a MentionValue or dict for mention type")
             return typ
+
+        @model_validator(mode="after")
+        def check_mention_type(self) -> Self:
+            """Validate mention type with mention_config."""
+            if self.type != "mention":
+                return self
+
+            value = self.value
+            if value is None:
+                return self
+
+            if not isinstance(value, str):
+                raise ValueError("value must be a string for mention type")
+            # For mention type, value must be a single variable reference
+            if not SINGLE_VARIABLE_PATTERN.match(value):
+                raise ValueError(
+                    "For mention type, value must be a single variable reference "
+                    "like {{#node.variable#}}, cannot contain other content"
+                )
+            # mention_config is required for mention type
+            if self.mention_config is None:
+                raise ValueError("mention_config is required for mention type")
+            return self
 
     tool_parameters: dict[str, ToolInput]
     # The version of the tool parameter.

@@ -17,7 +17,6 @@ from core.helper.code_executor import CodeExecutor, CodeLanguage
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
 from core.memory.base import BaseMemory
-from core.memory.node_token_buffer_memory import NodeTokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities import (
     ImagePromptMessageContent,
@@ -334,32 +333,16 @@ class LLMNode(Node[LLMNodeData]):
                 outputs["files"] = ArrayFileSegment(value=self._file_outputs)
 
             # Write to Node Memory if in node memory mode
-            if isinstance(memory, NodeTokenBufferMemory):
-                # Get workflow_run_id as the key for this execution
-                workflow_run_id_var = variable_pool.get(["sys", SystemVariableKey.WORKFLOW_EXECUTION_ID])
-                workflow_run_id = workflow_run_id_var.value if isinstance(workflow_run_id_var, StringSegment) else ""
-
-                if workflow_run_id:
-                    # Resolve the query template to get actual user content
-                    # query may be a template like "{{#sys.query#}}" or "{{#node_id.output#}}"
-                    actual_query = variable_pool.convert_template(query or "").text
-
-                    # Get user files from sys.files
-                    user_files_var = variable_pool.get(["sys", SystemVariableKey.FILES])
-                    user_files: list[File] = []
-                    if isinstance(user_files_var, ArrayFileSegment):
-                        user_files = list(user_files_var.value)
-                    elif isinstance(user_files_var, FileSegment):
-                        user_files = [user_files_var.value]
-
-                    memory.add_messages(
-                        workflow_run_id=workflow_run_id,
-                        user_content=actual_query,
-                        user_files=user_files,
-                        assistant_content=clean_text,
-                        assistant_files=self._file_outputs,
-                    )
-                    memory.flush()
+            # Resolve the query template to get actual user content
+            actual_query = variable_pool.convert_template(query or "").text
+            llm_utils.save_node_memory(
+                memory=memory,
+                variable_pool=variable_pool,
+                user_query=actual_query,
+                assistant_response=clean_text,
+                user_files=files,
+                assistant_files=self._file_outputs,
+            )
 
             # Send final chunk event to indicate streaming is complete
             yield StreamChunkEvent(

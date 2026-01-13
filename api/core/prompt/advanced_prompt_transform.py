@@ -5,7 +5,7 @@ from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEnti
 from core.file import file_manager
 from core.file.models import File
 from core.helper.code_executor.jinja2.jinja2_formatter import Jinja2Formatter
-from core.memory.token_buffer_memory import TokenBufferMemory
+from core.memory.base import BaseMemory
 from core.model_runtime.entities import (
     AssistantPromptMessage,
     PromptMessage,
@@ -43,7 +43,7 @@ class AdvancedPromptTransform(PromptTransform):
         files: Sequence[File],
         context: str | None,
         memory_config: MemoryConfig | None,
-        memory: TokenBufferMemory | None,
+        memory: BaseMemory | None,
         model_config: ModelConfigWithCredentialsEntity,
         image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
     ) -> list[PromptMessage]:
@@ -84,7 +84,7 @@ class AdvancedPromptTransform(PromptTransform):
         files: Sequence[File],
         context: str | None,
         memory_config: MemoryConfig | None,
-        memory: TokenBufferMemory | None,
+        memory: BaseMemory | None,
         model_config: ModelConfigWithCredentialsEntity,
         image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
     ) -> list[PromptMessage]:
@@ -145,7 +145,7 @@ class AdvancedPromptTransform(PromptTransform):
         files: Sequence[File],
         context: str | None,
         memory_config: MemoryConfig | None,
-        memory: TokenBufferMemory | None,
+        memory: BaseMemory | None,
         model_config: ModelConfigWithCredentialsEntity,
         image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
     ) -> list[PromptMessage]:
@@ -270,7 +270,7 @@ class AdvancedPromptTransform(PromptTransform):
 
     def _set_histories_variable(
         self,
-        memory: TokenBufferMemory,
+        memory: BaseMemory,
         memory_config: MemoryConfig,
         raw_prompt: str,
         role_prefix: MemoryConfig.RolePrefix,
