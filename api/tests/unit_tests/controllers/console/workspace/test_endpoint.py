@@ -25,8 +25,10 @@ from controllers.console.workspace.endpoint import (
     EndpointUpdateApi,
 )
 from core.plugin.impl.exc import PluginPermissionDeniedError
+from models import TenantAccountRole
 from models.account import Account
 from pydantic import ValidationError
+from werkzeug.exceptions import Forbidden
 
 
 class BaseEndpointApiTest:
@@ -47,7 +49,21 @@ class BaseEndpointApiTest:
         account.id = "user-123"
         account.email = "test@example.com"
         account.current_tenant_id = "tenant-456"
+        account.current_role = TenantAccountRole.ADMIN
         account.is_authenticated = True
+        account.is_admin_or_owner = True
+        return account
+
+    @pytest.fixture
+    def mock_account_normal(self):
+        """Create a mock normal user account (non-privileged)."""
+        account = MagicMock(spec=Account)
+        account.id = "user-789"
+        account.email = "user@example.com"
+        account.current_tenant_id = "tenant-456"
+        account.current_role = TenantAccountRole.NORMAL
+        account.is_authenticated = True
+        account.is_admin_or_owner = False
         return account
 
     @pytest.fixture
@@ -486,6 +502,43 @@ class TestEndpointUpdateApi(BaseEndpointApiTest):
             settings=settings,
         )
 
+    def test_update_endpoint_unauthorized(self, app, mock_account_normal, mock_endpoint_service, mock_decorators):
+        """Test that non-privileged users cannot update endpoints."""
+        # Arrange
+        endpoint_id = "endpoint-123"
+        name = "Updated Endpoint Name"
+        settings = {"api_key": "new-key"}
+
+        with app.test_request_context(
+            method="POST",
+            json={
+                "endpoint_id": endpoint_id,
+                "name": name,
+                "settings": settings,
+            },
+            path="/workspaces/current/endpoints/update",
+        ):
+            with (
+                patch(
+                    "controllers.console.workspace.endpoint.current_account_with_tenant",
+                    return_value=(mock_account_normal, "tenant-456"),
+                ),
+                patch("libs.login._get_user", return_value=mock_account_normal),
+                patch(
+                    "controllers.console.workspace.endpoint.console_ns",
+                    new=MagicMock(payload={
+                        "endpoint_id": endpoint_id,
+                        "name": name,
+                        "settings": settings,
+                    }),
+                ),
+            ):
+                resource = EndpointUpdateApi()
+
+                # Act & Assert
+                with pytest.raises(Forbidden):
+                    resource.post()
+
 
 class TestEndpointDeleteApi(BaseEndpointApiTest):
     """Unit tests for EndpointDeleteApi."""
@@ -526,6 +579,35 @@ class TestEndpointDeleteApi(BaseEndpointApiTest):
             user_id="user-123",
             endpoint_id=endpoint_id,
         )
+
+    def test_delete_endpoint_unauthorized(self, app, mock_account_normal, mock_endpoint_service, mock_decorators):
+        """Test that non-privileged users cannot delete endpoints."""
+        # Arrange
+        endpoint_id = "endpoint-123"
+
+        with app.test_request_context(
+            method="POST",
+            json={"endpoint_id": endpoint_id},
+            path="/workspaces/current/endpoints/delete",
+        ):
+            with (
+                patch(
+                    "controllers.console.workspace.endpoint.current_account_with_tenant",
+                    return_value=(mock_account_normal, "tenant-456"),
+                ),
+                patch("libs.login._get_user", return_value=mock_account_normal),
+                patch(
+                    "controllers.console.workspace.endpoint.console_ns",
+                    new=MagicMock(payload={
+                        "endpoint_id": endpoint_id,
+                    }),
+                ),
+            ):
+                resource = EndpointDeleteApi()
+
+                # Act & Assert
+                with pytest.raises(Forbidden):
+                    resource.post()
 
 
 class TestEndpointEnableApi(BaseEndpointApiTest):
@@ -568,6 +650,35 @@ class TestEndpointEnableApi(BaseEndpointApiTest):
             endpoint_id=endpoint_id,
         )
 
+    def test_enable_endpoint_unauthorized(self, app, mock_account_normal, mock_endpoint_service, mock_decorators):
+        """Test that non-privileged users cannot enable endpoints."""
+        # Arrange
+        endpoint_id = "endpoint-123"
+
+        with app.test_request_context(
+            method="POST",
+            json={"endpoint_id": endpoint_id},
+            path="/workspaces/current/endpoints/enable",
+        ):
+            with (
+                patch(
+                    "controllers.console.workspace.endpoint.current_account_with_tenant",
+                    return_value=(mock_account_normal, "tenant-456"),
+                ),
+                patch("libs.login._get_user", return_value=mock_account_normal),
+                patch(
+                    "controllers.console.workspace.endpoint.console_ns",
+                    new=MagicMock(payload={
+                        "endpoint_id": endpoint_id,
+                    }),
+                ),
+            ):
+                resource = EndpointEnableApi()
+
+                # Act & Assert
+                with pytest.raises(Forbidden):
+                    resource.post()
+
 
 class TestEndpointDisableApi(BaseEndpointApiTest):
     """Unit tests for EndpointDisableApi."""
@@ -608,3 +719,32 @@ class TestEndpointDisableApi(BaseEndpointApiTest):
             user_id="user-123",
             endpoint_id=endpoint_id,
         )
+
+    def test_disable_endpoint_unauthorized(self, app, mock_account_normal, mock_endpoint_service, mock_decorators):
+        """Test that non-privileged users cannot disable endpoints."""
+        # Arrange
+        endpoint_id = "endpoint-123"
+
+        with app.test_request_context(
+            method="POST",
+            json={"endpoint_id": endpoint_id},
+            path="/workspaces/current/endpoints/disable",
+        ):
+            with (
+                patch(
+                    "controllers.console.workspace.endpoint.current_account_with_tenant",
+                    return_value=(mock_account_normal, "tenant-456"),
+                ),
+                patch("libs.login._get_user", return_value=mock_account_normal),
+                patch(
+                    "controllers.console.workspace.endpoint.console_ns",
+                    new=MagicMock(payload={
+                        "endpoint_id": endpoint_id,
+                    }),
+                ),
+            ):
+                resource = EndpointDisableApi()
+
+                # Act & Assert
+                with pytest.raises(Forbidden):
+                    resource.post()
