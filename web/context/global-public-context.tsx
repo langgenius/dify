@@ -2,42 +2,61 @@
 import type { FC, PropsWithChildren } from 'react'
 import type { SystemFeatures } from '@/types/feature'
 import { useQuery } from '@tanstack/react-query'
-import { useEffect } from 'react'
 import { create } from 'zustand'
 import Loading from '@/app/components/base/loading'
 import { getSystemFeatures } from '@/service/common'
 import { defaultSystemFeatures } from '@/types/feature'
+import { fetchSetupStatusWithCache } from '@/utils/setup-status'
 
 type GlobalPublicStore = {
-  isGlobalPending: boolean
-  setIsGlobalPending: (isPending: boolean) => void
   systemFeatures: SystemFeatures
   setSystemFeatures: (systemFeatures: SystemFeatures) => void
 }
 
 export const useGlobalPublicStore = create<GlobalPublicStore>(set => ({
-  isGlobalPending: true,
-  setIsGlobalPending: (isPending: boolean) => set(() => ({ isGlobalPending: isPending })),
   systemFeatures: defaultSystemFeatures,
   setSystemFeatures: (systemFeatures: SystemFeatures) => set(() => ({ systemFeatures })),
 }))
 
+const systemFeaturesQueryKey = ['systemFeatures'] as const
+const setupStatusQueryKey = ['setupStatus'] as const
+
+async function fetchSystemFeatures() {
+  const data = await getSystemFeatures()
+  const { setSystemFeatures } = useGlobalPublicStore.getState()
+  setSystemFeatures({ ...defaultSystemFeatures, ...data })
+  return data
+}
+
+export function useSystemFeaturesQuery() {
+  return useQuery({
+    queryKey: systemFeaturesQueryKey,
+    queryFn: fetchSystemFeatures,
+  })
+}
+
+export function useIsSystemFeaturesPending() {
+  const { isPending } = useSystemFeaturesQuery()
+  return isPending
+}
+
+export function useSetupStatusQuery() {
+  return useQuery({
+    queryKey: setupStatusQueryKey,
+    queryFn: fetchSetupStatusWithCache,
+    staleTime: Infinity,
+  })
+}
+
 const GlobalPublicStoreProvider: FC<PropsWithChildren> = ({
   children,
 }) => {
-  const { isPending, data } = useQuery({
-    queryKey: ['systemFeatures'],
-    queryFn: getSystemFeatures,
-  })
-  const { setSystemFeatures, setIsGlobalPending: setIsPending } = useGlobalPublicStore()
-  useEffect(() => {
-    if (data)
-      setSystemFeatures({ ...defaultSystemFeatures, ...data })
-  }, [data, setSystemFeatures])
+  // Fetch systemFeatures and setupStatus in parallel to reduce waterfall.
+  // setupStatus is prefetched here and cached in localStorage for AppInitializer.
+  const { isPending } = useSystemFeaturesQuery()
 
-  useEffect(() => {
-    setIsPending(isPending)
-  }, [isPending, setIsPending])
+  // Prefetch setupStatus for AppInitializer (result not needed here)
+  useSetupStatusQuery()
 
   if (isPending)
     return <div className="flex h-screen w-screen items-center justify-center"><Loading /></div>
