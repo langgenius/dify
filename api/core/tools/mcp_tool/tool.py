@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import base64
 import json
 import logging
@@ -6,7 +8,15 @@ from typing import Any
 
 from core.mcp.auth_client import MCPClientWithAuthRetry
 from core.mcp.error import MCPConnectionError
-from core.mcp.types import AudioContent, CallToolResult, ImageContent, TextContent
+from core.mcp.types import (
+    AudioContent,
+    BlobResourceContents,
+    CallToolResult,
+    EmbeddedResource,
+    ImageContent,
+    TextContent,
+    TextResourceContents,
+)
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage, ToolProviderType
@@ -53,10 +63,19 @@ class MCPTool(Tool):
         for content in result.content:
             if isinstance(content, TextContent):
                 yield from self._process_text_content(content)
-            elif isinstance(content, ImageContent):
-                yield self._process_image_content(content)
-            elif isinstance(content, AudioContent):
-                yield self._process_audio_content(content)
+            elif isinstance(content, ImageContent | AudioContent):
+                yield self.create_blob_message(
+                    blob=base64.b64decode(content.data), meta={"mime_type": content.mimeType}
+                )
+            elif isinstance(content, EmbeddedResource):
+                resource = content.resource
+                if isinstance(resource, TextResourceContents):
+                    yield self.create_text_message(resource.text)
+                elif isinstance(resource, BlobResourceContents):
+                    mime_type = resource.mimeType or "application/octet-stream"
+                    yield self.create_blob_message(blob=base64.b64decode(resource.blob), meta={"mime_type": mime_type})
+                else:
+                    raise ToolInvokeError(f"Unsupported embedded resource type: {type(resource)}")
             else:
                 logger.warning("Unsupported content type=%s", type(content))
 
@@ -101,15 +120,7 @@ class MCPTool(Tool):
         for item in json_list:
             yield self.create_json_message(item)
 
-    def _process_image_content(self, content: ImageContent) -> ToolInvokeMessage:
-        """Process image content and return a blob message."""
-        return self.create_blob_message(blob=base64.b64decode(content.data), meta={"mime_type": content.mimeType})
-
-    def _process_audio_content(self, content: AudioContent) -> ToolInvokeMessage:
-        """Process audio content and return a blob message."""
-        return self.create_blob_message(blob=base64.b64decode(content.data), meta={"mime_type": content.mimeType})
-
-    def fork_tool_runtime(self, runtime: ToolRuntime) -> "MCPTool":
+    def fork_tool_runtime(self, runtime: ToolRuntime) -> MCPTool:
         return MCPTool(
             entity=self.entity,
             runtime=runtime,

@@ -1,17 +1,19 @@
-import { PLUGIN_TYPE_SEARCH_MAP } from './plugin-type-switch'
-import type { Plugin } from '@/app/components/plugins/types'
-import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import type { ActivePluginType } from './constants'
 import type {
   CollectionsAndPluginsSearchParams,
   MarketplaceCollection,
   PluginsSearchParams,
 } from '@/app/components/plugins/marketplace/types'
+import type { Plugin, PluginsFromMarketplaceResponse } from '@/app/components/plugins/types'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import {
   APP_VERSION,
   IS_MARKETPLACE,
   MARKETPLACE_API_PREFIX,
 } from '@/config'
+import { postMarketplace } from '@/service/base'
 import { getMarketplaceUrl } from '@/utils/var'
+import { PLUGIN_TYPE_SEARCH_MAP } from './constants'
 
 type MarketplaceFetchOptions = {
   signal?: AbortSignal
@@ -27,12 +29,13 @@ export const getPluginIconInMarketplace = (plugin: Plugin) => {
   return `${MARKETPLACE_API_PREFIX}/plugins/${plugin.org}/${plugin.name}/icon`
 }
 
-export const getFormattedPlugin = (bundle: any) => {
+export const getFormattedPlugin = (bundle: Plugin): Plugin => {
   if (bundle.type === 'bundle') {
     return {
       ...bundle,
       icon: getPluginIconInMarketplace(bundle),
       brief: bundle.description,
+      // @ts-expect-error I do not have enough information
       label: bundle.labels,
     }
   }
@@ -130,6 +133,64 @@ export const getMarketplaceCollectionsAndPlugins = async (
   }
 }
 
+export const getMarketplacePlugins = async (
+  queryParams: PluginsSearchParams | undefined,
+  pageParam: number,
+  signal?: AbortSignal,
+) => {
+  if (!queryParams) {
+    return {
+      plugins: [] as Plugin[],
+      total: 0,
+      page: 1,
+      pageSize: 40,
+    }
+  }
+
+  const {
+    query,
+    sortBy,
+    sortOrder,
+    category,
+    tags,
+    type,
+    pageSize = 40,
+  } = queryParams
+  const pluginOrBundle = type === 'bundle' ? 'bundles' : 'plugins'
+
+  try {
+    const res = await postMarketplace<{ data: PluginsFromMarketplaceResponse }>(`/${pluginOrBundle}/search/advanced`, {
+      body: {
+        page: pageParam,
+        page_size: pageSize,
+        query,
+        sort_by: sortBy,
+        sort_order: sortOrder,
+        category: category !== 'all' ? category : '',
+        tags,
+        type,
+      },
+      signal,
+    })
+    const resPlugins = res.data.bundles || res.data.plugins || []
+
+    return {
+      plugins: resPlugins.map(plugin => getFormattedPlugin(plugin)),
+      total: res.data.total,
+      page: pageParam,
+      pageSize,
+    }
+  }
+  catch {
+    return {
+      plugins: [],
+      total: 0,
+      page: pageParam,
+      pageSize,
+    }
+  }
+}
+
 export const getMarketplaceListCondition = (pluginType: string) => {
   if ([PluginCategoryEnum.tool, PluginCategoryEnum.agent, PluginCategoryEnum.model, PluginCategoryEnum.datasource, PluginCategoryEnum.trigger].includes(pluginType as PluginCategoryEnum))
     return `category=${pluginType}`
@@ -143,7 +204,7 @@ export const getMarketplaceListCondition = (pluginType: string) => {
   return ''
 }
 
-export const getMarketplaceListFilterType = (category: string) => {
+export const getMarketplaceListFilterType = (category: ActivePluginType) => {
   if (category === PLUGIN_TYPE_SEARCH_MAP.all)
     return undefined
 
@@ -153,21 +214,13 @@ export const getMarketplaceListFilterType = (category: string) => {
   return 'plugin'
 }
 
-export const updateSearchParams = (pluginsSearchParams: PluginsSearchParams) => {
-  const { query, category, tags } = pluginsSearchParams
-  const url = new URL(window.location.href)
-  const categoryChanged = url.searchParams.get('category') !== category
-  if (query)
-    url.searchParams.set('q', query)
-  else
-    url.searchParams.delete('q')
-  if (category)
-    url.searchParams.set('category', category)
-  else
-    url.searchParams.delete('category')
-  if (tags && tags.length)
-    url.searchParams.set('tags', tags.join(','))
-  else
-    url.searchParams.delete('tags')
-  history[`${categoryChanged ? 'pushState' : 'replaceState'}`]({}, '', url)
+export function getCollectionsParams(category: ActivePluginType): CollectionsAndPluginsSearchParams {
+  if (category === PLUGIN_TYPE_SEARCH_MAP.all) {
+    return {}
+  }
+  return {
+    category,
+    condition: getMarketplaceListCondition(category),
+    type: getMarketplaceListFilterType(category),
+  }
 }

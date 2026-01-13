@@ -1,17 +1,18 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useRef, useState } from 'react'
 import {
   RiDeleteBinLine,
   RiNodeTree,
   RiUploadCloud2Line,
 } from '@remixicon/react'
+import * as React from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import { formatFileSize } from '@/utils/format'
-import cn from '@/utils/classnames'
-import { ToastContext } from '@/app/components/base/toast'
 import ActionButton from '@/app/components/base/action-button'
+import { ToastContext } from '@/app/components/base/toast'
+import { cn } from '@/utils/classnames'
+import { formatFileSize } from '@/utils/format'
 
 export type Props = {
   file: File | undefined
@@ -55,7 +56,7 @@ const Uploader: FC<Props> = ({
       return
     const files = [...e.dataTransfer.files]
     if (files.length > 1) {
-      notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.count') })
+      notify({ type: 'error', message: t('stepOne.uploader.validation.count', { ns: 'datasetCreation' }) })
       return
     }
     updateFile(files[0])
@@ -98,9 +99,9 @@ const Uploader: FC<Props> = ({
       <input
         ref={fileUploader}
         style={{ display: 'none' }}
-        type='file'
-        id='fileUploader'
-        accept='.pipeline'
+        type="file"
+        id="fileUploader"
+        accept=".pipeline"
         onChange={fileChangeHandle}
       />
       <div ref={dropRef}>
@@ -109,40 +110,41 @@ const Uploader: FC<Props> = ({
             className={cn(
               'flex h-12 items-center rounded-[10px] border border-dashed border-components-dropzone-border bg-components-dropzone-bg text-sm font-normal',
               dragging && 'border-components-dropzone-border-accent bg-components-dropzone-bg-accent',
-            )}>
-            <div className='flex w-full items-center justify-center space-x-2'>
-              <RiUploadCloud2Line className='h-6 w-6 text-text-tertiary' />
-              <div className='text-text-tertiary'>
-                {t('app.dslUploader.button')}
+            )}
+          >
+            <div className="flex w-full items-center justify-center space-x-2">
+              <RiUploadCloud2Line className="h-6 w-6 text-text-tertiary" />
+              <div className="text-text-tertiary">
+                {t('dslUploader.button', { ns: 'app' })}
                 <span
-                  className='cursor-pointer pl-1 text-text-accent'
+                  className="cursor-pointer pl-1 text-text-accent"
                   onClick={selectHandle}
                 >
-                  {t('app.dslUploader.browse')}
+                  {t('dslUploader.browse', { ns: 'app' })}
                 </span>
               </div>
             </div>
-            {dragging && <div ref={dragRef} className='absolute left-0 top-0 h-full w-full' />}
+            {dragging && <div ref={dragRef} className="absolute left-0 top-0 h-full w-full" />}
           </div>
         )}
         {file && (
-          <div className='group flex items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs hover:bg-components-panel-on-panel-item-bg-hover'>
-            <div className='flex items-center justify-center p-3'>
-              <RiNodeTree className='h-6 w-6 shrink-0 text-text-secondary' />
+          <div className="group flex items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs hover:bg-components-panel-on-panel-item-bg-hover">
+            <div className="flex items-center justify-center p-3">
+              <RiNodeTree className="h-6 w-6 shrink-0 text-text-secondary" />
             </div>
-            <div className='flex grow flex-col items-start gap-0.5 py-1 pr-2'>
-              <span className='font-inter max-w-[calc(100%_-_30px)] overflow-hidden text-ellipsis whitespace-nowrap text-[12px] font-medium leading-4 text-text-secondary'>
+            <div className="flex grow flex-col items-start gap-0.5 py-1 pr-2">
+              <span className="font-inter max-w-[calc(100%_-_30px)] overflow-hidden text-ellipsis whitespace-nowrap text-[12px] font-medium leading-4 text-text-secondary">
                 {file.name}
               </span>
-              <div className='font-inter flex h-3 items-center gap-1 self-stretch text-[10px] font-medium uppercase leading-3 text-text-tertiary'>
+              <div className="font-inter flex h-3 items-center gap-1 self-stretch text-[10px] font-medium uppercase leading-3 text-text-tertiary">
                 <span>PIPELINE</span>
-                <span className='text-text-quaternary'>·</span>
+                <span className="text-text-quaternary">·</span>
                 <span>{formatFileSize(file.size)}</span>
               </div>
             </div>
-            <div className='hidden items-center pr-3 group-hover:flex'>
+            <div className="hidden items-center pr-3 group-hover:flex">
               <ActionButton onClick={removeFile}>
-                <RiDeleteBinLine className='h-4 w-4 text-text-tertiary' />
+                <RiDeleteBinLine className="h-4 w-4 text-text-tertiary" />
               </ActionButton>
             </div>
           </div>

@@ -1,32 +1,20 @@
 import { render, screen } from '@testing-library/react'
 import AnnotationFull from './index'
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
-let mockUsageProps: { className?: string } | null = null
-jest.mock('./usage', () => ({
-  __esModule: true,
+vi.mock('./usage', () => ({
   default: (props: { className?: string }) => {
-    mockUsageProps = props
     return (
-      <div data-testid='usage-component' data-classname={props.className ?? ''}>
+      <div data-testid="usage-component" data-classname={props.className ?? ''}>
         usage
       </div>
     )
   },
 }))
 
-let mockUpgradeBtnProps: { loc?: string } | null = null
-jest.mock('../upgrade-btn', () => ({
-  __esModule: true,
+vi.mock('../upgrade-btn', () => ({
   default: (props: { loc?: string }) => {
-    mockUpgradeBtnProps = props
     return (
-      <button type='button' data-testid='upgrade-btn'>
+      <button type="button" data-testid="upgrade-btn">
         {props.loc}
       </button>
     )
@@ -35,9 +23,7 @@ jest.mock('../upgrade-btn', () => ({
 
 describe('AnnotationFull', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
-    mockUsageProps = null
-    mockUpgradeBtnProps = null
+    vi.clearAllMocks()
   })
 
   // Rendering marketing copy with action button

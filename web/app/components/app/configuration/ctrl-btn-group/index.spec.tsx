@@ -1,23 +1,17 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import ContrlBtnGroup from './index'
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 describe('ContrlBtnGroup', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // Rendering fixed action buttons
   describe('Rendering', () => {
     it('should render buttons when rendered', () => {
       // Arrange
-      const onSave = jest.fn()
-      const onReset = jest.fn()
+      const onSave = vi.fn()
+      const onReset = vi.fn()
 
       // Act
       render(<ContrlBtnGroup onSave={onSave} onReset={onReset} />)
@@ -32,8 +26,8 @@ describe('ContrlBtnGroup', () => {
   describe('Interactions', () => {
     it('should invoke callbacks when buttons are clicked', () => {
       // Arrange
-      const onSave = jest.fn()
-      const onReset = jest.fn()
+      const onSave = vi.fn()
+      const onReset = vi.fn()
       render(<ContrlBtnGroup onSave={onSave} onReset={onReset} />)
 
       // Act

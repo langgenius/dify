@@ -75,12 +75,24 @@ class BaseAppGenerator:
         user_inputs = {**user_inputs, **files_inputs, **file_list_inputs}
 
         # Check if all files are converted to File
-        if any(filter(lambda v: isinstance(v, dict), user_inputs.values())):
-            raise ValueError("Invalid input type")
-        if any(
-            filter(lambda v: isinstance(v, dict), filter(lambda item: isinstance(item, list), user_inputs.values()))
-        ):
-            raise ValueError("Invalid input type")
+        invalid_dict_keys = [
+            k
+            for k, v in user_inputs.items()
+            if isinstance(v, dict)
+            and entity_dictionary[k].type not in {VariableEntityType.FILE, VariableEntityType.JSON_OBJECT}
+        ]
+        if invalid_dict_keys:
+            raise ValueError(f"Invalid input type for {invalid_dict_keys}")
+
+        invalid_list_dict_keys = [
+            k
+            for k, v in user_inputs.items()
+            if isinstance(v, list)
+            and any(isinstance(item, dict) for item in v)
+            and entity_dictionary[k].type != VariableEntityType.FILE_LIST
+        ]
+        if invalid_list_dict_keys:
+            raise ValueError(f"Invalid input type for {invalid_list_dict_keys}")
 
         return user_inputs
 
@@ -104,8 +116,9 @@ class BaseAppGenerator:
             variable_entity.type in {VariableEntityType.FILE, VariableEntityType.FILE_LIST}
             and not variable_entity.required
         ):
-            # Treat empty string (frontend default) or empty list as unset
-            if not value and isinstance(value, (str, list)):
+            # Treat empty string (frontend default) as unset
+            # For FILE_LIST, allow empty list [] to pass through
+            if isinstance(value, str) and not value:
                 return None
 
         if variable_entity.type in {
@@ -175,6 +188,9 @@ class BaseAppGenerator:
                         value = True
                     elif value == 0:
                         value = False
+            case VariableEntityType.JSON_OBJECT:
+                if value and not isinstance(value, dict):
+                    raise ValueError(f"{variable_entity.variable} in input form must be a dict")
             case _:
                 raise AssertionError("this statement should be unreachable.")
 

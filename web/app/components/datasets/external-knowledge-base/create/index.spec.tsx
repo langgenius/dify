@@ -1,35 +1,29 @@
-import React from 'react'
+import type { ExternalAPIItem } from '@/models/datasets'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { ExternalAPIItem } from '@/models/datasets'
+import * as React from 'react'
 import ExternalKnowledgeBaseCreate from './index'
+import RetrievalSettings from './RetrievalSettings'
 
 // Mock next/navigation
-const mockReplace = jest.fn()
-const mockRefresh = jest.fn()
-jest.mock('next/navigation', () => ({
+const mockReplace = vi.fn()
+const mockRefresh = vi.fn()
+vi.mock('next/navigation', () => ({
   useRouter: () => ({
     replace: mockReplace,
-    push: jest.fn(),
+    push: vi.fn(),
     refresh: mockRefresh,
   }),
 }))
 
-// Mock react-i18next
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 // Mock useDocLink hook
-jest.mock('@/context/i18n', () => ({
+vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path?: string) => `https://docs.dify.ai/en${path || ''}`,
 }))
 
 // Mock external context providers (these are external dependencies)
-const mockSetShowExternalKnowledgeAPIModal = jest.fn()
-jest.mock('@/context/modal-context', () => ({
+const mockSetShowExternalKnowledgeAPIModal = vi.fn()
+vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
     setShowExternalKnowledgeAPIModal: mockSetShowExternalKnowledgeAPIModal,
   }),
@@ -65,10 +59,10 @@ const createDefaultMockApiList = (): ExternalAPIItem[] => [
   }),
 ]
 
-const mockMutateExternalKnowledgeApis = jest.fn()
+const mockMutateExternalKnowledgeApis = vi.fn()
 let mockExternalKnowledgeApiList: ExternalAPIItem[] = createDefaultMockApiList()
 
-jest.mock('@/context/external-knowledge-api-context', () => ({
+vi.mock('@/context/external-knowledge-api-context', () => ({
   useExternalKnowledgeApi: () => ({
     externalKnowledgeApiList: mockExternalKnowledgeApiList,
     mutateExternalKnowledgeApis: mockMutateExternalKnowledgeApis,
@@ -79,7 +73,7 @@ jest.mock('@/context/external-knowledge-api-context', () => ({
 // Helper to render component with default props
 const renderComponent = (props: Partial<React.ComponentProps<typeof ExternalKnowledgeBaseCreate>> = {}) => {
   const defaultProps = {
-    onConnect: jest.fn(),
+    onConnect: vi.fn(),
     loading: false,
   }
   return render(<ExternalKnowledgeBaseCreate {...defaultProps} {...props} />)
@@ -87,7 +81,7 @@ const renderComponent = (props: Partial<React.ComponentProps<typeof ExternalKnow
 
 describe('ExternalKnowledgeBaseCreate', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     // Reset API list to default using factory function
     mockExternalKnowledgeApiList = createDefaultMockApiList()
   })
@@ -169,7 +163,7 @@ describe('ExternalKnowledgeBaseCreate', () => {
 
     it('should call onConnect with form data when connect button is clicked', async () => {
       const user = userEvent.setup()
-      const onConnect = jest.fn()
+      const onConnect = vi.fn()
       renderComponent({ onConnect })
 
       // Fill in name field (using the actual Input component)
@@ -201,7 +195,7 @@ describe('ExternalKnowledgeBaseCreate', () => {
 
     it('should not call onConnect when form is invalid and button is disabled', async () => {
       const user = userEvent.setup()
-      const onConnect = jest.fn()
+      const onConnect = vi.fn()
       renderComponent({ onConnect })
 
       const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
@@ -355,7 +349,7 @@ describe('ExternalKnowledgeBaseCreate', () => {
 
     it('should call onConnect with complete form data when connect is clicked', async () => {
       const user = userEvent.setup()
-      const onConnect = jest.fn()
+      const onConnect = vi.fn()
       renderComponent({ onConnect })
 
       // Fill all fields using real components
@@ -407,7 +401,7 @@ describe('ExternalKnowledgeBaseCreate', () => {
   describe('ExternalApiSelection Integration', () => {
     it('should auto-select first API when API list is available', async () => {
       const user = userEvent.setup()
-      const onConnect = jest.fn()
+      const onConnect = vi.fn()
       renderComponent({ onConnect })
 
       const nameInput = screen.getByPlaceholderText('dataset.externalKnowledgeNamePlaceholder')
@@ -441,7 +435,7 @@ describe('ExternalKnowledgeBaseCreate', () => {
 
     it('should allow selecting different API from dropdown', async () => {
       const user = userEvent.setup()
-      const onConnect = jest.fn()
+      const onConnect = vi.fn()
       renderComponent({ onConnect })
 
       // Click on the API selector to open dropdown
@@ -662,7 +656,7 @@ describe('ExternalKnowledgeBaseCreate', () => {
     it('should maintain stable navBackHandle callback reference', async () => {
       const user = userEvent.setup()
       const { rerender } = render(
-        <ExternalKnowledgeBaseCreate onConnect={jest.fn()} loading={false} />,
+        <ExternalKnowledgeBaseCreate onConnect={vi.fn()} loading={false} />,
       )
 
       const buttons = screen.getAllByRole('button')
@@ -671,7 +665,7 @@ describe('ExternalKnowledgeBaseCreate', () => {
 
       expect(mockReplace).toHaveBeenCalledTimes(1)
 
-      rerender(<ExternalKnowledgeBaseCreate onConnect={jest.fn()} loading={false} />)
+      rerender(<ExternalKnowledgeBaseCreate onConnect={vi.fn()} loading={false} />)
 
       await user.click(backButton!)
       expect(mockReplace).toHaveBeenCalledTimes(2)
@@ -679,8 +673,8 @@ describe('ExternalKnowledgeBaseCreate', () => {
 
     it('should not recreate handlers on prop changes', async () => {
       const user = userEvent.setup()
-      const onConnect1 = jest.fn()
-      const onConnect2 = jest.fn()
+      const onConnect1 = vi.fn()
+      const onConnect2 = vi.fn()
 
       const { rerender } = render(
         <ExternalKnowledgeBaseCreate onConnect={onConnect1} loading={false} />,
@@ -714,7 +708,7 @@ describe('ExternalKnowledgeBaseCreate', () => {
   describe('Edge Cases', () => {
     it('should handle empty description gracefully', async () => {
       const user = userEvent.setup()
-      const onConnect = jest.fn()
+      const onConnect = vi.fn()
       renderComponent({ onConnect })
 
       const nameInput = screen.getByPlaceholderText('dataset.externalKnowledgeNamePlaceholder')
@@ -774,7 +768,7 @@ describe('ExternalKnowledgeBaseCreate', () => {
 
     it('should preserve provider value as external', async () => {
       const user = userEvent.setup()
-      const onConnect = jest.fn()
+      const onConnect = vi.fn()
       renderComponent({ onConnect })
 
       const nameInput = screen.getByPlaceholderText('dataset.externalKnowledgeNamePlaceholder')
@@ -820,7 +814,7 @@ describe('ExternalKnowledgeBaseCreate', () => {
   describe('RetrievalSettings Integration', () => {
     it('should toggle score threshold enabled when switch is clicked', async () => {
       const user = userEvent.setup()
-      const onConnect = jest.fn()
+      const onConnect = vi.fn()
       renderComponent({ onConnect })
 
       // Find and click the switch for score threshold
@@ -865,11 +859,8 @@ describe('ExternalKnowledgeBaseCreate', () => {
 
   // Direct unit tests for RetrievalSettings component to cover all branches
   describe('RetrievalSettings Component Direct Tests', () => {
-    // Import RetrievalSettings directly for unit testing
-    const RetrievalSettings = require('./RetrievalSettings').default
-
     it('should render with isInHitTesting mode', () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       render(
         <RetrievalSettings
           topK={4}
@@ -885,7 +876,7 @@ describe('ExternalKnowledgeBaseCreate', () => {
     })
 
     it('should render with isInRetrievalSetting mode', () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       render(
         <RetrievalSettings
           topK={4}
@@ -902,7 +893,7 @@ describe('ExternalKnowledgeBaseCreate', () => {
 
     it('should call onChange with score_threshold_enabled when switch is toggled', async () => {
       const user = userEvent.setup()
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       render(
         <RetrievalSettings
           topK={4}
@@ -920,7 +911,7 @@ describe('ExternalKnowledgeBaseCreate', () => {
     })
 
     it('should call onChange with top_k when top k value changes', () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       render(
         <RetrievalSettings
           topK={4}
@@ -939,7 +930,7 @@ describe('ExternalKnowledgeBaseCreate', () => {
     })
 
     it('should call onChange with score_threshold when threshold value changes', () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       render(
         <RetrievalSettings
           topK={4}
@@ -962,7 +953,7 @@ describe('ExternalKnowledgeBaseCreate', () => {
   describe('Complete Form Submission Flow', () => {
     it('should submit form with all default retrieval settings', async () => {
       const user = userEvent.setup()
-      const onConnect = jest.fn()
+      const onConnect = vi.fn()
       renderComponent({ onConnect })
 
       const nameInput = screen.getByPlaceholderText('dataset.externalKnowledgeNamePlaceholder')
@@ -995,7 +986,7 @@ describe('ExternalKnowledgeBaseCreate', () => {
 
     it('should submit form with modified retrieval settings', async () => {
       const user = userEvent.setup()
-      const onConnect = jest.fn()
+      const onConnect = vi.fn()
       renderComponent({ onConnect })
 
       // Toggle score threshold switch
