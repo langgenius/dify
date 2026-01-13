@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { ResourceVarInputs } from '../types'
+import type { MentionConfig, ResourceVarInputs } from '../types'
 import type { CredentialFormSchema, FormOption } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Event, Tool } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
@@ -233,13 +233,25 @@ const FormInputItem: FC<Props> = ({
     }
   }
 
-  const handleValueChange = (newValue: any, newType?: VarKindType) => {
+  const handleValueChange = (newValue: any, newType?: VarKindType, mentionConfig?: MentionConfig | null) => {
+    const normalizedValue = isNumber ? Number.parseFloat(newValue) : newValue
+    const resolvedType = newType ?? (varInput?.type === VarKindType.mention ? VarKindType.mention : getVarKindType())
+    const resolvedMentionConfig = resolvedType === VarKindType.mention
+      ? (mentionConfig ?? varInput?.mention_config ?? {
+          extractor_node_id: '',
+          output_selector: [],
+          null_strategy: 'use_default',
+          default_value: '',
+        })
+      : undefined
+
     onChange({
       ...value,
       [variable]: {
         ...varInput,
-        type: newType ?? getVarKindType(),
-        value: isNumber ? Number.parseFloat(newValue) : newValue,
+        type: resolvedType,
+        value: normalizedValue,
+        mention_config: resolvedMentionConfig,
       },
     })
   }

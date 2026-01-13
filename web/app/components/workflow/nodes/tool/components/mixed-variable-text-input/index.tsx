@@ -1,5 +1,5 @@
 import type { AgentNode } from '@/app/components/base/prompt-editor/types'
-import type { VarKindType } from '@/app/components/workflow/nodes/_base/types'
+import type { MentionConfig, VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import type {
   Node,
   NodeOutPutVar,
@@ -13,6 +13,8 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import PromptEditor from '@/app/components/base/prompt-editor'
+import { useSubGraphPersistence } from '@/app/components/sub-graph/hooks'
+import { getSubGraphInitialEdges, getSubGraphInitialNodes } from '@/app/components/sub-graph/hooks/use-sub-graph-init'
 import { VarKindType as VarKindTypeEnum } from '@/app/components/workflow/nodes/_base/types'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -22,17 +24,24 @@ import AgentHeaderBar from './agent-header-bar'
 import Placeholder from './placeholder'
 
 /**
- * Matches agent context variable syntax: {{#nodeId.context#}}
- * Example: {{#agent-123.context#}} -> captures "agent-123"
+ * Matches agent context variable syntax: {{@nodeId.context@}}
+ * Example: {{@agent-123.context@}} -> captures "agent-123"
  */
-const AGENT_CONTEXT_VAR_PATTERN = /\{\{#([^.#]+)\.context#\}\}/g
+const AGENT_CONTEXT_VAR_PATTERN = /\{\{[@#]([^.@#]+)\.context[@#]\}\}/g
+
+const DEFAULT_MENTION_CONFIG: MentionConfig = {
+  extractor_node_id: '',
+  output_selector: [],
+  null_strategy: 'use_default',
+  default_value: '',
+}
 
 type MixedVariableTextInputProps = {
   readOnly?: boolean
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
   value?: string
-  onChange?: (text: string, type?: VarKindType) => void
+  onChange?: (text: string, type?: VarKindType, mentionConfig?: MentionConfig | null) => void
   showManageInputField?: boolean
   onManageInputField?: () => void
   disableVariableInsertion?: boolean
@@ -56,6 +65,15 @@ const MixedVariableTextInput = ({
   const controlPromptEditorRerenderKey = useStore(s => s.controlPromptEditorRerenderKey)
   const setControlPromptEditorRerenderKey = useStore(s => s.setControlPromptEditorRerenderKey)
   const [isSubGraphModalOpen, setIsSubGraphModalOpen] = useState(false)
+
+  const {
+    loadSubGraphData,
+    updateSubGraphNodes,
+    clearSubGraphData,
+  } = useSubGraphPersistence({
+    toolNodeId: toolNodeId || '',
+    paramKey: paramKey || '',
+  })
 
   const nodesByIdMap = useMemo(() => {
     return availableNodes.reduce((acc, node) => {
@@ -107,20 +125,28 @@ const MixedVariableTextInput = ({
       return nodeId === agentNodeId ? '' : match
     }).trim()
 
-    onChange(valueWithoutAgentVars, VarKindTypeEnum.mixed)
+    onChange(valueWithoutAgentVars, VarKindTypeEnum.mixed, null)
+    if (toolNodeId && paramKey)
+      clearSubGraphData()
     setControlPromptEditorRerenderKey(Date.now())
-  }, [detectedAgentFromValue?.nodeId, value, onChange, setControlPromptEditorRerenderKey])
+  }, [clearSubGraphData, detectedAgentFromValue?.nodeId, onChange, paramKey, setControlPromptEditorRerenderKey, toolNodeId, value])
 
   const handleAgentSelect = useCallback((agent: AgentNode) => {
     if (!onChange)
       return
 
     const valueWithoutTrigger = value.replace(/@$/, '')
-    const newValue = `{{#${agent.id}.context#}}${valueWithoutTrigger}`
+    const newValue = `{{@${agent.id}.context@}}${valueWithoutTrigger}`
 
-    onChange(newValue, VarKindTypeEnum.mention)
+    if (toolNodeId && paramKey && !loadSubGraphData()) {
+      const initialNodes = getSubGraphInitialNodes([agent.id, 'context'], agent.title)
+      const initialEdges = getSubGraphInitialEdges()
+      updateSubGraphNodes(initialNodes, initialEdges)
+    }
+
+    onChange(newValue, VarKindTypeEnum.mention, DEFAULT_MENTION_CONFIG)
     setControlPromptEditorRerenderKey(Date.now())
-  }, [value, onChange, setControlPromptEditorRerenderKey])
+  }, [loadSubGraphData, onChange, paramKey, setControlPromptEditorRerenderKey, toolNodeId, updateSubGraphNodes, value])
 
   const handleOpenSubGraphModal = useCallback(() => {
     setIsSubGraphModalOpen(true)
@@ -179,7 +205,7 @@ const MixedVariableTextInput = ({
           onSelect: handleAgentSelect,
         }}
         placeholder={<Placeholder disableVariableInsertion={disableVariableInsertion} hasSelectedAgent={!!detectedAgentFromValue} />}
-        onChange={onChange}
+        onChange={text => onChange?.(text)}
       />
       {toolNodeId && detectedAgentFromValue && sourceVariable && (
         <SubGraphModal

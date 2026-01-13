@@ -38,13 +38,16 @@ export const getInputVars = (text: string): ValueSelector[] => {
   if (!text || typeof text !== 'string')
     return []
 
-  const allVars = text.match(/\{\{#([^#]*)#\}\}/g)
+  const allVars = text.match(/\{\{[@#]([^@#]*)[@#]\}\}/g)
   if (allVars && allVars?.length > 0) {
     // {{#context#}}, {{#query#}} is not input vars
     const inputVars = allVars
       .filter(item => item.includes('.'))
       .map((item) => {
-        const valueSelector = item.replace('{{#', '').replace('#}}', '').split('.')
+        const valueSelector = item
+          .replace(/^\{\{[@#]/, '')
+          .replace(/[@#]\}\}$/, '')
+          .split('.')
         if (valueSelector[1] === 'sys' && /^\d+$/.test(valueSelector[0]))
           return valueSelector.slice(1)
 

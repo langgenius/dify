@@ -14,7 +14,6 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { useAppContext } from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
 import {
-
   useAppTriggers,
   useInvalidateAppTriggers,
   useUpdateTriggerStatus,

@@ -340,7 +340,7 @@ Thought: {{agent_scratchpad}}
 }
 
 export const VAR_REGEX
-  = /\{\{(#[\w-]{1,50}(\.\d+)?(\.[a-z_]\w{0,29}){1,10}#)\}\}/gi
+  = /\{\{([#@])[\w-]{1,50}(\.\d+)?(\.[a-z_]\w{0,29}){1,10}\1\}\}/gi
 
 export const resetReg = () => (VAR_REGEX.lastIndex = 0)
 
