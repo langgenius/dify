@@ -100,7 +100,9 @@ class App(TypeBase):
     tracing: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
     max_active_requests: Mapped[int | None]
     created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
-    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
     updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     updated_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
