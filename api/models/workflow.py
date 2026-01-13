@@ -1202,7 +1202,7 @@ class ConversationVariable(TypeBase):
 _EDITABLE_SYSTEM_VARIABLE = frozenset(["query", "files"])
 
 
-class WorkflowDraftVariable(Base):
+class WorkflowDraftVariable(TypeBase):
     """`WorkflowDraftVariable` record variables and outputs generated during
     debugging workflow or chatflow.
 
@@ -1508,18 +1508,19 @@ class WorkflowDraftVariable(Base):
         description: str = "",
         file_id: str | None = None,
     ) -> WorkflowDraftVariable:
-        variable = WorkflowDraftVariable()
-        variable.id = str(uuid4())
-        variable.created_at = naive_utc_now()
-        variable.updated_at = naive_utc_now()
-        variable.description = description
-        variable.app_id = app_id
-        variable.node_id = node_id
-        variable.name = name
+        variable = WorkflowDraftVariable(
+            id=str(uuid4()),
+            created_at=naive_utc_now(),
+            updated_at=naive_utc_now(),
+            description=description,
+            app_id=app_id,
+            node_id=node_id,
+            name=name,
+            file_id=file_id,
+            node_execution_id=node_execution_id,
+        )
         variable.set_value(value)
-        variable.file_id = file_id
         variable._set_selector(list(variable_utils.to_selector(node_id, name)))
-        variable.node_execution_id = node_execution_id
         return variable
 
     @classmethod
