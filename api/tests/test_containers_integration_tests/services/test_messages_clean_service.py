@@ -320,7 +320,7 @@ class TestMessagesCleanServiceIntegration:
         policy = create_message_clean_policy()
 
         assert isinstance(policy, BillingDisabledPolicy)
-        
+
         service = MessagesCleanService.from_time_range(
             policy=policy,
             start_from=datetime.datetime(2024, 1, 10, 0, 0, 0),
@@ -345,9 +345,7 @@ class TestMessagesCleanServiceIntegration:
         # Related records of out-of-range message kept
         assert db.session.query(MessageFeedback).where(MessageFeedback.message_id == out_of_range_msg_id).count() == 1
 
-    def test_no_messages_returns_empty_stats(
-        self, db_session_with_containers, mock_billing_enabled, mock_whitelist
-    ):
+    def test_no_messages_returns_empty_stats(self, db_session_with_containers, mock_billing_enabled, mock_whitelist):
         """Test cleaning when there are no messages to delete (B1)."""
         # Arrange
         end_before = datetime.datetime.now() - datetime.timedelta(days=30)
@@ -372,9 +370,7 @@ class TestMessagesCleanServiceIntegration:
         assert stats["filtered_messages"] == 0
         assert stats["total_deleted"] == 0
 
-    def test_mixed_sandbox_and_paid_tenants(
-        self, db_session_with_containers, mock_billing_enabled, mock_whitelist
-    ):
+    def test_mixed_sandbox_and_paid_tenants(self, db_session_with_containers, mock_billing_enabled, mock_whitelist):
         """Test cleaning with mixed sandbox and paid tenants (B2)."""
         # Arrange - Create sandbox tenants with expired messages
         sandbox_tenants = []
@@ -456,9 +452,7 @@ class TestMessagesCleanServiceIntegration:
             == 0
         )
 
-    def test_cursor_pagination_multiple_batches(
-        self, db_session_with_containers, mock_billing_enabled, mock_whitelist
-    ):
+    def test_cursor_pagination_multiple_batches(self, db_session_with_containers, mock_billing_enabled, mock_whitelist):
         """Test cursor pagination works correctly across multiple batches (B3)."""
         # Arrange - Create sandbox tenant with messages that will span multiple batches
         account, tenant = self._create_account_and_tenant(plan=CloudPlan.SANDBOX)
@@ -505,9 +499,7 @@ class TestMessagesCleanServiceIntegration:
         # All messages should be deleted
         assert db.session.query(Message).where(Message.id.in_(message_ids)).count() == 0
 
-    def test_dry_run_does_not_delete(
-        self, db_session_with_containers, mock_billing_enabled, mock_whitelist
-    ):
+    def test_dry_run_does_not_delete(self, db_session_with_containers, mock_billing_enabled, mock_whitelist):
         """Test dry_run mode does not delete messages (B4)."""
         # Arrange
         account, tenant = self._create_account_and_tenant(plan=CloudPlan.SANDBOX)
@@ -551,9 +543,7 @@ class TestMessagesCleanServiceIntegration:
         # Related records should also still exist
         assert db.session.query(MessageFeedback).where(MessageFeedback.message_id.in_(message_ids)).count() == 3
 
-    def test_partial_plan_data_safe_default(
-        self, db_session_with_containers, mock_billing_enabled, mock_whitelist
-    ):
+    def test_partial_plan_data_safe_default(self, db_session_with_containers, mock_billing_enabled, mock_whitelist):
         """Test when billing returns partial data, unknown tenants are preserved (B5)."""
         # Arrange - Create 3 tenants
         tenants_data = []
@@ -620,9 +610,7 @@ class TestMessagesCleanServiceIntegration:
             db.session.query(Message).where(Message.id == tenants_data[2]["message_id"]).count() == 1
         )  # Unknown tenant's message preserved (safe default)
 
-    def test_empty_plan_data_skips_deletion(
-        self, db_session_with_containers, mock_billing_enabled, mock_whitelist
-    ):
+    def test_empty_plan_data_skips_deletion(self, db_session_with_containers, mock_billing_enabled, mock_whitelist):
         """Test when billing returns empty data, skip deletion entirely (B6)."""
         # Arrange
         account, tenant = self._create_account_and_tenant(plan=CloudPlan.SANDBOX)
@@ -657,9 +645,7 @@ class TestMessagesCleanServiceIntegration:
         # Message should still exist (safe default - don't delete if plan is unknown)
         assert db.session.query(Message).where(Message.id == msg_id).count() == 1
 
-    def test_time_range_boundary_behavior(
-        self, db_session_with_containers, mock_billing_enabled, mock_whitelist
-    ):
+    def test_time_range_boundary_behavior(self, db_session_with_containers, mock_billing_enabled, mock_whitelist):
         """Test that messages are correctly filtered by [start_from, end_before) time range (B7)."""
         # Arrange
         account, tenant = self._create_account_and_tenant(plan=CloudPlan.SANDBOX)
@@ -745,9 +731,7 @@ class TestMessagesCleanServiceIntegration:
         # After range, kept
         assert db.session.query(Message).where(Message.id == msg_after_id).count() == 1
 
-    def test_grace_period_scenarios(
-        self, db_session_with_containers, mock_billing_enabled, mock_whitelist
-    ):
+    def test_grace_period_scenarios(self, db_session_with_containers, mock_billing_enabled, mock_whitelist):
         """Test cleaning with different graceful period scenarios (B8)."""
         # Arrange - Create 5 different tenants with different plan and expiration scenarios
         now_timestamp = int(datetime.datetime.now(datetime.UTC).timestamp())
@@ -836,9 +820,9 @@ class TestMessagesCleanServiceIntegration:
             service = MessagesCleanService.from_time_range(
                 policy=policy,
                 start_from=datetime.datetime.now() - datetime.timedelta(days=60),
-                    end_before=end_before,
-                    batch_size=100,
-                )
+                end_before=end_before,
+                batch_size=100,
+            )
             stats = service.run()
 
         # Assert - Only messages from scenario 2 and 3 should be deleted
@@ -853,9 +837,7 @@ class TestMessagesCleanServiceIntegration:
         assert db.session.query(Message).where(Message.id == msg4_id).count() == 1  # Professional plan, kept
         assert db.session.query(Message).where(Message.id == msg5_id).count() == 1  # At boundary, kept
 
-    def test_tenant_whitelist(
-        self, db_session_with_containers, mock_billing_enabled, mock_whitelist
-    ):
+    def test_tenant_whitelist(self, db_session_with_containers, mock_billing_enabled, mock_whitelist):
         """Test that whitelisted tenants' messages are not deleted (B9)."""
         # Arrange - Create 3 sandbox tenants with expired messages
         tenants_data = []
@@ -922,9 +904,7 @@ class TestMessagesCleanServiceIntegration:
         # Verify tenant2's message was deleted (not whitelisted)
         assert db.session.query(Message).where(Message.id == tenants_data[2]["message_id"]).count() == 0
 
-    def test_from_days_cleans_old_messages(
-        self, db_session_with_containers, mock_billing_enabled, mock_whitelist
-    ):
+    def test_from_days_cleans_old_messages(self, db_session_with_containers, mock_billing_enabled, mock_whitelist):
         """Test from_days correctly cleans messages older than N days (B11)."""
         # Arrange
         account, tenant = self._create_account_and_tenant(plan=CloudPlan.SANDBOX)
