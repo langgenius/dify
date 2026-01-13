@@ -31,7 +31,6 @@ const nextConfig = {
   basePath: process.env.NEXT_PUBLIC_BASE_PATH || '',
   serverExternalPackages: ['esbuild-wasm'],
   transpilePackages: ['echarts', 'zrender'],
-  reactCompiler: true,
   turbopack: {
     rules: codeInspectorPlugin({
       bundler: 'turbopack',
