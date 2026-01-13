@@ -274,11 +274,11 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         model_parameters = node_data_model.completion_params
         variable_pool = self.graph_runtime_state.variable_pool
         if variable_pool:
-            model_parameters = LLMNode._parse_completion_params_variables(
+            model_parameters = LLMNode.parse_completion_params_variables(
                 completion_params=node_data_model.completion_params,
                 variable_pool=variable_pool,
             )
-        
+
         invoke_result = model_instance.invoke_llm(
             prompt_messages=prompt_messages,
             model_parameters=model_parameters,

@@ -1,7 +1,6 @@
 import type { FC } from 'react'
 import type { ModelParameterRule } from '../declarations'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
-import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Radio from '@/app/components/base/radio'
 import { SimpleSelect } from '@/app/components/base/select'
@@ -9,7 +8,6 @@ import Slider from '@/app/components/base/slider'
 import Switch from '@/app/components/base/switch'
 import TagInput from '@/app/components/base/tag-input'
 import Tooltip from '@/app/components/base/tooltip'
-import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
 import { variableTransformer } from '@/app/components/workflow/utils/variable'
 import { cn } from '@/utils/classnames'
@@ -43,13 +41,13 @@ const ParameterItem: FC<ParameterItemProps> = ({
   const language = useLanguage()
   const [localValue, setLocalValue] = useState(value)
   const numberInputRef = useRef<HTMLInputElement>(null)
-  
+
   // Check if value is a variable reference (starts with {{# and ends with #}})
   const currentValue = value ?? localValue
   const isVariableReference = useMemo(() => {
     return typeof currentValue === 'string' && /^\{\{#.*#\}\}$/.test(currentValue)
   }, [currentValue])
-  
+
   const variableSelector = useMemo(() => {
     if (isVariableReference && typeof currentValue === 'string') {
       return variableTransformer(currentValue)
@@ -245,7 +243,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
           </div>
         )
       }
-      
+
       return (
         <input
           className={cn(isInWorkflow ? 'w-[150px]' : 'w-full', 'system-sm-regular ml-4 flex h-8 appearance-none items-center rounded-lg bg-components-input-bg-normal px-3 text-components-input-text-filled outline-none')}

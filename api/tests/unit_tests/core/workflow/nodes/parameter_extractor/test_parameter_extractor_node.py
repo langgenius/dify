@@ -8,8 +8,8 @@ from typing import Any
 import pytest
 
 from core.model_runtime.entities import LLMMode
-from core.variables.types import SegmentType
 from core.variables import StringSegment
+from core.variables.types import SegmentType
 from core.workflow.nodes.llm import ModelConfig, VisionConfig
 from core.workflow.nodes.llm.node import LLMNode
 from core.workflow.nodes.parameter_extractor.entities import ParameterConfig, ParameterExtractorNodeData
@@ -592,7 +592,7 @@ class TestParameterExtractorNodeVariableParsing:
         }
 
         # Test the parsing method directly (as used by ParameterExtractorNode)
-        result = LLMNode._parse_completion_params_variables(
+        result = LLMNode.parse_completion_params_variables(
             completion_params=completion_params,
             variable_pool=variable_pool,
         )
@@ -614,7 +614,7 @@ class TestParameterExtractorNodeVariableParsing:
             "temperature": "Temperature is {{#node1.temp_value#}}",
         }
 
-        result = LLMNode._parse_completion_params_variables(
+        result = LLMNode.parse_completion_params_variables(
             completion_params=completion_params,
             variable_pool=variable_pool,
         )
@@ -641,7 +641,7 @@ class TestParameterExtractorNodeVariableParsing:
         )
         variable_pool_with_vars.add(["node1", "temperature"], StringSegment(value="0.8"))
 
-        result = LLMNode._parse_completion_params_variables(
+        result = LLMNode.parse_completion_params_variables(
             completion_params=completion_params,
             variable_pool=variable_pool_with_vars,
         )
@@ -660,7 +660,7 @@ class TestParameterExtractorNodeVariableParsing:
             "temperature": "{{#node1.nonexistent#}}",
         }
 
-        result = LLMNode._parse_completion_params_variables(
+        result = LLMNode.parse_completion_params_variables(
             completion_params=completion_params,
             variable_pool=variable_pool,
         )

@@ -354,7 +354,7 @@ class LLMNode(Node[LLMNodeData]):
             )
 
     @staticmethod
-    def _parse_completion_params_variables(
+    def parse_completion_params_variables(
         completion_params: dict[str, Any],
         variable_pool: VariablePool,
     ) -> dict[str, Any]:
@@ -363,7 +363,7 @@ class LLMNode(Node[LLMNodeData]):
         For string type values, if they contain variable references ({{#...#}}),
         replace them with actual values from variable_pool.
         """
-        
+
         parsed_params: dict[str, Any] = {}
         for key, value in completion_params.items():
             if isinstance(value, str) and "{{#" in value and "#}}" in value:
@@ -395,7 +395,10 @@ class LLMNode(Node[LLMNodeData]):
                     parsed_params[key] = parsed_value
                 except Exception as e:
                     # If parsing fails, keep original value
-                    logger.warning(f"Failed to parse variable reference in completion param {key}: {value}, error: {str(e)}")
+                    logger.warning(
+                        "Failed to parse variable reference in completion param %s: %s, error: %s", key, value, str(e)
+                    )
+
                     parsed_params[key] = value
             else:
                 # No variable reference, use as is
@@ -428,7 +431,7 @@ class LLMNode(Node[LLMNodeData]):
         # Parse variable references in completion_params if variable_pool is provided
         model_parameters = node_data_model.completion_params
         if variable_pool:
-            model_parameters = LLMNode._parse_completion_params_variables(
+            model_parameters = LLMNode.parse_completion_params_variables(
                 completion_params=node_data_model.completion_params,
                 variable_pool=variable_pool,
             )

@@ -19,7 +19,7 @@ from core.model_runtime.entities.message_entities import (
 )
 from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
-from core.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
+from core.variables import ArrayAnySegment, ArrayFileSegment, FloatSegment, IntegerSegment, NoneSegment, StringSegment
 from core.workflow.entities import GraphInitParams
 from core.workflow.nodes.llm import llm_utils
 from core.workflow.nodes.llm.entities import (
@@ -34,7 +34,6 @@ from core.workflow.nodes.llm.file_saver import LLMFileSaver
 from core.workflow.nodes.llm.node import LLMNode
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
-from core.variables import StringSegment, IntegerSegment, FloatSegment
 from models.enums import UserFrom
 from models.provider import ProviderType
 
@@ -744,7 +743,7 @@ class TestParseCompletionParamsVariables:
             "top_p": 0.9,
         }
 
-        result = LLMNode._parse_completion_params_variables(
+        result = LLMNode.parse_completion_params_variables(
             completion_params=completion_params,
             variable_pool=variable_pool,
         )
@@ -765,7 +764,7 @@ class TestParseCompletionParamsVariables:
             "top_p": 0.9,
         }
 
-        result = LLMNode._parse_completion_params_variables(
+        result = LLMNode.parse_completion_params_variables(
             completion_params=completion_params,
             variable_pool=variable_pool,
         )
@@ -785,7 +784,7 @@ class TestParseCompletionParamsVariables:
             "max_tokens": "{{#node1.max_tokens#}}",
         }
 
-        result = LLMNode._parse_completion_params_variables(
+        result = LLMNode.parse_completion_params_variables(
             completion_params=completion_params,
             variable_pool=variable_pool,
         )
@@ -804,7 +803,7 @@ class TestParseCompletionParamsVariables:
             "temperature": "{{#node1.temperature#}}",
         }
 
-        result = LLMNode._parse_completion_params_variables(
+        result = LLMNode.parse_completion_params_variables(
             completion_params=completion_params,
             variable_pool=variable_pool,
         )
@@ -824,7 +823,7 @@ class TestParseCompletionParamsVariables:
             "max_tokens": 1000,
         }
 
-        result = LLMNode._parse_completion_params_variables(
+        result = LLMNode.parse_completion_params_variables(
             completion_params=completion_params,
             variable_pool=variable_pool,
         )
@@ -845,7 +844,7 @@ class TestParseCompletionParamsVariables:
             "presence_penalty": -0.5,
         }
 
-        result = LLMNode._parse_completion_params_variables(
+        result = LLMNode.parse_completion_params_variables(
             completion_params=completion_params,
             variable_pool=variable_pool,
         )
@@ -863,7 +862,7 @@ class TestParseCompletionParamsVariables:
             "temperature": "{{#node1.nonexistent#}}",
         }
 
-        result = LLMNode._parse_completion_params_variables(
+        result = LLMNode.parse_completion_params_variables(
             completion_params=completion_params,
             variable_pool=variable_pool,
         )
@@ -883,7 +882,7 @@ class TestParseCompletionParamsVariables:
             "temperature": "{{#invalid syntax#}}",
         }
 
-        result = LLMNode._parse_completion_params_variables(
+        result = LLMNode.parse_completion_params_variables(
             completion_params=completion_params,
             variable_pool=variable_pool,
         )
@@ -906,7 +905,7 @@ class TestParseCompletionParamsVariables:
             "max_tokens": 1000,
         }
 
-        result = LLMNode._parse_completion_params_variables(
+        result = LLMNode.parse_completion_params_variables(
             completion_params=completion_params,
             variable_pool=variable_pool,
         )
@@ -924,7 +923,7 @@ class TestParseCompletionParamsVariables:
 
         completion_params = {}
 
-        result = LLMNode._parse_completion_params_variables(
+        result = LLMNode.parse_completion_params_variables(
             completion_params=completion_params,
             variable_pool=variable_pool,
         )
