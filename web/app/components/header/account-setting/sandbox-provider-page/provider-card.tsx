@@ -23,6 +23,13 @@ const PROVIDER_ICONS: Record<string, string> = {
   local: '/sandbox-providers/local.svg',
 }
 
+const PROVIDER_DESCRIPTION_KEYS = {
+  e2b: 'sandboxProvider.e2b.description',
+  daytona: 'sandboxProvider.daytona.description',
+  docker: 'sandboxProvider.docker.description',
+  local: 'sandboxProvider.local.description',
+} as const
+
 const ProviderIcon = ({ providerType }: { providerType: string }) => {
   const iconSrc = PROVIDER_ICONS[providerType] || PROVIDER_ICONS.e2b
 
@@ -72,7 +79,7 @@ const ProviderCard = ({
           )}
         </div>
         <div className="system-xs-regular text-text-tertiary">
-          {provider.description}
+          {t(PROVIDER_DESCRIPTION_KEYS[provider.provider_type as keyof typeof PROVIDER_DESCRIPTION_KEYS] ?? 'sandboxProvider.e2b.description', { ns: 'common' })}
         </div>
       </div>
 
