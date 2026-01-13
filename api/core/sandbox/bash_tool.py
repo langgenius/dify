@@ -1,7 +1,7 @@
-import shlex
 from collections.abc import Generator
 from typing import Any
 
+from core.sandbox.debug import sandbox_debug
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.common_entities import I18nObject
@@ -68,7 +68,9 @@ class SandboxBashTool(Tool):
 
         connection_handle = self._sandbox.establish_connection()
         try:
-            cmd_list = shlex.split(command)
+            cmd_list = ["bash", "-c", command]
+
+            sandbox_debug("bash_tool", "cmd_list", cmd_list)
             future = self._sandbox.run_command(connection_handle, cmd_list)
             timeout = COMMAND_TIMEOUT_SECONDS if COMMAND_TIMEOUT_SECONDS > 0 else None
             result = future.result(timeout=timeout)

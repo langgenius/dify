@@ -36,6 +36,9 @@ class InvokeFrom(StrEnum):
     # this is used for plugin trigger and webhook trigger.
     TRIGGER = "trigger"
 
+    # AGENT indicates that this invocation is from an agent.
+    AGENT = "agent"
+
     # EXPLORE indicates that this invocation is from
     # the workflow (or chatflow) explore page.
     EXPLORE = "explore"

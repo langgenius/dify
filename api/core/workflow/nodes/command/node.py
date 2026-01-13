@@ -4,6 +4,7 @@ import shlex
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+from core.sandbox.debug import sandbox_debug
 from core.sandbox.manager import SandboxManager
 from core.virtual_environment.__base.command_future import CommandCancelledError, CommandTimeoutError
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
@@ -83,6 +84,9 @@ class CommandNode(Node[CommandNodeData]):
 
         try:
             command = shlex.split(raw_command)
+
+            sandbox_debug("command_node", "command", command)
+
             future = sandbox.run_command(connection_handle, command, cwd=working_directory)
             result = future.result(timeout=timeout)
 

@@ -7,6 +7,7 @@ from types import TracebackType
 
 from core.sandbox.bash_tool import SandboxBashTool
 from core.sandbox.constants import DIFY_CLI_CONFIG_PATH, DIFY_CLI_PATH
+from core.sandbox.debug import sandbox_debug
 from core.sandbox.dify_cli import DifyCliConfig
 from core.sandbox.manager import SandboxManager
 from core.session.cli_api import CliApiSessionManager
@@ -46,6 +47,7 @@ class SandboxSession:
             config = DifyCliConfig.create(session, self._tools)
             config_json = json.dumps(config.model_dump(mode="json"), ensure_ascii=False)
 
+            sandbox_debug("sandbox", "config_json", config_json)
             sandbox.upload_file(DIFY_CLI_CONFIG_PATH, BytesIO(config_json.encode("utf-8")))
 
             connection_handle = sandbox.establish_connection()

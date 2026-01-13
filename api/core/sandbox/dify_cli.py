@@ -5,9 +5,10 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
+from core.model_runtime.utils.encoders import jsonable_encoder
 from core.sandbox.constants import DIFY_CLI_PATH_PATTERN
 from core.session.cli_api import CliApiSession
-from core.tools.entities.tool_entities import ToolProviderType
+from core.tools.entities.tool_entities import ToolParameter, ToolProviderType
 from core.virtual_environment.__base.entities import Arch, OperatingSystem
 
 if TYPE_CHECKING:
@@ -77,10 +78,25 @@ class DifyCliToolConfig(BaseModel):
     def create_from_tool(cls, tool: Tool) -> DifyCliToolConfig:
         return cls(
             provider_type=cls.transform_provider_type(tool.tool_provider_type()),
-            identity=tool.entity.identity.model_dump(),
-            description=tool.entity.description.model_dump() if tool.entity.description else {},
-            parameters=[param.model_dump() for param in tool.entity.parameters],
+            identity=to_json(tool.entity.identity),
+            description=to_json(tool.entity.description),
+            parameters=[cls.transform_parameter(parameter) for parameter in tool.entity.parameters],
         )
+
+    @classmethod
+    def transform_parameter(cls, parameter: ToolParameter) -> dict[str, Any]:
+        transformed_parameter = to_json(parameter)
+        transformed_parameter.pop("input_schema", None)
+        transformed_parameter.pop("form", None)
+        match parameter.type:
+            case (
+                ToolParameter.ToolParameterType.SYSTEM_FILES
+                | ToolParameter.ToolParameterType.FILE
+                | ToolParameter.ToolParameterType.FILES
+            ):
+                return transformed_parameter
+            case _:
+                return transformed_parameter
 
 
 class DifyCliConfig(BaseModel):
@@ -102,6 +118,10 @@ class DifyCliConfig(BaseModel):
             ),
             tools=[DifyCliToolConfig.create_from_tool(tool) for tool in tools],
         )
+
+
+def to_json(obj: Any) -> dict[str, Any]:
+    return jsonable_encoder(obj, exclude_unset=True, exclude_defaults=True, exclude_none=True)
 
 
 __all__ = [
