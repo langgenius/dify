@@ -193,8 +193,9 @@ export const Workflow: FC<WorkflowProps> = memo(({
       id: node.id,
       data: node.data,
     }))
-    if (!isEqual(oldData, nodesData))
+    if (!isEqual(oldData, nodesData)) {
       setNodesInStore(nodes)
+    }
   }, [setNodesInStore, workflowStore])
   useEffect(() => {
     setNodesOnlyChangeWithData(currentNodes as Node[])

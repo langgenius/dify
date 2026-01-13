@@ -12,12 +12,13 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useStoreApi } from 'reactflow'
 import PromptEditor from '@/app/components/base/prompt-editor'
-import { useSubGraphPersistence } from '@/app/components/sub-graph/hooks'
-import { getSubGraphInitialEdges, getSubGraphInitialNodes } from '@/app/components/sub-graph/hooks/use-sub-graph-init'
+import { useNodesMetaData, useNodesSyncDraft } from '@/app/components/workflow/hooks'
 import { VarKindType as VarKindTypeEnum } from '@/app/components/workflow/nodes/_base/types'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { generateNewNode, getNodeCustomTypeByNodeDataType } from '@/app/components/workflow/utils'
 import { cn } from '@/utils/classnames'
 import SubGraphModal from '../sub-graph-modal'
 import AgentHeaderBar from './agent-header-bar'
@@ -62,17 +63,12 @@ const MixedVariableTextInput = ({
   paramKey = '',
 }: MixedVariableTextInputProps) => {
   const { t } = useTranslation()
+  const reactFlowStore = useStoreApi()
   const controlPromptEditorRerenderKey = useStore(s => s.controlPromptEditorRerenderKey)
   const setControlPromptEditorRerenderKey = useStore(s => s.setControlPromptEditorRerenderKey)
+  const { nodesMap: nodesMetaDataMap } = useNodesMetaData()
+  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const [isSubGraphModalOpen, setIsSubGraphModalOpen] = useState(false)
-
-  const {
-    loadSubGraphData,
-    updateSubGraphNodes,
-  } = useSubGraphPersistence({
-    toolNodeId: toolNodeId || '',
-    paramKey: paramKey || '',
-  })
 
   const nodesByIdMap = useMemo(() => {
     return availableNodes.reduce((acc, node) => {
@@ -114,6 +110,21 @@ const MixedVariableTextInput = ({
       }))
   }, [availableNodes])
 
+  const removeExtractorNode = useCallback(() => {
+    if (!toolNodeId || !paramKey)
+      return
+
+    const extractorNodeId = `${toolNodeId}_ext_${paramKey}`
+    const { getNodes, setNodes } = reactFlowStore.getState()
+    const nodes = getNodes()
+    const hasExtractorNode = nodes.some(node => node.id === extractorNodeId)
+    if (!hasExtractorNode)
+      return
+
+    setNodes(nodes.filter(node => node.id !== extractorNodeId))
+    handleSyncWorkflowDraft()
+  }, [handleSyncWorkflowDraft, paramKey, reactFlowStore, toolNodeId])
+
   const handleAgentRemove = useCallback(() => {
     const agentNodeId = detectedAgentFromValue?.nodeId
     if (!agentNodeId || !onChange)
@@ -122,11 +133,12 @@ const MixedVariableTextInput = ({
     const valueWithoutAgentVars = value.replace(AGENT_CONTEXT_VAR_PATTERN, (match, variablePath) => {
       const nodeId = variablePath.split('.')[0]
       return nodeId === agentNodeId ? '' : match
-    }).trim()
+    })
 
+    removeExtractorNode()
     onChange(valueWithoutAgentVars, VarKindTypeEnum.mixed, null)
     setControlPromptEditorRerenderKey(Date.now())
-  }, [detectedAgentFromValue?.nodeId, onChange, paramKey, setControlPromptEditorRerenderKey, toolNodeId, value])
+  }, [detectedAgentFromValue?.nodeId, onChange, removeExtractorNode, setControlPromptEditorRerenderKey, value])
 
   const handleAgentSelect = useCallback((agent: AgentNode) => {
     if (!onChange)
@@ -135,15 +147,37 @@ const MixedVariableTextInput = ({
     const valueWithoutTrigger = value.replace(/@$/, '')
     const newValue = `{{@${agent.id}.context@}}${valueWithoutTrigger}`
 
-    if (toolNodeId && paramKey && !loadSubGraphData()) {
-      const initialNodes = getSubGraphInitialNodes([agent.id, 'context'], agent.title)
-      const initialEdges = getSubGraphInitialEdges()
-      updateSubGraphNodes(initialNodes, initialEdges)
+    if (toolNodeId && paramKey) {
+      const extractorNodeId = `${toolNodeId}_ext_${paramKey}`
+      const defaultValue = nodesMetaDataMap?.[BlockEnum.LLM]?.defaultValue
+      const { getNodes, setNodes } = reactFlowStore.getState()
+      const nodes = getNodes()
+      const hasExtractorNode = nodes.some(node => node.id === extractorNodeId)
+
+      if (!hasExtractorNode && defaultValue) {
+        const { newNode } = generateNewNode({
+          id: extractorNodeId,
+          type: getNodeCustomTypeByNodeDataType(BlockEnum.LLM),
+          data: {
+            ...(defaultValue as any),
+            title: defaultValue.title,
+            desc: defaultValue.desc || '',
+            parent_node_id: toolNodeId,
+          },
+          position: {
+            x: 0,
+            y: 0,
+          },
+          hidden: true,
+        })
+        setNodes([...nodes, newNode])
+        handleSyncWorkflowDraft()
+      }
     }
 
     onChange(newValue, VarKindTypeEnum.mention, DEFAULT_MENTION_CONFIG)
     setControlPromptEditorRerenderKey(Date.now())
-  }, [loadSubGraphData, onChange, paramKey, setControlPromptEditorRerenderKey, toolNodeId, updateSubGraphNodes, value])
+  }, [handleSyncWorkflowDraft, nodesMetaDataMap, onChange, paramKey, reactFlowStore, setControlPromptEditorRerenderKey, toolNodeId, value])
 
   const handleOpenSubGraphModal = useCallback(() => {
     setIsSubGraphModalOpen(true)
@@ -202,7 +236,15 @@ const MixedVariableTextInput = ({
           onSelect: handleAgentSelect,
         }}
         placeholder={<Placeholder disableVariableInsertion={disableVariableInsertion} hasSelectedAgent={!!detectedAgentFromValue} />}
-        onChange={text => onChange?.(text)}
+        onChange={(text) => {
+          const hasPlaceholder = new RegExp(AGENT_CONTEXT_VAR_PATTERN.source).test(text)
+          if (detectedAgentFromValue && !hasPlaceholder) {
+            removeExtractorNode()
+            onChange?.(text, VarKindTypeEnum.mixed, null)
+            return
+          }
+          onChange?.(text)
+        }}
       />
       {toolNodeId && detectedAgentFromValue && sourceVariable && (
         <SubGraphModal
