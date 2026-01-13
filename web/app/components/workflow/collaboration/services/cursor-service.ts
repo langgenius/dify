@@ -3,7 +3,7 @@ import type { CursorPosition } from '../types/collaboration'
 import type { ReactFlowInstance } from 'reactflow'
 
 const CURSOR_MIN_MOVE_DISTANCE = 10
-const CURSOR_THROTTLE_MS = 500
+const CURSOR_THROTTLE_MS = 300
 
 export class CursorService {
   private containerRef: RefObject<HTMLElement> | null = null
@@ -71,8 +71,8 @@ export class CursorService {
     const timeThrottled = now - this.lastEmitTime > CURSOR_THROTTLE_MS
     const minDistance = CURSOR_MIN_MOVE_DISTANCE / (this.reactFlowInstance?.getZoom() || 1)
     const distanceThrottled = !this.lastPosition
-        || (Math.abs(x - this.lastPosition.x) > minDistance)
-        || (Math.abs(y - this.lastPosition.y) > minDistance)
+      || (Math.abs(x - this.lastPosition.x) > minDistance)
+      || (Math.abs(y - this.lastPosition.y) > minDistance)
 
     if (timeThrottled && distanceThrottled) {
       this.lastPosition = { x, y }
