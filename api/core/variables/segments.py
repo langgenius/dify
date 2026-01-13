@@ -232,7 +232,7 @@ def get_segment_discriminator(v: Any) -> SegmentType | None:
 # - All variants in `SegmentUnion` must inherit from the `Segment` class.
 # - The union must include all non-abstract subclasses of `Segment`, except:
 #   - `SegmentGroup`, which is not added to the variable pool.
-#   - `Variable` and its subclasses, which are handled by `VariableUnion`.
+#   - `VariableBase` and its subclasses, which are handled by `Variable`.
 SegmentUnion: TypeAlias = Annotated[
     (
         Annotated[NoneSegment, Tag(SegmentType.NONE)]

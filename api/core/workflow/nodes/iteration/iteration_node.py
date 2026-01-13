@@ -11,7 +11,7 @@ from typing_extensions import TypeIs
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.variables import IntegerVariable, NoneSegment
 from core.variables.segments import ArrayAnySegment, ArraySegment
-from core.variables.variables import VariableUnion
+from core.variables.variables import Variable
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID
 from core.workflow.enums import (
     NodeExecutionType,
@@ -240,7 +240,7 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
                         datetime,
                         list[GraphNodeEventBase],
                         object | None,
-                        dict[str, VariableUnion],
+                        dict[str, Variable],
                         LLMUsage,
                     ]
                 ],
@@ -308,7 +308,7 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
         item: object,
         flask_app: Flask,
         context_vars: contextvars.Context,
-    ) -> tuple[datetime, list[GraphNodeEventBase], object | None, dict[str, VariableUnion], LLMUsage]:
+    ) -> tuple[datetime, list[GraphNodeEventBase], object | None, dict[str, Variable], LLMUsage]:
         """Execute a single iteration in parallel mode and return results."""
         with preserve_flask_contexts(flask_app=flask_app, context_vars=context_vars):
             iter_start_at = datetime.now(UTC).replace(tzinfo=None)
@@ -515,11 +515,11 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
 
         return variable_mapping
 
-    def _extract_conversation_variable_snapshot(self, *, variable_pool: VariablePool) -> dict[str, VariableUnion]:
+    def _extract_conversation_variable_snapshot(self, *, variable_pool: VariablePool) -> dict[str, Variable]:
         conversation_variables = variable_pool.variable_dictionary.get(CONVERSATION_VARIABLE_NODE_ID, {})
         return {name: variable.model_copy(deep=True) for name, variable in conversation_variables.items()}
 
-    def _sync_conversation_variables_from_snapshot(self, snapshot: dict[str, VariableUnion]) -> None:
+    def _sync_conversation_variables_from_snapshot(self, snapshot: dict[str, Variable]) -> None:
         parent_pool = self.graph_runtime_state.variable_pool
         parent_conversations = parent_pool.variable_dictionary.get(CONVERSATION_VARIABLE_NODE_ID, {})
 

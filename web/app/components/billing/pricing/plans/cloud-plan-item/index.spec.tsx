@@ -3,7 +3,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { useAppContext } from '@/context/app-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
-import { fetchBillingUrl, fetchSubscriptionUrls } from '@/service/billing'
+import { fetchSubscriptionUrls } from '@/service/billing'
+import { consoleClient } from '@/service/client'
 import Toast from '../../../../base/toast'
 import { ALL_PLANS } from '../../../config'
 import { Plan } from '../../../type'
@@ -21,8 +22,13 @@ vi.mock('@/context/app-context', () => ({
 }))
 
 vi.mock('@/service/billing', () => ({
-  fetchBillingUrl: vi.fn(),
   fetchSubscriptionUrls: vi.fn(),
+}))
+
+vi.mock('@/service/client', () => ({
+  consoleClient: {
+    billingUrl: vi.fn(),
+  },
 }))
 
 vi.mock('@/hooks/use-async-window-open', () => ({
@@ -37,7 +43,7 @@ vi.mock('../../assets', () => ({
 
 const mockUseAppContext = useAppContext as Mock
 const mockUseAsyncWindowOpen = useAsyncWindowOpen as Mock
-const mockFetchBillingUrl = fetchBillingUrl as Mock
+const mockBillingUrl = consoleClient.billingUrl as Mock
 const mockFetchSubscriptionUrls = fetchSubscriptionUrls as Mock
 const mockToastNotify = Toast.notify as Mock
 
@@ -69,7 +75,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   mockUseAppContext.mockReturnValue({ isCurrentWorkspaceManager: true })
   mockUseAsyncWindowOpen.mockReturnValue(vi.fn(async open => await open()))
-  mockFetchBillingUrl.mockResolvedValue({ url: 'https://billing.example' })
+  mockBillingUrl.mockResolvedValue({ url: 'https://billing.example' })
   mockFetchSubscriptionUrls.mockResolvedValue({ url: 'https://subscription.example' })
   assignedHref = ''
 })
@@ -143,7 +149,7 @@ describe('CloudPlanItem', () => {
         type: 'error',
         message: 'billing.buyPermissionDeniedTip',
       }))
-      expect(mockFetchBillingUrl).not.toHaveBeenCalled()
+      expect(mockBillingUrl).not.toHaveBeenCalled()
     })
 
     it('should open billing portal when upgrading current paid plan', async () => {
@@ -162,7 +168,7 @@ describe('CloudPlanItem', () => {
       fireEvent.click(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' }))
 
       await waitFor(() => {
-        expect(mockFetchBillingUrl).toHaveBeenCalledTimes(1)
+        expect(mockBillingUrl).toHaveBeenCalledTimes(1)
       })
       expect(openWindow).toHaveBeenCalledTimes(1)
     })
