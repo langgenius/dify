@@ -51,6 +51,6 @@ export const searchAdvancedContract = base
     params: {
       kind: 'plugins' | 'bundles'
     }
-    body: PluginsSearchParams
+    body: Omit<PluginsSearchParams, 'type'>
   }>())
   .output(type<{ data: PluginsFromMarketplaceResponse }>())

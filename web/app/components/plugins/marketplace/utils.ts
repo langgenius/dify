@@ -149,7 +149,6 @@ export const getMarketplacePlugins = async (
         sort_order,
         category: category !== 'all' ? category : '',
         tags,
-        type,
       },
     }, { signal })
     const resPlugins = res.data.bundles || res.data.plugins || []
