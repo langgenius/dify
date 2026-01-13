@@ -20,6 +20,7 @@ from core.memory.base import BaseMemory
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities import (
     ImagePromptMessageContent,
+    MultiModalPromptMessageContent,
     PromptMessage,
     PromptMessageContentType,
     TextPromptMessageContent,
@@ -274,6 +275,7 @@ class LLMNode(Node[LLMNodeData]):
                 node_id=self._node_id,
                 node_type=self.node_type,
                 reasoning_format=self.node_data.reasoning_format,
+                tenant_id=self.tenant_id,
             )
 
             structured_output: LLMStructuredOutput | None = None
@@ -404,6 +406,7 @@ class LLMNode(Node[LLMNodeData]):
         node_id: str,
         node_type: NodeType,
         reasoning_format: Literal["separated", "tagged"] = "tagged",
+        tenant_id: str | None = None,
     ) -> Generator[NodeEventBase | LLMStructuredOutput, None, None]:
         model_schema = model_instance.model_type_instance.get_model_schema(
             node_data_model.name, model_instance.credentials
@@ -427,6 +430,7 @@ class LLMNode(Node[LLMNodeData]):
                 stop=list(stop or []),
                 stream=True,
                 user=user_id,
+                tenant_id=tenant_id,
             )
         else:
             request_start_time = time.perf_counter()
@@ -612,10 +616,38 @@ class LLMNode(Node[LLMNodeData]):
         Build context from prompt messages and assistant response.
         Excludes system messages and includes the current LLM response.
         Returns list[PromptMessage] for use with ArrayPromptMessageSegment.
+
+        Note: Multi-modal content base64 data is truncated to avoid storing large data in context.
         """
-        context_messages: list[PromptMessage] = [m for m in prompt_messages if m.role != PromptMessageRole.SYSTEM]
+        context_messages: list[PromptMessage] = [
+            LLMNode._truncate_multimodal_content(m) for m in prompt_messages if m.role != PromptMessageRole.SYSTEM
+        ]
         context_messages.append(AssistantPromptMessage(content=assistant_response))
         return context_messages
+
+    @staticmethod
+    def _truncate_multimodal_content(message: PromptMessage) -> PromptMessage:
+        """
+        Truncate multi-modal content base64 data in a message to avoid storing large data.
+        Preserves the PromptMessage structure for ArrayPromptMessageSegment compatibility.
+        """
+        content = message.content
+        if content is None or isinstance(content, str):
+            return message
+
+        # Process list content, truncating multi-modal base64 data
+        new_content: list[PromptMessageContentUnionTypes] = []
+        for item in content:
+            if isinstance(item, MultiModalPromptMessageContent):
+                # Truncate base64_data similar to prompt_messages_to_prompt_for_saving
+                truncated_base64 = ""
+                if item.base64_data:
+                    truncated_base64 = item.base64_data[:10] + "...[TRUNCATED]..." + item.base64_data[-10:]
+                new_content.append(item.model_copy(update={"base64_data": truncated_base64}))
+            else:
+                new_content.append(item)
+
+        return message.model_copy(update={"content": new_content})
 
     def _transform_chat_messages(
         self, messages: Sequence[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate, /
