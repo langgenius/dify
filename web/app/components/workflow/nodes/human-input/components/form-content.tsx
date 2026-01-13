@@ -121,6 +121,7 @@ const FormContent: FC<FormContentProps> = ({
           className={cn('min-h-[80px] ', isExpand && 'h-full')}
           onFocus={setFocus}
           onBlur={setBlur}
+          placeholder={t('nodes.humanInput.formContent.placeholder', { ns: 'workflow' })}
           hitlInputBlock={{
             show: true,
             formInputs,
