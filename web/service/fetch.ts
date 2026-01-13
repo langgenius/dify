@@ -140,9 +140,7 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
   } = otherOptions
 
   let base: string
-  if (fetchCompat)
-    base = ''
-  else if (isMarketplaceAPI)
+  if (isMarketplaceAPI)
     base = MARKETPLACE_API_PREFIX
   else if (isPublicAPI)
     base = PUBLIC_API_PREFIX
@@ -169,22 +167,18 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
   const client = baseClient.extend({
     hooks: {
       ...baseHooks,
-      beforeError: fetchCompat
-        ? baseHooks.beforeError || []
-        : [
-            ...baseHooks.beforeError || [],
-            beforeErrorToast(otherOptions),
-          ],
+      beforeError: [
+        ...baseHooks.beforeError || [],
+        beforeErrorToast(otherOptions),
+      ],
       beforeRequest: [
         ...baseHooks.beforeRequest || [],
         isPublicAPI && beforeRequestPublicWithCode,
       ].filter((h): h is BeforeRequestHook => Boolean(h)),
-      afterResponse: fetchCompat
-        ? baseHooks.afterResponse || []
-        : [
-            ...baseHooks.afterResponse || [],
-            afterResponseErrorCode(otherOptions),
-          ],
+      afterResponse: [
+        ...baseHooks.afterResponse || [],
+        afterResponseErrorCode(otherOptions),
+      ],
     },
   })
 
@@ -211,11 +205,7 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
     },
   })
 
-  // fetchCompat mode: return Response directly like standard fetch
-  if (fetchCompat)
-    return res as T
-
-  if (needAllResponseContent)
+  if (needAllResponseContent || fetchCompat)
     return res as T
   const contentType = res.headers.get('content-type')
   if (
