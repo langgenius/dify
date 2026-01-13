@@ -50,7 +50,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
   const { setShowAccountSettingModal } = useModalContext()
   const handleOpenSettingsModal = () => {
     setShowAccountSettingModal({
-      payload: ACCOUNT_SETTING_TAB.PROVIDER,
+      payload: ACCOUNT_SETTING_TAB.MODEL_PROVIDER,
       onCancelCallback: () => {
         refetchModelProviders()
       },
@@ -281,7 +281,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
                 >
                   &nbsp;
                   {t('settings.provider', { ns: 'common' })}
-&nbsp;
+                  &nbsp;
                 </span>
                 {t('feature.moderation.modal.openaiNotConfig.after', { ns: 'appDebug' })}
               </div>

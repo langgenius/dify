@@ -77,7 +77,7 @@ export default function AccountSetting({
 
     const items: GroupItem[] = [
       {
-        key: ACCOUNT_SETTING_TAB.PROVIDER,
+        key: ACCOUNT_SETTING_TAB.MODEL_PROVIDER,
         name: t('settings.provider', { ns: 'common' }),
         icon: <RiBrain2Line className={iconClassName} />,
         activeIcon: <RiBrain2Fill className={iconClassName} />,
@@ -234,7 +234,7 @@ export default function AccountSetting({
                   <div className="system-sm-regular mt-1 text-text-tertiary">{activeItem?.description}</div>
                 )}
               </div>
-              {activeItem?.key === 'provider' && (
+              {activeItem?.key === ACCOUNT_SETTING_TAB.MODEL_PROVIDER && (
                 <div className="flex grow justify-end">
                   <Input
                     showLeftIcon
@@ -247,7 +247,7 @@ export default function AccountSetting({
               )}
             </div>
             <div className="px-4 pt-2 sm:px-8">
-              {activeMenu === 'provider' && <ModelProviderPage searchText={searchValue} />}
+              {activeMenu === ACCOUNT_SETTING_TAB.MODEL_PROVIDER && <ModelProviderPage searchText={searchValue} />}
               {activeMenu === 'sandbox-provider' && <SandboxProviderPage />}
               {activeMenu === 'members' && <MembersPage />}
               {activeMenu === 'billing' && <BillingPage />}

@@ -282,7 +282,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
               </div>
               <div className="mt-2 w-full text-xs leading-6 text-text-tertiary">
                 {t('form.embeddingModelTip', { ns: 'datasetSettings' })}
-                <span className="cursor-pointer text-text-accent" onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}>{t('form.embeddingModelTipLink', { ns: 'datasetSettings' })}</span>
+                <span className="cursor-pointer text-text-accent" onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.MODEL_PROVIDER })}>{t('form.embeddingModelTipLink', { ns: 'datasetSettings' })}</span>
               </div>
             </div>
           </div>

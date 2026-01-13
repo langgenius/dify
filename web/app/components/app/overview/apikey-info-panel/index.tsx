@@ -49,7 +49,7 @@ const APIKeyInfoPanel: FC = () => {
       <Button
         variant="primary"
         className="mt-2 space-x-2"
-        onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}
+        onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.MODEL_PROVIDER })}
       >
         <div className="text-sm font-medium">{t('apiKeyInfo.setAPIBtn', { ns: 'appOverview' })}</div>
         <LinkExternal02 className="h-4 w-4" />

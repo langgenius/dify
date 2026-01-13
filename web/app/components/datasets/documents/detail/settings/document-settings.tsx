@@ -19,6 +19,7 @@ import AppUnavailable from '@/app/components/base/app-unavailable'
 import Loading from '@/app/components/base/loading'
 import StepTwo from '@/app/components/datasets/create/step-two'
 import AccountSetting from '@/app/components/header/account-setting'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import DatasetDetailContext from '@/context/dataset-detail'
@@ -155,7 +156,7 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
       </div>
       {isShowSetAPIKey && (
         <AccountSetting
-          activeTab="provider"
+          activeTab={ACCOUNT_SETTING_TAB.MODEL_PROVIDER}
           onCancel={async () => {
             hideSetAPIkey()
           }}

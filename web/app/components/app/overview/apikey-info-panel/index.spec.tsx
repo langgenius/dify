@@ -94,7 +94,7 @@ describe('APIKeyInfoPanel - Community Edition', () => {
       interactions.clickMainButton()
 
       expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-        payload: ACCOUNT_SETTING_TAB.PROVIDER,
+        payload: ACCOUNT_SETTING_TAB.MODEL_PROVIDER,
       })
     })
 
