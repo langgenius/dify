@@ -1,5 +1,5 @@
 import type { CollectionsAndPluginsSearchParams, MarketplaceCollection } from '@/app/components/plugins/marketplace/types'
-import type { Plugin } from '@/app/components/plugins/types'
+import type { Plugin, PluginsFromMarketplaceResponse } from '@/app/components/plugins/types'
 import { type } from '@orpc/contract'
 import { base } from './base'
 
@@ -41,3 +41,32 @@ export const collectionPluginsContract = base
       }
     }>(),
   )
+
+type PluginsSearchAdvancedInput = {
+  body: {
+    page: number
+    page_size: number
+    query: string
+    sort_by?: string
+    sort_order?: string
+    category?: string
+    tags?: string[]
+    type?: 'plugin' | 'bundle'
+  }
+}
+
+export const pluginsSearchAdvancedContract = base
+  .route({
+    path: '/plugins/search/advanced',
+    method: 'POST',
+  })
+  .input(type<PluginsSearchAdvancedInput>())
+  .output(type<{ data: PluginsFromMarketplaceResponse }>())
+
+export const bundlesSearchAdvancedContract = base
+  .route({
+    path: '/bundles/search/advanced',
+    method: 'POST',
+  })
+  .input(type<PluginsSearchAdvancedInput>())
+  .output(type<{ data: PluginsFromMarketplaceResponse }>())

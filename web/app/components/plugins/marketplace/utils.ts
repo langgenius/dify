@@ -4,12 +4,11 @@ import type {
   MarketplaceCollection,
   PluginsSearchParams,
 } from '@/app/components/plugins/marketplace/types'
-import type { Plugin, PluginsFromMarketplaceResponse } from '@/app/components/plugins/types'
+import type { Plugin } from '@/app/components/plugins/types'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import {
   MARKETPLACE_API_PREFIX,
 } from '@/config'
-import { postMarketplace } from '@/service/base'
 import { markertPlaceClient } from '@/service/client'
 import { getMarketplaceUrl } from '@/utils/var'
 import { PLUGIN_TYPE_SEARCH_MAP } from './constants'
@@ -136,10 +135,12 @@ export const getMarketplacePlugins = async (
     type,
     pageSize = 40,
   } = queryParams
-  const pluginOrBundle = type === 'bundle' ? 'bundles' : 'plugins'
 
   try {
-    const res = await postMarketplace<{ data: PluginsFromMarketplaceResponse }>(`/${pluginOrBundle}/search/advanced`, {
+    const searchClient = type === 'bundle'
+      ? markertPlaceClient.bundlesSearchAdvanced
+      : markertPlaceClient.pluginsSearchAdvanced
+    const res = await searchClient({
       body: {
         page: pageParam,
         page_size: pageSize,
@@ -150,8 +151,7 @@ export const getMarketplacePlugins = async (
         tags,
         type,
       },
-      signal,
-    })
+    }, { signal })
     const resPlugins = res.data.bundles || res.data.plugins || []
 
     return {
