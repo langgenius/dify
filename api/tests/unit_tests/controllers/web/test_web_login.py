@@ -1,3 +1,4 @@
+import base64
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -5,6 +6,10 @@ import pytest
 from flask import Flask
 
 from controllers.web.login import EmailCodeLoginApi, EmailCodeLoginSendEmailApi
+
+
+def encode_code(code: str) -> str:
+    return base64.b64encode(code.encode("utf-8")).decode()
 
 
 @pytest.fixture
@@ -75,7 +80,7 @@ class TestEmailCodeLoginApi:
         with app.test_request_context(
             "/web/email-code-login/validity",
             method="POST",
-            json={"email": "User@Example.com", "code": "123456", "token": "token-123"},
+            json={"email": "User@Example.com", "code": encode_code("123456"), "token": "token-123"},
         ):
             response = EmailCodeLoginApi().post()
 
