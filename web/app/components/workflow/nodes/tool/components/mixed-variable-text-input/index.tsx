@@ -69,7 +69,6 @@ const MixedVariableTextInput = ({
   const {
     loadSubGraphData,
     updateSubGraphNodes,
-    clearSubGraphData,
   } = useSubGraphPersistence({
     toolNodeId: toolNodeId || '',
     paramKey: paramKey || '',
@@ -126,10 +125,8 @@ const MixedVariableTextInput = ({
     }).trim()
 
     onChange(valueWithoutAgentVars, VarKindTypeEnum.mixed, null)
-    if (toolNodeId && paramKey)
-      clearSubGraphData()
     setControlPromptEditorRerenderKey(Date.now())
-  }, [clearSubGraphData, detectedAgentFromValue?.nodeId, onChange, paramKey, setControlPromptEditorRerenderKey, toolNodeId, value])
+  }, [detectedAgentFromValue?.nodeId, onChange, paramKey, setControlPromptEditorRerenderKey, toolNodeId, value])
 
   const handleAgentSelect = useCallback((agent: AgentNode) => {
     if (!onChange)

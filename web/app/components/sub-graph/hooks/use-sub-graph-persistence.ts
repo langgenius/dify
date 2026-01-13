@@ -65,17 +65,6 @@ export const useSubGraphPersistence = ({
     })
   }, [getSubGraphDataKey, inputs, setInputs])
 
-  const clearSubGraphData = useCallback(() => {
-    const dataKey = getSubGraphDataKey()
-    const newToolParameters = { ...inputs.tool_parameters }
-    delete newToolParameters[dataKey]
-
-    setInputs({
-      ...inputs,
-      tool_parameters: newToolParameters,
-    })
-  }, [getSubGraphDataKey, inputs, setInputs])
-
   const hasSubGraphData = useCallback(() => {
     const dataKey = getSubGraphDataKey()
     const toolParameters = inputs.tool_parameters || {}
@@ -120,7 +109,6 @@ export const useSubGraphPersistence = ({
   return {
     loadSubGraphData,
     saveSubGraphData,
-    clearSubGraphData,
     hasSubGraphData,
     updateSubGraphConfig,
     updateSubGraphNodes,
