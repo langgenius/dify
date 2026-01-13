@@ -11,6 +11,7 @@ import type {
 } from '../../types'
 import type {
   CollaborationState,
+  CollaborationUpdate,
   CursorPosition,
   NodePanelPresenceMap,
   NodePanelPresenceUser,
@@ -815,13 +816,14 @@ export class CollaborationManager {
     })
   }
 
-  private setupSocketEventListeners(socket: any): void {
-    socket.on('collaboration_update', (update: any) => {
+  private setupSocketEventListeners(socket: Socket): void {
+    socket.on('collaboration_update', (update: CollaborationUpdate) => {
       if (update.type === 'mouse_move') {
         // Update cursor state for this user
+        const data = update.data as { x: number; y: number }
         this.cursors[update.userId] = {
-          x: update.data.x,
-          y: update.data.y,
+          x: data.x,
+          y: data.y,
           userId: update.userId,
           timestamp: update.timestamp,
         }

@@ -49,9 +49,22 @@ export type GraphSyncData = {
   edges: Edge[]
 }
 
+export type CollaborationEventType
+  = | 'mouse_move'
+  | 'vars_and_features_update'
+  | 'sync_request'
+  | 'app_state_update'
+  | 'app_meta_update'
+  | 'mcp_server_update'
+  | 'workflow_update'
+  | 'comments_update'
+  | 'node_panel_presence'
+  | 'app_publish_update'
+  | 'graph_resync_request'
+
 export type CollaborationUpdate = {
-  type: 'mouse_move' | 'vars_and_features_update' | 'sync_request' | 'app_state_update' | 'app_meta_update' | 'mcp_server_update' | 'workflow_update' | 'comments_update' | 'node_panel_presence' | 'app_publish_update'
+  type: CollaborationEventType
   userId: string
-  data: any
+  data: Record<string, unknown>
   timestamp: number
 }
