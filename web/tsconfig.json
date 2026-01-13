@@ -38,7 +38,6 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    "app/components/develop/Prose.jsx",
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [

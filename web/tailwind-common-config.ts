@@ -1,6 +1,7 @@
 import tailwindTypography from '@tailwindcss/typography'
-import tailwindThemeVarDefine from './themes/tailwind-theme-var-define'
-import typography from './typography'
+// @ts-expect-error workaround for turbopack issue
+import tailwindThemeVarDefine from './themes/tailwind-theme-var-define.ts'
+import typography from './typography.js'
 
 const config = {
   theme: {
