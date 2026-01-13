@@ -51,14 +51,15 @@ const ProviderCard = ({
   const { t } = useTranslation()
 
   const isConfigured = provider.is_tenant_configured || provider.is_system_configured
-  const showEnableButton = !isCurrent && isConfigured && onEnable
+  const showEnableButton = !disabled && !isCurrent && isConfigured && onEnable
 
   return (
     <div
       className={cn(
-        'group flex items-center gap-3 rounded-[15px] py-3 pl-3 pr-4',
+        'group flex items-center gap-3 rounded-[15px] py-3 pl-3',
         'border-[0.5px] border-components-panel-border shadow-xs',
         isCurrent ? 'bg-background-section' : 'bg-background-section-burn',
+        disabled ? 'pr-6' : 'pr-4',
       )}
     >
       <div className="flex h-10 w-10 shrink-0 items-center justify-center text-clip rounded-[10px] border-[0.5px] border-divider-subtle bg-background-default-subtle">
@@ -110,19 +111,20 @@ const ProviderCard = ({
           </div>
         )}
 
-        {isConfigured && (
+        {!disabled && isConfigured && (
           <div className="pl-1">
             <div className="h-3 w-px bg-divider-regular" />
           </div>
         )}
 
-        <button
-          onClick={onConfig}
-          disabled={disabled}
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <RiEqualizer2Line className="h-4 w-4" />
-        </button>
+        {!disabled && (
+          <button
+            onClick={onConfig}
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+          >
+            <RiEqualizer2Line className="h-4 w-4" />
+          </button>
+        )}
       </div>
     </div>
   )
