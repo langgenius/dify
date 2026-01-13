@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import builtins
 import importlib
+import json
 import sys
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -18,8 +19,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 from flask.views import MethodView
-from werkzeug.exceptions import Forbidden
+from pydantic import ValidationError
+from werkzeug.exceptions import BadRequest, Forbidden
 
+from controllers.console.workspace import load_balancing_config
 from controllers.console.workspace.load_balancing_config import (
     LoadBalancingConfigCredentialsValidateApi,
     LoadBalancingCredentialsValidateApi,
@@ -31,8 +34,6 @@ from models.account import Account
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
-
-from models.account import TenantAccountRole
 
 
 @pytest.fixture
@@ -158,8 +159,8 @@ def test_validate_credentials_with_config_id(app: Flask, load_balancing_module, 
     )
 
 
-class TestLoadBalancingCredentialsValidateApi:
-    """Unit tests for LoadBalancingCredentialsValidateApi."""
+class BaseTestLoadBalancing:
+    """Base test class with common fixtures for load balancing API tests."""
 
     @pytest.fixture
     def app(self):
@@ -202,10 +203,92 @@ class TestLoadBalancingCredentialsValidateApi:
         account.is_authenticated = True
         return account
 
-    @pytest.fixture
+    @pytest.fixture(scope="function")
     def mock_load_balancing_service(self):
         """Mock ModelLoadBalancingService."""
-        with patch("controllers.console.workspace.load_balancing_config.ModelLoadBalancingService") as mock_service:
+        # Mock ProviderManager to prevent database access
+        # Return a mock provider configuration so real service code doesn't fail
+        # The provider_configuration.provider.provider needs to be a string, not a MagicMock
+        mock_provider = MagicMock()
+        mock_provider.provider = "openai"  # Ensure this is a string
+        mock_provider_config = MagicMock()
+        mock_provider_config.provider = mock_provider
+        mock_provider_manager_instance = MagicMock()
+        mock_provider_manager_instance.get_configurations.return_value = {"openai": mock_provider_config}
+        
+        # Create a mock Session context manager to prevent database access
+        mock_session = MagicMock()
+        mock_session_context = MagicMock()
+        mock_session_context.__enter__ = MagicMock(return_value=mock_session)
+        mock_session_context.__exit__ = MagicMock(return_value=False)
+        
+        # Mock db in service module to prevent database access
+        # Return a mock config when config_id is queried
+        mock_load_balancing_config = MagicMock()
+        mock_load_balancing_config.id = "config-123"
+        # encrypted_config needs to be a JSON string, not a MagicMock
+        mock_load_balancing_config.encrypted_config = json.dumps({"api_key": "test-key"})
+        mock_db = MagicMock()
+        # Create a chain that returns the mock config for any config_id
+        mock_where = MagicMock()
+        mock_where.first.return_value = mock_load_balancing_config
+        mock_query = MagicMock()
+        mock_query.where.return_value = mock_where
+        mock_db.session.query.return_value = mock_query
+        # Also mock db.session for direct access
+        mock_db.session = MagicMock()
+        mock_db.session.query.return_value = mock_query
+        
+        # Create a factory function for mock service instances to ensure fresh instances
+        def create_mock_service_instance():
+            instance = MagicMock()
+            instance.validate_load_balancing_credentials.return_value = None
+            return instance
+        
+        default_mock_service_instance = create_mock_service_instance()
+        
+        # Mock ModelProviderFactory to prevent provider validation issues
+        # The get_plugin_model_provider should return a mock that has a proper provider string
+        mock_provider_entity = MagicMock()
+        mock_provider_entity.provider = "openai"  # Ensure this is a string, not a MagicMock
+        
+        # Create the mock service before patching to ensure it's ready
+        # Use a callable mock that returns a mock instance
+        mock_service_class = MagicMock()
+        # Ensure the mock is callable and returns a mock instance by default
+        mock_service_class.return_value = default_mock_service_instance
+        
+        with (
+            patch.object(load_balancing_config, "ModelLoadBalancingService", new=mock_service_class),
+            patch("controllers.console.workspace.load_balancing_config.ModelLoadBalancingService", new=mock_service_class),
+            patch("services.model_load_balancing_service.ModelLoadBalancingService", new=mock_service_class),
+            patch("core.provider_manager.ProviderManager", return_value=mock_provider_manager_instance),
+            patch("services.model_load_balancing_service.ProviderManager", return_value=mock_provider_manager_instance),
+            patch("core.provider_manager.Session", return_value=mock_session_context),
+            patch("services.model_load_balancing_service.db", mock_db),
+            patch("core.model_runtime.model_providers.model_provider_factory.ModelProviderFactory") as mock_factory,
+            patch("services.model_load_balancing_service.ModelProviderFactory") as mock_factory_service,
+        ):
+            # Use the mock service class as the main mock
+            mock_service = mock_service_class
+            
+            # The mock_service_class already has return_value set to default_mock_service_instance
+            # Tests can override this by setting mock_load_balancing_service.return_value
+            # Don't reset the mock - let tests have full control over return_value
+            # Only reset call history if needed, but preserve return_value
+            
+            # Mock ModelProviderFactory to prevent provider validation issues
+            # The factory is instantiated inside the service, so we need to patch it at the service module level
+            mock_factory_instance = MagicMock()
+            mock_factory.return_value = mock_factory_instance
+            mock_factory_service.return_value = mock_factory_instance
+            # Ensure get_plugin_model_provider returns a mock with a proper provider string
+            # The method is called with provider="openai" (string), and should return a mock entity
+            mock_factory_instance.get_plugin_model_provider.return_value = mock_provider_entity
+            mock_factory_instance.provider_credentials_validate.return_value = {}
+            mock_factory_instance.model_credentials_validate.return_value = {}
+            
+            # Yield the mock service
             yield mock_service
 
     @pytest.fixture
@@ -220,6 +303,10 @@ class TestLoadBalancingCredentialsValidateApi:
             mock_db.session.query.return_value.first.return_value = MagicMock()
             mock_csrf.return_value = None
             yield {"db": mock_db, "csrf": mock_csrf}
+
+
+class TestLoadBalancingCredentialsValidateApi(BaseTestLoadBalancing):
+    """Unit tests for LoadBalancingCredentialsValidateApi."""
 
     def test_validate_credentials_success(self, app, mock_account_admin, mock_load_balancing_service, mock_decorators):
         """Test successful credentials validation."""
@@ -248,6 +335,14 @@ class TestLoadBalancingCredentialsValidateApi:
                     return_value=(mock_account_admin, "tenant-456"),
                 ),
                 patch("libs.login._get_user", return_value=mock_account_admin),
+                patch(
+                    "controllers.console.workspace.load_balancing_config.console_ns",
+                    new=MagicMock(payload={
+                        "model": model,
+                        "model_type": model_type,
+                        "credentials": credentials,
+                    }),
+                ),
             ):
                 resource = LoadBalancingCredentialsValidateApi()
                 result = resource.post(provider)
@@ -292,6 +387,14 @@ class TestLoadBalancingCredentialsValidateApi:
                     return_value=(mock_account_admin, "tenant-456"),
                 ),
                 patch("libs.login._get_user", return_value=mock_account_admin),
+                patch(
+                    "controllers.console.workspace.load_balancing_config.console_ns",
+                    new=MagicMock(payload={
+                        "model": model,
+                        "model_type": model_type,
+                        "credentials": credentials,
+                    }),
+                ),
             ):
                 resource = LoadBalancingCredentialsValidateApi()
                 result = resource.post(provider)
@@ -364,6 +467,14 @@ class TestLoadBalancingCredentialsValidateApi:
                     return_value=(mock_account_owner, "tenant-456"),
                 ),
                 patch("libs.login._get_user", return_value=mock_account_owner),
+                patch(
+                    "controllers.console.workspace.load_balancing_config.console_ns",
+                    new=MagicMock(payload={
+                        "model": model,
+                        "model_type": model_type,
+                        "credentials": credentials,
+                    }),
+                ),
             ):
                 resource = LoadBalancingCredentialsValidateApi()
                 result = resource.post(provider)
@@ -396,10 +507,8 @@ class TestLoadBalancingCredentialsValidateApi:
                 resource = LoadBalancingCredentialsValidateApi()
 
                 # Act & Assert
-                # RequestParser should raise BadRequest for missing required field
-                from werkzeug.exceptions import BadRequest
-
-                with pytest.raises(BadRequest):
+                # Pydantic validation should raise ValidationError for missing required field
+                with pytest.raises(ValidationError):
                     resource.post(provider)
 
     def test_validate_credentials_invalid_model_type(
@@ -429,10 +538,8 @@ class TestLoadBalancingCredentialsValidateApi:
                 resource = LoadBalancingCredentialsValidateApi()
 
                 # Act & Assert
-                # RequestParser should raise BadRequest for invalid choice
-                from werkzeug.exceptions import BadRequest
-
-                with pytest.raises(BadRequest):
+                # Pydantic validation should raise ValidationError for invalid model type
+                with pytest.raises(ValidationError):
                     resource.post(provider)
 
     def test_validate_credentials_missing_credentials(
@@ -460,9 +567,8 @@ class TestLoadBalancingCredentialsValidateApi:
                 resource = LoadBalancingCredentialsValidateApi()
 
                 # Act & Assert
-                from werkzeug.exceptions import BadRequest
-
-                with pytest.raises(BadRequest):
+                # Pydantic validation should raise ValidationError for missing required field
+                with pytest.raises(ValidationError):
                     resource.post(provider)
 
     def test_validate_credentials_different_model_types(
@@ -494,6 +600,14 @@ class TestLoadBalancingCredentialsValidateApi:
                     return_value=(mock_account_admin, "tenant-456"),
                 ),
                 patch("libs.login._get_user", return_value=mock_account_admin),
+                patch(
+                    "controllers.console.workspace.load_balancing_config.console_ns",
+                    new=MagicMock(payload={
+                        "model": model,
+                        "model_type": model_type,
+                        "credentials": credentials,
+                    }),
+                ),
             ):
                 resource = LoadBalancingCredentialsValidateApi()
                 result = resource.post(provider)
@@ -509,57 +623,8 @@ class TestLoadBalancingCredentialsValidateApi:
         )
 
 
-class TestLoadBalancingConfigCredentialsValidateApi:
+class TestLoadBalancingConfigCredentialsValidateApi(BaseTestLoadBalancing):
     """Unit tests for LoadBalancingConfigCredentialsValidateApi."""
-
-    @pytest.fixture
-    def app(self):
-        """Create Flask app for testing."""
-        app = Flask(__name__)
-        app.config["TESTING"] = True
-        app.config["SECRET_KEY"] = "test-secret-key"
-        return app
-
-    @pytest.fixture
-    def mock_account_admin(self):
-        """Create a mock admin account."""
-        account = MagicMock(spec=Account)
-        account.id = "user-123"
-        account.email = "admin@example.com"
-        account.current_tenant_id = "tenant-456"
-        account.current_role = TenantAccountRole.ADMIN
-        account.is_authenticated = True
-        return account
-
-    @pytest.fixture
-    def mock_account_normal(self):
-        """Create a mock normal user account."""
-        account = MagicMock(spec=Account)
-        account.id = "user-789"
-        account.email = "user@example.com"
-        account.current_tenant_id = "tenant-456"
-        account.current_role = TenantAccountRole.NORMAL
-        account.is_authenticated = True
-        return account
-
-    @pytest.fixture
-    def mock_load_balancing_service(self):
-        """Mock ModelLoadBalancingService."""
-        with patch("controllers.console.workspace.load_balancing_config.ModelLoadBalancingService") as mock_service:
-            yield mock_service
-
-    @pytest.fixture
-    def mock_decorators(self):
-        """Mock decorators to avoid database access."""
-        with (
-            patch("controllers.console.wraps.db") as mock_db,
-            patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
-            patch("libs.login.dify_config.LOGIN_DISABLED", False),
-            patch("libs.login.check_csrf_token") as mock_csrf,
-        ):
-            mock_db.session.query.return_value.first.return_value = MagicMock()
-            mock_csrf.return_value = None
-            yield {"db": mock_db, "csrf": mock_csrf}
 
     def test_validate_config_credentials_success(
         self, app, mock_account_admin, mock_load_balancing_service, mock_decorators
@@ -591,6 +656,14 @@ class TestLoadBalancingConfigCredentialsValidateApi:
                     return_value=(mock_account_admin, "tenant-456"),
                 ),
                 patch("libs.login._get_user", return_value=mock_account_admin),
+                patch(
+                    "controllers.console.workspace.load_balancing_config.console_ns",
+                    new=MagicMock(payload={
+                        "model": model,
+                        "model_type": model_type,
+                        "credentials": credentials,
+                    }),
+                ),
             ):
                 resource = LoadBalancingConfigCredentialsValidateApi()
                 result = resource.post(provider, config_id)
@@ -639,6 +712,14 @@ class TestLoadBalancingConfigCredentialsValidateApi:
                     return_value=(mock_account_admin, "tenant-456"),
                 ),
                 patch("libs.login._get_user", return_value=mock_account_admin),
+                patch(
+                    "controllers.console.workspace.load_balancing_config.console_ns",
+                    new=MagicMock(payload={
+                        "model": model,
+                        "model_type": model_type,
+                        "credentials": credentials,
+                    }),
+                ),
             ):
                 resource = LoadBalancingConfigCredentialsValidateApi()
                 result = resource.post(provider, config_id)
@@ -706,6 +787,14 @@ class TestLoadBalancingConfigCredentialsValidateApi:
                     return_value=(mock_account_admin, "tenant-456"),
                 ),
                 patch("libs.login._get_user", return_value=mock_account_admin),
+                patch(
+                    "controllers.console.workspace.load_balancing_config.console_ns",
+                    new=MagicMock(payload={
+                        "model": model,
+                        "model_type": model_type,
+                        "credentials": credentials,
+                    }),
+                ),
             ):
                 resource = LoadBalancingConfigCredentialsValidateApi()
                 result = resource.post(provider, config_id)

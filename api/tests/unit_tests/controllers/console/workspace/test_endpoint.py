@@ -26,10 +26,11 @@ from controllers.console.workspace.endpoint import (
 )
 from core.plugin.impl.exc import PluginPermissionDeniedError
 from models.account import Account
+from pydantic import ValidationError
 
 
-class TestEndpointCreateApi:
-    """Unit tests for EndpointCreateApi."""
+class BaseEndpointApiTest:
+    """Base test class with common fixtures for endpoint API tests."""
 
     @pytest.fixture
     def app(self):
@@ -68,6 +69,10 @@ class TestEndpointCreateApi:
             mock_csrf.return_value = None
             yield {"db": mock_db, "csrf": mock_csrf}
 
+
+class TestEndpointCreateApi(BaseEndpointApiTest):
+    """Unit tests for EndpointCreateApi."""
+
     def test_create_endpoint_success(self, app, mock_account, mock_endpoint_service, mock_decorators):
         """Test successful endpoint creation with valid plugin identifier."""
         # Arrange
@@ -94,12 +99,12 @@ class TestEndpointCreateApi:
                 ),
                 patch("libs.login._get_user", return_value=mock_account),
                 patch(
-                    "controllers.console.workspace.endpoint.console_ns.payload",
-                    {
+                    "controllers.console.workspace.endpoint.console_ns",
+                    new=MagicMock(payload={
                         "plugin_unique_identifier": plugin_id,
                         "name": name,
                         "settings": settings,
-                    },
+                    }),
                 ),
             ):
                 resource = EndpointCreateApi()
@@ -141,12 +146,12 @@ class TestEndpointCreateApi:
                 ),
                 patch("libs.login._get_user", return_value=mock_account),
                 patch(
-                    "controllers.console.workspace.endpoint.console_ns.payload",
-                    {
+                    "controllers.console.workspace.endpoint.console_ns",
+                    new=MagicMock(payload={
                         "plugin_unique_identifier": invalid_plugin_id,
                         "name": name,
                         "settings": settings,
-                    },
+                    }),
                 ),
             ):
                 resource = EndpointCreateApi()
@@ -179,19 +184,17 @@ class TestEndpointCreateApi:
                 ),
                 patch("libs.login._get_user", return_value=mock_account),
                 patch(
-                    "controllers.console.workspace.endpoint.console_ns.payload",
-                    {
+                    "controllers.console.workspace.endpoint.console_ns",
+                    new=MagicMock(payload={
                         "plugin_unique_identifier": plugin_id,
                         "name": empty_name,
                         "settings": settings,
-                    },
+                    }),
                 ),
             ):
                 resource = EndpointCreateApi()
 
                 # Act & Assert
-                from pydantic import ValidationError
-
                 with pytest.raises(ValidationError):
                     resource.post()
 
@@ -218,62 +221,23 @@ class TestEndpointCreateApi:
                 ),
                 patch("libs.login._get_user", return_value=mock_account),
                 patch(
-                    "controllers.console.workspace.endpoint.console_ns.payload",
-                    {
+                    "controllers.console.workspace.endpoint.console_ns",
+                    new=MagicMock(payload={
                         "plugin_unique_identifier": plugin_id,
                         "name": name,
                         "settings": invalid_settings,
-                    },
+                    }),
                 ),
             ):
                 resource = EndpointCreateApi()
 
                 # Act & Assert
-                from pydantic import ValidationError
-
                 with pytest.raises(ValidationError):
                     resource.post()
 
 
-class TestEndpointListApi:
+class TestEndpointListApi(BaseEndpointApiTest):
     """Unit tests for EndpointListApi."""
-
-    @pytest.fixture
-    def app(self):
-        """Create Flask app for testing."""
-        app = Flask(__name__)
-        app.config["TESTING"] = True
-        app.config["SECRET_KEY"] = "test-secret-key"
-        return app
-
-    @pytest.fixture
-    def mock_account(self):
-        """Create a mock account."""
-        account = MagicMock(spec=Account)
-        account.id = "user-123"
-        account.email = "test@example.com"
-        account.current_tenant_id = "tenant-456"
-        account.is_authenticated = True
-        return account
-
-    @pytest.fixture
-    def mock_endpoint_service(self):
-        """Mock EndpointService."""
-        with patch("controllers.console.workspace.endpoint.EndpointService") as mock_service:
-            yield mock_service
-
-    @pytest.fixture
-    def mock_decorators(self):
-        """Mock decorators to avoid database access."""
-        with (
-            patch("controllers.console.wraps.db") as mock_db,
-            patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
-            patch("libs.login.dify_config.LOGIN_DISABLED", False),
-            patch("libs.login.check_csrf_token") as mock_csrf,
-        ):
-            mock_db.session.query.return_value.first.return_value = MagicMock()
-            mock_csrf.return_value = None
-            yield {"db": mock_db, "csrf": mock_csrf}
 
     def test_list_endpoints_success(self, app, mock_account, mock_endpoint_service, mock_decorators):
         """Test successful endpoint listing with pagination."""
@@ -395,51 +359,12 @@ class TestEndpointListApi:
                 resource = EndpointListApi()
 
                 # Act & Assert
-                from pydantic import ValidationError
-
                 with pytest.raises(ValidationError):
                     resource.get()
 
 
-class TestEndpointListForSinglePluginApi:
+class TestEndpointListForSinglePluginApi(BaseEndpointApiTest):
     """Unit tests for EndpointListForSinglePluginApi."""
-
-    @pytest.fixture
-    def app(self):
-        """Create Flask app for testing."""
-        app = Flask(__name__)
-        app.config["TESTING"] = True
-        app.config["SECRET_KEY"] = "test-secret-key"
-        return app
-
-    @pytest.fixture
-    def mock_account(self):
-        """Create a mock account."""
-        account = MagicMock(spec=Account)
-        account.id = "user-123"
-        account.email = "test@example.com"
-        account.current_tenant_id = "tenant-456"
-        account.is_authenticated = True
-        return account
-
-    @pytest.fixture
-    def mock_endpoint_service(self):
-        """Mock EndpointService."""
-        with patch("controllers.console.workspace.endpoint.EndpointService") as mock_service:
-            yield mock_service
-
-    @pytest.fixture
-    def mock_decorators(self):
-        """Mock decorators to avoid database access."""
-        with (
-            patch("controllers.console.wraps.db") as mock_db,
-            patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
-            patch("libs.login.dify_config.LOGIN_DISABLED", False),
-            patch("libs.login.check_csrf_token") as mock_csrf,
-        ):
-            mock_db.session.query.return_value.first.return_value = MagicMock()
-            mock_csrf.return_value = None
-            yield {"db": mock_db, "csrf": mock_csrf}
 
     def test_list_endpoints_for_plugin_success(self, app, mock_account, mock_endpoint_service, mock_decorators):
         """Test successful endpoint listing for a specific plugin."""
@@ -511,45 +436,8 @@ class TestEndpointListForSinglePluginApi:
         assert call_args.kwargs["plugin_id"] == plugin_id
 
 
-class TestEndpointUpdateApi:
+class TestEndpointUpdateApi(BaseEndpointApiTest):
     """Unit tests for EndpointUpdateApi."""
-
-    @pytest.fixture
-    def app(self):
-        """Create Flask app for testing."""
-        app = Flask(__name__)
-        app.config["TESTING"] = True
-        app.config["SECRET_KEY"] = "test-secret-key"
-        return app
-
-    @pytest.fixture
-    def mock_account(self):
-        """Create a mock account."""
-        account = MagicMock(spec=Account)
-        account.id = "user-123"
-        account.email = "test@example.com"
-        account.current_tenant_id = "tenant-456"
-        account.is_authenticated = True
-        return account
-
-    @pytest.fixture
-    def mock_endpoint_service(self):
-        """Mock EndpointService."""
-        with patch("controllers.console.workspace.endpoint.EndpointService") as mock_service:
-            yield mock_service
-
-    @pytest.fixture
-    def mock_decorators(self):
-        """Mock decorators to avoid database access."""
-        with (
-            patch("controllers.console.wraps.db") as mock_db,
-            patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
-            patch("libs.login.dify_config.LOGIN_DISABLED", False),
-            patch("libs.login.check_csrf_token") as mock_csrf,
-        ):
-            mock_db.session.query.return_value.first.return_value = MagicMock()
-            mock_csrf.return_value = None
-            yield {"db": mock_db, "csrf": mock_csrf}
 
     def test_update_endpoint_success(self, app, mock_account, mock_endpoint_service, mock_decorators):
         """Test successful endpoint update."""
@@ -577,12 +465,12 @@ class TestEndpointUpdateApi:
                 ),
                 patch("libs.login._get_user", return_value=mock_account),
                 patch(
-                    "controllers.console.workspace.endpoint.console_ns.payload",
-                    {
+                    "controllers.console.workspace.endpoint.console_ns",
+                    new=MagicMock(payload={
                         "endpoint_id": endpoint_id,
                         "name": name,
                         "settings": settings,
-                    },
+                    }),
                 ),
             ):
                 resource = EndpointUpdateApi()
@@ -599,45 +487,8 @@ class TestEndpointUpdateApi:
         )
 
 
-class TestEndpointDeleteApi:
+class TestEndpointDeleteApi(BaseEndpointApiTest):
     """Unit tests for EndpointDeleteApi."""
-
-    @pytest.fixture
-    def app(self):
-        """Create Flask app for testing."""
-        app = Flask(__name__)
-        app.config["TESTING"] = True
-        app.config["SECRET_KEY"] = "test-secret-key"
-        return app
-
-    @pytest.fixture
-    def mock_account(self):
-        """Create a mock account."""
-        account = MagicMock(spec=Account)
-        account.id = "user-123"
-        account.email = "test@example.com"
-        account.current_tenant_id = "tenant-456"
-        account.is_authenticated = True
-        return account
-
-    @pytest.fixture
-    def mock_endpoint_service(self):
-        """Mock EndpointService."""
-        with patch("controllers.console.workspace.endpoint.EndpointService") as mock_service:
-            yield mock_service
-
-    @pytest.fixture
-    def mock_decorators(self):
-        """Mock decorators to avoid database access."""
-        with (
-            patch("controllers.console.wraps.db") as mock_db,
-            patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
-            patch("libs.login.dify_config.LOGIN_DISABLED", False),
-            patch("libs.login.check_csrf_token") as mock_csrf,
-        ):
-            mock_db.session.query.return_value.first.return_value = MagicMock()
-            mock_csrf.return_value = None
-            yield {"db": mock_db, "csrf": mock_csrf}
 
     def test_delete_endpoint_success(self, app, mock_account, mock_endpoint_service, mock_decorators):
         """Test successful endpoint deletion."""
@@ -659,10 +510,10 @@ class TestEndpointDeleteApi:
                 ),
                 patch("libs.login._get_user", return_value=mock_account),
                 patch(
-                    "controllers.console.workspace.endpoint.console_ns.payload",
-                    {
+                    "controllers.console.workspace.endpoint.console_ns",
+                    new=MagicMock(payload={
                         "endpoint_id": endpoint_id,
-                    },
+                    }),
                 ),
             ):
                 resource = EndpointDeleteApi()
@@ -677,45 +528,8 @@ class TestEndpointDeleteApi:
         )
 
 
-class TestEndpointEnableApi:
+class TestEndpointEnableApi(BaseEndpointApiTest):
     """Unit tests for EndpointEnableApi."""
-
-    @pytest.fixture
-    def app(self):
-        """Create Flask app for testing."""
-        app = Flask(__name__)
-        app.config["TESTING"] = True
-        app.config["SECRET_KEY"] = "test-secret-key"
-        return app
-
-    @pytest.fixture
-    def mock_account(self):
-        """Create a mock account."""
-        account = MagicMock(spec=Account)
-        account.id = "user-123"
-        account.email = "test@example.com"
-        account.current_tenant_id = "tenant-456"
-        account.is_authenticated = True
-        return account
-
-    @pytest.fixture
-    def mock_endpoint_service(self):
-        """Mock EndpointService."""
-        with patch("controllers.console.workspace.endpoint.EndpointService") as mock_service:
-            yield mock_service
-
-    @pytest.fixture
-    def mock_decorators(self):
-        """Mock decorators to avoid database access."""
-        with (
-            patch("controllers.console.wraps.db") as mock_db,
-            patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
-            patch("libs.login.dify_config.LOGIN_DISABLED", False),
-            patch("libs.login.check_csrf_token") as mock_csrf,
-        ):
-            mock_db.session.query.return_value.first.return_value = MagicMock()
-            mock_csrf.return_value = None
-            yield {"db": mock_db, "csrf": mock_csrf}
 
     def test_enable_endpoint_success(self, app, mock_account, mock_endpoint_service, mock_decorators):
         """Test successful endpoint enable."""
@@ -737,10 +551,10 @@ class TestEndpointEnableApi:
                 ),
                 patch("libs.login._get_user", return_value=mock_account),
                 patch(
-                    "controllers.console.workspace.endpoint.console_ns.payload",
-                    {
+                    "controllers.console.workspace.endpoint.console_ns",
+                    new=MagicMock(payload={
                         "endpoint_id": endpoint_id,
-                    },
+                    }),
                 ),
             ):
                 resource = EndpointEnableApi()
@@ -755,45 +569,8 @@ class TestEndpointEnableApi:
         )
 
 
-class TestEndpointDisableApi:
+class TestEndpointDisableApi(BaseEndpointApiTest):
     """Unit tests for EndpointDisableApi."""
-
-    @pytest.fixture
-    def app(self):
-        """Create Flask app for testing."""
-        app = Flask(__name__)
-        app.config["TESTING"] = True
-        app.config["SECRET_KEY"] = "test-secret-key"
-        return app
-
-    @pytest.fixture
-    def mock_account(self):
-        """Create a mock account."""
-        account = MagicMock(spec=Account)
-        account.id = "user-123"
-        account.email = "test@example.com"
-        account.current_tenant_id = "tenant-456"
-        account.is_authenticated = True
-        return account
-
-    @pytest.fixture
-    def mock_endpoint_service(self):
-        """Mock EndpointService."""
-        with patch("controllers.console.workspace.endpoint.EndpointService") as mock_service:
-            yield mock_service
-
-    @pytest.fixture
-    def mock_decorators(self):
-        """Mock decorators to avoid database access."""
-        with (
-            patch("controllers.console.wraps.db") as mock_db,
-            patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
-            patch("libs.login.dify_config.LOGIN_DISABLED", False),
-            patch("libs.login.check_csrf_token") as mock_csrf,
-        ):
-            mock_db.session.query.return_value.first.return_value = MagicMock()
-            mock_csrf.return_value = None
-            yield {"db": mock_db, "csrf": mock_csrf}
 
     def test_disable_endpoint_success(self, app, mock_account, mock_endpoint_service, mock_decorators):
         """Test successful endpoint disable."""
@@ -815,10 +592,10 @@ class TestEndpointDisableApi:
                 ),
                 patch("libs.login._get_user", return_value=mock_account),
                 patch(
-                    "controllers.console.workspace.endpoint.console_ns.payload",
-                    {
+                    "controllers.console.workspace.endpoint.console_ns",
+                    new=MagicMock(payload={
                         "endpoint_id": endpoint_id,
-                    },
+                    }),
                 ),
             ):
                 resource = EndpointDisableApi()
