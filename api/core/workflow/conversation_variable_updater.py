@@ -1,7 +1,7 @@
 import abc
 from typing import Protocol
 
-from core.variables import Variable
+from core.variables import VariableBase
 
 
 class ConversationVariableUpdater(Protocol):
@@ -20,12 +20,12 @@ class ConversationVariableUpdater(Protocol):
     """
 
     @abc.abstractmethod
-    def update(self, conversation_id: str, variable: "Variable"):
+    def update(self, conversation_id: str, variable: "VariableBase"):
         """
         Updates the value of the specified conversation variable in the underlying storage.
 
         :param conversation_id: The ID of the conversation to update. Typically references `ConversationVariable.id`.
-        :param variable: The `Variable` instance containing the updated value.
+        :param variable: The `VariableBase` instance containing the updated value.
         """
         pass
 

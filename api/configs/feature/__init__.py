@@ -587,6 +587,11 @@ class LoggingConfig(BaseSettings):
         default="INFO",
     )
 
+    LOG_OUTPUT_FORMAT: Literal["text", "json"] = Field(
+        description="Log output format: 'text' for human-readable, 'json' for structured JSON logs.",
+        default="text",
+    )
+
     LOG_FILE: str | None = Field(
         description="File path for log output.",
         default=None,
@@ -1094,6 +1099,10 @@ class CeleryScheduleTasksConfig(BaseSettings):
     )
     ENABLE_CLEAN_MESSAGES: bool = Field(
         description="Enable clean messages task",
+        default=False,
+    )
+    ENABLE_WORKFLOW_RUN_CLEANUP_TASK: bool = Field(
+        description="Enable scheduled workflow run cleanup task",
         default=False,
     )
     ENABLE_MAIL_CLEAN_DOCUMENT_NOTIFY_TASK: bool = Field(

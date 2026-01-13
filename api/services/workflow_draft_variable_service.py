@@ -15,7 +15,7 @@ from sqlalchemy.sql.expression import and_, or_
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.models import File
-from core.variables import Segment, StringSegment, Variable
+from core.variables import Segment, StringSegment, VariableBase
 from core.variables.consts import SELECTORS_LENGTH
 from core.variables.segments import (
     ArrayFileSegment,
@@ -77,14 +77,14 @@ class DraftVarLoader(VariableLoader):
     # Application ID for which variables are being loaded.
     _app_id: str
     _tenant_id: str
-    _fallback_variables: Sequence[Variable]
+    _fallback_variables: Sequence[VariableBase]
 
     def __init__(
         self,
         engine: Engine,
         app_id: str,
         tenant_id: str,
-        fallback_variables: Sequence[Variable] | None = None,
+        fallback_variables: Sequence[VariableBase] | None = None,
     ):
         self._engine = engine
         self._app_id = app_id
@@ -94,12 +94,12 @@ class DraftVarLoader(VariableLoader):
     def _selector_to_tuple(self, selector: Sequence[str]) -> tuple[str, str]:
         return (selector[0], selector[1])
 
-    def load_variables(self, selectors: list[list[str]]) -> list[Variable]:
+    def load_variables(self, selectors: list[list[str]]) -> list[VariableBase]:
         if not selectors:
             return []
 
-        # Map each selector (as a tuple via `_selector_to_tuple`) to its corresponding Variable instance.
-        variable_by_selector: dict[tuple[str, str], Variable] = {}
+        # Map each selector (as a tuple via `_selector_to_tuple`) to its corresponding variable instance.
+        variable_by_selector: dict[tuple[str, str], VariableBase] = {}
 
         with Session(bind=self._engine, expire_on_commit=False) as session:
             srv = WorkflowDraftVariableService(session)
@@ -145,7 +145,7 @@ class DraftVarLoader(VariableLoader):
 
         return list(variable_by_selector.values())
 
-    def _load_offloaded_variable(self, draft_var: WorkflowDraftVariable) -> tuple[tuple[str, str], Variable]:
+    def _load_offloaded_variable(self, draft_var: WorkflowDraftVariable) -> tuple[tuple[str, str], VariableBase]:
         # This logic is closely tied to `WorkflowDraftVaribleService._try_offload_large_variable`
         # and must remain synchronized with it.
         # Ideally, these should be co-located for better maintainability.
@@ -679,6 +679,7 @@ def _batch_upsert_draft_variable(
 
 def _model_to_insertion_dict(model: WorkflowDraftVariable) -> dict[str, Any]:
     d: dict[str, Any] = {
+        "id": model.id,
         "app_id": model.app_id,
         "last_edited_at": None,
         "node_id": model.node_id,

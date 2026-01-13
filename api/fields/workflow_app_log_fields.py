@@ -1,4 +1,4 @@
-from flask_restx import Api, Namespace, fields
+from flask_restx import Namespace, fields
 
 from fields.end_user_fields import build_simple_end_user_model, simple_end_user_fields
 from fields.member_fields import build_simple_account_model, simple_account_fields
@@ -17,7 +17,7 @@ workflow_app_log_partial_fields = {
 }
 
 
-def build_workflow_app_log_partial_model(api_or_ns: Api | Namespace):
+def build_workflow_app_log_partial_model(api_or_ns: Namespace):
     """Build the workflow app log partial model for the API or Namespace."""
     workflow_run_model = build_workflow_run_for_log_model(api_or_ns)
     simple_account_model = build_simple_account_model(api_or_ns)
@@ -43,7 +43,7 @@ workflow_app_log_pagination_fields = {
 }
 
 
-def build_workflow_app_log_pagination_model(api_or_ns: Api | Namespace):
+def build_workflow_app_log_pagination_model(api_or_ns: Namespace):
     """Build the workflow app log pagination model for the API or Namespace."""
     # Build the nested partial model first
     workflow_app_log_partial_model = build_workflow_app_log_partial_model(api_or_ns)

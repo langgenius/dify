@@ -10,7 +10,12 @@ from controllers.console.auth.error import (
     InvalidEmailError,
 )
 from controllers.console.error import AccountBannedError
-from controllers.console.wraps import only_edition_enterprise, setup_required
+from controllers.console.wraps import (
+    decrypt_code_field,
+    decrypt_password_field,
+    only_edition_enterprise,
+    setup_required,
+)
 from controllers.web import web_ns
 from controllers.web.wraps import decode_jwt_token
 from libs.helper import email
@@ -42,6 +47,7 @@ class LoginApi(Resource):
             404: "Account not found",
         }
     )
+    @decrypt_password_field
     def post(self):
         """Authenticate user and login."""
         parser = (
@@ -181,6 +187,7 @@ class EmailCodeLoginApi(Resource):
             404: "Account not found",
         }
     )
+    @decrypt_code_field
     def post(self):
         parser = (
             reqparse.RequestParser()
@@ -190,25 +197,29 @@ class EmailCodeLoginApi(Resource):
         )
         args = parser.parse_args()
 
-        user_email = args["email"]
+        user_email = args["email"].lower()
 
         token_data = WebAppAuthService.get_email_code_login_data(args["token"])
         if token_data is None:
             raise InvalidTokenError()
 
-        if token_data["email"] != args["email"]:
+        token_email = token_data.get("email")
+        if not isinstance(token_email, str):
+            raise InvalidEmailError()
+        normalized_token_email = token_email.lower()
+        if normalized_token_email != user_email:
             raise InvalidEmailError()
 
         if token_data["code"] != args["code"]:
             raise EmailCodeError()
 
         WebAppAuthService.revoke_email_code_login_token(args["token"])
-        account = WebAppAuthService.get_user_through_email(user_email)
+        account = WebAppAuthService.get_user_through_email(token_email)
         if not account:
             raise AuthenticationFailedError()
 
         token = WebAppAuthService.login(account=account)
-        AccountService.reset_login_error_rate_limit(args["email"])
+        AccountService.reset_login_error_rate_limit(user_email)
         response = make_response({"result": "success", "data": {"access_token": token}})
         # set_access_token_to_cookie(request, response, token, samesite="None", httponly=False)
         return response

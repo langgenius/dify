@@ -55,8 +55,11 @@ class AppService:
         if args.get("is_created_by_me", False):
             filters.append(App.created_by == user_id)
         if args.get("name"):
+            from libs.helper import escape_like_pattern
+
             name = args["name"][:30]
-            filters.append(App.name.ilike(f"%{name}%"))
+            escaped_name = escape_like_pattern(name)
+            filters.append(App.name.ilike(f"%{escaped_name}%", escape="\\"))
         # Check if tag_ids is not empty to avoid WHERE false condition
         if args.get("tag_ids") and len(args["tag_ids"]) > 0:
             target_ids = TagService.get_target_ids_by_tag_ids("app", tenant_id, args["tag_ids"])

@@ -34,7 +34,6 @@ import type {
   UserProfileOriginResponse,
 } from '@/models/common'
 import type { RETRIEVE_METHOD } from '@/types/app'
-import type { SystemFeatures } from '@/types/feature'
 import { del, get, patch, post, put } from './base'
 
 type LoginSuccess = {
@@ -305,10 +304,6 @@ type RetrievalMethodsRes = {
 }
 export const fetchSupportRetrievalMethods = (url: string): Promise<RetrievalMethodsRes> => {
   return get<RetrievalMethodsRes>(url)
-}
-
-export const getSystemFeatures = (): Promise<SystemFeatures> => {
-  return get<SystemFeatures>('/system-features')
 }
 
 export const enableModel = (url: string, body: { model: string, model_type: ModelTypeEnum }): Promise<CommonResponse> =>
