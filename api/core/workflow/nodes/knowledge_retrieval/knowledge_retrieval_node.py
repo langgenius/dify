@@ -330,6 +330,9 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
             else:
                 reranking_model = None
                 weights = None
+
+            reranking_enable = node_data.multiple_retrieval_config.reranking_enable and len(available_datasets) > 1
+
             all_documents = dataset_retrieval.multiple_retrieve(
                 app_id=self.app_id,
                 tenant_id=self.tenant_id,
@@ -344,7 +347,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                 reranking_mode=node_data.multiple_retrieval_config.reranking_mode,
                 reranking_model=reranking_model,
                 weights=weights,
-                reranking_enable=node_data.multiple_retrieval_config.reranking_enable,
+                reranking_enable=reranking_enable,
                 metadata_filter_document_ids=metadata_filter_document_ids,
                 metadata_condition=metadata_condition,
                 attachment_ids=[attachment.related_id for attachment in attachments] if attachments else None,

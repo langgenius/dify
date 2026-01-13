@@ -111,3 +111,91 @@ class TestRetrievalService:
 
         # Current buggy code should record an exception (not raise it)
         assert not thread_exceptions, thread_exceptions
+
+    def test_multiple_retrieve_skip_reranking_for_single_dataset(self, mock_dataset):
+        """
+        Test that node-level reranking is skipped when only one dataset is provided.
+        This avoids redundant reranking when the dataset itself already has reranking configured.
+        """
+        dataset_retrieval = DatasetRetrieval()
+        flask_app = Flask(__name__)
+        tenant_id = str(uuid4())
+
+        # retriever returns 1 doc into internal list (all_documents_item)
+        document = Document(
+            page_content="Single dataset doc",
+            metadata={
+                "doc_id": "doc1",
+                "score": 0.95,
+                "document_id": str(uuid4()),
+                "dataset_id": mock_dataset.id,
+            },
+            provider="dify",
+        )
+
+        def fake_retriever(
+            flask_app, dataset_id, query, top_k, all_documents, document_ids_filter, metadata_condition, attachment_ids
+        ):
+            all_documents.append(document)
+
+        called = {"init": 0, "invoke": 0}
+
+        class ContextRequiredPostProcessor:
+            def __init__(self, *args, **kwargs):
+                called["init"] += 1
+                # will raise RuntimeError if no Flask app context exists
+                _ = current_app.name
+
+            def invoke(self, *args, **kwargs):
+                called["invoke"] += 1
+                _ = current_app.name
+                return kwargs.get("documents") or args[1]
+
+        # output list from _multiple_retrieve_thread
+        all_documents: list[Document] = []
+
+        # IMPORTANT: _multiple_retrieve_thread swallows exceptions and appends them here
+        thread_exceptions: list[Exception] = []
+
+        def target():
+            with patch.object(dataset_retrieval, "_retriever", side_effect=fake_retriever):
+                with patch(
+                    "core.rag.retrieval.dataset_retrieval.DataPostProcessor",
+                    ContextRequiredPostProcessor,
+                ):
+                    dataset_retrieval._multiple_retrieve_thread(
+                        flask_app=flask_app,
+                        available_datasets=[mock_dataset],  # Only one dataset
+                        metadata_condition=None,
+                        metadata_filter_document_ids=None,
+                        all_documents=all_documents,
+                        tenant_id=tenant_id,
+                        reranking_enable=True,  # This should be ignored for single dataset
+                        reranking_mode="reranking_model",
+                        reranking_model={
+                            "reranking_provider_name": "cohere",
+                            "reranking_model_name": "rerank-v2",
+                        },
+                        weights=None,
+                        top_k=3,
+                        score_threshold=0.0,
+                        query="test query",
+                        attachment_id=None,
+                        dataset_count=1,  # Single dataset - reranking should be skipped
+                        thread_exceptions=thread_exceptions,
+                    )
+
+        t = threading.Thread(target=target)
+        t.start()
+        t.join()
+
+        # Ensure reranking branch was NOT executed (since dataset_count == 1)
+        assert called["init"] == 0, "DataPostProcessor should not be constructed for single dataset."
+        assert called["invoke"] == 0, "DataPostProcessor.invoke should not be called for single dataset."
+
+        # Verify document was still retrieved
+        assert len(all_documents) == 1
+        assert all_documents[0].page_content == "Single dataset doc"
+
+        # No exceptions should occur
+        assert not thread_exceptions, thread_exceptions
