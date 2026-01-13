@@ -9,7 +9,11 @@ from core.repositories.human_input_reposotiry import (
     HumanInputFormRecord,
     HumanInputFormSubmissionRepository,
 )
-from core.workflow.nodes.human_input.entities import FormDefinition
+from core.workflow.nodes.human_input.entities import (
+    FormDefinition,
+    HumanInputSubmissionValidationError,
+    validate_human_input_submission,
+)
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
 from libs.exception import BaseHTTPException
@@ -171,20 +175,15 @@ class HumanInputService:
 
     def _validate_submission(self, form: Form, selected_action_id: str, form_data: Mapping[str, Any]) -> None:
         definition = form.get_definition()
-
-        available_actions = {action.id for action in definition.user_actions}
-        if selected_action_id not in available_actions:
-            raise InvalidFormDataError(f"Invalid action: {selected_action_id}")
-
-        provided_inputs = set(form_data.keys())
-        missing_inputs = [
-            form_input.output_variable_name
-            for form_input in definition.inputs
-            if form_input.output_variable_name not in provided_inputs
-        ]
-
-        if missing_inputs:
-            raise InvalidFormDataError(f"Missing required inputs: {', '.join(missing_inputs)}")
+        try:
+            validate_human_input_submission(
+                inputs=definition.inputs,
+                user_actions=definition.user_actions,
+                selected_action_id=selected_action_id,
+                form_data=form_data,
+            )
+        except HumanInputSubmissionValidationError as exc:
+            raise InvalidFormDataError(str(exc)) from exc
 
     def _enqueue_resume(self, workflow_run_id: str) -> None:
         workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(self._session_factory)

@@ -259,3 +259,30 @@ class FormDefinition(BaseModel):
 
     # display_in_ui controls whether the form should be displayed in UI surfaces.
     display_in_ui: bool | None = None
+
+
+class HumanInputSubmissionValidationError(ValueError):
+    pass
+
+
+def validate_human_input_submission(
+    *,
+    inputs: Sequence[FormInput],
+    user_actions: Sequence[UserAction],
+    selected_action_id: str,
+    form_data: Mapping[str, Any],
+) -> None:
+    available_actions = {action.id for action in user_actions}
+    if selected_action_id not in available_actions:
+        raise HumanInputSubmissionValidationError(f"Invalid action: {selected_action_id}")
+
+    provided_inputs = set(form_data.keys())
+    missing_inputs = [
+        form_input.output_variable_name
+        for form_input in inputs
+        if form_input.output_variable_name not in provided_inputs
+    ]
+
+    if missing_inputs:
+        missing_list = ", ".join(missing_inputs)
+        raise HumanInputSubmissionValidationError(f"Missing required inputs: {missing_list}")

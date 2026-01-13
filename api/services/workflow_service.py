@@ -24,7 +24,11 @@ from core.workflow.graph_events import GraphNodeEventBase, NodeRunFailedEvent, N
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.base.node import Node
-from core.workflow.nodes.human_input.entities import DeliveryChannelConfig, HumanInputNodeData
+from core.workflow.nodes.human_input.entities import (
+    DeliveryChannelConfig,
+    HumanInputNodeData,
+    validate_human_input_submission,
+)
 from core.workflow.nodes.human_input.human_input_node import HumanInputNode
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from core.workflow.nodes.start.entities import StartNodeData
@@ -833,21 +837,18 @@ class WorkflowService:
         )
         node_data = node.node_data
 
-        available_actions = {user_action.id for user_action in node_data.user_actions}
-        if action not in available_actions:
-            raise ValueError(f"Invalid action: {action}")
-
-        expected_inputs = {form_input.output_variable_name for form_input in node_data.inputs}
-        missing_inputs = [name for name in expected_inputs if name not in form_inputs]
-        if missing_inputs:
-            missing_list = ", ".join(sorted(missing_inputs))
-            raise ValueError(f"Missing inputs: {missing_list}")
+        validate_human_input_submission(
+            inputs=node_data.inputs,
+            user_actions=node_data.user_actions,
+            selected_action_id=action,
+            form_data=form_inputs,
+        )
 
         rendered_content = node._render_form_content_before_submission()
         outputs: dict[str, Any] = dict(form_inputs)
         outputs["__action_id"] = action
         outputs["__rendered_content"] = node._render_form_content_with_outputs(
-            node_data.form_content, outputs, node_data.outputs_field_names()
+            rendered_content, outputs, node_data.outputs_field_names()
         )
 
         enclosing_node_type_and_id = draft_workflow.get_enclosing_node_type_and_id(node_config)
