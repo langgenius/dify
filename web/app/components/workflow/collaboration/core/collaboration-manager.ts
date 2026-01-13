@@ -29,8 +29,8 @@ export class CollaborationManager {
   private doc: LoroDoc | null = null
   private undoManager: UndoManager | null = null
   private provider: CRDTProvider | null = null
-  private nodesMap: any = null
-  private edgesMap: any = null
+  private nodesMap: LoroMap | null = null
+  private edgesMap: LoroMap | null = null
   private eventEmitter = new EventEmitter()
   private currentAppId: string | null = null
   private reactFlowStore: any = null
@@ -622,8 +622,8 @@ export class CollaborationManager {
         requestAnimationFrame(() => {
           // Get ReactFlow's native setters, not the collaborative ones
           const state = this.reactFlowStore.getState()
-          const updatedNodes = Array.from(this.nodesMap.values())
-          const updatedEdges = Array.from(this.edgesMap.values())
+          const updatedNodes = Array.from(this.nodesMap?.values() || [])
+          const updatedEdges = Array.from(this.edgesMap?.values() || [])
           // Call ReactFlow's native setters directly to avoid triggering collaboration
           state.setNodes(updatedNodes)
           state.setEdges(updatedEdges)
@@ -661,8 +661,8 @@ export class CollaborationManager {
         requestAnimationFrame(() => {
           // Get ReactFlow's native setters, not the collaborative ones
           const state = this.reactFlowStore.getState()
-          const updatedNodes = Array.from(this.nodesMap.values())
-          const updatedEdges = Array.from(this.edgesMap.values())
+          const updatedNodes = Array.from(this.nodesMap?.values() || [])
+          const updatedEdges = Array.from(this.edgesMap?.values() || [])
           // Call ReactFlow's native setters directly to avoid triggering collaboration
           state.setNodes(updatedNodes)
           state.setEdges(updatedEdges)
@@ -708,7 +708,7 @@ export class CollaborationManager {
 
     oldNodes.forEach((oldNode) => {
       if (!newIdSet.has(oldNode.id))
-        this.nodesMap.delete(oldNode.id)
+        this.nodesMap?.delete(oldNode.id)
     })
 
     newNodes.forEach((newNode) => {
@@ -725,18 +725,18 @@ export class CollaborationManager {
 
     oldEdges.forEach((oldEdge) => {
       if (!newEdgesMap.has(oldEdge.id))
-        this.edgesMap.delete(oldEdge.id)
+        this.edgesMap?.delete(oldEdge.id)
     })
 
     newEdges.forEach((newEdge) => {
       const oldEdge = oldEdgesMap.get(newEdge.id)
       if (!oldEdge) {
         const clonedEdge = cloneDeep(newEdge)
-        this.edgesMap.set(newEdge.id, clonedEdge)
+        this.edgesMap?.set(newEdge.id, clonedEdge)
       }
       else if (!isEqual(oldEdge, newEdge)) {
         const clonedEdge = cloneDeep(newEdge)
-        this.edgesMap.set(newEdge.id, clonedEdge)
+        this.edgesMap?.set(newEdge.id, clonedEdge)
       }
     })
   }
@@ -761,7 +761,7 @@ export class CollaborationManager {
           this.pendingInitialSync = false
 
           const updatedNodes = Array
-            .from(this.nodesMap.keys())
+            .from(this.nodesMap?.keys() || [])
             .map((nodeId) => {
               const node = this.exportNode(nodeId as string)
               const clonedNode: Node = {
@@ -804,7 +804,7 @@ export class CollaborationManager {
         requestAnimationFrame(() => {
           // Get ReactFlow's native setters, not the collaborative ones
           const state = this.reactFlowStore.getState()
-          const updatedEdges = Array.from(this.edgesMap.values())
+          const updatedEdges = Array.from(this.edgesMap?.values() || [])
 
           this.pendingInitialSync = false
 
