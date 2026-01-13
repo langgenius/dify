@@ -87,7 +87,7 @@ class App(TypeBase):
     icon_type: Mapped[str | None] = mapped_column(String(255))  # image, emoji, link
     icon: Mapped[str] = mapped_column(String(255))
     icon_background: Mapped[str | None] = mapped_column(String(255))
-    app_model_config_id = mapped_column(StringUUID, nullable=True)
+    app_model_config_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     workflow_id = mapped_column(StringUUID, nullable=True)
     status: Mapped[str] = mapped_column(String(255), server_default=sa.text("'normal'"))
     enable_site: Mapped[bool] = mapped_column(sa.Boolean)
