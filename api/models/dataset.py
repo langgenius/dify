@@ -69,10 +69,14 @@ class Dataset(TypeBase):
     )
     embedding_model: Mapped[str | None] = mapped_column(sa.String(255), nullable=True)
     embedding_model_provider: Mapped[str | None] = mapped_column(sa.String(255), nullable=True)
-    keyword_number: Mapped[str | None] = mapped_column(sa.Integer, nullable=True, server_default=sa.text("10"), default=10)
+    keyword_number: Mapped[str | None] = mapped_column(
+        sa.Integer, nullable=True, server_default=sa.text("10"), default=10
+    )
     collection_binding_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     retrieval_model: Mapped[str | None] = mapped_column(AdjustedJSON, nullable=True)
-    built_in_field_enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"), default=False)
+    built_in_field_enabled: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, server_default=sa.text("false"), default=False
+    )
     icon_info: Mapped[Any | None] = mapped_column(AdjustedJSON, nullable=True)
     runtime_mode: Mapped[str | None] = mapped_column(
         sa.String(255), nullable=True, server_default=sa.text("'general'"), default="general"
