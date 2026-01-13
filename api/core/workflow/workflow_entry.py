@@ -137,7 +137,7 @@ class WorkflowEntry:
         :param user_inputs: user inputs
         :return:
         """
-        node_config = workflow.get_node_config_by_id(node_id)
+        node_config = dict(workflow.get_node_config_by_id(node_id))
         node_config_data = node_config.get("data", {})
 
         # Get node type
