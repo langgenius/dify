@@ -207,16 +207,15 @@ workflow:
         tool_node_version: '2'
         tool_parameters:
           query:
+            type: mention
+            value: '{{@llm.context@}}请从对话历史中提取用户想要搜索的关键词，只返回关键词本身'
             mention_config:
-              default_value: ''
               extractor_node_id: 1767773709491_ext_query
-              instruction: 请从对话历史中提取用户想要搜索的关键词，只返回关键词本身
-              null_strategy: use_default
               output_selector:
               - structured_output
               - query
-            type: mention
-            value: '{{#llm.context#}}'
+              null_strategy: use_default
+              default_value: ''
         type: tool
       height: 52
       id: '1767773709491'

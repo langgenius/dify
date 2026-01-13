@@ -8,8 +8,31 @@ from pydantic_core.core_schema import ValidationInfo
 from core.tools.entities.tool_entities import ToolProviderType
 from core.workflow.nodes.base.entities import BaseNodeData
 
-# Pattern to match a single variable reference like {{#llm.context#}}
-SINGLE_VARIABLE_PATTERN = re.compile(r"^\s*\{\{#[a-zA-Z0-9_]+(?:\.[a-zA-Z_][a-zA-Z0-9_]*)+#\}\}\s*$")
+# Pattern to match mention value format: {{@node.context@}}instruction
+# The placeholder {{@node.context@}} must appear at the beginning
+# Format: {{@agent_node_id.context@}} where agent_node_id is dynamic, context is fixed
+MENTION_VALUE_PATTERN = re.compile(r"^\{\{@([a-zA-Z0-9_]+)\.context@\}\}(.*)$", re.DOTALL)
+
+
+def parse_mention_value(value: str) -> tuple[str, str]:
+    """Parse mention value into (node_id, instruction).
+
+    Args:
+        value: The mention value string like "{{@llm.context@}}extract keywords"
+
+    Returns:
+        Tuple of (node_id, instruction)
+
+    Raises:
+        ValueError: If value format is invalid
+    """
+    match = MENTION_VALUE_PATTERN.match(value)
+    if not match:
+        raise ValueError(
+            "For mention type, value must start with {{@node.context@}} placeholder, "
+            "e.g., '{{@llm.context@}}extract keywords'"
+        )
+    return match.group(1), match.group(2)
 
 
 class MentionConfig(BaseModel):
@@ -17,10 +40,9 @@ class MentionConfig(BaseModel):
 
     Used when a tool parameter needs to be extracted from list[PromptMessage]
     context using an extractor LLM node.
-    """
 
-    # Instruction for the extractor LLM to extract the value
-    instruction: str
+    Note: instruction is embedded in the value field as "{{@node.context@}}instruction"
+    """
 
     # ID of the extractor LLM node
     extractor_node_id: str
@@ -105,12 +127,9 @@ class ToolNodeData(BaseNodeData, ToolEntity):
 
             if not isinstance(value, str):
                 raise ValueError("value must be a string for mention type")
-            # For mention type, value must be a single variable reference
-            if not SINGLE_VARIABLE_PATTERN.match(value):
-                raise ValueError(
-                    "For mention type, value must be a single variable reference "
-                    "like {{#node.variable#}}, cannot contain other content"
-                )
+            # For mention type, value must match format: {{@node.context@}}instruction
+            # This will raise ValueError if format is invalid
+            parse_mention_value(value)
             # mention_config is required for mention type
             if self.mention_config is None:
                 raise ValueError("mention_config is required for mention type")
