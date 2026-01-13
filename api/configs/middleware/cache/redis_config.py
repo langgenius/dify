@@ -32,7 +32,7 @@ class RedisConfig(BaseSettings):
         default=0,
     )
 
-    REDIS_KEY_PREFIX: Optional[str] = Field(
+    REDIS_KEY_PREFIX: str | None = Field(
         description="Redis global string key prefix (if required)",
         default=None,
     )
