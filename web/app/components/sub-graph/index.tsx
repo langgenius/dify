@@ -48,6 +48,8 @@ const SubGraph: FC<SubGraphProps> = (props) => {
         desc: '',
         _connectedSourceHandleIds: ['source'],
         _connectedTargetHandleIds: [],
+        _subGraphEntry: true,
+        _iconTypeOverride: BlockEnum.Agent,
         variables: [],
       },
       selectable: false,
@@ -62,9 +64,7 @@ const SubGraph: FC<SubGraphProps> = (props) => {
     if (!extractorNode)
       return null
 
-    const updateSystemPrompt = (item: PromptItem) => {
-      if (item.role !== PromptRole.system)
-        return item
+    const applyPromptText = (item: PromptItem) => {
       if (item.edition_type === EditionType.jinja2) {
         return {
           ...item,
@@ -75,36 +75,45 @@ const SubGraph: FC<SubGraphProps> = (props) => {
       return { ...item, text: promptText }
     }
 
-    const nextPromptTemplate = Array.isArray(extractorNode.data.prompt_template)
-      ? extractorNode.data.prompt_template.map(updateSystemPrompt)
-      : updateSystemPrompt(extractorNode.data.prompt_template as PromptItem)
+    const nextPromptTemplate = (() => {
+      const template = extractorNode.data.prompt_template
+      if (!Array.isArray(template))
+        return applyPromptText(template as PromptItem)
 
-    const hasSystemPrompt = Array.isArray(nextPromptTemplate)
-      && nextPromptTemplate.some((item: PromptItem) => item.role === PromptRole.system)
-    const defaultSystemPrompt: PromptItem = (() => {
-      const useJinja = Array.isArray(nextPromptTemplate)
-        && nextPromptTemplate.some((item: PromptItem) => item.edition_type === EditionType.jinja2)
-      if (useJinja) {
-        return {
-          role: PromptRole.system,
-          text: promptText,
-          jinja2_text: promptText,
-          edition_type: EditionType.jinja2,
-        }
+      const userIndex = template.findIndex(item => item.role === PromptRole.user)
+      if (userIndex >= 0) {
+        return template.map((item, index) => {
+          if (index !== userIndex)
+            return item
+          return applyPromptText(item)
+        })
       }
-      return { role: PromptRole.system, text: promptText }
+
+      const useJinja = template.some((item: PromptItem) => item.edition_type === EditionType.jinja2)
+      const defaultUserPrompt: PromptItem = useJinja
+        ? {
+            role: PromptRole.user,
+            text: promptText,
+            jinja2_text: promptText,
+            edition_type: EditionType.jinja2,
+          }
+        : { role: PromptRole.user, text: promptText }
+      const systemIndex = template.findIndex(item => item.role === PromptRole.system)
+      const nextTemplate = [...template]
+      if (systemIndex >= 0)
+        nextTemplate.splice(systemIndex + 1, 0, defaultUserPrompt)
+      else
+        nextTemplate.unshift(defaultUserPrompt)
+      return nextTemplate
     })()
-    const normalizedPromptTemplate = Array.isArray(nextPromptTemplate)
-      ? (hasSystemPrompt ? nextPromptTemplate : [defaultSystemPrompt, ...nextPromptTemplate])
-      : nextPromptTemplate
 
     return {
       ...extractorNode,
       hidden: false,
-      position: { x: 450, y: 150 },
+      position: { x: 320, y: 150 },
       data: {
         ...extractorNode.data,
-        prompt_template: normalizedPromptTemplate,
+        prompt_template: nextPromptTemplate,
       },
     }
   }, [extractorNode, promptText])

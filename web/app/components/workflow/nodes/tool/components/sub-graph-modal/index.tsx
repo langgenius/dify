@@ -40,7 +40,7 @@ const SubGraphModal: FC<SubGraphModalProps> = ({
   }, [toolNodeId, workflowNodes])
   const toolParamValue = (toolNode?.data as ToolNodeType | undefined)?.tool_parameters?.[paramKey]?.value as string | undefined
 
-  const getSystemPromptText = useCallback((promptTemplate?: PromptItem[] | PromptItem) => {
+  const getUserPromptText = useCallback((promptTemplate?: PromptItem[] | PromptItem) => {
     if (!promptTemplate)
       return ''
     const resolveText = (item?: PromptItem) => {
@@ -51,6 +51,9 @@ const SubGraphModal: FC<SubGraphModalProps> = ({
       return item.text || ''
     }
     if (Array.isArray(promptTemplate)) {
+      const userPrompt = promptTemplate.find(item => item.role === PromptRole.user)
+      if (userPrompt)
+        return resolveText(userPrompt)
       const systemPrompt = promptTemplate.find(item => item.role === PromptRole.system)
       return resolveText(systemPrompt)
     }
@@ -62,9 +65,9 @@ const SubGraphModal: FC<SubGraphModalProps> = ({
     if (!extractorNodeData)
       return
 
-    const systemPromptText = getSystemPromptText(extractorNodeData.data?.prompt_template)
+    const userPromptText = getUserPromptText(extractorNodeData.data?.prompt_template)
     const placeholder = `{{@${agentNodeId}.context@}}`
-    const nextValue = `${placeholder}${systemPromptText}`
+    const nextValue = `${placeholder}${userPromptText}`
 
     const { getNodes, setNodes } = reactflowStore.getState()
     const nextNodes = getNodes().map((node) => {
@@ -104,7 +107,7 @@ const SubGraphModal: FC<SubGraphModalProps> = ({
     // Trigger main graph draft sync to persist changes to backend
     handleSyncWorkflowDraft(true)
     setControlPromptEditorRerenderKey(Date.now())
-  }, [agentNodeId, extractorNodeId, getSystemPromptText, handleSyncWorkflowDraft, paramKey, reactflowStore, setControlPromptEditorRerenderKey, toolNodeId])
+  }, [agentNodeId, extractorNodeId, getUserPromptText, handleSyncWorkflowDraft, paramKey, reactflowStore, setControlPromptEditorRerenderKey, toolNodeId])
 
   return (
     <Transition appear show={isOpen} as={Fragment}>

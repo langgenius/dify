@@ -63,6 +63,11 @@ const BaseNode: FC<BaseNodeProps> = ({
   const { t } = useTranslation()
   const nodeRef = useRef<HTMLDivElement>(null)
   const { nodesReadOnly } = useNodesReadOnly()
+  const { _subGraphEntry, _iconTypeOverride } = data as {
+    _subGraphEntry?: boolean
+    _iconTypeOverride?: BlockEnum
+  }
+  const iconType = _iconTypeOverride ?? data.type
 
   const { handleNodeIterationChildSizeChange } = useNodeIterationInteractions()
   const { handleNodeLoopChildSizeChange } = useNodeLoopInteractions()
@@ -137,6 +142,48 @@ const BaseNode: FC<BaseNodeProps> = ({
 
     return null
   }, [data._loopIndex, data._runningStatus, t])
+
+  if (_subGraphEntry) {
+    return (
+      <div
+        className="relative"
+        ref={nodeRef}
+      >
+        <NodeSourceHandle
+          id={id}
+          data={data}
+          handleClassName="!top-1/2 !-right-[9px] !-translate-y-1/2 opacity-0 pointer-events-none after:opacity-0"
+          handleId="source"
+        />
+        <div
+          className={cn(
+            'flex rounded-2xl border p-0.5',
+            showSelectedBorder ? 'border-components-option-card-option-selected-border' : 'border-workflow-block-border',
+            data._waitingRun && 'opacity-70',
+            showRunningBorder && '!border-state-accent-solid',
+            showSuccessBorder && '!border-state-success-solid',
+            showFailedBorder && '!border-state-destructive-solid',
+            showExceptionBorder && '!border-state-warning-solid',
+          )}
+        >
+          <div className="flex items-center gap-2 rounded-[15px] bg-workflow-block-bg px-3 py-2 shadow-xs">
+            <BlockIcon
+              className="shrink-0"
+              type={iconType}
+              size="md"
+              toolIcon={toolIcon}
+            />
+            <div
+              title={data.title}
+              className="system-sm-semibold-uppercase text-text-primary"
+            >
+              {data.title}
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   const nodeContent = (
     <div
@@ -245,7 +292,7 @@ const BaseNode: FC<BaseNodeProps> = ({
         >
           <BlockIcon
             className="mr-2 shrink-0"
-            type={data.type}
+            type={iconType}
             size="md"
             toolIcon={toolIcon}
           />
@@ -344,8 +391,9 @@ const BaseNode: FC<BaseNodeProps> = ({
 
   const isStartNode = data.type === BlockEnum.Start
   const isEntryNode = isTriggerNode(data.type as any) || isStartNode
+  const shouldWrapEntryNode = isEntryNode && !(isStartNode && _subGraphEntry)
 
-  return isEntryNode
+  return shouldWrapEntryNode
     ? (
         <EntryNodeContainer
           nodeType={isStartNode ? StartNodeTypeEnum.Start : StartNodeTypeEnum.Trigger}
