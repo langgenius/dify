@@ -9,6 +9,7 @@ from models.model import EndUser
 from models.workflow import Workflow
 from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowIdFormatError, WorkflowNotFoundError
+from models import App
 
 
 class TestAppGenerateService:
