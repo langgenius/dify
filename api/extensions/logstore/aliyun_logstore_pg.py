@@ -83,7 +83,7 @@ class AliyunLogStorePG:
                 pool_timeout=30,
                 connect_args={
                     "connect_timeout": 5,
-                    "application_name": f"Dify-{dify_config.project.version}",
+                    "application_name": f"Dify-{dify_config.project.version}-fixautocommit",
                     "keepalives": 1,
                     "keepalives_idle": 60,
                     "keepalives_interval": 10,

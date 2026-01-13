@@ -312,8 +312,8 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
     ) -> Sequence[WorkflowNodeExecution]:
         """
         Retrieve all NodeExecution instances for a specific workflow run.
-        Uses LogStore SQL query with finished_at IS NOT NULL filter for deduplication.
-        This ensures we only get the final version of each node execution.
+        Uses LogStore SQL query with window function to get the latest version of each node execution.
+        This ensures we only get the most recent version of each node execution record.
         Args:
             workflow_run_id: The workflow run ID
             order_config: Optional configuration for ordering results
@@ -324,20 +324,19 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             A list of NodeExecution instances
 
         Note:
-            This method filters by finished_at IS NOT NULL to avoid duplicates from
-            version updates. For complete history including intermediate states,
-            a different query strategy would be needed.
+            This method uses ROW_NUMBER() window function partitioned by node_execution_id
+            to get the latest version (highest log_version) of each node execution.
         """
         logger.debug("get_by_workflow_run: workflow_run_id=%s, order_config=%s", workflow_run_id, order_config)
-        # Build SQL query with deduplication using finished_at IS NOT NULL
-        # This optimization avoids window functions for common case where we only
-        # want the final state of each node execution
+        # Build SQL query with deduplication using window function
+        # ROW_NUMBER() OVER (PARTITION BY node_execution_id ORDER BY log_version DESC)
+        # ensures we get the latest version of each node execution
 
         # Escape parameters to prevent SQL injection
         escaped_workflow_run_id = escape_identifier(workflow_run_id)
         escaped_tenant_id = escape_identifier(self._tenant_id)
 
-        # Build ORDER BY clause
+        # Build ORDER BY clause for outer query
         order_clause = ""
         if order_config and order_config.order_by:
             order_fields = []
@@ -351,17 +350,23 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             if order_fields:
                 order_clause = "ORDER BY " + ", ".join(order_fields)
 
-        sql = f"""
-            SELECT *
-            FROM {AliyunLogStore.workflow_node_execution_logstore}
-            WHERE workflow_run_id='{escaped_workflow_run_id}'
-              AND tenant_id='{escaped_tenant_id}'
-              AND finished_at IS NOT NULL
-        """
-
+        # Build app_id filter for subquery
+        app_id_filter = ""
         if self._app_id:
             escaped_app_id = escape_identifier(self._app_id)
-            sql += f" AND app_id='{escaped_app_id}'"
+            app_id_filter = f" AND app_id='{escaped_app_id}'"
+
+        # Use window function to get latest version of each node execution
+        sql = f"""
+            SELECT * FROM (
+                SELECT *, ROW_NUMBER() OVER (PARTITION BY node_execution_id ORDER BY log_version DESC) AS rn
+                FROM {AliyunLogStore.workflow_node_execution_logstore}
+                WHERE workflow_run_id='{escaped_workflow_run_id}'
+                  AND tenant_id='{escaped_tenant_id}'
+                  {app_id_filter}
+            ) t
+            WHERE rn = 1
+        """
 
         if order_clause:
             sql += f" {order_clause}"
