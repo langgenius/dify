@@ -2,7 +2,7 @@
 
 import type { FormRefObject, FormSchema } from '@/app/components/base/form/types'
 import type { SandboxProvider } from '@/service/use-sandbox-provider'
-import { RiExternalLinkLine } from '@remixicon/react'
+import { RiExternalLinkLine, RiLock2Fill } from '@remixicon/react'
 import { memo, useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -20,6 +20,27 @@ import { PROVIDER_DOC_LINKS, SANDBOX_FIELD_CONFIGS } from './constants'
 type ConfigModalProps = {
   provider: SandboxProvider
   onClose: () => void
+}
+
+const PROVIDER_ICONS: Record<string, string> = {
+  e2b: '/sandbox-providers/e2b.svg',
+  daytona: '/sandbox-providers/daytona.svg',
+  docker: '/sandbox-providers/docker.svg',
+  local: '/sandbox-providers/local.svg',
+}
+
+const ProviderIcon = ({ providerType }: { providerType: string }) => {
+  const iconSrc = PROVIDER_ICONS[providerType] || PROVIDER_ICONS.e2b
+
+  return (
+    <div className="flex h-4 w-4 shrink-0 items-center justify-center text-clip rounded border-[0.5px] border-divider-subtle">
+      <img
+        src={iconSrc}
+        alt={`${providerType} icon`}
+        className="h-4 w-4"
+      />
+    </div>
+  )
 }
 
 const ConfigModal = ({
@@ -91,54 +112,78 @@ const ConfigModal = ({
     <Modal
       isShow
       onClose={onClose}
-      title={t('sandboxProvider.configModal.title', { ns: 'common', provider: provider.label })}
+      title={t('sandboxProvider.configModal.title', { ns: 'common' })}
       closable
       className="w-[480px]"
     >
-      <div className="mt-4">
-        <BaseForm
-          formSchemas={formSchemas}
-          ref={formRef}
-          labelClassName="system-sm-semibold mb-1 flex items-center gap-1 text-text-secondary"
-          formClassName="space-y-4"
-        />
+      {/* Provider subtitle */}
+      <div className="-mt-2 mb-4 flex items-center gap-2">
+        <ProviderIcon providerType={provider.provider_type} />
+        <span className="system-md-regular text-text-secondary">{provider.label}</span>
+      </div>
 
-        {/* Footer Actions */}
-        <div className="mt-6 flex items-center justify-between">
-          <div>
-            {docLink && (
-              <a
-                href={docLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="system-sm-medium inline-flex items-center gap-1 text-text-accent hover:underline"
-              >
-                {t('sandboxProvider.configModal.readDoc', { ns: 'common' })}
-                <RiExternalLinkLine className="h-3.5 w-3.5" />
-              </a>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {isConfigured && (
-              <Button
-                variant="warning"
-                size="medium"
-                onClick={handleRevoke}
-                disabled={isDeleting || isSaving}
-              >
-                {t('sandboxProvider.configModal.revoke', { ns: 'common' })}
-              </Button>
-            )}
-            <Button
-              variant="primary"
-              size="medium"
-              onClick={handleSave}
-              disabled={isSaving || isDeleting}
+      <BaseForm
+        formSchemas={formSchemas}
+        ref={formRef}
+        labelClassName="system-sm-medium mb-1 flex items-center gap-1 text-text-secondary"
+        formClassName="space-y-4"
+      />
+
+      {/* Footer Actions */}
+      <div className="mt-6 flex items-center justify-between">
+        <div>
+          {docLink && (
+            <a
+              href={docLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="system-xs-regular inline-flex items-center gap-1 text-text-accent hover:underline"
             >
-              {t('sandboxProvider.configModal.confirm', { ns: 'common' })}
-            </Button>
-          </div>
+              {t('sandboxProvider.configModal.readDocLink', { ns: 'common', provider: provider.label })}
+              <RiExternalLinkLine className="h-3 w-3" />
+            </a>
+          )}
         </div>
+        <div className="flex items-center gap-2">
+          {isConfigured && (
+            <Button
+              variant="warning"
+              size="medium"
+              onClick={handleRevoke}
+              disabled={isDeleting || isSaving}
+            >
+              {t('sandboxProvider.configModal.revoke', { ns: 'common' })}
+            </Button>
+          )}
+          <Button
+            variant="secondary"
+            size="medium"
+            onClick={onClose}
+            disabled={isSaving || isDeleting}
+          >
+            {t('sandboxProvider.configModal.cancel', { ns: 'common' })}
+          </Button>
+          <Button
+            variant="primary"
+            size="medium"
+            onClick={handleSave}
+            disabled={isSaving || isDeleting}
+          >
+            {t('sandboxProvider.configModal.save', { ns: 'common' })}
+          </Button>
+        </div>
+      </div>
+
+      {/* Security tip */}
+      <div className="-mx-6 -mb-6 mt-4 flex items-start justify-center gap-1 rounded-b-2xl border-t border-divider-subtle bg-background-soft px-2 py-3">
+        <RiLock2Fill className="h-3 w-3 shrink-0 text-text-primary" />
+        <p className="system-xs-regular text-text-tertiary">
+          {t('sandboxProvider.configModal.securityTip', { ns: 'common' })}
+          {' '}
+          <span className="text-text-accent">PKCS1_OAEP</span>
+          {' '}
+          {t('sandboxProvider.configModal.securityTipTechnology', { ns: 'common' })}
+        </p>
       </div>
     </Modal>
   )

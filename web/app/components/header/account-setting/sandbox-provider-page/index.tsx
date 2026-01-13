@@ -41,7 +41,7 @@ const SandboxProviderPage = () => {
       {/* Current Provider Section */}
       {currentProvider && (
         <div>
-          <div className="system-sm-semibold mb-2 text-text-secondary">
+          <div className="system-sm-semibold-uppercase mb-2 text-text-secondary">
             {t('sandboxProvider.currentProvider', { ns: 'common' })}
           </div>
           <ProviderCard
@@ -56,7 +56,7 @@ const SandboxProviderPage = () => {
       {/* Other Providers Section */}
       {otherProviders.length > 0 && (
         <div>
-          <div className="system-sm-semibold mb-2 text-text-secondary">
+          <div className="system-sm-semibold-uppercase mb-2 text-text-secondary">
             {t('sandboxProvider.otherProvider', { ns: 'common' })}
           </div>
           <div className="space-y-2">

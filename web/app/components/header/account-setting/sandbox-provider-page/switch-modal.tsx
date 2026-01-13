@@ -79,7 +79,7 @@ const SwitchModal = ({
             {t('sandboxProvider.switchModal.cancel', { ns: 'common' })}
           </Button>
           <Button
-            variant="primary"
+            variant="warning"
             size="medium"
             onClick={handleConfirm}
             disabled={isPending}

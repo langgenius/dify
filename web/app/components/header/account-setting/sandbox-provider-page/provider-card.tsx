@@ -1,6 +1,7 @@
 'use client'
 
 import type { SandboxProvider } from '@/service/use-sandbox-provider'
+import { RiEqualizer2Line } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -17,6 +18,7 @@ type ProviderCardProps = {
 
 const PROVIDER_ICONS: Record<string, string> = {
   e2b: '/sandbox-providers/e2b.svg',
+  daytona: '/sandbox-providers/daytona.svg',
   docker: '/sandbox-providers/docker.svg',
   local: '/sandbox-providers/local.svg',
 }
@@ -28,7 +30,7 @@ const ProviderIcon = ({ providerType }: { providerType: string }) => {
     <img
       src={iconSrc}
       alt={`${providerType} icon`}
-      className="h-5 w-5"
+      className="h-6 w-6"
     />
   )
 }
@@ -47,50 +49,62 @@ const ProviderCard = ({
 
   return (
     <div className={cn(
-      'flex items-center justify-between rounded-xl p-4',
+      'flex items-center gap-3 rounded-[15px] py-3 pl-3 pr-4',
+      'border-[0.5px] border-components-panel-border shadow-xs',
       isCurrent ? 'bg-background-section' : 'bg-background-section-burn',
     )}
     >
-      <div className="flex items-center">
-        {/* Icon */}
-        <div className="mr-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-divider-subtle bg-background-default-subtle">
-          <ProviderIcon providerType={provider.provider_type} />
-        </div>
+      {/* Icon - 40x40 with 10px rounded */}
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center text-clip rounded-[10px] border-[0.5px] border-divider-subtle bg-background-default-subtle">
+        <ProviderIcon providerType={provider.provider_type} />
+      </div>
 
-        {/* Content */}
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="system-md-semibold text-text-primary">
-              {provider.label}
+      {/* Content */}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1">
+          <span className="system-md-semibold text-text-primary">
+            {provider.label}
+          </span>
+          {provider.is_system_configured && (
+            <span className="system-2xs-medium rounded-[5px] border border-divider-deep px-[5px] py-[3px] text-text-tertiary">
+              {t('sandboxProvider.managedBySaas', { ns: 'common' })}
             </span>
-            {provider.is_system_configured && (
-              <span className="system-2xs-medium-uppercase rounded border border-divider-regular px-1.5 py-0.5 text-text-tertiary">
-                {t('sandboxProvider.managedBySaas', { ns: 'common' })}
-              </span>
-            )}
-          </div>
-          <div className="system-xs-regular text-text-tertiary">
-            {provider.description}
-          </div>
+          )}
+        </div>
+        <div className="system-xs-regular text-text-tertiary">
+          {provider.description}
         </div>
       </div>
 
-      {/* Right side: Connected Badge + Actions */}
+      {/* Right side: Connected Badge + Divider + Settings Icon + Enable Button */}
       <div className="flex shrink-0 items-center gap-2">
+        {/* Connected Status */}
         {isConfigured && (
-          <span className="system-xs-medium flex items-center gap-1 rounded-md bg-util-colors-green-green-50 px-1.5 py-0.5 text-util-colors-green-green-600">
+          <span className="flex items-center gap-1">
             <Indicator color="green" />
-            {t('sandboxProvider.connected', { ns: 'common' })}
+            <span className="system-xs-semibold-uppercase text-util-colors-green-green-600">
+              {t('sandboxProvider.connected', { ns: 'common' })}
+            </span>
           </span>
         )}
-        <Button
-          variant="secondary"
-          size="small"
+
+        {/* Divider */}
+        {isConfigured && (
+          <div className="pl-1">
+            <div className="h-3 w-px bg-divider-regular" />
+          </div>
+        )}
+
+        {/* Settings Icon Button */}
+        <button
           onClick={onConfig}
           disabled={disabled}
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {t('sandboxProvider.config', { ns: 'common' })}
-        </Button>
+          <RiEqualizer2Line className="h-4 w-4" />
+        </button>
+
+        {/* Set as Active Button */}
         {showEnableButton && (
           <Button
             variant="secondary"
@@ -98,7 +112,7 @@ const ProviderCard = ({
             onClick={onEnable}
             disabled={disabled}
           >
-            {t('sandboxProvider.enable', { ns: 'common' })}
+            {t('sandboxProvider.setAsActive', { ns: 'common' })}
           </Button>
         )}
       </div>
