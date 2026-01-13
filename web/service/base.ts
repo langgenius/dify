@@ -81,7 +81,7 @@ export type IOtherOptions = {
   needAllResponseContent?: boolean
   deleteContentType?: boolean
   silent?: boolean
-  /** If true, behaves like standard fetch: no auto error toast, no URL prefix, returns raw Response */
+  /** If true, behaves like standard fetch: no URL prefix, returns raw Response */
   fetchCompat?: boolean
   onData?: IOnData // for stream
   onThought?: IOnThought
@@ -683,39 +683,4 @@ export const patch = <T>(url: string, options = {}, otherOptions?: IOtherOptions
 
 export const patchPublic = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return patch<T>(url, options, { ...otherOptions, isPublicAPI: true })
-}
-
-/**
- * Creates a fetch-compatible function that uses the request function internally.
- * Includes all Dify-specific handling (CSRF, credentials, 401 token refresh, etc).
- */
-export function createFetchAdapter() {
-  return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-    const req = new Request(input, init)
-    const url = req.url
-
-    // Copy headers as Headers object
-    const headers = new Headers(req.headers)
-
-    // Get body if present
-    let body: BodyInit | Record<string, any> | null = null
-    const contentType = req.headers.get('content-type') || ''
-    if (req.body && req.method !== 'GET' && req.method !== 'HEAD') {
-      if (contentType.includes('application/json')) {
-        body = await req.clone().json()
-      }
-      else {
-        body = req.body
-      }
-    }
-
-    const options: FetchOptionType = {
-      method: req.method,
-      headers,
-      credentials: req.credentials,
-      ...(body !== null && { body }),
-    }
-
-    return request<Response>(url, options, { fetchCompat: true })
-  }
 }

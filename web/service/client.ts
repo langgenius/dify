@@ -13,7 +13,7 @@ import {
   consoleRouterContract,
   marketplaceRouterContract,
 } from '@/contract/router'
-import { createFetchAdapter } from './base'
+import { request } from './base'
 
 const getMarketplaceHeaders = () => new Headers({
   'X-Dify-Version': !IS_MARKETPLACE ? APP_VERSION : '999.0.0',
@@ -38,11 +38,12 @@ const link = new OpenAPILink(marketplaceRouterContract, {
 export const marketplaceClient: JsonifiedClient<ContractRouterClient<typeof marketplaceRouterContract>> = createORPCClient(link)
 export const marketplaceQuery = createTanstackQueryUtils(marketplaceClient, { path: ['marketplace'] })
 
-const consoleFetch = createFetchAdapter()
-
 const consoleLink = new OpenAPILink(consoleRouterContract, {
   url: API_PREFIX,
-  fetch: (request, init) => consoleFetch(request, init),
+  fetch: async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    const url = (new Request(input, init)).url
+    return request<Response>(url, init, { fetchCompat: true })
+  },
   interceptors: [
     onError((error) => {
       console.error(error)
