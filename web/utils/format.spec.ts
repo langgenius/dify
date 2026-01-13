@@ -19,6 +19,28 @@ describe('formatNumber', () => {
   it('should correctly handle empty input', () => {
     expect(formatNumber('')).toBe('')
   })
+  it('should format very small numbers without scientific notation', () => {
+    expect(formatNumber(0.0000008)).toBe('0.0000008')
+    expect(formatNumber(0.0000001)).toBe('0.0000001')
+    expect(formatNumber(0.000001)).toBe('0.000001')
+    expect(formatNumber(0.00001)).toBe('0.00001')
+  })
+  it('should format negative small numbers without scientific notation', () => {
+    expect(formatNumber(-0.0000008)).toBe('-0.0000008')
+    expect(formatNumber(-0.0000001)).toBe('-0.0000001')
+  })
+  it('should handle small numbers from string input', () => {
+    expect(formatNumber('0.0000008')).toBe('0.0000008')
+    expect(formatNumber('8E-7')).toBe('0.0000008')
+    expect(formatNumber('1e-7')).toBe('0.0000001')
+  })
+  it('should handle small numbers with multi-digit mantissa in scientific notation', () => {
+    expect(formatNumber(1.23e-7)).toBe('0.000000123')
+    expect(formatNumber(1.234e-7)).toBe('0.0000001234')
+    expect(formatNumber(12.34e-7)).toBe('0.000001234')
+    expect(formatNumber(0.0001234)).toBe('0.0001234')
+    expect(formatNumber('1.23e-7')).toBe('0.000000123')
+  })
 })
 describe('formatFileSize', () => {
   it('should return the input if it is falsy', () => {
