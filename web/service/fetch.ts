@@ -136,10 +136,13 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
     needAllResponseContent,
     deleteContentType,
     getAbortController,
+    fetchCompat = false,
   } = otherOptions
 
   let base: string
-  if (isMarketplaceAPI)
+  if (fetchCompat)
+    base = ''
+  else if (isMarketplaceAPI)
     base = MARKETPLACE_API_PREFIX
   else if (isPublicAPI)
     base = PUBLIC_API_PREFIX
@@ -152,7 +155,7 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
     options.signal = abortController.signal
   }
 
-  const fetchPathname = base + (url.startsWith('/') ? url : `/${url}`)
+  const fetchPathname = fetchCompat ? url : base + (url.startsWith('/') ? url : `/${url}`)
   if (!isMarketplaceAPI)
     (headers as any).set(CSRF_HEADER_NAME, Cookies.get(CSRF_COOKIE_NAME()) || '')
 
@@ -166,18 +169,22 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
   const client = baseClient.extend({
     hooks: {
       ...baseHooks,
-      beforeError: [
-        ...baseHooks.beforeError || [],
-        beforeErrorToast(otherOptions),
-      ],
+      beforeError: fetchCompat
+        ? baseHooks.beforeError || []
+        : [
+            ...baseHooks.beforeError || [],
+            beforeErrorToast(otherOptions),
+          ],
       beforeRequest: [
         ...baseHooks.beforeRequest || [],
         isPublicAPI && beforeRequestPublicWithCode,
       ].filter((h): h is BeforeRequestHook => Boolean(h)),
-      afterResponse: [
-        ...baseHooks.afterResponse || [],
-        afterResponseErrorCode(otherOptions),
-      ],
+      afterResponse: fetchCompat
+        ? baseHooks.afterResponse || []
+        : [
+            ...baseHooks.afterResponse || [],
+            afterResponseErrorCode(otherOptions),
+          ],
     },
   })
 
@@ -203,6 +210,10 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
       return globalThis.fetch(resource, options)
     },
   })
+
+  // fetchCompat mode: return Response directly like standard fetch
+  if (fetchCompat)
+    return res as T
 
   if (needAllResponseContent)
     return res as T

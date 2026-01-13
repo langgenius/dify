@@ -4,11 +4,16 @@ import { createORPCClient, onError } from '@orpc/client'
 import { OpenAPILink } from '@orpc/openapi-client/fetch'
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
 import {
+  API_PREFIX,
   APP_VERSION,
   IS_MARKETPLACE,
   MARKETPLACE_API_PREFIX,
 } from '@/config'
-import { marketplaceRouterContract } from '@/contract/router'
+import {
+  consoleRouterContract,
+  marketplaceRouterContract,
+} from '@/contract/router'
+import { createFetchAdapter } from './base'
 
 const getMarketplaceHeaders = () => new Headers({
   'X-Dify-Version': !IS_MARKETPLACE ? APP_VERSION : '999.0.0',
@@ -32,3 +37,18 @@ const link = new OpenAPILink(marketplaceRouterContract, {
 
 export const marketplaceClient: JsonifiedClient<ContractRouterClient<typeof marketplaceRouterContract>> = createORPCClient(link)
 export const marketplaceQuery = createTanstackQueryUtils(marketplaceClient, { path: ['marketplace'] })
+
+const consoleFetch = createFetchAdapter()
+
+const consoleLink = new OpenAPILink(consoleRouterContract, {
+  url: API_PREFIX,
+  fetch: (request, init) => consoleFetch(request, init),
+  interceptors: [
+    onError((error) => {
+      console.error(error)
+    }),
+  ],
+})
+
+export const consoleClient: JsonifiedClient<ContractRouterClient<typeof consoleRouterContract>> = createORPCClient(consoleLink)
+export const consoleQuery = createTanstackQueryUtils(consoleClient, { path: ['console'] })
