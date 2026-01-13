@@ -232,17 +232,25 @@ class AliyunLogStore:
         if not hostname:
             raise ConnectionError(f"Invalid endpoint URL: {endpoint}")
 
+        sock = None
         try:
-            # Use context manager to ensure socket is properly closed
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-                sock.settimeout(timeout)
-                sock.connect((hostname, port))
+            # Create socket and set timeout
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(timeout)
+            sock.connect((hostname, port))
         except Exception as e:
             # Catch all exceptions and provide clear error message
             error_type = type(e).__name__
             raise ConnectionError(
                 f"Cannot connect to {hostname}:{port} (timeout={timeout}s): [{error_type}] {e}"
             ) from e
+        finally:
+            # Ensure socket is properly closed
+            if sock:
+                try:
+                    sock.close()
+                except Exception:  # noqa: S110
+                    pass  # Ignore errors during cleanup
 
     @property
     def supports_pg_protocol(self) -> bool:
