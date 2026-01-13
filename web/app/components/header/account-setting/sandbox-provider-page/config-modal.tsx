@@ -112,14 +112,18 @@ const ConfigModal = ({
     <Modal
       isShow
       onClose={onClose}
-      title={t('sandboxProvider.configModal.title', { ns: 'common' })}
       closable
       className="w-[480px]"
     >
-      {/* Provider subtitle */}
-      <div className="-mt-2 mb-4 flex items-center gap-2">
-        <ProviderIcon providerType={provider.provider_type} />
-        <span className="system-md-regular text-text-secondary">{provider.label}</span>
+      {/* Custom Header: Title + Subtitle with 8px gap */}
+      <div className="mb-4 flex flex-col gap-2">
+        <h3 className="title-2xl-semi-bold text-text-primary">
+          {t('sandboxProvider.configModal.title', { ns: 'common' })}
+        </h3>
+        <div className="flex items-center gap-2">
+          <ProviderIcon providerType={provider.provider_type} />
+          <span className="system-md-regular text-text-secondary">{provider.label}</span>
+        </div>
       </div>
 
       <BaseForm
