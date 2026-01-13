@@ -49,6 +49,7 @@ export const SANDBOX_FIELD_CONFIGS = {
 
 export const PROVIDER_DOC_LINKS: Record<string, string> = {
   e2b: 'https://e2b.dev/docs',
+  daytona: 'https://www.daytona.io/docs',
   docker: 'https://docs.docker.com/',
   local: '',
 }

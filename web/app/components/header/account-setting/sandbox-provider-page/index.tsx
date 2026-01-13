@@ -3,6 +3,7 @@
 import type { SandboxProvider } from '@/service/use-sandbox-provider'
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Loading from '@/app/components/base/loading'
 import { useAppContext } from '@/context/app-context'
 import { useGetSandboxProviderList } from '@/service/use-sandbox-provider'
 import ConfigModal from './config-modal'
@@ -31,7 +32,7 @@ const SandboxProviderPage = () => {
   if (isLoading) {
     return (
       <div className="flex h-40 items-center justify-center">
-        <div className="system-sm-regular text-text-tertiary">Loading...</div>
+        <Loading />
       </div>
     )
   }
