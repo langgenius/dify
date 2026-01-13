@@ -191,7 +191,7 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
     retry: {
       methods: [],
     },
-    ...(bodyStringify ? { json: body } : { body: body as BodyInit }),
+    ...(bodyStringify && !fetchCompat ? { json: body } : { body: body as BodyInit }),
     searchParams: params,
     fetch(resource: RequestInfo | URL, options?: RequestInit) {
       if (resource instanceof Request && options) {
