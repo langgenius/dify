@@ -34,13 +34,6 @@ vi.mock('@/context/app-context', () => ({
   }),
 }))
 
-vi.mock('@/service/common', () => ({
-  fetchCurrentWorkspace: vi.fn(),
-  fetchLangGeniusVersion: vi.fn(),
-  fetchUserProfile: vi.fn(),
-  getSystemFeatures: vi.fn(),
-}))
-
 vi.mock('@/service/access-control', () => ({
   useAppWhiteListSubjects: (...args: unknown[]) => mockUseAppWhiteListSubjects(...args),
   useSearchForWhiteListCandidates: (...args: unknown[]) => mockUseSearchForWhiteListCandidates(...args),

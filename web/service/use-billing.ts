@@ -1,21 +1,22 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { bindPartnerStackInfo, fetchBillingUrl } from '@/service/billing'
-
-const NAME_SPACE = 'billing'
+import { consoleClient, consoleQuery } from '@/service/client'
 
 export const useBindPartnerStackInfo = () => {
   return useMutation({
-    mutationKey: [NAME_SPACE, 'bind-partner-stack'],
-    mutationFn: (data: { partnerKey: string, clickId: string }) => bindPartnerStackInfo(data.partnerKey, data.clickId),
+    mutationKey: consoleQuery.bindPartnerStack.mutationKey(),
+    mutationFn: (data: { partnerKey: string, clickId: string }) => consoleClient.bindPartnerStack({
+      params: { partnerKey: data.partnerKey },
+      body: { click_id: data.clickId },
+    }),
   })
 }
 
 export const useBillingUrl = (enabled: boolean) => {
   return useQuery({
-    queryKey: [NAME_SPACE, 'url'],
+    queryKey: consoleQuery.billingUrl.queryKey(),
     enabled,
     queryFn: async () => {
-      const res = await fetchBillingUrl()
+      const res = await consoleClient.billingUrl()
       return res.url
     },
   })
