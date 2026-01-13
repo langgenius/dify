@@ -56,9 +56,8 @@ const ProviderCard = ({
   return (
     <div
       className={cn(
-        'group flex items-center gap-3 rounded-[15px] py-3 pl-3',
+        'group flex items-center gap-3 rounded-[15px] bg-background-section-burn py-3 pl-3',
         'border-[0.5px] border-components-panel-border shadow-xs',
-        isCurrent ? 'bg-background-section' : 'bg-background-section-burn',
         disabled ? 'pr-6' : 'pr-4',
       )}
     >
