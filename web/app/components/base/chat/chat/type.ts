@@ -2,7 +2,7 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { InputVarType } from '@/app/components/workflow/types'
 import type { Annotation, MessageRating } from '@/models/log'
-import type { FileResponse } from '@/types/workflow'
+import type { FileResponse, ToolCallItem } from '@/types/workflow'
 
 export type MessageMore = {
   time: string
@@ -104,6 +104,7 @@ export type IChatItem = {
   siblingIndex?: number
   prevSibling?: string
   nextSibling?: string
+  toolCalls?: ToolCallItem[]
 }
 
 export type Metadata = {

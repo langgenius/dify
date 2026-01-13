@@ -1,5 +1,6 @@
 'use client'
 
+import type { FC } from 'react'
 import {
   RiApps2Line,
   RiDragDropLine,
@@ -55,7 +56,12 @@ const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-fro
   ssr: false,
 })
 
-const List = () => {
+type Props = {
+  controlRefreshList?: number
+}
+const List: FC<Props> = ({
+  controlRefreshList = 0,
+}) => {
   const { t } = useTranslation()
   const { systemFeatures } = useGlobalPublicStore()
   const router = useRouter()
@@ -139,6 +145,13 @@ const List = () => {
     error,
     refetch,
   } = useInfiniteAppList(appListQueryParams, { enabled: !isCurrentWorkspaceDatasetOperator })
+
+  useEffect(() => {
+    if (controlRefreshList > 0) {
+      refetch()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [controlRefreshList])
 
   const anchorRef = useRef<HTMLDivElement>(null)
   const options = [

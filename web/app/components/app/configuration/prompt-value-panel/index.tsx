@@ -41,7 +41,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
   onVisionFilesChange,
 }) => {
   const { t } = useTranslation()
-  const { modelModeType, modelConfig, setInputs, mode, isAdvancedMode, completionPromptConfig, chatPromptConfig } = useContext(ConfigContext)
+  const { readonly, modelModeType, modelConfig, setInputs, mode, isAdvancedMode, completionPromptConfig, chatPromptConfig } = useContext(ConfigContext)
   const [userInputFieldCollapse, setUserInputFieldCollapse] = useState(false)
   const promptVariables = modelConfig.configs.prompt_variables.filter(({ key, name }) => {
     return key && key?.trim() && name && name?.trim()
@@ -79,12 +79,12 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
 
     if (isAdvancedMode) {
       if (modelModeType === ModelModeType.chat)
-        return chatPromptConfig.prompt.every(({ text }) => !text)
+        return chatPromptConfig?.prompt.every(({ text }) => !text)
       return !completionPromptConfig.prompt?.text
     }
 
     else { return !modelConfig.configs.prompt_template }
-  }, [chatPromptConfig.prompt, completionPromptConfig.prompt?.text, isAdvancedMode, mode, modelConfig.configs.prompt_template, modelModeType])
+  }, [chatPromptConfig?.prompt, completionPromptConfig.prompt?.text, isAdvancedMode, mode, modelConfig.configs.prompt_template, modelModeType])
 
   const handleInputValueChange = (key: string, value: string | boolean) => {
     if (!(key in promptVariableObj))
@@ -143,6 +143,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                         placeholder={name}
                         autoFocus={index === 0}
                         maxLength={max_length || DEFAULT_VALUE_MAX_LEN}
+                        readOnly={readonly}
                       />
                     )}
                     {type === 'paragraph' && (
@@ -151,6 +152,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                         placeholder={name}
                         value={inputs[key] ? `${inputs[key]}` : ''}
                         onChange={(e) => { handleInputValueChange(key, e.target.value) }}
+                        readOnly={readonly}
                       />
                     )}
                     {type === 'select' && (
@@ -161,6 +163,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                         items={(options || []).map(i => ({ name: i, value: i }))}
                         allowSearch={false}
                         bgClassName="bg-gray-50"
+                        disabled={readonly}
                       />
                     )}
                     {type === 'number' && (
@@ -171,6 +174,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                         placeholder={name}
                         autoFocus={index === 0}
                         maxLength={max_length || DEFAULT_VALUE_MAX_LEN}
+                        readOnly={readonly}
                       />
                     )}
                     {type === 'checkbox' && (
@@ -179,6 +183,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                         value={!!inputs[key]}
                         required={required}
                         onChange={(value) => { handleInputValueChange(key, value) }}
+                        readonly={readonly}
                       />
                     )}
                   </div>
@@ -197,6 +202,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                       url: fileItem.url,
                       upload_file_id: fileItem.fileId,
                     })))}
+                    disabled={readonly}
                   />
                 </div>
               </div>
@@ -205,12 +211,12 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
         )}
         {!userInputFieldCollapse && (
           <div className="flex justify-between border-t border-divider-subtle p-4 pt-3">
-            <Button className="w-[72px]" onClick={onClear}>{t('operation.clear', { ns: 'common' })}</Button>
+            <Button className="w-[72px]" disabled={readonly} onClick={onClear}>{t('operation.clear', { ns: 'common' })}</Button>
             {canNotRun && (
               <Tooltip popupContent={t('otherError.promptNoBeEmpty', { ns: 'appDebug' })}>
                 <Button
                   variant="primary"
-                  disabled={canNotRun}
+                  disabled={canNotRun || readonly}
                   onClick={() => onSend?.()}
                   className="w-[96px]"
                 >
@@ -222,7 +228,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
             {!canNotRun && (
               <Button
                 variant="primary"
-                disabled={canNotRun}
+                disabled={canNotRun || readonly}
                 onClick={() => onSend?.()}
                 className="w-[96px]"
               >
@@ -238,6 +244,8 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
           showFileUpload={false}
           isChatMode={appType !== AppModeEnum.COMPLETION}
           onFeatureBarClick={setShowAppConfigureFeaturesModal}
+          disabled={readonly}
+          hideEditEntrance={readonly}
         />
       </div>
     </>

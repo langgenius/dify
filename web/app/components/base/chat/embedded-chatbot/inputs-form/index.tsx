@@ -4,6 +4,7 @@ import Button from '@/app/components/base/button'
 import InputsFormContent from '@/app/components/base/chat/embedded-chatbot/inputs-form/content'
 import Divider from '@/app/components/base/divider'
 import { Message3Fill } from '@/app/components/base/icons/src/public/other'
+import { AppSourceType } from '@/service/share'
 import { cn } from '@/utils/classnames'
 import { useEmbeddedChatbotContext } from '../context'
 
@@ -18,6 +19,7 @@ const InputsFormNode = ({
 }: Props) => {
   const { t } = useTranslation()
   const {
+    appSourceType,
     isMobile,
     currentConversationId,
     themeBuilder,
@@ -25,15 +27,17 @@ const InputsFormNode = ({
     allInputsHidden,
     inputsForms,
   } = useEmbeddedChatbotContext()
+  const isTryApp = appSourceType === AppSourceType.tryApp
 
   if (allInputsHidden || inputsForms.length === 0)
     return null
 
   return (
-    <div className={cn('mb-6 flex flex-col items-center px-4 pt-6', isMobile && 'mb-4 pt-4')}>
+    <div className={cn('mb-6 flex flex-col items-center px-4 pt-6', isMobile && 'mb-4 pt-4', isTryApp && 'mb-0 px-0')}>
       <div className={cn(
         'w-full max-w-[672px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-md',
         collapsed && 'border border-components-card-border bg-components-card-bg shadow-none',
+        isTryApp && 'max-w-[auto]',
       )}
       >
         <div className={cn(

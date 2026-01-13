@@ -13,6 +13,7 @@ from core.app.apps.common.workflow_response_converter import WorkflowResponseCon
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
     AppQueueEvent,
+    ChunkType,
     MessageQueueMessage,
     QueueAgentLogEvent,
     QueueErrorEvent,
@@ -483,11 +484,33 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         if delta_text is None:
             return
 
+        tool_call = event.tool_call
+        tool_result = event.tool_result
+        tool_payload = tool_call or tool_result
+        tool_call_id = tool_payload.id if tool_payload and tool_payload.id else None
+        tool_name = tool_payload.name if tool_payload and tool_payload.name else None
+        tool_arguments = tool_call.arguments if tool_call else None
+        tool_elapsed_time = tool_result.elapsed_time if tool_result else None
+        tool_files = tool_result.files if tool_result else []
+        tool_icon = tool_payload.icon if tool_payload else None
+        tool_icon_dark = tool_payload.icon_dark if tool_payload else None
+
         # only publish tts message at text chunk streaming
         if tts_publisher and queue_message:
             tts_publisher.publish(queue_message)
 
-        yield self._text_chunk_to_stream_response(delta_text, from_variable_selector=event.from_variable_selector)
+        yield self._text_chunk_to_stream_response(
+            text=delta_text,
+            from_variable_selector=event.from_variable_selector,
+            chunk_type=event.chunk_type,
+            tool_call_id=tool_call_id,
+            tool_name=tool_name,
+            tool_arguments=tool_arguments,
+            tool_files=tool_files,
+            tool_elapsed_time=tool_elapsed_time,
+            tool_icon=tool_icon,
+            tool_icon_dark=tool_icon_dark,
+        )
 
     def _handle_agent_log_event(self, event: QueueAgentLogEvent, **kwargs) -> Generator[StreamResponse, None, None]:
         """Handle agent log events."""
@@ -650,16 +673,61 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         session.add(workflow_app_log)
 
     def _text_chunk_to_stream_response(
-        self, text: str, from_variable_selector: list[str] | None = None
+        self,
+        text: str,
+        from_variable_selector: list[str] | None = None,
+        chunk_type: ChunkType | None = None,
+        tool_call_id: str | None = None,
+        tool_name: str | None = None,
+        tool_arguments: str | None = None,
+        tool_files: list[str] | None = None,
+        tool_error: str | None = None,
+        tool_elapsed_time: float | None = None,
+        tool_icon: str | dict | None = None,
+        tool_icon_dark: str | dict | None = None,
     ) -> TextChunkStreamResponse:
         """
         Handle completed event.
         :param text: text
         :return:
         """
+        from core.app.entities.task_entities import ChunkType as ResponseChunkType
+
+        response_chunk_type = ResponseChunkType(chunk_type.value) if chunk_type else ResponseChunkType.TEXT
+
+        data = TextChunkStreamResponse.Data(
+            text=text,
+            from_variable_selector=from_variable_selector,
+            chunk_type=response_chunk_type,
+        )
+
+        if response_chunk_type == ResponseChunkType.TOOL_CALL:
+            data = data.model_copy(
+                update={
+                    "tool_call_id": tool_call_id,
+                    "tool_name": tool_name,
+                    "tool_arguments": tool_arguments,
+                    "tool_icon": tool_icon,
+                    "tool_icon_dark": tool_icon_dark,
+                }
+            )
+        elif response_chunk_type == ResponseChunkType.TOOL_RESULT:
+            data = data.model_copy(
+                update={
+                    "tool_call_id": tool_call_id,
+                    "tool_name": tool_name,
+                    "tool_arguments": tool_arguments,
+                    "tool_files": tool_files,
+                    "tool_error": tool_error,
+                    "tool_elapsed_time": tool_elapsed_time,
+                    "tool_icon": tool_icon,
+                    "tool_icon_dark": tool_icon_dark,
+                }
+            )
+
         response = TextChunkStreamResponse(
             task_id=self._application_generate_entity.task_id,
-            data=TextChunkStreamResponse.Data(text=text, from_variable_selector=from_variable_selector),
+            data=data,
         )
 
         return response

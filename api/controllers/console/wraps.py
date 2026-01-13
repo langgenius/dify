@@ -358,14 +358,12 @@ def annotation_import_rate_limit(view: Callable[P, R]):
     def decorated(*args: P.args, **kwargs: P.kwargs):
         _, current_tenant_id = current_account_with_tenant()
         current_time = int(time.time() * 1000)
-
         # Check per-minute rate limit
         minute_key = f"annotation_import_rate_limit:{current_tenant_id}:1min"
         redis_client.zadd(minute_key, {current_time: current_time})
         redis_client.zremrangebyscore(minute_key, 0, current_time - 60000)
         minute_count = redis_client.zcard(minute_key)
         redis_client.expire(minute_key, 120)  # 2 minutes TTL
-
         if minute_count > dify_config.ANNOTATION_IMPORT_RATE_LIMIT_PER_MINUTE:
             abort(
                 429,
@@ -379,7 +377,6 @@ def annotation_import_rate_limit(view: Callable[P, R]):
         redis_client.zremrangebyscore(hour_key, 0, current_time - 3600000)
         hour_count = redis_client.zcard(hour_key)
         redis_client.expire(hour_key, 7200)  # 2 hours TTL
-
         if hour_count > dify_config.ANNOTATION_IMPORT_RATE_LIMIT_PER_HOUR:
             abort(
                 429,

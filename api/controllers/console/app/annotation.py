@@ -272,6 +272,7 @@ class AnnotationExportApi(Resource):
     @account_initialization_required
     @edit_permission_required
     def get(self, app_id):
+
         app_id = str(app_id)
         annotation_list = AppAnnotationService.export_annotation_list_by_app_id(app_id)
         response_data = {"data": marshal(annotation_list, annotation_fields)}
@@ -359,7 +360,6 @@ class AnnotationBatchImportApi(Resource):
         file.seek(0, 2)  # Seek to end of file
         file_size = file.tell()
         file.seek(0)  # Reset to beginning
-
         max_size_bytes = dify_config.ANNOTATION_IMPORT_FILE_SIZE_LIMIT * 1024 * 1024
         if file_size > max_size_bytes:
             abort(

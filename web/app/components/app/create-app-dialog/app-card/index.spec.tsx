@@ -10,6 +10,7 @@ vi.mock('@heroicons/react/20/solid', () => ({
 }))
 
 const mockApp: App = {
+  can_trial: true,
   app: {
     id: 'test-app-id',
     mode: AppModeEnum.CHAT,

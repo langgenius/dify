@@ -1,12 +1,7 @@
 {
-  "appCard.addToWorkspace": "Aggiungi a Workspace",
-  "appCard.customize": "Personalizza",
   "appCustomize.nameRequired": "Il nome dell'app è obbligatorio",
   "appCustomize.subTitle": "Icona & nome dell'app",
   "appCustomize.title": "Crea app da {{name}}",
-  "apps.allCategories": "Consigliato",
-  "apps.description": "Usa queste app modello istantaneamente o personalizza le tue app basate sui modelli.",
-  "apps.title": "Esplora App di Dify",
   "category.Agent": "Agente",
   "category.Assistant": "Assistente",
   "category.Entertainment": "Intrattenimento",
@@ -23,7 +18,5 @@
   "sidebar.chat": "Chat",
   "sidebar.delete.content": "Sei sicuro di voler eliminare questa app?",
   "sidebar.delete.title": "Elimina app",
-  "sidebar.discovery": "Scoperta",
-  "sidebar.workspace": "Workspace",
   "title": "Esplora"
 }

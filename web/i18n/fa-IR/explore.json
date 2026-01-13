@@ -1,12 +1,7 @@
 {
-  "appCard.addToWorkspace": "افزودن به فضای کاری",
-  "appCard.customize": "سفارشی کردن",
   "appCustomize.nameRequired": "نام برنامه الزامی است",
   "appCustomize.subTitle": "آیکون و نام برنامه",
   "appCustomize.title": "ایجاد برنامه از {{name}}",
-  "apps.allCategories": "پیشنهاد شده",
-  "apps.description": "از این برنامه‌های قالبی بلافاصله استفاده کنید یا برنامه‌های خود را بر اساس این قالب‌ها سفارشی کنید.",
-  "apps.title": "کاوش برنامه‌ها توسط دیفی",
   "category.Agent": "عامل",
   "category.Assistant": "دستیار",
   "category.Entertainment": "سرگرمی",
@@ -23,7 +18,5 @@
   "sidebar.chat": "چت",
   "sidebar.delete.content": "آیا مطمئن هستید که می‌خواهید این برنامه را حذف کنید؟",
   "sidebar.delete.title": "حذف برنامه",
-  "sidebar.discovery": "کشف",
-  "sidebar.workspace": "فضای کاری",
   "title": "کاوش"
 }

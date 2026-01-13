@@ -161,10 +161,7 @@ class OAuthCallback(Resource):
             ip_address=extract_remote_ip(request),
         )
 
-        base_url = dify_config.CONSOLE_WEB_URL
-        query_char = "&" if "?" in base_url else "?"
-        target_url = f"{base_url}{query_char}oauth_new_user={str(oauth_new_user).lower()}"
-        response = redirect(target_url)
+        response = redirect(f"{dify_config.CONSOLE_WEB_URL}?oauth_new_user={str(oauth_new_user).lower()}")
 
         set_access_token_to_cookie(request, response, token_pair.access_token)
         set_refresh_token_to_cookie(request, response, token_pair.refresh_token)

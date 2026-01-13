@@ -45,6 +45,33 @@ class BillingService:
         return billing_info
 
     @classmethod
+    def get_info_bulk(cls, tenant_ids: Sequence[str]) -> dict[str, str]:
+        """
+        Bulk billing info fetch via billing API.
+
+        Payload: {"tenant_ids": ["t1", "t2", ...]} (max 200 per request)
+
+        Returns:
+            Mapping of tenant_id -> plan
+        """
+        results: dict[str, str] = {}
+
+        chunk_size = 200
+        for i in range(0, len(tenant_ids), chunk_size):
+            chunk = tenant_ids[i : i + chunk_size]
+            try:
+                resp = cls._send_request("POST", "/subscription/plan/batch", json={"tenant_ids": chunk})
+                data = resp.get("data", {})
+                for tenant_id, plan in data.items():
+                    if isinstance(plan, str):
+                        results[tenant_id] = plan
+            except Exception:
+                logger.exception("Failed to fetch billing info batch for tenants: %s", chunk)
+                continue
+
+        return results
+
+    @classmethod
     def get_tenant_feature_plan_usage_info(cls, tenant_id: str):
         params = {"tenant_id": tenant_id}
 

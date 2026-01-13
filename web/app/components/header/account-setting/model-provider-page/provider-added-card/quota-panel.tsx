@@ -132,7 +132,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
             return (
               <Tooltip
                 key={key}
-                popupContent={t(getTooltipKey(), { modelName: modelNameMap[key], ns: 'common' })}
+                popupContent={t(getTooltipKey(), { ns: 'common', modelName: modelNameMap[key] })}
               >
                 <div
                   className={cn('relative h-6 w-6', !providerType && 'cursor-pointer hover:opacity-80')}

@@ -15,6 +15,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import { v4 as uuidV4 } from 'uuid'
 import {
   getProcessedInputs,
   processOpeningStatement,
@@ -266,12 +267,77 @@ export const useChat = (
     }
 
     let hasSetResponseId = false
+    let toolCallId = ''
+    let thoughtId = ''
 
     handleRun(
       bodyParams,
       {
-        onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: any) => {
+        onData: (message: string, isFirstMessage: boolean, {
+          conversationId: newConversationId,
+          messageId,
+          taskId,
+          chunk_type,
+          tool_icon,
+          tool_icon_dark,
+          tool_name,
+          tool_arguments,
+          tool_files,
+          tool_error,
+          tool_elapsed_time,
+        }: any) => {
           responseItem.content = responseItem.content + message
+
+          if (chunk_type === 'tool_call') {
+            if (!responseItem.toolCalls)
+              responseItem.toolCalls = []
+            toolCallId = uuidV4()
+            responseItem.toolCalls?.push({
+              id: toolCallId,
+              type: 'tool',
+              toolName: tool_name,
+              toolArguments: tool_arguments,
+              toolIcon: tool_icon,
+              toolIconDark: tool_icon_dark,
+            })
+          }
+
+          if (chunk_type === 'tool_result') {
+            const currentToolCallIndex = responseItem.toolCalls?.findIndex(item => item.id === toolCallId) ?? -1
+
+            if (currentToolCallIndex > -1) {
+              responseItem.toolCalls![currentToolCallIndex].toolError = tool_error
+              responseItem.toolCalls![currentToolCallIndex].toolDuration = tool_elapsed_time
+              responseItem.toolCalls![currentToolCallIndex].toolFiles = tool_files
+              responseItem.toolCalls![currentToolCallIndex].toolOutput = message
+            }
+          }
+
+          if (chunk_type === 'thought_start') {
+            if (!responseItem.toolCalls)
+              responseItem.toolCalls = []
+            thoughtId = uuidV4()
+            responseItem.toolCalls.push({
+              id: thoughtId,
+              type: 'thought',
+              thoughtOutput: '',
+            })
+          }
+
+          if (chunk_type === 'thought') {
+            const currentThoughtIndex = responseItem.toolCalls?.findIndex(item => item.id === thoughtId) ?? -1
+            if (currentThoughtIndex > -1) {
+              responseItem.toolCalls![currentThoughtIndex].thoughtOutput += message
+            }
+          }
+
+          if (chunk_type === 'thought_end') {
+            const currentThoughtIndex = responseItem.toolCalls?.findIndex(item => item.id === thoughtId) ?? -1
+            if (currentThoughtIndex > -1) {
+              responseItem.toolCalls![currentThoughtIndex].thoughtOutput += message
+              responseItem.toolCalls![currentThoughtIndex].thoughtCompleted = true
+            }
+          }
 
           if (messageId && !hasSetResponseId) {
             questionItem.id = `question-${messageId}`

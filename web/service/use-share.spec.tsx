@@ -3,6 +3,7 @@ import type { AppConversationData, ConversationItem } from '@/models/share'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import {
+  AppSourceType,
   fetchChatList,
   fetchConversations,
   generationConversationName,
@@ -80,6 +81,7 @@ describe('useShareConversations', () => {
       appId: undefined,
       pinned: true,
       limit: 50,
+      appSourceType: AppSourceType.webApp,
     }
     const response = createConversationData()
     mockFetchConversations.mockResolvedValueOnce(response)
@@ -102,6 +104,7 @@ describe('useShareConversations', () => {
     const params = {
       isInstalledApp: true,
       appId: undefined,
+      appSourceType: AppSourceType.installedApp,
     }
 
     // Act
@@ -127,6 +130,7 @@ describe('useShareChatList', () => {
       conversationId: 'conversation-1',
       isInstalledApp: true,
       appId: 'app-1',
+      appSourceType: AppSourceType.installedApp,
     }
     const response = { data: [] }
     mockFetchChatList.mockResolvedValueOnce(response)
@@ -149,6 +153,7 @@ describe('useShareChatList', () => {
       conversationId: '',
       isInstalledApp: false,
       appId: undefined,
+      appSourceType: AppSourceType.webApp,
     }
 
     // Act
@@ -171,6 +176,7 @@ describe('useShareChatList', () => {
       conversationId: 'conversation-1',
       isInstalledApp: false,
       appId: undefined,
+      appSourceType: AppSourceType.webApp,
     }
     const initialResponse = { data: [{ id: '1', content: 'initial' }] }
     const updatedResponse = { data: [{ id: '1', content: 'initial' }, { id: '2', content: 'new message' }] }
@@ -219,6 +225,7 @@ describe('useShareConversationName', () => {
       conversationId: 'conversation-2',
       isInstalledApp: false,
       appId: undefined,
+      appSourceType: AppSourceType.webApp,
     }
     const response = createConversationItem({ id: 'conversation-2', name: 'Generated' })
     mockGenerationConversationName.mockResolvedValueOnce(response)
@@ -241,6 +248,7 @@ describe('useShareConversationName', () => {
       conversationId: 'conversation-3',
       isInstalledApp: false,
       appId: undefined,
+      appSourceType: AppSourceType.webApp,
     }
 
     // Act

@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { ToastProvider } from '@/app/components/base/toast'
 import {
+  AppSourceType,
   fetchChatList,
   fetchConversations,
   generationConversationName,
@@ -145,7 +146,7 @@ describe('useEmbeddedChatbot', () => {
       mockFetchChatList.mockResolvedValue({ data: [] })
 
       // Act
-      const { result } = renderWithClient(() => useEmbeddedChatbot())
+      const { result } = renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
 
       // Assert
       await waitFor(() => {
@@ -177,7 +178,7 @@ describe('useEmbeddedChatbot', () => {
       mockFetchChatList.mockResolvedValue({ data: [] })
       mockGenerationConversationName.mockResolvedValue(generatedConversation)
 
-      const { result, queryClient } = renderWithClient(() => useEmbeddedChatbot())
+      const { result, queryClient } = renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
       const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
 
       // Act
@@ -207,7 +208,7 @@ describe('useEmbeddedChatbot', () => {
       mockFetchChatList.mockResolvedValue({ data: [] })
       mockGenerationConversationName.mockResolvedValue(createConversationItem({ id: 'conversation-1' }))
 
-      const { result } = renderWithClient(() => useEmbeddedChatbot())
+      const { result } = renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
 
       await waitFor(() => {
         expect(mockFetchChatList).toHaveBeenCalledTimes(1)
@@ -237,7 +238,7 @@ describe('useEmbeddedChatbot', () => {
       mockFetchChatList.mockResolvedValue({ data: [] })
       mockGenerationConversationName.mockResolvedValue(createConversationItem({ id: 'conversation-new' }))
 
-      const { result } = renderWithClient(() => useEmbeddedChatbot())
+      const { result } = renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
 
       // Act
       act(() => {

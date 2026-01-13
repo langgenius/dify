@@ -5,11 +5,7 @@ if (!Array.prototype.toSpliced) {
   // eslint-disable-next-line no-extend-native
   Array.prototype.toSpliced = function <T>(this: T[], start: number, deleteCount?: number, ...items: T[]): T[] {
     const copy = this.slice()
-    // When deleteCount is undefined (omitted), delete to end; otherwise let splice handle coercion
-    if (deleteCount === undefined)
-      copy.splice(start, copy.length - start, ...items)
-    else
-      copy.splice(start, deleteCount, ...items)
+    copy.splice(start, deleteCount ?? copy.length - start, ...items)
     return copy
   }
 }

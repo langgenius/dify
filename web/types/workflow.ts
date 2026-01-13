@@ -28,6 +28,68 @@ export type AgentLogItemWithChildren = AgentLogItem & {
   children: AgentLogItemWithChildren[]
 }
 
+export type IconObject = {
+  background: string
+  content: string
+}
+
+export type ToolCallItem = {
+  id: string
+  type: 'model' | 'tool' | 'thought'
+  thoughtCompleted?: boolean
+  thoughtOutput?: string
+
+  toolName?: string
+  toolProvider?: string
+  toolIcon?: string | IconObject
+  toolIconDark?: string | IconObject
+  toolArguments?: string
+  toolOutput?: Record<string, any> | string
+  toolFiles?: string[]
+  toolError?: string
+  toolDuration?: number
+
+  modelName?: string
+  modelProvider?: string
+  modelOutput?: Record<string, any> | string
+  modelDuration?: number
+  modelIcon?: string | IconObject
+  modelIconDark?: string | IconObject
+}
+
+export type ToolCallDetail = {
+  id: string
+  name: string
+  arguments: string
+  output: string
+  files: string[]
+  error: string
+  elapsed_time?: number
+  status: string
+}
+export type SequenceSegment
+  = | { type: 'context', start: number, end: number }
+    | { type: 'reasoning', index: number }
+    | { type: 'tool_call', index: number }
+
+export type LLMLogItem = {
+  reasoning_content: string[]
+  tool_calls: ToolCallDetail[]
+  sequence: SequenceSegment[]
+}
+
+export type LLMTraceItem = {
+  type: 'model' | 'tool'
+  duration: number
+  output: Record<string, any>
+  provider?: string
+  name: string
+  icon?: string | IconObject
+  icon_dark?: string | IconObject
+  error?: string
+  status?: 'success' | 'error'
+}
+
 export type NodeTracing = {
   id: string
   index: number
@@ -72,6 +134,7 @@ export type NodeTracing = {
       icon?: string
     }
     loop_variable_map?: Record<string, any>
+    llm_trace?: LLMTraceItem[]
   }
   metadata: {
     iterator_length: number
@@ -104,6 +167,7 @@ export type NodeTracing = {
   parent_parallel_id?: string
   parent_parallel_start_node_id?: string
   agentLog?: AgentLogItemWithChildren[] // agent log
+  generation_detail?: LLMLogItem
 }
 
 export type FetchWorkflowDraftResponse = {

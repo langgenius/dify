@@ -5,7 +5,7 @@ import type {
 } from '../types'
 import type { Locale } from '@/i18n-config'
 import type {
-  // AppData,
+  AppData,
   ConversationItem,
 } from '@/models/share'
 import { useLocalStorageState } from 'ahooks'
@@ -24,13 +24,14 @@ import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { InputVarType } from '@/app/components/workflow/types'
 import { useWebAppStore } from '@/context/web-app-context'
 import { changeLanguage } from '@/i18n-config/client'
-import { updateFeedback } from '@/service/share'
+import { AppSourceType, updateFeedback } from '@/service/share'
 import {
   useInvalidateShareConversations,
   useShareChatList,
   useShareConversationName,
   useShareConversations,
 } from '@/service/use-share'
+import { useGetTryAppInfo, useGetTryAppParams } from '@/service/use-try-app'
 import { TransferMethod } from '@/types/app'
 import { getProcessedFilesFromResponse } from '../../file-uploader/utils'
 import { CONVERSATION_ID_INFO } from '../constants'
@@ -62,17 +63,35 @@ function getFormattedChatList(messages: any[]) {
   return newChatList
 }
 
-export const useEmbeddedChatbot = () => {
-  const isInstalledApp = false
-  const appInfo = useWebAppStore(s => s.appInfo)
+export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: string) => {
+  const isInstalledApp = false // just can be webapp and try app
+  const isTryApp = appSourceType === AppSourceType.tryApp
+  const { data: tryAppInfo } = useGetTryAppInfo(isTryApp ? tryAppId! : '')
+  const webAppInfo = useWebAppStore(s => s.appInfo)
+  const appInfo = isTryApp ? tryAppInfo : webAppInfo
   const appMeta = useWebAppStore(s => s.appMeta)
-  const appParams = useWebAppStore(s => s.appParams)
+  const { data: tryAppParams } = useGetTryAppParams(isTryApp ? tryAppId! : '')
+  const webAppParams = useWebAppStore(s => s.appParams)
+  const appParams = isTryApp ? tryAppParams : webAppParams
+
+  const appId = useMemo(() => {
+    return isTryApp ? tryAppId : (appInfo as any)?.app_id
+  }, [appInfo])
+
   const embeddedConversationId = useWebAppStore(s => s.embeddedConversationId)
   const embeddedUserId = useWebAppStore(s => s.embeddedUserId)
-  const appId = useMemo(() => appInfo?.app_id, [appInfo])
 
   const [userId, setUserId] = useState<string>()
   const [conversationId, setConversationId] = useState<string>()
+
+  useEffect(() => {
+    if (isTryApp)
+      return
+    getProcessedSystemVariablesFromUrlParams().then(({ user_id, conversation_id }) => {
+      setUserId(user_id)
+      setConversationId(conversation_id)
+    })
+  }, [])
 
   useEffect(() => {
     setUserId(embeddedUserId || undefined)
@@ -83,6 +102,8 @@ export const useEmbeddedChatbot = () => {
   }, [embeddedConversationId])
 
   useEffect(() => {
+    if (isTryApp)
+      return
     const setLanguageFromParams = async () => {
       // Check URL parameters for language override
       const urlParams = new URLSearchParams(window.location.search)
@@ -100,9 +121,9 @@ export const useEmbeddedChatbot = () => {
         // If locale is set as a system variable, use that
         await changeLanguage(localeFromSysVar)
       }
-      else if (appInfo?.site.default_language) {
+      else if ((appInfo as unknown as AppData)?.site?.default_language) {
         // Otherwise use the default from app config
-        await changeLanguage(appInfo.site.default_language)
+        await changeLanguage((appInfo as unknown as AppData).site?.default_language)
       }
     }
 
@@ -112,6 +133,13 @@ export const useEmbeddedChatbot = () => {
   const [conversationIdInfo, setConversationIdInfo] = useLocalStorageState<Record<string, Record<string, string>>>(CONVERSATION_ID_INFO, {
     defaultValue: {},
   })
+  const removeConversationIdInfo = useCallback((appId: string) => {
+    setConversationIdInfo((prev) => {
+      const newInfo = { ...prev }
+      delete newInfo[appId]
+      return newInfo
+    })
+  }, [setConversationIdInfo])
   const allowResetChat = !conversationId
   const currentConversationId = useMemo(() => conversationIdInfo?.[appId || '']?.[userId || 'DEFAULT'] || conversationId || '', [appId, conversationIdInfo, userId, conversationId])
   const handleConversationIdInfoChange = useCallback((changeConversationId: string) => {
@@ -138,7 +166,7 @@ export const useEmbeddedChatbot = () => {
   }, [currentConversationId, newConversationId])
 
   const { data: appPinnedConversationData } = useShareConversations({
-    isInstalledApp,
+    appSourceType,
     appId,
     pinned: true,
     limit: 100,
@@ -147,7 +175,7 @@ export const useEmbeddedChatbot = () => {
     data: appConversationData,
     isLoading: appConversationDataLoading,
   } = useShareConversations({
-    isInstalledApp,
+    appSourceType,
     appId,
     pinned: false,
     limit: 100,
@@ -157,7 +185,7 @@ export const useEmbeddedChatbot = () => {
     isLoading: appChatListDataLoading,
   } = useShareChatList({
     conversationId: chatShouldReloadKey,
-    isInstalledApp,
+    appSourceType,
     appId,
   })
   const invalidateShareConversations = useInvalidateShareConversations()
@@ -265,6 +293,8 @@ export const useEmbeddedChatbot = () => {
   useEffect(() => {
     // init inputs from url params
     (async () => {
+      if (isTryApp)
+        return
       const inputs = await getProcessedInputsFromUrlParams()
       const userVariables = await getProcessedUserVariablesFromUrlParams()
       setInitInputs(inputs)
@@ -282,10 +312,11 @@ export const useEmbeddedChatbot = () => {
 
   const { data: newConversation } = useShareConversationName({
     conversationId: newConversationId,
-    isInstalledApp,
+    appSourceType,
     appId,
   }, {
     refetchOnWindowFocus: false,
+    enabled: !isTryApp,
   })
   const [originConversationList, setOriginConversationList] = useState<ConversationItem[]>([])
   useEffect(() => {
@@ -335,7 +366,7 @@ export const useEmbeddedChatbot = () => {
   }, [appChatListData, currentConversationId])
   const [currentConversationInputs, setCurrentConversationInputs] = useState<Record<string, any>>(currentConversationLatestInputs || {})
   useEffect(() => {
-    if (currentConversationItem)
+    if (currentConversationItem && !isTryApp)
       setCurrentConversationInputs(currentConversationLatestInputs || {})
   }, [currentConversationItem, currentConversationLatestInputs])
 
@@ -395,12 +426,17 @@ export const useEmbeddedChatbot = () => {
       setClearChatList(false)
   }, [handleConversationIdInfoChange, setClearChatList])
   const handleNewConversation = useCallback(async () => {
+    if (isTryApp) {
+      setClearChatList(true)
+      return
+    }
+
     currentChatInstanceRef.current.handleStop()
     setShowNewConversationItemInList(true)
     handleChangeConversation('')
     handleNewConversationInputsChange(await getProcessedInputsFromUrlParams())
     setClearChatList(true)
-  }, [handleChangeConversation, setShowNewConversationItemInList, handleNewConversationInputsChange, setClearChatList])
+  }, [isTryApp, setShowNewConversationItemInList, handleNewConversationInputsChange, setClearChatList])
 
   const handleNewConversationCompleted = useCallback((newConversationId: string) => {
     setNewConversationId(newConversationId)
@@ -410,16 +446,18 @@ export const useEmbeddedChatbot = () => {
   }, [handleConversationIdInfoChange, invalidateShareConversations])
 
   const handleFeedback = useCallback(async (messageId: string, feedback: Feedback) => {
-    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating, content: feedback.content } }, isInstalledApp, appId)
+    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating, content: feedback.content } }, appSourceType, appId)
     notify({ type: 'success', message: t('api.success', { ns: 'common' }) })
-  }, [isInstalledApp, appId, t, notify])
+  }, [appSourceType, appId, t, notify])
 
   return {
+    appSourceType,
     isInstalledApp,
     allowResetChat,
     appId,
     currentConversationId,
     currentConversationItem,
+    removeConversationIdInfo,
     handleConversationIdInfoChange,
     appData: appInfo,
     appParams: appParams || {} as ChatConfig,

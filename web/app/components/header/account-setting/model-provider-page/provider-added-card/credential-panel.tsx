@@ -49,8 +49,6 @@ const CredentialPanel = ({
     notAllowedToUse,
   } = useCredentialStatus(provider)
 
-  const showPrioritySelector = systemConfig.enabled && isCustomConfigured && IS_CLOUD_EDITION
-
   const handleChangePriority = async (key: PreferredProviderTypeEnum) => {
     const res = await changeModelProviderPriority({
       url: `/workspaces/current/model-providers/${provider.provider}/preferred-provider-type`,
@@ -82,7 +80,7 @@ const CredentialPanel = ({
       return t('modelProvider.auth.authRemoved', { ns: 'common' })
 
     return ''
-  }, [authorized, authRemoved, current_credential_name, hasCredential])
+  }, [authorized, authRemoved, current_credential_name, hasCredential, t])
 
   const color = useMemo(() => {
     if (authRemoved || !hasCredential)
@@ -118,7 +116,7 @@ const CredentialPanel = ({
                 provider={provider}
               />
               {
-                showPrioritySelector && (
+                systemConfig.enabled && isCustomConfigured && IS_CLOUD_EDITION && (
                   <PrioritySelector
                     value={priorityUseType}
                     onSelect={handleChangePriority}
@@ -135,7 +133,7 @@ const CredentialPanel = ({
         )
       }
       {
-        showPrioritySelector && !provider.provider_credential_schema && (
+        systemConfig.enabled && isCustomConfigured && !provider.provider_credential_schema && IS_CLOUD_EDITION && (
           <div className="ml-1">
             <PrioritySelector
               value={priorityUseType}

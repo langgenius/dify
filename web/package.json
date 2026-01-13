@@ -88,6 +88,8 @@
     "echarts": "^5.6.0",
     "echarts-for-react": "^3.0.5",
     "elkjs": "^0.9.3",
+    "embla-carousel-autoplay": "^8.6.0",
+    "embla-carousel-react": "^8.6.0",
     "emoji-mart": "^5.6.0",
     "es-toolkit": "^1.43.0",
     "fast-deep-equal": "^3.1.3",

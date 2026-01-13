@@ -9,6 +9,7 @@ import { cn } from '@/utils/classnames'
 
 export type FieldTitleProps = {
   title?: string
+  className?: string
   operation?: ReactNode
   subTitle?: string | ReactNode
   tooltip?: string
@@ -19,6 +20,7 @@ export type FieldTitleProps = {
 }
 export const FieldTitle = memo(({
   title,
+  className,
   operation,
   subTitle,
   tooltip,
@@ -31,7 +33,7 @@ export const FieldTitle = memo(({
   const collapsedMerged = collapsed !== undefined ? collapsed : collapsedLocal
 
   return (
-    <div className={cn('mb-0.5', !!subTitle && 'mb-1')}>
+    <div className={cn('mb-0.5', !!subTitle && 'mb-1', className)}>
       <div
         className="group/collapse flex items-center justify-between py-1"
         onClick={() => {

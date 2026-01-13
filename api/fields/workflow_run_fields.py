@@ -81,6 +81,7 @@ workflow_run_detail_fields = {
     "inputs": fields.Raw(attribute="inputs_dict"),
     "status": fields.String,
     "outputs": fields.Raw(attribute="outputs_dict"),
+    "outputs_as_generation": fields.Boolean,
     "error": fields.String,
     "elapsed_time": fields.Float,
     "total_tokens": fields.Integer,
@@ -129,6 +130,7 @@ workflow_run_node_execution_fields = {
     "inputs_truncated": fields.Boolean,
     "outputs_truncated": fields.Boolean,
     "process_data_truncated": fields.Boolean,
+    "generation_detail": fields.Raw,
 }
 
 workflow_run_node_execution_list_fields = {

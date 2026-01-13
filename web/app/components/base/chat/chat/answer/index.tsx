@@ -21,6 +21,7 @@ import BasicContent from './basic-content'
 import More from './more'
 import Operation from './operation'
 import SuggestedQuestions from './suggested-questions'
+import ToolCalls from './tool-calls'
 import WorkflowProcessItem from './workflow-process'
 
 type AnswerProps = {
@@ -61,6 +62,7 @@ const Answer: FC<AnswerProps> = ({
     workflowProcess,
     allFiles,
     message_files,
+    toolCalls,
   } = item
   const hasAgentThoughts = !!agent_thoughts?.length
 
@@ -150,8 +152,13 @@ const Answer: FC<AnswerProps> = ({
                   data={workflowProcess}
                   item={item}
                   hideProcessDetail={hideProcessDetail}
-                  readonly={hideProcessDetail && appData ? !appData.site.show_workflow_steps : undefined}
+                  readonly={hideProcessDetail && appData ? !appData.site?.show_workflow_steps : undefined}
                 />
+              )
+            }
+            {
+              !!toolCalls?.length && (
+                <ToolCalls toolCalls={toolCalls} />
               )
             }
             {
