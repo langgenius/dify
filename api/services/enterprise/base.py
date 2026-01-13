@@ -43,7 +43,7 @@ class BaseRequest:
         headers = {"Content-Type": "application/json", cls.secret_key_header: cls.secret_key}
         url = f"{cls.base_url}{endpoint}"
         mounts = cls._build_mounts()
-        
+
         try:
             # ensure traceparent even when OTEL is disabled
             traceparent = generate_traceparent_header()
