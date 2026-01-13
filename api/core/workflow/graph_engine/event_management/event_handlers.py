@@ -93,8 +93,8 @@ class EventHandler:
         Args:
             event: The event to handle
         """
-        # Events in loops or iterations are always collected
-        if event.in_loop_id or event.in_iteration_id:
+        # Events in loops, iterations, or extractor groups are always collected
+        if event.in_loop_id or event.in_iteration_id or event.in_mention_parent_id:
             self._event_collector.collect(event)
             return
         return self._dispatch(event)

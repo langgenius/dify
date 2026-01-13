@@ -253,6 +253,7 @@ class WorkflowNodeExecutionMetadataKey(StrEnum):
     LOOP_VARIABLE_MAP = "loop_variable_map"  # single loop variable output
     DATASOURCE_INFO = "datasource_info"
     COMPLETED_REASON = "completed_reason"  # completed reason for loop node
+    MENTION_PARENT_ID = "mention_parent_id"  # parent node id for extractor nodes
 
 
 class WorkflowNodeExecutionStatus(StrEnum):

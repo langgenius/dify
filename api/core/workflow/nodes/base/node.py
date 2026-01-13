@@ -332,12 +332,17 @@ class Node(Generic[NodeDataT]):
 
             # Execute and process extractor node events
             for event in extractor_node.run():
+                # Tag event with parent node id for stream ordering and history tracking
+                if isinstance(event, GraphNodeEventBase):
+                    event.in_mention_parent_id = self._node_id
+
                 if isinstance(event, NodeRunSucceededEvent):
                     # Store extractor node outputs in variable pool
-                    outputs = event.node_run_result.outputs
+                    outputs: Mapping[str, Any] = event.node_run_result.outputs
                     for variable_name, variable_value in outputs.items():
                         self.graph_runtime_state.variable_pool.add((node_id, variable_name), variable_value)
-                yield event
+                if not isinstance(event, NodeRunStreamChunkEvent):
+                    yield event
 
     def run(self) -> Generator[GraphNodeEventBase, None, None]:
         execution_id = self.ensure_execution_id()

@@ -214,16 +214,11 @@ class ToolNode(Node[ToolNodeData]):
                 parameter_value = variable.value
             elif tool_input.type == "mention":
                 # Mention type: get value from extractor node's output
-                from .entities import MentionValue
-
-                mention_value = tool_input.value
-                if isinstance(mention_value, MentionValue):
-                    mention_config = mention_value.model_dump()
-                elif isinstance(mention_value, dict):
-                    mention_config = mention_value
-                else:
-                    raise ToolParameterError(f"Invalid mention value for parameter '{parameter_name}'")
-
+                if tool_input.mention_config is None:
+                    raise ToolParameterError(
+                        f"mention_config is required for mention type parameter '{parameter_name}'"
+                    )
+                mention_config = tool_input.mention_config.model_dump()
                 try:
                     parameter_value, found = variable_pool.resolve_mention(
                         mention_config, parameter_name=parameter_name
@@ -524,7 +519,7 @@ class ToolNode(Node[ToolNodeData]):
                     selector_key = ".".join(input.value)
                     result[f"#{selector_key}#"] = input.value
             elif input.type == "mention":
-                # Mention type handled by extractor node, no direct variable reference
+                # Mention type: value is handled by extractor node, no direct variable reference
                 pass
             elif input.type == "constant":
                 pass

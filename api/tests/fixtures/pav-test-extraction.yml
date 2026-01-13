@@ -14,6 +14,11 @@ dependencies:
 - current_identifier: null
   type: marketplace
   value:
+    marketplace_plugin_unique_identifier: langgenius/openai:0.2.3@5a7f82fa86e28332ad51941d0b491c1e8a38ead539656442f7bf4c6129cd15fa
+    version: null
+- current_identifier: null
+  type: marketplace
+  value:
     marketplace_plugin_unique_identifier: langgenius/tongyi:0.1.16@d8bffbe45418f0c117fb3393e5e40e61faee98f9a2183f062e5a280e74b15d21
     version: null
 kind: app
@@ -115,7 +120,8 @@ workflow:
           enabled: false
           variable_selector: []
         memory:
-          query_prompt_template: ''
+          mode: node
+          query_prompt_template: '{{#sys.query#}}'
           role_prefix:
             assistant: ''
             user: ''
@@ -201,29 +207,17 @@ workflow:
         tool_node_version: '2'
         tool_parameters:
           query:
-            type: variable
-            value:
-            - ext_1
-            - text
+            mention_config:
+              default_value: ''
+              extractor_node_id: 1767773709491_ext_query
+              instruction: 请从对话历史中提取用户想要搜索的关键词，只返回关键词本身
+              null_strategy: use_default
+              output_selector:
+              - structured_output
+              - query
+            type: mention
+            value: '{{#llm.context#}}'
         type: tool
-        virtual_nodes:
-        - data:
-            model:
-              completion_params:
-                temperature: 0.7
-              mode: chat
-              name: qwen-max
-              provider: langgenius/tongyi/tongyi
-            context:
-              enabled: false
-            prompt_template:
-            - role: user
-              text: '{{#llm.context#}}'
-            - role: user
-              text: 请从对话历史中提取用户想要搜索的关键词，只返回关键词本身，不要返回其他内容
-            title: 提取搜索关键词
-          id: ext_1
-          type: llm
       height: 52
       id: '1767773709491'
       position:
@@ -233,6 +227,54 @@ workflow:
         x: 682
         y: 282
       selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: gpt-4o-mini
+          provider: langgenius/openai/openai
+        parent_node_id: '1767773709491'
+        prompt_template:
+        - $context:
+          - llm
+          - context
+          id: 75d58e22-dc59-40c8-ba6f-aeb28f4f305a
+        - id: 18ba6710-77f5-47f4-b144-9191833bb547
+          role: user
+          text: 请从对话历史中提取用户想要搜索的关键词，只返回关键词本身，不要返回其他内容
+        selected: false
+        structured_output:
+          schema:
+            additionalProperties: false
+            properties:
+              query:
+                description: 搜索的关键词
+                type: string
+            required:
+            - query
+            type: object
+        structured_output_enabled: true
+        title: 提取搜索关键词
+        type: llm
+        vision:
+          enabled: false
+      height: 88
+      id: 1767773709491_ext_query
+      position:
+        x: 531
+        y: 382
+      positionAbsolute:
+        x: 531
+        y: 382
+      selected: true
       sourcePosition: right
       targetPosition: left
       type: custom
@@ -254,13 +296,13 @@ workflow:
       positionAbsolute:
         x: 984
         y: 282
-      selected: true
+      selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
       width: 242
     viewport:
-      x: 151
-      y: 141.5
+      x: -151
+      y: 123
       zoom: 1
   rag_pipeline_variables: []

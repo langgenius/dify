@@ -385,6 +385,7 @@ class WorkflowBasedAppRunner:
                     start_at=event.start_at,
                     in_iteration_id=event.in_iteration_id,
                     in_loop_id=event.in_loop_id,
+                    in_mention_parent_id=event.in_mention_parent_id,
                     inputs=inputs,
                     process_data=process_data,
                     outputs=outputs,
@@ -405,6 +406,7 @@ class WorkflowBasedAppRunner:
                     start_at=event.start_at,
                     in_iteration_id=event.in_iteration_id,
                     in_loop_id=event.in_loop_id,
+                    in_mention_parent_id=event.in_mention_parent_id,
                     agent_strategy=event.agent_strategy,
                     provider_type=event.provider_type,
                     provider_id=event.provider_id,
@@ -428,6 +430,7 @@ class WorkflowBasedAppRunner:
                     execution_metadata=execution_metadata,
                     in_iteration_id=event.in_iteration_id,
                     in_loop_id=event.in_loop_id,
+                    in_mention_parent_id=event.in_mention_parent_id,
                 )
             )
         elif isinstance(event, NodeRunFailedEvent):
@@ -444,6 +447,7 @@ class WorkflowBasedAppRunner:
                     execution_metadata=event.node_run_result.metadata,
                     in_iteration_id=event.in_iteration_id,
                     in_loop_id=event.in_loop_id,
+                    in_mention_parent_id=event.in_mention_parent_id,
                 )
             )
         elif isinstance(event, NodeRunExceptionEvent):
@@ -460,6 +464,7 @@ class WorkflowBasedAppRunner:
                     execution_metadata=event.node_run_result.metadata,
                     in_iteration_id=event.in_iteration_id,
                     in_loop_id=event.in_loop_id,
+                    in_mention_parent_id=event.in_mention_parent_id,
                 )
             )
         elif isinstance(event, NodeRunStreamChunkEvent):
@@ -469,6 +474,7 @@ class WorkflowBasedAppRunner:
                     from_variable_selector=list(event.selector),
                     in_iteration_id=event.in_iteration_id,
                     in_loop_id=event.in_loop_id,
+                    in_mention_parent_id=event.in_mention_parent_id,
                 )
             )
         elif isinstance(event, NodeRunRetrieverResourceEvent):
@@ -477,6 +483,7 @@ class WorkflowBasedAppRunner:
                     retriever_resources=event.retriever_resources,
                     in_iteration_id=event.in_iteration_id,
                     in_loop_id=event.in_loop_id,
+                    in_mention_parent_id=event.in_mention_parent_id,
                 )
             )
         elif isinstance(event, NodeRunAgentLogEvent):
