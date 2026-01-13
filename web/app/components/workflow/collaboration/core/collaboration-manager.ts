@@ -956,7 +956,7 @@ export class CollaborationManager {
       }
     })
 
-    socket.on('status', (data: any) => {
+    socket.on('status', (data: { isLeader: boolean }) => {
       try {
         if (!data || typeof data.isLeader !== 'boolean') {
           console.warn('Invalid status data:', data)
@@ -965,6 +965,9 @@ export class CollaborationManager {
 
         const wasLeader = this.isLeader
         this.isLeader = data.isLeader
+
+        if (wasLeader !== this.isLeader)
+          console.log(`Collaboration: I am now the ${this.isLeader ? 'Leader' : 'Follower'}.`)
 
         if (this.isLeader)
           this.pendingInitialSync = false
@@ -977,30 +980,6 @@ export class CollaborationManager {
       catch (error) {
         console.error('Error processing status update:', error)
       }
-    })
-
-    socket.on('status', (data: { isLeader: boolean }) => {
-      if (this.isLeader !== data.isLeader) {
-        this.isLeader = data.isLeader
-        console.log(`Collaboration: I am now the ${this.isLeader ? 'Leader' : 'Follower'}.`)
-        this.eventEmitter.emit('leaderChange', this.isLeader)
-      }
-      if (this.isLeader)
-        this.pendingInitialSync = false
-      else
-        this.requestInitialSyncIfNeeded()
-    })
-
-    socket.on('status', (data: { isLeader: boolean }) => {
-      if (this.isLeader !== data.isLeader) {
-        this.isLeader = data.isLeader
-        console.log(`Collaboration: I am now the ${this.isLeader ? 'Leader' : 'Follower'}.`)
-        this.eventEmitter.emit('leaderChange', this.isLeader)
-      }
-      if (this.isLeader)
-        this.pendingInitialSync = false
-      else
-        this.requestInitialSyncIfNeeded()
     })
 
     socket.on('connect', () => {
