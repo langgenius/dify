@@ -12,6 +12,7 @@ import {
   MARKETPLACE_API_PREFIX,
 } from '@/config'
 import { postMarketplace } from '@/service/base'
+import { markertPlaceClient } from '@/service/client'
 import { getMarketplaceUrl } from '@/utils/var'
 import { PLUGIN_TYPE_SEARCH_MAP } from './constants'
 
@@ -99,22 +100,14 @@ export const getMarketplaceCollectionsAndPlugins = async (
   let marketplaceCollections: MarketplaceCollection[] = []
   let marketplaceCollectionPluginsMap: Record<string, Plugin[]> = {}
   try {
-    let marketplaceUrl = `${MARKETPLACE_API_PREFIX}/collections?page=1&page_size=100`
-    if (query?.condition)
-      marketplaceUrl += `&condition=${query.condition}`
-    if (query?.type)
-      marketplaceUrl += `&type=${query.type}`
-    const headers = getMarketplaceHeaders()
-    const marketplaceCollectionsData = await globalThis.fetch(
-      marketplaceUrl,
-      {
-        headers,
-        cache: 'no-store',
-        signal: options?.signal,
+    const marketplaceCollectionsDataJson = await markertPlaceClient.collections({
+      query: {
+        ...query,
+        page: 1,
+        page_size: 100,
       },
-    )
-    const marketplaceCollectionsDataJson = await marketplaceCollectionsData.json()
-    marketplaceCollections = marketplaceCollectionsDataJson.data.collections || []
+    })
+    marketplaceCollections = marketplaceCollectionsDataJson.data?.collections || []
     await Promise.all(marketplaceCollections.map(async (collection: MarketplaceCollection) => {
       const plugins = await getMarketplacePluginsByCollectionId(collection.name, query, options)
 
