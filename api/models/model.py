@@ -88,7 +88,7 @@ class App(TypeBase):
     icon: Mapped[str] = mapped_column(String(255))
     icon_background: Mapped[str | None] = mapped_column(String(255))
     app_model_config_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
-    workflow_id = mapped_column(StringUUID, nullable=True)
+    workflow_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     status: Mapped[str] = mapped_column(String(255), server_default=sa.text("'normal'"))
     enable_site: Mapped[bool] = mapped_column(sa.Boolean)
     enable_api: Mapped[bool] = mapped_column(sa.Boolean)
