@@ -60,10 +60,10 @@ vi.mock('@/service/use-plugins', () => ({
 // Mock tanstack query
 const mockFetchNextPage = vi.fn()
 const mockHasNextPage = false
-let mockInfiniteQueryData: { pages: Array<{ plugins: unknown[], total: number, page: number, pageSize: number }> } | undefined
+let mockInfiniteQueryData: { pages: Array<{ plugins: unknown[], total: number, page: number, page_size: number }> } | undefined
 let capturedInfiniteQueryFn: ((ctx: { pageParam: number, signal: AbortSignal }) => Promise<unknown>) | null = null
 let capturedQueryFn: ((ctx: { signal: AbortSignal }) => Promise<unknown>) | null = null
-let capturedGetNextPageParam: ((lastPage: { page: number, pageSize: number, total: number }) => number | undefined) | null = null
+let capturedGetNextPageParam: ((lastPage: { page: number, page_size: number, total: number }) => number | undefined) | null = null
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: vi.fn(({ queryFn, enabled }: { queryFn: (ctx: { signal: AbortSignal }) => Promise<unknown>, enabled: boolean }) => {
@@ -83,7 +83,7 @@ vi.mock('@tanstack/react-query', () => ({
   }),
   useInfiniteQuery: vi.fn(({ queryFn, getNextPageParam, enabled: _enabled }: {
     queryFn: (ctx: { pageParam: number, signal: AbortSignal }) => Promise<unknown>
-    getNextPageParam: (lastPage: { page: number, pageSize: number, total: number }) => number | undefined
+    getNextPageParam: (lastPage: { page: number, page_size: number, total: number }) => number | undefined
     enabled: boolean
   }) => {
     // Capture queryFn and getNextPageParam for later testing
@@ -97,9 +97,9 @@ vi.mock('@tanstack/react-query', () => ({
     // Call getNextPageParam to increase coverage
     if (getNextPageParam) {
       // Test with more data available
-      getNextPageParam({ page: 1, pageSize: 40, total: 100 })
+      getNextPageParam({ page: 1, page_size: 40, total: 100 })
       // Test with no more data
-      getNextPageParam({ page: 3, pageSize: 40, total: 100 })
+      getNextPageParam({ page: 3, page_size: 40, total: 100 })
     }
     return {
       data: mockInfiniteQueryData,
@@ -151,6 +151,7 @@ vi.mock('@/service/base', () => ({
 
 // Mock config
 vi.mock('@/config', () => ({
+  API_PREFIX: '/api',
   APP_VERSION: '1.0.0',
   IS_MARKETPLACE: false,
   MARKETPLACE_API_PREFIX: 'https://marketplace.dify.ai/api/v1',
@@ -731,10 +732,10 @@ describe('useMarketplacePlugins', () => {
     expect(() => {
       result.current.queryPlugins({
         query: 'test',
-        sortBy: 'install_count',
-        sortOrder: 'DESC',
+        sort_by: 'install_count',
+        sort_order: 'DESC',
         category: 'tool',
-        pageSize: 20,
+        page_size: 20,
       })
     }).not.toThrow()
   })
@@ -747,7 +748,7 @@ describe('useMarketplacePlugins', () => {
       result.current.queryPlugins({
         query: 'test',
         type: 'bundle',
-        pageSize: 40,
+        page_size: 40,
       })
     }).not.toThrow()
   })
@@ -798,8 +799,8 @@ describe('useMarketplacePlugins', () => {
       result.current.queryPlugins({
         query: 'test',
         category: 'all',
-        sortBy: 'install_count',
-        sortOrder: 'DESC',
+        sort_by: 'install_count',
+        sort_order: 'DESC',
       })
     }).not.toThrow()
   })
@@ -824,7 +825,7 @@ describe('useMarketplacePlugins', () => {
     expect(() => {
       result.current.queryPlugins({
         query: 'test',
-        pageSize: 100,
+        page_size: 100,
       })
     }).not.toThrow()
   })
@@ -843,7 +844,7 @@ describe('Hooks queryFn Coverage', () => {
     // Set mock data to have pages
     mockInfiniteQueryData = {
       pages: [
-        { plugins: [{ name: 'plugin1' }], total: 10, page: 1, pageSize: 40 },
+        { plugins: [{ name: 'plugin1' }], total: 10, page: 1, page_size: 40 },
       ],
     }
 
@@ -863,8 +864,8 @@ describe('Hooks queryFn Coverage', () => {
   it('should expose page and total from infinite query data', async () => {
     mockInfiniteQueryData = {
       pages: [
-        { plugins: [{ name: 'plugin1' }, { name: 'plugin2' }], total: 20, page: 1, pageSize: 40 },
-        { plugins: [{ name: 'plugin3' }], total: 20, page: 2, pageSize: 40 },
+        { plugins: [{ name: 'plugin1' }, { name: 'plugin2' }], total: 20, page: 1, page_size: 40 },
+        { plugins: [{ name: 'plugin3' }], total: 20, page: 2, page_size: 40 },
       ],
     }
 
@@ -893,7 +894,7 @@ describe('Hooks queryFn Coverage', () => {
   it('should return total from first page when query is set and data exists', async () => {
     mockInfiniteQueryData = {
       pages: [
-        { plugins: [], total: 50, page: 1, pageSize: 40 },
+        { plugins: [], total: 50, page: 1, page_size: 40 },
       ],
     }
 
@@ -917,8 +918,8 @@ describe('Hooks queryFn Coverage', () => {
       type: 'plugin',
       query: 'search test',
       category: 'model',
-      sortBy: 'version_updated_at',
-      sortOrder: 'ASC',
+      sort_by: 'version_updated_at',
+      sort_order: 'ASC',
     })
 
     expect(result.current).toBeDefined()
@@ -1027,13 +1028,13 @@ describe('Advanced Hook Integration', () => {
     // Test with all possible parameters
     result.current.queryPlugins({
       query: 'comprehensive test',
-      sortBy: 'install_count',
-      sortOrder: 'DESC',
+      sort_by: 'install_count',
+      sort_order: 'DESC',
       category: 'tool',
       tags: ['tag1', 'tag2'],
       exclude: ['excluded-plugin'],
       type: 'plugin',
-      pageSize: 50,
+      page_size: 50,
     })
 
     expect(result.current).toBeDefined()
@@ -1081,9 +1082,9 @@ describe('Direct queryFn Coverage', () => {
     result.current.queryPlugins({
       query: 'direct test',
       category: 'tool',
-      sortBy: 'install_count',
-      sortOrder: 'DESC',
-      pageSize: 40,
+      sort_by: 'install_count',
+      sort_order: 'DESC',
+      page_size: 40,
     })
 
     // Now queryFn should be captured and enabled
@@ -1255,7 +1256,7 @@ describe('Direct queryFn Coverage', () => {
 
     result.current.queryPlugins({
       query: 'structure test',
-      pageSize: 20,
+      page_size: 20,
     })
 
     if (capturedInfiniteQueryFn) {
@@ -1264,14 +1265,14 @@ describe('Direct queryFn Coverage', () => {
         plugins: unknown[]
         total: number
         page: number
-        pageSize: number
+        page_size: number
       }
 
       // Verify the returned structure
       expect(response).toHaveProperty('plugins')
       expect(response).toHaveProperty('total')
       expect(response).toHaveProperty('page')
-      expect(response).toHaveProperty('pageSize')
+      expect(response).toHaveProperty('page_size')
     }
   })
 })
@@ -1296,7 +1297,7 @@ describe('flatMap Coverage', () => {
           ],
           total: 5,
           page: 1,
-          pageSize: 40,
+          page_size: 40,
         },
         {
           plugins: [
@@ -1304,7 +1305,7 @@ describe('flatMap Coverage', () => {
           ],
           total: 5,
           page: 2,
-          pageSize: 40,
+          page_size: 40,
         },
       ],
     }
@@ -1336,8 +1337,8 @@ describe('flatMap Coverage', () => {
   it('should test hook with pages data for flatMap path', async () => {
     mockInfiniteQueryData = {
       pages: [
-        { plugins: [], total: 100, page: 1, pageSize: 40 },
-        { plugins: [], total: 100, page: 2, pageSize: 40 },
+        { plugins: [], total: 100, page: 1, page_size: 40 },
+        { plugins: [], total: 100, page: 2, page_size: 40 },
       ],
     }
 
@@ -1371,7 +1372,7 @@ describe('flatMap Coverage', () => {
           plugins: unknown[]
           total: number
           page: number
-          pageSize: number
+          page_size: number
         }
         // When error is caught, should return fallback data
         expect(response.plugins).toEqual([])
@@ -1392,15 +1393,15 @@ describe('flatMap Coverage', () => {
     // Test getNextPageParam function directly
     if (capturedGetNextPageParam) {
       // When there are more pages
-      const nextPage = capturedGetNextPageParam({ page: 1, pageSize: 40, total: 100 })
+      const nextPage = capturedGetNextPageParam({ page: 1, page_size: 40, total: 100 })
       expect(nextPage).toBe(2)
 
       // When all data is loaded
-      const noMorePages = capturedGetNextPageParam({ page: 3, pageSize: 40, total: 100 })
+      const noMorePages = capturedGetNextPageParam({ page: 3, page_size: 40, total: 100 })
       expect(noMorePages).toBeUndefined()
 
       // Edge case: exactly at boundary
-      const atBoundary = capturedGetNextPageParam({ page: 2, pageSize: 50, total: 100 })
+      const atBoundary = capturedGetNextPageParam({ page: 2, page_size: 50, total: 100 })
       expect(atBoundary).toBeUndefined()
     }
   })
@@ -1427,7 +1428,7 @@ describe('flatMap Coverage', () => {
         plugins: unknown[]
         total: number
         page: number
-        pageSize: number
+        page_size: number
       }
       // Catch block should return fallback values
       expect(response.plugins).toEqual([])
@@ -1446,7 +1447,7 @@ describe('flatMap Coverage', () => {
           plugins: [{ name: 'test-plugin-1' }, { name: 'test-plugin-2' }],
           total: 10,
           page: 1,
-          pageSize: 40,
+          page_size: 40,
         },
       ],
     }
@@ -1489,9 +1490,12 @@ describe('Async Utils', () => {
         { type: 'plugin', org: 'test', name: 'plugin2' },
       ]
 
-      globalThis.fetch = vi.fn().mockResolvedValue({
-        json: () => Promise.resolve({ data: { plugins: mockPlugins } }),
-      })
+      globalThis.fetch = vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ data: { plugins: mockPlugins } }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
 
       const { getMarketplacePluginsByCollectionId } = await import('./utils')
       const result = await getMarketplacePluginsByCollectionId('test-collection', {
@@ -1514,19 +1518,26 @@ describe('Async Utils', () => {
     })
 
     it('should pass abort signal when provided', async () => {
-      const mockPlugins = [{ type: 'plugin', org: 'test', name: 'plugin1' }]
-      globalThis.fetch = vi.fn().mockResolvedValue({
-        json: () => Promise.resolve({ data: { plugins: mockPlugins } }),
-      })
+      const mockPlugins = [{ type: 'plugins', org: 'test', name: 'plugin1' }]
+      globalThis.fetch = vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ data: { plugins: mockPlugins } }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
 
       const controller = new AbortController()
       const { getMarketplacePluginsByCollectionId } = await import('./utils')
       await getMarketplacePluginsByCollectionId('test-collection', {}, { signal: controller.signal })
 
+      // oRPC uses Request objects, so check that fetch was called with a Request containing the right URL
       expect(globalThis.fetch).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.objectContaining({ signal: controller.signal }),
+        expect.any(Request),
+        expect.any(Object),
       )
+      const call = vi.mocked(globalThis.fetch).mock.calls[0]
+      const request = call[0] as Request
+      expect(request.url).toContain('test-collection')
     })
   })
 
@@ -1535,19 +1546,25 @@ describe('Async Utils', () => {
       const mockCollections = [
         { name: 'collection1', label: {}, description: {}, rule: '', created_at: '', updated_at: '' },
       ]
-      const mockPlugins = [{ type: 'plugin', org: 'test', name: 'plugin1' }]
+      const mockPlugins = [{ type: 'plugins', org: 'test', name: 'plugin1' }]
 
       let callCount = 0
       globalThis.fetch = vi.fn().mockImplementation(() => {
         callCount++
         if (callCount === 1) {
-          return Promise.resolve({
-            json: () => Promise.resolve({ data: { collections: mockCollections } }),
-          })
+          return Promise.resolve(
+            new Response(JSON.stringify({ data: { collections: mockCollections } }), {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' },
+            }),
+          )
         }
-        return Promise.resolve({
-          json: () => Promise.resolve({ data: { plugins: mockPlugins } }),
-        })
+        return Promise.resolve(
+          new Response(JSON.stringify({ data: { plugins: mockPlugins } }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        )
       })
 
       const { getMarketplaceCollectionsAndPlugins } = await import('./utils')
@@ -1571,9 +1588,12 @@ describe('Async Utils', () => {
     })
 
     it('should append condition and type to URL when provided', async () => {
-      globalThis.fetch = vi.fn().mockResolvedValue({
-        json: () => Promise.resolve({ data: { collections: [] } }),
-      })
+      globalThis.fetch = vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ data: { collections: [] } }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
 
       const { getMarketplaceCollectionsAndPlugins } = await import('./utils')
       await getMarketplaceCollectionsAndPlugins({
@@ -1581,10 +1601,11 @@ describe('Async Utils', () => {
         type: 'bundle',
       })
 
-      expect(globalThis.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('condition=category=tool'),
-        expect.any(Object),
-      )
+      // oRPC uses Request objects, so check that fetch was called with a Request containing the right URL
+      expect(globalThis.fetch).toHaveBeenCalled()
+      const call = vi.mocked(globalThis.fetch).mock.calls[0]
+      const request = call[0] as Request
+      expect(request.url).toContain('condition=category%3Dtool')
     })
   })
 })

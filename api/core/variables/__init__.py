@@ -32,6 +32,7 @@ from .variables import (
     SecretVariable,
     StringVariable,
     Variable,
+    VariableBase,
 )
 
 __all__ = [
@@ -66,4 +67,5 @@ __all__ = [
     "StringSegment",
     "StringVariable",
     "Variable",
+    "VariableBase",
 ]

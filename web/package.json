@@ -1,7 +1,7 @@
 {
   "name": "dify-web",
   "type": "module",
-  "version": "1.11.2",
+  "version": "1.11.3",
   "private": true,
   "packageManager": "pnpm@10.28.0+sha512.05df71d1421f21399e053fde567cea34d446fa02c76571441bfc1c7956e98e363088982d940465fd34480d4d90a0668bc12362f8aa88000a64e83d0b0e47be48",
   "imports": {
@@ -69,6 +69,10 @@
     "@monaco-editor/react": "^4.7.0",
     "@octokit/core": "^6.1.6",
     "@octokit/request-error": "^6.1.8",
+    "@orpc/client": "^1.13.4",
+    "@orpc/contract": "^1.13.4",
+    "@orpc/openapi-client": "^1.13.4",
+    "@orpc/tanstack-query": "^1.13.4",
     "@remixicon/react": "^4.7.0",
     "@sentry/react": "^8.55.0",
     "@svgdotjs/svg.js": "^3.2.5",
