@@ -12,7 +12,7 @@ import SwitchModal from './switch-modal'
 
 const SandboxProviderPage = () => {
   const { t } = useTranslation()
-  const { isCurrentWorkspaceOwner, isLoadingCurrentWorkspace } = useAppContext()
+  const { isCurrentWorkspaceManager, isLoadingCurrentWorkspace } = useAppContext()
   const { data: providers, isLoading } = useGetSandboxProviderList()
 
   const [configModalProvider, setConfigModalProvider] = useState<SandboxProvider | null>(null)
@@ -49,7 +49,7 @@ const SandboxProviderPage = () => {
             provider={currentProvider}
             isCurrent
             onConfig={() => handleConfig(currentProvider)}
-            disabled={!isCurrentWorkspaceOwner}
+            disabled={!isCurrentWorkspaceManager}
           />
         </div>
       )}
@@ -67,14 +67,14 @@ const SandboxProviderPage = () => {
                 provider={provider}
                 onConfig={() => handleConfig(provider)}
                 onEnable={() => handleEnable(provider)}
-                disabled={!isCurrentWorkspaceOwner}
+                disabled={!isCurrentWorkspaceManager}
               />
             ))}
           </div>
         </div>
       )}
 
-      {!isLoadingCurrentWorkspace && !isCurrentWorkspaceOwner && (
+      {!isLoadingCurrentWorkspace && !isCurrentWorkspaceManager && (
         <div className="system-xs-regular text-text-tertiary">
           {t('sandboxProvider.noPermission', { ns: 'common' })}
         </div>
