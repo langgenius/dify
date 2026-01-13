@@ -54,6 +54,7 @@ def socket_connect(sid, environ, auth):
             request_environ = WerkzeugRequest(environ)
             token = extract_access_token(request_environ)
         except Exception:
+            logging.exception("Failed to extract token")
             token = None
 
     if not token:
@@ -75,6 +76,7 @@ def socket_connect(sid, environ, auth):
             return True
 
     except Exception:
+        logging.exception("Socket authentication failed")
         return False
 
 
