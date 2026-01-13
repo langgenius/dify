@@ -7,8 +7,6 @@ import type {
 import type { Plugin, PluginsFromMarketplaceResponse } from '@/app/components/plugins/types'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import {
-  APP_VERSION,
-  IS_MARKETPLACE,
   MARKETPLACE_API_PREFIX,
 } from '@/config'
 import { postMarketplace } from '@/service/base'
@@ -19,10 +17,6 @@ import { PLUGIN_TYPE_SEARCH_MAP } from './constants'
 type MarketplaceFetchOptions = {
   signal?: AbortSignal
 }
-
-const getMarketplaceHeaders = () => new Headers({
-  'X-Dify-Version': !IS_MARKETPLACE ? APP_VERSION : '999.0.0',
-})
 
 export const getPluginIconInMarketplace = (plugin: Plugin) => {
   if (plugin.type === 'bundle')
@@ -66,24 +60,15 @@ export const getMarketplacePluginsByCollectionId = async (
   let plugins: Plugin[] = []
 
   try {
-    const url = `${MARKETPLACE_API_PREFIX}/collections/${collectionId}/plugins`
-    const headers = getMarketplaceHeaders()
-    const marketplaceCollectionPluginsData = await globalThis.fetch(
-      url,
-      {
-        cache: 'no-store',
-        method: 'POST',
-        headers,
-        signal: options?.signal,
-        body: JSON.stringify({
-          category: query?.category,
-          exclude: query?.exclude,
-          type: query?.type,
-        }),
+    const marketplaceCollectionPluginsDataJson = await markertPlaceClient.collectionPlugins({
+      params: {
+        collectionId,
       },
-    )
-    const marketplaceCollectionPluginsDataJson = await marketplaceCollectionPluginsData.json()
-    plugins = (marketplaceCollectionPluginsDataJson.data.plugins || []).map((plugin: Plugin) => getFormattedPlugin(plugin))
+      body: query,
+    }, {
+      signal: options?.signal,
+    })
+    plugins = (marketplaceCollectionPluginsDataJson.data?.plugins || []).map(plugin => getFormattedPlugin(plugin))
   }
   // eslint-disable-next-line unused-imports/no-unused-vars
   catch (e) {
@@ -106,6 +91,8 @@ export const getMarketplaceCollectionsAndPlugins = async (
         page: 1,
         page_size: 100,
       },
+    }, {
+      signal: options?.signal,
     })
     marketplaceCollections = marketplaceCollectionsDataJson.data?.collections || []
     await Promise.all(marketplaceCollections.map(async (collection: MarketplaceCollection) => {
