@@ -1,4 +1,5 @@
 import json
+import logging
 import time
 
 from werkzeug.wrappers import Request as WerkzeugRequest
@@ -235,6 +236,7 @@ def broadcast_leader_change(workflow_id, new_leader_sid):
             # Emit to each session whether they are the new leader
             sio.emit("status", {"isLeader": is_leader}, room=sid_str)
         except Exception:
+            logging.exception("Failed to emit leader status to session %s", sid)
             continue
 
 
