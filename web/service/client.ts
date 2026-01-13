@@ -40,7 +40,7 @@ export const marketplaceQuery = createTanstackQueryUtils(marketplaceClient, { pa
 
 const consoleLink = new OpenAPILink(consoleRouterContract, {
   url: API_PREFIX,
-  fetch: async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+  fetch: async (input, init): Promise<Response> => {
     const url = (new Request(input, init)).url
     return request<Response>(url, init, { fetchCompat: true })
   },
