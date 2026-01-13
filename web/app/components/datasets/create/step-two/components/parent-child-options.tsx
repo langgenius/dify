@@ -2,7 +2,7 @@
 
 import type { FC } from 'react'
 import type { ParentChildConfig } from '../hooks'
-import type { ParentMode, PreProcessingRule } from '@/models/datasets'
+import type { ParentMode, PreProcessingRule, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
 import { RiSearchEyeLine } from '@remixicon/react'
 import Image from 'next/image'
 import { useTranslation } from 'react-i18next'
@@ -11,6 +11,7 @@ import Checkbox from '@/app/components/base/checkbox'
 import Divider from '@/app/components/base/divider'
 import { ParentChildChunk } from '@/app/components/base/icons/src/vender/knowledge'
 import RadioCard from '@/app/components/base/radio-card'
+import SummaryIndexSetting from '@/app/components/datasets/settings/summary-index-setting'
 import { ChunkingMode } from '@/models/datasets'
 import FileList from '../../assets/file-list-3-fill.svg'
 import Note from '../../assets/note-mod.svg'
@@ -31,6 +32,8 @@ type ParentChildOptionsProps = {
   // State
   parentChildConfig: ParentChildConfig
   rules: PreProcessingRule[]
+  summaryIndexSetting?: SummaryIndexSettingType
+  onSummaryIndexSettingChange?: (payload: SummaryIndexSettingType) => void
   currentDocForm: ChunkingMode
   // Flags
   isActive: boolean
@@ -51,6 +54,7 @@ type ParentChildOptionsProps = {
 export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
   parentChildConfig,
   rules,
+  summaryIndexSetting,
   currentDocForm: _currentDocForm,
   isActive,
   isInUpload,
@@ -62,6 +66,7 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
   onChildDelimiterChange,
   onChildMaxLengthChange,
   onRuleToggle,
+  onSummaryIndexSettingChange,
   onPreview,
   onReset,
 }) => {
@@ -183,6 +188,13 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
                 </label>
               </div>
             ))}
+            <div className="mt-3">
+              <SummaryIndexSetting
+                entry="create-document"
+                summaryIndexSetting={summaryIndexSetting}
+                onSummaryIndexSettingChange={onSummaryIndexSettingChange}
+              />
+            </div>
           </div>
         </div>
       </div>

@@ -17,6 +17,7 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
+import { SearchLinesSparkle } from '@/app/components/base/icons/src/vender/knowledge'
 import { DataSourceType, DocumentActionType } from '@/models/datasets'
 import {
   useDocumentArchive,
@@ -25,6 +26,7 @@ import {
   useDocumentEnable,
   useDocumentPause,
   useDocumentResume,
+  useDocumentSummary,
   useDocumentUnArchive,
   useSyncDocument,
   useSyncWebsite,
@@ -82,6 +84,7 @@ const Operations = ({
   const { mutateAsync: deleteDocument } = useDocumentDelete()
   const { mutateAsync: syncDocument } = useSyncDocument()
   const { mutateAsync: syncWebsite } = useSyncWebsite()
+  const { mutateAsync: generateSummary } = useDocumentSummary()
   const { mutateAsync: pauseDocument } = useDocumentPause()
   const { mutateAsync: resumeDocument } = useDocumentResume()
   const isListScene = scene === 'list'
@@ -106,6 +109,9 @@ const Operations = ({
           opApi = syncDocument
         else
           opApi = syncWebsite
+        break
+      case 'summary':
+        opApi = generateSummary
         break
       case 'pause':
         opApi = pauseDocument
@@ -220,6 +226,10 @@ const Operations = ({
                         <span className={s.actionName}>{t('list.action.sync', { ns: 'datasetDocuments' })}</span>
                       </div>
                     )}
+                    <div className={s.actionItem} onClick={() => onOperate('summary')}>
+                      <SearchLinesSparkle className="h-4 w-4 text-text-tertiary" />
+                      <span className={s.actionName}>{t('list.action.summary', { ns: 'datasetDocuments' })}</span>
+                    </div>
                     <Divider className="my-1" />
                   </>
                 )}

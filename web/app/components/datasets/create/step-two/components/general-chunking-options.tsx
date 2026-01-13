@@ -1,7 +1,7 @@
 'use client'
 
 import type { FC } from 'react'
-import type { PreProcessingRule } from '@/models/datasets'
+import type { PreProcessingRule, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
 import {
   RiAlertFill,
   RiSearchEyeLine,
@@ -12,6 +12,7 @@ import Button from '@/app/components/base/button'
 import Checkbox from '@/app/components/base/checkbox'
 import Divider from '@/app/components/base/divider'
 import Tooltip from '@/app/components/base/tooltip'
+import SummaryIndexSetting from '@/app/components/datasets/settings/summary-index-setting'
 import { IS_CE_EDITION } from '@/config'
 import { ChunkingMode } from '@/models/datasets'
 import SettingCog from '../../assets/setting-gear-mod.svg'
@@ -52,6 +53,8 @@ type GeneralChunkingOptionsProps = {
   onReset: () => void
   // Locale
   locale: string
+  summaryIndexSetting?: SummaryIndexSettingType
+  onSummaryIndexSettingChange?: (payload: SummaryIndexSettingType) => void
 }
 
 export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
@@ -74,6 +77,8 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
   onPreview,
   onReset,
   locale,
+  summaryIndexSetting,
+  onSummaryIndexSettingChange,
 }) => {
   const { t } = useTranslation()
 
@@ -146,6 +151,13 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
                 </label>
               </div>
             ))}
+            <div className="mt-3">
+              <SummaryIndexSetting
+                entry="create-document"
+                summaryIndexSetting={summaryIndexSetting}
+                onSummaryIndexSettingChange={onSummaryIndexSettingChange}
+              />
+            </div>
             {IS_CE_EDITION && (
               <>
                 <Divider type="horizontal" className="my-4 bg-divider-subtle" />

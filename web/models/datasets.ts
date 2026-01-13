@@ -401,6 +401,7 @@ export type InitialDocumentDetail = {
   total_segments?: number
   doc_form: ChunkingMode
   doc_language: string
+  summary_index_status?: string
 }
 
 export type SimpleDocumentDetail = InitialDocumentDetail & {
@@ -434,6 +435,7 @@ export type DocumentReq = {
   doc_form: ChunkingMode
   doc_language: string
   process_rule: ProcessRule
+  summary_index_setting?: SummaryIndexSetting
 }
 
 export type CreateDocumentReq = DocumentReq & {
@@ -585,6 +587,7 @@ export type SegmentDetailModel = {
   error: string | null
   stopped_at: number
   answer?: string
+  summary?: string
   child_chunks?: ChildChunkDetail[]
   updated_at: number
   attachments: Attachment[]
@@ -628,6 +631,7 @@ export type HitTesting = {
   tsne_position: TsnePosition
   child_chunks: HitTestingChildChunk[] | null
   files: Attachment[]
+  summary?: string
 }
 
 export type ExternalKnowledgeBaseHitTesting = {
@@ -707,6 +711,7 @@ export type RelatedAppResponse = {
 export type SegmentUpdater = {
   content: string
   answer?: string
+  summary?: string
   keywords?: string[]
   regenerate_child_chunks?: boolean
   attachment_ids?: string[]
@@ -788,6 +793,7 @@ export enum DocumentActionType {
   archive = 'archive',
   unArchive = 'un_archive',
   delete = 'delete',
+  summary = 'summary',
 }
 
 export type UpdateDocumentBatchParams = {

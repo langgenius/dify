@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Confirm from '@/app/components/base/confirm'
 import Divider from '@/app/components/base/divider'
+import { SearchLinesSparkle } from '@/app/components/base/icons/src/vender/knowledge'
 import { cn } from '@/utils/classnames'
 
 const i18nPrefix = 'batchAction'
@@ -15,6 +16,7 @@ type IBatchActionProps = {
   onBatchEnable: () => void
   onBatchDisable: () => void
   onBatchDelete: () => Promise<void>
+  onBatchSummary?: () => void
   onArchive?: () => void
   onEditMetadata?: () => void
   onBatchReIndex?: () => void
@@ -26,6 +28,7 @@ const BatchAction: FC<IBatchActionProps> = ({
   selectedIds,
   onBatchEnable,
   onBatchDisable,
+  onBatchSummary,
   onArchive,
   onBatchDelete,
   onEditMetadata,
@@ -82,7 +85,16 @@ const BatchAction: FC<IBatchActionProps> = ({
             <span className="px-0.5">{t('metadata.metadata', { ns: 'dataset' })}</span>
           </Button>
         )}
-
+        {onBatchSummary && (
+          <Button
+            variant="ghost"
+            className="gap-x-0.5 px-3"
+            onClick={onBatchSummary}
+          >
+            <SearchLinesSparkle className="size-4" />
+            <span className="px-0.5">{t('list.action.summary', { ns: 'datasetDocuments' })}</span>
+          </Button>
+        )}
         {onArchive && (
           <Button
             variant="ghost"

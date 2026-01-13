@@ -107,6 +107,18 @@ export const useSyncDocument = () => {
   })
 }
 
+export const useDocumentSummary = () => {
+  return useMutation({
+    mutationFn: ({ datasetId, documentIds, documentId }: UpdateDocumentBatchParams) => {
+      return post<CommonResponse>(`/datasets/${datasetId}/documents/generate-summary`, {
+        body: {
+          document_list: documentId ? [documentId] : documentIds!,
+        },
+      })
+    },
+  })
+}
+
 export const useSyncWebsite = () => {
   return useMutation({
     mutationFn: ({ datasetId, documentId }: UpdateDocumentBatchParams) => {

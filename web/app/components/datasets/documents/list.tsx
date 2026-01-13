@@ -27,7 +27,7 @@ import { useDatasetDetailContextWithSelector as useDatasetDetailContext } from '
 import useTimestamp from '@/hooks/use-timestamp'
 import { ChunkingMode, DataSourceType, DocumentActionType } from '@/models/datasets'
 import { DatasourceType } from '@/models/pipeline'
-import { useDocumentArchive, useDocumentBatchRetryIndex, useDocumentDelete, useDocumentDisable, useDocumentEnable } from '@/service/knowledge/use-document'
+import { useDocumentArchive, useDocumentBatchRetryIndex, useDocumentDelete, useDocumentDisable, useDocumentEnable, useDocumentSummary } from '@/service/knowledge/use-document'
 import { asyncRunSafe } from '@/utils'
 import { cn } from '@/utils/classnames'
 import { formatNumber } from '@/utils/format'
@@ -35,6 +35,7 @@ import FileTypeIcon from '../../base/file-uploader/file-type-icon'
 import ChunkingModeLabel from '../common/chunking-mode-label'
 import useBatchEditDocumentMetadata from '../metadata/hooks/use-batch-edit-document-metadata'
 import BatchAction from './detail/completed/common/batch-action'
+import SummaryStatus from './detail/completed/common/summary-status'
 import Operations from './operations'
 import RenameModal from './rename-modal'
 import StatusItem from './status-item'
@@ -218,6 +219,7 @@ const DocumentList: FC<IDocumentListProps> = ({
       onSelectedIdChange(uniq([...selectedIds, ...localDocs.map(doc => doc.id)]))
   }, [isAllSelected, localDocs, onSelectedIdChange, selectedIds])
   const { mutateAsync: archiveDocument } = useDocumentArchive()
+  const { mutateAsync: generateSummary } = useDocumentSummary()
   const { mutateAsync: enableDocument } = useDocumentEnable()
   const { mutateAsync: disableDocument } = useDocumentDisable()
   const { mutateAsync: deleteDocument } = useDocumentDelete()
@@ -229,6 +231,9 @@ const DocumentList: FC<IDocumentListProps> = ({
       switch (actionName) {
         case DocumentActionType.archive:
           opApi = archiveDocument
+          break
+        case DocumentActionType.summary:
+          opApi = generateSummary
           break
         case DocumentActionType.enable:
           opApi = enableDocument
@@ -409,6 +414,13 @@ const DocumentList: FC<IDocumentListProps> = ({
                       >
                         <span className="grow-1 truncate text-sm">{doc.name}</span>
                       </Tooltip>
+                      {
+                        doc.summary_index_status && (
+                          <div className="ml-1 hidden shrink-0 group-hover:flex">
+                            <SummaryStatus status={doc.summary_index_status} />
+                          </div>
+                        )
+                      }
                       <div className="hidden shrink-0 group-hover:ml-auto group-hover:flex">
                         <Tooltip
                           popupContent={t('list.table.rename', { ns: 'datasetDocuments' })}
@@ -461,6 +473,7 @@ const DocumentList: FC<IDocumentListProps> = ({
           className="absolute bottom-16 left-0 z-20"
           selectedIds={selectedIds}
           onArchive={handleAction(DocumentActionType.archive)}
+          onBatchSummary={handleAction(DocumentActionType.summary)}
           onBatchEnable={handleAction(DocumentActionType.enable)}
           onBatchDisable={handleAction(DocumentActionType.disable)}
           onBatchDelete={handleAction(DocumentActionType.delete)}

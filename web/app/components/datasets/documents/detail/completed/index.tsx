@@ -322,6 +322,7 @@ const Completed: FC<ICompletedProps> = ({
     answer: string,
     keywords: string[],
     attachments: FileEntity[],
+    summary?: string,
     needRegenerate = false,
   ) => {
     const params: SegmentUpdater = { content: '', attachment_ids: [] }
@@ -351,6 +352,9 @@ const Completed: FC<ICompletedProps> = ({
       params.attachment_ids = attachments.map(item => item.uploadedId!)
     }
 
+    if (summary)
+      params.summary = summary
+
     if (needRegenerate)
       params.regenerate_child_chunks = needRegenerate
 
@@ -364,6 +368,7 @@ const Completed: FC<ICompletedProps> = ({
           if (seg.id === segmentId) {
             seg.answer = res.data.answer
             seg.content = res.data.content
+            seg.summary = res.data.summary
             seg.sign_content = res.data.sign_content
             seg.keywords = res.data.keywords
             seg.attachments = res.data.attachments

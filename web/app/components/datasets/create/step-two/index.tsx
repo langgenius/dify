@@ -72,6 +72,7 @@ const StepTwo: FC<StepTwoProps> = ({
     initialRetrievalConfig: currentDataset?.retrieval_model_dict,
     isAPIKeySet,
     hasSetIndexType,
+    initialSummaryIndexSetting: currentDataset?.summary_index_setting,
   })
   const preview = usePreviewState({ dataSourceType, files, notionPages, websitePages, documentDetail, datasetId })
   const creation = useDocumentCreation({
@@ -156,7 +157,7 @@ const StepTwo: FC<StepTwoProps> = ({
     })
     if (!isValid)
       return
-    const params = creation.buildCreationParams(currentDocForm, docLanguage, segmentation.getProcessRule(currentDocForm), indexing.retrievalConfig, indexing.embeddingModel, indexing.getIndexingTechnique())
+    const params = creation.buildCreationParams(currentDocForm, docLanguage, segmentation.getProcessRule(currentDocForm), indexing.retrievalConfig, indexing.embeddingModel, indexing.getIndexingTechnique(), indexing.summaryIndexSetting)
     if (!params)
       return
     await creation.executeCreation(params, indexing.indexType, indexing.retrievalConfig)
@@ -217,6 +218,8 @@ const StepTwo: FC<StepTwoProps> = ({
             onPreview={updatePreview}
             onReset={segmentation.resetToDefaults}
             locale={locale}
+            summaryIndexSetting={indexing.summaryIndexSetting}
+            onSummaryIndexSettingChange={indexing.setSummaryIndexSetting}
           />
         )}
         {showParentChildOption && (
@@ -236,6 +239,8 @@ const StepTwo: FC<StepTwoProps> = ({
             onRuleToggle={segmentation.toggleRule}
             onPreview={updatePreview}
             onReset={segmentation.resetToDefaults}
+            summaryIndexSetting={indexing.summaryIndexSetting}
+            onSummaryIndexSettingChange={indexing.setSummaryIndexSetting}
           />
         )}
         <Divider className="my-5" />
