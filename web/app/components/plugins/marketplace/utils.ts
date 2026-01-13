@@ -122,18 +122,18 @@ export const getMarketplacePlugins = async (
       plugins: [] as Plugin[],
       total: 0,
       page: 1,
-      pageSize: 40,
+      page_size: 40,
     }
   }
 
   const {
     query,
-    sortBy,
-    sortOrder,
+    sort_by,
+    sort_order,
     category,
     tags,
     type,
-    pageSize = 40,
+    page_size = 40,
   } = queryParams
 
   try {
@@ -143,10 +143,10 @@ export const getMarketplacePlugins = async (
       },
       body: {
         page: pageParam,
-        page_size: pageSize,
+        page_size,
         query,
-        sort_by: sortBy,
-        sort_order: sortOrder,
+        sort_by,
+        sort_order,
         category: category !== 'all' ? category : '',
         tags,
         type,
@@ -158,7 +158,7 @@ export const getMarketplacePlugins = async (
       plugins: resPlugins.map(plugin => getFormattedPlugin(plugin)),
       total: res.data.total,
       page: pageParam,
-      pageSize,
+      page_size,
     }
   }
   catch {
@@ -166,7 +166,7 @@ export const getMarketplacePlugins = async (
       plugins: [],
       total: 0,
       page: pageParam,
-      pageSize,
+      page_size,
     }
   }
 }

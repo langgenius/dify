@@ -1,4 +1,4 @@
-import type { CollectionsAndPluginsSearchParams, MarketplaceCollection } from '@/app/components/plugins/marketplace/types'
+import type { CollectionsAndPluginsSearchParams, MarketplaceCollection, PluginsSearchParams } from '@/app/components/plugins/marketplace/types'
 import type { Plugin, PluginsFromMarketplaceResponse } from '@/app/components/plugins/types'
 import { type } from '@orpc/contract'
 import { base } from './base'
@@ -51,15 +51,6 @@ export const searchAdvancedContract = base
     params: {
       kind: 'plugins' | 'bundles'
     }
-    body: {
-      page: number
-      page_size: number
-      query: string
-      sort_by?: string
-      sort_order?: string
-      category?: string
-      tags?: string[]
-      type?: 'plugin' | 'bundle'
-    }
+    body: PluginsSearchParams
   }>())
   .output(type<{ data: PluginsFromMarketplaceResponse }>())
