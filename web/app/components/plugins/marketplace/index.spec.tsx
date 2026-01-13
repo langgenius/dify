@@ -134,8 +134,8 @@ const mockPostMarketplaceResponse: {
 } = {
   data: {
     plugins: [
-      { type: 'plugins', org: 'test', name: 'plugin1', tags: [] },
-      { type: 'plugins', org: 'test', name: 'plugin2', tags: [] },
+      { type: 'plugin', org: 'test', name: 'plugin1', tags: [] },
+      { type: 'plugin', org: 'test', name: 'plugin2', tags: [] },
     ],
     bundles: [],
     total: 2,
@@ -442,7 +442,7 @@ describe('utils', () => {
   describe('getFormattedPlugin', () => {
     it('should format plugin with icon URL', () => {
       const rawPlugin = {
-        type: 'plugins',
+        type: 'plugin',
         org: 'test-org',
         name: 'test-plugin',
         tags: [{ name: 'search' }],
@@ -1200,7 +1200,7 @@ describe('Direct queryFn Coverage', () => {
     const originalBundles = [...mockPostMarketplaceResponse.data.bundles]
     const originalPlugins = [...mockPostMarketplaceResponse.data.plugins]
     mockPostMarketplaceResponse.data.bundles = [
-      { type: 'bundles', org: 'test', name: 'bundle1', tags: [] },
+      { type: 'bundle', org: 'test', name: 'bundle1', tags: [] },
     ]
     mockPostMarketplaceResponse.data.plugins = []
 
@@ -1227,8 +1227,8 @@ describe('Direct queryFn Coverage', () => {
     // Ensure API returns plugins
     mockPostMarketplaceShouldFail = false
     mockPostMarketplaceResponse.data.plugins = [
-      { type: 'plugins', org: 'test', name: 'plugin-for-map-1', tags: [] },
-      { type: 'plugins', org: 'test', name: 'plugin-for-map-2', tags: [] },
+      { type: 'plugin', org: 'test', name: 'plugin-for-map-1', tags: [] },
+      { type: 'plugin', org: 'test', name: 'plugin-for-map-2', tags: [] },
     ]
     mockPostMarketplaceResponse.data.total = 2
 
@@ -1291,8 +1291,8 @@ describe('flatMap Coverage', () => {
       pages: [
         {
           plugins: [
-            { name: 'plugin1', type: 'plugins', org: 'test' },
-            { name: 'plugin2', type: 'plugins', org: 'test' },
+            { name: 'plugin1', type: 'plugin', org: 'test' },
+            { name: 'plugin2', type: 'plugin', org: 'test' },
           ],
           total: 5,
           page: 1,
@@ -1300,7 +1300,7 @@ describe('flatMap Coverage', () => {
         },
         {
           plugins: [
-            { name: 'plugin3', type: 'plugins', org: 'test' },
+            { name: 'plugin3', type: 'plugin', org: 'test' },
           ],
           total: 5,
           page: 2,
@@ -1485,8 +1485,8 @@ describe('Async Utils', () => {
   describe('getMarketplacePluginsByCollectionId', () => {
     it('should fetch plugins by collection id successfully', async () => {
       const mockPlugins = [
-        { type: 'plugins', org: 'test', name: 'plugin1' },
-        { type: 'plugins', org: 'test', name: 'plugin2' },
+        { type: 'plugin', org: 'test', name: 'plugin1' },
+        { type: 'plugin', org: 'test', name: 'plugin2' },
       ]
 
       globalThis.fetch = vi.fn().mockResolvedValue(
