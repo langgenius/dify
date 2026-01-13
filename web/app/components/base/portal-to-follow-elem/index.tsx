@@ -61,7 +61,12 @@ export function usePortalToFollowElem({
       }),
       shift({ padding: 5 }),
       size({
-        apply({ rects, elements }) {
+        apply({ rects, elements, availableHeight }) {
+          Object.assign(elements.floating.style, {
+            maxHeight: `${availableHeight}px`,
+            overflowY: 'auto',
+          })
+
           if (triggerPopupSameWidth)
             elements.floating.style.width = `${rects.reference.width}px`
         },
