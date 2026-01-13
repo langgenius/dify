@@ -50,7 +50,6 @@ const nextConfig = {
     })),
   },
   experimental: {
-    turbopackFileSystemCacheForDev: true,
     turbopackFileSystemCacheForBuild: true,
     optimizePackageImports: [
       '@heroicons/react',
