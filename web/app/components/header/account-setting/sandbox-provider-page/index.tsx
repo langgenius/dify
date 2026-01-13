@@ -73,7 +73,7 @@ const SandboxProviderPage = () => {
         </div>
       )}
 
-      {!isCurrentWorkspaceOwner && (
+      {isCurrentWorkspaceOwner === false && (
         <div className="system-xs-regular text-text-tertiary">
           {t('sandboxProvider.noPermission', { ns: 'common' })}
         </div>
