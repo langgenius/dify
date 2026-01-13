@@ -528,13 +528,29 @@ class WorkflowDraftRunLoopNodeApi(Resource):
             raise InternalServerError()
 
 
-class HumanInputSubmitPayload(BaseModel):
-    inputs: dict[str, Any]
-    action: str
+class HumanInputFormPreviewPayload(BaseModel):
+    inputs: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Values used to fill missing upstream variables referenced in form_content",
+    )
+
+
+class HumanInputFormSubmitPayload(BaseModel):
+    form_inputs: dict[str, Any] = Field(..., description="Values the user provides for the form's own fields")
+    inputs: dict[str, Any] = Field(
+        ...,
+        description="Values used to fill missing upstream variables referenced in form_content",
+    )
+    action: str = Field(..., description="Selected action ID")
 
 
 class HumanInputDeliveryTestPayload(BaseModel):
-    delivery_method_id: str
+    delivery_method_id: str = Field(..., description="Delivery method ID")
+
+
+reg(HumanInputFormPreviewPayload)
+reg(HumanInputFormSubmitPayload)
+reg(HumanInputDeliveryTestPayload)
 
 
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/human-input/nodes/<string:node_id>/form/preview")
@@ -542,6 +558,7 @@ class AdvancedChatDraftHumanInputFormPreviewApi(Resource):
     @console_ns.doc("get_advanced_chat_draft_human_input_form")
     @console_ns.doc(description="Get human input form preview for advanced chat workflow")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
+    @console_ns.expect(console_ns.models[HumanInputFormPreviewPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -552,19 +569,15 @@ class AdvancedChatDraftHumanInputFormPreviewApi(Resource):
         Preview human input form content and placeholders
         """
         current_user, _ = current_account_with_tenant()
-        payload = request.get_json(silent=True) or {}
-        manual_inputs = payload.get("inputs") if isinstance(payload, dict) else {}
-        if manual_inputs is None:
-            manual_inputs = {}
-        if not isinstance(manual_inputs, dict):
-            raise ValueError("inputs must be an object")
+        args = HumanInputFormPreviewPayload.model_validate(console_ns.payload or {})
+        inputs = args.inputs
 
         workflow_service = WorkflowService()
         preview = workflow_service.get_human_input_form_preview(
             app_model=app_model,
             account=current_user,
             node_id=node_id,
-            manual_inputs=manual_inputs,
+            inputs=inputs,
         )
         return jsonable_encoder(preview)
 
@@ -574,15 +587,7 @@ class AdvancedChatDraftHumanInputFormRunApi(Resource):
     @console_ns.doc("submit_advanced_chat_draft_human_input_form")
     @console_ns.doc(description="Submit human input form preview for advanced chat workflow")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @console_ns.expect(
-        console_ns.model(
-            "AdvancedChatHumanInputFormSubmitRequest",
-            {
-                "inputs": fields.Raw(required=True, description="Form input values"),
-                "action": fields.String(required=True, description="Selected action ID"),
-            },
-        )
-    )
+    @console_ns.expect(console_ns.models[HumanInputFormSubmitPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -593,13 +598,14 @@ class AdvancedChatDraftHumanInputFormRunApi(Resource):
         Submit human input form preview
         """
         current_user, _ = current_account_with_tenant()
-        args = HumanInputSubmitPayload.model_validate(console_ns.payload or {})
+        args = HumanInputFormSubmitPayload.model_validate(console_ns.payload or {})
         workflow_service = WorkflowService()
         result = workflow_service.submit_human_input_form_preview(
             app_model=app_model,
             account=current_user,
             node_id=node_id,
-            form_inputs=args.inputs,
+            form_inputs=args.form_inputs,
+            inputs=args.inputs,
             action=args.action,
         )
         return jsonable_encoder(result)
@@ -610,6 +616,7 @@ class WorkflowDraftHumanInputFormPreviewApi(Resource):
     @console_ns.doc("get_workflow_draft_human_input_form")
     @console_ns.doc(description="Get human input form preview for workflow")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
+    @console_ns.expect(console_ns.models[HumanInputFormPreviewPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -620,19 +627,15 @@ class WorkflowDraftHumanInputFormPreviewApi(Resource):
         Preview human input form content and placeholders
         """
         current_user, _ = current_account_with_tenant()
-        payload = request.get_json(silent=True) or {}
-        manual_inputs = payload.get("inputs") if isinstance(payload, dict) else {}
-        if manual_inputs is None:
-            manual_inputs = {}
-        if not isinstance(manual_inputs, dict):
-            raise ValueError("inputs must be an object")
+        args = HumanInputFormPreviewPayload.model_validate(console_ns.payload or {})
+        inputs = args.inputs
 
         workflow_service = WorkflowService()
         preview = workflow_service.get_human_input_form_preview(
             app_model=app_model,
             account=current_user,
             node_id=node_id,
-            manual_inputs=manual_inputs,
+            inputs=inputs,
         )
         return jsonable_encoder(preview)
 
@@ -642,15 +645,7 @@ class WorkflowDraftHumanInputFormRunApi(Resource):
     @console_ns.doc("submit_workflow_draft_human_input_form")
     @console_ns.doc(description="Submit human input form preview for workflow")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @console_ns.expect(
-        console_ns.model(
-            "WorkflowHumanInputFormSubmitRequest",
-            {
-                "inputs": fields.Raw(required=True, description="Form input values"),
-                "action": fields.String(required=True, description="Selected action ID"),
-            },
-        )
-    )
+    @console_ns.expect(console_ns.models[HumanInputFormSubmitPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -662,12 +657,13 @@ class WorkflowDraftHumanInputFormRunApi(Resource):
         """
         current_user, _ = current_account_with_tenant()
         workflow_service = WorkflowService()
-        args = HumanInputSubmitPayload.model_validate(console_ns.payload or {})
+        args = HumanInputFormSubmitPayload.model_validate(console_ns.payload or {})
         result = workflow_service.submit_human_input_form_preview(
             app_model=app_model,
             account=current_user,
             node_id=node_id,
-            form_inputs=args.inputs,
+            form_inputs=args.form_inputs,
+            inputs=args.inputs,
             action=args.action,
         )
         return jsonable_encoder(result)
@@ -678,14 +674,7 @@ class AdvancedChatDraftHumanInputDeliveryTestApi(Resource):
     @console_ns.doc("test_advanced_chat_draft_human_input_delivery")
     @console_ns.doc(description="Test human input delivery for advanced chat workflow")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @console_ns.expect(
-        console_ns.model(
-            "AdvancedChatHumanInputDeliveryTestRequest",
-            {
-                "delivery_method_id": fields.String(required=True, description="Delivery method ID"),
-            },
-        )
-    )
+    @console_ns.expect(console_ns.models[HumanInputDeliveryTestPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -715,14 +704,7 @@ class WorkflowDraftHumanInputDeliveryTestApi(Resource):
     @console_ns.doc("test_workflow_draft_human_input_delivery")
     @console_ns.doc(description="Test human input delivery for workflow")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @console_ns.expect(
-        console_ns.model(
-            "WorkflowHumanInputDeliveryTestRequest",
-            {
-                "delivery_method_id": fields.String(required=True, description="Delivery method ID"),
-            },
-        )
-    )
+    @console_ns.expect(console_ns.models[HumanInputDeliveryTestPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required

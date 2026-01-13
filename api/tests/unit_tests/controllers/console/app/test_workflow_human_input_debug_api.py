@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
+from pydantic import ValidationError
 
 from controllers.console import wraps as console_wraps
 from controllers.console.app import workflow as workflow_module
@@ -58,13 +59,13 @@ class PreviewCase:
     "case",
     [
         PreviewCase(
-            resource_cls=workflow_module.AdvancedChatDraftHumanInputFormApi,
-            path="/console/api/apps/app-123/advanced-chat/workflows/draft/human-input/nodes/node-42/form",
+            resource_cls=workflow_module.AdvancedChatDraftHumanInputFormPreviewApi,
+            path="/console/api/apps/app-123/advanced-chat/workflows/draft/human-input/nodes/node-42/form/preview",
             mode=AppMode.ADVANCED_CHAT,
         ),
         PreviewCase(
-            resource_cls=workflow_module.WorkflowDraftHumanInputFormApi,
-            path="/console/api/apps/app-123/workflows/draft/human-input/nodes/node-42/form",
+            resource_cls=workflow_module.WorkflowDraftHumanInputFormPreviewApi,
+            path="/console/api/apps/app-123/workflows/draft/human-input/nodes/node-42/form/preview",
             mode=AppMode.WORKFLOW,
         ),
     ],
@@ -86,15 +87,15 @@ def test_human_input_preview_delegates_to_service(
     service_instance.get_human_input_form_preview.return_value = preview_payload
     monkeypatch.setattr(workflow_module, "WorkflowService", MagicMock(return_value=service_instance))
 
-    with app.test_request_context(case.path, method="GET", json={"inputs": {"topic": "tech"}}):
-        response = case.resource_cls().get(app_id=app_model.id, node_id="node-42")
+    with app.test_request_context(case.path, method="POST", json={"inputs": {"topic": "tech"}}):
+        response = case.resource_cls().post(app_id=app_model.id, node_id="node-42")
 
     assert response == preview_payload
     service_instance.get_human_input_form_preview.assert_called_once_with(
         app_model=app_model,
         account=account,
         node_id="node-42",
-        manual_inputs={"topic": "tech"},
+        inputs={"topic": "tech"},
     )
 
 
@@ -109,13 +110,13 @@ class SubmitCase:
     "case",
     [
         SubmitCase(
-            resource_cls=workflow_module.AdvancedChatDraftHumanInputFormApi,
-            path="/console/api/apps/app-123/advanced-chat/workflows/draft/human-input/nodes/node-99/form",
+            resource_cls=workflow_module.AdvancedChatDraftHumanInputFormRunApi,
+            path="/console/api/apps/app-123/advanced-chat/workflows/draft/human-input/nodes/node-99/form/run",
             mode=AppMode.ADVANCED_CHAT,
         ),
         SubmitCase(
-            resource_cls=workflow_module.WorkflowDraftHumanInputFormApi,
-            path="/console/api/apps/app-123/workflows/draft/human-input/nodes/node-99/form",
+            resource_cls=workflow_module.WorkflowDraftHumanInputFormRunApi,
+            path="/console/api/apps/app-123/workflows/draft/human-input/nodes/node-99/form/run",
             mode=AppMode.WORKFLOW,
         ),
     ],
@@ -133,7 +134,7 @@ def test_human_input_submit_forwards_payload(app: Flask, monkeypatch: pytest.Mon
     with app.test_request_context(
         case.path,
         method="POST",
-        json={"inputs": {"answer": "42"}, "action": "approve"},
+        json={"form_inputs": {"answer": "42"}, "inputs": {"#node-1.result#": "LLM output"}, "action": "approve"},
     ):
         response = case.resource_cls().post(app_id=app_model.id, node_id="node-99")
 
@@ -143,6 +144,7 @@ def test_human_input_submit_forwards_payload(app: Flask, monkeypatch: pytest.Mon
         account=account,
         node_id="node-99",
         form_inputs={"answer": "42"},
+        inputs={"#node-1.result#": "LLM output"},
         action="approve",
     )
 
@@ -219,9 +221,9 @@ def test_human_input_preview_rejects_non_mapping(app: Flask, monkeypatch: pytest
     _patch_console_guards(monkeypatch, account, app_model)
 
     with app.test_request_context(
-        "/console/api/apps/app-123/advanced-chat/workflows/draft/human-input/nodes/node-1/form",
-        method="GET",
+        "/console/api/apps/app-123/advanced-chat/workflows/draft/human-input/nodes/node-1/form/preview",
+        method="POST",
         json={"inputs": ["not-a-dict"]},
     ):
-        with pytest.raises(ValueError):
-            workflow_module.AdvancedChatDraftHumanInputFormApi().get(app_id=app_model.id, node_id="node-1")
+        with pytest.raises(ValidationError):
+            workflow_module.AdvancedChatDraftHumanInputFormPreviewApi().post(app_id=app_model.id, node_id="node-1")

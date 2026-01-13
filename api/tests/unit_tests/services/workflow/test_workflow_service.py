@@ -225,7 +225,15 @@ class TestWorkflowService:
             account=account,
             node_id="node-1",
             form_inputs={"name": "Ada", "extra": "ignored"},
+            inputs={"#node-0.result#": "LLM output"},
             action="approve",
+        )
+
+        service._build_human_input_variable_pool.assert_called_once_with(
+            app_model=app_model,
+            workflow=workflow,
+            node_config={"id": "node-1", "data": {"type": NodeType.HUMAN_INPUT.value}},
+            manual_inputs={"#node-0.result#": "LLM output"},
         )
 
         node._render_form_content_with_outputs.assert_called_once()
@@ -271,6 +279,7 @@ class TestWorkflowService:
                 account=account,
                 node_id="node-1",
                 form_inputs={},
+                inputs={},
                 action="approve",
             )
 

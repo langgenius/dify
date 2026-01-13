@@ -766,8 +766,17 @@ class WorkflowService:
         app_model: App,
         account: Account,
         node_id: str,
-        manual_inputs: Mapping[str, Any] | None = None,
+        inputs: Mapping[str, Any] | None = None,
     ) -> Mapping[str, Any]:
+        """
+        Build a human input form preview for a draft workflow.
+
+        Args:
+            app_model: Target application model.
+            account: Current account.
+            node_id: Human input node ID.
+            inputs: Values used to fill missing upstream variables referenced in form_content.
+        """
         draft_workflow = self.get_draft_workflow(app_model=app_model)
         if not draft_workflow:
             raise ValueError("Workflow not initialized")
@@ -777,11 +786,12 @@ class WorkflowService:
         if node_type is not NodeType.HUMAN_INPUT:
             raise ValueError("Node type must be human-input.")
 
+        # inputs: values used to fill missing upstream variables referenced in form_content.
         variable_pool = self._build_human_input_variable_pool(
             app_model=app_model,
             workflow=draft_workflow,
             node_config=node_config,
-            manual_inputs=manual_inputs or {},
+            manual_inputs=inputs or {},
         )
         node = self._build_human_input_node(
             workflow=draft_workflow,
@@ -812,8 +822,20 @@ class WorkflowService:
         account: Account,
         node_id: str,
         form_inputs: Mapping[str, Any],
+        inputs: Mapping[str, Any] | None = None,
         action: str,
     ) -> Mapping[str, Any]:
+        """
+        Submit a human input form preview for a draft workflow.
+
+        Args:
+            app_model: Target application model.
+            account: Current account.
+            node_id: Human input node ID.
+            form_inputs: Values the user provides for the form's own fields.
+            inputs: Values used to fill missing upstream variables referenced in form_content.
+            action: Selected action ID.
+        """
         draft_workflow = self.get_draft_workflow(app_model=app_model)
         if not draft_workflow:
             raise ValueError("Workflow not initialized")
@@ -823,11 +845,13 @@ class WorkflowService:
         if node_type is not NodeType.HUMAN_INPUT:
             raise ValueError("Node type must be human-input.")
 
+        # inputs: values used to fill missing upstream variables referenced in form_content.
+        # form_inputs: values the user provides for the form's own fields.
         variable_pool = self._build_human_input_variable_pool(
             app_model=app_model,
             workflow=draft_workflow,
             node_config=node_config,
-            manual_inputs={},
+            manual_inputs=inputs or {},
         )
         node = self._build_human_input_node(
             workflow=draft_workflow,
