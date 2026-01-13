@@ -69,7 +69,7 @@ class Dataset(TypeBase):
     )
     embedding_model: Mapped[str | None] = mapped_column(sa.String(255), nullable=True)
     embedding_model_provider: Mapped[str | None] = mapped_column(sa.String(255), nullable=True)
-    keyword_number: Mapped[str | None] = mapped_column(
+    keyword_number: Mapped[int | None] = mapped_column(sa.Integer, nullable=True, server_default=sa.text("10"), default=10)
         sa.Integer, nullable=True, server_default=sa.text("10"), default=10
     )
     collection_binding_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
