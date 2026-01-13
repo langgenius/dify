@@ -8,6 +8,13 @@ import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'sandbox-provider'
 
+export const sandboxProviderQueryKeys = {
+  all: [NAME_SPACE] as const,
+  list: [NAME_SPACE, 'list'] as const,
+  provider: (providerType: string) => [NAME_SPACE, 'provider', providerType] as const,
+  active: [NAME_SPACE, 'active'] as const,
+}
+
 export type ConfigSchema = {
   name: string
   type: string
@@ -27,19 +34,19 @@ export type SandboxProvider = {
 
 export const useGetSandboxProviderList = () => {
   return useQuery({
-    queryKey: [NAME_SPACE, 'list'],
+    queryKey: sandboxProviderQueryKeys.list,
     queryFn: () => get<SandboxProvider[]>('/workspaces/current/sandbox-providers'),
     retry: 0,
   })
 }
 
 export const useInvalidSandboxProviderList = () => {
-  return useInvalid([NAME_SPACE, 'list'])
+  return useInvalid(sandboxProviderQueryKeys.list)
 }
 
 export const useGetSandboxProvider = (providerType: string) => {
   return useQuery({
-    queryKey: [NAME_SPACE, 'provider', providerType],
+    queryKey: sandboxProviderQueryKeys.provider(providerType),
     queryFn: () => get<SandboxProvider>(`/workspaces/current/sandbox-provider/${providerType}`),
     retry: 0,
     enabled: !!providerType,
@@ -56,7 +63,7 @@ export const useSaveSandboxProviderConfig = () => {
       })
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [NAME_SPACE, 'list'] })
+      queryClient.invalidateQueries({ queryKey: sandboxProviderQueryKeys.list })
     },
   })
 }
@@ -69,7 +76,7 @@ export const useDeleteSandboxProviderConfig = () => {
       return del<{ result: string }>(`/workspaces/current/sandbox-provider/${providerType}/config`)
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [NAME_SPACE, 'list'] })
+      queryClient.invalidateQueries({ queryKey: sandboxProviderQueryKeys.list })
     },
   })
 }
@@ -82,14 +89,14 @@ export const useActivateSandboxProvider = () => {
       return post<{ result: string }>(`/workspaces/current/sandbox-provider/${providerType}/activate`)
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [NAME_SPACE, 'list'] })
+      queryClient.invalidateQueries({ queryKey: sandboxProviderQueryKeys.list })
     },
   })
 }
 
 export const useGetActiveSandboxProvider = () => {
   return useQuery({
-    queryKey: [NAME_SPACE, 'active'],
+    queryKey: sandboxProviderQueryKeys.active,
     queryFn: () => get<{ provider_type: string | null }>('/workspaces/current/sandbox-provider/active'),
     retry: 0,
   })
