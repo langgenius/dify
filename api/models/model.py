@@ -2083,7 +2083,7 @@ class TraceAppConfig(TypeBase):
         }
 
 
-class TenantCreditPool(Base):
+class TenantCreditPool(TypeBase):
     __tablename__ = "tenant_credit_pools"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="tenant_credit_pool_pkey"),
@@ -2091,14 +2091,22 @@ class TenantCreditPool(Base):
         sa.Index("tenant_credit_pool_pool_type_idx", "pool_type"),
     )
 
-    id = mapped_column(StringUUID, primary_key=True, server_default=text("uuid_generate_v4()"))
-    tenant_id = mapped_column(StringUUID, nullable=False)
-    pool_type = mapped_column(String(40), nullable=False, default="trial", server_default="trial")
-    quota_limit = mapped_column(BigInteger, nullable=False, default=0)
-    quota_used = mapped_column(BigInteger, nullable=False, default=0)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
-    updated_at = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    id: Mapped[str | None] = mapped_column(
+        StringUUID, primary_key=True, server_default=text("uuid_generate_v4()"), init=False
+    )
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    pool_type: Mapped[str] = mapped_column(String(40), nullable=False, default="trial", server_default="trial")
+    quota_limit: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    quota_used: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"), init=False
+    )
+    updated_at: Mapped[str] = mapped_column(
+        sa.DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        init=False,
     )
 
     @property
