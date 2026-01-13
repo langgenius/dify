@@ -1,11 +1,9 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { consoleClient, consoleQuery } from '@/service/client'
 
-const NAME_SPACE = 'billing'
-
 export const useBindPartnerStackInfo = () => {
   return useMutation({
-    mutationKey: [NAME_SPACE, 'bind-partner-stack'],
+    mutationKey: consoleQuery.bindPartnerStack.mutationKey(),
     mutationFn: (data: { partnerKey: string, clickId: string }) => consoleClient.bindPartnerStack({
       params: { partnerKey: data.partnerKey },
       body: { click_id: data.clickId },
