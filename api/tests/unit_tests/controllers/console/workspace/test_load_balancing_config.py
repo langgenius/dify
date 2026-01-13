@@ -74,24 +74,27 @@ class BaseTestLoadBalancing:
     @pytest.fixture
     def mock_load_balancing_service(self):
         """Mock ModelLoadBalancingService."""
+
         # Create a factory function for mock service instances to ensure fresh instances
         def create_mock_service_instance():
             instance = MagicMock()
             instance.validate_load_balancing_credentials.return_value = None
             return instance
-        
+
         default_mock_service_instance = create_mock_service_instance()
-        
+
         # Create the mock service class that returns a mock instance by default
         mock_service_class = MagicMock()
         mock_service_class.return_value = default_mock_service_instance
-        
+
         # Since ModelLoadBalancingService is fully mocked, we don't need to patch
         # internal dependencies (ProviderManager, db, Session, ModelProviderFactory)
         # because the real service's initialization logic never executes.
         with (
             patch.object(load_balancing_config, "ModelLoadBalancingService", new=mock_service_class),
-            patch("controllers.console.workspace.load_balancing_config.ModelLoadBalancingService", new=mock_service_class),
+            patch(
+                "controllers.console.workspace.load_balancing_config.ModelLoadBalancingService", new=mock_service_class
+            ),
             patch("services.model_load_balancing_service.ModelLoadBalancingService", new=mock_service_class),
         ):
             # Tests can override the return value by setting mock_load_balancing_service.return_value
@@ -143,11 +146,13 @@ class TestLoadBalancingCredentialsValidateApi(BaseTestLoadBalancing):
                 patch("libs.login._get_user", return_value=mock_account_admin),
                 patch(
                     "controllers.console.workspace.load_balancing_config.console_ns",
-                    new=MagicMock(payload={
-                        "model": model,
-                        "model_type": model_type,
-                        "credentials": credentials,
-                    }),
+                    new=MagicMock(
+                        payload={
+                            "model": model,
+                            "model_type": model_type,
+                            "credentials": credentials,
+                        }
+                    ),
                 ),
             ):
                 resource = LoadBalancingCredentialsValidateApi()
@@ -195,11 +200,13 @@ class TestLoadBalancingCredentialsValidateApi(BaseTestLoadBalancing):
                 patch("libs.login._get_user", return_value=mock_account_admin),
                 patch(
                     "controllers.console.workspace.load_balancing_config.console_ns",
-                    new=MagicMock(payload={
-                        "model": model,
-                        "model_type": model_type,
-                        "credentials": credentials,
-                    }),
+                    new=MagicMock(
+                        payload={
+                            "model": model,
+                            "model_type": model_type,
+                            "credentials": credentials,
+                        }
+                    ),
                 ),
             ):
                 resource = LoadBalancingCredentialsValidateApi()
@@ -275,11 +282,13 @@ class TestLoadBalancingCredentialsValidateApi(BaseTestLoadBalancing):
                 patch("libs.login._get_user", return_value=mock_account_owner),
                 patch(
                     "controllers.console.workspace.load_balancing_config.console_ns",
-                    new=MagicMock(payload={
-                        "model": model,
-                        "model_type": model_type,
-                        "credentials": credentials,
-                    }),
+                    new=MagicMock(
+                        payload={
+                            "model": model,
+                            "model_type": model_type,
+                            "credentials": credentials,
+                        }
+                    ),
                 ),
             ):
                 resource = LoadBalancingCredentialsValidateApi()
@@ -408,11 +417,13 @@ class TestLoadBalancingCredentialsValidateApi(BaseTestLoadBalancing):
                 patch("libs.login._get_user", return_value=mock_account_admin),
                 patch(
                     "controllers.console.workspace.load_balancing_config.console_ns",
-                    new=MagicMock(payload={
-                        "model": model,
-                        "model_type": model_type,
-                        "credentials": credentials,
-                    }),
+                    new=MagicMock(
+                        payload={
+                            "model": model,
+                            "model_type": model_type,
+                            "credentials": credentials,
+                        }
+                    ),
                 ),
             ):
                 resource = LoadBalancingCredentialsValidateApi()
@@ -464,11 +475,13 @@ class TestLoadBalancingConfigCredentialsValidateApi(BaseTestLoadBalancing):
                 patch("libs.login._get_user", return_value=mock_account_admin),
                 patch(
                     "controllers.console.workspace.load_balancing_config.console_ns",
-                    new=MagicMock(payload={
-                        "model": model,
-                        "model_type": model_type,
-                        "credentials": credentials,
-                    }),
+                    new=MagicMock(
+                        payload={
+                            "model": model,
+                            "model_type": model_type,
+                            "credentials": credentials,
+                        }
+                    ),
                 ),
             ):
                 resource = LoadBalancingConfigCredentialsValidateApi()
@@ -520,11 +533,13 @@ class TestLoadBalancingConfigCredentialsValidateApi(BaseTestLoadBalancing):
                 patch("libs.login._get_user", return_value=mock_account_admin),
                 patch(
                     "controllers.console.workspace.load_balancing_config.console_ns",
-                    new=MagicMock(payload={
-                        "model": model,
-                        "model_type": model_type,
-                        "credentials": credentials,
-                    }),
+                    new=MagicMock(
+                        payload={
+                            "model": model,
+                            "model_type": model_type,
+                            "credentials": credentials,
+                        }
+                    ),
                 ),
             ):
                 resource = LoadBalancingConfigCredentialsValidateApi()
@@ -595,11 +610,13 @@ class TestLoadBalancingConfigCredentialsValidateApi(BaseTestLoadBalancing):
                 patch("libs.login._get_user", return_value=mock_account_admin),
                 patch(
                     "controllers.console.workspace.load_balancing_config.console_ns",
-                    new=MagicMock(payload={
-                        "model": model,
-                        "model_type": model_type,
-                        "credentials": credentials,
-                    }),
+                    new=MagicMock(
+                        payload={
+                            "model": model,
+                            "model_type": model_type,
+                            "credentials": credentials,
+                        }
+                    ),
                 ),
             ):
                 resource = LoadBalancingConfigCredentialsValidateApi()

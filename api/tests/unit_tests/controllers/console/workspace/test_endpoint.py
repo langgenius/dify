@@ -14,6 +14,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from pydantic import ValidationError
+from werkzeug.exceptions import Forbidden
 
 from controllers.console.workspace.endpoint import (
     EndpointCreateApi,
@@ -27,8 +29,6 @@ from controllers.console.workspace.endpoint import (
 from core.plugin.impl.exc import PluginPermissionDeniedError
 from models import TenantAccountRole
 from models.account import Account
-from pydantic import ValidationError
-from werkzeug.exceptions import Forbidden
 
 
 class BaseEndpointApiTest:
@@ -116,11 +116,13 @@ class TestEndpointCreateApi(BaseEndpointApiTest):
                 patch("libs.login._get_user", return_value=mock_account),
                 patch(
                     "controllers.console.workspace.endpoint.console_ns",
-                    new=MagicMock(payload={
-                        "plugin_unique_identifier": plugin_id,
-                        "name": name,
-                        "settings": settings,
-                    }),
+                    new=MagicMock(
+                        payload={
+                            "plugin_unique_identifier": plugin_id,
+                            "name": name,
+                            "settings": settings,
+                        }
+                    ),
                 ),
             ):
                 resource = EndpointCreateApi()
@@ -163,11 +165,13 @@ class TestEndpointCreateApi(BaseEndpointApiTest):
                 patch("libs.login._get_user", return_value=mock_account),
                 patch(
                     "controllers.console.workspace.endpoint.console_ns",
-                    new=MagicMock(payload={
-                        "plugin_unique_identifier": invalid_plugin_id,
-                        "name": name,
-                        "settings": settings,
-                    }),
+                    new=MagicMock(
+                        payload={
+                            "plugin_unique_identifier": invalid_plugin_id,
+                            "name": name,
+                            "settings": settings,
+                        }
+                    ),
                 ),
             ):
                 resource = EndpointCreateApi()
@@ -201,11 +205,13 @@ class TestEndpointCreateApi(BaseEndpointApiTest):
                 patch("libs.login._get_user", return_value=mock_account),
                 patch(
                     "controllers.console.workspace.endpoint.console_ns",
-                    new=MagicMock(payload={
-                        "plugin_unique_identifier": plugin_id,
-                        "name": empty_name,
-                        "settings": settings,
-                    }),
+                    new=MagicMock(
+                        payload={
+                            "plugin_unique_identifier": plugin_id,
+                            "name": empty_name,
+                            "settings": settings,
+                        }
+                    ),
                 ),
             ):
                 resource = EndpointCreateApi()
@@ -238,11 +244,13 @@ class TestEndpointCreateApi(BaseEndpointApiTest):
                 patch("libs.login._get_user", return_value=mock_account),
                 patch(
                     "controllers.console.workspace.endpoint.console_ns",
-                    new=MagicMock(payload={
-                        "plugin_unique_identifier": plugin_id,
-                        "name": name,
-                        "settings": invalid_settings,
-                    }),
+                    new=MagicMock(
+                        payload={
+                            "plugin_unique_identifier": plugin_id,
+                            "name": name,
+                            "settings": invalid_settings,
+                        }
+                    ),
                 ),
             ):
                 resource = EndpointCreateApi()
@@ -482,11 +490,13 @@ class TestEndpointUpdateApi(BaseEndpointApiTest):
                 patch("libs.login._get_user", return_value=mock_account),
                 patch(
                     "controllers.console.workspace.endpoint.console_ns",
-                    new=MagicMock(payload={
-                        "endpoint_id": endpoint_id,
-                        "name": name,
-                        "settings": settings,
-                    }),
+                    new=MagicMock(
+                        payload={
+                            "endpoint_id": endpoint_id,
+                            "name": name,
+                            "settings": settings,
+                        }
+                    ),
                 ),
             ):
                 resource = EndpointUpdateApi()
@@ -526,11 +536,13 @@ class TestEndpointUpdateApi(BaseEndpointApiTest):
                 patch("libs.login._get_user", return_value=mock_account_normal),
                 patch(
                     "controllers.console.workspace.endpoint.console_ns",
-                    new=MagicMock(payload={
-                        "endpoint_id": endpoint_id,
-                        "name": name,
-                        "settings": settings,
-                    }),
+                    new=MagicMock(
+                        payload={
+                            "endpoint_id": endpoint_id,
+                            "name": name,
+                            "settings": settings,
+                        }
+                    ),
                 ),
             ):
                 resource = EndpointUpdateApi()
@@ -564,9 +576,11 @@ class TestEndpointDeleteApi(BaseEndpointApiTest):
                 patch("libs.login._get_user", return_value=mock_account),
                 patch(
                     "controllers.console.workspace.endpoint.console_ns",
-                    new=MagicMock(payload={
-                        "endpoint_id": endpoint_id,
-                    }),
+                    new=MagicMock(
+                        payload={
+                            "endpoint_id": endpoint_id,
+                        }
+                    ),
                 ),
             ):
                 resource = EndpointDeleteApi()
@@ -598,9 +612,11 @@ class TestEndpointDeleteApi(BaseEndpointApiTest):
                 patch("libs.login._get_user", return_value=mock_account_normal),
                 patch(
                     "controllers.console.workspace.endpoint.console_ns",
-                    new=MagicMock(payload={
-                        "endpoint_id": endpoint_id,
-                    }),
+                    new=MagicMock(
+                        payload={
+                            "endpoint_id": endpoint_id,
+                        }
+                    ),
                 ),
             ):
                 resource = EndpointDeleteApi()
@@ -634,9 +650,11 @@ class TestEndpointEnableApi(BaseEndpointApiTest):
                 patch("libs.login._get_user", return_value=mock_account),
                 patch(
                     "controllers.console.workspace.endpoint.console_ns",
-                    new=MagicMock(payload={
-                        "endpoint_id": endpoint_id,
-                    }),
+                    new=MagicMock(
+                        payload={
+                            "endpoint_id": endpoint_id,
+                        }
+                    ),
                 ),
             ):
                 resource = EndpointEnableApi()
@@ -668,9 +686,11 @@ class TestEndpointEnableApi(BaseEndpointApiTest):
                 patch("libs.login._get_user", return_value=mock_account_normal),
                 patch(
                     "controllers.console.workspace.endpoint.console_ns",
-                    new=MagicMock(payload={
-                        "endpoint_id": endpoint_id,
-                    }),
+                    new=MagicMock(
+                        payload={
+                            "endpoint_id": endpoint_id,
+                        }
+                    ),
                 ),
             ):
                 resource = EndpointEnableApi()
@@ -704,9 +724,11 @@ class TestEndpointDisableApi(BaseEndpointApiTest):
                 patch("libs.login._get_user", return_value=mock_account),
                 patch(
                     "controllers.console.workspace.endpoint.console_ns",
-                    new=MagicMock(payload={
-                        "endpoint_id": endpoint_id,
-                    }),
+                    new=MagicMock(
+                        payload={
+                            "endpoint_id": endpoint_id,
+                        }
+                    ),
                 ),
             ):
                 resource = EndpointDisableApi()
@@ -738,9 +760,11 @@ class TestEndpointDisableApi(BaseEndpointApiTest):
                 patch("libs.login._get_user", return_value=mock_account_normal),
                 patch(
                     "controllers.console.workspace.endpoint.console_ns",
-                    new=MagicMock(payload={
-                        "endpoint_id": endpoint_id,
-                    }),
+                    new=MagicMock(
+                        payload={
+                            "endpoint_id": endpoint_id,
+                        }
+                    ),
                 ),
             ):
                 resource = EndpointDisableApi()
