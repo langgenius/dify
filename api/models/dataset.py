@@ -919,7 +919,7 @@ class ChildChunk(TypeBase):
     )
 
     # initial fields
-    id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=lambda: str(uuid4()), init=False)
+    id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=lambda: str(uuidv7()), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     document_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
