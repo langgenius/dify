@@ -7,6 +7,8 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Indicator from '@/app/components/header/indicator'
 import { cn } from '@/utils/classnames'
+import { PROVIDER_DESCRIPTION_KEYS } from './constants'
+import ProviderIcon from './provider-icon'
 
 type ProviderCardProps = {
   provider: SandboxProvider
@@ -14,31 +16,6 @@ type ProviderCardProps = {
   onConfig: () => void
   onEnable?: () => void
   disabled?: boolean
-}
-
-const PROVIDER_ICONS: Record<string, string> = {
-  e2b: '/sandbox-providers/e2b.svg',
-  daytona: '/sandbox-providers/daytona.svg',
-  docker: '/sandbox-providers/docker.svg',
-  local: '/sandbox-providers/local.svg',
-}
-
-const PROVIDER_DESCRIPTION_KEYS = {
-  e2b: 'sandboxProvider.e2b.description',
-  daytona: 'sandboxProvider.daytona.description',
-  docker: 'sandboxProvider.docker.description',
-  local: 'sandboxProvider.local.description',
-} as const
-
-const ProviderIcon = ({ providerType }: { providerType: string }) => {
-  const iconSrc = PROVIDER_ICONS[providerType] || PROVIDER_ICONS.e2b
-  return (
-    <img
-      src={iconSrc}
-      alt={`${providerType} icon`}
-      className="h-6 w-6"
-    />
-  )
 }
 
 const ProviderCard = ({

@@ -6,10 +6,7 @@ import { Trans, useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
 import { useToastContext } from '@/app/components/base/toast'
-import {
-  useActivateSandboxProvider,
-  useInvalidSandboxProviderList,
-} from '@/service/use-sandbox-provider'
+import { useActivateSandboxProvider } from '@/service/use-sandbox-provider'
 
 type SwitchModalProps = {
   provider: SandboxProvider
@@ -22,21 +19,19 @@ const SwitchModal = ({
 }: SwitchModalProps) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
-  const invalidateList = useInvalidSandboxProviderList()
 
   const { mutateAsync: activateProvider, isPending } = useActivateSandboxProvider()
 
   const handleConfirm = useCallback(async () => {
     try {
       await activateProvider(provider.provider_type)
-      await invalidateList()
       notify({ type: 'success', message: t('api.success', { ns: 'common' }) })
       onClose()
     }
     catch {
       // Error toast is handled by fetch layer
     }
-  }, [activateProvider, provider.provider_type, invalidateList, notify, t, onClose])
+  }, [activateProvider, provider.provider_type, notify, t, onClose])
 
   return (
     <Modal

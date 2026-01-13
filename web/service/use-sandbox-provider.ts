@@ -4,7 +4,6 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 import { del, get, post } from './base'
-import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'sandbox-provider'
 
@@ -38,10 +37,6 @@ export const useGetSandboxProviderList = () => {
     queryFn: () => get<SandboxProvider[]>('/workspaces/current/sandbox-providers'),
     retry: 0,
   })
-}
-
-export const useInvalidSandboxProviderList = () => {
-  return useInvalid(sandboxProviderQueryKeys.list)
 }
 
 export const useGetSandboxProvider = (providerType: string) => {

@@ -1,5 +1,19 @@
 import { FormTypeEnum } from '@/app/components/base/form/types'
 
+export const PROVIDER_ICONS: Record<string, string> = {
+  e2b: '/sandbox-providers/e2b.svg',
+  daytona: '/sandbox-providers/daytona.svg',
+  docker: '/sandbox-providers/docker.svg',
+  local: '/sandbox-providers/local.svg',
+}
+
+export const PROVIDER_DESCRIPTION_KEYS = {
+  e2b: 'sandboxProvider.e2b.description',
+  daytona: 'sandboxProvider.daytona.description',
+  docker: 'sandboxProvider.docker.description',
+  local: 'sandboxProvider.local.description',
+} as const
+
 export const SANDBOX_FIELD_CONFIGS = {
   api_key: {
     labelKey: 'sandboxProvider.configModal.apiKey',
