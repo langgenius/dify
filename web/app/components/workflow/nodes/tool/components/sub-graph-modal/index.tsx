@@ -13,7 +13,7 @@ import { useStoreApi } from 'reactflow'
 import { Agent } from '@/app/components/base/icons/src/vender/workflow'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks'
 import { useStore } from '@/app/components/workflow/store'
-import { PromptRole } from '@/app/components/workflow/types'
+import { EditionType, PromptRole } from '@/app/components/workflow/types'
 import SubGraphCanvas from './sub-graph-canvas'
 
 const SubGraphModal: FC<SubGraphModalProps> = ({
@@ -43,11 +43,18 @@ const SubGraphModal: FC<SubGraphModalProps> = ({
   const getSystemPromptText = useCallback((promptTemplate?: PromptItem[] | PromptItem) => {
     if (!promptTemplate)
       return ''
+    const resolveText = (item?: PromptItem) => {
+      if (!item)
+        return ''
+      if (item.edition_type === EditionType.jinja2)
+        return item.jinja2_text || item.text || ''
+      return item.text || ''
+    }
     if (Array.isArray(promptTemplate)) {
       const systemPrompt = promptTemplate.find(item => item.role === PromptRole.system)
-      return systemPrompt?.text || ''
+      return resolveText(systemPrompt)
     }
-    return promptTemplate.text || ''
+    return resolveText(promptTemplate)
   }, [])
 
   const handleSave = useCallback((subGraphNodes: any[], _edges: any[]) => {
