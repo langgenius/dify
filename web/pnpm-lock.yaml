@@ -109,17 +109,17 @@ importers:
         specifier: ^6.1.8
         version: 6.1.8
       '@orpc/client':
-        specifier: ^1.13.2
-        version: 1.13.2
+        specifier: ^1.13.4
+        version: 1.13.4
       '@orpc/contract':
-        specifier: ^1.13.2
-        version: 1.13.2
+        specifier: ^1.13.4
+        version: 1.13.4
       '@orpc/openapi-client':
-        specifier: ^1.13.2
-        version: 1.13.2
+        specifier: ^1.13.4
+        version: 1.13.4
       '@orpc/tanstack-query':
-        specifier: ^1.13.2
-        version: 1.13.2(@orpc/client@1.13.2)(@tanstack/query-core@5.90.12)
+        specifier: ^1.13.4
+        version: 1.13.4(@orpc/client@1.13.4)(@tanstack/query-core@5.90.12)
       '@remixicon/react':
         specifier: ^4.7.0
         version: 4.7.0(react@19.2.3)
@@ -2303,36 +2303,36 @@ packages:
   '@open-draft/until@2.1.0':
     resolution: {integrity: sha512-U69T3ItWHvLwGg5eJ0n3I62nWuE6ilHlmz7zM0npLBRvPRd7e6NYmg54vvRtP5mZG7kZqZCFVdsTWo7BPtBujg==}
 
-  '@orpc/client@1.13.2':
-    resolution: {integrity: sha512-xlT72B4EFVCEGPev5edEfN5uqu4fnxZyOoCq9UWUAyj0gNDTCF2Z5mfmA4mdBgwV90k+lIcGLMnUI25baedqpw==}
+  '@orpc/client@1.13.4':
+    resolution: {integrity: sha512-s13GPMeoooJc5Th2EaYT5HMFtWG8S03DUVytYfJv8pIhP87RYKl94w52A36denH6r/B4LaAgBeC9nTAOslK+Og==}
 
-  '@orpc/contract@1.13.2':
-    resolution: {integrity: sha512-td5ExzLPQ2y2zE9itgqod5gmC3WvCFIlkyJSNFRCRhff04PzokE9/hjqGhW5zsNgKuv4rcPYOrkh0e/YiyFndQ==}
+  '@orpc/contract@1.13.4':
+    resolution: {integrity: sha512-TIxyaF67uOlihCRcasjHZxguZpbqfNK7aMrDLnhoufmQBE4OKvguNzmrOFHgsuM0OXoopX0Nuhun1ccaxKP10A==}
 
-  '@orpc/openapi-client@1.13.2':
-    resolution: {integrity: sha512-RLBLG5NB14vixJm+Sawi3hip1QEo7G1b+NZjynEjUqgP7fFww4RLZLFWbrjlst9myYQOKkKCHtOYCSztCG5oXQ==}
+  '@orpc/openapi-client@1.13.4':
+    resolution: {integrity: sha512-tRUcY4E6sgpS5bY/9nNES/Q/PMyYyPOsI4TuhwLhfgxOb0GFPwYKJ6Kif7KFNOhx4fkN/jTOfE1nuWuIZU1gyg==}
 
-  '@orpc/shared@1.13.2':
-    resolution: {integrity: sha512-1icIwoMxtXSTwGFJE2u/Hu4XhZQS81bk0hvRcG7jHATATTMLcNAFR+sv3AG56WTH6yF3C1A96VpYzvCYRUseFA==}
+  '@orpc/shared@1.13.4':
+    resolution: {integrity: sha512-TYt9rLG/BUkNQBeQ6C1tEiHS/Seb8OojHgj9GlvqyjHJhMZx5qjsIyTW6RqLPZJ4U2vgK6x4Her36+tlFCKJug==}
     peerDependencies:
       '@opentelemetry/api': '>=1.9.0'
     peerDependenciesMeta:
       '@opentelemetry/api':
         optional: true
 
-  '@orpc/standard-server-fetch@1.13.2':
-    resolution: {integrity: sha512-JanRDFk78kB8/P5NljV1nx3zcpBsTC9sCAhBcE3ezY1u3Kvt7teRhPxRXcoD0TEBdQjEUeXcqX+zEh4Op2E8nw==}
+  '@orpc/standard-server-fetch@1.13.4':
+    resolution: {integrity: sha512-/zmKwnuxfAXbppJpgr1CMnQX3ptPlYcDzLz1TaVzz9VG/Xg58Ov3YhabS2Oi1utLVhy5t4kaCppUducAvoKN+A==}
 
-  '@orpc/standard-server-peer@1.13.2':
-    resolution: {integrity: sha512-LMxaMSmp98jnm0jiHpqPgH5qHXeOvah7pmysrcLaqMfwH+GwRS6S+/ls2hAy9aIba4LrTZyIpTgSohHD/Ed73g==}
+  '@orpc/standard-server-peer@1.13.4':
+    resolution: {integrity: sha512-UfqnTLqevjCKUk4cmImOG8cQUwANpV1dp9e9u2O1ki6BRBsg/zlXFg6G2N6wP0zr9ayIiO1d2qJdH55yl/1BNw==}
 
-  '@orpc/standard-server@1.13.2':
-    resolution: {integrity: sha512-qjxKOvCg2mYBQMPdjEqQEDI+F/v6qm9zKMeFsfxnWKvPhDrPSEk8x40vdXlLbbpW6TCXpQikpycfdvq5H4Nb+Q==}
+  '@orpc/standard-server@1.13.4':
+    resolution: {integrity: sha512-ZOzgfVp6XUg+wVYw+gqesfRfGPtQbnBIrIiSnFMtZF+6ncmFJeF2Shc4RI2Guqc0Qz25juy8Ogo4tX3YqysOcg==}
 
-  '@orpc/tanstack-query@1.13.2':
-    resolution: {integrity: sha512-a/BzZP4YZiqPCBoWzr1miHPHDpqGhH8BKPf1RyB9i61s554Utic3MQqKO0PHa61TT0OxEXuZTowVgdwk1zsQFA==}
+  '@orpc/tanstack-query@1.13.4':
+    resolution: {integrity: sha512-gCL/kh3kf6OUGKfXxSoOZpcX1jNYzxGfo/PkLQKX7ui4xiTbfWw3sCDF30sNS4I7yAOnBwDwJ3N2xzfkTftOBg==}
     peerDependencies:
-      '@orpc/client': 1.13.2
+      '@orpc/client': 1.13.4
       '@tanstack/query-core': '>=5.80.2'
 
   '@oxc-resolver/binding-android-arm-eabi@11.15.0':
@@ -10697,62 +10697,62 @@ snapshots:
 
   '@open-draft/until@2.1.0': {}
 
-  '@orpc/client@1.13.2':
+  '@orpc/client@1.13.4':
     dependencies:
-      '@orpc/shared': 1.13.2
-      '@orpc/standard-server': 1.13.2
-      '@orpc/standard-server-fetch': 1.13.2
-      '@orpc/standard-server-peer': 1.13.2
+      '@orpc/shared': 1.13.4
+      '@orpc/standard-server': 1.13.4
+      '@orpc/standard-server-fetch': 1.13.4
+      '@orpc/standard-server-peer': 1.13.4
     transitivePeerDependencies:
       - '@opentelemetry/api'
 
-  '@orpc/contract@1.13.2':
+  '@orpc/contract@1.13.4':
     dependencies:
-      '@orpc/client': 1.13.2
-      '@orpc/shared': 1.13.2
+      '@orpc/client': 1.13.4
+      '@orpc/shared': 1.13.4
       '@standard-schema/spec': 1.1.0
       openapi-types: 12.1.3
     transitivePeerDependencies:
       - '@opentelemetry/api'
 
-  '@orpc/openapi-client@1.13.2':
+  '@orpc/openapi-client@1.13.4':
     dependencies:
-      '@orpc/client': 1.13.2
-      '@orpc/contract': 1.13.2
-      '@orpc/shared': 1.13.2
-      '@orpc/standard-server': 1.13.2
+      '@orpc/client': 1.13.4
+      '@orpc/contract': 1.13.4
+      '@orpc/shared': 1.13.4
+      '@orpc/standard-server': 1.13.4
     transitivePeerDependencies:
       - '@opentelemetry/api'
 
-  '@orpc/shared@1.13.2':
+  '@orpc/shared@1.13.4':
     dependencies:
       radash: 12.1.1
       type-fest: 5.4.0
 
-  '@orpc/standard-server-fetch@1.13.2':
+  '@orpc/standard-server-fetch@1.13.4':
     dependencies:
-      '@orpc/shared': 1.13.2
-      '@orpc/standard-server': 1.13.2
+      '@orpc/shared': 1.13.4
+      '@orpc/standard-server': 1.13.4
     transitivePeerDependencies:
       - '@opentelemetry/api'
 
-  '@orpc/standard-server-peer@1.13.2':
+  '@orpc/standard-server-peer@1.13.4':
     dependencies:
-      '@orpc/shared': 1.13.2
-      '@orpc/standard-server': 1.13.2
+      '@orpc/shared': 1.13.4
+      '@orpc/standard-server': 1.13.4
     transitivePeerDependencies:
       - '@opentelemetry/api'
 
-  '@orpc/standard-server@1.13.2':
+  '@orpc/standard-server@1.13.4':
     dependencies:
-      '@orpc/shared': 1.13.2
+      '@orpc/shared': 1.13.4
     transitivePeerDependencies:
       - '@opentelemetry/api'
 
-  '@orpc/tanstack-query@1.13.2(@orpc/client@1.13.2)(@tanstack/query-core@5.90.12)':
+  '@orpc/tanstack-query@1.13.4(@orpc/client@1.13.4)(@tanstack/query-core@5.90.12)':
     dependencies:
-      '@orpc/client': 1.13.2
-      '@orpc/shared': 1.13.2
+      '@orpc/client': 1.13.4
+      '@orpc/shared': 1.13.4
       '@tanstack/query-core': 5.90.12
     transitivePeerDependencies:
       - '@opentelemetry/api'
