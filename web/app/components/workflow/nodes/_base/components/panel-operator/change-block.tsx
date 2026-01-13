@@ -80,6 +80,7 @@ const ChangeBlock = ({
       showStartTab={showStartTab}
       ignoreNodeIds={ignoreNodeIds}
       forceEnableStartTab={nodeData.type === BlockEnum.Start}
+      isInLoop={nodeData.isInLoop}
     />
   )
 }

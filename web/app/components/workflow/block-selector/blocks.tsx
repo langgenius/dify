@@ -11,6 +11,7 @@ import { useStoreApi } from 'reactflow'
 import Badge from '@/app/components/base/badge'
 import Tooltip from '@/app/components/base/tooltip'
 import BlockIcon from '../block-icon'
+import { useIsChatMode } from '../hooks'
 import { BlockEnum } from '../types'
 import { BLOCK_CLASSIFICATIONS } from './constants'
 import { useBlocks } from './hooks'
@@ -20,14 +21,17 @@ type BlocksProps = {
   onSelect: (type: BlockEnum) => void
   availableBlocksTypes?: BlockEnum[]
   blocks?: NodeDefault[]
+  isInLoop?: boolean
 }
 const Blocks = ({
   searchText,
   onSelect,
   availableBlocksTypes = [],
   blocks: blocksFromProps,
+  isInLoop = false,
 }: BlocksProps) => {
   const { t } = useTranslation()
+  const isChatMode = useIsChatMode()
   const store = useStoreApi()
   const blocksFromHooks = useBlocks()
 
@@ -57,6 +61,9 @@ const Blocks = ({
           return false
         }
 
+        if (block.metaData.type === BlockEnum.Assigner && !isChatMode && !isInLoop)
+          return false
+
         return block.metaData.title.toLowerCase().includes(searchText.toLowerCase()) && availableBlocksTypes.includes(block.metaData.type)
       })
 
@@ -65,7 +72,7 @@ const Blocks = ({
         [classification]: list,
       }
     }, {} as Record<string, typeof blocks>)
-  }, [blocks, searchText, availableBlocksTypes])
+  }, [blocks, isChatMode, searchText, availableBlocksTypes, isInLoop])
   const isEmpty = Object.values(groups).every(list => !list.length)
 
   const renderGroup = useCallback((classification: BlockClassificationEnum) => {

@@ -96,6 +96,7 @@ const Add = ({
       trigger={renderTrigger}
       popupClassName="!w-[328px]"
       availableBlocksTypes={availableNextBlocks}
+      isInLoop={nodeData.isInLoop}
     />
   )
 }

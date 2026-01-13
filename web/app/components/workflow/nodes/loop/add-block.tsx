@@ -73,6 +73,7 @@ const AddBlock = ({
         triggerInnerClassName="inline-flex"
         popupClassName="!min-w-[256px]"
         availableBlocksTypes={availableNextBlocks}
+        isInLoop={true}
       />
     </div>
   )

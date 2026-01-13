@@ -59,6 +59,7 @@ export type NodeSelectorProps = {
   ignoreNodeIds?: string[]
   forceEnableStartTab?: boolean // Force enabling Start tab regardless of existing trigger/user input nodes (e.g., when changing Start node type).
   allowUserInputSelection?: boolean // Override user-input availability; default logic blocks it when triggers exist.
+  isInLoop?: boolean
 }
 const NodeSelector: FC<NodeSelectorProps> = ({
   open: openFromProps,
@@ -84,6 +85,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
   ignoreNodeIds = [],
   forceEnableStartTab = false,
   allowUserInputSelection,
+  isInLoop = false,
 }) => {
   const { t } = useTranslation()
   const nodes = useNodes()
@@ -268,6 +270,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
             noTools={noTools}
             onTagsChange={setTags}
             forceShowStartContent={forceShowStartContent}
+            isInLoop={isInLoop}
           />
         </div>
       </PortalToFollowElemContent>

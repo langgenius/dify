@@ -162,6 +162,7 @@ const CustomEdge = ({
             onSelect={handleInsert}
             availableBlocksTypes={intersection(availablePrevBlocks, availableNextBlocks)}
             triggerClassName={() => 'hover:scale-150 transition-all'}
+            isInLoop={data.isInLoop}
           />
         </div>
       </EdgeLabelRenderer>

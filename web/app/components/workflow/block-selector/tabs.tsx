@@ -40,6 +40,7 @@ export type TabsProps = {
   noTools?: boolean
   forceShowStartContent?: boolean // Force show Start content even when noBlocks=true
   allowStartNodeSelection?: boolean // Allow user input option even when trigger node already exists (e.g. change-node flow or when no Start node yet).
+  isInLoop?: boolean
 }
 const Tabs: FC<TabsProps> = ({
   activeTab,
@@ -57,6 +58,7 @@ const Tabs: FC<TabsProps> = ({
   noTools,
   forceShowStartContent = false,
   allowStartNodeSelection = false,
+  isInLoop = false,
 }) => {
   const { t } = useTranslation()
   const { data: buildInTools } = useAllBuiltInTools()
@@ -197,6 +199,7 @@ const Tabs: FC<TabsProps> = ({
               onSelect={onSelect}
               availableBlocksTypes={availableBlocksTypes}
               blocks={blocks}
+              isInLoop={isInLoop}
             />
           </div>
         )

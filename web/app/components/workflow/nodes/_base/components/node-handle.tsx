@@ -110,6 +110,7 @@ export const NodeTargetHandle = memo(({
                 ${open && '!flex'}
               `}
               availableBlocksTypes={availablePrevBlocks}
+              isInLoop={data.isInLoop}
             />
           )
         }
@@ -228,6 +229,7 @@ export const NodeSourceHandle = memo(({
               ${open && '!flex'}
             `}
             availableBlocksTypes={availableNextBlocks}
+            isInLoop={data.isInLoop}
           />
         )
       }
