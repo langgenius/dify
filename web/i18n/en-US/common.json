@@ -595,7 +595,7 @@
   "sandboxProvider.setAsActive": "Set as Active",
   "sandboxProvider.switchModal.cancel": "Cancel",
   "sandboxProvider.switchModal.confirm": "Switch",
-  "sandboxProvider.switchModal.confirmText": "You are about to switch the active sandbox provider to {{provider}}.",
+  "sandboxProvider.switchModal.confirmText": "You are about to switch the active sandbox provider to <bold>{{provider}}</bold>.",
   "sandboxProvider.switchModal.title": "Switch Active Provider?",
   "sandboxProvider.switchModal.warning": "Impact on running agents",
   "sandboxProvider.switchModal.warningDesc": "Switching the provider will affect all newly started agent tasks. Currently running sessions might be interrupted.",

@@ -1,9 +1,8 @@
 'use client'
 
 import type { SandboxProvider } from '@/service/use-sandbox-provider'
-import { RiAlertLine } from '@remixicon/react'
 import { memo, useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
 import { useToastContext } from '@/app/components/base/toast'
@@ -49,23 +48,23 @@ const SwitchModal = ({
     >
       <div className="mt-4">
         {/* Warning Section */}
-        <div className="flex gap-3 rounded-xl bg-state-warning-hover p-3">
-          <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-state-warning-solid">
-            <RiAlertLine className="h-3 w-3 text-text-warning-secondary" />
+        <div>
+          <div className="system-sm-semibold text-text-destructive">
+            {t('sandboxProvider.switchModal.warning', { ns: 'common' })}
           </div>
-          <div>
-            <div className="system-sm-semibold text-text-primary">
-              {t('sandboxProvider.switchModal.warning', { ns: 'common' })}
-            </div>
-            <div className="system-xs-regular mt-1 text-text-secondary">
-              {t('sandboxProvider.switchModal.warningDesc', { ns: 'common' })}
-            </div>
+          <div className="system-xs-regular mt-0.5 text-text-destructive">
+            {t('sandboxProvider.switchModal.warningDesc', { ns: 'common' })}
           </div>
         </div>
 
         {/* Confirm Text */}
         <div className="system-sm-regular mt-4 text-text-secondary">
-          {t('sandboxProvider.switchModal.confirmText', { ns: 'common', provider: provider.label })}
+          <Trans
+            i18nKey="sandboxProvider.switchModal.confirmText"
+            ns="common"
+            values={{ provider: provider.label }}
+            components={{ bold: <span className="system-sm-semibold" /> }}
+          />
         </div>
 
         {/* Footer Actions */}

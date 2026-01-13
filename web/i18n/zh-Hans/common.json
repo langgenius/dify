@@ -593,7 +593,7 @@
   "sandboxProvider.setAsActive": "设为激活",
   "sandboxProvider.switchModal.cancel": "取消",
   "sandboxProvider.switchModal.confirm": "切换",
-  "sandboxProvider.switchModal.confirmText": "您即将将活动沙箱供应商切换为 {{provider}}。",
+  "sandboxProvider.switchModal.confirmText": "您即将将活动沙箱供应商切换为 <bold>{{provider}}</bold>。",
   "sandboxProvider.switchModal.title": "切换活动供应商？",
   "sandboxProvider.switchModal.warning": "对运行中的代理的影响",
   "sandboxProvider.switchModal.warningDesc": "切换供应商将影响所有新启动的代理任务。当前运行的会话可能会被中断。",
