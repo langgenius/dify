@@ -71,7 +71,7 @@ class Dataset(TypeBase):
     embedding_model_provider: Mapped[str | None] = mapped_column(sa.String(255), nullable=True)
     keyword_number: Mapped[int | None] = mapped_column(sa.Integer, nullable=True, server_default=sa.text("10"), default=10)
         sa.Integer, nullable=True, server_default=sa.text("10"), default=10
-    )
+    retrieval_model: Mapped[dict | None] = mapped_column(AdjustedJSON, nullable=True)
     collection_binding_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     retrieval_model: Mapped[str | None] = mapped_column(AdjustedJSON, nullable=True)
     built_in_field_enabled: Mapped[bool] = mapped_column(
