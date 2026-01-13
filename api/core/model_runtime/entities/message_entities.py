@@ -251,10 +251,7 @@ class AssistantPromptMessage(PromptMessage):
 
         :return: True if prompt message is empty, False otherwise
         """
-        if not super().is_empty() and not self.tool_calls:
-            return False
-
-        return True
+        return super().is_empty() and not self.tool_calls
 
 
 class SystemPromptMessage(PromptMessage):
