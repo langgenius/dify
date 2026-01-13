@@ -195,7 +195,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                         noWrapper
                         className="bg h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
                         placeholder={
-                          <div className="whitespace-pre">{item.json_schema}</div>
+                          <div className="whitespace-pre">{typeof item.json_schema === 'string' ? item.json_schema : JSON.stringify(item.json_schema || '', null, 2)}</div>
                         }
                       />
                     )}
