@@ -1,15 +1,3 @@
-import {
-  useCallback,
-  useEffect,
-  useState,
-} from 'react'
-import {
-  useInfiniteQuery,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query'
-import { useTranslation } from 'react-i18next'
-import { useDebounceFn } from 'ahooks'
 import type {
   Plugin,
 } from '../types'
@@ -18,16 +6,29 @@ import type {
   MarketplaceCollection,
   PluginsSearchParams,
 } from './types'
+import type { PluginsFromMarketplaceResponse } from '@/app/components/plugins/types'
+import {
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
+import { useDebounceFn } from 'ahooks'
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from 'react'
+import { postMarketplace } from '@/service/base'
+import { SCROLL_BOTTOM_THRESHOLD } from './constants'
 import {
   getFormattedPlugin,
   getMarketplaceCollectionsAndPlugins,
   getMarketplacePluginsByCollectionId,
 } from './utils'
-import { SCROLL_BOTTOM_THRESHOLD } from './constants'
-import i18n from '@/i18n-config/i18next-config'
-import { postMarketplace } from '@/service/base'
-import type { PluginsFromMarketplaceResponse } from '@/app/components/plugins/types'
 
+/**
+ * @deprecated Use useMarketplaceCollectionsAndPlugins from query.ts instead
+ */
 export const useMarketplaceCollectionsAndPlugins = () => {
   const [queryParams, setQueryParams] = useState<CollectionsAndPluginsSearchParams>()
   const [marketplaceCollectionsOverride, setMarketplaceCollections] = useState<MarketplaceCollection[]>()
@@ -91,7 +92,9 @@ export const useMarketplacePluginsByCollectionId = (
     isSuccess,
   }
 }
-
+/**
+ * @deprecated Use useMarketplacePlugins from query.ts instead
+ */
 export const useMarketplacePlugins = () => {
   const queryClient = useQueryClient()
   const [queryParams, setQueryParams] = useState<PluginsSearchParams>()
@@ -215,21 +218,6 @@ export const useMarketplacePlugins = () => {
     hasNextPage: marketplacePluginsQuery.hasNextPage,
     fetchNextPage: marketplacePluginsQuery.fetchNextPage,
     page: marketplacePluginsQuery.data?.pages?.length || (marketplacePluginsQuery.isPending && hasQuery ? 1 : 0),
-  }
-}
-
-/**
- * ! Support zh-Hans, pt-BR, ja-JP and en-US for Marketplace page
- * ! For other languages, use en-US as fallback
- */
-export const useMixedTranslation = (localeFromOuter?: string) => {
-  let t = useTranslation().t
-
-  if (localeFromOuter)
-    t = i18n.getFixedT(localeFromOuter)
-
-  return {
-    t,
   }
 }
 

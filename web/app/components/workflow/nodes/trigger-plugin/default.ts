@@ -1,13 +1,15 @@
-import type { SchemaTypeDefinition } from '@/service/use-common'
 import type { NodeDefault, Var } from '../../types'
+import type { Field, StructuredOutput } from '../llm/types'
+import type { PluginTriggerNodeType } from './types'
+import type { SchemaTypeDefinition } from '@/service/use-common'
 import { BlockEnum, VarType } from '../../types'
 import { genNodeMetaData } from '../../utils'
 import { VarKindType } from '../_base/types'
-import { type Field, type StructuredOutput, Type } from '../llm/types'
-import type { PluginTriggerNodeType } from './types'
+import { Type } from '../llm/types'
 
 const normalizeJsonSchemaType = (schema: any): string | undefined => {
-  if (!schema) return undefined
+  if (!schema)
+    return undefined
   const { type, properties, items, oneOf, anyOf, allOf } = schema
 
   if (Array.isArray(type))
@@ -55,7 +57,7 @@ const extractSchemaType = (schema: any, _schemaTypeDefinitions?: SchemaTypeDefin
 const resolveVarType = (
   schema: any,
   schemaTypeDefinitions?: SchemaTypeDefinition[],
-): { type: VarType; schemaType?: string } => {
+): { type: VarType, schemaType?: string } => {
   const schemaType = extractSchemaType(schema, schemaTypeDefinitions)
   const normalizedType = normalizeJsonSchemaType(schema)
 
@@ -195,9 +197,9 @@ const buildOutputVars = (schema: Record<string, any>, schemaTypeDefinitions?: Sc
     if (normalizedType === 'object') {
       const childProperties = propertySchema?.properties
         ? Object.entries(propertySchema.properties).reduce((acc, [key, value]) => {
-          acc[key] = convertJsonSchemaToField(value, schemaTypeDefinitions)
-          return acc
-        }, {} as Record<string, Field>)
+            acc[key] = convertJsonSchemaToField(value, schemaTypeDefinitions)
+            return acc
+          }, {} as Record<string, Field>)
         : {}
 
       const required = Array.isArray(propertySchema?.required) ? propertySchema.required.filter(Boolean) : undefined
@@ -243,7 +245,7 @@ const nodeDefault: NodeDefault<PluginTriggerNodeType> = {
     let errorMessage = ''
 
     if (!payload.subscription_id)
-      errorMessage = t('workflow.nodes.triggerPlugin.subscriptionRequired')
+      errorMessage = t('nodes.triggerPlugin.subscriptionRequired', { ns: 'workflow' })
 
     const {
       triggerInputsSchema = [],
@@ -258,18 +260,18 @@ const nodeDefault: NodeDefault<PluginTriggerNodeType> = {
         const rawParam = payload.event_parameters?.[field.variable]
           ?? (payload.config as Record<string, any> | undefined)?.[field.variable]
         if (!rawParam) {
-          errorMessage = t('workflow.errorMsg.fieldRequired', { field: field.label })
+          errorMessage = t('errorMsg.fieldRequired', { ns: 'workflow', field: field.label })
           return
         }
 
         const targetParam = typeof rawParam === 'object' && rawParam !== null && 'type' in rawParam
-          ? rawParam as { type: VarKindType; value: any }
+          ? rawParam as { type: VarKindType, value: any }
           : { type: VarKindType.constant, value: rawParam }
 
         const { type, value } = targetParam
         if (type === VarKindType.variable) {
           if (!value || (Array.isArray(value) && value.length === 0))
-            errorMessage = t('workflow.errorMsg.fieldRequired', { field: field.label })
+            errorMessage = t('errorMsg.fieldRequired', { ns: 'workflow', field: field.label })
         }
         else {
           if (
@@ -277,8 +279,9 @@ const nodeDefault: NodeDefault<PluginTriggerNodeType> = {
             || value === null
             || value === ''
             || (Array.isArray(value) && value.length === 0)
-          )
-            errorMessage = t('workflow.errorMsg.fieldRequired', { field: field.label })
+          ) {
+            errorMessage = t('errorMsg.fieldRequired', { ns: 'workflow', field: field.label })
+          }
         }
       })
     }

@@ -1,3 +1,12 @@
+import type { InputForm } from '@/app/components/base/chat/chat/type'
+import type {
+  ChatItem,
+  ChatItemInTree,
+  Inputs,
+} from '@/app/components/base/chat/types'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import { uniqBy } from 'es-toolkit/compat'
+import { produce, setAutoFreeze } from 'immer'
 import {
   useCallback,
   useEffect,
@@ -6,35 +15,26 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { produce, setAutoFreeze } from 'immer'
-import { uniqBy } from 'lodash-es'
-import {
-  useSetWorkflowVarsWithValue,
-  useWorkflowRun,
-} from '../../hooks'
-import { NodeRunningStatus, WorkflowRunningStatus } from '../../types'
-import { useWorkflowStore } from '../../store'
-import { DEFAULT_ITER_TIMES, DEFAULT_LOOP_TIMES } from '../../constants'
-import type {
-  ChatItem,
-  ChatItemInTree,
-  Inputs,
-} from '@/app/components/base/chat/types'
-import type { InputForm } from '@/app/components/base/chat/chat/type'
 import {
   getProcessedInputs,
   processOpeningStatement,
 } from '@/app/components/base/chat/chat/utils'
-import { useToastContext } from '@/app/components/base/toast'
-import { TransferMethod } from '@/types/app'
+import { getThreadMessages } from '@/app/components/base/chat/utils'
 import {
   getProcessedFiles,
   getProcessedFilesFromResponse,
 } from '@/app/components/base/file-uploader/utils'
-import type { FileEntity } from '@/app/components/base/file-uploader/types'
-import { getThreadMessages } from '@/app/components/base/chat/utils'
+import { useToastContext } from '@/app/components/base/toast'
 import { useInvalidAllLastRun } from '@/service/use-workflow'
+import { TransferMethod } from '@/types/app'
+import { DEFAULT_ITER_TIMES, DEFAULT_LOOP_TIMES } from '../../constants'
+import {
+  useSetWorkflowVarsWithValue,
+  useWorkflowRun,
+} from '../../hooks'
 import { useHooksStore } from '../../hooks-store'
+import { useWorkflowStore } from '../../store'
+import { NodeRunningStatus, WorkflowRunningStatus } from '../../types'
 
 type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
@@ -202,7 +202,7 @@ export const useChat = (
     }: SendCallback,
   ) => {
     if (isRespondingRef.current) {
-      notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
+      notify({ type: 'info', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
       return false
     }
 

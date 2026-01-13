@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
+import type { FieldTitleProps } from '.'
 import {
   memo,
   useState,
 } from 'react'
-import type { FieldTitleProps } from '.'
 import { FieldTitle } from '.'
 
 export type FieldProps = {

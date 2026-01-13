@@ -213,7 +213,7 @@ class VastbaseVector(BaseVector):
 
             with self._get_cursor() as cur:
                 cur.execute(SQL_CREATE_TABLE.format(table_name=self.table_name, dimension=dimension))
-                # Vastbase 支持的向量维度取值范围为 [1,16000]
+                # Vastbase supports vector dimensions in the range [1, 16,000]
                 if dimension <= 16000:
                     cur.execute(SQL_CREATE_INDEX.format(table_name=self.table_name))
             redis_client.set(collection_exist_cache_key, 1, ex=3600)

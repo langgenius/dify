@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from configs import dify_config
-from models.account import Account
+from models.account import Account, AccountStatus
 from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.account import (
     AccountAlreadyInTenantError,
@@ -619,8 +619,13 @@ class TestTenantService:
                 mock_tenant_instance.name = "Test User's Workspace"
                 mock_tenant_class.return_value = mock_tenant_instance
 
-                # Execute test
-                TenantService.create_owner_tenant_if_not_exist(mock_account)
+                # Mock the db import in CreditPoolService to avoid database connection
+                with patch("services.credit_pool_service.db") as mock_credit_pool_db:
+                    mock_credit_pool_db.session.add = MagicMock()
+                    mock_credit_pool_db.session.commit = MagicMock()
+
+                    # Execute test
+                    TenantService.create_owner_tenant_if_not_exist(mock_account)
 
         # Verify tenant was created with correct parameters
         mock_db_dependencies["db"].session.add.assert_called()
@@ -1142,9 +1147,13 @@ class TestRegisterService:
         mock_session = MagicMock()
         mock_session.query.return_value.filter_by.return_value.first.return_value = None  # No existing account
 
-        with patch("services.account_service.Session") as mock_session_class:
+        with (
+            patch("services.account_service.Session") as mock_session_class,
+            patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
+        ):
             mock_session_class.return_value.__enter__.return_value = mock_session
             mock_session_class.return_value.__exit__.return_value = None
+            mock_lookup.return_value = None
 
             # Mock RegisterService.register
             mock_new_account = TestAccountAssociatedDataFactory.create_account_mock(
@@ -1177,9 +1186,59 @@ class TestRegisterService:
                         email="newuser@example.com",
                         name="newuser",
                         language="en-US",
-                        status="pending",
+                        status=AccountStatus.PENDING,
                         is_setup=True,
                     )
+                    mock_lookup.assert_called_once_with("newuser@example.com", session=mock_session)
+
+    def test_invite_new_member_normalizes_new_account_email(
+        self, mock_db_dependencies, mock_redis_dependencies, mock_task_dependencies
+    ):
+        """Ensure inviting with mixed-case email normalizes before registering."""
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-456"
+        mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-123", name="Inviter")
+        mixed_email = "Invitee@Example.com"
+
+        mock_session = MagicMock()
+        with (
+            patch("services.account_service.Session") as mock_session_class,
+            patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
+        ):
+            mock_session_class.return_value.__enter__.return_value = mock_session
+            mock_session_class.return_value.__exit__.return_value = None
+            mock_lookup.return_value = None
+
+            mock_new_account = TestAccountAssociatedDataFactory.create_account_mock(
+                account_id="new-user-789", email="invitee@example.com", name="invitee", status="pending"
+            )
+            with patch("services.account_service.RegisterService.register") as mock_register:
+                mock_register.return_value = mock_new_account
+                with (
+                    patch("services.account_service.TenantService.check_member_permission") as mock_check_permission,
+                    patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
+                    patch("services.account_service.TenantService.switch_tenant") as mock_switch_tenant,
+                    patch("services.account_service.RegisterService.generate_invite_token") as mock_generate_token,
+                ):
+                    mock_generate_token.return_value = "invite-token-abc"
+
+                    RegisterService.invite_new_member(
+                        tenant=mock_tenant,
+                        email=mixed_email,
+                        language="en-US",
+                        role="normal",
+                        inviter=mock_inviter,
+                    )
+
+                    mock_register.assert_called_once_with(
+                        email="invitee@example.com",
+                        name="invitee",
+                        language="en-US",
+                        status=AccountStatus.PENDING,
+                        is_setup=True,
+                    )
+                    mock_lookup.assert_called_once_with(mixed_email, session=mock_session)
+                    mock_check_permission.assert_called_once_with(mock_tenant, mock_inviter, None, "add")
                     mock_create_member.assert_called_once_with(mock_tenant, mock_new_account, "normal")
                     mock_switch_tenant.assert_called_once_with(mock_new_account, mock_tenant.id)
                     mock_generate_token.assert_called_once_with(mock_tenant, mock_new_account)
@@ -1202,9 +1261,13 @@ class TestRegisterService:
         mock_session = MagicMock()
         mock_session.query.return_value.filter_by.return_value.first.return_value = mock_existing_account
 
-        with patch("services.account_service.Session") as mock_session_class:
+        with (
+            patch("services.account_service.Session") as mock_session_class,
+            patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
+        ):
             mock_session_class.return_value.__enter__.return_value = mock_session
             mock_session_class.return_value.__exit__.return_value = None
+            mock_lookup.return_value = mock_existing_account
 
             # Mock the db.session.query for TenantAccountJoin
             mock_db_query = MagicMock()
@@ -1233,6 +1296,7 @@ class TestRegisterService:
                 mock_create_member.assert_called_once_with(mock_tenant, mock_existing_account, "normal")
                 mock_generate_token.assert_called_once_with(mock_tenant, mock_existing_account)
                 mock_task_dependencies.delay.assert_called_once()
+                mock_lookup.assert_called_once_with("existing@example.com", session=mock_session)
 
     def test_invite_new_member_already_in_tenant(self, mock_db_dependencies, mock_redis_dependencies):
         """Test inviting a member who is already in the tenant."""
@@ -1246,7 +1310,6 @@ class TestRegisterService:
 
         # Mock database queries
         query_results = {
-            ("Account", "email", "existing@example.com"): mock_existing_account,
             (
                 "TenantAccountJoin",
                 "tenant_id",
@@ -1256,7 +1319,11 @@ class TestRegisterService:
         ServiceDbTestHelper.setup_db_query_filter_by_mock(mock_db_dependencies["db"], query_results)
 
         # Mock TenantService methods
-        with patch("services.account_service.TenantService.check_member_permission") as mock_check_permission:
+        with (
+            patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
+            patch("services.account_service.TenantService.check_member_permission") as mock_check_permission,
+        ):
+            mock_lookup.return_value = mock_existing_account
             # Execute test and verify exception
             self._assert_exception_raised(
                 AccountAlreadyInTenantError,
@@ -1267,6 +1334,7 @@ class TestRegisterService:
                 role="normal",
                 inviter=mock_inviter,
             )
+            mock_lookup.assert_called_once()
 
     def test_invite_new_member_no_inviter(self):
         """Test inviting a member without providing an inviter."""
@@ -1491,6 +1559,30 @@ class TestRegisterService:
 
         # Verify results
         assert result is None
+
+    def test_get_invitation_with_case_fallback_returns_initial_match(self):
+        """Fallback helper should return the initial invitation when present."""
+        invitation = {"workspace_id": "tenant-456"}
+        with patch(
+            "services.account_service.RegisterService.get_invitation_if_token_valid", return_value=invitation
+        ) as mock_get:
+            result = RegisterService.get_invitation_with_case_fallback("tenant-456", "User@Test.com", "token-123")
+
+        assert result == invitation
+        mock_get.assert_called_once_with("tenant-456", "User@Test.com", "token-123")
+
+    def test_get_invitation_with_case_fallback_retries_with_lowercase(self):
+        """Fallback helper should retry with lowercase email when needed."""
+        invitation = {"workspace_id": "tenant-456"}
+        with patch("services.account_service.RegisterService.get_invitation_if_token_valid") as mock_get:
+            mock_get.side_effect = [None, invitation]
+            result = RegisterService.get_invitation_with_case_fallback("tenant-456", "User@Test.com", "token-123")
+
+        assert result == invitation
+        assert mock_get.call_args_list == [
+            (("tenant-456", "User@Test.com", "token-123"),),
+            (("tenant-456", "user@test.com", "token-123"),),
+        ]
 
     # ==================== Helper Method Tests ====================
 

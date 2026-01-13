@@ -1,9 +1,10 @@
 [project]
 name = "dify-api"
-version = "1.10.1"
+version = "1.11.3"
 requires-python = ">=3.11,<3.13"
 
 dependencies = [
+    "aliyun-log-python-sdk~=0.9.37",
     "arize-phoenix-otel~=0.9.2",
     "azure-identity==1.16.1",
     "beautifulsoup4==4.12.2",
@@ -31,6 +32,7 @@ dependencies = [
     "httpx[socks]~=0.27.0",
     "jieba==0.42.1",
     "json-repair>=0.41.1",
+    "jsonschema>=4.25.1",
     "langfuse~=2.51.3",
     "langsmith~=0.1.77",
     "markdown~=3.5.1",
@@ -67,7 +69,7 @@ dependencies = [
     "pydantic-extra-types~=2.10.3",
     "pydantic-settings~=2.11.0",
     "pyjwt~=2.10.1",
-    "pypdfium2==4.30.0",
+    "pypdfium2==5.2.0",
     "python-docx~=1.1.0",
     "python-dotenv==1.0.1",
     "pyyaml~=6.0.1",
@@ -91,7 +93,6 @@ dependencies = [
     "weaviate-client==4.17.0",
     "apscheduler>=3.11.0",
     "weave>=0.52.16",
-    "jsonschema>=4.25.1",
 ]
 # Before adding new dependency, consider place it in
 # alphabet order (a-z) and suitable group.
@@ -151,7 +152,7 @@ dev = [
     "types-pywin32~=310.0.0",
     "types-pyyaml~=6.0.12",
     "types-regex~=2024.11.6",
-    "types-shapely~=2.0.0",
+    "types-shapely~=2.1.0",
     "types-simplejson>=3.20.0",
     "types-six>=1.17.0",
     "types-tensorflow>=2.18.0",
@@ -188,7 +189,7 @@ storage = [
     "opendal~=0.46.0",
     "oss2==2.18.5",
     "supabase~=2.18.1",
-    "tos~=2.7.1",
+    "tos~=2.9.0",
 ]
 
 ############################################################
@@ -216,6 +217,7 @@ vdb = [
     "pymochow==2.2.9",
     "pyobvector~=0.2.17",
     "qdrant-client==1.9.0",
+    "intersystems-irispython>=5.1.0",
     "tablestore==6.3.7",
     "tcvectordb~=1.6.4",
     "tidb-vector==0.0.9",

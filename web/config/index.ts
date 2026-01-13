@@ -1,19 +1,21 @@
+import type { ModelParameterRule } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { InputVarType } from '@/app/components/workflow/types'
-import { AgentStrategy } from '@/types/app'
 import { PromptRole } from '@/models/debug'
 import { PipelineInputVarType } from '@/models/pipeline'
+import { AgentStrategy } from '@/types/app'
 import { DatasetAttr } from '@/types/feature'
 import pkg from '../package.json'
-import type { ModelParameterRule } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 const getBooleanConfig = (
   envVar: string | undefined,
   dataAttrKey: DatasetAttr,
   defaultValue: boolean = true,
 ) => {
-  if (envVar !== undefined && envVar !== '') return envVar === 'true'
+  if (envVar !== undefined && envVar !== '')
+    return envVar === 'true'
   const attrValue = globalThis.document?.body?.getAttribute(dataAttrKey)
-  if (attrValue !== undefined && attrValue !== '') return attrValue === 'true'
+  if (attrValue !== undefined && attrValue !== '')
+    return attrValue === 'true'
   return defaultValue
 }
 
@@ -24,13 +26,15 @@ const getNumberConfig = (
 ) => {
   if (envVar) {
     const parsed = Number.parseInt(envVar)
-    if (!Number.isNaN(parsed) && parsed > 0) return parsed
+    if (!Number.isNaN(parsed) && parsed > 0)
+      return parsed
   }
 
   const attrValue = globalThis.document?.body?.getAttribute(dataAttrKey)
   if (attrValue) {
     const parsed = Number.parseInt(attrValue)
-    if (!Number.isNaN(parsed) && parsed > 0) return parsed
+    if (!Number.isNaN(parsed) && parsed > 0)
+      return parsed
   }
   return defaultValue
 }
@@ -40,10 +44,12 @@ const getStringConfig = (
   dataAttrKey: DatasetAttr,
   defaultValue: string,
 ) => {
-  if (envVar) return envVar
+  if (envVar)
+    return envVar
 
   const attrValue = globalThis.document?.body?.getAttribute(dataAttrKey)
-  if (attrValue) return attrValue
+  if (attrValue)
+    return attrValue
   return defaultValue
 }
 
@@ -76,6 +82,12 @@ const EDITION = getStringConfig(
 
 export const IS_CE_EDITION = EDITION === 'SELF_HOSTED'
 export const IS_CLOUD_EDITION = EDITION === 'CLOUD'
+
+export const AMPLITUDE_API_KEY = getStringConfig(
+  process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY,
+  DatasetAttr.DATA_PUBLIC_AMPLITUDE_API_KEY,
+  '',
+)
 
 export const IS_DEV = process.env.NODE_ENV === 'development'
 export const IS_PROD = process.env.NODE_ENV === 'production'
@@ -119,8 +131,9 @@ export const TONE_LIST = [
   {
     id: 4,
     name: 'Custom',
+    config: undefined,
   },
-]
+] as const
 
 export const DEFAULT_CHAT_PROMPT_CONFIG = {
   prompt: [
@@ -152,8 +165,16 @@ const COOKIE_DOMAIN = getStringConfig(
   DatasetAttr.DATA_PUBLIC_COOKIE_DOMAIN,
   '',
 ).trim()
+
+export const BATCH_CONCURRENCY = getNumberConfig(
+  process.env.NEXT_PUBLIC_BATCH_CONCURRENCY,
+  DatasetAttr.DATA_PUBLIC_BATCH_CONCURRENCY,
+  5, // default
+)
+
 export const CSRF_COOKIE_NAME = () => {
-  if (COOKIE_DOMAIN) return 'csrf_token'
+  if (COOKIE_DOMAIN)
+    return 'csrf_token'
   const isSecure = API_PREFIX.startsWith('https://')
   return isSecure ? '__Host-csrf_token' : 'csrf_token'
 }
@@ -173,7 +194,8 @@ export const emailRegex = /^[\w.!#$%&'*+\-/=?^{|}~]+@([\w-]+\.)+[\w-]{2,}$/m
 const MAX_ZN_VAR_NAME_LENGTH = 8
 const MAX_EN_VAR_VALUE_LENGTH = 30
 export const getMaxVarNameLength = (value: string) => {
-  if (zhRegex.test(value)) return MAX_ZN_VAR_NAME_LENGTH
+  if (zhRegex.test(value))
+    return MAX_ZN_VAR_NAME_LENGTH
 
   return MAX_EN_VAR_VALUE_LENGTH
 }
@@ -318,7 +340,7 @@ Thought: {{agent_scratchpad}}
 }
 
 export const VAR_REGEX
-  = /\{\{(#[a-zA-Z0-9_-]{1,50}(\.\d+)?(\.[a-zA-Z_]\w{0,29}){1,10}#)\}\}/gi
+  = /\{\{(#[\w-]{1,50}(\.\d+)?(\.[a-z_]\w{0,29}){1,10}#)\}\}/gi
 
 export const resetReg = () => (VAR_REGEX.lastIndex = 0)
 
@@ -392,7 +414,7 @@ export const ENABLE_SINGLE_DOLLAR_LATEX = getBooleanConfig(
 
 export const VALUE_SELECTOR_DELIMITER = '@@@'
 
-export const validPassword = /^(?=.*[a-zA-Z])(?=.*\d)\S{8,}$/
+export const validPassword = /^(?=.*[a-z])(?=.*\d)\S{8,}$/i
 
 export const ZENDESK_WIDGET_KEY = getStringConfig(
   process.env.NEXT_PUBLIC_ZENDESK_WIDGET_KEY,

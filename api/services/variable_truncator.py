@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import dataclasses
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
@@ -106,7 +108,7 @@ class VariableTruncator(BaseTruncator):
         self._max_size_bytes = max_size_bytes
 
     @classmethod
-    def default(cls) -> "VariableTruncator":
+    def default(cls) -> VariableTruncator:
         return VariableTruncator(
             max_size_bytes=dify_config.WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE,
             array_element_limit=dify_config.WORKFLOW_VARIABLE_TRUNCATION_ARRAY_LENGTH,
@@ -410,9 +412,12 @@ class VariableTruncator(BaseTruncator):
     @overload
     def _truncate_json_primitives(self, val: None, target_size: int) -> _PartResult[None]: ...
 
+    @overload
+    def _truncate_json_primitives(self, val: File, target_size: int) -> _PartResult[File]: ...
+
     def _truncate_json_primitives(
         self,
-        val: UpdatedVariable | str | list[object] | dict[str, object] | bool | int | float | None,
+        val: UpdatedVariable | File | str | list[object] | dict[str, object] | bool | int | float | None,
         target_size: int,
     ) -> _PartResult[Any]:
         """Truncate a value within an object to fit within budget."""
@@ -425,6 +430,9 @@ class VariableTruncator(BaseTruncator):
             return self._truncate_array(val, target_size)
         elif isinstance(val, dict):
             return self._truncate_object(val, target_size)
+        elif isinstance(val, File):
+            # File objects should not be truncated, return as-is
+            return _PartResult(val, self.calculate_json_size(val), False)
         elif val is None or isinstance(val, (bool, int, float)):
             return _PartResult(val, self.calculate_json_size(val), False)
         else:

@@ -312,7 +312,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                 vector = Vector(dataset)
                 if all_child_documents:
                     vector.create(all_child_documents)
-                if all_multimodal_documents:
+                if all_multimodal_documents and dataset.is_multimodal:
                     vector.create_multimodal(all_multimodal_documents)
 
     def format_preview(self, chunks: Any) -> Mapping[str, Any]:

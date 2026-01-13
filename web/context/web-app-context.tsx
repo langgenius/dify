@@ -1,16 +1,16 @@
 'use client'
 
-import type { ChatConfig } from '@/app/components/base/chat/types'
-import Loading from '@/app/components/base/loading'
-import { AccessMode } from '@/models/access-control'
-import type { AppData, AppMeta } from '@/models/share'
-import { useGetWebAppAccessModeByCode } from '@/service/use-share'
-import { usePathname, useSearchParams } from 'next/navigation'
 import type { FC, PropsWithChildren } from 'react'
+import type { ChatConfig } from '@/app/components/base/chat/types'
+import type { AppData, AppMeta } from '@/models/share'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { useEffect } from 'react'
 import { create } from 'zustand'
 import { getProcessedSystemVariablesFromUrlParams } from '@/app/components/base/chat/utils'
-import { useGlobalPublicStore } from './global-public-context'
+import Loading from '@/app/components/base/loading'
+import { AccessMode } from '@/models/access-control'
+import { useGetWebAppAccessModeByCode } from '@/service/use-share'
+import { useIsSystemFeaturesPending } from './global-public-context'
 
 type WebAppStore = {
   shareCode: string | null
@@ -65,7 +65,7 @@ const getShareCodeFromPathname = (pathname: string): string | null => {
 }
 
 const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
-  const isGlobalPending = useGlobalPublicStore(s => s.isGlobalPending)
+  const isGlobalPending = useIsSystemFeaturesPending()
   const updateWebAppAccessMode = useWebAppStore(state => state.updateWebAppAccessMode)
   const updateShareCode = useWebAppStore(state => state.updateShareCode)
   const updateEmbeddedUserId = useWebAppStore(state => state.updateEmbeddedUserId)
@@ -112,9 +112,11 @@ const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
   }, [accessModeResult, updateWebAppAccessMode, shareCode])
 
   if (isGlobalPending || isLoading) {
-    return <div className='flex h-full w-full items-center justify-center'>
-      <Loading />
-    </div>
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <Loading />
+      </div>
+    )
   }
   return (
     <>

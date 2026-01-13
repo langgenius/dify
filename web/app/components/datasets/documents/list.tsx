@@ -1,42 +1,44 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { useBoolean } from 'ahooks'
-import { pick, uniq } from 'lodash-es'
+import type { Props as PaginationProps } from '@/app/components/base/pagination'
+import type { CommonResponse } from '@/models/common'
+import type { LegacyDataSourceInfo, LocalFileInfo, OnlineDocumentInfo, OnlineDriveInfo, SimpleDocumentDetail } from '@/models/datasets'
 import {
   RiArrowDownLine,
   RiEditLine,
   RiGlobalLine,
 } from '@remixicon/react'
+import { useBoolean } from 'ahooks'
+import { uniq } from 'es-toolkit/array'
+import { pick } from 'es-toolkit/object'
 import { useRouter } from 'next/navigation'
+import * as React from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ChunkingModeLabel from '../common/chunking-mode-label'
-import FileTypeIcon from '../../base/file-uploader/file-type-icon'
-import s from './style.module.css'
-import RenameModal from './rename-modal'
-import BatchAction from './detail/completed/common/batch-action'
-import cn from '@/utils/classnames'
-import Tooltip from '@/app/components/base/tooltip'
-import Toast from '@/app/components/base/toast'
-import { asyncRunSafe } from '@/utils'
-import { formatNumber } from '@/utils/format'
-import NotionIcon from '@/app/components/base/notion-icon'
-import type { LegacyDataSourceInfo, LocalFileInfo, OnlineDocumentInfo, OnlineDriveInfo } from '@/models/datasets'
-import { ChunkingMode, DataSourceType, DocumentActionType, type SimpleDocumentDetail } from '@/models/datasets'
-import type { CommonResponse } from '@/models/common'
-import useTimestamp from '@/hooks/use-timestamp'
-import { useDatasetDetailContextWithSelector as useDatasetDetailContext } from '@/context/dataset-detail'
-import type { Props as PaginationProps } from '@/app/components/base/pagination'
-import Pagination from '@/app/components/base/pagination'
 import Checkbox from '@/app/components/base/checkbox'
-import { useDocumentArchive, useDocumentDelete, useDocumentDisable, useDocumentEnable } from '@/service/knowledge/use-document'
-import { extensionToFileType } from '@/app/components/datasets/hit-testing/utils/extension-to-file-type'
-import useBatchEditDocumentMetadata from '../metadata/hooks/use-batch-edit-document-metadata'
-import EditMetadataBatchModal from '@/app/components/datasets/metadata/edit-metadata-batch/modal'
-import StatusItem from './status-item'
-import Operations from './operations'
-import { DatasourceType } from '@/models/pipeline'
+import NotionIcon from '@/app/components/base/notion-icon'
+import Pagination from '@/app/components/base/pagination'
+import Toast from '@/app/components/base/toast'
+import Tooltip from '@/app/components/base/tooltip'
 import { normalizeStatusForQuery } from '@/app/components/datasets/documents/status-filter'
+import { extensionToFileType } from '@/app/components/datasets/hit-testing/utils/extension-to-file-type'
+import EditMetadataBatchModal from '@/app/components/datasets/metadata/edit-metadata-batch/modal'
+import { useDatasetDetailContextWithSelector as useDatasetDetailContext } from '@/context/dataset-detail'
+import useTimestamp from '@/hooks/use-timestamp'
+import { ChunkingMode, DataSourceType, DocumentActionType } from '@/models/datasets'
+import { DatasourceType } from '@/models/pipeline'
+import { useDocumentArchive, useDocumentBatchRetryIndex, useDocumentDelete, useDocumentDisable, useDocumentEnable } from '@/service/knowledge/use-document'
+import { asyncRunSafe } from '@/utils'
+import { cn } from '@/utils/classnames'
+import { formatNumber } from '@/utils/format'
+import FileTypeIcon from '../../base/file-uploader/file-type-icon'
+import ChunkingModeLabel from '../common/chunking-mode-label'
+import useBatchEditDocumentMetadata from '../metadata/hooks/use-batch-edit-document-metadata'
+import BatchAction from './detail/completed/common/batch-action'
+import Operations from './operations'
+import RenameModal from './rename-modal'
+import StatusItem from './status-item'
+import s from './style.module.css'
 
 export const renderTdValue = (value: string | number | null, isEmptyStyle = false) => {
   return (
@@ -179,13 +181,10 @@ const DocumentList: FC<IDocumentListProps> = ({
     const isDesc = isActive && sortOrder === 'desc'
 
     return (
-      <div className='flex cursor-pointer items-center hover:text-text-secondary' onClick={() => handleSort(field)}>
+      <div className="flex cursor-pointer items-center hover:text-text-secondary" onClick={() => handleSort(field)}>
         {label}
         <RiArrowDownLine
-          className={cn('ml-0.5 h-3 w-3 transition-all',
-            isActive ? 'text-text-tertiary' : 'text-text-disabled',
-            isActive && !isDesc ? 'rotate-180' : '',
-          )}
+          className={cn('ml-0.5 h-3 w-3 transition-all', isActive ? 'text-text-tertiary' : 'text-text-disabled', isActive && !isDesc ? 'rotate-180' : '')}
         />
       </div>
     )
@@ -222,6 +221,7 @@ const DocumentList: FC<IDocumentListProps> = ({
   const { mutateAsync: enableDocument } = useDocumentEnable()
   const { mutateAsync: disableDocument } = useDocumentDisable()
   const { mutateAsync: deleteDocument } = useDocumentDelete()
+  const { mutateAsync: retryIndexDocument } = useDocumentBatchRetryIndex()
 
   const handleAction = (actionName: DocumentActionType) => {
     return async () => {
@@ -245,12 +245,28 @@ const DocumentList: FC<IDocumentListProps> = ({
       if (!e) {
         if (actionName === DocumentActionType.delete)
           onSelectedIdChange([])
-        Toast.notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+        Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
         onUpdate()
       }
-      else { Toast.notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') }) }
+      else { Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) }) }
     }
   }
+
+  const handleBatchReIndex = async () => {
+    const [e] = await asyncRunSafe<CommonResponse>(retryIndexDocument({ datasetId, documentIds: selectedIds }))
+    if (!e) {
+      onSelectedIdChange([])
+      Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      onUpdate()
+    }
+    else {
+      Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+    }
+  }
+
+  const hasErrorDocumentsSelected = useMemo(() => {
+    return localDocs.some(doc => selectedIds.includes(doc.id) && doc.display_status === 'error')
+  }, [localDocs, selectedIds])
 
   const getFileExtension = useCallback((fileName: string): string => {
     if (!fileName)
@@ -285,16 +301,16 @@ const DocumentList: FC<IDocumentListProps> = ({
   }, [])
 
   return (
-    <div className='relative mt-3 flex h-full w-full flex-col'>
-      <div className='relative h-0 grow overflow-x-auto'>
+    <div className="relative mt-3 flex h-full w-full flex-col">
+      <div className="relative h-0 grow overflow-x-auto">
         <table className={`w-full min-w-[700px] max-w-full border-collapse border-0 text-sm ${s.documentTable}`}>
           <thead className="h-8 border-b border-divider-subtle text-xs font-medium uppercase leading-8 text-text-tertiary">
             <tr>
-              <td className='w-12'>
-                <div className='flex items-center' onClick={e => e.stopPropagation()}>
+              <td className="w-12">
+                <div className="flex items-center" onClick={e => e.stopPropagation()}>
                   {embeddingAvailable && (
                     <Checkbox
-                      className='mr-2 shrink-0'
+                      className="mr-2 shrink-0"
                       checked={isAllSelected}
                       indeterminate={!isAllSelected && isSomeSelected}
                       onCheck={onSelectedAll}
@@ -304,148 +320,152 @@ const DocumentList: FC<IDocumentListProps> = ({
                 </div>
               </td>
               <td>
-                {renderSortHeader('name', t('datasetDocuments.list.table.header.fileName'))}
+                {renderSortHeader('name', t('list.table.header.fileName', { ns: 'datasetDocuments' }))}
               </td>
-              <td className='w-[130px]'>{t('datasetDocuments.list.table.header.chunkingMode')}</td>
-              <td className='w-24'>
-                {renderSortHeader('word_count', t('datasetDocuments.list.table.header.words'))}
+              <td className="w-[130px]">{t('list.table.header.chunkingMode', { ns: 'datasetDocuments' })}</td>
+              <td className="w-24">
+                {renderSortHeader('word_count', t('list.table.header.words', { ns: 'datasetDocuments' }))}
               </td>
-              <td className='w-44'>
-                {renderSortHeader('hit_count', t('datasetDocuments.list.table.header.hitCount'))}
+              <td className="w-44">
+                {renderSortHeader('hit_count', t('list.table.header.hitCount', { ns: 'datasetDocuments' }))}
               </td>
-              <td className='w-44'>
-                {renderSortHeader('created_at', t('datasetDocuments.list.table.header.uploadTime'))}
+              <td className="w-44">
+                {renderSortHeader('created_at', t('list.table.header.uploadTime', { ns: 'datasetDocuments' }))}
               </td>
-              <td className='w-40'>{t('datasetDocuments.list.table.header.status')}</td>
-              <td className='w-20'>{t('datasetDocuments.list.table.header.action')}</td>
+              <td className="w-40">{t('list.table.header.status', { ns: 'datasetDocuments' })}</td>
+              <td className="w-20">{t('list.table.header.action', { ns: 'datasetDocuments' })}</td>
             </tr>
           </thead>
           <tbody className="text-text-secondary">
             {localDocs.map((doc, index) => {
               const isFile = isLocalFile(doc.data_source_type)
               const fileType = isFile ? doc.data_source_detail_dict?.upload_file?.extension : ''
-              return <tr
-                key={doc.id}
-                className={'h-8 cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover'}
-                onClick={() => {
-                  router.push(`/datasets/${datasetId}/documents/${doc.id}`)
-                }}>
-                <td className='text-left align-middle text-xs text-text-tertiary'>
-                  <div className='flex items-center' onClick={e => e.stopPropagation()}>
-                    <Checkbox
-                      className='mr-2 shrink-0'
-                      checked={selectedIds.includes(doc.id)}
-                      onCheck={() => {
-                        onSelectedIdChange(
-                          selectedIds.includes(doc.id)
-                            ? selectedIds.filter(id => id !== doc.id)
-                            : [...selectedIds, doc.id],
-                        )
-                      }}
-                    />
-                    {index + 1}
-                  </div>
-                </td>
-                <td>
-                  <div className={'group mr-6 flex max-w-[460px] items-center hover:mr-0'}>
-                    <div className='flex shrink-0 items-center'>
-                      {isOnlineDocument(doc.data_source_type) && (
-                        <NotionIcon
-                          className='mr-1.5'
-                          type='page'
-                          src={
-                            isCreateFromRAGPipeline(doc.created_from)
-                              ? (doc.data_source_info as OnlineDocumentInfo).page.page_icon
-                              : (doc.data_source_info as LegacyDataSourceInfo).notion_page_icon
-                          }
-                        />
-                      )}
-                      {isLocalFile(doc.data_source_type) && (
-                        <FileTypeIcon
-                          type={
-                            extensionToFileType(
+              return (
+                <tr
+                  key={doc.id}
+                  className="h-8 cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover"
+                  onClick={() => {
+                    router.push(`/datasets/${datasetId}/documents/${doc.id}`)
+                  }}
+                >
+                  <td className="text-left align-middle text-xs text-text-tertiary">
+                    <div className="flex items-center" onClick={e => e.stopPropagation()}>
+                      <Checkbox
+                        className="mr-2 shrink-0"
+                        checked={selectedIds.includes(doc.id)}
+                        onCheck={() => {
+                          onSelectedIdChange(
+                            selectedIds.includes(doc.id)
+                              ? selectedIds.filter(id => id !== doc.id)
+                              : [...selectedIds, doc.id],
+                          )
+                        }}
+                      />
+                      {index + 1}
+                    </div>
+                  </td>
+                  <td>
+                    <div className="group mr-6 flex max-w-[460px] items-center hover:mr-0">
+                      <div className="flex shrink-0 items-center">
+                        {isOnlineDocument(doc.data_source_type) && (
+                          <NotionIcon
+                            className="mr-1.5"
+                            type="page"
+                            src={
                               isCreateFromRAGPipeline(doc.created_from)
-                                ? (doc?.data_source_info as LocalFileInfo)?.extension
-                                : ((doc?.data_source_info as LegacyDataSourceInfo)?.upload_file?.extension ?? fileType),
-                            )
-                          }
-                          className='mr-1.5'
-                        />
-                      )}
-                      {isOnlineDrive(doc.data_source_type) && (
-                        <FileTypeIcon
-                          type={
-                            extensionToFileType(
-                              getFileExtension((doc?.data_source_info as unknown as OnlineDriveInfo)?.name),
-                            )
-                          }
-                          className='mr-1.5'
-                        />
-                      )}
-                      {isWebsiteCrawl(doc.data_source_type) && (
-                        <RiGlobalLine className='mr-1.5 size-4' />
-                      )}
-                    </div>
-                    <Tooltip
-                      popupContent={doc.name}
-                    >
-                      <span className='grow-1 truncate text-sm'>{doc.name}</span>
-                    </Tooltip>
-                    <div className='hidden shrink-0 group-hover:ml-auto group-hover:flex'>
+                                ? (doc.data_source_info as OnlineDocumentInfo).page.page_icon
+                                : (doc.data_source_info as LegacyDataSourceInfo).notion_page_icon
+                            }
+                          />
+                        )}
+                        {isLocalFile(doc.data_source_type) && (
+                          <FileTypeIcon
+                            type={
+                              extensionToFileType(
+                                isCreateFromRAGPipeline(doc.created_from)
+                                  ? (doc?.data_source_info as LocalFileInfo)?.extension
+                                  : ((doc?.data_source_info as LegacyDataSourceInfo)?.upload_file?.extension ?? fileType),
+                              )
+                            }
+                            className="mr-1.5"
+                          />
+                        )}
+                        {isOnlineDrive(doc.data_source_type) && (
+                          <FileTypeIcon
+                            type={
+                              extensionToFileType(
+                                getFileExtension((doc?.data_source_info as unknown as OnlineDriveInfo)?.name),
+                              )
+                            }
+                            className="mr-1.5"
+                          />
+                        )}
+                        {isWebsiteCrawl(doc.data_source_type) && (
+                          <RiGlobalLine className="mr-1.5 size-4" />
+                        )}
+                      </div>
                       <Tooltip
-                        popupContent={t('datasetDocuments.list.table.rename')}
+                        popupContent={doc.name}
                       >
-                        <div
-                          className='cursor-pointer rounded-md p-1 hover:bg-state-base-hover'
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleShowRenameModal(doc)
-                          }}
-                        >
-                          <RiEditLine className='h-4 w-4 text-text-tertiary' />
-                        </div>
+                        <span className="grow-1 truncate text-sm">{doc.name}</span>
                       </Tooltip>
+                      <div className="hidden shrink-0 group-hover:ml-auto group-hover:flex">
+                        <Tooltip
+                          popupContent={t('list.table.rename', { ns: 'datasetDocuments' })}
+                        >
+                          <div
+                            className="cursor-pointer rounded-md p-1 hover:bg-state-base-hover"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleShowRenameModal(doc)
+                            }}
+                          >
+                            <RiEditLine className="h-4 w-4 text-text-tertiary" />
+                          </div>
+                        </Tooltip>
+                      </div>
                     </div>
-                  </div>
-                </td>
-                <td>
-                  <ChunkingModeLabel
-                    isGeneralMode={isGeneralMode}
-                    isQAMode={isQAMode}
-                  />
-                </td>
-                <td>{renderCount(doc.word_count)}</td>
-                <td>{renderCount(doc.hit_count)}</td>
-                <td className='text-[13px] text-text-secondary'>
-                  {formatTime(doc.created_at, t('datasetHitTesting.dateTimeFormat') as string)}
-                </td>
-                <td>
-                  <StatusItem status={doc.display_status} />
-                </td>
-                <td>
-                  <Operations
-                    selectedIds={selectedIds}
-                    onSelectedIdChange={onSelectedIdChange}
-                    embeddingAvailable={embeddingAvailable}
-                    datasetId={datasetId}
-                    detail={pick(doc, ['name', 'enabled', 'archived', 'id', 'data_source_type', 'doc_form', 'display_status'])}
-                    onUpdate={onUpdate}
-                  />
-                </td>
-              </tr>
+                  </td>
+                  <td>
+                    <ChunkingModeLabel
+                      isGeneralMode={isGeneralMode}
+                      isQAMode={isQAMode}
+                    />
+                  </td>
+                  <td>{renderCount(doc.word_count)}</td>
+                  <td>{renderCount(doc.hit_count)}</td>
+                  <td className="text-[13px] text-text-secondary">
+                    {formatTime(doc.created_at, t('dateTimeFormat', { ns: 'datasetHitTesting' }) as string)}
+                  </td>
+                  <td>
+                    <StatusItem status={doc.display_status} />
+                  </td>
+                  <td>
+                    <Operations
+                      selectedIds={selectedIds}
+                      onSelectedIdChange={onSelectedIdChange}
+                      embeddingAvailable={embeddingAvailable}
+                      datasetId={datasetId}
+                      detail={pick(doc, ['name', 'enabled', 'archived', 'id', 'data_source_type', 'doc_form', 'display_status'])}
+                      onUpdate={onUpdate}
+                    />
+                  </td>
+                </tr>
+              )
             })}
           </tbody>
         </table>
       </div>
       {(selectedIds.length > 0) && (
         <BatchAction
-          className='absolute bottom-16 left-0 z-20'
+          className="absolute bottom-16 left-0 z-20"
           selectedIds={selectedIds}
           onArchive={handleAction(DocumentActionType.archive)}
           onBatchEnable={handleAction(DocumentActionType.enable)}
           onBatchDisable={handleAction(DocumentActionType.disable)}
           onBatchDelete={handleAction(DocumentActionType.delete)}
           onEditMetadata={showEditModal}
+          onBatchReIndex={hasErrorDocumentsSelected ? handleBatchReIndex : undefined}
           onCancel={() => {
             onSelectedIdChange([])
           }}
@@ -455,7 +475,7 @@ const DocumentList: FC<IDocumentListProps> = ({
       {pagination.total && (
         <Pagination
           {...pagination}
-          className='w-full shrink-0'
+          className="w-full shrink-0"
         />
       )}
 

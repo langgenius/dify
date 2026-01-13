@@ -1,10 +1,29 @@
+import type { App, AppCategory } from '@/models/explore'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { AccessMode } from '@/models/access-control'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { fetchInstalledAppList, getAppAccessModeByAppId, uninstallApp, updatePinStatus } from './explore'
+import { fetchAppList, fetchInstalledAppList, getAppAccessModeByAppId, uninstallApp, updatePinStatus } from './explore'
 import { fetchAppMeta, fetchAppParams } from './share'
 
 const NAME_SPACE = 'explore'
+
+type ExploreAppListData = {
+  categories: AppCategory[]
+  allList: App[]
+}
+
+export const useExploreAppList = () => {
+  return useQuery<ExploreAppListData>({
+    queryKey: [NAME_SPACE, 'appList'],
+    queryFn: async () => {
+      const { categories, recommended_apps } = await fetchAppList()
+      return {
+        categories,
+        allList: [...recommended_apps].sort((a, b) => a.position - b.position),
+      }
+    },
+  })
+}
 
 export const useGetInstalledApps = () => {
   return useQuery({
@@ -30,7 +49,7 @@ export const useUpdateAppPinStatus = () => {
   const client = useQueryClient()
   return useMutation({
     mutationKey: [NAME_SPACE, 'updateAppPinStatus'],
-    mutationFn: ({ appId, isPinned }: { appId: string; isPinned: boolean }) => updatePinStatus(appId, isPinned),
+    mutationFn: ({ appId, isPinned }: { appId: string, isPinned: boolean }) => updatePinStatus(appId, isPinned),
     onSuccess: () => {
       client.invalidateQueries({ queryKey: [NAME_SPACE, 'installedApps'] })
     },
@@ -40,7 +59,7 @@ export const useUpdateAppPinStatus = () => {
 export const useGetInstalledAppAccessModeByAppId = (appId: string | null) => {
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   return useQuery({
-    queryKey: [NAME_SPACE, 'appAccessMode', appId],
+    queryKey: [NAME_SPACE, 'appAccessMode', appId, systemFeatures.webapp_auth.enabled],
     queryFn: () => {
       if (systemFeatures.webapp_auth.enabled === false) {
         return {

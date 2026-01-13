@@ -1,18 +1,22 @@
-import { ReactScan } from './components/react-scan'
-import RoutePrefixHandle from './routePrefixHandle'
 import type { Viewport } from 'next'
-import I18nServer from './components/i18n-server'
-import BrowserInitializer from './components/browser-initializer'
-import SentryInitializer from './components/sentry-initializer'
-import { getLocaleOnServer } from '@/i18n-config/server'
-import { TanstackQueryInitializer } from '@/context/query-client'
+import { Provider as JotaiProvider } from 'jotai'
 import { ThemeProvider } from 'next-themes'
+import { Instrument_Serif } from 'next/font/google'
+import { NuqsAdapter } from 'nuqs/adapters/next/app'
+import GlobalPublicStoreProvider from '@/context/global-public-context'
+import { TanstackQueryInitializer } from '@/context/query-client'
+import { getLocaleOnServer } from '@/i18n-config/server'
+import { DatasetAttr } from '@/types/feature'
+import { cn } from '@/utils/classnames'
+import { ToastProvider } from './components/base/toast'
+import BrowserInitializer from './components/browser-initializer'
+import { ReactScanLoader } from './components/devtools/react-scan/loader'
+import { I18nServerProvider } from './components/provider/i18n-server'
+import { SerwistProvider } from './components/provider/serwist'
+import SentryInitializer from './components/sentry-initializer'
+import RoutePrefixHandle from './routePrefixHandle'
 import './styles/globals.css'
 import './styles/markdown.scss'
-import GlobalPublicStoreProvider from '@/context/global-public-context'
-import { DatasetAttr } from '@/types/feature'
-import { Instrument_Serif } from 'next/font/google'
-import cn from '@/utils/classnames'
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -36,12 +40,16 @@ const LocaleLayout = async ({
 }) => {
   const locale = await getLocaleOnServer()
 
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
+  const swUrl = `${basePath}/serwist/sw.js`
+
   const datasetMap: Record<DatasetAttr, string | undefined> = {
     [DatasetAttr.DATA_API_PREFIX]: process.env.NEXT_PUBLIC_API_PREFIX,
     [DatasetAttr.DATA_PUBLIC_API_PREFIX]: process.env.NEXT_PUBLIC_PUBLIC_API_PREFIX,
     [DatasetAttr.DATA_MARKETPLACE_API_PREFIX]: process.env.NEXT_PUBLIC_MARKETPLACE_API_PREFIX,
     [DatasetAttr.DATA_MARKETPLACE_URL_PREFIX]: process.env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX,
     [DatasetAttr.DATA_PUBLIC_EDITION]: process.env.NEXT_PUBLIC_EDITION,
+    [DatasetAttr.DATA_PUBLIC_AMPLITUDE_API_KEY]: process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY,
     [DatasetAttr.DATA_PUBLIC_COOKIE_DOMAIN]: process.env.NEXT_PUBLIC_COOKIE_DOMAIN,
     [DatasetAttr.DATA_PUBLIC_SUPPORT_MAIL_LOGIN]: process.env.NEXT_PUBLIC_SUPPORT_MAIL_LOGIN,
     [DatasetAttr.DATA_PUBLIC_SENTRY_DSN]: process.env.NEXT_PUBLIC_SENTRY_DSN,
@@ -66,6 +74,7 @@ const LocaleLayout = async ({
     [DatasetAttr.NEXT_PUBLIC_ZENDESK_FIELD_ID_EMAIL]: process.env.NEXT_PUBLIC_ZENDESK_FIELD_ID_EMAIL,
     [DatasetAttr.NEXT_PUBLIC_ZENDESK_FIELD_ID_WORKSPACE_ID]: process.env.NEXT_PUBLIC_ZENDESK_FIELD_ID_WORKSPACE_ID,
     [DatasetAttr.NEXT_PUBLIC_ZENDESK_FIELD_ID_PLAN]: process.env.NEXT_PUBLIC_ZENDESK_FIELD_ID_PLAN,
+    [DatasetAttr.DATA_PUBLIC_BATCH_CONCURRENCY]: process.env.NEXT_PUBLIC_BATCH_CONCURRENCY,
   }
 
   return (
@@ -84,30 +93,38 @@ const LocaleLayout = async ({
         <meta name="msapplication-config" content="/browserconfig.xml" />
       </head>
       <body
-        className='color-scheme h-full select-auto'
+        className="color-scheme h-full select-auto"
         {...datasetMap}
       >
-        <ReactScan />
-        <ThemeProvider
-          attribute='data-theme'
-          defaultTheme='system'
-          enableSystem
-          disableTransitionOnChange
-          enableColorScheme={false}
-        >
-          <BrowserInitializer>
-            <SentryInitializer>
-              <TanstackQueryInitializer>
-                <I18nServer>
-                  <GlobalPublicStoreProvider>
-                    {children}
-                  </GlobalPublicStoreProvider>
-                </I18nServer>
-              </TanstackQueryInitializer>
-            </SentryInitializer>
-          </BrowserInitializer>
-        </ThemeProvider>
-        <RoutePrefixHandle />
+        <SerwistProvider swUrl={swUrl}>
+          <ReactScanLoader />
+          <JotaiProvider>
+            <ThemeProvider
+              attribute="data-theme"
+              defaultTheme="system"
+              enableSystem
+              disableTransitionOnChange
+              enableColorScheme={false}
+            >
+              <NuqsAdapter>
+                <BrowserInitializer>
+                  <SentryInitializer>
+                    <TanstackQueryInitializer>
+                      <I18nServerProvider>
+                        <ToastProvider>
+                          <GlobalPublicStoreProvider>
+                            {children}
+                          </GlobalPublicStoreProvider>
+                        </ToastProvider>
+                      </I18nServerProvider>
+                    </TanstackQueryInitializer>
+                  </SentryInitializer>
+                </BrowserInitializer>
+              </NuqsAdapter>
+            </ThemeProvider>
+          </JotaiProvider>
+          <RoutePrefixHandle />
+        </SerwistProvider>
       </body>
     </html>
   )
