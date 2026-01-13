@@ -1,17 +1,19 @@
 'use client'
 import type { FC } from 'react'
 import type { SubGraphModalProps } from './types'
+import type { MentionConfig } from '@/app/components/workflow/nodes/_base/types'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type { ToolNodeType } from '@/app/components/workflow/nodes/tool/types'
 import type { Node, PromptItem } from '@/app/components/workflow/types'
 import { Dialog, DialogPanel, Transition, TransitionChild } from '@headlessui/react'
 import { RiCloseLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
-import { Fragment, memo, useCallback, useMemo } from 'react'
+import { Fragment, memo, useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import { Agent } from '@/app/components/base/icons/src/vender/workflow'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { useStore } from '@/app/components/workflow/store'
 import { EditionType, PromptRole } from '@/app/components/workflow/types'
 import SubGraphCanvas from './sub-graph-canvas'
@@ -38,7 +40,64 @@ const SubGraphModal: FC<SubGraphModalProps> = ({
   const toolNode = useMemo(() => {
     return workflowNodes.find(node => node.id === toolNodeId)
   }, [toolNodeId, workflowNodes])
-  const toolParamValue = (toolNode?.data as ToolNodeType | undefined)?.tool_parameters?.[paramKey]?.value as string | undefined
+  const toolParam = (toolNode?.data as ToolNodeType | undefined)?.tool_parameters?.[paramKey]
+  const toolParamValue = toolParam?.value as string | undefined
+
+  const mentionConfig = useMemo<MentionConfig>(() => {
+    const current = toolParam?.mention_config
+    const rawSelector = Array.isArray(current?.output_selector) ? current!.output_selector : []
+    const outputSelector = rawSelector[0] === extractorNodeId ? rawSelector.slice(1) : rawSelector
+    return {
+      extractor_node_id: current?.extractor_node_id || extractorNodeId,
+      output_selector: outputSelector,
+      null_strategy: current?.null_strategy || 'use_default',
+      default_value: current?.default_value ?? '',
+    }
+  }, [extractorNodeId, toolParam?.mention_config])
+
+  const handleMentionConfigChange = useCallback((config: MentionConfig) => {
+    const { getNodes, setNodes } = reactflowStore.getState()
+    const nextNodes = getNodes().map((node) => {
+      if (node.id !== toolNodeId)
+        return node
+
+      const toolData = node.data as ToolNodeType
+      const currentParam = toolData.tool_parameters?.[paramKey]
+      if (!currentParam)
+        return node
+
+      return {
+        ...node,
+        data: {
+          ...toolData,
+          tool_parameters: {
+            ...toolData.tool_parameters,
+            [paramKey]: {
+              ...currentParam,
+              type: currentParam.type || VarKindType.mention,
+              mention_config: config,
+            },
+          },
+        },
+      }
+    })
+    setNodes(nextNodes)
+    handleSyncWorkflowDraft(true)
+  }, [handleSyncWorkflowDraft, paramKey, reactflowStore, toolNodeId])
+
+  useEffect(() => {
+    if (!toolParam || (toolParam.type && toolParam.type !== VarKindType.mention))
+      return
+
+    const current = toolParam.mention_config
+    const needsExtractor = !current?.extractor_node_id
+    const needsNullStrategy = !current?.null_strategy
+    const needsOutputSelector = !Array.isArray(current?.output_selector)
+    const needsDefaultValue = current?.default_value === undefined
+
+    if (needsExtractor || needsNullStrategy || needsOutputSelector || needsDefaultValue)
+      handleMentionConfigChange(mentionConfig)
+  }, [handleMentionConfigChange, mentionConfig, toolParam])
 
   const getUserPromptText = useCallback((promptTemplate?: PromptItem[] | PromptItem) => {
     if (!promptTemplate)
@@ -147,6 +206,8 @@ const SubGraphModal: FC<SubGraphModalProps> = ({
                     sourceVariable={sourceVariable}
                     agentNodeId={agentNodeId}
                     agentName={agentName}
+                    mentionConfig={mentionConfig}
+                    onMentionConfigChange={handleMentionConfigChange}
                     extractorNode={extractorNode}
                     toolParamValue={toolParamValue}
                     onSave={handleSave}

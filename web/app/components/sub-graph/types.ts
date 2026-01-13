@@ -1,4 +1,5 @@
 import type { StateCreator } from 'zustand'
+import type { MentionConfig } from '@/app/components/workflow/nodes/_base/types'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type { Edge, Node, NodeOutPutVar, ValueSelector, VarType } from '@/app/components/workflow/types'
 
@@ -26,6 +27,8 @@ export type SubGraphProps = {
   sourceVariable: ValueSelector
   agentNodeId: string
   agentName: string
+  mentionConfig: MentionConfig
+  onMentionConfigChange: (config: MentionConfig) => void
   extractorNode?: Node<LLMNodeType>
   toolParamValue?: string
   onSave?: (nodes: Node[], edges: Edge[]) => void

@@ -5,16 +5,27 @@ import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store
 import type { PromptItem } from '@/app/components/workflow/types'
 import { memo, useMemo } from 'react'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
+import { NODE_WIDTH_X_OFFSET, START_INITIAL_POSITION } from '@/app/components/workflow/constants'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
 import { BlockEnum, EditionType, PromptRole } from '@/app/components/workflow/types'
 import SubGraphMain from './components/sub-graph-main'
 import { useSubGraphNodes } from './hooks'
 import { createSubGraphSlice } from './store'
 
+const SUB_GRAPH_EDGE_GAP = 180
+const SUB_GRAPH_ENTRY_POSITION = {
+  x: START_INITIAL_POSITION.x,
+  y: 150,
+}
+const SUB_GRAPH_LLM_POSITION = {
+  x: SUB_GRAPH_ENTRY_POSITION.x + NODE_WIDTH_X_OFFSET - SUB_GRAPH_EDGE_GAP,
+  y: SUB_GRAPH_ENTRY_POSITION.y,
+}
+
 const defaultViewport: Viewport = {
-  x: 50,
+  x: SUB_GRAPH_EDGE_GAP,
   y: 50,
-  zoom: 1,
+  zoom: 1.3,
 }
 
 const SubGraph: FC<SubGraphProps> = (props) => {
@@ -23,6 +34,8 @@ const SubGraph: FC<SubGraphProps> = (props) => {
     paramKey,
     agentName,
     agentNodeId,
+    mentionConfig,
+    onMentionConfigChange,
     extractorNode,
     toolParamValue,
     onSave,
@@ -41,7 +54,7 @@ const SubGraph: FC<SubGraphProps> = (props) => {
     return {
       id: 'subgraph-source',
       type: 'custom',
-      position: { x: 100, y: 150 },
+      position: SUB_GRAPH_ENTRY_POSITION,
       data: {
         type: BlockEnum.Start,
         title: agentName,
@@ -50,8 +63,10 @@ const SubGraph: FC<SubGraphProps> = (props) => {
         _connectedTargetHandleIds: [],
         _subGraphEntry: true,
         _iconTypeOverride: BlockEnum.Agent,
+        selected: false,
         variables: [],
       },
+      selected: false,
       selectable: false,
       draggable: false,
       connectable: false,
@@ -110,9 +125,11 @@ const SubGraph: FC<SubGraphProps> = (props) => {
     return {
       ...extractorNode,
       hidden: false,
-      position: { x: 320, y: 150 },
+      selected: false,
+      position: SUB_GRAPH_LLM_POSITION,
       data: {
         ...extractorNode.data,
+        selected: false,
         prompt_template: nextPromptTemplate,
       },
     }
@@ -159,8 +176,10 @@ const SubGraph: FC<SubGraphProps> = (props) => {
         nodes={nodes}
         edges={edges}
         viewport={defaultViewport}
-        toolNodeId={toolNodeId}
-        paramKey={paramKey}
+        agentName={agentName}
+        extractorNodeId={`${toolNodeId}_ext_${paramKey}`}
+        mentionConfig={mentionConfig}
+        onMentionConfigChange={onMentionConfigChange}
         onSave={onSave}
       />
     </WorkflowWithDefaultContext>

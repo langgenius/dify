@@ -10,6 +10,8 @@ const SubGraphCanvas: FC<SubGraphCanvasProps> = ({
   sourceVariable,
   agentNodeId,
   agentName,
+  mentionConfig,
+  onMentionConfigChange,
   extractorNode,
   toolParamValue,
   onSave,
@@ -22,6 +24,8 @@ const SubGraphCanvas: FC<SubGraphCanvasProps> = ({
         sourceVariable={sourceVariable}
         agentNodeId={agentNodeId}
         agentName={agentName}
+        mentionConfig={mentionConfig}
+        onMentionConfigChange={onMentionConfigChange}
         extractorNode={extractorNode}
         toolParamValue={toolParamValue}
         onSave={onSave}
