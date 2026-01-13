@@ -311,14 +311,18 @@ class IndexingRunner:
         qa_preview_texts: list[QAPreviewDetail] = []
 
         total_segments = 0
+        # doc_form represents the segmentation method (general, parent-child, QA)
         index_type = doc_form
         index_processor = IndexProcessorFactory(index_type).init_index_processor()
+        # one extract_setting is one source document
         for extract_setting in extract_settings:
             # extract
             processing_rule = DatasetProcessRule(
                 mode=tmp_processing_rule["mode"], rules=json.dumps(tmp_processing_rule["rules"])
             )
+            # Extract document content
             text_docs = index_processor.extract(extract_setting, process_rule_mode=tmp_processing_rule["mode"])
+            # Cleaning and segmentation
             documents = index_processor.transform(
                 text_docs,
                 current_user=None,
@@ -361,6 +365,12 @@ class IndexingRunner:
 
         if doc_form and doc_form == "qa_model":
             return IndexingEstimate(total_segments=total_segments * 20, qa_preview=qa_preview_texts, preview=[])
+
+        # Generate summary preview
+        summary_index_setting = tmp_processing_rule["summary_index_setting"] if "summary_index_setting" in tmp_processing_rule else None
+        if summary_index_setting and summary_index_setting.get('enable') and preview_texts:
+            preview_texts = index_processor.generate_summary_preview(tenant_id, preview_texts, summary_index_setting)
+
         return IndexingEstimate(total_segments=total_segments, preview=preview_texts)
 
     def _extract(

@@ -89,6 +89,7 @@ from tasks.enable_segments_to_index_task import enable_segments_to_index_task
 from tasks.recover_document_indexing_task import recover_document_indexing_task
 from tasks.remove_document_from_index_task import remove_document_from_index_task
 from tasks.retry_document_indexing_task import retry_document_indexing_task
+from tasks.regenerate_summary_index_task import regenerate_summary_index_task
 from tasks.sync_website_document_indexing_task import sync_website_document_indexing_task
 
 logger = logging.getLogger(__name__)
@@ -474,6 +475,11 @@ class DatasetService:
         if external_retrieval_model:
             dataset.retrieval_model = external_retrieval_model
 
+        # Update summary index setting if provided
+        summary_index_setting = data.get("summary_index_setting", None)
+        if summary_index_setting is not None:
+            dataset.summary_index_setting = summary_index_setting
+
         # Update basic dataset properties
         dataset.name = data.get("name", dataset.name)
         dataset.description = data.get("description", dataset.description)
@@ -556,12 +562,20 @@ class DatasetService:
         # Handle indexing technique changes and embedding model updates
         action = DatasetService._handle_indexing_technique_change(dataset, data, filtered_data)
 
+        # Check if summary_index_setting model changed (before updating database)
+        summary_model_changed = DatasetService._check_summary_index_setting_model_changed(
+            dataset, data
+        )
+
         # Add metadata fields
         filtered_data["updated_by"] = user.id
         filtered_data["updated_at"] = naive_utc_now()
         # update Retrieval model
         if data.get("retrieval_model"):
             filtered_data["retrieval_model"] = data["retrieval_model"]
+        # update summary index setting
+        if data.get("summary_index_setting"):
+            filtered_data["summary_index_setting"] = data.get("summary_index_setting")
         # update icon info
         if data.get("icon_info"):
             filtered_data["icon_info"] = data.get("icon_info")
@@ -570,12 +584,30 @@ class DatasetService:
         db.session.query(Dataset).filter_by(id=dataset.id).update(filtered_data)
         db.session.commit()
 
+        # Reload dataset to get updated values
+        db.session.refresh(dataset)
+
         # update pipeline knowledge base node data
         DatasetService._update_pipeline_knowledge_base_node_data(dataset, user.id)
 
         # Trigger vector index task if indexing technique changed
         if action:
             deal_dataset_vector_index_task.delay(dataset.id, action)
+            # If embedding_model changed, also regenerate summary vectors
+            if action == "update":
+                regenerate_summary_index_task.delay(
+                    dataset.id,
+                    regenerate_reason="embedding_model_changed",
+                    regenerate_vectors_only=True,
+                )
+
+        # Trigger summary index regeneration if summary model changed
+        if summary_model_changed:
+            regenerate_summary_index_task.delay(
+                dataset.id,
+                regenerate_reason="summary_model_changed",
+                regenerate_vectors_only=False,
+            )
 
         return dataset
 
@@ -614,6 +646,7 @@ class DatasetService:
                             knowledge_index_node_data["chunk_structure"] = dataset.chunk_structure
                             knowledge_index_node_data["indexing_technique"] = dataset.indexing_technique  # pyright: ignore[reportAttributeAccessIssue]
                             knowledge_index_node_data["keyword_number"] = dataset.keyword_number
+                            knowledge_index_node_data["summary_index_setting"] = dataset.summary_index_setting
                             node["data"] = knowledge_index_node_data
                             updated = True
                         except Exception:
@@ -851,6 +884,49 @@ class DatasetService:
             embedding_model.provider, embedding_model.model
         )
         filtered_data["collection_binding_id"] = dataset_collection_binding.id
+
+    @staticmethod
+    def _check_summary_index_setting_model_changed(dataset: Dataset, data: dict[str, Any]) -> bool:
+        """
+        Check if summary_index_setting model (model_name or model_provider_name) has changed.
+
+        Args:
+            dataset: Current dataset object
+            data: Update data dictionary
+
+        Returns:
+            bool: True if summary model changed, False otherwise
+        """
+        # Check if summary_index_setting is being updated
+        if "summary_index_setting" not in data or data.get("summary_index_setting") is None:
+            return False
+
+        new_summary_setting = data.get("summary_index_setting")
+        old_summary_setting = dataset.summary_index_setting
+
+        # If old setting doesn't exist or is disabled, no need to regenerate
+        if not old_summary_setting or not old_summary_setting.get("enable"):
+            return False
+
+        # If new setting is disabled, no need to regenerate
+        if not new_summary_setting or not new_summary_setting.get("enable"):
+            return False
+
+        # Compare model_name and model_provider_name
+        old_model_name = old_summary_setting.get("model_name")
+        old_model_provider = old_summary_setting.get("model_provider_name")
+        new_model_name = new_summary_setting.get("model_name")
+        new_model_provider = new_summary_setting.get("model_provider_name")
+
+        # Check if model changed
+        if old_model_name != new_model_name or old_model_provider != new_model_provider:
+            logger.info(
+                f"Summary index setting model changed for dataset {dataset.id}: "
+                f"old={old_model_provider}/{old_model_name}, new={new_model_provider}/{new_model_name}"
+            )
+            return True
+
+        return False
 
     @staticmethod
     def update_rag_pipeline_dataset_settings(
@@ -1824,6 +1900,8 @@ class DocumentService:
                         DuplicateDocumentIndexingTaskProxy(
                             dataset.tenant_id, dataset.id, duplicate_document_ids
                         ).delay()
+                    # Note: Summary index generation is triggered in document_indexing_task after indexing completes
+                    # to ensure segments are available. See tasks/document_indexing_task.py
             except LockNotOwnedError:
                 pass
 
@@ -2128,6 +2206,14 @@ class DocumentService:
         name: str,
         batch: str,
     ):
+        # Set need_summary based on dataset's summary_index_setting
+        need_summary = False
+        if (
+            dataset.summary_index_setting
+            and dataset.summary_index_setting.get("enable") is True
+        ):
+            need_summary = True
+        
         document = Document(
             tenant_id=dataset.tenant_id,
             dataset_id=dataset.id,
@@ -2141,6 +2227,7 @@ class DocumentService:
             created_by=account.id,
             doc_form=document_form,
             doc_language=document_language,
+            need_summary=need_summary,
         )
         doc_metadata = {}
         if dataset.built_in_field_enabled:
@@ -2365,6 +2452,7 @@ class DocumentService:
             embedding_model_provider=knowledge_config.embedding_model_provider,
             collection_binding_id=dataset_collection_binding_id,
             retrieval_model=retrieval_model.model_dump() if retrieval_model else None,
+            summary_index_setting=knowledge_config.summary_index_setting,
             is_multimodal=knowledge_config.is_multimodal,
         )
 
@@ -2545,6 +2633,14 @@ class DocumentService:
 
             if not isinstance(args["process_rule"]["rules"]["segmentation"]["max_tokens"], int):
                 raise ValueError("Process rule segmentation max_tokens is invalid")
+
+        # valid summary index setting
+        if args["process_rule"]["summary_index_setting"] and args["process_rule"]["summary_index_setting"]["enable"]:
+            summary_index_setting = args["process_rule"]["summary_index_setting"]
+            if "model_name" not in summary_index_setting or not summary_index_setting["model_name"]:
+                raise ValueError("Summary index model name is required")
+            if "model_provider_name" not in summary_index_setting or not summary_index_setting["model_provider_name"]:
+                raise ValueError("Summary index model provider name is required")
 
     @staticmethod
     def batch_update_document_status(
@@ -3014,6 +3110,37 @@ class SegmentService:
                     if args.enabled or keyword_changed:
                         # update segment vector index
                         VectorService.update_segment_vector(args.keywords, segment, dataset)
+                # update summary index if summary is provided and has changed
+                if args.summary is not None:
+                    # Check if summary index is enabled
+                    has_summary_index = (
+                        dataset.indexing_technique == "high_quality"
+                        and dataset.summary_index_setting
+                        and dataset.summary_index_setting.get("enable") is True
+                    )
+                    
+                    if has_summary_index:
+                        # Query existing summary from database
+                        from models.dataset import DocumentSegmentSummary
+                        existing_summary = (
+                            db.session.query(DocumentSegmentSummary)
+                            .where(
+                                DocumentSegmentSummary.chunk_id == segment.id,
+                                DocumentSegmentSummary.dataset_id == dataset.id,
+                            )
+                            .first()
+                        )
+                        
+                        # Check if summary has changed
+                        existing_summary_content = existing_summary.summary_content if existing_summary else None
+                        if existing_summary_content != args.summary:
+                            # Summary has changed, update it
+                            from services.summary_index_service import SummaryIndexService
+                            try:
+                                SummaryIndexService.update_summary_for_segment(segment, dataset, args.summary)
+                            except Exception as e:
+                                logger.exception(f"Failed to update summary for segment {segment.id}: {str(e)}")
+                                # Don't fail the entire update if summary update fails
             else:
                 segment_hash = helper.generate_text_hash(content)
                 tokens = 0
@@ -3088,6 +3215,15 @@ class SegmentService:
                 elif document.doc_form in (IndexStructureType.PARAGRAPH_INDEX, IndexStructureType.QA_INDEX):
                     # update segment vector index
                     VectorService.update_segment_vector(args.keywords, segment, dataset)
+            # update summary index if summary is provided
+            if args.summary is not None:
+                from services.summary_index_service import SummaryIndexService
+
+                try:
+                    SummaryIndexService.update_summary_for_segment(segment, dataset, args.summary)
+                except Exception as e:
+                    logger.exception(f"Failed to update summary for segment {segment.id}: {str(e)}")
+                    # Don't fail the entire update if summary update fails
             # update multimodel vector index
             VectorService.update_multimodel_vector(segment, args.attachment_ids or [], dataset)
         except Exception as e:

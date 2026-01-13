@@ -25,6 +25,7 @@ from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegm
 from models.dataset import Document as DatasetDocument
 from services.account_service import AccountService
 from services.entities.knowledge_entities.knowledge_entities import ParentMode, Rule
+from services.summary_index_service import SummaryIndexService
 
 
 class ParentChildIndexProcessor(BaseIndexProcessor):
@@ -135,6 +136,29 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
 
     def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs):
         # node_ids is segment's node_ids
+        # Note: Summary indexes are now disabled (not deleted) when segments are disabled.
+        # This method is called for actual deletion scenarios (e.g., when segment is deleted).
+        # For disable operations, disable_summaries_for_segments is called directly in the task.
+        # Only delete summaries if explicitly requested (e.g., when segment is actually deleted)
+        delete_summaries = kwargs.get("delete_summaries", False)
+        if delete_summaries:
+            if node_ids:
+                # Find segments by index_node_id
+                segments = (
+                    db.session.query(DocumentSegment)
+                    .filter(
+                        DocumentSegment.dataset_id == dataset.id,
+                        DocumentSegment.index_node_id.in_(node_ids),
+                    )
+                    .all()
+                )
+                segment_ids = [segment.id for segment in segments]
+                if segment_ids:
+                    SummaryIndexService.delete_summaries_for_segments(dataset, segment_ids)
+            else:
+                # Delete all summaries for the dataset
+                SummaryIndexService.delete_summaries_for_segments(dataset, None)
+
         if dataset.indexing_technique == "high_quality":
             delete_child_chunks = kwargs.get("delete_child_chunks") or False
             precomputed_child_node_ids = kwargs.get("precomputed_child_node_ids")
