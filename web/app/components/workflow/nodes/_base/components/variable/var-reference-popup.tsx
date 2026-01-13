@@ -32,10 +32,9 @@ const VarReferencePopup: FC<Props> = ({
   const showManageRagInputFields = useMemo(() => !!pipelineId, [pipelineId])
   const setShowInputFieldPanel = useStore(s => s.setShowInputFieldPanel)
   const docLink = useDocLink()
-  // max-h-[300px] overflow-y-auto todo: use portal to handle long list
   return (
     <div
-      className="space-y-1 rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg"
+      className="max-h-[85vh] space-y-1 overflow-y-auto rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg"
       style={{
         width: itemWidth || 228,
       }}
