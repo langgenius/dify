@@ -203,7 +203,7 @@ class BaseTestLoadBalancing:
         account.is_authenticated = True
         return account
 
-    @pytest.fixture(scope="function")
+    @pytest.fixture
     def mock_load_balancing_service(self):
         """Mock ModelLoadBalancingService."""
         # Mock ProviderManager to prevent database access
