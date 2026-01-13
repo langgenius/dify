@@ -276,16 +276,34 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         Save or update the inputs, process_data, or outputs associated with a specific
         node_execution record.
 
-        For LogStore implementation, this is similar to save() since we always write
-        complete records. We append a new record with updated data fields.
+        For LogStore implementation, this is a no-op for the LogStore write because save()
+        already writes all fields including inputs, process_data, and outputs. The caller
+        typically calls save() first to persist status/metadata, then calls save_execution_data()
+        to persist data fields. Since LogStore writes complete records atomically, we don't
+        need a separate write here to avoid duplicate records.
+
+        However, if dual-write is enabled, we still need to call the SQL repository's
+        save_execution_data() method to properly update the SQL database.
 
         Args:
             execution: The NodeExecution instance with data to save
         """
-        logger.debug("save_execution_data: id=%s, node_execution_id=%s", execution.id, execution.node_execution_id)
-        # In LogStore, we simply write a new complete record with the data
-        # The log_version timestamp will ensure this is treated as the latest version
-        self.save(execution)
+        logger.debug(
+            "save_execution_data: no-op for LogStore (data already saved by save()): id=%s, node_execution_id=%s",
+            execution.id,
+            execution.node_execution_id,
+        )
+        # No-op for LogStore: save() already writes all fields including inputs, process_data, and outputs
+        # Calling save() again would create a duplicate record in the append-only LogStore
+
+        # Dual-write to SQL database if enabled (for safe migration)
+        if self._enable_dual_write:
+            try:
+                self.sql_repository.save_execution_data(execution)
+                logger.debug("Dual-write: saved node execution data to SQL database: id=%s", execution.id)
+            except Exception:
+                logger.exception("Failed to dual-write node execution data to SQL database: id=%s", execution.id)
+                # Don't raise - LogStore write succeeded, SQL is just a backup
 
     def get_by_workflow_run(
         self,
