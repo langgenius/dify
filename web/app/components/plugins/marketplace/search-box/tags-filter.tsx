@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslation } from '#i18n'
 import { useState } from 'react'
 import Checkbox from '@/app/components/base/checkbox'
 import Input from '@/app/components/base/input'
@@ -9,7 +10,6 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { useTags } from '@/app/components/plugins/hooks'
-import { useMixedTranslation } from '@/app/components/plugins/marketplace/hooks'
 import MarketplaceTrigger from './trigger/marketplace'
 import ToolSelectorTrigger from './trigger/tool-selector'
 
@@ -17,18 +17,16 @@ type TagsFilterProps = {
   tags: string[]
   onTagsChange: (tags: string[]) => void
   usedInMarketplace?: boolean
-  locale?: string
 }
 const TagsFilter = ({
   tags,
   onTagsChange,
   usedInMarketplace = false,
-  locale,
 }: TagsFilterProps) => {
-  const { t } = useMixedTranslation(locale)
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
-  const { tags: options, tagsMap } = useTags(t)
+  const { tags: options, tagsMap } = useTags()
   const filteredOptions = options.filter(option => option.label.toLowerCase().includes(searchText.toLowerCase()))
   const handleCheck = (id: string) => {
     if (tags.includes(id))
@@ -59,7 +57,6 @@ const TagsFilter = ({
               open={open}
               tags={tags}
               tagsMap={tagsMap}
-              locale={locale}
               onTagsChange={onTagsChange}
             />
           )

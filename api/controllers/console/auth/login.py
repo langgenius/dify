@@ -101,15 +101,15 @@ class LoginApi(Resource):
             raise EmailPasswordLoginLimitError()
 
         invite_token = args.invite_token
-        invitation: dict[str, Any] | None = None
+        invitation_data: dict[str, Any] | None = None
         if invite_token:
-            invitation = RegisterService.get_invitation_with_case_fallback(None, request_email, invite_token)
-            if invitation is None:
+            invitation_data = RegisterService.get_invitation_with_case_fallback(None, request_email, invite_token)
+            if invitation_data is None:
                 invite_token = None
 
         try:
-            if invitation:
-                data = invitation.get("data", {})  # type: ignore
+            if invitation_data:
+                data = invitation_data.get("data", {})
                 invitee_email = data.get("email") if data else None
                 invitee_email_normalized = invitee_email.lower() if isinstance(invitee_email, str) else invitee_email
                 if invitee_email_normalized != normalized_email:

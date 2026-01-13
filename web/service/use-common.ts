@@ -23,6 +23,7 @@ import type {
 } from '@/models/common'
 import type { RETRIEVE_METHOD } from '@/types/app'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { IS_DEV } from '@/config'
 import { get, post } from './base'
 import { useInvalid } from './use-base'
 
@@ -85,7 +86,7 @@ export const useUserProfile = () => {
         profile,
         meta: {
           currentVersion: response.headers.get('x-version'),
-          currentEnv: process.env.NODE_ENV === 'development'
+          currentEnv: IS_DEV
             ? 'DEVELOPMENT'
             : response.headers.get('x-env'),
         },
@@ -220,13 +221,12 @@ export const useIsLogin = () => {
         await get('/account/profile', {}, {
           silent: true,
         })
-      }
-      catch (e: any) {
-        if (e.status === 401)
-          return { logged_in: false }
         return { logged_in: true }
       }
-      return { logged_in: true }
+      catch {
+        // Any error (401, 500, network error, etc.) means not logged in
+        return { logged_in: false }
+      }
     },
   })
 }

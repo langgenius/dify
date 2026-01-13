@@ -7,9 +7,9 @@ import Line from './line'
 // Mock external dependencies only
 // ================================
 
-// Mock useMixedTranslation hook
-vi.mock('../hooks', () => ({
-  useMixedTranslation: (_locale?: string) => ({
+// Mock i18n translation hook
+vi.mock('#i18n', () => ({
+  useTranslation: () => ({
     t: (key: string, options?: { ns?: string }) => {
       // Build full key with namespace prefix if provided
       const fullKey = options?.ns ? `${options.ns}.${key}` : key
@@ -472,36 +472,6 @@ describe('Empty', () => {
   })
 
   // ================================
-  // Locale Prop Tests
-  // ================================
-  describe('Locale Prop', () => {
-    it('should pass locale to useMixedTranslation', () => {
-      render(<Empty locale="zh-CN" />)
-
-      // Translation should still work
-      expect(screen.getByText('No plugin found')).toBeInTheDocument()
-    })
-
-    it('should handle undefined locale', () => {
-      render(<Empty locale={undefined} />)
-
-      expect(screen.getByText('No plugin found')).toBeInTheDocument()
-    })
-
-    it('should handle en-US locale', () => {
-      render(<Empty locale="en-US" />)
-
-      expect(screen.getByText('No plugin found')).toBeInTheDocument()
-    })
-
-    it('should handle ja-JP locale', () => {
-      render(<Empty locale="ja-JP" />)
-
-      expect(screen.getByText('No plugin found')).toBeInTheDocument()
-    })
-  })
-
-  // ================================
   // Placeholder Cards Layout Tests
   // ================================
   describe('Placeholder Cards Layout', () => {
@@ -634,7 +604,6 @@ describe('Empty', () => {
           text="Custom message"
           lightCard
           className="custom-wrapper"
-          locale="en-US"
         />,
       )
 
@@ -693,12 +662,6 @@ describe('Empty', () => {
       const { container } = render(<Empty className="only-class" />)
 
       expect(container.querySelector('.only-class')).toBeInTheDocument()
-    })
-
-    it('should render with only locale prop', () => {
-      render(<Empty locale="zh-CN" />)
-
-      expect(screen.getByText('No plugin found')).toBeInTheDocument()
     })
 
     it('should handle text with unicode characters', () => {
@@ -813,7 +776,7 @@ describe('Empty and Line Integration', () => {
   })
 
   it('should render complete Empty component structure', () => {
-    const { container } = render(<Empty text="Test" lightCard className="test" locale="en-US" />)
+    const { container } = render(<Empty text="Test" lightCard className="test" />)
 
     // Container
     expect(container.querySelector('.test')).toBeInTheDocument()

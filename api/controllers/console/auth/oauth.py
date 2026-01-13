@@ -126,7 +126,7 @@ class OAuthCallback(Resource):
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin/invite-settings?invite_token={invite_token}")
 
         try:
-            account = _generate_account(provider, user_info)
+            account, oauth_new_user = _generate_account(provider, user_info)
         except AccountNotFoundError:
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Account not found.")
         except (WorkSpaceNotFoundError, WorkSpaceNotAllowedCreateError):
@@ -161,7 +161,10 @@ class OAuthCallback(Resource):
             ip_address=extract_remote_ip(request),
         )
 
-        response = redirect(f"{dify_config.CONSOLE_WEB_URL}")
+        base_url = dify_config.CONSOLE_WEB_URL
+        query_char = "&" if "?" in base_url else "?"
+        target_url = f"{base_url}{query_char}oauth_new_user={str(oauth_new_user).lower()}"
+        response = redirect(target_url)
 
         set_access_token_to_cookie(request, response, token_pair.access_token)
         set_refresh_token_to_cookie(request, response, token_pair.refresh_token)
@@ -179,9 +182,10 @@ def _get_account_by_openid_or_email(provider: str, user_info: OAuthUserInfo) -> 
     return account
 
 
-def _generate_account(provider: str, user_info: OAuthUserInfo):
+def _generate_account(provider: str, user_info: OAuthUserInfo) -> tuple[Account, bool]:
     # Get account by openid or email.
     account = _get_account_by_openid_or_email(provider, user_info)
+    oauth_new_user = False
 
     if account:
         tenants = TenantService.get_join_tenants(account)
@@ -196,6 +200,7 @@ def _generate_account(provider: str, user_info: OAuthUserInfo):
 
     if not account:
         normalized_email = user_info.email.lower()
+        oauth_new_user = True
         if not FeatureService.get_system_features().is_allow_register:
             if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(normalized_email):
                 raise AccountRegisterError(
@@ -227,4 +232,4 @@ def _generate_account(provider: str, user_info: OAuthUserInfo):
     # Link account
     AccountService.link_account_integrate(provider, user_info.id, account)
 
-    return account
+    return account, oauth_new_user

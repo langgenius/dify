@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import type { GithubRepo } from '@/models/common'
 import { RiLoader2Line } from '@remixicon/react'
 import { useQuery } from '@tanstack/react-query'
+import { IS_DEV } from '@/config'
 
 const defaultData = {
   stargazers_count: 110918,
@@ -21,7 +22,7 @@ const GithubStar: FC<{ className: string }> = (props) => {
   const { isFetching, isError, data } = useQuery<GithubRepo>({
     queryKey: ['github-star'],
     queryFn: getStar,
-    enabled: process.env.NODE_ENV !== 'development',
+    enabled: !IS_DEV,
     retry: false,
     placeholderData: defaultData,
   })

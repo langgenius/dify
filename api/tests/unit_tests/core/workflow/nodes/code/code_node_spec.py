@@ -1,3 +1,4 @@
+from configs import dify_config
 from core.helper.code_executor.code_executor import CodeLanguage
 from core.variables.types import SegmentType
 from core.workflow.nodes.code.code_node import CodeNode
@@ -6,6 +7,18 @@ from core.workflow.nodes.code.exc import (
     CodeNodeError,
     DepthLimitError,
     OutputValidationError,
+)
+from core.workflow.nodes.code.limits import CodeNodeLimits
+
+CodeNode._limits = CodeNodeLimits(
+    max_string_length=dify_config.CODE_MAX_STRING_LENGTH,
+    max_number=dify_config.CODE_MAX_NUMBER,
+    min_number=dify_config.CODE_MIN_NUMBER,
+    max_precision=dify_config.CODE_MAX_PRECISION,
+    max_depth=dify_config.CODE_MAX_DEPTH,
+    max_number_array_length=dify_config.CODE_MAX_NUMBER_ARRAY_LENGTH,
+    max_string_array_length=dify_config.CODE_MAX_STRING_ARRAY_LENGTH,
+    max_object_array_length=dify_config.CODE_MAX_OBJECT_ARRAY_LENGTH,
 )
 
 

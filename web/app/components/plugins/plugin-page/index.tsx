@@ -7,11 +7,10 @@ import {
   RiEqualizer2Line,
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import { noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import Button from '@/app/components/base/button'
 import TabSlider from '@/app/components/base/tab-slider'
 import Tooltip from '@/app/components/base/tooltip'
@@ -19,7 +18,7 @@ import ReferenceSettingModal from '@/app/components/plugins/reference-setting-mo
 import { getDocsUrl } from '@/app/components/plugins/utils'
 import { MARKETPLACE_API_PREFIX, SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import I18n from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePluginInstallation } from '@/hooks/use-query-params'
 import { fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/service/plugins'
@@ -28,7 +27,7 @@ import { cn } from '@/utils/classnames'
 import { PLUGIN_PAGE_TABS_MAP } from '../hooks'
 import InstallFromLocalPackage from '../install-plugin/install-from-local-package'
 import InstallFromMarketplace from '../install-plugin/install-from-marketplace'
-import { PLUGIN_TYPE_SEARCH_MAP } from '../marketplace/plugin-type-switch'
+import { PLUGIN_TYPE_SEARCH_MAP } from '../marketplace/constants'
 import {
   PluginPageContextProvider,
   usePluginPageContext,
@@ -48,7 +47,7 @@ const PluginPage = ({
   marketplace,
 }: PluginPageProps) => {
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
+  const locale = useLocale()
   useDocumentTitle(t('metadata.title', { ns: 'plugin' }))
 
   // Use nuqs hook for installation state

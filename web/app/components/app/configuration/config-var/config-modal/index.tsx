@@ -28,7 +28,7 @@ import { checkKeys, getNewVarInWorkflow, replaceSpaceWithUnderscoreInVarNameInpu
 import ConfigSelect from '../config-select'
 import ConfigString from '../config-string'
 import ModalFoot from '../modal-foot'
-import { jsonConfigPlaceHolder, jsonObjectWrap } from './config'
+import { jsonConfigPlaceHolder } from './config'
 import Field from './field'
 import TypeSelector from './type-select'
 
@@ -78,13 +78,12 @@ const ConfigModal: FC<IConfigModalProps> = ({
   const modalRef = useRef<HTMLDivElement>(null)
   const appDetail = useAppStore(state => state.appDetail)
   const isBasicApp = appDetail?.mode !== AppModeEnum.ADVANCED_CHAT && appDetail?.mode !== AppModeEnum.WORKFLOW
-  const isSupportJSON = false
   const jsonSchemaStr = useMemo(() => {
     const isJsonObject = type === InputVarType.jsonObject
     if (!isJsonObject || !tempPayload.json_schema)
       return ''
     try {
-      return JSON.stringify(JSON.parse(tempPayload.json_schema).properties, null, 2)
+      return tempPayload.json_schema
     }
     catch {
       return ''
@@ -129,13 +128,14 @@ const ConfigModal: FC<IConfigModalProps> = ({
   }, [])
 
   const handleJSONSchemaChange = useCallback((value: string) => {
+    const isEmpty = value == null || value.trim() === ''
+    if (isEmpty) {
+      handlePayloadChange('json_schema')(undefined)
+      return null
+    }
     try {
       const v = JSON.parse(value)
-      const res = {
-        ...jsonObjectWrap,
-        properties: v,
-      }
-      handlePayloadChange('json_schema')(JSON.stringify(res, null, 2))
+      handlePayloadChange('json_schema')(JSON.stringify(v, null, 2))
     }
     catch {
       return null
@@ -175,7 +175,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
           },
         ]
       : []),
-    ...((!isBasicApp && isSupportJSON)
+    ...((!isBasicApp)
       ? [{
           name: t('variableConfig.json', { ns: 'appDebug' }),
           value: InputVarType.jsonObject,
@@ -233,7 +233,28 @@ const ConfigModal: FC<IConfigModalProps> = ({
 
   const checkboxDefaultSelectValue = useMemo(() => getCheckboxDefaultSelectValue(tempPayload.default), [tempPayload.default])
 
+  const isJsonSchemaEmpty = (value: InputVar['json_schema']) => {
+    if (value === null || value === undefined) {
+      return true
+    }
+    if (typeof value !== 'string') {
+      return false
+    }
+    const trimmed = value.trim()
+    return trimmed === ''
+  }
+
   const handleConfirm = () => {
+    const jsonSchemaValue = tempPayload.json_schema
+    const isSchemaEmpty = isJsonSchemaEmpty(jsonSchemaValue)
+    const normalizedJsonSchema = isSchemaEmpty ? undefined : jsonSchemaValue
+
+    // if the input type is jsonObject and the schema is empty as determined by `isJsonSchemaEmpty`,
+    // remove the `json_schema` field from the payload by setting its value to `undefined`.
+    const payloadToSave = tempPayload.type === InputVarType.jsonObject && isSchemaEmpty
+      ? { ...tempPayload, json_schema: undefined }
+      : tempPayload
+
     const moreInfo = tempPayload.variable === payload?.variable
       ? undefined
       : {
@@ -250,7 +271,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
       return
     }
     if (isStringInput || type === InputVarType.number) {
-      onConfirm(tempPayload, moreInfo)
+      onConfirm(payloadToSave, moreInfo)
     }
     else if (type === InputVarType.select) {
       if (options?.length === 0) {
@@ -270,7 +291,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
         Toast.notify({ type: 'error', message: t('variableConfig.errorMsg.optionRepeat', { ns: 'appDebug' }) })
         return
       }
-      onConfirm(tempPayload, moreInfo)
+      onConfirm(payloadToSave, moreInfo)
     }
     else if ([InputVarType.singleFile, InputVarType.multiFiles].includes(type)) {
       if (tempPayload.allowed_file_types?.length === 0) {
@@ -283,10 +304,26 @@ const ConfigModal: FC<IConfigModalProps> = ({
         Toast.notify({ type: 'error', message: errorMessages })
         return
       }
-      onConfirm(tempPayload, moreInfo)
+      onConfirm(payloadToSave, moreInfo)
+    }
+    else if (type === InputVarType.jsonObject) {
+      if (!isSchemaEmpty && typeof normalizedJsonSchema === 'string') {
+        try {
+          const schema = JSON.parse(normalizedJsonSchema)
+          if (schema?.type !== 'object') {
+            Toast.notify({ type: 'error', message: t('variableConfig.errorMsg.jsonSchemaMustBeObject', { ns: 'appDebug' }) })
+            return
+          }
+        }
+        catch {
+          Toast.notify({ type: 'error', message: t('variableConfig.errorMsg.jsonSchemaInvalid', { ns: 'appDebug' }) })
+          return
+        }
+      }
+      onConfirm(payloadToSave, moreInfo)
     }
     else {
-      onConfirm(tempPayload, moreInfo)
+      onConfirm(payloadToSave, moreInfo)
     }
   }
 
