@@ -40,6 +40,10 @@ export type ModelParameterModalProps = {
   isInWorkflow?: boolean
   isAgentStrategy?: boolean
   scope?: string
+  nodeId?: string
+  filterVar?: (payload: any, valueSelector: any) => boolean
+  availableVars?: any[]
+  availableNodes?: any[]
 }
 
 const ModelParameterModal: FC<ModelParameterModalProps> = ({
@@ -53,6 +57,10 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   isInWorkflow,
   isAgentStrategy,
   scope = ModelTypeEnum.textGeneration,
+  nodeId,
+  filterVar,
+  availableVars,
+  availableNodes,
 }) => {
   const { t } = useTranslation()
   const { isAPIKeySet } = useProviderContext()
@@ -265,6 +273,10 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                   completionParams={value?.completion_params || {}}
                   onCompletionParamsChange={handleLLMParamsChange}
                   isAdvancedMode={isAdvancedMode}
+                  nodeId={nodeId}
+                  filterVar={filterVar}
+                  availableVars={availableVars}
+                  availableNodes={availableNodes}
                 />
               )}
               {currentModel?.model_type === ModelTypeEnum.tts && (

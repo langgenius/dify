@@ -19,6 +19,10 @@ type Props = {
   modelId: string
   completionParams: FormValue
   onCompletionParamsChange: (newParams: FormValue) => void
+  nodeId?: string
+  filterVar?: (payload: any, valueSelector: any) => boolean
+  availableVars?: any[]
+  availableNodes?: any[]
 }
 
 const LLMParamsPanel = ({
@@ -27,6 +31,10 @@ const LLMParamsPanel = ({
   modelId,
   completionParams,
   onCompletionParamsChange,
+  nodeId,
+  filterVar,
+  availableVars,
+  availableNodes,
 }: Props) => {
   const { t } = useTranslation()
   const { data: parameterRulesData, isPending: isLoading } = useModelParameterRules(provider, modelId)
@@ -93,6 +101,10 @@ const LLMParamsPanel = ({
             onChange={v => handleParamChange(parameter.name, v)}
             onSwitch={(checked, assignValue) => handleSwitch(parameter.name, checked, assignValue)}
             isInWorkflow
+            nodeId={nodeId}
+            filterVar={filterVar}
+            availableVars={availableVars}
+            availableNodes={availableNodes}
           />
         )))}
     </>

@@ -31,7 +31,7 @@ from core.workflow.enums import NodeType, WorkflowNodeExecutionMetadataKey, Work
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base import variable_template_parser
 from core.workflow.nodes.base.node import Node
-from core.workflow.nodes.llm import ModelConfig, llm_utils
+from core.workflow.nodes.llm import LLMNode, ModelConfig, llm_utils
 from core.workflow.runtime import VariablePool
 from factories.variable_factory import build_segment_with_type
 
@@ -270,9 +270,18 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         tools: list[PromptMessageTool],
         stop: list[str],
     ) -> tuple[str, LLMUsage, AssistantPromptMessage.ToolCall | None]:
+        # Parse variable references in completion_params if variable_pool is available
+        model_parameters = node_data_model.completion_params
+        variable_pool = self.graph_runtime_state.variable_pool
+        if variable_pool:
+            model_parameters = LLMNode._parse_completion_params_variables(
+                completion_params=node_data_model.completion_params,
+                variable_pool=variable_pool,
+            )
+        
         invoke_result = model_instance.invoke_llm(
             prompt_messages=prompt_messages,
-            model_parameters=node_data_model.completion_params,
+            model_parameters=model_parameters,
             tools=tools,
             stop=stop,
             stream=False,

@@ -250,6 +250,7 @@ class LLMNode(Node[LLMNodeData]):
                 node_id=self._node_id,
                 node_type=self.node_type,
                 reasoning_format=self.node_data.reasoning_format,
+                variable_pool=variable_pool,
             )
 
             structured_output: LLMStructuredOutput | None = None
@@ -353,6 +354,55 @@ class LLMNode(Node[LLMNodeData]):
             )
 
     @staticmethod
+    def _parse_completion_params_variables(
+        completion_params: dict[str, Any],
+        variable_pool: VariablePool,
+    ) -> dict[str, Any]:
+        """
+        Parse variable references in completion_params.
+        For string type values, if they contain variable references ({{#...#}}),
+        replace them with actual values from variable_pool.
+        """
+        
+        parsed_params: dict[str, Any] = {}
+        for key, value in completion_params.items():
+            if isinstance(value, str) and "{{#" in value and "#}}" in value:
+                # Contains variable reference, parse it
+                try:
+                    # Check if it's a pure variable reference (entire string is one variable)
+                    parser = VariableTemplateParser(value)
+                    variable_keys = parser.extract()
+                    # variable_keys[0] is like "#node_id.var#", so we need to wrap it with {{ }}
+                    if len(variable_keys) == 1 and value.strip() == f"{{{{{variable_keys[0]}}}}}":
+                        # Pure variable reference, get the actual variable value
+                        variable_selectors = parser.extract_variable_selectors()
+                        if variable_selectors:
+                            variable = variable_pool.get(variable_selectors[0].value_selector)
+                            if variable is not None:
+                                # Use the actual variable value, preserving its type
+                                parsed_value = variable.value
+                            else:
+                                # Variable not found, use text conversion
+                                segment_group = variable_pool.convert_template(value)
+                                parsed_value = segment_group.text
+                        else:
+                            segment_group = variable_pool.convert_template(value)
+                            parsed_value = segment_group.text
+                    else:
+                        # Mixed content (variable reference + other text), use text conversion
+                        segment_group = variable_pool.convert_template(value)
+                        parsed_value = segment_group.text
+                    parsed_params[key] = parsed_value
+                except Exception as e:
+                    # If parsing fails, keep original value
+                    logger.warning(f"Failed to parse variable reference in completion param {key}: {value}, error: {str(e)}")
+                    parsed_params[key] = value
+            else:
+                # No variable reference, use as is
+                parsed_params[key] = value
+        return parsed_params
+
+    @staticmethod
     def invoke_llm(
         *,
         node_data_model: ModelConfig,
@@ -367,12 +417,21 @@ class LLMNode(Node[LLMNodeData]):
         node_id: str,
         node_type: NodeType,
         reasoning_format: Literal["separated", "tagged"] = "tagged",
+        variable_pool: VariablePool | None = None,
     ) -> Generator[NodeEventBase | LLMStructuredOutput, None, None]:
         model_schema = model_instance.model_type_instance.get_model_schema(
             node_data_model.name, model_instance.credentials
         )
         if not model_schema:
             raise ValueError(f"Model schema not found for {node_data_model.name}")
+
+        # Parse variable references in completion_params if variable_pool is provided
+        model_parameters = node_data_model.completion_params
+        if variable_pool:
+            model_parameters = LLMNode._parse_completion_params_variables(
+                completion_params=node_data_model.completion_params,
+                variable_pool=variable_pool,
+            )
 
         if structured_output_enabled:
             output_schema = LLMNode.fetch_structured_output_schema(
@@ -386,7 +445,7 @@ class LLMNode(Node[LLMNodeData]):
                 model_instance=model_instance,
                 prompt_messages=prompt_messages,
                 json_schema=output_schema,
-                model_parameters=node_data_model.completion_params,
+                model_parameters=model_parameters,
                 stop=list(stop or []),
                 stream=True,
                 user=user_id,
@@ -396,7 +455,7 @@ class LLMNode(Node[LLMNodeData]):
 
             invoke_result = model_instance.invoke_llm(
                 prompt_messages=list(prompt_messages),
-                model_parameters=node_data_model.completion_params,
+                model_parameters=model_parameters,
                 stop=list(stop or []),
                 stream=True,
                 user=user_id,

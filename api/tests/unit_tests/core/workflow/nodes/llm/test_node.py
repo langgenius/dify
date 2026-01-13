@@ -34,6 +34,7 @@ from core.workflow.nodes.llm.file_saver import LLMFileSaver
 from core.workflow.nodes.llm.node import LLMNode
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
+from core.variables import StringSegment, IntegerSegment, FloatSegment
 from models.enums import UserFrom
 from models.provider import ProviderType
 
@@ -725,3 +726,207 @@ class TestReasoningFormat:
 
         assert clean_text == text_with_think
         assert reasoning_content == ""
+
+
+class TestParseCompletionParamsVariables:
+    """Test cases for _parse_completion_params_variables method."""
+
+    def test_parse_pure_string_variable_reference(self):
+        """Test parsing a pure variable reference (entire value is a variable)."""
+        variable_pool = VariablePool(
+            system_variables=SystemVariable.empty(),
+            user_inputs={},
+        )
+        variable_pool.add(["node1", "temperature"], StringSegment(value="0.8"))
+
+        completion_params = {
+            "temperature": "{{#node1.temperature#}}",
+            "top_p": 0.9,
+        }
+
+        result = LLMNode._parse_completion_params_variables(
+            completion_params=completion_params,
+            variable_pool=variable_pool,
+        )
+
+        assert result["temperature"] == "0.8"
+        assert result["top_p"] == 0.9
+
+    def test_parse_mixed_variable_reference(self):
+        """Test parsing a mixed variable reference (variable + other text)."""
+        variable_pool = VariablePool(
+            system_variables=SystemVariable.empty(),
+            user_inputs={},
+        )
+        variable_pool.add(["node1", "temp_value"], StringSegment(value="0.7"))
+
+        completion_params = {
+            "temperature": "Temperature is {{#node1.temp_value#}}",
+            "top_p": 0.9,
+        }
+
+        result = LLMNode._parse_completion_params_variables(
+            completion_params=completion_params,
+            variable_pool=variable_pool,
+        )
+
+        assert result["temperature"] == "Temperature is 0.7"
+        assert result["top_p"] == 0.9
+
+    def test_parse_integer_variable_reference(self):
+        """Test parsing an integer variable reference."""
+        variable_pool = VariablePool(
+            system_variables=SystemVariable.empty(),
+            user_inputs={},
+        )
+        variable_pool.add(["node1", "max_tokens"], IntegerSegment(value=1000))
+
+        completion_params = {
+            "max_tokens": "{{#node1.max_tokens#}}",
+        }
+
+        result = LLMNode._parse_completion_params_variables(
+            completion_params=completion_params,
+            variable_pool=variable_pool,
+        )
+
+        assert result["max_tokens"] == 1000
+
+    def test_parse_float_variable_reference(self):
+        """Test parsing a float variable reference."""
+        variable_pool = VariablePool(
+            system_variables=SystemVariable.empty(),
+            user_inputs={},
+        )
+        variable_pool.add(["node1", "temperature"], FloatSegment(value=0.85))
+
+        completion_params = {
+            "temperature": "{{#node1.temperature#}}",
+        }
+
+        result = LLMNode._parse_completion_params_variables(
+            completion_params=completion_params,
+            variable_pool=variable_pool,
+        )
+
+        assert result["temperature"] == 0.85
+
+    def test_parse_no_variable_reference(self):
+        """Test parsing params with no variable references."""
+        variable_pool = VariablePool(
+            system_variables=SystemVariable.empty(),
+            user_inputs={},
+        )
+
+        completion_params = {
+            "temperature": "0.8",
+            "top_p": 0.9,
+            "max_tokens": 1000,
+        }
+
+        result = LLMNode._parse_completion_params_variables(
+            completion_params=completion_params,
+            variable_pool=variable_pool,
+        )
+
+        assert result == completion_params
+
+    def test_parse_non_string_values(self):
+        """Test that non-string values are passed through unchanged."""
+        variable_pool = VariablePool(
+            system_variables=SystemVariable.empty(),
+            user_inputs={},
+        )
+
+        completion_params = {
+            "temperature": 0.8,
+            "top_p": 0.9,
+            "max_tokens": 1000,
+            "presence_penalty": -0.5,
+        }
+
+        result = LLMNode._parse_completion_params_variables(
+            completion_params=completion_params,
+            variable_pool=variable_pool,
+        )
+
+        assert result == completion_params
+
+    def test_parse_nonexistent_variable(self):
+        """Test parsing a reference to a non-existent variable."""
+        variable_pool = VariablePool(
+            system_variables=SystemVariable.empty(),
+            user_inputs={},
+        )
+
+        completion_params = {
+            "temperature": "{{#node1.nonexistent#}}",
+        }
+
+        result = LLMNode._parse_completion_params_variables(
+            completion_params=completion_params,
+            variable_pool=variable_pool,
+        )
+
+        # Should convert to text representation
+        assert isinstance(result["temperature"], str)
+        assert result["temperature"] == ""
+
+    def test_parse_invalid_variable_syntax(self):
+        """Test parsing with invalid variable syntax (should keep original value on error)."""
+        variable_pool = VariablePool(
+            system_variables=SystemVariable.empty(),
+            user_inputs={},
+        )
+
+        completion_params = {
+            "temperature": "{{#invalid syntax#}}",
+        }
+
+        result = LLMNode._parse_completion_params_variables(
+            completion_params=completion_params,
+            variable_pool=variable_pool,
+        )
+
+        # Should keep original value when parsing fails
+        assert result["temperature"] == "{{#invalid syntax#}}"
+
+    def test_parse_multiple_variables(self):
+        """Test parsing multiple variable references in different params."""
+        variable_pool = VariablePool(
+            system_variables=SystemVariable.empty(),
+            user_inputs={},
+        )
+        variable_pool.add(["node1", "temperature"], StringSegment(value="0.8"))
+        variable_pool.add(["node2", "top_p"], StringSegment(value="0.95"))
+
+        completion_params = {
+            "temperature": "{{#node1.temperature#}}",
+            "top_p": "{{#node2.top_p#}}",
+            "max_tokens": 1000,
+        }
+
+        result = LLMNode._parse_completion_params_variables(
+            completion_params=completion_params,
+            variable_pool=variable_pool,
+        )
+
+        assert result["temperature"] == "0.8"
+        assert result["top_p"] == "0.95"
+        assert result["max_tokens"] == 1000
+
+    def test_parse_empty_completion_params(self):
+        """Test parsing empty completion_params."""
+        variable_pool = VariablePool(
+            system_variables=SystemVariable.empty(),
+            user_inputs={},
+        )
+
+        completion_params = {}
+
+        result = LLMNode._parse_completion_params_variables(
+            completion_params=completion_params,
+            variable_pool=variable_pool,
+        )
+
+        assert result == {}
