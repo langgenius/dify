@@ -154,7 +154,7 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
     options.signal = abortController.signal
   }
 
-  const fetchPathname = fetchCompat ? url : base + (url.startsWith('/') ? url : `/${url}`)
+  const fetchPathname = base + (url.startsWith('/') ? url : `/${url}`)
   if (!isMarketplaceAPI)
     (headers as any).set(CSRF_HEADER_NAME, Cookies.get(CSRF_COOKIE_NAME()) || '')
 
@@ -193,7 +193,7 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
       methods: [],
     },
     ...(bodyStringify && !fetchCompat ? { json: body } : { body: body as BodyInit }),
-    searchParams: params,
+    searchParams: !fetchCompat ? params : undefined,
     fetch(resource: RequestInfo | URL, options?: RequestInit) {
       if (resource instanceof Request && options) {
         const mergedHeaders = new Headers(options.headers || {})
