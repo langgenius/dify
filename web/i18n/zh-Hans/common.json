@@ -558,6 +558,8 @@
   "sandboxProvider.configModal.apiEndpointPlaceholder": "https://api.example.com/v1",
   "sandboxProvider.configModal.apiKey": "API Key / 密钥",
   "sandboxProvider.configModal.apiKeyPlaceholder": "输入您的 API Key",
+  "sandboxProvider.configModal.baseWorkingPath": "基础工作路径",
+  "sandboxProvider.configModal.baseWorkingPathPlaceholder": "/tmp/sandbox",
   "sandboxProvider.configModal.cancel": "取消",
   "sandboxProvider.configModal.confirm": "确认",
   "sandboxProvider.configModal.dockerImage": "Docker 镜像",
