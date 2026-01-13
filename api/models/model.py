@@ -2101,7 +2101,7 @@ class TenantCreditPool(TypeBase):
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"), init=False
     )
-    updated_at: Mapped[str] = mapped_column(
+    updated_at: Mapped[datetime] = mapped_column(
         sa.DateTime,
         nullable=False,
         server_default=func.current_timestamp(),
