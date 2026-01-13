@@ -610,7 +610,7 @@ class RetrievalService:
                             record = {
                                 "segment": segment,
                                 "score": document.metadata.get("score"),  # type: ignore
-
+                            }
                             map_detail = {
                                 "max_score": max_score,
                                 "child_chunks": child_chunk_details,
