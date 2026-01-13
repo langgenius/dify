@@ -121,7 +121,8 @@ export const fetchHumanInputNodeStepRunForm = (
 export const submitHumanInputNodeStepRunForm = (
   url: string,
   data: {
-    inputs: Record<string, any>
+    inputs: Record<string, any> | undefined
+    form_inputs: Record<string, any> | undefined
     action: string
   },
 ) => {
