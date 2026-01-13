@@ -32,7 +32,6 @@ const PROVIDER_DESCRIPTION_KEYS = {
 
 const ProviderIcon = ({ providerType }: { providerType: string }) => {
   const iconSrc = PROVIDER_ICONS[providerType] || PROVIDER_ICONS.e2b
-
   return (
     <img
       src={iconSrc}
@@ -55,18 +54,17 @@ const ProviderCard = ({
   const showEnableButton = !isCurrent && isConfigured && onEnable
 
   return (
-    <div className={cn(
-      'flex items-center gap-3 rounded-[15px] py-3 pl-3 pr-4',
-      'border-[0.5px] border-components-panel-border shadow-xs',
-      isCurrent ? 'bg-background-section' : 'bg-background-section-burn',
-    )}
+    <div
+      className={cn(
+        'group flex items-center gap-3 rounded-[15px] py-3 pl-3 pr-4',
+        'border-[0.5px] border-components-panel-border shadow-xs',
+        isCurrent ? 'bg-background-section' : 'bg-background-section-burn',
+      )}
     >
-      {/* Icon - 40x40 with 10px rounded */}
       <div className="flex h-10 w-10 shrink-0 items-center justify-center text-clip rounded-[10px] border-[0.5px] border-divider-subtle bg-background-default-subtle">
         <ProviderIcon providerType={provider.provider_type} />
       </div>
 
-      {/* Content */}
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1">
           <span className="system-md-semibold text-text-primary">
@@ -83,26 +81,41 @@ const ProviderCard = ({
         </div>
       </div>
 
-      {/* Right side: Connected Badge + Divider + Settings Icon + Enable Button */}
       <div className="flex shrink-0 items-center gap-2">
-        {/* Connected Status */}
         {isConfigured && (
-          <span className="flex items-center gap-1">
-            <Indicator color="green" />
-            <span className="system-xs-semibold-uppercase text-util-colors-green-green-600">
-              {t('sandboxProvider.connected', { ns: 'common' })}
+          <div className="relative flex items-center">
+            <span
+              className={cn(
+                'flex items-center gap-1 transition-opacity duration-200',
+                showEnableButton && 'group-hover:opacity-0',
+              )}
+            >
+              <Indicator color="green" />
+              <span className="system-xs-semibold-uppercase text-util-colors-green-green-600">
+                {t('sandboxProvider.connected', { ns: 'common' })}
+              </span>
             </span>
-          </span>
+
+            {showEnableButton && (
+              <Button
+                variant="secondary"
+                size="small"
+                onClick={onEnable}
+                disabled={disabled}
+                className="absolute left-0 top-1/2 -translate-y-1/2 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+              >
+                {t('sandboxProvider.setAsActive', { ns: 'common' })}
+              </Button>
+            )}
+          </div>
         )}
 
-        {/* Divider */}
         {isConfigured && (
           <div className="pl-1">
             <div className="h-3 w-px bg-divider-regular" />
           </div>
         )}
 
-        {/* Settings Icon Button */}
         <button
           onClick={onConfig}
           disabled={disabled}
@@ -110,18 +123,6 @@ const ProviderCard = ({
         >
           <RiEqualizer2Line className="h-4 w-4" />
         </button>
-
-        {/* Set as Active Button */}
-        {showEnableButton && (
-          <Button
-            variant="secondary"
-            size="small"
-            onClick={onEnable}
-            disabled={disabled}
-          >
-            {t('sandboxProvider.setAsActive', { ns: 'common' })}
-          </Button>
-        )}
       </div>
     </div>
   )
