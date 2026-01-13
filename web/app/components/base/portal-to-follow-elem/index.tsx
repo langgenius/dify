@@ -65,10 +65,8 @@ export function usePortalToFollowElem({
           Object.assign(elements.floating.style, {
             maxHeight: `${availableHeight}px`,
             overflowY: 'auto',
+            ...(triggerPopupSameWidth && { width: `${rects.reference.width}px` }),
           })
-
-          if (triggerPopupSameWidth)
-            elements.floating.style.width = `${rects.reference.width}px`
         },
       }),
     ],
