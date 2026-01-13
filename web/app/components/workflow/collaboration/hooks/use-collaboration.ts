@@ -4,6 +4,7 @@ import { collaborationManager } from '../core/collaboration-manager'
 import { CursorService } from '../services/cursor-service'
 import type { CollaborationState } from '../types/collaboration'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import Toast from '@/app/components/base/toast'
 
 export function useCollaboration(appId: string, reactFlowStore?: any) {
   const [state, setState] = useState<Partial<CollaborationState & { isLeader: boolean }>>({
@@ -87,6 +88,17 @@ export function useCollaboration(appId: string, reactFlowStore?: any) {
         collaborationManager.disconnect(connectionId)
     }
   }, [appId, reactFlowStore, isCollaborationEnabled])
+
+  const prevIsConnected = useRef(false)
+  useEffect(() => {
+    if (prevIsConnected.current && !state.isConnected) {
+      Toast.notify({
+        type: 'error',
+        message: 'Network connection lost. Please check your network.',
+      })
+    }
+    prevIsConnected.current = state.isConnected || false
+  }, [state.isConnected])
 
   const startCursorTracking = (containerRef: React.RefObject<HTMLElement>, reactFlowInstance?: ReactFlowInstance) => {
     if (!isCollaborationEnabled || !cursorServiceRef.current)
