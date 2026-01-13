@@ -13,7 +13,7 @@
   "batchModal.cancel": "취소",
   "batchModal.completed": "가져오기 완료",
   "batchModal.content": "내용",
-  "batchModal.contentTitle": "덩어리 내용",
+  "batchModal.contentTitle": "청크 내용",
   "batchModal.csvUploadTitle": "CSV 파일을 여기에 드래그 앤 드롭하거나,",
   "batchModal.error": "가져오기 오류",
   "batchModal.ok": "확인",

@@ -1,19 +1,18 @@
 import type { FC } from 'react'
+import { useTranslation } from '#i18n'
 import { RiAlertFill } from '@remixicon/react'
-import { camelCase } from 'es-toolkit/compat'
+import { camelCase } from 'es-toolkit/string'
 import Link from 'next/link'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { Trans } from 'react-i18next'
 import { cn } from '@/utils/classnames'
-import { useMixedTranslation } from '../marketplace/hooks'
 
 type DeprecationNoticeProps = {
   status: 'deleted' | 'active'
   deprecatedReason: string
   alternativePluginId: string
   alternativePluginURL: string
-  locale?: string
   className?: string
   innerWrapperClassName?: string
   iconWrapperClassName?: string
@@ -34,13 +33,12 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
   deprecatedReason,
   alternativePluginId,
   alternativePluginURL,
-  locale,
   className,
   innerWrapperClassName,
   iconWrapperClassName,
   textClassName,
 }) => {
-  const { t } = useMixedTranslation(locale)
+  const { t } = useTranslation()
 
   const deprecatedReasonKey = useMemo(() => {
     if (!deprecatedReason)
@@ -74,6 +72,7 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
               <Trans
                 t={t}
                 i18nKey={`${i18nPrefix}.fullMessage`}
+                ns="plugin"
                 components={{
                   CustomLink: (
                     <Link

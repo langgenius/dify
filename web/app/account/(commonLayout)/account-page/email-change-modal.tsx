@@ -1,6 +1,6 @@
 import type { ResponseError } from '@/service/fetch'
 import { RiCloseLine } from '@remixicon/react'
-import { noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useState } from 'react'
@@ -214,7 +214,8 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
             <div className="body-md-medium text-text-warning">{t('account.changeEmail.authTip', { ns: 'common' })}</div>
             <div className="body-md-regular text-text-secondary">
               <Trans
-                i18nKey="common.account.changeEmail.content1"
+                i18nKey="account.changeEmail.content1"
+                ns="common"
                 components={{ email: <span className="body-md-medium text-text-primary"></span> }}
                 values={{ email }}
               />
@@ -244,7 +245,8 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
           <div className="space-y-0.5 pb-2 pt-1">
             <div className="body-md-regular text-text-secondary">
               <Trans
-                i18nKey="common.account.changeEmail.content2"
+                i18nKey="account.changeEmail.content2"
+                ns="common"
                 components={{ email: <span className="body-md-medium text-text-primary"></span> }}
                 values={{ email }}
               />
@@ -333,7 +335,8 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
           <div className="space-y-0.5 pb-2 pt-1">
             <div className="body-md-regular text-text-secondary">
               <Trans
-                i18nKey="common.account.changeEmail.content4"
+                i18nKey="account.changeEmail.content4"
+                ns="common"
                 components={{ email: <span className="body-md-medium text-text-primary"></span> }}
                 values={{ email: mail }}
               />

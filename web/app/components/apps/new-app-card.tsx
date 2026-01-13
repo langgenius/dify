@@ -25,6 +25,7 @@ const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-fro
 
 export type CreateAppCardProps = {
   className?: string
+  isLoading?: boolean
   onSuccess?: () => void
   ref: React.RefObject<HTMLDivElement | null>
   selectedAppType?: string
@@ -33,6 +34,7 @@ export type CreateAppCardProps = {
 const CreateAppCard = ({
   ref,
   className,
+  isLoading = false,
   onSuccess,
   selectedAppType,
 }: CreateAppCardProps) => {
@@ -56,7 +58,11 @@ const CreateAppCard = ({
   return (
     <div
       ref={ref}
-      className={cn('relative col-span-1 inline-flex h-[160px] flex-col justify-between rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg', className)}
+      className={cn(
+        'relative col-span-1 inline-flex h-[160px] flex-col justify-between rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg transition-opacity',
+        isLoading && 'pointer-events-none opacity-50',
+        className,
+      )}
     >
       <div className="grow rounded-t-xl p-2">
         <div className="px-6 pb-1 pt-2 text-xs font-medium leading-[18px] text-text-tertiary">{t('createApp', { ns: 'app' })}</div>
