@@ -69,20 +69,20 @@ class Dataset(TypeBase):
     )
     embedding_model: Mapped[str | None] = mapped_column(sa.String(255), nullable=True)
     embedding_model_provider: Mapped[str | None] = mapped_column(sa.String(255), nullable=True)
-    keyword_number: Mapped[int | None] = mapped_column(sa.Integer, nullable=True, server_default=sa.text("10"), default=10)
+    keyword_number: Mapped[int | None] = mapped_column(
         sa.Integer, nullable=True, server_default=sa.text("10"), default=10
-    retrieval_model: Mapped[dict | None] = mapped_column(AdjustedJSON, nullable=True)
-    collection_binding_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    retrieval_model: Mapped[str | None] = mapped_column(AdjustedJSON, nullable=True)
+    )
+    retrieval_model: Mapped[dict | None] = mapped_column(AdjustedJSON, nullable=True, default=None)
+    collection_binding_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     built_in_field_enabled: Mapped[bool] = mapped_column(
         sa.Boolean, nullable=False, server_default=sa.text("false"), default=False
     )
-    icon_info: Mapped[Any | None] = mapped_column(AdjustedJSON, nullable=True)
+    icon_info: Mapped[Any | None] = mapped_column(AdjustedJSON, nullable=True, default=None)
     runtime_mode: Mapped[str | None] = mapped_column(
         sa.String(255), nullable=True, server_default=sa.text("'general'"), default="general"
     )
-    pipeline_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    chunk_structure: Mapped[str | None] = mapped_column(sa.String(255), nullable=True)
+    pipeline_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    chunk_structure: Mapped[str | None] = mapped_column(sa.String(255), nullable=True, default=None)
     enable_api: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"), default=True)
     is_multimodal: Mapped[bool] = mapped_column(
         sa.Boolean, default=False, nullable=False, server_default=db.text("false")
