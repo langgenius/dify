@@ -170,8 +170,12 @@ describe('useChatWithHistory', () => {
       await waitFor(() => {
         expect(mockFetchChatList).toHaveBeenCalledWith('conversation-1', false, 'app-1')
       })
-      expect(result.current.pinnedConversationList).toEqual(pinnedData.data)
-      expect(result.current.conversationList).toEqual(listData.data)
+      await waitFor(() => {
+        expect(result.current.pinnedConversationList).toEqual(pinnedData.data)
+      })
+      await waitFor(() => {
+        expect(result.current.conversationList).toEqual(listData.data)
+      })
     })
   })
 
