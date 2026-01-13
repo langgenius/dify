@@ -33,11 +33,11 @@ const ProviderIcon = ({ providerType }: { providerType: string }) => {
   const iconSrc = PROVIDER_ICONS[providerType] || PROVIDER_ICONS.e2b
 
   return (
-    <div className="flex h-4 w-4 shrink-0 items-center justify-center text-clip rounded border-[0.5px] border-divider-subtle">
+    <div className="h-4 w-4 shrink-0 text-clip rounded border-[0.5px] border-divider-subtle">
       <img
         src={iconSrc}
         alt={`${providerType} icon`}
-        className="h-4 w-4"
+        className="h-full w-full object-cover"
       />
     </div>
   )
