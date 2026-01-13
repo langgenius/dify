@@ -315,40 +315,42 @@ class App(Base):
         return None
 
 
-class AppModelConfig(Base):
+class AppModelConfig(TypeBase):
     __tablename__ = "app_model_configs"
     __table_args__ = (sa.PrimaryKeyConstraint("id", name="app_model_config_pkey"), sa.Index("app_app_id_idx", "app_id"))
 
-    id = mapped_column(StringUUID, default=lambda: str(uuid4()))
-    app_id = mapped_column(StringUUID, nullable=False)
-    provider = mapped_column(String(255), nullable=True)
-    model_id = mapped_column(String(255), nullable=True)
-    configs = mapped_column(sa.JSON, nullable=True)
-    created_by = mapped_column(StringUUID, nullable=True)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_by = mapped_column(StringUUID, nullable=True)
-    updated_at = mapped_column(
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    provider: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    model_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    configs: Mapped[Any | None] = mapped_column(sa.JSON, nullable=True)
+    created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
-    opening_statement = mapped_column(LongText)
-    suggested_questions = mapped_column(LongText)
-    suggested_questions_after_answer = mapped_column(LongText)
-    speech_to_text = mapped_column(LongText)
-    text_to_speech = mapped_column(LongText)
-    more_like_this = mapped_column(LongText)
-    model = mapped_column(LongText)
-    user_input_form = mapped_column(LongText)
-    dataset_query_variable = mapped_column(String(255))
-    pre_prompt = mapped_column(LongText)
-    agent_mode = mapped_column(LongText)
-    sensitive_word_avoidance = mapped_column(LongText)
-    retriever_resource = mapped_column(LongText)
-    prompt_type = mapped_column(String(255), nullable=False, server_default=sa.text("'simple'"))
-    chat_prompt_config = mapped_column(LongText)
-    completion_prompt_config = mapped_column(LongText)
-    dataset_configs = mapped_column(LongText)
-    external_data_tools = mapped_column(LongText)
-    file_upload = mapped_column(LongText)
+    opening_statement: Mapped[str | None] = mapped_column(LongText)
+    suggested_questions: Mapped[str | None] = mapped_column(LongText)
+    suggested_questions_after_answer: Mapped[str | None] = mapped_column(LongText)
+    speech_to_text: Mapped[str | None] = mapped_column(LongText)
+    text_to_speech: Mapped[str | None] = mapped_column(LongText)
+    more_like_this: Mapped[str | None] = mapped_column(LongText)
+    model: Mapped[str | None] = mapped_column(LongText)
+    user_input_form: Mapped[str | None] = mapped_column(LongText)
+    dataset_query_variable: Mapped[str | None] = mapped_column(String(255))
+    pre_prompt: Mapped[str | None] = mapped_column(LongText)
+    agent_mode: Mapped[str | None] = mapped_column(LongText)
+    sensitive_word_avoidance: Mapped[str | None] = mapped_column(LongText)
+    retriever_resource: Mapped[str | None] = mapped_column(LongText)
+    prompt_type: Mapped[str] = mapped_column(
+        String(255), nullable=False, server_default=sa.text("'simple'"), default="simple"
+    )
+    chat_prompt_config: Mapped[str | None] = mapped_column(LongText)
+    completion_prompt_config: Mapped[str | None] = mapped_column(LongText)
+    dataset_configs: Mapped[str | None] = mapped_column(LongText)
+    external_data_tools: Mapped[str | None] = mapped_column(LongText)
+    file_upload: Mapped[str | None] = mapped_column(LongText)
 
     @property
     def app(self) -> App | None:
