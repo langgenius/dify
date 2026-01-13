@@ -44,7 +44,7 @@ class WorkflowComment(Base):
         Index("workflow_comments_created_at_idx", "created_at"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuidv7()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     position_x: Mapped[float] = mapped_column(db.Float)
@@ -135,7 +135,7 @@ class WorkflowCommentReply(Base):
         Index("comment_replies_created_at_idx", "created_at"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuidv7()"))
     comment_id: Mapped[str] = mapped_column(
         StringUUID, db.ForeignKey("workflow_comments.id", ondelete="CASCADE"), nullable=False
     )
@@ -176,7 +176,7 @@ class WorkflowCommentMention(Base):
         Index("comment_mentions_user_idx", "mentioned_user_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuidv7()"))
     comment_id: Mapped[str] = mapped_column(
         StringUUID, db.ForeignKey("workflow_comments.id", ondelete="CASCADE"), nullable=False
     )

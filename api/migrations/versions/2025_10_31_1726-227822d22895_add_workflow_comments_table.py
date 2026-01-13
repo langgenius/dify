@@ -53,7 +53,7 @@ def upgrade():
         batch_op.create_index('comment_replies_created_at_idx', ['created_at'], unique=False)
 
     op.create_table('workflow_comment_mentions',
-    sa.Column('id', models.types.StringUUID(), server_default=sa.text('uuid_generate_v4()'), nullable=False),
+    sa.Column('id', models.types.StringUUID(), server_default=sa.text('uuidv7()'), nullable=False),
     sa.Column('comment_id', models.types.StringUUID(), nullable=False),
     sa.Column('reply_id', models.types.StringUUID(), nullable=True),
     sa.Column('mentioned_user_id', models.types.StringUUID(), nullable=False),
