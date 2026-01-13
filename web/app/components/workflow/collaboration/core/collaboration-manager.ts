@@ -313,12 +313,9 @@ export class CollaborationManager {
     if (!this.doc) return
 
     // Don't track operations during undo/redo to prevent loops
-    if (this.isUndoRedoInProgress) {
-      console.log('Skipping setNodes during undo/redo')
+    if (this.isUndoRedoInProgress)
       return
-    }
 
-    console.log('Setting nodes with tracking')
     this.syncNodes(oldNodes, newNodes)
     this.doc.commit()
   }
@@ -327,12 +324,9 @@ export class CollaborationManager {
     if (!this.doc) return
 
     // Don't track operations during undo/redo to prevent loops
-    if (this.isUndoRedoInProgress) {
-      console.log('Skipping setEdges during undo/redo')
+    if (this.isUndoRedoInProgress)
       return
-    }
 
-    console.log('Setting edges with tracking')
     this.syncEdges(oldEdges, newEdges)
     this.doc.commit()
   }
@@ -378,7 +372,6 @@ export class CollaborationManager {
       mergeInterval: 500, // Merge operations within 500ms
       excludeOriginPrefixes: [], // Don't exclude anything - let UndoManager track all local operations
       onPush: (isUndo, range, event) => {
-        console.log('UndoManager onPush:', { isUndo, range, event })
         // Store current selection state when an operation is pushed
         const selectedNode = this.reactFlowStore?.getState().getNodes().find((n: Node) => n.data?.selected)
 
@@ -399,7 +392,6 @@ export class CollaborationManager {
         }
       },
       onPop: (isUndo, value, counterRange) => {
-        console.log('UndoManager onPop:', { isUndo, value, counterRange })
         // Restore selection state when undoing/redoing
         if (value?.value && typeof value.value === 'object' && 'selectedNodeId' in value.value && this.reactFlowStore) {
           const selectedNodeId = (value.value as any).selectedNodeId
@@ -499,7 +491,6 @@ export class CollaborationManager {
   emitSyncRequest(): void {
     if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
 
-    console.log('Emitting sync request to leader')
     this.sendCollaborationEvent({
       type: 'sync_request',
       data: { timestamp: Date.now() },
@@ -510,7 +501,6 @@ export class CollaborationManager {
   emitWorkflowUpdate(appId: string): void {
     if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
 
-    console.log('Emitting Workflow update event')
     this.sendCollaborationEvent({
       type: 'workflow_update',
       data: { appId, timestamp: Date.now() },
@@ -598,7 +588,6 @@ export class CollaborationManager {
   emitCommentsUpdate(appId: string): void {
     if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
 
-    console.log('Emitting Comments update event')
     this.sendCollaborationEvent({
       type: 'comments_update',
       data: { appId, timestamp: Date.now() },
@@ -620,14 +609,10 @@ export class CollaborationManager {
 
   // Collaborative undo/redo methods
   undo(): boolean {
-    if (!this.undoManager) {
-      console.log('UndoManager not initialized')
+    if (!this.undoManager)
       return false
-    }
 
     const canUndo = this.undoManager.canUndo()
-    console.log('Can undo:', canUndo)
-
     if (canUndo) {
       this.isUndoRedoInProgress = true
       const result = this.undoManager.undo()
@@ -639,8 +624,6 @@ export class CollaborationManager {
           const state = this.reactFlowStore.getState()
           const updatedNodes = Array.from(this.nodesMap.values())
           const updatedEdges = Array.from(this.edgesMap.values())
-          console.log('Manually updating React state after undo')
-
           // Call ReactFlow's native setters directly to avoid triggering collaboration
           state.setNodes(updatedNodes)
           state.setEdges(updatedEdges)
@@ -658,7 +641,6 @@ export class CollaborationManager {
         this.isUndoRedoInProgress = false
       }
 
-      console.log('Undo result:', result)
       return result
     }
 
@@ -666,14 +648,10 @@ export class CollaborationManager {
   }
 
   redo(): boolean {
-    if (!this.undoManager) {
-      console.log('RedoManager not initialized')
+    if (!this.undoManager)
       return false
-    }
 
     const canRedo = this.undoManager.canRedo()
-    console.log('Can redo:', canRedo)
-
     if (canRedo) {
       this.isUndoRedoInProgress = true
       const result = this.undoManager.redo()
@@ -685,8 +663,6 @@ export class CollaborationManager {
           const state = this.reactFlowStore.getState()
           const updatedNodes = Array.from(this.nodesMap.values())
           const updatedEdges = Array.from(this.edgesMap.values())
-          console.log('Manually updating React state after redo')
-
           // Call ReactFlow's native setters directly to avoid triggering collaboration
           state.setNodes(updatedNodes)
           state.setEdges(updatedEdges)
@@ -704,7 +680,6 @@ export class CollaborationManager {
         this.isUndoRedoInProgress = false
       }
 
-      console.log('Redo result:', result)
       return result
     }
 
@@ -724,17 +699,6 @@ export class CollaborationManager {
   clearUndoStack(): void {
     if (!this.undoManager) return
     this.undoManager.clear()
-  }
-
-  debugLeaderStatus(): void {
-    console.log('=== Leader Status Debug ===')
-    console.log('Current leader status:', this.isLeader)
-    console.log('Current leader ID:', this.leaderId)
-    console.log('Active connections:', this.activeConnections.size)
-    console.log('Connected:', this.isConnected())
-    console.log('Current app ID:', this.currentAppId)
-    console.log('Has ReactFlow store:', !!this.reactFlowStore)
-    console.log('========================')
   }
 
   private syncNodes(oldNodes: Node[], newNodes: Node[]): void {
@@ -779,13 +743,10 @@ export class CollaborationManager {
 
   private setupSubscriptions(): void {
     this.nodesMap?.subscribe((event: any) => {
-      console.log('nodesMap subscription event:', event)
       if (event.by === 'import' && this.reactFlowStore) {
         // Don't update React nodes during undo/redo to prevent loops
-        if (this.isUndoRedoInProgress) {
-          console.log('Skipping nodes subscription update during undo/redo')
+        if (this.isUndoRedoInProgress)
           return
-        }
 
         requestAnimationFrame(() => {
           const state = this.reactFlowStore.getState()
@@ -828,8 +789,6 @@ export class CollaborationManager {
               return clonedNode
             })
 
-          console.log('Updating React nodes from subscription')
-
           // Call ReactFlow's native setter directly to avoid triggering collaboration
           state.setNodes(updatedNodes)
         })
@@ -837,19 +796,15 @@ export class CollaborationManager {
     })
 
     this.edgesMap?.subscribe((event: any) => {
-      console.log('edgesMap subscription event:', event)
       if (event.by === 'import' && this.reactFlowStore) {
         // Don't update React edges during undo/redo to prevent loops
-        if (this.isUndoRedoInProgress) {
-          console.log('Skipping edges subscription update during undo/redo')
+        if (this.isUndoRedoInProgress)
           return
-        }
 
         requestAnimationFrame(() => {
           // Get ReactFlow's native setters, not the collaborative ones
           const state = this.reactFlowStore.getState()
           const updatedEdges = Array.from(this.edgesMap.values())
-          console.log('Updating React edges from subscription')
 
           this.pendingInitialSync = false
 
@@ -861,8 +816,6 @@ export class CollaborationManager {
   }
 
   private setupSocketEventListeners(socket: any): void {
-    console.log('Setting up socket event listeners for collaboration')
-
     socket.on('collaboration_update', (update: any) => {
       if (update.type === 'mouse_move') {
         // Update cursor state for this user
@@ -876,47 +829,35 @@ export class CollaborationManager {
         this.eventEmitter.emit('cursors', { ...this.cursors })
       }
       else if (update.type === 'vars_and_features_update') {
-        console.log('Processing vars_and_features_update event:', update)
         this.eventEmitter.emit('varsAndFeaturesUpdate', update)
       }
       else if (update.type === 'app_state_update') {
-        console.log('Processing app_state_update event:', update)
         this.eventEmitter.emit('appStateUpdate', update)
       }
       else if (update.type === 'app_meta_update') {
-        console.log('Processing app_meta_update event:', update)
         this.eventEmitter.emit('appMetaUpdate', update)
       }
       else if (update.type === 'app_publish_update') {
-        console.log('Processing app_publish_update event:', update)
         this.eventEmitter.emit('appPublishUpdate', update)
       }
       else if (update.type === 'mcp_server_update') {
-        console.log('Processing mcp_server_update event:', update)
         this.eventEmitter.emit('mcpServerUpdate', update)
       }
       else if (update.type === 'workflow_update') {
-        console.log('Processing workflow_update event:', update)
         this.eventEmitter.emit('workflowUpdate', update.data)
       }
       else if (update.type === 'comments_update') {
-        console.log('Processing comments_update event:', update)
         this.eventEmitter.emit('commentsUpdate', update.data)
       }
       else if (update.type === 'node_panel_presence') {
-        console.log('Processing node_panel_presence event:', update)
         this.applyNodePanelPresenceUpdate(update.data as NodePanelPresenceEventData)
       }
       else if (update.type === 'sync_request') {
-        console.log('Received sync request from another user')
         // Only process if we are the leader
-        if (this.isLeader) {
-          console.log('Leader received sync request, triggering sync')
+        if (this.isLeader)
           this.eventEmitter.emit('syncRequest', {})
-        }
       }
       else if (update.type === 'graph_resync_request') {
-        console.log('Received graph resync request from collaborator')
         if (this.isLeader)
           this.broadcastCurrentGraph()
       }
