@@ -2,14 +2,16 @@
 import type { FC } from 'react'
 import type { QueryParam } from './index'
 import type { I18nKeysByPrefix } from '@/types/i18n'
-import { RiCalendarLine } from '@remixicon/react'
+import { RiArchive2Line, RiCalendarLine } from '@remixicon/react'
 import dayjs from 'dayjs'
 import quarterOfYear from 'dayjs/plugin/quarterOfYear'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude/utils'
+import Button from '@/app/components/base/button'
 import Chip from '@/app/components/base/chip'
 import Input from '@/app/components/base/input'
+import Tooltip from '@/app/components/base/tooltip'
 
 dayjs.extend(quarterOfYear)
 
@@ -20,7 +22,7 @@ type TimePeriodName = I18nKeysByPrefix<'appLog', 'filter.period.'>
 export const TIME_PERIOD_MAPPING: { [key: string]: { value: number, name: TimePeriodName } } = {
   1: { value: 0, name: 'today' },
   2: { value: 7, name: 'last7days' },
-  3: { value: 28, name: 'last4weeks' },
+  3: { value: 30, name: 'last30days' },
   4: { value: today.diff(today.subtract(3, 'month'), 'day'), name: 'last3months' },
   5: { value: today.diff(today.subtract(12, 'month'), 'day'), name: 'last12months' },
   6: { value: today.diff(today.startOf('month'), 'day'), name: 'monthToDate' },
@@ -32,10 +34,33 @@ export const TIME_PERIOD_MAPPING: { [key: string]: { value: number, name: TimePe
 type IFilterProps = {
   queryParams: QueryParam
   setQueryParams: (v: QueryParam) => void
+  periodKeys: string[]
+  clearPeriod: string
+  isCurrentWorkspaceManager: boolean
+  isFreePlan: boolean
+  isTeamOrProfessional: boolean
+  onArchivedClick?: () => void
 }
 
-const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps) => {
+const Filter: FC<IFilterProps> = ({
+  queryParams,
+  setQueryParams,
+  periodKeys,
+  clearPeriod,
+  isCurrentWorkspaceManager,
+  isFreePlan,
+  isTeamOrProfessional,
+  onArchivedClick,
+}: IFilterProps) => {
   const { t } = useTranslation()
+  const showArchivedButton = isFreePlan || isTeamOrProfessional
+
+  const handleOpenArchived = () => {
+    if (!isCurrentWorkspaceManager)
+      return
+    onArchivedClick?.()
+  }
+
   return (
     <div className="mb-2 flex flex-row flex-wrap gap-2">
       <Chip
@@ -57,8 +82,8 @@ const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps)
         onSelect={(item) => {
           setQueryParams({ ...queryParams, period: item.value })
         }}
-        onClear={() => setQueryParams({ ...queryParams, period: '9' })}
-        items={Object.entries(TIME_PERIOD_MAPPING).map(([k, v]) => ({ value: k, name: t(`filter.period.${v.name}`, { ns: 'appLog' }) }))}
+        onClear={() => setQueryParams({ ...queryParams, period: clearPeriod })}
+        items={periodKeys.map(k => ({ value: k, name: t(`filter.period.${TIME_PERIOD_MAPPING[k].name}`, { ns: 'appLog' }) }))}
       />
       <Input
         wrapperClassName="w-[200px]"
@@ -71,6 +96,24 @@ const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps)
         }}
         onClear={() => setQueryParams({ ...queryParams, keyword: '' })}
       />
+      {showArchivedButton && (
+        <div className="ml-auto flex items-center">
+          <Tooltip popupContent={t('filter.archived.managerOnly', { ns: 'appLog' })} disabled={isCurrentWorkspaceManager}>
+            <span className="inline-flex">
+              <Button
+                size="medium"
+                variant="ghost"
+                className="flex items-center gap-1.5 text-text-tertiary"
+                disabled={!isCurrentWorkspaceManager}
+                onClick={handleOpenArchived}
+              >
+                <RiArchive2Line className="h-4 w-4" />
+                {t('filter.archived.button', { ns: 'appLog' })}
+              </Button>
+            </span>
+          </Tooltip>
+        </div>
+      )}
     </div>
   )
 }

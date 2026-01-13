@@ -6,7 +6,9 @@ import type {
   CompletionConversationFullDetailResponse,
   CompletionConversationsRequest,
   CompletionConversationsResponse,
+  WorkflowArchivedLogsResponse,
   WorkflowLogsResponse,
+  WorkflowRunExportResponse,
 } from '@/models/log'
 import { useQuery } from '@tanstack/react-query'
 import { get } from './base'
@@ -85,5 +87,32 @@ export const useWorkflowLogs = ({ appId, params }: WorkflowLogsParams) => {
     queryKey: [NAME_SPACE, 'workflow-logs', appId, params],
     queryFn: () => get<WorkflowLogsResponse>(`/apps/${appId}/workflow-app-logs`, { params }),
     enabled: !!appId,
+  })
+}
+
+export const useWorkflowArchivedLogs = ({ appId, params }: WorkflowLogsParams) => {
+  return useQuery<WorkflowArchivedLogsResponse>({
+    queryKey: [NAME_SPACE, 'workflow-archived-logs', appId, params],
+    queryFn: () => get<WorkflowArchivedLogsResponse>(`/apps/${appId}/workflow-archived-logs`, { params }),
+    enabled: !!appId,
+  })
+}
+
+// ============ Workflow Run Export URL ============
+
+type WorkflowRunExportParams = {
+  appId: string
+  runId: string | null
+  enabled?: boolean
+}
+
+export const useWorkflowRunExportUrl = ({ appId, runId, enabled = true }: WorkflowRunExportParams) => {
+  const runIdValue = runId ?? ''
+  return useQuery<WorkflowRunExportResponse>({
+    queryKey: [NAME_SPACE, 'workflow-run-export', appId, runIdValue],
+    queryFn: () => get<WorkflowRunExportResponse>(`/apps/${appId}/workflow-runs/${runIdValue}/export`),
+    enabled: enabled && !!appId && !!runIdValue,
+    staleTime: 55 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
   })
 }

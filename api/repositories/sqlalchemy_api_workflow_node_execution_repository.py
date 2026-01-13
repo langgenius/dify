@@ -431,3 +431,47 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         )
 
         return int(node_executions_count), int(offloads_count)
+
+    @staticmethod
+    def get_by_run(
+        session: Session,
+        run: RunContext,
+    ) -> Sequence[WorkflowNodeExecutionModel]:
+        """
+        Fetch node executions for a run using the composite index on
+        (tenant_id, app_id, workflow_id, triggered_from, workflow_run_id).
+        """
+        tuple_values = [
+            (
+                run["tenant_id"],
+                run["app_id"],
+                run["workflow_id"],
+                DifyAPISQLAlchemyWorkflowNodeExecutionRepository._map_run_triggered_from_to_node_triggered_from(
+                    run["triggered_from"]
+                ),
+                run["run_id"],
+            )
+        ]
+        stmt = select(WorkflowNodeExecutionModel).where(
+            tuple_(
+                WorkflowNodeExecutionModel.tenant_id,
+                WorkflowNodeExecutionModel.app_id,
+                WorkflowNodeExecutionModel.workflow_id,
+                WorkflowNodeExecutionModel.triggered_from,
+                WorkflowNodeExecutionModel.workflow_run_id,
+            ).in_(tuple_values)
+        )
+        return list(session.scalars(stmt))
+
+    @staticmethod
+    def get_offloads_by_execution_ids(
+        session: Session,
+        node_execution_ids: Sequence[str],
+    ) -> Sequence[WorkflowNodeExecutionOffload]:
+        if not node_execution_ids:
+            return []
+
+        stmt = select(WorkflowNodeExecutionOffload).where(
+            WorkflowNodeExecutionOffload.node_execution_id.in_(node_execution_ids)
+        )
+        return list(session.scalars(stmt))
