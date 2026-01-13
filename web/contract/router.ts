@@ -1,8 +1,7 @@
-import { bundlesSearchAdvancedContract, collectionPluginsContract, collectionsContract, pluginsSearchAdvancedContract } from './marketplace'
+import { collectionPluginsContract, collectionsContract, searchAdvancedContract } from './marketplace'
 
 export const marketPlaceRouterContract = {
   collections: collectionsContract,
   collectionPlugins: collectionPluginsContract,
-  pluginsSearchAdvanced: pluginsSearchAdvancedContract,
-  bundlesSearchAdvanced: bundlesSearchAdvancedContract,
+  searchAdvanced: searchAdvancedContract,
 }

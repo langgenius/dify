@@ -42,31 +42,24 @@ export const collectionPluginsContract = base
     }>(),
   )
 
-type PluginsSearchAdvancedInput = {
-  body: {
-    page: number
-    page_size: number
-    query: string
-    sort_by?: string
-    sort_order?: string
-    category?: string
-    tags?: string[]
-    type?: 'plugin' | 'bundle'
-  }
-}
-
-export const pluginsSearchAdvancedContract = base
+export const searchAdvancedContract = base
   .route({
-    path: '/plugins/search/advanced',
+    path: '/{kind}/search/advanced',
     method: 'POST',
   })
-  .input(type<PluginsSearchAdvancedInput>())
-  .output(type<{ data: PluginsFromMarketplaceResponse }>())
-
-export const bundlesSearchAdvancedContract = base
-  .route({
-    path: '/bundles/search/advanced',
-    method: 'POST',
-  })
-  .input(type<PluginsSearchAdvancedInput>())
+  .input(type<{
+    params: {
+      kind: 'plugins' | 'bundles'
+    }
+    body: {
+      page: number
+      page_size: number
+      query: string
+      sort_by?: string
+      sort_order?: string
+      category?: string
+      tags?: string[]
+      type?: 'plugin' | 'bundle'
+    }
+  }>())
   .output(type<{ data: PluginsFromMarketplaceResponse }>())

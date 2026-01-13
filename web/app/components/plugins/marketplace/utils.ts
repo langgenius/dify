@@ -137,10 +137,10 @@ export const getMarketplacePlugins = async (
   } = queryParams
 
   try {
-    const searchClient = type === 'bundle'
-      ? markertPlaceClient.bundlesSearchAdvanced
-      : markertPlaceClient.pluginsSearchAdvanced
-    const res = await searchClient({
+    const res = await markertPlaceClient.searchAdvanced({
+      params: {
+        kind: type === 'bundle' ? 'bundles' : 'plugins',
+      },
       body: {
         page: pageParam,
         page_size: pageSize,
