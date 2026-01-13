@@ -5,11 +5,11 @@ import pytest
 from faker import Faker
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from models import App
 from models.model import EndUser
 from models.workflow import Workflow
 from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowIdFormatError, WorkflowNotFoundError
-from models import App
 
 
 class TestAppGenerateService:

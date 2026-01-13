@@ -3,11 +3,11 @@ from unittest.mock import patch
 import pytest
 from faker import Faker
 
+from models import App
 from models.model import EndUser, Message
 from models.web import SavedMessage
 from services.app_service import AppService
 from services.saved_message_service import SavedMessageService
-from models import App
 
 
 class TestSavedMessageService:
