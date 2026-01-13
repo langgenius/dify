@@ -25,6 +25,7 @@ export function middleware(request: NextRequest) {
     return wrapResponseWithXFrameOptions(response, pathname)
 
   const whiteList = `${process.env.NEXT_PUBLIC_CSP_WHITELIST} ${NECESSARY_DOMAIN}`
+  const imgWhiteList = process.env.NEXT_PUBLIC_CSP_IMG_WHITELIST || ''
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
   const csp = `'nonce-${nonce}'`
 
@@ -37,7 +38,7 @@ export function middleware(request: NextRequest) {
     style-src 'self' 'unsafe-inline' ${scheme_source} ${whiteList};
     worker-src 'self' ${scheme_source} ${csp} ${whiteList};
     media-src 'self' ${scheme_source} ${csp} ${whiteList};
-    img-src * data: blob:;
+    img-src 'self' data: blob: ${imgWhiteList};
     font-src 'self';
     object-src 'none';
     base-uri 'self';
