@@ -19,6 +19,14 @@ vi.mock('@/service/common', () => ({
   getSystemFeatures: vi.fn(),
 }))
 
+vi.mock('@/context/global-public-context', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/context/global-public-context')>()
+  return {
+    ...actual,
+    useIsSystemFeaturesPending: () => false,
+  }
+})
+
 const mockFetchSetupStatus = vi.mocked(fetchSetupStatus)
 const mockFetchInitValidateStatus = vi.mocked(fetchInitValidateStatus)
 const mockSetup = vi.mocked(setup)
