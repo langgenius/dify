@@ -70,11 +70,15 @@ class WorkflowComment(Base):
     @property
     def created_by_account(self):
         """Get creator account."""
+        if hasattr(self, "_created_by_account_cache"):
+            return self._created_by_account_cache
         return db.session.get(Account, self.created_by)
 
     @property
     def resolved_by_account(self):
         """Get resolver account."""
+        if hasattr(self, "_resolved_by_account_cache"):
+            return self._resolved_by_account_cache
         if self.resolved_by:
             return db.session.get(Account, self.resolved_by)
         return None
@@ -147,6 +151,8 @@ class WorkflowCommentReply(Base):
     @property
     def created_by_account(self):
         """Get creator account."""
+        if hasattr(self, "_created_by_account_cache"):
+            return self._created_by_account_cache
         return db.session.get(Account, self.created_by)
 
 
@@ -186,4 +192,6 @@ class WorkflowCommentMention(Base):
     @property
     def mentioned_user_account(self):
         """Get mentioned account."""
+        if hasattr(self, "_mentioned_user_account_cache"):
+            return self._mentioned_user_account_cache
         return db.session.get(Account, self.mentioned_user_id)
