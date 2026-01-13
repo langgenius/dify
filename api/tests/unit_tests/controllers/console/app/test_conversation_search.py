@@ -24,7 +24,7 @@ class TestConversationSearch:
         
         # Simulate the subquery column
         class MockSubquery:
-            class c:
+            class C:
                 from_end_user_session_id = sa.Column("from_end_user_session_id", sa.String)
         
         subquery = MockSubquery()
@@ -43,7 +43,7 @@ class TestConversationSearch:
             Message.answer.ilike(keyword_filter, escape="\\"),
             Conversation.name.ilike(keyword_filter, escape="\\"),
             Conversation.introduction.ilike(keyword_filter, escape="\\"),
-            subquery.c.from_end_user_session_id.ilike(keyword_filter, escape="\\"),
+            subquery.C.from_end_user_session_id.ilike(keyword_filter, escape="\\"),
         ]
         
         if is_valid_uuid:
@@ -69,7 +69,7 @@ class TestConversationSearch:
         
         # Simulate the subquery column
         class MockSubquery:
-            class c:
+            class C:
                 from_end_user_session_id = sa.Column("from_end_user_session_id", sa.String)
         
         subquery = MockSubquery()
@@ -88,7 +88,7 @@ class TestConversationSearch:
             Message.answer.ilike(keyword_filter, escape="\\"),
             Conversation.name.ilike(keyword_filter, escape="\\"),
             Conversation.introduction.ilike(keyword_filter, escape="\\"),
-            subquery.c.from_end_user_session_id.ilike(keyword_filter, escape="\\"),
+            subquery.C.from_end_user_session_id.ilike(keyword_filter, escape="\\"),
         ]
         
         if is_valid_uuid:
