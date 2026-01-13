@@ -1447,7 +1447,7 @@ class MessageAnnotation(Base):
         return account
 
 
-class AppAnnotationHitHistory(Base):
+class AppAnnotationHitHistory(TypeBase):
     __tablename__ = "app_annotation_hit_histories"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="app_annotation_hit_histories_pkey"),
@@ -1457,17 +1457,19 @@ class AppAnnotationHitHistory(Base):
         sa.Index("app_annotation_hit_histories_message_idx", "message_id"),
     )
 
-    id = mapped_column(StringUUID, default=lambda: str(uuid4()))
-    app_id = mapped_column(StringUUID, nullable=False)
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     annotation_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    source = mapped_column(LongText, nullable=False)
-    question = mapped_column(LongText, nullable=False)
-    account_id = mapped_column(StringUUID, nullable=False)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    score = mapped_column(Float, nullable=False, server_default=sa.text("0"))
-    message_id = mapped_column(StringUUID, nullable=False)
-    annotation_question = mapped_column(LongText, nullable=False)
-    annotation_content = mapped_column(LongText, nullable=False)
+    source: Mapped[str] = mapped_column(LongText, nullable=False)
+    question: Mapped[str] = mapped_column(LongText, nullable=False)
+    account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_at: Mapped[str] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+    score: Mapped[float] = mapped_column(Float, nullable=False, server_default=sa.text("0"))
+    message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    annotation_question: Mapped[str] = mapped_column(LongText, nullable=False)
+    annotation_content: Mapped[str] = mapped_column(LongText, nullable=False)
 
     @property
     def account(self):
