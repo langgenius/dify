@@ -9,10 +9,8 @@ from flask_restx import Resource, reqparse
 
 from controllers.web import web_ns
 from controllers.web.error import NotFoundError
-from controllers.web.wraps import WebApiResource
 from extensions.ext_database import db
 from models.human_input import RecipientType
-from models.model import App, EndUser
 from services.human_input_service import Form, FormNotFoundError, HumanInputService
 
 logger = logging.getLogger(__name__)
@@ -21,6 +19,10 @@ logger = logging.getLogger(__name__)
 def _jsonify_form_definition(form: Form) -> Response:
     """Return the Pydantic definition as a JSON response."""
     return Response(form.get_definition().model_dump_json(), mimetype="application/json")
+
+
+# TODO(QuantumGhost): disable authorization for web app
+# form api temporarily
 
 
 @web_ns.route("/form/human_input/<string:form_token>")

@@ -319,7 +319,10 @@ class QueueNodeStartedEvent(AppQueueEvent):
     # FIXME(-LAN-): only for ToolNode, need to refactor
     provider_type: str  # should be a core.tools.entities.tool_entities.ToolProviderType
     provider_id: str
-    is_resumption: bool = False
+    is_resumption: bool = Field(
+        default=False,
+        description="True only when this node had already started and execution resumed after a pause.",
+    )
 
 
 class QueueNodeSucceededEvent(AppQueueEvent):

@@ -236,3 +236,10 @@ class GraphExecution:
     def record_node_failure(self) -> None:
         """Increment the count of node failures encountered during execution."""
         self.exceptions_count += 1
+
+    def is_node_resumption(self, node_id: str, execution_id: str) -> bool:
+        """Return True if the node is resuming a previously started execution."""
+        node_execution = self.node_executions.get(node_id)
+        if not node_execution or not node_execution.execution_id:
+            return False
+        return str(node_execution.execution_id) == execution_id

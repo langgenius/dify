@@ -207,6 +207,8 @@ def test_engine_resume_restores_state_and_completion():
     assert paused_human_started is not None
     assert resumed_human_started is not None
     assert paused_human_started.id == resumed_human_started.id
+    assert paused_human_started.is_resumption is False
+    assert resumed_human_started.is_resumption is True
 
     assert baseline_state.outputs == resumed_state.outputs
     assert _segment_value(baseline_state.variable_pool, ("human", "__action_id")) == _segment_value(

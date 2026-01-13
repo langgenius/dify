@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
+import pytest
+
 from core.workflow.enums import NodeExecutionType, NodeState, NodeType, WorkflowNodeExecutionStatus
 from core.workflow.graph import Graph
 from core.workflow.graph_engine.domain.graph_execution import GraphExecution
@@ -119,22 +123,43 @@ def test_retry_does_not_emit_additional_start_event() -> None:
     assert node_execution.retry_count == 1
 
 
-def test_node_start_marks_resumption_when_resuming_node() -> None:
-    """Ensure NodeRunStartedEvent is annotated with is_resumption when resuming."""
+@dataclass(frozen=True)
+class _ResumptionFlagCase:
+    node_id: str
+    execution_id: str
+    node_title: str
+    is_resumption: bool
 
-    node_id = "resumed-node"
-    handler, event_manager, _ = _build_event_handler(node_id)
 
-    # Simulate paused node being consumed for resume
-    handler._graph_runtime_state.register_paused_node(node_id)
-    handler._graph_runtime_state.consume_paused_nodes()
+@pytest.mark.parametrize(
+    "case",
+    [
+        _ResumptionFlagCase(
+            node_id="resumed-node",
+            execution_id="exec-1",
+            node_title="Resumed Node",
+            is_resumption=True,
+        ),
+        _ResumptionFlagCase(
+            node_id="fresh-node",
+            execution_id="exec-2",
+            node_title="Fresh Node",
+            is_resumption=False,
+        ),
+    ],
+)
+def test_node_start_preserves_resumption_flag(case: _ResumptionFlagCase) -> None:
+    """Ensure NodeRunStartedEvent preserves resumption flag."""
+
+    handler, event_manager, _ = _build_event_handler(case.node_id)
 
     start_event = NodeRunStartedEvent(
-        id="exec-1",
-        node_id=node_id,
+        id=case.execution_id,
+        node_id=case.node_id,
         node_type=NodeType.CODE,
-        node_title="Resumed Node",
+        node_title=case.node_title,
         start_at=naive_utc_now(),
+        is_resumption=case.is_resumption,
     )
     handler.dispatch(start_event)
 
@@ -142,7 +167,7 @@ def test_node_start_marks_resumption_when_resuming_node() -> None:
     assert len(collected) == 1
     emitted_event = collected[0]
     assert isinstance(emitted_event, NodeRunStartedEvent)
-    assert emitted_event.is_resumption is True
+    assert emitted_event.is_resumption is case.is_resumption
 
 
 def test_node_start_marks_fresh_run_as_not_resumption() -> None:

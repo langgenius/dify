@@ -15,7 +15,10 @@ class NodeRunStartedEvent(GraphNodeEventBase):
     predecessor_node_id: str | None = None
     agent_strategy: AgentNodeStrategyInit | None = None
     start_at: datetime = Field(..., description="node start time")
-    is_resumption: bool = False
+    is_resumption: bool = Field(
+        default=False,
+        description="True only when this node had already started and execution resumed after a pause.",
+    )
 
     # FIXME(-LAN-): only for ToolNode
     provider_type: str = ""
