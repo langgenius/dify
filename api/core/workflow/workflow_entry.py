@@ -19,6 +19,7 @@ from core.workflow.graph_engine.protocols.command_channel import CommandChannel
 from core.workflow.graph_events import GraphEngineEvent, GraphNodeEventBase, GraphRunFailedEvent
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.base.node import Node
+from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
@@ -136,13 +137,11 @@ class WorkflowEntry:
         :param user_inputs: user inputs
         :return:
         """
-        node_config = workflow.get_node_config_by_id(node_id)
+        node_config = dict(workflow.get_node_config_by_id(node_id))
         node_config_data = node_config.get("data", {})
 
-        # Get node class
+        # Get node type
         node_type = NodeType(node_config_data.get("type"))
-        node_version = node_config_data.get("version", "1")
-        node_cls = NODE_TYPE_CLASSES_MAPPING[node_type][node_version]
 
         # init graph init params and runtime state
         graph_init_params = GraphInitParams(
@@ -158,12 +157,12 @@ class WorkflowEntry:
         graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
         # init workflow run state
-        node = node_cls(
-            id=str(uuid.uuid4()),
-            config=node_config,
+        node_factory = DifyNodeFactory(
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
+        node = node_factory.create_node(node_config)
+        node_cls = type(node)
 
         try:
             # variable selector to variable mapping
