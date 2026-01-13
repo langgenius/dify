@@ -137,6 +137,7 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
     deleteContentType,
     getAbortController,
     fetchCompat = false,
+    request,
   } = otherOptions
 
   let base: string
@@ -182,7 +183,7 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
     },
   })
 
-  const res = await client(fetchPathname, {
+  const res = await client(request || fetchPathname, {
     ...init,
     headers,
     credentials: isMarketplaceAPI
