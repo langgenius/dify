@@ -151,6 +151,7 @@ vi.mock('@/service/base', () => ({
 
 // Mock config
 vi.mock('@/config', () => ({
+  API_PREFIX: '/api',
   APP_VERSION: '1.0.0',
   IS_MARKETPLACE: false,
   MARKETPLACE_API_PREFIX: 'https://marketplace.dify.ai/api/v1',
