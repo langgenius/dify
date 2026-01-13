@@ -1463,7 +1463,7 @@ class AppAnnotationHitHistory(TypeBase):
     source: Mapped[str] = mapped_column(LongText, nullable=False)
     question: Mapped[str] = mapped_column(LongText, nullable=False)
     account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[str] = mapped_column(
+    created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
     score: Mapped[float] = mapped_column(Float, nullable=False, server_default=sa.text("0"))
