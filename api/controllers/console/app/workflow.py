@@ -537,8 +537,8 @@ class HumanInputDeliveryTestPayload(BaseModel):
     delivery_method_id: str
 
 
-@console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/human-input/nodes/<string:node_id>/form")
-class AdvancedChatDraftHumanInputFormApi(Resource):
+@console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/human-input/nodes/<string:node_id>/form/preview")
+class AdvancedChatDraftHumanInputFormPreviewApi(Resource):
     @console_ns.doc("get_advanced_chat_draft_human_input_form")
     @console_ns.doc(description="Get human input form preview for advanced chat workflow")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
@@ -547,7 +547,7 @@ class AdvancedChatDraftHumanInputFormApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     @edit_permission_required
-    def get(self, app_model: App, node_id: str):
+    def post(self, app_model: App, node_id: str):
         """
         Preview human input form content and placeholders
         """
@@ -568,6 +568,9 @@ class AdvancedChatDraftHumanInputFormApi(Resource):
         )
         return jsonable_encoder(preview)
 
+
+@console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/human-input/nodes/<string:node_id>/form/run")
+class AdvancedChatDraftHumanInputFormRunApi(Resource):
     @console_ns.doc("submit_advanced_chat_draft_human_input_form")
     @console_ns.doc(description="Submit human input form preview for advanced chat workflow")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
@@ -602,8 +605,8 @@ class AdvancedChatDraftHumanInputFormApi(Resource):
         return jsonable_encoder(result)
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/draft/human-input/nodes/<string:node_id>/form")
-class WorkflowDraftHumanInputFormApi(Resource):
+@console_ns.route("/apps/<uuid:app_id>/workflows/draft/human-input/nodes/<string:node_id>/form/preview")
+class WorkflowDraftHumanInputFormPreviewApi(Resource):
     @console_ns.doc("get_workflow_draft_human_input_form")
     @console_ns.doc(description="Get human input form preview for workflow")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
@@ -612,7 +615,7 @@ class WorkflowDraftHumanInputFormApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW])
     @edit_permission_required
-    def get(self, app_model: App, node_id: str):
+    def post(self, app_model: App, node_id: str):
         """
         Preview human input form content and placeholders
         """
@@ -633,6 +636,9 @@ class WorkflowDraftHumanInputFormApi(Resource):
         )
         return jsonable_encoder(preview)
 
+
+@console_ns.route("/apps/<uuid:app_id>/workflows/draft/human-input/nodes/<string:node_id>/form/run")
+class WorkflowDraftHumanInputFormRunApi(Resource):
     @console_ns.doc("submit_workflow_draft_human_input_form")
     @console_ns.doc(description="Submit human input form preview for workflow")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
@@ -1380,8 +1386,3 @@ class DraftWorkflowTriggerRunAllApi(Resource):
                     "status": "error",
                 }
             ), 400
-
-
-@console_ns.route("/events")
-class WorkflowEventAPI(Resource):
-    pass

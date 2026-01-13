@@ -11,6 +11,7 @@ from configs import dify_config
 from core.app.app_config.entities import VariableEntityType
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file import File
 from core.repositories import DifyCoreRepositoryFactory
 from core.variables import Variable
@@ -38,6 +39,7 @@ from extensions.ext_storage import storage
 from factories.file_factory import build_from_mapping, build_from_mappings
 from libs.datetime_utils import naive_utc_now
 from models import Account
+from models.enums import UserFrom
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
@@ -786,7 +788,7 @@ class WorkflowService:
 
         rendered_content = node._render_form_content_before_submission()
         resolved_placeholder_values = node._resolve_inputs()
-        node_data = cast(HumanInputNodeData, node.get_base_node_data())
+        node_data = node.node_data
         human_input_required = HumanInputRequired(
             form_id=node_id,
             form_content=rendered_content,
@@ -974,7 +976,6 @@ class WorkflowService:
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
-        node.init_node_data(node_config.get("data", {}))
         return node
 
     def _build_human_input_variable_pool(
