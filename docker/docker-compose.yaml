@@ -662,6 +662,7 @@ x-shared-env: &shared-api-worker-env
   ENABLE_CREATE_TIDB_SERVERLESS_TASK: ${ENABLE_CREATE_TIDB_SERVERLESS_TASK:-false}
   ENABLE_UPDATE_TIDB_SERVERLESS_STATUS_TASK: ${ENABLE_UPDATE_TIDB_SERVERLESS_STATUS_TASK:-false}
   ENABLE_CLEAN_MESSAGES: ${ENABLE_CLEAN_MESSAGES:-false}
+  ENABLE_WORKFLOW_RUN_CLEANUP_TASK: ${ENABLE_WORKFLOW_RUN_CLEANUP_TASK:-false}
   ENABLE_MAIL_CLEAN_DOCUMENT_NOTIFY_TASK: ${ENABLE_MAIL_CLEAN_DOCUMENT_NOTIFY_TASK:-false}
   ENABLE_DATASETS_QUEUE_MONITOR: ${ENABLE_DATASETS_QUEUE_MONITOR:-false}
   ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK: ${ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK:-true}
@@ -703,7 +704,7 @@ services:
 
   # API service
   api:
-    image: langgenius/dify-api:1.11.2
+    image: langgenius/dify-api:1.11.3
     restart: always
     environment:
       # Use the shared environment variables.
@@ -745,7 +746,7 @@ services:
   # worker service
   # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
-    image: langgenius/dify-api:1.11.2
+    image: langgenius/dify-api:1.11.3
     restart: always
     environment:
       # Use the shared environment variables.
@@ -784,7 +785,7 @@ services:
   # worker_beat service
   # Celery beat for scheduling periodic tasks.
   worker_beat:
-    image: langgenius/dify-api:1.11.2
+    image: langgenius/dify-api:1.11.3
     restart: always
     environment:
       # Use the shared environment variables.
@@ -814,7 +815,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.11.2
+    image: langgenius/dify-web:1.11.3
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
