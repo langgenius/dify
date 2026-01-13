@@ -329,6 +329,7 @@ class HumanInputFormRepositoryImpl:
                 timeout=form_config.timeout,
                 timeout_unit=form_config.timeout_unit,
                 placeholder_values=dict(params.resolved_placeholder_values),
+                display_in_ui=params.display_in_ui,
             )
             form_model = HumanInputForm(
                 id=form_id,

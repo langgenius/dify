@@ -17,6 +17,7 @@ from core.workflow.nodes.human_input.entities import (
     HumanInputNodeData,
     MemberRecipient,
     UserAction,
+    WebAppDeliveryMethod,
 )
 from core.workflow.repositories.human_input_form_repository import FormCreateParams
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
@@ -197,3 +198,39 @@ class TestHumanInputFormRepositoryImplWithContainers:
         assert form_model is not None
         definition = FormDefinition.model_validate_json(form_model.form_definition)
         assert definition.placeholder_values == resolved_values
+
+    def test_create_form_persists_display_in_ui(self, db_session_with_containers: Session) -> None:
+        engine = db_session_with_containers.get_bind()
+        assert isinstance(engine, Engine)
+        tenant, _ = _create_tenant_with_members(
+            db_session_with_containers,
+            member_emails=["ui@example.com"],
+        )
+
+        repository = HumanInputFormRepositoryImpl(session_factory=engine, tenant_id=tenant.id)
+        params = FormCreateParams(
+            workflow_execution_id=str(uuid4()),
+            node_id="human-input-node",
+            form_config=HumanInputNodeData(
+                title="Human Approval",
+                form_content="<p>Approve?</p>",
+                inputs=[],
+                user_actions=[UserAction(id="approve", title="Approve")],
+                delivery_methods=[WebAppDeliveryMethod()],
+            ),
+            rendered_content="<p>Approve?</p>",
+            delivery_methods=[WebAppDeliveryMethod()],
+            display_in_ui=True,
+            resolved_placeholder_values={},
+        )
+
+        form_entity = repository.create_form(params)
+
+        with Session(engine) as verification_session:
+            form_model = verification_session.scalars(
+                select(HumanInputForm).where(HumanInputForm.id == form_entity.id)
+            ).first()
+
+        assert form_model is not None
+        definition = FormDefinition.model_validate_json(form_model.form_definition)
+        assert definition.display_in_ui is True
