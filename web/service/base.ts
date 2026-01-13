@@ -716,9 +716,6 @@ export function createFetchAdapter() {
       ...(body !== null && { body }),
     }
 
-    return request<Response>(url, options, {
-      fetchCompat: true,
-      bodyStringify: contentType.includes('application/json'),
-    })
+    return request<Response>(url, options, { fetchCompat: true })
   }
 }
