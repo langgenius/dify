@@ -1,5 +1,7 @@
 import type { CollectionsAndPluginsSearchParams, PluginsSearchParams } from './types'
+import type { MarketPlaceInputs } from '@/contract/router'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { marketplaceQuery } from '@/service/client'
 import { getMarketplaceCollectionsAndPlugins, getMarketplacePlugins } from './utils'
 
 // TODO: Avoid manual maintenance of query keys and better service management,
@@ -7,16 +9,15 @@ import { getMarketplaceCollectionsAndPlugins, getMarketplacePlugins } from './ut
 
 export const marketplaceKeys = {
   all: ['marketplace'] as const,
-  collections: (params?: CollectionsAndPluginsSearchParams) => [...marketplaceKeys.all, 'collections', params] as const,
   collectionPlugins: (collectionId: string, params?: CollectionsAndPluginsSearchParams) => [...marketplaceKeys.all, 'collectionPlugins', collectionId, params] as const,
   plugins: (params?: PluginsSearchParams) => [...marketplaceKeys.all, 'plugins', params] as const,
 }
 
 export function useMarketplaceCollectionsAndPlugins(
-  collectionsParams: CollectionsAndPluginsSearchParams,
+  collectionsParams: MarketPlaceInputs['collections']['query'],
 ) {
   return useQuery({
-    queryKey: marketplaceKeys.collections(collectionsParams),
+    queryKey: marketplaceQuery.collections.queryKey({ input: { query: collectionsParams } }),
     queryFn: ({ signal }) => getMarketplaceCollectionsAndPlugins(collectionsParams, { signal }),
   })
 }

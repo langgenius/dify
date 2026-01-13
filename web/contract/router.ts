@@ -1,3 +1,4 @@
+import type { InferContractRouterInputs } from '@orpc/contract'
 import { collectionPluginsContract, collectionsContract, searchAdvancedContract } from './marketplace'
 
 export const marketplaceRouterContract = {
@@ -5,3 +6,5 @@ export const marketplaceRouterContract = {
   collectionPlugins: collectionPluginsContract,
   searchAdvanced: searchAdvancedContract,
 }
+
+export type MarketPlaceInputs = InferContractRouterInputs<typeof marketplaceRouterContract>

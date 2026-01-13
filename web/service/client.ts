@@ -31,4 +31,4 @@ const link = new OpenAPILink(marketplaceRouterContract, {
 })
 
 export const marketplaceClient: JsonifiedClient<ContractRouterClient<typeof marketplaceRouterContract>> = createORPCClient(link)
-export const marketplaceClientQuery = createTanstackQueryUtils(marketplaceClient)
+export const marketplaceQuery = createTanstackQueryUtils(marketplaceClient, { path: ['marketplace'] })
