@@ -120,6 +120,7 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
           <a
             className="flex items-center text-text-accent"
             target="_blank"
+            rel="noopener noreferrer"
             href={docLink('/guides/knowledge-base/integrate-knowledge-within-application')}
           >
             <span>{t('list.learnMore', { ns: 'datasetDocuments' })}</span>

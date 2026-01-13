@@ -158,9 +158,9 @@ export function useDocumentsPageState() {
     if (!documentsRes)
       return
     const totalPages = Math.ceil(documentsRes.total / limit)
-    if (totalPages < currPage + 1)
-      setCurrPage(totalPages === 0 ? 0 : totalPages - 1)
-  }, [limit, currPage])
+    if (currPage > 0 && currPage + 1 > totalPages)
+      handlePageChange(totalPages > 0 ? totalPages - 1 : 0)
+  }, [limit, currPage, handlePageChange])
 
   return {
     // Search state
