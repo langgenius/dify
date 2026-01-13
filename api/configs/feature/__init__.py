@@ -265,6 +265,11 @@ class PluginConfig(BaseSettings):
         default=60 * 60,
     )
 
+    PLUGIN_MAX_FILE_SIZE: PositiveInt = Field(
+        description="Maximum allowed file size in bytes for plugin generated file",
+        default=50 * 1024 * 1024,
+    )
+
 
 class MarketplaceConfig(BaseSettings):
     """
