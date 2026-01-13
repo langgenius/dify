@@ -9,7 +9,6 @@ This module tests load balancing configuration endpoints:
 
 from __future__ import annotations
 
-import json
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -75,34 +74,6 @@ class BaseTestLoadBalancing:
     @pytest.fixture
     def mock_load_balancing_service(self):
         """Mock ModelLoadBalancingService."""
-        # Mock ProviderManager to prevent database access
-        # Return a mock provider configuration so real service code doesn't fail
-        # The provider_configuration.provider.provider needs to be a string, not a MagicMock
-        mock_provider = MagicMock()
-        mock_provider.provider = "openai"  # Ensure this is a string
-        mock_provider_config = MagicMock()
-        mock_provider_config.provider = mock_provider
-        mock_provider_manager_instance = MagicMock()
-        mock_provider_manager_instance.get_configurations.return_value = {"openai": mock_provider_config}
-        
-        # Create a mock Session context manager to prevent database access
-        mock_session = MagicMock()
-        mock_session_context = MagicMock()
-        mock_session_context.__enter__ = MagicMock(return_value=mock_session)
-        mock_session_context.__exit__ = MagicMock(return_value=False)
-        
-        # Mock db in service module to prevent database access
-        # Return a mock config when config_id is queried
-        mock_load_balancing_config = MagicMock()
-        mock_load_balancing_config.id = "config-123"
-        # encrypted_config needs to be a JSON string, not a MagicMock
-        mock_load_balancing_config.encrypted_config = json.dumps({"api_key": "test-key"})
-        mock_db = MagicMock()
-        # Simplify the mocking chain by directly setting the return value
-        mock_db.session.query.return_value.where.return_value.first.return_value = mock_load_balancing_config
-        mock_db.session = MagicMock()
-        mock_db.session.query.return_value.where.return_value.first.return_value = mock_load_balancing_config
-        
         # Create a factory function for mock service instances to ensure fresh instances
         def create_mock_service_instance():
             instance = MagicMock()
@@ -111,49 +82,20 @@ class BaseTestLoadBalancing:
         
         default_mock_service_instance = create_mock_service_instance()
         
-        # Mock ModelProviderFactory to prevent provider validation issues
-        # The get_plugin_model_provider should return a mock that has a proper provider string
-        mock_provider_entity = MagicMock()
-        mock_provider_entity.provider = "openai"  # Ensure this is a string, not a MagicMock
-        
-        # Create the mock service before patching to ensure it's ready
-        # Use a callable mock that returns a mock instance
+        # Create the mock service class that returns a mock instance by default
         mock_service_class = MagicMock()
-        # Ensure the mock is callable and returns a mock instance by default
         mock_service_class.return_value = default_mock_service_instance
         
+        # Since ModelLoadBalancingService is fully mocked, we don't need to patch
+        # internal dependencies (ProviderManager, db, Session, ModelProviderFactory)
+        # because the real service's initialization logic never executes.
         with (
             patch.object(load_balancing_config, "ModelLoadBalancingService", new=mock_service_class),
             patch("controllers.console.workspace.load_balancing_config.ModelLoadBalancingService", new=mock_service_class),
             patch("services.model_load_balancing_service.ModelLoadBalancingService", new=mock_service_class),
-            patch("core.provider_manager.ProviderManager", return_value=mock_provider_manager_instance),
-            patch("services.model_load_balancing_service.ProviderManager", return_value=mock_provider_manager_instance),
-            patch("core.provider_manager.Session", return_value=mock_session_context),
-            patch("services.model_load_balancing_service.db", mock_db),
-            patch("core.model_runtime.model_providers.model_provider_factory.ModelProviderFactory") as mock_factory,
-            patch("services.model_load_balancing_service.ModelProviderFactory") as mock_factory_service,
         ):
-            # Use the mock service class as the main mock
-            mock_service = mock_service_class
-            
-            # The mock_service_class already has return_value set to default_mock_service_instance
-            # Tests can override this by setting mock_load_balancing_service.return_value
-            # Don't reset the mock - let tests have full control over return_value
-            # Only reset call history if needed, but preserve return_value
-            
-            # Mock ModelProviderFactory to prevent provider validation issues
-            # The factory is instantiated inside the service, so we need to patch it at the service module level
-            mock_factory_instance = MagicMock()
-            mock_factory.return_value = mock_factory_instance
-            mock_factory_service.return_value = mock_factory_instance
-            # Ensure get_plugin_model_provider returns a mock with a proper provider string
-            # The method is called with provider="openai" (string), and should return a mock entity
-            mock_factory_instance.get_plugin_model_provider.return_value = mock_provider_entity
-            mock_factory_instance.provider_credentials_validate.return_value = {}
-            mock_factory_instance.model_credentials_validate.return_value = {}
-            
-            # Yield the mock service
-            yield mock_service
+            # Tests can override the return value by setting mock_load_balancing_service.return_value
+            yield mock_service_class
 
     @pytest.fixture
     def mock_decorators(self):
