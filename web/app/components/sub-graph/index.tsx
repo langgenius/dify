@@ -25,6 +25,7 @@ const SubGraph: FC<SubGraphProps> = (props) => {
     agentNodeId,
     extractorNode,
     toolParamValue,
+    onSave,
   } = props
 
   const promptText = useMemo(() => {
@@ -132,6 +133,7 @@ const SubGraph: FC<SubGraphProps> = (props) => {
         viewport={defaultViewport}
         toolNodeId={toolNodeId}
         paramKey={paramKey}
+        onSave={onSave}
       />
     </WorkflowWithDefaultContext>
   )

@@ -28,6 +28,7 @@ const SubGraphModal: FC<SubGraphModalProps> = ({
   const { t } = useTranslation()
   const reactflowStore = useStoreApi()
   const workflowNodes = useStore(state => state.nodes)
+  const setControlPromptEditorRerenderKey = useStore(state => state.setControlPromptEditorRerenderKey)
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
 
   const extractorNodeId = `${toolNodeId}_ext_${paramKey}`
@@ -94,8 +95,9 @@ const SubGraphModal: FC<SubGraphModalProps> = ({
     })
     setNodes(nextNodes)
     // Trigger main graph draft sync to persist changes to backend
-    handleSyncWorkflowDraft()
-  }, [agentNodeId, extractorNodeId, getSystemPromptText, handleSyncWorkflowDraft, paramKey, reactflowStore, toolNodeId])
+    handleSyncWorkflowDraft(true)
+    setControlPromptEditorRerenderKey(Date.now())
+  }, [agentNodeId, extractorNodeId, getSystemPromptText, handleSyncWorkflowDraft, paramKey, reactflowStore, setControlPromptEditorRerenderKey, toolNodeId])
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
