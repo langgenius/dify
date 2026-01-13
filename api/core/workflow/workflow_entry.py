@@ -2,7 +2,7 @@ import logging
 import time
 import uuid
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, cast
+from typing import Any
 
 from configs import dify_config
 from core.app.apps.exc import GenerateTaskStoppedError
@@ -19,8 +19,7 @@ from core.workflow.graph_engine.protocols.command_channel import CommandChannel
 from core.workflow.graph_events import GraphEngineEvent, GraphNodeEventBase, GraphRunFailedEvent
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.base.node import Node
-from core.workflow.nodes.code.code_node import CodeNode
-from core.workflow.nodes.code.limits import CodeNodeLimits
+from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
@@ -141,10 +140,8 @@ class WorkflowEntry:
         node_config = workflow.get_node_config_by_id(node_id)
         node_config_data = node_config.get("data", {})
 
-        # Get node class
+        # Get node type
         node_type = NodeType(node_config_data.get("type"))
-        node_version = node_config_data.get("version", "1")
-        node_cls = NODE_TYPE_CLASSES_MAPPING[node_type][node_version]
 
         # init graph init params and runtime state
         graph_init_params = GraphInitParams(
@@ -160,31 +157,12 @@ class WorkflowEntry:
         graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
         # init workflow run state
-        if node_type == NodeType.CODE:
-            code_limits = CodeNodeLimits(
-                max_string_length=dify_config.CODE_MAX_STRING_LENGTH,
-                max_number=dify_config.CODE_MAX_NUMBER,
-                min_number=dify_config.CODE_MIN_NUMBER,
-                max_precision=dify_config.CODE_MAX_PRECISION,
-                max_depth=dify_config.CODE_MAX_DEPTH,
-                max_number_array_length=dify_config.CODE_MAX_NUMBER_ARRAY_LENGTH,
-                max_string_array_length=dify_config.CODE_MAX_STRING_ARRAY_LENGTH,
-                max_object_array_length=dify_config.CODE_MAX_OBJECT_ARRAY_LENGTH,
-            )
-            node = cast(type[CodeNode], node_cls)(
-                id=str(uuid.uuid4()),
-                config=node_config,
-                graph_init_params=graph_init_params,
-                graph_runtime_state=graph_runtime_state,
-                code_limits=code_limits,
-            )
-        else:
-            node = node_cls(
-                id=str(uuid.uuid4()),
-                config=node_config,
-                graph_init_params=graph_init_params,
-                graph_runtime_state=graph_runtime_state,
-            )
+        node_factory = DifyNodeFactory(
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
+        )
+        node = node_factory.create_node(node_config)
+        node_cls = type(node)
 
         try:
             # variable selector to variable mapping
