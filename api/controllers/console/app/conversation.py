@@ -53,7 +53,7 @@ def _build_conversation_id_search_condition(keyword: str, keyword_filter: str) -
         return Conversation.id == keyword.lower()
     else:
         # Fuzzy match on casted UUID string with wildcards
-        return sa.cast(Conversation.id, sa.String).ilike(keyword_filter, escape="\\\\")
+        return sa.cast(Conversation.id, sa.String).ilike(keyword_filter, escape="\\")
 
 
 class BaseConversationQuery(BaseModel):
