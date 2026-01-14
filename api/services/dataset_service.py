@@ -2189,6 +2189,7 @@ class DocumentService:
             raise ValueError("Document is not available")
 
         lock_name = f"update_document_lock_document_id_{document.id}"
+        document_id = document.id  # capture for error message (document is confirmed non-None here)
         try:
             with redis_client.lock(lock_name, timeout=600):
                 # double-check: ensure we have the latest state
@@ -2311,7 +2312,7 @@ class DocumentService:
                 document_indexing_update_task.delay(document.dataset_id, document.id)
                 return document
         except LockNotOwnedError:
-            raise ValueError(f"Unable to acquire lock for document {document.id}. Please try again later.")
+            raise ValueError(f"Unable to acquire lock for document {document_id}. Please try again later.")
 
     @staticmethod
     def save_document_without_dataset_id(tenant_id: str, knowledge_config: KnowledgeConfig, account: Account):
