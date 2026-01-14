@@ -63,17 +63,18 @@ const ConfigContextItem: FC<Props> = ({
       onOpenChange={setOpen}
       placement="bottom-start"
       offset={6}
+      triggerPopupSameWidth
     >
       <PortalToFollowElemTrigger asChild onClick={handleToggle}>
         <button
           type="button"
           disabled={readOnly}
           className={cn(
-            'flex w-full items-center justify-between rounded-xl bg-components-panel-on-panel-item-bg px-3 py-2',
-            !readOnly && 'cursor-pointer hover:bg-components-panel-on-panel-item-bg-hover',
+            'flex w-full items-center justify-between rounded-lg border border-transparent bg-components-input-bg-normal px-3 py-2',
+            !readOnly && 'cursor-pointer hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
           )}
         >
-          <div className="system-xs-semibold-uppercase text-text-tertiary">
+          <div className="system-xs-semibold-uppercase text-text-secondary">
             {t('nodes.llm.context', { ns: 'workflow' })}
           </div>
           <div className="flex items-center gap-1">
@@ -87,7 +88,7 @@ const ConfigContextItem: FC<Props> = ({
         </button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-[1000]">
-        <div className="w-[260px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg">
+        <div className="w-full rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg">
           {hasOptions
             ? (
                 <VarReferenceVars
