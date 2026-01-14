@@ -368,6 +368,7 @@
   "nodes.agent.toolbox": "skrzynka z narzędziami",
   "nodes.agent.tools": "Narzędzia",
   "nodes.agent.unsupportedStrategy": "Nieobsługiwana strategia",
+  "nodes.agent.vision": "wizja",
   "nodes.answer.answer": "Odpowiedź",
   "nodes.answer.outputVars": "Zmienne wyjściowe",
   "nodes.assigner.append": "Dopisz",

@@ -368,6 +368,7 @@
   "nodes.agent.toolbox": "cutie de scule",
   "nodes.agent.tools": "Instrumente",
   "nodes.agent.unsupportedStrategy": "Strategie neacceptată",
+  "nodes.agent.vision": "viziune",
   "nodes.answer.answer": "Răspuns",
   "nodes.answer.outputVars": "Variabile de ieșire",
   "nodes.assigner.append": "Adaugă",

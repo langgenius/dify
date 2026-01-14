@@ -368,6 +368,7 @@
   "nodes.agent.toolbox": "جعبه ابزار",
   "nodes.agent.tools": "ابزار",
   "nodes.agent.unsupportedStrategy": "استراتژی پشتیبانی نشده",
+  "nodes.agent.vision": "بینایی",
   "nodes.answer.answer": "پاسخ",
   "nodes.answer.outputVars": "متغیرهای خروجی",
   "nodes.assigner.append": "افزودن",

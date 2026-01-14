@@ -368,6 +368,7 @@
   "nodes.agent.toolbox": "boîte à outils",
   "nodes.agent.tools": "Outils",
   "nodes.agent.unsupportedStrategy": "Stratégie non soutenue",
+  "nodes.agent.vision": "vision",
   "nodes.answer.answer": "Réponse",
   "nodes.answer.outputVars": "Variables de sortie",
   "nodes.assigner.append": "Ajouter",

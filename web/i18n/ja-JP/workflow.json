@@ -368,6 +368,7 @@
   "nodes.agent.toolbox": "ツールボックス",
   "nodes.agent.tools": "ツール",
   "nodes.agent.unsupportedStrategy": "サポートされていない戦略",
+  "nodes.agent.vision": "ビジョン",
   "nodes.answer.answer": "応答",
   "nodes.answer.outputVars": "出力変数",
   "nodes.assigner.append": "追記",

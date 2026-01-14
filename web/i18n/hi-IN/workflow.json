@@ -368,6 +368,7 @@
   "nodes.agent.toolbox": "टूलबॉक्स",
   "nodes.agent.tools": "उपकरण",
   "nodes.agent.unsupportedStrategy": "असमर्थित रणनीति",
+  "nodes.agent.vision": "दृष्टि",
   "nodes.answer.answer": "उत्तर",
   "nodes.answer.outputVars": "आउटपुट वेरिएबल्स",
   "nodes.assigner.append": "जोड़ें",

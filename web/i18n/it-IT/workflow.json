@@ -368,6 +368,7 @@
   "nodes.agent.toolbox": "cassetta degli attrezzi",
   "nodes.agent.tools": "Utensileria",
   "nodes.agent.unsupportedStrategy": "Strategia non supportata",
+  "nodes.agent.vision": "vision",
   "nodes.answer.answer": "Risposta",
   "nodes.answer.outputVars": "Variabili di Output",
   "nodes.assigner.append": "Aggiungere",

@@ -1,6 +1,11 @@
 import type { ToolVarInputs } from '../tool/types'
 import type { PluginMeta } from '@/app/components/plugins/types'
-import type { CommonNodeType, Memory } from '@/app/components/workflow/types'
+import type { CommonNodeType, Memory, VisionSetting } from '@/app/components/workflow/types'
+
+export type AgentVisionConfig = {
+  enabled: boolean
+  configs?: VisionSetting
+}
 
 export type AgentNodeType = CommonNodeType & {
   agent_strategy_provider_name?: string
@@ -11,6 +16,7 @@ export type AgentNodeType = CommonNodeType & {
   output_schema: Record<string, any>
   plugin_unique_identifier?: string
   memory?: Memory
+  vision?: AgentVisionConfig
   version?: string
   tool_node_version?: string
 }

@@ -368,6 +368,7 @@
   "nodes.agent.toolbox": "工具箱",
   "nodes.agent.tools": "工具",
   "nodes.agent.unsupportedStrategy": "不支援的策略",
+  "nodes.agent.vision": "視覺",
   "nodes.answer.answer": "回覆",
   "nodes.answer.outputVars": "輸出變數",
   "nodes.assigner.append": "附加",
