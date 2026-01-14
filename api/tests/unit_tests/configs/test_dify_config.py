@@ -24,8 +24,8 @@ def test_dify_config(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("DB_DATABASE", "dify")
     monkeypatch.setenv("HTTP_REQUEST_MAX_READ_TIMEOUT", "300")  # Custom value for testing
 
-    # load dotenv file with pydantic-settings
-    config = DifyConfig()
+    # Create config without reading from a local `.env` file
+    config = DifyConfig(_env_file=None)
 
     # constant values
     assert config.COMMIT_SHA == ""
@@ -135,7 +135,7 @@ def test_inner_api_config_exist(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("DB_DATABASE", "dify")
     monkeypatch.setenv("INNER_API_KEY", "test-inner-api-key")
 
-    config = DifyConfig()
+    config = DifyConfig(_env_file=None)
     assert config.INNER_API is False
     assert isinstance(config.INNER_API_KEY, str)
     assert len(config.INNER_API_KEY) > 0
@@ -153,7 +153,7 @@ def test_db_extras_options_merging(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("DB_EXTRAS", "options=-c search_path=myschema")
 
     # Create config
-    config = DifyConfig()
+    config = DifyConfig(_env_file=None)
 
     # Get engine options
     engine_options = config.SQLALCHEMY_ENGINE_OPTIONS
@@ -215,7 +215,7 @@ def test_celery_broker_url_with_special_chars_password(
     monkeypatch.setenv("CELERY_BROKER_URL", broker_url)
 
     # Create config and verify the URL is stored correctly
-    config = DifyConfig()
+    config = DifyConfig(_env_file=None)
     assert broker_url == config.CELERY_BROKER_URL
 
     # Test actual parsing behavior using kombu's parse_url (same as production)
