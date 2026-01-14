@@ -375,6 +375,12 @@ export const useChat = (
                 status: NodeRunningStatus.Running,
               }
             }
+            else {
+              responseItem.workflowProcess.tracing.push({
+                ...nodeStartedData,
+                status: NodeRunningStatus.Running,
+              })
+            }
           }
           else {
             if (nodeStartedData.iteration_id)
