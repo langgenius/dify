@@ -127,7 +127,14 @@ export const getBaseOptions = (): RequestInit => ({
 })
 
 async function base<T>(url: string, options: FetchOptionType = {}, otherOptions: IOtherOptions = {}): Promise<T> {
-  const baseOptions = getBaseOptions()
+  const baseOptions = otherOptions.fetchCompat
+    ? {
+        mode: 'cors' as RequestMode,
+        credentials: 'include' as RequestCredentials,
+        headers: new Headers(),
+        redirect: 'follow' as RequestRedirect,
+      }
+    : getBaseOptions()
   const { params, body, headers, ...init } = Object.assign({}, baseOptions, options)
   const {
     isPublicAPI = false,
