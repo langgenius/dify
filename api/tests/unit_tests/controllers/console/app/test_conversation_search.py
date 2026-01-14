@@ -1,11 +1,8 @@
 import uuid
 
-import pytest
 import sqlalchemy as sa
-from sqlalchemy import String, cast
 
 from controllers.console.app.conversation import _build_conversation_id_search_condition
-from models import Conversation
 
 
 class TestBuildConversationIdSearchCondition:
@@ -25,7 +22,7 @@ class TestBuildConversationIdSearchCondition:
 
         # Should be a binary expression (comparison)
         assert isinstance(condition, sa.sql.elements.BinaryExpression)
-        
+
         # The operator should be equality (==), not ILIKE
         # We can check this by verifying the operator type
         assert condition.operator.__name__ == "eq"
@@ -244,11 +241,11 @@ class TestBuildConversationIdSearchCondition:
 
         # The left side should reference Conversation.id
         # This verifies we're comparing against the right column
-        assert hasattr(condition.left, 'key') or hasattr(condition.left, 'name')
+        assert hasattr(condition.left, "key") or hasattr(condition.left, "name")
         # For cast expressions, we need to check the inner element
-        if hasattr(condition.left, 'clause'):
+        if hasattr(condition.left, "clause"):
             # It's a cast expression
-            assert condition.left.clause.key == 'id' or str(condition.left.clause).endswith('.id')
+            assert condition.left.clause.key == "id" or str(condition.left.clause).endswith(".id")
         else:
             # It's a direct column reference
-            assert condition.left.key == 'id' or str(condition.left).endswith('.id')
+            assert condition.left.key == "id" or str(condition.left).endswith(".id")
