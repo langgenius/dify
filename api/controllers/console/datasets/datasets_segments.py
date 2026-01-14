@@ -32,13 +32,30 @@ from extensions.ext_redis import redis_client
 from fields.segment_fields import child_chunk_fields, segment_fields
 from libs.helper import escape_like_pattern
 from libs.login import current_account_with_tenant, login_required
-from models.dataset import ChildChunk, DocumentSegment
+from models.dataset import ChildChunk, DocumentSegment, DocumentSegmentSummary
 from models.model import UploadFile
 from services.dataset_service import DatasetService, DocumentService, SegmentService
 from services.entities.knowledge_entities.knowledge_entities import ChildChunkUpdateArgs, SegmentUpdateArgs
 from services.errors.chunk import ChildChunkDeleteIndexError as ChildChunkDeleteIndexServiceError
 from services.errors.chunk import ChildChunkIndexingError as ChildChunkIndexingServiceError
 from tasks.batch_create_segment_to_index_task import batch_create_segment_to_index_task
+
+
+def _get_segment_with_summary(segment, dataset_id):
+    """Helper function to marshal segment and add summary information."""
+    segment_dict = marshal(segment, segment_fields)
+    # Query summary for this segment (only enabled summaries)
+    summary = (
+        db.session.query(DocumentSegmentSummary)
+        .where(
+            DocumentSegmentSummary.chunk_id == segment.id,
+            DocumentSegmentSummary.dataset_id == dataset_id,
+            DocumentSegmentSummary.enabled == True,  # Only return enabled summaries
+        )
+        .first()
+    )
+    segment_dict["summary"] = summary.summary_content if summary else None
+    return segment_dict
 
 
 class SegmentListQuery(BaseModel):
@@ -63,6 +80,7 @@ class SegmentUpdatePayload(BaseModel):
     keywords: list[str] | None = None
     regenerate_child_chunks: bool = False
     attachment_ids: list[str] | None = None
+    summary: str | None = None  # Summary content for summary index
 
 
 class BatchImportPayload(BaseModel):
@@ -180,8 +198,34 @@ class DatasetDocumentSegmentListApi(Resource):
 
         segments = db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
 
+        # Query summaries for all segments in this page (batch query for efficiency)
+        segment_ids = [segment.id for segment in segments.items]
+        summaries = {}
+        if segment_ids:
+            summary_records = (
+                db.session.query(DocumentSegmentSummary)
+                .where(
+                    DocumentSegmentSummary.chunk_id.in_(segment_ids),
+                    DocumentSegmentSummary.dataset_id == dataset_id,
+                )
+                .all()
+            )
+            # Only include enabled summaries
+            summaries = {
+                summary.chunk_id: summary.summary_content 
+                for summary in summary_records 
+                if summary.enabled is True
+            }
+
+        # Add summary to each segment
+        segments_with_summary = []
+        for segment in segments.items:
+            segment_dict = marshal(segment, segment_fields)
+            segment_dict["summary"] = summaries.get(segment.id)
+            segments_with_summary.append(segment_dict)
+
         response = {
-            "data": marshal(segments.items, segment_fields),
+            "data": segments_with_summary,
             "limit": limit,
             "total": segments.total,
             "total_pages": segments.pages,
@@ -327,7 +371,7 @@ class DatasetDocumentSegmentAddApi(Resource):
         payload_dict = payload.model_dump(exclude_none=True)
         SegmentService.segment_create_args_validate(payload_dict, document)
         segment = SegmentService.create_segment(payload_dict, document, dataset)
-        return {"data": marshal(segment, segment_fields), "doc_form": document.doc_form}, 200
+        return {"data": _get_segment_with_summary(segment, dataset_id), "doc_form": document.doc_form}, 200
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>")
@@ -389,10 +433,12 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         payload = SegmentUpdatePayload.model_validate(console_ns.payload or {})
         payload_dict = payload.model_dump(exclude_none=True)
         SegmentService.segment_create_args_validate(payload_dict, document)
+        
+        # Update segment (summary update with change detection is handled in SegmentService.update_segment)
         segment = SegmentService.update_segment(
             SegmentUpdateArgs.model_validate(payload.model_dump(exclude_none=True)), segment, document, dataset
         )
-        return {"data": marshal(segment, segment_fields), "doc_form": document.doc_form}, 200
+        return {"data": _get_segment_with_summary(segment, dataset_id), "doc_form": document.doc_form}, 200
 
     @setup_required
     @login_required

@@ -25,9 +25,10 @@ from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.text_processing_utils import remove_leading_symbols
 from libs import helper
 from models.account import Account
-from models.dataset import Dataset
+from models.dataset import Dataset, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from services.entities.knowledge_entities.knowledge_entities import Rule
+from services.summary_index_service import SummaryIndexService
 
 logger = logging.getLogger(__name__)
 
@@ -144,6 +145,30 @@ class QAIndexProcessor(BaseIndexProcessor):
                 vector.create_multimodal(multimodal_documents)
 
     def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs):
+        # Note: Summary indexes are now disabled (not deleted) when segments are disabled.
+        # This method is called for actual deletion scenarios (e.g., when segment is deleted).
+        # For disable operations, disable_summaries_for_segments is called directly in the task.
+        # Note: qa_model doesn't generate summaries, but we clean them for completeness
+        # Only delete summaries if explicitly requested (e.g., when segment is actually deleted)
+        delete_summaries = kwargs.get("delete_summaries", False)
+        if delete_summaries:
+            if node_ids:
+                # Find segments by index_node_id
+                segments = (
+                    db.session.query(DocumentSegment)
+                    .filter(
+                        DocumentSegment.dataset_id == dataset.id,
+                        DocumentSegment.index_node_id.in_(node_ids),
+                    )
+                    .all()
+                )
+                segment_ids = [segment.id for segment in segments]
+                if segment_ids:
+                    SummaryIndexService.delete_summaries_for_segments(dataset, segment_ids)
+            else:
+                # Delete all summaries for the dataset
+                SummaryIndexService.delete_summaries_for_segments(dataset, None)
+
         vector = Vector(dataset)
         if node_ids:
             vector.delete_by_ids(node_ids)

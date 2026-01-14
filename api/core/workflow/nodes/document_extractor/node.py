@@ -62,6 +62,21 @@ class DocumentExtractorNode(Node[DocumentExtractorNodeData]):
         inputs = {"variable_selector": variable_selector}
         process_data = {"documents": value if isinstance(value, list) else [value]}
 
+        # Ensure storage_key is loaded for File objects
+        files_to_check = value if isinstance(value, list) else [value]
+        files_needing_storage_key = [
+            f for f in files_to_check
+            if isinstance(f, File) and not f.storage_key and f.related_id
+        ]
+        if files_needing_storage_key:
+            from factories.file_factory import StorageKeyLoader
+            from extensions.ext_database import db
+            from sqlalchemy.orm import Session
+            
+            with Session(bind=db.engine) as session:
+                storage_key_loader = StorageKeyLoader(session, tenant_id=self.tenant_id)
+                storage_key_loader.load_storage_keys(files_needing_storage_key)
+
         try:
             if isinstance(value, list):
                 extracted_text_list = list(map(_extract_text_from_file, value))
@@ -415,6 +430,15 @@ def _download_file_content(file: File) -> bytes:
             response.raise_for_status()
             return response.content
         else:
+            # Check if storage_key is set
+            if not file.storage_key:
+                raise FileDownloadError(f"File storage_key is missing for file: {file.filename}")
+            
+            # Check if file exists before downloading
+            from extensions.ext_storage import storage
+            if not storage.exists(file.storage_key):
+                raise FileDownloadError(f"File not found in storage: {file.storage_key}")
+            
             return file_manager.download(file)
     except Exception as e:
         raise FileDownloadError(f"Error downloading file: {str(e)}") from e

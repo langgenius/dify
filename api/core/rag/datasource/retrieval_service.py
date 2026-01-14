@@ -389,15 +389,14 @@ class RetrievalService:
                 .all()
             }
 
-            records = []
-            include_segment_ids = set()
-            segment_child_map = {}
-
             valid_dataset_documents = {}
             image_doc_ids: list[Any] = []
             child_index_node_ids = []
             index_node_ids = []
             doc_to_document_map = {}
+            summary_segment_ids = set()  # Track segments retrieved via summary
+            
+            # First pass: collect all document IDs and identify summary documents
             for document in documents:
                 document_id = document.metadata.get("document_id")
                 if document_id not in dataset_documents:
@@ -408,16 +407,24 @@ class RetrievalService:
                     continue
                 valid_dataset_documents[document_id] = dataset_document
 
+                doc_id = document.metadata.get("doc_id") or ""
+                doc_to_document_map[doc_id] = document
+
+                # Check if this is a summary document
+                is_summary = document.metadata.get("is_summary", False)
+                if is_summary:
+                    # For summary documents, find the original chunk via original_chunk_id
+                    original_chunk_id = document.metadata.get("original_chunk_id")
+                    if original_chunk_id:
+                        summary_segment_ids.add(original_chunk_id)
+                    continue  # Skip adding to other lists for summary documents
+
                 if dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
-                    doc_id = document.metadata.get("doc_id") or ""
-                    doc_to_document_map[doc_id] = document
                     if document.metadata.get("doc_type") == DocType.IMAGE:
                         image_doc_ids.append(doc_id)
                     else:
                         child_index_node_ids.append(doc_id)
                 else:
-                    doc_id = document.metadata.get("doc_id") or ""
-                    doc_to_document_map[doc_id] = document
                     if document.metadata.get("doc_type") == DocType.IMAGE:
                         image_doc_ids.append(doc_id)
                     else:
@@ -433,6 +440,7 @@ class RetrievalService:
             attachment_map: dict[str, list[dict[str, Any]]] = {}
             child_chunk_map: dict[str, list[ChildChunk]] = {}
             doc_segment_map: dict[str, list[str]] = {}
+            segment_summary_map: dict[str, str] = {}  # Map segment_id to summary content
 
             with session_factory.create_session() as session:
                 attachments = cls.get_segment_attachment_infos(image_doc_ids, session)
@@ -447,6 +455,7 @@ class RetrievalService:
                         doc_segment_map[attachment["segment_id"]].append(attachment["attachment_id"])
                     else:
                         doc_segment_map[attachment["segment_id"]] = [attachment["attachment_id"]]
+                        
                 child_chunk_stmt = select(ChildChunk).where(ChildChunk.index_node_id.in_(child_index_node_ids))
                 child_index_nodes = session.execute(child_chunk_stmt).scalars().all()
 
@@ -470,6 +479,7 @@ class RetrievalService:
                     index_node_segments = session.execute(document_segment_stmt).scalars().all()  # type: ignore
                     for index_node_segment in index_node_segments:
                         doc_segment_map[index_node_segment.id] = [index_node_segment.index_node_id]
+                        
                 if segment_ids:
                     document_segment_stmt = select(DocumentSegment).where(
                         DocumentSegment.enabled == True,
@@ -480,6 +490,42 @@ class RetrievalService:
 
                 if index_node_segments:
                     segments.extend(index_node_segments)
+
+                # Handle summary documents: query segments by original_chunk_id
+                if summary_segment_ids:
+                    summary_segment_ids_list = list(summary_segment_ids)
+                    summary_segment_stmt = select(DocumentSegment).where(
+                        DocumentSegment.enabled == True,
+                        DocumentSegment.status == "completed",
+                        DocumentSegment.id.in_(summary_segment_ids_list),
+                    )
+                    summary_segments = session.execute(summary_segment_stmt).scalars().all()  # type: ignore
+                    segments.extend(summary_segments)
+                    # Add summary segment IDs to segment_ids for summary query
+                    for seg in summary_segments:
+                        if seg.id not in segment_ids:
+                            segment_ids.append(seg.id)
+
+                # Batch query summaries for segments retrieved via summary (only enabled summaries)
+                if summary_segment_ids:
+                    from models.dataset import DocumentSegmentSummary
+
+                    summaries = (
+                        session.query(DocumentSegmentSummary)
+                        .filter(
+                            DocumentSegmentSummary.chunk_id.in_(list(summary_segment_ids)),
+                            DocumentSegmentSummary.status == "completed",
+                            DocumentSegmentSummary.enabled == True,  # Only retrieve enabled summaries
+                        )
+                        .all()
+                    )
+                    for summary in summaries:
+                        if summary.summary_content:
+                            segment_summary_map[summary.chunk_id] = summary.summary_content
+
+            include_segment_ids = set()
+            segment_child_map: dict[str, dict[str, Any]] = {}
+            records: list[dict[str, Any]] = []
 
             for segment in segments:
                 child_chunks: list[ChildChunk] = child_chunk_map.get(segment.id, [])
@@ -493,7 +539,7 @@ class RetrievalService:
                             child_chunk_details = []
                             max_score = 0.0
                             for child_chunk in child_chunks:
-                                document = doc_to_document_map[child_chunk.index_node_id]
+                                document = doc_to_document_map.get(child_chunk.index_node_id)
                                 child_chunk_detail = {
                                     "id": child_chunk.id,
                                     "content": child_chunk.content,
@@ -503,7 +549,7 @@ class RetrievalService:
                                 child_chunk_details.append(child_chunk_detail)
                                 max_score = max(max_score, document.metadata.get("score", 0.0) if document else 0.0)
                             for attachment_info in attachment_infos:
-                                file_document = doc_to_document_map[attachment_info["id"]]
+                                file_document = doc_to_document_map.get(attachment_info["id"])
                                 max_score = max(
                                     max_score, file_document.metadata.get("score", 0.0) if file_document else 0.0
                                 )
@@ -576,9 +622,16 @@ class RetrievalService:
                     else None
                 )
 
+                # Extract summary if this segment was retrieved via summary
+                summary_content = segment_summary_map.get(segment.id)
+
                 # Create RetrievalSegments object
                 retrieval_segment = RetrievalSegments(
-                    segment=segment, child_chunks=child_chunks_list, score=score, files=files
+                    segment=segment,
+                    child_chunks=child_chunks_list,
+                    score=score,
+                    files=files,
+                    summary=summary_content,
                 )
                 result.append(retrieval_segment)
 
