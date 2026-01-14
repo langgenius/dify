@@ -96,7 +96,7 @@ class MessagesCleanService:
 
         logger.info(
             "clean_messages: start_from=%s, end_before=%s, batch_size=%s, policy=%s",
-            start_from, end_before, batch_size, policy,
+            start_from, end_before, batch_size, policy.__class__.__name__,
         )
 
         return cls(
@@ -140,7 +140,7 @@ class MessagesCleanService:
 
         logger.info(
             "clean_messages: days=%s, end_before=%s, batch_size=%s, policy=%s",
-            days, end_before, batch_size, policy,
+            days, end_before, batch_size, policy.__class__.__name__,
         )
 
         return cls(
