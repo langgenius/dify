@@ -2191,7 +2191,7 @@ class DocumentService:
         lock_name = f"update_document_lock_document_id_{document.id}"
         try:
             with redis_client.lock(lock_name, timeout=600):
-                # double check： ensure have the latest state
+                # double-check: ensure we have the latest state
                 document = DocumentService.get_document(dataset.id, document_data.original_document_id)
                 if document is None:
                     raise NotFound("Document not found")
