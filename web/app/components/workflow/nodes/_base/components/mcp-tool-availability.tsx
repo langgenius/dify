@@ -27,14 +27,12 @@ export const MCPToolAvailabilityProvider = ({
 
 export const useMCPToolAvailability = (): MCPToolAvailability => {
   const context = useContext(MCPToolAvailabilityContext)
-  const versionSupported = context?.versionSupported
-  const versionOk = versionSupported === true
+  if (context === undefined)
+    return { allowed: true }
 
-  if (versionOk)
-    return { allowed: true, versionSupported }
-
+  const { versionSupported } = context
   return {
-    allowed: false,
+    allowed: versionSupported === true,
     versionSupported,
   }
 }

@@ -27,7 +27,6 @@ import Indicator from '@/app/components/header/indicator'
 import { CollectionType } from '@/app/components/tools/types'
 import { addDefaultValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import ToolPicker from '@/app/components/workflow/block-selector/tool-picker'
-import { MCPToolAvailabilityProvider } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
 import { MAX_TOOLS_NUM } from '@/config'
 import ConfigContext from '@/context/debug-configuration'
 import { useMittContextSelector } from '@/context/mitt-context'
@@ -175,18 +174,16 @@ const AgentTools: FC = () => {
             {tools.length < MAX_TOOLS_NUM && (
               <>
                 <div className="ml-3 mr-1 h-3.5 w-px bg-divider-regular"></div>
-                <MCPToolAvailabilityProvider versionSupported={true}>
-                  <ToolPicker
-                    trigger={<OperationBtn type="add" />}
-                    isShow={isShowChooseTool}
-                    onShowChange={setIsShowChooseTool}
-                    disabled={false}
-                    supportAddCustomTool
-                    onSelect={handleSelectTool}
-                    onSelectMultiple={handleSelectMultipleTool}
-                    selectedTools={tools as unknown as ToolValue[]}
-                  />
-                </MCPToolAvailabilityProvider>
+                <ToolPicker
+                  trigger={<OperationBtn type="add" />}
+                  isShow={isShowChooseTool}
+                  onShowChange={setIsShowChooseTool}
+                  disabled={false}
+                  supportAddCustomTool
+                  onSelect={handleSelectTool}
+                  onSelectMultiple={handleSelectMultipleTool}
+                  selectedTools={tools as unknown as ToolValue[]}
+                />
               </>
             )}
           </div>
