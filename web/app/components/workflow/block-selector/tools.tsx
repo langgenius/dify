@@ -21,7 +21,6 @@ type ToolsProps = {
   className?: string
   indexBarClassName?: string
   selectedTools?: ToolValue[]
-  canChooseMCPTool?: boolean
 }
 const Tools = ({
   onSelect,
@@ -35,7 +34,6 @@ const Tools = ({
   className,
   indexBarClassName,
   selectedTools,
-  canChooseMCPTool,
 }: ToolsProps) => {
   // const tools: any = []
   const language = useGetLanguage()
@@ -109,7 +107,6 @@ const Tools = ({
                 canNotSelectMultiple={canNotSelectMultiple}
                 onSelectMultiple={onSelectMultiple}
                 selectedTools={selectedTools}
-                canChooseMCPTool={canChooseMCPTool}
                 indexBar={<IndexBar letters={letters} itemRefs={toolRefs} className={indexBarClassName} />}
               />
             )
@@ -121,7 +118,6 @@ const Tools = ({
                 canNotSelectMultiple={canNotSelectMultiple}
                 onSelectMultiple={onSelectMultiple}
                 selectedTools={selectedTools}
-                canChooseMCPTool={canChooseMCPTool}
               />
             )
       )}
