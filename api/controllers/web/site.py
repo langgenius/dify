@@ -1,4 +1,4 @@
-from flask_restx import fields, marshal_with
+from flask_restx import fields, marshal, marshal_with
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
@@ -104,7 +104,12 @@ class AppSiteInfo:
                 if tenant.custom_config_dict.get("replace_webapp_logo")
                 else None
             )
-            self.custom_config = {
-                "remove_webapp_brand": remove_webapp_brand,
-                "replace_webapp_logo": replace_webapp_logo,
-            }
+        self.custom_config = {
+            "remove_webapp_brand": remove_webapp_brand,
+            "replace_webapp_logo": replace_webapp_logo,
+        }
+
+
+def serialize_site(site: Site) -> dict:
+    """Serialize Site model using the same schema as AppSiteApi."""
+    return marshal(site, AppSiteApi.site_fields)

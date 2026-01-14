@@ -2,23 +2,32 @@
 Web App Human Input Form APIs.
 """
 
+import json
 import logging
 
 from flask import Response
 from flask_restx import Resource, reqparse
+from werkzeug.exceptions import Forbidden
 
 from controllers.web import web_ns
 from controllers.web.error import NotFoundError
+from controllers.web.site import serialize_site
 from extensions.ext_database import db
+from models.account import TenantStatus
+from models.model import App, Site
+from models.workflow import WorkflowRun
 from models.human_input import RecipientType
 from services.human_input_service import Form, FormNotFoundError, HumanInputService
 
 logger = logging.getLogger(__name__)
 
 
-def _jsonify_form_definition(form: Form) -> Response:
-    """Return the Pydantic definition as a JSON response."""
-    return Response(form.get_definition().model_dump_json(), mimetype="application/json")
+def _jsonify_form_definition(form: Form, site_payload: dict | None = None) -> Response:
+    """Return the Pydantic definition (optionally with site) as a JSON response."""
+    payload = form.get_definition().model_dump()
+    if site_payload is not None:
+        payload["site"] = site_payload
+    return Response(json.dumps(payload, ensure_ascii=False), mimetype="application/json")
 
 
 # TODO(QuantumGhost): disable authorization for web app
@@ -46,7 +55,9 @@ class HumanInputFormApi(Resource):
         if form is None:
             raise NotFoundError("Form not found")
 
-        return _jsonify_form_definition(form)
+        site = _get_site_from_form(form)
+
+        return _jsonify_form_definition(form, site_payload=serialize_site(site))
 
     # def post(self, _app_model: App, _end_user: EndUser, form_token: str):
     def post(self, form_token: str):
@@ -82,3 +93,25 @@ class HumanInputFormApi(Resource):
             raise NotFoundError("Form not found")
 
         return {}, 200
+
+
+def _get_site_from_form(form: Form) -> Site:
+    """Resolve Site for the form's workflow run and validate tenant status."""
+    workflow_run = (
+        db.session.query(WorkflowRun).where(WorkflowRun.id == form.workflow_run_id).first()
+    )
+    if workflow_run is None:
+        raise NotFoundError("Form not found")
+
+    app_model = db.session.query(App).where(App.id == workflow_run.app_id).first()
+    if app_model is None:
+        raise NotFoundError("Form not found")
+
+    site = db.session.query(Site).where(Site.app_id == app_model.id).first()
+    if site is None:
+        raise Forbidden()
+
+    if app_model.tenant and app_model.tenant.status == TenantStatus.ARCHIVE:
+        raise Forbidden()
+
+    return site
