@@ -1,7 +1,7 @@
 {
   "name": "dify-web",
   "type": "module",
-  "version": "1.11.2",
+  "version": "1.11.3",
   "private": true,
   "packageManager": "pnpm@10.27.0+sha512.72d699da16b1179c14ba9e64dc71c9a40988cbdc65c264cb0e489db7de917f20dcf4d64d8723625f2969ba52d4b7e2a1170682d9ac2a5dcaeaab732b7e16f04a",
   "imports": {
@@ -70,6 +70,10 @@
     "@monaco-editor/react": "^4.7.0",
     "@octokit/core": "^6.1.6",
     "@octokit/request-error": "^6.1.8",
+    "@orpc/client": "^1.13.4",
+    "@orpc/contract": "^1.13.4",
+    "@orpc/openapi-client": "^1.13.4",
+    "@orpc/tanstack-query": "^1.13.4",
     "@remixicon/react": "^4.7.0",
     "@sentry/react": "^8.55.0",
     "@svgdotjs/svg.js": "^3.2.5",
@@ -237,7 +241,8 @@
       "brace-expansion@<2.0.2": "2.0.2",
       "devalue@<5.3.2": "5.3.2",
       "es-iterator-helpers": "npm:@nolyfill/es-iterator-helpers@^1",
-      "esbuild@<0.25.0": "0.25.0",
+      "esbuild@<0.27.2": "0.27.2",
+      "glob@>=10.2.0,<10.5.0": "11.1.0",
       "hasown": "npm:@nolyfill/hasown@^1",
       "is-arguments": "npm:@nolyfill/is-arguments@^1",
       "is-core-module": "npm:@nolyfill/is-core-module@^1",
@@ -279,7 +284,6 @@
     "@types/react-dom": "~19.2.3",
     "brace-expansion": "~2.0",
     "canvas": "^3.2.0",
-    "esbuild": "~0.25.0",
     "pbkdf2": "~3.1.3",
     "prismjs": "~1.30",
     "string-width": "~4.2.3"
