@@ -12,7 +12,7 @@ import SubGraphMain from './components/sub-graph-main'
 import { useSubGraphNodes } from './hooks'
 import { createSubGraphSlice } from './store'
 
-const SUB_GRAPH_EDGE_GAP = 180
+const SUB_GRAPH_EDGE_GAP = 160
 const SUB_GRAPH_ENTRY_POSITION = {
   x: START_INITIAL_POSITION.x,
   y: 150,
@@ -28,7 +28,7 @@ const defaultViewport: Viewport = {
   zoom: 1.3,
 }
 
-const SubGraph: FC<SubGraphProps> = (props) => {
+const SubGraphContent: FC<SubGraphProps> = (props) => {
   const {
     toolNodeId,
     paramKey,
@@ -186,14 +186,14 @@ const SubGraph: FC<SubGraphProps> = (props) => {
   )
 }
 
-const SubGraphWrapper: FC<SubGraphProps> = (props) => {
+const SubGraph: FC<SubGraphProps> = (props) => {
   return (
     <WorkflowContextProvider
-      injectWorkflowStoreSliceFn={createSubGraphSlice as unknown as InjectWorkflowStoreSliceFn}
+      injectWorkflowStoreSliceFn={createSubGraphSlice as InjectWorkflowStoreSliceFn}
     >
-      <SubGraph {...props} />
+      <SubGraphContent {...props} />
     </WorkflowContextProvider>
   )
 }
 
-export default memo(SubGraphWrapper)
+export default memo(SubGraph)

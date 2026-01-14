@@ -27,29 +27,13 @@ const SubGraphChildren: FC<SubGraphChildrenProps> = ({
   const isChatMode = useIsChatMode()
   const nodePanelWidth = useStore(s => s.nodePanelWidth)
 
-  const { selectedNode, nodes } = useReactFlowStore(useShallow((s) => {
-    const nodes = s.getNodes()
-    const currentNode = nodes.find(node => node.data.selected)
-
-    if (currentNode?.data.type === BlockEnum.LLM) {
-      return {
-        selectedNode: {
-          id: currentNode.id,
-          type: currentNode.type,
-          data: currentNode.data,
-        },
-        nodes,
-      }
-    }
-    return {
-      selectedNode: null,
-      nodes,
-    }
+  const selectedNode = useReactFlowStore(useShallow((s) => {
+    return s.getNodes().find(node => node.data.selected)
   }))
 
-  const extractorNode = useMemo(() => {
-    return nodes.find(node => node.data.type === BlockEnum.LLM)
-  }, [nodes])
+  const extractorNode = useReactFlowStore(useShallow((s) => {
+    return s.getNodes().find(node => node.data.type === BlockEnum.LLM)
+  }))
 
   const availableNodes = useMemo(() => {
     return extractorNode ? [extractorNode] : []
