@@ -127,8 +127,7 @@ export const getBaseOptions = (): RequestInit => ({
 })
 
 async function base<T>(url: string, options: FetchOptionType = {}, otherOptions: IOtherOptions = {}): Promise<T> {
-  // In fetchCompat mode, skip baseOptions to avoid overriding Request object's
-  // method, headers,
+  // In fetchCompat mode, skip baseOptions to avoid overriding Request object's method, headers,
   const baseOptions = otherOptions.fetchCompat
     ? {
         mode: 'cors',
