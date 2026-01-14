@@ -25,7 +25,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Use Node.js ${{ matrix.node-version }}
+      - name: Use Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 24
