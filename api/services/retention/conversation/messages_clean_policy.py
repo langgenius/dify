@@ -50,6 +50,7 @@ class BillingDisabledPolicy(MessagesCleanPolicy):
 
     No special filter logic, just return all message ids.
     """
+
     def filter_message_ids(
         self,
         messages: Sequence[SimpleMessage],
@@ -68,6 +69,7 @@ class BillingSandboxPolicy(MessagesCleanPolicy):
     - Respect grace period after subscription expiration
     - Safe default: if tenant mapping or plan is missing, do NOT delete
     """
+
     def __init__(
         self,
         plan_provider: Callable[[Sequence[str]], dict[str, SubscriptionPlan]],

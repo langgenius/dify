@@ -33,7 +33,7 @@ class MessagesCleanService:
     """
     Service for cleaning expired messages based on retention policies.
 
-    Compatible with non cloud edition (billing disabled): all messages in the time range will be deleted. 
+    Compatible with non cloud edition (billing disabled): all messages in the time range will be deleted.
     If billing is enabled: only sandbox plan tenant messages are deleted (with whitelist and grace period support).
     """
 
@@ -143,13 +143,7 @@ class MessagesCleanService:
             days, end_before, batch_size, policy.__class__.__name__,
         )
 
-        return cls(
-            policy=policy,
-            end_before=end_before,
-            start_from=None,
-            batch_size=batch_size,
-            dry_run=dry_run
-        )
+        return cls(policy=policy, end_before=end_before, start_from=None, batch_size=batch_size, dry_run=dry_run)
 
     def run(self) -> dict[str, int]:
         """
@@ -188,7 +182,9 @@ class MessagesCleanService:
 
         logger.info(
             "clean_messages: start cleaning messages (dry_run=%s), start_from=%s, end_before=%s",
-            self._dry_run, self._start_from, self._end_before,
+            self._dry_run,
+            self._start_from,
+            self._end_before,
         )
 
         while True:
@@ -274,7 +270,9 @@ class MessagesCleanService:
 
                     logger.info(
                         "clean_messages (batch %s): processed %s messages, deleted %s messages",
-                        stats["batches"], len(messages), messages_deleted,
+                        stats["batches"],
+                        len(messages),
+                        messages_deleted,
                     )
             else:
                 # Log random sample of message IDs that would be deleted (up to 10)
@@ -283,14 +281,19 @@ class MessagesCleanService:
 
                 logger.info(
                     "clean_messages (batch %s, dry_run): would delete %s messages, sampling %s ids:",
-                    stats["batches"], len(message_ids_to_delete), sample_size,
+                    stats["batches"],
+                    len(message_ids_to_delete),
+                    sample_size,
                 )
                 for msg_id in sampled_ids:
                     logger.info("clean_messages (batch %s, dry_run) sample: message_id=%s", stats["batches"], msg_id)
 
         logger.info(
             "clean_messages completed: total batches: %s, total messages: %s, filtered messages: %s, total deleted: %s",
-            stats["batches"], stats["total_messages"], stats["filtered_messages"], stats["total_deleted"],
+            stats["batches"],
+            stats["total_messages"],
+            stats["filtered_messages"],
+            stats["total_deleted"],
         )
 
         return stats
