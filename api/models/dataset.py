@@ -1158,7 +1158,13 @@ class TidbAuthBinding(TypeBase):
         sa.Index("tidb_auth_bindings_created_at_idx", "created_at"),
         sa.Index("tidb_auth_bindings_status_idx", "status"),
     )
-    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default=lambda: str(uuid4()), init=False)
+    id: Mapped[str] = mapped_column(
+        StringUUID,
+        primary_key=True,
+        insert_default=lambda: str(uuid4()),
+        default_factory=lambda: str(uuid4()),
+        init=False,
+    )
     tenant_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     cluster_id: Mapped[str] = mapped_column(String(255), nullable=False)
     cluster_name: Mapped[str] = mapped_column(String(255), nullable=False)
