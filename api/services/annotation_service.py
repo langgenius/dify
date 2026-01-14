@@ -68,7 +68,14 @@ class AppAnnotationService:
             if not question:
                 raise ValueError("'question' is required when 'message_id' is not provided")
 
-            annotation = MessageAnnotation(app_id=app.id, content=answer, question=question, account_id=current_user.id)
+            annotation = MessageAnnotation(
+                app_id=app.id,
+                conversation_id=None,
+                message_id=None,
+                content=answer,
+                question=question,
+                account_id=current_user.id,
+            )
         db.session.add(annotation)
         db.session.commit()
 
@@ -210,7 +217,12 @@ class AppAnnotationService:
             raise NotFound("App not found")
 
         annotation = MessageAnnotation(
-            app_id=app.id, content=args["answer"], question=args["question"], account_id=current_user.id
+            app_id=app.id,
+            content=args["answer"],
+            conversation_id=None,
+            message_id=None,
+            question=args["question"],
+            account_id=current_user.id,
         )
         db.session.add(annotation)
         db.session.commit()
