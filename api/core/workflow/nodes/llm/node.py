@@ -382,15 +382,29 @@ class LLMNode(Node[LLMNodeData]):
                                 # Use the actual variable value, preserving its type
                                 parsed_value = variable.value
                             else:
-                                # Variable not found, use text conversion
-                                segment_group = variable_pool.convert_template(value)
-                                parsed_value = segment_group.text
+                                # Variable not found, return empty string for non-existent variable
+                                parsed_value = ""
                         else:
-                            segment_group = variable_pool.convert_template(value)
-                            parsed_value = segment_group.text
+                            # Invalid variable selector, return empty string
+                            parsed_value = ""
                     else:
                         # Mixed content (variable reference + other text), use text conversion
-                        segment_group = variable_pool.convert_template(value)
+                        # For model parameters, non-existent variables should be replaced with empty string
+                        # to maintain consistency with pure variable references
+                        # First, replace non-existent variables with empty string in the template
+                        processed_template = value
+                        for variable_key in variable_keys:
+                            # Extract the variable selector from the key (e.g., "#node1.var#" -> ["node1", "var"])
+                            variable_selector_str = variable_key.replace("#", "")
+                            selector_parts = variable_selector_str.split(".")
+                            if len(selector_parts) >= 2:
+                                variable = variable_pool.get(selector_parts)
+                                if variable is None:
+                                    # Variable not found, replace the variable reference with empty string
+                                    # Replace {{#node1.var#}} with empty string
+                                    processed_template = processed_template.replace(f"{{{{{variable_key}}}}}", "")
+                        # Now convert the template with non-existent variables already replaced
+                        segment_group = variable_pool.convert_template(processed_template)
                         parsed_value = segment_group.text
                     parsed_params[key] = parsed_value
                 except Exception as e:

@@ -102,18 +102,29 @@ def test_question_classifier_node_passes_variable_pool_to_invoke_llm():
     # Mock the invoke_llm method to verify it receives variable_pool
     with patch.object(LLMNode, "invoke_llm") as mock_invoke_llm:
         # Create a mock generator that yields a completion event
-        from core.model_runtime.entities.message_entities import AssistantPromptMessage
+        from decimal import Decimal
+
+        from core.model_runtime.entities.llm_entities import LLMUsage
         from core.workflow.node_events import ModelInvokeCompletedEvent
 
-        mock_event = ModelInvokeCompletedEvent(
-            node_id="test_node",
-            node_type="question-classifier",
-            model="gpt-3.5-turbo",
-            prompt_messages=[],
+        mock_usage = LLMUsage(
             prompt_tokens=10,
+            prompt_unit_price=Decimal("0.001"),
+            prompt_price_unit=Decimal(1),
+            prompt_price=Decimal("0.01"),
             completion_tokens=20,
+            completion_unit_price=Decimal("0.002"),
+            completion_price_unit=Decimal(1),
+            completion_price=Decimal("0.04"),
             total_tokens=30,
-            message=AssistantPromptMessage(content="class 1"),
+            total_price=Decimal("0.05"),
+            currency="USD",
+            latency=1.5,
+        )
+
+        mock_event = ModelInvokeCompletedEvent(
+            text="class 1",
+            usage=mock_usage,
         )
 
         def mock_generator():
