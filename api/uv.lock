@@ -1368,7 +1368,7 @@ wheels = [
 
 [[package]]
 name = "dify-api"
-version = "1.11.2"
+version = "1.11.3"
 source = { virtual = "." }
 dependencies = [
     { name = "aliyun-log-python-sdk" },
