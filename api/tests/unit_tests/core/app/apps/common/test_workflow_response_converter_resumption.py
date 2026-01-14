@@ -1,4 +1,7 @@
+from dataclasses import dataclass
 from types import SimpleNamespace
+
+import pytest
 
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -109,3 +112,44 @@ def test_workflow_start_stream_response_defaults_to_false():
         is_resumption=False,
     )
     assert resp.data.is_resumption is False
+
+
+@dataclass(frozen=True)
+class _IgnoreDetailCase:
+    execution_id: str
+    node_id: str
+    is_resumption: bool
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        _IgnoreDetailCase(execution_id="exec-1", node_id="node-1", is_resumption=True),
+        _IgnoreDetailCase(execution_id="exec-2", node_id="node-2", is_resumption=False),
+    ],
+)
+def test_node_start_ignore_detail_includes_resumption_flag(case: _IgnoreDetailCase) -> None:
+    converter = _build_converter()
+    converter.workflow_start_to_stream_response(
+        task_id="task-1",
+        workflow_run_id="run-1",
+        workflow_id="wf-1",
+        is_resumption=False,
+    )
+
+    queue_event = QueueNodeStartedEvent(
+        node_execution_id=case.execution_id,
+        node_id=case.node_id,
+        node_title="Title",
+        node_type=NodeType.CODE,
+        start_at=converter._workflow_started_at,  # type: ignore[attr-defined]
+        agent_strategy=None,
+        provider_type="",
+        provider_id="",
+        is_resumption=case.is_resumption,
+    )
+
+    resp = converter.workflow_node_start_to_stream_response(event=queue_event, task_id="task-1")
+    assert isinstance(resp, NodeStartStreamResponse)
+    ignore_detail = resp.to_ignore_detail_dict()
+    assert ignore_detail["data"]["is_resumption"] is case.is_resumption

@@ -349,6 +349,7 @@ class NodeStartStreamResponse(StreamResponse):
                 "extras": {},
                 "iteration_id": self.data.iteration_id,
                 "loop_id": self.data.loop_id,
+                "is_resumption": self.data.is_resumption,
             },
         }
 
