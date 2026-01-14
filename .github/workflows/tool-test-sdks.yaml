@@ -16,10 +16,6 @@ jobs:
     name: unit test for Node.js SDK
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        node-version: [16, 18, 20, 22]
-
     defaults:
       run:
         working-directory: sdks/nodejs-client
@@ -32,7 +28,7 @@ jobs:
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v6
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 'lts/*'
           cache: ''
           cache-dependency-path: 'pnpm-lock.yaml'
 
