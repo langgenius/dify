@@ -2,6 +2,7 @@ import logging
 from io import BytesIO
 
 from core.sandbox.storage.sandbox_storage import SandboxStorage
+from core.virtual_environment.__base.helpers import try_execute
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 from extensions.ext_storage import Storage
 
@@ -29,38 +30,25 @@ class ArchiveSandboxStorage(SandboxStorage):
         archive_data = self._storage.load_once(self._storage_key)
         sandbox.upload_file(ARCHIVE_NAME, BytesIO(archive_data))
 
-        connection = sandbox.establish_connection()
-        try:
-            future = sandbox.run_command(connection, ["tar", "-xzf", ARCHIVE_NAME])
-            result = future.result(timeout=60)
-            if result.is_error:
-                logger.error("Failed to extract archive: %s", result.error_message)
-                return False
-        finally:
-            sandbox.release_connection(connection)
+        result = try_execute(sandbox, ["tar", "-xzf", ARCHIVE_NAME], timeout=60)
+        if result.is_error:
+            logger.error("Failed to extract archive: %s", result.error_message)
+            return False
 
-        connection = sandbox.establish_connection()
-        try:
-            sandbox.run_command(connection, ["rm", ARCHIVE_NAME]).result(timeout=10)
-        finally:
-            sandbox.release_connection(connection)
+        try_execute(sandbox, ["rm", ARCHIVE_NAME], timeout=10)
 
         logger.info("Mounted archive for sandbox %s", self._sandbox_id)
         return True
 
     def unmount(self, sandbox: VirtualEnvironment) -> bool:
-        connection = sandbox.establish_connection()
-        try:
-            future = sandbox.run_command(
-                connection,
-                ["tar", "-czf", ARCHIVE_NAME, "-C", WORKSPACE_DIR, "."],
-            )
-            result = future.result(timeout=120)
-            if result.is_error:
-                logger.error("Failed to create archive: %s", result.error_message)
-                return False
-        finally:
-            sandbox.release_connection(connection)
+        result = try_execute(
+            sandbox,
+            ["tar", "-czf", ARCHIVE_NAME, "-C", WORKSPACE_DIR, "."],
+            timeout=120,
+        )
+        if result.is_error:
+            logger.error("Failed to create archive: %s", result.error_message)
+            return False
 
         archive_content = sandbox.download_file(ARCHIVE_NAME)
         self._storage.save(self._storage_key, archive_content.getvalue())

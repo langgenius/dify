@@ -1,7 +1,7 @@
 from collections.abc import Generator
 from typing import Any
 
-from core.sandbox.debug import sandbox_debug
+from core.sandbox.utils.debug import sandbox_debug
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.common_entities import I18nObject
@@ -13,6 +13,7 @@ from core.tools.entities.tool_entities import (
     ToolParameter,
     ToolProviderType,
 )
+from core.virtual_environment.__base.helpers import submit_command, with_connection
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 
 COMMAND_TIMEOUT_SECONDS = 60
@@ -66,31 +67,29 @@ class SandboxBashTool(Tool):
             yield self.create_text_message("Error: No command provided")
             return
 
-        connection_handle = self._sandbox.establish_connection()
         try:
-            cmd_list = ["bash", "-c", command]
+            with with_connection(self._sandbox) as conn:
+                cmd_list = ["bash", "-c", command]
 
-            sandbox_debug("bash_tool", "cmd_list", cmd_list)
-            future = self._sandbox.run_command(connection_handle, cmd_list)
-            timeout = COMMAND_TIMEOUT_SECONDS if COMMAND_TIMEOUT_SECONDS > 0 else None
-            result = future.result(timeout=timeout)
+                sandbox_debug("bash_tool", "cmd_list", cmd_list)
+                future = submit_command(self._sandbox, conn, cmd_list)
+                timeout = COMMAND_TIMEOUT_SECONDS if COMMAND_TIMEOUT_SECONDS > 0 else None
+                result = future.result(timeout=timeout)
 
-            stdout = result.stdout.decode("utf-8", errors="replace") if result.stdout else ""
-            stderr = result.stderr.decode("utf-8", errors="replace") if result.stderr else ""
-            exit_code = result.exit_code
+                stdout = result.stdout.decode("utf-8", errors="replace") if result.stdout else ""
+                stderr = result.stderr.decode("utf-8", errors="replace") if result.stderr else ""
+                exit_code = result.exit_code
 
-            output_parts: list[str] = []
-            if stdout:
-                output_parts.append(f"\n{stdout}")
-            if stderr:
-                output_parts.append(f"\n{stderr}")
-            output_parts.append(f"\nCommand exited with code {exit_code}")
+                output_parts: list[str] = []
+                if stdout:
+                    output_parts.append(f"\n{stdout}")
+                if stderr:
+                    output_parts.append(f"\n{stderr}")
+                output_parts.append(f"\nCommand exited with code {exit_code}")
 
-            yield self.create_text_message("\n".join(output_parts))
+                yield self.create_text_message("\n".join(output_parts))
 
         except TimeoutError:
             yield self.create_text_message(f"Error: Command timed out after {COMMAND_TIMEOUT_SECONDS}s")
         except Exception as e:
             yield self.create_text_message(f"Error: {e!s}")
-        finally:
-            self._sandbox.release_connection(connection_handle)

@@ -5,13 +5,14 @@ import logging
 from io import BytesIO
 from types import TracebackType
 
-from core.sandbox.bash_tool import SandboxBashTool
+from core.sandbox.bash.bash_tool import SandboxBashTool
+from core.sandbox.bash.dify_cli import DifyCliConfig
 from core.sandbox.constants import DIFY_CLI_CONFIG_PATH, DIFY_CLI_PATH
-from core.sandbox.debug import sandbox_debug
-from core.sandbox.dify_cli import DifyCliConfig
 from core.sandbox.manager import SandboxManager
+from core.sandbox.utils.debug import sandbox_debug
 from core.session.cli_api import CliApiSessionManager
 from core.tools.__base.tool import Tool
+from core.virtual_environment.__base.helpers import execute
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 
 logger = logging.getLogger(__name__)
@@ -50,14 +51,12 @@ class SandboxSession:
             sandbox_debug("sandbox", "config_json", config_json)
             sandbox.upload_file(DIFY_CLI_CONFIG_PATH, BytesIO(config_json.encode("utf-8")))
 
-            connection_handle = sandbox.establish_connection()
-            try:
-                future = sandbox.run_command(connection_handle, [DIFY_CLI_PATH, "init"])
-                result = future.result(timeout=30)
-                if result.is_error:
-                    raise RuntimeError(f"Failed to initialize Dify CLI in sandbox: {result.error_message}")
-            finally:
-                sandbox.release_connection(connection_handle)
+            execute(
+                sandbox,
+                [DIFY_CLI_PATH, "init"],
+                timeout=30,
+                error_message="Failed to initialize Dify CLI in sandbox",
+            )
 
         except Exception:
             CliApiSessionManager().delete(session.id)

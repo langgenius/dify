@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 
+from core.virtual_environment.__base.helpers import submit_command
 from core.virtual_environment.channel.exec import TransportEOFError
 from core.virtual_environment.channel.transport import TransportReadCloser
 from core.virtual_environment.providers import local_without_isolation
@@ -99,7 +100,7 @@ def test_run_command_returns_output(local_env: LocalVirtualEnvironment):
     local_env.upload_file("message.txt", BytesIO(b"hello"))
     connection = local_env.establish_connection()
 
-    result = local_env.run_command(connection, ["/bin/sh", "-c", "cat message.txt"]).result(timeout=10)
+    result = submit_command(local_env, connection, ["/bin/sh", "-c", "cat message.txt"]).result(timeout=10)
 
     assert result.stdout == b"hello"
     assert result.stderr == b""
@@ -109,7 +110,7 @@ def test_run_command_returns_output(local_env: LocalVirtualEnvironment):
 def test_run_command_captures_stderr(local_env: LocalVirtualEnvironment):
     connection = local_env.establish_connection()
 
-    result = local_env.run_command(connection, ["/bin/sh", "-c", "echo OUT; echo ERR >&2"]).result(timeout=10)
+    result = submit_command(local_env, connection, ["/bin/sh", "-c", "echo OUT; echo ERR >&2"]).result(timeout=10)
 
     assert b"OUT" in result.stdout
     assert b"ERR" in result.stderr

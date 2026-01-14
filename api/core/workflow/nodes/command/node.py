@@ -1,12 +1,12 @@
-import contextlib
 import logging
 import shlex
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from core.sandbox.debug import sandbox_debug
 from core.sandbox.manager import SandboxManager
+from core.sandbox.utils.debug import sandbox_debug
 from core.virtual_environment.__base.command_future import CommandCancelledError, CommandTimeoutError
+from core.virtual_environment.__base.helpers import submit_command, with_connection
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.node_events import NodeRunResult
@@ -80,41 +80,40 @@ class CommandNode(Node[CommandNodeData]):
             )
 
         timeout = COMMAND_NODE_TIMEOUT_SECONDS if COMMAND_NODE_TIMEOUT_SECONDS > 0 else None
-        connection_handle = sandbox.establish_connection()
 
         try:
-            command = shlex.split(raw_command)
+            with with_connection(sandbox) as conn:
+                command = shlex.split(raw_command)
 
-            sandbox_debug("command_node", "command", command)
+                sandbox_debug("command_node", "command", command)
 
-            future = sandbox.run_command(connection_handle, command, cwd=working_directory)
-            result = future.result(timeout=timeout)
+                future = submit_command(sandbox, conn, command, cwd=working_directory)
+                result = future.result(timeout=timeout)
 
-            outputs: dict[str, Any] = {
-                "stdout": result.stdout.decode("utf-8", errors="replace"),
-                "stderr": result.stderr.decode("utf-8", errors="replace"),
-                "exit_code": result.exit_code,
-                "pid": result.pid,
-            }
-            process_data = {"command": command, "working_directory": working_directory}
+                outputs: dict[str, Any] = {
+                    "stdout": result.stdout.decode("utf-8", errors="replace"),
+                    "stderr": result.stderr.decode("utf-8", errors="replace"),
+                    "exit_code": result.exit_code,
+                    "pid": result.pid,
+                }
+                process_data = {"command": command, "working_directory": working_directory}
 
-            if result.exit_code not in (None, 0):
-                error_message = (
-                    f"{result.stderr.decode('utf-8', errors='replace')}\n\nCommand exited with code {result.exit_code}"
-                )
+                if result.exit_code not in (None, 0):
+                    stderr_text = result.stderr.decode("utf-8", errors="replace")
+                    error_message = f"{stderr_text}\n\nCommand exited with code {result.exit_code}"
+                    return NodeRunResult(
+                        status=WorkflowNodeExecutionStatus.FAILED,
+                        outputs=outputs,
+                        process_data=process_data,
+                        error=error_message,
+                        error_type=CommandExecutionError.__name__,
+                    )
+
                 return NodeRunResult(
-                    status=WorkflowNodeExecutionStatus.FAILED,
+                    status=WorkflowNodeExecutionStatus.SUCCEEDED,
                     outputs=outputs,
                     process_data=process_data,
-                    error=error_message,
-                    error_type=CommandExecutionError.__name__,
                 )
-
-            return NodeRunResult(
-                status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                outputs=outputs,
-                process_data=process_data,
-            )
 
         except CommandTimeoutError:
             return NodeRunResult(
@@ -135,9 +134,6 @@ class CommandNode(Node[CommandNodeData]):
                 error=str(e),
                 error_type=type(e).__name__,
             )
-        finally:
-            with contextlib.suppress(Exception):
-                sandbox.release_connection(connection_handle)
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
