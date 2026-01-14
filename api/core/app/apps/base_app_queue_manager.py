@@ -20,6 +20,7 @@ from core.app.entities.queue_entities import (
     QueueStopEvent,
     WorkflowQueueMessage,
 )
+from core.moderation.moderation_coordinator import ModerationCoordinator
 from core.workflow.runtime import GraphRuntimeState
 from extensions.ext_redis import redis_client
 
@@ -39,6 +40,7 @@ class AppQueueManager:
         self._task_id = task_id
         self._user_id = user_id
         self._invoke_from = invoke_from
+        self.moderation_coordinator: ModerationCoordinator | None = None
         self.invoke_from = invoke_from  # Public accessor for invoke_from
 
         user_prefix = "account" if self._invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER} else "end-user"
@@ -218,3 +220,6 @@ class AppQueueManager:
                 raise TypeError(
                     "Critical Error: Passing SQLAlchemy Model instances that cause thread safety issues is not allowed."
                 )
+
+    def set_moderation_coordinator(self, moderation_coordinator: ModerationCoordinator):
+        raise NotImplementedError
