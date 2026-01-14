@@ -1,0 +1,227 @@
+'use client'
+import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/block-selector/types'
+import { useCallback, useMemo, useState } from 'react'
+import { generateFormValue, getPlainValue, getStructureValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
+import { MARKETPLACE_API_PREFIX } from '@/config'
+import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
+import {
+  useAllBuiltInTools,
+  useAllCustomTools,
+  useAllMCPTools,
+  useAllWorkflowTools,
+  useInvalidateAllBuiltInTools,
+} from '@/service/use-tools'
+import { usePluginInstalledCheck } from './use-plugin-installed-check'
+
+export type TabType = 'settings' | 'params'
+
+export type UseToolSelectorStateProps = {
+  value?: ToolValue
+  onSelect: (tool: ToolValue) => void
+  onSelectMultiple?: (tool: ToolValue[]) => void
+}
+
+/**
+ * Custom hook for managing tool selector state and computed values.
+ * Consolidates state management, data fetching, and event handlers.
+ */
+export const useToolSelectorState = ({
+  value,
+  onSelect,
+  onSelectMultiple,
+}: UseToolSelectorStateProps) => {
+  // Panel visibility states
+  const [isShow, setIsShow] = useState(false)
+  const [isShowChooseTool, setIsShowChooseTool] = useState(false)
+  const [currType, setCurrType] = useState<TabType>('settings')
+
+  // Fetch all tools data
+  const { data: buildInTools } = useAllBuiltInTools()
+  const { data: customTools } = useAllCustomTools()
+  const { data: workflowTools } = useAllWorkflowTools()
+  const { data: mcpTools } = useAllMCPTools()
+  const invalidateAllBuiltinTools = useInvalidateAllBuiltInTools()
+  const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
+
+  // Plugin info check
+  const { inMarketPlace, manifest } = usePluginInstalledCheck(value?.provider_name)
+
+  // Merge all tools and find current provider
+  const currentProvider = useMemo(() => {
+    const mergedTools = [
+      ...(buildInTools || []),
+      ...(customTools || []),
+      ...(workflowTools || []),
+      ...(mcpTools || []),
+    ]
+    return mergedTools.find(toolWithProvider => toolWithProvider.id === value?.provider_name)
+  }, [value, buildInTools, customTools, workflowTools, mcpTools])
+
+  // Current tool from provider
+  const currentTool = useMemo(() => {
+    return currentProvider?.tools.find(tool => tool.name === value?.tool_name)
+  }, [currentProvider?.tools, value?.tool_name])
+
+  // Tool settings and params
+  const currentToolSettings = useMemo(() => {
+    if (!currentProvider)
+      return []
+    return currentProvider.tools
+      .find(tool => tool.name === value?.tool_name)
+      ?.parameters
+      .filter(param => param.form !== 'llm') || []
+  }, [currentProvider, value])
+
+  const currentToolParams = useMemo(() => {
+    if (!currentProvider)
+      return []
+    return currentProvider.tools
+      .find(tool => tool.name === value?.tool_name)
+      ?.parameters
+      .filter(param => param.form === 'llm') || []
+  }, [currentProvider, value])
+
+  // Form schemas
+  const settingsFormSchemas = useMemo(
+    () => toolParametersToFormSchemas(currentToolSettings),
+    [currentToolSettings],
+  )
+  const paramsFormSchemas = useMemo(
+    () => toolParametersToFormSchemas(currentToolParams),
+    [currentToolParams],
+  )
+
+  // Tab visibility flags
+  const showTabSlider = currentToolSettings.length > 0 && currentToolParams.length > 0
+  const userSettingsOnly = currentToolSettings.length > 0 && !currentToolParams.length
+  const reasoningConfigOnly = currentToolParams.length > 0 && !currentToolSettings.length
+
+  // Manifest icon URL
+  const manifestIcon = useMemo(() => {
+    if (!manifest)
+      return ''
+    return `${MARKETPLACE_API_PREFIX}/plugins/${(manifest as any).plugin_id}/icon`
+  }, [manifest])
+
+  // Convert tool default value to tool value format
+  const getToolValue = useCallback((tool: ToolDefaultValue): ToolValue => {
+    const settingValues = generateFormValue(
+      tool.params,
+      toolParametersToFormSchemas(tool.paramSchemas.filter(param => param.form !== 'llm') as any),
+    )
+    const paramValues = generateFormValue(
+      tool.params,
+      toolParametersToFormSchemas(tool.paramSchemas.filter(param => param.form === 'llm') as any),
+      true,
+    )
+    return {
+      provider_name: tool.provider_id,
+      provider_show_name: tool.provider_name,
+      tool_name: tool.tool_name,
+      tool_label: tool.tool_label,
+      tool_description: tool.tool_description,
+      settings: settingValues,
+      parameters: paramValues,
+      enabled: tool.is_team_authorization,
+      extra: {
+        description: tool.tool_description,
+      },
+    }
+  }, [])
+
+  // Event handlers
+  const handleSelectTool = useCallback((tool: ToolDefaultValue) => {
+    const toolValue = getToolValue(tool)
+    onSelect(toolValue)
+  }, [getToolValue, onSelect])
+
+  const handleSelectMultipleTool = useCallback((tools: ToolDefaultValue[]) => {
+    const toolValues = tools.map(item => getToolValue(item))
+    onSelectMultiple?.(toolValues)
+  }, [getToolValue, onSelectMultiple])
+
+  const handleDescriptionChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    onSelect({
+      ...value,
+      extra: {
+        ...value?.extra,
+        description: e.target.value || '',
+      },
+    } as ToolValue)
+  }, [value, onSelect])
+
+  const handleSettingsFormChange = useCallback((v: Record<string, any>) => {
+    const newValue = getStructureValue(v)
+    onSelect({
+      ...value,
+      settings: newValue,
+    } as ToolValue)
+  }, [value, onSelect])
+
+  const handleParamsFormChange = useCallback((v: Record<string, any>) => {
+    onSelect({
+      ...value,
+      parameters: v,
+    } as ToolValue)
+  }, [value, onSelect])
+
+  const handleEnabledChange = useCallback((state: boolean) => {
+    onSelect({
+      ...value,
+      enabled: state,
+    } as ToolValue)
+  }, [value, onSelect])
+
+  const handleAuthorizationItemClick = useCallback((id: string) => {
+    onSelect({
+      ...value,
+      credential_id: id,
+    } as ToolValue)
+  }, [value, onSelect])
+
+  const handleInstall = useCallback(async () => {
+    invalidateAllBuiltinTools()
+    invalidateInstalledPluginList()
+  }, [invalidateAllBuiltinTools, invalidateInstalledPluginList])
+
+  const getSettingsValue = useCallback(() => {
+    return getPlainValue(value?.settings || {})
+  }, [value?.settings])
+
+  return {
+    // State
+    isShow,
+    setIsShow,
+    isShowChooseTool,
+    setIsShowChooseTool,
+    currType,
+    setCurrType,
+
+    // Computed values
+    currentProvider,
+    currentTool,
+    currentToolSettings,
+    currentToolParams,
+    settingsFormSchemas,
+    paramsFormSchemas,
+    showTabSlider,
+    userSettingsOnly,
+    reasoningConfigOnly,
+    manifestIcon,
+    inMarketPlace,
+    manifest,
+
+    // Event handlers
+    handleSelectTool,
+    handleSelectMultipleTool,
+    handleDescriptionChange,
+    handleSettingsFormChange,
+    handleParamsFormChange,
+    handleEnabledChange,
+    handleAuthorizationItemClick,
+    handleInstall,
+    getSettingsValue,
+  }
+}
+
+export type ToolSelectorState = ReturnType<typeof useToolSelectorState>
