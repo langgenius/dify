@@ -19,13 +19,11 @@ from sqlalchemy.orm import Session
 from configs import dify_config
 from constants import HIDDEN_VALUE
 from core.entities.provider_entities import BasicProviderConfig
-from core.sandbox.factory import VMFactory, VMType
-from core.sandbox.initializer import DifyCliInitializer
+from core.sandbox.factory import VMBuilder, VMType
 from core.sandbox.utils.encryption import create_sandbox_config_encrypter, masked_config
 from core.tools.utils.system_encryption import (
     decrypt_system_params,
 )
-from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 from extensions.ext_database import db
 from models.sandbox import SandboxProvider, SandboxProviderSystemConfig
 
@@ -175,7 +173,7 @@ class SandboxProviderService:
         if model_class:
             model_class.model_validate(config)
 
-        VMFactory.validate(VMType(provider_type), config)
+        VMBuilder.validate(VMType(provider_type), config)
 
     @classmethod
     def save_config(
@@ -306,13 +304,8 @@ class SandboxProviderService:
             return config.provider_type if config else None
 
     @classmethod
-    def create_sandbox(
-        cls,
-        tenant_id: str,
-        environments: Mapping[str, str] | None = None,
-    ) -> VirtualEnvironment:
+    def create_sandbox_builder(cls, tenant_id: str) -> VMBuilder:
         with Session(db.engine, expire_on_commit=False) as session:
-            # Get config: tenant config > system default > raise error
             tenant_config = (
                 session.query(SandboxProvider)
                 .filter(
@@ -337,10 +330,4 @@ class SandboxProviderService:
             if not config or not provider_type:
                 raise ValueError(f"No active sandbox provider for tenant {tenant_id} or system default")
 
-            return VMFactory.create(
-                tenant_id=tenant_id,
-                vm_type=VMType(provider_type),
-                options=dict(config),
-                environments=environments or {},
-                initializers=[DifyCliInitializer()],
-            )
+            return VMBuilder(tenant_id, VMType(provider_type)).options(config)

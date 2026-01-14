@@ -1,4 +1,3 @@
-from core.sandbox.bash.bash_tool import SandboxBashTool
 from core.sandbox.bash.dify_cli import (
     DifyCliBinary,
     DifyCliConfig,
@@ -13,5 +12,4 @@ __all__ = [
     "DifyCliEnvConfig",
     "DifyCliLocator",
     "DifyCliToolConfig",
-    "SandboxBashTool",
 ]

@@ -1,4 +1,3 @@
-from core.sandbox.bash.bash_tool import SandboxBashTool
 from core.sandbox.bash.dify_cli import (
     DifyCliBinary,
     DifyCliConfig,
@@ -7,24 +6,26 @@ from core.sandbox.bash.dify_cli import (
     DifyCliToolConfig,
 )
 from core.sandbox.constants import (
+    APP_ASSETS_PATH,
+    APP_ASSETS_ZIP_PATH,
     DIFY_CLI_CONFIG_PATH,
     DIFY_CLI_PATH,
     DIFY_CLI_PATH_PATTERN,
 )
-from core.sandbox.initializer.initializer import DifyCliInitializer, SandboxInitializer
-from core.sandbox.session import SandboxSession
+from core.sandbox.initializer import AppAssetsInitializer, DifyCliInitializer, SandboxInitializer
 
 __all__ = [
+    "APP_ASSETS_PATH",
+    "APP_ASSETS_ZIP_PATH",
     "DIFY_CLI_CONFIG_PATH",
     "DIFY_CLI_PATH",
     "DIFY_CLI_PATH_PATTERN",
+    "AppAssetsInitializer",
     "DifyCliBinary",
     "DifyCliConfig",
     "DifyCliEnvConfig",
     "DifyCliInitializer",
     "DifyCliLocator",
     "DifyCliToolConfig",
-    "SandboxBashTool",
     "SandboxInitializer",
-    "SandboxSession",
 ]

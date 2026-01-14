@@ -30,21 +30,48 @@ class MockVirtualEnvironment:
 
 
 class MockSystemVariableView:
-    def __init__(self, workflow_execution_id: str | None = "test-workflow-exec-id"):
+    def __init__(
+        self,
+        workflow_execution_id: str | None = "test-workflow-exec-id",
+        app_id: str | None = "test-app-id",
+    ):
         self._workflow_execution_id = workflow_execution_id
+        self._app_id = app_id
 
     @property
     def workflow_execution_id(self) -> str | None:
         return self._workflow_execution_id
 
+    @property
+    def app_id(self) -> str | None:
+        return self._app_id
+
 
 class MockReadOnlyGraphRuntimeStateWrapper:
-    def __init__(self, workflow_execution_id: str | None = "test-workflow-exec-id"):
-        self._system_variable = MockSystemVariableView(workflow_execution_id)
+    def __init__(
+        self,
+        workflow_execution_id: str | None = "test-workflow-exec-id",
+        app_id: str | None = "test-app-id",
+    ):
+        self._system_variable = MockSystemVariableView(workflow_execution_id, app_id)
 
     @property
     def system_variable(self) -> MockSystemVariableView:
         return self._system_variable
+
+
+class MockVMBuilder:
+    def __init__(self, sandbox: VirtualEnvironment):
+        self._sandbox = sandbox
+
+    def environments(self, _):
+        return self
+
+    def initializer(self, _):
+        return self
+
+    def build(self):
+        return self._sandbox
 
 
 @pytest.fixture(autouse=True)
@@ -54,17 +81,15 @@ def clean_sandbox_manager():
     SandboxManager.clear()
 
 
+def create_mock_builder(sandbox):
+    return MockVMBuilder(sandbox)
+
+
 class TestSandboxLayer:
     def test_init_with_parameters(self):
-        layer = SandboxLayer(
-            tenant_id="test-tenant",
-            options={"base_working_path": "/tmp/sandbox"},
-            environments={"PYTHONUNBUFFERED": "1"},
-        )
+        layer = SandboxLayer(tenant_id="test-tenant")
 
         assert layer._tenant_id == "test-tenant"  # pyright: ignore[reportPrivateUsage]
-        assert layer._options == {"base_working_path": "/tmp/sandbox"}  # pyright: ignore[reportPrivateUsage]
-        assert layer._environments == {"PYTHONUNBUFFERED": "1"}  # pyright: ignore[reportPrivateUsage]
         assert layer._workflow_execution_id is None  # pyright: ignore[reportPrivateUsage]
 
     def test_sandbox_property_raises_when_not_initialized(self):
@@ -82,32 +107,25 @@ class TestSandboxLayer:
         layer._graph_runtime_state = mock_runtime_state  # type: ignore[assignment]
 
         with patch(
-            "services.sandbox.sandbox_provider_service.SandboxProviderService.create_sandbox",
-            return_value=mock_sandbox,
+            "services.sandbox.sandbox_provider_service.SandboxProviderService.create_sandbox_builder",
+            return_value=create_mock_builder(mock_sandbox),
         ):
             layer.on_graph_start()
 
         assert layer.sandbox is mock_sandbox
 
     def test_on_graph_start_creates_sandbox_and_registers_with_manager(self):
-        layer = SandboxLayer(
-            tenant_id="test-tenant-123",
-            environments={"PATH": "/usr/bin"},
-        )
+        layer = SandboxLayer(tenant_id="test-tenant-123")
         mock_sandbox = MockVirtualEnvironment()
-        mock_runtime_state = MockReadOnlyGraphRuntimeStateWrapper("test-exec-123")
+        mock_runtime_state = MockReadOnlyGraphRuntimeStateWrapper("test-exec-123", "test-app-123")
         layer._graph_runtime_state = mock_runtime_state  # type: ignore[assignment]
 
         with patch(
-            "services.sandbox.sandbox_provider_service.SandboxProviderService.create_sandbox",
-            return_value=mock_sandbox,
+            "services.sandbox.sandbox_provider_service.SandboxProviderService.create_sandbox_builder",
+            return_value=create_mock_builder(mock_sandbox),
         ) as mock_create:
             layer.on_graph_start()
-
-            mock_create.assert_called_once_with(
-                tenant_id="test-tenant-123",
-                environments={"PATH": "/usr/bin"},
-            )
+            mock_create.assert_called_once_with("test-tenant-123")
 
         assert SandboxManager.get("test-exec-123") is mock_sandbox
 
@@ -117,7 +135,7 @@ class TestSandboxLayer:
         layer._graph_runtime_state = mock_runtime_state  # type: ignore[assignment]
 
         with patch(
-            "services.sandbox.sandbox_provider_service.SandboxProviderService.create_sandbox",
+            "services.sandbox.sandbox_provider_service.SandboxProviderService.create_sandbox_builder",
             side_effect=Exception("Sandbox provider not available"),
         ):
             with pytest.raises(SandboxInitializationError) as exc_info:
@@ -152,8 +170,8 @@ class TestSandboxLayer:
         layer._graph_runtime_state = mock_runtime_state  # type: ignore[assignment]
 
         with patch(
-            "services.sandbox.sandbox_provider_service.SandboxProviderService.create_sandbox",
-            return_value=mock_sandbox,
+            "services.sandbox.sandbox_provider_service.SandboxProviderService.create_sandbox_builder",
+            return_value=create_mock_builder(mock_sandbox),
         ):
             layer.on_graph_start()
 
@@ -174,8 +192,8 @@ class TestSandboxLayer:
         layer._graph_runtime_state = mock_runtime_state  # type: ignore[assignment]
 
         with patch(
-            "services.sandbox.sandbox_provider_service.SandboxProviderService.create_sandbox",
-            return_value=mock_sandbox,
+            "services.sandbox.sandbox_provider_service.SandboxProviderService.create_sandbox_builder",
+            return_value=create_mock_builder(mock_sandbox),
         ):
             layer.on_graph_start()
 
@@ -195,8 +213,8 @@ class TestSandboxLayer:
         layer._graph_runtime_state = mock_runtime_state  # type: ignore[assignment]
 
         with patch(
-            "services.sandbox.sandbox_provider_service.SandboxProviderService.create_sandbox",
-            return_value=mock_sandbox,
+            "services.sandbox.sandbox_provider_service.SandboxProviderService.create_sandbox_builder",
+            return_value=create_mock_builder(mock_sandbox),
         ):
             layer.on_graph_start()
 
@@ -221,8 +239,8 @@ class TestSandboxLayer:
         layer._graph_runtime_state = mock_runtime_state  # type: ignore[assignment]
 
         with patch(
-            "services.sandbox.sandbox_provider_service.SandboxProviderService.create_sandbox",
-            return_value=mock_sandbox,
+            "services.sandbox.sandbox_provider_service.SandboxProviderService.create_sandbox_builder",
+            return_value=create_mock_builder(mock_sandbox),
         ):
             layer.on_graph_start()
 
@@ -250,8 +268,8 @@ class TestSandboxLayerIntegration:
         mock_sandbox.metadata = MockMetadata(sandbox_id="integration-sandbox")
 
         with patch(
-            "services.sandbox.sandbox_provider_service.SandboxProviderService.create_sandbox",
-            return_value=mock_sandbox,
+            "services.sandbox.sandbox_provider_service.SandboxProviderService.create_sandbox_builder",
+            return_value=create_mock_builder(mock_sandbox),
         ):
             layer.on_graph_start()
 
@@ -274,8 +292,8 @@ class TestSandboxLayerIntegration:
         mock_sandbox.metadata = MockMetadata()
 
         with patch(
-            "services.sandbox.sandbox_provider_service.SandboxProviderService.create_sandbox",
-            return_value=mock_sandbox,
+            "services.sandbox.sandbox_provider_service.SandboxProviderService.create_sandbox_builder",
+            return_value=create_mock_builder(mock_sandbox),
         ):
             layer.on_graph_start()
 

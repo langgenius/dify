@@ -1,6 +1,4 @@
 import logging
-from collections.abc import Mapping
-from typing import Any
 
 from core.sandbox.manager import SandboxManager
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
@@ -15,16 +13,9 @@ class SandboxInitializationError(Exception):
 
 
 class SandboxLayer(GraphEngineLayer):
-    def __init__(
-        self,
-        tenant_id: str,
-        options: Mapping[str, Any] | None = None,
-        environments: Mapping[str, str] | None = None,
-    ) -> None:
+    def __init__(self, tenant_id: str) -> None:
         super().__init__()
         self._tenant_id = tenant_id
-        self._options: Mapping[str, Any] = options or {}
-        self._environments: Mapping[str, str] = environments or {}
         self._workflow_execution_id: str | None = None
 
     def _get_workflow_execution_id(self) -> str:
@@ -46,13 +37,16 @@ class SandboxLayer(GraphEngineLayer):
         self._workflow_execution_id = self._get_workflow_execution_id()
 
         try:
+            from core.sandbox.initializer import AppAssetsInitializer, DifyCliInitializer
             from services.sandbox.sandbox_provider_service import SandboxProviderService
 
-            logger.info("Initializing sandbox for tenant_id=%s", self._tenant_id)
-            sandbox = SandboxProviderService.create_sandbox(
-                tenant_id=self._tenant_id,
-                environments=self._environments,
-            )
+            app_id = self.graph_runtime_state.system_variable.app_id
+            logger.info("Initializing sandbox for tenant_id=%s, app_id=%s", self._tenant_id, app_id)
+
+            builder = SandboxProviderService.create_sandbox_builder(self._tenant_id).initializer(DifyCliInitializer())
+            if app_id:
+                builder.initializer(AppAssetsInitializer(self._tenant_id, app_id))
+            sandbox = builder.build()
 
             SandboxManager.register(self._workflow_execution_id, sandbox)
             logger.info(

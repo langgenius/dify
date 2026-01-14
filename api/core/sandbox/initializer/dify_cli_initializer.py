@@ -1,19 +1,14 @@
 import logging
-from abc import ABC, abstractmethod
 from io import BytesIO
 from pathlib import Path
 
 from core.sandbox.bash.dify_cli import DifyCliLocator
 from core.sandbox.constants import DIFY_CLI_PATH
+from core.sandbox.initializer.base import SandboxInitializer
 from core.virtual_environment.__base.helpers import execute
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 
 logger = logging.getLogger(__name__)
-
-
-class SandboxInitializer(ABC):
-    @abstractmethod
-    def initialize(self, env: VirtualEnvironment) -> None: ...
 
 
 class DifyCliInitializer(SandboxInitializer):

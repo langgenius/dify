@@ -701,7 +701,14 @@ class WorkflowService:
         sandbox = None
         single_step_execution_id: str | None = None
         if draft_workflow.get_feature(WorkflowFeatures.SANDBOX).enabled:
-            sandbox = SandboxProviderService.create_sandbox(tenant_id=draft_workflow.tenant_id)
+            from core.sandbox.initializer import AppAssetsInitializer, DifyCliInitializer
+
+            sandbox = (
+                SandboxProviderService.create_sandbox_builder(draft_workflow.tenant_id)
+                .initializer(DifyCliInitializer())
+                .initializer(AppAssetsInitializer(draft_workflow.tenant_id, app_model.id))
+                .build()
+            )
             single_step_execution_id = f"single-step-{uuid.uuid4()}"
 
             SandboxManager.register(single_step_execution_id, sandbox)
