@@ -65,6 +65,7 @@ def _build_form(action_id: str, action_title: str, rendered_content: str) -> Hum
     form = HumanInputForm(
         id=f"form-{action_id}",
         tenant_id="tenant-id",
+        app_id="app-id",
         workflow_run_id="workflow-run",
         node_id="node-id",
         form_definition=definition.model_dump_json(),
@@ -133,6 +134,7 @@ def test_get_by_message_ids_returns_unsubmitted_form_definition() -> None:
     form = HumanInputForm(
         id="form-1",
         tenant_id="tenant-id",
+        app_id="app-id",
         workflow_run_id="workflow-run",
         node_id="node-id",
         form_definition=definition.model_dump_json(),

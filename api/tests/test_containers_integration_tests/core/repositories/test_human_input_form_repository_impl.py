@@ -67,6 +67,7 @@ def _build_form_params(delivery_methods: list[EmailDeliveryMethod]) -> FormCreat
         user_actions=[UserAction(id="approve", title="Approve")],
     )
     return FormCreateParams(
+        app_id="app-1",
         workflow_execution_id=str(uuid4()),
         node_id="human-input-node",
         form_config=form_config,
@@ -174,6 +175,7 @@ class TestHumanInputFormRepositoryImplWithContainers:
         repository = HumanInputFormRepositoryImpl(session_factory=engine, tenant_id=tenant.id)
         resolved_values = {"greeting": "Hello!"}
         params = FormCreateParams(
+            app_id="app-1",
             workflow_execution_id=str(uuid4()),
             node_id="human-input-node",
             form_config=HumanInputNodeData(
@@ -209,6 +211,7 @@ class TestHumanInputFormRepositoryImplWithContainers:
 
         repository = HumanInputFormRepositoryImpl(session_factory=engine, tenant_id=tenant.id)
         params = FormCreateParams(
+            app_id="app-1",
             workflow_execution_id=str(uuid4()),
             node_id="human-input-node",
             form_config=HumanInputNodeData(

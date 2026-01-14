@@ -123,6 +123,7 @@ def create_human_input_message_fixture(db_session) -> HumanInputMessageFixture:
     )
     form = HumanInputForm(
         tenant_id=tenant.id,
+        app_id=app.id,
         workflow_run_id=workflow_run_id,
         node_id="node-id",
         form_definition=form_definition.model_dump_json(),

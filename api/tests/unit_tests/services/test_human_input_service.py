@@ -41,6 +41,7 @@ def sample_form_record():
         workflow_run_id="workflow-run-id",
         node_id="node-id",
         tenant_id="tenant-id",
+        app_id="app-id",
         definition=FormDefinition(
             form_content="hello",
             inputs=[],

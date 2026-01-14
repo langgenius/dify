@@ -25,7 +25,7 @@ from models import App
 from models.enums import CreatorUserRole
 from models.human_input import RecipientType
 from models.model import AppMode
-from models.workflow import Workflow, WorkflowRun
+from models.workflow import WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 from services.human_input_service import Form, HumanInputService
 
@@ -42,21 +42,10 @@ class ConsoleHumanInputFormApi(Resource):
 
     @staticmethod
     def _ensure_console_access(form: Form):
-        current_user, current_tenant_id = current_account_with_tenant()
+        _, current_tenant_id = current_account_with_tenant()
 
-        workflow_run = db.session.get(WorkflowRun, form.workflow_run_id)
-        if workflow_run is None or workflow_run.tenant_id != current_tenant_id:
-            raise NotFoundError("Workflow run not found")
-
-        if workflow_run.app_id:
-            app = db.session.get(App, workflow_run.app_id)
-            if app is None or app.tenant_id != current_tenant_id:
-                raise NotFoundError("App not found")
-            owner_account_id = app.created_by
-        else:
-            workflow = db.session.get(Workflow, workflow_run.workflow_id)
-            if workflow is None or workflow.tenant_id != current_tenant_id:
-                raise NotFoundError("Workflow not found")
+        if form.tenant_id != current_tenant_id:
+            raise NotFoundError("App not found")
 
     @setup_required
     @login_required

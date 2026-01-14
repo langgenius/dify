@@ -18,6 +18,7 @@ class FormNotFoundError(HumanInputError):
 
 @dataclasses.dataclass
 class FormCreateParams:
+    app_id: str
     workflow_execution_id: str
 
     # node_id is the identifier for a specific

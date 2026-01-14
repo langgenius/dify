@@ -14,9 +14,8 @@ from controllers.web.error import NotFoundError
 from controllers.web.site import serialize_site
 from extensions.ext_database import db
 from models.account import TenantStatus
-from models.model import App, Site
-from models.workflow import WorkflowRun
 from models.human_input import RecipientType
+from models.model import App, Site
 from services.human_input_service import Form, FormNotFoundError, HumanInputService
 
 logger = logging.getLogger(__name__)
@@ -96,15 +95,9 @@ class HumanInputFormApi(Resource):
 
 
 def _get_site_from_form(form: Form) -> Site:
-    """Resolve Site for the form's workflow run and validate tenant status."""
-    workflow_run = (
-        db.session.query(WorkflowRun).where(WorkflowRun.id == form.workflow_run_id).first()
-    )
-    if workflow_run is None:
-        raise NotFoundError("Form not found")
-
-    app_model = db.session.query(App).where(App.id == workflow_run.app_id).first()
-    if app_model is None:
+    """Resolve Site for the form's app and validate tenant status."""
+    app_model = db.session.query(App).where(App.id == form.app_id).first()
+    if app_model is None or app_model.tenant_id != form.tenant_id:
         raise NotFoundError("Form not found")
 
     site = db.session.query(Site).where(Site.app_id == app_model.id).first()

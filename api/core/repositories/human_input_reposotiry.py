@@ -134,6 +134,7 @@ class HumanInputFormRecord:
     workflow_run_id: str
     node_id: str
     tenant_id: str
+    app_id: str
     definition: FormDefinition
     rendered_content: str
     expiration_time: datetime
@@ -161,6 +162,7 @@ class HumanInputFormRecord:
             workflow_run_id=form_model.workflow_run_id,
             node_id=form_model.node_id,
             tenant_id=form_model.tenant_id,
+            app_id=form_model.app_id,
             definition=FormDefinition.model_validate_json(form_model.form_definition),
             rendered_content=form_model.rendered_content,
             expiration_time=form_model.expiration_time,
@@ -334,6 +336,7 @@ class HumanInputFormRepositoryImpl:
             form_model = HumanInputForm(
                 id=form_id,
                 tenant_id=self._tenant_id,
+                app_id=params.app_id,
                 workflow_run_id=params.workflow_execution_id,
                 node_id=params.node_id,
                 form_definition=form_definition.model_dump_json(),

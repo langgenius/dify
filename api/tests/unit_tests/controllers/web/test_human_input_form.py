@@ -38,7 +38,7 @@ class _FakeSession:
         self._model_name = model.__name__
         return self
 
-    def where(self, *args, **kwargs):  # noqa: ANN002, ANN003
+    def where(self, *args, **kwargs):
         return self
 
     def first(self):
@@ -63,6 +63,8 @@ def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask):
 
     class _FakeForm:
         workflow_run_id = "workflow-1"
+        app_id = "app-1"
+        tenant_id = "tenant-1"
 
         def get_definition(self):
             return _FakeDefinition()
@@ -70,7 +72,7 @@ def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask):
     form = _FakeForm()
 
     tenant = SimpleNamespace(status=TenantStatus.NORMAL)
-    app_model = SimpleNamespace(id="app-1", tenant=tenant)
+    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", tenant=tenant)
     workflow_run = SimpleNamespace(app_id="app-1")
     site_model = SimpleNamespace(
         title="My Site",
@@ -122,13 +124,15 @@ def test_get_form_raises_forbidden_when_site_missing(monkeypatch: pytest.MonkeyP
 
     class _FakeForm:
         workflow_run_id = "workflow-1"
+        app_id = "app-1"
+        tenant_id = "tenant-1"
 
         def get_definition(self):
             return _FakeDefinition()
 
     form = _FakeForm()
     tenant = SimpleNamespace(status=TenantStatus.NORMAL)
-    app_model = SimpleNamespace(id="app-1", tenant=tenant)
+    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", tenant=tenant)
     workflow_run = SimpleNamespace(app_id="app-1")
 
     service_mock = MagicMock()

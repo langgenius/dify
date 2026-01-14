@@ -208,6 +208,7 @@ class HumanInputNode(Node[HumanInputNodeData]):
         if form is None:
             display_in_ui = self._display_in_ui()
             params = FormCreateParams(
+                app_id=self.app_id,
                 workflow_execution_id=self._workflow_execution_id,
                 node_id=self.id,
                 form_config=self._node_data,

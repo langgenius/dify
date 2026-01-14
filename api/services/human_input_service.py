@@ -43,6 +43,14 @@ class Form:
         return self._record.workflow_run_id
 
     @property
+    def tenant_id(self) -> str:
+        return self._record.tenant_id
+
+    @property
+    def app_id(self) -> str:
+        return self._record.app_id
+
+    @property
     def recipient_id(self) -> str | None:
         return self._record.recipient_id
 

@@ -173,6 +173,7 @@ class _DummyForm:
     workflow_run_id: str
     node_id: str
     tenant_id: str
+    app_id: str
     form_definition: str
     rendered_content: str
     expiration_time: datetime
@@ -283,6 +284,7 @@ class TestHumanInputFormRepositoryImplPublicMethods:
             workflow_run_id="run-1",
             node_id="node-1",
             tenant_id="tenant-id",
+            app_id="app-id",
             form_definition=_make_form_definition(),
             rendered_content="<p>hello</p>",
             expiration_time=naive_utc_now(),
@@ -316,6 +318,7 @@ class TestHumanInputFormRepositoryImplPublicMethods:
             workflow_run_id="run-1",
             node_id="node-1",
             tenant_id="tenant-id",
+            app_id="app-id",
             form_definition=_make_form_definition(),
             rendered_content="<p>hello</p>",
             expiration_time=naive_utc_now(),
@@ -336,6 +339,7 @@ class TestHumanInputFormRepositoryImplPublicMethods:
             workflow_run_id="run-1",
             node_id="node-1",
             tenant_id="tenant-id",
+            app_id="app-id",
             form_definition=_make_form_definition(),
             rendered_content="<p>hello</p>",
             expiration_time=naive_utc_now(),
@@ -361,6 +365,7 @@ class TestHumanInputFormSubmissionRepository:
             workflow_run_id="run-1",
             node_id="node-1",
             tenant_id="tenant-1",
+            app_id="app-1",
             form_definition=_make_form_definition(),
             rendered_content="<p>hello</p>",
             expiration_time=naive_utc_now(),
@@ -388,6 +393,7 @@ class TestHumanInputFormSubmissionRepository:
             workflow_run_id="run-1",
             node_id="node-1",
             tenant_id="tenant-1",
+            app_id="app-1",
             form_definition=_make_form_definition(),
             rendered_content="<p>hello</p>",
             expiration_time=naive_utc_now(),
@@ -420,6 +426,7 @@ class TestHumanInputFormSubmissionRepository:
             workflow_run_id="run-1",
             node_id="node-1",
             tenant_id="tenant-1",
+            app_id="app-1",
             form_definition=_make_form_definition(),
             rendered_content="<p>hello</p>",
             expiration_time=fixed_now,

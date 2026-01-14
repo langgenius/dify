@@ -31,6 +31,7 @@ class HumanInputForm(DefaultFieldsMixin, Base):
     __tablename__ = "human_input_forms"
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_run_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
 
     # The human input node the current form corresponds to.
