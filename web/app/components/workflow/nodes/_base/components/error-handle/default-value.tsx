@@ -36,9 +36,7 @@ const DefaultValue = ({
         {t('nodes.common.errorHandle.defaultValue.desc', { ns: 'workflow' })}
         &nbsp;
         <a
-          href={docLink('/guides/workflow/error-handling/README', {
-            'zh-Hans': '/guides/workflow/error-handling/readme',
-          })}
+          href={docLink('/use-dify/build/predefined-error-handling-logic')}
           target="_blank"
           className="text-text-accent"
         >

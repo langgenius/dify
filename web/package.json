@@ -38,6 +38,7 @@
     "type-check:tsgo": "tsgo --noEmit",
     "prepare": "cd ../ && node -e \"if (process.env.NODE_ENV !== 'production'){process.exit(1)} \" || husky ./web/.husky",
     "gen-icons": "node ./scripts/gen-icons.mjs && eslint --fix app/components/base/icons/src/",
+    "gen-doc-paths": "tsx ./scripts/gen-doc-paths.ts",
     "uglify-embed": "node ./bin/uglify-embed",
     "i18n:check": "tsx ./scripts/check-i18n.js",
     "test": "vitest run",

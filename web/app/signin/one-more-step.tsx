@@ -159,7 +159,7 @@ const OneMoreStep = () => {
               className="system-xs-medium text-text-accent-secondary"
               target="_blank"
               rel="noopener noreferrer"
-              href={docLink('/policies/agreement/README')}
+              href={docLink('/use-dify/getting-started/introduction')}
             >
               {t('license.link', { ns: 'login' })}
             </Link>

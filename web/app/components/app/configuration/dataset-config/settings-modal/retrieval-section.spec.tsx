@@ -237,7 +237,7 @@ describe('RetrievalSection', () => {
         retrievalConfig={retrievalConfig}
         showMultiModalTip
         onRetrievalConfigChange={vi.fn()}
-        docLink={docLink}
+        docLink={docLink as any}
       />,
     )
 
@@ -263,7 +263,7 @@ describe('RetrievalSection', () => {
         retrievalConfig={createRetrievalConfig()}
         showMultiModalTip={false}
         onRetrievalConfigChange={handleRetrievalChange}
-        docLink={path => path}
+        docLink={path => path || ''}
       />,
     )
     const [topKIncrement] = screen.getAllByLabelText('increment')

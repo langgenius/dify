@@ -351,36 +351,27 @@ function AppPreview({ mode }: { mode: AppModeEnum }) {
     [AppModeEnum.CHAT]: {
       title: t('types.chatbot', { ns: 'app' }),
       description: t('newApp.chatbotUserDescription', { ns: 'app' }),
-      link: docLink('/guides/application-orchestrate/chatbot-application'),
+      link: docLink('/use-dify/getting-started/introduction'),
     },
     [AppModeEnum.ADVANCED_CHAT]: {
       title: t('types.advanced', { ns: 'app' }),
       description: t('newApp.advancedUserDescription', { ns: 'app' }),
-      link: docLink('/guides/workflow/README', {
-        'zh-Hans': '/guides/workflow/readme',
-        'ja-JP': '/guides/workflow/concepts',
-      }),
+      link: docLink('/use-dify/getting-started/introduction'),
     },
     [AppModeEnum.AGENT_CHAT]: {
       title: t('types.agent', { ns: 'app' }),
       description: t('newApp.agentUserDescription', { ns: 'app' }),
-      link: docLink('/guides/application-orchestrate/agent'),
+      link: docLink('/use-dify/getting-started/introduction'),
     },
     [AppModeEnum.COMPLETION]: {
       title: t('newApp.completeApp', { ns: 'app' }),
       description: t('newApp.completionUserDescription', { ns: 'app' }),
-      link: docLink('/guides/application-orchestrate/text-generator', {
-        'zh-Hans': '/guides/application-orchestrate/readme',
-        'ja-JP': '/guides/application-orchestrate/README',
-      }),
+      link: docLink('/use-dify/getting-started/introduction'),
     },
     [AppModeEnum.WORKFLOW]: {
       title: t('types.workflow', { ns: 'app' }),
       description: t('newApp.workflowUserDescription', { ns: 'app' }),
-      link: docLink('/guides/workflow/README', {
-        'zh-Hans': '/guides/workflow/readme',
-        'ja-JP': '/guides/workflow/concepts',
-      }),
+      link: docLink('/use-dify/getting-started/introduction'),
     },
   }
   const previewInfo = modeToPreviewInfoMap[mode]

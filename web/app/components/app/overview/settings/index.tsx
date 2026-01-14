@@ -241,9 +241,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           <div className="system-xs-regular mt-0.5 text-text-tertiary">
             <span>{t(`${prefixSettings}.modalTip`, { ns: 'appOverview' })}</span>
             <Link
-              href={docLink('/guides/application-publishing/launch-your-webapp-quickly/README', {
-                'zh-Hans': '/guides/application-publishing/launch-your-webapp-quickly/readme',
-              })}
+              href={docLink('/use-dify/getting-started/introduction')}
               target="_blank"
               rel="noopener noreferrer"
               className="text-text-accent"

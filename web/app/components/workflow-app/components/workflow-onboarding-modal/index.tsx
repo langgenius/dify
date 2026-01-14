@@ -64,7 +64,7 @@ const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
               {t('onboarding.description', { ns: 'workflow' })}
               {' '}
               <a
-                href={docLink('/guides/workflow/node/start')}
+                href={docLink('/use-dify/getting-started/key-concepts#workflow')}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hover:text-text-accent-hover cursor-pointer text-text-accent underline"

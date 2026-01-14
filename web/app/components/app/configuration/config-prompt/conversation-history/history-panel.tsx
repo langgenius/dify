@@ -46,7 +46,7 @@ const HistoryPanel: FC<Props> = ({
           <div>
             {t('feature.conversationHistory.tip', { ns: 'appDebug' })}
             <a
-              href={docLink('/learn-more/extended-reading/what-is-llmops', { 'zh-Hans': '/learn-more/extended-reading/prompt-engineering/README' })}
+              href={docLink('/use-dify/getting-started/introduction')}
               target="_blank"
               rel="noopener noreferrer"
               className="text-[#155EEF]"

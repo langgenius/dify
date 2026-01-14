@@ -138,7 +138,7 @@ This will help you determine the testing strategy. See [web/testing/testing.md](
 
 ## Documentation
 
-Visit <https://docs.dify.ai/getting-started/readme> to view the full documentation.
+Visit <https://docs.dify.ai> to view the full documentation.
 
 ## Community
 

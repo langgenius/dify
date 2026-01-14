@@ -219,7 +219,7 @@ const InstallForm = () => {
                     className="text-text-accent"
                     target="_blank"
                     rel="noopener noreferrer"
-                    href={docLink('/policies/open-source')}
+                    href={docLink('/use-dify/getting-started/introduction')}
                   >
                     {t('license.link', { ns: 'login' })}
                   </Link>

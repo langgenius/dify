@@ -78,7 +78,7 @@ const NewFeaturePanel = ({
                   <span>{isChatMode ? t('common.fileUploadTip', { ns: 'workflow' }) : t('common.ImageUploadLegacyTip', { ns: 'workflow' })}</span>
                   <a
                     className="text-text-accent"
-                    href={docLink('/guides/workflow/bulletin')}
+                    href={docLink('/use-dify/getting-started/introduction')}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
