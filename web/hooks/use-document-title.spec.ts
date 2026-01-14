@@ -23,10 +23,6 @@ vi.mock('@/context/global-public-context', async (importOriginal) => {
   }
 })
 
-vi.mock('@/service/common', () => ({
-  getSystemFeatures: vi.fn(() => ({ ...defaultSystemFeatures })),
-}))
-
 /**
  * Test behavior when system features are still loading
  * Title should remain empty to prevent flicker
