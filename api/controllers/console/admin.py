@@ -262,7 +262,7 @@ class InsertExploreBannerApi(Resource):
         return {"result": "success"}, 201
 
 
-@console_ns.route("/admin/insert-explore-banner/<uuid:banner_id>")
+@console_ns.route("/admin/delete-explore-banner/<uuid:banner_id>")
 class DeleteExploreBannerApi(Resource):
     @console_ns.doc("delete_explore_banner")
     @console_ns.doc(description="Delete an explore banner")
