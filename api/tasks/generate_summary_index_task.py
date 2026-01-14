@@ -94,8 +94,8 @@ def generate_summary_index_task(dataset_id: str, document_id: str, segment_ids: 
             )
         )
 
-    except Exception as e:
-        logger.exception(f"Failed to generate summary index for document {document_id}: {str(e)}")
+    except Exception:
+        logger.exception("Failed to generate summary index for document %s", document_id)
         # Update document segments with error status if needed
         if segment_ids:
             db.session.query(DocumentSegment).filter(
@@ -110,4 +110,3 @@ def generate_summary_index_task(dataset_id: str, document_id: str, segment_ids: 
             db.session.commit()
     finally:
         db.session.close()
-

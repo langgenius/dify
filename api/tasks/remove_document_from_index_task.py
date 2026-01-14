@@ -47,9 +47,10 @@ def remove_document_from_index_task(document_id: str):
         index_processor = IndexProcessorFactory(document.doc_form).init_index_processor()
 
         segments = db.session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document.id)).all()
-        
+
         # Disable summary indexes for all segments in this document
         from services.summary_index_service import SummaryIndexService
+
         segment_ids_list = [segment.id for segment in segments]
         if segment_ids_list:
             try:
@@ -59,8 +60,8 @@ def remove_document_from_index_task(document_id: str):
                     disabled_by=document.disabled_by,
                 )
             except Exception as e:
-                logger.warning(f"Failed to disable summaries for document {document.id}: {str(e)}")
-        
+                logger.warning("Failed to disable summaries for document %s: %s", document.id, str(e))
+
         index_node_ids = [segment.index_node_id for segment in segments]
         if index_node_ids:
             try:

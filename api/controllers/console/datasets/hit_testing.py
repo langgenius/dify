@@ -1,6 +1,13 @@
 from flask_restx import Resource, fields
 
 from controllers.common.schema import register_schema_model
+from fields.hit_testing_fields import (
+    child_chunk_fields,
+    document_fields,
+    files_fields,
+    hit_testing_record_fields,
+    segment_fields,
+)
 from libs.login import login_required
 
 from .. import console_ns
@@ -9,13 +16,6 @@ from ..wraps import (
     account_initialization_required,
     cloud_edition_billing_rate_limit_check,
     setup_required,
-)
-from fields.hit_testing_fields import (
-    child_chunk_fields,
-    document_fields,
-    files_fields,
-    hit_testing_record_fields,
-    segment_fields,
 )
 
 register_schema_model(console_ns, HitTestingPayload)

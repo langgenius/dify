@@ -87,9 +87,9 @@ from tasks.disable_segments_from_index_task import disable_segments_from_index_t
 from tasks.document_indexing_update_task import document_indexing_update_task
 from tasks.enable_segments_to_index_task import enable_segments_to_index_task
 from tasks.recover_document_indexing_task import recover_document_indexing_task
+from tasks.regenerate_summary_index_task import regenerate_summary_index_task
 from tasks.remove_document_from_index_task import remove_document_from_index_task
 from tasks.retry_document_indexing_task import retry_document_indexing_task
-from tasks.regenerate_summary_index_task import regenerate_summary_index_task
 from tasks.sync_website_document_indexing_task import sync_website_document_indexing_task
 
 logger = logging.getLogger(__name__)
@@ -563,9 +563,7 @@ class DatasetService:
         action = DatasetService._handle_indexing_technique_change(dataset, data, filtered_data)
 
         # Check if summary_index_setting model changed (before updating database)
-        summary_model_changed = DatasetService._check_summary_index_setting_model_changed(
-            dataset, data
-        )
+        summary_model_changed = DatasetService._check_summary_index_setting_model_changed(dataset, data)
 
         # Add metadata fields
         filtered_data["updated_by"] = user.id
@@ -921,8 +919,12 @@ class DatasetService:
         # Check if model changed
         if old_model_name != new_model_name or old_model_provider != new_model_provider:
             logger.info(
-                f"Summary index setting model changed for dataset {dataset.id}: "
-                f"old={old_model_provider}/{old_model_name}, new={new_model_provider}/{new_model_name}"
+                "Summary index setting model changed for dataset %s: old=%s/%s, new=%s/%s",
+                dataset.id,
+                old_model_provider,
+                old_model_name,
+                new_model_provider,
+                new_model_name,
             )
             return True
 
@@ -2208,12 +2210,9 @@ class DocumentService:
     ):
         # Set need_summary based on dataset's summary_index_setting
         need_summary = False
-        if (
-            dataset.summary_index_setting
-            and dataset.summary_index_setting.get("enable") is True
-        ):
+        if dataset.summary_index_setting and dataset.summary_index_setting.get("enable") is True:
             need_summary = True
-        
+
         document = Document(
             tenant_id=dataset.tenant_id,
             dataset_id=dataset.id,
@@ -3118,10 +3117,11 @@ class SegmentService:
                         and dataset.summary_index_setting
                         and dataset.summary_index_setting.get("enable") is True
                     )
-                    
+
                     if has_summary_index:
                         # Query existing summary from database
                         from models.dataset import DocumentSegmentSummary
+
                         existing_summary = (
                             db.session.query(DocumentSegmentSummary)
                             .where(
@@ -3130,16 +3130,17 @@ class SegmentService:
                             )
                             .first()
                         )
-                        
+
                         # Check if summary has changed
                         existing_summary_content = existing_summary.summary_content if existing_summary else None
                         if existing_summary_content != args.summary:
                             # Summary has changed, update it
                             from services.summary_index_service import SummaryIndexService
+
                             try:
                                 SummaryIndexService.update_summary_for_segment(segment, dataset, args.summary)
-                            except Exception as e:
-                                logger.exception(f"Failed to update summary for segment {segment.id}: {str(e)}")
+                            except Exception:
+                                logger.exception("Failed to update summary for segment %s", segment.id)
                                 # Don't fail the entire update if summary update fails
             else:
                 segment_hash = helper.generate_text_hash(content)
@@ -3221,8 +3222,8 @@ class SegmentService:
 
                 try:
                     SummaryIndexService.update_summary_for_segment(segment, dataset, args.summary)
-                except Exception as e:
-                    logger.exception(f"Failed to update summary for segment {segment.id}: {str(e)}")
+                except Exception:
+                    logger.exception("Failed to update summary for segment %s", segment.id)
                     # Don't fail the entire update if summary update fails
             # update multimodel vector index
             VectorService.update_multimodel_vector(segment, args.attachment_ids or [], dataset)

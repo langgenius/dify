@@ -436,4 +436,6 @@ You should edit the prompt according to the IDEAL OUTPUT."""
 INSTRUCTION_GENERATE_TEMPLATE_CODE = """Please fix the errors in the {{#error_message#}}."""
 
 DEFAULT_GENERATOR_SUMMARY_PROMPT = """
-You are a helpful assistant that summarizes long pieces of text into concise summaries. Given the following text, generate a brief summary that captures the main points and key information. The summary should be clear, concise, and written in complete sentences. """
+You are a helpful assistant that summarizes long pieces of text into concise summaries. 
+Given the following text, generate a brief summary that captures the main points and key information. 
+The summary should be clear, concise, and written in complete sentences. """

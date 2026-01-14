@@ -77,11 +77,13 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
                 # or fallback to dataset if not available in node_data
                 indexing_technique = node_data.indexing_technique or dataset.indexing_technique
                 summary_index_setting = node_data.summary_index_setting or dataset.summary_index_setting
-                
+
                 outputs = self._get_preview_output_with_summaries(
-                    node_data.chunk_structure, chunks, dataset=dataset,
+                    node_data.chunk_structure,
+                    chunks,
+                    dataset=dataset,
                     indexing_technique=indexing_technique,
-                    summary_index_setting=summary_index_setting
+                    summary_index_setting=summary_index_setting,
                 )
                 return NodeRunResult(
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
@@ -237,7 +239,7 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
                 segments = query.all()
 
                 if not segments:
-                    logger.info(f"No segments found for document {document.id}")
+                    logger.info("No segments found for document %s", document.id)
                     return
 
                 # Filter segments based on mode
@@ -256,7 +258,7 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
                     segments_to_process.append(segment)
 
                 if not segments_to_process:
-                    logger.info(f"No segments need summary generation for document {document.id}")
+                    logger.info("No segments need summary generation for document %s", document.id)
                     return
 
                 # Use ThreadPoolExecutor for concurrent generation
@@ -267,46 +269,55 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
                     """Process a single segment in a thread with Flask app context."""
                     with flask_app.app_context():
                         try:
-                            SummaryIndexService.generate_and_vectorize_summary(
-                                segment, dataset, summary_index_setting
+                            SummaryIndexService.generate_and_vectorize_summary(segment, dataset, summary_index_setting)
+                        except Exception:
+                            logger.exception(
+                                "Failed to generate summary for segment %s",
+                                segment.id,
                             )
-                        except Exception as e:
-                            logger.error(f"Failed to generate summary for segment {segment.id}: {str(e)}")
                             # Continue processing other segments
 
                 with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-                    futures = [
-                        executor.submit(process_segment, segment) for segment in segments_to_process
-                    ]
+                    futures = [executor.submit(process_segment, segment) for segment in segments_to_process]
                     # Wait for all tasks to complete
                     concurrent.futures.wait(futures)
 
                 logger.info(
-                    f"Successfully generated summary index for {len(segments_to_process)} segments "
-                    f"in document {document.id}"
+                    "Successfully generated summary index for %s segments in document %s",
+                    len(segments_to_process),
+                    document.id,
                 )
-            except Exception as e:
-                logger.exception(f"Failed to generate summary index for document {document.id}: {str(e)}")
+            except Exception:
+                logger.exception("Failed to generate summary index for document %s", document.id)
                 # Don't fail the entire indexing process if summary generation fails
         else:
             # Production mode: asynchronous generation
-            logger.info(f"Queuing summary index generation task for document {document.id} (production mode)")
+            logger.info(
+                "Queuing summary index generation task for document %s (production mode)",
+                document.id,
+            )
             try:
                 generate_summary_index_task.delay(dataset.id, document.id, None)
-                logger.info(f"Summary index generation task queued for document {document.id}")
-            except Exception as e:
-                logger.exception(f"Failed to queue summary index generation task for document {document.id}: {str(e)}")
+                logger.info("Summary index generation task queued for document %s", document.id)
+            except Exception:
+                logger.exception(
+                    "Failed to queue summary index generation task for document %s",
+                    document.id,
+                )
                 # Don't fail the entire indexing process if task queuing fails
 
     def _get_preview_output_with_summaries(
-        self, chunk_structure: str, chunks: Any, dataset: Dataset,
+        self,
+        chunk_structure: str,
+        chunks: Any,
+        dataset: Dataset,
         indexing_technique: str | None = None,
-        summary_index_setting: dict | None = None
+        summary_index_setting: dict | None = None,
     ) -> Mapping[str, Any]:
         """
         Generate preview output with summaries for chunks in preview mode.
         This method generates summaries on-the-fly without saving to database.
-        
+
         Args:
             chunk_structure: Chunk structure type
             chunks: Chunks to generate preview for
@@ -316,31 +327,32 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
         """
         index_processor = IndexProcessorFactory(chunk_structure).init_index_processor()
         preview_output = index_processor.format_preview(chunks)
-        
+
         # Check if summary index is enabled
         if indexing_technique != "high_quality":
             return preview_output
-        
+
         if not summary_index_setting or not summary_index_setting.get("enable"):
             return preview_output
-        
+
         # Generate summaries for chunks
         if "preview" in preview_output and isinstance(preview_output["preview"], list):
             chunk_count = len(preview_output["preview"])
             logger.info(
-                f"Generating summaries for {chunk_count} chunks in preview mode "
-                f"(dataset: {dataset.id})"
+                "Generating summaries for %s chunks in preview mode (dataset: %s)",
+                chunk_count,
+                dataset.id,
             )
             # Use ParagraphIndexProcessor's generate_summary method
             from core.rag.index_processor.processor.paragraph_index_processor import ParagraphIndexProcessor
-            
+
             # Get Flask app for application context in worker threads
             flask_app = None
             try:
                 flask_app = current_app._get_current_object()  # type: ignore
             except RuntimeError:
                 logger.warning("No Flask application context available, summary generation may fail")
-            
+
             def generate_summary_for_chunk(preview_item: dict) -> None:
                 """Generate summary for a single chunk."""
                 if "content" in preview_item:
@@ -364,10 +376,10 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
                             )
                             if summary:
                                 preview_item["summary"] = summary
-                    except Exception as e:
-                        logger.error(f"Failed to generate summary for chunk: {str(e)}")
+                    except Exception:
+                        logger.exception("Failed to generate summary for chunk")
                         # Don't fail the entire preview if summary generation fails
-            
+
             # Generate summaries concurrently using ThreadPoolExecutor
             # Set a reasonable timeout to prevent hanging (60 seconds per chunk, max 5 minutes total)
             timeout_seconds = min(300, 60 * len(preview_output["preview"]))
@@ -378,31 +390,39 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
                 ]
                 # Wait for all tasks to complete with timeout
                 done, not_done = concurrent.futures.wait(futures, timeout=timeout_seconds)
-                
+
                 # Cancel tasks that didn't complete in time
                 if not_done:
                     logger.warning(
-                        f"Summary generation timeout: {len(not_done)} chunks did not complete within {timeout_seconds}s. "
-                        "Cancelling remaining tasks..."
+                        "Summary generation timeout: %s chunks did not complete within %ss. "
+                        "Cancelling remaining tasks...",
+                        len(not_done),
+                        timeout_seconds,
                     )
                     for future in not_done:
                         future.cancel()
                     # Wait a bit for cancellation to take effect
                     concurrent.futures.wait(not_done, timeout=5)
-            
+
             completed_count = sum(1 for item in preview_output["preview"] if item.get("summary") is not None)
             logger.info(
-                f"Completed summary generation for preview chunks: {completed_count}/{len(preview_output['preview'])} succeeded"
+                "Completed summary generation for preview chunks: %s/%s succeeded",
+                completed_count,
+                len(preview_output["preview"]),
             )
-        
+
         return preview_output
 
     def _get_preview_output(
-        self, chunk_structure: str, chunks: Any, dataset: Dataset | None = None, variable_pool: VariablePool | None = None
+        self,
+        chunk_structure: str,
+        chunks: Any,
+        dataset: Dataset | None = None,
+        variable_pool: VariablePool | None = None,
     ) -> Mapping[str, Any]:
         index_processor = IndexProcessorFactory(chunk_structure).init_index_processor()
         preview_output = index_processor.format_preview(chunks)
-        
+
         # If dataset is provided, try to enrich preview with summaries
         if dataset and variable_pool:
             document_id = variable_pool.get(["sys", SystemVariableKey.DOCUMENT_ID])
@@ -420,7 +440,7 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
                         )
                         .all()
                     )
-                    
+
                     if summaries:
                         # Create a map of segment content to summary for matching
                         # Use content matching as chunks in preview might not be indexed yet
@@ -435,7 +455,7 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
                                 # Normalize content for matching (strip whitespace)
                                 normalized_content = segment.content.strip()
                                 summary_by_content[normalized_content] = summary.summary_content
-                        
+
                         # Enrich preview with summaries by content matching
                         if "preview" in preview_output and isinstance(preview_output["preview"], list):
                             matched_count = 0
@@ -446,13 +466,15 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
                                     if normalized_chunk_content in summary_by_content:
                                         preview_item["summary"] = summary_by_content[normalized_chunk_content]
                                         matched_count += 1
-                            
+
                             if matched_count > 0:
                                 logger.info(
-                                    f"Enriched preview with {matched_count} existing summaries "
-                                    f"(dataset: {dataset.id}, document: {document.id})"
+                                    "Enriched preview with %s existing summaries (dataset: %s, document: %s)",
+                                    matched_count,
+                                    dataset.id,
+                                    document.id,
                                 )
-        
+
         return preview_output
 
     @classmethod

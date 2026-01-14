@@ -55,6 +55,7 @@ def disable_segment_from_index_task(segment_id: str):
 
         # Disable summary index for this segment
         from services.summary_index_service import SummaryIndexService
+
         try:
             SummaryIndexService.disable_summaries_for_segments(
                 dataset=dataset,
@@ -62,7 +63,7 @@ def disable_segment_from_index_task(segment_id: str):
                 disabled_by=segment.disabled_by,
             )
         except Exception as e:
-            logger.warning(f"Failed to disable summary for segment {segment.id}: {str(e)}")
+            logger.warning("Failed to disable summary for segment %s: %s", segment.id, str(e))
 
         index_type = dataset_document.doc_form
         index_processor = IndexProcessorFactory(index_type).init_index_processor()

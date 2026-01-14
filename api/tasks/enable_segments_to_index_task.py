@@ -110,6 +110,7 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
 
         # Enable summary indexes for these segments
         from services.summary_index_service import SummaryIndexService
+
         segment_ids_list = [segment.id for segment in segments]
         try:
             SummaryIndexService.enable_summaries_for_segments(
@@ -117,7 +118,7 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
                 segment_ids=segment_ids_list,
             )
         except Exception as e:
-            logger.warning(f"Failed to enable summaries for segments: {str(e)}")
+            logger.warning("Failed to enable summaries for segments: %s", str(e))
 
         end_at = time.perf_counter()
         logger.info(click.style(f"Segments enabled to index latency: {end_at - start_at}", fg="green"))

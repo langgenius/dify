@@ -47,7 +47,9 @@ class BaseIndexProcessor(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def generate_summary_preview(self, tenant_id: str, preview_texts: list[PreviewDetail], summary_index_setting: dict) -> list[PreviewDetail]:
+    def generate_summary_preview(
+        self, tenant_id: str, preview_texts: list[PreviewDetail], summary_index_setting: dict
+    ) -> list[PreviewDetail]:
         """
         For each segment in preview_texts, generate a summary using LLM and attach it to the segment.
         The summary can be stored in a new attribute, e.g., summary.

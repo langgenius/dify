@@ -1595,8 +1595,9 @@ class DocumentSegmentSummary(Base):
     disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     disabled_by = mapped_column(StringUUID, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
 
     def __repr__(self):
         return f"<DocumentSegmentSummary id={self.id} chunk_id={self.chunk_id} status={self.status}>"
-

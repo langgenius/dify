@@ -2,7 +2,6 @@
 
 import logging
 import time
-from typing import Any
 
 import click
 from celery import shared_task
@@ -24,13 +23,13 @@ def regenerate_summary_index_task(
 ):
     """
     Regenerate summary indexes for all documents in a dataset.
-    
+
     This task is triggered when:
     1. summary_index_setting model changes (regenerate_reason="summary_model_changed")
        - Regenerates summary content and vectors for all existing summaries
     2. embedding_model changes (regenerate_reason="embedding_model_changed")
        - Only regenerates vectors for existing summaries (keeps summary content)
-    
+
     Args:
         dataset_id: Dataset ID
         regenerate_reason: Reason for regeneration ("summary_model_changed" or "embedding_model_changed")
@@ -96,7 +95,9 @@ def regenerate_summary_index_task(
             return
 
         logger.info(
-            f"Found {len(dataset_documents)} documents for summary regeneration in dataset {dataset_id}"
+            "Found %s documents for summary regeneration in dataset %s",
+            len(dataset_documents),
+            dataset_id,
         )
 
         total_segments_processed = 0
@@ -130,7 +131,9 @@ def regenerate_summary_index_task(
                     continue
 
                 logger.info(
-                    f"Regenerating summaries for {len(segments)} segments in document {dataset_document.id}"
+                    "Regenerating summaries for %s segments in document %s",
+                    len(segments),
+                    dataset_document.id,
                 )
 
                 for segment in segments:
@@ -146,9 +149,7 @@ def regenerate_summary_index_task(
                         )
 
                         if not summary_record:
-                            logger.warning(
-                                f"Summary record not found for segment {segment.id}, skipping"
-                            )
+                            logger.warning("Summary record not found for segment %s, skipping", segment.id)
                             continue
 
                         if regenerate_vectors_only:
@@ -162,26 +163,26 @@ def regenerate_summary_index_task(
                                     vector.delete_by_ids([summary_record.summary_index_node_id])
                                 except Exception as e:
                                     logger.warning(
-                                        f"Failed to delete old summary vector for segment {segment.id}: {str(e)}"
+                                        "Failed to delete old summary vector for segment %s: %s",
+                                        segment.id,
+                                        str(e),
                                     )
 
                             # Re-vectorize with new embedding model
-                            SummaryIndexService.vectorize_summary(
-                                summary_record, segment, dataset
-                            )
+                            SummaryIndexService.vectorize_summary(summary_record, segment, dataset)
                             db.session.commit()
                         else:
                             # Regenerate both summary content and vectors (for summary_model change)
-                            SummaryIndexService.generate_and_vectorize_summary(
-                                segment, dataset, summary_index_setting
-                            )
+                            SummaryIndexService.generate_and_vectorize_summary(segment, dataset, summary_index_setting)
                             db.session.commit()
 
                         total_segments_processed += 1
 
                     except Exception as e:
                         logger.error(
-                            f"Failed to regenerate summary for segment {segment.id}: {str(e)}",
+                            "Failed to regenerate summary for segment %s: %s",
+                            segment.id,
+                            str(e),
                             exc_info=True,
                         )
                         total_segments_failed += 1
@@ -195,7 +196,9 @@ def regenerate_summary_index_task(
 
             except Exception as e:
                 logger.error(
-                    f"Failed to process document {dataset_document.id} for summary regeneration: {str(e)}",
+                    "Failed to process document %s for summary regeneration: %s",
+                    dataset_document.id,
+                    str(e),
                     exc_info=True,
                 )
                 continue
@@ -213,7 +216,6 @@ def regenerate_summary_index_task(
         )
 
     except Exception:
-        logger.exception(f"Regenerate summary index failed for dataset {dataset_id}")
+        logger.exception("Regenerate summary index failed for dataset %s", dataset_id)
     finally:
         db.session.close()
-

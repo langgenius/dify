@@ -119,6 +119,7 @@ def add_document_to_index_task(dataset_document_id: str):
 
         # Enable summary indexes for all segments in this document
         from services.summary_index_service import SummaryIndexService
+
         segment_ids_list = [segment.id for segment in segments]
         if segment_ids_list:
             try:
@@ -127,7 +128,7 @@ def add_document_to_index_task(dataset_document_id: str):
                     segment_ids=segment_ids_list,
                 )
             except Exception as e:
-                logger.warning(f"Failed to enable summaries for document {dataset_document.id}: {str(e)}")
+                logger.warning("Failed to enable summaries for document %s: %s", dataset_document.id, str(e))
 
         end_at = time.perf_counter()
         logger.info(

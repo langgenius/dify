@@ -212,9 +212,7 @@ class DatasetDocumentSegmentListApi(Resource):
             )
             # Only include enabled summaries
             summaries = {
-                summary.chunk_id: summary.summary_content 
-                for summary in summary_records 
-                if summary.enabled is True
+                summary.chunk_id: summary.summary_content for summary in summary_records if summary.enabled is True
             }
 
         # Add summary to each segment
@@ -433,7 +431,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         payload = SegmentUpdatePayload.model_validate(console_ns.payload or {})
         payload_dict = payload.model_dump(exclude_none=True)
         SegmentService.segment_create_args_validate(payload_dict, document)
-        
+
         # Update segment (summary update with change detection is handled in SegmentService.update_segment)
         segment = SegmentService.update_segment(
             SegmentUpdateArgs.model_validate(payload.model_dump(exclude_none=True)), segment, document, dataset

@@ -1,6 +1,7 @@
 """Paragraph index processor."""
 
 import logging
+import re
 import uuid
 from collections.abc import Mapping
 from typing import Any
@@ -8,6 +9,17 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 from core.entities.knowledge_entities import PreviewDetail
+from core.file import File, FileTransferMethod, FileType, file_manager
+from core.llm_generator.prompts import DEFAULT_GENERATOR_SUMMARY_PROMPT
+from core.model_manager import ModelInstance
+from core.model_runtime.entities.message_entities import (
+    ImagePromptMessageContent,
+    PromptMessageContentUnionTypes,
+    TextPromptMessageContent,
+    UserPromptMessage,
+)
+from core.model_runtime.entities.model_entities import ModelFeature, ModelType
+from core.provider_manager import ProviderManager
 from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.retrieval_service import RetrievalService
@@ -22,18 +34,15 @@ from core.rag.models.document import AttachmentDocument, Document, MultimodalGen
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.text_processing_utils import remove_leading_symbols
 from extensions.ext_database import db
+from factories.file_factory import build_from_mapping
 from libs import helper
+from models import UploadFile
 from models.account import Account
-from models.dataset import Dataset, DatasetProcessRule, DocumentSegment
+from models.dataset import Dataset, DatasetProcessRule, DocumentSegment, SegmentAttachmentBinding
 from models.dataset import Document as DatasetDocument
 from services.account_service import AccountService
 from services.entities.knowledge_entities.knowledge_entities import Rule
 from services.summary_index_service import SummaryIndexService
-from core.llm_generator.prompts import DEFAULT_GENERATOR_SUMMARY_PROMPT
-from core.model_runtime.entities.message_entities import UserPromptMessage
-from core.model_runtime.entities.model_entities import ModelType
-from core.provider_manager import ProviderManager
-from core.model_manager import ModelInstance
 
 
 class ParagraphIndexProcessor(BaseIndexProcessor):
@@ -262,12 +271,15 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         else:
             raise ValueError("Chunks is not a list")
 
-    def generate_summary_preview(self, tenant_id: str, preview_texts: list[PreviewDetail], summary_index_setting: dict) -> list[PreviewDetail]:
+    def generate_summary_preview(
+        self, tenant_id: str, preview_texts: list[PreviewDetail], summary_index_setting: dict
+    ) -> list[PreviewDetail]:
         """
         For each segment, concurrently call generate_summary to generate a summary
         and write it to the summary attribute of PreviewDetail.
         """
         import concurrent.futures
+
         from flask import current_app
 
         # Capture Flask app context for worker threads
@@ -289,8 +301,8 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                     # Fallback: try without app context (may fail)
                     summary = self.generate_summary(tenant_id, preview.content, summary_index_setting)
                     preview.summary = summary
-            except Exception as e:
-                logger.error(f"Failed to generate summary for preview: {str(e)}")
+            except Exception:
+                logger.exception("Failed to generate summary for preview")
                 # Don't fail the entire preview if summary generation fails
                 preview.summary = None
 
@@ -299,9 +311,21 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         return preview_texts
 
     @staticmethod
-    def generate_summary(tenant_id: str, text: str, summary_index_setting: dict = None) -> str:
+    def generate_summary(
+        tenant_id: str,
+        text: str,
+        summary_index_setting: dict | None = None,
+        segment_id: str | None = None,
+    ) -> str:
         """
-        Generate summary for the given text using ModelInstance.invoke_llm and the default or custom summary prompt.
+        Generate summary for the given text using ModelInstance.invoke_llm and the default or custom summary prompt,
+        and supports vision models by including images from the segment attachments or text content.
+
+        Args:
+            tenant_id: Tenant ID
+            text: Text content to summarize
+            summary_index_setting: Summary index configuration
+            segment_id: Optional segment ID to fetch attachments from SegmentAttachmentBinding table
         """
         if not summary_index_setting or not summary_index_setting.get("enable"):
             raise ValueError("summary_index_setting is required and must be enabled to generate summary.")
@@ -314,17 +338,195 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         if not summary_prompt:
             summary_prompt = DEFAULT_GENERATOR_SUMMARY_PROMPT
 
-        prompt = f"{summary_prompt}\n{text}"
-
         provider_manager = ProviderManager()
-        provider_model_bundle = provider_manager.get_provider_model_bundle(tenant_id, model_provider_name, ModelType.LLM)
-        model_instance = ModelInstance(provider_model_bundle, model_name)
-        prompt_messages = [UserPromptMessage(content=prompt)]
-
-        result = model_instance.invoke_llm(
-            prompt_messages=prompt_messages,
-            model_parameters={},
-            stream=False
+        provider_model_bundle = provider_manager.get_provider_model_bundle(
+            tenant_id, model_provider_name, ModelType.LLM
         )
+        model_instance = ModelInstance(provider_model_bundle, model_name)
+
+        # Get model schema to check if vision is supported
+        model_schema = model_instance.get_model_schema(model_name, provider_model_bundle.credentials)
+        supports_vision = model_schema and model_schema.features and ModelFeature.VISION in model_schema.features
+
+        # Extract images if model supports vision
+        image_files = []
+        if supports_vision:
+            # First, try to get images from SegmentAttachmentBinding (preferred method)
+            if segment_id:
+                image_files = ParagraphIndexProcessor._extract_images_from_segment_attachments(tenant_id, segment_id)
+
+            # If no images from attachments, fall back to extracting from text
+            if not image_files:
+                image_files = ParagraphIndexProcessor._extract_images_from_text(tenant_id, text)
+
+        # Build prompt messages
+        prompt_messages = []
+
+        if image_files:
+            # If we have images, create a UserPromptMessage with both text and images
+            prompt_message_contents: list[PromptMessageContentUnionTypes] = []
+
+            # Add images first
+            for file in image_files:
+                try:
+                    file_content = file_manager.to_prompt_message_content(
+                        file, image_detail_config=ImagePromptMessageContent.DETAIL.LOW
+                    )
+                    prompt_message_contents.append(file_content)
+                except Exception as e:
+                    logger.warning("Failed to convert image file to prompt message content: %s", str(e))
+                    continue
+
+            # Add text content
+            if prompt_message_contents:  # Only add text if we successfully added images
+                prompt_message_contents.append(TextPromptMessageContent(data=f"{summary_prompt}\n{text}"))
+                prompt_messages.append(UserPromptMessage(content=prompt_message_contents))
+            else:
+                # If image conversion failed, fall back to text-only
+                prompt = f"{summary_prompt}\n{text}"
+                prompt_messages.append(UserPromptMessage(content=prompt))
+        else:
+            # No images, use simple text prompt
+            prompt = f"{summary_prompt}\n{text}"
+            prompt_messages.append(UserPromptMessage(content=prompt))
+
+        result = model_instance.invoke_llm(prompt_messages=prompt_messages, model_parameters={}, stream=False)
 
         return getattr(result.message, "content", "")
+
+    @staticmethod
+    def _extract_images_from_text(tenant_id: str, text: str) -> list[File]:
+        """
+        Extract images from markdown text and convert them to File objects.
+
+        Args:
+            tenant_id: Tenant ID
+            text: Text content that may contain markdown image links
+
+        Returns:
+            List of File objects representing images found in the text
+        """
+        # Extract markdown images using regex pattern
+        pattern = r"!\[.*?\]\((.*?)\)"
+        images = re.findall(pattern, text)
+
+        if not images:
+            return []
+
+        upload_file_id_list = []
+
+        for image in images:
+            # For data before v0.10.0
+            pattern = r"/files/([a-f0-9\-]+)/image-preview(?:\?.*?)?"
+            match = re.search(pattern, image)
+            if match:
+                upload_file_id = match.group(1)
+                upload_file_id_list.append(upload_file_id)
+                continue
+
+            # For data after v0.10.0
+            pattern = r"/files/([a-f0-9\-]+)/file-preview(?:\?.*?)?"
+            match = re.search(pattern, image)
+            if match:
+                upload_file_id = match.group(1)
+                upload_file_id_list.append(upload_file_id)
+                continue
+
+            # For tools directory - direct file formats (e.g., .png, .jpg, etc.)
+            pattern = r"/files/tools/([a-f0-9\-]+)\.([a-zA-Z0-9]+)(?:\?[^\s\)\"\']*)?"
+            match = re.search(pattern, image)
+            if match:
+                # Tool files are handled differently, skip for now
+                continue
+
+        if not upload_file_id_list:
+            return []
+
+        # Get unique IDs for database query
+        unique_upload_file_ids = list(set(upload_file_id_list))
+        upload_files = (
+            db.session.query(UploadFile)
+            .where(UploadFile.id.in_(unique_upload_file_ids), UploadFile.tenant_id == tenant_id)
+            .all()
+        )
+
+        # Create File objects from UploadFile records
+        file_objects = []
+        for upload_file in upload_files:
+            # Only process image files
+            if not upload_file.mime_type or "image" not in upload_file.mime_type:
+                continue
+
+            mapping = {
+                "upload_file_id": upload_file.id,
+                "transfer_method": FileTransferMethod.LOCAL_FILE.value,
+                "type": FileType.IMAGE.value,
+            }
+
+            try:
+                file_obj = build_from_mapping(
+                    mapping=mapping,
+                    tenant_id=tenant_id,
+                )
+                file_objects.append(file_obj)
+            except Exception as e:
+                logger.warning("Failed to create File object from UploadFile %s: %s", upload_file.id, str(e))
+                continue
+
+        return file_objects
+
+    @staticmethod
+    def _extract_images_from_segment_attachments(tenant_id: str, segment_id: str) -> list[File]:
+        """
+        Extract images from SegmentAttachmentBinding table (preferred method).
+        This matches how DatasetRetrieval gets segment attachments.
+
+        Args:
+            tenant_id: Tenant ID
+            segment_id: Segment ID to fetch attachments for
+
+        Returns:
+            List of File objects representing images found in segment attachments
+        """
+        from sqlalchemy import select
+
+        # Query attachments from SegmentAttachmentBinding table
+        attachments_with_bindings = db.session.execute(
+            select(SegmentAttachmentBinding, UploadFile)
+            .join(UploadFile, UploadFile.id == SegmentAttachmentBinding.attachment_id)
+            .where(
+                SegmentAttachmentBinding.segment_id == segment_id,
+                SegmentAttachmentBinding.tenant_id == tenant_id,
+            )
+        ).all()
+
+        if not attachments_with_bindings:
+            return []
+
+        file_objects = []
+        for _, upload_file in attachments_with_bindings:
+            # Only process image files
+            if not upload_file.mime_type or "image" not in upload_file.mime_type:
+                continue
+
+            try:
+                # Create File object directly (similar to DatasetRetrieval)
+                file_obj = File(
+                    id=upload_file.id,
+                    filename=upload_file.name,
+                    extension="." + upload_file.extension,
+                    mime_type=upload_file.mime_type,
+                    tenant_id=tenant_id,
+                    type=FileType.IMAGE,
+                    transfer_method=FileTransferMethod.LOCAL_FILE,
+                    remote_url=upload_file.source_url,
+                    related_id=upload_file.id,
+                    size=upload_file.size,
+                    storage_key=upload_file.key,
+                )
+                file_objects.append(file_obj)
+            except Exception as e:
+                logger.warning("Failed to create File object from UploadFile %s: %s", upload_file.id, str(e))
+                continue
+
+        return file_objects
