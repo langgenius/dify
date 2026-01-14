@@ -20,15 +20,6 @@ vi.mock('@/service/use-tools', () => ({
   }),
 }))
 
-let mockSandboxEnabled = true
-const mockUseFeatures = vi.fn((selector: (state: { features: { sandbox?: { enabled?: boolean } } }) => unknown) => {
-  return selector({ features: { sandbox: { enabled: mockSandboxEnabled } } })
-})
-
-vi.mock('@/app/components/base/features/hooks', () => ({
-  useFeatures: (selector: (state: { features: { sandbox?: { enabled?: boolean } } }) => unknown) => mockUseFeatures(selector),
-}))
-
 // Track edit tool index for unique test IDs
 let editToolIndex = 0
 
@@ -200,13 +191,11 @@ type RenderOptions = {
   nodeOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
   nodeId?: string
-  sandboxEnabled?: boolean
   versionSupported?: boolean
 }
 
 const renderComponent = (options: RenderOptions = {}) => {
-  const { sandboxEnabled = true, versionSupported, ...overrides } = options
-  mockSandboxEnabled = sandboxEnabled
+  const { versionSupported, ...overrides } = options
   const defaultProps = {
     disabled: false,
     value: [],
@@ -243,7 +232,6 @@ describe('MultipleToolSelector', () => {
     vi.clearAllMocks()
     mockMCPToolsData.mockReturnValue(undefined)
     editToolIndex = 0
-    mockSandboxEnabled = true
   })
 
   // ==================== Rendering Tests ====================
@@ -425,7 +413,7 @@ describe('MultipleToolSelector', () => {
       expect(screen.getByText('2/3')).toBeInTheDocument()
     })
 
-    it('should track enabled count with MCP tools when sandbox is enabled', () => {
+    it('should track enabled count with MCP tools when version is supported', () => {
       // Arrange
       const mcpTools = [createMCPTool({ id: 'mcp-provider' })]
       mockMCPToolsData.mockReturnValue(mcpTools)
@@ -436,13 +424,13 @@ describe('MultipleToolSelector', () => {
       ]
 
       // Act
-      renderComponent({ value: tools, sandboxEnabled: true })
+      renderComponent({ value: tools, versionSupported: true })
 
       // Assert
       expect(screen.getByText('2/2')).toBeInTheDocument()
     })
 
-    it('should not count MCP tools when sandbox is disabled', () => {
+    it('should not count MCP tools when version is unsupported', () => {
       // Arrange
       const mcpTools = [createMCPTool({ id: 'mcp-provider' })]
       mockMCPToolsData.mockReturnValue(mcpTools)
@@ -453,7 +441,7 @@ describe('MultipleToolSelector', () => {
       ]
 
       // Act
-      renderComponent({ value: tools, sandboxEnabled: false })
+      renderComponent({ value: tools, versionSupported: false })
 
       // Assert
       expect(screen.getByText('1/2')).toBeInTheDocument()
@@ -778,7 +766,7 @@ describe('MultipleToolSelector', () => {
       ]
 
       // Act
-      renderComponent({ value: tools, sandboxEnabled: true })
+      renderComponent({ value: tools, versionSupported: true })
 
       // Assert
       expect(screen.getByText('2/2')).toBeInTheDocument()

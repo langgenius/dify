@@ -1,7 +1,6 @@
 'use client'
 import type { ReactNode } from 'react'
 import { createContext, useContext } from 'react'
-import { useFeatures } from '@/app/components/base/features/hooks'
 
 export type MCPToolUnavailableReason = 'version' | 'sandbox' | 'both'
 
@@ -14,7 +13,6 @@ const MCPToolAvailabilityContext = createContext<MCPToolAvailabilityContextValue
 export type MCPToolAvailability = {
   allowed: boolean
   reason?: MCPToolUnavailableReason
-  sandboxEnabled: boolean
   versionSupported?: boolean
 }
 
@@ -32,31 +30,15 @@ export const MCPToolAvailabilityProvider = ({
 
 export const useMCPToolAvailability = (): MCPToolAvailability => {
   const context = useContext(MCPToolAvailabilityContext)
-  const sandboxEnabled = useFeatures(state => state.features.sandbox?.enabled)
   const versionSupported = context?.versionSupported
-  const versionOk = versionSupported !== false
-  const sandboxOk = !!sandboxEnabled
+  const versionOk = versionSupported === true
 
-  if (versionOk && sandboxOk) {
-    return {
-      allowed: true,
-      sandboxEnabled: sandboxOk,
-      versionSupported,
-    }
-  }
-
-  let reason: MCPToolUnavailableReason
-  if (!versionOk && !sandboxOk)
-    reason = 'both'
-  else if (!versionOk)
-    reason = 'version'
-  else
-    reason = 'sandbox'
+  if (versionOk)
+    return { allowed: true, versionSupported }
 
   return {
     allowed: false,
-    reason,
-    sandboxEnabled: sandboxOk,
+    reason: 'version',
     versionSupported,
   }
 }
