@@ -2197,7 +2197,7 @@ def migrate_oss(
     show_default=True,
     help="Graceful period in days after subscription expiration, will be ignored when billing is disabled.",
 )
-@click.option("--dry-run", is_flag=True, default=False, help="Show messages logs would be cleaned without deleteing")
+@click.option("--dry-run", is_flag=True, default=False, help="Show messages logs would be cleaned without deleting")
 def clean_expired_messages(
     batch_size: int,
     graceful_period: int,
