@@ -56,6 +56,7 @@ export const useWorkflowInit = () => {
   } = useWorkflowConfig('/files/upload', handleUpdateWorkflowFileUploadConfig)
 
   const handleGetInitialWorkflowData = useCallback(async () => {
+    setIsLoading(true)
     try {
       const res = await fetchWorkflowDraft(`/apps/${appDetail.id}/workflows/draft`)
       setData(res)
@@ -116,6 +117,7 @@ export const useWorkflowInit = () => {
 
   useEffect(() => {
     handleGetInitialWorkflowData()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleFetchPreloadData = useCallback(async () => {
@@ -156,5 +158,6 @@ export const useWorkflowInit = () => {
     data,
     isLoading: isLoading || isFileUploadConfigLoading,
     fileUploadConfigResponse,
+    reload: handleGetInitialWorkflowData,
   }
 }

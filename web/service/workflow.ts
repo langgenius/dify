@@ -19,6 +19,10 @@ export const syncWorkflowDraft = ({ url, params }: {
   url: string
   params: Pick<FetchWorkflowDraftResponse, 'graph' | 'features' | 'environment_variables' | 'conversation_variables'>
 }) => {
+  // when graph adn skill type changed, it would pass empty nodes array...Temp prevent sync in this case
+  if (params.graph.nodes.length === 0) {
+    throw new Error('Cannot sync workflow draft with zero nodes.')
+  }
   const sanitized = sanitizeWorkflowDraftPayload(params)
   return post<CommonResponse & { updated_at: number, hash: string }>(url, { body: sanitized }, { silent: true })
 }

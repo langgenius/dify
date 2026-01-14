@@ -40,15 +40,22 @@ import {
 import { createWorkflowSlice } from './store/workflow/workflow-slice'
 
 const WorkflowAppWithAdditionalContext = () => {
-  const [viewType, setViewType] = useState(ViewType.graph)
-
   const {
     data,
     isLoading,
     fileUploadConfigResponse,
+    reload,
   } = useWorkflowInit()
   const workflowStore = useWorkflowStore()
   const { isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
+
+  const [viewType, doSetViewType] = useState(ViewType.graph)
+  const setViewType = (type: ViewType) => {
+    doSetViewType(type)
+    if (type === ViewType.graph) {
+      reload()
+    }
+  }
 
   // Initialize trigger status at application level
   const { setTriggerStatuses } = useTriggerStatusStore()
@@ -164,7 +171,21 @@ const WorkflowAppWithAdditionalContext = () => {
     })
   }, [replayRunId, workflowStore, getWorkflowRunAndTraceUrl])
 
-  if (!data || isLoading || isLoadingCurrentWorkspace || !currentWorkspace.id) {
+  const isDataReady = !(!data || isLoading || isLoadingCurrentWorkspace || !currentWorkspace.id)
+  const GraphMain = useMemo(() => {
+    if (!isDataReady)
+      return null
+
+    return (
+      <WorkflowAppMain
+        nodes={nodesData}
+        edges={edgesData}
+        viewport={data.graph.viewport}
+      />
+    )
+  }, [isDataReady, nodesData, edgesData, data])
+
+  if (!isDataReady) {
     return (
       <div className="relative flex h-full w-full items-center justify-center">
         <Loading />
@@ -213,11 +234,7 @@ const WorkflowAppWithAdditionalContext = () => {
         {viewType === ViewType.graph
           ? (
               <FeaturesProvider features={initialFeatures}>
-                <WorkflowAppMain
-                  nodes={nodesData}
-                  edges={edgesData}
-                  viewport={data.graph.viewport}
-                />
+                {GraphMain}
               </FeaturesProvider>
             )
           : (
