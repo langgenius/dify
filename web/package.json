@@ -11,7 +11,7 @@
     }
   },
   "engines": {
-    "node": ">=22.22.0"
+    "node": ">=24.13.0"
   },
   "browserslist": [
     "last 1 Chrome version",

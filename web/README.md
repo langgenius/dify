@@ -8,7 +8,7 @@ This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next
 
 Before starting the web frontend service, please make sure the following environment is ready.
 
-- [Node.js](https://nodejs.org) >= v22.22.0
+- [Node.js](https://nodejs.org) >= v24.13.0
 - [pnpm](https://pnpm.io) v10.x
 
 > [!TIP]
