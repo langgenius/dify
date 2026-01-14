@@ -127,8 +127,25 @@ export const getBaseOptions = (): RequestInit => ({
 })
 
 async function base<T>(url: string, options: FetchOptionType = {}, otherOptions: IOtherOptions = {}): Promise<T> {
-  const baseOptions = getBaseOptions()
-  const { params, body, headers, ...init } = Object.assign({}, baseOptions, options)
+  // In fetchCompat mode, skip baseOptions to avoid overriding Request object's method, headers,
+  const baseOptions = otherOptions.fetchCompat
+    ? {
+        mode: 'cors',
+        credentials: 'include', // always send cookies、HTTP Basic authentication.
+        redirect: 'follow',
+      }
+    : {
+        mode: 'cors',
+        credentials: 'include', // always send cookies、HTTP Basic authentication.
+        headers: new Headers({
+          'Content-Type': ContentType.json,
+        }),
+        method: 'GET',
+        redirect: 'follow',
+      }
+  const { params, body, headers: headersFromProps, ...init } = Object.assign({}, baseOptions, options)
+  const headers = new Headers(headersFromProps || {})
+
   const {
     isPublicAPI = false,
     isMarketplaceAPI = false,
@@ -156,14 +173,14 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
 
   const fetchPathname = base + (url.startsWith('/') ? url : `/${url}`)
   if (!isMarketplaceAPI)
-    (headers as any).set(CSRF_HEADER_NAME, Cookies.get(CSRF_COOKIE_NAME()) || '')
+    headers.set(CSRF_HEADER_NAME, Cookies.get(CSRF_COOKIE_NAME()) || '')
 
   if (deleteContentType)
-    (headers as any).delete('Content-Type')
+    headers.delete('Content-Type')
 
   // ! For Marketplace API, help to filter tags added in new version
   if (isMarketplaceAPI)
-    (headers as any).set('X-Dify-Version', !IS_MARKETPLACE ? APP_VERSION : '999.0.0')
+    headers.set('X-Dify-Version', !IS_MARKETPLACE ? APP_VERSION : '999.0.0')
 
   const client = baseClient.extend({
     hooks: {
