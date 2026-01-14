@@ -1,8 +1,11 @@
 import type { AgentNode } from '@/app/components/base/prompt-editor/types'
 import type { MentionConfig, VarKindType } from '@/app/components/workflow/nodes/_base/types'
+import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type {
   Node,
   NodeOutPutVar,
+  PromptItem,
+  PromptTemplateItem,
   ValueSelector,
 } from '@/app/components/workflow/types'
 import {
@@ -18,7 +21,7 @@ import { useNodesMetaData, useNodesSyncDraft } from '@/app/components/workflow/h
 import { VarKindType as VarKindTypeEnum } from '@/app/components/workflow/nodes/_base/types'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { useStore } from '@/app/components/workflow/store'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { BlockEnum, EditionType, isPromptMessageContext, PromptRole } from '@/app/components/workflow/types'
 import { generateNewNode, getNodeCustomTypeByNodeDataType } from '@/app/components/workflow/utils'
 import { cn } from '@/utils/classnames'
 import SubGraphModal from '../sub-graph-modal'
@@ -36,6 +39,76 @@ const DEFAULT_MENTION_CONFIG: MentionConfig = {
   output_selector: [],
   null_strategy: 'use_default',
   default_value: '',
+}
+
+const resolvePromptText = (item?: PromptItem) => {
+  if (!item)
+    return ''
+  if (item.edition_type === EditionType.jinja2)
+    return item.jinja2_text || item.text || ''
+  return item.text || ''
+}
+
+const getUserPromptText = (promptTemplate?: PromptTemplateItem[] | PromptItem) => {
+  if (!promptTemplate)
+    return ''
+  if (Array.isArray(promptTemplate)) {
+    const userPrompt = promptTemplate.find(
+      item => !isPromptMessageContext(item) && item.role === PromptRole.user,
+    ) as PromptItem | undefined
+    return resolvePromptText(userPrompt)
+  }
+  return resolvePromptText(promptTemplate)
+}
+
+const hasUserPromptTemplate = (promptTemplate: PromptTemplateItem[] | PromptItem) => {
+  if (!Array.isArray(promptTemplate))
+    return true
+  return promptTemplate.some(item => !isPromptMessageContext(item) && item.role === PromptRole.user)
+}
+
+const applyPromptText = (item: PromptItem, text: string) => {
+  if (item.edition_type === EditionType.jinja2) {
+    return {
+      ...item,
+      text,
+      jinja2_text: text,
+    }
+  }
+  return {
+    ...item,
+    text,
+  }
+}
+
+const buildPromptTemplateWithText = (promptTemplate: PromptTemplateItem[] | PromptItem, text: string) => {
+  if (!Array.isArray(promptTemplate))
+    return applyPromptText(promptTemplate as PromptItem, text)
+
+  const userIndex = promptTemplate.findIndex(
+    item => !isPromptMessageContext(item) && item.role === PromptRole.user,
+  )
+  if (userIndex >= 0) {
+    return promptTemplate.map((item, index) => {
+      if (index !== userIndex || isPromptMessageContext(item))
+        return item
+      return applyPromptText(item as PromptItem, text)
+    }) as PromptTemplateItem[]
+  }
+
+  const useJinja = promptTemplate.some(
+    item => !isPromptMessageContext(item) && (item as PromptItem).edition_type === EditionType.jinja2,
+  )
+  const defaultUserPrompt: PromptItem = useJinja
+    ? {
+        role: PromptRole.user,
+        text,
+        jinja2_text: text,
+        edition_type: EditionType.jinja2,
+      }
+    : { role: PromptRole.user, text }
+
+  return [...promptTemplate, defaultUserPrompt] as PromptTemplateItem[]
 }
 
 type MixedVariableTextInputProps = {
@@ -83,11 +156,11 @@ const MixedVariableTextInput = ({
     name: string
   }
 
-  const detectedAgentFromValue: DetectedAgent | null = useMemo(() => {
-    if (!value)
+  const detectAgentFromText = useCallback((text: string): DetectedAgent | null => {
+    if (!text)
       return null
 
-    const matches = value.matchAll(AGENT_CONTEXT_VAR_PATTERN)
+    const matches = text.matchAll(AGENT_CONTEXT_VAR_PATTERN)
     for (const match of matches) {
       const variablePath = match[1]
       const nodeId = variablePath.split('.')[0]
@@ -100,7 +173,11 @@ const MixedVariableTextInput = ({
       }
     }
     return null
-  }, [value, nodesByIdMap])
+  }, [nodesByIdMap])
+
+  const detectedAgentFromValue: DetectedAgent | null = useMemo(() => {
+    return detectAgentFromText(value)
+  }, [detectAgentFromText, value])
 
   const agentNodes = useMemo(() => {
     return availableNodes
@@ -110,6 +187,47 @@ const MixedVariableTextInput = ({
         title: node.data.title,
       }))
   }, [availableNodes])
+
+  const syncExtractorPromptFromText = useCallback((text: string) => {
+    if (!toolNodeId || !paramKey)
+      return
+
+    const detectedAgent = detectAgentFromText(text)
+    if (!detectedAgent)
+      return
+
+    const escapedAgentId = detectedAgent.nodeId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const leadingPattern = new RegExp(`^\\{\\{[@#]${escapedAgentId}\\.context[@#]\\}\\}`)
+    const promptText = text.replace(leadingPattern, '')
+
+    const extractorNodeId = `${toolNodeId}_ext_${paramKey}`
+    const { getNodes, setNodes } = reactFlowStore.getState()
+    const nodes = getNodes()
+    const extractorNode = nodes.find(node => node.id === extractorNodeId) as Node<LLMNodeType> | undefined
+    if (!extractorNode?.data?.prompt_template)
+      return
+
+    const currentPromptText = getUserPromptText(extractorNode.data.prompt_template)
+    const shouldUpdate = !hasUserPromptTemplate(extractorNode.data.prompt_template)
+      || currentPromptText !== promptText
+    if (!shouldUpdate)
+      return
+
+    const nextPromptTemplate = buildPromptTemplateWithText(extractorNode.data.prompt_template, promptText)
+    const nextNodes = nodes.map((node) => {
+      if (node.id !== extractorNodeId)
+        return node
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          prompt_template: nextPromptTemplate,
+        },
+      }
+    })
+    setNodes(nextNodes)
+    handleSyncWorkflowDraft()
+  }, [detectAgentFromText, handleSyncWorkflowDraft, paramKey, reactFlowStore, toolNodeId])
 
   const removeExtractorNode = useCallback(() => {
     if (!toolNodeId || !paramKey)
@@ -195,8 +313,9 @@ const MixedVariableTextInput = ({
       output_selector: paramKey ? ['structured_output', paramKey] : [],
     }
     onChange(newValue, VarKindTypeEnum.mention, mentionConfigWithOutputSelector)
+    syncExtractorPromptFromText(newValue)
     setControlPromptEditorRerenderKey(Date.now())
-  }, [handleSyncWorkflowDraft, nodesMetaDataMap, onChange, paramKey, reactFlowStore, setControlPromptEditorRerenderKey, toolNodeId, value])
+  }, [handleSyncWorkflowDraft, nodesMetaDataMap, onChange, paramKey, reactFlowStore, setControlPromptEditorRerenderKey, syncExtractorPromptFromText, toolNodeId, value])
 
   const handleOpenSubGraphModal = useCallback(() => {
     setIsSubGraphModalOpen(true)
@@ -257,6 +376,8 @@ const MixedVariableTextInput = ({
         placeholder={<Placeholder disableVariableInsertion={disableVariableInsertion} hasSelectedAgent={!!detectedAgentFromValue} />}
         onChange={(text) => {
           const hasPlaceholder = new RegExp(AGENT_CONTEXT_VAR_PATTERN.source).test(text)
+          if (hasPlaceholder)
+            syncExtractorPromptFromText(text)
           if (detectedAgentFromValue && !hasPlaceholder) {
             removeExtractorNode()
             onChange?.(text, VarKindTypeEnum.mixed, null)

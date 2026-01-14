@@ -110,7 +110,7 @@ const SubGraphModal: FC<SubGraphModalProps> = ({
       }
     })
     setNodes(nextNodes)
-    handleSyncWorkflowDraft(true)
+    handleSyncWorkflowDraft()
   }, [handleSyncWorkflowDraft, paramKey, reactflowStore, toolNodeId])
 
   useEffect(() => {
@@ -146,6 +146,7 @@ const SubGraphModal: FC<SubGraphModalProps> = ({
     return resolveText(promptTemplate)
   }, [])
 
+  // TODO: handle external workflow updates while sub-graph modal is open.
   const handleSave = useCallback((subGraphNodes: any[], _edges: any[]) => {
     const extractorNodeData = subGraphNodes.find(node => node.id === extractorNodeId)
     if (!extractorNodeData)
@@ -191,7 +192,7 @@ const SubGraphModal: FC<SubGraphModalProps> = ({
     })
     setNodes(nextNodes)
     // Trigger main graph draft sync to persist changes to backend
-    handleSyncWorkflowDraft(true)
+    handleSyncWorkflowDraft()
     setControlPromptEditorRerenderKey(Date.now())
   }, [agentNodeId, extractorNodeId, getUserPromptText, handleSyncWorkflowDraft, paramKey, reactflowStore, setControlPromptEditorRerenderKey, toolNodeId])
 
