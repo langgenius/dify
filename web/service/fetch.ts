@@ -136,6 +136,8 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
     needAllResponseContent,
     deleteContentType,
     getAbortController,
+    fetchCompat = false,
+    request,
   } = otherOptions
 
   let base: string
@@ -181,7 +183,7 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
     },
   })
 
-  const res = await client(fetchPathname, {
+  const res = await client(request || fetchPathname, {
     ...init,
     headers,
     credentials: isMarketplaceAPI
@@ -190,8 +192,8 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
     retry: {
       methods: [],
     },
-    ...(bodyStringify ? { json: body } : { body: body as BodyInit }),
-    searchParams: params,
+    ...(bodyStringify && !fetchCompat ? { json: body } : { body: body as BodyInit }),
+    searchParams: !fetchCompat ? params : undefined,
     fetch(resource: RequestInfo | URL, options?: RequestInit) {
       if (resource instanceof Request && options) {
         const mergedHeaders = new Headers(options.headers || {})
@@ -204,7 +206,7 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
     },
   })
 
-  if (needAllResponseContent)
+  if (needAllResponseContent || fetchCompat)
     return res as T
   const contentType = res.headers.get('content-type')
   if (
