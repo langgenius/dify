@@ -123,7 +123,6 @@ Usage:               ${analysis.usageCount} reference${analysis.usageCount !== 1
   ${analysis.hasRouter ? '✓' : '✗'} Next.js routing
   ${analysis.hasAPI ? '✓' : '✗'} API calls
   ${analysis.hasReactQuery ? '✓' : '✗'} React Query
-  ${analysis.hasSWR ? '✓' : '✗'} SWR (should migrate to React Query)
   ${analysis.hasAhooks ? '✓' : '✗'} ahooks
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -150,7 +149,7 @@ ${this.buildRequirements(analysis)}
 
 Follow Dify project conventions:
 - Place extracted hooks in \`hooks/\` subdirectory or as \`use-<feature>.ts\`
-- Use React Query (\`@tanstack/react-query\`) for data fetching, not SWR
+- Use React Query (\`@tanstack/react-query\`) for data fetching
 - Follow existing patterns in \`web/service/use-*.ts\` for API hooks
 - Keep each new file under 300 lines
 - Maintain TypeScript strict typing
@@ -173,12 +172,8 @@ After refactoring, verify:
     }
 
     // Priority 2: Extract API/data logic
-    if (analysis.hasAPI && (analysis.hasEffects || analysis.hasSWR)) {
-      if (analysis.hasSWR) {
-        actions.push('🔄 MIGRATE SWR TO REACT QUERY: Replace useSWR with useQuery from @tanstack/react-query')
-      }
+    if (analysis.hasAPI)
       actions.push('🌐 EXTRACT DATA HOOK: Move API calls and data fetching logic into a dedicated hook using React Query')
-    }
 
     // Priority 3: Split large components
     if (analysis.lineCount > 300) {

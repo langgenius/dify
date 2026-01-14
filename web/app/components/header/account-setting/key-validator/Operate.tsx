@@ -34,7 +34,7 @@ const Operate = ({
         "
           onClick={onCancel}
         >
-          {t('common.operation.cancel')}
+          {t('operation.cancel', { ns: 'common' })}
         </div>
         <div
           className="
@@ -44,7 +44,7 @@ const Operate = ({
         "
           onClick={onSave}
         >
-          {t('common.operation.save')}
+          {t('operation.save', { ns: 'common' })}
         </div>
       </div>
     )
@@ -59,7 +59,7 @@ const Operate = ({
         }
         onClick={() => !disabled && onAdd()}
       >
-        {t('common.provider.addKey')}
+        {t('provider.addKey', { ns: 'common' })}
       </div>
     )
   }
@@ -70,7 +70,7 @@ const Operate = ({
         {
           status === 'fail' && (
             <div className="mr-4 flex items-center">
-              <div className="text-xs text-[#D92D20]">{t('common.provider.invalidApiKey')}</div>
+              <div className="text-xs text-[#D92D20]">{t('provider.invalidApiKey', { ns: 'common' })}</div>
               <Indicator color="red" className="ml-2" />
             </div>
           )
@@ -87,7 +87,7 @@ const Operate = ({
           }
           onClick={() => !disabled && onEdit()}
         >
-          {t('common.provider.editKey')}
+          {t('provider.editKey', { ns: 'common' })}
         </div>
       </div>
     )

@@ -45,15 +45,15 @@ const ChangePasswordForm = () => {
 
   const valid = useCallback(() => {
     if (!password.trim()) {
-      showErrorMessage(t('login.error.passwordEmpty'))
+      showErrorMessage(t('error.passwordEmpty', { ns: 'login' }))
       return false
     }
     if (!validPassword.test(password)) {
-      showErrorMessage(t('login.error.passwordInvalid'))
+      showErrorMessage(t('error.passwordInvalid', { ns: 'login' }))
       return false
     }
     if (password !== confirmPassword) {
-      showErrorMessage(t('common.account.notEqual'))
+      showErrorMessage(t('account.notEqual', { ns: 'common' }))
       return false
     }
     return true
@@ -92,10 +92,10 @@ const ChangePasswordForm = () => {
         <div className="flex flex-col md:w-[400px]">
           <div className="mx-auto w-full">
             <h2 className="title-4xl-semi-bold text-text-primary">
-              {t('login.changePassword')}
+              {t('changePassword', { ns: 'login' })}
             </h2>
             <p className="body-md-regular mt-2 text-text-secondary">
-              {t('login.changePasswordTip')}
+              {t('changePasswordTip', { ns: 'login' })}
             </p>
           </div>
 
@@ -104,7 +104,7 @@ const ChangePasswordForm = () => {
               {/* Password */}
               <div className="mb-5">
                 <label htmlFor="password" className="system-md-semibold my-2 text-text-secondary">
-                  {t('common.account.newPassword')}
+                  {t('account.newPassword', { ns: 'common' })}
                 </label>
                 <div className="relative mt-1">
                   <Input
@@ -112,7 +112,7 @@ const ChangePasswordForm = () => {
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={e => setPassword(e.target.value)}
-                    placeholder={t('login.passwordPlaceholder') || ''}
+                    placeholder={t('passwordPlaceholder', { ns: 'login' }) || ''}
                   />
 
                   <div className="absolute inset-y-0 right-0 flex items-center">
@@ -125,12 +125,12 @@ const ChangePasswordForm = () => {
                     </Button>
                   </div>
                 </div>
-                <div className="body-xs-regular mt-1 text-text-secondary">{t('login.error.passwordInvalid')}</div>
+                <div className="body-xs-regular mt-1 text-text-secondary">{t('error.passwordInvalid', { ns: 'login' })}</div>
               </div>
               {/* Confirm Password */}
               <div className="mb-5">
                 <label htmlFor="confirmPassword" className="system-md-semibold my-2 text-text-secondary">
-                  {t('common.account.confirmPassword')}
+                  {t('account.confirmPassword', { ns: 'common' })}
                 </label>
                 <div className="relative mt-1">
                   <Input
@@ -138,7 +138,7 @@ const ChangePasswordForm = () => {
                     type={showConfirmPassword ? 'text' : 'password'}
                     value={confirmPassword}
                     onChange={e => setConfirmPassword(e.target.value)}
-                    placeholder={t('login.confirmPasswordPlaceholder') || ''}
+                    placeholder={t('confirmPasswordPlaceholder', { ns: 'login' }) || ''}
                   />
                   <div className="absolute inset-y-0 right-0 flex items-center">
                     <Button
@@ -157,7 +157,7 @@ const ChangePasswordForm = () => {
                   className="w-full"
                   onClick={handleChangePassword}
                 >
-                  {t('login.changePasswordBtn')}
+                  {t('changePasswordBtn', { ns: 'login' })}
                 </Button>
               </div>
             </div>
@@ -171,7 +171,7 @@ const ChangePasswordForm = () => {
               <RiCheckboxCircleFill className="h-6 w-6 text-text-success" />
             </div>
             <h2 className="title-4xl-semi-bold text-text-primary">
-              {t('login.passwordChangedTip')}
+              {t('passwordChangedTip', { ns: 'login' })}
             </h2>
           </div>
           <div className="mx-auto mt-6 w-full">
@@ -183,7 +183,7 @@ const ChangePasswordForm = () => {
                 router.replace(getSignInUrl())
               }}
             >
-              {t('login.passwordChanged')}
+              {t('passwordChanged', { ns: 'login' })}
               {' '}
               (
               {Math.round(countdown / 1000)}

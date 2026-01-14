@@ -42,7 +42,7 @@ const ManageCustomModelCredentials = ({
           open && 'bg-components-button-ghost-bg-hover',
         )}
       >
-        {t('common.modelProvider.auth.manageCredentials')}
+        {t('modelProvider.auth.manageCredentials', { ns: 'common' })}
       </Button>
     )
     return Item
@@ -73,10 +73,10 @@ const ManageCustomModelCredentials = ({
       }}
       hideAddAction
       disableItemClick
-      popupTitle={t('common.modelProvider.auth.customModelCredentials')}
+      popupTitle={t('modelProvider.auth.customModelCredentials', { ns: 'common' })}
       showModelTitle
       disableDeleteButShowAction
-      disableDeleteTip={t('common.modelProvider.auth.customModelCredentialsDeleteTip')}
+      disableDeleteTip={t('modelProvider.auth.customModelCredentialsDeleteTip', { ns: 'common' })}
     />
   )
 }

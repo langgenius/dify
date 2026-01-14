@@ -161,16 +161,16 @@ const NodeSelector: FC<NodeSelectorProps> = ({
 
   const searchPlaceholder = useMemo(() => {
     if (activeTab === TabsEnum.Start)
-      return t('workflow.tabs.searchTrigger')
+      return t('tabs.searchTrigger', { ns: 'workflow' })
 
     if (activeTab === TabsEnum.Blocks)
-      return t('workflow.tabs.searchBlock')
+      return t('tabs.searchBlock', { ns: 'workflow' })
 
     if (activeTab === TabsEnum.Tools)
-      return t('workflow.tabs.searchTool')
+      return t('tabs.searchTool', { ns: 'workflow' })
 
     if (activeTab === TabsEnum.Sources)
-      return t('workflow.tabs.searchDataSource')
+      return t('tabs.searchDataSource', { ns: 'workflow' })
     return ''
   }, [activeTab, t])
 
@@ -253,7 +253,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
                     onSearchChange={setSearchText}
                     tags={tags}
                     onTagsChange={setTags}
-                    placeholder={t('plugin.searchTools')!}
+                    placeholder={t('searchTools', { ns: 'plugin' })!}
                     inputClassName="grow"
                   />
                 )}

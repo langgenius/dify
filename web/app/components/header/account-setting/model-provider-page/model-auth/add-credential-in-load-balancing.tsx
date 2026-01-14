@@ -52,7 +52,7 @@ const AddCredentialInLoadBalancing = ({
       )}
       >
         <RiAddLine className="mr-2 h-4 w-4" />
-        {t('common.modelProvider.auth.addCredential')}
+        {t('modelProvider.auth.addCredential', { ns: 'common' })}
       </div>
     )
 
@@ -72,7 +72,7 @@ const AddCredentialInLoadBalancing = ({
       triggerOnlyOpenModal={!available_credentials?.length && !notAllowCustomCredential}
       items={[
         {
-          title: isCustomModel ? '' : t('common.modelProvider.auth.apiKeys'),
+          title: isCustomModel ? '' : t('modelProvider.auth.apiKeys', { ns: 'common' }),
           model: isCustomModel ? model : undefined,
           credentials: available_credentials ?? [],
         },
@@ -87,7 +87,7 @@ const AddCredentialInLoadBalancing = ({
         : undefined}
       onItemClick={onSelectCredential}
       placement="bottom-start"
-      popupTitle={isCustomModel ? t('common.modelProvider.auth.modelCredentials') : ''}
+      popupTitle={isCustomModel ? t('modelProvider.auth.modelCredentials', { ns: 'common' }) : ''}
     />
   )
 }

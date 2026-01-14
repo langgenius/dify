@@ -86,12 +86,19 @@ class WorkflowAppService:
             # Join to workflow run for filtering when needed.
 
         if keyword:
-            keyword_like_val = f"%{keyword[:30].encode('unicode_escape').decode('utf-8')}%".replace(r"\u", r"\\u")
+            from libs.helper import escape_like_pattern
+
+            # Escape special characters in keyword to prevent SQL injection via LIKE wildcards
+            escaped_keyword = escape_like_pattern(keyword[:30])
+            keyword_like_val = f"%{escaped_keyword}%"
             keyword_conditions = [
-                WorkflowRun.inputs.ilike(keyword_like_val),
-                WorkflowRun.outputs.ilike(keyword_like_val),
+                WorkflowRun.inputs.ilike(keyword_like_val, escape="\\"),
+                WorkflowRun.outputs.ilike(keyword_like_val, escape="\\"),
                 # filter keyword by end user session id if created by end user role
-                and_(WorkflowRun.created_by_role == "end_user", EndUser.session_id.ilike(keyword_like_val)),
+                and_(
+                    WorkflowRun.created_by_role == "end_user",
+                    EndUser.session_id.ilike(keyword_like_val, escape="\\"),
+                ),
             ]
 
             # filter keyword by workflow run id

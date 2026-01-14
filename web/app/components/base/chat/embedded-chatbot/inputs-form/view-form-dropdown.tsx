@@ -37,7 +37,7 @@ const ViewFormDropdown = ({ iconColor }: Props) => {
         <div className="w-[400px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg backdrop-blur-sm">
           <div className="flex items-center gap-3 rounded-t-2xl border-b border-divider-subtle px-6 py-4">
             <Message3Fill className="h-6 w-6 shrink-0" />
-            <div className="system-xl-semibold grow text-text-secondary">{t('share.chat.chatSettingsTitle')}</div>
+            <div className="system-xl-semibold grow text-text-secondary">{t('chat.chatSettingsTitle', { ns: 'share' })}</div>
           </div>
           <div className="p-6">
             <InputsFormContent />

@@ -165,7 +165,7 @@ class TestRagPipelineRunTasks:
                 "files": [],
                 "user_id": account.id,
                 "stream": False,
-                "invoke_from": "published",
+                "invoke_from": InvokeFrom.PUBLISHED_PIPELINE.value,
                 "workflow_execution_id": str(uuid.uuid4()),
                 "pipeline_config": {
                     "app_id": str(uuid.uuid4()),
@@ -249,7 +249,7 @@ class TestRagPipelineRunTasks:
             assert call_kwargs["pipeline"].id == pipeline.id
             assert call_kwargs["workflow_id"] == workflow.id
             assert call_kwargs["user"].id == account.id
-            assert call_kwargs["invoke_from"] == InvokeFrom.PUBLISHED
+            assert call_kwargs["invoke_from"] == InvokeFrom.PUBLISHED_PIPELINE
             assert call_kwargs["streaming"] == False
             assert isinstance(call_kwargs["application_generate_entity"], RagPipelineGenerateEntity)
 
@@ -294,7 +294,7 @@ class TestRagPipelineRunTasks:
             assert call_kwargs["pipeline"].id == pipeline.id
             assert call_kwargs["workflow_id"] == workflow.id
             assert call_kwargs["user"].id == account.id
-            assert call_kwargs["invoke_from"] == InvokeFrom.PUBLISHED
+            assert call_kwargs["invoke_from"] == InvokeFrom.PUBLISHED_PIPELINE
             assert call_kwargs["streaming"] == False
             assert isinstance(call_kwargs["application_generate_entity"], RagPipelineGenerateEntity)
 
@@ -743,7 +743,7 @@ class TestRagPipelineRunTasks:
         assert call_kwargs["pipeline"].id == pipeline.id
         assert call_kwargs["workflow_id"] == workflow.id
         assert call_kwargs["user"].id == account.id
-        assert call_kwargs["invoke_from"] == InvokeFrom.PUBLISHED
+        assert call_kwargs["invoke_from"] == InvokeFrom.PUBLISHED_PIPELINE
         assert call_kwargs["streaming"] == False
         assert isinstance(call_kwargs["application_generate_entity"], RagPipelineGenerateEntity)
 

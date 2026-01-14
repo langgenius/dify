@@ -84,7 +84,7 @@ const DebugItem: FC<DebugItemProps> = ({
                 ? [
                     {
                       value: 'duplicate',
-                      text: t('appDebug.duplicateModel'),
+                      text: t('duplicateModel', { ns: 'appDebug' }),
                     },
                   ]
                 : []
@@ -94,7 +94,7 @@ const DebugItem: FC<DebugItemProps> = ({
                 ? [
                     {
                       value: 'debug-as-single-model',
-                      text: t('appDebug.debugAsSingleModel'),
+                      text: t('debugAsSingleModel', { ns: 'appDebug' }),
                     },
                   ]
                 : []
@@ -105,7 +105,7 @@ const DebugItem: FC<DebugItemProps> = ({
               ? [
                   {
                     value: 'remove',
-                    text: t('common.operation.remove') as string,
+                    text: t('operation.remove', { ns: 'common' }) as string,
                   },
                 ]
               : undefined

@@ -5,7 +5,7 @@ import { useDebounce } from 'ahooks'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
-import { omit } from 'es-toolkit/compat'
+import { omit } from 'es-toolkit/object'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -62,8 +62,8 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
 
   return (
     <div className="flex h-full flex-col">
-      <h1 className="system-xl-semibold text-text-primary">{t('appLog.workflowTitle')}</h1>
-      <p className="system-sm-regular text-text-tertiary">{t('appLog.workflowSubtitle')}</p>
+      <h1 className="system-xl-semibold text-text-primary">{t('workflowTitle', { ns: 'appLog' })}</h1>
+      <p className="system-sm-regular text-text-tertiary">{t('workflowSubtitle', { ns: 'appLog' })}</p>
       <div className="flex max-h-[calc(100%-16px)] flex-1 flex-col py-4">
         <Filter queryParams={queryParams} setQueryParams={setQueryParams} />
         {/* workflow log */}

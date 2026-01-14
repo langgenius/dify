@@ -1,8 +1,12 @@
 """Primarily used for testing merged cell scenarios"""
 
+import os
+import tempfile
 from types import SimpleNamespace
 
 from docx import Document
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
 
 import core.rag.extractor.word_extractor as we
 from core.rag.extractor.word_extractor import WordExtractor
@@ -165,3 +169,110 @@ def test_extract_images_from_docx_uses_internal_files_url():
             dify_config.FILES_URL = original_files_url
         if original_internal_files_url is not None:
             dify_config.INTERNAL_FILES_URL = original_internal_files_url
+
+
+def test_extract_hyperlinks(monkeypatch):
+    # Mock db and storage to avoid issues during image extraction (even if no images are present)
+    monkeypatch.setattr(we, "storage", SimpleNamespace(save=lambda k, d: None))
+    db_stub = SimpleNamespace(session=SimpleNamespace(add=lambda o: None, commit=lambda: None))
+    monkeypatch.setattr(we, "db", db_stub)
+    monkeypatch.setattr(we.dify_config, "FILES_URL", "http://files.local", raising=False)
+    monkeypatch.setattr(we.dify_config, "STORAGE_TYPE", "local", raising=False)
+
+    doc = Document()
+    p = doc.add_paragraph("Visit ")
+
+    # Adding a hyperlink manually
+    r_id = "rId99"
+    hyperlink = OxmlElement("w:hyperlink")
+    hyperlink.set(qn("r:id"), r_id)
+
+    new_run = OxmlElement("w:r")
+    t = OxmlElement("w:t")
+    t.text = "Dify"
+    new_run.append(t)
+    hyperlink.append(new_run)
+    p._p.append(hyperlink)
+
+    # Add relationship to the part
+    doc.part.rels.add_relationship(
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink",
+        "https://dify.ai",
+        r_id,
+        is_external=True,
+    )
+
+    with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as tmp:
+        doc.save(tmp.name)
+        tmp_path = tmp.name
+
+    try:
+        extractor = WordExtractor(tmp_path, "tenant_id", "user_id")
+        docs = extractor.extract()
+        # Verify modern hyperlink extraction
+        assert "Visit[Dify](https://dify.ai)" in docs[0].page_content
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
+
+def test_extract_legacy_hyperlinks(monkeypatch):
+    # Mock db and storage
+    monkeypatch.setattr(we, "storage", SimpleNamespace(save=lambda k, d: None))
+    db_stub = SimpleNamespace(session=SimpleNamespace(add=lambda o: None, commit=lambda: None))
+    monkeypatch.setattr(we, "db", db_stub)
+    monkeypatch.setattr(we.dify_config, "FILES_URL", "http://files.local", raising=False)
+    monkeypatch.setattr(we.dify_config, "STORAGE_TYPE", "local", raising=False)
+
+    doc = Document()
+    p = doc.add_paragraph()
+
+    # Construct a legacy HYPERLINK field:
+    # 1. w:fldChar (begin)
+    # 2. w:instrText (HYPERLINK "http://example.com")
+    # 3. w:fldChar (separate)
+    # 4. w:r (visible text "Example")
+    # 5. w:fldChar (end)
+
+    run1 = OxmlElement("w:r")
+    fldCharBegin = OxmlElement("w:fldChar")
+    fldCharBegin.set(qn("w:fldCharType"), "begin")
+    run1.append(fldCharBegin)
+    p._p.append(run1)
+
+    run2 = OxmlElement("w:r")
+    instrText = OxmlElement("w:instrText")
+    instrText.text = ' HYPERLINK "http://example.com" '
+    run2.append(instrText)
+    p._p.append(run2)
+
+    run3 = OxmlElement("w:r")
+    fldCharSep = OxmlElement("w:fldChar")
+    fldCharSep.set(qn("w:fldCharType"), "separate")
+    run3.append(fldCharSep)
+    p._p.append(run3)
+
+    run4 = OxmlElement("w:r")
+    t4 = OxmlElement("w:t")
+    t4.text = "Example"
+    run4.append(t4)
+    p._p.append(run4)
+
+    run5 = OxmlElement("w:r")
+    fldCharEnd = OxmlElement("w:fldChar")
+    fldCharEnd.set(qn("w:fldCharType"), "end")
+    run5.append(fldCharEnd)
+    p._p.append(run5)
+
+    with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as tmp:
+        doc.save(tmp.name)
+        tmp_path = tmp.name
+
+    try:
+        extractor = WordExtractor(tmp_path, "tenant_id", "user_id")
+        docs = extractor.extract()
+        # Verify legacy hyperlink extraction
+        assert "[Example](http://example.com)" in docs[0].page_content
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)

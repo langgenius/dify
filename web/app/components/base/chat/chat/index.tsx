@@ -317,7 +317,7 @@ const Chat: FC<ChatProps> = ({
                 <div className="mb-2 flex justify-center">
                   <Button className="border-components-panel-border bg-components-panel-bg text-components-button-secondary-text" onClick={onStopResponding}>
                     <StopCircle className="mr-[5px] h-3.5 w-3.5" />
-                    <span className="text-xs font-normal">{t('appDebug.operation.stopResponding')}</span>
+                    <span className="text-xs font-normal">{t('operation.stopResponding', { ns: 'appDebug' })}</span>
                   </Button>
                 </div>
               )

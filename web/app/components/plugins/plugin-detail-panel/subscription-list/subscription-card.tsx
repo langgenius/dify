@@ -80,7 +80,7 @@ const SubscriptionCard = ({ data, pluginDetail }: Props) => {
           </Tooltip>
           <div className="mx-2 text-xs text-text-tertiary opacity-30">·</div>
           <div className="system-xs-regular shrink-0 text-text-tertiary">
-            {data.workflows_in_use > 0 ? t('pluginTrigger.subscription.list.item.usedByNum', { num: data.workflows_in_use }) : t('pluginTrigger.subscription.list.item.noUsed')}
+            {data.workflows_in_use > 0 ? t('subscription.list.item.usedByNum', { ns: 'pluginTrigger', num: data.workflows_in_use }) : t('subscription.list.item.noUsed', { ns: 'pluginTrigger' })}
           </div>
         </div>
       </div>

@@ -21,7 +21,7 @@ import ParameterTable from './components/parameter-table'
 import useConfig from './use-config'
 import { OutputVariablesContent } from './utils/render-output-vars'
 
-const i18nPrefix = 'workflow.nodes.triggerWebhook'
+const i18nPrefix = 'nodes.triggerWebhook'
 
 const HTTP_METHODS = [
   { name: 'GET', value: 'GET' },
@@ -74,7 +74,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
     <div className="mt-2">
       <div className="space-y-4 px-4 pb-3 pt-2">
         {/* Webhook URL Section */}
-        <Field title={t(`${i18nPrefix}.webhookUrl`)}>
+        <Field title={t(`${i18nPrefix}.webhookUrl`, { ns: 'workflow' })}>
           <div className="space-y-1">
             <div className="flex gap-1" style={{ height: '32px' }}>
               <div className="w-26 shrink-0">
@@ -93,12 +93,12 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
               <div className="flex-1" style={{ width: '284px' }}>
                 <InputWithCopy
                   value={inputs.webhook_url || ''}
-                  placeholder={t(`${i18nPrefix}.webhookUrlPlaceholder`)}
+                  placeholder={t(`${i18nPrefix}.webhookUrlPlaceholder`, { ns: 'workflow' })}
                   readOnly
                   onCopy={() => {
                     Toast.notify({
                       type: 'success',
-                      message: t(`${i18nPrefix}.urlCopied`),
+                      message: t(`${i18nPrefix}.urlCopied`, { ns: 'workflow' }),
                     })
                   }}
                 />
@@ -107,7 +107,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
             {inputs.webhook_debug_url && (
               <div className="space-y-2">
                 <Tooltip
-                  popupContent={debugUrlCopied ? t(`${i18nPrefix}.debugUrlCopied`) : t(`${i18nPrefix}.debugUrlCopy`)}
+                  popupContent={debugUrlCopied ? t(`${i18nPrefix}.debugUrlCopied`, { ns: 'workflow' }) : t(`${i18nPrefix}.debugUrlCopy`, { ns: 'workflow' })}
                   popupClassName="system-xs-regular text-text-primary bg-components-tooltip-bg border border-components-panel-border shadow-lg backdrop-blur-sm rounded-md px-1.5 py-1"
                   position="top"
                   offset={{ mainAxis: -20 }}
@@ -125,7 +125,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
                     <div className="mt-0.5 w-0.5 bg-divider-regular" style={{ height: '28px' }}></div>
                     <div className="flex-1" style={{ width: '352px', height: '32px' }}>
                       <div className="text-xs leading-4 text-text-tertiary">
-                        {t(`${i18nPrefix}.debugUrlTitle`)}
+                        {t(`${i18nPrefix}.debugUrlTitle`, { ns: 'workflow' })}
                       </div>
                       <div className="truncate text-xs leading-4 text-text-primary">
                         {inputs.webhook_debug_url}
@@ -135,7 +135,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
                 </Tooltip>
                 {isPrivateOrLocalAddress(inputs.webhook_debug_url) && (
                   <div className="system-xs-regular mt-1 px-0 py-[2px] text-text-warning">
-                    {t(`${i18nPrefix}.debugUrlPrivateAddressWarning`)}
+                    {t(`${i18nPrefix}.debugUrlPrivateAddressWarning`, { ns: 'workflow' })}
                   </div>
                 )}
               </div>
@@ -144,7 +144,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
         </Field>
 
         {/* Content Type */}
-        <Field title={t(`${i18nPrefix}.contentType`)}>
+        <Field title={t(`${i18nPrefix}.contentType`, { ns: 'workflow' })}>
           <div className="w-full">
             <SimpleSelect
               items={CONTENT_TYPES}
@@ -166,7 +166,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
           title="Query Parameters"
           parameters={inputs.params}
           onChange={handleParamsChange}
-          placeholder={t(`${i18nPrefix}.noQueryParameters`)}
+          placeholder={t(`${i18nPrefix}.noQueryParameters`, { ns: 'workflow' })}
         />
 
         {/* Header Parameters */}
@@ -182,18 +182,18 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
           title="Request Body Parameters"
           parameters={inputs.body}
           onChange={handleBodyChange}
-          placeholder={t(`${i18nPrefix}.noBodyParameters`)}
+          placeholder={t(`${i18nPrefix}.noBodyParameters`, { ns: 'workflow' })}
           contentType={inputs.content_type}
         />
 
         <Split />
 
         {/* Response Configuration */}
-        <Field title={t(`${i18nPrefix}.responseConfiguration`)}>
+        <Field title={t(`${i18nPrefix}.responseConfiguration`, { ns: 'workflow' })}>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <label className="system-sm-medium text-text-tertiary">
-                {t(`${i18nPrefix}.statusCode`)}
+                {t(`${i18nPrefix}.statusCode`, { ns: 'workflow' })}
               </label>
               <InputNumber
                 value={inputs.status_code}
@@ -211,12 +211,12 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
             </div>
             <div>
               <label className="system-sm-medium mb-2 block text-text-tertiary">
-                {t(`${i18nPrefix}.responseBody`)}
+                {t(`${i18nPrefix}.responseBody`, { ns: 'workflow' })}
               </label>
               <ParagraphInput
                 value={inputs.response_body}
                 onChange={handleResponseBodyChange}
-                placeholder={t(`${i18nPrefix}.responseBodyPlaceholder`)}
+                placeholder={t(`${i18nPrefix}.responseBodyPlaceholder`, { ns: 'workflow' })}
                 disabled={readOnly}
               />
             </div>

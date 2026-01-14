@@ -16,7 +16,6 @@ const planUpgradeModalMock = vi.fn((props: { show: boolean, title: string, descr
 ))
 
 vi.mock('@/app/components/billing/plan-upgrade-modal', () => ({
-  __esModule: true,
   // eslint-disable-next-line ts/no-explicit-any
   default: (props: any) => planUpgradeModalMock(props),
 }))

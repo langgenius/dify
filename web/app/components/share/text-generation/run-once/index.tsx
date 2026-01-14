@@ -71,7 +71,7 @@ const RunOnce: FC<IRunOnceProps> = ({
     onSend()
   }
   const isRunning = !!runControl
-  const stopLabel = t('share.generation.stopRun', { defaultValue: 'Stop Run' })
+  const stopLabel = t('generation.stopRun', { ns: 'share', defaultValue: 'Stop Run' })
   const handlePrimaryClick = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
     if (!isRunning)
       return
@@ -120,7 +120,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                   {item.type !== 'checkbox' && (
                     <div className="system-md-semibold flex h-6 items-center gap-1 text-text-secondary">
                       <div className="truncate">{item.name}</div>
-                      {!item.required && <span className="system-xs-regular text-text-tertiary">{t('workflow.panel.optional')}</span>}
+                      {!item.required && <span className="system-xs-regular text-text-tertiary">{t('panel.optional', { ns: 'workflow' })}</span>}
                     </div>
                   )}
                   <div className="mt-1">
@@ -194,7 +194,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                         noWrapper
                         className="bg h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
                         placeholder={
-                          <div className="whitespace-pre">{item.json_schema}</div>
+                          <div className="whitespace-pre">{typeof item.json_schema === 'string' ? item.json_schema : JSON.stringify(item.json_schema || '', null, 2)}</div>
                         }
                       />
                     )}
@@ -204,7 +204,7 @@ const RunOnce: FC<IRunOnceProps> = ({
           {
             visionConfig?.enabled && (
               <div className="mt-4 w-full">
-                <div className="system-md-semibold flex h-6 items-center text-text-secondary">{t('common.imageUploader.imageUpload')}</div>
+                <div className="system-md-semibold flex h-6 items-center text-text-secondary">{t('imageUploader.imageUpload', { ns: 'common' })}</div>
                 <div className="mt-1">
                   <TextGenerationImageUploader
                     settings={visionConfig}
@@ -225,7 +225,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                 onClick={onClear}
                 disabled={false}
               >
-                <span className="text-[13px]">{t('common.operation.clear')}</span>
+                <span className="text-[13px]">{t('operation.clear', { ns: 'common' })}</span>
               </Button>
               <Button
                 className={cn(!isPC && 'grow')}
@@ -247,7 +247,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                   : (
                       <>
                         <RiPlayLargeLine className="mr-1 h-4 w-4 shrink-0" aria-hidden="true" />
-                        <span className="text-[13px]">{t('share.generation.run')}</span>
+                        <span className="text-[13px]">{t('generation.run', { ns: 'share' })}</span>
                       </>
                     )}
               </Button>

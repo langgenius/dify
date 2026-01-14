@@ -21,7 +21,6 @@ import {
 } from './utils'
 
 vi.mock('mime', () => ({
-  __esModule: true,
   default: {
     getAllExtensions: vi.fn(),
   },

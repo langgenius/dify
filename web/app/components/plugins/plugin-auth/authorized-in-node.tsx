@@ -44,7 +44,7 @@ const AuthorizedInNode = ({
     let color = 'green'
     let defaultUnavailable = false
     if (!credentialId) {
-      label = t('plugin.auth.workspaceDefault')
+      label = t('auth.workspaceDefault', { ns: 'plugin' })
 
       const defaultCredential = credentials.find(c => c.is_default)
 
@@ -55,7 +55,7 @@ const AuthorizedInNode = ({
     }
     else {
       const credential = credentials.find(c => c.id === credentialId)
-      label = credential ? credential.name : t('plugin.auth.authRemoved')
+      label = credential ? credential.name : t('auth.authRemoved', { ns: 'plugin' })
       removed = !credential
       unavailable = !!credential?.not_allowed_to_use && !credential?.from_enterprise
 
@@ -82,7 +82,7 @@ const AuthorizedInNode = ({
           (unavailable || defaultUnavailable) && (
             <>
               &nbsp;
-              {t('plugin.auth.unavailable')}
+              {t('auth.unavailable', { ns: 'plugin' })}
             </>
           )
         }
@@ -99,7 +99,7 @@ const AuthorizedInNode = ({
   const extraAuthorizationItems: Credential[] = [
     {
       id: '__workspace_default__',
-      name: t('plugin.auth.workspaceDefault'),
+      name: t('auth.workspaceDefault', { ns: 'plugin' }),
       provider: '',
       is_default: !credentialId,
       isWorkspaceDefault: true,

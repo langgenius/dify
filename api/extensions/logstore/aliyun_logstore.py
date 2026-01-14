@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import os
 import threading
@@ -33,7 +35,7 @@ class AliyunLogStore:
     Ensures only one instance exists to prevent multiple PG connection pools.
     """
 
-    _instance: "AliyunLogStore | None" = None
+    _instance: AliyunLogStore | None = None
     _initialized: bool = False
 
     # Track delayed PG connection for newly created projects
@@ -66,7 +68,7 @@ class AliyunLogStore:
         "\t",
     ]
 
-    def __new__(cls) -> "AliyunLogStore":
+    def __new__(cls) -> AliyunLogStore:
         """Implement singleton pattern."""
         if cls._instance is None:
             cls._instance = super().__new__(cls)

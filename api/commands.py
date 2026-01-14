@@ -1,4 +1,5 @@
 import base64
+import datetime
 import json
 import logging
 import secrets
@@ -34,7 +35,7 @@ from libs.rsa import generate_key_pair
 from models import Tenant
 from models.dataset import Dataset, DatasetCollectionBinding, DatasetMetadata, DatasetMetadataBinding, DocumentSegment
 from models.dataset import Document as DatasetDocument
-from models.model import Account, App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation, UploadFile
+from models.model import App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation, UploadFile
 from models.oauth import DatasourceOauthParamConfig, DatasourceProvider
 from models.provider import Provider, ProviderModel
 from models.provider_ids import DatasourceProviderID, ToolProviderID
@@ -45,6 +46,7 @@ from services.clear_free_plan_tenant_expired_logs import ClearFreePlanTenantExpi
 from services.plugin.data_migration import PluginDataMigration
 from services.plugin.plugin_migration import PluginMigration
 from services.plugin.plugin_service import PluginService
+from services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs import WorkflowRunCleanup
 from tasks.remove_app_and_related_data_task import delete_draft_variables_batch
 
 logger = logging.getLogger(__name__)
@@ -62,8 +64,10 @@ def reset_password(email, new_password, password_confirm):
     if str(new_password).strip() != str(password_confirm).strip():
         click.echo(click.style("Passwords do not match.", fg="red"))
         return
+    normalized_email = email.strip().lower()
+
     with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
-        account = session.query(Account).where(Account.email == email).one_or_none()
+        account = AccountService.get_account_by_email_with_case_fallback(email.strip(), session=session)
 
         if not account:
             click.echo(click.style(f"Account not found for email: {email}", fg="red"))
@@ -84,7 +88,7 @@ def reset_password(email, new_password, password_confirm):
         base64_password_hashed = base64.b64encode(password_hashed).decode()
         account.password = base64_password_hashed
         account.password_salt = base64_salt
-        AccountService.reset_login_error_rate_limit(email)
+        AccountService.reset_login_error_rate_limit(normalized_email)
         click.echo(click.style("Password reset successfully.", fg="green"))
 
 
@@ -100,20 +104,22 @@ def reset_email(email, new_email, email_confirm):
     if str(new_email).strip() != str(email_confirm).strip():
         click.echo(click.style("New emails do not match.", fg="red"))
         return
+    normalized_new_email = new_email.strip().lower()
+
     with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
-        account = session.query(Account).where(Account.email == email).one_or_none()
+        account = AccountService.get_account_by_email_with_case_fallback(email.strip(), session=session)
 
         if not account:
             click.echo(click.style(f"Account not found for email: {email}", fg="red"))
             return
 
         try:
-            email_validate(new_email)
+            email_validate(normalized_new_email)
         except:
             click.echo(click.style(f"Invalid email: {new_email}", fg="red"))
             return
 
-        account.email = new_email
+        account.email = normalized_new_email
         click.echo(click.style("Email updated successfully.", fg="green"))
 
 
@@ -235,7 +241,7 @@ def migrate_annotation_vector_database():
                 if annotations:
                     for annotation in annotations:
                         document = Document(
-                            page_content=annotation.question,
+                            page_content=annotation.question_text,
                             metadata={"annotation_id": annotation.id, "app_id": app.id, "doc_id": annotation.id},
                         )
                         documents.append(document)
@@ -658,7 +664,7 @@ def create_tenant(email: str, language: str | None = None, name: str | None = No
         return
 
     # Create account
-    email = email.strip()
+    email = email.strip().lower()
 
     if "@" not in email:
         click.echo(click.style("Invalid email address.", fg="red"))
@@ -850,6 +856,61 @@ def clear_free_plan_tenant_expired_logs(days: int, batch: int, tenant_ids: list[
     ClearFreePlanTenantExpiredLogs.process(days, batch, tenant_ids)
 
     click.echo(click.style("Clear free plan tenant expired logs completed.", fg="green"))
+
+
+@click.command("clean-workflow-runs", help="Clean expired workflow runs and related data for free tenants.")
+@click.option("--days", default=30, show_default=True, help="Delete workflow runs created before N days ago.")
+@click.option("--batch-size", default=200, show_default=True, help="Batch size for selecting workflow runs.")
+@click.option(
+    "--start-from",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    default=None,
+    help="Optional lower bound (inclusive) for created_at; must be paired with --end-before.",
+)
+@click.option(
+    "--end-before",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    default=None,
+    help="Optional upper bound (exclusive) for created_at; must be paired with --start-from.",
+)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Preview cleanup results without deleting any workflow run data.",
+)
+def clean_workflow_runs(
+    days: int,
+    batch_size: int,
+    start_from: datetime.datetime | None,
+    end_before: datetime.datetime | None,
+    dry_run: bool,
+):
+    """
+    Clean workflow runs and related workflow data for free tenants.
+    """
+    if (start_from is None) ^ (end_before is None):
+        raise click.UsageError("--start-from and --end-before must be provided together.")
+
+    start_time = datetime.datetime.now(datetime.UTC)
+    click.echo(click.style(f"Starting workflow run cleanup at {start_time.isoformat()}.", fg="white"))
+
+    WorkflowRunCleanup(
+        days=days,
+        batch_size=batch_size,
+        start_from=start_from,
+        end_before=end_before,
+        dry_run=dry_run,
+    ).run()
+
+    end_time = datetime.datetime.now(datetime.UTC)
+    elapsed = end_time - start_time
+    click.echo(
+        click.style(
+            f"Workflow run cleanup completed. start={start_time.isoformat()} "
+            f"end={end_time.isoformat()} duration={elapsed}",
+            fg="green",
+        )
+    )
 
 
 @click.option("-f", "--force", is_flag=True, help="Skip user confirmation and force the command to execute.")
@@ -1182,6 +1243,217 @@ def remove_orphaned_files_on_storage(force: bool):
         click.echo(click.style(f"Removed {removed_files} orphaned files without errors.", fg="green"))
     else:
         click.echo(click.style(f"Removed {removed_files} orphaned files, with {error_files} errors.", fg="yellow"))
+
+
+@click.command("file-usage", help="Query file usages and show where files are referenced.")
+@click.option("--file-id", type=str, default=None, help="Filter by file UUID.")
+@click.option("--key", type=str, default=None, help="Filter by storage key.")
+@click.option("--src", type=str, default=None, help="Filter by table.column pattern (e.g., 'documents.%' or '%.icon').")
+@click.option("--limit", type=int, default=100, help="Limit number of results (default: 100).")
+@click.option("--offset", type=int, default=0, help="Offset for pagination (default: 0).")
+@click.option("--json", "output_json", is_flag=True, help="Output results in JSON format.")
+def file_usage(
+    file_id: str | None,
+    key: str | None,
+    src: str | None,
+    limit: int,
+    offset: int,
+    output_json: bool,
+):
+    """
+    Query file usages and show where files are referenced in the database.
+
+    This command reuses the same reference checking logic as clear-orphaned-file-records
+    and displays detailed information about where each file is referenced.
+    """
+    # define tables and columns to process
+    files_tables = [
+        {"table": "upload_files", "id_column": "id", "key_column": "key"},
+        {"table": "tool_files", "id_column": "id", "key_column": "file_key"},
+    ]
+    ids_tables = [
+        {"type": "uuid", "table": "message_files", "column": "upload_file_id", "pk_column": "id"},
+        {"type": "text", "table": "documents", "column": "data_source_info", "pk_column": "id"},
+        {"type": "text", "table": "document_segments", "column": "content", "pk_column": "id"},
+        {"type": "text", "table": "messages", "column": "answer", "pk_column": "id"},
+        {"type": "text", "table": "workflow_node_executions", "column": "inputs", "pk_column": "id"},
+        {"type": "text", "table": "workflow_node_executions", "column": "process_data", "pk_column": "id"},
+        {"type": "text", "table": "workflow_node_executions", "column": "outputs", "pk_column": "id"},
+        {"type": "text", "table": "conversations", "column": "introduction", "pk_column": "id"},
+        {"type": "text", "table": "conversations", "column": "system_instruction", "pk_column": "id"},
+        {"type": "text", "table": "accounts", "column": "avatar", "pk_column": "id"},
+        {"type": "text", "table": "apps", "column": "icon", "pk_column": "id"},
+        {"type": "text", "table": "sites", "column": "icon", "pk_column": "id"},
+        {"type": "json", "table": "messages", "column": "inputs", "pk_column": "id"},
+        {"type": "json", "table": "messages", "column": "message", "pk_column": "id"},
+    ]
+
+    # Stream file usages with pagination to avoid holding all results in memory
+    paginated_usages = []
+    total_count = 0
+
+    # First, build a mapping of file_id -> storage_key from the base tables
+    file_key_map = {}
+    for files_table in files_tables:
+        query = f"SELECT {files_table['id_column']}, {files_table['key_column']} FROM {files_table['table']}"
+        with db.engine.begin() as conn:
+            rs = conn.execute(sa.text(query))
+            for row in rs:
+                file_key_map[str(row[0])] = f"{files_table['table']}:{row[1]}"
+
+    # If filtering by key or file_id, verify it exists
+    if file_id and file_id not in file_key_map:
+        if output_json:
+            click.echo(json.dumps({"error": f"File ID {file_id} not found in base tables"}))
+        else:
+            click.echo(click.style(f"File ID {file_id} not found in base tables.", fg="red"))
+        return
+
+    if key:
+        valid_prefixes = {f"upload_files:{key}", f"tool_files:{key}"}
+        matching_file_ids = [fid for fid, fkey in file_key_map.items() if fkey in valid_prefixes]
+        if not matching_file_ids:
+            if output_json:
+                click.echo(json.dumps({"error": f"Key {key} not found in base tables"}))
+            else:
+                click.echo(click.style(f"Key {key} not found in base tables.", fg="red"))
+            return
+
+    guid_regexp = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+
+    # For each reference table/column, find matching file IDs and record the references
+    for ids_table in ids_tables:
+        src_filter = f"{ids_table['table']}.{ids_table['column']}"
+
+        # Skip if src filter doesn't match (use fnmatch for wildcard patterns)
+        if src:
+            if "%" in src or "_" in src:
+                import fnmatch
+
+                # Convert SQL LIKE wildcards to fnmatch wildcards (% -> *, _ -> ?)
+                pattern = src.replace("%", "*").replace("_", "?")
+                if not fnmatch.fnmatch(src_filter, pattern):
+                    continue
+            else:
+                if src_filter != src:
+                    continue
+
+        if ids_table["type"] == "uuid":
+            # Direct UUID match
+            query = (
+                f"SELECT {ids_table['pk_column']}, {ids_table['column']} "
+                f"FROM {ids_table['table']} WHERE {ids_table['column']} IS NOT NULL"
+            )
+            with db.engine.begin() as conn:
+                rs = conn.execute(sa.text(query))
+                for row in rs:
+                    record_id = str(row[0])
+                    ref_file_id = str(row[1])
+                    if ref_file_id not in file_key_map:
+                        continue
+                    storage_key = file_key_map[ref_file_id]
+
+                    # Apply filters
+                    if file_id and ref_file_id != file_id:
+                        continue
+                    if key and not storage_key.endswith(key):
+                        continue
+
+                    # Only collect items within the requested page range
+                    if offset <= total_count < offset + limit:
+                        paginated_usages.append(
+                            {
+                                "src": f"{ids_table['table']}.{ids_table['column']}",
+                                "record_id": record_id,
+                                "file_id": ref_file_id,
+                                "key": storage_key,
+                            }
+                        )
+                    total_count += 1
+
+        elif ids_table["type"] in ("text", "json"):
+            # Extract UUIDs from text/json content
+            column_cast = f"{ids_table['column']}::text" if ids_table["type"] == "json" else ids_table["column"]
+            query = (
+                f"SELECT {ids_table['pk_column']}, {column_cast} "
+                f"FROM {ids_table['table']} WHERE {ids_table['column']} IS NOT NULL"
+            )
+            with db.engine.begin() as conn:
+                rs = conn.execute(sa.text(query))
+                for row in rs:
+                    record_id = str(row[0])
+                    content = str(row[1])
+
+                    # Find all UUIDs in the content
+                    import re
+
+                    uuid_pattern = re.compile(guid_regexp, re.IGNORECASE)
+                    matches = uuid_pattern.findall(content)
+
+                    for ref_file_id in matches:
+                        if ref_file_id not in file_key_map:
+                            continue
+                        storage_key = file_key_map[ref_file_id]
+
+                        # Apply filters
+                        if file_id and ref_file_id != file_id:
+                            continue
+                        if key and not storage_key.endswith(key):
+                            continue
+
+                        # Only collect items within the requested page range
+                        if offset <= total_count < offset + limit:
+                            paginated_usages.append(
+                                {
+                                    "src": f"{ids_table['table']}.{ids_table['column']}",
+                                    "record_id": record_id,
+                                    "file_id": ref_file_id,
+                                    "key": storage_key,
+                                }
+                            )
+                        total_count += 1
+
+    # Output results
+    if output_json:
+        result = {
+            "total": total_count,
+            "offset": offset,
+            "limit": limit,
+            "usages": paginated_usages,
+        }
+        click.echo(json.dumps(result, indent=2))
+    else:
+        click.echo(
+            click.style(f"Found {total_count} file usages (showing {len(paginated_usages)} results)", fg="white")
+        )
+        click.echo("")
+
+        if not paginated_usages:
+            click.echo(click.style("No file usages found matching the specified criteria.", fg="yellow"))
+            return
+
+        # Print table header
+        click.echo(
+            click.style(
+                f"{'Src (Table.Column)':<50} {'Record ID':<40} {'File ID':<40} {'Storage Key':<60}",
+                fg="cyan",
+            )
+        )
+        click.echo(click.style("-" * 190, fg="white"))
+
+        # Print each usage
+        for usage in paginated_usages:
+            click.echo(f"{usage['src']:<50} {usage['record_id']:<40} {usage['file_id']:<40} {usage['key']:<60}")
+
+        # Show pagination info
+        if offset + limit < total_count:
+            click.echo("")
+            click.echo(
+                click.style(
+                    f"Showing {offset + 1}-{offset + len(paginated_usages)} of {total_count} results", fg="white"
+                )
+            )
+            click.echo(click.style(f"Use --offset {offset + limit} to see next page", fg="white"))
 
 
 @click.command("setup-system-tool-oauth-client", help="Setup system tool oauth client.")

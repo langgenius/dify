@@ -43,7 +43,7 @@ export const ReadmeEntrance = ({
           <RiBookReadLine className="h-3 w-3" />
         </div>
         <span className="text-xs font-normal leading-4">
-          {!showShortTip ? t('plugin.readmeInfo.needHelpCheckReadme') : t('plugin.readmeInfo.title')}
+          {!showShortTip ? t('readmeInfo.needHelpCheckReadme', { ns: 'plugin' }) : t('readmeInfo.title', { ns: 'plugin' })}
         </span>
       </button>
     </div>

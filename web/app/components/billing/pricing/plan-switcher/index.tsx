@@ -27,12 +27,12 @@ const PlanSwitcher: FC<PlanSwitcherProps> = ({
   const tabs = {
     cloud: {
       value: 'cloud' as Category,
-      label: t('billing.plansCommon.cloud'),
+      label: t('plansCommon.cloud', { ns: 'billing' }),
       Icon: Cloud,
     },
     self: {
       value: 'self' as Category,
-      label: t('billing.plansCommon.self'),
+      label: t('plansCommon.self', { ns: 'billing' }),
       Icon: SelfHosted,
     },
   }

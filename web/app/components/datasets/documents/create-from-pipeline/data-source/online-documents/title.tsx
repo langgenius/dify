@@ -12,7 +12,7 @@ const Title = ({
 
   return (
     <div className="system-sm-medium px-[5px] py-1 text-text-secondary">
-      {t('datasetPipeline.onlineDocument.pageSelectorTitle', { name })}
+      {t('onlineDocument.pageSelectorTitle', { ns: 'datasetPipeline', name })}
     </div>
   )
 }

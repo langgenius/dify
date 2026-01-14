@@ -1,13 +1,13 @@
 import { useMemo } from 'react'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import { useI18N } from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
 import { usePipelineTemplateList } from '@/service/use-pipeline'
 import CreateCard from './create-card'
 import TemplateCard from './template-card'
 
 const BuiltInPipelineList = () => {
-  const { locale } = useI18N()
+  const locale = useLocale()
   const language = useMemo(() => {
     if (['zh-Hans', 'ja-JP'].includes(locale))
       return locale

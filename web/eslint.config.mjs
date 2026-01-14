@@ -1,8 +1,10 @@
 // @ts-check
 import antfu from '@antfu/eslint-config'
+import pluginQuery from '@tanstack/eslint-plugin-query'
 import sonar from 'eslint-plugin-sonarjs'
 import storybook from 'eslint-plugin-storybook'
 import tailwind from 'eslint-plugin-tailwindcss'
+import difyI18n from './eslint-rules/index.js'
 
 export default antfu(
   {
@@ -12,6 +14,24 @@ export default antfu(
         'react/no-forward-ref': 'off',
         'react/no-use-context': 'off',
         'react/prefer-namespace-import': 'error',
+
+        // React Compiler rules
+        // Set to warn for gradual adoption
+        'react-hooks/config': 'warn',
+        'react-hooks/error-boundaries': 'warn',
+        'react-hooks/component-hook-factories': 'warn',
+        'react-hooks/gating': 'warn',
+        'react-hooks/globals': 'warn',
+        'react-hooks/immutability': 'warn',
+        'react-hooks/preserve-manual-memoization': 'warn',
+        'react-hooks/purity': 'warn',
+        'react-hooks/refs': 'warn',
+        'react-hooks/set-state-in-effect': 'warn',
+        'react-hooks/set-state-in-render': 'warn',
+        'react-hooks/static-components': 'warn',
+        'react-hooks/unsupported-syntax': 'warn',
+        'react-hooks/use-memo': 'warn',
+        'react-hooks/incompatible-library': 'warn',
       },
     },
     nextjs: true,
@@ -60,6 +80,7 @@ export default antfu(
     },
   },
   storybook.configs['flat/recommended'],
+  ...pluginQuery.configs['flat/recommended'],
   // sonar
   {
     rules: {
@@ -109,14 +130,6 @@ export default antfu(
       sonarjs: sonar,
     },
   },
-  // allow generated i18n files (like i18n/*/workflow.ts) to exceed max-lines
-  {
-    files: ['i18n/**'],
-    rules: {
-      'sonarjs/max-lines': 'off',
-      'max-lines': 'off',
-    },
-  },
   tailwind.configs['flat/recommended'],
   {
     settings: {
@@ -153,6 +166,35 @@ export default antfu(
       'tailwindcss/classnames-order': 'warn',
       'tailwindcss/enforces-negative-arbitrary-values': 'warn',
       'tailwindcss/migration-from-tailwind-2': 'warn',
+    },
+  },
+  // dify i18n namespace migration
+  {
+    files: ['**/*.ts', '**/*.tsx'],
+    ignores: ['eslint-rules/**', 'i18n/**', 'i18n-config/**'],
+    plugins: {
+      'dify-i18n': difyI18n,
+    },
+    rules: {
+      // 'dify-i18n/no-as-any-in-t': ['error', { mode: 'all' }],
+      'dify-i18n/no-as-any-in-t': 'error',
+      // 'dify-i18n/no-legacy-namespace-prefix': 'error',
+      // 'dify-i18n/require-ns-option': 'error',
+    },
+  },
+  // i18n JSON validation rules
+  {
+    files: ['i18n/**/*.json'],
+    plugins: {
+      'dify-i18n': difyI18n,
+    },
+    rules: {
+      'sonarjs/max-lines': 'off',
+      'max-lines': 'off',
+      'jsonc/sort-keys': 'error',
+
+      'dify-i18n/valid-i18n-keys': 'error',
+      'dify-i18n/no-extra-keys': 'error',
     },
   },
 )

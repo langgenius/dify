@@ -47,14 +47,14 @@ const ModerationContent: FC<ModerationContentProps> = ({
           config.enabled && showPreset && (
             <div className="rounded-lg bg-components-panel-bg px-3 pb-3 pt-1">
               <div className="flex h-8 items-center justify-between text-[13px] font-medium text-text-secondary">
-                {t('appDebug.feature.moderation.modal.content.preset')}
-                <span className="text-xs font-normal text-text-tertiary">{t('appDebug.feature.moderation.modal.content.supportMarkdown')}</span>
+                {t('feature.moderation.modal.content.preset', { ns: 'appDebug' })}
+                <span className="text-xs font-normal text-text-tertiary">{t('feature.moderation.modal.content.supportMarkdown', { ns: 'appDebug' })}</span>
               </div>
               <div className="relative h-20 rounded-lg bg-components-input-bg-normal px-3 py-2">
                 <textarea
                   value={config.preset_response || ''}
                   className="block h-full w-full resize-none appearance-none bg-transparent text-sm text-text-secondary outline-none"
-                  placeholder={t('appDebug.feature.moderation.modal.content.placeholder') || ''}
+                  placeholder={t('feature.moderation.modal.content.placeholder', { ns: 'appDebug' }) || ''}
                   onChange={e => handleConfigChange('preset_response', e.target.value)}
                 />
                 <div className="absolute bottom-2 right-2 flex h-5 items-center rounded-md bg-background-section px-1 text-xs font-medium text-text-quaternary">

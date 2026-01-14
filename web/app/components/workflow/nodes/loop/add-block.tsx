@@ -56,7 +56,7 @@ const AddBlock = ({
       )}
       >
         <RiAddLine className="mr-1 h-4 w-4" />
-        {t('workflow.common.addBlock')}
+        {t('common.addBlock', { ns: 'workflow' })}
       </div>
     )
   }, [nodesReadOnly, t])

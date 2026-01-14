@@ -57,7 +57,7 @@ const Operator = ({
                 setOpen(false)
               }}
             >
-              {t('workflow.common.copy')}
+              {t('common.copy', { ns: 'workflow' })}
               <ShortcutsName keys={['ctrl', 'c']} />
             </div>
             <div
@@ -67,7 +67,7 @@ const Operator = ({
                 setOpen(false)
               }}
             >
-              {t('workflow.common.duplicate')}
+              {t('common.duplicate', { ns: 'workflow' })}
               <ShortcutsName keys={['ctrl', 'd']} />
             </div>
           </div>
@@ -77,7 +77,7 @@ const Operator = ({
               className="flex h-8 cursor-pointer items-center justify-between rounded-md px-3 text-sm text-text-secondary hover:bg-state-base-hover"
               onClick={e => e.stopPropagation()}
             >
-              <div>{t('workflow.nodes.note.editor.showAuthor')}</div>
+              <div>{t('nodes.note.editor.showAuthor', { ns: 'workflow' })}</div>
               <Switch
                 size="l"
                 defaultValue={showAuthor}
@@ -94,7 +94,7 @@ const Operator = ({
                 setOpen(false)
               }}
             >
-              {t('common.operation.delete')}
+              {t('operation.delete', { ns: 'common' })}
               <ShortcutsName keys={['del']} />
             </div>
           </div>

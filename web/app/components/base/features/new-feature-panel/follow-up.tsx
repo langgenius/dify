@@ -45,9 +45,9 @@ const FollowUp = ({
           <VirtualAssistant className="h-4 w-4 text-text-primary-on-surface" />
         </div>
       )}
-      title={t('appDebug.feature.suggestedQuestionsAfterAnswer.title')}
+      title={t('feature.suggestedQuestionsAfterAnswer.title', { ns: 'appDebug' })}
       value={!!features.suggested?.enabled}
-      description={t('appDebug.feature.suggestedQuestionsAfterAnswer.description')!}
+      description={t('feature.suggestedQuestionsAfterAnswer.description', { ns: 'appDebug' })!}
       onChange={state => handleChange(FeatureEnum.suggested, state)}
       disabled={disabled}
     />

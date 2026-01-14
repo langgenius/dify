@@ -20,7 +20,6 @@ from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_redis import redis_client
 from extensions.otel import WorkflowAppRunnerHandler, trace_span
 from libs.datetime_utils import naive_utc_now
-from models.enums import UserFrom
 from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
@@ -74,7 +73,12 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             workflow_execution_id=self.application_generate_entity.workflow_execution_id,
         )
 
+        invoke_from = self.application_generate_entity.invoke_from
         # if only single iteration or single loop run is requested
+        if self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
+            invoke_from = InvokeFrom.DEBUGGER
+        user_from = self._resolve_user_from(invoke_from)
+
         if self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
             graph, variable_pool, graph_runtime_state = self._prepare_single_node_execution(
                 workflow=self._workflow,
@@ -102,6 +106,8 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 workflow_id=self._workflow.id,
                 tenant_id=self._workflow.tenant_id,
                 user_id=self.application_generate_entity.user_id,
+                user_from=user_from,
+                invoke_from=invoke_from,
                 root_node_id=self._root_node_id,
             )
 
@@ -120,12 +126,8 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             graph=graph,
             graph_config=self._workflow.graph_dict,
             user_id=self.application_generate_entity.user_id,
-            user_from=(
-                UserFrom.ACCOUNT
-                if self.application_generate_entity.invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER}
-                else UserFrom.END_USER
-            ),
-            invoke_from=self.application_generate_entity.invoke_from,
+            user_from=user_from,
+            invoke_from=invoke_from,
             call_depth=self.application_generate_entity.call_depth,
             variable_pool=variable_pool,
             graph_runtime_state=graph_runtime_state,

@@ -1,236 +1,338 @@
-from flask_restx import Api, Namespace, fields
+from __future__ import annotations
 
-from fields.member_fields import simple_account_fields
-from libs.helper import TimestampField
+from datetime import datetime
+from typing import Any, TypeAlias
 
-from .raws import FilesContainedField
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from core.file import File
 
-class MessageTextField(fields.Raw):
-    def format(self, value):
-        return value[0]["text"] if value else ""
-
-
-feedback_fields = {
-    "rating": fields.String,
-    "content": fields.String,
-    "from_source": fields.String,
-    "from_end_user_id": fields.String,
-    "from_account": fields.Nested(simple_account_fields, allow_null=True),
-}
-
-annotation_fields = {
-    "id": fields.String,
-    "question": fields.String,
-    "content": fields.String,
-    "account": fields.Nested(simple_account_fields, allow_null=True),
-    "created_at": TimestampField,
-}
-
-annotation_hit_history_fields = {
-    "annotation_id": fields.String(attribute="id"),
-    "annotation_create_account": fields.Nested(simple_account_fields, allow_null=True),
-    "created_at": TimestampField,
-}
-
-message_file_fields = {
-    "id": fields.String,
-    "filename": fields.String,
-    "type": fields.String,
-    "url": fields.String,
-    "mime_type": fields.String,
-    "size": fields.Integer,
-    "transfer_method": fields.String,
-    "belongs_to": fields.String(default="user"),
-    "upload_file_id": fields.String(default=None),
-}
+JSONValue: TypeAlias = Any
 
 
-def build_message_file_model(api_or_ns: Api | Namespace):
-    """Build the message file fields for the API or Namespace."""
-    return api_or_ns.model("MessageFile", message_file_fields)
+class ResponseModel(BaseModel):
+    model_config = ConfigDict(
+        from_attributes=True,
+        extra="ignore",
+        populate_by_name=True,
+        serialize_by_alias=True,
+        protected_namespaces=(),
+    )
 
 
-agent_thought_fields = {
-    "id": fields.String,
-    "chain_id": fields.String,
-    "message_id": fields.String,
-    "position": fields.Integer,
-    "thought": fields.String,
-    "tool": fields.String,
-    "tool_labels": fields.Raw,
-    "tool_input": fields.String,
-    "created_at": TimestampField,
-    "observation": fields.String,
-    "files": fields.List(fields.String),
-}
+class MessageFile(ResponseModel):
+    id: str
+    filename: str
+    type: str
+    url: str | None = None
+    mime_type: str | None = None
+    size: int | None = None
+    transfer_method: str
+    belongs_to: str | None = None
+    upload_file_id: str | None = None
 
-message_detail_fields = {
-    "id": fields.String,
-    "conversation_id": fields.String,
-    "inputs": FilesContainedField,
-    "query": fields.String,
-    "message": fields.Raw,
-    "message_tokens": fields.Integer,
-    "answer": fields.String(attribute="re_sign_file_url_answer"),
-    "answer_tokens": fields.Integer,
-    "provider_response_latency": fields.Float,
-    "from_source": fields.String,
-    "from_end_user_id": fields.String,
-    "from_account_id": fields.String,
-    "feedbacks": fields.List(fields.Nested(feedback_fields)),
-    "workflow_run_id": fields.String,
-    "annotation": fields.Nested(annotation_fields, allow_null=True),
-    "annotation_hit_history": fields.Nested(annotation_hit_history_fields, allow_null=True),
-    "created_at": TimestampField,
-    "agent_thoughts": fields.List(fields.Nested(agent_thought_fields)),
-    "message_files": fields.List(fields.Nested(message_file_fields)),
-    "metadata": fields.Raw(attribute="message_metadata_dict"),
-    "status": fields.String,
-    "error": fields.String,
-    "parent_message_id": fields.String,
-}
-
-feedback_stat_fields = {"like": fields.Integer, "dislike": fields.Integer}
-status_count_fields = {"success": fields.Integer, "failed": fields.Integer, "partial_success": fields.Integer}
-model_config_fields = {
-    "opening_statement": fields.String,
-    "suggested_questions": fields.Raw,
-    "model": fields.Raw,
-    "user_input_form": fields.Raw,
-    "pre_prompt": fields.String,
-    "agent_mode": fields.Raw,
-}
-
-simple_model_config_fields = {
-    "model": fields.Raw(attribute="model_dict"),
-    "pre_prompt": fields.String,
-}
-
-simple_message_detail_fields = {
-    "inputs": FilesContainedField,
-    "query": fields.String,
-    "message": MessageTextField,
-    "answer": fields.String,
-}
-
-conversation_fields = {
-    "id": fields.String,
-    "status": fields.String,
-    "from_source": fields.String,
-    "from_end_user_id": fields.String,
-    "from_end_user_session_id": fields.String(),
-    "from_account_id": fields.String,
-    "from_account_name": fields.String,
-    "read_at": TimestampField,
-    "created_at": TimestampField,
-    "updated_at": TimestampField,
-    "annotation": fields.Nested(annotation_fields, allow_null=True),
-    "model_config": fields.Nested(simple_model_config_fields),
-    "user_feedback_stats": fields.Nested(feedback_stat_fields),
-    "admin_feedback_stats": fields.Nested(feedback_stat_fields),
-    "message": fields.Nested(simple_message_detail_fields, attribute="first_message"),
-}
-
-conversation_pagination_fields = {
-    "page": fields.Integer,
-    "limit": fields.Integer(attribute="per_page"),
-    "total": fields.Integer,
-    "has_more": fields.Boolean(attribute="has_next"),
-    "data": fields.List(fields.Nested(conversation_fields), attribute="items"),
-}
-
-conversation_message_detail_fields = {
-    "id": fields.String,
-    "status": fields.String,
-    "from_source": fields.String,
-    "from_end_user_id": fields.String,
-    "from_account_id": fields.String,
-    "created_at": TimestampField,
-    "model_config": fields.Nested(model_config_fields),
-    "message": fields.Nested(message_detail_fields, attribute="first_message"),
-}
-
-conversation_with_summary_fields = {
-    "id": fields.String,
-    "status": fields.String,
-    "from_source": fields.String,
-    "from_end_user_id": fields.String,
-    "from_end_user_session_id": fields.String,
-    "from_account_id": fields.String,
-    "from_account_name": fields.String,
-    "name": fields.String,
-    "summary": fields.String(attribute="summary_or_query"),
-    "read_at": TimestampField,
-    "created_at": TimestampField,
-    "updated_at": TimestampField,
-    "annotated": fields.Boolean,
-    "model_config": fields.Nested(simple_model_config_fields),
-    "message_count": fields.Integer,
-    "user_feedback_stats": fields.Nested(feedback_stat_fields),
-    "admin_feedback_stats": fields.Nested(feedback_stat_fields),
-    "status_count": fields.Nested(status_count_fields),
-}
-
-conversation_with_summary_pagination_fields = {
-    "page": fields.Integer,
-    "limit": fields.Integer(attribute="per_page"),
-    "total": fields.Integer,
-    "has_more": fields.Boolean(attribute="has_next"),
-    "data": fields.List(fields.Nested(conversation_with_summary_fields), attribute="items"),
-}
-
-conversation_detail_fields = {
-    "id": fields.String,
-    "status": fields.String,
-    "from_source": fields.String,
-    "from_end_user_id": fields.String,
-    "from_account_id": fields.String,
-    "created_at": TimestampField,
-    "updated_at": TimestampField,
-    "annotated": fields.Boolean,
-    "introduction": fields.String,
-    "model_config": fields.Nested(model_config_fields),
-    "message_count": fields.Integer,
-    "user_feedback_stats": fields.Nested(feedback_stat_fields),
-    "admin_feedback_stats": fields.Nested(feedback_stat_fields),
-}
-
-simple_conversation_fields = {
-    "id": fields.String,
-    "name": fields.String,
-    "inputs": FilesContainedField,
-    "status": fields.String,
-    "introduction": fields.String,
-    "created_at": TimestampField,
-    "updated_at": TimestampField,
-}
-
-conversation_delete_fields = {
-    "result": fields.String,
-}
-
-conversation_infinite_scroll_pagination_fields = {
-    "limit": fields.Integer,
-    "has_more": fields.Boolean,
-    "data": fields.List(fields.Nested(simple_conversation_fields)),
-}
+    @field_validator("transfer_method", mode="before")
+    @classmethod
+    def _normalize_transfer_method(cls, value: object) -> str:
+        if isinstance(value, str):
+            return value
+        return str(value)
 
 
-def build_conversation_infinite_scroll_pagination_model(api_or_ns: Api | Namespace):
-    """Build the conversation infinite scroll pagination model for the API or Namespace."""
-    simple_conversation_model = build_simple_conversation_model(api_or_ns)
+class SimpleConversation(ResponseModel):
+    id: str
+    name: str
+    inputs: dict[str, JSONValue]
+    status: str
+    introduction: str | None = None
+    created_at: int | None = None
+    updated_at: int | None = None
 
-    copied_fields = conversation_infinite_scroll_pagination_fields.copy()
-    copied_fields["data"] = fields.List(fields.Nested(simple_conversation_model))
-    return api_or_ns.model("ConversationInfiniteScrollPagination", copied_fields)
+    @field_validator("inputs", mode="before")
+    @classmethod
+    def _normalize_inputs(cls, value: JSONValue) -> JSONValue:
+        return format_files_contained(value)
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        if isinstance(value, datetime):
+            return to_timestamp(value)
+        return value
 
 
-def build_conversation_delete_model(api_or_ns: Api | Namespace):
-    """Build the conversation delete model for the API or Namespace."""
-    return api_or_ns.model("ConversationDelete", conversation_delete_fields)
+class ConversationInfiniteScrollPagination(ResponseModel):
+    limit: int
+    has_more: bool
+    data: list[SimpleConversation]
 
 
-def build_simple_conversation_model(api_or_ns: Api | Namespace):
-    """Build the simple conversation model for the API or Namespace."""
-    return api_or_ns.model("SimpleConversation", simple_conversation_fields)
+class ConversationDelete(ResponseModel):
+    result: str
+
+
+class ResultResponse(ResponseModel):
+    result: str
+
+
+class SimpleAccount(ResponseModel):
+    id: str
+    name: str
+    email: str
+
+
+class Feedback(ResponseModel):
+    rating: str
+    content: str | None = None
+    from_source: str
+    from_end_user_id: str | None = None
+    from_account: SimpleAccount | None = None
+
+
+class Annotation(ResponseModel):
+    id: str
+    question: str | None = None
+    content: str
+    account: SimpleAccount | None = None
+    created_at: int | None = None
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
+        if isinstance(value, datetime):
+            return to_timestamp(value)
+        return value
+
+
+class AnnotationHitHistory(ResponseModel):
+    annotation_id: str
+    annotation_create_account: SimpleAccount | None = None
+    created_at: int | None = None
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
+        if isinstance(value, datetime):
+            return to_timestamp(value)
+        return value
+
+
+class AgentThought(ResponseModel):
+    id: str
+    chain_id: str | None = None
+    message_chain_id: str | None = Field(default=None, exclude=True, validation_alias="message_chain_id")
+    message_id: str
+    position: int
+    thought: str | None = None
+    tool: str | None = None
+    tool_labels: JSONValue
+    tool_input: str | None = None
+    created_at: int | None = None
+    observation: str | None = None
+    files: list[str]
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
+        if isinstance(value, datetime):
+            return to_timestamp(value)
+        return value
+
+    @model_validator(mode="after")
+    def _fallback_chain_id(self):
+        if self.chain_id is None and self.message_chain_id:
+            self.chain_id = self.message_chain_id
+        return self
+
+
+class MessageDetail(ResponseModel):
+    id: str
+    conversation_id: str
+    inputs: dict[str, JSONValue]
+    query: str
+    message: JSONValue
+    message_tokens: int
+    answer: str
+    answer_tokens: int
+    provider_response_latency: float
+    from_source: str
+    from_end_user_id: str | None = None
+    from_account_id: str | None = None
+    feedbacks: list[Feedback]
+    workflow_run_id: str | None = None
+    annotation: Annotation | None = None
+    annotation_hit_history: AnnotationHitHistory | None = None
+    created_at: int | None = None
+    agent_thoughts: list[AgentThought]
+    message_files: list[MessageFile]
+    metadata: JSONValue
+    status: str
+    error: str | None = None
+    parent_message_id: str | None = None
+
+    @field_validator("inputs", mode="before")
+    @classmethod
+    def _normalize_inputs(cls, value: JSONValue) -> JSONValue:
+        return format_files_contained(value)
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
+        if isinstance(value, datetime):
+            return to_timestamp(value)
+        return value
+
+
+class FeedbackStat(ResponseModel):
+    like: int
+    dislike: int
+
+
+class StatusCount(ResponseModel):
+    success: int
+    failed: int
+    partial_success: int
+
+
+class ModelConfig(ResponseModel):
+    opening_statement: str | None = None
+    suggested_questions: JSONValue | None = None
+    model: JSONValue | None = None
+    user_input_form: JSONValue | None = None
+    pre_prompt: str | None = None
+    agent_mode: JSONValue | None = None
+
+
+class SimpleModelConfig(ResponseModel):
+    model: JSONValue | None = None
+    pre_prompt: str | None = None
+
+
+class SimpleMessageDetail(ResponseModel):
+    inputs: dict[str, JSONValue]
+    query: str
+    message: str
+    answer: str
+
+    @field_validator("inputs", mode="before")
+    @classmethod
+    def _normalize_inputs(cls, value: JSONValue) -> JSONValue:
+        return format_files_contained(value)
+
+
+class Conversation(ResponseModel):
+    id: str
+    status: str
+    from_source: str
+    from_end_user_id: str | None = None
+    from_end_user_session_id: str | None = None
+    from_account_id: str | None = None
+    from_account_name: str | None = None
+    read_at: int | None = None
+    created_at: int | None = None
+    updated_at: int | None = None
+    annotation: Annotation | None = None
+    model_config_: SimpleModelConfig | None = Field(default=None, alias="model_config")
+    user_feedback_stats: FeedbackStat | None = None
+    admin_feedback_stats: FeedbackStat | None = None
+    message: SimpleMessageDetail | None = None
+
+
+class ConversationPagination(ResponseModel):
+    page: int
+    limit: int
+    total: int
+    has_more: bool
+    data: list[Conversation]
+
+
+class ConversationMessageDetail(ResponseModel):
+    id: str
+    status: str
+    from_source: str
+    from_end_user_id: str | None = None
+    from_account_id: str | None = None
+    created_at: int | None = None
+    model_config_: ModelConfig | None = Field(default=None, alias="model_config")
+    message: MessageDetail | None = None
+
+
+class ConversationWithSummary(ResponseModel):
+    id: str
+    status: str
+    from_source: str
+    from_end_user_id: str | None = None
+    from_end_user_session_id: str | None = None
+    from_account_id: str | None = None
+    from_account_name: str | None = None
+    name: str
+    summary: str
+    read_at: int | None = None
+    created_at: int | None = None
+    updated_at: int | None = None
+    annotated: bool
+    model_config_: SimpleModelConfig | None = Field(default=None, alias="model_config")
+    message_count: int
+    user_feedback_stats: FeedbackStat | None = None
+    admin_feedback_stats: FeedbackStat | None = None
+    status_count: StatusCount | None = None
+
+
+class ConversationWithSummaryPagination(ResponseModel):
+    page: int
+    limit: int
+    total: int
+    has_more: bool
+    data: list[ConversationWithSummary]
+
+
+class ConversationDetail(ResponseModel):
+    id: str
+    status: str
+    from_source: str
+    from_end_user_id: str | None = None
+    from_account_id: str | None = None
+    created_at: int | None = None
+    updated_at: int | None = None
+    annotated: bool
+    introduction: str | None = None
+    model_config_: ModelConfig | None = Field(default=None, alias="model_config")
+    message_count: int
+    user_feedback_stats: FeedbackStat | None = None
+    admin_feedback_stats: FeedbackStat | None = None
+
+
+def to_timestamp(value: datetime | None) -> int | None:
+    if value is None:
+        return None
+    return int(value.timestamp())
+
+
+def format_files_contained(value: JSONValue) -> JSONValue:
+    if isinstance(value, File):
+        return value.model_dump()
+    if isinstance(value, dict):
+        return {k: format_files_contained(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [format_files_contained(v) for v in value]
+    return value
+
+
+def message_text(value: JSONValue) -> str:
+    if isinstance(value, list) and value:
+        first = value[0]
+        if isinstance(first, dict):
+            text = first.get("text")
+            if isinstance(text, str):
+                return text
+    return ""
+
+
+def extract_model_config(value: object | None) -> dict[str, JSONValue]:
+    if value is None:
+        return {}
+    if isinstance(value, dict):
+        return value
+    if hasattr(value, "to_dict"):
+        return value.to_dict()
+    return {}

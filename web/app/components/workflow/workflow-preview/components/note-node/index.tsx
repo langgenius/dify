@@ -51,7 +51,7 @@ const NoteNode = ({
             >
               <NoteEditor
                 containerElement={ref.current}
-                placeholder={t('workflow.nodes.note.editor.placeholder') || ''}
+                placeholder={t('nodes.note.editor.placeholder', { ns: 'workflow' }) || ''}
               />
             </div>
           </div>

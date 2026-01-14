@@ -73,7 +73,7 @@ const ApiInput: FC<Props> = ({
         nodesOutputVars={availableVars}
         availableNodes={availableNodesWithParent}
         onFocusChange={setIsFocus}
-        placeholder={!readonly ? t('workflow.nodes.http.apiPlaceholder')! : ''}
+        placeholder={!readonly ? t('nodes.http.apiPlaceholder', { ns: 'workflow' })! : ''}
         placeholderClassName="!leading-[21px]"
       />
     </div>

@@ -3,10 +3,8 @@ import type {
   DataSet,
   SelectedDatasetsMode,
 } from '@/models/datasets'
-import {
-  uniq,
-  xorBy,
-} from 'es-toolkit/compat'
+import { uniq } from 'es-toolkit/array'
+import { xorBy } from 'es-toolkit/compat'
 import { DATASET_DEFAULT } from '@/config'
 import {
   DEFAULT_WEIGHTED_SCORE,

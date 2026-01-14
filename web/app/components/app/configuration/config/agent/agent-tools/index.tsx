@@ -152,11 +152,11 @@ const AgentTools: FC = () => {
         noBodySpacing={tools.length === 0}
         title={(
           <div className="flex items-center">
-            <div className="mr-1">{t('appDebug.agent.tools.name')}</div>
+            <div className="mr-1">{t('agent.tools.name', { ns: 'appDebug' })}</div>
             <Tooltip
               popupContent={(
                 <div className="w-[180px]">
-                  {t('appDebug.agent.tools.description')}
+                  {t('agent.tools.description', { ns: 'appDebug' })}
                 </div>
               )}
             />
@@ -169,7 +169,7 @@ const AgentTools: FC = () => {
               /
               {tools.length}
 &nbsp;
-              {t('appDebug.agent.tools.enabled')}
+              {t('agent.tools.enabled', { ns: 'appDebug' })}
             </div>
             {tools.length < MAX_TOOLS_NUM && (
               <>
@@ -220,8 +220,8 @@ const AgentTools: FC = () => {
                       popupContent={(
                         <div className="w-[180px]">
                           <div className="mb-1.5 text-text-secondary">{item.tool_name}</div>
-                          <div className="mb-1.5 text-text-tertiary">{t('tools.toolNameUsageTip')}</div>
-                          <div className="cursor-pointer text-text-accent" onClick={() => copy(item.tool_name)}>{t('tools.copyToolName')}</div>
+                          <div className="mb-1.5 text-text-tertiary">{t('toolNameUsageTip', { ns: 'tools' })}</div>
+                          <div className="cursor-pointer text-text-accent" onClick={() => copy(item.tool_name)}>{t('copyToolName', { ns: 'tools' })}</div>
                         </div>
                       )}
                     >
@@ -238,7 +238,7 @@ const AgentTools: FC = () => {
                 {item.isDeleted && (
                   <div className="mr-2 flex items-center">
                     <Tooltip
-                      popupContent={t('tools.toolRemoved')}
+                      popupContent={t('toolRemoved', { ns: 'tools' })}
                     >
                       <div className="mr-1 cursor-pointer rounded-md p-1 hover:bg-black/5">
                         <AlertTriangle className="h-4 w-4 text-[#F79009]" />
@@ -264,7 +264,7 @@ const AgentTools: FC = () => {
                   <div className="mr-2 hidden items-center gap-1 group-hover:flex">
                     {!item.notAuthor && (
                       <Tooltip
-                        popupContent={t('tools.setBuiltInTools.infoAndSetting')}
+                        popupContent={t('setBuiltInTools.infoAndSetting', { ns: 'tools' })}
                         needsDelay={false}
                       >
                         <div
@@ -319,7 +319,7 @@ const AgentTools: FC = () => {
                         setIsShowSettingTool(true)
                       }}
                     >
-                      {t('tools.notAuthorized')}
+                      {t('notAuthorized', { ns: 'tools' })}
                       <Indicator className="ml-2" color="orange" />
                     </Button>
                   )}

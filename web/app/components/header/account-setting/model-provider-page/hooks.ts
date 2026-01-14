@@ -16,14 +16,13 @@ import {
   useMemo,
   useState,
 } from 'react'
-import { useContext } from 'use-context-selector'
 import {
   useMarketplacePlugins,
   useMarketplacePluginsByCollectionId,
 } from '@/app/components/plugins/marketplace/hooks'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import I18n from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import {
@@ -70,7 +69,7 @@ export const useSystemDefaultModelAndModelList: UseDefaultModelAndModelList = (
 }
 
 export const useLanguage = () => {
-  const { locale } = useContext(I18n)
+  const locale = useLocale()
   return locale.replace('-', '_')
 }
 
@@ -276,8 +275,8 @@ export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText:
         category: PluginCategoryEnum.model,
         exclude,
         type: 'plugin',
-        sortBy: 'install_count',
-        sortOrder: 'DESC',
+        sort_by: 'install_count',
+        sort_order: 'DESC',
       })
     }
     else {
@@ -285,10 +284,10 @@ export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText:
         query: '',
         category: PluginCategoryEnum.model,
         type: 'plugin',
-        pageSize: 1000,
+        page_size: 1000,
         exclude,
-        sortBy: 'install_count',
-        sortOrder: 'DESC',
+        sort_by: 'install_count',
+        sort_order: 'DESC',
       })
     }
   }, [queryPlugins, queryPluginsWithDebounced, searchText, exclude])

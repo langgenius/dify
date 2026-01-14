@@ -25,18 +25,18 @@ const ErrorHandleTypeSelector = ({
   const options = [
     {
       value: ErrorHandleTypeEnum.none,
-      label: t('workflow.nodes.common.errorHandle.none.title'),
-      description: t('workflow.nodes.common.errorHandle.none.desc'),
+      label: t('nodes.common.errorHandle.none.title', { ns: 'workflow' }),
+      description: t('nodes.common.errorHandle.none.desc', { ns: 'workflow' }),
     },
     {
       value: ErrorHandleTypeEnum.defaultValue,
-      label: t('workflow.nodes.common.errorHandle.defaultValue.title'),
-      description: t('workflow.nodes.common.errorHandle.defaultValue.desc'),
+      label: t('nodes.common.errorHandle.defaultValue.title', { ns: 'workflow' }),
+      description: t('nodes.common.errorHandle.defaultValue.desc', { ns: 'workflow' }),
     },
     {
       value: ErrorHandleTypeEnum.failBranch,
-      label: t('workflow.nodes.common.errorHandle.failBranch.title'),
-      description: t('workflow.nodes.common.errorHandle.failBranch.desc'),
+      label: t('nodes.common.errorHandle.failBranch.title', { ns: 'workflow' }),
+      description: t('nodes.common.errorHandle.failBranch.desc', { ns: 'workflow' }),
     },
   ]
   const selectedOption = options.find(option => option.value === value)

@@ -4,7 +4,7 @@ import { BlockClassificationEnum } from '@/app/components/workflow/block-selecto
 import { BlockEnum } from '@/app/components/workflow/types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
 
-const i18nPrefix = 'workflow.errorMsg'
+const i18nPrefix = 'errorMsg'
 
 const metaData = genNodeMetaData({
   classification: BlockClassificationEnum.Transform,
@@ -23,7 +23,7 @@ const nodeDefault: NodeDefault<DocExtractorNodeType> = {
     const { variable_selector: variable } = payload
 
     if (!errorMessages && !variable?.length)
-      errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.assigner.assignedVariable') })
+      errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t('nodes.assigner.assignedVariable', { ns: 'workflow' }) })
 
     return {
       isValid: !errorMessages,

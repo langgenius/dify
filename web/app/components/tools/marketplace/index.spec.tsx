@@ -14,13 +14,11 @@ import Marketplace from './index'
 
 const listRenderSpy = vi.fn()
 vi.mock('@/app/components/plugins/marketplace/list', () => ({
-  __esModule: true,
   default: (props: {
     marketplaceCollections: unknown[]
     marketplaceCollectionPluginsMap: Record<string, unknown[]>
     plugins?: unknown[]
     showInstallButton?: boolean
-    locale: string
   }) => {
     listRenderSpy(props)
     return <div data-testid="marketplace-list" />
@@ -40,12 +38,7 @@ vi.mock('@/service/use-tools', () => ({
 }))
 
 vi.mock('@/utils/var', () => ({
-  __esModule: true,
   getMarketplaceUrl: vi.fn(() => 'https://marketplace.test/market'),
-}))
-
-vi.mock('@/i18n-config', () => ({
-  getLocaleOnClient: () => 'en',
 }))
 
 vi.mock('next-themes', () => ({
@@ -150,7 +143,6 @@ describe('Marketplace', () => {
       expect(screen.getByTestId('marketplace-list')).toBeInTheDocument()
       expect(listRenderSpy).toHaveBeenCalledWith(expect.objectContaining({
         showInstallButton: true,
-        locale: 'en',
       }))
     })
   })

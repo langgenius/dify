@@ -19,7 +19,7 @@ import StrategyPicker from './strategy-picker'
 import { AUTO_UPDATE_MODE, AUTO_UPDATE_STRATEGY } from './types'
 import { convertLocalSecondsToUTCDaySeconds, convertUTCDaySecondsToLocalSeconds, dayjsToTimeOfDay, timeOfDayToDayjs } from './utils'
 
-const i18nPrefix = 'plugin.autoUpdate'
+const i18nPrefix = 'autoUpdate'
 
 type Props = {
   payload: AutoUpdateConfig
@@ -60,9 +60,9 @@ const AutoUpdateSetting: FC<Props> = ({
   const strategyDescription = useMemo(() => {
     switch (strategy_setting) {
       case AUTO_UPDATE_STRATEGY.fixOnly:
-        return t(`${i18nPrefix}.strategy.fixOnly.selectedDescription`)
+        return t(`${i18nPrefix}.strategy.fixOnly.selectedDescription`, { ns: 'plugin' })
       case AUTO_UPDATE_STRATEGY.latest:
-        return t(`${i18nPrefix}.strategy.latest.selectedDescription`)
+        return t(`${i18nPrefix}.strategy.latest.selectedDescription`, { ns: 'plugin' })
       default:
         return ''
     }
@@ -124,19 +124,19 @@ const AutoUpdateSetting: FC<Props> = ({
   return (
     <div className="self-stretch px-6">
       <div className="my-3 flex items-center">
-        <div className="system-xs-medium-uppercase text-text-tertiary">{t(`${i18nPrefix}.updateSettings`)}</div>
+        <div className="system-xs-medium-uppercase text-text-tertiary">{t(`${i18nPrefix}.updateSettings`, { ns: 'plugin' })}</div>
         <div className="ml-2 h-px grow bg-divider-subtle"></div>
       </div>
 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <Label label={t(`${i18nPrefix}.automaticUpdates`)} description={strategyDescription} />
+          <Label label={t(`${i18nPrefix}.automaticUpdates`, { ns: 'plugin' })} description={strategyDescription} />
           <StrategyPicker value={strategy_setting} onChange={handleChange('strategy_setting')} />
         </div>
         {strategy_setting !== AUTO_UPDATE_STRATEGY.disabled && (
           <>
             <div className="flex items-center justify-between">
-              <Label label={t(`${i18nPrefix}.updateTime`)} />
+              <Label label={t(`${i18nPrefix}.updateTime`, { ns: 'plugin' })} />
               <div className="flex flex-col justify-start">
                 <TimePicker
                   value={timeOfDayToDayjs(convertUTCDaySecondsToLocalSeconds(upgrade_time_of_day, timezone!))}
@@ -144,7 +144,7 @@ const AutoUpdateSetting: FC<Props> = ({
                   onChange={v => handleChange('upgrade_time_of_day')(convertLocalSecondsToUTCDaySeconds(dayjsToTimeOfDay(v), timezone!))}
                   onClear={() => handleChange('upgrade_time_of_day')(convertLocalSecondsToUTCDaySeconds(0, timezone!))}
                   popupClassName="z-[99]"
-                  title={t(`${i18nPrefix}.updateTime`)}
+                  title={t(`${i18nPrefix}.updateTime`, { ns: 'plugin' })}
                   minuteFilter={minuteFilter}
                   renderTrigger={renderTimePickerTrigger}
                   placement="bottom-end"
@@ -152,6 +152,7 @@ const AutoUpdateSetting: FC<Props> = ({
                 <div className="body-xs-regular mt-1 text-right text-text-tertiary">
                   <Trans
                     i18nKey={`${i18nPrefix}.changeTimezone`}
+                    ns="plugin"
                     components={{
                       setTimezone: <SettingTimeZone />,
                     }}
@@ -160,12 +161,12 @@ const AutoUpdateSetting: FC<Props> = ({
               </div>
             </div>
             <div>
-              <Label label={t(`${i18nPrefix}.specifyPluginsToUpdate`)} />
+              <Label label={t(`${i18nPrefix}.specifyPluginsToUpdate`, { ns: 'plugin' })} />
               <div className="mt-1 flex w-full items-start justify-between gap-2">
                 {[AUTO_UPDATE_MODE.update_all, AUTO_UPDATE_MODE.exclude, AUTO_UPDATE_MODE.partial].map(option => (
                   <OptionCard
                     key={option}
-                    title={t(`${i18nPrefix}.upgradeMode.${option}`)}
+                    title={t(`${i18nPrefix}.upgradeMode.${option}`, { ns: 'plugin' })}
                     onSelect={() => handleChange('upgrade_mode')(option)}
                     selected={upgrade_mode === option}
                     className="flex-1"

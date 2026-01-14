@@ -27,7 +27,7 @@ const Explore: FC<IExploreProps> = ({
   const { t } = useTranslation()
   const { data: membersData } = useMembers()
 
-  useDocumentTitle(t('common.menus.explore'))
+  useDocumentTitle(t('menus.explore', { ns: 'common' }))
 
   useEffect(() => {
     if (!membersData?.accounts)

@@ -1,4 +1,5 @@
 import type { InputVar } from '@/app/components/workflow/types'
+import type { I18nKeysByPrefix } from '@/types/i18n'
 import {
   CONTEXT_PLACEHOLDER_TEXT,
   HISTORY_PLACEHOLDER_TEXT,
@@ -49,7 +50,9 @@ export const getNewVarInWorkflow = (key: string, type = InputVarType.textInput):
   }
 }
 
-export const checkKey = (key: string, canBeEmpty?: boolean, _keys?: string[]) => {
+export type VarKeyErrorMessageKey = I18nKeysByPrefix<'appDebug', 'varKeyError.'>
+
+export const checkKey = (key: string, canBeEmpty?: boolean, _keys?: string[]): true | VarKeyErrorMessageKey => {
   if (key.length === 0 && !canBeEmpty)
     return 'canNoBeEmpty'
 
@@ -68,10 +71,14 @@ export const checkKey = (key: string, canBeEmpty?: boolean, _keys?: string[]) =>
   return 'notValid'
 }
 
-export const checkKeys = (keys: string[], canBeEmpty?: boolean) => {
+type CheckKeysResult
+  = | { isValid: true, errorKey: '', errorMessageKey: '' }
+    | { isValid: false, errorKey: string, errorMessageKey: VarKeyErrorMessageKey }
+
+export const checkKeys = (keys: string[], canBeEmpty?: boolean): CheckKeysResult => {
   let isValid = true
   let errorKey = ''
-  let errorMessageKey = ''
+  let errorMessageKey: VarKeyErrorMessageKey | '' = ''
   keys.forEach((key) => {
     if (!isValid)
       return
@@ -83,7 +90,7 @@ export const checkKeys = (keys: string[], canBeEmpty?: boolean) => {
       errorMessageKey = res
     }
   })
-  return { isValid, errorKey, errorMessageKey }
+  return { isValid, errorKey, errorMessageKey } as CheckKeysResult
 }
 
 export const hasDuplicateStr = (strArr: string[]) => {

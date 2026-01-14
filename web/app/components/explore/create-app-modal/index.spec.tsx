@@ -17,8 +17,12 @@ vi.mock('react-i18next', () => ({
         return override
       if (options?.returnObjects)
         return [`${key}-feature-1`, `${key}-feature-2`]
-      if (options)
-        return `${key}:${JSON.stringify(options)}`
+      if (options) {
+        const { ns, ...rest } = options
+        const prefix = ns ? `${ns}.` : ''
+        const suffix = Object.keys(rest).length > 0 ? `:${JSON.stringify(rest)}` : ''
+        return `${prefix}${key}${suffix}`
+      }
       return key
     },
     i18n: {
@@ -39,7 +43,6 @@ vi.mock('emoji-mart', () => ({
   SearchIndex: { search: vi.fn().mockResolvedValue([]) },
 }))
 vi.mock('@emoji-mart/data', () => ({
-  __esModule: true,
   default: {
     categories: [
       { id: 'people', emojis: ['😀'] },
@@ -192,8 +195,8 @@ describe('CreateAppModal', () => {
 
     it('should fall back to empty placeholders when translations return empty string', () => {
       mockTranslationOverrides = {
-        'app.newApp.appNamePlaceholder': '',
-        'app.newApp.appDescriptionPlaceholder': '',
+        'newApp.appNamePlaceholder': '',
+        'newApp.appDescriptionPlaceholder': '',
       }
 
       setup()

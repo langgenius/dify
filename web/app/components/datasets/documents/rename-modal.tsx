@@ -41,7 +41,7 @@ const RenameModal: FC<Props> = ({
         documentId,
         name: newName,
       })
-      Toast.notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       onSaved()
       onClose()
     }
@@ -56,11 +56,11 @@ const RenameModal: FC<Props> = ({
 
   return (
     <Modal
-      title={t('datasetDocuments.list.table.rename')}
+      title={t('list.table.rename', { ns: 'datasetDocuments' })}
       isShow
       onClose={onClose}
     >
-      <div className="mt-6 text-sm font-medium leading-[21px] text-text-primary">{t('datasetDocuments.list.table.name')}</div>
+      <div className="mt-6 text-sm font-medium leading-[21px] text-text-primary">{t('list.table.name', { ns: 'datasetDocuments' })}</div>
       <Input
         className="mt-2 h-10"
         value={newName}
@@ -68,8 +68,8 @@ const RenameModal: FC<Props> = ({
       />
 
       <div className="mt-10 flex justify-end">
-        <Button className="mr-2 shrink-0" onClick={onClose}>{t('common.operation.cancel')}</Button>
-        <Button variant="primary" className="shrink-0" onClick={handleSave} loading={saveLoading}>{t('common.operation.save')}</Button>
+        <Button className="mr-2 shrink-0" onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
+        <Button variant="primary" className="shrink-0" onClick={handleSave} loading={saveLoading}>{t('operation.save', { ns: 'common' })}</Button>
       </div>
     </Modal>
   )

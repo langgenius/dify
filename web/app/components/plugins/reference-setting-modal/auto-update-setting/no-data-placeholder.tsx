@@ -17,7 +17,7 @@ const NoDataPlaceholder: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const icon = noPlugins ? (<Group className="size-6 text-text-quaternary" />) : (<SearchMenu className="size-8 text-text-tertiary" />)
-  const text = t(`plugin.autoUpdate.noPluginPlaceholder.${noPlugins ? 'noInstalled' : 'noFound'}`)
+  const text = t(`autoUpdate.noPluginPlaceholder.${noPlugins ? 'noInstalled' : 'noFound'}`, { ns: 'plugin' })
   return (
     <div className={cn('flex items-center justify-center', className)}>
       <div className="flex flex-col items-center">

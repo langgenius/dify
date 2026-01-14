@@ -131,8 +131,9 @@ export const TONE_LIST = [
   {
     id: 4,
     name: 'Custom',
+    config: undefined,
   },
-]
+] as const
 
 export const DEFAULT_CHAT_PROMPT_CONFIG = {
   prompt: [
@@ -164,6 +165,13 @@ const COOKIE_DOMAIN = getStringConfig(
   DatasetAttr.DATA_PUBLIC_COOKIE_DOMAIN,
   '',
 ).trim()
+
+export const BATCH_CONCURRENCY = getNumberConfig(
+  process.env.NEXT_PUBLIC_BATCH_CONCURRENCY,
+  DatasetAttr.DATA_PUBLIC_BATCH_CONCURRENCY,
+  5, // default
+)
+
 export const CSRF_COOKIE_NAME = () => {
   if (COOKIE_DOMAIN)
     return 'csrf_token'

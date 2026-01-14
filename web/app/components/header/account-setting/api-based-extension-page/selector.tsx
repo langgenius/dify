@@ -63,7 +63,7 @@ const ApiBasedExtensionSelector: FC<ApiBasedExtensionSelectorProps> = ({
               )
             : (
                 <div className="flex h-9 cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal pl-3 pr-2.5 text-sm text-text-quaternary">
-                  {t('common.apiBasedExtension.selector.placeholder')}
+                  {t('apiBasedExtension.selector.placeholder', { ns: 'common' })}
                   <RiArrowDownSLine className={`h-4 w-4 text-text-secondary ${!open && 'opacity-60'}`} />
                 </div>
               )
@@ -74,7 +74,7 @@ const ApiBasedExtensionSelector: FC<ApiBasedExtensionSelectorProps> = ({
           <div className="p-1">
             <div className="flex items-center justify-between px-3 pb-1 pt-2">
               <div className="text-xs font-medium text-text-tertiary">
-                {t('common.apiBasedExtension.selector.title')}
+                {t('apiBasedExtension.selector.title', { ns: 'common' })}
               </div>
               <div
                 className="flex cursor-pointer items-center text-xs text-text-accent"
@@ -83,7 +83,7 @@ const ApiBasedExtensionSelector: FC<ApiBasedExtensionSelectorProps> = ({
                   setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.API_BASED_EXTENSION })
                 }}
               >
-                {t('common.apiBasedExtension.selector.manage')}
+                {t('apiBasedExtension.selector.manage', { ns: 'common' })}
                 <ArrowUpRight className="ml-0.5 h-3 w-3" />
               </div>
             </div>
@@ -112,7 +112,7 @@ const ApiBasedExtensionSelector: FC<ApiBasedExtensionSelectorProps> = ({
               }}
             >
               <RiAddLine className="mr-2 h-4 w-4" />
-              {t('common.operation.add')}
+              {t('operation.add', { ns: 'common' })}
             </div>
           </div>
         </div>

@@ -2,8 +2,7 @@
 import { RiCloseLine, RiListUnordered } from '@remixicon/react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
-import I18n from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { LanguagesSupported } from '@/i18n-config/language'
 import { AppModeEnum, Theme } from '@/types/app'
@@ -26,7 +25,7 @@ type IDocProps = {
 }
 
 const Doc = ({ appDetail }: IDocProps) => {
-  const { locale } = useContext(I18n)
+  const locale = useLocale()
   const { t } = useTranslation()
   const [toc, setToc] = useState<Array<{ href: string, text: string }>>([])
   const [isTocExpanded, setIsTocExpanded] = useState(false)
@@ -166,7 +165,7 @@ const Doc = ({ appDetail }: IDocProps) => {
               <nav className="toc flex max-h-[calc(100vh-150px)] w-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-background-default-hover shadow-xl">
                 <div className="relative z-10 flex items-center justify-between border-b border-components-panel-border-subtle bg-background-default-hover px-4 py-2.5">
                   <span className="text-xs font-medium uppercase tracking-wide text-text-tertiary">
-                    {t('appApi.develop.toc')}
+                    {t('develop.toc', { ns: 'appApi' })}
                   </span>
                   <button
                     type="button"
@@ -185,7 +184,7 @@ const Doc = ({ appDetail }: IDocProps) => {
                   {toc.length === 0
                     ? (
                         <div className="px-2 py-8 text-center text-xs text-text-quaternary">
-                          {t('appApi.develop.noContent')}
+                          {t('develop.noContent', { ns: 'appApi' })}
                         </div>
                       )
                     : (

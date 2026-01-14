@@ -1,0 +1,19 @@
+{
+  "connect": "Poveži se z",
+  "continue": "Nadaljuj",
+  "error.authAppInfoFetchFailed": "Pridobivanje informacij o aplikaciji za avtorizacijo ni uspelo",
+  "error.authorizeFailed": "Avtentikacija je spodletela",
+  "error.invalidParams": "Neveljavni parametri",
+  "login": "Prijava",
+  "scopes.avatar": "Avatar",
+  "scopes.email": "Email",
+  "scopes.languagePreference": "Jezikovna prednost",
+  "scopes.name": "Ime",
+  "scopes.timezone": "Časovni pas",
+  "switchAccount": "Preklopi račun",
+  "tips.common": "Soočamo se z vašo zasebnostjo in te informacije bomo uporabili le za izboljšanje vaših izkušenj z našimi orodji za razvijalce.",
+  "tips.loggedIn": "Ta aplikacija želi dostopati do naslednjih informacij iz vašega računa Dify Cloud.",
+  "tips.needLogin": "Prosimo, prijavite se za avtorizacijo",
+  "tips.notLoggedIn": "Ta aplikacija želi dostopati do vašega Dify Cloud računa",
+  "unknownApp": "Nepoznana aplikacija"
+}

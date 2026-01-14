@@ -66,7 +66,7 @@ const Crawling = ({
   return (
     <div className={cn('mt-2 flex flex-col gap-y-2 pt-2', className)}>
       <div className="system-sm-medium text-text-primary">
-        {t('datasetCreation.stepOne.website.totalPageScraped')}
+        {t('stepOne.website.totalPageScraped', { ns: 'datasetCreation' })}
         {' '}
         {crawledNum}
         /

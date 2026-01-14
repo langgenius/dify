@@ -1,0 +1,19 @@
+{
+  "connect": "Conectează la",
+  "continue": "Continuați",
+  "error.authAppInfoFetchFailed": "Nu s-au putut obține informațiile aplicației pentru autorizare",
+  "error.authorizeFailed": "Autorizarea a eșuat",
+  "error.invalidParams": "Parametrii invalizi",
+  "login": "Conectare",
+  "scopes.avatar": "Avatar",
+  "scopes.email": "Email",
+  "scopes.languagePreference": "Preferință lingvistică",
+  "scopes.name": "Nume",
+  "scopes.timezone": "Fus orar",
+  "switchAccount": "Schimbă contul",
+  "tips.common": "Respectăm confidențialitatea dvs. și vom folosi aceste informații doar pentru a îmbunătăți experiența dvs. cu instrumentele noastre pentru dezvoltatori.",
+  "tips.loggedIn": "Această aplicație vrea să acceseze următoarele informații din contul tău Dify Cloud.",
+  "tips.needLogin": "Vă rugăm să vă conectați pentru a autoriza",
+  "tips.notLoggedIn": "Această aplicație vrea să acceseze contul tău Dify Cloud",
+  "unknownApp": "Aplicație necunoscută"
+}

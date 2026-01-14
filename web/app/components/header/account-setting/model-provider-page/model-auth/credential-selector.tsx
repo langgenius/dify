@@ -42,7 +42,7 @@ const CredentialSelector = ({
     handleSelect({
       credential_id: '__add_new_credential',
       addNewCredential: true,
-      credential_name: t('common.modelProvider.auth.addNewModelCredential'),
+      credential_name: t('modelProvider.auth.addNewModelCredential', { ns: 'common' }),
     })
   }, [handleSelect, t])
 
@@ -71,7 +71,7 @@ const CredentialSelector = ({
           }
           {
             !selectedCredential && (
-              <div className="system-sm-regular grow truncate text-components-input-text-placeholder">{t('common.modelProvider.auth.selectModelCredential')}</div>
+              <div className="system-sm-regular grow truncate text-components-input-text-placeholder">{t('modelProvider.auth.selectModelCredential', { ns: 'common' })}</div>
             )
           }
           <RiArrowDownSLine className="h-4 w-4 text-text-quaternary" />
@@ -102,7 +102,7 @@ const CredentialSelector = ({
                 onClick={handleAddNewCredential}
               >
                 <RiAddLine className="mr-1 h-4 w-4" />
-                {t('common.modelProvider.auth.addNewModelCredential')}
+                {t('modelProvider.auth.addNewModelCredential', { ns: 'common' })}
               </div>
             )
           }

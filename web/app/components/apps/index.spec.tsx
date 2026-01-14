@@ -10,7 +10,6 @@ let educationInitCalls: number = 0
 
 // Mock useDocumentTitle hook
 vi.mock('@/hooks/use-document-title', () => ({
-  __esModule: true,
   default: (title: string) => {
     documentTitleCalls.push(title)
   },
@@ -25,7 +24,6 @@ vi.mock('@/app/education-apply/hooks', () => ({
 
 // Mock List component
 vi.mock('./list', () => ({
-  __esModule: true,
   default: () => {
     return React.createElement('div', { 'data-testid': 'apps-list' }, 'Apps List')
   },

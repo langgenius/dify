@@ -9,7 +9,6 @@ import {
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import ActionButton from '@/app/components/base/action-button'
 import Button from '@/app/components/base/button'
 import Drawer from '@/app/components/base/drawer'
@@ -26,7 +25,7 @@ import {
 import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
 import { CollectionType } from '@/app/components/tools/types'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
-import I18n from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import { getLanguage } from '@/i18n-config/language'
 import { fetchBuiltInToolList, fetchCustomToolList, fetchModelToolList, fetchWorkflowToolList } from '@/service/tools'
 import { cn } from '@/utils/classnames'
@@ -58,7 +57,7 @@ const SettingBuiltInTool: FC<Props> = ({
   credentialId,
   onAuthorizationItemClick,
 }) => {
-  const { locale } = useContext(I18n)
+  const locale = useLocale()
   const language = getLanguage(locale)
   const { t } = useTranslation()
   const passedTools = (collection as ToolWithProvider).tools
@@ -115,13 +114,13 @@ const SettingBuiltInTool: FC<Props> = ({
 
   const getType = (type: string) => {
     if (type === 'number-input')
-      return t('tools.setBuiltInTools.number')
+      return t('setBuiltInTools.number', { ns: 'tools' })
     if (type === 'text-input')
-      return t('tools.setBuiltInTools.string')
+      return t('setBuiltInTools.string', { ns: 'tools' })
     if (type === 'checkbox')
       return 'boolean'
     if (type === 'file')
-      return t('tools.setBuiltInTools.file')
+      return t('setBuiltInTools.file', { ns: 'tools' })
     return type
   }
 
@@ -137,7 +136,7 @@ const SettingBuiltInTool: FC<Props> = ({
                   {getType(item.type)}
                 </div>
                 {item.required && (
-                  <div className="system-xs-medium text-text-warning-secondary">{t('tools.setBuiltInTools.required')}</div>
+                  <div className="system-xs-medium text-text-warning-secondary">{t('setBuiltInTools.required', { ns: 'tools' })}</div>
                 )}
               </div>
               {item.human_description && (
@@ -191,7 +190,7 @@ const SettingBuiltInTool: FC<Props> = ({
                   onClick={onHide}
                 >
                   <RiArrowLeftLine className="h-4 w-4" />
-                  {t('plugin.detailPanel.operation.back')}
+                  {t('detailPanel.operation.back', { ns: 'plugin' })}
                 </div>
               )}
               <div className="flex items-center gap-1">
@@ -235,20 +234,20 @@ const SettingBuiltInTool: FC<Props> = ({
                           setCurrType(value)
                         }}
                         options={[
-                          { value: 'info', text: t('tools.setBuiltInTools.parameters')! },
-                          { value: 'setting', text: t('tools.setBuiltInTools.setting')! },
+                          { value: 'info', text: t('setBuiltInTools.parameters', { ns: 'tools' })! },
+                          { value: 'setting', text: t('setBuiltInTools.setting', { ns: 'tools' })! },
                         ]}
                       />
                     )
                   : (
-                      <div className="system-sm-semibold-uppercase p-4 pb-1 text-text-primary">{t('tools.setBuiltInTools.parameters')}</div>
+                      <div className="system-sm-semibold-uppercase p-4 pb-1 text-text-primary">{t('setBuiltInTools.parameters', { ns: 'tools' })}</div>
                     )}
                 <div className="h-0 grow overflow-y-auto px-4">
                   {isInfoActive ? infoUI : settingUI}
                   {!readonly && !isInfoActive && (
                     <div className="flex shrink-0 justify-end space-x-2 rounded-b-[10px] bg-components-panel-bg py-2">
-                      <Button className="flex h-8 items-center !px-3 !text-[13px] font-medium " onClick={onHide}>{t('common.operation.cancel')}</Button>
-                      <Button className="flex h-8 items-center !px-3 !text-[13px] font-medium" variant="primary" disabled={!isValid} onClick={() => onSave?.(tempSetting)}>{t('common.operation.save')}</Button>
+                      <Button className="flex h-8 items-center !px-3 !text-[13px] font-medium " onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
+                      <Button className="flex h-8 items-center !px-3 !text-[13px] font-medium" variant="primary" disabled={!isValid} onClick={() => onSave?.(tempSetting)}>{t('operation.save', { ns: 'common' })}</Button>
                     </div>
                   )}
                 </div>

@@ -73,14 +73,14 @@ const PlanUpgradeModal: FC<Props> = ({
         <Button
           onClick={onClose}
         >
-          {t('billing.triggerLimitModal.dismiss')}
+          {t('triggerLimitModal.dismiss', { ns: 'billing' })}
         </Button>
         <UpgradeBtn
           size="custom"
           isShort
           onClick={handleUpgrade}
           className="!h-8 !rounded-lg px-2"
-          labelKey="billing.triggerLimitModal.upgrade"
+          labelKey="triggerLimitModal.upgrade"
           loc="trigger-events-limit-modal"
         />
       </div>

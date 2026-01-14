@@ -187,7 +187,7 @@ const Template = useMemo(() => {
 
 **When**: Component directly handles API calls, data transformation, or complex async operations.
 
-**Dify Convention**: Use `@tanstack/react-query` hooks from `web/service/use-*.ts` or create custom data hooks. Project is migrating from SWR to React Query.
+**Dify Convention**: Use `@tanstack/react-query` hooks from `web/service/use-*.ts` or create custom data hooks.
 
 ```typescript
 // ❌ Before: API logic in component

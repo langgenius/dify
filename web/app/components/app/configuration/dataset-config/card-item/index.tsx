@@ -102,7 +102,7 @@ const Item: FC<ItemProps> = ({
         config.provider === 'external' && (
           <Badge
             className="shrink-0 group-hover:hidden"
-            text={t('dataset.externalTag') as string}
+            text={t('externalTag', { ns: 'dataset' }) as string}
           />
         )
       }

@@ -2,13 +2,13 @@ import type { Block } from '../types'
 import { BlockEnum } from '../types'
 import { BlockClassificationEnum } from './types'
 
-export const BLOCK_CLASSIFICATIONS: string[] = [
+export const BLOCK_CLASSIFICATIONS = [
   BlockClassificationEnum.Default,
   BlockClassificationEnum.QuestionUnderstand,
   BlockClassificationEnum.Logic,
   BlockClassificationEnum.Transform,
   BlockClassificationEnum.Utilities,
-]
+] as const
 
 export const DEFAULT_FILE_EXTENSIONS_IN_LOCAL_FILE_DATA_SOURCE = [
   'txt',
@@ -32,7 +32,7 @@ export const DEFAULT_FILE_EXTENSIONS_IN_LOCAL_FILE_DATA_SOURCE = [
   'md',
 ]
 
-export const START_BLOCKS: Block[] = [
+export const START_BLOCKS = [
   {
     classification: BlockClassificationEnum.Default,
     type: BlockEnum.Start,
@@ -51,7 +51,7 @@ export const START_BLOCKS: Block[] = [
     title: 'Webhook Trigger',
     description: 'HTTP callback trigger',
   },
-]
+] as const satisfies readonly Block[]
 
 export const ENTRY_NODE_TYPES = [
   BlockEnum.Start,
@@ -60,7 +60,7 @@ export const ENTRY_NODE_TYPES = [
   BlockEnum.TriggerPlugin,
 ] as const
 
-export const BLOCKS: Block[] = [
+export const BLOCKS = [
   {
     classification: BlockClassificationEnum.Default,
     type: BlockEnum.LLM,
@@ -152,4 +152,4 @@ export const BLOCKS: Block[] = [
     type: BlockEnum.Agent,
     title: 'Agent',
   },
-]
+] as const satisfies readonly Block[]

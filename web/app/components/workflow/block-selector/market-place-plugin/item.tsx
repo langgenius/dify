@@ -4,9 +4,8 @@ import type { Plugin } from '@/app/components/plugins/types.ts'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
-import I18n from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import { cn } from '@/utils/classnames'
 
 import { formatNumber } from '@/utils/format'
@@ -27,7 +26,7 @@ const Item: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = React.useState(false)
-  const { locale } = useContext(I18n)
+  const locale = useLocale()
   const getLocalizedText = (obj: Record<string, string> | undefined) =>
     obj?.[locale] || obj?.['en-US'] || obj?.en_US || ''
   const [isShowInstallModal, {
@@ -48,7 +47,7 @@ const Item: FC<Props> = ({
           <div className="system-xs-regular flex space-x-1 text-text-tertiary">
             <div>{payload.org}</div>
             <div>·</div>
-            <div>{t('plugin.install', { num: formatNumber(payload.install_count || 0) })}</div>
+            <div>{t('install', { ns: 'plugin', num: formatNumber(payload.install_count || 0) })}</div>
           </div>
         </div>
         {/* Action */}
@@ -57,7 +56,7 @@ const Item: FC<Props> = ({
             className="cursor-pointer rounded-md px-1.5 py-0.5 hover:bg-state-base-hover"
             onClick={showInstallModal}
           >
-            {t('plugin.installAction')}
+            {t('installAction', { ns: 'plugin' })}
           </div>
           <Action
             open={open}
