@@ -3,8 +3,9 @@ import {
   useCallback,
   useMemo,
 } from 'react'
-import { useFeaturesStore } from '@/app/components/base/features/hooks'
+import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
+import { MCPToolAvailabilityProvider } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import {
   useAvailableNodesMetaData,
@@ -26,6 +27,7 @@ const WorkflowMain = ({
   edges,
   viewport,
 }: WorkflowMainProps) => {
+  const sandboxEnabled = useFeatures(state => state.features.sandbox?.enabled) ?? false
   const featuresStore = useFeaturesStore()
   const workflowStore = useWorkflowStore()
 
@@ -183,7 +185,9 @@ const WorkflowMain = ({
       onWorkflowDataUpdate={handleWorkflowDataUpdate}
       hooksStore={hooksStore as any}
     >
-      <WorkflowChildren />
+      <MCPToolAvailabilityProvider sandboxEnabled={sandboxEnabled}>
+        <WorkflowChildren />
+      </MCPToolAvailabilityProvider>
     </WorkflowWithInnerContext>
   )
 }

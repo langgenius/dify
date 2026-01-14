@@ -192,10 +192,11 @@ type RenderOptions = {
   availableNodes?: Node[]
   nodeId?: string
   versionSupported?: boolean
+  sandboxEnabled?: boolean
 }
 
 const renderComponent = (options: RenderOptions = {}) => {
-  const { versionSupported, ...overrides } = options
+  const { versionSupported, sandboxEnabled, ...overrides } = options
   const defaultProps = {
     disabled: false,
     value: [],
@@ -216,7 +217,10 @@ const renderComponent = (options: RenderOptions = {}) => {
   return {
     ...render(
       <QueryClientProvider client={queryClient}>
-        <MCPToolAvailabilityProvider versionSupported={versionSupported}>
+        <MCPToolAvailabilityProvider
+          versionSupported={versionSupported}
+          sandboxEnabled={sandboxEnabled}
+        >
           <MultipleToolSelector {...props} />
         </MCPToolAvailabilityProvider>
       </QueryClientProvider>,
@@ -442,6 +446,23 @@ describe('MultipleToolSelector', () => {
 
       // Act
       renderComponent({ value: tools, versionSupported: false })
+
+      // Assert
+      expect(screen.getByText('1/2')).toBeInTheDocument()
+    })
+
+    it('should not count MCP tools when sandbox is disabled', () => {
+      // Arrange
+      const mcpTools = [createMCPTool({ id: 'mcp-provider' })]
+      mockMCPToolsData.mockReturnValue(mcpTools)
+
+      const tools = [
+        createToolValue({ tool_name: 'tool-1', provider_name: 'regular-provider', enabled: true }),
+        createToolValue({ tool_name: 'mcp-tool', provider_name: 'mcp-provider', enabled: true }),
+      ]
+
+      // Act
+      renderComponent({ value: tools, sandboxEnabled: false })
 
       // Assert
       expect(screen.getByText('1/2')).toBeInTheDocument()
