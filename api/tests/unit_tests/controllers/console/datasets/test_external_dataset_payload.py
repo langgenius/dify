@@ -19,7 +19,7 @@ def test_external_dataset_create_payload_allows_name_length_100() -> None:
 
     # Build a request payload with a boundary-length name value.
     name_100: str = "a" * 100
-    payload: dict[str, object] = {
+    payload = {
         "external_knowledge_api_id": "ek-api-1",
         "external_knowledge_id": "ek-1",
         "name": name_100,
