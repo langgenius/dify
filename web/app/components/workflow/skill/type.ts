@@ -1,29 +1,29 @@
 export const SKILL_ROOT_ID = 'root' as const
-export type SkillItemId = string
-export type SkillParentId = SkillItemId | typeof SKILL_ROOT_ID | null
+export type ItemId = string
+export type ParentId = ItemId | typeof SKILL_ROOT_ID | null
 
-export enum SkillItemKind {
+export enum ResourceKind {
   folder = 'folder',
   file = 'file',
 }
 
-export type SkillItemBase = {
-  id: SkillItemId
+export type ResourceItemBase = {
+  id: ItemId
   name: string
-  parent_id: SkillParentId
+  parent_id: ParentId
   path?: string
 }
 
-export type SkillFolderItem = SkillItemBase & {
-  kind: 'folder'
+export type FolderItem = ResourceItemBase & {
+  kind: ResourceKind.folder
 }
 
-export type SkillFileItem = SkillItemBase & {
-  kind: 'file'
+export type FileItem = ResourceItemBase & {
+  kind: ResourceKind.file
   ext?: string
   size?: number
 }
 
-export type SkillItem = SkillFolderItem | SkillFileItem
+export type ResourceItem = FolderItem | FileItem
 
-export type SkillList = SkillItem[]
+export type ResourceItemList = ResourceItem[]
