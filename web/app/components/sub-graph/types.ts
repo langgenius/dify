@@ -1,25 +1,7 @@
 import type { StateCreator } from 'zustand'
 import type { MentionConfig } from '@/app/components/workflow/nodes/_base/types'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
-import type { Edge, Node, NodeOutPutVar, ValueSelector, VarType } from '@/app/components/workflow/types'
-
-export type WhenOutputNoneOption = 'error' | 'default'
-
-export type SubGraphConfig = {
-  enabled: boolean
-  startNodeId: string
-  selectedOutputVar: ValueSelector
-  whenOutputNone: WhenOutputNoneOption
-  defaultValue?: string
-}
-
-export type SubGraphOutputVariable = {
-  nodeId: string
-  nodeName: string
-  variable: string
-  type: VarType
-  description?: string
-}
+import type { Edge, Node, NodeOutPutVar, ValueSelector } from '@/app/components/workflow/types'
 
 export type SubGraphProps = {
   toolNodeId: string
@@ -37,41 +19,10 @@ export type SubGraphProps = {
 }
 
 export type SubGraphSliceShape = {
-  parentToolNodeId: string
-  parameterKey: string
-  sourceAgentNodeId: string
-  sourceVariable: ValueSelector
-  subGraphReadOnly: boolean
-
-  subGraphNodes: Node[]
-  subGraphEdges: Edge[]
-
-  selectedOutputVar: ValueSelector
-  whenOutputNone: WhenOutputNoneOption
-  defaultValue: string
-
-  showDebugPanel: boolean
-  isRunning: boolean
-
   parentAvailableVars: NodeOutPutVar[]
   parentAvailableNodes: Node[]
-
-  setSubGraphContext: (context: {
-    parentToolNodeId: string
-    parameterKey: string
-    sourceAgentNodeId: string
-    sourceVariable: ValueSelector
-  }) => void
-  setSubGraphNodes: (nodes: Node[]) => void
-  setSubGraphEdges: (edges: Edge[]) => void
-  setSelectedOutputVar: (selector: ValueSelector) => void
-  setWhenOutputNone: (option: WhenOutputNoneOption) => void
-  setDefaultValue: (value: string) => void
-  setShowDebugPanel: (show: boolean) => void
-  setIsRunning: (running: boolean) => void
   setParentAvailableVars: (vars: NodeOutPutVar[]) => void
   setParentAvailableNodes: (nodes: Node[]) => void
-  resetSubGraph: () => void
 }
 
 export type CreateSubGraphSlice = StateCreator<SubGraphSliceShape>
