@@ -55,6 +55,35 @@ class InstructionTemplatePayload(BaseModel):
     type: str = Field(..., description="Instruction template type")
 
 
+class ContextGeneratePayload(BaseModel):
+    """Payload for generating extractor code node."""
+
+    workflow_id: str = Field(..., description="Workflow ID")
+    node_id: str = Field(..., description="Current tool/llm node ID")
+    parameter_name: str = Field(..., description="Parameter name to generate code for")
+    language: str = Field(default="python3", description="Code language (python3/javascript)")
+    prompt_messages: list[dict[str, Any]] = Field(
+        ..., description="Multi-turn conversation history, last message is the current instruction"
+    )
+    model_config_data: dict[str, Any] = Field(..., alias="model_config", description="Model configuration")
+
+
+class SuggestedQuestionsPayload(BaseModel):
+    """Payload for generating suggested questions."""
+
+    workflow_id: str = Field(..., description="Workflow ID")
+    node_id: str = Field(..., description="Current tool/llm node ID")
+    parameter_name: str = Field(..., description="Parameter name")
+    language: str = Field(
+        default="English", description="Language for generated questions (e.g. English, Chinese, Japanese)"
+    )
+    model_config_data: dict[str, Any] | None = Field(
+        default=None,
+        alias="model_config",
+        description="Model configuration (optional, uses system default if not provided)",
+    )
+
+
 def reg(cls: type[BaseModel]):
     console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
 
@@ -64,6 +93,8 @@ reg(RuleCodeGeneratePayload)
 reg(RuleStructuredOutputPayload)
 reg(InstructionGeneratePayload)
 reg(InstructionTemplatePayload)
+reg(ContextGeneratePayload)
+reg(SuggestedQuestionsPayload)
 
 
 @console_ns.route("/rule-generate")
@@ -278,3 +309,74 @@ class InstructionGenerationTemplateApi(Resource):
                 return {"data": INSTRUCTION_GENERATE_TEMPLATE_CODE}
             case _:
                 raise ValueError(f"Invalid type: {args.type}")
+
+
+@console_ns.route("/context-generate")
+class ContextGenerateApi(Resource):
+    @console_ns.doc("generate_with_context")
+    @console_ns.doc(description="Generate with multi-turn conversation context")
+    @console_ns.expect(console_ns.models[ContextGeneratePayload.__name__])
+    @console_ns.response(200, "Content generated successfully")
+    @console_ns.response(400, "Invalid request parameters or workflow not found")
+    @console_ns.response(402, "Provider quota exceeded")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self):
+        from core.llm_generator.utils import deserialize_prompt_messages
+
+        args = ContextGeneratePayload.model_validate(console_ns.payload)
+        _, current_tenant_id = current_account_with_tenant()
+
+        prompt_messages = deserialize_prompt_messages(args.prompt_messages)
+
+        try:
+            return LLMGenerator.generate_with_context(
+                tenant_id=current_tenant_id,
+                workflow_id=args.workflow_id,
+                node_id=args.node_id,
+                parameter_name=args.parameter_name,
+                language=args.language,
+                prompt_messages=prompt_messages,
+                model_config=args.model_config_data,
+            )
+        except ProviderTokenNotInitError as ex:
+            raise ProviderNotInitializeError(ex.description)
+        except QuotaExceededError:
+            raise ProviderQuotaExceededError()
+        except ModelCurrentlyNotSupportError:
+            raise ProviderModelCurrentlyNotSupportError()
+        except InvokeError as e:
+            raise CompletionRequestError(e.description)
+
+
+@console_ns.route("/context-generate/suggested-questions")
+class SuggestedQuestionsApi(Resource):
+    @console_ns.doc("generate_suggested_questions")
+    @console_ns.doc(description="Generate suggested questions for context generation")
+    @console_ns.expect(console_ns.models[SuggestedQuestionsPayload.__name__])
+    @console_ns.response(200, "Questions generated successfully")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self):
+        args = SuggestedQuestionsPayload.model_validate(console_ns.payload)
+        _, current_tenant_id = current_account_with_tenant()
+
+        try:
+            return LLMGenerator.generate_suggested_questions(
+                tenant_id=current_tenant_id,
+                workflow_id=args.workflow_id,
+                node_id=args.node_id,
+                parameter_name=args.parameter_name,
+                language=args.language,
+                model_config=args.model_config_data,
+            )
+        except ProviderTokenNotInitError as ex:
+            raise ProviderNotInitializeError(ex.description)
+        except QuotaExceededError:
+            raise ProviderQuotaExceededError()
+        except ModelCurrentlyNotSupportError:
+            raise ProviderModelCurrentlyNotSupportError()
+        except InvokeError as e:
+            raise CompletionRequestError(e.description)
