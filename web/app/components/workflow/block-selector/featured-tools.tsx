@@ -30,7 +30,6 @@ type FeaturedToolsProps = {
   providerMap: Map<string, ToolWithProvider>
   onSelect: (type: BlockEnum, tool: ToolDefaultValue) => void
   selectedTools?: ToolValue[]
-  canChooseMCPTool?: boolean
   isLoading?: boolean
   onInstallSuccess?: () => void
 }
@@ -42,7 +41,6 @@ const FeaturedTools = ({
   providerMap,
   onSelect,
   selectedTools,
-  canChooseMCPTool,
   isLoading = false,
   onInstallSuccess,
 }: FeaturedToolsProps) => {
@@ -166,7 +164,6 @@ const FeaturedTools = ({
                   viewType={ViewType.flat}
                   hasSearchText={false}
                   selectedTools={selectedTools}
-                  canChooseMCPTool={canChooseMCPTool}
                 />
               )}
 
