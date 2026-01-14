@@ -81,6 +81,11 @@ export type IOtherOptions = {
   needAllResponseContent?: boolean
   deleteContentType?: boolean
   silent?: boolean
+
+  /** If true, behaves like standard fetch: no URL prefix, returns raw Response */
+  fetchCompat?: boolean
+  request?: Request
+
   onData?: IOnData // for stream
   onThought?: IOnThought
   onFile?: IOnFile
