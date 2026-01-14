@@ -106,18 +106,20 @@ const SubGraphContent: FC<SubGraphProps> = (props) => {
       if (!Array.isArray(template))
         return applyPromptText(template as PromptItem)
 
-      const promptItems = template.filter((item): item is PromptItem => !isPromptMessageContext(item))
-
-      const userIndex = promptItems.findIndex(item => item.role === PromptRole.user)
+      const userIndex = template.findIndex(
+        item => !isPromptMessageContext(item) && (item as PromptItem).role === PromptRole.user,
+      )
       if (userIndex >= 0) {
-        return promptItems.map((item, index) => {
+        return template.map((item, index) => {
           if (index !== userIndex)
             return item
-          return applyPromptText(item)
+          return applyPromptText(item as PromptItem)
         }) as PromptTemplateItem[]
       }
 
-      const useJinja = promptItems.some((item: PromptItem) => item.edition_type === EditionType.jinja2)
+      const useJinja = template.some(
+        item => !isPromptMessageContext(item) && (item as PromptItem).edition_type === EditionType.jinja2,
+      )
       const defaultUserPrompt: PromptItem = useJinja
         ? {
             role: PromptRole.user,
@@ -126,13 +128,7 @@ const SubGraphContent: FC<SubGraphProps> = (props) => {
             edition_type: EditionType.jinja2,
           }
         : { role: PromptRole.user, text: promptText }
-      const systemIndex = promptItems.findIndex(item => item.role === PromptRole.system)
-      const nextTemplate = [...promptItems]
-      if (systemIndex >= 0)
-        nextTemplate.splice(systemIndex + 1, 0, defaultUserPrompt)
-      else
-        nextTemplate.unshift(defaultUserPrompt)
-      return nextTemplate as PromptTemplateItem[]
+      return [...template, defaultUserPrompt] as PromptTemplateItem[]
     })()
 
     return {
