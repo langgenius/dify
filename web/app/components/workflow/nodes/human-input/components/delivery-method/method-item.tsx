@@ -1,3 +1,4 @@
+import type { FC } from 'react'
 import type { DeliveryMethod, EmailConfig } from '../../types'
 import type {
   Node,
@@ -10,13 +11,15 @@ import {
   RiRobot2Fill,
   RiSendPlane2Line,
 } from '@remixicon/react'
-import * as React from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge/index'
 import Button from '@/app/components/base/button'
 import Switch from '@/app/components/base/switch'
+import Tooltip from '@/app/components/base/tooltip'
 import Indicator from '@/app/components/header/indicator'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { cn } from '@/utils/classnames'
 import { DeliveryMethodType } from '../../types'
 import EmailConfigureModal from './email-configure-modal'
@@ -24,7 +27,7 @@ import TestEmailSender from './test-email-sender'
 
 const i18nPrefix = 'nodes.humanInput'
 
-type Props = {
+type DeliveryMethodItemProps = {
   nodeId: string
   method: DeliveryMethod
   nodesOutputVars?: NodeOutPutVar[]
@@ -35,7 +38,7 @@ type Props = {
   readonly?: boolean
 }
 
-const DeliveryMethodItem: React.FC<Props> = ({
+const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
   nodeId,
   method,
   nodesOutputVars,
@@ -46,9 +49,10 @@ const DeliveryMethodItem: React.FC<Props> = ({
   readonly,
 }) => {
   const { t } = useTranslation()
-  const [isHovering, setIsHovering] = React.useState(false)
-  const [showEmailModal, setShowEmailModal] = React.useState(false)
-  const [showTestEmailModal, setShowTestEmailModal] = React.useState(false)
+  const email = useAppContextWithSelector(s => s.userProfile.email)
+  const [isHovering, setIsHovering] = useState(false)
+  const [showEmailModal, setShowEmailModal] = useState(false)
+  const [showTestEmailModal, setShowTestEmailModal] = useState(false)
 
   const handleEnableStatusChange = (enabled: boolean) => {
     onChange({
@@ -64,10 +68,23 @@ const DeliveryMethodItem: React.FC<Props> = ({
     })
   }
 
+  const emailSenderTooltipContent = useMemo(() => {
+    if (method.type !== DeliveryMethodType.Email) {
+      return ''
+    }
+    if (method.config?.debug_mode) {
+      return t(`${i18nPrefix}.deliveryMethod.emailSender.testSendTipInDebugMode`, { ns: 'workflow', email })
+    }
+    return t(`${i18nPrefix}.deliveryMethod.emailSender.testSendTip`, { ns: 'workflow' })
+  }, [method.type, method.config?.debug_mode, t, email])
+
   return (
     <>
       <div
-        className={cn('group flex h-8 items-center justify-between rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg pl-1.5 pr-2 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm', isHovering && 'border-state-destructive-border bg-state-destructive-hover hover:bg-state-destructive-hover')}
+        className={cn(
+          'group flex h-8 items-center justify-between rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg pl-1.5 pr-2 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm',
+          isHovering && 'border-state-destructive-border bg-state-destructive-hover hover:bg-state-destructive-hover',
+        )}
       >
         <div className="flex items-center gap-1.5">
           {method.type === DeliveryMethodType.WebApp && (
@@ -88,25 +105,41 @@ const DeliveryMethodItem: React.FC<Props> = ({
             <div className="hidden items-end gap-1 group-hover:flex">
               {method.type === DeliveryMethodType.Email && method.config && (
                 <>
-                  <ActionButton onClick={() => setShowTestEmailModal(true)}>
-                    <RiSendPlane2Line className="h-4 w-4" />
-                  </ActionButton>
-                  <ActionButton onClick={() => setShowEmailModal(true)}>
-                    <RiEqualizer2Line className="h-4 w-4" />
-                  </ActionButton>
+                  <Tooltip
+                    popupContent={emailSenderTooltipContent}
+                    asChild={false}
+                  >
+                    <ActionButton onClick={() => setShowTestEmailModal(true)}>
+                      <RiSendPlane2Line className="h-4 w-4" />
+                    </ActionButton>
+                  </Tooltip>
+                  <Tooltip
+                    popupContent={t('common.configure', { ns: 'workflow' })}
+                    asChild={false}
+                  >
+                    <ActionButton onClick={() => setShowEmailModal(true)}>
+                      <RiEqualizer2Line className="h-4 w-4" />
+                    </ActionButton>
+
+                  </Tooltip>
                 </>
               )}
-              <div
-                onMouseEnter={() => setIsHovering(true)}
-                onMouseLeave={() => setIsHovering(false)}
+              <Tooltip
+                popupContent={t('operation.remove', { ns: 'common' })}
+                asChild={false}
               >
-                <ActionButton
-                  state={isHovering ? ActionButtonState.Destructive : ActionButtonState.Default}
-                  onClick={() => onDelete(method.type)}
+                <div
+                  onMouseEnter={() => setIsHovering(true)}
+                  onMouseLeave={() => setIsHovering(false)}
                 >
-                  <RiDeleteBinLine className="h-4 w-4" />
-                </ActionButton>
-              </div>
+                  <ActionButton
+                    state={isHovering ? ActionButtonState.Destructive : ActionButtonState.Default}
+                    onClick={() => onDelete(method.type)}
+                  >
+                    <RiDeleteBinLine className="h-4 w-4" />
+                  </ActionButton>
+                </div>
+              </Tooltip>
             </div>
           )}
           {(method.config || method.type === DeliveryMethodType.WebApp) && (

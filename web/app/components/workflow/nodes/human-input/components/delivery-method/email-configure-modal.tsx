@@ -9,7 +9,7 @@ import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 import Switch from '@/app/components/base/switch'
 import Toast from '@/app/components/base/toast'
-import { useAppContext } from '@/context/app-context'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import MailBodyInput from './mail-body-input'
 import Recipient from './recipient'
 
@@ -29,7 +29,7 @@ const EmailConfigureModal = ({
   config,
 }: EmailConfigureModalProps) => {
   const { t } = useTranslation()
-  const { userProfile } = useAppContext()
+  const email = useAppContextWithSelector(s => s.userProfile.email)
   const [recipients, setRecipients] = useState(config?.recipients || { whole_workspace: false, items: [] })
   const [subject, setSubject] = useState(config?.subject || '')
   const [body, setBody] = useState(config?.body || '')
@@ -132,8 +132,8 @@ const EmailConfigureModal = ({
               <Trans
                 i18nKey={`${i18nPrefix}.deliveryMethod.emailConfigure.debugModeTip1`}
                 ns="workflow"
-                components={{ email: <span className="body-md-medium text-text-primary">{userProfile.email}</span> }}
-                values={{ email: userProfile.email }}
+                components={{ email: <span className="body-md-medium text-text-primary">{email}</span> }}
+                values={{ email }}
               />
               <div>{t(`${i18nPrefix}.deliveryMethod.emailConfigure.debugModeTip2`, { ns: 'workflow' })}</div>
             </div>

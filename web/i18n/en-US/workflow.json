@@ -531,6 +531,8 @@
   "nodes.humanInput.deliveryMethod.emailSender.done": "Email Sent",
   "nodes.humanInput.deliveryMethod.emailSender.optional": "(optional)",
   "nodes.humanInput.deliveryMethod.emailSender.send": "Send Email",
+  "nodes.humanInput.deliveryMethod.emailSender.testSendTip": "Send test emails to your configured recipients",
+  "nodes.humanInput.deliveryMethod.emailSender.testSendTipInDebugMode": "Send a test email to {{email}}",
   "nodes.humanInput.deliveryMethod.emailSender.tip": "It is recommended to <strong>enable Debug Mode</strong> for testing email delivery.",
   "nodes.humanInput.deliveryMethod.emailSender.title": "Test Email Sender",
   "nodes.humanInput.deliveryMethod.emailSender.vars": "Variables in Form Content",

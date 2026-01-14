@@ -531,6 +531,8 @@
   "nodes.humanInput.deliveryMethod.emailSender.done": "邮件已发送",
   "nodes.humanInput.deliveryMethod.emailSender.optional": "(可选)",
   "nodes.humanInput.deliveryMethod.emailSender.send": "发送邮件",
+  "nodes.humanInput.deliveryMethod.emailSender.testSendTip": "发送测试邮件到您的配置收件人",
+  "nodes.humanInput.deliveryMethod.emailSender.testSendTipInDebugMode": "发送测试邮件到 {{email}}",
   "nodes.humanInput.deliveryMethod.emailSender.tip": "建议为测试邮件发送启用 <strong>调试模式</strong>。",
   "nodes.humanInput.deliveryMethod.emailSender.title": "测试邮件发送器",
   "nodes.humanInput.deliveryMethod.emailSender.vars": "表单内容中的变量",
