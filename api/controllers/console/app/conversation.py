@@ -26,6 +26,36 @@ from services.errors.conversation import ConversationNotExistsError
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
+def _build_conversation_id_search_condition(keyword: str, keyword_filter: str) -> sa.ColumnElement[bool]:
+    """
+    Build a search condition for Conversation.id based on the keyword.
+
+    If the keyword is a valid UUID, performs an exact match (case-insensitive).
+    Otherwise, performs a fuzzy ILIKE search on the casted UUID string.
+
+    Args:
+        keyword: The search keyword provided by the user
+        keyword_filter: The escaped keyword with wildcards (e.g., "%keyword%") for ILIKE searches
+
+    Returns:
+        A SQLAlchemy column element representing the search condition
+    """
+    is_valid_uuid = False
+    try:
+        UUID(keyword)
+        is_valid_uuid = True
+    except (ValueError, AttributeError, TypeError):
+        # If keyword is not a valid UUID, treat it as a regular search keyword for fuzzy matching
+        pass
+
+    if is_valid_uuid:
+        # Exact match on conversation ID (normalized to lowercase for case-insensitive comparison)
+        return Conversation.id == keyword.lower()
+    else:
+        # Fuzzy match on casted UUID string with wildcards
+        return sa.cast(Conversation.id, sa.String).ilike(keyword_filter, escape="\\\\")
+
+
 class BaseConversationQuery(BaseModel):
     keyword: str | None = Field(default=None, description="Search keyword")
     start: str | None = Field(default=None, description="Start date (YYYY-MM-DD HH:MM)")
@@ -469,25 +499,14 @@ class ChatConversationApi(Resource):
             escaped_keyword = escape_like_pattern(args.keyword)
             keyword_filter = f"%{escaped_keyword}%"
 
-            is_valid_uuid = False
-            try:
-                UUID(args.keyword)
-                is_valid_uuid = True
-            except (ValueError, AttributeError):
-                pass
-
             search_conditions: list[sa.ColumnElement[bool]] = [
                 Message.query.ilike(keyword_filter, escape="\\"),
                 Message.answer.ilike(keyword_filter, escape="\\"),
                 Conversation.name.ilike(keyword_filter, escape="\\"),
                 Conversation.introduction.ilike(keyword_filter, escape="\\"),
                 subquery.c.from_end_user_session_id.ilike(keyword_filter, escape="\\"),
+                _build_conversation_id_search_condition(args.keyword, keyword_filter),
             ]
-
-            if is_valid_uuid:
-                search_conditions.append(Conversation.id == args.keyword)
-            else:
-                search_conditions.append(sa.cast(Conversation.id, sa.String).ilike(keyword_filter, escape="\\"))
 
             query = (
                 query.join(
