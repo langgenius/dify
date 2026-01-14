@@ -63,7 +63,7 @@ const ToolItem = ({
   authRemoved,
 }: Props) => {
   const { t } = useTranslation()
-  const { allowed: isMCPToolAllowed, reason: mcpUnavailableReason } = useMCPToolAvailability()
+  const { allowed: isMCPToolAllowed } = useMCPToolAvailability()
   const providerNameText = isMCPTool ? providerShowName : providerName?.split('/').pop()
   const isTransparent = uninstalled || versionMismatch || isError
   const [isDeleting, setIsDeleting] = useState(false)
@@ -125,7 +125,7 @@ const ToolItem = ({
           />
         </div>
       )}
-      {isShowCanNotChooseMCPTip && <McpToolNotSupportTooltip reason={mcpUnavailableReason} />}
+      {isShowCanNotChooseMCPTip && <McpToolNotSupportTooltip />}
       {!isError && !uninstalled && !versionMismatch && noAuth && (
         <Button variant="secondary" size="small">
           {t('notAuthorized', { ns: 'tools' })}

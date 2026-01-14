@@ -2,8 +2,6 @@
 import type { ReactNode } from 'react'
 import { createContext, useContext } from 'react'
 
-export type MCPToolUnavailableReason = 'version' | 'sandbox' | 'both'
-
 type MCPToolAvailabilityContextValue = {
   versionSupported?: boolean
 }
@@ -12,7 +10,6 @@ const MCPToolAvailabilityContext = createContext<MCPToolAvailabilityContextValue
 
 export type MCPToolAvailability = {
   allowed: boolean
-  reason?: MCPToolUnavailableReason
   versionSupported?: boolean
 }
 
@@ -38,7 +35,6 @@ export const useMCPToolAvailability = (): MCPToolAvailability => {
 
   return {
     allowed: false,
-    reason: 'version',
     versionSupported,
   }
 }

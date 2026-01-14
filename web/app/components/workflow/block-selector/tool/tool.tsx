@@ -53,7 +53,7 @@ const Tool: FC<Props> = ({
   selectedTools,
 }) => {
   const { t } = useTranslation()
-  const { allowed: isMCPToolAllowed, reason: mcpUnavailableReason } = useMCPToolAvailability()
+  const { allowed: isMCPToolAllowed } = useMCPToolAvailability()
   const language = useGetLanguage()
   const isFlatView = viewType === ViewType.flat
   const notShowProvider = payload.type === CollectionType.workflow
@@ -227,7 +227,7 @@ const Tool: FC<Props> = ({
 
           <div className="ml-2 flex items-center">
             {!isShowCanNotChooseMCPTip && !canNotSelectMultiple && (notShowProvider ? notShowProviderSelectInfo : selectedInfo)}
-            {isShowCanNotChooseMCPTip && <McpToolNotSupportTooltip reason={mcpUnavailableReason} />}
+            {isShowCanNotChooseMCPTip && <McpToolNotSupportTooltip />}
             {hasAction && (
               <FoldIcon className={cn('h-4 w-4 shrink-0 text-text-tertiary group-hover/item:text-text-tertiary', isFold && 'text-text-quaternary')} />
             )}
