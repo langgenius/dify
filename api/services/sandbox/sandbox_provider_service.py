@@ -76,7 +76,9 @@ PROVIDER_CONFIG_SCHEMAS: dict[str, list[BasicProviderConfig]] = {
         BasicProviderConfig(type=BasicProviderConfig.Type.TEXT_INPUT, name="docker_sock"),
         BasicProviderConfig(type=BasicProviderConfig.Type.TEXT_INPUT, name="docker_image"),
     ],
-    SandboxProviderType.LOCAL: [],
+    SandboxProviderType.LOCAL: [
+        BasicProviderConfig(type=BasicProviderConfig.Type.TEXT_INPUT, name="base_working_path"),
+    ],
 }
 
 

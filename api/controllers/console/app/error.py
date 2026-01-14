@@ -110,8 +110,24 @@ class TracingConfigCheckError(BaseHTTPException):
 
 
 class InvokeRateLimitError(BaseHTTPException):
-    """Raised when the Invoke returns rate limit error."""
-
     error_code = "rate_limit_error"
     description = "Rate Limit Error"
     code = 429
+
+
+class AppAssetNodeNotFoundError(BaseHTTPException):
+    error_code = "app_asset_node_not_found"
+    description = "App asset node not found."
+    code = 404
+
+
+class AppAssetFileRequiredError(BaseHTTPException):
+    error_code = "app_asset_file_required"
+    description = "File is required."
+    code = 400
+
+
+class AppAssetPathConflictError(BaseHTTPException):
+    error_code = "app_asset_path_conflict"
+    description = "Path already exists."
+    code = 409

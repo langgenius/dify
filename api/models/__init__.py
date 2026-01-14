@@ -9,6 +9,7 @@ from .account import (
     TenantStatus,
 )
 from .api_based_extension import APIBasedExtension, APIBasedExtensionPoint
+from .app_asset import AppAssetDraft
 from .dataset import (
     AppDatasetJoin,
     Dataset,
@@ -123,6 +124,7 @@ __all__ = [
     "App",
     "AppAnnotationHitHistory",
     "AppAnnotationSetting",
+    "AppAssetDraft",
     "AppDatasetJoin",
     "AppMCPServer",
     "AppMode",
