@@ -1,7 +1,7 @@
 """Workflow comment models."""
 
 from datetime import datetime
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 
 from sqlalchemy import Index, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -10,9 +10,6 @@ from .account import Account
 from .base import Base
 from .engine import db
 from .types import StringUUID
-
-if TYPE_CHECKING:
-    pass
 
 
 class WorkflowComment(Base):
