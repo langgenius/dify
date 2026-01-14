@@ -3,11 +3,13 @@
 ## Prerequisites
 
 1. **Apache Doris Installed and Running**
+
    - Doris FE (Frontend) running on port 8030 (HTTP) and 9030 (MySQL protocol)
    - Doris BE (Backend) started and connected to FE
    - Ensure Doris version >= 2.0 (supports vector search and text search)
 
-2. **Create Database**
+1. **Create Database**
+
    ```sql
    CREATE DATABASE IF NOT EXISTS dify;
    ```
@@ -19,14 +21,16 @@
 1. **Edit `.env` file** (in the `docker` directory)
 
    If the file doesn't exist, create it from the example file:
+
    ```bash
    cd docker
    cp .env.example .env
    ```
 
-2. **Set Vector Store to Doris**
+1. **Set Vector Store to Doris**
 
    Add or modify the following configuration in the `.env` file:
+
    ```bash
    # Vector Store configuration
    VECTOR_STORE=doris
@@ -55,7 +59,8 @@
    DORIS_TEXT_SEARCH_ANALYZER=english  # Text analyzer: english, chinese, standard, unicode, default (default english)
    ```
 
-3. **Start Services**
+1. **Start Services**
+
    ```bash
    cd docker
    docker compose up -d
@@ -66,6 +71,7 @@
 1. **Set Environment Variables**
 
    Before running Dify API, set the following environment variables:
+
    ```bash
    export VECTOR_STORE=doris
    export DORIS_HOST=localhost
@@ -78,7 +84,8 @@
 
    Or set them in a `.env` file (if using python-dotenv)
 
-2. **Run API Service**
+1. **Run API Service**
+
    ```bash
    cd api
    uv run --project api flask run
@@ -89,6 +96,7 @@
 ### 1. Check Doris Connection
 
 Connect to Doris using MySQL client:
+
 ```bash
 mysql -h your-doris-host -P 9030 -u root -p
 ```
@@ -96,6 +104,7 @@ mysql -h your-doris-host -P 9030 -u root -p
 ### 2. Test Doris HTTP Endpoint
 
 Check if Doris FE HTTP endpoint is accessible:
+
 ```bash
 curl http://your-doris-host:8030/api/v1/health
 ```
@@ -103,9 +112,9 @@ curl http://your-doris-host:8030/api/v1/health
 ### 3. Create Dataset in Dify
 
 1. Login to Dify Web interface
-2. Create a new dataset
-3. Upload documents for indexing
-4. Check if corresponding tables are created in Doris database:
+1. Create a new dataset
+1. Upload documents for indexing
+1. Check if corresponding tables are created in Doris database:
    ```sql
    USE dify;
    SHOW TABLES LIKE 'embedding_%';
@@ -126,37 +135,43 @@ Doris Vector Store supports the following features:
 ### Issue: Connection Failed
 
 **Check:**
+
 1. Is Doris FE running?
-2. Are ports correct (MySQL: 9030, HTTP: 8030)?
-3. Are username and password correct?
-4. Does firewall allow the connection?
+1. Are ports correct (MySQL: 9030, HTTP: 8030)?
+1. Are username and password correct?
+1. Does firewall allow the connection?
 
 ### Issue: StreamLoad Failed
 
 **Check:**
+
 1. Is Doris HTTP port (8030) accessible?
-2. Does the user have StreamLoad permissions?
-3. Check error messages in Doris FE logs
+1. Does the user have StreamLoad permissions?
+1. Check error messages in Doris FE logs
 
 ### Issue: Table Creation Failed
 
 **Check:**
+
 1. Does the database exist?
-2. Does the user have CREATE TABLE permissions?
-3. Check error messages in Doris logs
+1. Does the user have CREATE TABLE permissions?
+1. Check error messages in Doris logs
 
 ## Performance Optimization Recommendations
 
 1. **Adjust Connection Pool Size**
+
    - Adjust `DORIS_MAX_CONNECTION` based on concurrent request volume
    - Recommended value: concurrent requests + 2
 
-2. **Text Analyzer Selection**
+1. **Text Analyzer Selection**
+
    - English content: use `english`
    - Chinese content: use `chinese`
    - Multilingual: use `standard`
 
-3. **Batch Insertion**
+1. **Batch Insertion**
+
    - StreamLoad automatically processes data in batches
    - Recommended: 100-1000 records per insertion
 
