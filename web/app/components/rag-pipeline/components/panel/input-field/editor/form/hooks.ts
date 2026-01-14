@@ -86,7 +86,6 @@ export const useConfigurations = (props: {
       if (type === PipelineInputVarType.multiFiles)
         setFieldValue('maxLength', DEFAULT_FILE_UPLOAD_SETTING.max_length)
     }
-
   }, [setFieldValue])
 
   const handleVariableNameBlur = useCallback((value: string) => {

@@ -779,8 +779,6 @@ describe('useConfigurations', () => {
       expect(mockSetFieldValue).toHaveBeenCalledWith('maxLength', expect.any(Number))
     })
 
-
-
     it('should set label from variable name on blur when label is empty', () => {
       // Arrange
       const mockGetFieldValue = vi.fn().mockReturnValue('')

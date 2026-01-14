@@ -164,21 +164,21 @@ const ConfigModal: FC<IConfigModalProps> = ({
     },
     ...(supportFile
       ? [
-        {
-          name: t('variableConfig.single-file', { ns: 'appDebug' }),
-          value: InputVarType.singleFile,
-        },
-        {
-          name: t('variableConfig.multi-files', { ns: 'appDebug' }),
-          value: InputVarType.multiFiles,
-        },
-      ]
+          {
+            name: t('variableConfig.single-file', { ns: 'appDebug' }),
+            value: InputVarType.singleFile,
+          },
+          {
+            name: t('variableConfig.multi-files', { ns: 'appDebug' }),
+            value: InputVarType.multiFiles,
+          },
+        ]
       : []),
     ...((!isBasicApp)
       ? [{
-        name: t('variableConfig.json', { ns: 'appDebug' }),
-        value: InputVarType.jsonObject,
-      }]
+          name: t('variableConfig.json', { ns: 'appDebug' }),
+          value: InputVarType.jsonObject,
+        }]
       : []),
   ]
 
@@ -197,7 +197,6 @@ const ConfigModal: FC<IConfigModalProps> = ({
         if (type === InputVarType.multiFiles)
           draft.max_length = DEFAULT_FILE_UPLOAD_SETTING.max_length
       }
-
     })
     setTempPayload(newPayload)
   }, [tempPayload])
@@ -256,9 +255,9 @@ const ConfigModal: FC<IConfigModalProps> = ({
     const moreInfo = tempPayload.variable === payload?.variable
       ? undefined
       : {
-        type: ChangeType.changeVarName,
-        payload: { beforeKey: payload?.variable || '', afterKey: tempPayload.variable },
-      }
+          type: ChangeType.changeVarName,
+          payload: { beforeKey: payload?.variable || '', afterKey: tempPayload.variable },
+        }
 
     const isVariableNameValid = checkVariableName(tempPayload.variable)
     if (!isVariableNameValid)
