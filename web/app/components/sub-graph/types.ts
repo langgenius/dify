@@ -31,6 +31,8 @@ export type SubGraphProps = {
   onMentionConfigChange: (config: MentionConfig) => void
   extractorNode?: Node<LLMNodeType>
   toolParamValue?: string
+  parentAvailableNodes?: Node[]
+  parentAvailableVars?: NodeOutPutVar[]
   onSave?: (nodes: Node[], edges: Edge[]) => void
 }
 
@@ -52,6 +54,7 @@ export type SubGraphSliceShape = {
   isRunning: boolean
 
   parentAvailableVars: NodeOutPutVar[]
+  parentAvailableNodes: Node[]
 
   setSubGraphContext: (context: {
     parentToolNodeId: string
@@ -67,6 +70,7 @@ export type SubGraphSliceShape = {
   setShowDebugPanel: (show: boolean) => void
   setIsRunning: (running: boolean) => void
   setParentAvailableVars: (vars: NodeOutPutVar[]) => void
+  setParentAvailableNodes: (nodes: Node[]) => void
   resetSubGraph: () => void
 }
 

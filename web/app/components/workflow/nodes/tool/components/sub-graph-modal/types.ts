@@ -1,6 +1,6 @@
 import type { MentionConfig } from '@/app/components/workflow/nodes/_base/types'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
-import type { Edge as WorkflowEdge, Node as WorkflowNode } from '@/app/components/workflow/types'
+import type { NodeOutPutVar, Edge as WorkflowEdge, Node as WorkflowNode } from '@/app/components/workflow/types'
 
 type WorkflowValueSelector = string[]
 
@@ -24,5 +24,7 @@ export type SubGraphCanvasProps = {
   onMentionConfigChange: (config: MentionConfig) => void
   extractorNode?: WorkflowNode<LLMNodeType>
   toolParamValue?: string
+  parentAvailableNodes?: WorkflowNode[]
+  parentAvailableVars?: NodeOutPutVar[]
   onSave?: (nodes: WorkflowNode[], edges: WorkflowEdge[]) => void
 }

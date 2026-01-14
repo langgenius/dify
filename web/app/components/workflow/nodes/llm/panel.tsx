@@ -5,6 +5,7 @@ import { RiAlertFill, RiQuestionLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import Badge from '@/app/components/base/badge'
 import AddButton2 from '@/app/components/base/button/add-button'
 import Switch from '@/app/components/base/switch'
 import Toast from '@/app/components/base/toast'
@@ -119,7 +120,12 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
 
         {/* knowledge */}
         <Field
-          title={t(`${i18nPrefix}.context`, { ns: 'workflow' })}
+          title={(
+            <div className="flex items-center">
+              <div>{t(`${i18nPrefix}.context`, { ns: 'workflow' })}</div>
+              <Badge className="ml-2" uppercase>LEGACY</Badge>
+            </div>
+          )}
           tooltip={t(`${i18nPrefix}.contextTooltip`, { ns: 'workflow' })!}
         >
           <>
@@ -130,6 +136,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
               value={inputs.context?.variable_selector || []}
               onChange={handleContextVarChange}
               filterVar={filterVar}
+              hideSearch
             />
             {shouldShowContextTip && (
               <div className="text-xs font-normal leading-[18px] text-[#DC6803]">{t(`${i18nPrefix}.notSetContextInPromptTip`, { ns: 'workflow' })}</div>

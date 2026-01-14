@@ -255,6 +255,17 @@ export type PromptItem = {
   jinja2_text?: string
 }
 
+export type PromptMessageContext = {
+  id?: string
+  $context: ValueSelector
+}
+
+export type PromptTemplateItem = PromptItem | PromptMessageContext
+
+export const isPromptMessageContext = (item: PromptTemplateItem): item is PromptMessageContext => {
+  return '$context' in item
+}
+
 export enum MemoryRole {
   user = 'user',
   assistant = 'assistant',

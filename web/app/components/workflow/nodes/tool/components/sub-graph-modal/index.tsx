@@ -10,12 +10,12 @@ import { RiCloseLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { Fragment, memo, useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStoreApi } from 'reactflow'
+import { useStore as useReactFlowStore, useStoreApi } from 'reactflow'
 import { Agent } from '@/app/components/base/icons/src/vender/workflow'
-import { useNodesSyncDraft } from '@/app/components/workflow/hooks'
+import { useIsChatMode, useNodesSyncDraft, useWorkflow, useWorkflowVariables } from '@/app/components/workflow/hooks'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
-import { useStore } from '@/app/components/workflow/store'
-import { EditionType, PromptRole } from '@/app/components/workflow/types'
+import { useStore as useWorkflowStore } from '@/app/components/workflow/store'
+import { BlockEnum, EditionType, PromptRole } from '@/app/components/workflow/types'
 import SubGraphCanvas from './sub-graph-canvas'
 
 const SubGraphModal: FC<SubGraphModalProps> = ({
@@ -29,9 +29,13 @@ const SubGraphModal: FC<SubGraphModalProps> = ({
 }) => {
   const { t } = useTranslation()
   const reactflowStore = useStoreApi()
-  const workflowNodes = useStore(state => state.nodes)
-  const setControlPromptEditorRerenderKey = useStore(state => state.setControlPromptEditorRerenderKey)
+  const workflowNodes = useWorkflowStore(state => state.nodes)
+  const workflowEdges = useReactFlowStore(state => state.edges)
+  const setControlPromptEditorRerenderKey = useWorkflowStore(state => state.setControlPromptEditorRerenderKey)
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const { getBeforeNodesInSameBranch } = useWorkflow()
+  const { getNodeAvailableVars } = useWorkflowVariables()
+  const isChatMode = useIsChatMode()
 
   const extractorNodeId = `${toolNodeId}_ext_${paramKey}`
   const extractorNode = useMemo(() => {
@@ -42,6 +46,28 @@ const SubGraphModal: FC<SubGraphModalProps> = ({
   }, [toolNodeId, workflowNodes])
   const toolParam = (toolNode?.data as ToolNodeType | undefined)?.tool_parameters?.[paramKey]
   const toolParamValue = toolParam?.value as string | undefined
+
+  const parentAgentNodes = useMemo(() => {
+    if (!isOpen)
+      return []
+    const beforeNodes = getBeforeNodesInSameBranch(toolNodeId, workflowNodes, workflowEdges)
+    return beforeNodes.filter(node => node.data.type === BlockEnum.Agent)
+  }, [getBeforeNodesInSameBranch, isOpen, toolNodeId, workflowEdges, workflowNodes])
+
+  const parentAgentNodeIds = useMemo(() => {
+    return parentAgentNodes.map(node => node.id)
+  }, [parentAgentNodes])
+
+  const parentAvailableVars = useMemo(() => {
+    if (!parentAgentNodeIds.length)
+      return []
+    const vars = getNodeAvailableVars({
+      beforeNodes: parentAgentNodes,
+      isChatMode,
+      filterVar: () => true,
+    })
+    return vars.filter(nodeVar => parentAgentNodeIds.includes(nodeVar.nodeId))
+  }, [getNodeAvailableVars, isChatMode, parentAgentNodeIds, parentAgentNodes])
 
   const mentionConfig = useMemo<MentionConfig>(() => {
     const current = toolParam?.mention_config
@@ -115,8 +141,7 @@ const SubGraphModal: FC<SubGraphModalProps> = ({
       const userPrompt = promptTemplate.find(item => item.role === PromptRole.user)
       if (userPrompt)
         return resolveText(userPrompt)
-      const systemPrompt = promptTemplate.find(item => item.role === PromptRole.system)
-      return resolveText(systemPrompt)
+      return ''
     }
     return resolveText(promptTemplate)
   }, [])
@@ -212,6 +237,8 @@ const SubGraphModal: FC<SubGraphModalProps> = ({
                     onMentionConfigChange={handleMentionConfigChange}
                     extractorNode={extractorNode}
                     toolParamValue={toolParamValue}
+                    parentAvailableNodes={parentAgentNodes}
+                    parentAvailableVars={parentAvailableVars}
                     onSave={handleSave}
                   />
                 </div>

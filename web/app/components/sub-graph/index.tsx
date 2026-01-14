@@ -2,12 +2,13 @@ import type { FC } from 'react'
 import type { Viewport } from 'reactflow'
 import type { SubGraphProps } from './types'
 import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
-import type { PromptItem } from '@/app/components/workflow/types'
-import { memo, useMemo } from 'react'
+import type { PromptItem, PromptTemplateItem } from '@/app/components/workflow/types'
+import { memo, useEffect, useMemo } from 'react'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
 import { NODE_WIDTH_X_OFFSET, START_INITIAL_POSITION } from '@/app/components/workflow/constants'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
-import { BlockEnum, EditionType, PromptRole } from '@/app/components/workflow/types'
+import { useStore } from '@/app/components/workflow/store'
+import { BlockEnum, EditionType, isPromptMessageContext, PromptRole } from '@/app/components/workflow/types'
 import SubGraphMain from './components/sub-graph-main'
 import { useSubGraphNodes } from './hooks'
 import { createSubGraphSlice } from './store'
@@ -38,8 +39,18 @@ const SubGraphContent: FC<SubGraphProps> = (props) => {
     onMentionConfigChange,
     extractorNode,
     toolParamValue,
+    parentAvailableNodes,
+    parentAvailableVars,
     onSave,
   } = props
+
+  const setParentAvailableVars = useStore(state => state.setParentAvailableVars)
+  const setParentAvailableNodes = useStore(state => state.setParentAvailableNodes)
+
+  useEffect(() => {
+    setParentAvailableVars?.(parentAvailableVars || [])
+    setParentAvailableNodes?.(parentAvailableNodes || [])
+  }, [parentAvailableNodes, parentAvailableVars, setParentAvailableNodes, setParentAvailableVars])
 
   const promptText = useMemo(() => {
     if (!toolParamValue)
@@ -95,16 +106,18 @@ const SubGraphContent: FC<SubGraphProps> = (props) => {
       if (!Array.isArray(template))
         return applyPromptText(template as PromptItem)
 
-      const userIndex = template.findIndex(item => item.role === PromptRole.user)
+      const promptItems = template.filter((item): item is PromptItem => !isPromptMessageContext(item))
+
+      const userIndex = promptItems.findIndex(item => item.role === PromptRole.user)
       if (userIndex >= 0) {
-        return template.map((item, index) => {
+        return promptItems.map((item, index) => {
           if (index !== userIndex)
             return item
           return applyPromptText(item)
-        })
+        }) as PromptTemplateItem[]
       }
 
-      const useJinja = template.some((item: PromptItem) => item.edition_type === EditionType.jinja2)
+      const useJinja = promptItems.some((item: PromptItem) => item.edition_type === EditionType.jinja2)
       const defaultUserPrompt: PromptItem = useJinja
         ? {
             role: PromptRole.user,
@@ -113,13 +126,13 @@ const SubGraphContent: FC<SubGraphProps> = (props) => {
             edition_type: EditionType.jinja2,
           }
         : { role: PromptRole.user, text: promptText }
-      const systemIndex = template.findIndex(item => item.role === PromptRole.system)
-      const nextTemplate = [...template]
+      const systemIndex = promptItems.findIndex(item => item.role === PromptRole.system)
+      const nextTemplate = [...promptItems]
       if (systemIndex >= 0)
         nextTemplate.splice(systemIndex + 1, 0, defaultUserPrompt)
       else
         nextTemplate.unshift(defaultUserPrompt)
-      return nextTemplate
+      return nextTemplate as PromptTemplateItem[]
     })()
 
     return {

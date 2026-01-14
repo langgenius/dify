@@ -14,6 +14,8 @@ const SubGraphCanvas: FC<SubGraphCanvasProps> = ({
   onMentionConfigChange,
   extractorNode,
   toolParamValue,
+  parentAvailableNodes,
+  parentAvailableVars,
   onSave,
 }) => {
   return (
@@ -28,6 +30,8 @@ const SubGraphCanvas: FC<SubGraphCanvasProps> = ({
         onMentionConfigChange={onMentionConfigChange}
         extractorNode={extractorNode}
         toolParamValue={toolParamValue}
+        parentAvailableNodes={parentAvailableNodes}
+        parentAvailableVars={parentAvailableVars}
         onSave={onSave}
       />
     </div>

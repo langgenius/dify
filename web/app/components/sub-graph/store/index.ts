@@ -1,6 +1,6 @@
 import type { CreateSubGraphSlice, SubGraphSliceShape } from '../types'
 
-const initialState: Omit<SubGraphSliceShape, 'setSubGraphContext' | 'setSubGraphNodes' | 'setSubGraphEdges' | 'setSelectedOutputVar' | 'setWhenOutputNone' | 'setDefaultValue' | 'setShowDebugPanel' | 'setIsRunning' | 'setParentAvailableVars' | 'resetSubGraph'> = {
+const initialState: Omit<SubGraphSliceShape, 'setSubGraphContext' | 'setSubGraphNodes' | 'setSubGraphEdges' | 'setSelectedOutputVar' | 'setWhenOutputNone' | 'setDefaultValue' | 'setShowDebugPanel' | 'setIsRunning' | 'setParentAvailableVars' | 'setParentAvailableNodes' | 'resetSubGraph'> = {
   parentToolNodeId: '',
   parameterKey: '',
   sourceAgentNodeId: '',
@@ -18,6 +18,7 @@ const initialState: Omit<SubGraphSliceShape, 'setSubGraphContext' | 'setSubGraph
   isRunning: false,
 
   parentAvailableVars: [],
+  parentAvailableNodes: [],
 }
 
 export const createSubGraphSlice: CreateSubGraphSlice = set => ({
@@ -45,6 +46,8 @@ export const createSubGraphSlice: CreateSubGraphSlice = set => ({
   setIsRunning: running => set(() => ({ isRunning: running })),
 
   setParentAvailableVars: vars => set(() => ({ parentAvailableVars: vars })),
+
+  setParentAvailableNodes: nodes => set(() => ({ parentAvailableNodes: nodes })),
 
   resetSubGraph: () => set(() => ({ ...initialState })),
 })

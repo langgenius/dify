@@ -67,6 +67,9 @@ const ConfigPanel: FC<ConfigPanelProps> = ({
       description: t('subGraphModal.whenOutputNone.defaultDesc', { ns: 'workflow' }),
     },
   ]), [t])
+  const selectedWhenOutputNoneOption = useMemo(() => (
+    whenOutputNoneOptions.find(item => item.value === mentionConfig.null_strategy) ?? whenOutputNoneOptions[0]
+  ), [mentionConfig.null_strategy, whenOutputNoneOptions])
 
   const handleNullStrategyChange = useCallback((item: Item) => {
     if (typeof item.value !== 'string')
@@ -94,6 +97,8 @@ const ConfigPanel: FC<ConfigPanelProps> = ({
       default_value: nextValue,
     })
   }, [mentionConfig, onMentionConfigChange])
+  const defaultValue = mentionConfig.default_value ?? ''
+  const shouldFormatDefaultValue = typeof defaultValue !== 'string'
 
   return (
     <div className="flex h-full flex-col">
@@ -131,45 +136,54 @@ const ConfigPanel: FC<ConfigPanelProps> = ({
             </Field>
           </div>
           <div className="space-y-4 px-4 py-4">
-            <Field title={t('subGraphModal.whenOutputIsNone', { ns: 'workflow' })}>
-              <SimpleSelect
-                items={whenOutputNoneOptions}
-                defaultValue={mentionConfig.null_strategy}
-                allowSearch={false}
-                notClearable
-                onSelect={handleNullStrategyChange}
-                renderOption={({ item, selected }) => (
-                  <div className="flex items-start gap-2">
-                    <div className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center">
-                      {selected && (
-                        <RiCheckLine className="h-4 w-4 text-[14px] text-text-accent" />
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="system-sm-medium text-text-secondary">{item.name}</div>
-                      <div className="system-xs-regular mt-0.5 text-text-tertiary">{item.description}</div>
-                    </div>
-                  </div>
-                )}
-              />
-            </Field>
-            {mentionConfig.null_strategy === 'use_default' && (
-              <div>
-                <div className="system-xs-regular text-text-tertiary">
-                  {t('subGraphModal.defaultValueHint', { ns: 'workflow' })}
-                </div>
-                <div className={cn('mt-2 overflow-hidden rounded-lg border border-components-input-border-active bg-components-input-bg-normal p-1')}>
-                  <CodeEditor
-                    noWrapper
-                    language={CodeLanguage.json}
-                    value={mentionConfig.default_value ?? ''}
-                    onChange={handleDefaultValueChange}
-                    isJSONStringifyBeauty
-                    className="min-h-[160px]"
+            <Field
+              title={t('subGraphModal.whenOutputIsNone', { ns: 'workflow' })}
+              operations={(
+                <div className="flex items-center">
+                  <SimpleSelect
+                    items={whenOutputNoneOptions}
+                    defaultValue={mentionConfig.null_strategy}
+                    allowSearch={false}
+                    notClearable
+                    wrapperClassName="min-w-[160px]"
+                    onSelect={handleNullStrategyChange}
+                    renderOption={({ item, selected }) => (
+                      <div className="flex items-start gap-2">
+                        <div className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center">
+                          {selected && (
+                            <RiCheckLine className="h-4 w-4 text-[14px] text-text-accent" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="system-sm-medium text-text-secondary">{item.name}</div>
+                          <div className="system-xs-regular mt-0.5 text-text-tertiary">{item.description}</div>
+                        </div>
+                      </div>
+                    )}
                   />
                 </div>
+              )}
+            >
+              <div className="space-y-2">
+                {selectedWhenOutputNoneOption?.description && (
+                  <div className="system-xs-regular text-text-tertiary">
+                    {selectedWhenOutputNoneOption.description}
+                  </div>
+                )}
+                {mentionConfig.null_strategy === 'use_default' && (
+                  <div className={cn('overflow-hidden rounded-lg border border-components-input-border-active bg-components-input-bg-normal p-1')}>
+                    <CodeEditor
+                      noWrapper
+                      language={CodeLanguage.json}
+                      value={defaultValue}
+                      onChange={handleDefaultValueChange}
+                      isJSONStringifyBeauty={shouldFormatDefaultValue}
+                      className="min-h-[160px]"
+                    />
+                  </div>
+                )}
               </div>
-            )}
+            </Field>
           </div>
         </div>
       )}

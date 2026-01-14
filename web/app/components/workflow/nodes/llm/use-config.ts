@@ -1,4 +1,4 @@
-import type { Memory, PromptItem, ValueSelector, Var, Variable } from '../../types'
+import type { Memory, PromptItem, PromptTemplateItem, ValueSelector, Var, Variable } from '../../types'
 import type { LLMNodeType, StructuredOutput } from './types'
 import { produce } from 'immer'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -249,7 +249,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     setInputs(newInputs)
   }, [setInputs])
 
-  const handlePromptChange = useCallback((newPrompt: PromptItem[] | PromptItem) => {
+  const handlePromptChange = useCallback((newPrompt: PromptTemplateItem[] | PromptItem) => {
     const newInputs = produce(inputRef.current, (draft) => {
       draft.prompt_template = newPrompt
     })
