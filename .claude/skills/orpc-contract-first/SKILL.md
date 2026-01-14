@@ -5,110 +5,106 @@ description: Guide for implementing oRPC contract-first API patterns in Dify fro
 
 # oRPC Contract-First Development
 
-This skill provides guidance for implementing type-safe API contracts using oRPC with TanStack Query integration.
-
-## Core Concepts
-
-**Contract-First**: Define API contracts before implementation. Contracts are the single source of truth for:
-- Route paths and methods
-- Input/output types
-- Type inference across client and server
+Type-safe API contracts using oRPC with TanStack Query integration.
 
 ## Project Structure
 
 ```
 web/
-├── contract/           # API contracts
-│   ├── base.ts         # Base contract with inputStructure
-│   ├── console.ts      # Console API contracts
-│   ├── marketplace.ts  # Marketplace API contracts
-│   └── router.ts       # Router composition & type exports
+├── contract/
+│   ├── base.ts              # Base contract with inputStructure: 'detailed'
+│   ├── router.ts            # Router composition & type exports
+│   ├── marketplace.ts       # Marketplace API contracts
+│   └── console/             # Console API contracts (by domain)
+│       ├── system.ts        # System-related contracts
+│       └── billing.ts       # Billing-related contracts
 └── service/
-    ├── client.ts       # oRPC clients & query utilities
-    └── use-*.ts        # TanStack Query hooks
+    ├── client.ts            # oRPC clients & query utilities
+    └── use-*.ts             # TanStack Query hooks
 ```
+
+**Key principles:**
+- Group contracts by API prefix/domain in subdirectories (no barrel files)
+- Import directly from specific files: `import { x } from './console/billing'`
 
 ## Step-by-Step Workflow
 
 ### 1. Define Contract
 
-Create or extend a contract file in `web/contract/`:
+Create contract in appropriate domain file:
 
 ```typescript
-// web/contract/{domain}.ts
+// web/contract/console/billing.ts
 import { type } from '@orpc/contract'
-import { base } from './base'
+import { base } from '../base'
 
-// GET request - simple
-export const getItemContract = base
+export const invoicesContract = base
   .route({
-    path: '/items/{id}',
+    path: '/billing/invoices',
     method: 'GET',
   })
-  .input(type<{
-    params: { id: string }
-    query?: { include?: string }
-  }>())
-  .output(type<ItemResponse>())
+  .input(type<unknown>())
+  .output(type<{ url: string }>())
 
-// POST request with body
-export const createItemContract = base
+export const bindPartnerStackContract = base
   .route({
-    path: '/items',
-    method: 'POST',
+    path: '/billing/partners/{partnerKey}/tenants',
+    method: 'PUT',
   })
   .input(type<{
-    body: CreateItemRequest
+    params: { partnerKey: string }
+    body: { click_id: string }
   }>())
-  .output(type<ItemResponse>())
+  .output(type<unknown>())
 ```
 
-### 2. Register in Router
+### 2. Register in Router (Nested Structure)
 
-Add contract to the appropriate router in `web/contract/router.ts`:
+Group related contracts by API prefix:
 
 ```typescript
-import { getItemContract, createItemContract } from './{domain}'
+// web/contract/router.ts
+import type { InferContractRouterInputs } from '@orpc/contract'
+import { invoicesContract, bindPartnerStackContract } from './console/billing'
+import { systemFeaturesContract } from './console/system'
 
 export const consoleRouterContract = {
-  // ... existing contracts
-  getItem: getItemContract,
-  createItem: createItemContract,
+  systemFeatures: systemFeaturesContract,
+  billing: {
+    invoices: invoicesContract,
+    bindPartnerStack: bindPartnerStackContract,
+  },
 }
+
+export type ConsoleInputs = InferContractRouterInputs<typeof consoleRouterContract>
 ```
 
-### 3. Use Query Utilities
-
-Access type-safe query utilities via the generated client:
+### 3. Use in Hooks
 
 ```typescript
-// In hooks or components
-import { consoleQuery } from '@/service/client'
-import type { ConsoleInputs } from '@/contract/router'
-
-// Query key generation (for TanStack Query)
-const queryKey = consoleQuery.getItem.queryKey({
-  input: { params: { id: '123' } }
-})
-
-// Type inference for inputs
-type GetItemInput = ConsoleInputs['getItem']
-```
-
-### 4. Create React Hooks
-
-```typescript
-// web/service/use-{domain}.ts
+// web/service/use-billing.ts
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { consoleQuery } from '@/service/client'
-import type { ConsoleInputs } from '@/contract/router'
+import { consoleClient, consoleQuery } from '@/service/client'
 
-export function useItem(id: string) {
+export const useBillingUrl = (enabled: boolean) => {
   return useQuery({
-    queryKey: consoleQuery.getItem.queryKey({ 
-      input: { params: { id } } 
-    }),
-    queryFn: ({ signal }) => fetchItem(id, { signal }),
+    queryKey: consoleQuery.billing.invoices.queryKey(),
+    enabled,
+    queryFn: async () => {
+      const res = await consoleClient.billing.invoices()
+      return res.url
+    },
+  })
+}
+
+export const useBindPartnerStackInfo = () => {
+  return useMutation({
+    mutationKey: consoleQuery.billing.bindPartnerStack.mutationKey(),
+    mutationFn: (data: { partnerKey: string, clickId: string }) =>
+      consoleClient.billing.bindPartnerStack({
+        params: { partnerKey: data.partnerKey },
+        body: { click_id: data.clickId },
+      }),
   })
 }
 ```
@@ -117,7 +113,7 @@ export function useItem(id: string) {
 
 ### Input Structure
 
-The base contract uses `inputStructure: 'detailed'`, requiring explicit structure:
+Base uses `inputStructure: 'detailed'`:
 
 ```typescript
 input(type<{
@@ -141,62 +137,57 @@ Use `{paramName}` in path, match in `params`:
 }>())
 ```
 
-### Optional Inputs
-
-For endpoints with no required input:
+### No Input Required
 
 ```typescript
 .input(type<unknown>())
 .output(type<SystemFeatures>())
 ```
 
-## Type Inference
+## Router Nesting Best Practices
 
-Export router input types for external use:
-
-```typescript
-// web/contract/router.ts
-import type { InferContractRouterInputs } from '@orpc/contract'
-
-export type ConsoleInputs = InferContractRouterInputs<typeof consoleRouterContract>
-
-// Usage: ConsoleInputs['getItem']['params']
-```
-
-## Server-Side Hydration
-
-For SSR prefetching with Next.js:
+Group by API prefix for scalability:
 
 ```typescript
-import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
-import { getQueryClientServer } from '@/context/query-client-server'
-import { consoleQuery } from '@/service/client'
+// Good - nested by prefix
+export const consoleRouterContract = {
+  system: { features: systemFeaturesContract },
+  billing: {
+    invoices: invoicesContract,
+    subscription: subscriptionContract,
+  },
+  apps: { /* ... */ },
+  datasets: { /* ... */ },
+}
 
-async function getDehydratedState() {
-  const queryClient = getQueryClientServer()
-  
-  await queryClient.prefetchQuery({
-    queryKey: consoleQuery.getItem.queryKey({ input: { params: { id } } }),
-    queryFn: () => fetchItem(id),
-  })
-  
-  return dehydrate(queryClient)
+// Bad - flat structure
+export const consoleRouterContract = {
+  systemFeatures: systemFeaturesContract,
+  billingInvoices: invoicesContract,
+  billingSubscription: subscriptionContract,
 }
 ```
 
-## Checklist for New Contracts
+**Call pattern:** `consoleClient.billing.invoices()` instead of `consoleClient.billingInvoices()`
 
-- [ ] Contract file created/updated in `web/contract/`
-- [ ] Input types match API spec (params, query, body)
-- [ ] Output types match response schema
-- [ ] Contract registered in `router.ts`
-- [ ] Query utilities exported from `web/service/client.ts`
-- [ ] React hooks created in `web/service/use-{domain}.ts`
-- [ ] Import types from `@/contract/router` (not inline)
+## Adding New Domain
+
+1. Create `web/contract/console/{domain}.ts`
+2. Define contracts with proper input/output types
+3. Add nested group in `router.ts`
+4. Create `web/service/use-{domain}.ts` hooks
+
+## Checklist
+
+- [ ] Contract in `web/contract/console/{domain}.ts`
+- [ ] Nested structure in `router.ts` (grouped by API prefix)
+- [ ] Input types use detailed structure (params, query, body)
+- [ ] Hooks use `consoleQuery.{group}.{contract}.queryKey()`
+- [ ] Import types from `@/types/` (not inline)
 
 ## Common Mistakes
 
-1. **Missing `params` wrapper** - Path params must be in `params: { }`
-2. **Wrong input structure** - Always use detailed structure with explicit `params`, `query`, `body`
-3. **Not using query utilities** - Always use `{router}Query.{contract}.queryKey()` for cache consistency
-4. **Inline types** - Prefer importing shared types from `@/types/`
+1. **Flat router structure** - Always nest by API prefix
+2. **Missing `params` wrapper** - Path params must be in `params: { }`
+3. **Barrel files** - Import directly from specific files
+4. **Wrong query key** - Use `consoleQuery.billing.invoices.queryKey()` not manual keys
