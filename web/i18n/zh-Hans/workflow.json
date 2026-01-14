@@ -1056,5 +1056,7 @@
   "versionHistory.nameThisVersion": "命名",
   "versionHistory.releaseNotesPlaceholder": "请描述变更",
   "versionHistory.restorationTip": "版本回滚后，当前草稿将被覆盖。",
-  "versionHistory.title": "版本"
+  "versionHistory.title": "版本",
+  "viewPicker.graph": "工作流图",
+  "viewPicker.skill": "技能"
 }

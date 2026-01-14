@@ -1062,5 +1062,7 @@
   "versionHistory.nameThisVersion": "Name this version",
   "versionHistory.releaseNotesPlaceholder": "Describe what changed",
   "versionHistory.restorationTip": "After version restoration, the current draft will be overwritten.",
-  "versionHistory.title": "Versions"
+  "versionHistory.title": "Versions",
+  "viewPicker.graph": "Graph",
+  "viewPicker.skill": "Skill"
 }

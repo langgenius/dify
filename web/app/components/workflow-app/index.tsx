@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation'
 import {
   useEffect,
   useMemo,
+  useState,
 } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { FeaturesProvider } from '@/app/components/base/features'
@@ -15,10 +16,12 @@ import WorkflowWithDefaultContext from '@/app/components/workflow'
 import {
   WorkflowContextProvider,
 } from '@/app/components/workflow/context'
+import SkillMain from '@/app/components/workflow/skill/main'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
 import {
   SupportUploadFileTypes,
+  ViewType,
 } from '@/app/components/workflow/types'
 import {
   initialEdges,
@@ -28,8 +31,8 @@ import { useAppContext } from '@/context/app-context'
 import { fetchRunDetail } from '@/service/log'
 import { useAppTriggers } from '@/service/use-tools'
 import { AppModeEnum } from '@/types/app'
+import ViewPicker from '../workflow/view-picker'
 import WorkflowAppMain from './components/workflow-main'
-
 import { useGetRunAndTraceUrl } from './hooks/use-get-run-and-trace-url'
 import {
   useWorkflowInit,
@@ -37,6 +40,8 @@ import {
 import { createWorkflowSlice } from './store/workflow/workflow-slice'
 
 const WorkflowAppWithAdditionalContext = () => {
+  const [viewType, setViewType] = useState(ViewType.graph)
+
   const {
     data,
     isLoading,
@@ -200,13 +205,25 @@ const WorkflowAppWithAdditionalContext = () => {
       edges={edgesData}
       nodes={nodesData}
     >
-      <FeaturesProvider features={initialFeatures}>
-        <WorkflowAppMain
-          nodes={nodesData}
-          edges={edgesData}
-          viewport={data.graph.viewport}
+      <div className="relative h-full w-full">
+        <ViewPicker
+          value={viewType}
+          onChange={setViewType}
         />
-      </FeaturesProvider>
+        {viewType === ViewType.graph
+          ? (
+              <FeaturesProvider features={initialFeatures}>
+                <WorkflowAppMain
+                  nodes={nodesData}
+                  edges={edgesData}
+                  viewport={data.graph.viewport}
+                />
+              </FeaturesProvider>
+            )
+          : (
+              <SkillMain />
+            )}
+      </div>
     </WorkflowWithDefaultContext>
   )
 }

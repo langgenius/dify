@@ -65,7 +65,7 @@ const HeaderInNormal = ({
 
   return (
     <div className="flex w-full items-center justify-between">
-      <div>
+      <div className="relative top-[30px]">
         <EditingTitle />
       </div>
       <div>

@@ -517,3 +517,8 @@ export type Block = {
   title: string
   description?: string
 }
+
+export enum ViewType {
+  graph = 'graph',
+  skill = 'skill',
+}
