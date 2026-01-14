@@ -58,7 +58,6 @@ const buildPromptVariableFromInput = (payload: InputVar): PromptVariable => {
     name: label as string,
   }
 
-
   if (payload.type !== InputVarType.select)
     delete nextItem.options
 
