@@ -1,15 +1,17 @@
 import type { InferContractRouterInputs } from '@orpc/contract'
 import {
-  activateSandboxProviderContract,
   billingUrlContract,
   bindPartnerStackContract,
+  systemFeaturesContract,
+} from './console'
+import {
+  activateSandboxProviderContract,
   deleteSandboxProviderConfigContract,
   getActiveSandboxProviderContract,
   getSandboxProviderContract,
   getSandboxProviderListContract,
   saveSandboxProviderConfigContract,
-  systemFeaturesContract,
-} from './console'
+} from './console/sandbox-provider'
 import { collectionPluginsContract, collectionsContract, searchAdvancedContract } from './marketplace'
 
 export const marketplaceRouterContract = {
