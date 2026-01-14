@@ -120,7 +120,7 @@ def build_from_mappings(
             return False
         # For REMOTE_URL transfer method, ensure url or remote_url is provided and not None
         transfer_method = m.get("transfer_method")
-        if transfer_method == FileTransferMethod.REMOTE_URL.value or transfer_method == FileTransferMethod.REMOTE_URL:
+        if transfer_method == FileTransferMethod.REMOTE_URL:
             url = m.get("url") or m.get("remote_url")
             if not url:
                 return False
