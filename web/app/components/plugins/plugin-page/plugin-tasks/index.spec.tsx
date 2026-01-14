@@ -490,8 +490,7 @@ describe('PluginTaskList Component', () => {
         />,
       )
 
-      const clearButtons = screen.getAllByRole('button')
-      fireEvent.click(clearButtons[0])
+      fireEvent.click(screen.getByRole('button', { name: /task\.clearAll/i }))
 
       expect(handleClearAll).toHaveBeenCalledTimes(1)
     })
@@ -509,8 +508,7 @@ describe('PluginTaskList Component', () => {
       )
 
       const clearButtons = screen.getAllByRole('button')
-      // First button is the section clear all, second is individual clear
-      fireEvent.click(clearButtons[0])
+      fireEvent.click(clearButtons.find(btn => btn.textContent?.includes('task.clearAll'))!)
 
       expect(handleClearErrors).toHaveBeenCalledTimes(1)
     })
@@ -531,9 +529,8 @@ describe('PluginTaskList Component', () => {
         />,
       )
 
-      const clearButtons = screen.getAllByRole('button')
-      // Second button is the individual clear button
-      fireEvent.click(clearButtons[1])
+      // The individual clear button has the text 'operation.clear'
+      fireEvent.click(screen.getByRole('button', { name: /operation\.clear/i }))
 
       expect(handleClearSingle).toHaveBeenCalledWith('task-123', 'error-plugin-1')
     })

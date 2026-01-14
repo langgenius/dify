@@ -69,13 +69,13 @@ const TaskStatusIndicator: FC<TaskStatusIndicatorProps> = ({
         <div className="absolute -right-1 -top-1">
           {(isInstalling || isInstallingWithSuccess) && (
             <ProgressCircle
-              percentage={successPluginsLength / totalPluginsLength * 100}
+              percentage={(totalPluginsLength > 0 ? successPluginsLength / totalPluginsLength : 0) * 100}
               circleFillColor="fill-components-progress-brand-bg"
             />
           )}
           {isInstallingWithError && (
             <ProgressCircle
-              percentage={runningPluginsLength / totalPluginsLength * 100}
+              percentage={(totalPluginsLength > 0 ? runningPluginsLength / totalPluginsLength : 0) * 100}
               circleFillColor="fill-components-progress-brand-bg"
               sectorFillColor="fill-components-progress-error-border"
               circleStrokeColor="stroke-components-progress-error-border"

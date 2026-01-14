@@ -59,27 +59,31 @@ const PluginTasks = () => {
     t,
   ])
 
-  // Clear handlers
-  const handleClearAll = useCallback(async () => {
-    const completedPlugins = [...successPlugins, ...errorPlugins]
-    for (const plugin of completedPlugins)
+  // Generic clear function that handles clearing and modal closing
+  const clearPluginsAndClose = useCallback(async (
+    plugins: Array<{ taskId: string, plugin_unique_identifier: string }>,
+  ) => {
+    for (const plugin of plugins)
       await handleClearErrorPlugin(plugin.taskId, plugin.plugin_unique_identifier)
-    if (runningPluginsLength === 0)
-      setOpen(false)
-  }, [successPlugins, errorPlugins, handleClearErrorPlugin, runningPluginsLength])
-
-  const handleClearErrors = useCallback(async () => {
-    for (const plugin of errorPlugins)
-      await handleClearErrorPlugin(plugin.taskId, plugin.plugin_unique_identifier)
-    if (runningPluginsLength === 0)
-      setOpen(false)
-  }, [errorPlugins, handleClearErrorPlugin, runningPluginsLength])
-
-  const handleClearSingle = useCallback(async (taskId: string, pluginId: string) => {
-    await handleClearErrorPlugin(taskId, pluginId)
     if (runningPluginsLength === 0)
       setOpen(false)
   }, [handleClearErrorPlugin, runningPluginsLength])
+
+  // Clear handlers using the generic function
+  const handleClearAll = useCallback(
+    () => clearPluginsAndClose([...successPlugins, ...errorPlugins]),
+    [clearPluginsAndClose, successPlugins, errorPlugins],
+  )
+
+  const handleClearErrors = useCallback(
+    () => clearPluginsAndClose(errorPlugins),
+    [clearPluginsAndClose, errorPlugins],
+  )
+
+  const handleClearSingle = useCallback(
+    (taskId: string, pluginId: string) => clearPluginsAndClose([{ taskId, plugin_unique_identifier: pluginId }]),
+    [clearPluginsAndClose],
+  )
 
   const handleTriggerClick = useCallback(() => {
     if (isFailed || isInstalling || isInstallingWithSuccess || isInstallingWithError || isSuccess)

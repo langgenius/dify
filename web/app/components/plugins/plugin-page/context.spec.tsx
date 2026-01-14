@@ -25,6 +25,14 @@ vi.mock('../hooks', () => ({
   ],
 }))
 
+// Helper function to mock useGlobalPublicStore with marketplace setting
+const mockGlobalPublicStore = (enableMarketplace: boolean) => {
+  vi.mocked(useGlobalPublicStore).mockImplementation((selector) => {
+    const state = { systemFeatures: { enable_marketplace: enableMarketplace } }
+    return selector(state as Parameters<typeof selector>[0])
+  })
+}
+
 // Test component that uses the context
 const TestConsumer = () => {
   const containerRef = usePluginPageContext(v => v.containerRef)
@@ -50,14 +58,7 @@ describe('PluginPageContext', () => {
 
   describe('PluginPageContextProvider', () => {
     it('should provide context values to children', () => {
-      vi.mocked(useGlobalPublicStore).mockImplementation((selector) => {
-        const state = {
-          systemFeatures: {
-            enable_marketplace: true,
-          },
-        }
-        return selector(state as Parameters<typeof selector>[0])
-      })
+      mockGlobalPublicStore(true)
 
       render(
         <PluginPageContextProvider>
@@ -70,14 +71,7 @@ describe('PluginPageContext', () => {
     })
 
     it('should include marketplace tab when enable_marketplace is true', () => {
-      vi.mocked(useGlobalPublicStore).mockImplementation((selector) => {
-        const state = {
-          systemFeatures: {
-            enable_marketplace: true,
-          },
-        }
-        return selector(state as Parameters<typeof selector>[0])
-      })
+      mockGlobalPublicStore(true)
 
       render(
         <PluginPageContextProvider>
@@ -90,14 +84,7 @@ describe('PluginPageContext', () => {
     })
 
     it('should filter out marketplace tab when enable_marketplace is false', () => {
-      vi.mocked(useGlobalPublicStore).mockImplementation((selector) => {
-        const state = {
-          systemFeatures: {
-            enable_marketplace: false,
-          },
-        }
-        return selector(state as Parameters<typeof selector>[0])
-      })
+      mockGlobalPublicStore(false)
 
       render(
         <PluginPageContextProvider>
@@ -113,14 +100,7 @@ describe('PluginPageContext', () => {
 
   describe('usePluginPageContext', () => {
     it('should select specific context values', () => {
-      vi.mocked(useGlobalPublicStore).mockImplementation((selector) => {
-        const state = {
-          systemFeatures: {
-            enable_marketplace: true,
-          },
-        }
-        return selector(state as Parameters<typeof selector>[0])
-      })
+      mockGlobalPublicStore(true)
 
       render(
         <PluginPageContextProvider>

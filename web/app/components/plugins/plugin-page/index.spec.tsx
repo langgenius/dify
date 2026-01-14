@@ -263,8 +263,8 @@ describe('PluginPage Component', () => {
 
       // The mock onSwitchToMarketplaceTab calls setActiveTab('discover')
       // Since our mock InstallPluginDropdown calls onSwitchToMarketplaceTab on click
-      // We verify the callback was triggered by checking the button was clicked
-      expect(screen.getByTestId('install-dropdown')).toBeInTheDocument()
+      // we verify that setActiveTab was called with 'discover'.
+      expect(mockSetActiveTab).toHaveBeenCalledWith('discover')
     })
 
     it('should use noop for file handlers when canManagement is false', () => {
@@ -461,45 +461,29 @@ describe('PluginPage Component', () => {
     it('should open settings modal when settings button is clicked', async () => {
       render(<PluginPageWithContext {...createDefaultProps()} />)
 
-      // Find and click the settings button (the one with RiEqualizer2Line)
-      const buttons = screen.getAllByRole('button')
-      // The settings button should be one of the buttons
-      const settingsButton = buttons.find(btn =>
-        btn.className.includes('components-button-secondary-text'),
-      )
+      fireEvent.click(screen.getByTestId('plugin-settings-button'))
 
-      if (settingsButton) {
-        fireEvent.click(settingsButton)
-
-        await waitFor(() => {
-          expect(screen.getByTestId('reference-setting-modal')).toBeInTheDocument()
-        })
-      }
+      await waitFor(() => {
+        expect(screen.getByTestId('reference-setting-modal')).toBeInTheDocument()
+      })
     })
 
     it('should close settings modal when onHide is called', async () => {
       render(<PluginPageWithContext {...createDefaultProps()} />)
 
-      // Open modal first
-      const buttons = screen.getAllByRole('button')
-      const settingsButton = buttons.find(btn =>
-        btn.className.includes('components-button-secondary-text'),
-      )
+      // Open modal
+      fireEvent.click(screen.getByTestId('plugin-settings-button'))
 
-      if (settingsButton) {
-        fireEvent.click(settingsButton)
+      await waitFor(() => {
+        expect(screen.getByTestId('reference-setting-modal')).toBeInTheDocument()
+      })
 
-        await waitFor(() => {
-          expect(screen.getByTestId('reference-setting-modal')).toBeInTheDocument()
-        })
+      // Close modal
+      fireEvent.click(screen.getByText('Close Settings'))
 
-        // Close modal
-        fireEvent.click(screen.getByText('Close Settings'))
-
-        await waitFor(() => {
-          expect(screen.queryByTestId('reference-setting-modal')).not.toBeInTheDocument()
-        })
-      }
+      await waitFor(() => {
+        expect(screen.queryByTestId('reference-setting-modal')).not.toBeInTheDocument()
+      })
     })
   })
 
