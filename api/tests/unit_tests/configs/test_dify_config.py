@@ -59,7 +59,7 @@ def test_http_timeout_defaults(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("DB_PORT", "5432")
     monkeypatch.setenv("DB_DATABASE", "dify")
 
-    config = DifyConfig()
+    config = DifyConfig(_env_file=None)
 
     # Verify default timeout values
     assert config.HTTP_REQUEST_MAX_CONNECT_TIMEOUT == 10
@@ -86,7 +86,7 @@ def test_flask_configs(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("WEB_API_CORS_ALLOW_ORIGINS", "http://127.0.0.1:3000,*")
     monkeypatch.setenv("CODE_EXECUTION_ENDPOINT", "http://127.0.0.1:8194/")
 
-    flask_app.config.from_mapping(DifyConfig().model_dump())  # pyright: ignore
+    flask_app.config.from_mapping(DifyConfig(_env_file=None).model_dump())  # pyright: ignore
     config = flask_app.config
 
     # configs read from pydantic-settings
