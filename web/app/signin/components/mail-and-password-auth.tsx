@@ -65,8 +65,10 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
         body: loginData,
       })
       if (res.result === 'success') {
-        // Track login success event
-        setWebAppAccessToken(res.data.access_token)
+        if (res?.data?.access_token) {
+          // Track login success event
+          setWebAppAccessToken(res.data.access_token)
+        }
         trackEvent('user_login_success', {
           method: 'email_password',
           is_invite: isInvite,
