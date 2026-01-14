@@ -3,6 +3,7 @@ from collections.abc import Mapping, Sequence
 from mimetypes import guess_type
 
 from pydantic import BaseModel
+from sqlalchemy import select
 from yarl import URL
 
 from configs import dify_config
@@ -25,7 +26,9 @@ from core.plugin.entities.plugin_daemon import (
 from core.plugin.impl.asset import PluginAssetManager
 from core.plugin.impl.debugging import PluginDebuggingClient
 from core.plugin.impl.plugin import PluginInstaller
+from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from models.provider import ProviderCredential
 from models.provider_ids import GenericProviderID
 from services.errors.plugin import PluginInstallationForbiddenError
 from services.feature_service import FeatureService, PluginInstallationScope
@@ -506,6 +509,33 @@ class PluginService:
     @staticmethod
     def uninstall(tenant_id: str, plugin_installation_id: str) -> bool:
         manager = PluginInstaller()
+
+        # Get plugin info before uninstalling to delete associated credentials
+        try:
+            plugins = manager.list_plugins(tenant_id)
+            plugin = next((p for p in plugins if p.installation_id == plugin_installation_id), None)
+
+            if plugin:
+                plugin_id = plugin.plugin_id
+                logger.info("Deleting credentials for plugin: %s", plugin_id)
+
+                # Delete provider credentials that match this plugin
+                credentials = db.session.scalars(
+                    select(ProviderCredential).where(
+                        ProviderCredential.tenant_id == tenant_id,
+                        ProviderCredential.provider_name.like(f"{plugin_id}/%"),
+                    )
+                ).all()
+
+                for cred in credentials:
+                    db.session.delete(cred)
+
+                db.session.commit()
+                logger.info("Deleted %d credentials for plugin: %s", len(credentials), plugin_id)
+        except Exception as e:
+            logger.warning("Failed to delete credentials: %s", e)
+            # Continue with uninstall even if credential deletion fails
+
         return manager.uninstall(tenant_id, plugin_installation_id)
 
     @staticmethod
