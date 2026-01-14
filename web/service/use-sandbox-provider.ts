@@ -3,46 +3,22 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
-import { del, get, post } from './base'
+import { consoleClient, consoleQuery } from '@/service/client'
 
-const NAME_SPACE = 'sandbox-provider'
-
-export const sandboxProviderQueryKeys = {
-  all: [NAME_SPACE] as const,
-  list: [NAME_SPACE, 'list'] as const,
-  provider: (providerType: string) => [NAME_SPACE, 'provider', providerType] as const,
-  active: [NAME_SPACE, 'active'] as const,
-}
-
-export type ConfigSchema = {
-  name: string
-  type: string
-}
-
-export type SandboxProvider = {
-  provider_type: string
-  label: string
-  description: string
-  icon: string
-  is_system_configured: boolean
-  is_tenant_configured: boolean
-  is_active: boolean
-  config: Record<string, string>
-  config_schema: ConfigSchema[]
-}
+export type { ConfigSchema, SandboxProvider } from '@/types/sandbox-provider'
 
 export const useGetSandboxProviderList = () => {
   return useQuery({
-    queryKey: sandboxProviderQueryKeys.list,
-    queryFn: () => get<SandboxProvider[]>('/workspaces/current/sandbox-providers'),
+    queryKey: consoleQuery.getSandboxProviderList.queryKey(),
+    queryFn: () => consoleClient.getSandboxProviderList(),
     retry: 0,
   })
 }
 
 export const useGetSandboxProvider = (providerType: string) => {
   return useQuery({
-    queryKey: sandboxProviderQueryKeys.provider(providerType),
-    queryFn: () => get<SandboxProvider>(`/workspaces/current/sandbox-provider/${providerType}`),
+    queryKey: consoleQuery.getSandboxProvider.queryKey({ input: { params: { providerType } } }),
+    queryFn: () => consoleClient.getSandboxProvider({ params: { providerType } }),
     retry: 0,
     enabled: !!providerType,
   })
@@ -51,14 +27,15 @@ export const useGetSandboxProvider = (providerType: string) => {
 export const useSaveSandboxProviderConfig = () => {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationKey: [NAME_SPACE, 'save-config'],
+    mutationKey: consoleQuery.saveSandboxProviderConfig.mutationKey(),
     mutationFn: ({ providerType, config }: { providerType: string, config: Record<string, string> }) => {
-      return post<{ result: string }>(`/workspaces/current/sandbox-provider/${providerType}/config`, {
+      return consoleClient.saveSandboxProviderConfig({
+        params: { providerType },
         body: { config },
       })
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: sandboxProviderQueryKeys.list })
+      queryClient.invalidateQueries({ queryKey: consoleQuery.getSandboxProviderList.queryKey() })
     },
   })
 }
@@ -66,12 +43,14 @@ export const useSaveSandboxProviderConfig = () => {
 export const useDeleteSandboxProviderConfig = () => {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationKey: [NAME_SPACE, 'delete-config'],
+    mutationKey: consoleQuery.deleteSandboxProviderConfig.mutationKey(),
     mutationFn: (providerType: string) => {
-      return del<{ result: string }>(`/workspaces/current/sandbox-provider/${providerType}/config`)
+      return consoleClient.deleteSandboxProviderConfig({
+        params: { providerType },
+      })
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: sandboxProviderQueryKeys.list })
+      queryClient.invalidateQueries({ queryKey: consoleQuery.getSandboxProviderList.queryKey() })
     },
   })
 }
@@ -79,20 +58,22 @@ export const useDeleteSandboxProviderConfig = () => {
 export const useActivateSandboxProvider = () => {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationKey: [NAME_SPACE, 'activate'],
+    mutationKey: consoleQuery.activateSandboxProvider.mutationKey(),
     mutationFn: (providerType: string) => {
-      return post<{ result: string }>(`/workspaces/current/sandbox-provider/${providerType}/activate`)
+      return consoleClient.activateSandboxProvider({
+        params: { providerType },
+      })
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: sandboxProviderQueryKeys.list })
+      queryClient.invalidateQueries({ queryKey: consoleQuery.getSandboxProviderList.queryKey() })
     },
   })
 }
 
 export const useGetActiveSandboxProvider = () => {
   return useQuery({
-    queryKey: sandboxProviderQueryKeys.active,
-    queryFn: () => get<{ provider_type: string | null }>('/workspaces/current/sandbox-provider/active'),
+    queryKey: consoleQuery.getActiveSandboxProvider.queryKey(),
+    queryFn: () => consoleClient.getActiveSandboxProvider(),
     retry: 0,
   })
 }

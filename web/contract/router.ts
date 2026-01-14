@@ -1,5 +1,15 @@
 import type { InferContractRouterInputs } from '@orpc/contract'
-import { billingUrlContract, bindPartnerStackContract, systemFeaturesContract } from './console'
+import {
+  activateSandboxProviderContract,
+  billingUrlContract,
+  bindPartnerStackContract,
+  deleteSandboxProviderConfigContract,
+  getActiveSandboxProviderContract,
+  getSandboxProviderContract,
+  getSandboxProviderListContract,
+  saveSandboxProviderConfigContract,
+  systemFeaturesContract,
+} from './console'
 import { collectionPluginsContract, collectionsContract, searchAdvancedContract } from './marketplace'
 
 export const marketplaceRouterContract = {
@@ -14,6 +24,12 @@ export const consoleRouterContract = {
   systemFeatures: systemFeaturesContract,
   billingUrl: billingUrlContract,
   bindPartnerStack: bindPartnerStackContract,
+  getSandboxProviderList: getSandboxProviderListContract,
+  getSandboxProvider: getSandboxProviderContract,
+  saveSandboxProviderConfig: saveSandboxProviderConfigContract,
+  deleteSandboxProviderConfig: deleteSandboxProviderConfigContract,
+  activateSandboxProvider: activateSandboxProviderContract,
+  getActiveSandboxProvider: getActiveSandboxProviderContract,
 }
 
 export type ConsoleInputs = InferContractRouterInputs<typeof consoleRouterContract>
