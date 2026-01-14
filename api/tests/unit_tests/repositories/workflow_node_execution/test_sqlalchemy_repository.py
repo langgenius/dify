@@ -287,30 +287,31 @@ def test_to_domain_model(repository):
     metadata_dict = {str(WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS): 100}
 
     # Create a DB model using our custom subclass
-    db_model = WorkflowNodeExecutionModel()
-    db_model.id = "test-id"
-    db_model.tenant_id = "test-tenant-id"
-    db_model.app_id = "test-app-id"
-    db_model.workflow_id = "test-workflow-id"
-    db_model.triggered_from = "workflow-run"
-    db_model.workflow_run_id = "test-workflow-run-id"
-    db_model.index = 1
-    db_model.predecessor_node_id = "test-predecessor-id"
-    db_model.node_execution_id = "test-node-execution-id"
-    db_model.node_id = "test-node-id"
-    db_model.node_type = NodeType.START
-    db_model.title = "Test Node"
-    db_model.inputs = json.dumps(inputs_dict)
-    db_model.process_data = json.dumps(process_data_dict)
-    db_model.outputs = json.dumps(outputs_dict)
-    db_model.status = WorkflowNodeExecutionStatus.RUNNING
-    db_model.error = None
-    db_model.elapsed_time = 1.5
-    db_model.execution_metadata = json.dumps(metadata_dict)
-    db_model.created_at = datetime.now()
-    db_model.created_by_role = "account"
-    db_model.created_by = "test-user-id"
-    db_model.finished_at = None
+    db_model = WorkflowNodeExecutionModel(
+        id="test-id",
+        tenant_id="test-tenant-id",
+        app_id="test-app-id",
+        workflow_id="test-workflow-id",
+        triggered_from="workflow-run",
+        workflow_run_id="test-workflow-run-id",
+        index=1,
+        predecessor_node_id="test-predecessor-id",
+        node_execution_id="test-node-execution-id",
+        node_id="test-node-id",
+        node_type=NodeType.START,
+        title="Test Node",
+        inputs=json.dumps(inputs_dict),
+        process_data=json.dumps(process_data_dict),
+        outputs=json.dumps(outputs_dict),
+        status=WorkflowNodeExecutionStatus.RUNNING,
+        error=None,
+        elapsed_time=1.5,
+        execution_metadata=json.dumps(metadata_dict),
+        created_at=datetime.now(),
+        created_by_role="account",
+        created_by="test-user-id",
+        finished_at=None,
+    )
 
     # Convert to domain model
     domain_model = repository._to_domain_model(db_model)
