@@ -5,13 +5,10 @@ import {
 } from '@tanstack/react-query'
 import { consoleClient, consoleQuery } from '@/service/client'
 
-export type { ConfigSchema, SandboxProvider } from '@/types/sandbox-provider'
-
 export const useGetSandboxProviderList = () => {
   return useQuery({
     queryKey: consoleQuery.getSandboxProviderList.queryKey(),
     queryFn: () => consoleClient.getSandboxProviderList(),
-    retry: 0,
   })
 }
 
@@ -19,7 +16,6 @@ export const useGetSandboxProvider = (providerType: string) => {
   return useQuery({
     queryKey: consoleQuery.getSandboxProvider.queryKey({ input: { params: { providerType } } }),
     queryFn: () => consoleClient.getSandboxProvider({ params: { providerType } }),
-    retry: 0,
     enabled: !!providerType,
   })
 }
@@ -74,6 +70,5 @@ export const useGetActiveSandboxProvider = () => {
   return useQuery({
     queryKey: consoleQuery.getActiveSandboxProvider.queryKey(),
     queryFn: () => consoleClient.getActiveSandboxProvider(),
-    retry: 0,
   })
 }

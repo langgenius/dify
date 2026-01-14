@@ -1,6 +1,6 @@
 'use client'
 
-import type { SandboxProvider } from '@/service/use-sandbox-provider'
+import type { SandboxProvider } from '@/types/sandbox-provider'
 import { RiEqualizer2Line } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'

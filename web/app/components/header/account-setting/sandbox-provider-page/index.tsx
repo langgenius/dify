@@ -1,6 +1,6 @@
 'use client'
 
-import type { SandboxProvider } from '@/service/use-sandbox-provider'
+import type { SandboxProvider } from '@/types/sandbox-provider'
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'

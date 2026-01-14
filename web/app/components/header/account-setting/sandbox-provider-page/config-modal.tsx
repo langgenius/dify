@@ -1,7 +1,7 @@
 'use client'
 
 import type { FormRefObject, FormSchema } from '@/app/components/base/form/types'
-import type { SandboxProvider } from '@/service/use-sandbox-provider'
+import type { SandboxProvider } from '@/types/sandbox-provider'
 import { RiExternalLinkLine, RiLock2Fill } from '@remixicon/react'
 import { memo, useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'

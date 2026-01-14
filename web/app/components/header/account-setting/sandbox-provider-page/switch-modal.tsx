@@ -1,6 +1,6 @@
 'use client'
 
-import type { SandboxProvider } from '@/service/use-sandbox-provider'
+import type { SandboxProvider } from '@/types/sandbox-provider'
 import { memo, useCallback } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
