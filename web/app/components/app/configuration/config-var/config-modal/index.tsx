@@ -21,7 +21,6 @@ import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/
 import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/file-upload-setting'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { ChangeType, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
-import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 import ConfigContext from '@/context/debug-configuration'
 import { AppModeEnum, TransferMethod } from '@/types/app'
 import { checkKeys, getNewVarInWorkflow, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
@@ -165,21 +164,21 @@ const ConfigModal: FC<IConfigModalProps> = ({
     },
     ...(supportFile
       ? [
-          {
-            name: t('variableConfig.single-file', { ns: 'appDebug' }),
-            value: InputVarType.singleFile,
-          },
-          {
-            name: t('variableConfig.multi-files', { ns: 'appDebug' }),
-            value: InputVarType.multiFiles,
-          },
-        ]
+        {
+          name: t('variableConfig.single-file', { ns: 'appDebug' }),
+          value: InputVarType.singleFile,
+        },
+        {
+          name: t('variableConfig.multi-files', { ns: 'appDebug' }),
+          value: InputVarType.multiFiles,
+        },
+      ]
       : []),
     ...((!isBasicApp)
       ? [{
-          name: t('variableConfig.json', { ns: 'appDebug' }),
-          value: InputVarType.jsonObject,
-        }]
+        name: t('variableConfig.json', { ns: 'appDebug' }),
+        value: InputVarType.jsonObject,
+      }]
       : []),
   ]
 
@@ -198,8 +197,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
         if (type === InputVarType.multiFiles)
           draft.max_length = DEFAULT_FILE_UPLOAD_SETTING.max_length
       }
-      if (type === InputVarType.paragraph)
-        draft.max_length = DEFAULT_VALUE_MAX_LEN
+
     })
     setTempPayload(newPayload)
   }, [tempPayload])
@@ -258,9 +256,9 @@ const ConfigModal: FC<IConfigModalProps> = ({
     const moreInfo = tempPayload.variable === payload?.variable
       ? undefined
       : {
-          type: ChangeType.changeVarName,
-          payload: { beforeKey: payload?.variable || '', afterKey: tempPayload.variable },
-        }
+        type: ChangeType.changeVarName,
+        payload: { beforeKey: payload?.variable || '', afterKey: tempPayload.variable },
+      }
 
     const isVariableNameValid = checkVariableName(tempPayload.variable)
     if (!isVariableNameValid)
