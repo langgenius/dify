@@ -5,7 +5,7 @@ import sqlalchemy as sa
 from sqlalchemy import DateTime, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
-from .app_asset_tree import AppAssetFileTree
+from ..core.app.entities.app_asset_entities import AppAssetFileTree
 from .base import Base
 from .types import LongText, StringUUID
 

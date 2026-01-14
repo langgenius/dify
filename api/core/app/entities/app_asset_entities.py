@@ -52,15 +52,21 @@ class AppAssetTreeView(BaseModel):
     children: list[AppAssetTreeView] = Field(default_factory=list, description="Child nodes for folders")
 
 
-class AppAssetNodeNotFoundError(Exception):
+class TreeNodeNotFoundError(Exception):
+    """Tree internal: node not found"""
+
     pass
 
 
-class AppAssetParentNotFoundError(Exception):
+class TreeParentNotFoundError(Exception):
+    """Tree internal: parent folder not found"""
+
     pass
 
 
-class AppAssetPathConflictError(Exception):
+class TreePathConflictError(Exception):
+    """Tree internal: path already exists"""
+
     pass
 
 
@@ -95,7 +101,7 @@ class AppAssetFileTree(BaseModel):
     def get_path(self, node_id: str) -> str:
         node = self.get(node_id)
         if not node:
-            raise AppAssetNodeNotFoundError(node_id)
+            raise TreeNodeNotFoundError(node_id)
         parts: list[str] = []
         current: AppAssetNode | None = node
         while current:
@@ -116,13 +122,13 @@ class AppAssetFileTree(BaseModel):
 
     def add(self, node: AppAssetNode) -> AppAssetNode:
         if self.get(node.id):
-            raise AppAssetPathConflictError(node.id)
+            raise TreePathConflictError(node.id)
         if self.has_child_named(node.parent_id, node.name):
-            raise AppAssetPathConflictError(node.name)
+            raise TreePathConflictError(node.name)
         if node.parent_id:
             parent = self.get(node.parent_id)
             if not parent or parent.node_type != AssetNodeType.FOLDER:
-                raise AppAssetParentNotFoundError(node.parent_id)
+                raise TreeParentNotFoundError(node.parent_id)
         siblings = self.get_children(node.parent_id)
         node.order = max((s.order for s in siblings), default=-1) + 1
         self.nodes.append(node)
@@ -131,7 +137,7 @@ class AppAssetFileTree(BaseModel):
     def update(self, node_id: str, size: int, checksum: str) -> AppAssetNode:
         node = self.get(node_id)
         if not node or node.node_type != AssetNodeType.FILE:
-            raise AppAssetNodeNotFoundError(node_id)
+            raise TreeNodeNotFoundError(node_id)
         node.size = size
         node.checksum = checksum
         return node
@@ -139,9 +145,9 @@ class AppAssetFileTree(BaseModel):
     def rename(self, node_id: str, new_name: str) -> AppAssetNode:
         node = self.get(node_id)
         if not node:
-            raise AppAssetNodeNotFoundError(node_id)
+            raise TreeNodeNotFoundError(node_id)
         if node.name != new_name and self.has_child_named(node.parent_id, new_name):
-            raise AppAssetPathConflictError(new_name)
+            raise TreePathConflictError(new_name)
         node.name = new_name
         if node.node_type == AssetNodeType.FILE:
             node.extension = new_name.rsplit(".", 1)[-1] if "." in new_name else ""
@@ -150,13 +156,13 @@ class AppAssetFileTree(BaseModel):
     def move(self, node_id: str, new_parent_id: str | None) -> AppAssetNode:
         node = self.get(node_id)
         if not node:
-            raise AppAssetNodeNotFoundError(node_id)
+            raise TreeNodeNotFoundError(node_id)
         if new_parent_id:
             parent = self.get(new_parent_id)
             if not parent or parent.node_type != AssetNodeType.FOLDER:
-                raise AppAssetParentNotFoundError(new_parent_id)
+                raise TreeParentNotFoundError(new_parent_id)
         if self.has_child_named(new_parent_id, node.name):
-            raise AppAssetPathConflictError(node.name)
+            raise TreePathConflictError(node.name)
         node.parent_id = new_parent_id
         siblings = self.get_children(new_parent_id)
         node.order = max((s.order for s in siblings if s.id != node_id), default=-1) + 1
@@ -165,7 +171,7 @@ class AppAssetFileTree(BaseModel):
     def reorder(self, node_id: str, after_node_id: str | None) -> AppAssetNode:
         node = self.get(node_id)
         if not node:
-            raise AppAssetNodeNotFoundError(node_id)
+            raise TreeNodeNotFoundError(node_id)
 
         siblings = sorted(self.get_children(node.parent_id), key=lambda x: x.order)
         siblings = [s for s in siblings if s.id != node_id]
@@ -175,7 +181,7 @@ class AppAssetFileTree(BaseModel):
         else:
             after_node = self.get(after_node_id)
             if not after_node or after_node.parent_id != node.parent_id:
-                raise AppAssetNodeNotFoundError(after_node_id)
+                raise TreeNodeNotFoundError(after_node_id)
             insert_idx = next((i for i, s in enumerate(siblings) if s.id == after_node_id), -1) + 1
 
         siblings.insert(insert_idx, node)
@@ -187,7 +193,7 @@ class AppAssetFileTree(BaseModel):
     def remove(self, node_id: str) -> list[str]:
         node = self.get(node_id)
         if not node:
-            raise AppAssetNodeNotFoundError(node_id)
+            raise TreeNodeNotFoundError(node_id)
         ids_to_remove = [node_id] + self.get_descendant_ids(node_id)
         self.nodes = [n for n in self.nodes if n.id not in ids_to_remove]
         return ids_to_remove
