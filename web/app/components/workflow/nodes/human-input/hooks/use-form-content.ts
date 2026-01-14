@@ -1,11 +1,13 @@
 import type { FormInputItem, HumanInputNodeType } from '../types'
 import { produce } from 'immer'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useWorkflow } from '@/app/components/workflow/hooks'
 import useNodeCrud from '../../_base/hooks/use-node-crud'
 
 const useFormContent = (id: string, payload: HumanInputNodeType) => {
   const [editorKey, setEditorKey] = useState(0)
   const { inputs, setInputs } = useNodeCrud<HumanInputNodeType>(id, payload)
+  const { handleOutVarRenameChange } = useWorkflow()
   const inputsRef = useRef(inputs)
   useEffect(() => {
     inputsRef.current = inputs
@@ -35,7 +37,11 @@ const useFormContent = (id: string, payload: HumanInputNodeType) => {
     })
     setInputs(newInputs)
     setEditorKey(editorKey => editorKey + 1)
-  }, [setInputs])
+
+    // Update downstream nodes that reference this variable
+    if (oldName !== payload.output_variable_name)
+      handleOutVarRenameChange(id, [id, oldName], [id, payload.output_variable_name])
+  }, [setInputs, handleOutVarRenameChange, id])
 
   const handleFormInputItemRemove = useCallback((varName: string) => {
     const inputs = inputsRef.current
