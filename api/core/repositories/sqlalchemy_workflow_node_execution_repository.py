@@ -220,7 +220,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         db_model = WorkflowNodeExecutionModel(
             id=domain_model.id,
             tenant_id=self._tenant_id,
-            app_id=self._app_id if self._app_id is not None else None,
+            app_id=self._app_id,
             workflow_id=domain_model.workflow_id,
             triggered_from=self._triggered_from,
             workflow_run_id=domain_model.workflow_execution_id,
