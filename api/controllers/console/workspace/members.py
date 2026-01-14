@@ -116,26 +116,31 @@ class MemberInviteEmailApi(Resource):
             raise WorkspaceMembersLimitExceeded()
 
         for invitee_email in invitee_emails:
+            normalized_invitee_email = invitee_email.lower()
             try:
                 if not inviter.current_tenant:
                     raise ValueError("No current tenant")
                 token = RegisterService.invite_new_member(
-                    inviter.current_tenant, invitee_email, interface_language, role=invitee_role, inviter=inviter
+                    tenant=inviter.current_tenant,
+                    email=invitee_email,
+                    language=interface_language,
+                    role=invitee_role,
+                    inviter=inviter,
                 )
-                encoded_invitee_email = parse.quote(invitee_email)
+                encoded_invitee_email = parse.quote(normalized_invitee_email)
                 invitation_results.append(
                     {
                         "status": "success",
-                        "email": invitee_email,
+                        "email": normalized_invitee_email,
                         "url": f"{console_web_url}/activate?email={encoded_invitee_email}&token={token}",
                     }
                 )
             except AccountAlreadyInTenantError:
                 invitation_results.append(
-                    {"status": "success", "email": invitee_email, "url": f"{console_web_url}/signin"}
+                    {"status": "success", "email": normalized_invitee_email, "url": f"{console_web_url}/signin"}
                 )
             except Exception as e:
-                invitation_results.append({"status": "failed", "email": invitee_email, "message": str(e)})
+                invitation_results.append({"status": "failed", "email": normalized_invitee_email, "message": str(e)})
 
         return {
             "result": "success",
