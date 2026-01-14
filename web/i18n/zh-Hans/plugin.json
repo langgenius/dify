@@ -122,7 +122,6 @@
   "detailPanel.toolSelector.descriptionLabel": "工具描述",
   "detailPanel.toolSelector.descriptionPlaceholder": "简要描述工具目的，例如，获取特定位置的温度。",
   "detailPanel.toolSelector.empty": "点击 \"+\" 按钮添加工具。您可以添加多个工具。",
-  "detailPanel.toolSelector.mcpToolSandboxOnly": "MCP 工具仅在沙盒模式下可用。",
   "detailPanel.toolSelector.params": "推理配置",
   "detailPanel.toolSelector.paramsTip1": "控制 LLM 推理参数。",
   "detailPanel.toolSelector.paramsTip2": "当“自动”关闭时，使用默认值。",
