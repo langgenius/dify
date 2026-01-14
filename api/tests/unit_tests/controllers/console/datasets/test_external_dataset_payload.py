@@ -47,4 +47,3 @@ def test_external_dataset_create_payload_rejects_name_length_101() -> None:
     assert errors[0]["loc"] == ("name",)
     assert errors[0]["type"] == "string_too_long"
     assert errors[0]["ctx"]["max_length"] == 100
-
