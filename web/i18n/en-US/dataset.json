@@ -165,6 +165,7 @@
   "retrievalSettings": "Retrieval Setting",
   "retry": "Retry",
   "selectExternalKnowledgeAPI.placeholder": "Choose an External Knowledge API",
+  "singleDatasetRerankDisabled": "Reranking settings (Rerank Model and Weighted Score) are only applied when multiple knowledge bases are selected. With a single knowledge base, only Top-K and Score Threshold are used.",
   "serviceApi.card.apiKey": "API Key",
   "serviceApi.card.apiReference": "API Reference",
   "serviceApi.card.endpoint": "Service API Endpoint",
