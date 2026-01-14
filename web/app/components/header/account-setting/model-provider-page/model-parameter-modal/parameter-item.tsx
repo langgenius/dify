@@ -41,9 +41,6 @@ const ParameterItem: FC<ParameterItemProps> = ({
   const [localValue, setLocalValue] = useState(value)
   const numberInputRef = useRef<HTMLInputElement>(null)
 
-  // Check if value is a variable reference (starts with {{# and ends with #}})
-  const currentValue = value ?? localValue
-
   const getDefaultValue = () => {
     let defaultValue: ParameterValue
 
