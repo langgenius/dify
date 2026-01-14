@@ -47,13 +47,15 @@ const SubGraphModal: FC<SubGraphModalProps> = ({
     const current = toolParam?.mention_config
     const rawSelector = Array.isArray(current?.output_selector) ? current!.output_selector : []
     const outputSelector = rawSelector[0] === extractorNodeId ? rawSelector.slice(1) : rawSelector
+    const defaultOutputSelector = ['structured_output', paramKey]
+
     return {
       extractor_node_id: current?.extractor_node_id || extractorNodeId,
-      output_selector: outputSelector,
+      output_selector: outputSelector.length > 0 ? outputSelector : defaultOutputSelector,
       null_strategy: current?.null_strategy || 'use_default',
       default_value: current?.default_value ?? '',
     }
-  }, [extractorNodeId, toolParam?.mention_config])
+  }, [extractorNodeId, paramKey, toolParam?.mention_config])
 
   const handleMentionConfigChange = useCallback((config: MentionConfig) => {
     const { getNodes, setNodes } = reactflowStore.getState()

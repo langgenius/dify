@@ -3,6 +3,7 @@ import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { Edge, Node, ValueSelector } from '@/app/components/workflow/types'
 import { useMemo } from 'react'
+import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { BlockEnum, PromptRole } from '@/app/components/workflow/types'
 import { AppModeEnum } from '@/types/app'
 
@@ -12,6 +13,7 @@ export const SUBGRAPH_LLM_NODE_ID = 'subgraph-llm'
 export const getSubGraphInitialNodes = (
   sourceVariable: ValueSelector,
   agentName: string,
+  paramKey: string,
 ): Node[] => {
   const sourceVarName = sourceVariable.length > 1
     ? sourceVariable.slice(1).join('.')
@@ -60,6 +62,19 @@ export const getSubGraphInitialNodes = (
       vision: {
         enabled: false,
       },
+      structured_output_enabled: true,
+      structured_output: {
+        schema: {
+          type: Type.object,
+          properties: {
+            [paramKey]: {
+              type: Type.string,
+            },
+          },
+          required: [paramKey],
+          additionalProperties: false,
+        },
+      },
     },
   }
 
@@ -84,11 +99,11 @@ export const getSubGraphInitialEdges = (): Edge[] => {
 }
 
 export const useSubGraphInit = (props: SubGraphProps) => {
-  const { sourceVariable, agentName } = props
+  const { sourceVariable, agentName, paramKey } = props
 
   const initialNodes = useMemo((): Node[] => {
-    return getSubGraphInitialNodes(sourceVariable, agentName)
-  }, [sourceVariable, agentName])
+    return getSubGraphInitialNodes(sourceVariable, agentName, paramKey)
+  }, [sourceVariable, agentName, paramKey])
 
   const initialEdges = useMemo((): Edge[] => {
     return getSubGraphInitialEdges()

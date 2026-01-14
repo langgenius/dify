@@ -16,6 +16,7 @@ import { useStoreApi } from 'reactflow'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { useNodesMetaData, useNodesSyncDraft } from '@/app/components/workflow/hooks'
 import { VarKindType as VarKindTypeEnum } from '@/app/components/workflow/nodes/_base/types'
+import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { generateNewNode, getNodeCustomTypeByNodeDataType } from '@/app/components/workflow/utils'
@@ -163,6 +164,19 @@ const MixedVariableTextInput = ({
             title: defaultValue.title,
             desc: defaultValue.desc || '',
             parent_node_id: toolNodeId,
+            structured_output_enabled: true,
+            structured_output: {
+              schema: {
+                type: Type.object,
+                properties: {
+                  [paramKey]: {
+                    type: Type.string,
+                  },
+                },
+                required: [paramKey],
+                additionalProperties: false,
+              },
+            },
           },
           position: {
             x: 0,
@@ -175,7 +189,12 @@ const MixedVariableTextInput = ({
       }
     }
 
-    onChange(newValue, VarKindTypeEnum.mention, DEFAULT_MENTION_CONFIG)
+    const mentionConfigWithOutputSelector: MentionConfig = {
+      ...DEFAULT_MENTION_CONFIG,
+      extractor_node_id: toolNodeId && paramKey ? `${toolNodeId}_ext_${paramKey}` : '',
+      output_selector: paramKey ? ['structured_output', paramKey] : [],
+    }
+    onChange(newValue, VarKindTypeEnum.mention, mentionConfigWithOutputSelector)
     setControlPromptEditorRerenderKey(Date.now())
   }, [handleSyncWorkflowDraft, nodesMetaDataMap, onChange, paramKey, reactFlowStore, setControlPromptEditorRerenderKey, toolNodeId, value])
 
