@@ -21,6 +21,7 @@ from models.human_input import (
     HumanInputFormRecipient,
     RecipientType,
 )
+from services.feature_service import FeatureService
 
 logger = logging.getLogger(__name__)
 
@@ -60,15 +61,10 @@ def _parse_recipient_payload(payload: str) -> tuple[str | None, RecipientType | 
     return payload_dict.get("email"), payload_dict.get("TYPE")
 
 
-def _load_email_jobs(session: Session, form_id: str) -> list[_EmailDeliveryJob]:
-    form = session.get(HumanInputForm, form_id)
-    if form is None:
-        logger.warning("Human input form not found, form_id=%s", form_id)
-        return []
-
+def _load_email_jobs(session: Session, form: HumanInputForm) -> list[_EmailDeliveryJob]:
     deliveries = session.scalars(
         select(HumanInputDelivery).where(
-            HumanInputDelivery.form_id == form_id,
+            HumanInputDelivery.form_id == form.id,
             HumanInputDelivery.delivery_method_type == DeliveryMethodType.EMAIL,
         )
     ).all()
@@ -97,7 +93,7 @@ def _load_email_jobs(session: Session, form_id: str) -> list[_EmailDeliveryJob]:
 
         jobs.append(
             _EmailDeliveryJob(
-                form_id=form_id,
+                form_id=form.id,
                 workflow_run_id=form.workflow_run_id,
                 subject=delivery_config.config.subject,
                 body=delivery_config.config.body,
@@ -153,7 +149,19 @@ def dispatch_human_input_email_task(form_id: str, node_title: str | None = None,
 
     try:
         with _open_session(session_factory) as session:
-            jobs = _load_email_jobs(session, form_id)
+            form = session.get(HumanInputForm, form_id)
+            if form is None:
+                logger.warning("Human input form not found, form_id=%s", form_id)
+                return
+            features = FeatureService.get_features(form.tenant_id)
+            if not features.human_input_email_delivery_enabled:
+                logger.info(
+                    "Human input email delivery is not available for tenant=%s, form_id=%s",
+                    form.tenant_id,
+                    form_id,
+                )
+                return
+            jobs = _load_email_jobs(session, form)
 
         for job in jobs:
             for recipient in job.recipients:

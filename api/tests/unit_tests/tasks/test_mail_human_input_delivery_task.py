@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from types import SimpleNamespace
 
 import pytest
 
@@ -18,11 +19,17 @@ class _DummyMail:
 
 
 class _DummySession:
+    def __init__(self, form):
+        self._form = form
+
     def __enter__(self):
-        return None
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         return False
+
+    def get(self, _model, _form_id):
+        return self._form
 
 
 def _build_job(recipient_count: int = 1) -> task_module._EmailDeliveryJob:
@@ -42,6 +49,7 @@ def _build_job(recipient_count: int = 1) -> task_module._EmailDeliveryJob:
 
 def test_dispatch_human_input_email_task_sends_to_each_recipient(monkeypatch: pytest.MonkeyPatch):
     mail = _DummyMail()
+    form = SimpleNamespace(id="form-1", tenant_id="tenant-1")
 
     def fake_render(template: str, substitutions: dict[str, str]) -> str:
         return template.replace("{{ form_token }}", substitutions["form_token"]).replace(
@@ -50,15 +58,41 @@ def test_dispatch_human_input_email_task_sends_to_each_recipient(monkeypatch: py
 
     monkeypatch.setattr(task_module, "mail", mail)
     monkeypatch.setattr(task_module, "render_email_template", fake_render)
+    monkeypatch.setattr(
+        task_module.FeatureService,
+        "get_features",
+        lambda _tenant_id: SimpleNamespace(human_input_email_delivery_enabled=True),
+    )
     jobs: Sequence[task_module._EmailDeliveryJob] = [_build_job(recipient_count=2)]
-    monkeypatch.setattr(task_module, "_load_email_jobs", lambda _session, _form_id: jobs)
+    monkeypatch.setattr(task_module, "_load_email_jobs", lambda _session, _form: jobs)
 
     task_module.dispatch_human_input_email_task(
         form_id="form-1",
         node_title="Approve",
-        session_factory=lambda: _DummySession(),
+        session_factory=lambda: _DummySession(form),
     )
 
     assert len(mail.sent) == 2
     assert all(payload["subject"].startswith("Subject for token-") for payload in mail.sent)
     assert all("Body for" in payload["html"] for payload in mail.sent)
+
+
+def test_dispatch_human_input_email_task_skips_when_feature_disabled(monkeypatch: pytest.MonkeyPatch):
+    mail = _DummyMail()
+    form = SimpleNamespace(id="form-1", tenant_id="tenant-1")
+
+    monkeypatch.setattr(task_module, "mail", mail)
+    monkeypatch.setattr(
+        task_module.FeatureService,
+        "get_features",
+        lambda _tenant_id: SimpleNamespace(human_input_email_delivery_enabled=False),
+    )
+    monkeypatch.setattr(task_module, "_load_email_jobs", lambda _session, _form: [])
+
+    task_module.dispatch_human_input_email_task(
+        form_id="form-1",
+        node_title="Approve",
+        session_factory=lambda: _DummySession(form),
+    )
+
+    assert mail.sent == []

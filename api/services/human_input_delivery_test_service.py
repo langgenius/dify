@@ -18,6 +18,7 @@ from extensions.ext_database import db
 from extensions.ext_mail import mail
 from libs.email_template_renderer import render_email_template
 from models import Account, TenantAccountJoin
+from services.feature_service import FeatureService
 
 
 class DeliveryTestStatus(StrEnum):
@@ -116,6 +117,9 @@ class EmailDeliveryTestHandler:
     ) -> DeliveryTestResult:
         if not isinstance(method, EmailDeliveryMethod):
             raise DeliveryTestUnsupportedError("Delivery method does not support test send.")
+        features = FeatureService.get_features(context.tenant_id)
+        if not features.human_input_email_delivery_enabled:
+            raise DeliveryTestError("Email delivery is not available for current plan.")
         if not mail.is_inited():
             raise DeliveryTestError("Mail client is not initialized.")
 
