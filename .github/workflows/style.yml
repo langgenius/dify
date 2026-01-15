@@ -112,7 +112,7 @@ jobs:
       - name: Annotate Code
         uses: hyoban/eslint-annotations/@b2f9f1471636d3e78398f2fb42128c7b7003f393
         with:
-          eslint-report: eslint_report.json
+          eslint-report: web/eslint_report.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Web type check
