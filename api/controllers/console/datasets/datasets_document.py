@@ -221,6 +221,42 @@ class DocumentResource(Resource):
 
         return documents
 
+    def get_documents_and_upload_files_for_zip(
+        self,
+        dataset_id: str,
+        document_ids: Sequence[str],
+    ) -> tuple[dict[str, Document], dict[str, UploadFile]]:
+        """Load documents and upload files for a batch ZIP download."""
+        _, current_tenant_id = current_account_with_tenant()
+        document_id_list: list[str] = [str(document_id) for document_id in document_ids]
+        documents: Sequence[Document] = DocumentService.get_documents_by_ids(dataset_id, document_id_list)
+        documents_by_id: dict[str, Document] = {str(document.id): document for document in documents}
+        missing_document_ids: set[str] = set(document_id_list) - set(documents_by_id.keys())
+        if missing_document_ids:
+            raise NotFound("Document not found.")
+
+        upload_file_ids: list[str] = []
+        for document in documents_by_id.values():
+            if document.tenant_id != current_tenant_id:
+                raise Forbidden("No permission.")
+            if document.data_source_type != "upload_file":
+                raise NotFound("Only uploaded-file documents can be downloaded as ZIP.")
+            data_source_info: dict[str, Any] = document.data_source_info_dict or {}
+            upload_file_id: str | None = data_source_info.get("upload_file_id")
+            if not upload_file_id:
+                raise NotFound("Only uploaded-file documents can be downloaded as ZIP.")
+            upload_file_ids.append(str(upload_file_id))
+
+        upload_files_by_id: dict[str, UploadFile] = DocumentService.get_upload_files_by_ids(
+            current_tenant_id,
+            upload_file_ids,
+        )
+        missing_upload_file_ids: set[str] = set(upload_file_ids) - set(upload_files_by_id.keys())
+        if missing_upload_file_ids:
+            raise NotFound("Only uploaded-file documents can be downloaded as ZIP.")
+        # Return maps for constant-time lookups in the ZIP loop.
+        return documents_by_id, upload_files_by_id
+
 
 @console_ns.route("/datasets/process-rule")
 class GetProcessRuleApi(Resource):
@@ -935,7 +971,7 @@ class DocumentDownloadApi(DocumentResource):
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/download-zip")
-class DocumentBatchDownloadZipApi(Resource):
+class DocumentBatchDownloadZipApi(DocumentResource):
     """Download multiple uploaded-file documents as a single ZIP (avoids browser multi-download limits)."""
 
     @console_ns.doc("download_dataset_documents_as_zip")
@@ -946,10 +982,11 @@ class DocumentBatchDownloadZipApi(Resource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.expect(console_ns.models[DocumentBatchDownloadZipPayload.__name__])
     def post(self, dataset_id: str):
+        """Stream a ZIP archive containing the requested uploaded documents."""
         # Parse and validate request payload.
         payload = DocumentBatchDownloadZipPayload.model_validate(console_ns.payload or {})
 
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         dataset_id = str(dataset_id)
 
         # Validate dataset existence and permissions (once for the whole batch).
@@ -961,6 +998,14 @@ class DocumentBatchDownloadZipApi(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 
+        document_ids: list[str] = [str(document_id) for document_id in payload.document_ids]
+        # Batch-load documents and upload files to avoid per-item queries.
+        documents_by_id: dict[str, Document]
+        upload_files_by_id: dict[str, UploadFile]
+        documents_by_id, upload_files_by_id = self.get_documents_and_upload_files_for_zip(
+            dataset_id,
+            document_ids,
+        )
         used_names: set[str] = set()
 
         # Build a ZIP in a temp file using a context manager.
@@ -974,21 +1019,12 @@ class DocumentBatchDownloadZipApi(Resource):
             tmp = stack.enter_context(NamedTemporaryFile(mode="w+b", suffix=".zip", delete=True))
 
             with ZipFile(tmp, mode="w", compression=ZIP_DEFLATED) as zf:
-                for document_id in payload.document_ids:
-                    document_id = str(document_id)
-
-                    # Fetch document and enforce tenant isolation.
-                    document = DocumentService.get_document(dataset_id, document_id)
-                    if not document:
-                        raise NotFound("Document not found.")
-                    if document.tenant_id != current_tenant_id:
-                        raise Forbidden("No permission.")
-
-                    try:
-                        upload_file = _get_upload_file_from_upload_file_document(document)
-                    except NotFound:
-                        # Provide a clearer message for the batch ZIP endpoint.
-                        raise NotFound("Only uploaded-file documents can be downloaded as ZIP.")
+                for document_id in document_ids:
+                    document = documents_by_id[document_id]
+                    data_source_info: dict[str, Any] = document.data_source_info_dict or {}
+                    upload_file_id: str | None = data_source_info.get("upload_file_id")
+                    upload_file_id_str: str = str(upload_file_id)
+                    upload_file = upload_files_by_id[upload_file_id_str]
 
                     # Ensure each filename in the ZIP is unique.
                     arcname = upload_file.name

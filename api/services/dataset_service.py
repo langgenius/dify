@@ -1289,6 +1289,37 @@ class DocumentService:
             return None
 
     @staticmethod
+    def get_documents_by_ids(dataset_id: str, document_ids: Sequence[str]) -> Sequence[Document]:
+        """Fetch documents for a dataset in a single batch query."""
+        if not document_ids:
+            return []
+        document_id_list: list[str] = [str(document_id) for document_id in document_ids]
+        # Fetch all requested documents in one query to avoid N+1 lookups.
+        documents: list[Document] = db.session.scalars(
+            select(Document).where(
+                Document.dataset_id == dataset_id,
+                Document.id.in_(document_id_list),
+            )
+        ).all()
+        return documents
+
+    @staticmethod
+    def get_upload_files_by_ids(tenant_id: str, upload_file_ids: Sequence[str]) -> dict[str, UploadFile]:
+        """Fetch upload files for a tenant in a single batch query."""
+        if not upload_file_ids:
+            return {}
+        upload_file_id_list: list[str] = [str(upload_file_id) for upload_file_id in upload_file_ids]
+        unique_upload_file_ids: list[str] = list({upload_file_id for upload_file_id in upload_file_id_list})
+        # Fetch upload files in one query for efficient batch access.
+        upload_files: list[UploadFile] = db.session.scalars(
+            select(UploadFile).where(
+                UploadFile.tenant_id == tenant_id,
+                UploadFile.id.in_(unique_upload_file_ids),
+            )
+        ).all()
+        return {str(upload_file.id): upload_file for upload_file in upload_files}
+
+    @staticmethod
     def get_document_by_id(document_id: str) -> Document | None:
         document = db.session.query(Document).where(Document.id == document_id).first()
 
