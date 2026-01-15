@@ -3,7 +3,7 @@ from io import BytesIO
 
 from core.virtual_environment.__base.helpers import try_execute
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
-from extensions.ext_storage import Storage
+from extensions.ext_storage import storage
 
 from .sandbox_storage import SandboxStorage
 
@@ -14,7 +14,7 @@ WORKSPACE_DIR = "."
 
 
 class ArchiveSandboxStorage(SandboxStorage):
-    def __init__(self, storage: Storage, tenant_id: str, sandbox_id: str):
+    def __init__(self, tenant_id: str, sandbox_id: str):
         self._storage = storage
         self._tenant_id = tenant_id
         self._sandbox_id = sandbox_id

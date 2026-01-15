@@ -17,7 +17,7 @@ from core.app.entities.app_asset_entities import (
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
-from models.app_asset import AppAssetDraft
+from models.app_asset import AppAssets
 from models.model import App
 
 from .errors.app_asset import (
@@ -31,22 +31,22 @@ logger = logging.getLogger(__name__)
 
 class AppAssetService:
     @staticmethod
-    def get_or_create_draft(session: Session, app_model: App, account_id: str) -> AppAssetDraft:
+    def get_or_create_draft(session: Session, app_model: App, account_id: str) -> AppAssets:
         draft = (
-            session.query(AppAssetDraft)
+            session.query(AppAssets)
             .filter(
-                AppAssetDraft.tenant_id == app_model.tenant_id,
-                AppAssetDraft.app_id == app_model.id,
-                AppAssetDraft.version == AppAssetDraft.VERSION_DRAFT,
+                AppAssets.tenant_id == app_model.tenant_id,
+                AppAssets.app_id == app_model.id,
+                AppAssets.version == AppAssets.VERSION_DRAFT,
             )
             .first()
         )
         if not draft:
-            draft = AppAssetDraft(
+            draft = AppAssets(
                 id=str(uuid4()),
                 tenant_id=app_model.tenant_id,
                 app_id=app_model.id,
-                version=AppAssetDraft.VERSION_DRAFT,
+                version=AppAssets.VERSION_DRAFT,
                 created_by=account_id,
             )
             session.add(draft)
@@ -108,7 +108,7 @@ class AppAssetService:
             except TreePathConflictError as e:
                 raise AppAssetPathConflictError(str(e)) from e
 
-            storage_key = AppAssetDraft.get_storage_key(app_model.tenant_id, app_model.id, node_id)
+            storage_key = AppAssets.get_storage_key(app_model.tenant_id, app_model.id, node_id)
             storage.save(storage_key, content)
 
             draft.asset_tree = tree
@@ -127,7 +127,7 @@ class AppAssetService:
             if not node or node.node_type != AssetNodeType.FILE:
                 raise AppAssetNodeNotFoundError(f"File node {node_id} not found")
 
-            storage_key = AppAssetDraft.get_storage_key(app_model.tenant_id, app_model.id, node_id)
+            storage_key = AppAssets.get_storage_key(app_model.tenant_id, app_model.id, node_id)
             return storage.load_once(storage_key)
 
     @staticmethod
@@ -148,7 +148,7 @@ class AppAssetService:
             except TreeNodeNotFoundError as e:
                 raise AppAssetNodeNotFoundError(str(e)) from e
 
-            storage_key = AppAssetDraft.get_storage_key(app_model.tenant_id, app_model.id, node_id)
+            storage_key = AppAssets.get_storage_key(app_model.tenant_id, app_model.id, node_id)
             storage.save(storage_key, content)
 
             draft.asset_tree = tree
@@ -241,7 +241,7 @@ class AppAssetService:
                 raise AppAssetNodeNotFoundError(str(e)) from e
 
             for nid in removed_ids:
-                storage_key = AppAssetDraft.get_storage_key(app_model.tenant_id, app_model.id, nid)
+                storage_key = AppAssets.get_storage_key(app_model.tenant_id, app_model.id, nid)
                 try:
                     storage.delete(storage_key)
                 except Exception:
@@ -252,7 +252,7 @@ class AppAssetService:
             session.commit()
 
     @staticmethod
-    def publish(app_model: App, account_id: str) -> AppAssetDraft:
+    def publish(app_model: App, account_id: str) -> AppAssets:
         with Session(db.engine, expire_on_commit=False) as session:
             draft = AppAssetService.get_or_create_draft(session, app_model, account_id)
             tree = draft.asset_tree
@@ -261,12 +261,12 @@ class AppAssetService:
             zip_buffer = io.BytesIO()
             with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
                 for file_node in tree.walk_files():
-                    storage_key = AppAssetDraft.get_storage_key(app_model.tenant_id, app_model.id, file_node.id)
+                    storage_key = AppAssets.get_storage_key(app_model.tenant_id, app_model.id, file_node.id)
                     content = storage.load_once(storage_key)
                     archive_path = tree.get_path(file_node.id).lstrip("/")
                     zf.writestr(archive_path, content)
 
-            published = AppAssetDraft(
+            published = AppAssets(
                 id=str(uuid4()),
                 tenant_id=app_model.tenant_id,
                 app_id=app_model.id,
@@ -277,7 +277,7 @@ class AppAssetService:
             session.add(published)
             session.flush()
 
-            zip_key = AppAssetDraft.get_published_storage_key(app_model.tenant_id, app_model.id, published.id)
+            zip_key = AppAssets.get_published_storage_key(app_model.tenant_id, app_model.id, published.id)
             storage.save(zip_key, zip_buffer.getvalue())
 
             session.commit()
@@ -287,23 +287,23 @@ class AppAssetService:
     @staticmethod
     def get_published_file_content(
         app_model: App,
-        draft_id: str,
+        assets_id: str,
         file_path: str,
     ) -> bytes:
         with Session(db.engine) as session:
             published = (
-                session.query(AppAssetDraft)
+                session.query(AppAssets)
                 .filter(
-                    AppAssetDraft.tenant_id == app_model.tenant_id,
-                    AppAssetDraft.app_id == app_model.id,
-                    AppAssetDraft.id == draft_id,
+                    AppAssets.tenant_id == app_model.tenant_id,
+                    AppAssets.app_id == app_model.id,
+                    AppAssets.id == assets_id,
                 )
                 .first()
             )
-            if not published or published.version == AppAssetDraft.VERSION_DRAFT:
-                raise AppAssetNodeNotFoundError(f"Published version {draft_id} not found")
+            if not published or published.version == AppAssets.VERSION_DRAFT:
+                raise AppAssetNodeNotFoundError(f"Published version {assets_id} not found")
 
-            zip_key = AppAssetDraft.get_published_storage_key(app_model.tenant_id, app_model.id, draft_id)
+            zip_key = AppAssets.get_published_storage_key(app_model.tenant_id, app_model.id, assets_id)
             zip_data = storage.load_once(zip_key)
 
             archive_path = file_path.lstrip("/")

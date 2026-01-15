@@ -1,6 +1,7 @@
 import logging
 
 from core.sandbox import ArchiveSandboxStorage, SandboxManager
+from core.sandbox.storage.sandbox_storage import SandboxStorage
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 from core.workflow.graph_engine.layers.base import GraphEngineLayer
 from core.workflow.graph_events.base import GraphEngineEvent
@@ -14,11 +15,12 @@ class SandboxInitializationError(Exception):
 
 
 class SandboxLayer(GraphEngineLayer):
-    def __init__(self, tenant_id: str, app_id: str, sandbox_id: str) -> None:
+    def __init__(self, tenant_id: str, app_id: str, sandbox_id: str, sandbox_storage: SandboxStorage) -> None:
         super().__init__()
         self._tenant_id = tenant_id
         self._app_id = app_id
         self._sandbox_id = sandbox_id
+        self._sandbox_storage = sandbox_storage
 
     @property
     def sandbox(self) -> VirtualEnvironment:
@@ -81,12 +83,7 @@ class SandboxLayer(GraphEngineLayer):
         )
 
         try:
-            sandbox_storage = ArchiveSandboxStorage(
-                storage=storage,
-                tenant_id=self._tenant_id,
-                sandbox_id=self._sandbox_id,
-            )
-            sandbox_storage.unmount(sandbox)
+            self._sandbox_storage.unmount(sandbox)
             logger.info("Sandbox files persisted, sandbox_id=%s", self._sandbox_id)
         except Exception:
             logger.exception("Failed to persist sandbox files, sandbox_id=%s", self._sandbox_id)

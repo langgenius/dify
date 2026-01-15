@@ -30,6 +30,7 @@ from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.prompt.utils.get_thread_messages_length import get_thread_messages_length
 from core.repositories import DifyCoreRepositoryFactory
+from core.sandbox.storage.archive_storage import ArchiveSandboxStorage
 from core.workflow.repositories.draft_variable_repository import (
     DraftVariableSaverFactory,
 )
@@ -516,7 +517,19 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
 
                 graph_engine_layers: tuple = ()
                 if workflow.get_feature(WorkflowFeatures.SANDBOX).enabled:
-                    graph_engine_layers = (SandboxLayer(tenant_id=application_generate_entity.app_config.tenant_id),)
+                    if application_generate_entity.workflow_run_id is None:
+                        raise ValueError("workflow_run_id is required when sandbox is enabled")
+                    graph_engine_layers = (
+                        SandboxLayer(
+                            tenant_id=application_generate_entity.app_config.tenant_id,
+                            app_id=application_generate_entity.app_config.app_id,
+                            sandbox_id=application_generate_entity.workflow_run_id,
+                            sandbox_storage=ArchiveSandboxStorage(
+                                tenant_id=application_generate_entity.app_config.tenant_id,
+                                sandbox_id=application_generate_entity.workflow_run_id,
+                            ),
+                        ),
+                    )
 
                 # Determine system_user_id based on invocation source
                 is_external_api_call = application_generate_entity.invoke_from in {

@@ -7,7 +7,7 @@ from core.virtual_environment.__base.helpers import execute, with_connection
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 from extensions.ext_database import db
 from extensions.ext_storage import storage
-from models.app_asset import AppAssetDraft
+from models.app_asset import AppAssets
 
 from ..constants import APP_ASSETS_PATH, APP_ASSETS_ZIP_PATH
 from .base import SandboxInitializer
@@ -26,7 +26,7 @@ class AppAssetsInitializer(SandboxInitializer):
             logger.debug("No published assets for app_id=%s, skipping", self._app_id)
             return
 
-        zip_key = AppAssetDraft.get_published_storage_key(self._tenant_id, self._app_id, published.id)
+        zip_key = AppAssets.get_published_storage_key(self._tenant_id, self._app_id, published.id)
         try:
             zip_data = storage.load_once(zip_key)
         except Exception:
@@ -73,15 +73,15 @@ class AppAssetsInitializer(SandboxInitializer):
             published.id,
         )
 
-    def _get_latest_published(self) -> AppAssetDraft | None:
+    def _get_latest_published(self) -> AppAssets | None:
         with Session(db.engine) as session:
             return (
-                session.query(AppAssetDraft)
+                session.query(AppAssets)
                 .filter(
-                    AppAssetDraft.tenant_id == self._tenant_id,
-                    AppAssetDraft.app_id == self._app_id,
-                    AppAssetDraft.version != AppAssetDraft.VERSION_DRAFT,
+                    AppAssets.tenant_id == self._tenant_id,
+                    AppAssets.app_id == self._app_id,
+                    AppAssets.version != AppAssets.VERSION_DRAFT,
                 )
-                .order_by(AppAssetDraft.created_at.desc())
+                .order_by(AppAssets.created_at.desc())
                 .first()
             )

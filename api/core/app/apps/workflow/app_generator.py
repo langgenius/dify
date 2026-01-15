@@ -28,6 +28,7 @@ from core.helper.trace_id_helper import extract_external_trace_id_from_args
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories import DifyCoreRepositoryFactory
+from core.sandbox.storage.archive_storage import ArchiveSandboxStorage
 from core.workflow.graph_engine.layers.base import GraphEngineLayer
 from core.workflow.repositories.draft_variable_repository import DraftVariableSaverFactory
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
@@ -496,6 +497,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
                             tenant_id=application_generate_entity.app_config.tenant_id,
                             app_id=application_generate_entity.app_config.app_id,
                             sandbox_id=application_generate_entity.workflow_execution_id,
+                            sandbox_storage=ArchiveSandboxStorage(
+                                tenant_id=application_generate_entity.app_config.tenant_id,
+                                sandbox_id=application_generate_entity.workflow_execution_id,
+                            ),
                         ),
                     )
 

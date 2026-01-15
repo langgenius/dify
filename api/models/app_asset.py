@@ -11,11 +11,11 @@ from .base import Base
 from .types import LongText, StringUUID
 
 
-class AppAssetDraft(Base):
-    __tablename__ = "app_asset_drafts"
+class AppAssets(Base):
+    __tablename__ = "app_assets"
     __table_args__ = (
-        sa.PrimaryKeyConstraint("id", name="app_asset_draft_pkey"),
-        sa.Index("app_asset_draft_version_idx", "tenant_id", "app_id", "version"),
+        sa.PrimaryKeyConstraint("id", name="app_assets_pkey"),
+        sa.Index("app_assets_version_idx", "tenant_id", "app_id", "version"),
     )
 
     VERSION_DRAFT = "draft"
@@ -51,8 +51,8 @@ class AppAssetDraft(Base):
         return f"app_assets/{tenant_id}/{app_id}/draft/{node_id}"
 
     @staticmethod
-    def get_published_storage_key(tenant_id: str, app_id: str, draft_id: str) -> str:
-        return f"app_assets/{tenant_id}/{app_id}/published/{draft_id}.zip"
+    def get_published_storage_key(tenant_id: str, app_id: str, assets_id: str) -> str:
+        return f"app_assets/{tenant_id}/{app_id}/published/{assets_id}.zip"
 
     def __repr__(self) -> str:
-        return f"<AppAssetDraft(id={self.id}, app_id={self.app_id}, version={self.version})>"
+        return f"<AppAssets(id={self.id}, app_id={self.app_id}, version={self.version})>"
