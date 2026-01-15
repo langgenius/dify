@@ -271,6 +271,7 @@ class TestMessagesCleanServiceIntegration:
             source="annotation",
             question="Test question",
             account_id=message.from_account_id,
+            score=0.9,
             annotation_question="Test annotation question",
             annotation_content="Test annotation content",
         )
