@@ -56,9 +56,9 @@ const EditorTabItem: FC<EditorTabItemProps> = ({
 
       <span
         className={cn(
-          'max-w-40 truncate text-[13px] leading-4',
+          'max-w-40 truncate text-[13px] font-normal leading-4',
           isActive
-            ? 'font-medium text-text-primary'
+            ? 'text-text-primary'
             : 'text-text-tertiary',
         )}
       >

@@ -100,9 +100,9 @@ const FileTreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeDat
 
       <span
         className={cn(
-          'min-w-0 flex-1 truncate text-[13px] leading-4',
+          'min-w-0 flex-1 truncate text-[13px] font-normal leading-4',
           isSelected
-            ? 'font-medium text-text-primary'
+            ? 'text-text-primary'
             : 'text-text-secondary',
         )}
       >
