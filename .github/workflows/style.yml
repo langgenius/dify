@@ -106,7 +106,7 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
         run: |
-          pnpm run lint --output-file eslint_report.json --format json app/components/plugins/marketplace/hooks.ts
+          pnpm run lint:report
         continue-on-error: true
 
       - name: Annotate Code
