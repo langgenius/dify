@@ -103,13 +103,25 @@ class MockNodeFactory(DifyNodeFactory):
 
             # Create mock node instance
             mock_class = self._mock_node_types[node_type]
-            mock_instance = mock_class(
-                id=node_id,
-                config=node_config,
-                graph_init_params=self.graph_init_params,
-                graph_runtime_state=self.graph_runtime_state,
-                mock_config=self.mock_config,
-            )
+            if node_type == NodeType.CODE:
+                mock_instance = mock_class(
+                    id=node_id,
+                    config=node_config,
+                    graph_init_params=self.graph_init_params,
+                    graph_runtime_state=self.graph_runtime_state,
+                    mock_config=self.mock_config,
+                    code_executor=self._code_executor,
+                    code_providers=self._code_providers,
+                    code_limits=self._code_limits,
+                )
+            else:
+                mock_instance = mock_class(
+                    id=node_id,
+                    config=node_config,
+                    graph_init_params=self.graph_init_params,
+                    graph_runtime_state=self.graph_runtime_state,
+                    mock_config=self.mock_config,
+                )
 
             return mock_instance
 

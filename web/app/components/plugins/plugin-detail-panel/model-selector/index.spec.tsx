@@ -219,7 +219,6 @@ const createModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
  */
 const createModel = (overrides: Partial<Model> = {}): Model => ({
   provider: 'openai',
-  icon_large: { en_US: 'icon-large.png', zh_Hans: 'icon-large.png' },
   icon_small: { en_US: 'icon-small.png', zh_Hans: 'icon-small.png' },
   label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
   models: [createModelItem()],

@@ -1,4 +1,5 @@
 import type { useMarketplace } from './hooks'
+import { useLocale } from '#i18n'
 import {
   RiArrowRightUpLine,
   RiArrowUpDoubleLine,
@@ -7,7 +8,6 @@ import { useTheme } from 'next-themes'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import List from '@/app/components/plugins/marketplace/list'
-import { getLocaleOnClient } from '@/i18n-config'
 import { getMarketplaceUrl } from '@/utils/var'
 
 type MarketplaceProps = {
@@ -24,7 +24,7 @@ const Marketplace = ({
   showMarketplacePanel,
   marketplaceContext,
 }: MarketplaceProps) => {
-  const locale = getLocaleOnClient()
+  const locale = useLocale()
   const { t } = useTranslation()
   const { theme } = useTheme()
   const {
@@ -104,7 +104,6 @@ const Marketplace = ({
               marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap || {}}
               plugins={plugins}
               showInstallButton
-              locale={locale}
             />
           )
         }

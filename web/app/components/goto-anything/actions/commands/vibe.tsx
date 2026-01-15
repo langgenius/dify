@@ -1,8 +1,8 @@
 import type { SlashCommandHandler } from './types'
 import { RiSparklingFill } from '@remixicon/react'
 import * as React from 'react'
+import { getI18n } from 'react-i18next'
 import { isInWorkflowPage, VIBE_COMMAND_EVENT } from '@/app/components/workflow/constants'
-import i18n from '@/i18n-config/i18next-config'
 import { registerCommands, unregisterCommands } from './command-bus'
 
 type VibeDeps = Record<string, never>
@@ -18,7 +18,7 @@ const dispatchVibeCommand = (input?: string) => {
 
 export const vibeCommand: SlashCommandHandler<VibeDeps> = {
   name: 'vibe',
-  description: i18n.t('gotoAnything.actions.vibeDesc', { ns: 'app' }),
+  description: getI18n().t('gotoAnything.actions.vibeDesc', { ns: 'app' }),
   mode: 'submenu',
   isAvailable: () => isInWorkflowPage(),
 
@@ -28,10 +28,10 @@ export const vibeCommand: SlashCommandHandler<VibeDeps> = {
 
     return [{
       id: 'vibe',
-      title: i18n.t('gotoAnything.actions.vibeTitle', { ns: 'app', lng: locale }) || 'Vibe',
+      title: getI18n().t('gotoAnything.actions.vibeTitle', { ns: 'app', lng: locale }) || 'Vibe',
       description: hasInput
-        ? i18n.t('gotoAnything.actions.vibeDesc', { ns: 'app', lng: locale })
-        : i18n.t('gotoAnything.actions.vibeHint', { ns: 'app', lng: locale, prompt: VIBE_PROMPT_EXAMPLE }),
+        ? getI18n().t('gotoAnything.actions.vibeDesc', { ns: 'app', lng: locale })
+        : getI18n().t('gotoAnything.actions.vibeHint', { ns: 'app', lng: locale, prompt: VIBE_PROMPT_EXAMPLE }),
       type: 'command' as const,
       icon: (
         <div className="flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg">

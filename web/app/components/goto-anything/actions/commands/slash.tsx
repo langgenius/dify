@@ -3,8 +3,8 @@ import type { ScopeDescriptor } from '../types'
 import type { SlashCommandDependencies } from './types'
 import { useTheme } from 'next-themes'
 import { useEffect } from 'react'
+import { getI18n } from 'react-i18next'
 import { setLocaleOnClient } from '@/i18n-config'
-import i18n from '@/i18n-config/i18next-config'
 import { ACTION_KEYS } from '../../constants'
 import { accountCommand } from './account'
 import { bananaCommand } from './banana'
@@ -15,6 +15,8 @@ import { languageCommand } from './language'
 import { slashCommandRegistry } from './registry'
 import { themeCommand } from './theme'
 import { zenCommand } from './zen'
+
+const i18n = getI18n()
 
 export const slashScope: ScopeDescriptor = {
   id: 'slash',

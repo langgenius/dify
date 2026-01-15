@@ -1,11 +1,8 @@
-/* eslint-disable dify-i18n/require-ns-option */
-import * as React from 'react'
+import { useTranslation } from '#i18n'
 import Form from '@/app/components/datasets/settings/form'
-import { getLocaleOnServer, getTranslation } from '@/i18n-config/server'
 
-const Settings = async () => {
-  const locale = await getLocaleOnServer()
-  const { t } = await getTranslation(locale, 'dataset-settings')
+const Settings = () => {
+  const { t } = useTranslation('datasetSettings')
 
   return (
     <div className="h-full overflow-y-auto">

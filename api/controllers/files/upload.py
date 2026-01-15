@@ -4,18 +4,18 @@ from flask import request
 from flask_restx import Resource
 from flask_restx.api import HTTPStatus
 from pydantic import BaseModel, Field
-from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import Forbidden
 
 import services
 from core.file.helpers import verify_plugin_file_signature
 from core.tools.tool_file_manager import ToolFileManager
-from fields.file_fields import build_file_model
+from fields.file_fields import FileResponse
 
 from ..common.errors import (
     FileTooLargeError,
     UnsupportedFileTypeError,
 )
+from ..common.schema import register_schema_models
 from ..console.wraps import setup_required
 from ..files import files_ns
 from ..inner_api.plugin.wraps import get_user
@@ -35,6 +35,8 @@ files_ns.schema_model(
     PluginUploadQuery.__name__, PluginUploadQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
 )
 
+register_schema_models(files_ns, FileResponse)
+
 
 @files_ns.route("/upload/for-plugin")
 class PluginUploadFileApi(Resource):
@@ -51,7 +53,7 @@ class PluginUploadFileApi(Resource):
             415: "Unsupported file type",
         }
     )
-    @files_ns.marshal_with(build_file_model(files_ns), code=HTTPStatus.CREATED)
+    @files_ns.response(HTTPStatus.CREATED, "File uploaded", files_ns.models[FileResponse.__name__])
     def post(self):
         """Upload a file for plugin usage.
 
@@ -69,7 +71,7 @@ class PluginUploadFileApi(Resource):
         """
         args = PluginUploadQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
-        file: FileStorage | None = request.files.get("file")
+        file = request.files.get("file")
         if file is None:
             raise Forbidden("File is required.")
 
@@ -80,8 +82,8 @@ class PluginUploadFileApi(Resource):
         user_id = args.user_id
         user = get_user(tenant_id, user_id)
 
-        filename: str | None = file.filename
-        mimetype: str | None = file.mimetype
+        filename = file.filename
+        mimetype = file.mimetype
 
         if not filename or not mimetype:
             raise Forbidden("Invalid request.")
@@ -111,22 +113,22 @@ class PluginUploadFileApi(Resource):
             preview_url = ToolFileManager.sign_file(tool_file_id=tool_file.id, extension=extension)
 
             # Create a dictionary with all the necessary attributes
-            result = {
-                "id": tool_file.id,
-                "user_id": tool_file.user_id,
-                "tenant_id": tool_file.tenant_id,
-                "conversation_id": tool_file.conversation_id,
-                "file_key": tool_file.file_key,
-                "mimetype": tool_file.mimetype,
-                "original_url": tool_file.original_url,
-                "name": tool_file.name,
-                "size": tool_file.size,
-                "mime_type": mimetype,
-                "extension": extension,
-                "preview_url": preview_url,
-            }
+            result = FileResponse(
+                id=tool_file.id,
+                name=tool_file.name,
+                size=tool_file.size,
+                extension=extension,
+                mime_type=mimetype,
+                preview_url=preview_url,
+                source_url=tool_file.original_url,
+                original_url=tool_file.original_url,
+                user_id=tool_file.user_id,
+                tenant_id=tool_file.tenant_id,
+                conversation_id=tool_file.conversation_id,
+                file_key=tool_file.file_key,
+            )
 
-            return result, 201
+            return result.model_dump(mode="json"), 201
         except services.errors.file.FileTooLargeError as file_too_large_error:
             raise FileTooLargeError(file_too_large_error.description)
         except services.errors.file.UnsupportedFileTypeError:

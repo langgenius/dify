@@ -12,6 +12,7 @@ import { useDebounceFn } from 'ahooks'
 import dynamic from 'next/dynamic'
 import {
   useRouter,
+  useSearchParams,
 } from 'next/navigation'
 import { parseAsString, useQueryState } from 'nuqs'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -27,12 +28,25 @@ import { useGlobalPublicStore } from '@/context/global-public-context'
 import { CheckModal } from '@/hooks/use-pay'
 import { useInfiniteAppList } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
+import { cn } from '@/utils/classnames'
+import { isServer } from '@/utils/client'
 import AppCard from './app-card'
+import { AppCardSkeleton } from './app-card-skeleton'
 import Empty from './empty'
 import Footer from './footer'
 import useAppsQueryState from './hooks/use-apps-query-state'
 import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
 import NewAppCard from './new-app-card'
+
+// Define valid tabs at module scope to avoid re-creation on each render and stale closures
+const validTabs = new Set<string | AppModeEnum>([
+  'all',
+  AppModeEnum.WORKFLOW,
+  AppModeEnum.ADVANCED_CHAT,
+  AppModeEnum.CHAT,
+  AppModeEnum.AGENT_CHAT,
+  AppModeEnum.COMPLETION,
+])
 
 const TagManagementModal = dynamic(() => import('@/app/components/base/tag-management'), {
   ssr: false,
@@ -45,12 +59,41 @@ const List = () => {
   const { t } = useTranslation()
   const { systemFeatures } = useGlobalPublicStore()
   const router = useRouter()
-  const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator } = useAppContext()
+  const searchParams = useSearchParams()
+  const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, isLoadingCurrentWorkspace } = useAppContext()
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
   const [activeTab, setActiveTab] = useQueryState(
     'category',
     parseAsString.withDefault('all').withOptions({ history: 'push' }),
   )
+
+  // valid tabs for apps list; anything else should fallback to 'all'
+
+  // 1) Normalize legacy/incorrect query params like ?mode=discover -> ?category=all
+  useEffect(() => {
+    // avoid running on server
+    if (isServer)
+      return
+    const mode = searchParams.get('mode')
+    if (!mode)
+      return
+    const url = new URL(window.location.href)
+    url.searchParams.delete('mode')
+    if (validTabs.has(mode)) {
+      // migrate to category key
+      url.searchParams.set('category', mode)
+    }
+    else {
+      url.searchParams.set('category', 'all')
+    }
+    router.replace(url.pathname + url.search)
+  }, [router, searchParams])
+
+  // 2) If category has an invalid value (e.g., 'discover'), reset to 'all'
+  useEffect(() => {
+    if (!validTabs.has(activeTab))
+      setActiveTab('all')
+  }, [activeTab, setActiveTab])
   const { query: { tagIDs = [], keywords = '', isCreatedByMe: queryIsCreatedByMe = false }, setQuery } = useAppsQueryState()
   const [isCreatedByMe, setIsCreatedByMe] = useState(queryIsCreatedByMe)
   const [tagFilterValue, setTagFilterValue] = useState<string[]>(tagIDs)
@@ -89,6 +132,7 @@ const List = () => {
   const {
     data,
     isLoading,
+    isFetching,
     isFetchingNextPage,
     fetchNextPage,
     hasNextPage,
@@ -172,6 +216,8 @@ const List = () => {
 
   const pages = data?.pages ?? []
   const hasAnyApp = (pages[0]?.total ?? 0) > 0
+  // Show skeleton during initial load or when refetching with no previous data
+  const showSkeleton = isLoading || (isFetching && pages.length === 0)
 
   return (
     <>
@@ -205,23 +251,34 @@ const List = () => {
             />
           </div>
         </div>
-        {hasAnyApp
-          ? (
-              <div className="relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6">
-                {isCurrentWorkspaceEditor
-                  && <NewAppCard ref={newAppCardRef} onSuccess={refetch} selectedAppType={activeTab} />}
-                {pages.map(({ data: apps }) => apps.map(app => (
-                  <AppCard key={app.id} app={app} onRefresh={refetch} />
-                )))}
-              </div>
-            )
-          : (
-              <div className="relative grid grow grid-cols-1 content-start gap-4 overflow-hidden px-12 pt-2 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6">
-                {isCurrentWorkspaceEditor
-                  && <NewAppCard ref={newAppCardRef} className="z-10" onSuccess={refetch} selectedAppType={activeTab} />}
-                <Empty />
-              </div>
-            )}
+        <div className={cn(
+          'relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6',
+          !hasAnyApp && 'overflow-hidden',
+        )}
+        >
+          {(isCurrentWorkspaceEditor || isLoadingCurrentWorkspace) && (
+            <NewAppCard
+              ref={newAppCardRef}
+              isLoading={isLoadingCurrentWorkspace}
+              onSuccess={refetch}
+              selectedAppType={activeTab}
+              className={cn(!hasAnyApp && 'z-10')}
+            />
+          )}
+          {(() => {
+            if (showSkeleton)
+              return <AppCardSkeleton count={6} />
+
+            if (hasAnyApp) {
+              return pages.flatMap(({ data: apps }) => apps).map(app => (
+                <AppCard key={app.id} app={app} onRefresh={refetch} />
+              ))
+            }
+
+            // No apps - show empty state
+            return <Empty />
+          })()}
+        </div>
 
         {isCurrentWorkspaceEditor && (
           <div

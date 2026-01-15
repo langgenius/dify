@@ -42,6 +42,7 @@ class Worker(threading.Thread):
         event_queue: queue.Queue[GraphNodeEventBase],
         graph: Graph,
         layers: Sequence[GraphEngineLayer],
+        stop_event: threading.Event,
         worker_id: int = 0,
         flask_app: Flask | None = None,
         context_vars: contextvars.Context | None = None,
@@ -65,13 +66,16 @@ class Worker(threading.Thread):
         self._worker_id = worker_id
         self._flask_app = flask_app
         self._context_vars = context_vars
-        self._stop_event = threading.Event()
         self._last_task_time = time.time()
+        self._stop_event = stop_event
         self._layers = layers if layers is not None else []
 
     def stop(self) -> None:
-        """Signal the worker to stop processing."""
-        self._stop_event.set()
+        """Worker is controlled via shared stop_event from GraphEngine.
+
+        This method is a no-op retained for backward compatibility.
+        """
+        pass
 
     @property
     def is_idle(self) -> bool:

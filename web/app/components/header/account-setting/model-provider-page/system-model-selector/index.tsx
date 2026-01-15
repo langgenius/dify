@@ -3,7 +3,7 @@ import type {
   DefaultModel,
   DefaultModelResponse,
 } from '../declarations'
-import { RiEqualizer2Line } from '@remixicon/react'
+import { RiEqualizer2Line, RiLoader2Line } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -32,6 +32,7 @@ type SystemModelSelectorProps = {
   speech2textDefaultModel: DefaultModelResponse | undefined
   ttsDefaultModel: DefaultModelResponse | undefined
   notConfigured: boolean
+  isLoading?: boolean
 }
 const SystemModel: FC<SystemModelSelectorProps> = ({
   textGenerationDefaultModel,
@@ -40,6 +41,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
   speech2textDefaultModel,
   ttsDefaultModel,
   notConfigured,
+  isLoading,
 }) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
@@ -129,13 +131,16 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
         crossAxis: 8,
       }}
     >
-      <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
+      <PortalToFollowElemTrigger asChild onClick={() => setOpen(v => !v)}>
         <Button
           className="relative"
           variant={notConfigured ? 'primary' : 'secondary'}
           size="small"
+          disabled={isLoading}
         >
-          <RiEqualizer2Line className="mr-1 h-3.5 w-3.5" />
+          {isLoading
+            ? <RiLoader2Line className="mr-1 h-3.5 w-3.5 animate-spin" />
+            : <RiEqualizer2Line className="mr-1 h-3.5 w-3.5" />}
           {t('modelProvider.systemModelSettings', { ns: 'common' })}
         </Button>
       </PortalToFollowElemTrigger>

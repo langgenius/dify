@@ -2,9 +2,11 @@ import logging
 import time
 
 from opentelemetry.trace import get_current_span
+from opentelemetry.trace.span import INVALID_SPAN_ID, INVALID_TRACE_ID
 
 from configs import dify_config
 from contexts.wrapper import RecyclableContextVar
+from core.logging.context import init_request_context
 from dify_app import DifyApp
 
 logger = logging.getLogger(__name__)
@@ -25,28 +27,35 @@ def create_flask_app_with_configs() -> DifyApp:
     # add before request hook
     @dify_app.before_request
     def before_request():
-        # add an unique identifier to each request
+        # Initialize logging context for this request
+        init_request_context()
         RecyclableContextVar.increment_thread_recycles()
 
-    # add after request hook for injecting X-Trace-Id header from OpenTelemetry span context
+    # add after request hook for injecting trace headers from OpenTelemetry span context
+    # Only adds headers when OTEL is enabled and has valid context
     @dify_app.after_request
-    def add_trace_id_header(response):
+    def add_trace_headers(response):
         try:
             span = get_current_span()
             ctx = span.get_span_context() if span else None
-            if ctx and ctx.is_valid:
-                trace_id_hex = format(ctx.trace_id, "032x")
-                # Avoid duplicates if some middleware added it
-                if "X-Trace-Id" not in response.headers:
-                    response.headers["X-Trace-Id"] = trace_id_hex
+
+            if not ctx or not ctx.is_valid:
+                return response
+
+            # Inject trace headers from OTEL context
+            if ctx.trace_id != INVALID_TRACE_ID and "X-Trace-Id" not in response.headers:
+                response.headers["X-Trace-Id"] = format(ctx.trace_id, "032x")
+            if ctx.span_id != INVALID_SPAN_ID and "X-Span-Id" not in response.headers:
+                response.headers["X-Span-Id"] = format(ctx.span_id, "016x")
+
         except Exception:
             # Never break the response due to tracing header injection
-            logger.warning("Failed to add trace ID to response header", exc_info=True)
+            logger.warning("Failed to add trace headers to response", exc_info=True)
         return response
 
     # Capture the decorator's return value to avoid pyright reportUnusedFunction
     _ = before_request
-    _ = add_trace_id_header
+    _ = add_trace_headers
 
     return dify_app
 

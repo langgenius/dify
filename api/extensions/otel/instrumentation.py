@@ -19,26 +19,43 @@ logger = logging.getLogger(__name__)
 
 
 class ExceptionLoggingHandler(logging.Handler):
+    """
+    Handler that records exceptions to the current OpenTelemetry span.
+
+    Unlike creating a new span, this records exceptions on the existing span
+    to maintain trace context consistency throughout the request lifecycle.
+    """
+
     def emit(self, record: logging.LogRecord):
         with contextlib.suppress(Exception):
-            if record.exc_info:
-                tracer = get_tracer_provider().get_tracer("dify.exception.logging")
-                with tracer.start_as_current_span(
-                    "log.exception",
-                    attributes={
-                        "log.level": record.levelname,
-                        "log.message": record.getMessage(),
-                        "log.logger": record.name,
-                        "log.file.path": record.pathname,
-                        "log.file.line": record.lineno,
-                    },
-                ) as span:
-                    span.set_status(StatusCode.ERROR)
-                    if record.exc_info[1]:
-                        span.record_exception(record.exc_info[1])
-                        span.set_attribute("exception.message", str(record.exc_info[1]))
-                    if record.exc_info[0]:
-                        span.set_attribute("exception.type", record.exc_info[0].__name__)
+            if not record.exc_info:
+                return
+
+            from opentelemetry.trace import get_current_span
+
+            span = get_current_span()
+            if not span or not span.is_recording():
+                return
+
+            # Record exception on the current span instead of creating a new one
+            span.set_status(StatusCode.ERROR, record.getMessage())
+
+            # Add log context as span events/attributes
+            span.add_event(
+                "log.exception",
+                attributes={
+                    "log.level": record.levelname,
+                    "log.message": record.getMessage(),
+                    "log.logger": record.name,
+                    "log.file.path": record.pathname,
+                    "log.file.line": record.lineno,
+                },
+            )
+
+            if record.exc_info[1]:
+                span.record_exception(record.exc_info[1])
+            if record.exc_info[0]:
+                span.set_attribute("exception.type", record.exc_info[0].__name__)
 
 
 def instrument_exception_logging() -> None:
