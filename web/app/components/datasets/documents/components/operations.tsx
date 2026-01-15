@@ -1,8 +1,10 @@
 import type { OperationName } from '../types'
 import type { CommonResponse } from '@/models/common'
+import type { DocumentDownloadResponse } from '@/service/datasets'
 import {
   RiArchive2Line,
   RiDeleteBinLine,
+  RiDownload2Line,
   RiEditLine,
   RiEqualizer2Line,
   RiLoopLeftLine,
@@ -28,6 +30,7 @@ import {
   useDocumentArchive,
   useDocumentDelete,
   useDocumentDisable,
+  useDocumentDownload,
   useDocumentEnable,
   useDocumentPause,
   useDocumentResume,
@@ -80,6 +83,7 @@ const Operations = ({
   const { mutateAsync: enableDocument } = useDocumentEnable()
   const { mutateAsync: disableDocument } = useDocumentDisable()
   const { mutateAsync: deleteDocument } = useDocumentDelete()
+  const { mutateAsync: downloadDocument } = useDocumentDownload()
   const { mutateAsync: syncDocument } = useSyncDocument()
   const { mutateAsync: syncWebsite } = useSyncWebsite()
   const { mutateAsync: pauseDocument } = useDocumentPause()
@@ -158,6 +162,28 @@ const Operations = ({
     onUpdate()
   }, [onUpdate])
 
+  const handleDownload = useCallback(async () => {
+    // Request a signed URL first (it points to `/files/<id>/file-preview?...&as_attachment=true`).
+    const [e, res] = await asyncRunSafe<DocumentDownloadResponse>(
+      downloadDocument({ datasetId, documentId: id }) as Promise<DocumentDownloadResponse>,
+    )
+    if (e || !res?.url) {
+      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      return
+    }
+
+    // Trigger download without navigating away (helps avoid duplicate downloads in some browsers).
+    const a = document.createElement('a')
+    a.href = res.url
+    a.rel = 'noopener noreferrer'
+    a.target = '_self'
+    // The server sets Content-Disposition, so filename is handled server-side; this just forces download semantics.
+    a.download = ''
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+  }, [datasetId, downloadDocument, id, notify, t])
+
   return (
     <div className="flex items-center" onClick={e => e.stopPropagation()}>
       {isListScene && !embeddingAvailable && (
@@ -214,12 +240,43 @@ const Operations = ({
                       <RiEditLine className="h-4 w-4 text-text-tertiary" />
                       <span className={s.actionName}>{t('list.table.rename', { ns: 'datasetDocuments' })}</span>
                     </div>
+                    {data_source_type === DataSourceType.FILE && (
+                      <div
+                        className={s.actionItem}
+                        onClick={(evt) => {
+                          evt.preventDefault()
+                          evt.stopPropagation()
+                          evt.nativeEvent.stopImmediatePropagation?.()
+                          handleDownload()
+                        }}
+                      >
+                        <RiDownload2Line className="h-4 w-4 text-text-tertiary" />
+                        <span className={s.actionName}>{t('list.action.download', { ns: 'datasetDocuments' })}</span>
+                      </div>
+                    )}
                     {['notion_import', DataSourceType.WEB].includes(data_source_type) && (
                       <div className={s.actionItem} onClick={() => onOperate('sync')}>
                         <RiLoopLeftLine className="h-4 w-4 text-text-tertiary" />
                         <span className={s.actionName}>{t('list.action.sync', { ns: 'datasetDocuments' })}</span>
                       </div>
                     )}
+                    <Divider className="my-1" />
+                  </>
+                )}
+                {archived && data_source_type === DataSourceType.FILE && (
+                  <>
+                    <div
+                      className={s.actionItem}
+                      onClick={(evt) => {
+                        evt.preventDefault()
+                        evt.stopPropagation()
+                        evt.nativeEvent.stopImmediatePropagation?.()
+                        handleDownload()
+                      }}
+                    >
+                      <RiDownload2Line className="h-4 w-4 text-text-tertiary" />
+                      <span className={s.actionName}>{t('list.action.download', { ns: 'datasetDocuments' })}</span>
+                    </div>
                     <Divider className="my-1" />
                   </>
                 )}
