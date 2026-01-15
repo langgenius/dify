@@ -1,8 +1,8 @@
+import type { GeneralChunks } from '@/app/components/rag-pipeline/components/chunk-card-list/types'
 import type { WorkflowRunningData } from '@/app/components/workflow/types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { ChunkingMode } from '@/models/datasets'
-
 import Header from './header'
 // Import components after mocks
 import TestRunPanel from './index'
@@ -836,7 +836,7 @@ describe('formatPreviewChunks', () => {
     it('should limit to RAG_PIPELINE_PREVIEW_CHUNK_NUM chunks', () => {
       const manyChunks = Array.from({ length: 10 }, (_, i) => `chunk${i}`)
       const outputs = createMockGeneralOutputs(manyChunks)
-      const result = formatPreviewChunks(outputs) as string[]
+      const result = formatPreviewChunks(outputs) as GeneralChunks
 
       // RAG_PIPELINE_PREVIEW_CHUNK_NUM is mocked to 5
       expect(result).toHaveLength(5)

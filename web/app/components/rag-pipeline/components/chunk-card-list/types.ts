@@ -1,8 +1,11 @@
-export type GeneralChunks = string[]
-
+export type GeneralChunk = {
+  content: string
+  summary?: string
+}
+export type GeneralChunks = GeneralChunk[]
 export type ParentChildChunk = {
   child_contents: string[]
-  parent_content: string
+  parent_content: GeneralChunk
   parent_mode: string
 }
 

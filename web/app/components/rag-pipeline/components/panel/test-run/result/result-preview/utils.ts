@@ -1,24 +1,28 @@
-import type { ChunkInfo, GeneralChunks, ParentChildChunks, QAChunks } from '../../../../chunk-card-list/types'
+import type { ChunkInfo, GeneralChunk, GeneralChunks, ParentChildChunks, QAChunks } from '../../../../chunk-card-list/types'
 import type { ParentMode } from '@/models/datasets'
 import { RAG_PIPELINE_PREVIEW_CHUNK_NUM } from '@/config'
 import { ChunkingMode } from '@/models/datasets'
 
 type GeneralChunkPreview = {
   content: string
+  summary?: string
 }
 
 const formatGeneralChunks = (outputs: any) => {
   const chunkInfo: GeneralChunks = []
   const chunks = outputs.preview as GeneralChunkPreview[]
   chunks.slice(0, RAG_PIPELINE_PREVIEW_CHUNK_NUM).forEach((chunk) => {
-    chunkInfo.push(chunk.content)
+    chunkInfo.push({
+      content: chunk.content,
+      summary: chunk.summary,
+    })
   })
 
   return chunkInfo
 }
 
 type ParentChildChunkPreview = {
-  content: string
+  content: GeneralChunk
   child_chunks: string[]
 }
 
