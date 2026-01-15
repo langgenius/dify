@@ -73,7 +73,12 @@ type-check:
 
 test:
 	@echo "🧪 Running backend unit tests..."
-	@uv run --project api --dev dev/pytest/pytest_unit_tests.sh
+	@if [ -n "$(TARGET_TESTS)" ]; then \
+		echo "Target: $(TARGET_TESTS)"; \
+		uv run --project api --dev pytest $(TARGET_TESTS); \
+	else \
+		uv run --project api --dev dev/pytest/pytest_unit_tests.sh; \
+	fi
 	@echo "✅ Tests complete"
 
 # Build Docker images
@@ -125,7 +130,7 @@ help:
 	@echo "  make check          - Check code with ruff"
 	@echo "  make lint           - Format, fix, and lint code (ruff, imports, dotenv)"
 	@echo "  make type-check     - Run type checking with basedpyright"
-	@echo "  make test           - Run backend unit tests"
+	@echo "  make test           - Run backend unit tests (or TARGET_TESTS=./api/tests/<target_tests>)"
 	@echo ""
 	@echo "Docker Build Targets:"
 	@echo "  make build-web      - Build web Docker image"
