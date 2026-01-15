@@ -15,33 +15,16 @@ import {
 import { cn } from '@/utils/classnames'
 import FileOperationsMenu from './file-operations-menu'
 import { useSkillEditorStore, useSkillEditorStoreApi } from './store'
-import { getFileIconType } from './utils'
+import { getFileIconType } from './utils/file-utils'
 
-/**
- * FileTreeNode - Custom node renderer for react-arborist
- *
- * Matches Figma design specifications:
- * - Row height: 24px
- * - Icon size: 16x16 in 20x20 container
- * - Font: 13px Inter, regular (400) / medium (500) for selected
- * - Colors: text-secondary (#354052), text-primary (#101828) for selected
- * - Hover bg: rgba(200,206,218,0.2), Active bg: rgba(200,206,218,0.4)
- * - Folder icon: blue (#155aef) when open
- *
- * Features:
- * - Right-click context menu for folders
- * - "..." button dropdown for folders (visible on hover)
- */
 const FileTreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeData>) => {
   const isFolder = node.data.node_type === 'folder'
   const isSelected = node.isSelected
   const isDirty = useSkillEditorStore(s => s.dirtyContents.has(node.data.id))
   const storeApi = useSkillEditorStoreApi()
 
-  // Dropdown menu state (for ... button)
   const [showDropdown, setShowDropdown] = useState(false)
 
-  // Get file icon type for files
   const fileIconType = !isFolder ? getFileIconType(node.data.name) : null
 
   const handleClick = (e: React.MouseEvent) => {
@@ -51,7 +34,6 @@ const FileTreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeDat
 
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation()
-    // For files, activate (open in editor)
     if (!isFolder)
       node.activate()
   }
@@ -61,9 +43,7 @@ const FileTreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeDat
     node.toggle()
   }
 
-  // Right-click context menu handler (folders only)
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
-    // Only show context menu for folders
     if (!isFolder)
       return
 
@@ -77,7 +57,6 @@ const FileTreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeDat
     })
   }, [isFolder, node.data.id, storeApi])
 
-  // More button click handler
   const handleMoreClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
     setShowDropdown(prev => !prev)
@@ -96,7 +75,6 @@ const FileTreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeDat
       onDoubleClick={handleDoubleClick}
       onContextMenu={handleContextMenu}
     >
-      {/* Icon */}
       <div className="flex size-5 shrink-0 items-center justify-center">
         {isFolder
           ? (
@@ -113,7 +91,6 @@ const FileTreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeDat
           : (
               <div className="relative flex size-full items-center justify-center">
                 <FileTypeIcon type={fileIconType as FileAppearanceType} size="sm" />
-                {/* Dirty indicator dot */}
                 {isDirty && (
                   <span className="absolute -bottom-px -right-px size-[7px] rounded-full border border-white bg-text-warning-secondary" />
                 )}
@@ -121,7 +98,6 @@ const FileTreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeDat
             )}
       </div>
 
-      {/* Name */}
       <span
         className={cn(
           'min-w-0 flex-1 truncate text-[13px] leading-4',
@@ -133,7 +109,6 @@ const FileTreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeDat
         {node.data.name}
       </span>
 
-      {/* More button - only for folders, visible on hover */}
       {isFolder && (
         <PortalToFollowElem
           placement="bottom-start"

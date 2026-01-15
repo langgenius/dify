@@ -7,7 +7,7 @@ const IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ic
 const VIDEO_EXTENSIONS = ['mp4', 'mov', 'webm', 'mpeg', 'mpg', 'm4v', 'avi']
 const OFFICE_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx']
 
-export const getFileExtension = (name?: string, extension?: string) => {
+export function getFileExtension(name?: string, extension?: string): string {
   if (extension)
     return extension.toLowerCase()
   if (!name)
@@ -15,7 +15,7 @@ export const getFileExtension = (name?: string, extension?: string) => {
   return name.split('.').pop()?.toLowerCase() ?? ''
 }
 
-export const getFileIconType = (name: string) => {
+export function getFileIconType(name: string): FileAppearanceTypeEnum {
   const extension = name.split('.').pop()?.toLowerCase() ?? ''
 
   if (MARKDOWN_EXTENSIONS.includes(extension))
@@ -27,37 +27,42 @@ export const getFileIconType = (name: string) => {
   return FileAppearanceTypeEnum.document
 }
 
-export const isMarkdownFile = (extension: string) => MARKDOWN_EXTENSIONS.includes(extension)
-export const isCodeOrTextFile = (extension: string) => CODE_EXTENSIONS.includes(extension) || TEXT_EXTENSIONS.includes(extension)
-export const isImageFile = (extension: string) => IMAGE_EXTENSIONS.includes(extension)
-export const isVideoFile = (extension: string) => VIDEO_EXTENSIONS.includes(extension)
-export const isOfficeFile = (extension: string) => OFFICE_EXTENSIONS.includes(extension)
+export function isMarkdownFile(extension: string): boolean {
+  return MARKDOWN_EXTENSIONS.includes(extension)
+}
 
-/**
- * Get Monaco editor language from file name extension
- */
-export const getFileLanguage = (name: string): string => {
+export function isCodeOrTextFile(extension: string): boolean {
+  return CODE_EXTENSIONS.includes(extension) || TEXT_EXTENSIONS.includes(extension)
+}
+
+export function isImageFile(extension: string): boolean {
+  return IMAGE_EXTENSIONS.includes(extension)
+}
+
+export function isVideoFile(extension: string): boolean {
+  return VIDEO_EXTENSIONS.includes(extension)
+}
+
+export function isOfficeFile(extension: string): boolean {
+  return OFFICE_EXTENSIONS.includes(extension)
+}
+
+export function getFileLanguage(name: string): string {
   const extension = name.split('.').pop()?.toLowerCase() ?? ''
 
   const languageMap: Record<string, string> = {
-    // Markdown
     md: 'markdown',
     markdown: 'markdown',
     mdx: 'markdown',
-    // JSON
     json: 'json',
     jsonl: 'json',
-    // YAML
     yaml: 'yaml',
     yml: 'yaml',
-    // JavaScript/TypeScript
     js: 'javascript',
     jsx: 'javascript',
     ts: 'typescript',
     tsx: 'typescript',
-    // Python
     py: 'python',
-    // Others
     html: 'html',
     css: 'css',
     xml: 'xml',

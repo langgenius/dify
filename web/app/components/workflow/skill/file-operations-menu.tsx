@@ -12,32 +12,10 @@ import {
   RiUploadLine,
 } from '@remixicon/react'
 import * as React from 'react'
-import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import Confirm from '@/app/components/base/confirm'
-import Toast from '@/app/components/base/toast'
-import {
-  useCreateAppAssetFile,
-  useCreateAppAssetFolder,
-  useDeleteAppAssetNode,
-  useGetAppAssetTree,
-} from '@/service/use-app-asset'
 import { cn } from '@/utils/classnames'
-import { useSkillEditorStoreApi } from './store'
-import { getAllDescendantFileIds } from './type'
-
-/**
- * FileOperationsMenu - Menu content for file operations
- *
- * Shared by both context menu (right-click) and dropdown menu (... button)
- *
- * Features:
- * - New File: Create empty file (via empty Blob upload)
- * - New Folder: Create folder in target location
- * - Upload File: Upload file(s) to target folder
- * - Upload Folder: Upload entire folder structure (webkitdirectory)
- */
+import { useFileOperations } from './hooks/use-file-operations'
 
 type MenuItemProps = {
   icon: React.ElementType
@@ -64,15 +42,10 @@ const MenuItem: React.FC<MenuItemProps> = ({ icon: Icon, label, onClick, disable
 )
 
 type FileOperationsMenuProps = {
-  /** Target folder ID, or 'root' for root level */
   nodeId: string
-  /** Callback to close menu after action */
   onClose: () => void
-  /** Optional className */
   className?: string
-  /** Tree API ref for context menu (to call node.edit()) */
   treeRef?: React.RefObject<TreeApi<TreeNodeData> | null>
-  /** Node API for dropdown menu (to call node.edit()) */
   node?: NodeApi<TreeNodeData>
 }
 
@@ -84,276 +57,22 @@ const FileOperationsMenu: FC<FileOperationsMenuProps> = ({
   node,
 }) => {
   const { t } = useTranslation('workflow')
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const folderInputRef = useRef<HTMLInputElement>(null)
 
-  // Get appId from app store
-  const appDetail = useAppStore(s => s.appDetail)
-  const appId = appDetail?.id || ''
-
-  // Store API for tab cleanup
-  const storeApi = useSkillEditorStoreApi()
-
-  // Mutations
-  const createFolder = useCreateAppAssetFolder()
-  const createFile = useCreateAppAssetFile()
-  const deleteNode = useDeleteAppAssetNode()
-
-  // Tree data for descendant lookup
-  const { data: treeData } = useGetAppAssetTree(appId)
-
-  // Delete confirmation state
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-
-  // Determine parent_id (null for root)
-  const parentId = nodeId === 'root' ? null : nodeId
-
-  // Handle New File
-  const handleNewFile = useCallback(async () => {
-    // eslint-disable-next-line no-alert -- MVP: Using prompt for simplicity, will be replaced with modal later
-    const fileName = window.prompt(t('skillSidebar.menu.newFilePrompt'))
-    if (!fileName || !fileName.trim()) {
-      onClose()
-      return
-    }
-
-    try {
-      // Create empty Blob and upload as file
-      const emptyBlob = new Blob([''], { type: 'text/plain' })
-      const file = new File([emptyBlob], fileName.trim())
-
-      await createFile.mutateAsync({
-        appId,
-        name: fileName.trim(),
-        file,
-        parentId,
-      })
-
-      Toast.notify({
-        type: 'success',
-        message: t('skillSidebar.menu.fileCreated'),
-      })
-    }
-    catch {
-      Toast.notify({
-        type: 'error',
-        message: t('skillSidebar.menu.createError'),
-      })
-    }
-    finally {
-      onClose()
-    }
-  }, [appId, createFile, onClose, parentId, t])
-
-  // Handle New Folder
-  const handleNewFolder = useCallback(async () => {
-    // eslint-disable-next-line no-alert -- MVP: Using prompt for simplicity, will be replaced with modal later
-    const folderName = window.prompt(t('skillSidebar.menu.newFolderPrompt'))
-    if (!folderName || !folderName.trim()) {
-      onClose()
-      return
-    }
-
-    try {
-      await createFolder.mutateAsync({
-        appId,
-        payload: {
-          name: folderName.trim(),
-          parent_id: parentId,
-        },
-      })
-
-      Toast.notify({
-        type: 'success',
-        message: t('skillSidebar.menu.folderCreated'),
-      })
-    }
-    catch {
-      Toast.notify({
-        type: 'error',
-        message: t('skillSidebar.menu.createError'),
-      })
-    }
-    finally {
-      onClose()
-    }
-  }, [appId, createFolder, onClose, parentId, t])
-
-  // Handle file input change (single or multiple files)
-  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-    if (files.length === 0) {
-      onClose()
-      return
-    }
-
-    try {
-      // Upload files sequentially to avoid overwhelming the server
-      for (const file of files) {
-        await createFile.mutateAsync({
-          appId,
-          name: file.name,
-          file,
-          parentId,
-        })
-      }
-
-      Toast.notify({
-        type: 'success',
-        message: t('skillSidebar.menu.filesUploaded', { count: files.length }),
-      })
-    }
-    catch {
-      Toast.notify({
-        type: 'error',
-        message: t('skillSidebar.menu.uploadError'),
-      })
-    }
-    finally {
-      // Reset input to allow re-uploading same file
-      e.target.value = ''
-      onClose()
-    }
-  }, [appId, createFile, onClose, parentId, t])
-
-  // Handle folder input change (webkitdirectory)
-  const handleFolderChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-    if (files.length === 0) {
-      onClose()
-      return
-    }
-
-    try {
-      // Collect all unique folder paths from file paths
-      const folders = new Set<string>()
-
-      for (const file of files) {
-        const relativePath = (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name
-        const parts = relativePath.split('/')
-
-        // Collect all folder paths (parent directories)
-        if (parts.length > 1) {
-          let folderPath = ''
-          for (let i = 0; i < parts.length - 1; i++) {
-            folderPath = folderPath ? `${folderPath}/${parts[i]}` : parts[i]
-            folders.add(folderPath)
-          }
-        }
-      }
-
-      // Sort folders by depth (parent before child)
-      const sortedFolders = Array.from(folders).sort((a, b) => {
-        return a.split('/').length - b.split('/').length
-      })
-
-      // Create folders and track their IDs
-      const folderIdMap = new Map<string, string | null>()
-      folderIdMap.set('', parentId) // Root maps to target parent
-
-      for (const folderPath of sortedFolders) {
-        const parts = folderPath.split('/')
-        const folderName = parts[parts.length - 1]
-        const parentPath = parts.slice(0, -1).join('/')
-        const parentFolderId = folderIdMap.get(parentPath) ?? parentId
-
-        const result = await createFolder.mutateAsync({
-          appId,
-          payload: {
-            name: folderName,
-            parent_id: parentFolderId,
-          },
-        })
-
-        folderIdMap.set(folderPath, result.id)
-      }
-
-      // Upload files to their respective folders
-      for (const file of files) {
-        const relativePath = (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name
-        const parts = relativePath.split('/')
-        const parentPath = parts.length > 1 ? parts.slice(0, -1).join('/') : ''
-        const targetParentId = folderIdMap.get(parentPath) ?? parentId
-
-        await createFile.mutateAsync({
-          appId,
-          name: file.name,
-          file,
-          parentId: targetParentId,
-        })
-      }
-
-      Toast.notify({
-        type: 'success',
-        message: t('skillSidebar.menu.folderUploaded'),
-      })
-    }
-    catch {
-      Toast.notify({
-        type: 'error',
-        message: t('skillSidebar.menu.uploadError'),
-      })
-    }
-    finally {
-      // Reset input
-      e.target.value = ''
-      onClose()
-    }
-  }, [appId, createFile, createFolder, onClose, parentId, t])
-
-  // Handle Rename - trigger react-arborist inline editing
-  const handleRename = useCallback(() => {
-    // Context menu: use treeRef
-    if (treeRef?.current) {
-      const targetNode = treeRef.current.get(nodeId)
-      targetNode?.edit()
-    }
-    // Dropdown: use node directly
-    else if (node) {
-      node.edit()
-    }
-    onClose()
-  }, [nodeId, node, onClose, treeRef])
-
-  // Handle Delete click - show confirmation
-  const handleDeleteClick = useCallback(() => {
-    setShowDeleteConfirm(true)
-  }, [])
-
-  // Handle Delete confirm
-  const handleDeleteConfirm = useCallback(async () => {
-    try {
-      // Find descendant file IDs for tab cleanup
-      const descendantFileIds = treeData?.children
-        ? getAllDescendantFileIds(nodeId, treeData.children)
-        : []
-
-      await deleteNode.mutateAsync({ appId, nodeId })
-
-      // Close tabs for deleted files
-      descendantFileIds.forEach((fileId) => {
-        storeApi.getState().closeTab(fileId)
-        storeApi.getState().clearDraftContent(fileId)
-      })
-
-      Toast.notify({
-        type: 'success',
-        message: t('skillSidebar.menu.deleted'),
-      })
-    }
-    catch {
-      Toast.notify({
-        type: 'error',
-        message: t('skillSidebar.menu.deleteError'),
-      })
-    }
-    finally {
-      setShowDeleteConfirm(false)
-      onClose()
-    }
-  }, [appId, nodeId, deleteNode, storeApi, treeData?.children, onClose, t])
-
-  const isLoading = createFile.isPending || createFolder.isPending || deleteNode.isPending
+  const {
+    fileInputRef,
+    folderInputRef,
+    showDeleteConfirm,
+    isLoading,
+    isDeleting,
+    handleNewFile,
+    handleNewFolder,
+    handleFileChange,
+    handleFolderChange,
+    handleRename,
+    handleDeleteClick,
+    handleDeleteConfirm,
+    handleDeleteCancel,
+  } = useFileOperations({ nodeId, onClose, treeRef, node })
 
   return (
     <div className={cn(
@@ -362,7 +81,6 @@ const FileOperationsMenu: FC<FileOperationsMenuProps> = ({
       className,
     )}
     >
-      {/* Hidden file inputs */}
       <input
         ref={fileInputRef}
         type="file"
@@ -392,7 +110,6 @@ const FileOperationsMenu: FC<FileOperationsMenuProps> = ({
         disabled={isLoading}
       />
 
-      {/* Divider */}
       <div className="my-1 h-px bg-divider-subtle" />
 
       <MenuItem
@@ -408,7 +125,6 @@ const FileOperationsMenu: FC<FileOperationsMenuProps> = ({
         disabled={isLoading}
       />
 
-      {/* Divider before destructive actions */}
       {nodeId !== 'root' && (
         <>
           <div className="my-1 h-px bg-divider-subtle" />
@@ -437,15 +153,14 @@ const FileOperationsMenu: FC<FileOperationsMenuProps> = ({
         </>
       )}
 
-      {/* Delete confirmation modal */}
       <Confirm
         isShow={showDeleteConfirm}
         type="danger"
         title={t('skillSidebar.menu.deleteConfirmTitle')}
         content={t('skillSidebar.menu.deleteConfirmContent')}
         onConfirm={handleDeleteConfirm}
-        onCancel={() => setShowDeleteConfirm(false)}
-        isLoading={deleteNode.isPending}
+        onCancel={handleDeleteCancel}
+        isLoading={isDeleting}
       />
     </div>
   )

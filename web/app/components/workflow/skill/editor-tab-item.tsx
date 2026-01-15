@@ -8,22 +8,7 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import FileTypeIcon from '@/app/components/base/file-uploader/file-type-icon'
 import { cn } from '@/utils/classnames'
-import { getFileIconType } from './utils'
-
-/**
- * EditorTabItem - Single tab item in the tab bar
- *
- * Features:
- * - Click to activate
- * - Close button (shown on hover or when active)
- * - Dirty indicator (orange dot)
- * - File type icon based on extension
- *
- * Design specs from Figma:
- * - Height: 32px (pb-2 pt-2.5 = 18px content + padding)
- * - Font: 13px, medium (500) when active
- * - Icon: 16x16 in 20x20 container
- */
+import { getFileIconType } from './utils/file-utils'
 
 type EditorTabItemProps = {
   fileId: string
@@ -62,16 +47,13 @@ const EditorTabItem: FC<EditorTabItemProps> = ({
       )}
       onClick={handleClick}
     >
-      {/* Icon with dirty indicator */}
       <div className="relative flex size-5 shrink-0 items-center justify-center">
         <FileTypeIcon type={iconType as FileAppearanceType} size="sm" />
-        {/* Dirty indicator dot */}
         {isDirty && (
           <span className="absolute -bottom-px -right-px size-[7px] rounded-full border border-white bg-text-warning-secondary" />
         )}
       </div>
 
-      {/* File name */}
       <span
         className={cn(
           'max-w-40 truncate text-[13px] leading-4',
@@ -83,7 +65,6 @@ const EditorTabItem: FC<EditorTabItemProps> = ({
         {name}
       </span>
 
-      {/* Close button */}
       <button
         type="button"
         className={cn(

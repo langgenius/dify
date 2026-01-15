@@ -2,7 +2,7 @@
 
 import type { OnMount } from '@monaco-editor/react'
 import type { FC } from 'react'
-import type { AppAssetTreeView } from './type'
+import type { AppAssetTreeView } from '@/types/app-asset'
 import { loader } from '@monaco-editor/react'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -20,103 +20,72 @@ import MediaFilePreview from './editor/media-file-preview'
 import OfficeFilePlaceholder from './editor/office-file-placeholder'
 import UnsupportedFileDownload from './editor/unsupported-file-download'
 import { useSkillEditorStore, useSkillEditorStoreApi } from './store'
-import { buildNodeMap } from './type'
-import { getFileExtension, getFileLanguage, isCodeOrTextFile, isImageFile, isMarkdownFile, isOfficeFile, isVideoFile } from './utils'
+import { getFileExtension, getFileLanguage, isCodeOrTextFile, isImageFile, isMarkdownFile, isOfficeFile, isVideoFile } from './utils/file-utils'
+import { buildNodeMap } from './utils/tree-utils'
 
-// load file from local instead of cdn
 if (typeof window !== 'undefined')
   loader.config({ paths: { vs: `${window.location.origin}${basePath}/vs` } })
 
-/**
- * SkillDocEditor - Document editor for skill files
- *
- * Features:
- * - Monaco editor for code/text editing
- * - Auto-load content when tab is activated
- * - Dirty state tracking via store
- * - Save with Ctrl+S / Cmd+S
- *
- * Design notes from MVP:
- * - `dirtyContents` only stores modified content, not full cache
- * - `dirty = dirtyContents.has(fileId)`, no diff with server content
- * - closeTab doesn't show dirty confirmation dialog (MVP)
- */
 const SkillDocEditor: FC = () => {
   const { t } = useTranslation('workflow')
   const { theme: appTheme } = useTheme()
   const [isMounted, setIsMounted] = useState(false)
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null)
 
-  // Get appId from app store
   const appDetail = useAppStore(s => s.appDetail)
   const appId = appDetail?.id || ''
 
-  // Store state
   const activeTabId = useSkillEditorStore(s => s.activeTabId)
   const dirtyContents = useSkillEditorStore(s => s.dirtyContents)
   const storeApi = useSkillEditorStoreApi()
 
-  // Fetch tree data for file name lookup
   const { data: treeData } = useGetAppAssetTree(appId)
 
-  // Build node map for quick lookup
-  const treeChildren = treeData?.children
   const nodeMap = useMemo(() => {
-    if (!treeChildren)
+    if (!treeData?.children)
       return new Map<string, AppAssetTreeView>()
-    return buildNodeMap(treeChildren)
-  }, [treeChildren])
+    return buildNodeMap(treeData.children)
+  }, [treeData?.children])
 
-  // Get current file node
   const currentFileNode = activeTabId ? nodeMap.get(activeTabId) : undefined
-  const fileExtension = useMemo(() => {
-    return getFileExtension(currentFileNode?.name, currentFileNode?.extension)
-  }, [currentFileNode?.extension, currentFileNode?.name])
-  const isMarkdown = useMemo(() => isMarkdownFile(fileExtension), [fileExtension])
-  const isCodeOrText = useMemo(() => isCodeOrTextFile(fileExtension), [fileExtension])
-  const isImage = useMemo(() => isImageFile(fileExtension), [fileExtension])
-  const isVideo = useMemo(() => isVideoFile(fileExtension), [fileExtension])
-  const isOffice = useMemo(() => isOfficeFile(fileExtension), [fileExtension])
+  const fileExtension = getFileExtension(currentFileNode?.name, currentFileNode?.extension)
+  const isMarkdown = isMarkdownFile(fileExtension)
+  const isCodeOrText = isCodeOrTextFile(fileExtension)
+  const isImage = isImageFile(fileExtension)
+  const isVideo = isVideoFile(fileExtension)
+  const isOffice = isOfficeFile(fileExtension)
   const isEditable = isMarkdown || isCodeOrText
 
-  // Fetch file content from API
   const {
     data: fileContent,
     isLoading,
     error,
   } = useGetAppAssetFileContent(appId, activeTabId || '')
 
-  // Save mutation
   const updateContent = useUpdateAppAssetFileContent()
 
-  // Get draft content or server content
   const currentContent = useMemo(() => {
     if (!activeTabId)
       return ''
-    // Check if there's a draft first
     const draft = dirtyContents.get(activeTabId)
     if (draft !== undefined)
       return draft
-    // Otherwise use server content
     return fileContent?.content ?? ''
   }, [activeTabId, dirtyContents, fileContent?.content])
 
-  // Handle editor content change
   const handleEditorChange = useCallback((value: string | undefined) => {
     if (!activeTabId || !isEditable)
       return
-    // Set draft content in store
     storeApi.getState().setDraftContent(activeTabId, value ?? '')
   }, [activeTabId, isEditable, storeApi])
 
-  // Handle save
   const handleSave = useCallback(async () => {
     if (!activeTabId || !appId || !isEditable)
       return
 
     const content = dirtyContents.get(activeTabId)
     if (content === undefined)
-      return // No changes to save
+      return
 
     try {
       await updateContent.mutateAsync({
@@ -124,7 +93,6 @@ const SkillDocEditor: FC = () => {
         nodeId: activeTabId,
         payload: { content },
       })
-      // Clear draft on success
       storeApi.getState().clearDraftContent(activeTabId)
       Toast.notify({
         type: 'success',
@@ -139,10 +107,8 @@ const SkillDocEditor: FC = () => {
     }
   }, [activeTabId, appId, dirtyContents, isEditable, storeApi, t, updateContent])
 
-  // Handle keyboard shortcuts
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl+S / Cmd+S to save
+    function handleKeyDown(e: KeyboardEvent): void {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault()
         handleSave()
@@ -153,26 +119,15 @@ const SkillDocEditor: FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleSave])
 
-  // Handle editor mount
   const handleEditorDidMount: OnMount = useCallback((editor, monaco) => {
     editorRef.current = editor
     monaco.editor.setTheme(appTheme === Theme.light ? 'light' : 'vs-dark')
     setIsMounted(true)
   }, [appTheme])
 
-  // Determine editor language from file extension
-  const language = useMemo(() => {
-    if (!activeTabId || !currentFileNode)
-      return 'plaintext'
-    // Get language from file name in tree data
-    return getFileLanguage(currentFileNode.name)
-  }, [activeTabId, currentFileNode])
+  const language = currentFileNode ? getFileLanguage(currentFileNode.name) : 'plaintext'
+  const theme = appTheme === Theme.light ? 'light' : 'vs-dark'
 
-  const theme = useMemo(() => {
-    return appTheme === Theme.light ? 'light' : 'vs-dark'
-  }, [appTheme])
-
-  // No active tab
   if (!activeTabId) {
     return (
       <div className="flex h-full w-full items-center justify-center bg-components-panel-bg text-text-tertiary">
@@ -183,7 +138,6 @@ const SkillDocEditor: FC = () => {
     )
   }
 
-  // Loading state
   if (isLoading) {
     return (
       <div className="flex h-full w-full items-center justify-center bg-components-panel-bg">
@@ -192,7 +146,6 @@ const SkillDocEditor: FC = () => {
     )
   }
 
-  // Error state
   if (error) {
     return (
       <div className="flex h-full w-full items-center justify-center bg-components-panel-bg text-text-tertiary">

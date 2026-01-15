@@ -4,41 +4,21 @@ import { useContext } from 'react'
 import { useStore as useZustandStore } from 'zustand'
 import { createStore } from 'zustand/vanilla'
 
-/**
- * SkillEditorStore - Zustand Store for Skill Editor
- *
- * Based on MVP Design Document (docs/design/skill-editor-file-list-tab-mvp-design.md)
- *
- * Key principles:
- * - Server data via TanStack Query (useGetAppAssetTree, etc.)
- * - Client store only for UI state (tabs, expanded folders, dirty contents)
- * - Store uses fileId only, tab display name derived from tree data
- */
-
-// ============================================================================
-// Tab Slice
-// ============================================================================
-
 export type TabSliceShape = {
   /** Ordered list of open tab file IDs */
   openTabIds: string[]
   /** Currently active tab file ID */
   activeTabId: string | null
-  /** Preview tab file ID (MVP: not enabled, kept null) */
   previewTabId: string | null
-
-  /** Open a file as a tab (and activate it) */
   openTab: (fileId: string) => void
-  /** Close a tab */
   closeTab: (fileId: string) => void
-  /** Activate a tab (without opening) */
   activateTab: (fileId: string) => void
 }
 
 export const createTabSlice: StateCreator<TabSliceShape> = (set, get) => ({
   openTabIds: [],
   activeTabId: null,
-  previewTabId: null, // MVP: Preview mode not enabled
+  previewTabId: null,
 
   openTab: (fileId: string) => {
     const { openTabIds, activeTabId } = get()
@@ -85,19 +65,10 @@ export const createTabSlice: StateCreator<TabSliceShape> = (set, get) => ({
   },
 })
 
-// ============================================================================
-// File Tree Slice
-// ============================================================================
-
 export type FileTreeSliceShape = {
-  /** Set of expanded folder IDs (controlled by react-arborist) */
   expandedFolderIds: Set<string>
-
-  /** Update expanded folder IDs (controlled mode) */
   setExpandedFolderIds: (ids: Set<string>) => void
-  /** Toggle a folder's expanded state */
   toggleFolder: (folderId: string) => void
-  /** Reveal a file by expanding all ancestor folders */
   revealFile: (ancestorFolderIds: string[]) => void
 }
 
@@ -122,27 +93,16 @@ export const createFileTreeSlice: StateCreator<FileTreeSliceShape> = (set, get) 
   revealFile: (ancestorFolderIds: string[]) => {
     const { expandedFolderIds } = get()
     const newSet = new Set(expandedFolderIds)
-    // Expand all ancestors
     ancestorFolderIds.forEach(id => newSet.add(id))
     set({ expandedFolderIds: newSet })
   },
 })
 
-// ============================================================================
-// Dirty State Slice
-// ============================================================================
-
 export type DirtySliceShape = {
-  /** Map of fileId -> edited content (only stores modified files) */
   dirtyContents: Map<string, string>
-
-  /** Set draft content for a file (marks as dirty) */
   setDraftContent: (fileId: string, content: string) => void
-  /** Clear draft content (after successful save) */
   clearDraftContent: (fileId: string) => void
-  /** Check if a file has unsaved changes */
   isDirty: (fileId: string) => boolean
-  /** Get draft content for a file (or undefined if not dirty) */
   getDraftContent: (fileId: string) => string | undefined
 }
 
@@ -172,19 +132,12 @@ export const createDirtySlice: StateCreator<DirtySliceShape> = (set, get) => ({
   },
 })
 
-// ============================================================================
-// File Operations Menu Slice
-// ============================================================================
-
 export type FileOperationsMenuSliceShape = {
-  /** Context menu state (right-click) - null when closed */
   contextMenu: {
     top: number
     left: number
     nodeId: string
   } | null
-
-  /** Set or clear context menu */
   setContextMenu: (menu: FileOperationsMenuSliceShape['contextMenu']) => void
 }
 
@@ -196,23 +149,14 @@ export const createFileOperationsMenuSlice: StateCreator<FileOperationsMenuSlice
   },
 })
 
-// ============================================================================
-// Combined Store Shape
-// ============================================================================
-
 export type SkillEditorShape
   = TabSliceShape
     & FileTreeSliceShape
     & DirtySliceShape
     & FileOperationsMenuSliceShape
     & {
-    /** Reset all state (called when appId changes) */
       reset: () => void
     }
-
-// ============================================================================
-// Store Factory
-// ============================================================================
 
 export const createSkillEditorStore = (): StoreApi<SkillEditorShape> => {
   return createStore<SkillEditorShape>((...args) => ({
@@ -234,10 +178,6 @@ export const createSkillEditorStore = (): StoreApi<SkillEditorShape> => {
     },
   }))
 }
-
-// ============================================================================
-// Context and Hooks
-// ============================================================================
 
 export type SkillEditorStore = StoreApi<SkillEditorShape>
 

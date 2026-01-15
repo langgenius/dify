@@ -13,12 +13,6 @@ type FileTreeContextMenuProps = {
   treeRef: React.RefObject<TreeApi<TreeNodeData> | null>
 }
 
-/**
- * FileTreeContextMenu - Right-click context menu for file tree
- *
- * Renders at absolute position when contextMenu state is set.
- * Uses useClickAway to close when clicking outside.
- */
 const FileTreeContextMenu: FC<FileTreeContextMenuProps> = ({ treeRef }) => {
   const ref = useRef<HTMLDivElement>(null)
   const contextMenu = useSkillEditorStore(s => s.contextMenu)
