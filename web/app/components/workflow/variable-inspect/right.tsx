@@ -159,7 +159,7 @@ const Right = ({
     handleHidePromptGenerator()
   }, [setInputs, blockType, nodeId, node?.data, handleHidePromptGenerator])
 
-  const displaySchemaType = currentNodeVar?.var?.schemaType ? (`(${currentNodeVar?.var?.schemaType})`) : ''
+  const displaySchemaType = currentNodeVar?.var?.schemaType ? `(${currentNodeVar.var.schemaType})` : ''
 
   return (
     <div className={cn('flex h-full flex-col')}>
