@@ -11,3 +11,39 @@ export const getFileIconType = (name: string) => {
 
   return FileAppearanceTypeEnum.document
 }
+
+/**
+ * Get Monaco editor language from file name extension
+ */
+export const getFileLanguage = (name: string): string => {
+  const extension = name.split('.').pop()?.toLowerCase() ?? ''
+
+  const languageMap: Record<string, string> = {
+    // Markdown
+    md: 'markdown',
+    markdown: 'markdown',
+    mdx: 'markdown',
+    // JSON
+    json: 'json',
+    jsonl: 'json',
+    // YAML
+    yaml: 'yaml',
+    yml: 'yaml',
+    // JavaScript/TypeScript
+    js: 'javascript',
+    jsx: 'javascript',
+    ts: 'typescript',
+    tsx: 'typescript',
+    // Python
+    py: 'python',
+    // Others
+    html: 'html',
+    css: 'css',
+    xml: 'xml',
+    sql: 'sql',
+    sh: 'shell',
+    bash: 'shell',
+  }
+
+  return languageMap[extension] ?? 'plaintext'
+}
