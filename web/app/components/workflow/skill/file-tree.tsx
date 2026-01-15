@@ -150,6 +150,7 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
             rowHeight={24}
             indent={20}
             overscanCount={5}
+            openByDefault={false}
             selection={activeTabId ?? undefined}
             initialOpenState={initialOpensObject}
             onToggle={handleToggle}
