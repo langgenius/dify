@@ -304,7 +304,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       if (abortControllerRef.current === controller)
         abortControllerRef.current = null
     }
-  }, [detail.id, hasMore, timezone, t, appDetail, detail?.model_config?.configs?.introduction])
+  }, [detail.id, hasMore, timezone, t, appDetail])
 
   // Derive chatItemTree, threadChatItems, and oldestAnswerIdRef from allChatItems
   useEffect(() => {
@@ -512,7 +512,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
     finally {
       setIsLoading(false)
     }
-  }, [detail.id, hasMore, isLoading, timezone, t, appDetail, detail?.model_config?.configs?.introduction])
+  }, [detail.id, hasMore, isLoading, timezone, t, appDetail])
 
   useEffect(() => {
     const scrollableDiv = document.getElementById('scrollableDiv')

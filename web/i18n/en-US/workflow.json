@@ -577,7 +577,7 @@
   "nodes.humanInput.insertInputField.useVarInstead": "Use Variable Instead",
   "nodes.humanInput.insertInputField.variable": "variable",
   "nodes.humanInput.insertInputField.variableNameInvalid": "Variable name can only contain letters, numbers, and underscores, and cannot start with a number",
-  "nodes.humanInput.log.inputURL": "Input URL:",
+  "nodes.humanInput.log.backstageInputURL": "Backstage input URL:",
   "nodes.humanInput.log.reason": "Reason:",
   "nodes.humanInput.log.reasonContent": "Human input required to proceed",
   "nodes.humanInput.singleRun.back": "Back",

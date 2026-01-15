@@ -1,9 +1,11 @@
 'use client'
 import type { FC } from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Indicator from '@/app/components/header/indicator'
 import StatusContainer from '@/app/components/workflow/run/status-container'
 import { useDocLink } from '@/context/i18n'
+import { useWorkflowPausedDetails } from '@/service/use-log'
 import { cn } from '@/utils/classnames'
 
 type ResultProps = {
@@ -12,8 +14,8 @@ type ResultProps = {
   tokens?: number
   error?: string
   exceptionCounts?: number
-  inputURL?: string
   isListening?: boolean
+  workflowRunId?: string
 }
 
 const StatusPanel: FC<ResultProps> = ({
@@ -22,11 +24,46 @@ const StatusPanel: FC<ResultProps> = ({
   tokens,
   error,
   exceptionCounts,
-  inputURL,
   isListening = false,
+  workflowRunId,
 }) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
+  const { data: pausedDetails } = useWorkflowPausedDetails({
+    workflowRunId: workflowRunId || '',
+    enabled: status === 'paused',
+  })
+
+  const pausedReasons = useMemo(() => {
+    const reasons: string[] = []
+    if (!pausedDetails)
+      return reasons
+    const hasHumanInputNode = pausedDetails.paused_nodes.some(
+      node => node.pause_type.type === 'human_input',
+    )
+    if (hasHumanInputNode) {
+      reasons.push(t('nodes.humanInput.log.reasonContent', { ns: 'workflow' }))
+    }
+    return reasons
+  }, [pausedDetails, t])
+
+  const pausedInputURLs = useMemo(() => {
+    const inputURLs: string[] = []
+    if (!pausedDetails)
+      return inputURLs
+    const { paused_nodes } = pausedDetails
+    const hasHumanInputNode = paused_nodes.some(
+      node => node.pause_type.type === 'human_input',
+    )
+    if (hasHumanInputNode) {
+      paused_nodes.forEach((node) => {
+        if (node.pause_type.type === 'human_input') {
+          inputURLs.push(node.pause_type.backstage_input_url)
+        }
+      })
+    }
+    return inputURLs
+  }, [pausedDetails])
 
   return (
     <StatusContainer status={status}>
@@ -95,7 +132,7 @@ const StatusPanel: FC<ResultProps> = ({
           <div className="system-2xs-medium-uppercase mb-1 text-text-tertiary">{t('resultPanel.time', { ns: 'runLog' })}</div>
           <div className="system-sm-medium flex items-center gap-1 text-text-secondary">
             {(status === 'running' || status === 'paused') && (
-              <div className="h-2 w-16 rounded-sm bg-text-quaternary" />
+              <div className="h-2 w-16 animate-pulse rounded-sm bg-text-quaternary" />
             )}
             {status !== 'running' && status !== 'paused' && (
               <span>{time ? `${time?.toFixed(3)}s` : '-'}</span>
@@ -106,7 +143,7 @@ const StatusPanel: FC<ResultProps> = ({
           <div className="system-2xs-medium-uppercase mb-1 text-text-tertiary">{t('resultPanel.tokens', { ns: 'runLog' })}</div>
           <div className="system-sm-medium flex items-center gap-1 text-text-secondary">
             {(status === 'running' || status === 'paused') && (
-              <div className="h-2 w-20 rounded-sm bg-text-quaternary" />
+              <div className="h-2 w-20 animate-pulse rounded-sm bg-text-quaternary" />
             )}
             {status !== 'running' && status !== 'paused' && (
               <span>{`${tokens || 0} Tokens`}</span>
@@ -160,21 +197,34 @@ const StatusPanel: FC<ResultProps> = ({
       {status === 'paused' && (
         <>
           <div className="my-2 h-[0.5px] bg-divider-deep" />
-          <div className="system-xs-medium space-y-1 text-text-warning">
-            <div className="flex items-center gap-1">
-              <div className="w-[96px] uppercase">{t('nodes.humanInput.log.reason', { ns: 'workflow' })}</div>
-              <div className="truncate">{t('nodes.humanInput.log.reasonContent', { ns: 'workflow' })}</div>
+          <div className="system-xs-medium flex flex-col gap-y-2">
+            <div className="flex flex-col gap-y-0.5">
+              <div className="system-2xs-medium-uppercase text-text-tertiary">{t('nodes.humanInput.log.reason', { ns: 'workflow' })}</div>
+              {
+                pausedReasons.length > 0
+                  ? pausedReasons.map(reason => (
+                      <div className="system-xs-medium truncate text-text-secondary" key={reason}>{reason}</div>
+                    ))
+                  : (
+                      <div className="h-2 w-20 animate-pulse rounded-sm bg-text-quaternary" />
+                    )
+              }
             </div>
-            <div className="flex items-center gap-1">
-              <div className="w-[96px] uppercase">{t('nodes.humanInput.log.inputURL', { ns: 'workflow' })}</div>
-              <a
-                href={inputURL}
-                target="_blank"
-                className="text-text-accent"
-              >
-                {inputURL}
-              </a>
-            </div>
+            {pausedInputURLs.length > 0 && (
+              <div className="flex flex-col gap-y-0.5">
+                <div className="system-2xs-medium-uppercase text-text-tertiary">{t('nodes.humanInput.log.backstageInputURL', { ns: 'workflow' })}</div>
+                {pausedInputURLs.map(url => (
+                  <a
+                    key={url}
+                    href={url}
+                    target="_blank"
+                    className="system-xs-medium text-text-accent"
+                  >
+                    {url}
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
         </>
       )}

@@ -577,7 +577,7 @@
   "nodes.humanInput.insertInputField.useVarInstead": "使用变量代替",
   "nodes.humanInput.insertInputField.variable": "变量",
   "nodes.humanInput.insertInputField.variableNameInvalid": "只能包含字母、数字和下划线，且不能以数字开头",
-  "nodes.humanInput.log.inputURL": "输入 URL ：",
+  "nodes.humanInput.log.backstageInputURL": "表单输入 URL：",
   "nodes.humanInput.log.reason": "原因：",
   "nodes.humanInput.log.reasonContent": "需要人类输入才能继续",
   "nodes.humanInput.singleRun.back": "返回",

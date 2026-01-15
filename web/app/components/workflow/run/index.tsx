@@ -182,6 +182,7 @@ const RunPanel: FC<RunProps> = ({
             steps={runDetail.total_steps}
             exceptionCounts={runDetail.exceptions_count}
             isListening={isListening}
+            workflowRunId={runDetail.id}
           />
         )}
         {!loading && currentTab === 'DETAIL' && !runDetail && isListening && (
