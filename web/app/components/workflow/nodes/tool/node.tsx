@@ -1,8 +1,8 @@
 import type { FC } from 'react'
 import type { ToolNodeType } from './types'
-import type { Node, NodeProps } from '@/app/components/workflow/types'
-import { BlockEnum } from '@/app/components/workflow/types'
+import type { StrategyDetail, StrategyPluginDetail } from '@/app/components/plugins/types'
 import type { AgentNodeType } from '@/app/components/workflow/nodes/agent/types'
+import type { CommonNodeType, NodeProps, Node as WorkflowNode } from '@/app/components/workflow/types'
 import * as React from 'react'
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -14,12 +14,19 @@ import { useNodesMetaData } from '@/app/components/workflow/hooks'
 import { useNodeDataUpdate } from '@/app/components/workflow/hooks/use-node-data-update'
 import { useNodePluginInstallation } from '@/app/components/workflow/hooks/use-node-plugin-installation'
 import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { useGetLanguage } from '@/context/i18n'
 import { useStrategyProviders } from '@/service/use-strategy'
 import { cn } from '@/utils/classnames'
 import { VarType } from './types'
 
 const AGENT_CONTEXT_VAR_PATTERN = /\{\{[@#]([^.@#]+)\.context[@#]\}\}/g
+type AgentCheckValidContext = {
+  provider?: StrategyPluginDetail
+  strategy?: StrategyDetail
+  language: string
+  isReadyForCheckValid: boolean
+}
 
 const Node: FC<NodeProps<ToolNodeType>> = ({
   id,
@@ -29,7 +36,7 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
   const language = useGetLanguage()
   const { nodesMap: nodesMetaDataMap } = useNodesMetaData()
   const { data: strategyProviders } = useStrategyProviders()
-  const nodes = useNodes<Node>()
+  const nodes = useNodes<CommonNodeType>()
   const { tool_configurations, paramSchemas } = data
   const toolConfigs = Object.keys(tool_configurations || {})
   const {
@@ -60,7 +67,7 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
     return nodes.reduce((acc, node) => {
       acc[node.id] = node
       return acc
-    }, {} as Record<string, Node>)
+    }, {} as Record<string, WorkflowNode>)
   }, [nodes])
 
   const mentionEntries = useMemo(() => {
@@ -89,15 +96,13 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
     if (!mentionEntries.length)
       return []
 
-    const items: Array<{ key: string, label: string, type: BlockEnum, hasWarning: boolean }> = []
-    const seen = new Set<string>()
-    const getNodeWarning = (node?: Node) => {
+    const getNodeWarning = (node?: WorkflowNode) => {
       if (!node)
         return true
       const validator = nodesMetaDataMap?.[node.data.type as BlockEnum]?.checkValid
       if (!validator)
         return false
-      let moreDataForCheckValid: any
+      let moreDataForCheckValid: AgentCheckValidContext | undefined
       if (node.data.type === BlockEnum.Agent) {
         const agentData = node.data as AgentNodeType
         const isReadyForCheckValid = !!strategyProviders
@@ -110,44 +115,34 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
           isReadyForCheckValid,
         }
       }
-      const { errorMessage } = validator(node.data as any, t, moreDataForCheckValid)
+      const { errorMessage } = validator(node.data, t, moreDataForCheckValid)
       return Boolean(errorMessage)
     }
-    const pushItem = (key: string, label: string, type: BlockEnum, hasWarning: boolean) => {
-      if (seen.has(key))
-        return
-      seen.add(key)
-      items.push({
-        key,
-        label,
-        type,
-        hasWarning,
-      })
-    }
-    mentionEntries.forEach(({ agentNodeId, extractorNodeId }) => {
-      if (extractorNodeId) {
-        const extractorNode = nodesById[extractorNodeId]
-        if (extractorNode) {
-          pushItem(
-            extractorNode.id,
-            extractorNode.data.title || t(`blocks.${extractorNode.data.type}`, { ns: 'workflow' }),
-            extractorNode.data.type as BlockEnum,
-            getNodeWarning(extractorNode),
-          )
-        }
-      }
 
+    const itemsMap = new Map<string, { key: string, label: string, type: BlockEnum, hasWarning: boolean }>()
+
+    mentionEntries.forEach(({ agentNodeId, extractorNodeId }) => {
       const agentNode = nodesById[agentNodeId]
       const agentLabel = `@${agentNode?.data.title || agentNodeId}`
-      pushItem(
-        `agent-${agentNodeId}`,
-        agentLabel,
-        BlockEnum.Agent,
-        getNodeWarning(agentNode),
-      )
+      const agentWarning = getNodeWarning(agentNode)
+
+      const extractorWarning = extractorNodeId
+        ? getNodeWarning(nodesById[extractorNodeId])
+        : false
+
+      const key = `agent-${agentNodeId}`
+      const existing = itemsMap.get(key)
+      const hasWarning = (existing?.hasWarning || false) || agentWarning || extractorWarning
+
+      itemsMap.set(key, {
+        key,
+        label: agentLabel,
+        type: BlockEnum.Agent,
+        hasWarning,
+      })
     })
 
-    return items
+    return Array.from(itemsMap.values())
   }, [mentionEntries, nodesById, nodesMetaDataMap, strategyProviders, language, t])
 
   const hasConfigs = toolConfigs.length > 0
