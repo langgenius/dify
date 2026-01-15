@@ -161,7 +161,7 @@ const SkillDocEditor: FC = () => {
   const fileSize = currentFileNode?.size
 
   return (
-    <div className="h-full w-full overflow-hidden bg-components-panel-bg">
+    <div className="h-full w-full overflow-auto bg-components-panel-bg">
       {isMarkdown && (
         <MarkdownFileEditor
           value={currentContent}

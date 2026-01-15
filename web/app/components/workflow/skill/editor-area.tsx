@@ -5,7 +5,7 @@ type EditorAreaProps = PropsWithChildren
 
 const EditorArea: FC<EditorAreaProps> = ({ children }) => {
   return (
-    <section className="flex flex-1 flex-col rounded-lg">
+    <section className="flex min-h-0 flex-1 flex-col rounded-lg">
       {children}
     </section>
   )
