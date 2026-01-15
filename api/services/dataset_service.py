@@ -2634,8 +2634,8 @@ class DocumentService:
                 raise ValueError("Process rule segmentation max_tokens is invalid")
 
         # valid summary index setting
-        if args["process_rule"]["summary_index_setting"] and args["process_rule"]["summary_index_setting"]["enable"]:
-            summary_index_setting = args["process_rule"]["summary_index_setting"]
+        summary_index_setting = args["process_rule"].get("summary_index_setting")
+        if summary_index_setting and summary_index_setting.get("enable"):
             if "model_name" not in summary_index_setting or not summary_index_setting["model_name"]:
                 raise ValueError("Summary index model name is required")
             if "model_provider_name" not in summary_index_setting or not summary_index_setting["model_provider_name"]:
