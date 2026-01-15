@@ -8,7 +8,7 @@
           "file": 1
         },
         {
-          "regexp": "^\\│?\\s+(\\d+):(\\d+)\\s+(error|warning|info)\\s+(.+?)\\s\\s+(.*)$",
+          "regexp": "(?:^|\\s)([^\\s].+):\\sline\\s(\\d+),\\scol\\s(\\d+),\\s(Error|Warning|Info)\\s-\\s(.+)(?:\\s\\((.+)\\))?",
           "line": 1,
           "column": 2,
           "severity": 3,
