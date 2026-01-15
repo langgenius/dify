@@ -1,8 +1,8 @@
 import type { FC, ReactNode } from 'react'
 import * as React from 'react'
 import FileTypeIcon from '@/app/components/base/file-uploader/file-type-icon'
-import { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
 import { cn } from '@/utils/classnames'
+import { getFileIconType } from './utils'
 
 type FileItemProps = {
   name: string
@@ -10,20 +10,8 @@ type FileItemProps = {
   active?: boolean
 }
 
-const getAppearanceType = (name: string) => {
-  const extension = name.split('.').pop()?.toLowerCase() ?? ''
-
-  if (['md', 'markdown', 'mdx'].includes(extension))
-    return FileAppearanceTypeEnum.markdown
-
-  if (['json', 'yaml', 'yml', 'toml', 'js', 'jsx', 'ts', 'tsx', 'py', 'schema'].includes(extension))
-    return FileAppearanceTypeEnum.code
-
-  return FileAppearanceTypeEnum.document
-}
-
 const FileItem: FC<FileItemProps> = ({ name, prefix, active = false }) => {
-  const appearanceType = getAppearanceType(name)
+  const appearanceType = getFileIconType(name)
 
   return (
     <div
