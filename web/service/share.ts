@@ -10,9 +10,9 @@ import type {
   IOnTTSEnd,
   IOtherOptions,
 } from './base'
+import type { FormData as HumanInputFormData } from '@/app/(humanInputLayout)/form/[token]/form'
 import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import type { ChatConfig } from '@/app/components/base/chat/types'
-import type { FormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
 import type { AccessMode } from '@/models/access-control'
 import type {
   AppConversationData,
@@ -280,13 +280,7 @@ export const getAppAccessModeByAppCode = (appCode: string) => {
 }
 
 export const getHumanInputForm = (token: string) => {
-  return get<{
-    site: any
-    form_content: string
-    inputs: FormInputItem[]
-    user_actions: UserAction[]
-    expiration_time: number
-  }>(`/form/human_input/${token}`)
+  return get<HumanInputFormData>(`/form/human_input/${token}`)
 }
 
 export const submitHumanInputForm = (token: string, data: {

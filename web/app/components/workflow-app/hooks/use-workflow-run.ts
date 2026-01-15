@@ -499,6 +499,27 @@ export const useWorkflowRun = () => {
         if (audioPlayer)
           audioPlayer.playAudioWithAudio(audio, false)
       },
+      onWorkflowPaused: (params) => {
+        handleWorkflowPaused()
+        if (onWorkflowPaused)
+          onWorkflowPaused(params)
+        const url = `/workflow/${params.workflow_run_id}/events`
+        sseGet(
+          url,
+          {},
+          baseSseOptions,
+        )
+      },
+      onHumanInputRequired: (params) => {
+        handleWorkflowNodeHumanInputRequired(params)
+        if (onHumanInputRequired)
+          onHumanInputRequired(params)
+      },
+      onHumanInputFormFilled: (params) => {
+        handleWorkflowNodeHumanInputFormFilled(params)
+        if (onHumanInputFormFilled)
+          onHumanInputFormFilled(params)
+      },
       onError: wrappedOnError,
       onCompleted: wrappedOnCompleted,
     }

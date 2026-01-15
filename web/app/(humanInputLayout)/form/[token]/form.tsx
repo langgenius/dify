@@ -24,6 +24,7 @@ export type FormData = {
   site: any
   form_content: string
   inputs: FormInputItem[]
+  placeholder_values: Record<string, string>
   user_actions: UserAction[]
   expiration_time: number
 }
@@ -235,6 +236,7 @@ const FormContent = () => {
               formInputFields={formData.inputs}
               inputs={inputs}
               onInputChange={handleInputsChange}
+              resolvedPlaceholderValues={formData.placeholder_values}
             />
           ))}
           <div className="flex flex-wrap gap-1 py-1">
