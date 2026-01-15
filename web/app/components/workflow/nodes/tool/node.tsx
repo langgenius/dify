@@ -1,17 +1,35 @@
 import type { FC } from 'react'
 import type { ToolNodeType } from './types'
-import type { NodeProps } from '@/app/components/workflow/types'
+import type { Node, NodeProps } from '@/app/components/workflow/types'
+import { BlockEnum } from '@/app/components/workflow/types'
+import type { AgentNodeType } from '@/app/components/workflow/nodes/agent/types'
 import * as React from 'react'
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useNodes } from 'reactflow'
+import AlertTriangle from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback/AlertTriangle'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import BlockIcon from '@/app/components/workflow/block-icon'
+import { useNodesMetaData } from '@/app/components/workflow/hooks'
 import { useNodeDataUpdate } from '@/app/components/workflow/hooks/use-node-data-update'
 import { useNodePluginInstallation } from '@/app/components/workflow/hooks/use-node-plugin-installation'
 import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
+import { useGetLanguage } from '@/context/i18n'
+import { useStrategyProviders } from '@/service/use-strategy'
+import { cn } from '@/utils/classnames'
+import { VarType } from './types'
+
+const AGENT_CONTEXT_VAR_PATTERN = /\{\{[@#]([^.@#]+)\.context[@#]\}\}/g
 
 const Node: FC<NodeProps<ToolNodeType>> = ({
   id,
   data,
 }) => {
+  const { t } = useTranslation()
+  const language = useGetLanguage()
+  const { nodesMap: nodesMetaDataMap } = useNodesMetaData()
+  const { data: strategyProviders } = useStrategyProviders()
+  const nodes = useNodes<Node>()
   const { tool_configurations, paramSchemas } = data
   const toolConfigs = Object.keys(tool_configurations || {})
   const {
@@ -38,9 +56,104 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
     })
   }, [data._pluginInstallLocked, data._dimmed, handleNodeDataUpdate, id, shouldDim, shouldLock])
 
-  const hasConfigs = toolConfigs.length > 0
+  const nodesById = useMemo(() => {
+    return nodes.reduce((acc, node) => {
+      acc[node.id] = node
+      return acc
+    }, {} as Record<string, Node>)
+  }, [nodes])
 
-  if (!showInstallButton && !hasConfigs)
+  const mentionEntries = useMemo(() => {
+    const entries: Array<{ agentNodeId: string, extractorNodeId?: string }> = []
+    const toolParams = data.tool_parameters || {}
+    Object.entries(toolParams).forEach(([paramKey, param]) => {
+      const value = param?.value
+      if (typeof value !== 'string')
+        return
+      const matches = value.matchAll(AGENT_CONTEXT_VAR_PATTERN)
+      for (const match of matches) {
+        const agentNodeId = match[1]
+        if (!agentNodeId)
+          continue
+        entries.push({
+          agentNodeId,
+          extractorNodeId: param?.mention_config?.extractor_node_id
+            || (param?.type === VarType.mention ? `${id}_ext_${paramKey}` : undefined),
+        })
+      }
+    })
+    return entries
+  }, [data.tool_parameters, id])
+
+  const referenceItems = useMemo(() => {
+    if (!mentionEntries.length)
+      return []
+
+    const items: Array<{ key: string, label: string, type: BlockEnum, hasWarning: boolean }> = []
+    const seen = new Set<string>()
+    const getNodeWarning = (node?: Node) => {
+      if (!node)
+        return true
+      const validator = nodesMetaDataMap?.[node.data.type as BlockEnum]?.checkValid
+      if (!validator)
+        return false
+      let moreDataForCheckValid: any
+      if (node.data.type === BlockEnum.Agent) {
+        const agentData = node.data as AgentNodeType
+        const isReadyForCheckValid = !!strategyProviders
+        const provider = strategyProviders?.find(provider => provider.declaration.identity.name === agentData.agent_strategy_provider_name)
+        const strategy = provider?.declaration.strategies?.find(s => s.identity.name === agentData.agent_strategy_name)
+        moreDataForCheckValid = {
+          provider,
+          strategy,
+          language,
+          isReadyForCheckValid,
+        }
+      }
+      const { errorMessage } = validator(node.data as any, t, moreDataForCheckValid)
+      return Boolean(errorMessage)
+    }
+    const pushItem = (key: string, label: string, type: BlockEnum, hasWarning: boolean) => {
+      if (seen.has(key))
+        return
+      seen.add(key)
+      items.push({
+        key,
+        label,
+        type,
+        hasWarning,
+      })
+    }
+    mentionEntries.forEach(({ agentNodeId, extractorNodeId }) => {
+      if (extractorNodeId) {
+        const extractorNode = nodesById[extractorNodeId]
+        if (extractorNode) {
+          pushItem(
+            extractorNode.id,
+            extractorNode.data.title || t(`blocks.${extractorNode.data.type}`, { ns: 'workflow' }),
+            extractorNode.data.type as BlockEnum,
+            getNodeWarning(extractorNode),
+          )
+        }
+      }
+
+      const agentNode = nodesById[agentNodeId]
+      const agentLabel = `@${agentNode?.data.title || agentNodeId}`
+      pushItem(
+        `agent-${agentNodeId}`,
+        agentLabel,
+        BlockEnum.Agent,
+        getNodeWarning(agentNode),
+      )
+    })
+
+    return items
+  }, [mentionEntries, nodesById, nodesMetaDataMap, strategyProviders, language, t])
+
+  const hasConfigs = toolConfigs.length > 0
+  const hasReferences = referenceItems.length > 0
+
+  if (!showInstallButton && !hasConfigs && !hasReferences)
     return null
 
   return (
@@ -81,6 +194,30 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
                 <div title={tool_configurations[key].model} className="w-0 shrink-0 grow truncate text-right text-xs font-normal text-text-secondary">
                   {tool_configurations[key].model}
                 </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      {hasReferences && (
+        <div className={cn('space-y-0.5', hasConfigs && 'mt-1')} aria-disabled={shouldDim}>
+          {referenceItems.map(item => (
+            <div
+              key={item.key}
+              className="flex h-6 items-center justify-between space-x-1 rounded-md bg-workflow-block-parma-bg px-1 text-xs font-normal text-text-secondary"
+            >
+              <div className="flex min-w-0 items-center gap-1">
+                <BlockIcon
+                  className="shrink-0"
+                  type={item.type}
+                  size="xs"
+                />
+                <span title={item.label} className="system-xs-medium truncate text-text-secondary">
+                  {item.label}
+                </span>
+              </div>
+              {item.hasWarning && (
+                <AlertTriangle className="h-3.5 w-3.5 text-text-warning-secondary" />
               )}
             </div>
           ))}
