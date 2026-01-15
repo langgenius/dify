@@ -41,6 +41,7 @@ type Props = {
   panelClassName?: string
   disabled: boolean
   trigger: React.ReactNode
+  triggerAsChild?: boolean
   placement?: Placement
   offset?: OffsetOptions
   isShow: boolean
@@ -55,6 +56,7 @@ type Props = {
 const ToolPicker: FC<Props> = ({
   disabled,
   trigger,
+  triggerAsChild = false,
   placement = 'right-start',
   offset = 0,
   isShow,
@@ -165,6 +167,7 @@ const ToolPicker: FC<Props> = ({
     >
       <PortalToFollowElemTrigger
         onClick={handleTriggerClick}
+        asChild={triggerAsChild}
       >
         {trigger}
       </PortalToFollowElemTrigger>

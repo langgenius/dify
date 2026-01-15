@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import PromptEditor from '@/app/components/base/prompt-editor'
+import SkillEditor from './skill-editor'
 
 type MarkdownFileEditorProps = {
   value: string
@@ -13,7 +13,7 @@ const MarkdownFileEditor: FC<MarkdownFileEditorProps> = ({ value, onChange }) =>
 
   return (
     <div className="h-full w-full bg-components-panel-bg">
-      <PromptEditor
+      <SkillEditor
         value={value}
         onChange={onChange}
         showLineNumbers
