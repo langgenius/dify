@@ -8,7 +8,6 @@ from .session import BaseSession, SessionManager
 
 class CliApiSession(BaseSession):
     secret: str = Field(default_factory=lambda: secrets.token_urlsafe(32))
-    secret: str = Field(default_factory=lambda: secrets.token_urlsafe(32))
 
 
 class CliApiSessionManager(SessionManager[CliApiSession]):
