@@ -3,10 +3,11 @@
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
 import { useSearchParams } from 'next/navigation'
+import { useQueryState } from 'nuqs'
 import {
+  useCallback,
   useEffect,
   useMemo,
-  useState,
 } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { FeaturesProvider } from '@/app/components/base/features'
@@ -16,6 +17,7 @@ import WorkflowWithDefaultContext from '@/app/components/workflow'
 import {
   WorkflowContextProvider,
 } from '@/app/components/workflow/context'
+import { SkillEditorProvider } from '@/app/components/workflow/skill/context'
 import SkillMain from '@/app/components/workflow/skill/main'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
@@ -37,6 +39,7 @@ import { useGetRunAndTraceUrl } from './hooks/use-get-run-and-trace-url'
 import {
   useWorkflowInit,
 } from './hooks/use-workflow-init'
+import { parseAsViewType, WORKFLOW_VIEW_PARAM_KEY } from './search-params'
 import { createWorkflowSlice } from './store/workflow/workflow-slice'
 
 const WorkflowAppWithAdditionalContext = () => {
@@ -49,13 +52,12 @@ const WorkflowAppWithAdditionalContext = () => {
   const workflowStore = useWorkflowStore()
   const { isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
 
-  const [viewType, doSetViewType] = useState(ViewType.graph)
-  const setViewType = (type: ViewType) => {
+  const [viewType, doSetViewType] = useQueryState(WORKFLOW_VIEW_PARAM_KEY, parseAsViewType)
+  const setViewType = useCallback((type: ViewType) => {
     doSetViewType(type)
-    if (type === ViewType.graph) {
+    if (type === ViewType.graph)
       reload()
-    }
-  }
+  }, [doSetViewType, reload])
 
   // Initialize trigger status at application level
   const { setTriggerStatuses } = useTriggerStatusStore()
@@ -250,7 +252,9 @@ const WorkflowAppWrapper = () => {
     <WorkflowContextProvider
       injectWorkflowStoreSliceFn={createWorkflowSlice as InjectWorkflowStoreSliceFn}
     >
-      <WorkflowAppWithAdditionalContext />
+      <SkillEditorProvider>
+        <WorkflowAppWithAdditionalContext />
+      </SkillEditorProvider>
     </WorkflowContextProvider>
   )
 }
