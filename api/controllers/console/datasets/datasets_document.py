@@ -94,6 +94,25 @@ def _get_or_create_model(model_name: str, field_def):
     return existing
 
 
+def _get_upload_file_id_from_upload_file_document(
+    document: Document,
+    *,
+    invalid_source_message: str,
+    missing_file_message: str,
+) -> str:
+    """
+    Validate an upload-file document and return its UploadFile id.
+    """
+    # Extract and normalize the upload file id for downstream lookups.
+    if document.data_source_type != "upload_file":
+        raise NotFound(invalid_source_message)
+    data_source_info: dict[str, Any] = document.data_source_info_dict or {}
+    upload_file_id: str | None = data_source_info.get("upload_file_id")
+    if not upload_file_id:
+        raise NotFound(missing_file_message)
+    return str(upload_file_id)
+
+
 def _get_upload_file_from_upload_file_document(document: Document) -> UploadFile:
     """
     Resolve the `UploadFile` row for a dataset document created from an uploaded file.
@@ -102,20 +121,16 @@ def _get_upload_file_from_upload_file_document(document: Document) -> UploadFile
     - single-document download URL (`/documents/<id>/download`)
     - batch ZIP download (`/documents/download-zip`)
     """
-    # Validate that this document is backed by an UploadFile.
-    if document.data_source_type != "upload_file":
-        raise NotFound("Document does not have an uploaded file to download.")
-
-    # Extract the upload file id from the document's data source info.
-    data_source_info: dict[str, Any] = document.data_source_info_dict or {}
-    upload_file_id = data_source_info.get("upload_file_id")
-    if not upload_file_id:
-        raise NotFound("Uploaded file not found.")
+    upload_file_id: str = _get_upload_file_id_from_upload_file_document(
+        document,
+        invalid_source_message="Document does not have an uploaded file to download.",
+        missing_file_message="Uploaded file not found.",
+    )
 
     # Load the UploadFile row scoped by tenant to prevent cross-tenant access.
     upload_file = (
         db.session.query(UploadFile)
-        .where(UploadFile.tenant_id == document.tenant_id, UploadFile.id == str(upload_file_id))
+        .where(UploadFile.tenant_id == document.tenant_id, UploadFile.id == upload_file_id)
         .first()
     )
     if not upload_file:
@@ -225,8 +240,8 @@ class DocumentResource(Resource):
         self,
         dataset_id: str,
         document_ids: Sequence[str],
-    ) -> tuple[dict[str, Document], dict[str, UploadFile]]:
-        """Load documents and upload files for a batch ZIP download."""
+    ) -> dict[str, UploadFile]:
+        """Load upload files keyed by document id for a batch ZIP download."""
         _, current_tenant_id = current_account_with_tenant()
         document_id_list: list[str] = [str(document_id) for document_id in document_ids]
         documents: Sequence[Document] = DocumentService.get_documents_by_ids(dataset_id, document_id_list)
@@ -236,16 +251,18 @@ class DocumentResource(Resource):
             raise NotFound("Document not found.")
 
         upload_file_ids: list[str] = []
-        for document in documents_by_id.values():
+        upload_file_ids_by_document_id: dict[str, str] = {}
+        for document_id, document in documents_by_id.items():
             if document.tenant_id != current_tenant_id:
                 raise Forbidden("No permission.")
-            if document.data_source_type != "upload_file":
-                raise NotFound("Only uploaded-file documents can be downloaded as ZIP.")
-            data_source_info: dict[str, Any] = document.data_source_info_dict or {}
-            upload_file_id: str | None = data_source_info.get("upload_file_id")
-            if not upload_file_id:
-                raise NotFound("Only uploaded-file documents can be downloaded as ZIP.")
-            upload_file_ids.append(str(upload_file_id))
+            upload_file_id: str = _get_upload_file_id_from_upload_file_document(
+                document,
+                invalid_source_message="Only uploaded-file documents can be downloaded as ZIP.",
+                missing_file_message="Only uploaded-file documents can be downloaded as ZIP.",
+            )
+            upload_file_ids.append(upload_file_id)
+            # Keep a per-document mapping to avoid re-parsing data_source_info later.
+            upload_file_ids_by_document_id[document_id] = upload_file_id
 
         upload_files_by_id: dict[str, UploadFile] = DocumentService.get_upload_files_by_ids(
             current_tenant_id,
@@ -254,8 +271,12 @@ class DocumentResource(Resource):
         missing_upload_file_ids: set[str] = set(upload_file_ids) - set(upload_files_by_id.keys())
         if missing_upload_file_ids:
             raise NotFound("Only uploaded-file documents can be downloaded as ZIP.")
-        # Return maps for constant-time lookups in the ZIP loop.
-        return documents_by_id, upload_files_by_id
+        upload_files_by_document_id: dict[str, UploadFile] = {
+            document_id: upload_files_by_id[upload_file_id]
+            for document_id, upload_file_id in upload_file_ids_by_document_id.items()
+        }
+        # Return map for constant-time lookups in the ZIP loop.
+        return upload_files_by_document_id
 
 
 @console_ns.route("/datasets/process-rule")
@@ -1000,9 +1021,7 @@ class DocumentBatchDownloadZipApi(DocumentResource):
 
         document_ids: list[str] = [str(document_id) for document_id in payload.document_ids]
         # Batch-load documents and upload files to avoid per-item queries.
-        documents_by_id: dict[str, Document]
-        upload_files_by_id: dict[str, UploadFile]
-        documents_by_id, upload_files_by_id = self.get_documents_and_upload_files_for_zip(
+        upload_files_by_document_id: dict[str, UploadFile] = self.get_documents_and_upload_files_for_zip(
             dataset_id,
             document_ids,
         )
@@ -1020,11 +1039,7 @@ class DocumentBatchDownloadZipApi(DocumentResource):
 
             with ZipFile(tmp, mode="w", compression=ZIP_DEFLATED) as zf:
                 for document_id in document_ids:
-                    document = documents_by_id[document_id]
-                    data_source_info: dict[str, Any] = document.data_source_info_dict or {}
-                    upload_file_id: str | None = data_source_info.get("upload_file_id")
-                    upload_file_id_str: str = str(upload_file_id)
-                    upload_file = upload_files_by_id[upload_file_id_str]
+                    upload_file = upload_files_by_document_id[document_id]
 
                     # Ensure each filename in the ZIP is unique.
                     arcname = upload_file.name
