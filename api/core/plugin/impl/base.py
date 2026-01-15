@@ -1,3 +1,4 @@
+import atexit
 import inspect
 import json
 import logging
@@ -363,3 +364,10 @@ class BasePluginClient:
                 raise PluginPermissionDeniedError(description=message)
             case _:
                 raise Exception(f"got unknown error from plugin daemon: {error_type}, message: {message}")
+
+
+@atexit.register
+def _close_httpx_client():  # pyright: ignore[reportUnusedFunction]
+    """Close the httpx client on application exit."""
+    if not _httpx_client.is_closed:
+        _httpx_client.close()
