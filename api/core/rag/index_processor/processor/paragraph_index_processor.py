@@ -345,7 +345,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         model_instance = ModelInstance(provider_model_bundle, model_name)
 
         # Get model schema to check if vision is supported
-        model_schema = model_instance.get_model_schema(model_name, provider_model_bundle.credentials)
+        model_schema = model_instance.model_type_instance.get_model_schema(model_name, model_instance.credentials)
         supports_vision = model_schema and model_schema.features and ModelFeature.VISION in model_schema.features
 
         # Extract images if model supports vision
