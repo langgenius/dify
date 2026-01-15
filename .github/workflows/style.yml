@@ -110,7 +110,7 @@ jobs:
         continue-on-error: true
 
       - name: Annotate Code
-        uses: DerLev/eslint-annotations@v2
+        uses: hyoban/eslint-annotations/@d6b2497fbd7552b73969b230228e059febafe662
         with:
           eslint-report: eslint_report.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
