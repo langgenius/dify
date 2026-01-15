@@ -1,6 +1,7 @@
 import json
 import logging
 import uuid
+from decimal import Decimal
 from typing import Union, cast
 
 from sqlalchemy import select
@@ -41,6 +42,7 @@ from core.tools.tool_manager import ToolManager
 from core.tools.utils.dataset_retriever_tool import DatasetRetrieverTool
 from extensions.ext_database import db
 from factories import file_factory
+from models.enums import CreatorUserRole
 from models.model import Conversation, Message, MessageAgentThought, MessageFile
 
 logger = logging.getLogger(__name__)
@@ -289,6 +291,7 @@ class BaseAgentRunner(AppRunner):
         thought = MessageAgentThought(
             message_id=message_id,
             message_chain_id=None,
+            tool_process_data=None,
             thought="",
             tool=tool_name,
             tool_labels_str="{}",
@@ -296,20 +299,20 @@ class BaseAgentRunner(AppRunner):
             tool_input=tool_input,
             message=message,
             message_token=0,
-            message_unit_price=0,
-            message_price_unit=0,
+            message_unit_price=Decimal(0),
+            message_price_unit=Decimal("0.001"),
             message_files=json.dumps(messages_ids) if messages_ids else "",
             answer="",
             observation="",
             answer_token=0,
-            answer_unit_price=0,
-            answer_price_unit=0,
+            answer_unit_price=Decimal(0),
+            answer_price_unit=Decimal("0.001"),
             tokens=0,
-            total_price=0,
+            total_price=Decimal(0),
             position=self.agent_thought_count + 1,
             currency="USD",
             latency=0,
-            created_by_role="account",
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=self.user_id,
         )
 
@@ -342,7 +345,8 @@ class BaseAgentRunner(AppRunner):
             raise ValueError("agent thought not found")
 
         if thought:
-            agent_thought.thought += thought
+            existing_thought = agent_thought.thought or ""
+            agent_thought.thought = f"{existing_thought}{thought}"
 
         if tool_name:
             agent_thought.tool = tool_name
@@ -440,21 +444,30 @@ class BaseAgentRunner(AppRunner):
             agent_thoughts: list[MessageAgentThought] = message.agent_thoughts
             if agent_thoughts:
                 for agent_thought in agent_thoughts:
-                    tools = agent_thought.tool
-                    if tools:
-                        tools = tools.split(";")
+                    tool_names_raw = agent_thought.tool
+                    if tool_names_raw:
+                        tool_names = tool_names_raw.split(";")
                         tool_calls: list[AssistantPromptMessage.ToolCall] = []
                         tool_call_response: list[ToolPromptMessage] = []
-                        try:
-                            tool_inputs = json.loads(agent_thought.tool_input)
-                        except Exception:
-                            tool_inputs = {tool: {} for tool in tools}
-                        try:
-                            tool_responses = json.loads(agent_thought.observation)
-                        except Exception:
-                            tool_responses = dict.fromkeys(tools, agent_thought.observation)
+                        tool_input_payload = agent_thought.tool_input
+                        if tool_input_payload:
+                            try:
+                                tool_inputs = json.loads(tool_input_payload)
+                            except Exception:
+                                tool_inputs = {tool: {} for tool in tool_names}
+                        else:
+                            tool_inputs = {tool: {} for tool in tool_names}
 
-                        for tool in tools:
+                        observation_payload = agent_thought.observation
+                        if observation_payload:
+                            try:
+                                tool_responses = json.loads(observation_payload)
+                            except Exception:
+                                tool_responses = dict.fromkeys(tool_names, observation_payload)
+                        else:
+                            tool_responses = dict.fromkeys(tool_names, observation_payload)
+
+                        for tool in tool_names:
                             # generate a uuid for tool call
                             tool_call_id = str(uuid.uuid4())
                             tool_calls.append(
@@ -484,7 +497,7 @@ class BaseAgentRunner(AppRunner):
                                 *tool_call_response,
                             ]
                         )
-                    if not tools:
+                    if not tool_names_raw:
                         result.append(AssistantPromptMessage(content=agent_thought.thought))
             else:
                 if message.answer:

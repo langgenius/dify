@@ -2,13 +2,17 @@ from types import SimpleNamespace
 
 import pytest
 
+from configs import dify_config
 from core.file.enums import FileType
 from core.file.models import File, FileTransferMethod
+from core.helper.code_executor.code_executor import CodeLanguage
 from core.variables.variables import StringVariable
 from core.workflow.constants import (
     CONVERSATION_VARIABLE_NODE_ID,
     ENVIRONMENT_VARIABLE_NODE_ID,
 )
+from core.workflow.nodes.code.code_node import CodeNode
+from core.workflow.nodes.code.limits import CodeNodeLimits
 from core.workflow.runtime import VariablePool
 from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_entry import WorkflowEntry
@@ -95,6 +99,58 @@ class TestWorkflowEntry:
         output_var = variable_pool.get(["output_node", "user"])
         assert output_var is not None
         assert output_var.value == "system_user"
+
+    def test_single_step_run_injects_code_limits(self):
+        """Ensure single-step CodeNode execution configures limits."""
+        # Arrange
+        node_id = "code_node"
+        node_data = {
+            "type": "code",
+            "title": "Code",
+            "desc": None,
+            "variables": [],
+            "code_language": CodeLanguage.PYTHON3,
+            "code": "def main():\n    return {}",
+            "outputs": {},
+        }
+        node_config = {"id": node_id, "data": node_data}
+
+        class StubWorkflow:
+            def __init__(self):
+                self.tenant_id = "tenant"
+                self.app_id = "app"
+                self.id = "workflow"
+                self.graph_dict = {"nodes": [node_config], "edges": []}
+
+            def get_node_config_by_id(self, target_id: str):
+                assert target_id == node_id
+                return node_config
+
+        workflow = StubWorkflow()
+        variable_pool = VariablePool(system_variables=SystemVariable.empty(), user_inputs={})
+        expected_limits = CodeNodeLimits(
+            max_string_length=dify_config.CODE_MAX_STRING_LENGTH,
+            max_number=dify_config.CODE_MAX_NUMBER,
+            min_number=dify_config.CODE_MIN_NUMBER,
+            max_precision=dify_config.CODE_MAX_PRECISION,
+            max_depth=dify_config.CODE_MAX_DEPTH,
+            max_number_array_length=dify_config.CODE_MAX_NUMBER_ARRAY_LENGTH,
+            max_string_array_length=dify_config.CODE_MAX_STRING_ARRAY_LENGTH,
+            max_object_array_length=dify_config.CODE_MAX_OBJECT_ARRAY_LENGTH,
+        )
+
+        # Act
+        node, _ = WorkflowEntry.single_step_run(
+            workflow=workflow,
+            node_id=node_id,
+            user_id="user",
+            user_inputs={},
+            variable_pool=variable_pool,
+        )
+
+        # Assert
+        assert isinstance(node, CodeNode)
+        assert node._limits == expected_limits
 
     def test_mapping_user_inputs_to_variable_pool_with_env_variables(self):
         """Test mapping environment variables from user inputs to variable pool."""
