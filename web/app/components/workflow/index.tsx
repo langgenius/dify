@@ -419,7 +419,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
       >
         {!isSubGraph && <Control />}
       </div>
-      {!isSubGraph && <Operator handleRedo={handleHistoryForward} handleUndo={handleHistoryBack} />}
+      <Operator handleRedo={handleHistoryForward} handleUndo={handleHistoryBack} />
       {!isSubGraph && <PanelContextmenu />}
       {!isSubGraph && <NodeContextmenu />}
       {!isSubGraph && <SelectionContextmenu />}

@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import type { MentionConfig } from '@/app/components/workflow/nodes/_base/types'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
-import { memo, useMemo } from 'react'
+import { memo, useEffect, useMemo, useRef } from 'react'
 import { useStore as useReactFlowStore } from 'reactflow'
 import { useShallow } from 'zustand/react/shallow'
 import { useIsChatMode, useWorkflowVariables } from '@/app/components/workflow/hooks'
@@ -26,6 +26,37 @@ const SubGraphChildren: FC<SubGraphChildrenProps> = ({
   const { getNodeAvailableVars } = useWorkflowVariables()
   const isChatMode = useIsChatMode()
   const nodePanelWidth = useStore(s => s.nodePanelWidth)
+  const setRightPanelWidth = useStore(s => s.setRightPanelWidth)
+  const panelRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const element = panelRef.current
+    if (!element)
+      return
+
+    const updateWidth = (width: number) => {
+      if (width > 0)
+        setRightPanelWidth(width)
+    }
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.borderBoxSize?.length)
+          updateWidth(entry.borderBoxSize[0].inlineSize)
+        else if (entry.contentRect.width > 0)
+          updateWidth(entry.contentRect.width)
+        else
+          updateWidth(element.getBoundingClientRect().width)
+      }
+    })
+
+    resizeObserver.observe(element)
+    updateWidth(element.getBoundingClientRect().width)
+
+    return () => {
+      resizeObserver.disconnect()
+    }
+  }, [setRightPanelWidth])
 
   const selectedNode = useReactFlowStore(useShallow((s) => {
     return s.getNodes().find(node => node.data.selected)
@@ -66,7 +97,7 @@ const SubGraphChildren: FC<SubGraphChildrenProps> = ({
 
   return (
     <div className="pointer-events-none absolute inset-y-0 right-0 z-10 flex">
-      <div className="pointer-events-auto">
+      <div className="pointer-events-auto" ref={panelRef}>
         {nodePanel || (
           <div className="relative mr-1 h-full">
             <div

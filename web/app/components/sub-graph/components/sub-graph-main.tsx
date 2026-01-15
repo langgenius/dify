@@ -1,10 +1,14 @@
 import type { FC } from 'react'
 import type { Viewport } from 'reactflow'
+import type { Shape as HooksStoreShape } from '@/app/components/workflow/hooks-store'
 import type { MentionConfig } from '@/app/components/workflow/nodes/_base/types'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import { useCallback, useMemo } from 'react'
 import { useStoreApi } from 'reactflow'
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
+import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
+import { useInspectVarsCrudCommon } from '@/app/components/workflow/hooks/use-inspect-vars-crud-common'
+import { FlowType } from '@/types/common'
 import { useAvailableNodesMetaData } from '../hooks'
 import SubGraphChildren from './sub-graph-children'
 
@@ -14,6 +18,7 @@ type SubGraphMainProps = {
   viewport: Viewport
   agentName: string
   extractorNodeId: string
+  configsMap?: HooksStoreShape['configsMap']
   mentionConfig: MentionConfig
   onMentionConfigChange: (config: MentionConfig) => void
   onSave?: (nodes: Node[], edges: Edge[]) => void
@@ -25,12 +30,23 @@ const SubGraphMain: FC<SubGraphMainProps> = ({
   viewport,
   agentName,
   extractorNodeId,
+  configsMap,
   mentionConfig,
   onMentionConfigChange,
   onSave,
 }) => {
   const reactFlowStore = useStoreApi()
   const availableNodesMetaData = useAvailableNodesMetaData()
+  const flowType = configsMap?.flowType ?? FlowType.appFlow
+  const flowId = configsMap?.flowId ?? ''
+  const { fetchInspectVars } = useSetWorkflowVarsWithValue({
+    flowType,
+    flowId,
+  })
+  const inspectVarsCrud = useInspectVarsCrudCommon({
+    flowType,
+    flowId,
+  })
 
   const handleSyncSubGraphDraft = useCallback(() => {
     const { getNodes, edges } = reactFlowStore.getState()
@@ -40,11 +56,14 @@ const SubGraphMain: FC<SubGraphMainProps> = ({
   const hooksStore = useMemo(() => ({
     interactionMode: 'subgraph',
     availableNodesMetaData,
+    configsMap,
+    fetchInspectVars,
+    ...inspectVarsCrud,
     doSyncWorkflowDraft: async () => {
       handleSyncSubGraphDraft()
     },
     syncWorkflowDraftWhenPageClose: handleSyncSubGraphDraft,
-  }), [availableNodesMetaData, handleSyncSubGraphDraft])
+  }), [availableNodesMetaData, configsMap, fetchInspectVars, handleSyncSubGraphDraft, inspectVarsCrud])
 
   return (
     <WorkflowWithInnerContext
