@@ -118,6 +118,9 @@ class Storage:
     def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
         return self.storage_runner.scan(path, files=files, directories=directories)
 
+    def get_download_url(self, filename: str, expires_in: int = 3600) -> str:
+        return self.storage_runner.get_download_url(filename, expires_in)
+
 
 storage = Storage()
 

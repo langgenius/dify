@@ -41,7 +41,7 @@ class AppAssetNode(BaseModel):
         )
 
 
-class AppAssetTreeView(BaseModel):
+class AppAssetNodeView(BaseModel):
     id: str = Field(description="Unique identifier for the node")
     node_type: str = Field(description="Type of node: 'file' or 'folder'")
     name: str = Field(description="Name of the file or folder")
@@ -49,7 +49,7 @@ class AppAssetTreeView(BaseModel):
     extension: str = Field(default="", description="File extension without dot")
     size: int = Field(default=0, description="File size in bytes")
     checksum: str = Field(default="", description="SHA-256 checksum of file content")
-    children: list[AppAssetTreeView] = Field(default_factory=list, description="Child nodes for folders")
+    children: list[AppAssetNodeView] = Field(default_factory=list, description="Child nodes for folders")
 
 
 class TreeNodeNotFoundError(Exception):
@@ -201,7 +201,7 @@ class AppAssetFileTree(BaseModel):
     def walk_files(self) -> Generator[AppAssetNode, None, None]:
         return (n for n in self.nodes if n.node_type == AssetNodeType.FILE)
 
-    def transform(self) -> list[AppAssetTreeView]:
+    def transform(self) -> list[AppAssetNodeView]:
         by_parent: dict[str | None, list[AppAssetNode]] = defaultdict(list)
         for n in self.nodes:
             by_parent[n.parent_id].append(n)
@@ -210,16 +210,16 @@ class AppAssetFileTree(BaseModel):
             children.sort(key=lambda x: x.order)
 
         paths: dict[str, str] = {}
-        tree_views: dict[str, AppAssetTreeView] = {}
+        tree_views: dict[str, AppAssetNodeView] = {}
 
         def build_view(node: AppAssetNode, parent_path: str) -> None:
             path = f"{parent_path}/{node.name}"
             paths[node.id] = path
-            child_views: list[AppAssetTreeView] = []
+            child_views: list[AppAssetNodeView] = []
             for child in by_parent.get(node.id, []):
                 build_view(child, path)
                 child_views.append(tree_views[child.id])
-            tree_views[node.id] = AppAssetTreeView(
+            tree_views[node.id] = AppAssetNodeView(
                 id=node.id,
                 node_type=node.node_type.value,
                 name=node.name,

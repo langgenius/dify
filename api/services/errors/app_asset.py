@@ -11,3 +11,7 @@ class AppAssetParentNotFoundError(BaseServiceError):
 
 class AppAssetPathConflictError(BaseServiceError):
     pass
+
+
+class AppAssetNodeTooLargeError(BaseServiceError):
+    pass
