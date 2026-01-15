@@ -177,6 +177,12 @@ services:
       THIRD_PARTY_SIGNATURE_VERIFICATION_ENABLED: true
       THIRD_PARTY_SIGNATURE_VERIFICATION_PUBLIC_KEYS: /app/keys/publickey.pem
       FORCE_VERIFYING_SIGNATURE: false
+
+      HTTP_PROXY: ${HTTP_PROXY:-http://ssrf_proxy:3128}
+      HTTPS_PROXY: ${HTTPS_PROXY:-http://ssrf_proxy:3128}
+      PLUGIN_PYTHON_ENV_INIT_TIMEOUT: ${PLUGIN_PYTHON_ENV_INIT_TIMEOUT:-120}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "${EXPOSE_PLUGIN_DAEMON_PORT:-5002}:${PLUGIN_DAEMON_PORT:-5002}"
       - "${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}:${PLUGIN_DEBUGGING_PORT:-5003}"
