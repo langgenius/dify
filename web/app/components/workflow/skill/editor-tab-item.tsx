@@ -42,39 +42,48 @@ const EditorTabItem: FC<EditorTabItemProps> = ({
   return (
     <div
       className={cn(
-        'group relative flex shrink-0 cursor-pointer items-center gap-1.5 border-r border-components-panel-border-subtle px-2.5 pb-2 pt-2.5',
+        'group relative flex shrink-0 items-center border-r border-components-panel-border-subtle',
         isActive ? 'bg-components-panel-bg' : 'bg-transparent hover:bg-state-base-hover',
       )}
-      onClick={handleClick}
     >
-      <div className="relative flex size-5 shrink-0 items-center justify-center">
-        <FileTypeIcon type={iconType as FileAppearanceType} size="sm" />
-        {isDirty && (
-          <span className="absolute -bottom-px -right-px size-[7px] rounded-full border border-white bg-text-warning-secondary" />
-        )}
-      </div>
-
-      <span
+      <button
+        type="button"
         className={cn(
-          'max-w-40 truncate text-[13px] font-normal leading-4',
-          isActive
-            ? 'text-text-primary'
-            : 'text-text-tertiary',
+          'flex items-center gap-1.5 px-2.5 pb-2 pt-2.5',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-components-input-border-active',
         )}
+        onClick={handleClick}
       >
-        {name}
-      </span>
+        <div className="relative flex size-5 shrink-0 items-center justify-center">
+          <FileTypeIcon type={iconType as FileAppearanceType} size="sm" />
+          {isDirty && (
+            <span className="absolute -bottom-px -right-px size-[7px] rounded-full border border-white bg-text-warning-secondary" />
+          )}
+        </div>
+
+        <span
+          className={cn(
+            'max-w-40 truncate text-[13px] font-normal leading-4',
+            isActive
+              ? 'text-text-primary'
+              : 'text-text-tertiary',
+          )}
+        >
+          {name}
+        </span>
+      </button>
 
       <button
         type="button"
         className={cn(
-          'ml-0.5 flex size-4 items-center justify-center rounded-[6px] text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-          isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+          'mr-1 flex size-4 items-center justify-center rounded-[6px] text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-components-input-border-active',
+          isActive ? 'opacity-100' : 'opacity-0 focus-visible:opacity-100 group-hover:opacity-100',
         )}
         aria-label={t('operation.close', { ns: 'common' })}
         onClick={handleClose}
       >
-        <RiCloseLine className="size-4" />
+        <RiCloseLine className="size-4" aria-hidden="true" />
       </button>
     </div>
   )

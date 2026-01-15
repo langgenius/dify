@@ -40,9 +40,10 @@ const MenuItem: React.FC<MenuItemProps> = ({ icon: Icon, label, onClick, disable
     className={cn(
       'flex w-full items-center gap-2 rounded-lg px-3 py-2',
       'hover:bg-state-base-hover disabled:cursor-not-allowed disabled:opacity-50',
+      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-components-input-border-active',
     )}
   >
-    <Icon className="size-4 text-text-tertiary" />
+    <Icon className="size-4 text-text-tertiary" aria-hidden="true" />
     <span className="system-sm-regular text-text-secondary">
       {label}
     </span>
@@ -99,7 +100,7 @@ const SidebarSearchAdd: FC = () => {
             className={cn('!h-8 !w-8 !px-0')}
             aria-label={t('operation.add', { ns: 'common' })}
           >
-            <RiAddLine className="h-4 w-4" />
+            <RiAddLine className="h-4 w-4" aria-hidden="true" />
           </Button>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className="z-[30]">

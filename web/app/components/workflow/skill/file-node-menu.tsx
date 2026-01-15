@@ -28,9 +28,10 @@ const MenuItem: React.FC<MenuItemProps> = ({ icon: Icon, label, onClick, disable
     className={cn(
       'flex w-full items-center gap-2 rounded-lg px-3 py-2',
       'hover:bg-state-base-hover disabled:cursor-not-allowed disabled:opacity-50',
+      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-components-input-border-active',
     )}
   >
-    <Icon className="size-4 text-text-tertiary" />
+    <Icon className="size-4 text-text-tertiary" aria-hidden="true" />
     <span className="system-sm-regular text-text-secondary">
       {label}
     </span>
@@ -84,10 +85,11 @@ const FileItemMenu: FC<FileItemMenuProps> = ({
         className={cn(
           'flex w-full items-center gap-2 rounded-lg px-3 py-2',
           'hover:bg-state-destructive-hover disabled:cursor-not-allowed disabled:opacity-50',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-components-input-border-active',
           'group',
         )}
       >
-        <RiDeleteBinLine className="size-4 text-text-tertiary group-hover:text-text-destructive" />
+        <RiDeleteBinLine className="size-4 text-text-tertiary group-hover:text-text-destructive" aria-hidden="true" />
         <span className="system-sm-regular text-text-secondary group-hover:text-text-destructive">
           {t('skillSidebar.menu.delete')}
         </span>

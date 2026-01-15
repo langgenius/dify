@@ -6,6 +6,7 @@ import type { FileAppearanceType } from '@/app/components/base/file-uploader/typ
 import { RiFolderLine, RiFolderOpenLine, RiMoreFill } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import FileTypeIcon from '@/app/components/base/file-uploader/file-type-icon'
 import {
   PortalToFollowElem,
@@ -19,6 +20,7 @@ import { useSkillEditorStore, useSkillEditorStoreApi } from './store'
 import { getFileIconType } from './utils/file-utils'
 
 const TreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeData>) => {
+  const { t } = useTranslation('workflow')
   const isFolder = node.data.node_type === 'folder'
   const isSelected = node.isSelected
   const isDirty = useSkillEditorStore(s => s.dirtyContents.has(node.data.id))
@@ -62,18 +64,34 @@ const TreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeData>) 
     setShowDropdown(prev => !prev)
   }, [])
 
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      if (isFolder)
+        node.toggle()
+      else
+        node.activate()
+    }
+  }, [isFolder, node])
+
   return (
     <div
       ref={dragHandle}
       style={style}
+      role="treeitem"
+      tabIndex={0}
+      aria-selected={isSelected}
+      aria-expanded={isFolder ? node.isOpen : undefined}
       className={cn(
         'group flex h-6 cursor-pointer items-center gap-2 rounded-md px-2',
         'hover:bg-state-base-hover',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-components-input-border-active',
         isSelected && 'bg-state-base-active',
         hasContextMenu && !isSelected && 'bg-state-base-hover',
       )}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
+      onKeyDown={handleKeyDown}
       onContextMenu={handleContextMenu}
     >
       <div className="flex size-5 shrink-0 items-center justify-center">
@@ -81,12 +99,17 @@ const TreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeData>) 
           ? (
               <button
                 type="button"
+                tabIndex={-1}
                 onClick={handleToggle}
-                className="flex size-full items-center justify-center"
+                aria-label={t('skillSidebar.toggleFolder')}
+                className={cn(
+                  'flex size-full items-center justify-center rounded',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-components-input-border-active',
+                )}
               >
                 {node.isOpen
-                  ? <RiFolderOpenLine className="size-4 text-text-accent" />
-                  : <RiFolderLine className="size-4 text-text-secondary" />}
+                  ? <RiFolderOpenLine className="size-4 text-text-accent" aria-hidden="true" />
+                  : <RiFolderLine className="size-4 text-text-secondary" aria-hidden="true" />}
               </button>
             )
           : (
@@ -119,16 +142,18 @@ const TreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeData>) 
         <PortalToFollowElemTrigger asChild>
           <button
             type="button"
+            tabIndex={-1}
             onClick={handleMoreClick}
             className={cn(
               'flex size-5 shrink-0 items-center justify-center rounded',
               'hover:bg-state-base-hover-alt',
-              'invisible group-hover:visible',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-components-input-border-active',
+              'invisible focus-visible:visible group-hover:visible',
               showDropdown && 'visible',
             )}
-            aria-label="File operations"
+            aria-label={t('skillSidebar.menu.moreActions')}
           >
-            <RiMoreFill className="size-4 text-text-tertiary" />
+            <RiMoreFill className="size-4 text-text-tertiary" aria-hidden="true" />
           </button>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className="z-[100]">
