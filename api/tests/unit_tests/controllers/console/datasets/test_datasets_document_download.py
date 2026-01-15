@@ -158,19 +158,17 @@ def test_batch_download_zip_returns_send_file(
     doc2 = _mock_document(tenant_id="tenant-123", data_source_type="upload_file", upload_file_id="file-2")
     monkeypatch.setattr(
         datasets_document_module.DocumentService,
-        "get_document",
-        lambda _dataset_id, document_id: doc1 if document_id == "doc-1" else doc2,
+        "get_documents_by_ids",
+        lambda *_args, **_kwargs: [doc1, doc2],
     )
-
-    # Mock UploadFile lookup chain: return different upload files based on id.
-    session = MagicMock()
-    q = session.query.return_value
-    w = q.where.return_value
-    w.first.side_effect = [
-        SimpleNamespace(id="file-1", name="a.txt", key="k1"),
-        SimpleNamespace(id="file-2", name="b.txt", key="k2"),
-    ]
-    monkeypatch.setattr(datasets_document_module, "db", SimpleNamespace(session=session))
+    monkeypatch.setattr(
+        datasets_document_module.DocumentService,
+        "get_upload_files_by_ids",
+        lambda *_args, **_kwargs: {
+            "file-1": SimpleNamespace(id="file-1", name="a.txt", key="k1"),
+            "file-2": SimpleNamespace(id="file-2", name="b.txt", key="k2"),
+        },
+    )
 
     # Mock storage streaming content.
     monkeypatch.setattr(datasets_document_module.storage, "load", lambda _key, stream=True: [b"hello"])
@@ -211,7 +209,11 @@ def test_batch_download_zip_rejects_non_upload_file_document(
     )
 
     doc = _mock_document(tenant_id="tenant-123", data_source_type="website_crawl", upload_file_id="file-1")
-    monkeypatch.setattr(datasets_document_module.DocumentService, "get_document", lambda *_args, **_kwargs: doc)
+    monkeypatch.setattr(
+        datasets_document_module.DocumentService,
+        "get_documents_by_ids",
+        lambda *_args, **_kwargs: [doc],
+    )
 
     with app.test_request_context(
         "/datasets/ds-1/documents/download-zip",

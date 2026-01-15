@@ -10,8 +10,9 @@ Unit tests for the console dataset document download endpoint:
 - Monkeypatches console decorators (`login_required`, `setup_required`, rate limit) to no-ops to keep the test focused.
 - Mocks:
   - `DatasetService.get_dataset` / `check_dataset_permission`
-  - `DocumentService.get_document`
-  - `db.session.query(...).where(...).first()` chain for `UploadFile`
+  - `DocumentService.get_document` for single-file download tests
+  - `DocumentService.get_documents_by_ids` + `get_upload_files_by_ids` for ZIP download tests
+  - `db.session.query(...).where(...).first()` chain for `UploadFile` in single-file tests
   - `core.file.helpers.get_signed_file_url` to return a deterministic URL
 
 ## Covered cases
