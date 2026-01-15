@@ -1,6 +1,6 @@
 'use client'
 import type { Plugin } from '@/app/components/plugins/types'
-import type { Locale } from '@/i18n-config'
+import { useLocale, useTranslation } from '#i18n'
 import { RiArrowRightUpLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useTheme } from 'next-themes'
@@ -11,34 +11,30 @@ import Card from '@/app/components/plugins/card'
 import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import { useTags } from '@/app/components/plugins/hooks'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
-import { useMixedTranslation } from '@/app/components/plugins/marketplace/hooks'
-import { useLocale } from '@/context/i18n'
 import { getPluginDetailLinkInMarketplace, getPluginLinkInMarketplace } from '../utils'
 
 type CardWrapperProps = {
   plugin: Plugin
   showInstallButton?: boolean
-  locale?: Locale
 }
 const CardWrapperComponent = ({
   plugin,
   showInstallButton,
-  locale,
 }: CardWrapperProps) => {
-  const { t } = useMixedTranslation(locale)
+  const { t } = useTranslation()
   const { theme } = useTheme()
   const [isShowInstallFromMarketplace, {
     setTrue: showInstallFromMarketplace,
     setFalse: hideInstallFromMarketplace,
   }] = useBoolean(false)
-  const localeFromLocale = useLocale()
-  const { getTagLabel } = useTags(t)
+  const locale = useLocale()
+  const { getTagLabel } = useTags()
 
   // Memoize marketplace link params to prevent unnecessary re-renders
   const marketplaceLinkParams = useMemo(() => ({
-    language: localeFromLocale,
+    language: locale,
     theme,
-  }), [localeFromLocale, theme])
+  }), [locale, theme])
 
   // Memoize tag labels to prevent recreating array on every render
   const tagLabels = useMemo(() =>
@@ -52,7 +48,6 @@ const CardWrapperComponent = ({
         <Card
           key={plugin.name}
           payload={plugin}
-          locale={locale}
           footer={(
             <CardMoreInfo
               downloadCount={plugin.install_count}
@@ -99,7 +94,6 @@ const CardWrapperComponent = ({
       <Card
         key={plugin.name}
         payload={plugin}
-        locale={locale}
         footer={(
           <CardMoreInfo
             downloadCount={plugin.install_count}

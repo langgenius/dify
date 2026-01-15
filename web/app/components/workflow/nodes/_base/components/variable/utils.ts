@@ -353,7 +353,7 @@ const formatItem = (
         try {
           if (type === VarType.object && v.json_schema) {
             varRes.children = {
-              schema: JSON.parse(v.json_schema),
+              schema: typeof v.json_schema === 'string' ? JSON.parse(v.json_schema) : v.json_schema,
             }
           }
         }

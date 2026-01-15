@@ -60,9 +60,10 @@ check:
 	@echo "✅ Code check complete"
 
 lint:
-	@echo "🔧 Running ruff format, check with fixes, and import linter..."
+	@echo "🔧 Running ruff format, check with fixes, import linter, and dotenv-linter..."
 	@uv run --project api --dev sh -c 'ruff format ./api && ruff check --fix ./api'
 	@uv run --directory api --dev lint-imports
+	@uv run --project api --dev dotenv-linter ./api/.env.example ./web/.env.example
 	@echo "✅ Linting complete"
 
 type-check:
@@ -122,7 +123,7 @@ help:
 	@echo "Backend Code Quality:"
 	@echo "  make format         - Format code with ruff"
 	@echo "  make check          - Check code with ruff"
-	@echo "  make lint           - Format and fix code with ruff"
+	@echo "  make lint           - Format, fix, and lint code (ruff, imports, dotenv)"
 	@echo "  make type-check     - Run type checking with basedpyright"
 	@echo "  make test           - Run backend unit tests"
 	@echo ""

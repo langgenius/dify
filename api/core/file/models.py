@@ -112,17 +112,17 @@ class File(BaseModel):
 
         return text
 
-    def generate_url(self) -> str | None:
+    def generate_url(self, for_external: bool = True) -> str | None:
         if self.transfer_method == FileTransferMethod.REMOTE_URL:
             return self.remote_url
         elif self.transfer_method == FileTransferMethod.LOCAL_FILE:
             if self.related_id is None:
                 raise ValueError("Missing file related_id")
-            return helpers.get_signed_file_url(upload_file_id=self.related_id)
+            return helpers.get_signed_file_url(upload_file_id=self.related_id, for_external=for_external)
         elif self.transfer_method in [FileTransferMethod.TOOL_FILE, FileTransferMethod.DATASOURCE_FILE]:
             assert self.related_id is not None
             assert self.extension is not None
-            return sign_tool_file(tool_file_id=self.related_id, extension=self.extension)
+            return sign_tool_file(tool_file_id=self.related_id, extension=self.extension, for_external=for_external)
         return None
 
     def to_plugin_parameter(self) -> dict[str, Any]:
@@ -133,7 +133,7 @@ class File(BaseModel):
             "extension": self.extension,
             "size": self.size,
             "type": self.type,
-            "url": self.generate_url(),
+            "url": self.generate_url(for_external=False),
         }
 
     @model_validator(mode="after")

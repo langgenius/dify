@@ -28,7 +28,8 @@ const NormalForm = () => {
   const message = decodeURIComponent(searchParams.get('message') || '')
   const invite_token = decodeURIComponent(searchParams.get('invite_token') || '')
   const [isInitCheckLoading, setInitCheckLoading] = useState(true)
-  const isLoading = isCheckLoading || loginData?.logged_in || isInitCheckLoading
+  const [isRedirecting, setIsRedirecting] = useState(false)
+  const isLoading = isCheckLoading || isInitCheckLoading || isRedirecting
   const { systemFeatures } = useGlobalPublicStore()
   const [authType, updateAuthType] = useState<'code' | 'password'>('password')
   const [showORLine, setShowORLine] = useState(false)
@@ -40,6 +41,7 @@ const NormalForm = () => {
   const init = useCallback(async () => {
     try {
       if (isLoggedIn) {
+        setIsRedirecting(true)
         const redirectUrl = resolvePostLoginRedirect(searchParams)
         router.replace(redirectUrl || '/apps')
         return

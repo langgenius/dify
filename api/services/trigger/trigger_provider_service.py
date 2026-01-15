@@ -799,7 +799,7 @@ class TriggerProviderService:
         user_id: str,
         provider_id: TriggerProviderID,
         subscription_id: str,
-        credentials: Mapping[str, Any],
+        credentials: dict[str, Any],
     ) -> dict[str, Any]:
         """
         Verify credentials for an existing subscription without updating it.
@@ -853,7 +853,7 @@ class TriggerProviderService:
         """
         Create a subscription builder for rebuilding an existing subscription.
 
-        This method creates a builder pre-filled with data from the rebuild request,
+        This method rebuild the subscription by call DELETE and CREATE API of the third party provider(e.g. GitHub)
         keeping the same subscription_id and endpoint_id so the webhook URL remains unchanged.
 
         :param tenant_id: Tenant ID
@@ -868,111 +868,50 @@ class TriggerProviderService:
         if not provider_controller:
             raise ValueError(f"Provider {provider_id} not found")
 
-        # Use distributed lock to prevent race conditions on the same subscription
-        lock_key = f"trigger_subscription_rebuild_lock:{tenant_id}_{subscription_id}"
-        with redis_client.lock(lock_key, timeout=20):
-            with Session(db.engine, expire_on_commit=False) as session:
-                try:
-                    # Get subscription within the transaction
-                    subscription: TriggerSubscription | None = (
-                        session.query(TriggerSubscription).filter_by(tenant_id=tenant_id, id=subscription_id).first()
-                    )
-                    if not subscription:
-                        raise ValueError(f"Subscription {subscription_id} not found")
+        subscription = TriggerProviderService.get_subscription_by_id(
+            tenant_id=tenant_id,
+            subscription_id=subscription_id,
+        )
+        if not subscription:
+            raise ValueError(f"Subscription {subscription_id} not found")
 
-                    credential_type = CredentialType.of(subscription.credential_type)
-                    if credential_type not in [CredentialType.OAUTH2, CredentialType.API_KEY]:
-                        raise ValueError("Credential type not supported for rebuild")
+        credential_type = CredentialType.of(subscription.credential_type)
+        if credential_type not in {CredentialType.OAUTH2, CredentialType.API_KEY}:
+            raise ValueError(f"Credential type {credential_type} not supported for auto creation")
 
-                    # Decrypt existing credentials for merging
-                    credential_encrypter, _ = create_trigger_provider_encrypter_for_subscription(
-                        tenant_id=tenant_id,
-                        controller=provider_controller,
-                        subscription=subscription,
-                    )
-                    decrypted_credentials = dict(credential_encrypter.decrypt(subscription.credentials))
+        # Delete the previous subscription
+        user_id = subscription.user_id
+        unsubscribe_result = TriggerManager.unsubscribe_trigger(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            provider_id=provider_id,
+            subscription=subscription.to_entity(),
+            credentials=subscription.credentials,
+            credential_type=credential_type,
+        )
+        if not unsubscribe_result.success:
+            raise ValueError(f"Failed to delete previous subscription: {unsubscribe_result.message}")
 
-                    # Merge credentials: if caller passed HIDDEN_VALUE, retain existing decrypted value
-                    merged_credentials: dict[str, Any] = {
-                        key: value if value != HIDDEN_VALUE else decrypted_credentials.get(key, UNKNOWN_VALUE)
-                        for key, value in credentials.items()
-                    }
-
-                    user_id = subscription.user_id
-
-                    # TODO: Trying to invoke update api of the plugin trigger provider
-
-                    # FALLBACK: If the update api is not implemented,
-                    # delete the previous subscription and create a new one
-
-                    # Unsubscribe the previous subscription (external call, but we'll handle errors)
-                    try:
-                        TriggerManager.unsubscribe_trigger(
-                            tenant_id=tenant_id,
-                            user_id=user_id,
-                            provider_id=provider_id,
-                            subscription=subscription.to_entity(),
-                            credentials=decrypted_credentials,
-                            credential_type=credential_type,
-                        )
-                    except Exception as e:
-                        logger.exception("Error unsubscribing trigger during rebuild", exc_info=e)
-                        # Continue anyway - the subscription might already be deleted externally
-
-                    # Create a new subscription with the same subscription_id and endpoint_id (external call)
-                    new_subscription: TriggerSubscriptionEntity = TriggerManager.subscribe_trigger(
-                        tenant_id=tenant_id,
-                        user_id=user_id,
-                        provider_id=provider_id,
-                        endpoint=generate_plugin_trigger_endpoint_url(subscription.endpoint_id),
-                        parameters=parameters,
-                        credentials=merged_credentials,
-                        credential_type=credential_type,
-                    )
-
-                    # Update the subscription in the same transaction
-                    # Inline update logic to reuse the same session
-                    if name is not None and name != subscription.name:
-                        existing = (
-                            session.query(TriggerSubscription)
-                            .filter_by(tenant_id=tenant_id, provider_id=str(provider_id), name=name)
-                            .first()
-                        )
-                        if existing and existing.id != subscription.id:
-                            raise ValueError(f"Subscription name '{name}' already exists for this provider")
-                        subscription.name = name
-
-                    # Update parameters
-                    subscription.parameters = dict(parameters)
-
-                    # Update credentials with merged (and encrypted) values
-                    subscription.credentials = dict(credential_encrypter.encrypt(merged_credentials))
-
-                    # Update properties
-                    if new_subscription.properties:
-                        properties_encrypter, _ = create_provider_encrypter(
-                            tenant_id=tenant_id,
-                            config=provider_controller.get_properties_schema(),
-                            cache=NoOpProviderCredentialCache(),
-                        )
-                        subscription.properties = dict(properties_encrypter.encrypt(dict(new_subscription.properties)))
-
-                    # Update expiration timestamp
-                    if new_subscription.expires_at is not None:
-                        subscription.expires_at = new_subscription.expires_at
-
-                    # Commit the transaction
-                    session.commit()
-
-                    # Clear subscription cache
-                    delete_cache_for_subscription(
-                        tenant_id=tenant_id,
-                        provider_id=subscription.provider_id,
-                        subscription_id=subscription.id,
-                    )
-
-                except Exception as e:
-                    # Rollback on any error
-                    session.rollback()
-                    logger.exception("Failed to rebuild trigger subscription", exc_info=e)
-                    raise
+        # Create a new subscription with the same subscription_id and endpoint_id
+        new_credentials: dict[str, Any] = {
+            key: value if value != HIDDEN_VALUE else subscription.credentials.get(key, UNKNOWN_VALUE)
+            for key, value in credentials.items()
+        }
+        new_subscription: TriggerSubscriptionEntity = TriggerManager.subscribe_trigger(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            provider_id=provider_id,
+            endpoint=generate_plugin_trigger_endpoint_url(subscription.endpoint_id),
+            parameters=parameters,
+            credentials=new_credentials,
+            credential_type=credential_type,
+        )
+        TriggerProviderService.update_trigger_subscription(
+            tenant_id=tenant_id,
+            subscription_id=subscription.id,
+            name=name,
+            parameters=parameters,
+            credentials=new_credentials,
+            properties=new_subscription.properties,
+            expires_at=new_subscription.expires_at,
+        )

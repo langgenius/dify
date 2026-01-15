@@ -27,7 +27,7 @@ import { cn } from '@/utils/classnames'
 import { PLUGIN_PAGE_TABS_MAP } from '../hooks'
 import InstallFromLocalPackage from '../install-plugin/install-from-local-package'
 import InstallFromMarketplace from '../install-plugin/install-from-marketplace'
-import { PLUGIN_TYPE_SEARCH_MAP } from '../marketplace/plugin-type-switch'
+import { PLUGIN_TYPE_SEARCH_MAP } from '../marketplace/constants'
 import {
   PluginPageContextProvider,
   usePluginPageContext,

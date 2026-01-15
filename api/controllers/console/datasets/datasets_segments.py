@@ -30,6 +30,7 @@ from core.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.segment_fields import child_chunk_fields, segment_fields
+from libs.helper import escape_like_pattern
 from libs.login import current_account_with_tenant, login_required
 from models.dataset import ChildChunk, DocumentSegment
 from models.model import UploadFile
@@ -145,6 +146,8 @@ class DatasetDocumentSegmentListApi(Resource):
             query = query.where(DocumentSegment.hit_count >= hit_count_gte)
 
         if keyword:
+            # Escape special characters in keyword to prevent SQL injection via LIKE wildcards
+            escaped_keyword = escape_like_pattern(keyword)
             # Search in both content and keywords fields
             # Use database-specific methods for JSON array search
             if dify_config.SQLALCHEMY_DATABASE_URI_SCHEME == "postgresql":
@@ -156,15 +159,15 @@ class DatasetDocumentSegmentListApi(Resource):
                         .scalar_subquery()
                     ),
                     ",",
-                ).ilike(f"%{keyword}%")
+                ).ilike(f"%{escaped_keyword}%", escape="\\")
             else:
                 # MySQL: Cast JSON to string for pattern matching
                 # MySQL stores Chinese text directly in JSON without Unicode escaping
-                keywords_condition = cast(DocumentSegment.keywords, String).ilike(f"%{keyword}%")
+                keywords_condition = cast(DocumentSegment.keywords, String).ilike(f"%{escaped_keyword}%", escape="\\")
 
             query = query.where(
                 or_(
-                    DocumentSegment.content.ilike(f"%{keyword}%"),
+                    DocumentSegment.content.ilike(f"%{escaped_keyword}%", escape="\\"),
                     keywords_condition,
                 )
             )

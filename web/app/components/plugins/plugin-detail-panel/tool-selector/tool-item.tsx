@@ -16,6 +16,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import { ToolTipContent } from '@/app/components/base/tooltip/content'
 import Indicator from '@/app/components/header/indicator'
 import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
+import { useMCPToolAvailability } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
 import McpToolNotSupportTooltip from '@/app/components/workflow/nodes/_base/components/mcp-tool-not-support-tooltip'
 import { SwitchPluginVersion } from '@/app/components/workflow/nodes/_base/components/switch-plugin-version'
 import { cn } from '@/utils/classnames'
@@ -39,7 +40,6 @@ type Props = {
   versionMismatch?: boolean
   open: boolean
   authRemoved?: boolean
-  canChooseMCPTool?: boolean
 }
 
 const ToolItem = ({
@@ -61,13 +61,13 @@ const ToolItem = ({
   errorTip,
   versionMismatch,
   authRemoved,
-  canChooseMCPTool,
 }: Props) => {
   const { t } = useTranslation()
+  const { allowed: isMCPToolAllowed } = useMCPToolAvailability()
   const providerNameText = isMCPTool ? providerShowName : providerName?.split('/').pop()
   const isTransparent = uninstalled || versionMismatch || isError
   const [isDeleting, setIsDeleting] = useState(false)
-  const isShowCanNotChooseMCPTip = isMCPTool && !canChooseMCPTool
+  const isShowCanNotChooseMCPTip = isMCPTool && !isMCPToolAllowed
 
   return (
     <div className={cn(
@@ -125,9 +125,7 @@ const ToolItem = ({
           />
         </div>
       )}
-      {isShowCanNotChooseMCPTip && (
-        <McpToolNotSupportTooltip />
-      )}
+      {isShowCanNotChooseMCPTip && <McpToolNotSupportTooltip />}
       {!isError && !uninstalled && !versionMismatch && noAuth && (
         <Button variant="secondary" size="small">
           {t('notAuthorized', { ns: 'tools' })}

@@ -96,7 +96,7 @@
   "plansCommon.memberAfter": "个成员",
   "plansCommon.messageRequest.title": "{{count,number}} 条消息额度",
   "plansCommon.messageRequest.titlePerMonth": "{{count,number}} 条消息额度/月",
-  "plansCommon.messageRequest.tooltip": "消息额度旨在帮助您便捷地试用 Dify 中的各类 OpenAI 模型。不同模型会消耗不同额度。额度用尽后，您可以切换为使用自己的 OpenAI API 密钥。",
+  "plansCommon.messageRequest.tooltip": "消息额度旨在帮助您便捷地试用 Dify 中来自 OpenAI、Anthropic、Gemini、xAI、深度求索、通义 的不同模型。不同模型会消耗不同额度。额度用尽后，您可以切换为使用自己的 API 密钥。",
   "plansCommon.modelProviders": "支持 OpenAI/Anthropic/Llama2/Azure OpenAI/Hugging Face/Replicate",
   "plansCommon.month": "月",
   "plansCommon.mostPopular": "最受欢迎",

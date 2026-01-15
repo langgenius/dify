@@ -42,7 +42,8 @@ class InvokeFrom(StrEnum):
     # DEBUGGER indicates that this invocation is from
     # the workflow (or chatflow) edit page.
     DEBUGGER = "debugger"
-    PUBLISHED = "published"
+    # PUBLISHED_PIPELINE indicates that this invocation runs a published RAG pipeline workflow.
+    PUBLISHED_PIPELINE = "published"
 
     # VALIDATION indicates that this invocation is from validation.
     VALIDATION = "validation"

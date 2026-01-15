@@ -397,7 +397,7 @@
   "modelProvider.quotaTip": "Verbleibende verfügbare kostenlose Token",
   "modelProvider.rerankModel.key": "Rerank-Modell",
   "modelProvider.rerankModel.tip": "Rerank-Modell wird die Kandidatendokumentenliste basierend auf der semantischen Übereinstimmung mit der Benutzeranfrage neu ordnen und die Ergebnisse der semantischen Rangordnung verbessern",
-  "modelProvider.resetDate": "Zurücksetzen bei {{date}}",
+  "modelProvider.resetDate": "Zurücksetzen am {{date}}",
   "modelProvider.searchModel": "Suchmodell",
   "modelProvider.selectModel": "Wählen Sie Ihr Modell",
   "modelProvider.selector.emptySetting": "Bitte gehen Sie zu den Einstellungen, um zu konfigurieren",

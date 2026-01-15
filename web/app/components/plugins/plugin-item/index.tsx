@@ -44,7 +44,7 @@ const PluginItem: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { theme } = useTheme()
-  const { categoriesMap } = useCategories(t, true)
+  const { categoriesMap } = useCategories(true)
   const currentPluginID = usePluginPageContext(v => v.currentPluginID)
   const setCurrentPluginID = usePluginPageContext(v => v.setCurrentPluginID)
   const { refreshPluginList } = useRefreshPluginList()
