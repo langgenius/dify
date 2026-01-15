@@ -4,6 +4,7 @@ import type { NodeApi, TreeApi } from 'react-arborist'
 import type { OpensObject } from './store'
 import type { TreeNodeData } from './type'
 import { RiDragDropLine } from '@remixicon/react'
+import { useIsMutating } from '@tanstack/react-query'
 import { useSize } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
@@ -45,6 +46,7 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
   const appId = appDetail?.id || ''
 
   const { data: treeData, isLoading, error } = useGetAppAssetTree(appId)
+  const isMutating = useIsMutating() > 0
 
   const expandedFolderIds = useSkillEditorStore(s => s.expandedFolderIds)
   const activeTabId = useSkillEditorStore(s => s.activeTabId)
@@ -135,7 +137,13 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
 
   return (
     <>
-      <div className={cn('flex min-h-0 flex-1 flex-col', className)}>
+      <div
+        className={cn(
+          'flex min-h-0 flex-1 flex-col',
+          isMutating && 'pointer-events-none opacity-50',
+          className,
+        )}
+      >
         <div
           ref={containerRef}
           className="flex min-h-0 flex-1 flex-col overflow-hidden px-1 pt-1"
