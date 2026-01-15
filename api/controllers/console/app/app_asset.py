@@ -1,7 +1,6 @@
-from flask import Response, request
+from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from werkzeug.exceptions import Forbidden
 
 from controllers.console import console_ns
 from controllers.console.app.error import (
@@ -273,33 +272,3 @@ class AppAssetFileDownloadUrlResource(Resource):
             return {"download_url": download_url}
         except ServiceNodeNotFoundError:
             raise AppAssetNodeNotFoundError()
-
-
-@console_ns.route("/apps/<string:app_id>/assets/files/<string:node_id>/download")
-class AppAssetFileDownloadResource(Resource):
-    @setup_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def get(self, app_model: App, node_id: str):
-        timestamp = request.args.get("timestamp", "")
-        nonce = request.args.get("nonce", "")
-        sign = request.args.get("sign", "")
-
-        if not AppAssetService.verify_download_signature(
-            app_id=app_model.id,
-            node_id=node_id,
-            timestamp=timestamp,
-            nonce=nonce,
-            sign=sign,
-        ):
-            raise Forbidden("Invalid or expired download link")
-
-        try:
-            content, filename = AppAssetService.get_file_for_download(app_model, node_id)
-        except ServiceNodeNotFoundError:
-            raise AppAssetNodeNotFoundError()
-
-        return Response(
-            content,
-            mimetype="application/octet-stream",
-            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-        )

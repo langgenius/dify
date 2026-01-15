@@ -1,15 +1,11 @@
-import base64
 import hashlib
-import hmac
 import io
 import logging
-import time
 import zipfile
 from uuid import uuid4
 
 from sqlalchemy.orm import Session
 
-from configs import dify_config
 from core.app.entities.app_asset_entities import (
     AppAssetFileTree,
     AppAssetNode,
@@ -20,6 +16,7 @@ from core.app.entities.app_asset_entities import (
 )
 from extensions.ext_database import db
 from extensions.ext_storage import storage
+from extensions.storage.file_presign_storage import FilePresignStorage
 from libs.datetime_utils import naive_utc_now
 from models.app_asset import AppAssets
 from models.model import App
@@ -339,53 +336,5 @@ class AppAssetService:
                 raise AppAssetNodeNotFoundError(f"File node {node_id} not found")
 
             storage_key = AppAssets.get_storage_key(app_model.tenant_id, app_model.id, node_id)
-
-            try:
-                return storage.get_download_url(storage_key, expires_in)
-            except NotImplementedError:
-                raise NotImplementedError("Download URL not implemented for storage, please contact administrator")
-
-    @staticmethod
-    def verify_download_signature(
-        *,
-        app_id: str,
-        node_id: str,
-        timestamp: str,
-        nonce: str,
-        sign: str,
-    ) -> bool:
-        data_to_sign = f"app-asset-download|{app_id}|{node_id}|{timestamp}|{nonce}"
-        secret_key = dify_config.SECRET_KEY.encode()
-        recalculated_sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
-        recalculated_encoded_sign = base64.urlsafe_b64encode(recalculated_sign).decode()
-
-        if sign != recalculated_encoded_sign:
-            return False
-
-        current_time = int(time.time())
-        return current_time - int(timestamp) <= dify_config.FILES_ACCESS_TIMEOUT
-
-    @staticmethod
-    def get_file_for_download(app_model: App, node_id: str) -> tuple[bytes, str]:
-        with Session(db.engine) as session:
-            assets = (
-                session.query(AppAssets)
-                .filter(
-                    AppAssets.tenant_id == app_model.tenant_id,
-                    AppAssets.app_id == app_model.id,
-                    AppAssets.version == AppAssets.VERSION_DRAFT,
-                )
-                .first()
-            )
-            if not assets:
-                raise AppAssetNodeNotFoundError(f"Assets not found for app {app_model.id}")
-
-            tree = assets.asset_tree
-            node = tree.get(node_id)
-            if not node or node.node_type != AssetNodeType.FILE:
-                raise AppAssetNodeNotFoundError(f"File node {node_id} not found")
-
-            storage_key = AppAssets.get_storage_key(app_model.tenant_id, app_model.id, node_id)
-            content = storage.load_once(storage_key)
-
-            return content, node.name
+            presign_storage = FilePresignStorage(storage.storage_runner)
+            return presign_storage.get_download_url(storage_key, expires_in)
