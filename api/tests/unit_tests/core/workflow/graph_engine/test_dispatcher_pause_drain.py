@@ -70,4 +70,3 @@ def test_dispatcher_drains_events_when_paused() -> None:
 
     assert handler.events == [event]
     assert coordinator.mark_complete_called is True
-

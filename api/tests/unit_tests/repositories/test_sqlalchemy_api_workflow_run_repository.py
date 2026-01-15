@@ -6,12 +6,17 @@ from unittest.mock import Mock, patch
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.workflow.entities.pause_reason import HumanInputRequired, PauseReasonType
 from core.workflow.enums import WorkflowExecutionStatus
+from core.workflow.nodes.human_input.entities import FormDefinition, FormInput, UserAction
+from core.workflow.nodes.human_input.enums import FormInputType, HumanInputFormStatus, TimeoutUnit
+from models.human_input import BackstageRecipientPayload, HumanInputForm, HumanInputFormRecipient, RecipientType
 from models.workflow import WorkflowPause as WorkflowPauseModel
-from models.workflow import WorkflowRun
+from models.workflow import WorkflowPauseReason, WorkflowRun
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.sqlalchemy_api_workflow_run_repository import (
     DifyAPISQLAlchemyWorkflowRunRepository,
+    _build_human_input_required_reason,
     _PrivateWorkflowPauseEntity,
     _WorkflowRunError,
 )
@@ -363,3 +368,52 @@ class TestPrivateWorkflowPauseEntity(TestDifyAPISQLAlchemyWorkflowRunRepository)
             assert result1 == expected_state
             assert result2 == expected_state
             mock_storage.load.assert_called_once()  # Only called once due to caching
+
+
+class TestBuildHumanInputRequiredReason:
+    def test_prefers_backstage_token_when_available(self):
+        form_definition = FormDefinition(
+            form_content="content",
+            inputs=[FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="name")],
+            user_actions=[UserAction(id="approve", title="Approve")],
+            rendered_content="rendered",
+            timeout=1,
+            timeout_unit=TimeoutUnit.HOUR,
+            placeholder_values={"name": "Alice"},
+            node_title="Ask Name",
+            display_in_ui=True,
+        )
+        form_model = HumanInputForm(
+            id="form-1",
+            tenant_id="tenant-1",
+            app_id="app-1",
+            workflow_run_id="run-1",
+            node_id="node-1",
+            form_definition=form_definition.model_dump_json(),
+            rendered_content="rendered",
+            status=HumanInputFormStatus.WAITING,
+            expiration_time=datetime.now(UTC),
+        )
+        reason_model = WorkflowPauseReason(
+            pause_id="pause-1",
+            type_=PauseReasonType.HUMAN_INPUT_REQUIRED,
+            form_id="form-1",
+            node_id="node-1",
+            message="",
+        )
+        backstage_recipient = HumanInputFormRecipient(
+            form_id="form-1",
+            delivery_id="delivery-1",
+            recipient_type=RecipientType.BACKSTAGE,
+            recipient_payload=BackstageRecipientPayload().model_dump_json(),
+            access_token="backstage-token",
+        )
+
+        reason = _build_human_input_required_reason(reason_model, form_model, [backstage_recipient])
+
+        assert isinstance(reason, HumanInputRequired)
+        assert reason.form_token == "backstage-token"
+        assert reason.node_title == "Ask Name"
+        assert reason.form_content == "content"
+        assert reason.inputs[0].output_variable_name == "name"
+        assert reason.actions[0].id == "approve"

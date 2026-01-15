@@ -1,4 +1,3 @@
-import json
 from typing import Literal, cast
 
 from flask import request
@@ -6,10 +5,12 @@ from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import sessionmaker
 
+from configs import dify_config
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from controllers.web.error import NotFoundError
+from core.workflow.entities.pause_reason import HumanInputRequired, SchedulingPause
 from core.workflow.enums import WorkflowExecutionStatus
 from extensions.ext_database import db
 from fields.end_user_fields import simple_end_user_fields
@@ -26,11 +27,21 @@ from fields.workflow_run_fields import (
 )
 from libs.custom_inputs import time_duration
 from libs.helper import uuid_value
-from libs.login import current_account_with_tenant, current_user, login_required
+from libs.login import current_user, login_required
 from models import Account, App, AppMode, EndUser, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 from services.workflow_run_service import WorkflowRunService
+
+
+def _build_backstage_input_url(form_token: str | None) -> str | None:
+    if not form_token:
+        return None
+    base_url = dify_config.CONSOLE_WEB_URL
+    if not base_url:
+        return None
+    return f"{base_url.rstrip('/')}/form/{form_token}"
+
 
 # Workflow run status choices for filtering
 WORKFLOW_RUN_STATUS_CHOICES = ["running", "succeeded", "failed", "stopped", "partial-succeeded"]
@@ -400,7 +411,6 @@ class ConsoleWorkflowPauseDetailsApi(Resource):
         """
 
         # Query WorkflowRun to determine if workflow is suspended
-        account, tenant = current_account_with_tenant()
         session_maker = sessionmaker(bind=db.engine)
         workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker=session_maker)
         workflow_run = db.session.get(WorkflowRun, workflow_run_id)
@@ -416,40 +426,35 @@ class ConsoleWorkflowPauseDetailsApi(Resource):
             }, 200
 
         pause_entity = workflow_run_repo.get_workflow_pause(workflow_run_id)
-        pause_reasons: list[dict[str, object]] = []
-        if pause_entity:
-            for reason in pause_entity.get_pause_reasons():
-                pause_reasons.append(reason.model_dump(mode="json"))
-
-        # Get pending Human Input forms for this workflow run
-        service = HumanInputFormService(db.session())
-        pending_forms = service.get_pending_forms_for_workflow_run(workflow_run_id)
+        pause_reasons = pause_entity.get_pause_reasons() if pause_entity else []
 
         # Build response
+        paused_at = pause_entity.paused_at if pause_entity else None
         response = {
-            "paused_at": workflow_run.created_at.isoformat() + "Z" if workflow_run.created_at else None,
+            "paused_at": paused_at.isoformat() + "Z" if paused_at else None,
             "paused_nodes": [],
         }
 
-        # Add pending human input forms
-        for form in pending_forms:
-            form_definition = json.loads(form.form_definition) if form.form_definition else {}
-            response["pending_human_inputs"].append(
-                {
-                    "form_id": form.id,
-                    "node_id": form_definition.get("node_id", "unknown"),
-                    "node_title": form_definition.get("title", "Human Input"),
-                    "created_at": form.created_at.isoformat() + "Z" if form.created_at else None,
-                }
-            )
-
-            # Also add to paused_nodes for backward compatibility
-            response["paused_nodes"].append(
-                {
-                    "node_id": form_definition.get("node_id", "unknown"),
-                    "node_title": form_definition.get("title", "Human Input"),
-                    "pause_type": {"type": "human_input", "form_id": form.id},
-                }
-            )
+        for reason in pause_reasons:
+            if isinstance(reason, HumanInputRequired):
+                response["paused_nodes"].append(
+                    {
+                        "node_id": reason.node_id,
+                        "node_title": reason.node_title,
+                        "pause_type": {
+                            "type": "human_input",
+                            "form_id": reason.form_id,
+                            "backstage_input_url": _build_backstage_input_url(reason.form_token),
+                        },
+                    }
+                )
+            elif isinstance(reason, SchedulingPause):
+                response["paused_nodes"].append(
+                    {
+                        "node_id": "",
+                        "node_title": "",
+                        "pause_type": {"type": "scheduled_pause", "message": reason.message},
+                    }
+                )
 
         return response, 200

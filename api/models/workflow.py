@@ -1814,7 +1814,12 @@ class WorkflowPauseReason(DefaultFieldsMixin, Base):
 
     def to_entity(self) -> PauseReason:
         if self.type_ == PauseReasonType.HUMAN_INPUT_REQUIRED:
-            return HumanInputRequired(form_id=self.form_id, node_id=self.node_id)
+            return HumanInputRequired(
+                form_id=self.form_id,
+                form_content="",
+                node_id=self.node_id,
+                node_title="",
+            )
         elif self.type_ == PauseReasonType.SCHEDULED_PAUSE:
             return SchedulingPause(message=self.message)
         else:

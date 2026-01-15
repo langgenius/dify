@@ -121,6 +121,8 @@ class RecipientType(StrEnum):
     # CONSOLE is used while running workflows / chatflows containing HumanInput
     # node inside console. (E.G. running installed apps or debugging workflows / chatflows)
     CONSOLE = "console"
+    # BACKSTAGE is used for backstage input inside console.
+    BACKSTAGE = "backstage"
 
 
 @final
@@ -150,6 +152,12 @@ class ConsoleRecipientPayload(BaseModel):
 
 
 @final
+class BackstageRecipientPayload(BaseModel):
+    TYPE: Literal[RecipientType.BACKSTAGE] = RecipientType.BACKSTAGE
+    account_id: str | None = None
+
+
+@final
 class ConsoleDeliveryPayload(BaseModel):
     type: Literal["console"] = "console"
     internal: bool = True
@@ -159,7 +167,8 @@ RecipientPayload = Annotated[
     EmailMemberRecipientPayload
     | EmailExternalRecipientPayload
     | StandaloneWebAppRecipientPayload
-    | ConsoleRecipientPayload,
+    | ConsoleRecipientPayload
+    | BackstageRecipientPayload,
     Field(discriminator="TYPE"),
 ]
 

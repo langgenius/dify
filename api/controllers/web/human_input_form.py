@@ -48,6 +48,8 @@ class HumanInputFormApi(Resource):
         service = HumanInputService(db.engine)
         try:
             form = service.get_form_definition_by_token(RecipientType.STANDALONE_WEB_APP, form_token)
+            if form is None:
+                form = service.get_form_definition_by_token(RecipientType.BACKSTAGE, form_token)
         except FormNotFoundError:
             raise NotFoundError("Form not found")
 
@@ -79,9 +81,13 @@ class HumanInputFormApi(Resource):
         args = parser.parse_args()
 
         service = HumanInputService(db.engine)
+        form = service.get_form_by_token(form_token)
+        if form is None or form.recipient_type not in {RecipientType.STANDALONE_WEB_APP, RecipientType.BACKSTAGE}:
+            raise NotFoundError("Form not found")
+
         try:
             service.submit_form_by_token(
-                recipient_type=RecipientType.STANDALONE_WEB_APP,
+                recipient_type=form.recipient_type,
                 form_token=form_token,
                 selected_action_id=args["action"],
                 form_data=args["inputs"],

@@ -136,7 +136,7 @@ class HumanInputService:
 
     def get_form_definition_by_token_for_console(self, form_token: str) -> Form | None:
         form = self.get_form_by_token(form_token)
-        if form is None or form.recipient_type != RecipientType.CONSOLE:
+        if form is None or form.recipient_type not in {RecipientType.CONSOLE, RecipientType.BACKSTAGE}:
             return None
         self._ensure_not_submitted(form)
         return form

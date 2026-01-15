@@ -220,6 +220,7 @@ class HumanInputNode(Node[HumanInputNodeData]):
                 console_creator_account_id=(
                     self.user_id if self.invoke_from in {InvokeFrom.DEBUGGER, InvokeFrom.EXPLORE} else None
                 ),
+                backstage_recipient_required=True,
             )
             form_entity = self._form_repository.create_form(params)
             # Create human input required event

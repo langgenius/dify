@@ -95,11 +95,11 @@ class ConsoleHumanInputFormApi(Resource):
         self._ensure_console_access(form)
 
         recipient_type = form.recipient_type
-        if recipient_type != RecipientType.CONSOLE:
+        if recipient_type not in {RecipientType.CONSOLE, RecipientType.BACKSTAGE}:
             raise NotFoundError(f"form not found, token={form_token}")
 
         service.submit_form_by_token(
-            recipient_type=RecipientType.CONSOLE,
+            recipient_type=recipient_type,
             form_token=form_token,
             selected_action_id=args["action"],
             form_data=args["inputs"],

@@ -44,6 +44,8 @@ class FormCreateParams:
     # Force creating a console-only recipient for submission in Console.
     console_recipient_required: bool = False
     console_creator_account_id: str | None = None
+    # Force creating a backstage recipient for submission in Console.
+    backstage_recipient_required: bool = False
 
 
 class HumanInputFormEntity(abc.ABC):

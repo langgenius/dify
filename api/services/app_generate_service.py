@@ -134,9 +134,7 @@ class AppGenerateService:
                         call_depth=0,
                     )
                     payload_json = payload.model_dump_json()
-                on_subscribe = cls._build_streaming_task_on_subscribe(
-                    lambda: chatflow_execute_task.delay(payload_json)
-                )
+                on_subscribe = cls._build_streaming_task_on_subscribe(lambda: chatflow_execute_task.delay(payload_json))
                 generator = AdvancedChatAppGenerator()
                 return rate_limit.generate(
                     generator.convert_to_event_stream(

@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, call
 
 import pytest
 from flask import Flask
@@ -115,6 +115,63 @@ def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask):
     )
 
 
+def test_get_form_allows_backstage_token(monkeypatch: pytest.MonkeyPatch, app: Flask):
+    """GET falls back to backstage token lookup."""
+
+    class _FakeDefinition:
+        def model_dump(self):
+            return {"form_content": "hello"}
+
+    class _FakeForm:
+        workflow_run_id = "workflow-1"
+        app_id = "app-1"
+        tenant_id = "tenant-1"
+
+        def get_definition(self):
+            return _FakeDefinition()
+
+    form = _FakeForm()
+    tenant = SimpleNamespace(status=TenantStatus.NORMAL)
+    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", tenant=tenant)
+    workflow_run = SimpleNamespace(app_id="app-1")
+    site_model = SimpleNamespace(
+        title="My Site",
+        icon_type="emoji",
+        icon=None,
+        icon_background="#fff",
+        description="desc",
+        default_language="en",
+        chat_color_theme="light",
+        chat_color_theme_inverted=False,
+        copyright=None,
+        privacy_policy=None,
+        custom_disclaimer=None,
+        prompt_public=False,
+        show_workflow_steps=True,
+        use_icon_as_answer_icon=False,
+    )
+
+    service_mock = MagicMock()
+    service_mock.get_form_definition_by_token.side_effect = [None, form]
+    monkeypatch.setattr(human_input_module, "HumanInputService", lambda engine: service_mock)
+
+    db_stub = _FakeDB(_FakeSession({"WorkflowRun": workflow_run, "App": app_model, "Site": site_model}))
+    monkeypatch.setattr(human_input_module, "db", db_stub)
+
+    monkeypatch.setattr(human_input_module, "serialize_site", lambda site: {"title": site.title})
+
+    with app.test_request_context("/api/form/human_input/token-1", method="GET"):
+        response = HumanInputFormApi().get("token-1")
+
+    body = json.loads(response.get_data(as_text=True))
+    assert body["form_content"] == "hello"
+    assert body["site"] == {"title": "My Site"}
+    assert service_mock.get_form_definition_by_token.call_args_list == [
+        call(RecipientType.STANDALONE_WEB_APP, "token-1"),
+        call(RecipientType.BACKSTAGE, "token-1"),
+    ]
+
+
 def test_get_form_raises_forbidden_when_site_missing(monkeypatch: pytest.MonkeyPatch, app: Flask):
     """GET raises Forbidden if site cannot be resolved."""
 
@@ -145,3 +202,33 @@ def test_get_form_raises_forbidden_when_site_missing(monkeypatch: pytest.MonkeyP
     with app.test_request_context("/api/form/human_input/token-1", method="GET"):
         with pytest.raises(Forbidden):
             HumanInputFormApi().get("token-1")
+
+
+def test_submit_form_accepts_backstage_token(monkeypatch: pytest.MonkeyPatch, app: Flask):
+    """POST forwards backstage submissions to the service."""
+
+    class _FakeForm:
+        recipient_type = RecipientType.BACKSTAGE
+
+    form = _FakeForm()
+    service_mock = MagicMock()
+    service_mock.get_form_by_token.return_value = form
+    monkeypatch.setattr(human_input_module, "HumanInputService", lambda engine: service_mock)
+    monkeypatch.setattr(human_input_module, "db", _FakeDB(_FakeSession({})))
+
+    with app.test_request_context(
+        "/api/form/human_input/token-1",
+        method="POST",
+        json={"inputs": {"content": "ok"}, "action": "approve"},
+    ):
+        response, status = HumanInputFormApi().post("token-1")
+
+    assert status == 200
+    assert response == {}
+    service_mock.submit_form_by_token.assert_called_once_with(
+        recipient_type=RecipientType.BACKSTAGE,
+        form_token="token-1",
+        selected_action_id="approve",
+        form_data={"content": "ok"},
+        submission_end_user_id=None,
+    )

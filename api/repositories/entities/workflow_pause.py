@@ -63,6 +63,12 @@ class WorkflowPauseEntity(ABC):
         """
         pass
 
+    @property
+    @abstractmethod
+    def paused_at(self) -> datetime:
+        """`paused_at` returns the creation time of the pause."""
+        pass
+
     @abstractmethod
     def get_pause_reasons(self) -> Sequence[PauseReason]:
         """

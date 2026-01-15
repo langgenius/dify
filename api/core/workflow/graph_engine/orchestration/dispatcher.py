@@ -86,10 +86,7 @@ class Dispatcher:
             self._process_commands()
             paused = False
             while not self._stop_event.is_set():
-                if (
-                    self._execution_coordinator.aborted
-                    or self._execution_coordinator.execution_complete
-                ):
+                if self._execution_coordinator.aborted or self._execution_coordinator.execution_complete:
                     break
                 if self._execution_coordinator.paused:
                     paused = True

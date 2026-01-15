@@ -28,6 +28,7 @@ from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models.account import Account, TenantAccountJoin
 from models.human_input import (
+    BackstageRecipientPayload,
     ConsoleDeliveryPayload,
     ConsoleRecipientPayload,
     EmailExternalRecipientPayload,
@@ -332,6 +333,7 @@ class HumanInputFormRepositoryImpl:
                 timeout_unit=form_config.timeout_unit,
                 placeholder_values=dict(params.resolved_placeholder_values),
                 display_in_ui=params.display_in_ui,
+                node_title=form_config.title,
             )
             form_model = HumanInputForm(
                 id=form_id,
@@ -377,6 +379,28 @@ class HumanInputFormRepositoryImpl:
                 session.add(console_delivery)
                 session.add(console_recipient)
                 recipient_models.append(console_recipient)
+            if params.backstage_recipient_required and not any(
+                recipient.recipient_type == RecipientType.BACKSTAGE for recipient in recipient_models
+            ):
+                backstage_delivery_id = str(uuidv7())
+                backstage_delivery = HumanInputDelivery(
+                    id=backstage_delivery_id,
+                    form_id=form_id,
+                    delivery_method_type=DeliveryMethodType.WEBAPP,
+                    delivery_config_id=None,
+                    channel_payload=ConsoleDeliveryPayload().model_dump_json(),
+                )
+                backstage_recipient = HumanInputFormRecipient(
+                    form_id=form_id,
+                    delivery_id=backstage_delivery_id,
+                    recipient_type=RecipientType.BACKSTAGE,
+                    recipient_payload=BackstageRecipientPayload(
+                        account_id=params.console_creator_account_id,
+                    ).model_dump_json(),
+                )
+                session.add(backstage_delivery)
+                session.add(backstage_recipient)
+                recipient_models.append(backstage_recipient)
             session.flush()
 
         return _HumanInputFormEntityImpl(form_model=form_model, recipient_models=recipient_models)
