@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next'
 import { useStore as useReactFlowStore, useStoreApi } from 'reactflow'
 import { Agent } from '@/app/components/base/icons/src/vender/workflow'
 import { useIsChatMode, useNodesSyncDraft, useWorkflow, useWorkflowVariables } from '@/app/components/workflow/hooks'
+import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { useStore as useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum, EditionType, PromptRole } from '@/app/components/workflow/types'
@@ -32,7 +33,8 @@ const SubGraphModal: FC<SubGraphModalProps> = ({
   const workflowNodes = useWorkflowStore(state => state.nodes)
   const workflowEdges = useReactFlowStore(state => state.edges)
   const setControlPromptEditorRerenderKey = useWorkflowStore(state => state.setControlPromptEditorRerenderKey)
-  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const { handleSyncWorkflowDraft, doSyncWorkflowDraft } = useNodesSyncDraft()
+  const configsMap = useHooksStore(state => state.configsMap)
   const { getBeforeNodesInSameBranch } = useWorkflow()
   const { getNodeAvailableVars } = useWorkflowVariables()
   const isChatMode = useIsChatMode()
@@ -234,6 +236,7 @@ const SubGraphModal: FC<SubGraphModalProps> = ({
                     sourceVariable={sourceVariable}
                     agentNodeId={agentNodeId}
                     agentName={agentName}
+                    configsMap={configsMap}
                     mentionConfig={mentionConfig}
                     onMentionConfigChange={handleMentionConfigChange}
                     extractorNode={extractorNode}
@@ -241,6 +244,7 @@ const SubGraphModal: FC<SubGraphModalProps> = ({
                     parentAvailableNodes={parentAgentNodes}
                     parentAvailableVars={parentAvailableVars}
                     onSave={handleSave}
+                    onSyncWorkflowDraft={doSyncWorkflowDraft}
                   />
                 </div>
               </DialogPanel>

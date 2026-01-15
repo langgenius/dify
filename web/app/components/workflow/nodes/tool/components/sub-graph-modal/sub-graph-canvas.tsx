@@ -10,6 +10,7 @@ const SubGraphCanvas: FC<SubGraphCanvasProps> = ({
   sourceVariable,
   agentNodeId,
   agentName,
+  configsMap,
   mentionConfig,
   onMentionConfigChange,
   extractorNode,
@@ -17,6 +18,7 @@ const SubGraphCanvas: FC<SubGraphCanvasProps> = ({
   parentAvailableNodes,
   parentAvailableVars,
   onSave,
+  onSyncWorkflowDraft,
 }) => {
   return (
     <div className="h-full w-full">
@@ -26,6 +28,7 @@ const SubGraphCanvas: FC<SubGraphCanvasProps> = ({
         sourceVariable={sourceVariable}
         agentNodeId={agentNodeId}
         agentName={agentName}
+        configsMap={configsMap}
         mentionConfig={mentionConfig}
         onMentionConfigChange={onMentionConfigChange}
         extractorNode={extractorNode}
@@ -33,6 +36,7 @@ const SubGraphCanvas: FC<SubGraphCanvasProps> = ({
         parentAvailableNodes={parentAvailableNodes}
         parentAvailableVars={parentAvailableVars}
         onSave={onSave}
+        onSyncWorkflowDraft={onSyncWorkflowDraft}
       />
     </div>
   )

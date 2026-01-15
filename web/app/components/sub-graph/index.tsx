@@ -43,6 +43,7 @@ const SubGraphContent: FC<SubGraphProps> = (props) => {
     parentAvailableVars,
     configsMap,
     onSave,
+    onSyncWorkflowDraft,
   } = props
 
   const setParentAvailableVars = useStore(state => state.setParentAvailableVars)
@@ -192,6 +193,7 @@ const SubGraphContent: FC<SubGraphProps> = (props) => {
         mentionConfig={mentionConfig}
         onMentionConfigChange={onMentionConfigChange}
         onSave={onSave}
+        onSyncWorkflowDraft={onSyncWorkflowDraft}
       />
     </WorkflowWithDefaultContext>
   )
