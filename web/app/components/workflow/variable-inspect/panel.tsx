@@ -158,7 +158,27 @@ const Panel: FC = () => {
   }, [currentFocusNodeId, currentVarId, nodesWithInspectVars, fetchInspectVarValue, schemaTypeDefinitions, isLoading])
 
   useEffect(() => {
-    if (!currentFocusNodeId || currentVarId)
+    if (!currentFocusNodeId)
+      return
+
+    // Check if we need to auto-select a variable
+    const needsAutoSelect = !currentVarId || (() => {
+      // Check if current variable belongs to the focused node
+      switch (currentFocusNodeId) {
+        case VarInInspectType.environment:
+          return !environmentVariables.find(v => v.id === currentVarId)
+        case VarInInspectType.conversation:
+          return !conversationVars.find(v => v.id === currentVarId)
+        case VarInInspectType.system:
+          return !systemVars.find(v => v.id === currentVarId)
+        default: {
+          const targetNode = nodesWithInspectVars.find(node => node.nodeId === currentFocusNodeId)
+          return !targetNode?.vars.find(v => v.id === currentVarId)
+        }
+      }
+    })()
+
+    if (!needsAutoSelect)
       return
 
     switch (currentFocusNodeId) {
