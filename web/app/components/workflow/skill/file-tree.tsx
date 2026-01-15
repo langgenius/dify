@@ -134,35 +134,37 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
   }
 
   return (
-    <div className={cn('flex min-h-0 flex-1 flex-col', className)}>
-      <div
-        ref={containerRef}
-        className="flex min-h-0 flex-1 flex-col overflow-hidden px-1 pt-1"
-      >
-        <Tree<TreeNodeData>
-          ref={treeRef}
-          data={treeData.children}
-          idAccessor="id"
-          childrenAccessor="children"
-          width="100%"
-          height={containerSize?.height ?? 400}
-          rowHeight={24}
-          indent={20}
-          overscanCount={5}
-          selection={activeTabId ?? undefined}
-          initialOpenState={initialOpensObject}
-          onToggle={handleToggle}
-          onActivate={handleActivate}
-          onRename={handleRename}
-          disableDrag
-          disableDrop
+    <>
+      <div className={cn('flex min-h-0 flex-1 flex-col', className)}>
+        <div
+          ref={containerRef}
+          className="flex min-h-0 flex-1 flex-col overflow-hidden px-1 pt-1"
         >
-          {TreeNode}
-        </Tree>
+          <Tree<TreeNodeData>
+            ref={treeRef}
+            data={treeData.children}
+            idAccessor="id"
+            childrenAccessor="children"
+            width="100%"
+            height={containerSize?.height ?? 400}
+            rowHeight={24}
+            indent={20}
+            overscanCount={5}
+            selection={activeTabId ?? undefined}
+            initialOpenState={initialOpensObject}
+            onToggle={handleToggle}
+            onActivate={handleActivate}
+            onRename={handleRename}
+            disableDrag
+            disableDrop
+          >
+            {TreeNode}
+          </Tree>
+        </div>
       </div>
       <DropTip />
       <TreeContextMenu treeRef={treeRef} />
-    </div>
+    </>
   )
 }
 
