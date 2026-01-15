@@ -65,11 +65,15 @@ export const createTabSlice: StateCreator<TabSliceShape> = (set, get) => ({
   },
 })
 
+export type OpensObject = Record<string, boolean>
+
 export type FileTreeSliceShape = {
   expandedFolderIds: Set<string>
   setExpandedFolderIds: (ids: Set<string>) => void
   toggleFolder: (folderId: string) => void
   revealFile: (ancestorFolderIds: string[]) => void
+  setExpandedFromOpens: (opens: OpensObject) => void
+  getOpensObject: () => OpensObject
 }
 
 export const createFileTreeSlice: StateCreator<FileTreeSliceShape> = (set, get) => ({
@@ -95,6 +99,22 @@ export const createFileTreeSlice: StateCreator<FileTreeSliceShape> = (set, get) 
     const newSet = new Set(expandedFolderIds)
     ancestorFolderIds.forEach(id => newSet.add(id))
     set({ expandedFolderIds: newSet })
+  },
+
+  setExpandedFromOpens: (opens: OpensObject) => {
+    const newSet = new Set<string>(
+      Object.entries(opens)
+        .filter(([_, isOpen]) => isOpen)
+        .map(([id]) => id),
+    )
+    set({ expandedFolderIds: newSet })
+  },
+
+  getOpensObject: () => {
+    const { expandedFolderIds } = get()
+    return Object.fromEntries(
+      [...expandedFolderIds].map(id => [id, true]),
+    )
   },
 })
 

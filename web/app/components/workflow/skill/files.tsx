@@ -1,6 +1,7 @@
 'use client'
 
 import type { NodeApi, TreeApi } from 'react-arborist'
+import type { OpensObject } from './store'
 import type { TreeNodeData } from './type'
 import { RiDragDropLine } from '@remixicon/react'
 import * as React from 'react'
@@ -15,7 +16,7 @@ import { cn } from '@/utils/classnames'
 import FileTreeContextMenu from './file-tree-context-menu'
 import FileTreeNode from './file-tree-node'
 import { useSkillEditorStore, useSkillEditorStoreApi } from './store'
-import { getAncestorIds, toOpensObject } from './utils/tree-utils'
+import { getAncestorIds } from './utils/tree-utils'
 
 type FilesProps = {
   className?: string
@@ -48,7 +49,11 @@ const Files: React.FC<FilesProps> = ({ className }) => {
 
   const renameNode = useRenameAppAssetNode()
 
-  const initialOpenState = useMemo(() => toOpensObject(expandedFolderIds), [expandedFolderIds])
+  const initialOpensObject = useMemo<OpensObject>(() => {
+    return Object.fromEntries(
+      [...expandedFolderIds].map(id => [id, true]),
+    )
+  }, [expandedFolderIds])
 
   const handleToggle = useCallback((id: string) => {
     storeApi.getState().toggleFolder(id)
@@ -75,31 +80,23 @@ const Files: React.FC<FilesProps> = ({ className }) => {
   }, [appId, renameNode, t])
 
   useEffect(() => {
-    if (!activeTabId || !treeData?.children || !treeRef.current)
+    if (!activeTabId || !treeData?.children)
+      return
+
+    const tree = treeRef.current
+    if (!tree)
       return
 
     const ancestors = getAncestorIds(activeTabId, treeData.children)
-
     if (ancestors.length > 0)
       storeApi.getState().revealFile(ancestors)
-
-    const timeoutId = setTimeout(() => {
-      const tree = treeRef.current
-      if (!tree)
-        return
-
-      for (const ancestorId of ancestors) {
-        const ancestorNode = tree.get(ancestorId)
-        if (ancestorNode && !ancestorNode.isOpen)
-          ancestorNode.open()
-      }
-
+    requestAnimationFrame(() => {
       const node = tree.get(activeTabId)
-      if (node)
-        node.select()
-    }, 0)
-
-    return () => clearTimeout(timeoutId)
+      if (node) {
+        tree.openParents(node)
+        tree.scrollTo(activeTabId)
+      }
+    })
   }, [activeTabId, treeData?.children, storeApi])
 
   if (isLoading) {
@@ -146,8 +143,8 @@ const Files: React.FC<FilesProps> = ({ className }) => {
           rowHeight={24}
           indent={20}
           overscanCount={5}
-          initialOpenState={initialOpenState}
           selection={activeTabId ?? undefined}
+          initialOpenState={initialOpensObject}
           onToggle={handleToggle}
           onActivate={handleActivate}
           onRename={handleRename}
