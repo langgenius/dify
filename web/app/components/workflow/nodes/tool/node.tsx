@@ -89,8 +89,6 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
     if (!mentionEntries.length)
       return []
 
-    const items: Array<{ key: string, label: string, type: BlockEnum, hasWarning: boolean }> = []
-    const seen = new Set<string>()
     const getNodeWarning = (node?: Node) => {
       if (!node)
         return true
@@ -113,41 +111,31 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
       const { errorMessage } = validator(node.data as any, t, moreDataForCheckValid)
       return Boolean(errorMessage)
     }
-    const pushItem = (key: string, label: string, type: BlockEnum, hasWarning: boolean) => {
-      if (seen.has(key))
-        return
-      seen.add(key)
-      items.push({
-        key,
-        label,
-        type,
-        hasWarning,
-      })
-    }
-    mentionEntries.forEach(({ agentNodeId, extractorNodeId }) => {
-      if (extractorNodeId) {
-        const extractorNode = nodesById[extractorNodeId]
-        if (extractorNode) {
-          pushItem(
-            extractorNode.id,
-            extractorNode.data.title || t(`blocks.${extractorNode.data.type}`, { ns: 'workflow' }),
-            extractorNode.data.type as BlockEnum,
-            getNodeWarning(extractorNode),
-          )
-        }
-      }
 
+    const itemsMap = new Map<string, { key: string, label: string, type: BlockEnum, hasWarning: boolean }>()
+
+    mentionEntries.forEach(({ agentNodeId, extractorNodeId }) => {
       const agentNode = nodesById[agentNodeId]
       const agentLabel = `@${agentNode?.data.title || agentNodeId}`
-      pushItem(
-        `agent-${agentNodeId}`,
-        agentLabel,
-        BlockEnum.Agent,
-        getNodeWarning(agentNode),
-      )
+      const agentWarning = getNodeWarning(agentNode)
+
+      const extractorWarning = extractorNodeId
+        ? getNodeWarning(nodesById[extractorNodeId])
+        : false
+
+      const key = `agent-${agentNodeId}`
+      const existing = itemsMap.get(key)
+      const hasWarning = (existing?.hasWarning || false) || agentWarning || extractorWarning
+
+      itemsMap.set(key, {
+        key,
+        label: agentLabel,
+        type: BlockEnum.Agent,
+        hasWarning,
+      })
     })
 
-    return items
+    return Array.from(itemsMap.values())
   }, [mentionEntries, nodesById, nodesMetaDataMap, strategyProviders, language, t])
 
   const hasConfigs = toolConfigs.length > 0
