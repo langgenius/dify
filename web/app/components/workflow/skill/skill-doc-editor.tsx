@@ -3,7 +3,7 @@
 import type { OnMount } from '@monaco-editor/react'
 import type { FC } from 'react'
 import type { AppAssetTreeView } from './type'
-import Editor, { loader } from '@monaco-editor/react'
+import { loader } from '@monaco-editor/react'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -14,9 +14,14 @@ import useTheme from '@/hooks/use-theme'
 import { useGetAppAssetFileContent, useGetAppAssetTree, useUpdateAppAssetFileContent } from '@/service/use-app-asset'
 import { Theme } from '@/types/app'
 import { basePath } from '@/utils/var'
+import CodeFileEditor from './editor/code-file-editor'
+import MarkdownFileEditor from './editor/markdown-file-editor'
+import MediaFilePreview from './editor/media-file-preview'
+import OfficeFilePlaceholder from './editor/office-file-placeholder'
+import UnsupportedFileDownload from './editor/unsupported-file-download'
 import { useSkillEditorStore, useSkillEditorStoreApi } from './store'
 import { buildNodeMap } from './type'
-import { getFileLanguage } from './utils'
+import { getFileExtension, getFileLanguage, isCodeOrTextFile, isImageFile, isMarkdownFile, isOfficeFile, isVideoFile } from './utils'
 
 // load file from local instead of cdn
 if (typeof window !== 'undefined')
@@ -64,6 +69,15 @@ const SkillDocEditor: FC = () => {
 
   // Get current file node
   const currentFileNode = activeTabId ? nodeMap.get(activeTabId) : undefined
+  const fileExtension = useMemo(() => {
+    return getFileExtension(currentFileNode?.name, currentFileNode?.extension)
+  }, [currentFileNode?.extension, currentFileNode?.name])
+  const isMarkdown = useMemo(() => isMarkdownFile(fileExtension), [fileExtension])
+  const isCodeOrText = useMemo(() => isCodeOrTextFile(fileExtension), [fileExtension])
+  const isImage = useMemo(() => isImageFile(fileExtension), [fileExtension])
+  const isVideo = useMemo(() => isVideoFile(fileExtension), [fileExtension])
+  const isOffice = useMemo(() => isOfficeFile(fileExtension), [fileExtension])
+  const isEditable = isMarkdown || isCodeOrText
 
   // Fetch file content from API
   const {
@@ -89,15 +103,15 @@ const SkillDocEditor: FC = () => {
 
   // Handle editor content change
   const handleEditorChange = useCallback((value: string | undefined) => {
-    if (!activeTabId)
+    if (!activeTabId || !isEditable)
       return
     // Set draft content in store
     storeApi.getState().setDraftContent(activeTabId, value ?? '')
-  }, [activeTabId, storeApi])
+  }, [activeTabId, isEditable, storeApi])
 
   // Handle save
   const handleSave = useCallback(async () => {
-    if (!activeTabId || !appId)
+    if (!activeTabId || !appId || !isEditable)
       return
 
     const content = dirtyContents.get(activeTabId)
@@ -123,7 +137,7 @@ const SkillDocEditor: FC = () => {
         message: String(error),
       })
     }
-  }, [activeTabId, appId, dirtyContents, storeApi, t, updateContent])
+  }, [activeTabId, appId, dirtyContents, isEditable, storeApi, t, updateContent])
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -189,28 +203,44 @@ const SkillDocEditor: FC = () => {
     )
   }
 
+  const previewUrl = fileContent?.content || ''
+  const fileName = currentFileNode?.name || ''
+  const fileSize = currentFileNode?.size
+
   return (
     <div className="h-full w-full overflow-hidden bg-components-panel-bg">
-      <Editor
-        language={language}
-        theme={isMounted ? theme : 'default-theme'}
-        value={currentContent}
-        loading={<Loading type="area" />}
-        onChange={handleEditorChange}
-        options={{
-          minimap: { enabled: false },
-          lineNumbersMinChars: 3,
-          wordWrap: 'on',
-          unicodeHighlight: {
-            ambiguousCharacters: false,
-          },
-          stickyScroll: { enabled: false },
-          fontSize: 13,
-          lineHeight: 20,
-          padding: { top: 12, bottom: 12 },
-        }}
-        onMount={handleEditorDidMount}
-      />
+      {isMarkdown && (
+        <MarkdownFileEditor
+          title={fileName}
+          value={currentContent}
+          onChange={handleEditorChange}
+        />
+      )}
+      {isCodeOrText && (
+        <CodeFileEditor
+          language={language}
+          theme={isMounted ? theme : 'default-theme'}
+          value={currentContent}
+          onChange={handleEditorChange}
+          onMount={handleEditorDidMount}
+        />
+      )}
+      {(isImage || isVideo) && (
+        <MediaFilePreview
+          type={isImage ? 'image' : 'video'}
+          src={previewUrl}
+        />
+      )}
+      {isOffice && (
+        <OfficeFilePlaceholder />
+      )}
+      {!isMarkdown && !isCodeOrText && !isImage && !isVideo && !isOffice && (
+        <UnsupportedFileDownload
+          name={fileName}
+          size={fileSize}
+          downloadUrl={previewUrl}
+        />
+      )}
     </div>
   )
 }
