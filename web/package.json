@@ -3,9 +3,12 @@
   "type": "module",
   "version": "1.11.2",
   "private": true,
-  "packageManager": "pnpm@10.26.1+sha512.664074abc367d2c9324fdc18037097ce0a8f126034160f709928e9e9f95d98714347044e5c3164d65bd5da6c59c6be362b107546292a8eecb7999196e5ce58fa",
-  "engines": {
-    "node": ">=v22.11.0"
+  "packageManager": "pnpm@10.27.0+sha512.72d699da16b1179c14ba9e64dc71c9a40988cbdc65c264cb0e489db7de917f20dcf4d64d8723625f2969ba52d4b7e2a1170682d9ac2a5dcaeaab732b7e16f04a",
+  "imports": {
+    "#i18n": {
+      "react-server": "./i18n-config/lib.server.ts",
+      "default": "./i18n-config/lib.client.ts"
+    }
   },
   "browserslist": [
     "last 1 Chrome version",
