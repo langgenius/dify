@@ -27,6 +27,7 @@
   - Returns `application/zip` as a single attachment download.
   - Rationale: browsers often block multiple automatic downloads; a ZIP avoids that limitation.
   - Applies `cloud_edition_billing_rate_limit_check("knowledge")`.
+  - The attachment filename (`download_name`) is a random `.zip` value (client-visible only).
 
 ## Verification plan
 

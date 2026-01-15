@@ -5,6 +5,7 @@ from collections.abc import Sequence
 from contextlib import ExitStack
 from tempfile import NamedTemporaryFile
 from typing import Any, Literal, cast
+from uuid import uuid4
 from zipfile import ZIP_DEFLATED, ZipFile
 
 import sqlalchemy as sa
@@ -72,7 +73,18 @@ logger = logging.getLogger(__name__)
 
 # NOTE: Keep constants near the top of the module for discoverability.
 DOCUMENT_BATCH_DOWNLOAD_ZIP_MAX_DOCS = 100
-DOCUMENT_BATCH_DOWNLOAD_ZIP_FILENAME_TEMPLATE = "dataset-{dataset_id}-documents.zip"
+DOCUMENT_BATCH_DOWNLOAD_ZIP_FILENAME_EXTENSION = ".zip"
+
+
+def _generate_document_batch_download_zip_filename() -> str:
+    """
+    Generate a random attachment filename for the batch download ZIP.
+
+    This only affects the client-visible `Content-Disposition` filename; the temp file path is
+    already random via `NamedTemporaryFile(...)`.
+    """
+    # Use UUID4 hex to keep filenames URL/FS-friendly while remaining unpredictable.
+    return f"{uuid4().hex}{DOCUMENT_BATCH_DOWNLOAD_ZIP_FILENAME_EXTENSION}"
 
 
 def _get_or_create_model(model_name: str, field_def):
@@ -998,7 +1010,8 @@ class DocumentBatchDownloadZipApi(Resource):
                 tmp,
                 mimetype="application/zip",
                 as_attachment=True,
-                download_name=DOCUMENT_BATCH_DOWNLOAD_ZIP_FILENAME_TEMPLATE.format(dataset_id=dataset_id),
+                # Use a random attachment name to avoid collisions in browser download managers.
+                download_name=_generate_document_batch_download_zip_filename(),
             )
             cleanup = stack.pop_all()
             response.call_on_close(cleanup.close)

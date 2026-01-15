@@ -190,7 +190,8 @@ def test_batch_download_zip_returns_send_file(
     # Assert: we returned via send_file with correct mime type and attachment.
     assert result["_send_file_kwargs"]["mimetype"] == "application/zip"
     assert result["_send_file_kwargs"]["as_attachment"] is True
-    assert result["_send_file_kwargs"]["download_name"].endswith("-documents.zip")
+    assert isinstance(result["_send_file_kwargs"]["download_name"], str)
+    assert result["_send_file_kwargs"]["download_name"].endswith(".zip")
     # Ensure our cleanup hook is registered and execute it to avoid temp file leaks in unit tests.
     assert getattr(result, "_on_close", None) is not None
     result._on_close()  # type: ignore[attr-defined]
