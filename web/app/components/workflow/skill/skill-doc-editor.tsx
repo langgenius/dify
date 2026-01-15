@@ -2,7 +2,6 @@
 
 import type { OnMount } from '@monaco-editor/react'
 import type { FC } from 'react'
-import type { AppAssetTreeView } from '@/types/app-asset'
 import { loader } from '@monaco-editor/react'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -11,7 +10,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
 import useTheme from '@/hooks/use-theme'
-import { useGetAppAssetFileContent, useGetAppAssetTree, useUpdateAppAssetFileContent } from '@/service/use-app-asset'
+import { useGetAppAssetFileContent, useUpdateAppAssetFileContent } from '@/service/use-app-asset'
 import { Theme } from '@/types/app'
 import { basePath } from '@/utils/var'
 import CodeFileEditor from './editor/code-file-editor'
@@ -19,9 +18,9 @@ import MarkdownFileEditor from './editor/markdown-file-editor'
 import MediaFilePreview from './editor/media-file-preview'
 import OfficeFilePlaceholder from './editor/office-file-placeholder'
 import UnsupportedFileDownload from './editor/unsupported-file-download'
+import { useSkillAssetNodeMap } from './hooks/use-skill-asset-tree'
 import { useSkillEditorStore, useSkillEditorStoreApi } from './store'
 import { getFileExtension, getFileLanguage, isCodeOrTextFile, isImageFile, isMarkdownFile, isOfficeFile, isVideoFile } from './utils/file-utils'
-import { buildNodeMap } from './utils/tree-utils'
 
 if (typeof window !== 'undefined')
   loader.config({ paths: { vs: `${window.location.origin}${basePath}/vs` } })
@@ -38,16 +37,9 @@ const SkillDocEditor: FC = () => {
   const activeTabId = useSkillEditorStore(s => s.activeTabId)
   const dirtyContents = useSkillEditorStore(s => s.dirtyContents)
   const storeApi = useSkillEditorStoreApi()
+  const { data: nodeMap } = useSkillAssetNodeMap()
 
-  const { data: treeData } = useGetAppAssetTree(appId)
-
-  const nodeMap = useMemo(() => {
-    if (!treeData?.children)
-      return new Map<string, AppAssetTreeView>()
-    return buildNodeMap(treeData.children)
-  }, [treeData?.children])
-
-  const currentFileNode = activeTabId ? nodeMap.get(activeTabId) : undefined
+  const currentFileNode = activeTabId ? nodeMap?.get(activeTabId) : undefined
   const fileExtension = getFileExtension(currentFileNode?.name, currentFileNode?.extension)
   const isMarkdown = isMarkdownFile(fileExtension)
   const isCodeOrText = isCodeOrTextFile(fileExtension)

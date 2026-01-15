@@ -10,10 +10,10 @@ import {
   useCreateAppAssetFile,
   useCreateAppAssetFolder,
   useDeleteAppAssetNode,
-  useGetAppAssetTree,
 } from '@/service/use-app-asset'
 import { useSkillEditorStoreApi } from '../store'
 import { getAllDescendantFileIds } from '../utils/tree-utils'
+import { useSkillAssetTreeData } from './use-skill-asset-tree'
 
 type UseFileOperationsOptions = {
   nodeId: string
@@ -40,7 +40,7 @@ export function useFileOperations({
   const createFolder = useCreateAppAssetFolder()
   const createFile = useCreateAppAssetFile()
   const deleteNode = useDeleteAppAssetNode()
-  const { data: treeData } = useGetAppAssetTree(appId)
+  const { data: treeData } = useSkillAssetTreeData()
 
   const parentId = nodeId === 'root' ? null : nodeId
 

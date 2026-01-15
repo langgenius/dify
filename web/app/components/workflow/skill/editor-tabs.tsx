@@ -1,32 +1,18 @@
 'use client'
 
 import type { FC } from 'react'
-import type { AppAssetTreeView } from '@/types/app-asset'
 import * as React from 'react'
-import { useMemo } from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { useGetAppAssetTree } from '@/service/use-app-asset'
 import { cn } from '@/utils/classnames'
 import EditorTabItem from './editor-tab-item'
+import { useSkillAssetNodeMap } from './hooks/use-skill-asset-tree'
 import { useSkillEditorStore, useSkillEditorStoreApi } from './store'
-import { buildNodeMap } from './utils/tree-utils'
 
 const EditorTabs: FC = () => {
-  const appDetail = useAppStore(s => s.appDetail)
-  const appId = appDetail?.id || ''
-
-  const { data: treeData } = useGetAppAssetTree(appId)
-
   const openTabIds = useSkillEditorStore(s => s.openTabIds)
   const activeTabId = useSkillEditorStore(s => s.activeTabId)
   const dirtyContents = useSkillEditorStore(s => s.dirtyContents)
   const storeApi = useSkillEditorStoreApi()
-
-  const nodeMap = useMemo(() => {
-    if (!treeData?.children)
-      return new Map<string, AppAssetTreeView>()
-    return buildNodeMap(treeData.children)
-  }, [treeData?.children])
+  const { data: nodeMap } = useSkillAssetNodeMap()
 
   const handleTabClick = (fileId: string) => {
     storeApi.getState().activateTab(fileId)
@@ -47,7 +33,7 @@ const EditorTabs: FC = () => {
       )}
     >
       {openTabIds.map((fileId) => {
-        const node = nodeMap.get(fileId)
+        const node = nodeMap?.get(fileId)
         const name = node?.name ?? fileId
         const isActive = activeTabId === fileId
         const isDirty = dirtyContents.has(fileId)

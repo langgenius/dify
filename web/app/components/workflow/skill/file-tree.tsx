@@ -13,8 +13,9 @@ import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
-import { useGetAppAssetTree, useRenameAppAssetNode } from '@/service/use-app-asset'
+import { useRenameAppAssetNode } from '@/service/use-app-asset'
 import { cn } from '@/utils/classnames'
+import { useSkillAssetTreeData } from './hooks/use-skill-asset-tree'
 import { useSkillEditorStore, useSkillEditorStoreApi } from './store'
 import TreeContextMenu from './tree-context-menu'
 import TreeNode from './tree-node'
@@ -45,7 +46,7 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
   const appDetail = useAppStore(s => s.appDetail)
   const appId = appDetail?.id || ''
 
-  const { data: treeData, isLoading, error } = useGetAppAssetTree(appId)
+  const { data: treeData, isLoading, error } = useSkillAssetTreeData()
   const isMutating = useIsMutating() > 0
 
   const expandedFolderIds = useSkillEditorStore(s => s.expandedFolderIds)

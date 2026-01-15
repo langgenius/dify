@@ -11,7 +11,6 @@ import {
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
@@ -19,9 +18,9 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import SearchInput from '@/app/components/base/search-input'
-import { useGetAppAssetTree } from '@/service/use-app-asset'
 import { cn } from '@/utils/classnames'
 import { useFileOperations } from './hooks/use-file-operations'
+import { useSkillAssetTreeData } from './hooks/use-skill-asset-tree'
 import { useSkillEditorStore } from './store'
 import { getTargetFolderIdFromSelection } from './utils/tree-utils'
 
@@ -55,9 +54,7 @@ const SidebarSearchAdd: FC = () => {
   const [searchValue, setSearchValue] = useState('')
   const [showMenu, setShowMenu] = useState(false)
 
-  const appDetail = useAppStore(s => s.appDetail)
-  const appId = appDetail?.id || ''
-  const { data: treeData } = useGetAppAssetTree(appId)
+  const { data: treeData } = useSkillAssetTreeData()
   const activeTabId = useSkillEditorStore(s => s.activeTabId)
 
   const targetFolderId = useMemo(() => {

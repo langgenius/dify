@@ -1,5 +1,6 @@
 import type {
   AppAssetNode,
+  AppAssetTreeResponse,
   CreateFolderPayload,
   MoveNodePayload,
   RenameNodePayload,
@@ -14,11 +15,19 @@ import {
 import { consoleClient, consoleQuery } from '@/service/client'
 import { upload } from './base'
 
-export const useGetAppAssetTree = (appId: string) => {
+type UseGetAppAssetTreeOptions<TData = AppAssetTreeResponse> = {
+  select?: (data: AppAssetTreeResponse) => TData
+}
+
+export function useGetAppAssetTree<TData = AppAssetTreeResponse>(
+  appId: string,
+  options?: UseGetAppAssetTreeOptions<TData>,
+) {
   return useQuery({
     queryKey: consoleQuery.appAsset.tree.queryKey({ input: { params: { appId } } }),
     queryFn: () => consoleClient.appAsset.tree({ params: { appId } }),
     enabled: !!appId,
+    select: options?.select,
   })
 }
 
