@@ -3,9 +3,7 @@ import hashlib
 import hmac
 import io
 import logging
-import os
 import time
-import urllib.parse
 import zipfile
 from uuid import uuid4
 
@@ -345,28 +343,7 @@ class AppAssetService:
             try:
                 return storage.get_download_url(storage_key, expires_in)
             except NotImplementedError:
-                return AppAssetService._generate_signed_proxy_url(
-                    app_id=app_model.id,
-                    node_id=node_id,
-                    expires_in=expires_in,
-                )
-
-    @staticmethod
-    def _generate_signed_proxy_url(app_id: str, node_id: str, expires_in: int) -> str:
-        base_url = dify_config.FILES_URL
-        url = f"{base_url}/console/api/apps/{app_id}/assets/files/{node_id}/download"
-
-        timestamp = str(int(time.time()))
-        nonce = os.urandom(16).hex()
-        key = dify_config.SECRET_KEY.encode()
-        msg = f"app-asset-download|{app_id}|{node_id}|{timestamp}|{nonce}"
-        sign = hmac.new(key, msg.encode(), hashlib.sha256).digest()
-        encoded_sign = base64.urlsafe_b64encode(sign).decode()
-
-        query = {"timestamp": timestamp, "nonce": nonce, "sign": encoded_sign}
-        query_string = urllib.parse.urlencode(query)
-
-        return f"{url}?{query_string}"
+                raise NotImplementedError("Download URL not implemented for storage, please contact administrator")
 
     @staticmethod
     def verify_download_signature(
