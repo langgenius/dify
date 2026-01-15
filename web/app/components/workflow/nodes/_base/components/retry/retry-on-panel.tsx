@@ -9,6 +9,10 @@ import Split from '@/app/components/workflow/nodes/_base/components/split'
 import { useRetryConfig } from './hooks'
 import s from './style.module.css'
 
+// Nodes that support first token timeout configuration
+// These nodes internally call LLM and have streaming response characteristics
+const LLM_RELATED_NODE_TYPES = ['llm', 'agent', 'parameter-extractor', 'question-classifier']
+
 type RetryOnPanelProps = Pick<Node, 'id' | 'data'>
 const RetryOnPanel = ({
   id,
@@ -16,10 +20,14 @@ const RetryOnPanel = ({
 }: RetryOnPanelProps) => {
   const { t } = useTranslation()
   const { handleRetryConfigChange } = useRetryConfig(id)
-  const { retry_config } = data
+  const { retry_config, type } = data
+
+  // Check if this is an LLM-related node that supports first token timeout
+  const isLLMRelatedNode = LLM_RELATED_NODE_TYPES.includes(type)
 
   const handleRetryEnabledChange = (value: boolean) => {
     handleRetryConfigChange({
+      ...retry_config,
       retry_enabled: value,
       max_retries: retry_config?.max_retries || 3,
       retry_interval: retry_config?.retry_interval || 1000,
@@ -32,6 +40,7 @@ const RetryOnPanel = ({
     else if (value < 1)
       value = 1
     handleRetryConfigChange({
+      ...retry_config,
       retry_enabled: true,
       max_retries: value,
       retry_interval: retry_config?.retry_interval || 1000,
@@ -44,9 +53,24 @@ const RetryOnPanel = ({
     else if (value < 100)
       value = 100
     handleRetryConfigChange({
+      ...retry_config,
       retry_enabled: true,
       max_retries: retry_config?.max_retries || 3,
       retry_interval: value,
+    })
+  }
+
+  const handleFirstTokenTimeoutChange = (value: number) => {
+    if (value > 60000)
+      value = 60000
+    else if (value < 0)
+      value = 0
+    handleRetryConfigChange({
+      ...retry_config,
+      retry_enabled: true,
+      max_retries: retry_config?.max_retries || 3,
+      retry_interval: retry_config?.retry_interval || 1000,
+      first_token_timeout: value,
     })
   }
 
@@ -62,54 +86,76 @@ const RetryOnPanel = ({
             onChange={v => handleRetryEnabledChange(v)}
           />
         </div>
-        {
-          retry_config?.retry_enabled && (
-            <div className="px-4 pb-2">
-              <div className="mb-1 flex w-full items-center">
-                <div className="system-xs-medium-uppercase mr-2 grow text-text-secondary">{t('nodes.common.retry.maxRetries', { ns: 'workflow' })}</div>
+        {retry_config?.retry_enabled && (
+          <div className="px-4 pb-2">
+            <div className="mb-1 flex w-full items-center">
+              <div className="system-xs-medium-uppercase mr-2 grow text-text-secondary">{t('nodes.common.retry.maxRetries', { ns: 'workflow' })}</div>
+              <Slider
+                className="mr-3 w-[108px]"
+                value={retry_config?.max_retries || 3}
+                onChange={handleMaxRetriesChange}
+                min={1}
+                max={10}
+              />
+              <Input
+                type="number"
+                wrapperClassName="w-[100px]"
+                value={retry_config?.max_retries || 3}
+                onChange={e =>
+                  handleMaxRetriesChange(Number.parseInt(e.currentTarget.value, 10) || 3)}
+                min={1}
+                max={10}
+                unit={t('nodes.common.retry.times', { ns: 'workflow' }) || ''}
+                className={s.input}
+              />
+            </div>
+            <div className="mb-1 flex w-full items-center">
+              <div className="system-xs-medium-uppercase mr-2 grow text-text-secondary">{t('nodes.common.retry.retryInterval', { ns: 'workflow' })}</div>
+              <Slider
+                className="mr-3 w-[108px]"
+                value={retry_config?.retry_interval || 1000}
+                onChange={handleRetryIntervalChange}
+                min={100}
+                max={5000}
+              />
+              <Input
+                type="number"
+                wrapperClassName="w-[100px]"
+                value={retry_config?.retry_interval || 1000}
+                onChange={e =>
+                  handleRetryIntervalChange(Number.parseInt(e.currentTarget.value, 10) || 1000)}
+                min={100}
+                max={5000}
+                unit={t('nodes.common.retry.ms', { ns: 'workflow' }) || ''}
+                className={s.input}
+              />
+            </div>
+            {/* First token timeout - only for LLM-related nodes */}
+            {isLLMRelatedNode && (
+              <div className="flex w-full items-center">
+                <div className="system-xs-medium-uppercase mr-2 grow text-text-secondary">{t('nodes.common.retry.firstTokenTimeout', { ns: 'workflow' })}</div>
                 <Slider
                   className="mr-3 w-[108px]"
-                  value={retry_config?.max_retries || 3}
-                  onChange={handleMaxRetriesChange}
-                  min={1}
-                  max={10}
+                  value={retry_config?.first_token_timeout ?? 3000}
+                  onChange={handleFirstTokenTimeoutChange}
+                  min={0}
+                  max={60000}
                 />
                 <Input
                   type="number"
                   wrapperClassName="w-[100px]"
-                  value={retry_config?.max_retries || 3}
+                  value={retry_config?.first_token_timeout ?? 3000}
                   onChange={e =>
-                    handleMaxRetriesChange(Number.parseInt(e.currentTarget.value, 10) || 3)}
-                  min={1}
-                  max={10}
-                  unit={t('nodes.common.retry.times', { ns: 'workflow' }) || ''}
-                  className={s.input}
-                />
-              </div>
-              <div className="flex items-center">
-                <div className="system-xs-medium-uppercase mr-2 grow text-text-secondary">{t('nodes.common.retry.retryInterval', { ns: 'workflow' })}</div>
-                <Slider
-                  className="mr-3 w-[108px]"
-                  value={retry_config?.retry_interval || 1000}
-                  onChange={handleRetryIntervalChange}
-                  min={100}
-                  max={5000}
-                />
-                <Input
-                  type="number"
-                  wrapperClassName="w-[100px]"
-                  value={retry_config?.retry_interval || 1000}
-                  onChange={e =>
-                    handleRetryIntervalChange(Number.parseInt(e.currentTarget.value, 10) || 1000)}
-                  min={100}
-                  max={5000}
+                    handleFirstTokenTimeoutChange(Number.parseInt(e.currentTarget.value, 10) || 0)}
+                  min={0}
+                  max={60000}
                   unit={t('nodes.common.retry.ms', { ns: 'workflow' }) || ''}
                   className={s.input}
                 />
               </div>
-            </div>
-          )
-        }
+            )}
+          </div>
+        )}
       </div>
       <Split className="mx-4 mt-2" />
     </>

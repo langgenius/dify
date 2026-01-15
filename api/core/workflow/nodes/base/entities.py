@@ -23,9 +23,21 @@ class RetryConfig(BaseModel):
     retry_interval: int = 0  # retry interval in milliseconds
     retry_enabled: bool = False  # whether retry is enabled
 
+    # First token timeout for LLM nodes (milliseconds), 0 means no timeout
+    first_token_timeout: int = 0
+
+    @property
+    def first_token_timeout_seconds(self) -> float:
+        return self.first_token_timeout / 1000
+
     @property
     def retry_interval_seconds(self) -> float:
         return self.retry_interval / 1000
+
+    @property
+    def has_first_token_timeout(self) -> bool:
+        """Check if first token timeout should be applied (retry enabled and timeout > 0)."""
+        return self.retry_enabled and self.first_token_timeout > 0
 
 
 class VariableSelector(BaseModel):

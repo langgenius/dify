@@ -43,3 +43,11 @@ class FileTypeNotSupportError(LLMNodeError):
 class UnsupportedPromptContentTypeError(LLMNodeError):
     def __init__(self, *, type_name: str):
         super().__init__(f"Prompt content type {type_name} is not supported.")
+
+
+class LLMFirstTokenTimeoutError(LLMNodeError):
+    """Raised when LLM request fails to receive first token within configured timeout."""
+
+    def __init__(self, timeout_ms: int):
+        self.timeout_ms = timeout_ms
+        super().__init__(f"LLM request timed out after {timeout_ms}ms without receiving first token")
