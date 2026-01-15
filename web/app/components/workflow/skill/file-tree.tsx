@@ -4,6 +4,7 @@ import type { NodeApi, TreeApi } from 'react-arborist'
 import type { OpensObject } from './store'
 import type { TreeNodeData } from './type'
 import { RiDragDropLine } from '@remixicon/react'
+import { useSize } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { Tree } from 'react-arborist'
@@ -37,6 +38,8 @@ const DropTip = () => {
 const FileTree: React.FC<FileTreeProps> = ({ className }) => {
   const { t } = useTranslation('workflow')
   const treeRef = useRef<TreeApi<TreeNodeData>>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const containerSize = useSize(containerRef)
 
   const appDetail = useAppStore(s => s.appDetail)
   const appId = appDetail?.id || ''
@@ -132,14 +135,17 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
 
   return (
     <div className={cn('flex min-h-0 flex-1 flex-col', className)}>
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-1 pt-1">
+      <div
+        ref={containerRef}
+        className="flex min-h-0 flex-1 flex-col overflow-hidden px-1 pt-1"
+      >
         <Tree<TreeNodeData>
           ref={treeRef}
           data={treeData.children}
           idAccessor="id"
           childrenAccessor="children"
           width="100%"
-          height={1000}
+          height={containerSize?.height ?? 400}
           rowHeight={24}
           indent={20}
           overscanCount={5}
