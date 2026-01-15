@@ -1295,7 +1295,7 @@ class DocumentService:
             return []
         document_id_list: list[str] = [str(document_id) for document_id in document_ids]
         # Fetch all requested documents in one query to avoid N+1 lookups.
-        documents: list[Document] = db.session.scalars(
+        documents: Sequence[Document] = db.session.scalars(
             select(Document).where(
                 Document.dataset_id == dataset_id,
                 Document.id.in_(document_id_list),
@@ -1312,7 +1312,7 @@ class DocumentService:
         # Deduplicate ids before using them in the IN clause.
         unique_upload_file_ids: list[str] = list(set(upload_file_id_list))
         # Fetch upload files in one query for efficient batch access.
-        upload_files: list[UploadFile] = db.session.scalars(
+        upload_files: Sequence[UploadFile] = db.session.scalars(
             select(UploadFile).where(
                 UploadFile.tenant_id == tenant_id,
                 UploadFile.id.in_(unique_upload_file_ids),
