@@ -236,9 +236,6 @@ export const useMarketplaceContainerScroll = (
       callback()
   }, [callback])
 
-  // eslint-disable-next-line no-console
-  console.log('useMarketplaceContainerScroll set up')
-
   useEffect(() => {
     const container = document.getElementById(scrollContainerId)
     if (container)
