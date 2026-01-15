@@ -1,5 +1,7 @@
+import type { GenerateFlowchartInput } from '@/contract/console/goto-anything'
 import { consoleClient, consoleQuery, marketplaceClient, marketplaceQuery } from '@/service/client'
 
+// Search APIs
 export const searchAppsQueryKey = consoleQuery.gotoAnything.searchApps.queryKey
 
 export const searchApps = async (name?: string) => {
@@ -35,5 +37,14 @@ export const searchPlugins = async (query?: string) => {
       page: 1,
       page_size: 10,
     },
+  })
+}
+
+// Vibe Workflow API
+export const generateFlowchartMutationKey = consoleQuery.gotoAnything.generateFlowchart.mutationKey
+
+export const generateFlowchart = async (input: GenerateFlowchartInput) => {
+  return consoleClient.gotoAnything.generateFlowchart({
+    body: input,
   })
 }

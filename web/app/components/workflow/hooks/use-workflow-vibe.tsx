@@ -14,7 +14,7 @@ import Toast from '@/app/components/base/toast'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { useGetLanguage } from '@/context/i18n'
-import { generateFlowchart } from '@/service/debug'
+import { generateFlowchart } from '@/service/use-goto-anything'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
