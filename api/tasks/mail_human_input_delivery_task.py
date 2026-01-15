@@ -45,7 +45,7 @@ class _EmailDeliveryJob:
 def _build_form_link(token: str | None) -> str | None:
     if not token:
         return None
-    base_url = dify_config.CONSOLE_WEB_URL
+    base_url = dify_config.APP_WEB_URL
     if not base_url:
         return None
     return f"{base_url.rstrip('/')}/form/{token}"
