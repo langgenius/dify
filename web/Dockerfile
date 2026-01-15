@@ -1,5 +1,5 @@
 # base image
-FROM node:20-alpine3.20 AS base
+FROM node:20.20.0-alpine3.23 AS base
 LABEL maintainer="takatost@gmail.com"
 
 # if you located in China, you can use aliyun mirror to speed up
