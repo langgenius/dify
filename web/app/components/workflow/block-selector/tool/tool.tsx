@@ -9,6 +9,7 @@ import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Mcp } from '@/app/components/base/icons/src/vender/other'
+import { useMCPToolAvailability } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
 import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
@@ -38,7 +39,6 @@ type Props = {
   canNotSelectMultiple?: boolean
   onSelectMultiple?: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   selectedTools?: ToolValue[]
-  canChooseMCPTool?: boolean
   isShowLetterIndex?: boolean
 }
 
@@ -51,9 +51,9 @@ const Tool: FC<Props> = ({
   canNotSelectMultiple,
   onSelectMultiple,
   selectedTools,
-  canChooseMCPTool,
 }) => {
   const { t } = useTranslation()
+  const { allowed: isMCPToolAllowed } = useMCPToolAvailability()
   const language = useGetLanguage()
   const isFlatView = viewType === ViewType.flat
   const notShowProvider = payload.type === CollectionType.workflow
@@ -63,7 +63,7 @@ const Tool: FC<Props> = ({
   const ref = useRef(null)
   const isHovering = useHover(ref)
   const isMCPTool = payload.type === CollectionType.mcp
-  const isShowCanNotChooseMCPTip = !canChooseMCPTool && isMCPTool
+  const isShowCanNotChooseMCPTip = !isMCPToolAllowed && isMCPTool
   const { theme } = useTheme()
   const normalizedIcon = useMemo<ToolWithProvider['icon']>(() => {
     return normalizeProviderIcon(payload.icon) ?? payload.icon
