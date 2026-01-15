@@ -207,6 +207,7 @@ const PluginPage = ({
                   popupContent={t('privilege.title', { ns: 'plugin' })}
                 >
                   <Button
+                    data-testid="plugin-settings-button"
                     className="group h-full w-full p-2 text-components-button-secondary-text"
                     onClick={setShowPluginSettingModal}
                   >
