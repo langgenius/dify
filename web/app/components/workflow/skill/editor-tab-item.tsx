@@ -25,7 +25,6 @@ const EditorTabItem: FC<EditorTabItemProps> = ({ item }) => {
         'group flex shrink-0 items-center gap-1.5 border-r border-components-panel-border-subtle px-2.5 pb-2 pt-2.5',
         isActive ? 'bg-components-panel-bg' : 'bg-transparent',
       )}
-      data-component="editor-tab-item"
     >
       <div className="flex items-center gap-1">
         <div className={cn('flex size-5 items-center justify-center', !isActive && 'opacity-70')}>

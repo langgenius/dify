@@ -19,7 +19,6 @@ const FoldItem: FC<FoldItemProps> = ({ name, prefix, active = false, open = fals
         'flex h-6 items-center rounded-md pl-2 pr-1.5 text-text-secondary',
         active && 'bg-state-base-active text-text-primary',
       )}
-      data-component="fold-item"
     >
       {prefix}
       <div className="flex items-center gap-2 py-0.5">

@@ -13,10 +13,7 @@ const SidebarSearchAdd: FC = () => {
   const { t } = useTranslation()
 
   return (
-    <div
-      className="flex items-center gap-1 bg-components-panel-bg p-2"
-      data-component="sidebar-search-add"
-    >
+    <div className="flex items-center gap-1 bg-components-panel-bg p-2">
       <SearchInput
         value={value}
         onChange={setValue}

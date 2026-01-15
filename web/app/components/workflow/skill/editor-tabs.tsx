@@ -14,7 +14,6 @@ const EditorTabs: FC<EditorTabsProps> = ({ items }) => {
       className={cn(
         'flex items-center overflow-hidden rounded-t-lg border-b border-components-panel-border-subtle bg-components-panel-bg-alt',
       )}
-      data-component="editor-tabs"
     >
       {items.map(item => (
         <EditorTabItem key={item.id} item={item} />

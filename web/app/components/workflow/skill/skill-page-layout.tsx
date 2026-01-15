@@ -5,10 +5,7 @@ type SkillPageLayoutProps = PropsWithChildren
 
 const SkillPageLayout: FC<SkillPageLayoutProps> = ({ children }) => {
   return (
-    <div
-      className="flex h-full gap-3"
-      data-component="skill-page-layout"
-    >
+    <div className="flex h-full gap-3">
       {children}
     </div>
   )
