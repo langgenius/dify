@@ -13,6 +13,7 @@
 ## Download endpoint
 
 - `GET /datasets/<dataset_id>/documents/<document_id>/download`
+
   - Only supported when `Document.data_source_type == "upload_file"`.
   - Performs dataset permission + tenant checks via `DocumentResource.get_document(...)`.
   - Validates the referenced `UploadFile` exists for the same tenant.
@@ -21,6 +22,7 @@
   - Response body is **only**: `{ "url": "<signed-url>" }`.
 
 - `POST /datasets/<dataset_id>/documents/download-zip`
+
   - Accepts `{ "document_ids": ["..."] }` (upload-file only).
   - Returns `application/zip` as a single attachment download.
   - Rationale: browsers often block multiple automatic downloads; a ZIP avoids that limitation.
@@ -33,9 +35,8 @@
 - Open the URL and confirm:
   - Response headers force download (`Content-Disposition`), and
   - Downloaded bytes match the uploaded file.
- - Select multiple uploaded-file documents and download as ZIP; confirm all selected files exist in the archive.
+- Select multiple uploaded-file documents and download as ZIP; confirm all selected files exist in the archive.
 
 ## Shared helper
 
 - `_get_upload_file_from_upload_file_document(document)` centralizes the “Document → UploadFile” lookup and validation.
-

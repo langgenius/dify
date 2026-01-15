@@ -23,4 +23,3 @@ Unit tests for the console dataset document download endpoint:
 - 403 when document tenant does not match current tenant.
 - Batch ZIP download returns `application/zip` for upload-file documents.
 - Batch ZIP download rejects non-upload-file documents.
-
