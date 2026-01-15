@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import TypeAlias
+from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -20,8 +21,8 @@ class SimpleFeedback(ResponseModel):
 
 
 class RetrieverResource(ResponseModel):
-    id: str
-    message_id: str
+    id: str = Field(default_factory=lambda: str(uuid4()))
+    message_id: str = Field(default_factory=lambda: str(uuid4()))
     position: int
     dataset_id: str | None = None
     dataset_name: str | None = None

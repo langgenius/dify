@@ -1,10 +1,5 @@
 import type { InferContractRouterInputs } from '@orpc/contract'
 import {
-  billingUrlContract,
-  bindPartnerStackContract,
-  systemFeaturesContract,
-} from './console'
-import {
   createFileContract,
   createFolderContract,
   deleteNodeContract,
@@ -16,6 +11,7 @@ import {
   treeContract,
   updateFileContentContract,
 } from './console/app-asset'
+import { bindPartnerStackContract, invoicesContract } from './console/billing'
 import {
   activateSandboxProviderContract,
   deleteSandboxProviderConfigContract,
@@ -24,6 +20,7 @@ import {
   getSandboxProviderListContract,
   saveSandboxProviderConfigContract,
 } from './console/sandbox-provider'
+import { systemFeaturesContract } from './console/system'
 import { collectionPluginsContract, collectionsContract, searchAdvancedContract } from './marketplace'
 
 export const marketplaceRouterContract = {
@@ -36,8 +33,10 @@ export type MarketPlaceInputs = InferContractRouterInputs<typeof marketplaceRout
 
 export const consoleRouterContract = {
   systemFeatures: systemFeaturesContract,
-  billingUrl: billingUrlContract,
-  bindPartnerStack: bindPartnerStackContract,
+  billing: {
+    invoices: invoicesContract,
+    bindPartnerStack: bindPartnerStackContract,
+  },
   getSandboxProviderList: getSandboxProviderListContract,
   getSandboxProvider: getSandboxProviderContract,
   saveSandboxProviderConfig: saveSandboxProviderConfigContract,
