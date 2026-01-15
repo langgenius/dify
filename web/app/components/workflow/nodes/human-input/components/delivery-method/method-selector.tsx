@@ -8,8 +8,7 @@ import {
   RiMailSendFill,
   RiRobot2Fill,
 } from '@remixicon/react'
-import * as React from 'react'
-import { useCallback, useRef, useState } from 'react'
+import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
 import ActionButton from '@/app/components/base/action-button'
@@ -21,23 +20,26 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { IS_CE_EDITION } from '@/config'
+import { useProviderContextSelector } from '@/context/provider-context'
 import { cn } from '@/utils/classnames'
 import { DeliveryMethodType } from '../../types'
 
 const i18nPrefix = 'nodes.humanInput'
 
-type Props = {
+type MethodSelectorProps = {
   data: DeliveryMethod[]
   onAdd: (method: DeliveryMethod) => void
 }
 
-const MethodSelector: FC<Props> = ({
+const MethodSelector: FC<MethodSelectorProps> = ({
   data,
   onAdd,
 }) => {
   const { t } = useTranslation()
   const [open, doSetOpen] = useState(false)
+  const humanInputEmailDeliveryEnabled = useProviderContextSelector(s => s.humanInputEmailDeliveryEnabled)
   const openRef = useRef(open)
+
   const setOpen = useCallback((v: boolean) => {
     doSetOpen(v)
     openRef.current = v
@@ -46,6 +48,13 @@ const MethodSelector: FC<Props> = ({
   const handleTrigger = useCallback(() => {
     setOpen(!openRef.current)
   }, [setOpen])
+
+  const emailDeliveryInfo = useMemo(() => {
+    return {
+      noPermission: !humanInputEmailDeliveryEnabled,
+      added: data.some(method => method.type === DeliveryMethodType.Email),
+    }
+  }, [data, humanInputEmailDeliveryEnabled])
 
   return (
     <PortalToFollowElem
@@ -91,9 +100,12 @@ const MethodSelector: FC<Props> = ({
               )}
             </div>
             <div
-              className={cn('relative flex cursor-pointer items-center gap-1 rounded-lg p-1 pl-3 hover:bg-state-base-hover', data.some(method => method.type === DeliveryMethodType.Email) && 'cursor-not-allowed bg-transparent hover:bg-transparent')}
+              className={cn(
+                'relative flex cursor-pointer items-center gap-1 rounded-lg p-1 pl-3 hover:bg-state-base-hover',
+                (emailDeliveryInfo.noPermission || emailDeliveryInfo.added) && 'cursor-not-allowed bg-transparent hover:bg-transparent',
+              )}
               onClick={() => {
-                if (data.some(method => method.type === DeliveryMethodType.Email))
+                if (emailDeliveryInfo.noPermission || emailDeliveryInfo.added)
                   return
                 onAdd({
                   id: uuid4(),
@@ -102,15 +114,23 @@ const MethodSelector: FC<Props> = ({
                 })
               }}
             >
-              <div className={cn('rounded-[4px] border border-divider-regular bg-components-icon-bg-blue-solid p-1', data.some(method => method.type === DeliveryMethodType.Email) && 'opacity-50')}>
+              <div
+                className={cn(
+                  'rounded-[4px] border border-divider-regular bg-components-icon-bg-blue-solid p-1',
+                  (emailDeliveryInfo.noPermission || emailDeliveryInfo.added) && 'opacity-50',
+                )}
+              >
                 <RiMailSendFill className="h-4 w-4 text-text-primary-on-surface" />
               </div>
-              <div className={cn('p-1', data.some(method => method.type === DeliveryMethodType.Email) && 'opacity-50')}>
+              <div className={cn('p-1', (emailDeliveryInfo.noPermission || emailDeliveryInfo.added) && 'opacity-50')}>
                 <div className="system-sm-medium mb-0.5 truncate text-text-primary">{t(`${i18nPrefix}.deliveryMethod.types.email.title`, { ns: 'workflow' })}</div>
                 <div className="system-xs-regular truncate text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.types.email.description`, { ns: 'workflow' })}</div>
               </div>
-              {data.some(method => method.type === DeliveryMethodType.Email) && (
+              {emailDeliveryInfo.added && (
                 <div className="system-xs-regular absolute right-[12px] top-[13px] text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.added`, { ns: 'workflow' })}</div>
+              )}
+              {emailDeliveryInfo.noPermission && (
+                <div className="system-xs-regular absolute right-[12px] top-[13px] text-text-tertiary">Upgrade</div>
               )}
             </div>
             {/* Slack */}
@@ -181,4 +201,4 @@ const MethodSelector: FC<Props> = ({
     </PortalToFollowElem>
   )
 }
-export default React.memo(MethodSelector)
+export default memo(MethodSelector)

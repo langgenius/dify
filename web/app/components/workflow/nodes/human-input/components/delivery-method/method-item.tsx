@@ -98,7 +98,9 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
             </div>
           )}
           <div className="system-xs-medium capitalize text-text-secondary">{method.type}</div>
-          {method.type === DeliveryMethodType.Email && (method.config as EmailConfig)?.debug_mode && <Badge size="s" className="!px-1 !py-0.5">DEBUG</Badge>}
+          {method.type === DeliveryMethodType.Email
+            && (method.config as EmailConfig)?.debug_mode
+            && <Badge size="s" className="!px-1 !py-0.5">DEBUG</Badge>}
         </div>
         <div className="flex items-center gap-1">
           {!readonly && (
