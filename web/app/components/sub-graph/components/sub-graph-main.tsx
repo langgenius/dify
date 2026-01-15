@@ -51,21 +51,21 @@ const SubGraphMain: FC<SubGraphMainProps> = ({
     flowId,
   })
 
-  const handleSyncSubGraphDraft = useCallback(() => {
+  const handleSyncSubGraphDraft = useCallback(async () => {
     const { getNodes, edges } = reactFlowStore.getState()
-    onSave?.(getNodes() as Node[], edges as Edge[])
+    await onSave?.(getNodes() as Node[], edges as Edge[])
   }, [onSave, reactFlowStore])
 
   const handleSyncWorkflowDraft = useCallback(async (
     notRefreshWhenSyncError?: boolean,
     callback?: SyncWorkflowDraftCallback,
   ) => {
-    handleSyncSubGraphDraft()
-    if (onSyncWorkflowDraft) {
-      await onSyncWorkflowDraft(notRefreshWhenSyncError, callback)
-      return
-    }
     try {
+      await handleSyncSubGraphDraft()
+      if (onSyncWorkflowDraft) {
+        await onSyncWorkflowDraft(notRefreshWhenSyncError, callback)
+        return
+      }
       callback?.onSuccess?.()
     }
     catch {

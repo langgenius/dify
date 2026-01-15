@@ -4,7 +4,7 @@ import type { SubGraphModalProps } from './types'
 import type { MentionConfig } from '@/app/components/workflow/nodes/_base/types'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type { ToolNodeType } from '@/app/components/workflow/nodes/tool/types'
-import type { Node, PromptItem } from '@/app/components/workflow/types'
+import type { Node, PromptItem, PromptTemplateItem } from '@/app/components/workflow/types'
 import { Dialog, DialogPanel, Transition, TransitionChild } from '@headlessui/react'
 import { RiCloseLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
@@ -16,7 +16,7 @@ import { useIsChatMode, useNodesSyncDraft, useWorkflow, useWorkflowVariables } f
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { useStore as useWorkflowStore } from '@/app/components/workflow/store'
-import { BlockEnum, EditionType, PromptRole } from '@/app/components/workflow/types'
+import { BlockEnum, EditionType, isPromptMessageContext, PromptRole } from '@/app/components/workflow/types'
 import SubGraphCanvas from './sub-graph-canvas'
 
 const SubGraphModal: FC<SubGraphModalProps> = ({
@@ -129,7 +129,7 @@ const SubGraphModal: FC<SubGraphModalProps> = ({
       handleMentionConfigChange(mentionConfig)
   }, [handleMentionConfigChange, mentionConfig, toolParam])
 
-  const getUserPromptText = useCallback((promptTemplate?: PromptItem[] | PromptItem) => {
+  const getUserPromptText = useCallback((promptTemplate?: PromptTemplateItem[] | PromptItem) => {
     if (!promptTemplate)
       return ''
     const resolveText = (item?: PromptItem) => {
@@ -140,17 +140,18 @@ const SubGraphModal: FC<SubGraphModalProps> = ({
       return item.text || ''
     }
     if (Array.isArray(promptTemplate)) {
-      const userPrompt = promptTemplate.find(item => item.role === PromptRole.user)
-      if (userPrompt)
-        return resolveText(userPrompt)
+      for (const item of promptTemplate) {
+        if (!isPromptMessageContext(item) && item.role === PromptRole.user)
+          return resolveText(item)
+      }
       return ''
     }
     return resolveText(promptTemplate)
   }, [])
 
   // TODO: handle external workflow updates while sub-graph modal is open.
-  const handleSave = useCallback((subGraphNodes: any[], _edges: any[]) => {
-    const extractorNodeData = subGraphNodes.find(node => node.id === extractorNodeId)
+  const handleSave = useCallback((subGraphNodes: Node[]) => {
+    const extractorNodeData = subGraphNodes.find(node => node.id === extractorNodeId) as Node<LLMNodeType> | undefined
     if (!extractorNodeData)
       return
 
@@ -193,10 +194,8 @@ const SubGraphModal: FC<SubGraphModalProps> = ({
       return node
     })
     setNodes(nextNodes)
-    // Trigger main graph draft sync to persist changes to backend
-    handleSyncWorkflowDraft()
     setControlPromptEditorRerenderKey(Date.now())
-  }, [agentNodeId, extractorNodeId, getUserPromptText, handleSyncWorkflowDraft, paramKey, reactflowStore, setControlPromptEditorRerenderKey, toolNodeId])
+  }, [agentNodeId, extractorNodeId, getUserPromptText, paramKey, reactflowStore, setControlPromptEditorRerenderKey, toolNodeId])
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
