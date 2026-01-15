@@ -59,4 +59,3 @@ Fallback:
   - `tests/unit_tests/core/agent/output_parser/test_cot_output_parser.py`
 - Fallback helper behavior is covered by:
   - `tests/unit_tests/core/agent/test_cot_agent_runner_final_streaming.py`
-

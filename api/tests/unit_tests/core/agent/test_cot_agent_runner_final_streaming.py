@@ -36,4 +36,3 @@ def test_react_final_answer_is_streamed_in_multiple_chunks():
     # Usage should only be attached once (the last chunk), to avoid duplication.
     assert chunks[-1].delta.usage == usage
     assert all(c.delta.usage is None for c in chunks[:-1])
-

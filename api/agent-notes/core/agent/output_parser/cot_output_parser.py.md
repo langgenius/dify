@@ -39,8 +39,8 @@ This keeps streaming stable and avoids broken escape artifacts.
 This parser supports the common ReAct layouts encountered in practice:
 
 - Inline JSON: `Action: {"action": "...", "action_input": "..."}`
-- Fenced JSON blocks: `Action: ```json ... ```` (and case variants like ```JSON)
-- List wrapper in code blocks: `Action: ```[{"action": ..., "action_input": ...}]````
+- Fenced JSON blocks: \`Action: ````` json ... ```` (and case variants like  `````JSON)
+- List wrapper in code blocks: \`Action: \`\`\`[{"action": ..., "action_input": ...}]\`\`\`\`
 
 For fenced blocks, the parser maintains a “code JSON capture” state to stream `action_input` even before the closing fences appear.
 
@@ -73,4 +73,3 @@ They cover:
 - “Manual boundary” edge cases:
   - unfinished `\\uXXXX` escape
   - trailing `\\` at end of stream
-

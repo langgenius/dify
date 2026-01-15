@@ -18,8 +18,8 @@ It focuses on two things:
 The parameterized cases in `test_cot_output_parser()` cover common shapes the model may produce:
 
 - Inline JSON action objects
-- Fenced ```json / ```JSON blocks
-- Code-block list wrappers (e.g. ```[ {...} ]```)
+- Fenced `json / `JSON blocks
+- Code-block list wrappers (e.g. `[ {...} ]`)
 - “weird” wrappers that still contain a JSON payload
 - Non-JSON `Action:` text (baseline: no action parsed)
 
@@ -42,4 +42,3 @@ These tests validate that we do not emit:
 - ReAct models can output invalid or truncated JSON during streaming.
 - The UI expects a stable incremental stream; emitting partial escape fragments creates “broken” text artifacts.
 - These tests lock the expected behavior so future parser changes don’t regress streaming quality.
-
