@@ -1,5 +1,6 @@
 import type { InferContractRouterInputs } from '@orpc/contract'
 import { bindPartnerStackContract, invoicesContract } from './console/billing'
+import { searchAppsContract, searchDatasetsContract } from './console/goto-anything'
 import { systemFeaturesContract } from './console/system'
 import { collectionPluginsContract, collectionsContract, searchAdvancedContract } from './marketplace'
 
@@ -16,6 +17,10 @@ export const consoleRouterContract = {
   billing: {
     invoices: invoicesContract,
     bindPartnerStack: bindPartnerStackContract,
+  },
+  gotoAnything: {
+    searchApps: searchAppsContract,
+    searchDatasets: searchDatasetsContract,
   },
 }
 

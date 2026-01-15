@@ -1,6 +1,6 @@
 import type { AppSearchResult, ScopeDescriptor } from './types'
 import type { App } from '@/types/app'
-import { fetchAppList } from '@/service/apps'
+import { searchApps } from '@/service/use-goto-anything'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import { AppTypeIcon } from '../../app/type-selector'
 import AppIcon from '../../base/app-icon'
@@ -41,16 +41,9 @@ export const appScope: ScopeDescriptor = {
   shortcut: ACTION_KEYS.APP,
   title: 'Search Applications',
   description: 'Search and navigate to your applications',
-  // action,
   search: async (_, searchTerm = '', _locale) => {
     try {
-      const response = await fetchAppList({
-        url: 'apps',
-        params: {
-          page: 1,
-          name: searchTerm,
-        },
-      })
+      const response = await searchApps(searchTerm)
       const apps = response?.data || []
       return parser(apps)
     }

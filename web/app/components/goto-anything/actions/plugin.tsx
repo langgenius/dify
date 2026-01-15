@@ -1,7 +1,7 @@
-import type { Plugin, PluginsFromMarketplaceResponse } from '../../plugins/types'
+import type { Plugin } from '../../plugins/types'
 import type { PluginSearchResult, ScopeDescriptor } from './types'
 import { renderI18nObject } from '@/i18n-config'
-import { postMarketplace } from '@/service/base'
+import { searchPlugins } from '@/service/use-goto-anything'
 import Icon from '../../plugins/card/base/card-icon'
 import { getPluginIconInMarketplace } from '../../plugins/marketplace/utils'
 import { ACTION_KEYS } from '../constants'
@@ -26,14 +26,7 @@ export const pluginScope: ScopeDescriptor = {
   description: 'Search and navigate to your plugins',
   search: async (_, searchTerm = '', locale) => {
     try {
-      const response = await postMarketplace<{ data: PluginsFromMarketplaceResponse }>('/plugins/search/advanced', {
-        body: {
-          page: 1,
-          page_size: 10,
-          query: searchTerm,
-          type: 'plugin',
-        },
-      })
+      const response = await searchPlugins(searchTerm)
 
       if (!response?.data?.plugins) {
         console.warn('Plugin search: Unexpected response structure', response)

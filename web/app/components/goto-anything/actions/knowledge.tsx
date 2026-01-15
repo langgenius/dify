@@ -1,6 +1,6 @@
 import type { KnowledgeSearchResult, ScopeDescriptor } from './types'
 import type { DataSet } from '@/models/datasets'
-import { fetchDatasets } from '@/service/datasets'
+import { searchDatasets } from '@/service/use-goto-anything'
 import { cn } from '@/utils/classnames'
 import { Folder } from '../../base/icons/src/vender/solid/files'
 import { ACTION_KEYS } from '../constants'
@@ -37,17 +37,9 @@ export const knowledgeScope: ScopeDescriptor = {
   aliases: ['@kb'],
   title: 'Search Knowledge Bases',
   description: 'Search and navigate to your knowledge bases',
-  // action,
   search: async (_, searchTerm = '', _locale) => {
     try {
-      const response = await fetchDatasets({
-        url: '/datasets',
-        params: {
-          page: 1,
-          limit: 10,
-          keyword: searchTerm,
-        },
-      })
+      const response = await searchDatasets(searchTerm)
       const datasets = response?.data || []
       return parser(datasets)
     }
