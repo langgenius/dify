@@ -1,39 +1,39 @@
 {
-	"icon": {
-		"type": "element",
-		"isRootNode": true,
-		"name": "svg",
-		"attributes": {
-			"width": "24",
-			"height": "24",
-			"viewBox": "0 0 24 24",
-			"fill": "none",
-			"xmlns": "http://www.w3.org/2000/svg"
-		},
-		"children": [
-			{
-				"type": "element",
-				"name": "rect",
-				"attributes": {
-					"width": "24",
-					"height": "24",
-					"rx": "6",
-					"fill": "black"
-				},
-				"children": []
-			},
-			{
-				"type": "element",
-				"name": "path",
-				"attributes": {
-					"fill-rule": "evenodd",
-					"clip-rule": "evenodd",
-					"d": "M19.9961 4V5.79H7.93621V19.9017H6V4H19.9961ZM20 7.39453V9.18453H11.5969V19.9012H9.65906V7.39453H20ZM19.9964 12.5773V10.7773H13.3106V19.9007H15.2484V12.5773H19.9964Z",
-					"fill": "white"
-				},
-				"children": []
-			}
-		]
-	},
-	"name": "Replicate"
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "24",
+      "height": "24",
+      "viewBox": "0 0 24 24",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "rect",
+        "attributes": {
+          "width": "24",
+          "height": "24",
+          "rx": "6",
+          "fill": "black"
+        },
+        "children": []
+      },
+      {
+        "type": "element",
+        "name": "path",
+        "attributes": {
+          "fill-rule": "evenodd",
+          "clip-rule": "evenodd",
+          "d": "M19.9961 4V5.79H7.93621V19.9017H6V4H19.9961ZM20 7.39453V9.18453H11.5969V19.9012H9.65906V7.39453H20ZM19.9964 12.5773V10.7773H13.3106V19.9007H15.2484V12.5773H19.9964Z",
+          "fill": "white"
+        },
+        "children": []
+      }
+    ]
+  },
+  "name": "Replicate"
 }

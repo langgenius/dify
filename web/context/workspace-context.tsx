@@ -1,9 +1,8 @@
 'use client'
 
-import { createContext, useContext } from 'use-context-selector'
-import useSWR from 'swr'
-import { fetchWorkspaces } from '@/service/common'
 import type { IWorkspace } from '@/models/common'
+import { createContext, useContext } from 'use-context-selector'
+import { useWorkspaces } from '@/service/use-common'
 
 export type WorkspacesContextValue = {
   workspaces: IWorkspace[]
@@ -20,12 +19,13 @@ type IWorkspaceProviderProps = {
 export const WorkspaceProvider = ({
   children,
 }: IWorkspaceProviderProps) => {
-  const { data } = useSWR({ url: '/workspaces' }, fetchWorkspaces)
+  const { data } = useWorkspaces()
 
   return (
     <WorkspacesContext.Provider value={{
       workspaces: data?.workspaces || [],
-    }}>
+    }}
+    >
       {children}
     </WorkspacesContext.Provider>
   )

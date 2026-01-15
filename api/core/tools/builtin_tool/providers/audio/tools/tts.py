@@ -1,6 +1,6 @@
 import io
 from collections.abc import Generator
-from typing import Any, Optional
+from typing import Any
 
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
@@ -16,9 +16,9 @@ class TTSTool(BuiltinTool):
         self,
         user_id: str,
         tool_parameters: dict[str, Any],
-        conversation_id: Optional[str] = None,
-        app_id: Optional[str] = None,
-        message_id: Optional[str] = None,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         provider, model = tool_parameters.get("model").split("#")  # type: ignore
         voice = tool_parameters.get(f"voice#{provider}#{model}")
@@ -43,7 +43,7 @@ class TTSTool(BuiltinTool):
             content_text=tool_parameters.get("text"),  # type: ignore
             user=user_id,
             tenant_id=self.runtime.tenant_id,
-            voice=voice,  # type: ignore
+            voice=voice,
         )
         buffer = io.BytesIO()
         for chunk in tts:
@@ -72,9 +72,9 @@ class TTSTool(BuiltinTool):
 
     def get_runtime_parameters(
         self,
-        conversation_id: Optional[str] = None,
-        app_id: Optional[str] = None,
-        message_id: Optional[str] = None,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
     ) -> list[ToolParameter]:
         parameters = []
 

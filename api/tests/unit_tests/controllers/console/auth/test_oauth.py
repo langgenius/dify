@@ -12,7 +12,8 @@ from controllers.console.auth.oauth import (
 )
 from libs.oauth import OAuthUserInfo
 from models.account import AccountStatus
-from services.errors.account import AccountNotFoundError
+from services.account_service import AccountService
+from services.errors.account import AccountRegisterError
 
 
 class TestGetOAuthProviders:
@@ -143,7 +144,7 @@ class TestOAuthCallback:
         oauth_provider.get_user_info.return_value = OAuthUserInfo(id="123", name="Test User", email="test@example.com")
 
         account = MagicMock()
-        account.status = AccountStatus.ACTIVE.value
+        account.status = AccountStatus.ACTIVE
 
         token_pair = MagicMock()
         token_pair.access_token = "jwt_access_token"
@@ -171,7 +172,7 @@ class TestOAuthCallback:
     ):
         mock_config.CONSOLE_WEB_URL = "http://localhost:3000"
         mock_get_providers.return_value = {"github": oauth_setup["provider"]}
-        mock_generate_account.return_value = oauth_setup["account"]
+        mock_generate_account.return_value = (oauth_setup["account"], True)
         mock_account_service.login.return_value = oauth_setup["token_pair"]
 
         with app.test_request_context("/auth/oauth/github/callback?code=test_code"):
@@ -179,9 +180,7 @@ class TestOAuthCallback:
 
         oauth_setup["provider"].get_access_token.assert_called_once_with("test_code")
         oauth_setup["provider"].get_user_info.assert_called_once_with("access_token")
-        mock_redirect.assert_called_once_with(
-            "http://localhost:3000?access_token=jwt_access_token&refresh_token=jwt_refresh_token"
-        )
+        mock_redirect.assert_called_once_with("http://localhost:3000?oauth_new_user=true")
 
     @pytest.mark.parametrize(
         ("exception", "expected_error"),
@@ -201,9 +200,9 @@ class TestOAuthCallback:
         mock_db.session.rollback = MagicMock()
 
         # Import the real requests module to create a proper exception
-        import requests
+        import httpx
 
-        request_exception = requests.exceptions.RequestException("OAuth error")
+        request_exception = httpx.RequestError("OAuth error")
         request_exception.response = MagicMock()
         request_exception.response.text = str(exception)
 
@@ -217,15 +216,43 @@ class TestOAuthCallback:
         assert status_code == 400
         assert response["error"] == expected_error
 
+    @patch("controllers.console.auth.oauth.dify_config")
+    @patch("controllers.console.auth.oauth.get_oauth_providers")
+    @patch("controllers.console.auth.oauth.RegisterService")
+    @patch("controllers.console.auth.oauth.redirect")
+    def test_invitation_comparison_is_case_insensitive(
+        self,
+        mock_redirect,
+        mock_register_service,
+        mock_get_providers,
+        mock_config,
+        resource,
+        app,
+        oauth_setup,
+    ):
+        mock_config.CONSOLE_WEB_URL = "http://localhost:3000"
+        oauth_setup["provider"].get_user_info.return_value = OAuthUserInfo(
+            id="123", name="Test User", email="User@Example.com"
+        )
+        mock_get_providers.return_value = {"github": oauth_setup["provider"]}
+        mock_register_service.is_valid_invite_token.return_value = True
+        mock_register_service.get_invitation_by_token.return_value = {"email": "user@example.com"}
+
+        with app.test_request_context("/auth/oauth/github/callback?code=test_code&state=invite123"):
+            resource.get("github")
+
+        mock_register_service.get_invitation_by_token.assert_called_once_with(token="invite123")
+        mock_redirect.assert_called_once_with("http://localhost:3000/signin/invite-settings?invite_token=invite123")
+
     @pytest.mark.parametrize(
         ("account_status", "expected_redirect"),
         [
-            (AccountStatus.BANNED.value, "http://localhost:3000/signin?message=Account is banned."),
+            (AccountStatus.BANNED, "http://localhost:3000/signin?message=Account is banned."),
             # CLOSED status: Currently NOT handled, will proceed to login (security issue)
             # This documents actual behavior. See test_defensive_check_for_closed_account_status for details
             (
                 AccountStatus.CLOSED.value,
-                "http://localhost:3000?access_token=jwt_access_token&refresh_token=jwt_refresh_token",
+                "http://localhost:3000?oauth_new_user=false",
             ),
         ],
     )
@@ -262,12 +289,13 @@ class TestOAuthCallback:
         account = MagicMock()
         account.status = account_status
         account.id = "123"
-        mock_generate_account.return_value = account
+        mock_generate_account.return_value = (account, False)
 
         # Mock login for CLOSED status
         mock_token_pair = MagicMock()
         mock_token_pair.access_token = "jwt_access_token"
         mock_token_pair.refresh_token = "jwt_refresh_token"
+        mock_token_pair.csrf_token = "csrf_token"
         mock_account_service.login.return_value = mock_token_pair
 
         with app.test_request_context("/auth/oauth/github/callback?code=test_code"):
@@ -296,13 +324,19 @@ class TestOAuthCallback:
         mock_get_providers.return_value = {"github": oauth_setup["provider"]}
 
         mock_account = MagicMock()
-        mock_account.status = AccountStatus.PENDING.value
-        mock_generate_account.return_value = mock_account
+        mock_account.status = AccountStatus.PENDING
+        mock_generate_account.return_value = (mock_account, False)
+
+        mock_token_pair = MagicMock()
+        mock_token_pair.access_token = "jwt_access_token"
+        mock_token_pair.refresh_token = "jwt_refresh_token"
+        mock_token_pair.csrf_token = "csrf_token"
+        mock_account_service.login.return_value = mock_token_pair
 
         with app.test_request_context("/auth/oauth/github/callback?code=test_code"):
             resource.get("github")
 
-        assert mock_account.status == AccountStatus.ACTIVE.value
+        assert mock_account.status == AccountStatus.ACTIVE
         assert mock_account.initialized_at is not None
         mock_db.session.commit.assert_called_once()
 
@@ -352,15 +386,16 @@ class TestOAuthCallback:
 
         # Create account with CLOSED status
         closed_account = MagicMock()
-        closed_account.status = AccountStatus.CLOSED.value
+        closed_account.status = AccountStatus.CLOSED
         closed_account.id = "123"
         closed_account.name = "Closed Account"
-        mock_generate_account.return_value = closed_account
+        mock_generate_account.return_value = (closed_account, False)
 
         # Mock successful login (current behavior)
         mock_token_pair = MagicMock()
         mock_token_pair.access_token = "jwt_access_token"
         mock_token_pair.refresh_token = "jwt_refresh_token"
+        mock_token_pair.csrf_token = "csrf_token"
         mock_account_service.login.return_value = mock_token_pair
 
         # Execute OAuth callback
@@ -368,9 +403,7 @@ class TestOAuthCallback:
             resource.get("github")
 
         # Verify current behavior: login succeeds (this is NOT ideal)
-        mock_redirect.assert_called_once_with(
-            "http://localhost:3000?access_token=jwt_access_token&refresh_token=jwt_refresh_token"
-        )
+        mock_redirect.assert_called_once_with("http://localhost:3000?oauth_new_user=false")
         mock_account_service.login.assert_called_once()
 
         # Document expected behavior in comments:
@@ -391,12 +424,12 @@ class TestAccountGeneration:
         account.name = "Test User"
         return account
 
-    @patch("controllers.console.auth.oauth.db")
-    @patch("controllers.console.auth.oauth.Account")
+    @patch("controllers.console.auth.oauth.AccountService.get_account_by_email_with_case_fallback")
     @patch("controllers.console.auth.oauth.Session")
-    @patch("controllers.console.auth.oauth.select")
+    @patch("controllers.console.auth.oauth.Account")
+    @patch("controllers.console.auth.oauth.db")
     def test_should_get_account_by_openid_or_email(
-        self, mock_select, mock_session, mock_account_model, mock_db, user_info, mock_account
+        self, mock_db, mock_account_model, mock_session, mock_get_account, user_info, mock_account
     ):
         # Mock db.engine for Session creation
         mock_db.engine = MagicMock()
@@ -406,15 +439,31 @@ class TestAccountGeneration:
         result = _get_account_by_openid_or_email("github", user_info)
         assert result == mock_account
         mock_account_model.get_by_openid.assert_called_once_with("github", "123")
+        mock_get_account.assert_not_called()
 
-        # Test fallback to email
+        # Test fallback to email lookup
         mock_account_model.get_by_openid.return_value = None
         mock_session_instance = MagicMock()
-        mock_session_instance.execute.return_value.scalar_one_or_none.return_value = mock_account
         mock_session.return_value.__enter__.return_value = mock_session_instance
+        mock_get_account.return_value = mock_account
 
         result = _get_account_by_openid_or_email("github", user_info)
         assert result == mock_account
+        mock_get_account.assert_called_once_with(user_info.email, session=mock_session_instance)
+
+    def test_get_account_by_email_with_case_fallback_uses_lowercase_lookup(self):
+        mock_session = MagicMock()
+        first_result = MagicMock()
+        first_result.scalar_one_or_none.return_value = None
+        expected_account = MagicMock()
+        second_result = MagicMock()
+        second_result.scalar_one_or_none.return_value = expected_account
+        mock_session.execute.side_effect = [first_result, second_result]
+
+        result = AccountService.get_account_by_email_with_case_fallback("Case@Test.com", session=mock_session)
+
+        assert result == expected_account
+        assert mock_session.execute.call_count == 2
 
     @pytest.mark.parametrize(
         ("allow_register", "existing_account", "should_create"),
@@ -451,16 +500,46 @@ class TestAccountGeneration:
 
         with app.test_request_context(headers={"Accept-Language": "en-US,en;q=0.9"}):
             if not allow_register and not existing_account:
-                with pytest.raises(AccountNotFoundError):
+                with pytest.raises(AccountRegisterError):
                     _generate_account("github", user_info)
             else:
-                result = _generate_account("github", user_info)
+                result, oauth_new_user = _generate_account("github", user_info)
                 assert result == mock_account
+                assert oauth_new_user == should_create
 
                 if should_create:
                     mock_register_service.register.assert_called_once_with(
                         email="test@example.com", name="Test User", password=None, open_id="123", provider="github"
                     )
+                else:
+                    mock_register_service.register.assert_not_called()
+
+    @patch("controllers.console.auth.oauth._get_account_by_openid_or_email", return_value=None)
+    @patch("controllers.console.auth.oauth.FeatureService")
+    @patch("controllers.console.auth.oauth.RegisterService")
+    @patch("controllers.console.auth.oauth.AccountService")
+    @patch("controllers.console.auth.oauth.TenantService")
+    @patch("controllers.console.auth.oauth.db")
+    def test_should_register_with_lowercase_email(
+        self,
+        mock_db,
+        mock_tenant_service,
+        mock_account_service,
+        mock_register_service,
+        mock_feature_service,
+        mock_get_account,
+        app,
+    ):
+        user_info = OAuthUserInfo(id="123", name="Test User", email="Upper@Example.com")
+        mock_feature_service.get_system_features.return_value.is_allow_register = True
+        mock_register_service.register.return_value = MagicMock()
+
+        with app.test_request_context(headers={"Accept-Language": "en-US"}):
+            _generate_account("github", user_info)
+
+        mock_register_service.register.assert_called_once_with(
+            email="upper@example.com", name="Test User", password=None, open_id="123", provider="github"
+        )
 
     @patch("controllers.console.auth.oauth._get_account_by_openid_or_email")
     @patch("controllers.console.auth.oauth.TenantService")
@@ -486,9 +565,10 @@ class TestAccountGeneration:
         mock_tenant_service.create_tenant.return_value = mock_new_tenant
 
         with app.test_request_context(headers={"Accept-Language": "en-US,en;q=0.9"}):
-            result = _generate_account("github", user_info)
+            result, oauth_new_user = _generate_account("github", user_info)
 
             assert result == mock_account
+            assert oauth_new_user is False
             mock_tenant_service.create_tenant.assert_called_once_with("Test User's Workspace")
             mock_tenant_service.create_tenant_member.assert_called_once_with(
                 mock_new_tenant, mock_account, role="owner"

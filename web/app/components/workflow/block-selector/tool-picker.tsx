@@ -1,30 +1,41 @@
 'use client'
+import type {
+  OffsetOptions,
+  Placement,
+} from '@floating-ui/react'
 import type { FC } from 'react'
-import React from 'react'
+import type { ToolDefaultValue, ToolValue } from './types'
+import type { CustomCollectionBackend } from '@/app/components/tools/types'
+import type { BlockEnum, OnSelectBlock } from '@/app/components/workflow/types'
+import { useBoolean } from 'ahooks'
+import * as React from 'react'
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import type {
-  OffsetOptions,
-  Placement,
-} from '@floating-ui/react'
-import AllTools from '@/app/components/workflow/block-selector/all-tools'
-import type { ToolDefaultValue, ToolValue } from './types'
-import type { BlockEnum } from '@/app/components/workflow/types'
+import Toast from '@/app/components/base/toast'
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
-import { useTranslation } from 'react-i18next'
-import { useBoolean } from 'ahooks'
-import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal/modal'
+import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
+import AllTools from '@/app/components/workflow/block-selector/all-tools'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import {
   createCustomCollection,
 } from '@/service/tools'
-import type { CustomCollectionBackend } from '@/app/components/tools/types'
-import Toast from '@/app/components/base/toast'
-import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools, useInvalidateAllCustomTools } from '@/service/use-tools'
-import cn from '@/utils/classnames'
+import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
+import {
+  useAllBuiltInTools,
+  useAllCustomTools,
+  useAllMCPTools,
+  useAllWorkflowTools,
+  useInvalidateAllBuiltInTools,
+  useInvalidateAllCustomTools,
+  useInvalidateAllMCPTools,
+  useInvalidateAllWorkflowTools,
+} from '@/service/use-tools'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   panelClassName?: string
@@ -39,7 +50,6 @@ type Props = {
   supportAddCustomTool?: boolean
   scope?: string
   selectedTools?: ToolValue[]
-  canChooseMCPTool?: boolean
 }
 
 const ToolPicker: FC<Props> = ({
@@ -55,17 +65,25 @@ const ToolPicker: FC<Props> = ({
   scope = 'all',
   selectedTools,
   panelClassName,
-  canChooseMCPTool,
 }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
   const [tags, setTags] = useState<string[]>([])
 
+  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
   const invalidateCustomTools = useInvalidateAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
   const { data: mcpTools } = useAllMCPTools()
+  const invalidateBuiltInTools = useInvalidateAllBuiltInTools()
+  const invalidateWorkflowTools = useInvalidateAllWorkflowTools()
+  const invalidateMcpTools = useInvalidateAllMCPTools()
+
+  const {
+    plugins: featuredPlugins = [],
+    isLoading: isFeaturedLoading,
+  } = useFeaturedToolsRecommendations(enable_marketplace)
 
   const { builtinToolList, customToolList, workflowToolList } = useMemo(() => {
     if (scope === 'plugins') {
@@ -99,7 +117,8 @@ const ToolPicker: FC<Props> = ({
   const handleAddedCustomTool = invalidateCustomTools
 
   const handleTriggerClick = () => {
-    if (disabled) return
+    if (disabled)
+      return
     onShowChange(true)
   }
 
@@ -120,7 +139,7 @@ const ToolPicker: FC<Props> = ({
     await createCustomCollection(data)
     Toast.notify({
       type: 'success',
-      message: t('common.api.actionSuccess'),
+      message: t('api.actionSuccess', { ns: 'common' }),
     })
     hideEditCustomCollectionModal()
     handleAddedCustomTool()
@@ -129,7 +148,7 @@ const ToolPicker: FC<Props> = ({
   if (isShowEditCollectionToolModal) {
     return (
       <EditCustomToolModal
-        positionLeft
+        dialogClassName="bg-background-overlay"
         payload={null}
         onHide={hideEditCustomCollectionModal}
         onAdd={doCreateCustomToolCollection}
@@ -150,36 +169,43 @@ const ToolPicker: FC<Props> = ({
         {trigger}
       </PortalToFollowElemTrigger>
 
-      <PortalToFollowElemContent className='z-[1000]'>
+      <PortalToFollowElemContent className="z-[1000]">
         <div className={cn('relative min-h-20 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm', panelClassName)}>
-          <div className='p-2 pb-1'>
+          <div className="p-2 pb-1">
             <SearchBox
               search={searchText}
               onSearchChange={setSearchText}
               tags={tags}
               onTagsChange={setTags}
-              size='small'
-              placeholder={t('plugin.searchTools')!}
+              placeholder={t('searchTools', { ns: 'plugin' })!}
               supportAddCustomTool={supportAddCustomTool}
               onAddedCustomTool={handleAddedCustomTool}
               onShowAddCustomCollectionModal={showEditCustomCollectionModal}
-              inputClassName='grow'
-
+              inputClassName="grow"
             />
           </div>
           <AllTools
-            className='mt-1'
-            toolContentClassName='max-w-[100%]'
+            className="mt-1"
+            toolContentClassName="max-w-[100%]"
             tags={tags}
             searchText={searchText}
-            onSelect={handleSelect}
+            onSelect={handleSelect as OnSelectBlock}
             onSelectMultiple={handleSelectMultiple}
             buildInTools={builtinToolList || []}
             customTools={customToolList || []}
             workflowTools={workflowToolList || []}
             mcpTools={mcpTools || []}
             selectedTools={selectedTools}
-            canChooseMCPTool={canChooseMCPTool}
+            onTagsChange={setTags}
+            featuredPlugins={featuredPlugins}
+            featuredLoading={isFeaturedLoading}
+            showFeatured={scope === 'all' && enable_marketplace}
+            onFeaturedInstallSuccess={async () => {
+              invalidateBuiltInTools()
+              invalidateCustomTools()
+              invalidateWorkflowTools()
+              invalidateMcpTools()
+            }}
           />
         </div>
       </PortalToFollowElemContent>

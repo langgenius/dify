@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
-import { InputNumber } from '../input-number'
-import Tooltip from '@/app/components/base/tooltip'
 import Slider from '@/app/components/base/slider'
 import Switch from '@/app/components/base/switch'
+import Tooltip from '@/app/components/base/tooltip'
+import { InputNumber } from '../input-number'
 
 type Props = {
   className?: string
@@ -28,8 +28,8 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
         <div className="flex h-6 items-center">
           {hasSwitch && (
             <Switch
-              size='md'
-              className='mr-2'
+              size="md"
+              className="mr-2"
               defaultValue={enable}
               onChange={async (val) => {
                 onSwitchChange?.(id, val)
@@ -39,7 +39,7 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
           <span className="system-sm-semibold mr-1 text-text-secondary">{name}</span>
           {!noTooltip && (
             <Tooltip
-              triggerClassName='w-4 h-4 shrink-0'
+              triggerClassName="w-4 h-4 shrink-0"
               popupContent={<div className="w-[200px]">{tip}</div>}
             />
           )}
@@ -54,17 +54,17 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
             max={max}
             step={step}
             amount={step}
-            size='regular'
+            size="regular"
             value={value}
             onChange={(value) => {
               onChange(id, value)
             }}
-            className='w-[72px]'
+            className="w-[72px]"
           />
         </div>
         <div className="flex grow items-center">
           <Slider
-            className='w-full'
+            className="w-full"
             disabled={!enable}
             value={max < 5 ? value * 100 : value}
             min={min < 1 ? min * 100 : min}

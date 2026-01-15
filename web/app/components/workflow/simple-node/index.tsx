@@ -1,32 +1,31 @@
 import type {
   FC,
 } from 'react'
-import {
-  memo,
-  useMemo,
-} from 'react'
+import type {
+  NodeProps,
+} from '@/app/components/workflow/types'
 import {
   RiAlertFill,
   RiCheckboxCircleFill,
   RiErrorWarningFill,
   RiLoader2Line,
 } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
 import {
-  NodeTargetHandle,
-} from '@/app/components/workflow/nodes/_base/components/node-handle'
-import NodeControl from '@/app/components/workflow/nodes/_base/components/node-control'
-import cn from '@/utils/classnames'
+  memo,
+  useMemo,
+} from 'react'
 import BlockIcon from '@/app/components/workflow/block-icon'
-import type {
-  NodeProps,
-} from '@/app/components/workflow/types'
-import {
-  NodeRunningStatus,
-} from '@/app/components/workflow/types'
 import {
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks'
+import NodeControl from '@/app/components/workflow/nodes/_base/components/node-control'
+import {
+  NodeTargetHandle,
+} from '@/app/components/workflow/nodes/_base/components/node-handle'
+import {
+  NodeRunningStatus,
+} from '@/app/components/workflow/types'
+import { cn } from '@/utils/classnames'
 
 type SimpleNodeProps = NodeProps
 
@@ -34,7 +33,6 @@ const SimpleNode: FC<SimpleNodeProps> = ({
   id,
   data,
 }) => {
-  const { t } = useTranslation()
   const { nodesReadOnly } = useNodesReadOnly()
 
   const showSelectedBorder = data.selected || data._isBundled || data._isEntering
@@ -57,7 +55,6 @@ const SimpleNode: FC<SimpleNodeProps> = ({
       className={cn(
         'flex rounded-2xl border-[2px]',
         showSelectedBorder ? 'border-components-option-card-option-selected-border' : 'border-transparent',
-        !showSelectedBorder && data._inParallelHovering && 'border-workflow-block-border-highlight',
         data._waitingRun && 'opacity-70',
       )}
       style={{
@@ -79,19 +76,12 @@ const SimpleNode: FC<SimpleNodeProps> = ({
         )}
       >
         {
-          data._inParallelHovering && (
-            <div className='top system-2xs-medium-uppercase absolute -top-2.5 left-2 z-10 text-text-tertiary'>
-              {t('workflow.common.parallelRun')}
-            </div>
-          )
-        }
-        {
           !data._isCandidate && (
             <NodeTargetHandle
               id={id}
               data={data}
-              handleClassName='!top-4 !-left-[9px] !translate-y-0'
-              handleId='target'
+              handleClassName="!top-4 !-left-[9px] !translate-y-0"
+              handleId="target"
             />
           )
         }
@@ -105,15 +95,16 @@ const SimpleNode: FC<SimpleNodeProps> = ({
         }
         <div className={cn(
           'flex items-center rounded-t-2xl px-3 pb-2 pt-3',
-        )}>
+        )}
+        >
           <BlockIcon
-            className='mr-2 shrink-0'
+            className="mr-2 shrink-0"
             type={data.type}
-            size='md'
+            size="md"
           />
           <div
             title={data.title}
-            className='system-sm-semibold-uppercase mr-1 flex grow items-center truncate text-text-primary'
+            className="system-sm-semibold-uppercase mr-1 flex grow items-center truncate text-text-primary"
           >
             <div>
               {data.title}
@@ -121,22 +112,22 @@ const SimpleNode: FC<SimpleNodeProps> = ({
           </div>
           {
             (data._runningStatus === NodeRunningStatus.Running || data._singleRunningStatus === NodeRunningStatus.Running) && (
-              <RiLoader2Line className='h-3.5 w-3.5 animate-spin text-text-accent' />
+              <RiLoader2Line className="h-3.5 w-3.5 animate-spin text-text-accent" />
             )
           }
           {
             data._runningStatus === NodeRunningStatus.Succeeded && (
-              <RiCheckboxCircleFill className='h-3.5 w-3.5 text-text-success' />
+              <RiCheckboxCircleFill className="h-3.5 w-3.5 text-text-success" />
             )
           }
           {
             data._runningStatus === NodeRunningStatus.Failed && (
-              <RiErrorWarningFill className='h-3.5 w-3.5 text-text-destructive' />
+              <RiErrorWarningFill className="h-3.5 w-3.5 text-text-destructive" />
             )
           }
           {
             data._runningStatus === NodeRunningStatus.Exception && (
-              <RiAlertFill className='h-3.5 w-3.5 text-text-warning-secondary' />
+              <RiAlertFill className="h-3.5 w-3.5 text-text-warning-secondary" />
             )
           }
         </div>

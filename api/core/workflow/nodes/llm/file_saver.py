@@ -8,7 +8,7 @@ from core.file import File, FileTransferMethod, FileType
 from core.helper import ssrf_proxy
 from core.tools.signature import sign_tool_file
 from core.tools.tool_file_manager import ToolFileManager
-from models import db as global_db
+from extensions.ext_database import db as global_db
 
 
 class LLMFileSaver(tp.Protocol):
@@ -46,7 +46,7 @@ class LLMFileSaver(tp.Protocol):
             dot (`.`). For example, `.py` and `.tar.gz` are both valid values, while `py`
             and `tar.gz` are not.
         """
-        pass
+        raise NotImplementedError()
 
     def save_remote_url(self, url: str, file_type: FileType) -> File:
         """save_remote_url saves the file from a remote url returned by LLM.
@@ -56,7 +56,7 @@ class LLMFileSaver(tp.Protocol):
         :param url: the url of the file.
         :param file_type: the file type of the file, check `FileType` enum for reference.
         """
-        pass
+        raise NotImplementedError()
 
 
 EngineFactory: tp.TypeAlias = tp.Callable[[], Engine]

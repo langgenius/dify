@@ -7,7 +7,7 @@ export const workflowNodesAction: ActionItem = {
   title: 'Search Workflow Nodes',
   description: 'Find and jump to nodes in the current workflow by name or type',
   searchFn: undefined, // Will be set by useWorkflowSearch hook
-  search: async (_, searchTerm = '', locale) => {
+  search: async (_, searchTerm = '', _locale) => {
     try {
       // Use the searchFn if available (set by useWorkflowSearch hook)
       if (workflowNodesAction.searchFn)

@@ -1,13 +1,16 @@
 services:
   # The postgres database.
-  db:
+  db_postgres:
     image: postgres:15-alpine
+    profiles:
+      - ""
+      - postgresql
     restart: always
     env_file:
       - ./middleware.env
     environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-difyai123456}
-      POSTGRES_DB: ${POSTGRES_DB:-dify}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-difyai123456}
+      POSTGRES_DB: ${DB_DATABASE:-dify}
       PGDATA: ${PGDATA:-/var/lib/postgresql/data/pgdata}
     command: >
       postgres -c 'max_connections=${POSTGRES_MAX_CONNECTIONS:-100}'
@@ -15,12 +18,57 @@ services:
                -c 'work_mem=${POSTGRES_WORK_MEM:-4MB}'
                -c 'maintenance_work_mem=${POSTGRES_MAINTENANCE_WORK_MEM:-64MB}'
                -c 'effective_cache_size=${POSTGRES_EFFECTIVE_CACHE_SIZE:-4096MB}'
+               -c 'statement_timeout=${POSTGRES_STATEMENT_TIMEOUT:-0}'
+               -c 'idle_in_transaction_session_timeout=${POSTGRES_IDLE_IN_TRANSACTION_SESSION_TIMEOUT:-0}'
     volumes:
       - ${PGDATA_HOST_VOLUME:-./volumes/db/data}:/var/lib/postgresql/data
     ports:
       - "${EXPOSE_POSTGRES_PORT:-5432}:5432"
     healthcheck:
-      test: [ 'CMD', 'pg_isready', '-h', 'db', '-U', '${PGUSER:-postgres}', '-d', '${POSTGRES_DB:-dify}' ]
+      test:
+        [
+          "CMD",
+          "pg_isready",
+          "-h",
+          "db_postgres",
+          "-U",
+          "${DB_USERNAME:-postgres}",
+          "-d",
+          "${DB_DATABASE:-dify}",
+        ]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+
+  db_mysql:
+    image: mysql:8.0
+    profiles:
+      - mysql
+    restart: always
+    env_file:
+      - ./middleware.env
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-difyai123456}
+      MYSQL_DATABASE: ${DB_DATABASE:-dify}
+    command: >
+      --max_connections=1000
+      --innodb_buffer_pool_size=${MYSQL_INNODB_BUFFER_POOL_SIZE:-512M}
+      --innodb_log_file_size=${MYSQL_INNODB_LOG_FILE_SIZE:-128M}
+      --innodb_flush_log_at_trx_commit=${MYSQL_INNODB_FLUSH_LOG_AT_TRX_COMMIT:-2}
+    volumes:
+      - ${MYSQL_HOST_VOLUME:-./volumes/mysql/data}:/var/lib/mysql
+    ports:
+      - "${EXPOSE_MYSQL_PORT:-3306}:3306"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-u",
+          "root",
+          "-p${DB_PASSWORD:-difyai123456}",
+        ]
       interval: 1s
       timeout: 3s
       retries: 30
@@ -41,7 +89,11 @@ services:
     ports:
       - "${EXPOSE_REDIS_PORT:-6379}:6379"
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test:
+        [
+          "CMD-SHELL",
+          "redis-cli -a ${REDIS_PASSWORD:-difyai123456} ping | grep -q PONG",
+        ]
 
   # The DifySandbox
   sandbox:
@@ -65,22 +117,19 @@ services:
       - ./volumes/sandbox/dependencies:/dependencies
       - ./volumes/sandbox/conf:/conf
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8194/health" ]
+      test: ["CMD", "curl", "-f", "http://localhost:8194/health"]
     networks:
       - ssrf_proxy_network
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.2.0-local
+    image: langgenius/dify-plugin-daemon:0.5.2-local
     restart: always
     env_file:
       - ./middleware.env
     environment:
       # Use the shared environment variables.
-      DB_HOST: ${DB_HOST:-db}
-      DB_PORT: ${DB_PORT:-5432}
-      DB_USERNAME: ${DB_USER:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-difyai123456}
+      LOG_OUTPUT_FORMAT: ${LOG_OUTPUT_FORMAT:-text}
       DB_DATABASE: ${DB_PLUGIN_DATABASE:-dify_plugin}
       REDIS_HOST: ${REDIS_HOST:-redis}
       REDIS_PORT: ${REDIS_PORT:-6379}
@@ -94,7 +143,6 @@ services:
       PLUGIN_REMOTE_INSTALLING_HOST: ${PLUGIN_DEBUGGING_HOST:-0.0.0.0}
       PLUGIN_REMOTE_INSTALLING_PORT: ${PLUGIN_DEBUGGING_PORT:-5003}
       PLUGIN_WORKING_PATH: ${PLUGIN_WORKING_PATH:-/app/storage/cwd}
-      FORCE_VERIFYING_SIGNATURE: ${FORCE_VERIFYING_SIGNATURE:-true}
       PYTHON_ENV_INIT_TIMEOUT: ${PLUGIN_PYTHON_ENV_INIT_TIMEOUT:-120}
       PLUGIN_MAX_EXECUTION_TIMEOUT: ${PLUGIN_MAX_EXECUTION_TIMEOUT:-600}
       PIP_MIRROR_URL: ${PIP_MIRROR_URL:-}
@@ -126,6 +174,9 @@ services:
       VOLCENGINE_TOS_ACCESS_KEY: ${PLUGIN_VOLCENGINE_TOS_ACCESS_KEY:-}
       VOLCENGINE_TOS_SECRET_KEY: ${PLUGIN_VOLCENGINE_TOS_SECRET_KEY:-}
       VOLCENGINE_TOS_REGION: ${PLUGIN_VOLCENGINE_TOS_REGION:-}
+      THIRD_PARTY_SIGNATURE_VERIFICATION_ENABLED: true
+      THIRD_PARTY_SIGNATURE_VERIFICATION_PUBLIC_KEYS: /app/keys/publickey.pem
+      FORCE_VERIFYING_SIGNATURE: false
     ports:
       - "${EXPOSE_PLUGIN_DAEMON_PORT:-5002}:${PLUGIN_DAEMON_PORT:-5002}"
       - "${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}:${PLUGIN_DEBUGGING_PORT:-5003}"
@@ -141,7 +192,12 @@ services:
     volumes:
       - ./ssrf_proxy/squid.conf.template:/etc/squid/squid.conf.template
       - ./ssrf_proxy/docker-entrypoint.sh:/docker-entrypoint-mount.sh
-    entrypoint: [ "sh", "-c", "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh" ]
+    entrypoint:
+      [
+        "sh",
+        "-c",
+        "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh",
+      ]
     env_file:
       - ./middleware.env
     environment:
@@ -160,7 +216,7 @@ services:
 
   # The Weaviate vector store.
   weaviate:
-    image: semitechnologies/weaviate:1.19.0
+    image: semitechnologies/weaviate:1.27.0
     profiles:
       - ""
       - weaviate
@@ -183,8 +239,10 @@ services:
       AUTHENTICATION_APIKEY_USERS: ${WEAVIATE_AUTHENTICATION_APIKEY_USERS:-hello@dify.ai}
       AUTHORIZATION_ADMINLIST_ENABLED: ${WEAVIATE_AUTHORIZATION_ADMINLIST_ENABLED:-true}
       AUTHORIZATION_ADMINLIST_USERS: ${WEAVIATE_AUTHORIZATION_ADMINLIST_USERS:-hello@dify.ai}
+      DISABLE_TELEMETRY: ${WEAVIATE_DISABLE_TELEMETRY:-false}
     ports:
       - "${EXPOSE_WEAVIATE_PORT:-8080}:8080"
+      - "${EXPOSE_WEAVIATE_GRPC_PORT:-50051}:50051"
 
 networks:
   # create a network between sandbox, api and ssrf_proxy, and can not access outside.

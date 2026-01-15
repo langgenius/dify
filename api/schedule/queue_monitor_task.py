@@ -16,7 +16,14 @@ celery_redis = Redis(
     port=redis_config.get("port") or 6379,
     password=redis_config.get("password") or None,
     db=int(redis_config.get("virtual_host")) if redis_config.get("virtual_host") else 1,
+    ssl=bool(dify_config.BROKER_USE_SSL),
+    ssl_ca_certs=dify_config.REDIS_SSL_CA_CERTS if dify_config.BROKER_USE_SSL else None,
+    ssl_cert_reqs=getattr(dify_config, "REDIS_SSL_CERT_REQS", None) if dify_config.BROKER_USE_SSL else None,
+    ssl_certfile=getattr(dify_config, "REDIS_SSL_CERTFILE", None) if dify_config.BROKER_USE_SSL else None,
+    ssl_keyfile=getattr(dify_config, "REDIS_SSL_KEYFILE", None) if dify_config.BROKER_USE_SSL else None,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @app.celery.task(queue="monitor")
@@ -25,27 +32,27 @@ def queue_monitor_task():
     threshold = dify_config.QUEUE_MONITOR_THRESHOLD
 
     if threshold is None:
-        logging.warning(click.style("QUEUE_MONITOR_THRESHOLD is not configured, skipping monitoring", fg="yellow"))
+        logger.warning(click.style("QUEUE_MONITOR_THRESHOLD is not configured, skipping monitoring", fg="yellow"))
         return
 
     try:
         queue_length = celery_redis.llen(f"{queue_name}")
-        logging.info(click.style(f"Start monitor {queue_name}", fg="green"))
+        logger.info(click.style(f"Start monitor {queue_name}", fg="green"))
 
         if queue_length is None:
-            logging.error(
+            logger.error(
                 click.style(f"Failed to get queue length for {queue_name} - Redis may be unavailable", fg="red")
             )
             return
 
-        logging.info(click.style(f"Queue length: {queue_length}", fg="green"))
+        logger.info(click.style(f"Queue length: {queue_length}", fg="green"))
 
         if queue_length >= threshold:
             warning_msg = f"Queue {queue_name} task count exceeded the limit.: {queue_length}/{threshold}"
             logging.warning(click.style(warning_msg, fg="red"))
-            alter_emails = dify_config.QUEUE_MONITOR_ALERT_EMAILS
-            if alter_emails:
-                to_list = alter_emails.split(",")
+            alert_emails = dify_config.QUEUE_MONITOR_ALERT_EMAILS
+            if alert_emails:
+                to_list = alert_emails.split(",")
                 email_service = get_email_i18n_service()
                 for to in to_list:
                     try:
@@ -61,11 +68,11 @@ def queue_monitor_task():
                                 "alert_time": current_time,
                             },
                         )
-                    except Exception as e:
-                        logging.exception(click.style("Exception occurred during sending email", fg="red"))
+                    except Exception:
+                        logger.exception(click.style("Exception occurred during sending email", fg="red"))
 
-    except Exception as e:
-        logging.exception(click.style("Exception occurred during queue monitoring", fg="red"))
+    except Exception:
+        logger.exception(click.style("Exception occurred during queue monitoring", fg="red"))
     finally:
         if db.session.is_active:
             db.session.close()

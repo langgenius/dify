@@ -35,9 +35,8 @@ from core.variables.variables import (
     SecretVariable,
     StringVariable,
     Variable,
-    VariableUnion,
 )
-from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.runtime import VariablePool
 from core.workflow.system_variable import SystemVariable
 
 
@@ -96,7 +95,7 @@ class _Segments(BaseModel):
 
 
 class _Variables(BaseModel):
-    variables: list[VariableUnion]
+    variables: list[Variable]
 
 
 def create_test_file(
@@ -129,7 +128,6 @@ class TestSegmentDumpAndLoad:
         """Test basic segment serialization compatibility"""
         model = _Segments(segments=[IntegerSegment(value=1), StringSegment(value="a")])
         json = model.model_dump_json()
-        print("Json: ", json)
         loaded = _Segments.model_validate_json(json)
         assert loaded == model
 
@@ -137,7 +135,6 @@ class TestSegmentDumpAndLoad:
         """Test number segment serialization compatibility"""
         model = _Segments(segments=[IntegerSegment(value=1), FloatSegment(value=1.0)])
         json = model.model_dump_json()
-        print("Json: ", json)
         loaded = _Segments.model_validate_json(json)
         assert loaded == model
 
@@ -145,7 +142,6 @@ class TestSegmentDumpAndLoad:
         """Test variable serialization compatibility"""
         model = _Variables(variables=[IntegerVariable(value=1, name="int"), StringVariable(value="a", name="str")])
         json = model.model_dump_json()
-        print("Json: ", json)
         restored = _Variables.model_validate_json(json)
         assert restored == model
 
@@ -197,7 +193,7 @@ class TestSegmentDumpAndLoad:
         # Create one instance of each variable type
         test_file = create_test_file()
 
-        all_variables: list[VariableUnion] = [
+        all_variables: list[Variable] = [
             NoneVariable(name="none_var"),
             StringVariable(value="test string", name="string_var"),
             IntegerVariable(value=42, name="int_var"),

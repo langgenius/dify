@@ -19,11 +19,23 @@ jobs:
       github.event.workflow_run.head_branch == 'deploy/enterprise'
 
     steps:
-      - name: Deploy to server
-        uses: appleboy/ssh-action@v0.1.8
-        with:
-          host: ${{ secrets.ENTERPRISE_SSH_HOST }}
-          username: ${{ secrets.ENTERPRISE_SSH_USER }}
-          password: ${{ secrets.ENTERPRISE_SSH_PASSWORD }}
-          script: |
-            ${{ vars.ENTERPRISE_SSH_SCRIPT || secrets.ENTERPRISE_SSH_SCRIPT }}
+      - name: trigger deployments
+        env:
+          DEV_ENV_ADDRS: ${{ vars.DEV_ENV_ADDRS }}
+          DEPLOY_SECRET: ${{ secrets.DEPLOY_SECRET }}
+        run: |
+          IFS=',' read -ra ENDPOINTS <<< "${DEV_ENV_ADDRS:-}"
+          BODY='{"project":"dify-api","tag":"deploy-enterprise"}'
+
+          for ENDPOINT in "${ENDPOINTS[@]}"; do
+            ENDPOINT="$(echo "$ENDPOINT" | xargs)"
+            [ -z "$ENDPOINT" ] && continue
+
+            API_SIGNATURE=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$DEPLOY_SECRET" | awk '{print "sha256="$2}')
+
+            curl -sSf -X POST \
+              -H "Content-Type: application/json" \
+              -H "X-Hub-Signature-256: $API_SIGNATURE" \
+              -d "$BODY" \
+              "$ENDPOINT"
+          done

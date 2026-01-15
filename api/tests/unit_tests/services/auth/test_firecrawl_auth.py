@@ -1,7 +1,8 @@
+import json
 from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
-import requests
 
 from services.auth.firecrawl.firecrawl import FirecrawlAuth
 
@@ -64,7 +65,7 @@ class TestFirecrawlAuth:
             FirecrawlAuth(credentials)
         assert str(exc_info.value) == expected_error
 
-    @patch("services.auth.firecrawl.firecrawl.requests.post")
+    @patch("services.auth.firecrawl.firecrawl.httpx.post")
     def test_should_validate_valid_credentials_successfully(self, mock_post, auth_instance):
         """Test successful credential validation"""
         mock_response = MagicMock()
@@ -95,7 +96,7 @@ class TestFirecrawlAuth:
             (500, "Internal server error"),
         ],
     )
-    @patch("services.auth.firecrawl.firecrawl.requests.post")
+    @patch("services.auth.firecrawl.firecrawl.httpx.post")
     def test_should_handle_http_errors(self, mock_post, status_code, error_message, auth_instance):
         """Test handling of various HTTP error codes"""
         mock_response = MagicMock()
@@ -110,12 +111,14 @@ class TestFirecrawlAuth:
     @pytest.mark.parametrize(
         ("status_code", "response_text", "has_json_error", "expected_error_contains"),
         [
-            (403, '{"error": "Forbidden"}', True, "Failed to authorize. Status code: 403. Error: Forbidden"),
-            (404, "", True, "Unexpected error occurred while trying to authorize. Status code: 404"),
-            (401, "Not JSON", True, "Expecting value"),  # JSON decode error
+            (403, '{"error": "Forbidden"}', False, "Failed to authorize. Status code: 403. Error: Forbidden"),
+            # empty body falls back to generic message
+            (404, "", True, "Failed to authorize. Status code: 404. Error: Unknown error occurred"),
+            # non-JSON body is surfaced directly
+            (401, "Not JSON", True, "Failed to authorize. Status code: 401. Error: Not JSON"),
         ],
     )
-    @patch("services.auth.firecrawl.firecrawl.requests.post")
+    @patch("services.auth.firecrawl.firecrawl.httpx.post")
     def test_should_handle_unexpected_errors(
         self, mock_post, status_code, response_text, has_json_error, expected_error_contains, auth_instance
     ):
@@ -124,23 +127,25 @@ class TestFirecrawlAuth:
         mock_response.status_code = status_code
         mock_response.text = response_text
         if has_json_error:
-            mock_response.json.side_effect = Exception("Not JSON")
+            mock_response.json.side_effect = json.JSONDecodeError("Not JSON", "", 0)
+        else:
+            mock_response.json.return_value = {"error": "Forbidden"}
         mock_post.return_value = mock_response
 
         with pytest.raises(Exception) as exc_info:
             auth_instance.validate_credentials()
-        assert expected_error_contains in str(exc_info.value)
+        assert str(exc_info.value) == expected_error_contains
 
     @pytest.mark.parametrize(
         ("exception_type", "exception_message"),
         [
-            (requests.ConnectionError, "Network error"),
-            (requests.Timeout, "Request timeout"),
-            (requests.ReadTimeout, "Read timeout"),
-            (requests.ConnectTimeout, "Connection timeout"),
+            (httpx.ConnectError, "Network error"),
+            (httpx.TimeoutException, "Request timeout"),
+            (httpx.ReadTimeout, "Read timeout"),
+            (httpx.ConnectTimeout, "Connection timeout"),
         ],
     )
-    @patch("services.auth.firecrawl.firecrawl.requests.post")
+    @patch("services.auth.firecrawl.firecrawl.httpx.post")
     def test_should_handle_network_errors(self, mock_post, exception_type, exception_message, auth_instance):
         """Test handling of various network-related errors including timeouts"""
         mock_post.side_effect = exception_type(exception_message)
@@ -162,29 +167,30 @@ class TestFirecrawlAuth:
             FirecrawlAuth({"auth_type": "basic", "config": {"api_key": "super_secret_key_12345"}})
         assert "super_secret_key_12345" not in str(exc_info.value)
 
-    @patch("services.auth.firecrawl.firecrawl.requests.post")
+    @patch("services.auth.firecrawl.firecrawl.httpx.post")
     def test_should_use_custom_base_url_in_validation(self, mock_post):
-        """Test that custom base URL is used in validation"""
+        """Test that custom base URL is used in validation and normalized"""
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_post.return_value = mock_response
 
-        credentials = {
-            "auth_type": "bearer",
-            "config": {"api_key": "test_api_key_123", "base_url": "https://custom.firecrawl.dev"},
-        }
-        auth = FirecrawlAuth(credentials)
-        result = auth.validate_credentials()
+        for base in ("https://custom.firecrawl.dev", "https://custom.firecrawl.dev/"):
+            credentials = {
+                "auth_type": "bearer",
+                "config": {"api_key": "test_api_key_123", "base_url": base},
+            }
+            auth = FirecrawlAuth(credentials)
+            result = auth.validate_credentials()
 
-        assert result is True
-        assert mock_post.call_args[0][0] == "https://custom.firecrawl.dev/v1/crawl"
+            assert result is True
+            assert mock_post.call_args[0][0] == "https://custom.firecrawl.dev/v1/crawl"
 
-    @patch("services.auth.firecrawl.firecrawl.requests.post")
+    @patch("services.auth.firecrawl.firecrawl.httpx.post")
     def test_should_handle_timeout_with_retry_suggestion(self, mock_post, auth_instance):
         """Test that timeout errors are handled gracefully with appropriate error message"""
-        mock_post.side_effect = requests.Timeout("The request timed out after 30 seconds")
+        mock_post.side_effect = httpx.TimeoutException("The request timed out after 30 seconds")
 
-        with pytest.raises(requests.Timeout) as exc_info:
+        with pytest.raises(httpx.TimeoutException) as exc_info:
             auth_instance.validate_credentials()
 
         # Verify the timeout exception is raised with original message

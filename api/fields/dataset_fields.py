@@ -1,4 +1,4 @@
-from flask_restful import fields
+from flask_restx import fields
 
 from libs.helper import TimestampField
 
@@ -56,6 +56,13 @@ external_knowledge_info_fields = {
 
 doc_metadata_fields = {"id": fields.String, "name": fields.String, "type": fields.String}
 
+icon_info_fields = {
+    "icon_type": fields.String,
+    "icon": fields.String,
+    "icon_background": fields.String,
+    "icon_url": fields.String,
+}
+
 dataset_detail_fields = {
     "id": fields.String,
     "name": fields.String,
@@ -68,6 +75,7 @@ dataset_detail_fields = {
     "document_count": fields.Integer,
     "word_count": fields.Integer,
     "created_by": fields.String,
+    "author_name": fields.String,
     "created_at": TimestampField,
     "updated_by": fields.String,
     "updated_at": TimestampField,
@@ -81,11 +89,35 @@ dataset_detail_fields = {
     "external_retrieval_model": fields.Nested(external_retrieval_model_fields, allow_null=True),
     "doc_metadata": fields.List(fields.Nested(doc_metadata_fields)),
     "built_in_field_enabled": fields.Boolean,
+    "pipeline_id": fields.String,
+    "runtime_mode": fields.String,
+    "chunk_structure": fields.String,
+    "icon_info": fields.Nested(icon_info_fields),
+    "is_published": fields.Boolean,
+    "total_documents": fields.Integer,
+    "total_available_documents": fields.Integer,
+    "enable_api": fields.Boolean,
+    "is_multimodal": fields.Boolean,
+}
+
+file_info_fields = {
+    "id": fields.String,
+    "name": fields.String,
+    "size": fields.Integer,
+    "extension": fields.String,
+    "mime_type": fields.String,
+    "source_url": fields.String,
+}
+
+content_fields = {
+    "content_type": fields.String,
+    "content": fields.String,
+    "file_info": fields.Nested(file_info_fields, allow_null=True),
 }
 
 dataset_query_detail_fields = {
     "id": fields.String,
-    "content": fields.String,
+    "queries": fields.Nested(content_fields),
     "source": fields.String,
     "source_app_id": fields.String,
     "created_by_role": fields.String,

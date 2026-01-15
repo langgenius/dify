@@ -1,29 +1,41 @@
 'use client'
-import React, { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { VersionHistory } from '@/types/workflow'
 import { RiArrowDownDoubleLine, RiCloseLine, RiLoader2Line } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
-import { useNodesSyncDraft, useWorkflowRun } from '../../hooks'
-import { useStore, useWorkflowStore } from '../../store'
-import { VersionHistoryContextMenuOptions, WorkflowVersionFilterOptions } from '../../types'
-import VersionHistoryItem from './version-history-item'
-import Filter from './filter'
-import type { VersionHistory } from '@/types/workflow'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { useDeleteWorkflow, useInvalidAllLastRun, useResetWorkflowVersionHistory, useUpdateWorkflow, useWorkflowVersionHistory } from '@/service/use-workflow'
-import Divider from '@/app/components/base/divider'
-import Loading from './loading'
-import Empty from './empty'
-import { useSelector as useAppContextSelector } from '@/context/app-context'
-import RestoreConfirmModal from './restore-confirm-modal'
-import DeleteConfirmModal from './delete-confirm-modal'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import VersionInfoModal from '@/app/components/app/app-publisher/version-info-modal'
+import Divider from '@/app/components/base/divider'
 import Toast from '@/app/components/base/toast'
+import { useSelector as useAppContextSelector } from '@/context/app-context'
+import { useDeleteWorkflow, useInvalidAllLastRun, useResetWorkflowVersionHistory, useUpdateWorkflow, useWorkflowVersionHistory } from '@/service/use-workflow'
+import { useDSL, useNodesSyncDraft, useWorkflowRun } from '../../hooks'
+import { useHooksStore } from '../../hooks-store'
+import { useStore, useWorkflowStore } from '../../store'
+import { VersionHistoryContextMenuOptions, WorkflowVersion, WorkflowVersionFilterOptions } from '../../types'
+import DeleteConfirmModal from './delete-confirm-modal'
+import Empty from './empty'
+import Filter from './filter'
+import Loading from './loading'
+import RestoreConfirmModal from './restore-confirm-modal'
+import VersionHistoryItem from './version-history-item'
 
 const HISTORY_PER_PAGE = 10
 const INITIAL_PAGE = 1
 
-const VersionHistoryPanel = () => {
+export type VersionHistoryPanelProps = {
+  getVersionListUrl?: string
+  deleteVersionUrl?: (versionId: string) => string
+  updateVersionUrl?: (versionId: string) => string
+  latestVersionId?: string
+}
+export const VersionHistoryPanel = ({
+  getVersionListUrl,
+  deleteVersionUrl,
+  updateVersionUrl,
+  latestVersionId,
+}: VersionHistoryPanelProps) => {
   const [filterValue, setFilterValue] = useState(WorkflowVersionFilterOptions.all)
   const [isOnlyShowNamedVersions, setIsOnlyShowNamedVersions] = useState(false)
   const [operatedItem, setOperatedItem] = useState<VersionHistory>()
@@ -33,12 +45,13 @@ const VersionHistoryPanel = () => {
   const workflowStore = useWorkflowStore()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { handleRestoreFromPublishedWorkflow, handleLoadBackupDraft } = useWorkflowRun()
-  const appDetail = useAppStore.getState().appDetail
+  const { handleExportDSL } = useDSL()
   const setShowWorkflowVersionHistoryPanel = useStore(s => s.setShowWorkflowVersionHistoryPanel)
   const currentVersion = useStore(s => s.currentVersion)
   const setCurrentVersion = useStore(s => s.setCurrentVersion)
   const userProfile = useAppContextSelector(s => s.userProfile)
-  const invalidAllLastRun = useInvalidAllLastRun(appDetail!.id)
+  const configsMap = useHooksStore(s => s.configsMap)
+  const invalidAllLastRun = useInvalidAllLastRun(configsMap?.flowType, configsMap?.flowId)
   const {
     deleteAllInspectVars,
   } = workflowStore.getState()
@@ -50,7 +63,7 @@ const VersionHistoryPanel = () => {
     hasNextPage,
     isFetching,
   } = useWorkflowVersionHistory({
-    appId: appDetail!.id,
+    url: getVersionListUrl || '',
     initialPage: INITIAL_PAGE,
     limit: HISTORY_PER_PAGE,
     userId: filterValue === WorkflowVersionFilterOptions.onlyYours ? userProfile.id : '',
@@ -60,9 +73,12 @@ const VersionHistoryPanel = () => {
   const handleVersionClick = useCallback((item: VersionHistory) => {
     if (item.id !== currentVersion?.id) {
       setCurrentVersion(item)
-      handleRestoreFromPublishedWorkflow(item)
+      if (item.version === WorkflowVersion.Draft)
+        handleLoadBackupDraft()
+      else
+        handleRestoreFromPublishedWorkflow(item)
     }
-  }, [currentVersion?.id, setCurrentVersion, handleRestoreFromPublishedWorkflow])
+  }, [currentVersion?.id, setCurrentVersion, handleLoadBackupDraft, handleRestoreFromPublishedWorkflow])
 
   const handleNextPage = () => {
     if (hasNextPage)
@@ -104,11 +120,14 @@ const VersionHistoryPanel = () => {
         copy(item.id)
         Toast.notify({
           type: 'success',
-          message: t('workflow.versionHistory.action.copyIdSuccess'),
+          message: t('versionHistory.action.copyIdSuccess', { ns: 'workflow' }),
         })
         break
+      case VersionHistoryContextMenuOptions.exportDSL:
+        handleExportDSL?.(false, item.id)
+        break
     }
-  }, [t])
+  }, [t, handleExportDSL])
 
   const handleCancel = useCallback((operation: VersionHistoryContextMenuOptions) => {
     switch (operation) {
@@ -124,7 +143,7 @@ const VersionHistoryPanel = () => {
     }
   }, [])
 
-  const resetWorkflowVersionHistory = useResetWorkflowVersionHistory(appDetail!.id)
+  const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
 
   const handleRestore = useCallback((item: VersionHistory) => {
     setShowWorkflowVersionHistoryPanel(false)
@@ -135,7 +154,7 @@ const VersionHistoryPanel = () => {
       onSuccess: () => {
         Toast.notify({
           type: 'success',
-          message: t('workflow.versionHistory.action.restoreSuccess'),
+          message: t('versionHistory.action.restoreSuccess', { ns: 'workflow' }),
         })
         deleteAllInspectVars()
         invalidAllLastRun()
@@ -143,7 +162,7 @@ const VersionHistoryPanel = () => {
       onError: () => {
         Toast.notify({
           type: 'error',
-          message: t('workflow.versionHistory.action.restoreFailure'),
+          message: t('versionHistory.action.restoreFailure', { ns: 'workflow' }),
         })
       },
       onSettled: () => {
@@ -152,15 +171,15 @@ const VersionHistoryPanel = () => {
     })
   }, [setShowWorkflowVersionHistoryPanel, handleRestoreFromPublishedWorkflow, workflowStore, handleSyncWorkflowDraft, deleteAllInspectVars, invalidAllLastRun, t, resetWorkflowVersionHistory])
 
-  const { mutateAsync: deleteWorkflow } = useDeleteWorkflow(appDetail!.id)
+  const { mutateAsync: deleteWorkflow } = useDeleteWorkflow()
 
   const handleDelete = useCallback(async (id: string) => {
-    await deleteWorkflow(id, {
+    await deleteWorkflow(deleteVersionUrl?.(id) || '', {
       onSuccess: () => {
         setDeleteConfirmOpen(false)
         Toast.notify({
           type: 'success',
-          message: t('workflow.versionHistory.action.deleteSuccess'),
+          message: t('versionHistory.action.deleteSuccess', { ns: 'workflow' }),
         })
         resetWorkflowVersionHistory()
         deleteAllInspectVars()
@@ -169,125 +188,133 @@ const VersionHistoryPanel = () => {
       onError: () => {
         Toast.notify({
           type: 'error',
-          message: t('workflow.versionHistory.action.deleteFailure'),
+          message: t('versionHistory.action.deleteFailure', { ns: 'workflow' }),
         })
       },
       onSettled: () => {
         setDeleteConfirmOpen(false)
       },
     })
-  }, [deleteWorkflow, t, resetWorkflowVersionHistory, deleteAllInspectVars, invalidAllLastRun])
+  }, [deleteWorkflow, t, resetWorkflowVersionHistory, deleteAllInspectVars, invalidAllLastRun, deleteVersionUrl])
 
-  const { mutateAsync: updateWorkflow } = useUpdateWorkflow(appDetail!.id)
+  const { mutateAsync: updateWorkflow } = useUpdateWorkflow()
 
   const handleUpdateWorkflow = useCallback(async (params: { id?: string, title: string, releaseNotes: string }) => {
     const { id, ...rest } = params
     await updateWorkflow({
-      workflowId: id!,
+      url: updateVersionUrl?.(id || '') || '',
       ...rest,
     }, {
       onSuccess: () => {
         setEditModalOpen(false)
         Toast.notify({
           type: 'success',
-          message: t('workflow.versionHistory.action.updateSuccess'),
+          message: t('versionHistory.action.updateSuccess', { ns: 'workflow' }),
         })
         resetWorkflowVersionHistory()
       },
       onError: () => {
         Toast.notify({
           type: 'error',
-          message: t('workflow.versionHistory.action.updateFailure'),
+          message: t('versionHistory.action.updateFailure', { ns: 'workflow' }),
         })
       },
       onSettled: () => {
         setEditModalOpen(false)
       },
     })
-  }, [t, updateWorkflow, resetWorkflowVersionHistory])
+  }, [t, updateWorkflow, resetWorkflowVersionHistory, updateVersionUrl])
 
   return (
-    <div className='flex h-full w-[268px] flex-col rounded-l-2xl border-y-[0.5px] border-l-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5'>
-      <div className='flex items-center gap-x-2 px-4 pt-3'>
-        <div className='system-xl-semibold flex-1 py-1 text-text-primary'>{t('workflow.versionHistory.title')}</div>
+    <div className="flex h-full w-[268px] flex-col rounded-l-2xl border-y-[0.5px] border-l-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
+      <div className="flex items-center gap-x-2 px-4 pt-3">
+        <div className="system-xl-semibold flex-1 py-1 text-text-primary">{t('versionHistory.title', { ns: 'workflow' })}</div>
         <Filter
           filterValue={filterValue}
           isOnlyShowNamedVersions={isOnlyShowNamedVersions}
           onClickFilterItem={handleClickFilterItem}
           handleSwitch={handleSwitch}
         />
-        <Divider type='vertical' className='mx-1 h-3.5' />
+        <Divider type="vertical" className="mx-1 h-3.5" />
         <div
-          className='flex h-6 w-6 cursor-pointer items-center justify-center p-0.5'
+          className="flex h-6 w-6 cursor-pointer items-center justify-center p-0.5"
           onClick={handleClose}
         >
-          <RiCloseLine className='h-4 w-4 text-text-tertiary' />
+          <RiCloseLine className="h-4 w-4 text-text-tertiary" />
         </div>
       </div>
       <div className="flex h-0 flex-1 flex-col">
         <div className="flex-1 overflow-y-auto px-3 py-2">
           {(isFetching && !versionHistory?.pages?.length)
             ? (
-              <Loading />
-            )
+                <Loading />
+              )
             : (
-              <>
-                {versionHistory?.pages?.map((page, pageNumber) => (
-                  page.items?.map((item, idx) => {
-                    const isLast = pageNumber === versionHistory.pages.length - 1 && idx === page.items.length - 1
-                    return <VersionHistoryItem
-                      key={item.id}
-                      item={item}
-                      currentVersion={currentVersion}
-                      latestVersionId={appDetail!.workflow!.id}
-                      onClick={handleVersionClick}
-                      handleClickMenuItem={handleClickMenuItem.bind(null, item)}
-                      isLast={isLast}
-                    />
-                  })
-                ))}
-                {!isFetching && (!versionHistory?.pages?.length || !versionHistory.pages[0].items.length) && (
-                  <Empty onResetFilter={handleResetFilter} />
-                )}
-              </>
-            )}
+                <>
+                  {versionHistory?.pages?.map((page, pageNumber) => (
+                    page.items?.map((item, idx) => {
+                      const isLast = pageNumber === versionHistory.pages.length - 1 && idx === page.items.length - 1
+                      return (
+                        <VersionHistoryItem
+                          key={item.id}
+                          item={item}
+                          currentVersion={currentVersion}
+                          latestVersionId={latestVersionId || ''}
+                          onClick={handleVersionClick}
+                          handleClickMenuItem={handleClickMenuItem.bind(null, item)}
+                          isLast={isLast}
+                        />
+                      )
+                    })
+                  ))}
+                  {!isFetching && (!versionHistory?.pages?.length || !versionHistory.pages[0].items.length) && (
+                    <Empty onResetFilter={handleResetFilter} />
+                  )}
+                </>
+              )}
         </div>
         {hasNextPage && (
-          <div className='p-2'>
+          <div className="p-2">
             <div
-              className='flex cursor-pointer items-center gap-x-1'
+              className="flex cursor-pointer items-center gap-x-1"
               onClick={handleNextPage}
             >
-              <div className='item-center flex justify-center p-0.5'>
+              <div className="item-center flex justify-center p-0.5">
                 {isFetching
-                  ? <RiLoader2Line className='h-3.5 w-3.5 animate-spin text-text-accent' />
-                  : <RiArrowDownDoubleLine className='h-3.5 w-3.5 text-text-accent' />}
+                  ? <RiLoader2Line className="h-3.5 w-3.5 animate-spin text-text-accent" />
+                  : <RiArrowDownDoubleLine className="h-3.5 w-3.5 text-text-accent" />}
               </div>
-              <div className='system-xs-medium-uppercase py-[1px] text-text-accent'>
-                {t('workflow.common.loadMore')}
+              <div className="system-xs-medium-uppercase py-[1px] text-text-accent">
+                {t('common.loadMore', { ns: 'workflow' })}
               </div>
             </div>
           </div>
         )}
       </div>
-      {restoreConfirmOpen && (<RestoreConfirmModal
-        isOpen={restoreConfirmOpen}
-        versionInfo={operatedItem!}
-        onClose={handleCancel.bind(null, VersionHistoryContextMenuOptions.restore)}
-        onRestore={handleRestore}
-      />)}
-      {deleteConfirmOpen && (<DeleteConfirmModal
-        isOpen={deleteConfirmOpen}
-        versionInfo={operatedItem!}
-        onClose={handleCancel.bind(null, VersionHistoryContextMenuOptions.delete)}
-        onDelete={handleDelete}
-      />)}
-      {editModalOpen && (<VersionInfoModal
-        isOpen={editModalOpen}
-        versionInfo={operatedItem}
-        onClose={handleCancel.bind(null, VersionHistoryContextMenuOptions.edit)}
-        onPublish={handleUpdateWorkflow}
-      />)}
+      {restoreConfirmOpen && (
+        <RestoreConfirmModal
+          isOpen={restoreConfirmOpen}
+          versionInfo={operatedItem!}
+          onClose={handleCancel.bind(null, VersionHistoryContextMenuOptions.restore)}
+          onRestore={handleRestore}
+        />
+      )}
+      {deleteConfirmOpen && (
+        <DeleteConfirmModal
+          isOpen={deleteConfirmOpen}
+          versionInfo={operatedItem!}
+          onClose={handleCancel.bind(null, VersionHistoryContextMenuOptions.delete)}
+          onDelete={handleDelete}
+        />
+      )}
+      {editModalOpen && (
+        <VersionInfoModal
+          isOpen={editModalOpen}
+          versionInfo={operatedItem}
+          onClose={handleCancel.bind(null, VersionHistoryContextMenuOptions.edit)}
+          onPublish={handleUpdateWorkflow}
+        />
+      )}
     </div>
   )
 }

@@ -6,7 +6,7 @@ Test Clickzetta integration in Docker environment
 import os
 import time
 
-import requests
+import httpx
 from clickzetta import connect
 
 
@@ -66,7 +66,7 @@ def test_dify_api():
     max_retries = 30
     for i in range(max_retries):
         try:
-            response = requests.get(f"{base_url}/console/api/health")
+            response = httpx.get(f"{base_url}/console/api/health")
             if response.status_code == 200:
                 print("✓ Dify API is ready")
                 break

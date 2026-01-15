@@ -1,21 +1,32 @@
 'use client'
-import React, { useRef, useState } from 'react'
+import type { HeaderItem } from './headers-input'
+import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
+import type { ToolWithProvider } from '@/app/components/workflow/types'
+import type { AppIconType } from '@/types/app'
+import { RiCloseLine, RiEditLine } from '@remixicon/react'
+import { useHover } from 'ahooks'
+import { noop } from 'es-toolkit/function'
+import * as React from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getDomain } from 'tldts'
-import { RiCloseLine, RiEditLine } from '@remixicon/react'
-import AppIconPicker from '@/app/components/base/app-icon-picker'
-import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
+import { v4 as uuid } from 'uuid'
 import AppIcon from '@/app/components/base/app-icon'
-import Modal from '@/app/components/base/modal'
+import AppIconPicker from '@/app/components/base/app-icon-picker'
 import Button from '@/app/components/base/button'
+import { Mcp } from '@/app/components/base/icons/src/vender/other'
+import AlertTriangle from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback/AlertTriangle'
 import Input from '@/app/components/base/input'
-import type { AppIconType } from '@/types/app'
-import type { ToolWithProvider } from '@/app/components/workflow/types'
-import { noop } from 'lodash-es'
+import Modal from '@/app/components/base/modal'
+import Switch from '@/app/components/base/switch'
+import TabSlider from '@/app/components/base/tab-slider'
 import Toast from '@/app/components/base/toast'
+import { MCPAuthMethod } from '@/app/components/tools/types'
+import { API_PREFIX } from '@/config'
 import { uploadRemoteFileInfo } from '@/service/common'
-import cn from '@/utils/classnames'
-import { useHover } from 'ahooks'
+import { cn } from '@/utils/classnames'
+import { shouldUseMcpIconForAppIcon } from '@/utils/mcp'
+import HeadersInput from './headers-input'
 
 export type DuplicateAppModalProps = {
   data?: ToolWithProvider
@@ -27,13 +38,22 @@ export type DuplicateAppModalProps = {
     icon: string
     icon_background?: string | null
     server_identifier: string
-    timeout: number
-    sse_read_timeout: number
+    headers?: Record<string, string>
+    is_dynamic_registration?: boolean
+    authentication?: {
+      client_id?: string
+      client_secret?: string
+      grant_type?: string
+    }
+    configuration: {
+      timeout: number
+      sse_read_timeout: number
+    }
   }) => void
   onHide: () => void
 }
 
-const DEFAULT_ICON = { type: 'emoji', icon: '🧿', background: '#EFF1F5' }
+const DEFAULT_ICON = { type: 'emoji', icon: '🔗', background: '#6366F1' }
 const extractFileId = (url: string) => {
   const match = url.match(/files\/(.+?)\/file-preview/)
   return match ? match[1] : null
@@ -59,23 +79,73 @@ const MCPModal = ({
   const { t } = useTranslation()
   const isCreate = !data
 
+  const authMethods = [
+    {
+      text: t('mcp.modal.authentication', { ns: 'tools' }),
+      value: MCPAuthMethod.authentication,
+    },
+    {
+      text: t('mcp.modal.headers', { ns: 'tools' }),
+      value: MCPAuthMethod.headers,
+    },
+    {
+      text: t('mcp.modal.configurations', { ns: 'tools' }),
+      value: MCPAuthMethod.configurations,
+    },
+  ]
   const originalServerUrl = data?.server_url
   const originalServerID = data?.server_identifier
   const [url, setUrl] = React.useState(data?.server_url || '')
   const [name, setName] = React.useState(data?.name || '')
-  const [appIcon, setAppIcon] = useState<AppIconSelection>(getIcon(data))
+  const [appIcon, setAppIcon] = useState<AppIconSelection>(() => getIcon(data))
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const [serverIdentifier, setServerIdentifier] = React.useState(data?.server_identifier || '')
-  const [timeout, setMcpTimeout] = React.useState(30)
-  const [sseReadTimeout, setSseReadTimeout] = React.useState(300)
+  const [timeout, setMcpTimeout] = React.useState(data?.configuration?.timeout || 30)
+  const [sseReadTimeout, setSseReadTimeout] = React.useState(data?.configuration?.sse_read_timeout || 300)
+  const [headers, setHeaders] = React.useState<HeaderItem[]>(
+    Object.entries(data?.masked_headers || {}).map(([key, value]) => ({ id: uuid(), key, value })),
+  )
   const [isFetchingIcon, setIsFetchingIcon] = useState(false)
   const appIconRef = useRef<HTMLDivElement>(null)
   const isHovering = useHover(appIconRef)
+  const [authMethod, setAuthMethod] = useState(MCPAuthMethod.authentication)
+  const [isDynamicRegistration, setIsDynamicRegistration] = useState(isCreate ? true : data?.is_dynamic_registration)
+  const [clientID, setClientID] = useState(data?.authentication?.client_id || '')
+  const [credentials, setCredentials] = useState(data?.authentication?.client_secret || '')
+
+  // Update states when data changes (for edit mode)
+  React.useEffect(() => {
+    if (data) {
+      setUrl(data.server_url || '')
+      setName(data.name || '')
+      setServerIdentifier(data.server_identifier || '')
+      setMcpTimeout(data.configuration?.timeout || 30)
+      setSseReadTimeout(data.configuration?.sse_read_timeout || 300)
+      setHeaders(Object.entries(data.masked_headers || {}).map(([key, value]) => ({ id: uuid(), key, value })))
+      setAppIcon(getIcon(data))
+      setIsDynamicRegistration(data.is_dynamic_registration)
+      setClientID(data.authentication?.client_id || '')
+      setCredentials(data.authentication?.client_secret || '')
+    }
+    else {
+      // Reset for create mode
+      setUrl('')
+      setName('')
+      setServerIdentifier('')
+      setMcpTimeout(30)
+      setSseReadTimeout(300)
+      setHeaders([])
+      setAppIcon(DEFAULT_ICON as AppIconSelection)
+      setIsDynamicRegistration(true)
+      setClientID('')
+      setCredentials('')
+    }
+  }, [data])
 
   const isValidUrl = (string: string) => {
     try {
-      const urlPattern = /^(https?:\/\/)((([a-z\d]([a-z\d-]*[a-z\d])*)\.)+[a-z]{2,}|((\d{1,3}\.){3}\d{1,3})|localhost)(\:\d+)?(\/[-a-z\d%_.~+]*)*(\?[;&a-z\d%_.~+=-]*)?/i
-      return urlPattern.test(string)
+      const url = new URL(string)
+      return url.protocol === 'http:' || url.protocol === 'https:'
     }
     catch {
       return false
@@ -120,6 +190,11 @@ const MCPModal = ({
       Toast.notify({ type: 'error', message: 'invalid server identifier' })
       return
     }
+    const formattedHeaders = headers.reduce((acc, item) => {
+      if (item.key.trim())
+        acc[item.key.trim()] = item.value
+      return acc
+    }, {} as Record<string, string>)
     await onConfirm({
       server_url: originalServerUrl === url ? '[__HIDDEN__]' : url.trim(),
       name,
@@ -127,12 +202,24 @@ const MCPModal = ({
       icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
       icon_background: appIcon.type === 'emoji' ? appIcon.background : undefined,
       server_identifier: serverIdentifier.trim(),
-      timeout: timeout || 30,
-      sse_read_timeout: sseReadTimeout || 300,
+      headers: Object.keys(formattedHeaders).length > 0 ? formattedHeaders : undefined,
+      is_dynamic_registration: isDynamicRegistration,
+      authentication: {
+        client_id: clientID,
+        client_secret: credentials,
+      },
+      configuration: {
+        timeout: timeout || 30,
+        sse_read_timeout: sseReadTimeout || 300,
+      },
     })
-    if(isCreate)
+    if (isCreate)
       onHide()
   }
+
+  const handleAuthMethodChange = useCallback((value: string) => {
+    setAuthMethod(value as MCPAuthMethod)
+  }, [])
 
   return (
     <>
@@ -141,112 +228,200 @@ const MCPModal = ({
         onClose={noop}
         className={cn('relative !max-w-[520px]', 'p-6')}
       >
-        <div className='absolute right-5 top-5 z-10 cursor-pointer p-1.5' onClick={onHide}>
-          <RiCloseLine className='h-5 w-5 text-text-tertiary' />
+        <div className="absolute right-5 top-5 z-10 cursor-pointer p-1.5" onClick={onHide}>
+          <RiCloseLine className="h-5 w-5 text-text-tertiary" />
         </div>
-        <div className='title-2xl-semi-bold relative pb-3 text-xl text-text-primary'>{!isCreate ? t('tools.mcp.modal.editTitle') : t('tools.mcp.modal.title')}</div>
-        <div className='space-y-5 py-3'>
+        <div className="title-2xl-semi-bold relative pb-3 text-xl text-text-primary">{!isCreate ? t('mcp.modal.editTitle', { ns: 'tools' }) : t('mcp.modal.title', { ns: 'tools' })}</div>
+        <div className="space-y-5 py-3">
           <div>
-            <div className='mb-1 flex h-6 items-center'>
-              <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.serverUrl')}</span>
+            <div className="mb-1 flex h-6 items-center">
+              <span className="system-sm-medium text-text-secondary">{t('mcp.modal.serverUrl', { ns: 'tools' })}</span>
             </div>
             <Input
               value={url}
               onChange={e => setUrl(e.target.value)}
               onBlur={e => handleBlur(e.target.value.trim())}
-              placeholder={t('tools.mcp.modal.serverUrlPlaceholder')}
+              placeholder={t('mcp.modal.serverUrlPlaceholder', { ns: 'tools' })}
             />
             {originalServerUrl && originalServerUrl !== url && (
-              <div className='mt-1 flex h-5 items-center'>
-                <span className='body-xs-regular text-text-warning'>{t('tools.mcp.modal.serverUrlWarning')}</span>
+              <div className="mt-1 flex h-5 items-center">
+                <span className="body-xs-regular text-text-warning">{t('mcp.modal.serverUrlWarning', { ns: 'tools' })}</span>
               </div>
             )}
           </div>
-          <div className='flex space-x-3'>
-            <div className='grow pb-1'>
-              <div className='mb-1 flex h-6 items-center'>
-                <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.name')}</span>
+          <div className="flex space-x-3">
+            <div className="grow pb-1">
+              <div className="mb-1 flex h-6 items-center">
+                <span className="system-sm-medium text-text-secondary">{t('mcp.modal.name', { ns: 'tools' })}</span>
               </div>
               <Input
                 value={name}
                 onChange={e => setName(e.target.value)}
-                placeholder={t('tools.mcp.modal.namePlaceholder')}
+                placeholder={t('mcp.modal.namePlaceholder', { ns: 'tools' })}
               />
             </div>
-            <div className='pt-2' ref={appIconRef}>
+            <div className="pt-2" ref={appIconRef}>
               <AppIcon
                 iconType={appIcon.type}
                 icon={appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId}
                 background={appIcon.type === 'emoji' ? appIcon.background : undefined}
                 imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
-                size='xxl'
-                className='relative cursor-pointer rounded-2xl'
+                innerIcon={shouldUseMcpIconForAppIcon(appIcon.type, appIcon.type === 'emoji' ? appIcon.icon : '') ? <Mcp className="h-8 w-8 text-text-primary-on-surface" /> : undefined}
+                size="xxl"
+                className="relative cursor-pointer rounded-2xl"
                 coverElement={
                   isHovering
-                    ? (<div className='absolute inset-0 flex items-center justify-center overflow-hidden rounded-2xl bg-background-overlay-alt'>
-                      <RiEditLine className='size-6 text-text-primary-on-surface' />
-                    </div>) : null
+                    ? (
+                        <div className="absolute inset-0 flex items-center justify-center overflow-hidden rounded-2xl bg-background-overlay-alt">
+                          <RiEditLine className="size-6 text-text-primary-on-surface" />
+                        </div>
+                      )
+                    : null
                 }
                 onClick={() => { setShowAppIconPicker(true) }}
               />
             </div>
           </div>
           <div>
-            <div className='flex h-6 items-center'>
-              <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.serverIdentifier')}</span>
+            <div className="flex h-6 items-center">
+              <span className="system-sm-medium text-text-secondary">{t('mcp.modal.serverIdentifier', { ns: 'tools' })}</span>
             </div>
-            <div className='body-xs-regular mb-1 text-text-tertiary'>{t('tools.mcp.modal.serverIdentifierTip')}</div>
+            <div className="body-xs-regular mb-1 text-text-tertiary">{t('mcp.modal.serverIdentifierTip', { ns: 'tools' })}</div>
             <Input
               value={serverIdentifier}
               onChange={e => setServerIdentifier(e.target.value)}
-              placeholder={t('tools.mcp.modal.serverIdentifierPlaceholder')}
+              placeholder={t('mcp.modal.serverIdentifierPlaceholder', { ns: 'tools' })}
             />
             {originalServerID && originalServerID !== serverIdentifier && (
-              <div className='mt-1 flex h-5 items-center'>
-                <span className='body-xs-regular text-text-warning'>{t('tools.mcp.modal.serverIdentifierWarning')}</span>
+              <div className="mt-1 flex h-5 items-center">
+                <span className="body-xs-regular text-text-warning">{t('mcp.modal.serverIdentifierWarning', { ns: 'tools' })}</span>
               </div>
             )}
           </div>
-          <div>
-            <div className='mb-1 flex h-6 items-center'>
-              <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.timeout')}</span>
-            </div>
-            <Input
-              type='number'
-              value={timeout}
-              onChange={e => setMcpTimeout(Number(e.target.value))}
-              onBlur={e => handleBlur(e.target.value.trim())}
-              placeholder={t('tools.mcp.modal.timeoutPlaceholder')}
-            />
-          </div>
-          <div>
-            <div className='mb-1 flex h-6 items-center'>
-              <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.sseReadTimeout')}</span>
-            </div>
-            <Input
-              type='number'
-              value={sseReadTimeout}
-              onChange={e => setSseReadTimeout(Number(e.target.value))}
-              onBlur={e => handleBlur(e.target.value.trim())}
-              placeholder={t('tools.mcp.modal.timeoutPlaceholder')}
-            />
-          </div>
+          <TabSlider
+            className="w-full"
+            itemClassName={(isActive) => {
+              return `flex-1 ${isActive && 'text-text-accent-light-mode-only'}`
+            }}
+            value={authMethod}
+            onChange={handleAuthMethodChange}
+            options={authMethods}
+          />
+          {
+            authMethod === MCPAuthMethod.authentication && (
+              <>
+                <div>
+                  <div className="mb-1 flex h-6 items-center">
+                    <Switch
+                      className="mr-2"
+                      defaultValue={isDynamicRegistration}
+                      onChange={setIsDynamicRegistration}
+                    />
+                    <span className="system-sm-medium text-text-secondary">{t('mcp.modal.useDynamicClientRegistration', { ns: 'tools' })}</span>
+                  </div>
+                  {!isDynamicRegistration && (
+                    <div className="mt-2 flex gap-2 rounded-lg bg-state-warning-hover p-3">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-text-warning" />
+                      <div className="system-xs-regular text-text-secondary">
+                        <div className="mb-1">{t('mcp.modal.redirectUrlWarning', { ns: 'tools' })}</div>
+                        <code className="system-xs-medium block break-all rounded bg-state-warning-active px-2 py-1 text-text-secondary">
+                          {`${API_PREFIX}/mcp/oauth/callback`}
+                        </code>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <div className={cn('mb-1 flex h-6 items-center', isDynamicRegistration && 'opacity-50')}>
+                    <span className="system-sm-medium text-text-secondary">{t('mcp.modal.clientID', { ns: 'tools' })}</span>
+                  </div>
+                  <Input
+                    value={clientID}
+                    onChange={e => setClientID(e.target.value)}
+                    onBlur={e => handleBlur(e.target.value.trim())}
+                    placeholder={t('mcp.modal.clientID', { ns: 'tools' })}
+                    disabled={isDynamicRegistration}
+                  />
+                </div>
+                <div>
+                  <div className={cn('mb-1 flex h-6 items-center', isDynamicRegistration && 'opacity-50')}>
+                    <span className="system-sm-medium text-text-secondary">{t('mcp.modal.clientSecret', { ns: 'tools' })}</span>
+                  </div>
+                  <Input
+                    value={credentials}
+                    onChange={e => setCredentials(e.target.value)}
+                    onBlur={e => handleBlur(e.target.value.trim())}
+                    placeholder={t('mcp.modal.clientSecretPlaceholder', { ns: 'tools' })}
+                    disabled={isDynamicRegistration}
+                  />
+                </div>
+              </>
+            )
+          }
+          {
+            authMethod === MCPAuthMethod.headers && (
+              <div>
+                <div className="mb-1 flex h-6 items-center">
+                  <span className="system-sm-medium text-text-secondary">{t('mcp.modal.headers', { ns: 'tools' })}</span>
+                </div>
+                <div className="body-xs-regular mb-2 text-text-tertiary">{t('mcp.modal.headersTip', { ns: 'tools' })}</div>
+                <HeadersInput
+                  headersItems={headers}
+                  onChange={setHeaders}
+                  readonly={false}
+                  isMasked={!isCreate && headers.filter(item => item.key.trim()).length > 0}
+                />
+              </div>
+            )
+          }
+          {
+            authMethod === MCPAuthMethod.configurations && (
+              <>
+                <div>
+                  <div className="mb-1 flex h-6 items-center">
+                    <span className="system-sm-medium text-text-secondary">{t('mcp.modal.timeout', { ns: 'tools' })}</span>
+                  </div>
+                  <Input
+                    type="number"
+                    value={timeout}
+                    onChange={e => setMcpTimeout(Number(e.target.value))}
+                    onBlur={e => handleBlur(e.target.value.trim())}
+                    placeholder={t('mcp.modal.timeoutPlaceholder', { ns: 'tools' })}
+                  />
+                </div>
+                <div>
+                  <div className="mb-1 flex h-6 items-center">
+                    <span className="system-sm-medium text-text-secondary">{t('mcp.modal.sseReadTimeout', { ns: 'tools' })}</span>
+                  </div>
+                  <Input
+                    type="number"
+                    value={sseReadTimeout}
+                    onChange={e => setSseReadTimeout(Number(e.target.value))}
+                    onBlur={e => handleBlur(e.target.value.trim())}
+                    placeholder={t('mcp.modal.timeoutPlaceholder', { ns: 'tools' })}
+                  />
+                </div>
+              </>
+            )
+          }
         </div>
-        <div className='flex flex-row-reverse pt-5'>
-          <Button disabled={!name || !url || !serverIdentifier || isFetchingIcon} className='ml-2' variant='primary' onClick={submit}>{data ? t('tools.mcp.modal.save') : t('tools.mcp.modal.confirm')}</Button>
-          <Button onClick={onHide}>{t('tools.mcp.modal.cancel')}</Button>
+        <div className="flex flex-row-reverse pt-5">
+          <Button disabled={!name || !url || !serverIdentifier || isFetchingIcon} className="ml-2" variant="primary" onClick={submit}>{data ? t('mcp.modal.save', { ns: 'tools' }) : t('mcp.modal.confirm', { ns: 'tools' })}</Button>
+          <Button onClick={onHide}>{t('mcp.modal.cancel', { ns: 'tools' })}</Button>
         </div>
       </Modal>
-      {showAppIconPicker && <AppIconPicker
-        onSelect={(payload) => {
-          setAppIcon(payload)
-          setShowAppIconPicker(false)
-        }}
-        onClose={() => {
-          setAppIcon(getIcon(data))
-          setShowAppIconPicker(false)
-        }}
-      />}
+      {showAppIconPicker && (
+        <AppIconPicker
+          onSelect={(payload) => {
+            setAppIcon(payload)
+            setShowAppIconPicker(false)
+          }}
+          onClose={() => {
+            setAppIcon(getIcon(data))
+            setShowAppIconPicker(false)
+          }}
+        />
+      )}
     </>
 
   )

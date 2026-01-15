@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from decimal import Decimal
 from enum import StrEnum
-from typing import Any, Optional, TypedDict, Union
+from typing import Any, TypedDict, Union
 
 from pydantic import BaseModel, Field
 
@@ -38,6 +38,8 @@ class LLMUsageMetadata(TypedDict, total=False):
     prompt_price: Union[float, str]
     completion_price: Union[float, str]
     latency: float
+    time_to_first_token: float
+    time_to_generate: float
 
 
 class LLMUsage(ModelUsage):
@@ -57,6 +59,8 @@ class LLMUsage(ModelUsage):
     total_price: Decimal
     currency: str
     latency: float
+    time_to_first_token: float | None = None
+    time_to_generate: float | None = None
 
     @classmethod
     def empty_usage(cls):
@@ -73,6 +77,8 @@ class LLMUsage(ModelUsage):
             total_price=Decimal("0.0"),
             currency="USD",
             latency=0.0,
+            time_to_first_token=None,
+            time_to_generate=None,
         )
 
     @classmethod
@@ -108,6 +114,8 @@ class LLMUsage(ModelUsage):
             prompt_price=Decimal(str(metadata.get("prompt_price", 0))),
             completion_price=Decimal(str(metadata.get("completion_price", 0))),
             latency=metadata.get("latency", 0.0),
+            time_to_first_token=metadata.get("time_to_first_token"),
+            time_to_generate=metadata.get("time_to_generate"),
         )
 
     def plus(self, other: LLMUsage) -> LLMUsage:
@@ -133,6 +141,8 @@ class LLMUsage(ModelUsage):
                 total_price=self.total_price + other.total_price,
                 currency=other.currency,
                 latency=self.latency + other.latency,
+                time_to_first_token=other.time_to_first_token,
+                time_to_generate=other.time_to_generate,
             )
 
     def __add__(self, other: LLMUsage) -> LLMUsage:
@@ -150,12 +160,13 @@ class LLMResult(BaseModel):
     Model class for llm result.
     """
 
-    id: Optional[str] = None
+    id: str | None = None
     model: str
     prompt_messages: Sequence[PromptMessage] = Field(default_factory=list)
     message: AssistantPromptMessage
     usage: LLMUsage
-    system_fingerprint: Optional[str] = None
+    system_fingerprint: str | None = None
+    reasoning_content: str | None = None
 
 
 class LLMStructuredOutput(BaseModel):
@@ -163,7 +174,7 @@ class LLMStructuredOutput(BaseModel):
     Model class for llm structured output.
     """
 
-    structured_output: Optional[Mapping[str, Any]] = None
+    structured_output: Mapping[str, Any] | None = None
 
 
 class LLMResultWithStructuredOutput(LLMResult, LLMStructuredOutput):
@@ -179,8 +190,8 @@ class LLMResultChunkDelta(BaseModel):
 
     index: int
     message: AssistantPromptMessage
-    usage: Optional[LLMUsage] = None
-    finish_reason: Optional[str] = None
+    usage: LLMUsage | None = None
+    finish_reason: str | None = None
 
 
 class LLMResultChunk(BaseModel):
@@ -190,7 +201,7 @@ class LLMResultChunk(BaseModel):
 
     model: str
     prompt_messages: Sequence[PromptMessage] = Field(default_factory=list)
-    system_fingerprint: Optional[str] = None
+    system_fingerprint: str | None = None
     delta: LLMResultChunkDelta
 
 

@@ -1,32 +1,33 @@
+import type { WorkflowNodesMap } from './node'
+import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { mergeRegister } from '@lexical/utils'
+import {
+  COMMAND_PRIORITY_EDITOR,
+} from 'lexical'
 import {
   memo,
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  COMMAND_PRIORITY_EDITOR,
-} from 'lexical'
-import { mergeRegister } from '@lexical/utils'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { useReactFlow, useStoreApi } from 'reactflow'
+import Tooltip from '@/app/components/base/tooltip'
+import { isConversationVar, isENV, isGlobalVar, isRagVariableVar, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import VarFullPathPanel from '@/app/components/workflow/nodes/_base/components/variable/var-full-path-panel'
+import {
+  VariableLabelInEditor,
+} from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
+import { Type } from '@/app/components/workflow/nodes/llm/types'
+import { isExceptionVariable } from '@/app/components/workflow/utils'
 import { useSelectOrDelete } from '../../hooks'
-import type { WorkflowNodesMap } from './node'
-import { WorkflowVariableBlockNode } from './node'
 import {
   DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND,
   UPDATE_WORKFLOW_NODES_MAP,
 } from './index'
-import { isConversationVar, isENV, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import Tooltip from '@/app/components/base/tooltip'
-import { isExceptionVariable } from '@/app/components/workflow/utils'
-import VarFullPathPanel from '@/app/components/workflow/nodes/_base/components/variable/var-full-path-panel'
-import { Type } from '@/app/components/workflow/nodes/llm/types'
-import type { ValueSelector, Var } from '@/app/components/workflow/types'
-import {
-  VariableLabelInEditor,
-} from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
+import { WorkflowVariableBlockNode } from './node'
 
 type WorkflowVariableBlockComponentProps = {
   nodeKey: string
@@ -34,9 +35,10 @@ type WorkflowVariableBlockComponentProps = {
   workflowNodesMap: WorkflowNodesMap
   environmentVariables?: Var[]
   conversationVariables?: Var[]
+  ragVariables?: Var[]
   getVarType?: (payload: {
-    nodeId: string,
-    valueSelector: ValueSelector,
+    nodeId: string
+    valueSelector: ValueSelector
   }) => Type
 }
 
@@ -47,12 +49,14 @@ const WorkflowVariableBlockComponent = ({
   getVarType,
   environmentVariables,
   conversationVariables,
+  ragVariables,
 }: WorkflowVariableBlockComponentProps) => {
   const { t } = useTranslation()
   const [editor] = useLexicalComposerContext()
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND)
   const variablesLength = variables.length
-  const isShowAPart = variablesLength > 2
+  const isRagVar = isRagVariableVar(variables)
+  const isShowAPart = variablesLength > 2 && !isRagVar
   const varName = (
     () => {
       const isSystem = isSystemVar(variables)
@@ -61,23 +65,34 @@ const WorkflowVariableBlockComponent = ({
     }
   )()
   const [localWorkflowNodesMap, setLocalWorkflowNodesMap] = useState<WorkflowNodesMap>(workflowNodesMap)
-  const node = localWorkflowNodesMap![variables[0]]
-  const isEnv = isENV(variables)
-  const isChatVar = isConversationVar(variables)
-  const isException = isExceptionVariable(varName, node?.type)
+  const node = localWorkflowNodesMap![variables[isRagVar ? 1 : 0]]
 
-  let variableValid = true
-  if (isEnv) {
-    if (environmentVariables)
-      variableValid = environmentVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
-  }
-  else if (isChatVar) {
-    if (conversationVariables)
-      variableValid = conversationVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
-  }
-  else {
-    variableValid = !!node
-  }
+  const isException = isExceptionVariable(varName, node?.type)
+  const variableValid = useMemo(() => {
+    let variableValid = true
+    const isEnv = isENV(variables)
+    const isChatVar = isConversationVar(variables)
+    const isGlobal = isGlobalVar(variables)
+    if (isGlobal)
+      return true
+
+    if (isEnv) {
+      if (environmentVariables)
+        variableValid = environmentVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
+    }
+    else if (isChatVar) {
+      if (conversationVariables)
+        variableValid = conversationVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
+    }
+    else if (isRagVar) {
+      if (ragVariables)
+        variableValid = ragVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}.${variables?.[2] ?? ''}`)
+    }
+    else {
+      variableValid = !!node
+    }
+    return variableValid
+  }, [variables, node, environmentVariables, conversationVariables, isRagVar, ragVariables])
 
   const reactflow = useReactFlow()
   const store = useStoreApi()
@@ -129,7 +144,7 @@ const WorkflowVariableBlockComponent = ({
         handleVariableJump()
       }}
       isExceptionVariable={isException}
-      errorMsg={!variableValid ? t('workflow.errorMsg.invalidVariable') : undefined}
+      errorMsg={!variableValid ? t('errorMsg.invalidVariable', { ns: 'workflow' }) : undefined}
       isSelected={isSelected}
       ref={ref}
       notShowFullPath={isShowAPart}
@@ -142,16 +157,19 @@ const WorkflowVariableBlockComponent = ({
   return (
     <Tooltip
       noDecoration
-      popupContent={
+      popupContent={(
         <VarFullPathPanel
           nodeName={node.title}
           path={variables.slice(1)}
-          varType={getVarType ? getVarType({
-            nodeId: variables[0],
-            valueSelector: variables,
-          }) : Type.string}
+          varType={getVarType
+            ? getVarType({
+                nodeId: variables[0],
+                valueSelector: variables,
+              })
+            : Type.string}
           nodeType={node?.type}
-        />}
+        />
+      )}
       disabled={!isShowAPart}
     >
       <div>{Item}</div>

@@ -417,6 +417,7 @@ html[data-theme="light"] {
   --color-background-overlay-destructive: rgb(240 68 56 / 0.3);
   --color-background-overlay-backdrop: rgb(242 244 247 / 0.95);
   --color-background-body-transparent: rgb(242 244 247 / 0);
+  --color-background-section-burn-inverted: #f2f4f7;
 
   --color-shadow-shadow-1: rgb(9 9 11 / 0.03);
   --color-shadow-shadow-3: rgb(9 9 11 / 0.05);

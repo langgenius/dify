@@ -58,8 +58,8 @@ export type ExternalToolBlockType = {
 }
 
 export type GetVarType = (payload: {
-  nodeId: string,
-  valueSelector: ValueSelector,
+  nodeId: string
+  valueSelector: ValueSelector
 }) => Type
 
 export type WorkflowVariableBlockType = {
@@ -69,6 +69,8 @@ export type WorkflowVariableBlockType = {
   onInsert?: () => void
   onDelete?: () => void
   getVarType?: GetVarType
+  showManageInputField?: boolean
+  onManageInputField?: () => void
 }
 
 export type MenuTextMatch = {

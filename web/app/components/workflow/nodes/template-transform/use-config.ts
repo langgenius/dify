@@ -1,19 +1,19 @@
-import { useCallback, useEffect, useRef } from 'react'
-import produce from 'immer'
-import useVarList from '../_base/hooks/use-var-list'
 import type { Var, Variable } from '../../types'
-import { VarType } from '../../types'
-import { useStore } from '../../store'
 import type { TemplateTransformNodeType } from './types'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { produce } from 'immer'
+import { useCallback, useEffect, useRef } from 'react'
 import {
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
+import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { useStore } from '../../store'
+import { VarType } from '../../types'
+import useVarList from '../_base/hooks/use-var-list'
 
 const useConfig = (id: string, payload: TemplateTransformNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
-  const defaultConfig = useStore(s => s.nodesDefaultConfigs)[payload.type]
+  const defaultConfig = useStore(s => s.nodesDefaultConfigs)?.[payload.type]
 
   const { inputs, setInputs: doSetInputs } = useNodeCrud<TemplateTransformNodeType>(id, payload)
   const inputsRef = useRef(inputs)
@@ -65,7 +65,6 @@ const useConfig = (id: string, payload: TemplateTransformNodeType) => {
         ...defaultConfig,
       })
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultConfig])
 
   const handleCodeChange = useCallback((template: string) => {
@@ -76,7 +75,7 @@ const useConfig = (id: string, payload: TemplateTransformNodeType) => {
   }, [setInputs])
 
   const filterVar = useCallback((varPayload: Var) => {
-    return [VarType.string, VarType.number, VarType.object, VarType.array, VarType.arrayNumber, VarType.arrayString, VarType.arrayObject].includes(varPayload.type)
+    return [VarType.string, VarType.number, VarType.boolean, VarType.object, VarType.array, VarType.arrayNumber, VarType.arrayString, VarType.arrayBoolean, VarType.arrayObject].includes(varPayload.type)
   }, [])
 
   return {

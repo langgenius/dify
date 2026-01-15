@@ -1,48 +1,59 @@
-import data from './languages.json'
+import data from './languages'
+
 export type Item = {
   value: number | string
   name: string
   example: string
 }
 
-export type I18nText = {
-  'en-US': string
-  'zh-Hans': string
-  'pt-BR': string
-  'es-ES': string
-  'fr-FR': string
-  'de-DE': string
-  'ja-JP': string
-  'ko-KR': string
-  'ru-RU': string
-  'it-IT': string
-  'uk-UA': string
-  'vi-VN': string
-  'de_DE': string
-  'zh_Hant': string
-  'ro-RO': string
-  'pl-PL': string
-  'hi-IN': string
-  'fa-IR': string
-  'sl-SI': string
-  'th-TH': string
-}
+export type I18nText = Record<typeof LanguagesSupported[number], string>
 
 export const languages = data.languages
 
-export const LanguagesSupported = languages.filter(item => item.supported).map(item => item.value)
+// for compatibility
+export type Locale = 'ja_JP' | 'zh_Hans' | 'en_US' | (typeof languages[number])['value']
 
-export const getLanguage = (locale: string) => {
+export const LanguagesSupported: Locale[] = languages.filter(item => item.supported).map(item => item.value)
+
+export const getLanguage = (locale: Locale): Locale => {
   if (['zh-Hans', 'ja-JP'].includes(locale))
-    return locale.replace('-', '_')
+    return locale.replace('-', '_') as Locale
 
-  return LanguagesSupported[0].replace('-', '_')
+  return LanguagesSupported[0].replace('-', '_') as Locale
 }
 
 const DOC_LANGUAGE: Record<string, string> = {
   'zh-Hans': 'zh-hans',
   'ja-JP': 'ja-jp',
   'en-US': 'en',
+}
+
+export const localeMap: Record<Locale, string> = {
+  'en-US': 'en',
+  'en_US': 'en',
+  'zh-Hans': 'zh-cn',
+  'zh_Hans': 'zh-cn',
+  'zh-Hant': 'zh-tw',
+  'pt-BR': 'pt-br',
+  'es-ES': 'es',
+  'fr-FR': 'fr',
+  'de-DE': 'de',
+  'ja-JP': 'ja',
+  'ja_JP': 'ja',
+  'ko-KR': 'ko',
+  'ru-RU': 'ru',
+  'it-IT': 'it',
+  'th-TH': 'th',
+  'id-ID': 'id',
+  'uk-UA': 'uk',
+  'vi-VN': 'vi',
+  'ro-RO': 'ro',
+  'pl-PL': 'pl',
+  'hi-IN': 'hi',
+  'tr-TR': 'tr',
+  'fa-IR': 'fa',
+  'sl-SI': 'sl',
+  'ar-TN': 'ar',
 }
 
 export const getDocLanguage = (locale: string) => {
@@ -61,20 +72,26 @@ export const NOTICE_I18N = {
   title: {
     en_US: 'Important Notice',
     zh_Hans: '重要公告',
+    zh_Hant: '重要公告',
     pt_BR: 'Aviso Importante',
     es_ES: 'Aviso Importante',
     fr_FR: 'Avis important',
     de_DE: 'Wichtiger Hinweis',
     ja_JP: '重要なお知らせ',
     ko_KR: '중요 공지',
-    pl_PL: 'Ważne ogłoszenie',
-    uk_UA: 'Важливе повідомлення',
     ru_RU: 'Важное Уведомление',
-    vi_VN: 'Thông báo quan trọng',
     it_IT: 'Avviso Importante',
+    th_TH: 'ประกาศสำคัญ',
+    id_ID: 'Pengumuman Penting',
+    uk_UA: 'Важливе повідомлення',
+    vi_VN: 'Thông báo quan trọng',
+    ro_RO: 'Anunț Important',
+    pl_PL: 'Ważne ogłoszenie',
+    hi_IN: 'महत्वपूर्ण सूचना',
+    tr_TR: 'Önemli Duyuru',
     fa_IR: 'هشدار مهم',
     sl_SI: 'Pomembno obvestilo',
-    th_TH: 'ประกาศสำคัญ',
+    ar_TN: 'إشعار مهم',
   },
   desc: {
     en_US:
@@ -101,6 +118,8 @@ export const NOTICE_I18N = {
       'Наша система будет недоступна с 19:00 до 24:00 UTC 28 августа для обновления. По вопросам, пожалуйста, обращайтесь в нашу службу поддержки (support@dify.ai). Спасибо за ваше терпение',
     vi_VN:
       'Hệ thống của chúng tôi sẽ ngừng hoạt động từ 19:00 đến 24:00 UTC vào ngày 28 tháng 8 để nâng cấp. Nếu có thắc mắc, vui lòng liên hệ với nhóm hỗ trợ của chúng tôi (support@dify.ai). Chúng tôi đánh giá cao sự kiên nhẫn của bạn.',
+    id_ID:
+      'Sistem kami tidak akan tersedia dari 19:00 hingga 24:00 UTC pada 28 Agustus untuk pemutakhiran. Untuk pertanyaan, silakan hubungi tim dukungan kami (support@dify.ai). Kami menghargai kesabaran Anda.',
     tr_TR:
       'Sistemimiz, 28 Ağustos\'ta 19:00 ile 24:00 UTC saatleri arasında güncelleme nedeniyle kullanılamayacaktır. Sorularınız için lütfen destek ekibimizle iletişime geçin (support@dify.ai). Sabrınız için teşekkür ederiz.',
     fa_IR:
@@ -109,6 +128,8 @@ export const NOTICE_I18N = {
       'Naš sistem ne bo na voljo od 19:00 do 24:00 UTC 28. avgusta zaradi nadgradnje. Za vprašanja se obrnite na našo skupino za podporo (support@dify.ai). Cenimo vašo potrpežljivost.',
     th_TH:
       'ระบบของเราจะไม่สามารถใช้งานได้ตั้งแต่เวลา 19:00 ถึง 24:00 UTC ในวันที่ 28 สิงหาคม เพื่อทำการอัปเกรด หากมีคำถามใดๆ กรุณาติดต่อทีมสนับสนุนของเรา (support@dify.ai) เราขอขอบคุณในความอดทนของท่าน',
+    ar_TN:
+      'سيكون نظامنا غير متاح من الساعة 19:00 إلى 24:00 بالتوقيت العالمي المنسق في 28 أغسطس لإجراء ترقية. للأسئلة، يرجى الاتصال بفريق الدعم لدينا (support@dify.ai). نحن نقدر صبرك.',
   },
   href: '#',
 }

@@ -1,7 +1,8 @@
+import type { VariantProps } from 'class-variance-authority'
 import type { CSSProperties } from 'react'
-import React from 'react'
-import { type VariantProps, cva } from 'class-variance-authority'
-import cn from '@/utils/classnames'
+import { cva } from 'class-variance-authority'
+import * as React from 'react'
+import { cn } from '@/utils/classnames'
 
 const textareaVariants = cva(
   '',
@@ -20,17 +21,22 @@ const textareaVariants = cva(
 )
 
 export type TextareaProps = {
-  value: string
+  value: string | number
   disabled?: boolean
   destructive?: boolean
   styleCss?: CSSProperties
+  ref?: React.Ref<HTMLTextAreaElement>
+  onFocus?: React.FocusEventHandler<HTMLTextAreaElement>
+  onBlur?: React.FocusEventHandler<HTMLTextAreaElement>
 } & React.TextareaHTMLAttributes<HTMLTextAreaElement> & VariantProps<typeof textareaVariants>
 
 const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
-  ({ className, value, onChange, disabled, size, destructive, styleCss, ...props }, ref) => {
+  ({ className, value, onChange, disabled, size, destructive, styleCss, onFocus, onBlur, ...props }, ref) => {
     return (
       <textarea
         ref={ref}
+        onFocus={onFocus}
+        onBlur={onBlur}
         style={styleCss}
         className={cn(
           'min-h-20 w-full appearance-none border border-transparent bg-components-input-bg-normal p-2 text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs',

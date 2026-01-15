@@ -2,7 +2,7 @@ import json
 import logging
 from collections.abc import Generator
 from copy import deepcopy
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 from core.agent.base_agent_runner import BaseAgentRunner
 from core.app.apps.base_app_queue_manager import PublishFrom
@@ -25,6 +25,7 @@ from core.model_runtime.entities.message_entities import ImagePromptMessageConte
 from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
 from core.tools.entities.tool_entities import ToolInvokeMeta
 from core.tools.tool_engine import ToolEngine
+from core.workflow.nodes.agent.exc import AgentMaxIterationError
 from models.model import Message
 
 logger = logging.getLogger(__name__)
@@ -52,13 +53,14 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
         # continue to run until there is not any tool call
         function_call_state = True
-        llm_usage: dict[str, Optional[LLMUsage]] = {"usage": None}
+        llm_usage: dict[str, LLMUsage | None] = {"usage": None}
         final_answer = ""
+        prompt_messages: list = []  # Initialize prompt_messages
 
         # get tracing instance
         trace_manager = app_generate_entity.trace_manager
 
-        def increase_usage(final_llm_usage_dict: dict[str, Optional[LLMUsage]], usage: LLMUsage):
+        def increase_usage(final_llm_usage_dict: dict[str, LLMUsage | None], usage: LLMUsage):
             if not final_llm_usage_dict["usage"]:
                 final_llm_usage_dict["usage"] = usage
             else:
@@ -126,8 +128,8 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                             tool_call_inputs = json.dumps(
                                 {tool_call[1]: tool_call[2] for tool_call in tool_calls}, ensure_ascii=False
                             )
-                        except json.JSONDecodeError:
-                            # ensure ascii to avoid encoding error
+                        except TypeError:
+                            # fallback: force ASCII to handle non-serializable objects
                             tool_call_inputs = json.dumps({tool_call[1]: tool_call[2] for tool_call in tool_calls})
 
                     if chunk.delta.message and chunk.delta.message.content:
@@ -153,8 +155,8 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         tool_call_inputs = json.dumps(
                             {tool_call[1]: tool_call[2] for tool_call in tool_calls}, ensure_ascii=False
                         )
-                    except json.JSONDecodeError:
-                        # ensure ascii to avoid encoding error
+                    except TypeError:
+                        # fallback: force ASCII to handle non-serializable objects
                         tool_call_inputs = json.dumps({tool_call[1]: tool_call[2] for tool_call in tool_calls})
 
                 if result.usage:
@@ -186,7 +188,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     ),
                 )
 
-            assistant_message = AssistantPromptMessage(content="", tool_calls=[])
+            assistant_message = AssistantPromptMessage(content=response, tool_calls=[])
             if tool_calls:
                 assistant_message.tool_calls = [
                     AssistantPromptMessage.ToolCall(
@@ -198,8 +200,6 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     )
                     for tool_call in tool_calls
                 ]
-            else:
-                assistant_message.content = response
 
             self._current_thoughts.append(assistant_message)
 
@@ -220,6 +220,10 @@ class FunctionCallAgentRunner(BaseAgentRunner):
             )
 
             final_answer += response + "\n"
+
+            # Check if max iteration is reached and model still wants to call tools
+            if iteration_step == max_iteration_steps and tool_calls:
+                raise AgentMaxIterationError(app_config.agent.max_iteration)
 
             # call tools
             tool_responses = []

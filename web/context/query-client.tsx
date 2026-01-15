@@ -1,23 +1,30 @@
 'use client'
 
+import type { QueryClient } from '@tanstack/react-query'
 import type { FC, PropsWithChildren } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { useState } from 'react'
+import { TanStackDevtoolsLoader } from '@/app/components/devtools/tanstack/loader'
+import { isServer } from '@/utils/client'
+import { makeQueryClient } from './query-client-server'
 
-const STALE_TIME = 1000 * 60 * 30 // 30 minutes
+let browserQueryClient: QueryClient | undefined
 
-const client = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: STALE_TIME,
-    },
-  },
-})
+function getQueryClient() {
+  if (isServer) {
+    return makeQueryClient()
+  }
+  if (!browserQueryClient)
+    browserQueryClient = makeQueryClient()
+  return browserQueryClient
+}
 
-export const TanstackQueryInitializer: FC<PropsWithChildren> = (props) => {
-  const { children } = props
-  return <QueryClientProvider client={client}>
-    {children}
-    <ReactQueryDevtools initialIsOpen={false} />
-  </QueryClientProvider>
+export const TanstackQueryInitializer: FC<PropsWithChildren> = ({ children }) => {
+  const [queryClient] = useState(getQueryClient)
+  return (
+    <QueryClientProvider client={queryClient}>
+      {children}
+      <TanStackDevtoolsLoader />
+    </QueryClientProvider>
+  )
 }

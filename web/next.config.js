@@ -1,6 +1,9 @@
-const { basePath, assetPrefix } = require('./utils/var-basePath')
-const { codeInspectorPlugin } = require('code-inspector-plugin')
-const withMDX = require('@next/mdx')({
+import withBundleAnalyzerInit from '@next/bundle-analyzer'
+import createMDX from '@next/mdx'
+import { codeInspectorPlugin } from 'code-inspector-plugin'
+
+const isDev = process.env.NODE_ENV === 'development'
+const withMDX = createMDX({
   extension: /\.mdx?$/,
   options: {
     // If you use remark-gfm, you'll need to use next.config.mjs
@@ -12,7 +15,7 @@ const withMDX = require('@next/mdx')({
     // providerImportSource: "@mdx-js/react",
   },
 })
-const withBundleAnalyzer = require('@next/bundle-analyzer')({
+const withBundleAnalyzer = withBundleAnalyzerInit({
   enabled: process.env.ANALYZE === 'true',
 })
 
@@ -24,11 +27,13 @@ const remoteImageURLs = [hasSetWebPrefix ? new URL(`${process.env.NEXT_PUBLIC_WE
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  basePath,
-  assetPrefix,
-  webpack: (config, { dev, isServer }) => {
-    config.plugins.push(codeInspectorPlugin({ bundler: 'webpack' }))
-    return config
+  basePath: process.env.NEXT_PUBLIC_BASE_PATH || '',
+  serverExternalPackages: ['esbuild-wasm'],
+  transpilePackages: ['echarts', 'zrender'],
+  turbopack: {
+    rules: codeInspectorPlugin({
+      bundler: 'turbopack',
+    }),
   },
   productionBrowserSourceMaps: false, // enable browser source map generation during the production build
   // Configure pageExtensions to include md and mdx
@@ -44,6 +49,9 @@ const nextConfig = {
     })),
   },
   experimental: {
+    optimizePackageImports: [
+      '@heroicons/react',
+    ],
   },
   // fix all before production. Now it slow the develop speed.
   eslint: {
@@ -67,6 +75,9 @@ const nextConfig = {
     ]
   },
   output: 'standalone',
+  compiler: {
+    removeConsole: isDev ? false : { exclude: ['warn', 'error'] },
+  },
 }
 
-module.exports = withBundleAnalyzer(withMDX(nextConfig))
+export default withBundleAnalyzer(withMDX(nextConfig))

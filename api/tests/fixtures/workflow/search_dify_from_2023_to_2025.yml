@@ -1,0 +1,760 @@
+app:
+  description: ''
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  mode: advanced-chat
+  name: search_dify_from_2023_to_2025
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/perplexity:1.0.1@32531e4a1ec68754e139f29f04eaa7f51130318a908d11382a27dc05ec8d91e3
+kind: app
+version: 0.3.1
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        image_file_size_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: loop
+      id: 1754979518055-source-1754979524910-target
+      selected: false
+      source: '1754979518055'
+      sourceHandle: source
+      target: '1754979524910'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: true
+        loop_id: '1754979524910'
+        sourceType: loop-start
+        targetType: tool
+      id: 1754979524910start-source-1754979561786-target
+      source: 1754979524910start
+      sourceHandle: source
+      target: '1754979561786'
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data:
+        isInIteration: false
+        isInLoop: true
+        loop_id: '1754979524910'
+        sourceType: tool
+        targetType: assigner
+      id: 1754979561786-source-1754979613854-target
+      source: '1754979561786'
+      sourceHandle: source
+      target: '1754979613854'
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: loop
+        targetType: answer
+      id: 1754979524910-source-1754979638585-target
+      source: '1754979524910'
+      sourceHandle: source
+      target: '1754979638585'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: ''
+        selected: false
+        title: Start
+        type: start
+        variables: []
+      height: 54
+      id: '1754979518055'
+      position:
+        x: 80
+        y: 282
+      positionAbsolute:
+        x: 80
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        break_conditions:
+        - comparison_operator: '='
+          id: 0dcbf179-29cf-4eed-bab5-94fec50c3990
+          value: '2025'
+          varType: number
+          variable_selector:
+          - '1754979524910'
+          - year
+        desc: ''
+        error_handle_mode: terminated
+        height: 464
+        logical_operator: and
+        loop_count: 10
+        loop_variables:
+        - id: ca43e695-1c11-4106-ad66-2d7a7ce28836
+          label: year
+          value: '2023'
+          value_type: constant
+          var_type: number
+        - id: 3a67e4ad-9fa1-49cb-8aaa-a40fdc1ac180
+          label: res
+          value: '[]'
+          value_type: constant
+          var_type: array[string]
+        selected: false
+        start_node_id: 1754979524910start
+        title: Loop
+        type: loop
+        width: 779
+      height: 464
+      id: '1754979524910'
+      position:
+        x: 384
+        y: 282
+      positionAbsolute:
+        x: 384
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 779
+      zIndex: 1
+    - data:
+        desc: ''
+        isInLoop: true
+        selected: false
+        title: ''
+        type: loop-start
+      draggable: false
+      height: 48
+      id: 1754979524910start
+      parentId: '1754979524910'
+      position:
+        x: 24
+        y: 68
+      positionAbsolute:
+        x: 408
+        y: 350
+      selectable: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom-loop-start
+      width: 44
+      zIndex: 1002
+    - data:
+        desc: ''
+        isInIteration: false
+        isInLoop: true
+        is_team_authorization: true
+        loop_id: '1754979524910'
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: The text query to be processed by the AI model.
+            ja_JP: The text query to be processed by the AI model.
+            pt_BR: The text query to be processed by the AI model.
+            zh_Hans: 要由 AI 模型处理的文本查询。
+          label:
+            en_US: Query
+            ja_JP: Query
+            pt_BR: Query
+            zh_Hans: 查询
+          llm_description: ''
+          max: null
+          min: null
+          name: query
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: sonar
+          form: form
+          human_description:
+            en_US: The Perplexity AI model to use for generating the response.
+            ja_JP: The Perplexity AI model to use for generating the response.
+            pt_BR: The Perplexity AI model to use for generating the response.
+            zh_Hans: 用于生成响应的 Perplexity AI 模型。
+          label:
+            en_US: Model Name
+            ja_JP: Model Name
+            pt_BR: Model Name
+            zh_Hans: 模型名称
+          llm_description: ''
+          max: null
+          min: null
+          name: model
+          options:
+          - icon: ''
+            label:
+              en_US: sonar
+              ja_JP: sonar
+              pt_BR: sonar
+              zh_Hans: sonar
+            value: sonar
+          - icon: ''
+            label:
+              en_US: sonar-pro
+              ja_JP: sonar-pro
+              pt_BR: sonar-pro
+              zh_Hans: sonar-pro
+            value: sonar-pro
+          - icon: ''
+            label:
+              en_US: sonar-reasoning
+              ja_JP: sonar-reasoning
+              pt_BR: sonar-reasoning
+              zh_Hans: sonar-reasoning
+            value: sonar-reasoning
+          - icon: ''
+            label:
+              en_US: sonar-reasoning-pro
+              ja_JP: sonar-reasoning-pro
+              pt_BR: sonar-reasoning-pro
+              zh_Hans: sonar-reasoning-pro
+            value: sonar-reasoning-pro
+          - icon: ''
+            label:
+              en_US: sonar-deep-research
+              ja_JP: sonar-deep-research
+              pt_BR: sonar-deep-research
+              zh_Hans: sonar-deep-research
+            value: sonar-deep-research
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: select
+        - auto_generate: null
+          default: 4096
+          form: form
+          human_description:
+            en_US: The maximum number of tokens to generate in the response.
+            ja_JP: The maximum number of tokens to generate in the response.
+            pt_BR: O número máximo de tokens a serem gerados na resposta.
+            zh_Hans: 在响应中生成的最大令牌数。
+          label:
+            en_US: Max Tokens
+            ja_JP: Max Tokens
+            pt_BR: Máximo de Tokens
+            zh_Hans: 最大令牌数
+          llm_description: ''
+          max: 4096
+          min: 1
+          name: max_tokens
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: 0.7
+          form: form
+          human_description:
+            en_US: Controls randomness in the output. Lower values make the output
+              more focused and deterministic.
+            ja_JP: Controls randomness in the output. Lower values make the output
+              more focused and deterministic.
+            pt_BR: Controls randomness in the output. Lower values make the output
+              more focused and deterministic.
+            zh_Hans: 控制输出的随机性。较低的值使输出更加集中和确定。
+          label:
+            en_US: Temperature
+            ja_JP: Temperature
+            pt_BR: Temperatura
+            zh_Hans: 温度
+          llm_description: ''
+          max: 1
+          min: 0
+          name: temperature
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: 5
+          form: form
+          human_description:
+            en_US: The number of top results to consider for response generation.
+            ja_JP: The number of top results to consider for response generation.
+            pt_BR: The number of top results to consider for response generation.
+            zh_Hans: 用于生成响应的顶部结果数量。
+          label:
+            en_US: Top K
+            ja_JP: Top K
+            pt_BR: Top K
+            zh_Hans: 取样数量
+          llm_description: ''
+          max: 100
+          min: 1
+          name: top_k
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: 1
+          form: form
+          human_description:
+            en_US: Controls diversity via nucleus sampling.
+            ja_JP: Controls diversity via nucleus sampling.
+            pt_BR: Controls diversity via nucleus sampling.
+            zh_Hans: 通过核心采样控制多样性。
+          label:
+            en_US: Top P
+            ja_JP: Top P
+            pt_BR: Top P
+            zh_Hans: Top P
+          llm_description: ''
+          max: 1
+          min: 0.1
+          name: top_p
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: 0
+          form: form
+          human_description:
+            en_US: Positive values penalize new tokens based on whether they appear
+              in the text so far.
+            ja_JP: Positive values penalize new tokens based on whether they appear
+              in the text so far.
+            pt_BR: Positive values penalize new tokens based on whether they appear
+              in the text so far.
+            zh_Hans: 正值会根据新词元是否已经出现在文本中来对其进行惩罚。
+          label:
+            en_US: Presence Penalty
+            ja_JP: Presence Penalty
+            pt_BR: Presence Penalty
+            zh_Hans: 存在惩罚
+          llm_description: ''
+          max: 1
+          min: -1
+          name: presence_penalty
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: 1
+          form: form
+          human_description:
+            en_US: Positive values penalize new tokens based on their existing frequency
+              in the text so far.
+            ja_JP: Positive values penalize new tokens based on their existing frequency
+              in the text so far.
+            pt_BR: Positive values penalize new tokens based on their existing frequency
+              in the text so far.
+            zh_Hans: 正值会根据新词元在文本中已经出现的频率来对其进行惩罚。
+          label:
+            en_US: Frequency Penalty
+            ja_JP: Frequency Penalty
+            pt_BR: Frequency Penalty
+            zh_Hans: 频率惩罚
+          llm_description: ''
+          max: 1
+          min: 0.1
+          name: frequency_penalty
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: 0
+          form: form
+          human_description:
+            en_US: Whether to return images in the response.
+            ja_JP: Whether to return images in the response.
+            pt_BR: Whether to return images in the response.
+            zh_Hans: 是否在响应中返回图像。
+          label:
+            en_US: Return Images
+            ja_JP: Return Images
+            pt_BR: Return Images
+            zh_Hans: 返回图像
+          llm_description: ''
+          max: null
+          min: null
+          name: return_images
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: boolean
+        - auto_generate: null
+          default: 0
+          form: form
+          human_description:
+            en_US: Whether to return related questions in the response.
+            ja_JP: Whether to return related questions in the response.
+            pt_BR: Whether to return related questions in the response.
+            zh_Hans: 是否在响应中返回相关问题。
+          label:
+            en_US: Return Related Questions
+            ja_JP: Return Related Questions
+            pt_BR: Return Related Questions
+            zh_Hans: 返回相关问题
+          llm_description: ''
+          max: null
+          min: null
+          name: return_related_questions
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: boolean
+        - auto_generate: null
+          default: ''
+          form: form
+          human_description:
+            en_US: Domain to filter the search results. Use comma to separate multiple
+              domains. Up to 3 domains are supported.
+            ja_JP: Domain to filter the search results. Use comma to separate multiple
+              domains. Up to 3 domains are supported.
+            pt_BR: Domain to filter the search results. Use comma to separate multiple
+              domains. Up to 3 domains are supported.
+            zh_Hans: 用于过滤搜索结果的域名。使用逗号分隔多个域名。最多支持3个域名。
+          label:
+            en_US: Search Domain Filter
+            ja_JP: Search Domain Filter
+            pt_BR: Search Domain Filter
+            zh_Hans: 搜索域过滤器
+          llm_description: ''
+          max: null
+          min: null
+          name: search_domain_filter
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: month
+          form: form
+          human_description:
+            en_US: Filter for search results based on recency.
+            ja_JP: Filter for search results based on recency.
+            pt_BR: Filter for search results based on recency.
+            zh_Hans: 基于时间筛选搜索结果。
+          label:
+            en_US: Search Recency Filter
+            ja_JP: Search Recency Filter
+            pt_BR: Search Recency Filter
+            zh_Hans: 搜索时间过滤器
+          llm_description: ''
+          max: null
+          min: null
+          name: search_recency_filter
+          options:
+          - icon: ''
+            label:
+              en_US: Day
+              ja_JP: Day
+              pt_BR: Day
+              zh_Hans: 天
+            value: day
+          - icon: ''
+            label:
+              en_US: Week
+              ja_JP: Week
+              pt_BR: Week
+              zh_Hans: 周
+            value: week
+          - icon: ''
+            label:
+              en_US: Month
+              ja_JP: Month
+              pt_BR: Month
+              zh_Hans: 月
+            value: month
+          - icon: ''
+            label:
+              en_US: Year
+              ja_JP: Year
+              pt_BR: Year
+              zh_Hans: 年
+            value: year
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: select
+        - auto_generate: null
+          default: low
+          form: form
+          human_description:
+            en_US: Determines how much search context is retrieved for the model.
+            ja_JP: Determines how much search context is retrieved for the model.
+            pt_BR: Determines how much search context is retrieved for the model.
+            zh_Hans: 确定模型检索的搜索上下文量。
+          label:
+            en_US: Search Context Size
+            ja_JP: Search Context Size
+            pt_BR: Search Context Size
+            zh_Hans: 搜索上下文大小
+          llm_description: ''
+          max: null
+          min: null
+          name: search_context_size
+          options:
+          - icon: ''
+            label:
+              en_US: Low
+              ja_JP: Low
+              pt_BR: Low
+              zh_Hans: 低
+            value: low
+          - icon: ''
+            label:
+              en_US: Medium
+              ja_JP: Medium
+              pt_BR: Medium
+              zh_Hans: 中等
+            value: medium
+          - icon: ''
+            label:
+              en_US: High
+              ja_JP: High
+              pt_BR: High
+              zh_Hans: 高
+            value: high
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: select
+        params:
+          frequency_penalty: ''
+          max_tokens: ''
+          model: ''
+          presence_penalty: ''
+          query: ''
+          return_images: ''
+          return_related_questions: ''
+          search_context_size: ''
+          search_domain_filter: ''
+          search_recency_filter: ''
+          temperature: ''
+          top_k: ''
+          top_p: ''
+        provider_id: langgenius/perplexity/perplexity
+        provider_name: langgenius/perplexity/perplexity
+        provider_type: builtin
+        selected: true
+        title: Perplexity Search
+        tool_configurations:
+          frequency_penalty:
+            type: constant
+            value: 1
+          max_tokens:
+            type: constant
+            value: 4096
+          model:
+            type: constant
+            value: sonar
+          presence_penalty:
+            type: constant
+            value: 0
+          return_images:
+            type: constant
+            value: false
+          return_related_questions:
+            type: constant
+            value: false
+          search_context_size:
+            type: constant
+            value: low
+          search_domain_filter:
+            type: mixed
+            value: ''
+          search_recency_filter:
+            type: constant
+            value: month
+          temperature:
+            type: constant
+            value: 0.7
+          top_k:
+            type: constant
+            value: 5
+          top_p:
+            type: constant
+            value: 1
+        tool_description: Search information using Perplexity AI's language models.
+        tool_label: Perplexity Search
+        tool_name: perplexity
+        tool_node_version: '2'
+        tool_parameters:
+          query:
+            type: mixed
+            value: Dify.AI {{#1754979524910.year#}}
+        type: tool
+      height: 376
+      id: '1754979561786'
+      parentId: '1754979524910'
+      position:
+        x: 215
+        y: 68
+      positionAbsolute:
+        x: 599
+        y: 350
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+      zIndex: 1002
+    - data:
+        desc: ''
+        isInIteration: false
+        isInLoop: true
+        items:
+        - input_type: constant
+          operation: +=
+          value: 1
+          variable_selector:
+          - '1754979524910'
+          - year
+          write_mode: over-write
+        - input_type: variable
+          operation: append
+          value:
+          - '1754979561786'
+          - text
+          variable_selector:
+          - '1754979524910'
+          - res
+          write_mode: over-write
+        loop_id: '1754979524910'
+        selected: false
+        title: Variable Assigner
+        type: assigner
+        version: '2'
+      height: 112
+      id: '1754979613854'
+      parentId: '1754979524910'
+      position:
+        x: 510
+        y: 103
+      positionAbsolute:
+        x: 894
+        y: 385
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+      zIndex: 1002
+    - data:
+        answer: '{{#1754979524910.res#}}'
+        desc: ''
+        selected: false
+        title: Answer
+        type: answer
+        variables: []
+      height: 105
+      id: '1754979638585'
+      position:
+        x: 1223
+        y: 282
+      positionAbsolute:
+        x: 1223
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    viewport:
+      x: 30.39180609762718
+      y: -45.20947076791785
+      zoom: 0.784584097896752

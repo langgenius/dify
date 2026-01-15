@@ -2,12 +2,14 @@ import logging
 import time
 
 import click
-from celery import shared_task  # type: ignore
+from celery import shared_task
+from sqlalchemy import select
 
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_database import db
 from extensions.ext_storage import storage
+from models import WorkflowType
 from models.dataset import (
     AppDatasetJoin,
     Dataset,
@@ -17,8 +19,13 @@ from models.dataset import (
     DatasetQuery,
     Document,
     DocumentSegment,
+    Pipeline,
+    SegmentAttachmentBinding,
 )
 from models.model import UploadFile
+from models.workflow import Workflow
+
+logger = logging.getLogger(__name__)
 
 
 # Add import statement for ValueError
@@ -30,6 +37,7 @@ def clean_dataset_task(
     index_struct: str,
     collection_binding_id: str,
     doc_form: str,
+    pipeline_id: str | None = None,
 ):
     """
     Clean dataset when dataset deleted.
@@ -42,7 +50,7 @@ def clean_dataset_task(
 
     Usage: clean_dataset_task.delay(dataset_id, tenant_id, indexing_technique, index_struct)
     """
-    logging.info(click.style(f"Start clean dataset when dataset deleted: {dataset_id}", fg="green"))
+    logger.info(click.style(f"Start clean dataset when dataset deleted: {dataset_id}", fg="green"))
     start_at = time.perf_counter()
 
     try:
@@ -53,17 +61,23 @@ def clean_dataset_task(
             index_struct=index_struct,
             collection_binding_id=collection_binding_id,
         )
-        documents = db.session.query(Document).where(Document.dataset_id == dataset_id).all()
-        segments = db.session.query(DocumentSegment).where(DocumentSegment.dataset_id == dataset_id).all()
+        documents = db.session.scalars(select(Document).where(Document.dataset_id == dataset_id)).all()
+        segments = db.session.scalars(select(DocumentSegment).where(DocumentSegment.dataset_id == dataset_id)).all()
+        # Use JOIN to fetch attachments with bindings in a single query
+        attachments_with_bindings = db.session.execute(
+            select(SegmentAttachmentBinding, UploadFile)
+            .join(UploadFile, UploadFile.id == SegmentAttachmentBinding.attachment_id)
+            .where(SegmentAttachmentBinding.tenant_id == tenant_id, SegmentAttachmentBinding.dataset_id == dataset_id)
+        ).all()
 
         # Enhanced validation: Check if doc_form is None, empty string, or contains only whitespace
         # This ensures all invalid doc_form values are properly handled
         if doc_form is None or (isinstance(doc_form, str) and not doc_form.strip()):
             # Use default paragraph index type for empty/invalid datasets to enable vector database cleanup
-            from core.rag.index_processor.constant.index_type import IndexType
+            from core.rag.index_processor.constant.index_type import IndexStructureType
 
-            doc_form = IndexType.PARAGRAPH_INDEX
-            logging.info(
+            doc_form = IndexStructureType.PARAGRAPH_INDEX
+            logger.info(
                 click.style(f"Invalid doc_form detected, using default index type for cleanup: {doc_form}", fg="yellow")
             )
 
@@ -72,21 +86,22 @@ def clean_dataset_task(
         try:
             index_processor = IndexProcessorFactory(doc_form).init_index_processor()
             index_processor.clean(dataset, None, with_keywords=True, delete_child_chunks=True)
-            logging.info(click.style(f"Successfully cleaned vector database for dataset: {dataset_id}", fg="green"))
-        except Exception as index_cleanup_error:
-            logging.exception(click.style(f"Failed to clean vector database for dataset {dataset_id}", fg="red"))
+            logger.info(click.style(f"Successfully cleaned vector database for dataset: {dataset_id}", fg="green"))
+        except Exception:
+            logger.exception(click.style(f"Failed to clean vector database for dataset {dataset_id}", fg="red"))
             # Continue with document and segment deletion even if vector cleanup fails
-            logging.info(
+            logger.info(
                 click.style(f"Continuing with document and segment deletion for dataset: {dataset_id}", fg="yellow")
             )
 
         if documents is None or len(documents) == 0:
-            logging.info(click.style(f"No documents found for dataset: {dataset_id}", fg="green"))
+            logger.info(click.style(f"No documents found for dataset: {dataset_id}", fg="green"))
         else:
-            logging.info(click.style(f"Cleaning documents for dataset: {dataset_id}", fg="green"))
+            logger.info(click.style(f"Cleaning documents for dataset: {dataset_id}", fg="green"))
 
             for document in documents:
                 db.session.delete(document)
+                # delete document file
 
             for segment in segments:
                 image_upload_file_ids = get_image_upload_file_ids(segment.content)
@@ -97,13 +112,26 @@ def clean_dataset_task(
                     try:
                         storage.delete(image_file.key)
                     except Exception:
-                        logging.exception(
+                        logger.exception(
                             "Delete image_files failed when storage deleted, \
                                           image_upload_file_is: %s",
                             upload_file_id,
                         )
                     db.session.delete(image_file)
                 db.session.delete(segment)
+        # delete segment attachments
+        if attachments_with_bindings:
+            for binding, attachment_file in attachments_with_bindings:
+                try:
+                    storage.delete(attachment_file.key)
+                except Exception:
+                    logger.exception(
+                        "Delete attachment_file failed when storage deleted, \
+                                        attachment_file_id: %s",
+                        binding.attachment_id,
+                    )
+                db.session.delete(attachment_file)
+                db.session.delete(binding)
 
         db.session.query(DatasetProcessRule).where(DatasetProcessRule.dataset_id == dataset_id).delete()
         db.session.query(DatasetQuery).where(DatasetQuery.dataset_id == dataset_id).delete()
@@ -111,6 +139,14 @@ def clean_dataset_task(
         # delete dataset metadata
         db.session.query(DatasetMetadata).where(DatasetMetadata.dataset_id == dataset_id).delete()
         db.session.query(DatasetMetadataBinding).where(DatasetMetadataBinding.dataset_id == dataset_id).delete()
+        # delete pipeline and workflow
+        if pipeline_id:
+            db.session.query(Pipeline).where(Pipeline.id == pipeline_id).delete()
+            db.session.query(Workflow).where(
+                Workflow.tenant_id == tenant_id,
+                Workflow.app_id == pipeline_id,
+                Workflow.type == WorkflowType.RAG_PIPELINE,
+            ).delete()
         # delete files
         if documents:
             for document in documents:
@@ -134,7 +170,7 @@ def clean_dataset_task(
 
         db.session.commit()
         end_at = time.perf_counter()
-        logging.info(
+        logger.info(
             click.style(f"Cleaned dataset when dataset deleted: {dataset_id} latency: {end_at - start_at}", fg="green")
         )
     except Exception:
@@ -142,10 +178,10 @@ def clean_dataset_task(
         # This ensures the database session is properly cleaned up
         try:
             db.session.rollback()
-            logging.info(click.style(f"Rolled back database session for dataset: {dataset_id}", fg="yellow"))
-        except Exception as rollback_error:
-            logging.exception("Failed to rollback database session")
+            logger.info(click.style(f"Rolled back database session for dataset: {dataset_id}", fg="yellow"))
+        except Exception:
+            logger.exception("Failed to rollback database session")
 
-        logging.exception("Cleaned dataset when dataset deleted failed")
+        logger.exception("Cleaned dataset when dataset deleted failed")
     finally:
         db.session.close()

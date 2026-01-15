@@ -1,6 +1,6 @@
+import type { InputForm } from './type'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { InputForm } from './type'
 import { useToastContext } from '@/app/components/base/toast'
 import { InputVarType } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
@@ -12,7 +12,7 @@ export const useCheckInputsForms = () => {
   const checkInputsForm = useCallback((inputs: Record<string, any>, inputsForm: InputForm[]) => {
     let hasEmptyInput = ''
     let fileIsUploading = false
-    const requiredVars = inputsForm.filter(({ required }) => required)
+    const requiredVars = inputsForm.filter(({ required, type }) => required && type !== InputVarType.checkbox) // boolean can be not checked
 
     if (requiredVars?.length) {
       requiredVars.forEach(({ variable, label, type }) => {
@@ -36,12 +36,12 @@ export const useCheckInputsForms = () => {
     }
 
     if (hasEmptyInput) {
-      notify({ type: 'error', message: t('appDebug.errorMessage.valueOfVarRequired', { key: hasEmptyInput }) })
+      notify({ type: 'error', message: t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: hasEmptyInput }) })
       return false
     }
 
     if (fileIsUploading) {
-      notify({ type: 'info', message: t('appDebug.errorMessage.waitForFileUpload') })
+      notify({ type: 'info', message: t('errorMessage.waitForFileUpload', { ns: 'appDebug' }) })
       return
     }
 

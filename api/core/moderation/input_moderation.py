@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any
 
 from core.app.app_config.entities import AppConfig
 from core.moderation.base import ModerationAction, ModerationError
@@ -21,7 +21,7 @@ class InputModeration:
         inputs: Mapping[str, Any],
         query: str,
         message_id: str,
-        trace_manager: Optional[TraceQueueManager] = None,
+        trace_manager: TraceQueueManager | None = None,
     ) -> tuple[bool, Mapping[str, Any], str]:
         """
         Process sensitive_word_avoidance.

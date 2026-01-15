@@ -1,26 +1,27 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import copy from 'copy-to-clipboard'
-import ToggleExpandBtn from '../toggle-expand-btn'
-import CodeGeneratorButton from '../code-generator-button'
 import type { CodeLanguage } from '../../../code/types'
-import Wrap from './wrap'
-import cn from '@/utils/classnames'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
+import copy from 'copy-to-clipboard'
+import * as React from 'react'
+import { useCallback, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import PromptEditorHeightResizeWrap from '@/app/components/app/configuration/config-prompt/prompt-editor-height-resize-wrap'
+import ActionButton from '@/app/components/base/action-button'
+import FileListInLog from '@/app/components/base/file-uploader/file-list-in-log'
 import {
   Copy,
   CopyCheck,
 } from '@/app/components/base/icons/src/vender/line/files'
 import { RiMenuSearchLine } from '@remixicon/react'
-import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
-import type { FileEntity } from '@/app/components/base/file-uploader/types'
-import FileListInLog from '@/app/components/base/file-uploader/file-list-in-log'
-import ActionButton from '@/app/components/base/action-button'
 import Tooltip from '@/app/components/base/tooltip'
-import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
+import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
 import { useStore } from '@/app/components/workflow/store'
+import { cn } from '@/utils/classnames'
+import CodeGeneratorButton from '../code-generator-button'
+import ToggleExpandBtn from '../toggle-expand-btn'
+import Wrap from './wrap'
 
 type Props = {
   nodeId?: string
@@ -44,6 +45,7 @@ type Props = {
   tip?: React.JSX.Element
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
+  footer?: React.ReactNode
 }
 
 const Base: FC<Props> = ({
@@ -63,6 +65,7 @@ const Base: FC<Props> = ({
   showCodeGenerator = false,
   showVariableInspectButton = false,
   tip,
+  footer,
 }) => {
   const { t } = useTranslation()
   const ref = useRef<HTMLDivElement>(null)
@@ -99,15 +102,18 @@ const Base: FC<Props> = ({
   return (
     <Wrap className={cn(wrapClassName)} style={wrapStyle} isInNode={isInNode} isExpand={isExpand}>
       <div ref={ref} className={cn(className, isExpand && 'h-full', 'rounded-lg border', !isFocus ? 'border-transparent bg-components-input-bg-normal' : 'overflow-hidden border-components-input-border-hover bg-components-input-bg-hover')}>
-        <div className='flex h-7 items-center justify-between pl-3 pr-2 pt-1'>
-          <div className='system-xs-semibold-uppercase text-text-secondary'>{title}</div>
-          <div className='flex items-center' onClick={(e) => {
-            e.nativeEvent.stopImmediatePropagation()
-            e.stopPropagation()
-          }}>
+        <div className="flex h-7 items-center justify-between pl-3 pr-2 pt-1">
+          <div className="system-xs-semibold-uppercase text-text-secondary">{title}</div>
+          <div
+            className="flex items-center"
+            onClick={(e) => {
+              e.nativeEvent.stopImmediatePropagation()
+              e.stopPropagation()
+            }}
+          >
             {headerRight}
             {showCodeGenerator && codeLanguages && (
-              <div className='ml-1'>
+              <div className="ml-1">
                 <CodeGeneratorButton
                   onGenerated={onGenerated}
                   codeLanguages={codeLanguages}
@@ -118,40 +124,40 @@ const Base: FC<Props> = ({
             )}
             {showVariableInspectButton && nodeId && (
               <Tooltip popupContent={t('workflow.debug.variableInspect.view')}>
-                <ActionButton className='ml-1' onClick={handleOpenVariableInspect}>
-                  <RiMenuSearchLine className='h-4 w-4' />
+                <ActionButton className="ml-1" onClick={handleOpenVariableInspect}>
+                  <RiMenuSearchLine className="h-4 w-4" />
                 </ActionButton>
               </Tooltip>
             )}
-            <ActionButton className='ml-1' onClick={handleCopy}>
+            <ActionButton className="ml-1" onClick={handleCopy}>
               {!isCopied
                 ? (
-                  <Copy className='h-4 w-4 cursor-pointer' />
-                )
+                    <Copy className="h-4 w-4 cursor-pointer" />
+                  )
                 : (
-                  <CopyCheck className='h-4 w-4' />
-                )
-              }
+                    <CopyCheck className="h-4 w-4" />
+                  )}
             </ActionButton>
-            <div className='ml-1'>
+            <div className="ml-1">
               <ToggleExpandBtn isExpand={isExpand} onExpandChange={setIsExpand} />
             </div>
           </div>
         </div>
-        {tip && <div className='px-1 py-0.5'>{tip}</div>}
+        {tip && <div className="px-1 py-0.5">{tip}</div>}
         <PromptEditorHeightResizeWrap
           height={isExpand ? editorExpandHeight : editorContentHeight}
           minHeight={editorContentMinHeight}
           onHeightChange={setEditorContentHeight}
           hideResize={isExpand}
         >
-          <div className='h-full pb-2 pl-2'>
+          <div className="h-full pb-2 pl-2">
             {children}
           </div>
         </PromptEditorHeightResizeWrap>
         {showFileList && fileList.length > 0 && (
           <FileListInLog fileList={fileList} />
         )}
+        {footer}
       </div>
     </Wrap>
   )

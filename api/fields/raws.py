@@ -1,4 +1,4 @@
-from flask_restful import fields
+from flask_restx import fields
 
 from core.file import File
 

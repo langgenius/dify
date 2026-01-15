@@ -1,26 +1,23 @@
-import type { StrategyDetail, StrategyPluginDetail } from '@/app/components/plugins/types'
-import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
 import type { NodeDefault } from '../../types'
 import type { AgentNodeType } from './types'
+import type { StrategyDetail, StrategyPluginDetail } from '@/app/components/plugins/types'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { renderI18nObject } from '@/i18n-config'
+import { BlockEnum } from '../../types'
+import { genNodeMetaData } from '../../utils'
+
+const metaData = genNodeMetaData({
+  sort: 3,
+  type: BlockEnum.Agent,
+})
 
 const nodeDefault: NodeDefault<AgentNodeType> = {
+  metaData,
   defaultValue: {
     tool_node_version: '2',
   },
-  getAvailablePrevNodes(isChatMode) {
-    return isChatMode
-      ? ALL_CHAT_AVAILABLE_BLOCKS
-      : ALL_COMPLETION_AVAILABLE_BLOCKS
-  },
-  getAvailableNextNodes(isChatMode) {
-    return isChatMode
-      ? ALL_CHAT_AVAILABLE_BLOCKS
-      : ALL_COMPLETION_AVAILABLE_BLOCKS
-  },
   checkValid(payload, t, moreDataForCheckValid: {
-    strategyProvider?: StrategyPluginDetail,
+    strategyProvider?: StrategyPluginDetail
     strategy?: StrategyDetail
     language: string
     isReadyForCheckValid: boolean
@@ -35,7 +32,7 @@ const nodeDefault: NodeDefault<AgentNodeType> = {
     if (!strategy) {
       return {
         isValid: false,
-        errorMessage: t('workflow.nodes.agent.checkList.strategyNotSelected'),
+        errorMessage: t('nodes.agent.checkList.strategyNotSelected', { ns: 'workflow' }),
       }
     }
     for (const param of strategy.parameters) {
@@ -46,14 +43,14 @@ const nodeDefault: NodeDefault<AgentNodeType> = {
         if (!toolValue) {
           return {
             isValid: false,
-            errorMessage: t('workflow.errorMsg.fieldRequired', { field: renderI18nObject(param.label, language) }),
+            errorMessage: t('errorMsg.fieldRequired', { ns: 'workflow', field: renderI18nObject(param.label, language) }),
           }
         }
         // not enabled
         else if (!toolValue.enabled) {
           return {
             isValid: false,
-            errorMessage: t('workflow.errorMsg.noValidTool', { field: renderI18nObject(param.label, language) }),
+            errorMessage: t('errorMsg.noValidTool', { ns: 'workflow', field: renderI18nObject(param.label, language) }),
           }
         }
         // check form of tool
@@ -69,25 +66,25 @@ const nodeDefault: NodeDefault<AgentNodeType> = {
               if (schema.form === 'form' && !mergeVersion && !userSettings[schema.name]?.value) {
                 return {
                   isValid: false,
-                  errorMessage: t('workflow.errorMsg.toolParameterRequired', { field: renderI18nObject(param.label, language), param: renderI18nObject(schema.label, language) }),
+                  errorMessage: t('errorMsg.toolParameterRequired', { ns: 'workflow', field: renderI18nObject(param.label, language), param: renderI18nObject(schema.label, language) }),
                 }
               }
               if (schema.form === 'form' && mergeVersion && !userSettings[schema.name]?.value.value) {
                 return {
                   isValid: false,
-                  errorMessage: t('workflow.errorMsg.toolParameterRequired', { field: renderI18nObject(param.label, language), param: renderI18nObject(schema.label, language) }),
+                  errorMessage: t('errorMsg.toolParameterRequired', { ns: 'workflow', field: renderI18nObject(param.label, language), param: renderI18nObject(schema.label, language) }),
                 }
               }
               if (schema.form === 'llm' && !mergeVersion && reasoningConfig[schema.name].auto === 0 && !reasoningConfig[schema.name]?.value) {
                 return {
                   isValid: false,
-                  errorMessage: t('workflow.errorMsg.toolParameterRequired', { field: renderI18nObject(param.label, language), param: renderI18nObject(schema.label, language) }),
+                  errorMessage: t('errorMsg.toolParameterRequired', { ns: 'workflow', field: renderI18nObject(param.label, language), param: renderI18nObject(schema.label, language) }),
                 }
               }
               if (schema.form === 'llm' && mergeVersion && reasoningConfig[schema.name].auto === 0 && !reasoningConfig[schema.name]?.value.value) {
                 return {
                   isValid: false,
-                  errorMessage: t('workflow.errorMsg.toolParameterRequired', { field: renderI18nObject(param.label, language), param: renderI18nObject(schema.label, language) }),
+                  errorMessage: t('errorMsg.toolParameterRequired', { ns: 'workflow', field: renderI18nObject(param.label, language), param: renderI18nObject(schema.label, language) }),
                 }
               }
             }
@@ -101,14 +98,14 @@ const nodeDefault: NodeDefault<AgentNodeType> = {
         if (!tools.length) {
           return {
             isValid: false,
-            errorMessage: t('workflow.errorMsg.fieldRequired', { field: renderI18nObject(param.label, language) }),
+            errorMessage: t('errorMsg.fieldRequired', { ns: 'workflow', field: renderI18nObject(param.label, language) }),
           }
         }
         // not enabled
         else if (tools.every((tool: any) => !tool.enabled)) {
           return {
             isValid: false,
-            errorMessage: t('workflow.errorMsg.noValidTool', { field: renderI18nObject(param.label, language) }),
+            errorMessage: t('errorMsg.noValidTool', { ns: 'workflow', field: renderI18nObject(param.label, language) }),
           }
         }
         // check form of tools
@@ -126,13 +123,13 @@ const nodeDefault: NodeDefault<AgentNodeType> = {
                 if (schema.form === 'form' && !userSettings[schema.name]?.value) {
                   return {
                     isValid: false,
-                    errorMessage: t('workflow.errorMsg.toolParameterRequired', { field: renderI18nObject(param.label, language), param: renderI18nObject(schema.label, language) }),
+                    errorMessage: t('errorMsg.toolParameterRequired', { ns: 'workflow', field: renderI18nObject(param.label, language), param: renderI18nObject(schema.label, language) }),
                   }
                 }
                 if (schema.form === 'llm' && reasoningConfig[schema.name]?.auto === 0 && !reasoningConfig[schema.name]?.value) {
                   return {
                     isValid: false,
-                    errorMessage: t('workflow.errorMsg.toolParameterRequired', { field: renderI18nObject(param.label, language), param: renderI18nObject(schema.label, language) }),
+                    errorMessage: t('errorMsg.toolParameterRequired', { ns: 'workflow', field: renderI18nObject(param.label, language), param: renderI18nObject(schema.label, language) }),
                   }
                 }
               }
@@ -145,7 +142,7 @@ const nodeDefault: NodeDefault<AgentNodeType> = {
       if (param.required && !(payload.agent_parameters?.[param.name]?.value || param.default)) {
         return {
           isValid: false,
-          errorMessage: t('workflow.errorMsg.fieldRequired', { field: renderI18nObject(param.label, language) }),
+          errorMessage: t('errorMsg.fieldRequired', { ns: 'workflow', field: renderI18nObject(param.label, language) }),
         }
       }
     }

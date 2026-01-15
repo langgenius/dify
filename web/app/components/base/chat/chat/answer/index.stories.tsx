@@ -1,13 +1,12 @@
-import type { Meta, StoryObj } from '@storybook/react'
-
+import type { Meta, StoryObj } from '@storybook/nextjs'
 import type { ChatItem } from '../../types'
-import { mockedWorkflowProcess } from './__mocks__/workflowProcess'
+import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import Answer from '.'
 import { markdownContent } from './__mocks__/markdownContent'
 import { markdownContentSVG } from './__mocks__/markdownContentSVG'
-import Answer from '.'
 
 const meta = {
-  title: 'Base/Chat Answer',
+  title: 'Base/Other/Chat Answer',
   component: Answer,
   parameters: {
     layout: 'fullscreen',
@@ -34,6 +33,11 @@ const mockedBaseChatItem = {
   content: 'Hello, how can I assist you today?',
 } satisfies ChatItem
 
+const mockedWorkflowProcess = {
+  status: WorkflowRunningStatus.Succeeded,
+  tracing: [],
+}
+
 export const Basic: Story = {
   args: {
     item: mockedBaseChatItem,
@@ -41,9 +45,11 @@ export const Basic: Story = {
     index: 0,
   },
   render: (args) => {
-    return <div className="w-full px-10 py-5">
-      <Answer {...args} />
-    </div>
+    return (
+      <div className="w-full px-10 py-5">
+        <Answer {...args} />
+      </div>
+    )
   },
 }
 
@@ -57,9 +63,11 @@ export const WithWorkflowProcess: Story = {
     index: 0,
   },
   render: (args) => {
-    return <div className="w-full px-10 py-5">
-      <Answer {...args} />
-    </div>
+    return (
+      <div className="w-full px-10 py-5">
+        <Answer {...args} />
+      </div>
+    )
   },
 }
 
@@ -73,9 +81,11 @@ export const WithMarkdownContent: Story = {
     index: 0,
   },
   render: (args) => {
-    return <div className="w-full px-10 py-5">
-      <Answer {...args} />
-    </div>
+    return (
+      <div className="w-full px-10 py-5">
+        <Answer {...args} />
+      </div>
+    )
   },
 }
 
@@ -89,8 +99,10 @@ export const WithMarkdownSVG: Story = {
     index: 0,
   },
   render: (args) => {
-    return <div className="w-full px-10 py-5">
-      <Answer {...args} />
-    </div>
+    return (
+      <div className="w-full px-10 py-5">
+        <Answer {...args} />
+      </div>
+    )
   },
 }

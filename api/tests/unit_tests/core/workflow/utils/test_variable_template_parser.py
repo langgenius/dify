@@ -1,7 +1,7 @@
 import dataclasses
 
-from core.workflow.entities.variable_entities import VariableSelector
-from core.workflow.utils import variable_template_parser
+from core.workflow.nodes.base import variable_template_parser
+from core.workflow.nodes.base.entities import VariableSelector
 
 
 def test_extract_selectors_from_template():

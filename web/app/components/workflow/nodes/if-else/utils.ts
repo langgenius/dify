@@ -1,21 +1,31 @@
-import { ComparisonOperator } from './types'
-import { VarType } from '@/app/components/workflow/types'
 import type { Branch } from '@/app/components/workflow/types'
+import type { I18nKeysByPrefix } from '@/types/i18n'
+import { VarType } from '@/app/components/workflow/types'
+import { ComparisonOperator } from './types'
 
 export const isEmptyRelatedOperator = (operator: ComparisonOperator) => {
   return [ComparisonOperator.empty, ComparisonOperator.notEmpty, ComparisonOperator.isNull, ComparisonOperator.isNotNull, ComparisonOperator.exists, ComparisonOperator.notExists].includes(operator)
 }
 
 const notTranslateKey = [
-  ComparisonOperator.equal, ComparisonOperator.notEqual,
-  ComparisonOperator.largerThan, ComparisonOperator.largerThanOrEqual,
-  ComparisonOperator.lessThan, ComparisonOperator.lessThanOrEqual,
-]
+  ComparisonOperator.equal,
+  ComparisonOperator.notEqual,
+  ComparisonOperator.largerThan,
+  ComparisonOperator.largerThanOrEqual,
+  ComparisonOperator.lessThan,
+  ComparisonOperator.lessThanOrEqual,
+] as const
 
-export const isComparisonOperatorNeedTranslate = (operator?: ComparisonOperator) => {
+type NotTranslateOperator = typeof notTranslateKey[number]
+export type TranslatableComparisonOperator = Exclude<ComparisonOperator, NotTranslateOperator>
+export type IfElseOptionName = I18nKeysByPrefix<'workflow', 'nodes.ifElse.optionName.'>
+
+export function isComparisonOperatorNeedTranslate(operator: ComparisonOperator): operator is TranslatableComparisonOperator
+export function isComparisonOperatorNeedTranslate(operator?: ComparisonOperator): operator is TranslatableComparisonOperator
+export function isComparisonOperatorNeedTranslate(operator?: ComparisonOperator): operator is TranslatableComparisonOperator {
   if (!operator)
     return false
-  return !notTranslateKey.includes(operator)
+  return !(notTranslateKey as readonly ComparisonOperator[]).includes(operator)
 }
 
 export const getOperators = (type?: VarType, file?: { key: string }) => {
@@ -81,6 +91,17 @@ export const getOperators = (type?: VarType, file?: { key: string }) => {
           ComparisonOperator.empty,
           ComparisonOperator.notEmpty,
         ]
+      case 'related_id':
+        return [
+          ComparisonOperator.is,
+          ComparisonOperator.isNot,
+          ComparisonOperator.contains,
+          ComparisonOperator.notContains,
+          ComparisonOperator.startWith,
+          ComparisonOperator.endWith,
+          ComparisonOperator.empty,
+          ComparisonOperator.notEmpty,
+        ]
     }
     return []
   }
@@ -97,6 +118,7 @@ export const getOperators = (type?: VarType, file?: { key: string }) => {
         ComparisonOperator.notEmpty,
       ]
     case VarType.number:
+    case VarType.integer:
       return [
         ComparisonOperator.equal,
         ComparisonOperator.notEqual,
@@ -107,6 +129,11 @@ export const getOperators = (type?: VarType, file?: { key: string }) => {
         ComparisonOperator.empty,
         ComparisonOperator.notEmpty,
       ]
+    case VarType.boolean:
+      return [
+        ComparisonOperator.is,
+        ComparisonOperator.isNot,
+      ]
     case VarType.file:
       return [
         ComparisonOperator.exists,
@@ -114,6 +141,7 @@ export const getOperators = (type?: VarType, file?: { key: string }) => {
       ]
     case VarType.arrayString:
     case VarType.arrayNumber:
+    case VarType.arrayBoolean:
       return [
         ComparisonOperator.contains,
         ComparisonOperator.notContains,

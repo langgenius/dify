@@ -1,10 +1,13 @@
 import logging
 from urllib.parse import quote
 
-from flask import Response
-from flask_restful import Resource, reqparse
+from flask import Response, request
+from flask_restx import Resource
+from pydantic import BaseModel, Field
 
-from controllers.service_api import api
+from controllers.common.file_response import enforce_download_for_html
+from controllers.common.schema import register_schema_model
+from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
     FileAccessDeniedError,
     FileNotFoundError,
@@ -17,6 +20,14 @@ from models.model import App, EndUser, Message, MessageFile, UploadFile
 logger = logging.getLogger(__name__)
 
 
+class FilePreviewQuery(BaseModel):
+    as_attachment: bool = Field(default=False, description="Download as attachment")
+
+
+register_schema_model(service_api_ns, FilePreviewQuery)
+
+
+@service_api_ns.route("/files/<uuid:file_id>/preview")
 class FilePreviewApi(Resource):
     """
     Service API File Preview endpoint
@@ -25,36 +36,33 @@ class FilePreviewApi(Resource):
     Files can only be accessed if they belong to messages within the requesting app's context.
     """
 
+    @service_api_ns.expect(service_api_ns.models[FilePreviewQuery.__name__])
+    @service_api_ns.doc("preview_file")
+    @service_api_ns.doc(description="Preview or download a file uploaded via Service API")
+    @service_api_ns.doc(params={"file_id": "UUID of the file to preview"})
+    @service_api_ns.doc(
+        responses={
+            200: "File retrieved successfully",
+            401: "Unauthorized - invalid API token",
+            403: "Forbidden - file access denied",
+            404: "File not found",
+        }
+    )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
     def get(self, app_model: App, end_user: EndUser, file_id: str):
         """
-        Preview/Download a file that was uploaded via Service API
+        Preview/Download a file that was uploaded via Service API.
 
-        Args:
-            app_model: The authenticated app model
-            end_user: The authenticated end user (optional)
-            file_id: UUID of the file to preview
-
-        Query Parameters:
-            user: Optional user identifier
-            as_attachment: Boolean, whether to download as attachment (default: false)
-
-        Returns:
-            Stream response with file content
-
-        Raises:
-            FileNotFoundError: File does not exist
-            FileAccessDeniedError: File access denied (not owned by app)
+        Provides secure file preview/download functionality.
+        Files can only be accessed if they belong to messages within the requesting app's context.
         """
         file_id = str(file_id)
 
         # Parse query parameters
-        parser = reqparse.RequestParser()
-        parser.add_argument("as_attachment", type=bool, required=False, default=False, location="args")
-        args = parser.parse_args()
+        args = FilePreviewQuery.model_validate(request.args.to_dict())
 
         # Validate file ownership and get file objects
-        message_file, upload_file = self._validate_file_ownership(file_id, app_model.id)
+        _, upload_file = self._validate_file_ownership(file_id, app_model.id)
 
         # Get file content generator
         try:
@@ -63,7 +71,7 @@ class FilePreviewApi(Resource):
             raise FileNotFoundError(f"Failed to load file content: {str(e)}")
 
         # Build response with appropriate headers
-        response = self._build_file_response(generator, upload_file, args["as_attachment"])
+        response = self._build_file_response(generator, upload_file, args.as_attachment)
 
         return response
 
@@ -176,11 +184,14 @@ class FilePreviewApi(Resource):
             # Override content-type for downloads to force download
             response.headers["Content-Type"] = "application/octet-stream"
 
+        enforce_download_for_html(
+            response,
+            mime_type=upload_file.mime_type,
+            filename=upload_file.name,
+            extension=upload_file.extension,
+        )
+
         # Add caching headers for performance
         response.headers["Cache-Control"] = "public, max-age=3600"  # Cache for 1 hour
 
         return response
-
-
-# Register the API endpoint
-api.add_resource(FilePreviewApi, "/files/<uuid:file_id>/preview")

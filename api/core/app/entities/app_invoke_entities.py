@@ -1,6 +1,6 @@
 from collections.abc import Mapping, Sequence
-from enum import Enum
-from typing import Any, Optional
+from enum import StrEnum
+from typing import TYPE_CHECKING, Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
@@ -10,8 +10,11 @@ from core.entities.provider_configuration import ProviderModelBundle
 from core.file import File, FileUploadConfig
 from core.model_runtime.entities.model_entities import AIModelEntity
 
+if TYPE_CHECKING:
+    from core.ops.ops_trace_manager import TraceQueueManager
 
-class InvokeFrom(Enum):
+
+class InvokeFrom(StrEnum):
     """
     Invoke From.
     """
@@ -29,12 +32,21 @@ class InvokeFrom(Enum):
     # https://docs.dify.ai/en/guides/application-publishing/launch-your-webapp-quickly/README
     WEB_APP = "web-app"
 
+    # TRIGGER indicates that this invocation is from a trigger.
+    # this is used for plugin trigger and webhook trigger.
+    TRIGGER = "trigger"
+
     # EXPLORE indicates that this invocation is from
     # the workflow (or chatflow) explore page.
     EXPLORE = "explore"
     # DEBUGGER indicates that this invocation is from
     # the workflow (or chatflow) edit page.
     DEBUGGER = "debugger"
+    # PUBLISHED_PIPELINE indicates that this invocation runs a published RAG pipeline workflow.
+    PUBLISHED_PIPELINE = "published"
+
+    # VALIDATION indicates that this invocation is from validation.
+    VALIDATION = "validation"
 
     @classmethod
     def value_of(cls, value: str):
@@ -61,6 +73,8 @@ class InvokeFrom(Enum):
             return "dev"
         elif self == InvokeFrom.EXPLORE:
             return "explore_app"
+        elif self == InvokeFrom.TRIGGER:
+            return "trigger"
         elif self == InvokeFrom.SERVICE_API:
             return "api"
 
@@ -95,11 +109,16 @@ class AppGenerateEntity(BaseModel):
     task_id: str
 
     # app config
-    app_config: Any
-    file_upload_config: Optional[FileUploadConfig] = None
+    app_config: Any = None
+    file_upload_config: FileUploadConfig | None = None
 
     inputs: Mapping[str, Any]
     files: Sequence[File]
+
+    # Unique identifier of the user initiating the execution.
+    # This corresponds to `Account.id` for platform users or `EndUser.id` for end users.
+    #
+    # Note: The `user_id` field does not indicate whether the user is a platform user or an end user.
     user_id: str
 
     # extras
@@ -113,8 +132,7 @@ class AppGenerateEntity(BaseModel):
     extras: dict[str, Any] = Field(default_factory=dict)
 
     # tracing instance
-    # Using Any to avoid circular import with TraceQueueManager
-    trace_manager: Optional[Any] = None
+    trace_manager: Optional["TraceQueueManager"] = None
 
 
 class EasyUIBasedAppGenerateEntity(AppGenerateEntity):
@@ -123,10 +141,10 @@ class EasyUIBasedAppGenerateEntity(AppGenerateEntity):
     """
 
     # app config
-    app_config: EasyUIBasedAppConfig
+    app_config: EasyUIBasedAppConfig = None  # type: ignore
     model_conf: ModelConfigWithCredentialsEntity
 
-    query: Optional[str] = None
+    query: str = ""
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
@@ -137,8 +155,8 @@ class ConversationAppGenerateEntity(AppGenerateEntity):
     Base entity for conversation-based app generation.
     """
 
-    conversation_id: Optional[str] = None
-    parent_message_id: Optional[str] = Field(
+    conversation_id: str | None = None
+    parent_message_id: str | None = Field(
         default=None,
         description=(
             "Starting from v0.9.0, parent_message_id is used to support message regeneration for internal chat API."
@@ -186,9 +204,9 @@ class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):
     """
 
     # app config
-    app_config: WorkflowUIBasedAppConfig
+    app_config: WorkflowUIBasedAppConfig = None  # type: ignore
 
-    workflow_run_id: Optional[str] = None
+    workflow_run_id: str | None = None
     query: str
 
     class SingleIterationRunEntity(BaseModel):
@@ -199,7 +217,7 @@ class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):
         node_id: str
         inputs: Mapping
 
-    single_iteration_run: Optional[SingleIterationRunEntity] = None
+    single_iteration_run: SingleIterationRunEntity | None = None
 
     class SingleLoopRunEntity(BaseModel):
         """
@@ -209,7 +227,7 @@ class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):
         node_id: str
         inputs: Mapping
 
-    single_loop_run: Optional[SingleLoopRunEntity] = None
+    single_loop_run: SingleLoopRunEntity | None = None
 
 
 class WorkflowAppGenerateEntity(AppGenerateEntity):
@@ -218,7 +236,7 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
     """
 
     # app config
-    app_config: WorkflowUIBasedAppConfig
+    app_config: WorkflowUIBasedAppConfig = None  # type: ignore
     workflow_execution_id: str
 
     class SingleIterationRunEntity(BaseModel):
@@ -229,7 +247,7 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
         node_id: str
         inputs: dict
 
-    single_iteration_run: Optional[SingleIterationRunEntity] = None
+    single_iteration_run: SingleIterationRunEntity | None = None
 
     class SingleLoopRunEntity(BaseModel):
         """
@@ -239,4 +257,33 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
         node_id: str
         inputs: dict
 
-    single_loop_run: Optional[SingleLoopRunEntity] = None
+    single_loop_run: SingleLoopRunEntity | None = None
+
+
+class RagPipelineGenerateEntity(WorkflowAppGenerateEntity):
+    """
+    RAG Pipeline Application Generate Entity.
+    """
+
+    # pipeline config
+    pipeline_config: WorkflowUIBasedAppConfig
+    datasource_type: str
+    datasource_info: Mapping[str, Any]
+    dataset_id: str
+    batch: str
+    document_id: str | None = None
+    original_document_id: str | None = None
+    start_node_id: str | None = None
+
+
+from core.ops.ops_trace_manager import TraceQueueManager
+
+AppGenerateEntity.model_rebuild()
+EasyUIBasedAppGenerateEntity.model_rebuild()
+ConversationAppGenerateEntity.model_rebuild()
+ChatAppGenerateEntity.model_rebuild()
+CompletionAppGenerateEntity.model_rebuild()
+AgentChatAppGenerateEntity.model_rebuild()
+AdvancedChatAppGenerateEntity.model_rebuild()
+WorkflowAppGenerateEntity.model_rebuild()
+RagPipelineGenerateEntity.model_rebuild()

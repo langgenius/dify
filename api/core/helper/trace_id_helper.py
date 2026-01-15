@@ -1,7 +1,7 @@
 import contextlib
 import re
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any
 
 
 def is_valid_trace_id(trace_id: str) -> bool:
@@ -13,7 +13,7 @@ def is_valid_trace_id(trace_id: str) -> bool:
     return bool(re.match(r"^[a-zA-Z0-9\-_]{1,128}$", trace_id))
 
 
-def get_external_trace_id(request: Any) -> Optional[str]:
+def get_external_trace_id(request: Any) -> str | None:
     """
     Retrieve the trace_id from the request.
 
@@ -49,7 +49,7 @@ def get_external_trace_id(request: Any) -> Optional[str]:
     return None
 
 
-def extract_external_trace_id_from_args(args: Mapping[str, Any]) -> dict:
+def extract_external_trace_id_from_args(args: Mapping[str, Any]):
     """
     Extract 'external_trace_id' from args.
 
@@ -61,7 +61,7 @@ def extract_external_trace_id_from_args(args: Mapping[str, Any]) -> dict:
     return {}
 
 
-def get_trace_id_from_otel_context() -> Optional[str]:
+def get_trace_id_from_otel_context() -> str | None:
     """
     Retrieve the current trace ID from the active OpenTelemetry trace context.
     Returns None if:
@@ -88,7 +88,7 @@ def get_trace_id_from_otel_context() -> Optional[str]:
         return None
 
 
-def parse_traceparent_header(traceparent: str) -> Optional[str]:
+def parse_traceparent_header(traceparent: str) -> str | None:
     """
     Parse the `traceparent` header to extract the trace_id.
 
@@ -103,3 +103,60 @@ def parse_traceparent_header(traceparent: str) -> Optional[str]:
         if len(parts) == 4 and len(parts[1]) == 32:
             return parts[1]
     return None
+
+
+def get_span_id_from_otel_context() -> str | None:
+    """
+    Retrieve the current span ID from the active OpenTelemetry trace context.
+
+    Returns:
+        A 16-character hex string representing the span ID, or None if not available.
+    """
+    try:
+        from opentelemetry.trace import get_current_span
+        from opentelemetry.trace.span import INVALID_SPAN_ID
+
+        span = get_current_span()
+        if not span:
+            return None
+
+        span_context = span.get_span_context()
+        if not span_context or span_context.span_id == INVALID_SPAN_ID:
+            return None
+
+        return f"{span_context.span_id:016x}"
+    except Exception:
+        return None
+
+
+def generate_traceparent_header() -> str | None:
+    """
+    Generate a W3C traceparent header from the current context.
+
+    Uses OpenTelemetry context if available, otherwise uses the
+    ContextVar-based trace_id from the logging context.
+
+    Format: {version}-{trace_id}-{span_id}-{flags}
+    Example: 00-5b8aa5a2d2c872e8321cf37308d69df2-051581bf3bb55c45-01
+
+    Returns:
+        A valid traceparent header string, or None if generation fails.
+    """
+    import uuid
+
+    # Try OTEL context first
+    trace_id = get_trace_id_from_otel_context()
+    span_id = get_span_id_from_otel_context()
+
+    if trace_id and span_id:
+        return f"00-{trace_id}-{span_id}-01"
+
+    # Fallback: use ContextVar-based trace_id or generate new one
+    from core.logging.context import get_trace_id as get_logging_trace_id
+
+    trace_id = get_logging_trace_id() or uuid.uuid4().hex
+
+    # Generate a new span_id (16 hex chars)
+    span_id = uuid.uuid4().hex[:16]
+
+    return f"00-{trace_id}-{span_id}-01"

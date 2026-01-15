@@ -32,7 +32,7 @@ export function createNavigationPath(basePath: string, preserveParams: boolean =
     const separator = queryString ? '?' : ''
     return `${basePath}${separator}${queryString}`
   }
- catch (error) {
+  catch (error) {
     // Fallback to base path if there's any error accessing location
     console.warn('Failed to preserve query parameters:', error)
     return basePath
@@ -89,7 +89,7 @@ export function extractQueryParams(paramNames: string[]): Record<string, string>
 
     return extracted
   }
- catch (error) {
+  catch (error) {
     console.warn('Failed to extract query parameters:', error)
     return {}
   }
@@ -126,7 +126,7 @@ export function createNavigationPathWithParams(
     const separator = queryString ? '?' : ''
     return `${basePath}${separator}${queryString}`
   }
- catch (error) {
+  catch (error) {
     console.warn('Failed to create navigation path with params:', error)
     return basePath
   }
@@ -155,7 +155,7 @@ export function mergeQueryParams(
   Object.entries(newParams).forEach(([key, value]) => {
     if (value === null || value === undefined)
       searchParams.delete(key)
-     else if (value !== '')
+    else if (value !== '')
       searchParams.set(key, String(value))
   })
 

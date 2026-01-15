@@ -1,6 +1,8 @@
 import logging
 from typing import cast
 
+from sqlalchemy import select
+
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.base_app_runner import AppRunner
 from core.app.apps.completion.app_config_manager import CompletionAppConfig
@@ -8,6 +10,7 @@ from core.app.entities.app_invoke_entities import (
     CompletionAppGenerateEntity,
 )
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
+from core.file import File
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.message_entities import ImagePromptMessageContent
 from core.moderation.base import ModerationError
@@ -25,7 +28,7 @@ class CompletionAppRunner(AppRunner):
 
     def run(
         self, application_generate_entity: CompletionAppGenerateEntity, queue_manager: AppQueueManager, message: Message
-    ) -> None:
+    ):
         """
         Run application
         :param application_generate_entity: application generate entity
@@ -35,8 +38,8 @@ class CompletionAppRunner(AppRunner):
         """
         app_config = application_generate_entity.app_config
         app_config = cast(CompletionAppConfig, app_config)
-
-        app_record = db.session.query(App).where(App.id == app_config.app_id).first()
+        stmt = select(App).where(App.id == app_config.app_id)
+        app_record = db.session.scalar(stmt)
         if not app_record:
             raise ValueError("App not found")
 
@@ -100,6 +103,7 @@ class CompletionAppRunner(AppRunner):
 
         # get context from datasets
         context = None
+        context_files: list[File] = []
         if app_config.dataset and app_config.dataset.dataset_ids:
             hit_callback = DatasetIndexToolCallbackHandler(
                 queue_manager,
@@ -114,7 +118,7 @@ class CompletionAppRunner(AppRunner):
                 query = inputs.get(dataset_config.retrieve_config.query_variable, "")
 
             dataset_retrieval = DatasetRetrieval(application_generate_entity)
-            context = dataset_retrieval.retrieve(
+            context, retrieved_files = dataset_retrieval.retrieve(
                 app_id=app_record.id,
                 user_id=application_generate_entity.user_id,
                 tenant_id=app_record.tenant_id,
@@ -122,11 +126,17 @@ class CompletionAppRunner(AppRunner):
                 config=dataset_config,
                 query=query or "",
                 invoke_from=application_generate_entity.invoke_from,
-                show_retrieve_source=app_config.additional_features.show_retrieve_source,
+                show_retrieve_source=app_config.additional_features.show_retrieve_source
+                if app_config.additional_features
+                else False,
                 hit_callback=hit_callback,
                 message_id=message.id,
                 inputs=inputs,
+                vision_enabled=application_generate_entity.app_config.app_model_config_dict.get("file_upload", {}).get(
+                    "enabled", False
+                ),
             )
+            context_files = retrieved_files or []
 
         # reorganize all inputs and template to prompt messages
         # Include: prompt template, inputs, query(optional), files(optional)
@@ -140,6 +150,7 @@ class CompletionAppRunner(AppRunner):
             query=query,
             context=context,
             image_detail_config=image_detail_config,
+            context_files=context_files,
         )
 
         # check hosting moderation

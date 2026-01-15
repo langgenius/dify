@@ -1,3 +1,8 @@
+import type { PluginPayload } from '../types'
+import type {
+  FormRefObject,
+  FormSchema,
+} from '@/app/components/base/form/types'
 import {
   memo,
   useCallback,
@@ -6,20 +11,20 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
-import Modal from '@/app/components/base/modal/modal'
-import { CredentialTypeEnum } from '../types'
+import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
-import type { FormRefObject } from '@/app/components/base/form/types'
 import { FormTypeEnum } from '@/app/components/base/form/types'
-import { useToastContext } from '@/app/components/base/toast'
 import Loading from '@/app/components/base/loading'
-import type { PluginPayload } from '../types'
+import Modal from '@/app/components/base/modal/modal'
+import { useToastContext } from '@/app/components/base/toast'
+import { ReadmeEntrance } from '../../readme-panel/entrance'
+import { ReadmeShowType } from '../../readme-panel/store'
 import {
   useAddPluginCredentialHook,
   useGetPluginCredentialSchemaHook,
   useUpdatePluginCredentialHook,
 } from '../hooks/use-credential'
+import { CredentialTypeEnum } from '../types'
 
 export type ApiKeyModalProps = {
   pluginPayload: PluginPayload
@@ -28,6 +33,7 @@ export type ApiKeyModalProps = {
   onRemove?: () => void
   disabled?: boolean
   onUpdate?: () => void
+  formSchemas?: FormSchema[]
 }
 const ApiKeyModal = ({
   pluginPayload,
@@ -36,6 +42,7 @@ const ApiKeyModal = ({
   onRemove,
   disabled,
   onUpdate,
+  formSchemas: formSchemasFromProps = [],
 }: ApiKeyModalProps) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
@@ -46,17 +53,23 @@ const ApiKeyModal = ({
     setDoingAction(value)
   }, [])
   const { data = [], isLoading } = useGetPluginCredentialSchemaHook(pluginPayload, CredentialTypeEnum.API_KEY)
+  const mergedData = useMemo(() => {
+    if (formSchemasFromProps?.length)
+      return formSchemasFromProps
+
+    return data
+  }, [formSchemasFromProps, data])
   const formSchemas = useMemo(() => {
     return [
       {
         type: FormTypeEnum.textInput,
         name: '__name__',
-        label: t('plugin.auth.authorizationName'),
+        label: t('auth.authorizationName', { ns: 'plugin' }),
         required: false,
       },
-      ...data,
+      ...mergedData,
     ]
-  }, [data, t])
+  }, [mergedData, t])
   const defaultValues = formSchemas.reduce((acc, schema) => {
     if (schema.default)
       acc[schema.name] = schema.default
@@ -102,7 +115,7 @@ const ApiKeyModal = ({
       }
       notify({
         type: 'success',
-        message: t('common.api.actionSuccess'),
+        message: t('api.actionSuccess', { ns: 'common' }),
       })
 
       onClose?.()
@@ -115,42 +128,34 @@ const ApiKeyModal = ({
 
   return (
     <Modal
-      size='md'
-      title={t('plugin.auth.useApiAuth')}
-      subTitle={t('plugin.auth.useApiAuthDesc')}
+      size="md"
+      title={t('auth.useApiAuth', { ns: 'plugin' })}
+      subTitle={t('auth.useApiAuthDesc', { ns: 'plugin' })}
       onClose={onClose}
       onCancel={onClose}
       footerSlot={
         (<div></div>)
       }
-      bottomSlot={
-        <div className='flex items-center justify-center bg-background-section-burn py-3 text-xs text-text-tertiary'>
-          <Lock01 className='mr-1 h-3 w-3 text-text-tertiary' />
-          {t('common.modelProvider.encrypted.front')}
-          <a
-            className='mx-1 text-text-accent'
-            target='_blank' rel='noopener noreferrer'
-            href='https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html'
-          >
-            PKCS1_OAEP
-          </a>
-          {t('common.modelProvider.encrypted.back')}
-        </div>
-      }
+      bottomSlot={<EncryptedBottom />}
       onConfirm={handleConfirm}
       showExtraButton={!!editValues}
       onExtraButtonClick={onRemove}
       disabled={disabled || isLoading || doingAction}
+      clickOutsideNotClose={true}
+      wrapperClassName="!z-[101]"
     >
+      {pluginPayload.detail && (
+        <ReadmeEntrance pluginDetail={pluginPayload.detail} showType={ReadmeShowType.modal} />
+      )}
       {
         isLoading && (
-          <div className='flex h-40 items-center justify-center'>
+          <div className="flex h-40 items-center justify-center">
             <Loading />
           </div>
         )
       }
       {
-        !isLoading && !!data.length && (
+        !isLoading && !!mergedData.length && (
           <AuthForm
             ref={formRef}
             formSchemas={formSchemas}

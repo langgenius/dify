@@ -1,10 +1,12 @@
-from unittest.mock import patch
+import uuid
+from unittest.mock import create_autospec, patch
 
 import pytest
 from faker import Faker
+from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset
 from models.model import App, Tag, TagBinding
 from services.tag_service import TagService
@@ -17,7 +19,7 @@ class TestTagService:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("services.tag_service.current_user") as mock_current_user,
+            patch("services.tag_service.current_user", create_autospec(Account, instance=True)) as mock_current_user,
         ):
             # Setup default mock returns
             mock_current_user.current_tenant_id = "test-tenant-id"
@@ -65,7 +67,7 @@ class TestTagService:
         join = TenantAccountJoin(
             tenant_id=tenant.id,
             account_id=account.id,
-            role=TenantAccountRole.OWNER.value,
+            role=TenantAccountRole.OWNER,
             current=True,
         )
         db.session.add(join)
@@ -310,6 +312,85 @@ class TestTagService:
         # Verify no results for non-matching keyword
         result_no_match = TagService.get_tags("app", tenant.id, keyword="nonexistent")
         assert len(result_no_match) == 0
+
+    def test_get_tags_with_special_characters_in_keyword(
+        self, db_session_with_containers, mock_external_service_dependencies
+    ):
+        r"""
+        Test tag retrieval with special characters in keyword to verify SQL injection prevention.
+
+        This test verifies:
+        - Special characters (%, _, \) in keyword are properly escaped
+        - Search treats special characters as literal characters, not wildcards
+        - SQL injection via LIKE wildcards is prevented
+        """
+        # Arrange: Create test data
+        fake = Faker()
+        account, tenant = self._create_test_account_and_tenant(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+
+        from extensions.ext_database import db
+
+        # Create tags with special characters in names
+        tag_with_percent = Tag(
+            name="50% discount",
+            type="app",
+            tenant_id=tenant.id,
+            created_by=account.id,
+        )
+        tag_with_percent.id = str(uuid.uuid4())
+        db.session.add(tag_with_percent)
+
+        tag_with_underscore = Tag(
+            name="test_data_tag",
+            type="app",
+            tenant_id=tenant.id,
+            created_by=account.id,
+        )
+        tag_with_underscore.id = str(uuid.uuid4())
+        db.session.add(tag_with_underscore)
+
+        tag_with_backslash = Tag(
+            name="path\\to\\tag",
+            type="app",
+            tenant_id=tenant.id,
+            created_by=account.id,
+        )
+        tag_with_backslash.id = str(uuid.uuid4())
+        db.session.add(tag_with_backslash)
+
+        # Create tag that should NOT match
+        tag_no_match = Tag(
+            name="100% different",
+            type="app",
+            tenant_id=tenant.id,
+            created_by=account.id,
+        )
+        tag_no_match.id = str(uuid.uuid4())
+        db.session.add(tag_no_match)
+
+        db.session.commit()
+
+        # Act & Assert: Test 1 - Search with % character
+        result = TagService.get_tags("app", tenant.id, keyword="50%")
+        assert len(result) == 1
+        assert result[0].name == "50% discount"
+
+        # Test 2 - Search with _ character
+        result = TagService.get_tags("app", tenant.id, keyword="test_data")
+        assert len(result) == 1
+        assert result[0].name == "test_data_tag"
+
+        # Test 3 - Search with \ character
+        result = TagService.get_tags("app", tenant.id, keyword="path\\to\\tag")
+        assert len(result) == 1
+        assert result[0].name == "path\\to\\tag"
+
+        # Test 4 - Search with % should NOT match 100% (verifies escaping works)
+        result = TagService.get_tags("app", tenant.id, keyword="50%")
+        assert len(result) == 1
+        assert all("50%" in item.name for item in result)
 
     def test_get_tags_empty_result(self, db_session_with_containers, mock_external_service_dependencies):
         """
@@ -954,7 +1035,9 @@ class TestTagService:
         from extensions.ext_database import db
 
         # Verify only one binding exists
-        bindings = db.session.query(TagBinding).where(TagBinding.tag_id == tag.id, TagBinding.target_id == app.id).all()
+        bindings = db.session.scalars(
+            select(TagBinding).where(TagBinding.tag_id == tag.id, TagBinding.target_id == app.id)
+        ).all()
         assert len(bindings) == 1
 
     def test_save_tag_binding_invalid_target_type(self, db_session_with_containers, mock_external_service_dependencies):
@@ -1064,7 +1147,9 @@ class TestTagService:
         # No error should be raised, and database state should remain unchanged
         from extensions.ext_database import db
 
-        bindings = db.session.query(TagBinding).where(TagBinding.tag_id == tag.id, TagBinding.target_id == app.id).all()
+        bindings = db.session.scalars(
+            select(TagBinding).where(TagBinding.tag_id == tag.id, TagBinding.target_id == app.id)
+        ).all()
         assert len(bindings) == 0
 
     def test_check_target_exists_knowledge_success(

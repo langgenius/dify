@@ -1,32 +1,33 @@
+import type { Theme } from '../../embedded-chatbot/theme/theme-context'
+import type {
+  EnableType,
+  OnSend,
+} from '../../types'
+import type { InputForm } from '../type'
+import type { FileUpload } from '@/app/components/base/features/types'
+import { decode } from 'html-entities'
+import Recorder from 'js-audio-recorder'
 import {
   useCallback,
   useRef,
   useState,
 } from 'react'
-import Textarea from 'react-textarea-autosize'
 import { useTranslation } from 'react-i18next'
-import Recorder from 'js-audio-recorder'
-import type {
-  EnableType,
-  OnSend,
-} from '../../types'
-import type { Theme } from '../../embedded-chatbot/theme/theme-context'
-import type { InputForm } from '../type'
-import { useCheckInputsForms } from '../check-input-forms-hooks'
-import { useTextAreaHeight } from './hooks'
-import Operation from './operation'
-import cn from '@/utils/classnames'
+import Textarea from 'react-textarea-autosize'
+import FeatureBar from '@/app/components/base/features/new-feature-panel/feature-bar'
 import { FileListInChatInput } from '@/app/components/base/file-uploader'
 import { useFile } from '@/app/components/base/file-uploader/hooks'
 import {
   FileContextProvider,
   useFileStore,
 } from '@/app/components/base/file-uploader/store'
-import VoiceInput from '@/app/components/base/voice-input'
 import { useToastContext } from '@/app/components/base/toast'
-import FeatureBar from '@/app/components/base/features/new-feature-panel/feature-bar'
-import type { FileUpload } from '@/app/components/base/features/types'
+import VoiceInput from '@/app/components/base/voice-input'
 import { TransferMethod } from '@/types/app'
+import { cn } from '@/utils/classnames'
+import { useCheckInputsForms } from '../check-input-forms-hooks'
+import { useTextAreaHeight } from './hooks'
+import Operation from './operation'
 
 type ChatInputAreaProps = {
   botName?: string
@@ -78,30 +79,39 @@ const ChatInputArea = ({
     handleDropFile,
     handleClipboardPasteFile,
     isDragActive,
-  } = useFile(visionConfig!)
+  } = useFile(visionConfig!, false)
   const { checkInputsForm } = useCheckInputsForms()
   const historyRef = useRef([''])
   const [currentIndex, setCurrentIndex] = useState(-1)
   const isComposingRef = useRef(false)
+
+  const handleQueryChange = useCallback(
+    (value: string) => {
+      setQuery(value)
+      setTimeout(handleTextareaResize, 0)
+    },
+    [handleTextareaResize],
+  )
+
   const handleSend = () => {
     if (isResponding) {
-      notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
+      notify({ type: 'info', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
       return
     }
 
     if (onSend) {
       const { files, setFiles } = filesStore.getState()
       if (files.find(item => item.transferMethod === TransferMethod.local_file && !item.uploadedId)) {
-        notify({ type: 'info', message: t('appDebug.errorMessage.waitForFileUpload') })
+        notify({ type: 'info', message: t('errorMessage.waitForFileUpload', { ns: 'appDebug' }) })
         return
       }
       if (!query || !query.trim()) {
-        notify({ type: 'info', message: t('appAnnotation.errorMessage.queryRequired') })
+        notify({ type: 'info', message: t('errorMessage.queryRequired', { ns: 'appAnnotation' }) })
         return
       }
       if (checkInputsForm(inputs, inputsForm)) {
         onSend(query, files)
-        setQuery('')
+        handleQueryChange('')
         setFiles([])
       }
     }
@@ -120,7 +130,8 @@ const ChatInputArea = ({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       // if isComposing, exit
-      if (isComposingRef.current) return
+      if (isComposingRef.current)
+        return
       e.preventDefault()
       setQuery(query.replace(/\n$/, ''))
       historyRef.current.push(query)
@@ -131,19 +142,19 @@ const ChatInputArea = ({
       // When the cmd + up key is pressed, output the previous element
       if (currentIndex > 0) {
         setCurrentIndex(currentIndex - 1)
-        setQuery(historyRef.current[currentIndex - 1])
+        handleQueryChange(historyRef.current[currentIndex - 1])
       }
     }
     else if (e.key === 'ArrowDown' && !e.shiftKey && !e.nativeEvent.isComposing && e.metaKey) {
       // When the cmd + down key is pressed, output the next element
       if (currentIndex < historyRef.current.length - 1) {
         setCurrentIndex(currentIndex + 1)
-        setQuery(historyRef.current[currentIndex + 1])
+        handleQueryChange(historyRef.current[currentIndex + 1])
       }
       else if (currentIndex === historyRef.current.length - 1) {
         // If it is the last element, clear the input box
         setCurrentIndex(historyRef.current.length)
-        setQuery('')
+        handleQueryChange('')
       }
     }
   }
@@ -152,7 +163,7 @@ const ChatInputArea = ({
     (Recorder as any).getPermission().then(() => {
       setShowVoiceInput(true)
     }, () => {
-      notify({ type: 'error', message: t('common.voiceInput.notAllow') })
+      notify({ type: 'error', message: t('voiceInput.notAllow', { ns: 'common' }) })
     })
   }, [t, notify])
 
@@ -171,21 +182,21 @@ const ChatInputArea = ({
     <>
       <div
         className={cn(
-          'relative z-10 rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pb-[9px] shadow-md',
+          'relative z-10 overflow-hidden rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pb-[9px] shadow-md',
           isDragActive && 'border border-dashed border-components-option-card-option-selected-border',
           disabled && 'pointer-events-none border-components-panel-border opacity-50 shadow-none',
         )}
       >
-        <div className='relative max-h-[158px] overflow-y-auto overflow-x-hidden px-[9px] pt-[9px]'>
+        <div className="relative max-h-[158px] overflow-y-auto overflow-x-hidden px-[9px] pt-[9px]">
           <FileListInChatInput fileConfig={visionConfig!} />
           <div
             ref={wrapperRef}
-            className='flex items-center justify-between'
+            className="flex items-center justify-between"
           >
-            <div className='relative flex w-full grow items-center'>
+            <div className="relative flex w-full grow items-center">
               <div
                 ref={textValueRef}
-                className='body-lg-regular pointer-events-none invisible absolute h-auto w-auto whitespace-pre p-1 leading-6'
+                className="body-lg-regular pointer-events-none invisible absolute h-auto w-auto whitespace-pre p-1 leading-6"
               >
                 {query}
               </div>
@@ -194,15 +205,11 @@ const ChatInputArea = ({
                 className={cn(
                   'body-lg-regular w-full resize-none bg-transparent p-1 leading-6 text-text-primary outline-none',
                 )}
-                placeholder={t('common.chat.inputPlaceholder', { botName }) || ''}
+                placeholder={decode(t('chat.inputPlaceholder', { ns: 'common', botName }) || '')}
                 autoFocus
                 minRows={1}
-                onResize={handleTextareaResize}
                 value={query}
-                onChange={(e) => {
-                  setQuery(e.target.value)
-                  setTimeout(handleTextareaResize, 0)
-                }}
+                onChange={e => handleQueryChange(e.target.value)}
                 onKeyDown={handleKeyDown}
                 onCompositionStart={handleCompositionStart}
                 onCompositionEnd={handleCompositionEnd}
@@ -221,14 +228,14 @@ const ChatInputArea = ({
             showVoiceInput && (
               <VoiceInput
                 onCancel={() => setShowVoiceInput(false)}
-                onConverted={text => setQuery(text)}
+                onConverted={text => handleQueryChange(text)}
               />
             )
           }
         </div>
         {
           isMultipleLine && (
-            <div className='px-[9px]'>{operation}</div>
+            <div className="px-[9px]">{operation}</div>
           )
         }
       </div>

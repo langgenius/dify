@@ -1,17 +1,19 @@
 'use client'
 
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import * as React from 'react'
+import { useCallback, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import Loading from '@/app/components/base/loading'
-import { removeAccessToken } from '@/app/components/share/utils'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useGetUserCanAccessApp } from '@/service/access-control'
 import { useGetWebAppInfo, useGetWebAppMeta, useGetWebAppParams } from '@/service/use-share'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import React, { useCallback, useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
+import { webAppLogout } from '@/service/webapp-auth'
 
 const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
   const { t } = useTranslation()
+  const shareCode = useWebAppStore(s => s.shareCode)
   const updateAppInfo = useWebAppStore(s => s.updateAppInfo)
   const updateAppParams = useWebAppStore(s => s.updateAppParams)
   const updateWebAppMeta = useWebAppStore(s => s.updateWebAppMeta)
@@ -41,42 +43,54 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
     return `/webapp-signin?${params.toString()}`
   }, [searchParams, pathname])
 
-  const backToHome = useCallback(() => {
-    removeAccessToken()
+  const backToHome = useCallback(async () => {
+    await webAppLogout(shareCode!)
     const url = getSigninUrl()
     router.replace(url)
-  }, [getSigninUrl, router])
+  }, [getSigninUrl, router, webAppLogout, shareCode])
 
   if (appInfoError) {
-    return <div className='flex h-full items-center justify-center'>
-      <AppUnavailable unknownReason={appInfoError.message} />
-    </div>
+    return (
+      <div className="flex h-full items-center justify-center">
+        <AppUnavailable unknownReason={appInfoError.message} />
+      </div>
+    )
   }
   if (appParamsError) {
-    return <div className='flex h-full items-center justify-center'>
-      <AppUnavailable unknownReason={appParamsError.message} />
-    </div>
+    return (
+      <div className="flex h-full items-center justify-center">
+        <AppUnavailable unknownReason={appParamsError.message} />
+      </div>
+    )
   }
   if (appMetaError) {
-    return <div className='flex h-full items-center justify-center'>
-      <AppUnavailable unknownReason={appMetaError.message} />
-    </div>
+    return (
+      <div className="flex h-full items-center justify-center">
+        <AppUnavailable unknownReason={appMetaError.message} />
+      </div>
+    )
   }
   if (useCanAccessAppError) {
-    return <div className='flex h-full items-center justify-center'>
-      <AppUnavailable unknownReason={useCanAccessAppError.message} />
-    </div>
+    return (
+      <div className="flex h-full items-center justify-center">
+        <AppUnavailable unknownReason={useCanAccessAppError.message} />
+      </div>
+    )
   }
   if (userCanAccessApp && !userCanAccessApp.result) {
-    return <div className='flex h-full flex-col items-center justify-center gap-y-2'>
-      <AppUnavailable className='h-auto w-auto' code={403} unknownReason='no permission.' />
-      <span className='system-sm-regular cursor-pointer text-text-tertiary' onClick={backToHome}>{t('common.userProfile.logout')}</span>
-    </div>
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-y-2">
+        <AppUnavailable className="h-auto w-auto" code={403} unknownReason="no permission." />
+        <span className="system-sm-regular cursor-pointer text-text-tertiary" onClick={backToHome}>{t('userProfile.logout', { ns: 'common' })}</span>
+      </div>
+    )
   }
   if (isFetchingAppInfo || isFetchingAppParams || isFetchingAppMeta) {
-    return <div className='flex h-full items-center justify-center'>
-      <Loading />
-    </div>
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loading />
+      </div>
+    )
   }
   return <>{children}</>
 }

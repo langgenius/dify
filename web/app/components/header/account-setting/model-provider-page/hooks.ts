@@ -1,41 +1,42 @@
+import type {
+  Credential,
+  CustomConfigurationModelFixedFields,
+  CustomModel,
+  DefaultModel,
+  DefaultModelResponse,
+  Model,
+  ModelModalModeEnum,
+  ModelProvider,
+  ModelTypeEnum,
+} from './declarations'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   useCallback,
   useEffect,
   useMemo,
   useState,
 } from 'react'
-import useSWR, { useSWRConfig } from 'swr'
-import { useContext } from 'use-context-selector'
-import type {
-  CustomConfigurationModelFixedFields,
-  DefaultModel,
-  DefaultModelResponse,
-  Model,
-  ModelProvider,
-  ModelTypeEnum,
-} from './declarations'
+import {
+  useMarketplacePlugins,
+  useMarketplacePluginsByCollectionId,
+} from '@/app/components/plugins/marketplace/hooks'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { useLocale } from '@/context/i18n'
+import { useModalContextSelector } from '@/context/modal-context'
+import { useProviderContext } from '@/context/provider-context'
+import {
+  fetchDefaultModal,
+  fetchModelList,
+  fetchModelProviderCredentials,
+  getPayUrl,
+} from '@/service/common'
+import { commonQueryKeys } from '@/service/use-common'
 import {
   ConfigurationMethodEnum,
   CustomConfigurationStatusEnum,
   ModelStatusEnum,
 } from './declarations'
-import I18n from '@/context/i18n'
-import {
-  fetchDefaultModal,
-  fetchModelList,
-  fetchModelProviderCredentials,
-  fetchModelProviders,
-  getPayUrl,
-} from '@/service/common'
-import { useProviderContext } from '@/context/provider-context'
-import {
-  useMarketplacePlugins,
-} from '@/app/components/plugins/marketplace/hooks'
-import type { Plugin } from '@/app/components/plugins/types'
-import { PluginType } from '@/app/components/plugins/types'
-import { getMarketplacePluginsByCollectionId } from '@/app/components/plugins/marketplace/utils'
-import { useModalContextSelector } from '@/context/modal-context'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST } from './provider-added-card'
 
 type UseDefaultModelAndModelList = (
@@ -68,7 +69,7 @@ export const useSystemDefaultModelAndModelList: UseDefaultModelAndModelList = (
 }
 
 export const useLanguage = () => {
-  const { locale } = useContext(I18n)
+  const locale = useLocale()
   return locale.replace('-', '_')
 }
 
@@ -77,18 +78,25 @@ export const useProviderCredentialsAndLoadBalancing = (
   configurationMethod: ConfigurationMethodEnum,
   configured?: boolean,
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
+  credentialId?: string,
 ) => {
-  const { data: predefinedFormSchemasValue, mutate: mutatePredefined } = useSWR(
-    (configurationMethod === ConfigurationMethodEnum.predefinedModel && configured)
-      ? `/workspaces/current/model-providers/${provider}/credentials`
-      : null,
-    fetchModelProviderCredentials,
+  const queryClient = useQueryClient()
+  const predefinedEnabled = configurationMethod === ConfigurationMethodEnum.predefinedModel && configured && !!credentialId
+  const customEnabled = configurationMethod === ConfigurationMethodEnum.customizableModel && !!currentCustomConfigurationModelFixedFields && !!credentialId
+
+  const { data: predefinedFormSchemasValue, isPending: isPredefinedLoading } = useQuery(
+    {
+      queryKey: ['model-providers', 'credentials', provider, credentialId],
+      queryFn: () => fetchModelProviderCredentials(`/workspaces/current/model-providers/${provider}/credentials${credentialId ? `?credential_id=${credentialId}` : ''}`),
+      enabled: predefinedEnabled,
+    },
   )
-  const { data: customFormSchemasValue, mutate: mutateCustomized } = useSWR(
-    (configurationMethod === ConfigurationMethodEnum.customizableModel && currentCustomConfigurationModelFixedFields)
-      ? `/workspaces/current/model-providers/${provider}/models/credentials?model=${currentCustomConfigurationModelFixedFields?.__model_name}&model_type=${currentCustomConfigurationModelFixedFields?.__model_type}`
-      : null,
-    fetchModelProviderCredentials,
+  const { data: customFormSchemasValue, isPending: isCustomizedLoading } = useQuery(
+    {
+      queryKey: ['model-providers', 'models', 'credentials', provider, currentCustomConfigurationModelFixedFields?.__model_type, currentCustomConfigurationModelFixedFields?.__model_name, credentialId],
+      queryFn: () => fetchModelProviderCredentials(`/workspaces/current/model-providers/${provider}/models/credentials?model=${currentCustomConfigurationModelFixedFields?.__model_name}&model_type=${currentCustomConfigurationModelFixedFields?.__model_type}${credentialId ? `&credential_id=${credentialId}` : ''}`),
+      enabled: customEnabled,
+    },
   )
 
   const credentials = useMemo(() => {
@@ -96,21 +104,24 @@ export const useProviderCredentialsAndLoadBalancing = (
       ? predefinedFormSchemasValue?.credentials
       : customFormSchemasValue?.credentials
         ? {
-          ...customFormSchemasValue?.credentials,
-          ...currentCustomConfigurationModelFixedFields,
-        }
+            ...customFormSchemasValue?.credentials,
+            ...currentCustomConfigurationModelFixedFields,
+          }
         : undefined
   }, [
     configurationMethod,
+    credentialId,
     currentCustomConfigurationModelFixedFields,
     customFormSchemasValue?.credentials,
     predefinedFormSchemasValue?.credentials,
   ])
 
   const mutate = useMemo(() => () => {
-    mutatePredefined()
-    mutateCustomized()
-  }, [mutateCustomized, mutatePredefined])
+    if (predefinedEnabled)
+      queryClient.invalidateQueries({ queryKey: ['model-providers', 'credentials', provider, credentialId] })
+    if (customEnabled)
+      queryClient.invalidateQueries({ queryKey: ['model-providers', 'models', 'credentials', provider, currentCustomConfigurationModelFixedFields?.__model_type, currentCustomConfigurationModelFixedFields?.__model_name, credentialId] })
+  }, [customEnabled, credentialId, currentCustomConfigurationModelFixedFields?.__model_name, currentCustomConfigurationModelFixedFields?.__model_type, predefinedEnabled, provider, queryClient])
 
   return {
     credentials,
@@ -119,27 +130,34 @@ export const useProviderCredentialsAndLoadBalancing = (
       : customFormSchemasValue
     )?.load_balancing,
     mutate,
+    isLoading: isPredefinedLoading || isCustomizedLoading,
   }
   // as ([Record<string, string | boolean | undefined> | undefined, ModelLoadBalancingConfig | undefined])
 }
 
 export const useModelList = (type: ModelTypeEnum) => {
-  const { data, mutate, isLoading } = useSWR(`/workspaces/current/models/model-types/${type}`, fetchModelList)
+  const { data, refetch, isPending } = useQuery({
+    queryKey: commonQueryKeys.modelList(type),
+    queryFn: () => fetchModelList(`/workspaces/current/models/model-types/${type}`),
+  })
 
   return {
     data: data?.data || [],
-    mutate,
-    isLoading,
+    mutate: refetch,
+    isLoading: isPending,
   }
 }
 
 export const useDefaultModel = (type: ModelTypeEnum) => {
-  const { data, mutate, isLoading } = useSWR(`/workspaces/current/default-model?model_type=${type}`, fetchDefaultModal)
+  const { data, refetch, isPending } = useQuery({
+    queryKey: commonQueryKeys.defaultModel(type),
+    queryFn: () => fetchDefaultModal(`/workspaces/current/default-model?model_type=${type}`),
+  })
 
   return {
     data: data?.data,
-    mutate,
-    isLoading,
+    mutate: refetch,
+    isLoading: isPending,
   }
 }
 
@@ -195,11 +213,11 @@ export const useModelListAndDefaultModelAndCurrentProviderAndModel = (type: Mode
 }
 
 export const useUpdateModelList = () => {
-  const { mutate } = useSWRConfig()
+  const queryClient = useQueryClient()
 
   const updateModelList = useCallback((type: ModelTypeEnum) => {
-    mutate(`/workspaces/current/models/model-types/${type}`)
-  }, [mutate])
+    queryClient.invalidateQueries({ queryKey: commonQueryKeys.modelList(type) })
+  }, [queryClient])
 
   return updateModelList
 }
@@ -225,22 +243,12 @@ export const useAnthropicBuyQuota = () => {
   return handleGetPayUrl
 }
 
-export const useModelProviders = () => {
-  const { data: providersData, mutate, isLoading } = useSWR('/workspaces/current/model-providers', fetchModelProviders)
-
-  return {
-    data: providersData?.data || [],
-    mutate,
-    isLoading,
-  }
-}
-
 export const useUpdateModelProviders = () => {
-  const { mutate } = useSWRConfig()
+  const queryClient = useQueryClient()
 
   const updateModelProviders = useCallback(() => {
-    mutate('/workspaces/current/model-providers')
-  }, [mutate])
+    queryClient.invalidateQueries({ queryKey: commonQueryKeys.modelProviders })
+  }, [queryClient])
 
   return updateModelProviders
 }
@@ -249,51 +257,43 @@ export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText:
   const exclude = useMemo(() => {
     return providers.map(provider => provider.provider.replace(/(.+)\/([^/]+)$/, '$1'))
   }, [providers])
-  const [collectionPlugins, setCollectionPlugins] = useState<Plugin[]>([])
-
+  const {
+    plugins: collectionPlugins = [],
+    isLoading: isCollectionLoading,
+  } = useMarketplacePluginsByCollectionId('__model-settings-pinned-models')
   const {
     plugins,
     queryPlugins,
     queryPluginsWithDebounced,
-    isLoading,
+    isLoading: isPluginsLoading,
   } = useMarketplacePlugins()
-
-  const getCollectionPlugins = useCallback(async () => {
-    const collectionPlugins = await getMarketplacePluginsByCollectionId('__model-settings-pinned-models')
-
-    setCollectionPlugins(collectionPlugins)
-  }, [])
-
-  useEffect(() => {
-    getCollectionPlugins()
-  }, [getCollectionPlugins])
 
   useEffect(() => {
     if (searchText) {
       queryPluginsWithDebounced({
         query: searchText,
-        category: PluginType.model,
+        category: PluginCategoryEnum.model,
         exclude,
         type: 'plugin',
-        sortBy: 'install_count',
-        sortOrder: 'DESC',
+        sort_by: 'install_count',
+        sort_order: 'DESC',
       })
     }
     else {
       queryPlugins({
         query: '',
-        category: PluginType.model,
+        category: PluginCategoryEnum.model,
         type: 'plugin',
-        pageSize: 1000,
+        page_size: 1000,
         exclude,
-        sortBy: 'install_count',
-        sortOrder: 'DESC',
+        sort_by: 'install_count',
+        sort_order: 'DESC',
       })
     }
   }, [queryPlugins, queryPluginsWithDebounced, searchText, exclude])
 
   const allPlugins = useMemo(() => {
-    const allPlugins = [...collectionPlugins.filter(plugin => !exclude.includes(plugin.plugin_id))]
+    const allPlugins = collectionPlugins.filter(plugin => !exclude.includes(plugin.plugin_id))
 
     if (plugins?.length) {
       for (let i = 0; i < plugins.length; i++) {
@@ -309,44 +309,68 @@ export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText:
 
   return {
     plugins: allPlugins,
-    isLoading,
+    isLoading: isCollectionLoading || isPluginsLoading,
+  }
+}
+
+export const useRefreshModel = () => {
+  const { eventEmitter } = useEventEmitterContextContext()
+  const updateModelProviders = useUpdateModelProviders()
+  const updateModelList = useUpdateModelList()
+  const handleRefreshModel = useCallback((
+    provider: ModelProvider,
+    CustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
+    refreshModelList?: boolean,
+  ) => {
+    updateModelProviders()
+
+    provider.supported_model_types.forEach((type) => {
+      updateModelList(type)
+    })
+
+    if (refreshModelList && provider.custom_configuration.status === CustomConfigurationStatusEnum.active) {
+      eventEmitter?.emit({
+        type: UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST,
+        payload: provider.provider,
+      } as any)
+
+      if (CustomConfigurationModelFixedFields?.__model_type)
+        updateModelList(CustomConfigurationModelFixedFields.__model_type)
+    }
+  }, [eventEmitter, updateModelList, updateModelProviders])
+
+  return {
+    handleRefreshModel,
   }
 }
 
 export const useModelModalHandler = () => {
   const setShowModelModal = useModalContextSelector(state => state.setShowModelModal)
-  const updateModelProviders = useUpdateModelProviders()
-  const updateModelList = useUpdateModelList()
-  const { eventEmitter } = useEventEmitterContextContext()
 
   return (
     provider: ModelProvider,
     configurationMethod: ConfigurationMethodEnum,
     CustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
+    extra: {
+      isModelCredential?: boolean
+      credential?: Credential
+      model?: CustomModel
+      onUpdate?: (newPayload: any, formValues?: Record<string, any>) => void
+      mode?: ModelModalModeEnum
+    } = {},
   ) => {
     setShowModelModal({
       payload: {
         currentProvider: provider,
         currentConfigurationMethod: configurationMethod,
         currentCustomConfigurationModelFixedFields: CustomConfigurationModelFixedFields,
+        isModelCredential: extra.isModelCredential,
+        credential: extra.credential,
+        model: extra.model,
+        mode: extra.mode,
       },
-      onSaveCallback: () => {
-        updateModelProviders()
-
-        provider.supported_model_types.forEach((type) => {
-          updateModelList(type)
-        })
-
-        if (configurationMethod === ConfigurationMethodEnum.customizableModel
-            && provider.custom_configuration.status === CustomConfigurationStatusEnum.active) {
-          eventEmitter?.emit({
-            type: UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST,
-            payload: provider.provider,
-          } as any)
-
-          if (CustomConfigurationModelFixedFields?.__model_type)
-            updateModelList(CustomConfigurationModelFixedFields.__model_type)
-        }
+      onSaveCallback: (newPayload, formValues) => {
+        extra.onUpdate?.(newPayload, formValues)
       },
     })
   }

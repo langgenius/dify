@@ -1,43 +1,59 @@
-from flask_restful import fields
+from __future__ import annotations
 
-from libs.helper import AppIconUrlField
+from typing import Any, TypeAlias
 
-parameters__system_parameters = {
-    "image_file_size_limit": fields.Integer,
-    "video_file_size_limit": fields.Integer,
-    "audio_file_size_limit": fields.Integer,
-    "file_size_limit": fields.Integer,
-    "workflow_file_upload_limit": fields.Integer,
-}
+from pydantic import BaseModel, ConfigDict, computed_field
 
-parameters_fields = {
-    "opening_statement": fields.String,
-    "suggested_questions": fields.Raw,
-    "suggested_questions_after_answer": fields.Raw,
-    "speech_to_text": fields.Raw,
-    "text_to_speech": fields.Raw,
-    "retriever_resource": fields.Raw,
-    "annotation_reply": fields.Raw,
-    "more_like_this": fields.Raw,
-    "user_input_form": fields.Raw,
-    "sensitive_word_avoidance": fields.Raw,
-    "file_upload": fields.Raw,
-    "system_parameters": fields.Nested(parameters__system_parameters),
-}
+from core.file import helpers as file_helpers
+from models.model import IconType
 
-site_fields = {
-    "title": fields.String,
-    "chat_color_theme": fields.String,
-    "chat_color_theme_inverted": fields.Boolean,
-    "icon_type": fields.String,
-    "icon": fields.String,
-    "icon_background": fields.String,
-    "icon_url": AppIconUrlField,
-    "description": fields.String,
-    "copyright": fields.String,
-    "privacy_policy": fields.String,
-    "custom_disclaimer": fields.String,
-    "default_language": fields.String,
-    "show_workflow_steps": fields.Boolean,
-    "use_icon_as_answer_icon": fields.Boolean,
-}
+JSONValue: TypeAlias = str | int | float | bool | None | dict[str, Any] | list[Any]
+JSONObject: TypeAlias = dict[str, Any]
+
+
+class SystemParameters(BaseModel):
+    image_file_size_limit: int
+    video_file_size_limit: int
+    audio_file_size_limit: int
+    file_size_limit: int
+    workflow_file_upload_limit: int
+
+
+class Parameters(BaseModel):
+    opening_statement: str | None = None
+    suggested_questions: list[str]
+    suggested_questions_after_answer: JSONObject
+    speech_to_text: JSONObject
+    text_to_speech: JSONObject
+    retriever_resource: JSONObject
+    annotation_reply: JSONObject
+    more_like_this: JSONObject
+    user_input_form: list[JSONObject]
+    sensitive_word_avoidance: JSONObject
+    file_upload: JSONObject
+    system_parameters: SystemParameters
+
+
+class Site(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    title: str
+    chat_color_theme: str | None = None
+    chat_color_theme_inverted: bool
+    icon_type: str | None = None
+    icon: str | None = None
+    icon_background: str | None = None
+    description: str | None = None
+    copyright: str | None = None
+    privacy_policy: str | None = None
+    custom_disclaimer: str | None = None
+    default_language: str
+    show_workflow_steps: bool
+    use_icon_as_answer_icon: bool
+
+    @computed_field(return_type=str | None)  # type: ignore
+    @property
+    def icon_url(self) -> str | None:
+        if self.icon and self.icon_type == IconType.IMAGE:
+            return file_helpers.get_signed_file_url(self.icon)
+        return None

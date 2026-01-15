@@ -33,7 +33,7 @@ export const useResizePanel = (params?: UseResizePanelParams) => {
   const initContainerWidthRef = useRef(0)
   const initContainerHeightRef = useRef(0)
   const isResizingRef = useRef(false)
-  const [prevUserSelectStyle, setPrevUserSelectStyle] = useState(getComputedStyle(document.body).userSelect)
+  const [prevUserSelectStyle, setPrevUserSelectStyle] = useState(() => getComputedStyle(document.body).userSelect)
 
   const handleStartResize = useCallback((e: MouseEvent) => {
     initXRef.current = e.clientX

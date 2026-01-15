@@ -1,6 +1,9 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import type { ReactNode, RefObject } from 'react'
+import type { FilterState } from './filter-management'
+import { noop } from 'es-toolkit/function'
+import { useQueryState } from 'nuqs'
 import {
   useMemo,
   useRef,
@@ -10,14 +13,11 @@ import {
   createContext,
   useContextSelector,
 } from 'use-context-selector'
-import type { FilterState } from './filter-management'
-import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
-import { noop } from 'lodash-es'
-import { PLUGIN_PAGE_TABS_MAP, usePluginPageTabs } from '../hooks'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { PLUGIN_PAGE_TABS_MAP, usePluginPageTabs } from '../hooks'
 
 export type PluginPageContextValue = {
-  containerRef: React.RefObject<HTMLDivElement>
+  containerRef: RefObject<HTMLDivElement | null>
   currentPluginID: string | undefined
   setCurrentPluginID: (pluginID?: string) => void
   filters: FilterState
@@ -27,8 +27,10 @@ export type PluginPageContextValue = {
   options: Array<{ value: string, text: string }>
 }
 
+const emptyContainerRef: RefObject<HTMLDivElement | null> = { current: null }
+
 export const PluginPageContext = createContext<PluginPageContextValue>({
-  containerRef: { current: null },
+  containerRef: emptyContainerRef,
   currentPluginID: undefined,
   setCurrentPluginID: noop,
   filters: {
@@ -53,7 +55,7 @@ export function usePluginPageContext(selector: (value: PluginPageContextValue) =
 export const PluginPageContextProvider = ({
   children,
 }: PluginPageContextProviderProps) => {
-  const containerRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement | null>(null)
   const [filters, setFilters] = useState<FilterState>({
     categories: [],
     tags: [],
@@ -66,8 +68,8 @@ export const PluginPageContextProvider = ({
   const options = useMemo(() => {
     return enable_marketplace ? tabs : tabs.filter(tab => tab.value !== PLUGIN_PAGE_TABS_MAP.marketplace)
   }, [tabs, enable_marketplace])
-  const [activeTab, setActiveTab] = useTabSearchParams({
-    defaultTab: options[0].value,
+  const [activeTab, setActiveTab] = useQueryState('category', {
+    defaultValue: options[0].value,
   })
 
   return (

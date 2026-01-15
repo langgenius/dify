@@ -1,32 +1,32 @@
+import type { EdgeProps } from 'reactflow'
+import type {
+  Edge,
+  OnSelectBlock,
+} from './types'
+import { intersection } from 'es-toolkit/array'
 import {
   memo,
   useCallback,
   useMemo,
   useState,
 } from 'react'
-import { intersection } from 'lodash-es'
-import type { EdgeProps } from 'reactflow'
 import {
   BaseEdge,
   EdgeLabelRenderer,
-  Position,
   getBezierPath,
+  Position,
 } from 'reactflow'
+import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
+import { cn } from '@/utils/classnames'
+import BlockSelector from './block-selector'
+import { ITERATION_CHILDREN_Z_INDEX, LOOP_CHILDREN_Z_INDEX } from './constants'
+import CustomEdgeLinearGradientRender from './custom-edge-linear-gradient-render'
 import {
   useAvailableBlocks,
   useNodesInteractions,
 } from './hooks'
-import BlockSelector from './block-selector'
-import type {
-  Edge,
-  OnSelectBlock,
-} from './types'
 import { NodeRunningStatus } from './types'
 import { getEdgeColor } from './utils'
-import { ITERATION_CHILDREN_Z_INDEX, LOOP_CHILDREN_Z_INDEX } from './constants'
-import CustomEdgeLinearGradientRender from './custom-edge-linear-gradient-render'
-import cn from '@/utils/classnames'
-import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 
 const CustomEdge = ({
   id,
@@ -56,8 +56,8 @@ const CustomEdge = ({
   })
   const [open, setOpen] = useState(false)
   const { handleNodeAdd } = useNodesInteractions()
-  const { availablePrevBlocks } = useAvailableBlocks((data as Edge['data'])!.targetType, (data as Edge['data'])?.isInIteration, (data as Edge['data'])?.isInLoop)
-  const { availableNextBlocks } = useAvailableBlocks((data as Edge['data'])!.sourceType, (data as Edge['data'])?.isInIteration, (data as Edge['data'])?.isInLoop)
+  const { availablePrevBlocks } = useAvailableBlocks((data as Edge['data'])!.targetType, (data as Edge['data'])?.isInIteration || (data as Edge['data'])?.isInLoop)
+  const { availableNextBlocks } = useAvailableBlocks((data as Edge['data'])!.sourceType, (data as Edge['data'])?.isInIteration || (data as Edge['data'])?.isInLoop)
   const {
     _sourceRunningStatus,
     _targetRunningStatus,
@@ -75,19 +75,20 @@ const CustomEdge = ({
         || _targetRunningStatus === NodeRunningStatus.Exception
         || _targetRunningStatus === NodeRunningStatus.Running
       )
-    )
+    ) {
       return id
+    }
   }, [_sourceRunningStatus, _targetRunningStatus, id])
 
   const handleOpenChange = useCallback((v: boolean) => {
     setOpen(v)
   }, [])
 
-  const handleInsert = useCallback<OnSelectBlock>((nodeType, toolDefaultValue) => {
+  const handleInsert = useCallback<OnSelectBlock>((nodeType, pluginDefaultValue) => {
     handleNodeAdd(
       {
         nodeType,
-        toolDefaultValue,
+        pluginDefaultValue,
       },
       {
         prevNodeId: source,

@@ -1,27 +1,30 @@
 import logging
 import time
-from typing import Literal
 
 import click
-from celery import shared_task  # type: ignore
+from celery import shared_task
+from sqlalchemy import select
 
-from core.rag.index_processor.constant.index_type import IndexType
+from core.rag.index_processor.constant.doc_type import DocType
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
-from core.rag.models.document import ChildDocument, Document
+from core.rag.models.document import AttachmentDocument, ChildDocument, Document
 from extensions.ext_database import db
 from models.dataset import Dataset, DocumentSegment
 from models.dataset import Document as DatasetDocument
 
+logger = logging.getLogger(__name__)
+
 
 @shared_task(queue="dataset")
-def deal_dataset_vector_index_task(dataset_id: str, action: Literal["remove", "add", "update"]):
+def deal_dataset_vector_index_task(dataset_id: str, action: str):
     """
     Async deal dataset from index
     :param dataset_id: dataset_id
     :param action: action
     Usage: deal_dataset_vector_index_task.delay(dataset_id, action)
     """
-    logging.info(click.style(f"Start deal dataset vector index: {dataset_id}", fg="green"))
+    logger.info(click.style(f"Start deal dataset vector index: {dataset_id}", fg="green"))
     start_at = time.perf_counter()
 
     try:
@@ -29,21 +32,19 @@ def deal_dataset_vector_index_task(dataset_id: str, action: Literal["remove", "a
 
         if not dataset:
             raise Exception("Dataset not found")
-        index_type = dataset.doc_form or IndexType.PARAGRAPH_INDEX
+        index_type = dataset.doc_form or IndexStructureType.PARAGRAPH_INDEX
         index_processor = IndexProcessorFactory(index_type).init_index_processor()
         if action == "remove":
             index_processor.clean(dataset, None, with_keywords=False)
         elif action == "add":
-            dataset_documents = (
-                db.session.query(DatasetDocument)
-                .where(
+            dataset_documents = db.session.scalars(
+                select(DatasetDocument).where(
                     DatasetDocument.dataset_id == dataset_id,
                     DatasetDocument.indexing_status == "completed",
                     DatasetDocument.enabled == True,
                     DatasetDocument.archived == False,
                 )
-                .all()
-            )
+            ).all()
 
             if dataset_documents:
                 dataset_documents_ids = [doc.id for doc in dataset_documents]
@@ -87,16 +88,14 @@ def deal_dataset_vector_index_task(dataset_id: str, action: Literal["remove", "a
                         )
                         db.session.commit()
         elif action == "update":
-            dataset_documents = (
-                db.session.query(DatasetDocument)
-                .where(
+            dataset_documents = db.session.scalars(
+                select(DatasetDocument).where(
                     DatasetDocument.dataset_id == dataset_id,
                     DatasetDocument.indexing_status == "completed",
                     DatasetDocument.enabled == True,
                     DatasetDocument.archived == False,
                 )
-                .all()
-            )
+            ).all()
             # add new index
             if dataset_documents:
                 # update document status
@@ -120,6 +119,7 @@ def deal_dataset_vector_index_task(dataset_id: str, action: Literal["remove", "a
                         )
                         if segments:
                             documents = []
+                            multimodal_documents = []
                             for segment in segments:
                                 document = Document(
                                     page_content=segment.content,
@@ -130,7 +130,7 @@ def deal_dataset_vector_index_task(dataset_id: str, action: Literal["remove", "a
                                         "dataset_id": segment.dataset_id,
                                     },
                                 )
-                                if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
+                                if dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
                                     child_chunks = segment.get_child_chunks()
                                     if child_chunks:
                                         child_documents = []
@@ -146,9 +146,25 @@ def deal_dataset_vector_index_task(dataset_id: str, action: Literal["remove", "a
                                             )
                                             child_documents.append(child_document)
                                         document.children = child_documents
+                                if dataset.is_multimodal:
+                                    for attachment in segment.attachments:
+                                        multimodal_documents.append(
+                                            AttachmentDocument(
+                                                page_content=attachment["name"],
+                                                metadata={
+                                                    "doc_id": attachment["id"],
+                                                    "doc_hash": "",
+                                                    "document_id": segment.document_id,
+                                                    "dataset_id": segment.dataset_id,
+                                                    "doc_type": DocType.IMAGE,
+                                                },
+                                            )
+                                        )
                                 documents.append(document)
                             # save vector index
-                            index_processor.load(dataset, documents, with_keywords=False)
+                            index_processor.load(
+                                dataset, documents, multimodal_documents=multimodal_documents, with_keywords=False
+                            )
                         db.session.query(DatasetDocument).where(DatasetDocument.id == dataset_document.id).update(
                             {"indexing_status": "completed"}, synchronize_session=False
                         )
@@ -163,8 +179,8 @@ def deal_dataset_vector_index_task(dataset_id: str, action: Literal["remove", "a
                 index_processor.clean(dataset, None, with_keywords=False, delete_child_chunks=False)
 
         end_at = time.perf_counter()
-        logging.info(click.style(f"Deal dataset vector index: {dataset_id} latency: {end_at - start_at}", fg="green"))
+        logger.info(click.style(f"Deal dataset vector index: {dataset_id} latency: {end_at - start_at}", fg="green"))
     except Exception:
-        logging.exception("Deal dataset vector index failed")
+        logger.exception("Deal dataset vector index failed")
     finally:
         db.session.close()

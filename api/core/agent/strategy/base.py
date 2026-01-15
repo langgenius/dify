@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Generator, Sequence
-from typing import Any, Optional
+from typing import Any
 
 from core.agent.entities import AgentInvokeMessage
 from core.agent.plugin_entities import AgentStrategyParameter
@@ -16,10 +16,10 @@ class BaseAgentStrategy(ABC):
         self,
         params: dict[str, Any],
         user_id: str,
-        conversation_id: Optional[str] = None,
-        app_id: Optional[str] = None,
-        message_id: Optional[str] = None,
-        credentials: Optional[InvokeCredentials] = None,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
+        credentials: InvokeCredentials | None = None,
     ) -> Generator[AgentInvokeMessage, None, None]:
         """
         Invoke the agent strategy.
@@ -37,9 +37,9 @@ class BaseAgentStrategy(ABC):
         self,
         params: dict[str, Any],
         user_id: str,
-        conversation_id: Optional[str] = None,
-        app_id: Optional[str] = None,
-        message_id: Optional[str] = None,
-        credentials: Optional[InvokeCredentials] = None,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
+        credentials: InvokeCredentials | None = None,
     ) -> Generator[AgentInvokeMessage, None, None]:
         pass

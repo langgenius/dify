@@ -1,17 +1,16 @@
 'use client'
-import type { ForwardRefRenderFunction } from 'react'
-import { useImperativeHandle } from 'react'
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Dependency, GitHubItemAndMarketPlaceDependency, PackageDependency, Plugin, VersionInfo } from '../../../types'
-import MarketplaceItem from '../item/marketplace-item'
-import GithubItem from '../item/github-item'
-import { useFetchPluginsInMarketPlaceByInfo } from '@/service/use-plugins'
+import { produce } from 'immer'
+import * as React from 'react'
+import { useCallback, useEffect, useImperativeHandle, useMemo, useState } from 'react'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
-import produce from 'immer'
-import PackageItem from '../item/package-item'
-import LoadingError from '../../base/loading-error'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useFetchPluginsInMarketPlaceByInfo } from '@/service/use-plugins'
+import LoadingError from '../../base/loading-error'
 import { pluginInstallLimit } from '../../hooks/use-install-plugin-limit'
+import GithubItem from '../item/github-item'
+import MarketplaceItem from '../item/marketplace-item'
+import PackageItem from '../item/package-item'
 
 type Props = {
   allPlugins: Dependency[]
@@ -21,6 +20,7 @@ type Props = {
   onDeSelectAll: () => void
   onLoadedAllPlugin: (installedInfo: Record<string, VersionInfo>) => void
   isFromMarketPlace?: boolean
+  ref?: React.Ref<ExposeRefs>
 }
 
 export type ExposeRefs = {
@@ -28,7 +28,7 @@ export type ExposeRefs = {
   deSelectAllPlugins: () => void
 }
 
-const InstallByDSLList: ForwardRefRenderFunction<ExposeRefs, Props> = ({
+const InstallByDSLList = ({
   allPlugins,
   selectedPlugins,
   onSelect,
@@ -36,7 +36,8 @@ const InstallByDSLList: ForwardRefRenderFunction<ExposeRefs, Props> = ({
   onDeSelectAll,
   onLoadedAllPlugin,
   isFromMarketPlace,
-}, ref) => {
+  ref,
+}: Props) => {
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   // DSL has id, to get plugin info to show more info
   const { isLoading: isFetchingMarketplaceDataById, data: infoGetById, error: infoByIdError } = useFetchPluginsInMarketPlaceByInfo(allPlugins.filter(d => d.type === 'marketplace').map((d) => {
@@ -131,7 +132,6 @@ const InstallByDSLList: ForwardRefRenderFunction<ExposeRefs, Props> = ({
       if (failedIndex.length > 0)
         setErrorIndexes([...errorIndexes, ...failedIndex])
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFetchingMarketplaceDataById])
 
   useEffect(() => {
@@ -156,15 +156,12 @@ const InstallByDSLList: ForwardRefRenderFunction<ExposeRefs, Props> = ({
       if (failedIndex.length > 0)
         setErrorIndexes([...errorIndexes, ...failedIndex])
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFetchingDataByMeta])
 
   useEffect(() => {
     // get info all failed
     if (infoByMetaError || infoByIdError)
       setErrorIndexes([...errorIndexes, ...marketPlaceInDSLIndex])
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [infoByMetaError, infoByIdError])
 
   const isLoadedAllData = (plugins.filter(p => !!p).length + errorIndexes.length) === allPlugins.length
@@ -189,8 +186,6 @@ const InstallByDSLList: ForwardRefRenderFunction<ExposeRefs, Props> = ({
   useEffect(() => {
     if (isLoadedAllData && installedInfo)
       onLoadedAllPlugin(installedInfo!)
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoadedAllData, installedInfo])
 
   const handleSelect = useCallback((index: number) => {
@@ -234,15 +229,17 @@ const InstallByDSLList: ForwardRefRenderFunction<ExposeRefs, Props> = ({
         }
         const plugin = plugins[index]
         if (d.type === 'github') {
-          return (<GithubItem
-            key={index}
-            checked={!!selectedPlugins.find(p => p.plugin_id === plugins[index]?.plugin_id)}
-            onCheckedChange={handleSelect(index)}
-            dependency={d as GitHubItemAndMarketPlaceDependency}
-            onFetchedPayload={handleGitHubPluginFetched(index)}
-            onFetchError={handleGitHubPluginFetchError(index)}
-            versionInfo={getVersionInfo(`${plugin?.org || plugin?.author}/${plugin?.name}`)}
-          />)
+          return (
+            <GithubItem
+              key={index}
+              checked={!!selectedPlugins.find(p => p.plugin_id === plugins[index]?.plugin_id)}
+              onCheckedChange={handleSelect(index)}
+              dependency={d as GitHubItemAndMarketPlaceDependency}
+              onFetchedPayload={handleGitHubPluginFetched(index)}
+              onFetchError={handleGitHubPluginFetchError(index)}
+              versionInfo={getVersionInfo(`${plugin?.org || plugin?.author}/${plugin?.name}`)}
+            />
+          )
         }
 
         if (d.type === 'marketplace') {
@@ -269,9 +266,8 @@ const InstallByDSLList: ForwardRefRenderFunction<ExposeRefs, Props> = ({
             versionInfo={getVersionInfo(`${plugin?.org || plugin?.author}/${plugin?.name}`)}
           />
         )
-      })
-      }
+      })}
     </>
   )
 }
-export default React.forwardRef(InstallByDSLList)
+export default InstallByDSLList

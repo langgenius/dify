@@ -1,5 +1,6 @@
 // import type { Config } from 'tailwindcss'
 import commonConfig from './tailwind-common-config'
+
 const config = {
   content: [
     './app/**/*.{js,ts,jsx,tsx}',

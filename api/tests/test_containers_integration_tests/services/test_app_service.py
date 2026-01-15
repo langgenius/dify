@@ -1,12 +1,15 @@
-from unittest.mock import patch
+from unittest.mock import create_autospec, patch
 
 import pytest
 from faker import Faker
 
 from constants.model_template import default_app_templates
+from models import Account
 from models.model import App, Site
 from services.account_service import AccountService, TenantService
-from services.app_service import AppService
+
+# Delay import of AppService to avoid circular dependency
+# from services.app_service import AppService
 
 
 class TestAppService:
@@ -70,6 +73,9 @@ class TestAppService:
         }
 
         # Create app
+        # Import here to avoid circular dependency
+        from services.app_service import AppService
+
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
 
@@ -107,6 +113,9 @@ class TestAppService:
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
+
+        # Import here to avoid circular dependency
+        from services.app_service import AppService
 
         app_service = AppService()
 
@@ -158,11 +167,19 @@ class TestAppService:
             "icon_background": "#45B7D1",
         }
 
+        # Import here to avoid circular dependency
+        from services.app_service import AppService
+
         app_service = AppService()
         created_app = app_service.create_app(tenant.id, app_args, account)
 
-        # Get app using the service
-        retrieved_app = app_service.get_app(created_app)
+        # Get app using the service - needs current_user mock
+        mock_current_user = create_autospec(Account, instance=True)
+        mock_current_user.id = account.id
+        mock_current_user.current_tenant_id = account.current_tenant_id
+
+        with patch("services.app_service.current_user", mock_current_user):
+            retrieved_app = app_service.get_app(created_app)
 
         # Verify retrieved app matches created app
         assert retrieved_app.id == created_app.id
@@ -187,6 +204,9 @@ class TestAppService:
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
+
+        # Import here to avoid circular dependency
+        from services.app_service import AppService
 
         app_service = AppService()
 
@@ -238,6 +258,9 @@ class TestAppService:
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
+
+        # Import here to avoid circular dependency
+        from services.app_service import AppService
 
         app_service = AppService()
 
@@ -308,6 +331,9 @@ class TestAppService:
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
+
+        # Import here to avoid circular dependency
+        from services.app_service import AppService
 
         app_service = AppService()
 
@@ -386,6 +412,9 @@ class TestAppService:
             "icon_background": "#45B7D1",
         }
 
+        # Import here to avoid circular dependency
+        from services.app_service import AppService
+
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
 
@@ -406,7 +435,11 @@ class TestAppService:
             "use_icon_as_answer_icon": True,
         }
 
-        with patch("flask_login.utils._get_user", return_value=account):
+        mock_current_user = create_autospec(Account, instance=True)
+        mock_current_user.id = account.id
+        mock_current_user.current_tenant_id = account.current_tenant_id
+
+        with patch("services.app_service.current_user", mock_current_user):
             updated_app = app_service.update_app(app, update_args)
 
         # Verify updated fields
@@ -448,6 +481,9 @@ class TestAppService:
             "icon_background": "#45B7D1",
         }
 
+        # Import here to avoid circular dependency
+        from services.app_service import AppService
+
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
 
@@ -456,7 +492,11 @@ class TestAppService:
 
         # Update app name
         new_name = "New App Name"
-        with patch("flask_login.utils._get_user", return_value=account):
+        mock_current_user = create_autospec(Account, instance=True)
+        mock_current_user.id = account.id
+        mock_current_user.current_tenant_id = account.current_tenant_id
+
+        with patch("services.app_service.current_user", mock_current_user):
             updated_app = app_service.update_app_name(app, new_name)
 
         assert updated_app.name == new_name
@@ -494,6 +534,9 @@ class TestAppService:
             "icon_background": "#45B7D1",
         }
 
+        # Import here to avoid circular dependency
+        from services.app_service import AppService
+
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
 
@@ -504,7 +547,11 @@ class TestAppService:
         # Update app icon
         new_icon = "🌟"
         new_icon_background = "#FFD93D"
-        with patch("flask_login.utils._get_user", return_value=account):
+        mock_current_user = create_autospec(Account, instance=True)
+        mock_current_user.id = account.id
+        mock_current_user.current_tenant_id = account.current_tenant_id
+
+        with patch("services.app_service.current_user", mock_current_user):
             updated_app = app_service.update_app_icon(app, new_icon, new_icon_background)
 
         assert updated_app.icon == new_icon
@@ -544,6 +591,9 @@ class TestAppService:
             "icon_background": "#74B9FF",
         }
 
+        # Import here to avoid circular dependency
+        from services.app_service import AppService
+
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
 
@@ -551,13 +601,17 @@ class TestAppService:
         original_site_status = app.enable_site
 
         # Update site status to disabled
-        with patch("flask_login.utils._get_user", return_value=account):
+        mock_current_user = create_autospec(Account, instance=True)
+        mock_current_user.id = account.id
+        mock_current_user.current_tenant_id = account.current_tenant_id
+
+        with patch("services.app_service.current_user", mock_current_user):
             updated_app = app_service.update_app_site_status(app, False)
         assert updated_app.enable_site is False
         assert updated_app.updated_by == account.id
 
         # Update site status back to enabled
-        with patch("flask_login.utils._get_user", return_value=account):
+        with patch("services.app_service.current_user", mock_current_user):
             updated_app = app_service.update_app_site_status(updated_app, True)
         assert updated_app.enable_site is True
         assert updated_app.updated_by == account.id
@@ -595,6 +649,9 @@ class TestAppService:
             "icon_background": "#A29BFE",
         }
 
+        # Import here to avoid circular dependency
+        from services.app_service import AppService
+
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
 
@@ -602,13 +659,17 @@ class TestAppService:
         original_api_status = app.enable_api
 
         # Update API status to disabled
-        with patch("flask_login.utils._get_user", return_value=account):
+        mock_current_user = create_autospec(Account, instance=True)
+        mock_current_user.id = account.id
+        mock_current_user.current_tenant_id = account.current_tenant_id
+
+        with patch("services.app_service.current_user", mock_current_user):
             updated_app = app_service.update_app_api_status(app, False)
         assert updated_app.enable_api is False
         assert updated_app.updated_by == account.id
 
         # Update API status back to enabled
-        with patch("flask_login.utils._get_user", return_value=account):
+        with patch("services.app_service.current_user", mock_current_user):
             updated_app = app_service.update_app_api_status(updated_app, True)
         assert updated_app.enable_api is True
         assert updated_app.updated_by == account.id
@@ -645,6 +706,9 @@ class TestAppService:
             "icon": "🔄",
             "icon_background": "#FD79A8",
         }
+
+        # Import here to avoid circular dependency
+        from services.app_service import AppService
 
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
@@ -694,6 +758,9 @@ class TestAppService:
             "icon_background": "#E17055",
         }
 
+        # Import here to avoid circular dependency
+        from services.app_service import AppService
+
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
 
@@ -741,6 +808,9 @@ class TestAppService:
             "icon": "🧹",
             "icon_background": "#00B894",
         }
+
+        # Import here to avoid circular dependency
+        from services.app_service import AppService
 
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
@@ -800,6 +870,9 @@ class TestAppService:
             "icon_background": "#6C5CE7",
         }
 
+        # Import here to avoid circular dependency
+        from services.app_service import AppService
+
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
 
@@ -835,6 +908,9 @@ class TestAppService:
             "icon": "🔗",
             "icon_background": "#FDCB6E",
         }
+
+        # Import here to avoid circular dependency
+        from services.app_service import AppService
 
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
@@ -872,6 +948,9 @@ class TestAppService:
             "icon": "🆔",
             "icon_background": "#E84393",
         }
+
+        # Import here to avoid circular dependency
+        from services.app_service import AppService
 
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
@@ -921,8 +1000,132 @@ class TestAppService:
             "icon_background": "#D63031",
         }
 
+        # Import here to avoid circular dependency
+        from services.app_service import AppService
+
         app_service = AppService()
 
         # Attempt to create app with invalid mode
         with pytest.raises(ValueError, match="invalid mode value"):
             app_service.create_app(tenant.id, app_args, account)
+
+    def test_get_apps_with_special_characters_in_name(
+        self, db_session_with_containers, mock_external_service_dependencies
+    ):
+        r"""
+        Test app retrieval with special characters in name search to verify SQL injection prevention.
+
+        This test verifies:
+        - Special characters (%, _, \) in name search are properly escaped
+        - Search treats special characters as literal characters, not wildcards
+        - SQL injection via LIKE wildcards is prevented
+        """
+        fake = Faker()
+
+        # Create account and tenant first
+        account = AccountService.create_account(
+            email=fake.email(),
+            name=fake.name(),
+            interface_language="en-US",
+            password=fake.password(length=12),
+        )
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        tenant = account.current_tenant
+
+        # Import here to avoid circular dependency
+        from services.app_service import AppService
+
+        app_service = AppService()
+
+        # Create apps with special characters in names
+        app_with_percent = app_service.create_app(
+            tenant.id,
+            {
+                "name": "App with 50% discount",
+                "description": fake.text(max_nb_chars=100),
+                "mode": "chat",
+                "icon_type": "emoji",
+                "icon": "🤖",
+                "icon_background": "#FF6B6B",
+                "api_rph": 100,
+                "api_rpm": 10,
+            },
+            account,
+        )
+
+        app_with_underscore = app_service.create_app(
+            tenant.id,
+            {
+                "name": "test_data_app",
+                "description": fake.text(max_nb_chars=100),
+                "mode": "chat",
+                "icon_type": "emoji",
+                "icon": "🤖",
+                "icon_background": "#FF6B6B",
+                "api_rph": 100,
+                "api_rpm": 10,
+            },
+            account,
+        )
+
+        app_with_backslash = app_service.create_app(
+            tenant.id,
+            {
+                "name": "path\\to\\app",
+                "description": fake.text(max_nb_chars=100),
+                "mode": "chat",
+                "icon_type": "emoji",
+                "icon": "🤖",
+                "icon_background": "#FF6B6B",
+                "api_rph": 100,
+                "api_rpm": 10,
+            },
+            account,
+        )
+
+        # Create app that should NOT match
+        app_no_match = app_service.create_app(
+            tenant.id,
+            {
+                "name": "100% different",
+                "description": fake.text(max_nb_chars=100),
+                "mode": "chat",
+                "icon_type": "emoji",
+                "icon": "🤖",
+                "icon_background": "#FF6B6B",
+                "api_rph": 100,
+                "api_rpm": 10,
+            },
+            account,
+        )
+
+        # Test 1: Search with % character
+        args = {"name": "50%", "mode": "chat", "page": 1, "limit": 10}
+        paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, args)
+        assert paginated_apps is not None
+        assert paginated_apps.total == 1
+        assert len(paginated_apps.items) == 1
+        assert paginated_apps.items[0].name == "App with 50% discount"
+
+        # Test 2: Search with _ character
+        args = {"name": "test_data", "mode": "chat", "page": 1, "limit": 10}
+        paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, args)
+        assert paginated_apps is not None
+        assert paginated_apps.total == 1
+        assert len(paginated_apps.items) == 1
+        assert paginated_apps.items[0].name == "test_data_app"
+
+        # Test 3: Search with \ character
+        args = {"name": "path\\to\\app", "mode": "chat", "page": 1, "limit": 10}
+        paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, args)
+        assert paginated_apps is not None
+        assert paginated_apps.total == 1
+        assert len(paginated_apps.items) == 1
+        assert paginated_apps.items[0].name == "path\\to\\app"
+
+        # Test 4: Search with % should NOT match 100% (verifies escaping works)
+        args = {"name": "50%", "mode": "chat", "page": 1, "limit": 10}
+        paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, args)
+        assert paginated_apps is not None
+        assert paginated_apps.total == 1
+        assert all("50%" in app.name for app in paginated_apps.items)

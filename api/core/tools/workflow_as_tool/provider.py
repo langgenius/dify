@@ -1,10 +1,13 @@
+from __future__ import annotations
+
 from collections.abc import Mapping
-from typing import Optional
 
 from pydantic import Field
+from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import VariableEntity, VariableEntityType
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
+from core.db.session_factory import session_factory
 from core.plugin.entities.parameters import PluginParameterOption
 from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -21,6 +24,7 @@ from core.tools.entities.tool_entities import (
 from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationUtils
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from extensions.ext_database import db
+from models.account import Account
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow
@@ -30,6 +34,7 @@ VARIABLE_TO_PARAMETER_TYPE_MAPPING = {
     VariableEntityType.PARAGRAPH: ToolParameter.ToolParameterType.STRING,
     VariableEntityType.SELECT: ToolParameter.ToolParameterType.SELECT,
     VariableEntityType.NUMBER: ToolParameter.ToolParameterType.NUMBER,
+    VariableEntityType.CHECKBOX: ToolParameter.ToolParameterType.BOOLEAN,
     VariableEntityType.FILE: ToolParameter.ToolParameterType.FILE,
     VariableEntityType.FILE_LIST: ToolParameter.ToolParameterType.FILES,
 }
@@ -44,30 +49,31 @@ class WorkflowToolProviderController(ToolProviderController):
         self.provider_id = provider_id
 
     @classmethod
-    def from_db(cls, db_provider: WorkflowToolProvider) -> "WorkflowToolProviderController":
-        app = db_provider.app
+    def from_db(cls, db_provider: WorkflowToolProvider) -> WorkflowToolProviderController:
+        with session_factory.create_session() as session, session.begin():
+            app = session.get(App, db_provider.app_id)
+            if not app:
+                raise ValueError("app not found")
 
-        if not app:
-            raise ValueError("app not found")
-
-        controller = WorkflowToolProviderController(
-            entity=ToolProviderEntity(
-                identity=ToolProviderIdentity(
-                    author=db_provider.user.name if db_provider.user_id and db_provider.user else "",
-                    name=db_provider.label,
-                    label=I18nObject(en_US=db_provider.label, zh_Hans=db_provider.label),
-                    description=I18nObject(en_US=db_provider.description, zh_Hans=db_provider.description),
-                    icon=db_provider.icon,
+            user = session.get(Account, db_provider.user_id) if db_provider.user_id else None
+            controller = WorkflowToolProviderController(
+                entity=ToolProviderEntity(
+                    identity=ToolProviderIdentity(
+                        author=user.name if user else "",
+                        name=db_provider.label,
+                        label=I18nObject(en_US=db_provider.label, zh_Hans=db_provider.label),
+                        description=I18nObject(en_US=db_provider.description, zh_Hans=db_provider.description),
+                        icon=db_provider.icon,
+                    ),
+                    credentials_schema=[],
+                    plugin_id=None,
                 ),
-                credentials_schema=[],
-                plugin_id=None,
-            ),
-            provider_id=db_provider.id or "",
-        )
+                provider_id=db_provider.id,
+            )
 
-        # init tools
-
-        controller.tools = [controller._get_db_provider_tool(db_provider, app)]
+            controller.tools = [
+                controller._get_db_provider_tool(db_provider, app, session=session, user=user),
+            ]
 
         return controller
 
@@ -75,7 +81,14 @@ class WorkflowToolProviderController(ToolProviderController):
     def provider_type(self) -> ToolProviderType:
         return ToolProviderType.WORKFLOW
 
-    def _get_db_provider_tool(self, db_provider: WorkflowToolProvider, app: App) -> WorkflowTool:
+    def _get_db_provider_tool(
+        self,
+        db_provider: WorkflowToolProvider,
+        app: App,
+        *,
+        session: Session,
+        user: Account | None = None,
+    ) -> WorkflowTool:
         """
         get db provider tool
         :param db_provider: the db provider
@@ -83,7 +96,7 @@ class WorkflowToolProviderController(ToolProviderController):
         :return: the tool
         """
         workflow: Workflow | None = (
-            db.session.query(Workflow)
+            session.query(Workflow)
             .where(Workflow.app_id == db_provider.app_id, Workflow.version == db_provider.version)
             .first()
         )
@@ -100,9 +113,7 @@ class WorkflowToolProviderController(ToolProviderController):
         variables = WorkflowToolConfigurationUtils.get_workflow_graph_variables(graph)
 
         def fetch_workflow_variable(variable_name: str) -> VariableEntity | None:
-            return next(filter(lambda x: x.variable == variable_name, variables), None)  # type: ignore
-
-        user = db_provider.user
+            return next(filter(lambda x: x.variable == variable_name, variables), None)
 
         workflow_tool_parameters = []
         for parameter in parameters:
@@ -129,6 +140,7 @@ class WorkflowToolProviderController(ToolProviderController):
                         form=parameter.form,
                         llm_description=parameter.description,
                         required=variable.required,
+                        default=variable.default,
                         options=options,
                         placeholder=I18nObject(en_US="", zh_Hans=""),
                     )
@@ -149,6 +161,20 @@ class WorkflowToolProviderController(ToolProviderController):
             else:
                 raise ValueError("variable not found")
 
+        # get output schema from workflow
+        outputs = WorkflowToolConfigurationUtils.get_workflow_graph_output(graph)
+
+        reserved_keys = {"json", "text", "files"}
+
+        properties = {}
+        for output in outputs:
+            if output.variable not in reserved_keys:
+                properties[output.variable] = {
+                    "type": output.value_type,
+                    "description": "",
+                }
+        output_schema = {"type": "object", "properties": properties}
+
         return WorkflowTool(
             workflow_as_tool_id=db_provider.id,
             entity=ToolEntity(
@@ -164,6 +190,7 @@ class WorkflowToolProviderController(ToolProviderController):
                     llm=db_provider.description,
                 ),
                 parameters=workflow_tool_parameters,
+                output_schema=output_schema,
             ),
             runtime=ToolRuntime(
                 tenant_id=db_provider.tenant_id,
@@ -188,26 +215,29 @@ class WorkflowToolProviderController(ToolProviderController):
         if self.tools is not None:
             return self.tools
 
-        db_providers: WorkflowToolProvider | None = (
-            db.session.query(WorkflowToolProvider)
-            .where(
-                WorkflowToolProvider.tenant_id == tenant_id,
-                WorkflowToolProvider.app_id == self.provider_id,
+        with Session(db.engine, expire_on_commit=False) as session, session.begin():
+            db_provider: WorkflowToolProvider | None = (
+                session.query(WorkflowToolProvider)
+                .where(
+                    WorkflowToolProvider.tenant_id == tenant_id,
+                    WorkflowToolProvider.id == self.provider_id,
+                )
+                .first()
             )
-            .first()
-        )
 
-        if not db_providers:
-            return []
-        if not db_providers.app:
-            raise ValueError("app not found")
+            if not db_provider:
+                return []
 
-        app = db_providers.app
-        self.tools = [self._get_db_provider_tool(db_providers, app)]
+            app = session.get(App, db_provider.app_id)
+            if not app:
+                raise ValueError("app not found")
+
+            user = session.get(Account, db_provider.user_id) if db_provider.user_id else None
+            self.tools = [self._get_db_provider_tool(db_provider, app, session=session, user=user)]
 
         return self.tools
 
-    def get_tool(self, tool_name: str) -> Optional[WorkflowTool]:  # type: ignore
+    def get_tool(self, tool_name: str) -> WorkflowTool | None:  # type: ignore
         """
         get tool by name
 

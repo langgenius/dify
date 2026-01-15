@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import Field, PositiveInt
 from pydantic_settings import BaseSettings
 
@@ -9,7 +7,7 @@ class VastbaseVectorConfig(BaseSettings):
     Configuration settings for Vector (Vastbase with vector extension)
     """
 
-    VASTBASE_HOST: Optional[str] = Field(
+    VASTBASE_HOST: str | None = Field(
         description="Hostname or IP address of the Vastbase server with Vector extension (e.g., 'localhost')",
         default=None,
     )
@@ -19,17 +17,17 @@ class VastbaseVectorConfig(BaseSettings):
         default=5432,
     )
 
-    VASTBASE_USER: Optional[str] = Field(
+    VASTBASE_USER: str | None = Field(
         description="Username for authenticating with the Vastbase database",
         default=None,
     )
 
-    VASTBASE_PASSWORD: Optional[str] = Field(
+    VASTBASE_PASSWORD: str | None = Field(
         description="Password for authenticating with the Vastbase database",
         default=None,
     )
 
-    VASTBASE_DATABASE: Optional[str] = Field(
+    VASTBASE_DATABASE: str | None = Field(
         description="Name of the Vastbase database to connect to",
         default=None,
     )

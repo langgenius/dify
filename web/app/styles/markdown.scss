@@ -856,6 +856,18 @@
   color: var(--color-prettylights-syntax-comment);
 }
 
+.markdown-body .katex {
+  /* Allow long inline formulas to wrap instead of overflowing */
+  white-space: normal !important;
+  overflow-wrap: break-word; /* better cross-browser support */
+  word-break: break-word;   /* non-standard fallback for older WebKit/Blink */
+}
+
+.markdown-body .katex-display {
+  /* Fallback for very long display equations */
+  overflow-x: auto;
+}
+
 .markdown-body .pl-c1,
 .markdown-body .pl-s .pl-v {
   color: var(--color-prettylights-syntax-constant);

@@ -1,10 +1,10 @@
 import type { FC } from 'react'
-import { useEffect, useRef, useState } from 'react'
-import { useClickAway } from 'ahooks'
-import { RiCloseLine } from '@remixicon/react'
-import Card from './card'
-import { CopyFeedbackNew } from '@/app/components/base/copy-feedback'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
+import { RiCloseLine } from '@remixicon/react'
+import { useClickAway } from 'ahooks'
+import { useEffect, useRef, useState } from 'react'
+import { CopyFeedbackNew } from '@/app/components/base/copy-feedback'
+import Card from './card'
 
 type PromptLogModalProps = {
   currentLogItem?: IChatItem
@@ -33,7 +33,7 @@ const PromptLogModal: FC<PromptLogModalProps> = ({
 
   return (
     <div
-      className='relative z-10 flex flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl'
+      className="relative z-10 flex flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
       style={{
         width: 480,
         position: 'fixed',
@@ -43,26 +43,26 @@ const PromptLogModal: FC<PromptLogModalProps> = ({
       }}
       ref={ref}
     >
-      <div className='flex h-14 shrink-0 items-center justify-between border-b border-divider-regular pl-6 pr-5'>
-        <div className='text-base font-semibold text-text-primary'>PROMPT LOG</div>
-        <div className='flex items-center'>
+      <div className="flex h-14 shrink-0 items-center justify-between border-b border-divider-regular pl-6 pr-5">
+        <div className="text-base font-semibold text-text-primary">PROMPT LOG</div>
+        <div className="flex items-center">
           {
             currentLogItem.log?.length === 1 && (
               <>
-                <CopyFeedbackNew className='h-6 w-6' content={currentLogItem.log[0].text} />
-                <div className='mx-2.5 h-[14px] w-[1px] bg-divider-regular' />
+                <CopyFeedbackNew className="h-6 w-6" content={currentLogItem.log[0].text} />
+                <div className="mx-2.5 h-[14px] w-[1px] bg-divider-regular" />
               </>
             )
           }
           <div
             onClick={onCancel}
-            className='flex h-6 w-6 cursor-pointer items-center justify-center'
+            className="flex h-6 w-6 cursor-pointer items-center justify-center"
           >
-            <RiCloseLine className='h-4 w-4 text-text-tertiary' />
+            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
           </div>
         </div>
       </div>
-      <div className='grow overflow-y-auto p-2'>
+      <div className="grow overflow-y-auto p-2">
         <Card log={currentLogItem.log} />
       </div>
     </div>

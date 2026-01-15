@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class DatasourceType(Enum):
+class DatasourceType(StrEnum):
     FILE = "upload_file"
     NOTION = "notion_import"
     WEBSITE = "website_crawl"

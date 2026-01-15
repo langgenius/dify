@@ -1,10 +1,11 @@
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, create_autospec, patch
 
 import pytest
 from faker import Faker
 
 from core.plugin.impl.exc import PluginDaemonClientSideError
+from models import Account
 from models.model import AppModelConfig, Conversation, EndUser, Message, MessageAgentThought
 from services.account_service import AccountService, TenantService
 from services.agent_service import AgentService
@@ -21,7 +22,7 @@ class TestAgentService:
             patch("services.agent_service.PluginAgentClient") as mock_plugin_agent_client,
             patch("services.agent_service.ToolManager") as mock_tool_manager,
             patch("services.agent_service.AgentConfigManager") as mock_agent_config_manager,
-            patch("services.agent_service.current_user") as mock_current_user,
+            patch("services.agent_service.current_user", create_autospec(Account, instance=True)) as mock_current_user,
             patch("services.app_service.FeatureService") as mock_feature_service,
             patch("services.app_service.EnterpriseService") as mock_enterprise_service,
             patch("services.app_service.ModelManager") as mock_model_manager,
@@ -229,7 +230,6 @@ class TestAgentService:
 
         # Create first agent thought
         thought1 = MessageAgentThought(
-            id=fake.uuid4(),
             message_id=message.id,
             position=1,
             thought="I need to analyze the user's request",
@@ -256,7 +256,6 @@ class TestAgentService:
 
         # Create second agent thought
         thought2 = MessageAgentThought(
-            id=fake.uuid4(),
             message_id=message.id,
             position=2,
             thought="Based on the analysis, I can provide a response",
@@ -544,7 +543,6 @@ class TestAgentService:
 
         # Create agent thought with tool error
         thought_with_error = MessageAgentThought(
-            id=fake.uuid4(),
             message_id=message.id,
             position=1,
             thought="I need to analyze the user's request",
@@ -758,7 +756,6 @@ class TestAgentService:
 
         # Create agent thought with multiple tools
         complex_thought = MessageAgentThought(
-            id=fake.uuid4(),
             message_id=message.id,
             position=1,
             thought="I need to use multiple tools to complete this task",
@@ -851,6 +848,7 @@ class TestAgentService:
         # Add files to message
         from models.model import MessageFile
 
+        assert message.from_account_id is not None
         message_file1 = MessageFile(
             message_id=message.id,
             type=FileType.IMAGE,
@@ -875,7 +873,6 @@ class TestAgentService:
 
         # Create agent thought with files
         thought_with_files = MessageAgentThought(
-            id=fake.uuid4(),
             message_id=message.id,
             position=1,
             thought="I need to process some files",
@@ -955,7 +952,6 @@ class TestAgentService:
 
         # Create agent thought with empty tool data
         empty_thought = MessageAgentThought(
-            id=fake.uuid4(),
             message_id=message.id,
             position=1,
             thought="I need to analyze the user's request",
@@ -997,7 +993,6 @@ class TestAgentService:
 
         # Create agent thought with malformed JSON
         malformed_thought = MessageAgentThought(
-            id=fake.uuid4(),
             message_id=message.id,
             position=1,
             thought="I need to analyze the user's request",

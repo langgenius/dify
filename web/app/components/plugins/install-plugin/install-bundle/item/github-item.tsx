@@ -1,12 +1,13 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect } from 'react'
 import type { GitHubItemAndMarketPlaceDependency, Plugin } from '../../../types'
-import { pluginManifestToCardPluginProps } from '../../utils'
+import type { VersionProps } from '@/app/components/plugins/types'
+import * as React from 'react'
+import { useEffect } from 'react'
 import { useUploadGitHub } from '@/service/use-plugins'
 import Loading from '../../base/loading'
+import { pluginManifestToCardPluginProps } from '../../utils'
 import LoadedItem from './loaded-item'
-import type { VersionProps } from '@/app/components/plugins/types'
 
 type Props = {
   checked: boolean
@@ -41,15 +42,13 @@ const Item: FC<Props> = ({
       onFetchedPayload(payload)
       setPayload({ ...payload, from: dependency.type })
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data])
   useEffect(() => {
     if (error)
       onFetchError()
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [error])
-  if (!payload) return <Loading />
+  if (!payload)
+    return <Loading />
   return (
     <LoadedItem
       payload={payload}

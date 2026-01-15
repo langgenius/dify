@@ -1,28 +1,30 @@
-import React, { type FC, useCallback, useState } from 'react'
-import { type SchemaRoot, Type } from '../../types'
+import type { FC } from 'react'
+import type { SchemaRoot } from '../../types'
 import { RiBracesLine, RiCloseLine, RiExternalLinkLine, RiTimelineView } from '@remixicon/react'
-import { SegmentedControl } from '../../../../../base/segmented-control'
-import JsonSchemaGenerator from './json-schema-generator'
-import Divider from '@/app/components/base/divider'
-import JsonImporter from './json-importer'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-import VisualEditor from './visual-editor'
-import SchemaEditor from './schema-editor'
+import Divider from '@/app/components/base/divider'
+import Toast from '@/app/components/base/toast'
+import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
+import { useDocLink } from '@/context/i18n'
+import { SegmentedControl } from '../../../../../base/segmented-control'
+import { Type } from '../../types'
 import {
   checkJsonSchemaDepth,
-  convertBooleanToString,
   getValidationErrorMessage,
   jsonToSchema,
   preValidateSchema,
   validateSchemaAgainstDraft7,
 } from '../../utils'
-import { MittProvider, VisualEditorContextProvider, useMittContext } from './visual-editor/context'
 import ErrorMessage from './error-message'
+import JsonImporter from './json-importer'
+import JsonSchemaGenerator from './json-schema-generator'
+import SchemaEditor from './schema-editor'
+import VisualEditor from './visual-editor'
+import { MittProvider, useMittContext, VisualEditorContextProvider } from './visual-editor/context'
 import { useVisualEditorStore } from './visual-editor/store'
-import Toast from '@/app/components/base/toast'
-import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
-import { useDocLink } from '@/context/i18n'
 
 type JsonSchemaConfigProps = {
   defaultSchema?: SchemaRoot
@@ -56,7 +58,7 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
   const docLink = useDocLink()
   const [currentTab, setCurrentTab] = useState(SchemaView.VisualEditor)
   const [jsonSchema, setJsonSchema] = useState(defaultSchema || DEFAULT_SCHEMA)
-  const [json, setJson] = useState(JSON.stringify(jsonSchema, null, 2))
+  const [json, setJson] = useState(() => JSON.stringify(jsonSchema, null, 2))
   const [btnWidth, setBtnWidth] = useState(0)
   const [parseError, setParseError] = useState<Error | null>(null)
   const [validationError, setValidationError] = useState<string>('')
@@ -72,7 +74,8 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
   }, [])
 
   const handleTabChange = useCallback((value: SchemaView) => {
-    if (currentTab === value) return
+    if (currentTab === value)
+      return
     if (currentTab === SchemaView.JsonSchema) {
       try {
         const schema = JSON.parse(json)
@@ -87,7 +90,6 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
           setValidationError(`Schema exceeds maximum depth of ${JSON_SCHEMA_MAX_DEPTH}.`)
           return
         }
-        convertBooleanToString(schema)
         const validationErrors = validateSchemaAgainstDraft7(schema)
         if (validationErrors.length > 0) {
           setValidationError(getValidationErrorMessage(validationErrors))
@@ -122,7 +124,7 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
       setJson(JSON.stringify(schema, null, 2))
   }, [currentTab])
 
-  const handleSubmit = useCallback((schema: any) => {
+  const handleSubmit = useCallback((schema: Record<string, unknown>) => {
     const jsonSchema = jsonToSchema(schema) as SchemaRoot
     if (currentTab === SchemaView.VisualEditor)
       setJsonSchema(jsonSchema)
@@ -141,8 +143,10 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
   const handleResetDefaults = useCallback(() => {
     if (currentTab === SchemaView.VisualEditor) {
       setHoveringProperty(null)
-      advancedEditing && setAdvancedEditing(false)
-      isAddingNewField && setIsAddingNewField(false)
+      if (advancedEditing)
+        setAdvancedEditing(false)
+      if (isAddingNewField)
+        setIsAddingNewField(false)
     }
     setJsonSchema(DEFAULT_SCHEMA)
     setJson(JSON.stringify(DEFAULT_SCHEMA, null, 2))
@@ -168,7 +172,6 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
           setValidationError(`Schema exceeds maximum depth of ${JSON_SCHEMA_MAX_DEPTH}.`)
           return
         }
-        convertBooleanToString(schema)
         const validationErrors = validateSchemaAgainstDraft7(schema)
         if (validationErrors.length > 0) {
           setValidationError(getValidationErrorMessage(validationErrors))
@@ -190,7 +193,7 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
       if (advancedEditing || isAddingNewField) {
         Toast.notify({
           type: 'warning',
-          message: t('workflow.nodes.llm.jsonSchema.warningTips.saveSchema'),
+          message: t('nodes.llm.jsonSchema.warningTips.saveSchema', { ns: 'workflow' }),
         })
         return
       }
@@ -200,31 +203,31 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
   }, [currentTab, jsonSchema, json, onSave, onClose, advancedEditing, isAddingNewField, t])
 
   return (
-    <div className='flex h-full flex-col'>
+    <div className="flex h-full flex-col">
       {/* Header */}
-      <div className='relative flex p-6 pb-3 pr-14'>
-        <div className='title-2xl-semi-bold grow truncate text-text-primary'>
-          {t('workflow.nodes.llm.jsonSchema.title')}
+      <div className="relative flex p-6 pb-3 pr-14">
+        <div className="title-2xl-semi-bold grow truncate text-text-primary">
+          {t('nodes.llm.jsonSchema.title', { ns: 'workflow' })}
         </div>
-        <div className='absolute right-5 top-5 flex h-8 w-8 items-center justify-center p-1.5' onClick={onClose}>
-          <RiCloseLine className='h-[18px] w-[18px] text-text-tertiary' />
+        <div className="absolute right-5 top-5 flex h-8 w-8 items-center justify-center p-1.5" onClick={onClose}>
+          <RiCloseLine className="h-[18px] w-[18px] text-text-tertiary" />
         </div>
       </div>
       {/* Content */}
-      <div className='flex items-center justify-between px-6 py-2'>
+      <div className="flex items-center justify-between px-6 py-2">
         {/* Tab */}
         <SegmentedControl<SchemaView>
           options={VIEW_TABS}
           value={currentTab}
           onChange={handleTabChange}
         />
-        <div className='flex items-center gap-x-0.5'>
+        <div className="flex items-center gap-x-0.5">
           {/* JSON Schema Generator */}
           <JsonSchemaGenerator
             crossAxisOffset={btnWidth}
             onApply={handleApplySchema}
           />
-          <Divider type='vertical' className='h-3' />
+          <Divider type="vertical" className="h-3" />
           {/* JSON Schema Importer */}
           <JsonImporter
             updateBtnWidth={updateBtnWidth}
@@ -232,7 +235,7 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
           />
         </div>
       </div>
-      <div className='flex grow flex-col gap-y-1 overflow-hidden px-6'>
+      <div className="flex grow flex-col gap-y-1 overflow-hidden px-6">
         {currentTab === SchemaView.VisualEditor && (
           <VisualEditor
             schema={jsonSchema}
@@ -249,29 +252,29 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
         {validationError && <ErrorMessage message={validationError} />}
       </div>
       {/* Footer */}
-      <div className='flex items-center gap-x-2 p-6 pt-5'>
+      <div className="flex items-center gap-x-2 p-6 pt-5">
         <a
-          className='flex grow items-center gap-x-1 text-text-accent'
+          className="flex grow items-center gap-x-1 text-text-accent"
           href={docLink('/guides/workflow/structured-outputs')}
-          target='_blank'
-          rel='noopener noreferrer'
+          target="_blank"
+          rel="noopener noreferrer"
         >
-          <span className='system-xs-regular'>{t('workflow.nodes.llm.jsonSchema.doc')}</span>
-          <RiExternalLinkLine className='h-3 w-3' />
+          <span className="system-xs-regular">{t('nodes.llm.jsonSchema.doc', { ns: 'workflow' })}</span>
+          <RiExternalLinkLine className="h-3 w-3" />
         </a>
-        <div className='flex items-center gap-x-3'>
-          <div className='flex items-center gap-x-2'>
-            <Button variant='secondary' onClick={handleResetDefaults}>
-              {t('workflow.nodes.llm.jsonSchema.resetDefaults')}
+        <div className="flex items-center gap-x-3">
+          <div className="flex items-center gap-x-2">
+            <Button variant="secondary" onClick={handleResetDefaults}>
+              {t('nodes.llm.jsonSchema.resetDefaults', { ns: 'workflow' })}
             </Button>
-            <Divider type='vertical' className='ml-1 mr-0 h-4' />
+            <Divider type="vertical" className="ml-1 mr-0 h-4" />
           </div>
-          <div className='flex items-center gap-x-2'>
-            <Button variant='secondary' onClick={handleCancel}>
-              {t('common.operation.cancel')}
+          <div className="flex items-center gap-x-2">
+            <Button variant="secondary" onClick={handleCancel}>
+              {t('operation.cancel', { ns: 'common' })}
             </Button>
-            <Button variant='primary' onClick={handleSave}>
-              {t('common.operation.save')}
+            <Button variant="primary" onClick={handleSave}>
+              {t('operation.save', { ns: 'common' })}
             </Button>
           </div>
         </div>

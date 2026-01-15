@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import Field, PositiveInt, model_validator
 from pydantic_settings import BaseSettings
 
@@ -10,7 +8,7 @@ class ElasticsearchConfig(BaseSettings):
     Can load from environment variables or .env files.
     """
 
-    ELASTICSEARCH_HOST: Optional[str] = Field(
+    ELASTICSEARCH_HOST: str | None = Field(
         description="Hostname or IP address of the Elasticsearch server (e.g., 'localhost' or '192.168.1.100')",
         default="127.0.0.1",
     )
@@ -20,30 +18,28 @@ class ElasticsearchConfig(BaseSettings):
         default=9200,
     )
 
-    ELASTICSEARCH_USERNAME: Optional[str] = Field(
+    ELASTICSEARCH_USERNAME: str | None = Field(
         description="Username for authenticating with Elasticsearch (default is 'elastic')",
         default="elastic",
     )
 
-    ELASTICSEARCH_PASSWORD: Optional[str] = Field(
+    ELASTICSEARCH_PASSWORD: str | None = Field(
         description="Password for authenticating with Elasticsearch (default is 'elastic')",
         default="elastic",
     )
 
     # Elastic Cloud (optional)
-    ELASTICSEARCH_USE_CLOUD: Optional[bool] = Field(
+    ELASTICSEARCH_USE_CLOUD: bool | None = Field(
         description="Set to True to use Elastic Cloud instead of self-hosted Elasticsearch", default=False
     )
-    ELASTICSEARCH_CLOUD_URL: Optional[str] = Field(
+    ELASTICSEARCH_CLOUD_URL: str | None = Field(
         description="Full URL for Elastic Cloud deployment (e.g., 'https://example.es.region.aws.found.io:443')",
         default=None,
     )
-    ELASTICSEARCH_API_KEY: Optional[str] = Field(
-        description="API key for authenticating with Elastic Cloud", default=None
-    )
+    ELASTICSEARCH_API_KEY: str | None = Field(description="API key for authenticating with Elastic Cloud", default=None)
 
     # Common options
-    ELASTICSEARCH_CA_CERTS: Optional[str] = Field(
+    ELASTICSEARCH_CA_CERTS: str | None = Field(
         description="Path to CA certificate file for SSL verification", default=None
     )
     ELASTICSEARCH_VERIFY_CERTS: bool = Field(

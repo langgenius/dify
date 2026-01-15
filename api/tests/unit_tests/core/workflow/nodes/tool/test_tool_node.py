@@ -1,115 +1,161 @@
+from __future__ import annotations
+
+import sys
+import types
 from collections.abc import Generator
+from typing import TYPE_CHECKING, Any
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType
-from core.tools.errors import ToolInvokeError
-from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.graph_engine import Graph, GraphInitParams, GraphRuntimeState
-from core.workflow.nodes.answer import AnswerStreamGenerateRoute
-from core.workflow.nodes.end import EndStreamParam
-from core.workflow.nodes.enums import ErrorStrategy
-from core.workflow.nodes.event import RunCompletedEvent
-from core.workflow.nodes.tool import ToolNode
-from core.workflow.nodes.tool.entities import ToolNodeData
+from core.file import File, FileTransferMethod, FileType
+from core.model_runtime.entities.llm_entities import LLMUsage
+from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.utils.message_transformer import ToolFileMessageTransformer
+from core.variables.segments import ArrayFileSegment
+from core.workflow.entities import GraphInitParams
+from core.workflow.node_events import StreamChunkEvent, StreamCompletedEvent
+from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
-from models import UserFrom, WorkflowType
+
+if TYPE_CHECKING:  # pragma: no cover - imported for type checking only
+    from core.workflow.nodes.tool.tool_node import ToolNode
 
 
-def _create_tool_node():
-    data = ToolNodeData(
-        title="Test Tool",
-        tool_parameters={},
-        provider_id="test_tool",
-        provider_type=ToolProviderType.WORKFLOW,
-        provider_name="test tool",
-        tool_name="test tool",
-        tool_label="test tool",
-        tool_configurations={},
-        plugin_unique_identifier=None,
-        desc="Exception handling test tool",
-        error_strategy=ErrorStrategy.FAIL_BRANCH,
-        version="1",
-    )
-    variable_pool = VariablePool(
-        system_variables=SystemVariable.empty(),
-        user_inputs={},
-    )
-    node_config = {
-        "id": "1",
-        "data": data.model_dump(),
+@pytest.fixture
+def tool_node(monkeypatch) -> ToolNode:
+    module_name = "core.ops.ops_trace_manager"
+    if module_name not in sys.modules:
+        ops_stub = types.ModuleType(module_name)
+        ops_stub.TraceQueueManager = object  # pragma: no cover - stub attribute
+        ops_stub.TraceTask = object  # pragma: no cover - stub attribute
+        monkeypatch.setitem(sys.modules, module_name, ops_stub)
+
+    from core.workflow.nodes.tool.tool_node import ToolNode
+
+    graph_config: dict[str, Any] = {
+        "nodes": [
+            {
+                "id": "tool-node",
+                "data": {
+                    "type": "tool",
+                    "title": "Tool",
+                    "desc": "",
+                    "provider_id": "provider",
+                    "provider_type": "builtin",
+                    "provider_name": "provider",
+                    "tool_name": "tool",
+                    "tool_label": "tool",
+                    "tool_configurations": {},
+                    "tool_parameters": {},
+                },
+            }
+        ],
+        "edges": [],
     }
-    node = ToolNode(
-        id="1",
-        config=node_config,
-        graph_init_params=GraphInitParams(
-            tenant_id="1",
-            app_id="1",
-            workflow_type=WorkflowType.WORKFLOW,
-            workflow_id="1",
-            graph_config={},
-            user_id="1",
-            user_from=UserFrom.ACCOUNT,
-            invoke_from=InvokeFrom.SERVICE_API,
-            call_depth=0,
-        ),
-        graph=Graph(
-            root_node_id="1",
-            answer_stream_generate_routes=AnswerStreamGenerateRoute(
-                answer_dependencies={},
-                answer_generate_route={},
-            ),
-            end_stream_param=EndStreamParam(
-                end_dependencies={},
-                end_stream_variable_selector_mapping={},
-            ),
-        ),
-        graph_runtime_state=GraphRuntimeState(
-            variable_pool=variable_pool,
-            start_at=0,
-        ),
+
+    init_params = GraphInitParams(
+        tenant_id="tenant-id",
+        app_id="app-id",
+        workflow_id="workflow-id",
+        graph_config=graph_config,
+        user_id="user-id",
+        user_from="account",
+        invoke_from="debugger",
+        call_depth=0,
     )
-    # Initialize node data
-    node.init_node_data(node_config["data"])
+
+    variable_pool = VariablePool(system_variables=SystemVariable(user_id="user-id"))
+    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=0.0)
+
+    config = graph_config["nodes"][0]
+    node = ToolNode(
+        id="node-instance",
+        config=config,
+        graph_init_params=init_params,
+        graph_runtime_state=graph_runtime_state,
+    )
     return node
 
 
-class MockToolRuntime:
-    def get_merged_runtime_parameters(self):
-        pass
+def _collect_events(generator: Generator) -> tuple[list[Any], LLMUsage]:
+    events: list[Any] = []
+    try:
+        while True:
+            events.append(next(generator))
+    except StopIteration as stop:
+        return events, stop.value
 
 
-def mock_message_stream() -> Generator[ToolInvokeMessage, None, None]:
-    yield from []
-    raise ToolInvokeError("oops")
+def _run_transform(tool_node: ToolNode, message: ToolInvokeMessage) -> tuple[list[Any], LLMUsage]:
+    def _identity_transform(messages, *_args, **_kwargs):
+        return messages
+
+    tool_runtime = MagicMock()
+    with patch.object(ToolFileMessageTransformer, "transform_tool_invoke_messages", side_effect=_identity_transform):
+        generator = tool_node._transform_message(
+            messages=iter([message]),
+            tool_info={"provider_type": "builtin", "provider_id": "provider"},
+            parameters_for_log={},
+            user_id="user-id",
+            tenant_id="tenant-id",
+            node_id=tool_node._node_id,
+            tool_runtime=tool_runtime,
+        )
+        return _collect_events(generator)
 
 
-def test_tool_node_on_tool_invoke_error(monkeypatch: pytest.MonkeyPatch):
-    """Ensure that ToolNode can handle ToolInvokeError when transforming
-    messages generated by ToolEngine.generic_invoke.
-    """
-    tool_node = _create_tool_node()
-
-    # Need to patch ToolManager and ToolEngine so that we don't
-    # have to set up a database.
-    monkeypatch.setattr(
-        "core.tools.tool_manager.ToolManager.get_workflow_tool_runtime", lambda *args, **kwargs: MockToolRuntime()
+def test_link_messages_with_file_populate_files_output(tool_node: ToolNode):
+    file_obj = File(
+        tenant_id="tenant-id",
+        type=FileType.DOCUMENT,
+        transfer_method=FileTransferMethod.TOOL_FILE,
+        related_id="file-id",
+        filename="demo.pdf",
+        extension=".pdf",
+        mime_type="application/pdf",
+        size=123,
+        storage_key="file-key",
     )
-    monkeypatch.setattr(
-        "core.tools.tool_engine.ToolEngine.generic_invoke",
-        lambda *args, **kwargs: mock_message_stream(),
+    message = ToolInvokeMessage(
+        type=ToolInvokeMessage.MessageType.LINK,
+        message=ToolInvokeMessage.TextMessage(text="/files/tools/file-id.pdf"),
+        meta={"file": file_obj},
     )
 
-    streams = list(tool_node._run())
-    assert len(streams) == 1
-    stream = streams[0]
-    assert isinstance(stream, RunCompletedEvent)
-    result = stream.run_result
-    assert isinstance(result, NodeRunResult)
-    assert result.status == WorkflowNodeExecutionStatus.FAILED
-    assert "oops" in result.error
-    assert "Failed to invoke tool" in result.error
-    assert result.error_type == "ToolInvokeError"
+    events, usage = _run_transform(tool_node, message)
+
+    assert isinstance(usage, LLMUsage)
+
+    chunk_events = [event for event in events if isinstance(event, StreamChunkEvent)]
+    assert chunk_events
+    assert chunk_events[0].chunk == "File: /files/tools/file-id.pdf\n"
+
+    completed_events = [event for event in events if isinstance(event, StreamCompletedEvent)]
+    assert len(completed_events) == 1
+    outputs = completed_events[0].node_run_result.outputs
+    assert outputs["text"] == "File: /files/tools/file-id.pdf\n"
+
+    files_segment = outputs["files"]
+    assert isinstance(files_segment, ArrayFileSegment)
+    assert files_segment.value == [file_obj]
+
+
+def test_plain_link_messages_remain_links(tool_node: ToolNode):
+    message = ToolInvokeMessage(
+        type=ToolInvokeMessage.MessageType.LINK,
+        message=ToolInvokeMessage.TextMessage(text="https://dify.ai"),
+        meta=None,
+    )
+
+    events, _ = _run_transform(tool_node, message)
+
+    chunk_events = [event for event in events if isinstance(event, StreamChunkEvent)]
+    assert chunk_events
+    assert chunk_events[0].chunk == "Link: https://dify.ai\n"
+
+    completed_events = [event for event in events if isinstance(event, StreamCompletedEvent)]
+    assert len(completed_events) == 1
+    files_segment = completed_events[0].node_run_result.outputs["files"]
+    assert isinstance(files_segment, ArrayFileSegment)
+    assert files_segment.value == []

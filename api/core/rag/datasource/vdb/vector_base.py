@@ -27,14 +27,14 @@ class BaseVector(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         raise NotImplementedError
 
     def get_ids_by_metadata_field(self, key: str, value: str):
         raise NotImplementedError
 
     @abstractmethod
-    def delete_by_metadata_field(self, key: str, value: str) -> None:
+    def delete_by_metadata_field(self, key: str, value: str):
         raise NotImplementedError
 
     @abstractmethod
@@ -46,7 +46,7 @@ class BaseVector(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def delete(self) -> None:
+    def delete(self):
         raise NotImplementedError
 
     def _filter_duplicate_texts(self, texts: list[Document]) -> list[Document]:

@@ -1,5 +1,5 @@
-import type { Resolution, TransferMethod, TtsAutoPlay } from '@/types/app'
 import type { FileUploadConfigResponse } from '@/models/common'
+import type { Resolution, TransferMethod, TtsAutoPlay } from '@/types/app'
 
 export type EnabledOrDisabled = {
   enabled?: boolean
@@ -29,6 +29,11 @@ export type SensitiveWordAvoidance = EnabledOrDisabled & {
   config?: any
 }
 
+export enum PreviewMode {
+  NewPage = 'new_page',
+  CurrentPage = 'current_page',
+}
+
 export type FileUpload = {
   image?: EnabledOrDisabled & {
     detail?: Resolution
@@ -56,6 +61,10 @@ export type FileUpload = {
   allowed_file_upload_methods?: TransferMethod[]
   number_limits?: number
   fileUploadConfig?: FileUploadConfigResponse
+  preview_config?: {
+    mode?: PreviewMode
+    file_type_list?: string[]
+  }
 } & EnabledOrDisabled
 
 export type AnnotationReplyConfig = {

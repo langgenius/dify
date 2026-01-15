@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import BaseModel
 
 from core.variables.types import SegmentType
@@ -25,12 +23,11 @@ class AdvancedSettings(BaseModel):
     groups: list[Group]
 
 
-class VariableAssignerNodeData(BaseNodeData):
+class VariableAggregatorNodeData(BaseNodeData):
     """
-    Variable Assigner Node Data.
+    Variable Aggregator Node Data.
     """
 
-    type: str = "variable-assigner"
     output_type: str
     variables: list[list[str]]
-    advanced_settings: Optional[AdvancedSettings] = None
+    advanced_settings: AdvancedSettings | None = None

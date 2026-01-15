@@ -1,6 +1,5 @@
 import logging
 import time
-from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -35,14 +34,14 @@ class BasedGenerateTaskPipeline:
         application_generate_entity: AppGenerateEntity,
         queue_manager: AppQueueManager,
         stream: bool,
-    ) -> None:
+    ):
         self._application_generate_entity = application_generate_entity
         self.queue_manager = queue_manager
-        self._start_at = time.perf_counter()
-        self._output_moderation_handler = self._init_output_moderation()
-        self._stream = stream
+        self.start_at = time.perf_counter()
+        self.output_moderation_handler = self._init_output_moderation()
+        self.stream = stream
 
-    def _handle_error(self, *, event: QueueErrorEvent, session: Session | None = None, message_id: str = ""):
+    def handle_error(self, *, event: QueueErrorEvent, session: Session | None = None, message_id: str = ""):
         logger.debug("error: %s", event.error)
         e = event.error
         err: Exception
@@ -86,7 +85,7 @@ class BasedGenerateTaskPipeline:
 
         return message
 
-    def _error_to_stream_response(self, e: Exception):
+    def error_to_stream_response(self, e: Exception):
         """
         Error to stream response.
         :param e: exception
@@ -94,14 +93,14 @@ class BasedGenerateTaskPipeline:
         """
         return ErrorStreamResponse(task_id=self._application_generate_entity.task_id, err=e)
 
-    def _ping_stream_response(self) -> PingStreamResponse:
+    def ping_stream_response(self) -> PingStreamResponse:
         """
         Ping stream response.
         :return:
         """
         return PingStreamResponse(task_id=self._application_generate_entity.task_id)
 
-    def _init_output_moderation(self) -> Optional[OutputModeration]:
+    def _init_output_moderation(self) -> OutputModeration | None:
         """
         Init output moderation.
         :return:
@@ -118,21 +117,21 @@ class BasedGenerateTaskPipeline:
             )
         return None
 
-    def _handle_output_moderation_when_task_finished(self, completion: str) -> Optional[str]:
+    def handle_output_moderation_when_task_finished(self, completion: str) -> str | None:
         """
         Handle output moderation when task finished.
         :param completion: completion
         :return:
         """
         # response moderation
-        if self._output_moderation_handler:
-            self._output_moderation_handler.stop_thread()
+        if self.output_moderation_handler:
+            self.output_moderation_handler.stop_thread()
 
-            completion, flagged = self._output_moderation_handler.moderation_completion(
+            completion, flagged = self.output_moderation_handler.moderation_completion(
                 completion=completion, public_event=False
             )
 
-            self._output_moderation_handler = None
+            self.output_moderation_handler = None
             if flagged:
                 return completion
 

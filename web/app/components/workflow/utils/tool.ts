@@ -1,10 +1,12 @@
+import type { ToolNodeType } from '../nodes/tool/types'
 import type {
   InputVar,
   ToolWithProvider,
 } from '../types'
-import type { ToolNodeType } from '../nodes/tool/types'
+import type { StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
+import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { canFindTool } from '@/utils'
 
 export const getToolCheckParams = (
@@ -39,5 +41,27 @@ export const getToolCheckParams = (
     notAuthed: isBuiltIn && !!currCollection?.allow_delete && !currCollection?.is_team_authorization,
     toolSettingSchema,
     language,
+  }
+}
+
+export const CHUNK_TYPE_MAP = {
+  general_chunks: 'GeneralStructureChunk',
+  parent_child_chunks: 'ParentChildStructureChunk',
+  qa_chunks: 'QAStructureChunk',
+}
+
+export const wrapStructuredVarItem = (outputItem: any, matchedSchemaType: string): StructuredOutput => {
+  const dataType = Type.object
+  return {
+    schema: {
+      type: dataType,
+      properties: {
+        [outputItem.name]: {
+          ...outputItem.value,
+          schemaType: matchedSchemaType,
+        },
+      },
+      additionalProperties: false,
+    },
   }
 }

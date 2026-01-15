@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import BaseModel
 
 from models.dataset import DocumentSegment
@@ -19,5 +17,6 @@ class RetrievalSegments(BaseModel):
 
     model_config = {"arbitrary_types_allowed": True}
     segment: DocumentSegment
-    child_chunks: Optional[list[RetrievalChildChunk]] = None
-    score: Optional[float] = None
+    child_chunks: list[RetrievalChildChunk] | None = None
+    score: float | None = None
+    files: list[dict[str, str | int]] | None = None

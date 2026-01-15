@@ -10,7 +10,7 @@ class PluginAutoUpgradeService:
         with Session(db.engine) as session:
             return (
                 session.query(TenantPluginAutoUpgradeStrategy)
-                .filter(TenantPluginAutoUpgradeStrategy.tenant_id == tenant_id)
+                .where(TenantPluginAutoUpgradeStrategy.tenant_id == tenant_id)
                 .first()
             )
 
@@ -26,7 +26,7 @@ class PluginAutoUpgradeService:
         with Session(db.engine) as session:
             exist_strategy = (
                 session.query(TenantPluginAutoUpgradeStrategy)
-                .filter(TenantPluginAutoUpgradeStrategy.tenant_id == tenant_id)
+                .where(TenantPluginAutoUpgradeStrategy.tenant_id == tenant_id)
                 .first()
             )
             if not exist_strategy:
@@ -54,7 +54,7 @@ class PluginAutoUpgradeService:
         with Session(db.engine) as session:
             exist_strategy = (
                 session.query(TenantPluginAutoUpgradeStrategy)
-                .filter(TenantPluginAutoUpgradeStrategy.tenant_id == tenant_id)
+                .where(TenantPluginAutoUpgradeStrategy.tenant_id == tenant_id)
                 .first()
             )
             if not exist_strategy:

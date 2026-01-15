@@ -1,6 +1,6 @@
 import json
 
-from flask_restful import fields
+from flask_restx import fields
 
 from fields.workflow_fields import workflow_partial_fields
 from libs.helper import AppIconUrlField, TimestampField
@@ -116,6 +116,7 @@ app_partial_fields = {
     "access_mode": fields.String,
     "create_user_name": fields.String,
     "author_name": fields.String,
+    "has_draft_trigger": fields.Boolean,
 }
 
 

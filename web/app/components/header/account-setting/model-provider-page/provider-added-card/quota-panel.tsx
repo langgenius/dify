@@ -1,66 +1,163 @@
 import type { FC } from 'react'
-import { useTranslation } from 'react-i18next'
 import type { ModelProvider } from '../declarations'
-import {
-  CustomConfigurationStatusEnum,
-  PreferredProviderTypeEnum,
-  QuotaUnitEnum,
-} from '../declarations'
-import {
-  MODEL_PROVIDER_QUOTA_GET_PAID,
-} from '../utils'
-import PriorityUseTip from './priority-use-tip'
+import type { Plugin } from '@/app/components/plugins/types'
+import { useBoolean } from 'ahooks'
+import * as React from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { AnthropicShortLight, Deepseek, Gemini, Grok, OpenaiSmall, Tongyi } from '@/app/components/base/icons/src/public/llm'
+import Loading from '@/app/components/base/loading'
 import Tooltip from '@/app/components/base/tooltip'
+import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
+import { useAppContext } from '@/context/app-context'
+import useTimestamp from '@/hooks/use-timestamp'
+import { cn } from '@/utils/classnames'
 import { formatNumber } from '@/utils/format'
+import { PreferredProviderTypeEnum } from '../declarations'
+import { useMarketplaceAllPlugins } from '../hooks'
+import { modelNameMap, ModelProviderQuotaGetPaid } from '../utils'
+
+const allProviders = [
+  { key: ModelProviderQuotaGetPaid.OPENAI, Icon: OpenaiSmall },
+  { key: ModelProviderQuotaGetPaid.ANTHROPIC, Icon: AnthropicShortLight },
+  { key: ModelProviderQuotaGetPaid.GEMINI, Icon: Gemini },
+  { key: ModelProviderQuotaGetPaid.X, Icon: Grok },
+  { key: ModelProviderQuotaGetPaid.DEEPSEEK, Icon: Deepseek },
+  { key: ModelProviderQuotaGetPaid.TONGYI, Icon: Tongyi },
+] as const
+
+// Map provider key to plugin ID
+// provider key format: langgenius/provider/model, plugin ID format: langgenius/provider
+const providerKeyToPluginId: Record<string, string> = {
+  [ModelProviderQuotaGetPaid.OPENAI]: 'langgenius/openai',
+  [ModelProviderQuotaGetPaid.ANTHROPIC]: 'langgenius/anthropic',
+  [ModelProviderQuotaGetPaid.GEMINI]: 'langgenius/gemini',
+  [ModelProviderQuotaGetPaid.X]: 'langgenius/x',
+  [ModelProviderQuotaGetPaid.DEEPSEEK]: 'langgenius/deepseek',
+  [ModelProviderQuotaGetPaid.TONGYI]: 'langgenius/tongyi',
+}
 
 type QuotaPanelProps = {
-  provider: ModelProvider
+  providers: ModelProvider[]
+  isLoading?: boolean
 }
 const QuotaPanel: FC<QuotaPanelProps> = ({
-  provider,
+  providers,
+  isLoading = false,
 }) => {
   const { t } = useTranslation()
+  const { currentWorkspace } = useAppContext()
+  const credits = Math.max((currentWorkspace.trial_credits - currentWorkspace.trial_credits_used) || 0, 0)
+  const providerMap = useMemo(() => new Map(
+    providers.map(p => [p.provider, p.preferred_provider_type]),
+  ), [providers])
+  const { formatTime } = useTimestamp()
+  const {
+    plugins: allPlugins,
+  } = useMarketplaceAllPlugins(providers, '')
+  const [selectedPlugin, setSelectedPlugin] = useState<Plugin | null>(null)
+  const [isShowInstallModal, {
+    setTrue: showInstallFromMarketplace,
+    setFalse: hideInstallFromMarketplace,
+  }] = useBoolean(false)
+  const selectedPluginIdRef = useRef<string | null>(null)
 
-  const customConfig = provider.custom_configuration
-  const priorityUseType = provider.preferred_provider_type
-  const systemConfig = provider.system_configuration
-  const currentQuota = systemConfig.enabled && systemConfig.quota_configurations.find(item => item.quota_type === systemConfig.current_quota_type)
-  const openaiOrAnthropic = MODEL_PROVIDER_QUOTA_GET_PAID.includes(provider.provider)
+  const handleIconClick = useCallback((key: string) => {
+    const providerType = providerMap.get(key)
+    if (!providerType && allPlugins) {
+      const pluginId = providerKeyToPluginId[key]
+      const plugin = allPlugins.find(p => p.plugin_id === pluginId)
+      if (plugin) {
+        setSelectedPlugin(plugin)
+        selectedPluginIdRef.current = pluginId
+        showInstallFromMarketplace()
+      }
+    }
+  }, [allPlugins, providerMap, showInstallFromMarketplace])
+
+  useEffect(() => {
+    if (isShowInstallModal && selectedPluginIdRef.current) {
+      const isInstalled = providers.some(p => p.provider.startsWith(selectedPluginIdRef.current!))
+      if (isInstalled) {
+        hideInstallFromMarketplace()
+        selectedPluginIdRef.current = null
+      }
+    }
+  }, [providers, isShowInstallModal, hideInstallFromMarketplace])
+
+  if (isLoading) {
+    return (
+      <div className="my-2 flex min-h-[72px] items-center justify-center rounded-xl border-[0.5px] border-components-panel-border bg-third-party-model-bg-default shadow-xs">
+        <Loading />
+      </div>
+    )
+  }
 
   return (
-    <div className='group relative min-w-[112px] shrink-0 rounded-lg border-[0.5px] border-components-panel-border bg-white/[0.18] px-3 py-2 shadow-xs'>
-      <div className='system-xs-medium-uppercase mb-2 flex h-4 items-center text-text-tertiary'>
-        {t('common.modelProvider.quota')}
-        <Tooltip popupContent={
-          openaiOrAnthropic
-            ? t('common.modelProvider.card.tip')
-            : t('common.modelProvider.quotaTip')
-        }
-        />
+    <div className={cn('my-2 min-w-[72px] shrink-0 rounded-xl border-[0.5px] pb-2.5 pl-4 pr-2.5 pt-3 shadow-xs', credits <= 0 ? 'border-state-destructive-border hover:bg-state-destructive-hover' : 'border-components-panel-border bg-third-party-model-bg-default')}>
+      <div className="system-xs-medium-uppercase mb-2 flex h-4 items-center text-text-tertiary">
+        {t('modelProvider.quota', { ns: 'common' })}
+        <Tooltip popupContent={t('modelProvider.card.tip', { ns: 'common' })} />
       </div>
-      {
-        currentQuota && (
-          <div className='flex h-4 items-center text-xs text-text-tertiary'>
-            <span className='system-md-semibold-uppercase mr-0.5 text-text-secondary'>{formatNumber(Math.max((currentQuota?.quota_limit || 0) - (currentQuota?.quota_used || 0), 0))}</span>
-            {
-              currentQuota?.quota_unit === QuotaUnitEnum.tokens && 'Tokens'
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1 text-xs text-text-tertiary">
+          <span className="system-md-semibold-uppercase mr-0.5 text-text-secondary">{formatNumber(credits)}</span>
+          <span>{t('modelProvider.credits', { ns: 'common' })}</span>
+          {currentWorkspace.next_credit_reset_date
+            ? (
+                <>
+                  <span>·</span>
+                  <span>
+                    {t('modelProvider.resetDate', {
+                      ns: 'common',
+                      date: formatTime(currentWorkspace.next_credit_reset_date, t('dateFormat', { ns: 'appLog' })),
+                      interpolation: { escapeValue: false },
+                    })}
+                  </span>
+                </>
+              )
+            : null}
+        </div>
+        <div className="flex items-center gap-1">
+          {allProviders.map(({ key, Icon }) => {
+            const providerType = providerMap.get(key)
+            const usingQuota = providerType === PreferredProviderTypeEnum.system
+            const getTooltipKey = () => {
+              if (usingQuota)
+                return 'modelProvider.card.modelSupported'
+              if (providerType === PreferredProviderTypeEnum.custom)
+                return 'modelProvider.card.modelAPI'
+              return 'modelProvider.card.modelNotSupported'
             }
-            {
-              currentQuota?.quota_unit === QuotaUnitEnum.times && t('common.modelProvider.callTimes')
-            }
-            {
-              currentQuota?.quota_unit === QuotaUnitEnum.credits && t('common.modelProvider.credits')
-            }
-          </div>
-        )
-      }
-      {
-        priorityUseType === PreferredProviderTypeEnum.system && customConfig.status === CustomConfigurationStatusEnum.active && (
-          <PriorityUseTip />
-        )
-      }
+            return (
+              <Tooltip
+                key={key}
+                popupContent={t(getTooltipKey(), { modelName: modelNameMap[key], ns: 'common' })}
+              >
+                <div
+                  className={cn('relative h-6 w-6', !providerType && 'cursor-pointer hover:opacity-80')}
+                  onClick={() => handleIconClick(key)}
+                >
+                  <Icon className="h-6 w-6 rounded-lg" />
+                  {!usingQuota && (
+                    <div className="absolute inset-0 rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge opacity-30" />
+                  )}
+                </div>
+              </Tooltip>
+            )
+          })}
+        </div>
+      </div>
+      {isShowInstallModal && selectedPlugin && (
+        <InstallFromMarketplace
+          manifest={selectedPlugin}
+          uniqueIdentifier={selectedPlugin.latest_package_identifier}
+          onClose={hideInstallFromMarketplace}
+          onSuccess={hideInstallFromMarketplace}
+        />
+      )}
     </div>
   )
 }
 
-export default QuotaPanel
+export default React.memo(QuotaPanel)

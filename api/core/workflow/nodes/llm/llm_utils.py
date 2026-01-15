@@ -1,28 +1,28 @@
 from collections.abc import Sequence
-from typing import Optional, cast
+from typing import cast
 
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
-from core.entities.provider_entities import QuotaUnit
+from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
 from core.file.models import File
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.plugin.entities.plugin import ModelProviderID
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.variables.segments import ArrayAnySegment, ArrayFileSegment, FileSegment, NoneSegment, StringSegment
-from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.llm.entities import ModelConfig
+from core.workflow.runtime import VariablePool
+from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
-from models import db
 from models.model import Conversation
 from models.provider import Provider, ProviderType
+from models.provider_ids import ModelProviderID
 
 from .exc import InvalidVariableTypeError, LLMModeRequiredError, ModelNotExistError
 
@@ -86,13 +86,13 @@ def fetch_files(variable_pool: VariablePool, selector: Sequence[str]) -> Sequenc
 
 
 def fetch_memory(
-    variable_pool: VariablePool, app_id: str, node_data_memory: Optional[MemoryConfig], model_instance: ModelInstance
-) -> Optional[TokenBufferMemory]:
+    variable_pool: VariablePool, app_id: str, node_data_memory: MemoryConfig | None, model_instance: ModelInstance
+) -> TokenBufferMemory | None:
     if not node_data_memory:
         return None
 
     # get conversation id
-    conversation_id_variable = variable_pool.get(["sys", SystemVariableKey.CONVERSATION_ID.value])
+    conversation_id_variable = variable_pool.get(["sys", SystemVariableKey.CONVERSATION_ID])
     if not isinstance(conversation_id_variable, StringSegment):
         return None
     conversation_id = conversation_id_variable.value
@@ -107,7 +107,7 @@ def fetch_memory(
     return memory
 
 
-def deduct_llm_quota(tenant_id: str, model_instance: ModelInstance, usage: LLMUsage) -> None:
+def deduct_llm_quota(tenant_id: str, model_instance: ModelInstance, usage: LLMUsage):
     provider_model_bundle = model_instance.provider_model_bundle
     provider_configuration = provider_model_bundle.configuration
 
@@ -136,21 +136,37 @@ def deduct_llm_quota(tenant_id: str, model_instance: ModelInstance, usage: LLMUs
             used_quota = 1
 
     if used_quota is not None and system_configuration.current_quota_type is not None:
-        with Session(db.engine) as session:
-            stmt = (
-                update(Provider)
-                .where(
-                    Provider.tenant_id == tenant_id,
-                    # TODO: Use provider name with prefix after the data migration.
-                    Provider.provider_name == ModelProviderID(model_instance.provider).provider_name,
-                    Provider.provider_type == ProviderType.SYSTEM.value,
-                    Provider.quota_type == system_configuration.current_quota_type.value,
-                    Provider.quota_limit > Provider.quota_used,
-                )
-                .values(
-                    quota_used=Provider.quota_used + used_quota,
-                    last_used=naive_utc_now(),
-                )
+        if system_configuration.current_quota_type == ProviderQuotaType.TRIAL:
+            from services.credit_pool_service import CreditPoolService
+
+            CreditPoolService.check_and_deduct_credits(
+                tenant_id=tenant_id,
+                credits_required=used_quota,
             )
-            session.execute(stmt)
-            session.commit()
+        elif system_configuration.current_quota_type == ProviderQuotaType.PAID:
+            from services.credit_pool_service import CreditPoolService
+
+            CreditPoolService.check_and_deduct_credits(
+                tenant_id=tenant_id,
+                credits_required=used_quota,
+                pool_type="paid",
+            )
+        else:
+            with Session(db.engine) as session:
+                stmt = (
+                    update(Provider)
+                    .where(
+                        Provider.tenant_id == tenant_id,
+                        # TODO: Use provider name with prefix after the data migration.
+                        Provider.provider_name == ModelProviderID(model_instance.provider).provider_name,
+                        Provider.provider_type == ProviderType.SYSTEM.value,
+                        Provider.quota_type == system_configuration.current_quota_type.value,
+                        Provider.quota_limit > Provider.quota_used,
+                    )
+                    .values(
+                        quota_used=Provider.quota_used + used_quota,
+                        last_used=naive_utc_now(),
+                    )
+                )
+                session.execute(stmt)
+                session.commit()

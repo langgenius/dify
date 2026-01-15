@@ -27,7 +27,7 @@ from services.feature_service import BrandingModel
 class MockEmailRenderer:
     """Mock implementation of EmailRenderer protocol"""
 
-    def __init__(self) -> None:
+    def __init__(self):
         self.rendered_templates: list[tuple[str, dict[str, Any]]] = []
 
     def render_template(self, template_path: str, **context: Any) -> str:
@@ -39,7 +39,7 @@ class MockEmailRenderer:
 class MockBrandingService:
     """Mock implementation of BrandingService protocol"""
 
-    def __init__(self, enabled: bool = False, application_title: str = "Dify") -> None:
+    def __init__(self, enabled: bool = False, application_title: str = "Dify"):
         self.enabled = enabled
         self.application_title = application_title
 
@@ -54,10 +54,10 @@ class MockBrandingService:
 class MockEmailSender:
     """Mock implementation of EmailSender protocol"""
 
-    def __init__(self) -> None:
+    def __init__(self):
         self.sent_emails: list[dict[str, str]] = []
 
-    def send_email(self, to: str, subject: str, html_content: str) -> None:
+    def send_email(self, to: str, subject: str, html_content: str):
         """Mock send_email that records sent emails"""
         self.sent_emails.append(
             {
@@ -134,7 +134,7 @@ class TestEmailI18nService:
         email_service: EmailI18nService,
         mock_renderer: MockEmailRenderer,
         mock_sender: MockEmailSender,
-    ) -> None:
+    ):
         """Test sending email with English language"""
         email_service.send_email(
             email_type=EmailType.RESET_PASSWORD,
@@ -162,7 +162,7 @@ class TestEmailI18nService:
         self,
         email_service: EmailI18nService,
         mock_sender: MockEmailSender,
-    ) -> None:
+    ):
         """Test sending email with Chinese language"""
         email_service.send_email(
             email_type=EmailType.RESET_PASSWORD,
@@ -181,7 +181,7 @@ class TestEmailI18nService:
         email_config: EmailI18nConfig,
         mock_renderer: MockEmailRenderer,
         mock_sender: MockEmailSender,
-    ) -> None:
+    ):
         """Test sending email with branding enabled"""
         # Create branding service with branding enabled
         branding_service = MockBrandingService(enabled=True, application_title="MyApp")
@@ -215,7 +215,7 @@ class TestEmailI18nService:
         self,
         email_service: EmailI18nService,
         mock_sender: MockEmailSender,
-    ) -> None:
+    ):
         """Test language fallback to English when requested language not available"""
         # Request invite member in Chinese (not configured)
         email_service.send_email(
@@ -233,7 +233,7 @@ class TestEmailI18nService:
         self,
         email_service: EmailI18nService,
         mock_sender: MockEmailSender,
-    ) -> None:
+    ):
         """Test unknown language code falls back to English"""
         email_service.send_email(
             email_type=EmailType.RESET_PASSWORD,
@@ -246,13 +246,50 @@ class TestEmailI18nService:
         sent_email = mock_sender.sent_emails[0]
         assert sent_email["subject"] == "Reset Your Dify Password"
 
+    def test_subject_format_keyerror_fallback_path(
+        self,
+        mock_renderer: MockEmailRenderer,
+        mock_sender: MockEmailSender,
+    ):
+        """Trigger subject KeyError and cover except branch."""
+        # Config with subject that references an unknown key (no {application_title} to avoid second format)
+        config = EmailI18nConfig(
+            templates={
+                EmailType.INVITE_MEMBER: {
+                    EmailLanguage.EN_US: EmailTemplate(
+                        subject="Invite: {unknown_placeholder}",
+                        template_path="invite_member_en.html",
+                        branded_template_path="branded/invite_member_en.html",
+                    ),
+                }
+            }
+        )
+        branding_service = MockBrandingService(enabled=False)
+        service = EmailI18nService(
+            config=config,
+            renderer=mock_renderer,
+            branding_service=branding_service,
+            sender=mock_sender,
+        )
+
+        # Will raise KeyError on subject.format(**full_context), then hit except branch and skip fallback
+        service.send_email(
+            email_type=EmailType.INVITE_MEMBER,
+            language_code="en-US",
+            to="test@example.com",
+        )
+
+        assert len(mock_sender.sent_emails) == 1
+        # Subject is left unformatted due to KeyError fallback path without application_title
+        assert mock_sender.sent_emails[0]["subject"] == "Invite: {unknown_placeholder}"
+
     def test_send_change_email_old_phase(
         self,
         email_config: EmailI18nConfig,
         mock_renderer: MockEmailRenderer,
         mock_sender: MockEmailSender,
         mock_branding_service: MockBrandingService,
-    ) -> None:
+    ):
         """Test sending change email for old email verification"""
         # Add change email templates to config
         email_config.templates[EmailType.CHANGE_EMAIL_OLD] = {
@@ -290,7 +327,7 @@ class TestEmailI18nService:
         mock_renderer: MockEmailRenderer,
         mock_sender: MockEmailSender,
         mock_branding_service: MockBrandingService,
-    ) -> None:
+    ):
         """Test sending change email for new email verification"""
         # Add change email templates to config
         email_config.templates[EmailType.CHANGE_EMAIL_NEW] = {
@@ -325,7 +362,7 @@ class TestEmailI18nService:
     def test_send_change_email_invalid_phase(
         self,
         email_service: EmailI18nService,
-    ) -> None:
+    ):
         """Test sending change email with invalid phase raises error"""
         with pytest.raises(ValueError, match="Invalid phase: invalid_phase"):
             email_service.send_change_email(
@@ -339,7 +376,7 @@ class TestEmailI18nService:
         self,
         email_service: EmailI18nService,
         mock_sender: MockEmailSender,
-    ) -> None:
+    ):
         """Test sending raw email to single recipient"""
         email_service.send_raw_email(
             to="test@example.com",
@@ -357,7 +394,7 @@ class TestEmailI18nService:
         self,
         email_service: EmailI18nService,
         mock_sender: MockEmailSender,
-    ) -> None:
+    ):
         """Test sending raw email to multiple recipients"""
         recipients = ["user1@example.com", "user2@example.com", "user3@example.com"]
 
@@ -378,7 +415,7 @@ class TestEmailI18nService:
     def test_get_template_missing_email_type(
         self,
         email_config: EmailI18nConfig,
-    ) -> None:
+    ):
         """Test getting template for missing email type raises error"""
         with pytest.raises(ValueError, match="No templates configured for email type"):
             email_config.get_template(EmailType.EMAIL_CODE_LOGIN, EmailLanguage.EN_US)
@@ -386,7 +423,7 @@ class TestEmailI18nService:
     def test_get_template_missing_language_and_english(
         self,
         email_config: EmailI18nConfig,
-    ) -> None:
+    ):
         """Test error when neither requested language nor English fallback exists"""
         # Add template without English fallback
         email_config.templates[EmailType.EMAIL_CODE_LOGIN] = {
@@ -407,7 +444,7 @@ class TestEmailI18nService:
         mock_renderer: MockEmailRenderer,
         mock_sender: MockEmailSender,
         mock_branding_service: MockBrandingService,
-    ) -> None:
+    ):
         """Test subject templating with custom variables"""
         # Add template with variable in subject
         email_config.templates[EmailType.OWNER_TRANSFER_NEW_NOTIFY] = {
@@ -437,7 +474,7 @@ class TestEmailI18nService:
         sent_email = mock_sender.sent_emails[0]
         assert sent_email["subject"] == "You are now the owner of My Workspace"
 
-    def test_email_language_from_language_code(self) -> None:
+    def test_email_language_from_language_code(self):
         """Test EmailLanguage.from_language_code method"""
         assert EmailLanguage.from_language_code("zh-Hans") == EmailLanguage.ZH_HANS
         assert EmailLanguage.from_language_code("en-US") == EmailLanguage.EN_US
@@ -448,7 +485,7 @@ class TestEmailI18nService:
 class TestEmailI18nIntegration:
     """Integration tests for email i18n components"""
 
-    def test_create_default_email_config(self) -> None:
+    def test_create_default_email_config(self):
         """Test creating default email configuration"""
         config = create_default_email_config()
 
@@ -476,7 +513,7 @@ class TestEmailI18nIntegration:
         assert EmailLanguage.ZH_HANS in config.templates[EmailType.RESET_PASSWORD]
         assert EmailLanguage.ZH_HANS in config.templates[EmailType.INVITE_MEMBER]
 
-    def test_get_email_i18n_service(self) -> None:
+    def test_get_email_i18n_service(self):
         """Test getting global email i18n service instance"""
         service1 = get_email_i18n_service()
         service2 = get_email_i18n_service()
@@ -484,7 +521,7 @@ class TestEmailI18nIntegration:
         # Should return the same instance
         assert service1 is service2
 
-    def test_flask_email_renderer(self) -> None:
+    def test_flask_email_renderer(self):
         """Test FlaskEmailRenderer implementation"""
         renderer = FlaskEmailRenderer()
 
@@ -494,7 +531,7 @@ class TestEmailI18nIntegration:
         with pytest.raises(TemplateNotFound):
             renderer.render_template("test.html", foo="bar")
 
-    def test_flask_mail_sender_not_initialized(self) -> None:
+    def test_flask_mail_sender_not_initialized(self):
         """Test FlaskMailSender when mail is not initialized"""
         sender = FlaskMailSender()
 
@@ -514,7 +551,7 @@ class TestEmailI18nIntegration:
             # Restore original mail
             libs.email_i18n.mail = original_mail
 
-    def test_flask_mail_sender_initialized(self) -> None:
+    def test_flask_mail_sender_initialized(self):
         """Test FlaskMailSender when mail is initialized"""
         sender = FlaskMailSender()
 

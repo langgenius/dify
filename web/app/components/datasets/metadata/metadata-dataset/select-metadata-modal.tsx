@@ -1,13 +1,14 @@
 'use client'
+import type { Placement } from '@floating-ui/react'
 import type { FC } from 'react'
-import React, { useCallback, useState } from 'react'
+import type { MetadataItem } from '../types'
 import type { Props as CreateContentProps } from './create-content'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
+import { useDatasetMetaData } from '@/service/knowledge/use-metadata'
+import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '../../../base/portal-to-follow-elem'
 import CreateContent from './create-content'
 import SelectMetadata from './select-metadata'
-import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '../../../base/portal-to-follow-elem'
-import type { MetadataItem } from '../types'
-import type { Placement } from '@floating-ui/react'
-import { useDatasetMetaData } from '@/service/knowledge/use-metadata'
 
 type Props = {
   datasetId: string
@@ -51,31 +52,33 @@ const SelectMetadataModal: FC<Props> = ({
     >
       <PortalToFollowElemTrigger
         onClick={() => setOpen(!open)}
-        className='block'
+        className="block"
       >
         {trigger}
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-[1000]'>
-        {step === Step.select ? (
-          <SelectMetadata
-            onSelect={(data) => {
-              onSelect(data)
-              setOpen(false)
-            }}
-            list={datasetMetaData?.doc_metadata || []}
-            onNew={() => setStep(Step.create)}
-            onManage={onManage}
-          />
-        ) : (
-          <CreateContent
-            onSave={handleSave}
-            hasBack
-            onBack={() => setStep(Step.select)}
-            onClose={() => setStep(Step.select)}
-          />
-        )}
+      <PortalToFollowElemContent className="z-[1000]">
+        {step === Step.select
+          ? (
+              <SelectMetadata
+                onSelect={(data) => {
+                  onSelect(data)
+                  setOpen(false)
+                }}
+                list={datasetMetaData?.doc_metadata || []}
+                onNew={() => setStep(Step.create)}
+                onManage={onManage}
+              />
+            )
+          : (
+              <CreateContent
+                onSave={handleSave}
+                hasBack
+                onBack={() => setStep(Step.select)}
+                onClose={() => setStep(Step.select)}
+              />
+            )}
       </PortalToFollowElemContent>
-    </PortalToFollowElem >
+    </PortalToFollowElem>
 
   )
 }

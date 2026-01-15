@@ -1,8 +1,9 @@
+import type { VariantProps } from 'class-variance-authority'
 import type { CSSProperties } from 'react'
-import React from 'react'
-import { type VariantProps, cva } from 'class-variance-authority'
+import { cva } from 'class-variance-authority'
+import * as React from 'react'
+import { cn } from '@/utils/classnames'
 import Spinner from '../spinner'
-import classNames from '@/utils/classnames'
 
 const buttonVariants = cva(
   'btn disabled:btn-disabled',
@@ -35,27 +36,23 @@ export type ButtonProps = {
   loading?: boolean
   styleCss?: CSSProperties
   spinnerClassName?: string
+  ref?: React.Ref<HTMLButtonElement>
 } & React.ButtonHTMLAttributes<HTMLButtonElement> & VariantProps<typeof buttonVariants>
 
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, destructive, loading, styleCss, children, spinnerClassName, ...props }, ref) => {
-    return (
-      <button
-        type='button'
-        className={classNames(
-          buttonVariants({ variant, size, className }),
-          destructive && 'btn-destructive',
-        )}
-        ref={ref}
-        style={styleCss}
-        {...props}
-      >
-        {children}
-        {loading && <Spinner loading={loading} className={classNames('!ml-1 !h-3 !w-3 !border-2 !text-white', spinnerClassName)} />}
-      </button>
-    )
-  },
-)
+const Button = ({ className, variant, size, destructive, loading, styleCss, children, spinnerClassName, ref, ...props }: ButtonProps) => {
+  return (
+    <button
+      type="button"
+      className={cn(buttonVariants({ variant, size, className }), destructive && 'btn-destructive')}
+      ref={ref}
+      style={styleCss}
+      {...props}
+    >
+      {children}
+      {loading && <Spinner loading={loading} className={cn('!ml-1 !h-3 !w-3 !border-2 !text-white', spinnerClassName)} />}
+    </button>
+  )
+}
 Button.displayName = 'Button'
 
 export default Button

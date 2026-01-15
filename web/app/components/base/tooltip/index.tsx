@@ -1,11 +1,12 @@
 'use client'
-import type { FC } from 'react'
-import React, { useEffect, useRef, useState } from 'react'
-import { useBoolean } from 'ahooks'
 import type { OffsetOptions, Placement } from '@floating-ui/react'
+import type { FC } from 'react'
 import { RiQuestionLine } from '@remixicon/react'
-import cn from '@/utils/classnames'
+import { useBoolean } from 'ahooks'
+import * as React from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
+import { cn } from '@/utils/classnames'
 import { tooltipManager } from './TooltipManager'
 
 export type TooltipProps = {
@@ -17,6 +18,7 @@ export type TooltipProps = {
   popupContent?: React.ReactNode
   children?: React.ReactNode
   popupClassName?: string
+  portalContentClassName?: string
   noDecoration?: boolean
   offset?: OffsetOptions
   needsDelay?: boolean
@@ -32,6 +34,7 @@ const Tooltip: FC<TooltipProps> = ({
   popupContent,
   children,
   popupClassName,
+  portalContentClassName,
   noDecoration,
   offset,
   asChild = true,
@@ -101,21 +104,23 @@ const Tooltip: FC<TooltipProps> = ({
         asChild={asChild}
         className={!asChild ? triggerClassName : ''}
       >
-        {children || <div data-testid={triggerTestId} className={triggerClassName || 'h-3.5 w-3.5 shrink-0 p-[1px]'}><RiQuestionLine className='h-full w-full text-text-quaternary hover:text-text-tertiary' /></div>}
+        {children || <div data-testid={triggerTestId} className={triggerClassName || 'h-3.5 w-3.5 shrink-0 p-[1px]'}><RiQuestionLine className="h-full w-full text-text-quaternary hover:text-text-tertiary" /></div>}
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent
-        className="z-[9999]"
+        className={cn('z-[9999]', portalContentClassName || '')}
       >
-        {popupContent && (<div
-          className={cn(
-            !noDecoration && 'system-xs-regular relative max-w-[300px] break-words rounded-md bg-components-panel-bg px-3 py-2 text-left text-text-tertiary shadow-lg',
-            popupClassName,
-          )}
-          onMouseEnter={() => triggerMethod === 'hover' && setHoverPopup()}
-          onMouseLeave={() => triggerMethod === 'hover' && handleLeave(false)}
-        >
-          {popupContent}
-        </div>)}
+        {popupContent && (
+          <div
+            className={cn(
+              !noDecoration && 'system-xs-regular relative max-w-[300px] break-words rounded-md bg-components-panel-bg px-3 py-2 text-left text-text-tertiary shadow-lg',
+              popupClassName,
+            )}
+            onMouseEnter={() => triggerMethod === 'hover' && setHoverPopup()}
+            onMouseLeave={() => triggerMethod === 'hover' && handleLeave(false)}
+          >
+            {popupContent}
+          </div>
+        )}
       </PortalToFollowElemContent>
     </PortalToFollowElem>
   )

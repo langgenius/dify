@@ -1,3 +1,4 @@
+import type { StartNodeType } from '../nodes/start/types'
 import {
   memo,
   useCallback,
@@ -5,25 +6,24 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
+import Button from '@/app/components/base/button'
+import { useCheckInputsForms } from '@/app/components/base/chat/chat/check-input-forms-hooks'
+import {
+  getProcessedInputs,
+} from '@/app/components/base/chat/chat/utils'
+import { TransferMethod } from '../../base/text-generation/types'
+import { useWorkflowRun } from '../hooks'
+import { useHooksStore } from '../hooks-store'
 import FormItem from '../nodes/_base/components/before-run-form/form-item'
+import {
+  useStore,
+  useWorkflowStore,
+} from '../store'
 import {
   BlockEnum,
   InputVarType,
   WorkflowRunningStatus,
 } from '../types'
-import {
-  useStore,
-  useWorkflowStore,
-} from '../store'
-import { useWorkflowRun } from '../hooks'
-import type { StartNodeType } from '../nodes/start/types'
-import { TransferMethod } from '../../base/text-generation/types'
-import Button from '@/app/components/base/button'
-import { useFeatures } from '@/app/components/base/features/hooks'
-import {
-  getProcessedInputs,
-} from '@/app/components/base/chat/chat/utils'
-import { useCheckInputsForms } from '@/app/components/base/chat/chat/check-input-forms-hooks'
 
 type Props = {
   onRun: () => void
@@ -32,11 +32,8 @@ type Props = {
 const InputsPanel = ({ onRun }: Props) => {
   const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
-  const { inputs } = useStore(s => ({
-    inputs: s.inputs,
-    setInputs: s.setInputs,
-  }))
-  const fileSettings = useFeatures(s => s.features.file)
+  const inputs = useStore(s => s.inputs)
+  const fileSettings = useHooksStore(s => s.configsMap?.fileSettings)
   const nodes = useNodes<StartNodeType>()
   const files = useStore(s => s.files)
   const workflowRunningData = useStore(s => s.workflowRunningData)
@@ -51,7 +48,9 @@ const InputsPanel = ({ onRun }: Props) => {
   if (startVariables) {
     startVariables.forEach((variable) => {
       if (variable.default)
-       initialInputs[variable.variable] = variable.default
+        initialInputs[variable.variable] = variable.default
+      if (inputs[variable.variable] !== undefined)
+        initialInputs[variable.variable] = inputs[variable.variable]
     })
   }
 
@@ -106,16 +105,16 @@ const InputsPanel = ({ onRun }: Props) => {
 
   return (
     <>
-      <div className='px-4 pb-2 pt-3'>
+      <div className="px-4 pb-2 pt-3">
         {
           variables.map((variable, index) => (
             <div
               key={variable.variable}
-              className='mb-2 last-of-type:mb-0'
+              className="mb-2 last-of-type:mb-0"
             >
               <FormItem
                 autoFocus={index === 0}
-                className='!block'
+                className="!block"
                 payload={variable}
                 value={initialInputs[variable.variable]}
                 onChange={v => handleValueChange(variable.variable, v)}
@@ -124,14 +123,14 @@ const InputsPanel = ({ onRun }: Props) => {
           ))
         }
       </div>
-      <div className='flex items-center justify-between px-4 py-2'>
+      <div className="flex items-center justify-between px-4 py-2">
         <Button
-          variant='primary'
+          variant="primary"
           disabled={!canRun || workflowRunningData?.result?.status === WorkflowRunningStatus.Running}
-          className='w-full'
+          className="w-full"
           onClick={doRun}
         >
-          {t('workflow.singleRun.startRun')}
+          {t('singleRun.startRun', { ns: 'workflow' })}
         </Button>
       </div>
     </>

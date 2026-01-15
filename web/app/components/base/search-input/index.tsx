@@ -1,8 +1,8 @@
 import type { FC } from 'react'
+import { RiCloseCircleFill, RiSearchLine } from '@remixicon/react'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiCloseCircleFill, RiSearchLine } from '@remixicon/react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type SearchInputProps = {
   placeholder?: string
@@ -22,7 +22,7 @@ const SearchInput: FC<SearchInputProps> = ({
   const { t } = useTranslation()
   const [focus, setFocus] = useState<boolean>(false)
   const isComposing = useRef<boolean>(false)
-  const [internalValue, setInternalValue] = useState<string>(value)
+  const [compositionValue, setCompositionValue] = useState<string>('')
 
   return (
     <div className={cn(
@@ -30,7 +30,8 @@ const SearchInput: FC<SearchInputProps> = ({
       focus && '!bg-components-input-bg-active',
       white && '!border-gray-300 !bg-white shadow-xs hover:!border-gray-300 hover:!bg-white',
       className,
-    )}>
+    )}
+    >
       <div className="pointer-events-none mr-1.5 flex h-4 w-4 shrink-0 items-center justify-center">
         <RiSearchLine className="h-4 w-4 text-components-input-text-placeholder" aria-hidden="true" />
       </div>
@@ -41,19 +42,23 @@ const SearchInput: FC<SearchInputProps> = ({
           'system-sm-regular caret-#295EFF block h-[18px] grow appearance-none border-0 bg-transparent text-components-input-text-filled outline-none placeholder:text-components-input-text-placeholder',
           white && '!bg-white placeholder:!text-gray-400 hover:!bg-white group-hover:!bg-white',
         )}
-        placeholder={placeholder || t('common.operation.search')!}
-        value={internalValue}
+        placeholder={placeholder || t('operation.search', { ns: 'common' })!}
+        value={isComposing.current ? compositionValue : value}
         onChange={(e) => {
-          setInternalValue(e.target.value)
-          if (!isComposing.current)
-            onChange(e.target.value)
+          const newValue = e.target.value
+          if (isComposing.current)
+            setCompositionValue(newValue)
+          else
+            onChange(newValue)
         }}
         onCompositionStart={() => {
           isComposing.current = true
+          setCompositionValue(value)
         }}
         onCompositionEnd={(e) => {
           isComposing.current = false
-          onChange(e.data)
+          setCompositionValue('')
+          onChange(e.currentTarget.value)
         }}
         onFocus={() => setFocus(true)}
         onBlur={() => setFocus(false)}
@@ -61,13 +66,12 @@ const SearchInput: FC<SearchInputProps> = ({
       />
       {value && (
         <div
-          className='group/clear flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center'
+          className="group/clear flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center"
           onClick={() => {
             onChange('')
-            setInternalValue('')
           }}
         >
-          <RiCloseCircleFill className='h-4 w-4 text-text-quaternary group-hover/clear:text-text-tertiary' />
+          <RiCloseCircleFill className="h-4 w-4 text-text-quaternary group-hover/clear:text-text-tertiary" />
         </div>
       )}
     </div>

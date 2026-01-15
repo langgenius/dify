@@ -1,0 +1,29 @@
+{
+  "$id": "https://dify.ai/schemas/v1/qa_structure.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "version": "1.0.0",
+  "type": "object",
+  "title": "Q&A Structure",
+  "description": "Schema for question-answer structure (v1)",
+  "properties": {
+    "qa_chunks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string",
+            "description": "The question"
+          },
+          "answer": {
+            "type": "string",
+            "description": "The answer"
+          }
+        },
+        "required": ["question", "answer"]
+      },
+      "description": "List of question-answer pairs"
+    }
+  },
+  "required": ["qa_chunks"]
+}

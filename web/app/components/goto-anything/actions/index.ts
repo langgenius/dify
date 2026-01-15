@@ -163,13 +163,43 @@
  * - `/` - Execute slash commands (theme, language, etc.)
  */
 
+import type { ActionItem, SearchResult } from './types'
 import { appAction } from './app'
+import { slashAction } from './commands'
+import { slashCommandRegistry } from './commands/registry'
 import { knowledgeAction } from './knowledge'
 import { pluginAction } from './plugin'
+import { ragPipelineNodesAction } from './rag-pipeline-nodes'
 import { workflowNodesAction } from './workflow-nodes'
-import type { ActionItem, SearchResult } from './types'
-import { slashAction } from './commands'
 
+// Create dynamic Actions based on context
+export const createActions = (isWorkflowPage: boolean, isRagPipelinePage: boolean) => {
+  const baseActions = {
+    slash: slashAction,
+    app: appAction,
+    knowledge: knowledgeAction,
+    plugin: pluginAction,
+  }
+
+  // Add appropriate node search based on context
+  if (isRagPipelinePage) {
+    return {
+      ...baseActions,
+      node: ragPipelineNodesAction,
+    }
+  }
+  else if (isWorkflowPage) {
+    return {
+      ...baseActions,
+      node: workflowNodesAction,
+    }
+  }
+
+  // Default actions without node search
+  return baseActions
+}
+
+// Legacy export for backward compatibility
 export const Actions = {
   slash: slashAction,
   app: appAction,
@@ -182,9 +212,14 @@ export const searchAnything = async (
   locale: string,
   query: string,
   actionItem?: ActionItem,
+  dynamicActions?: Record<string, ActionItem>,
 ): Promise<SearchResult[]> => {
+  const trimmedQuery = query.trim()
+
   if (actionItem) {
-    const searchTerm = query.replace(actionItem.key, '').replace(actionItem.shortcut, '').trim()
+    const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const prefixPattern = new RegExp(`^(${escapeRegExp(actionItem.key)}|${escapeRegExp(actionItem.shortcut)})\\s*`)
+    const searchTerm = trimmedQuery.replace(prefixPattern, '').trim()
     try {
       return await actionItem.search(query, searchTerm, locale)
     }
@@ -194,10 +229,12 @@ export const searchAnything = async (
     }
   }
 
-  if (query.startsWith('@') || query.startsWith('/'))
+  if (trimmedQuery.startsWith('@') || trimmedQuery.startsWith('/'))
     return []
 
-  const globalSearchActions = Object.values(Actions)
+  const globalSearchActions = Object.values(dynamicActions || Actions)
+    // Exclude slash commands from general search results
+    .filter(action => action.key !== '/')
 
   // Use Promise.allSettled to handle partial failures gracefully
   const searchPromises = globalSearchActions.map(async (action) => {
@@ -205,7 +242,7 @@ export const searchAnything = async (
       const results = await action.search(query, query, locale)
       return { success: true, data: results, actionType: action.key }
     }
- catch (error) {
+    catch (error) {
       console.warn(`Search failed for ${action.key}:`, error)
       return { success: false, data: [], actionType: action.key, error }
     }
@@ -220,7 +257,7 @@ export const searchAnything = async (
     if (result.status === 'fulfilled' && result.value.success) {
       allResults.push(...result.value.data)
     }
- else {
+    else {
       const actionKey = globalSearchActions[index]?.key || 'unknown'
       failedActions.push(actionKey)
     }
@@ -234,15 +271,29 @@ export const searchAnything = async (
 
 export const matchAction = (query: string, actions: Record<string, ActionItem>) => {
   return Object.values(actions).find((action) => {
-    // Special handling for slash commands to allow direct /theme, /lang
-    if (action.key === '/')
-      return query.startsWith('/')
+    // Special handling for slash commands
+    if (action.key === '/') {
+      // Get all registered commands from the registry
+      const allCommands = slashCommandRegistry.getAllCommands()
+
+      // Check if query matches any registered command
+      return allCommands.some((cmd) => {
+        const cmdPattern = `/${cmd.name}`
+
+        // For direct mode commands, don't match (keep in command selector)
+        if (cmd.mode === 'direct')
+          return false
+
+        // For submenu mode commands, match when complete command is entered
+        return query === cmdPattern || query.startsWith(`${cmdPattern} `)
+      })
+    }
 
     const reg = new RegExp(`^(${action.key}|${action.shortcut})(?:\\s|$)`)
     return reg.test(query)
   })
 }
 
-export * from './types'
 export * from './commands'
+export * from './types'
 export { appAction, knowledgeAction, pluginAction, workflowNodesAction }

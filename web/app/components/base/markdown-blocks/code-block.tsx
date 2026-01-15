@@ -1,5 +1,6 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ReactEcharts from 'echarts-for-react'
+import dynamic from 'next/dynamic'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import SyntaxHighlighter from 'react-syntax-highlighter'
 import {
   atelierHeathDark,
@@ -7,13 +8,14 @@ import {
 } from 'react-syntax-highlighter/dist/esm/styles/hljs'
 import ActionButton from '@/app/components/base/action-button'
 import CopyIcon from '@/app/components/base/copy-icon'
-import SVGBtn from '@/app/components/base/svg'
-import Flowchart from '@/app/components/base/mermaid'
-import { Theme } from '@/types/app'
-import useTheme from '@/hooks/use-theme'
-import SVGRenderer from '../svg-gallery' // Assumes svg-gallery.tsx is in /base directory
 import MarkdownMusic from '@/app/components/base/markdown-blocks/music'
 import ErrorBoundary from '@/app/components/base/markdown/error-boundary'
+import SVGBtn from '@/app/components/base/svg'
+import useTheme from '@/hooks/use-theme'
+import { Theme } from '@/types/app'
+import SVGRenderer from '../svg-gallery' // Assumes svg-gallery.tsx is in /base directory
+
+const Flowchart = dynamic(() => import('@/app/components/base/mermaid'), { ssr: false })
 
 // Available language https://github.com/react-syntax-highlighter/react-syntax-highlighter/blob/master/AVAILABLE_LANGUAGES_HLJS.MD
 const capitalizationLanguageNameMap: Record<string, string> = {
@@ -64,13 +66,13 @@ const getCorrectCapitalizationLanguageName = (language: string) => {
 
 // Define ECharts event parameter types
 type EChartsEventParams = {
-  type: string;
-  seriesIndex?: number;
-  dataIndex?: number;
-  name?: string;
-  value?: any;
-  currentIndex?: number; // Added for timeline events
-  [key: string]: any;
+  type: string
+  seriesIndex?: number
+  dataIndex?: number
+  name?: string
+  value?: any
+  currentIndex?: number // Added for timeline events
+  [key: string]: any
 }
 
 const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any) => {
@@ -125,7 +127,7 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
 
   // Store event handlers in useMemo to avoid recreating them
   const echartsEvents = useMemo(() => ({
-    finished: (params: EChartsEventParams) => {
+    finished: (_params: EChartsEventParams) => {
       // Limit finished event frequency to avoid infinite loops
       finishedEventCountRef.current++
       if (finishedEventCountRef.current > 3) {
@@ -142,7 +144,8 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
 
   // Handle container resize for echarts
   useEffect(() => {
-    if (language !== 'echarts' || !chartInstanceRef.current) return
+    if (language !== 'echarts' || !chartInstanceRef.current)
+      return
 
     const handleResize = () => {
       if (chartInstanceRef.current)
@@ -161,7 +164,8 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
   // Process chart data when content changes
   useEffect(() => {
     // Only process echarts content
-    if (language !== 'echarts') return
+    if (language !== 'echarts')
+      return
 
     // Reset state when new content is detected
     if (!contentRef.current) {
@@ -172,11 +176,13 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
     const newContent = String(children).replace(/\n$/, '')
 
     // Skip if content hasn't changed
-    if (contentRef.current === newContent) return
+    if (contentRef.current === newContent)
+      return
     contentRef.current = newContent
 
     const trimmedContent = newContent.trim()
-    if (!trimmedContent) return
+    if (!trimmedContent)
+      return
 
     // Detect if this is historical data (already complete)
     // Historical data typically comes as a complete code block with complete JSON
@@ -222,14 +228,14 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
     // Check more conditions for streaming data
     const isIncomplete
       = trimmedContent.length < 5
-      || (trimmedContent.startsWith('{')
-        && (!trimmedContent.endsWith('}')
-          || trimmedContent.split('{').length !== trimmedContent.split('}').length))
-      || (trimmedContent.startsWith('[')
-        && (!trimmedContent.endsWith(']')
-          || trimmedContent.split('[').length !== trimmedContent.split('}').length))
-      || (trimmedContent.split('"').length % 2 !== 1)
-      || (trimmedContent.includes('{"') && !trimmedContent.includes('"}'))
+        || (trimmedContent.startsWith('{')
+          && (!trimmedContent.endsWith('}')
+            || trimmedContent.split('{').length !== trimmedContent.split('}').length))
+          || (trimmedContent.startsWith('[')
+            && (!trimmedContent.endsWith(']')
+              || trimmedContent.split('[').length !== trimmedContent.split('}').length))
+            || (trimmedContent.split('"').length % 2 !== 1)
+            || (trimmedContent.includes('{"') && !trimmedContent.includes('"}'))
 
     // Only try to parse streaming data if it looks complete and hasn't been processed
     if (!isIncomplete && !processedRef.current) {
@@ -286,12 +292,14 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
               borderBottomRightRadius: '10px',
               backgroundColor: isDarkMode ? 'var(--color-components-input-bg-normal)' : 'transparent',
               color: 'var(--color-text-secondary)',
-            }}>
+            }}
+            >
               <div style={{
                 marginBottom: '12px',
                 width: '24px',
                 height: '24px',
-              }}>
+              }}
+              >
                 {/* Rotating spinner that works in both light and dark modes */}
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ animation: 'spin 1.5s linear infinite' }}>
                   <style>
@@ -309,7 +317,10 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
               <div style={{
                 fontFamily: 'var(--font-family)',
                 fontSize: '14px',
-              }}>Chart loading...</div>
+              }}
+              >
+                Chart loading...
+              </div>
             </div>
           )
         }
@@ -328,7 +339,8 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
               borderBottomLeftRadius: '10px',
               borderBottomRightRadius: '10px',
               transition: 'background-color 0.3s ease',
-            }}>
+            }}
+            >
               <ErrorBoundary>
                 <ReactEcharts
                   ref={(e) => {
@@ -367,7 +379,8 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
             borderBottomLeftRadius: '10px',
             borderBottomRightRadius: '10px',
             transition: 'background-color 0.3s ease',
-          }}>
+          }}
+          >
             <ErrorBoundary>
               <ReactEcharts
                 ref={echartsRef}
@@ -421,10 +434,10 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
     return <code {...props} className={className}>{children}</code>
 
   return (
-    <div className='relative'>
-      <div className='flex h-8 items-center justify-between rounded-t-[10px] border-b border-divider-subtle bg-components-input-bg-normal p-1 pl-3'>
-        <div className='system-xs-semibold-uppercase text-text-secondary'>{languageShowName}</div>
-        <div className='flex items-center gap-1'>
+    <div className="relative">
+      <div className="flex h-8 items-center justify-between rounded-t-[10px] border-b border-divider-subtle bg-components-input-bg-normal p-1 pl-3">
+        <div className="system-xs-semibold-uppercase text-text-secondary">{languageShowName}</div>
+        <div className="flex items-center gap-1">
           {language === 'svg' && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG} />}
           <ActionButton>
             <CopyIcon content={String(children).replace(/\n$/, '')} />

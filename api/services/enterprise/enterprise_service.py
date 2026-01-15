@@ -46,17 +46,17 @@ class EnterpriseService:
 
     class WebAppAuth:
         @classmethod
-        def is_user_allowed_to_access_webapp(cls, user_id: str, app_code: str):
-            params = {"userId": user_id, "appCode": app_code}
+        def is_user_allowed_to_access_webapp(cls, user_id: str, app_id: str):
+            params = {"userId": user_id, "appId": app_id}
             data = EnterpriseRequest.send_request("GET", "/webapp/permission", params=params)
 
             return data.get("result", False)
 
         @classmethod
-        def batch_is_user_allowed_to_access_webapps(cls, user_id: str, app_codes: list[str]):
-            if not app_codes:
+        def batch_is_user_allowed_to_access_webapps(cls, user_id: str, app_ids: list[str]):
+            if not app_ids:
                 return {}
-            body = {"userId": user_id, "appCodes": app_codes}
+            body = {"userId": user_id, "appIds": app_ids}
             data = EnterpriseRequest.send_request("POST", "/webapp/permission/batch", json=body)
             if not data:
                 raise ValueError("No data found.")
@@ -70,7 +70,7 @@ class EnterpriseService:
             data = EnterpriseRequest.send_request("GET", "/webapp/access-mode/id", params=params)
             if not data:
                 raise ValueError("No data found.")
-            return WebAppSettings(**data)
+            return WebAppSettings.model_validate(data)
 
         @classmethod
         def batch_get_app_access_mode_by_id(cls, app_ids: list[str]) -> dict[str, WebAppSettings]:
@@ -93,16 +93,6 @@ class EnterpriseService:
             return ret
 
         @classmethod
-        def get_app_access_mode_by_code(cls, app_code: str) -> WebAppSettings:
-            if not app_code:
-                raise ValueError("app_code must be provided.")
-            params = {"appCode": app_code}
-            data = EnterpriseRequest.send_request("GET", "/webapp/access-mode/code", params=params)
-            if not data:
-                raise ValueError("No data found.")
-            return WebAppSettings(**data)
-
-        @classmethod
         def update_app_access_mode(cls, app_id: str, access_mode: str):
             if not app_id:
                 raise ValueError("app_id must be provided.")
@@ -120,5 +110,5 @@ class EnterpriseService:
             if not app_id:
                 raise ValueError("app_id must be provided.")
 
-            body = {"appId": app_id}
-            EnterpriseRequest.send_request("DELETE", "/webapp/clean", json=body)
+            params = {"appId": app_id}
+            EnterpriseRequest.send_request("DELETE", "/webapp/clean", params=params)

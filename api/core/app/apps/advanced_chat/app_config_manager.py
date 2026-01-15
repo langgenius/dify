@@ -26,7 +26,6 @@ class AdvancedChatAppConfigManager(BaseAppConfigManager):
     @classmethod
     def get_app_config(cls, app_model: App, workflow: Workflow) -> AdvancedChatAppConfig:
         features_dict = workflow.features_dict
-
         app_mode = AppMode.value_of(app_model.mode)
         app_config = AdvancedChatAppConfig(
             tenant_id=app_model.tenant_id,
@@ -41,7 +40,7 @@ class AdvancedChatAppConfigManager(BaseAppConfigManager):
         return app_config
 
     @classmethod
-    def config_validate(cls, tenant_id: str, config: dict, only_structure_validate: bool = False) -> dict:
+    def config_validate(cls, tenant_id: str, config: dict, only_structure_validate: bool = False):
         """
         Validate for advanced chat app model config
 

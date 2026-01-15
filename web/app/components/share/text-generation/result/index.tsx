@@ -1,26 +1,34 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useRef, useState } from 'react'
-import { useBoolean } from 'ahooks'
-import { t } from 'i18next'
-import produce from 'immer'
-import TextGenerationRes from '@/app/components/app/text-generate/item'
-import NoData from '@/app/components/share/text-generation/no-data'
-import Toast from '@/app/components/base/toast'
-import { sendCompletionMessage, sendWorkflowMessage, updateFeedback } from '@/service/share'
 import type { FeedbackType } from '@/app/components/base/chat/chat/type'
-import Loading from '@/app/components/base/loading'
+import type { WorkflowProcess } from '@/app/components/base/chat/types'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { PromptConfig } from '@/models/debug'
 import type { InstalledApp } from '@/models/explore'
-import { TransferMethod, type VisionFile, type VisionSettings } from '@/types/app'
-import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
-import type { WorkflowProcess } from '@/app/components/base/chat/types'
-import { sleep } from '@/utils'
 import type { SiteInfo } from '@/models/share'
-import { TEXT_GENERATION_TIMEOUT_MS } from '@/config'
+import type { VisionFile, VisionSettings } from '@/types/app'
+import { RiLoader2Line } from '@remixicon/react'
+import { useBoolean } from 'ahooks'
+import { t } from 'i18next'
+import { produce } from 'immer'
+import * as React from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import TextGenerationRes from '@/app/components/app/text-generate/item'
+import Button from '@/app/components/base/button'
 import {
   getFilesInLogs,
+  getProcessedFiles,
 } from '@/app/components/base/file-uploader/utils'
+import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
+import Loading from '@/app/components/base/loading'
+import Toast from '@/app/components/base/toast'
+import NoData from '@/app/components/share/text-generation/no-data'
+import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { TEXT_GENERATION_TIMEOUT_MS } from '@/config'
+import { sendCompletionMessage, sendWorkflowMessage, stopChatMessageResponding, stopWorkflowMessage, updateFeedback } from '@/service/share'
+import { TransferMethod } from '@/types/app'
+import { sleep } from '@/utils'
+import { formatBooleanInputs } from '@/utils/model-config'
 
 export type IResultProps = {
   isWorkflow: boolean
@@ -28,6 +36,7 @@ export type IResultProps = {
   isPC: boolean
   isMobile: boolean
   isInstalledApp: boolean
+  appId: string
   installedAppInfo?: InstalledApp
   isError: boolean
   isShowTextToSpeech: boolean
@@ -45,6 +54,8 @@ export type IResultProps = {
   completionFiles: VisionFile[]
   siteInfo: SiteInfo | null
   onRunStart: () => void
+  onRunControlChange?: (control: { onStop: () => Promise<void> | void, isStopping: boolean } | null) => void
+  hideInlineStopButton?: boolean
 }
 
 const Result: FC<IResultProps> = ({
@@ -53,6 +64,7 @@ const Result: FC<IResultProps> = ({
   isPC,
   isMobile,
   isInstalledApp,
+  appId,
   installedAppInfo,
   isError,
   isShowTextToSpeech,
@@ -70,27 +82,47 @@ const Result: FC<IResultProps> = ({
   completionFiles,
   siteInfo,
   onRunStart,
+  onRunControlChange,
+  hideInlineStopButton = false,
 }) => {
   const [isResponding, { setTrue: setRespondingTrue, setFalse: setRespondingFalse }] = useBoolean(false)
-  useEffect(() => {
-    if (controlStopResponding)
-      setRespondingFalse()
-  }, [controlStopResponding])
-
-  const [completionRes, doSetCompletionRes] = useState<any>('')
-  const completionResRef = useRef<any>()
-  const setCompletionRes = (res: any) => {
+  const [completionRes, doSetCompletionRes] = useState<string>('')
+  const completionResRef = useRef<string>('')
+  const setCompletionRes = (res: string) => {
     completionResRef.current = res
     doSetCompletionRes(res)
   }
   const getCompletionRes = () => completionResRef.current
   const [workflowProcessData, doSetWorkflowProcessData] = useState<WorkflowProcess>()
-  const workflowProcessDataRef = useRef<WorkflowProcess>()
+  const workflowProcessDataRef = useRef<WorkflowProcess | undefined>(undefined)
   const setWorkflowProcessData = (data: WorkflowProcess) => {
     workflowProcessDataRef.current = data
     doSetWorkflowProcessData(data)
   }
   const getWorkflowProcessData = () => workflowProcessDataRef.current
+  const [currentTaskId, setCurrentTaskId] = useState<string | null>(null)
+  const [isStopping, setIsStopping] = useState(false)
+  const abortControllerRef = useRef<AbortController | null>(null)
+  const resetRunState = useCallback(() => {
+    setCurrentTaskId(null)
+    setIsStopping(false)
+    abortControllerRef.current = null
+    onRunControlChange?.(null)
+  }, [onRunControlChange])
+
+  useEffect(() => {
+    const abortCurrentRequest = () => {
+      abortControllerRef.current?.abort()
+    }
+
+    if (controlStopResponding) {
+      abortCurrentRequest()
+      setRespondingFalse()
+      resetRunState()
+    }
+
+    return abortCurrentRequest
+  }, [controlStopResponding, resetRunState, setRespondingFalse])
 
   const { notify } = Toast
   const isNoData = !completionRes
@@ -101,13 +133,47 @@ const Result: FC<IResultProps> = ({
   })
 
   const handleFeedback = async (feedback: FeedbackType) => {
-    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating } }, isInstalledApp, installedAppInfo?.id)
+    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating, content: feedback.content } }, isInstalledApp, installedAppInfo?.id)
     setFeedback(feedback)
   }
 
   const logError = (message: string) => {
     notify({ type: 'error', message })
   }
+
+  const handleStop = useCallback(async () => {
+    if (!currentTaskId || isStopping)
+      return
+    setIsStopping(true)
+    try {
+      if (isWorkflow)
+        await stopWorkflowMessage(appId, currentTaskId, isInstalledApp, installedAppInfo?.id || '')
+      else
+        await stopChatMessageResponding(appId, currentTaskId, isInstalledApp, installedAppInfo?.id || '')
+      abortControllerRef.current?.abort()
+    }
+    catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      notify({ type: 'error', message })
+    }
+    finally {
+      setIsStopping(false)
+    }
+  }, [appId, currentTaskId, installedAppInfo?.id, isInstalledApp, isStopping, isWorkflow, notify])
+
+  useEffect(() => {
+    if (!onRunControlChange)
+      return
+    if (isResponding && currentTaskId) {
+      onRunControlChange({
+        onStop: handleStop,
+        isStopping,
+      })
+    }
+    else {
+      onRunControlChange(null)
+    }
+  }, [currentTaskId, handleStop, isResponding, isStopping, onRunControlChange])
 
   const checkCanSend = () => {
     // batch will check outer
@@ -117,14 +183,16 @@ const Result: FC<IResultProps> = ({
     const prompt_variables = promptConfig?.prompt_variables
     if (!prompt_variables || prompt_variables?.length === 0) {
       if (completionFiles.find(item => item.transfer_method === TransferMethod.local_file && !item.upload_file_id)) {
-        notify({ type: 'info', message: t('appDebug.errorMessage.waitForFileUpload') })
+        notify({ type: 'info', message: t('errorMessage.waitForFileUpload', { ns: 'appDebug' }) })
         return false
       }
       return true
     }
 
     let hasEmptyInput = ''
-    const requiredVars = prompt_variables?.filter(({ key, name, required }) => {
+    const requiredVars = prompt_variables?.filter(({ key, name, required, type }) => {
+      if (type === 'boolean' || type === 'checkbox')
+        return false // boolean/checkbox input is not required
       const res = (!key || !key.trim()) || (!name || !name.trim()) || (required || required === undefined || required === null)
       return res
     }) || [] // compatible with old version
@@ -137,12 +205,12 @@ const Result: FC<IResultProps> = ({
     })
 
     if (hasEmptyInput) {
-      logError(t('appDebug.errorMessage.valueOfVarRequired', { key: hasEmptyInput }))
+      logError(t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: hasEmptyInput }))
       return false
     }
 
     if (completionFiles.find(item => item.transfer_method === TransferMethod.local_file && !item.upload_file_id)) {
-      notify({ type: 'info', message: t('appDebug.errorMessage.waitForFileUpload') })
+      notify({ type: 'info', message: t('errorMessage.waitForFileUpload', { ns: 'appDebug' }) })
       return false
     }
     return !hasEmptyInput
@@ -150,15 +218,29 @@ const Result: FC<IResultProps> = ({
 
   const handleSend = async () => {
     if (isResponding) {
-      notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
+      notify({ type: 'info', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
       return false
     }
 
     if (!checkCanSend())
       return
 
+    // Process inputs: convert file entities to API format
+    const processedInputs = { ...formatBooleanInputs(promptConfig?.prompt_variables, inputs) }
+    promptConfig?.prompt_variables.forEach((variable) => {
+      const value = processedInputs[variable.key]
+      if (variable.type === 'file' && value && typeof value === 'object' && !Array.isArray(value)) {
+        // Convert single file entity to API format
+        processedInputs[variable.key] = getProcessedFiles([value as FileEntity])[0]
+      }
+      else if (variable.type === 'file-list' && Array.isArray(value) && value.length > 0) {
+        // Convert file entity array to API format
+        processedInputs[variable.key] = getProcessedFiles(value as FileEntity[])
+      }
+    })
+
     const data: Record<string, any> = {
-      inputs,
+      inputs: processedInputs,
     }
     if (visionConfig.enabled && completionFiles && completionFiles?.length > 0) {
       data.files = completionFiles.map((item) => {
@@ -177,6 +259,7 @@ const Result: FC<IResultProps> = ({
       rating: null,
     })
     setCompletionRes('')
+    resetRunState()
 
     let res: string[] = []
     let tempMessageId = ''
@@ -194,6 +277,7 @@ const Result: FC<IResultProps> = ({
       if (!isEnd) {
         setRespondingFalse()
         onCompleted(getCompletionRes(), taskId, false)
+        resetRunState()
         isTimeout = true
       }
     })()
@@ -202,8 +286,10 @@ const Result: FC<IResultProps> = ({
       sendWorkflowMessage(
         data,
         {
-          onWorkflowStarted: ({ workflow_run_id }) => {
+          onWorkflowStarted: ({ workflow_run_id, task_id }) => {
             tempMessageId = workflow_run_id
+            setCurrentTaskId(task_id || null)
+            setIsStopping(false)
             setWorkflowProcessData({
               status: WorkflowRunningStatus.Running,
               tracing: [],
@@ -308,15 +394,41 @@ const Result: FC<IResultProps> = ({
           },
           onWorkflowFinished: ({ data }) => {
             if (isTimeout) {
-              notify({ type: 'warning', message: t('appDebug.warningMessage.timeoutExceeded') })
+              notify({ type: 'warning', message: t('warningMessage.timeoutExceeded', { ns: 'appDebug' }) })
+              return
+            }
+            const workflowStatus = data.status as WorkflowRunningStatus | undefined
+            const markNodesStopped = (traces?: WorkflowProcess['tracing']) => {
+              if (!traces)
+                return
+              const markTrace = (trace: WorkflowProcess['tracing'][number]) => {
+                if ([NodeRunningStatus.Running, NodeRunningStatus.Waiting].includes(trace.status as NodeRunningStatus))
+                  trace.status = NodeRunningStatus.Stopped
+                trace.details?.forEach(detailGroup => detailGroup.forEach(markTrace))
+                trace.retryDetail?.forEach(markTrace)
+                trace.parallelDetail?.children?.forEach(markTrace)
+              }
+              traces.forEach(markTrace)
+            }
+            if (workflowStatus === WorkflowRunningStatus.Stopped) {
+              setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+                draft.status = WorkflowRunningStatus.Stopped
+                markNodesStopped(draft.tracing)
+              }))
+              setRespondingFalse()
+              resetRunState()
+              onCompleted(getCompletionRes(), taskId, false)
+              isEnd = true
               return
             }
             if (data.error) {
               notify({ type: 'error', message: data.error })
               setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
                 draft.status = WorkflowRunningStatus.Failed
+                markNodesStopped(draft.tracing)
               }))
               setRespondingFalse()
+              resetRunState()
               onCompleted(getCompletionRes(), taskId, false)
               isEnd = true
               return
@@ -338,6 +450,7 @@ const Result: FC<IResultProps> = ({
               }
             }
             setRespondingFalse()
+            resetRunState()
             setMessageId(tempMessageId)
             onCompleted(getCompletionRes(), taskId, true)
             isEnd = true
@@ -357,21 +470,29 @@ const Result: FC<IResultProps> = ({
         },
         isInstalledApp,
         installedAppInfo?.id,
-      )
+      ).catch((error) => {
+        setRespondingFalse()
+        resetRunState()
+        const message = error instanceof Error ? error.message : String(error)
+        notify({ type: 'error', message })
+      })
     }
     else {
       sendCompletionMessage(data, {
-        onData: (data: string, _isFirstMessage: boolean, { messageId }) => {
+        onData: (data: string, _isFirstMessage: boolean, { messageId, taskId }) => {
           tempMessageId = messageId
+          if (taskId && typeof taskId === 'string' && taskId.trim() !== '')
+            setCurrentTaskId(prev => prev ?? taskId)
           res.push(data)
           setCompletionRes(res.join(''))
         },
         onCompleted: () => {
           if (isTimeout) {
-            notify({ type: 'warning', message: t('appDebug.warningMessage.timeoutExceeded') })
+            notify({ type: 'warning', message: t('warningMessage.timeoutExceeded', { ns: 'appDebug' }) })
             return
           }
           setRespondingFalse()
+          resetRunState()
           setMessageId(tempMessageId)
           onCompleted(getCompletionRes(), taskId, true)
           isEnd = true
@@ -382,12 +503,16 @@ const Result: FC<IResultProps> = ({
         },
         onError() {
           if (isTimeout) {
-            notify({ type: 'warning', message: t('appDebug.warningMessage.timeoutExceeded') })
+            notify({ type: 'warning', message: t('warningMessage.timeoutExceeded', { ns: 'appDebug' }) })
             return
           }
           setRespondingFalse()
+          resetRunState()
           onCompleted(getCompletionRes(), taskId, false)
           isEnd = true
+        },
+        getAbortController: (abortController) => {
+          abortControllerRef.current = abortController
         },
       }, isInstalledApp, installedAppInfo?.id)
     }
@@ -407,28 +532,46 @@ const Result: FC<IResultProps> = ({
   }, [controlRetry])
 
   const renderTextGenerationRes = () => (
-    <TextGenerationRes
-      isWorkflow={isWorkflow}
-      workflowProcessData={workflowProcessData}
-      isError={isError}
-      onRetry={handleSend}
-      content={completionRes}
-      messageId={messageId}
-      isInWebApp
-      moreLikeThis={moreLikeThisEnabled}
-      onFeedback={handleFeedback}
-      feedback={feedback}
-      onSave={handleSaveMessage}
-      isMobile={isMobile}
-      isInstalledApp={isInstalledApp}
-      installedAppId={installedAppInfo?.id}
-      isLoading={isCallBatchAPI ? (!completionRes && isResponding) : false}
-      taskId={isCallBatchAPI ? ((taskId as number) < 10 ? `0${taskId}` : `${taskId}`) : undefined}
-      controlClearMoreLikeThis={controlClearMoreLikeThis}
-      isShowTextToSpeech={isShowTextToSpeech}
-      hideProcessDetail
-      siteInfo={siteInfo}
-    />
+    <>
+      {!hideInlineStopButton && isResponding && currentTaskId && (
+        <div className={`mb-3 flex ${isPC ? 'justify-end' : 'justify-center'}`}>
+          <Button
+            variant="secondary"
+            disabled={isStopping}
+            onClick={handleStop}
+          >
+            {
+              isStopping
+                ? <RiLoader2Line className="mr-[5px] h-3.5 w-3.5 animate-spin" />
+                : <StopCircle className="mr-[5px] h-3.5 w-3.5" />
+            }
+            <span className="text-xs font-normal">{t('operation.stopResponding', { ns: 'appDebug' })}</span>
+          </Button>
+        </div>
+      )}
+      <TextGenerationRes
+        isWorkflow={isWorkflow}
+        workflowProcessData={workflowProcessData}
+        isError={isError}
+        onRetry={handleSend}
+        content={completionRes}
+        messageId={messageId}
+        isInWebApp
+        moreLikeThis={moreLikeThisEnabled}
+        onFeedback={handleFeedback}
+        feedback={feedback}
+        onSave={handleSaveMessage}
+        isMobile={isMobile}
+        isInstalledApp={isInstalledApp}
+        installedAppId={installedAppInfo?.id}
+        isLoading={isCallBatchAPI ? (!completionRes && isResponding) : false}
+        taskId={isCallBatchAPI ? ((taskId as number) < 10 ? `0${taskId}` : `${taskId}`) : undefined}
+        controlClearMoreLikeThis={controlClearMoreLikeThis}
+        isShowTextToSpeech={isShowTextToSpeech}
+        hideProcessDetail
+        siteInfo={siteInfo}
+      />
+    </>
   )
 
   return (
@@ -436,28 +579,28 @@ const Result: FC<IResultProps> = ({
       {!isCallBatchAPI && !isWorkflow && (
         (isResponding && !completionRes)
           ? (
-            <div className='flex h-full w-full items-center justify-center'>
-              <Loading type='area' />
-            </div>)
+              <div className="flex h-full w-full items-center justify-center">
+                <Loading type="area" />
+              </div>
+            )
           : (
-            <>
-              {(isNoData)
-                ? <NoData />
-                : renderTextGenerationRes()
-              }
-            </>
-          )
+              <>
+                {(isNoData)
+                  ? <NoData />
+                  : renderTextGenerationRes()}
+              </>
+            )
       )}
       {!isCallBatchAPI && isWorkflow && (
         (isResponding && !workflowProcessData)
           ? (
-            <div className='flex h-full w-full items-center justify-center'>
-              <Loading type='area' />
-            </div>
-          )
+              <div className="flex h-full w-full items-center justify-center">
+                <Loading type="area" />
+              </div>
+            )
           : !workflowProcessData
-            ? <NoData />
-            : renderTextGenerationRes()
+              ? <NoData />
+              : renderTextGenerationRes()
       )}
       {isCallBatchAPI && renderTextGenerationRes()}
     </>

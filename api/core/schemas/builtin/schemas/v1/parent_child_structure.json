@@ -1,0 +1,36 @@
+{
+  "$id": "https://dify.ai/schemas/v1/parent_child_structure.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "version": "1.0.0",
+  "type": "object",
+  "title": "Parent-Child Structure",
+  "description": "Schema for parent-child structure (v1)",
+  "properties": {
+    "parent_mode": {
+      "type": "string",
+      "description": "The mode of parent-child relationship"
+    },
+    "parent_child_chunks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "parent_content": {
+            "type": "string",
+            "description": "The parent content"
+          },
+          "child_contents": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of child contents"
+          }
+        },
+        "required": ["parent_content", "child_contents"]
+      },
+      "description": "List of parent-child chunk pairs"
+    }
+  },
+  "required": ["parent_mode", "parent_child_chunks"]
+}

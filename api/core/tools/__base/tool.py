@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from collections.abc import Generator
 from copy import deepcopy
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from models.model import File
@@ -20,11 +22,11 @@ class Tool(ABC):
     The base class of a tool
     """
 
-    def __init__(self, entity: ToolEntity, runtime: ToolRuntime) -> None:
+    def __init__(self, entity: ToolEntity, runtime: ToolRuntime):
         self.entity = entity
         self.runtime = runtime
 
-    def fork_tool_runtime(self, runtime: ToolRuntime) -> "Tool":
+    def fork_tool_runtime(self, runtime: ToolRuntime) -> Tool:
         """
         fork a new tool with metadata
         :return: the new tool
@@ -46,9 +48,9 @@ class Tool(ABC):
         self,
         user_id: str,
         tool_parameters: dict[str, Any],
-        conversation_id: Optional[str] = None,
-        app_id: Optional[str] = None,
-        message_id: Optional[str] = None,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
     ) -> Generator[ToolInvokeMessage]:
         if self.runtime and self.runtime.runtime_parameters:
             tool_parameters.update(self.runtime.runtime_parameters)
@@ -96,17 +98,17 @@ class Tool(ABC):
         self,
         user_id: str,
         tool_parameters: dict[str, Any],
-        conversation_id: Optional[str] = None,
-        app_id: Optional[str] = None,
-        message_id: Optional[str] = None,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
     ) -> ToolInvokeMessage | list[ToolInvokeMessage] | Generator[ToolInvokeMessage, None, None]:
         pass
 
     def get_runtime_parameters(
         self,
-        conversation_id: Optional[str] = None,
-        app_id: Optional[str] = None,
-        message_id: Optional[str] = None,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
     ) -> list[ToolParameter]:
         """
         get the runtime parameters
@@ -119,9 +121,9 @@ class Tool(ABC):
 
     def get_merged_runtime_parameters(
         self,
-        conversation_id: Optional[str] = None,
-        app_id: Optional[str] = None,
-        message_id: Optional[str] = None,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
     ) -> list[ToolParameter]:
         """
         get merged runtime parameters
@@ -166,7 +168,7 @@ class Tool(ABC):
             type=ToolInvokeMessage.MessageType.IMAGE, message=ToolInvokeMessage.TextMessage(text=image)
         )
 
-    def create_file_message(self, file: "File") -> ToolInvokeMessage:
+    def create_file_message(self, file: File) -> ToolInvokeMessage:
         return ToolInvokeMessage(
             type=ToolInvokeMessage.MessageType.FILE,
             message=ToolInvokeMessage.FileMessage(),
@@ -196,7 +198,7 @@ class Tool(ABC):
             message=ToolInvokeMessage.TextMessage(text=text),
         )
 
-    def create_blob_message(self, blob: bytes, meta: Optional[dict] = None) -> ToolInvokeMessage:
+    def create_blob_message(self, blob: bytes, meta: dict | None = None) -> ToolInvokeMessage:
         """
         create a blob message
 
@@ -210,10 +212,24 @@ class Tool(ABC):
             meta=meta,
         )
 
-    def create_json_message(self, object: dict) -> ToolInvokeMessage:
+    def create_json_message(self, object: dict, suppress_output: bool = False) -> ToolInvokeMessage:
         """
         create a json message
         """
         return ToolInvokeMessage(
-            type=ToolInvokeMessage.MessageType.JSON, message=ToolInvokeMessage.JsonMessage(json_object=object)
+            type=ToolInvokeMessage.MessageType.JSON,
+            message=ToolInvokeMessage.JsonMessage(json_object=object, suppress_output=suppress_output),
+        )
+
+    def create_variable_message(
+        self, variable_name: str, variable_value: Any, stream: bool = False
+    ) -> ToolInvokeMessage:
+        """
+        create a variable message
+        """
+        return ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.VARIABLE,
+            message=ToolInvokeMessage.VariableMessage(
+                variable_name=variable_name, variable_value=variable_value, stream=stream
+            ),
         )

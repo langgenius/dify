@@ -1,18 +1,19 @@
-import produce from 'immer'
 import type { VisualEditorProps } from '.'
+import type { Field } from '../../../types'
+import type { EditData } from './edit-card'
+import { noop } from 'es-toolkit/function'
+import { produce } from 'immer'
+import Toast from '@/app/components/base/toast'
+import { ArrayType, Type } from '../../../types'
+import { findPropertyWithPath } from '../../../utils'
 import { useMittContext } from './context'
 import { useVisualEditorStore } from './store'
-import type { EditData } from './edit-card'
-import { ArrayType, type Field, Type } from '../../../types'
-import Toast from '@/app/components/base/toast'
-import { findPropertyWithPath } from '../../../utils'
-import { noop } from 'lodash-es'
 
 type ChangeEventParams = {
-  path: string[],
-  parentPath: string[],
-  oldFields: EditData,
-  fields: EditData,
+  path: string[]
+  parentPath: string[]
+  oldFields: EditData
+  fields: EditData
 }
 
 type AddEventParams = {
@@ -45,8 +46,10 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
       onChange(backupSchema)
       setBackupSchema(null)
     }
-    isAddingNewField && setIsAddingNewField(false)
-    advancedEditing && setAdvancedEditing(false)
+    if (isAddingNewField)
+      setIsAddingNewField(false)
+    if (advancedEditing)
+      setAdvancedEditing(false)
     setHoveringProperty(null)
   })
 
@@ -55,7 +58,8 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
     const { name: oldName } = oldFields
     const { name: newName } = fields
     const newSchema = produce(jsonSchema, (draft) => {
-      if (oldName === newName) return
+      if (oldName === newName)
+        return
       const schema = findPropertyWithPath(draft, parentPath) as Field
 
       if (schema.type === Type.object) {
@@ -118,7 +122,8 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
     const { path, oldFields, fields } = params as ChangeEventParams
     const { type: oldType } = oldFields
     const { type: newType } = fields
-    if (oldType === newType) return
+    if (oldType === newType)
+      return
     const newSchema = produce(jsonSchema, (draft) => {
       const schema = findPropertyWithPath(draft, path) as Field
 
@@ -221,7 +226,8 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
   })
 
   useSubscribe('addField', (params) => {
-    advancedEditing && setAdvancedEditing(false)
+    if (advancedEditing)
+      setAdvancedEditing(false)
     setBackupSchema(jsonSchema)
     const { path } = params as AddEventParams
     setIsAddingNewField(true)
@@ -229,7 +235,7 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
       const schema = findPropertyWithPath(draft, path) as Field
       if (schema.type === Type.object) {
         schema.properties = {
-          ...(schema.properties || {}),
+          ...schema.properties,
           '': {
             type: Type.string,
           },
@@ -238,7 +244,7 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
       }
       if (schema.type === Type.array && schema.items && schema.items.type === Type.object) {
         schema.items.properties = {
-          ...(schema.items.properties || {}),
+          ...schema.items.properties,
           '': {
             type: Type.string,
           },
@@ -436,7 +442,8 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
         schema.enum = fields.enum
       }
     })
-    if (samePropertyNameError) return
+    if (samePropertyNameError)
+      return
     onChange(newSchema)
     emit('fieldChangeSuccess')
   })

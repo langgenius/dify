@@ -10,11 +10,24 @@ export type EnvVariableSliceShape = {
   setEnvSecrets: (envSecrets: Record<string, string>) => void
 }
 
-export const createEnvVariableSlice: StateCreator<EnvVariableSliceShape> = set => ({
-  showEnvPanel: false,
-  setShowEnvPanel: showEnvPanel => set(() => ({ showEnvPanel })),
-  environmentVariables: [],
-  setEnvironmentVariables: environmentVariables => set(() => ({ environmentVariables })),
-  envSecrets: {},
-  setEnvSecrets: envSecrets => set(() => ({ envSecrets })),
-})
+export const createEnvVariableSlice: StateCreator<EnvVariableSliceShape> = (set) => {
+  const hideAllPanel = {
+    showDebugAndPreviewPanel: false,
+    showEnvPanel: false,
+    showChatVariablePanel: false,
+    showGlobalVariablePanel: false,
+  }
+  return ({
+    showEnvPanel: false,
+    setShowEnvPanel: showEnvPanel => set(() => {
+      if (showEnvPanel)
+        return { ...hideAllPanel, showEnvPanel: true }
+      else
+        return { showEnvPanel: false }
+    }),
+    environmentVariables: [],
+    setEnvironmentVariables: environmentVariables => set(() => ({ environmentVariables })),
+    envSecrets: {},
+    setEnvSecrets: envSecrets => set(() => ({ envSecrets })),
+  })
+}

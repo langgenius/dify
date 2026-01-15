@@ -1,28 +1,30 @@
-import enum
 import importlib.util
 import json
 import logging
 import os
+from enum import StrEnum, auto
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel
 
 from core.helper.position_helper import sort_to_dict_by_position_map
 
+logger = logging.getLogger(__name__)
 
-class ExtensionModule(enum.Enum):
-    MODERATION = "moderation"
-    EXTERNAL_DATA_TOOL = "external_data_tool"
+
+class ExtensionModule(StrEnum):
+    MODERATION = auto()
+    EXTERNAL_DATA_TOOL = auto()
 
 
 class ModuleExtension(BaseModel):
-    extension_class: Optional[Any] = None
+    extension_class: Any | None = None
     name: str
-    label: Optional[dict] = None
-    form_schema: Optional[list] = None
+    label: dict | None = None
+    form_schema: list | None = None
     builtin: bool = True
-    position: Optional[int] = None
+    position: int | None = None
 
 
 class Extensible:
@@ -30,9 +32,9 @@ class Extensible:
 
     name: str
     tenant_id: str
-    config: Optional[dict] = None
+    config: dict | None = None
 
-    def __init__(self, tenant_id: str, config: Optional[dict] = None) -> None:
+    def __init__(self, tenant_id: str, config: dict | None = None):
         self.tenant_id = tenant_id
         self.config = config
 
@@ -66,7 +68,7 @@ class Extensible:
 
                 # Check for extension module file
                 if (extension_name + ".py") not in file_names:
-                    logging.warning("Missing %s.py file in %s, Skip.", extension_name, subdir_path)
+                    logger.warning("Missing %s.py file in %s, Skip.", extension_name, subdir_path)
                     continue
 
                 # Check for builtin flag and position
@@ -89,13 +91,13 @@ class Extensible:
 
                 # Find extension class
                 extension_class = None
-                for name, obj in vars(mod).items():
+                for obj in vars(mod).values():
                     if isinstance(obj, type) and issubclass(obj, cls) and obj != cls:
                         extension_class = obj
                         break
 
                 if not extension_class:
-                    logging.warning("Missing subclass of %s in %s, Skip.", cls.__name__, module_name)
+                    logger.warning("Missing subclass of %s in %s, Skip.", cls.__name__, module_name)
                     continue
 
                 # Load schema if not builtin
@@ -103,7 +105,7 @@ class Extensible:
                 if not builtin:
                     json_path = os.path.join(subdir_path, "schema.json")
                     if not os.path.exists(json_path):
-                        logging.warning("Missing schema.json file in %s, Skip.", subdir_path)
+                        logger.warning("Missing schema.json file in %s, Skip.", subdir_path)
                         continue
 
                     with open(json_path, encoding="utf-8") as f:
@@ -121,8 +123,8 @@ class Extensible:
                     )
                 )
 
-        except Exception as e:
-            logging.exception("Error scanning extensions")
+        except Exception:
+            logger.exception("Error scanning extensions")
             raise
 
         # Sort extensions by position

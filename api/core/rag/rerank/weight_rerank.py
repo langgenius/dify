@@ -1,6 +1,5 @@
 import math
 from collections import Counter
-from typing import Optional
 
 import numpy as np
 
@@ -8,13 +7,15 @@ from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import JiebaKeywordTableHandler
 from core.rag.embedding.cached_embedding import CacheEmbedding
+from core.rag.index_processor.constant.doc_type import DocType
+from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
 from core.rag.rerank.entity.weight import VectorSetting, Weights
 from core.rag.rerank.rerank_base import BaseRerankRunner
 
 
 class WeightRerankRunner(BaseRerankRunner):
-    def __init__(self, tenant_id: str, weights: Weights) -> None:
+    def __init__(self, tenant_id: str, weights: Weights):
         self.tenant_id = tenant_id
         self.weights = weights
 
@@ -22,9 +23,10 @@ class WeightRerankRunner(BaseRerankRunner):
         self,
         query: str,
         documents: list[Document],
-        score_threshold: Optional[float] = None,
-        top_n: Optional[int] = None,
-        user: Optional[str] = None,
+        score_threshold: float | None = None,
+        top_n: int | None = None,
+        user: str | None = None,
+        query_type: QueryType = QueryType.TEXT_QUERY,
     ) -> list[Document]:
         """
         Run rerank model
@@ -39,9 +41,18 @@ class WeightRerankRunner(BaseRerankRunner):
         unique_documents = []
         doc_ids = set()
         for document in documents:
-            if document.metadata is not None and document.metadata["doc_id"] not in doc_ids:
-                doc_ids.add(document.metadata["doc_id"])
-                unique_documents.append(document)
+            if (
+                document.provider == "dify"
+                and document.metadata is not None
+                and document.metadata["doc_id"] not in doc_ids
+            ):
+                # weight rerank only support text documents
+                if not document.metadata.get("doc_type") or document.metadata.get("doc_type") == DocType.TEXT:
+                    doc_ids.add(document.metadata["doc_id"])
+                    unique_documents.append(document)
+            else:
+                if document not in unique_documents:
+                    unique_documents.append(document)
 
         documents = unique_documents
 

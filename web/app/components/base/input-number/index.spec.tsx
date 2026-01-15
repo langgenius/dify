@@ -1,19 +1,13 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { InputNumber } from './index'
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 describe('InputNumber Component', () => {
   const defaultProps = {
-    onChange: jest.fn(),
+    onChange: vi.fn(),
   }
 
-  afterEach(() => {
-    jest.clearAllMocks()
+  beforeEach(() => {
+    vi.clearAllMocks()
   })
 
   it('renders input with default values', () => {
@@ -63,11 +57,11 @@ describe('InputNumber Component', () => {
   })
 
   it('handles empty input', () => {
-    render(<InputNumber {...defaultProps} value={0} />)
+    render(<InputNumber {...defaultProps} value={1} />)
     const input = screen.getByRole('spinbutton')
 
     fireEvent.change(input, { target: { value: '' } })
-    expect(defaultProps.onChange).toHaveBeenCalledWith(undefined)
+    expect(defaultProps.onChange).toHaveBeenCalledWith(0)
   })
 
   it('handles invalid input', () => {
@@ -75,7 +69,7 @@ describe('InputNumber Component', () => {
     const input = screen.getByRole('spinbutton')
 
     fireEvent.change(input, { target: { value: 'abc' } })
-    expect(defaultProps.onChange).not.toHaveBeenCalled()
+    expect(defaultProps.onChange).toHaveBeenCalledWith(0)
   })
 
   it('displays unit when provided', () => {

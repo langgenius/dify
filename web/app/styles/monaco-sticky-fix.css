@@ -1,0 +1,16 @@
+/* Ensures Monaco sticky header and other sticky headers remain visible in dark mode */
+html[data-theme="dark"] .monaco-editor .sticky-widget {
+  background-color: var(--color-components-sticky-header-bg) !important;
+  border-bottom: 1px solid var(--color-components-sticky-header-border) !important;
+  box-shadow: var(--vscode-editorStickyScroll-shadow) 0 4px 2px -2px !important;
+}
+
+html[data-theme="dark"] .monaco-editor .sticky-line-content:hover {
+  background-color: var(--color-components-sticky-header-bg-hover) !important;
+}
+
+/* Fallback: any app sticky header using input-bg variables should use the sticky header bg when sticky */
+html[data-theme="dark"] .sticky, html[data-theme="dark"] .is-sticky {
+  background-color: var(--color-components-sticky-header-bg) !important;
+  border-bottom: 1px solid var(--color-components-sticky-header-border) !important;
+}

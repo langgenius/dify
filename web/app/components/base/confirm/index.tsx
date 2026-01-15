@@ -1,12 +1,14 @@
-import React, { useEffect, useRef, useState } from 'react'
+import * as React from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import Button from '../button'
+import Tooltip from '../tooltip'
 
 export type IConfirm = {
   className?: string
   isShow: boolean
-  type?: 'info' | 'warning'
+  type?: 'info' | 'warning' | 'danger'
   title: string
   content?: React.ReactNode
   confirmText?: string | null
@@ -37,10 +39,12 @@ function Confirm({
 }: IConfirm) {
   const { t } = useTranslation()
   const dialogRef = useRef<HTMLDivElement>(null)
+  const titleRef = useRef<HTMLDivElement>(null)
   const [isVisible, setIsVisible] = useState(isShow)
+  const [isTitleTruncated, setIsTitleTruncated] = useState(false)
 
-  const confirmTxt = confirmText || `${t('common.operation.confirm')}`
-  const cancelTxt = cancelText || `${t('common.operation.cancel')}`
+  const confirmTxt = confirmText || `${t('operation.confirm', { ns: 'common' })}`
+  const cancelTxt = cancelText || `${t('operation.cancel', { ns: 'common' })}`
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -80,28 +84,48 @@ function Confirm({
     }
   }, [isShow])
 
+  useEffect(() => {
+    if (titleRef.current) {
+      const isOverflowing = titleRef.current.scrollWidth > titleRef.current.clientWidth
+      setIsTitleTruncated(isOverflowing)
+    }
+  }, [title, isVisible])
+
   if (!isVisible)
     return null
 
   return createPortal(
-    <div className={'fixed inset-0 z-[10000000] flex items-center justify-center bg-background-overlay'}
+    <div
+      className="fixed inset-0 z-[10000000] flex items-center justify-center bg-background-overlay"
       onClick={(e) => {
         e.preventDefault()
         e.stopPropagation()
-      }}>
-      <div ref={dialogRef} className={'relative w-full max-w-[480px] overflow-hidden'}>
-        <div className='shadows-shadow-lg flex max-w-full flex-col items-start rounded-2xl border-[0.5px] border-solid border-components-panel-border bg-components-panel-bg'>
-          <div className='flex flex-col items-start gap-2 self-stretch pb-4 pl-6 pr-6 pt-6'>
-            <div className='title-2xl-semi-bold text-text-primary'>{title}</div>
-            <div className='system-md-regular w-full text-text-tertiary'>{content}</div>
+      }}
+    >
+      <div ref={dialogRef} className="relative w-full max-w-[480px] overflow-hidden">
+        <div className="shadows-shadow-lg flex max-w-full flex-col items-start rounded-2xl border-[0.5px] border-solid border-components-panel-border bg-components-panel-bg">
+          <div className="flex flex-col items-start gap-2 self-stretch pb-4 pl-6 pr-6 pt-6">
+            <Tooltip
+              popupContent={title}
+              disabled={!isTitleTruncated}
+              portalContentClassName="!z-[10000001]"
+              asChild={false}
+              triggerClassName="w-full"
+            >
+              <div ref={titleRef} className="title-2xl-semi-bold w-full truncate text-text-primary">
+                {title}
+              </div>
+            </Tooltip>
+            <div className="system-md-regular w-full whitespace-pre-wrap break-words text-text-tertiary">{content}</div>
           </div>
-          <div className='flex items-start justify-end gap-2 self-stretch p-6'>
+          <div className="flex items-start justify-end gap-2 self-stretch p-6">
             {showCancel && <Button onClick={onCancel}>{cancelTxt}</Button>}
-            {showConfirm && <Button variant={'primary'} destructive={type !== 'info'} loading={isLoading} disabled={isDisabled} onClick={onConfirm}>{confirmTxt}</Button>}
+            {showConfirm && <Button variant="primary" destructive={type !== 'info'} loading={isLoading} disabled={isDisabled} onClick={onConfirm}>{confirmTxt}</Button>}
           </div>
         </div>
       </div>
-    </div>, document.body,
+    </div>,
+    document.body,
   )
 }
 

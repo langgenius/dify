@@ -4,7 +4,7 @@ from collections.abc import Callable
 
 import click
 import sqlalchemy as sa
-from celery import shared_task  # type: ignore
+from celery import shared_task
 from sqlalchemy import delete
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
@@ -17,6 +17,7 @@ from models import (
     AppDatasetJoin,
     AppMCPServer,
     AppModelConfig,
+    AppTrigger,
     Conversation,
     EndUser,
     InstalledApp,
@@ -30,8 +31,10 @@ from models import (
     Site,
     TagBinding,
     TraceAppConfig,
+    WorkflowSchedulePlan,
 )
 from models.tools import WorkflowToolProvider
+from models.trigger import WorkflowPluginTrigger, WorkflowTriggerLog, WorkflowWebhookTrigger
 from models.web import PinnedConversation, SavedMessage
 from models.workflow import (
     ConversationVariable,
@@ -40,10 +43,12 @@ from models.workflow import (
 )
 from repositories.factory import DifyAPIRepositoryFactory
 
+logger = logging.getLogger(__name__)
+
 
 @shared_task(queue="app_deletion", bind=True, max_retries=3)
 def remove_app_and_related_data_task(self, tenant_id: str, app_id: str):
-    logging.info(click.style(f"Start deleting app and related data: {tenant_id}:{app_id}", fg="green"))
+    logger.info(click.style(f"Start deleting app and related data: {tenant_id}:{app_id}", fg="green"))
     start_at = time.perf_counter()
     try:
         # Delete related data
@@ -67,16 +72,19 @@ def remove_app_and_related_data_task(self, tenant_id: str, app_id: str):
         _delete_trace_app_configs(tenant_id, app_id)
         _delete_conversation_variables(app_id=app_id)
         _delete_draft_variables(app_id)
+        _delete_app_triggers(tenant_id, app_id)
+        _delete_workflow_plugin_triggers(tenant_id, app_id)
+        _delete_workflow_webhook_triggers(tenant_id, app_id)
+        _delete_workflow_schedule_plans(tenant_id, app_id)
+        _delete_workflow_trigger_logs(tenant_id, app_id)
 
         end_at = time.perf_counter()
-        logging.info(click.style(f"App and related data deleted: {app_id} latency: {end_at - start_at}", fg="green"))
+        logger.info(click.style(f"App and related data deleted: {app_id} latency: {end_at - start_at}", fg="green"))
     except SQLAlchemyError as e:
-        logging.exception(
-            click.style(f"Database error occurred while deleting app {app_id} and related data", fg="red")
-        )
+        logger.exception(click.style(f"Database error occurred while deleting app {app_id} and related data", fg="red"))
         raise self.retry(exc=e, countdown=60)  # Retry after 60 seconds
     except Exception as e:
-        logging.exception(click.style(f"Error occurred while deleting app {app_id} and related data", fg="red"))
+        logger.exception(click.style(f"Error occurred while deleting app {app_id} and related data", fg="red"))
         raise self.retry(exc=e, countdown=60)  # Retry after 60 seconds
 
 
@@ -215,7 +223,7 @@ def _delete_app_workflow_runs(tenant_id: str, app_id: str):
         batch_size=1000,
     )
 
-    logging.info("Deleted %s workflow runs for app %s", deleted_count, app_id)
+    logger.info("Deleted %s workflow runs for app %s", deleted_count, app_id)
 
 
 def _delete_app_workflow_node_executions(tenant_id: str, app_id: str):
@@ -229,7 +237,7 @@ def _delete_app_workflow_node_executions(tenant_id: str, app_id: str):
         batch_size=1000,
     )
 
-    logging.info("Deleted %s workflow node executions for app %s", deleted_count, app_id)
+    logger.info("Deleted %s workflow node executions for app %s", deleted_count, app_id)
 
 
 def _delete_app_workflow_app_logs(tenant_id: str, app_id: str):
@@ -266,7 +274,7 @@ def _delete_conversation_variables(*, app_id: str):
     with db.engine.connect() as conn:
         conn.execute(stmt)
         conn.commit()
-        logging.info(click.style(f"Deleted conversation variables for app {app_id}", fg="green"))
+        logger.info(click.style(f"Deleted conversation variables for app {app_id}", fg="green"))
 
 
 def _delete_app_messages(tenant_id: str, app_id: str):
@@ -354,6 +362,11 @@ def delete_draft_variables_batch(app_id: str, batch_size: int = 1000) -> int:
     """
     Delete draft variables for an app in batches.
 
+    This function now handles cleanup of associated Offload data including:
+    - WorkflowDraftVariableFile records
+    - UploadFile records
+    - Object storage files
+
     Args:
         app_id: The ID of the app whose draft variables should be deleted
         batch_size: Number of records to delete per batch
@@ -365,34 +378,184 @@ def delete_draft_variables_batch(app_id: str, batch_size: int = 1000) -> int:
         raise ValueError("batch_size must be positive")
 
     total_deleted = 0
+    total_files_deleted = 0
 
     while True:
         with db.engine.begin() as conn:
-            # Get a batch of draft variable IDs
+            # Get a batch of draft variable IDs along with their file_ids
             query_sql = """
-                SELECT id FROM workflow_draft_variables 
-                WHERE app_id = :app_id 
+                SELECT id, file_id FROM workflow_draft_variables
+                WHERE app_id = :app_id
                 LIMIT :batch_size
             """
             result = conn.execute(sa.text(query_sql), {"app_id": app_id, "batch_size": batch_size})
 
-            draft_var_ids = [row[0] for row in result]
-            if not draft_var_ids:
+            rows = list(result)
+            if not rows:
                 break
 
-            # Delete the batch
+            draft_var_ids = [row[0] for row in rows]
+            file_ids = [row[1] for row in rows if row[1] is not None]
+
+            # Clean up associated Offload data first
+            if file_ids:
+                files_deleted = _delete_draft_variable_offload_data(conn, file_ids)
+                total_files_deleted += files_deleted
+
+            # Delete the draft variables
             delete_sql = """
-                DELETE FROM workflow_draft_variables 
+                DELETE FROM workflow_draft_variables
                 WHERE id IN :ids
             """
             deleted_result = conn.execute(sa.text(delete_sql), {"ids": tuple(draft_var_ids)})
             batch_deleted = deleted_result.rowcount
             total_deleted += batch_deleted
 
-            logging.info(click.style(f"Deleted {batch_deleted} draft variables (batch) for app {app_id}", fg="green"))
+            logger.info(click.style(f"Deleted {batch_deleted} draft variables (batch) for app {app_id}", fg="green"))
 
-    logging.info(click.style(f"Deleted {total_deleted} total draft variables for app {app_id}", fg="green"))
+    logger.info(
+        click.style(
+            f"Deleted {total_deleted} total draft variables for app {app_id}. "
+            f"Cleaned up {total_files_deleted} total associated files.",
+            fg="green",
+        )
+    )
     return total_deleted
+
+
+def _delete_draft_variable_offload_data(conn, file_ids: list[str]) -> int:
+    """
+    Delete Offload data associated with WorkflowDraftVariable file_ids.
+
+    This function:
+    1. Finds WorkflowDraftVariableFile records by file_ids
+    2. Deletes associated files from object storage
+    3. Deletes UploadFile records
+    4. Deletes WorkflowDraftVariableFile records
+
+    Args:
+        conn: Database connection
+        file_ids: List of WorkflowDraftVariableFile IDs
+
+    Returns:
+        Number of files cleaned up
+    """
+    from extensions.ext_storage import storage
+
+    if not file_ids:
+        return 0
+
+    files_deleted = 0
+
+    try:
+        # Get WorkflowDraftVariableFile records and their associated UploadFile keys
+        query_sql = """
+            SELECT wdvf.id, uf.key, uf.id as upload_file_id
+            FROM workflow_draft_variable_files wdvf
+            JOIN upload_files uf ON wdvf.upload_file_id = uf.id
+            WHERE wdvf.id IN :file_ids
+        """
+        result = conn.execute(sa.text(query_sql), {"file_ids": tuple(file_ids)})
+        file_records = list(result)
+
+        # Delete from object storage and collect upload file IDs
+        upload_file_ids = []
+        for _, storage_key, upload_file_id in file_records:
+            try:
+                storage.delete(storage_key)
+                upload_file_ids.append(upload_file_id)
+                files_deleted += 1
+            except Exception:
+                logging.exception("Failed to delete storage object %s", storage_key)
+                # Continue with database cleanup even if storage deletion fails
+                upload_file_ids.append(upload_file_id)
+
+        # Delete UploadFile records
+        if upload_file_ids:
+            delete_upload_files_sql = """
+                DELETE FROM upload_files
+                WHERE id IN :upload_file_ids
+            """
+            conn.execute(sa.text(delete_upload_files_sql), {"upload_file_ids": tuple(upload_file_ids)})
+
+        # Delete WorkflowDraftVariableFile records
+        delete_variable_files_sql = """
+            DELETE FROM workflow_draft_variable_files
+            WHERE id IN :file_ids
+        """
+        conn.execute(sa.text(delete_variable_files_sql), {"file_ids": tuple(file_ids)})
+
+    except Exception:
+        logging.exception("Error deleting draft variable offload data:")
+        # Don't raise, as we want to continue with the main deletion process
+
+    return files_deleted
+
+
+def _delete_app_triggers(tenant_id: str, app_id: str):
+    def del_app_trigger(trigger_id: str):
+        db.session.query(AppTrigger).where(AppTrigger.id == trigger_id).delete(synchronize_session=False)
+
+    _delete_records(
+        """select id from app_triggers where tenant_id=:tenant_id and app_id=:app_id limit 1000""",
+        {"tenant_id": tenant_id, "app_id": app_id},
+        del_app_trigger,
+        "app trigger",
+    )
+
+
+def _delete_workflow_plugin_triggers(tenant_id: str, app_id: str):
+    def del_plugin_trigger(trigger_id: str):
+        db.session.query(WorkflowPluginTrigger).where(WorkflowPluginTrigger.id == trigger_id).delete(
+            synchronize_session=False
+        )
+
+    _delete_records(
+        """select id from workflow_plugin_triggers where tenant_id=:tenant_id and app_id=:app_id limit 1000""",
+        {"tenant_id": tenant_id, "app_id": app_id},
+        del_plugin_trigger,
+        "workflow plugin trigger",
+    )
+
+
+def _delete_workflow_webhook_triggers(tenant_id: str, app_id: str):
+    def del_webhook_trigger(trigger_id: str):
+        db.session.query(WorkflowWebhookTrigger).where(WorkflowWebhookTrigger.id == trigger_id).delete(
+            synchronize_session=False
+        )
+
+    _delete_records(
+        """select id from workflow_webhook_triggers where tenant_id=:tenant_id and app_id=:app_id limit 1000""",
+        {"tenant_id": tenant_id, "app_id": app_id},
+        del_webhook_trigger,
+        "workflow webhook trigger",
+    )
+
+
+def _delete_workflow_schedule_plans(tenant_id: str, app_id: str):
+    def del_schedule_plan(plan_id: str):
+        db.session.query(WorkflowSchedulePlan).where(WorkflowSchedulePlan.id == plan_id).delete(
+            synchronize_session=False
+        )
+
+    _delete_records(
+        """select id from workflow_schedule_plans where tenant_id=:tenant_id and app_id=:app_id limit 1000""",
+        {"tenant_id": tenant_id, "app_id": app_id},
+        del_schedule_plan,
+        "workflow schedule plan",
+    )
+
+
+def _delete_workflow_trigger_logs(tenant_id: str, app_id: str):
+    def del_trigger_log(log_id: str):
+        db.session.query(WorkflowTriggerLog).where(WorkflowTriggerLog.id == log_id).delete(synchronize_session=False)
+
+    _delete_records(
+        """select id from workflow_trigger_logs where tenant_id=:tenant_id and app_id=:app_id limit 1000""",
+        {"tenant_id": tenant_id, "app_id": app_id},
+        del_trigger_log,
+        "workflow trigger log",
+    )
 
 
 def _delete_records(query_sql: str, params: dict, delete_func: Callable, name: str) -> None:
@@ -407,8 +570,8 @@ def _delete_records(query_sql: str, params: dict, delete_func: Callable, name: s
                 try:
                     delete_func(record_id)
                     db.session.commit()
-                    logging.info(click.style(f"Deleted {name} {record_id}", fg="green"))
+                    logger.info(click.style(f"Deleted {name} {record_id}", fg="green"))
                 except Exception:
-                    logging.exception("Error occurred while deleting %s %s", name, record_id)
+                    logger.exception("Error occurred while deleting %s %s", name, record_id)
                     continue
             rs.close()

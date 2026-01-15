@@ -1,8 +1,9 @@
 import mimetypes
 from collections.abc import Sequence
 from email.message import Message
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
+import charset_normalizer
 import httpx
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
@@ -18,7 +19,7 @@ class HttpRequestNodeAuthorizationConfig(BaseModel):
 
 class HttpRequestNodeAuthorization(BaseModel):
     type: Literal["no-auth", "api-key"]
-    config: Optional[HttpRequestNodeAuthorizationConfig] = None
+    config: HttpRequestNodeAuthorizationConfig | None = None
 
     @field_validator("config", mode="before")
     @classmethod
@@ -88,18 +89,20 @@ class HttpRequestNodeData(BaseNodeData):
     authorization: HttpRequestNodeAuthorization
     headers: str
     params: str
-    body: Optional[HttpRequestNodeBody] = None
-    timeout: Optional[HttpRequestNodeTimeout] = None
-    ssl_verify: Optional[bool] = dify_config.HTTP_REQUEST_NODE_SSL_VERIFY
+    body: HttpRequestNodeBody | None = None
+    timeout: HttpRequestNodeTimeout | None = None
+    ssl_verify: bool | None = dify_config.HTTP_REQUEST_NODE_SSL_VERIFY
 
 
 class Response:
     headers: dict[str, str]
     response: httpx.Response
+    _cached_text: str | None
 
     def __init__(self, response: httpx.Response):
         self.response = response
         self.headers = dict(response.headers)
+        self._cached_text = None
 
     @property
     def is_file(self):
@@ -159,7 +162,31 @@ class Response:
 
     @property
     def text(self) -> str:
-        return self.response.text
+        """
+        Get response text with robust encoding detection.
+
+        Uses charset_normalizer for better encoding detection than httpx's default,
+        which helps handle Chinese and other non-ASCII characters properly.
+        """
+        # Check cache first
+        if hasattr(self, "_cached_text") and self._cached_text is not None:
+            return self._cached_text
+
+        # Try charset_normalizer for robust encoding detection first
+        detected_encoding = charset_normalizer.from_bytes(self.response.content).best()
+        if detected_encoding and detected_encoding.encoding:
+            try:
+                text = self.response.content.decode(detected_encoding.encoding)
+                self._cached_text = text
+                return text
+            except (UnicodeDecodeError, TypeError, LookupError):
+                # Fallback to httpx's encoding detection if charset_normalizer fails
+                pass
+
+        # Fallback to httpx's built-in encoding detection
+        text = self.response.text
+        self._cached_text = text
+        return text
 
     @property
     def content(self) -> bytes:
@@ -183,7 +210,7 @@ class Response:
             return f"{(self.size / 1024 / 1024):.2f} MB"
 
     @property
-    def parsed_content_disposition(self) -> Optional[Message]:
+    def parsed_content_disposition(self) -> Message | None:
         content_disposition = self.headers.get("content-disposition", "")
         if content_disposition:
             msg = Message()

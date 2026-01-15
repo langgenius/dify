@@ -14,14 +14,14 @@ from core.app.entities.queue_entities import (
 class MessageBasedAppQueueManager(AppQueueManager):
     def __init__(
         self, task_id: str, user_id: str, invoke_from: InvokeFrom, conversation_id: str, app_mode: str, message_id: str
-    ) -> None:
+    ):
         super().__init__(task_id, user_id, invoke_from)
 
         self._conversation_id = str(conversation_id)
         self._app_mode = app_mode
         self._message_id = str(message_id)
 
-    def _publish(self, event: AppQueueEvent, pub_from: PublishFrom) -> None:
+    def _publish(self, event: AppQueueEvent, pub_from: PublishFrom):
         """
         Publish event to queue
         :param event:

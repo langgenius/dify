@@ -28,18 +28,20 @@ class TestApiKeyAuthService:
         mock_binding.provider = self.provider
         mock_binding.disabled = False
 
-        mock_session.query.return_value.where.return_value.all.return_value = [mock_binding]
+        mock_session.scalars.return_value.all.return_value = [mock_binding]
 
         result = ApiKeyAuthService.get_provider_auth_list(self.tenant_id)
 
         assert len(result) == 1
         assert result[0].tenant_id == self.tenant_id
-        mock_session.query.assert_called_once_with(DataSourceApiKeyAuthBinding)
+        assert mock_session.scalars.call_count == 1
+        select_arg = mock_session.scalars.call_args[0][0]
+        assert "data_source_api_key_auth_binding" in str(select_arg).lower()
 
     @patch("services.auth.api_key_auth_service.db.session")
     def test_get_provider_auth_list_empty(self, mock_session):
         """Test get provider auth list - empty result"""
-        mock_session.query.return_value.where.return_value.all.return_value = []
+        mock_session.scalars.return_value.all.return_value = []
 
         result = ApiKeyAuthService.get_provider_auth_list(self.tenant_id)
 
@@ -48,13 +50,15 @@ class TestApiKeyAuthService:
     @patch("services.auth.api_key_auth_service.db.session")
     def test_get_provider_auth_list_filters_disabled(self, mock_session):
         """Test get provider auth list - filters disabled items"""
-        mock_session.query.return_value.where.return_value.all.return_value = []
+        mock_session.scalars.return_value.all.return_value = []
 
         ApiKeyAuthService.get_provider_auth_list(self.tenant_id)
-
-        # Verify where conditions include disabled.is_(False)
-        where_call = mock_session.query.return_value.where.call_args[0]
-        assert len(where_call) == 2  # tenant_id and disabled filter conditions
+        select_stmt = mock_session.scalars.call_args[0][0]
+        where_clauses = list(getattr(select_stmt, "_where_criteria", []) or [])
+        # Ensure both tenant filter and disabled filter exist
+        where_strs = [str(c).lower() for c in where_clauses]
+        assert any("tenant_id" in s for s in where_strs)
+        assert any("disabled" in s for s in where_strs)
 
     @patch("services.auth.api_key_auth_service.db.session")
     @patch("services.auth.api_key_auth_service.ApiKeyAuthFactory")
@@ -121,13 +125,13 @@ class TestApiKeyAuthService:
         mock_session.commit = Mock()
 
         args_copy = self.mock_args.copy()
-        original_key = args_copy["credentials"]["config"]["api_key"]  # type: ignore
+        original_key = args_copy["credentials"]["config"]["api_key"]
 
         ApiKeyAuthService.create_provider_auth(self.tenant_id, args_copy)
 
         # Verify original key is replaced with encrypted key
-        assert args_copy["credentials"]["config"]["api_key"] == encrypted_key  # type: ignore
-        assert args_copy["credentials"]["config"]["api_key"] != original_key  # type: ignore
+        assert args_copy["credentials"]["config"]["api_key"] == encrypted_key
+        assert args_copy["credentials"]["config"]["api_key"] != original_key
 
         # Verify encryption function is called correctly
         mock_encrypter.encrypt_token.assert_called_once_with(self.tenant_id, original_key)
@@ -264,7 +268,7 @@ class TestApiKeyAuthService:
     def test_validate_api_key_auth_args_empty_credentials(self):
         """Test API key auth args validation - empty credentials"""
         args = self.mock_args.copy()
-        args["credentials"] = None  # type: ignore
+        args["credentials"] = None
 
         with pytest.raises(ValueError, match="credentials is required"):
             ApiKeyAuthService.validate_api_key_auth_args(args)
@@ -280,7 +284,7 @@ class TestApiKeyAuthService:
     def test_validate_api_key_auth_args_missing_auth_type(self):
         """Test API key auth args validation - missing auth_type"""
         args = self.mock_args.copy()
-        del args["credentials"]["auth_type"]  # type: ignore
+        del args["credentials"]["auth_type"]
 
         with pytest.raises(ValueError, match="auth_type is required"):
             ApiKeyAuthService.validate_api_key_auth_args(args)
@@ -288,7 +292,7 @@ class TestApiKeyAuthService:
     def test_validate_api_key_auth_args_empty_auth_type(self):
         """Test API key auth args validation - empty auth_type"""
         args = self.mock_args.copy()
-        args["credentials"]["auth_type"] = ""  # type: ignore
+        args["credentials"]["auth_type"] = ""
 
         with pytest.raises(ValueError, match="auth_type is required"):
             ApiKeyAuthService.validate_api_key_auth_args(args)
@@ -376,7 +380,7 @@ class TestApiKeyAuthService:
     def test_validate_api_key_auth_args_dict_credentials_with_list_auth_type(self):
         """Test API key auth args validation - dict credentials with list auth_type"""
         args = self.mock_args.copy()
-        args["credentials"]["auth_type"] = ["api_key"]  # type: ignore # list instead of string
+        args["credentials"]["auth_type"] = ["api_key"]
 
         # Current implementation checks if auth_type exists and is truthy, list ["api_key"] is truthy
         # So this should not raise exception, this test should pass

@@ -1,22 +1,32 @@
-import React, { useCallback, useEffect, useMemo } from 'react'
+import type { ConversationVariable } from '@/app/components/workflow/types'
+import { RiCloseLine, RiDraftLine, RiInputField } from '@remixicon/react'
+import * as React from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { v4 as uuid4 } from 'uuid'
-import { RiCloseLine, RiDraftLine, RiInputField } from '@remixicon/react'
-import VariableTypeSelector from '@/app/components/workflow/panel/chat-variable-panel/components/variable-type-select'
-import ObjectValueList from '@/app/components/workflow/panel/chat-variable-panel/components/object-value-list'
-import { DEFAULT_OBJECT_VALUE } from '@/app/components/workflow/panel/chat-variable-panel/components/object-value-item'
-import ArrayValueList from '@/app/components/workflow/panel/chat-variable-panel/components/array-value-list'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { ToastContext } from '@/app/components/base/toast'
-import { useStore } from '@/app/components/workflow/store'
-import type { ConversationVariable } from '@/app/components/workflow/types'
+import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import ArrayValueList from '@/app/components/workflow/panel/chat-variable-panel/components/array-value-list'
+import { DEFAULT_OBJECT_VALUE } from '@/app/components/workflow/panel/chat-variable-panel/components/object-value-item'
+import ObjectValueList from '@/app/components/workflow/panel/chat-variable-panel/components/object-value-list'
+import VariableTypeSelector from '@/app/components/workflow/panel/chat-variable-panel/components/variable-type-select'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
-import cn from '@/utils/classnames'
+import {
+  arrayBoolPlaceholder,
+  arrayNumberPlaceholder,
+  arrayObjectPlaceholder,
+  arrayStringPlaceholder,
+  objectPlaceholder,
+} from '@/app/components/workflow/panel/chat-variable-panel/utils'
+import { useStore } from '@/app/components/workflow/store'
+import { cn } from '@/utils/classnames'
 import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
+import ArrayBoolList from './array-bool-list'
+import BoolValue from './bool-value'
 
 export type ModalPropsType = {
   chatVar?: ConversationVariable
@@ -33,38 +43,13 @@ type ObjectValueItem = {
 const typeList = [
   ChatVarType.String,
   ChatVarType.Number,
+  ChatVarType.Boolean,
   ChatVarType.Object,
   ChatVarType.ArrayString,
   ChatVarType.ArrayNumber,
+  ChatVarType.ArrayBoolean,
   ChatVarType.ArrayObject,
 ]
-
-const objectPlaceholder = `#  example
-#  {
-#     "name": "ray",
-#     "age": 20
-#  }`
-const arrayStringPlaceholder = `#  example
-#  [
-#     "value1",
-#     "value2"
-#  ]`
-const arrayNumberPlaceholder = `#  example
-#  [
-#     100,
-#     200
-#  ]`
-const arrayObjectPlaceholder = `#  example
-#  [
-#     {
-#       "name": "ray",
-#       "age": 20
-#     },
-#     {
-#       "name": "lily",
-#       "age": 18
-#     }
-#  ]`
 
 const ChatVariableModal = ({
   chatVar,
@@ -94,6 +79,8 @@ const ChatVariableModal = ({
       return arrayNumberPlaceholder
     if (type === ChatVarType.ArrayObject)
       return arrayObjectPlaceholder
+    if (type === ChatVarType.ArrayBoolean)
+      return arrayBoolPlaceholder
     return objectPlaceholder
   }, [type])
   const getObjectValue = useCallback(() => {
@@ -122,12 +109,16 @@ const ChatVariableModal = ({
         return value || ''
       case ChatVarType.Number:
         return value || 0
+      case ChatVarType.Boolean:
+        return value === undefined ? true : value
       case ChatVarType.Object:
         return editInJSON ? value : formatValueFromObject(objectValue)
       case ChatVarType.ArrayString:
       case ChatVarType.ArrayNumber:
       case ChatVarType.ArrayObject:
         return value?.filter(Boolean) || []
+      case ChatVarType.ArrayBoolean:
+        return value || []
     }
   }
 
@@ -136,7 +127,7 @@ const ChatVariableModal = ({
     if (!isValid) {
       notify({
         type: 'error',
-        message: t(`appDebug.varKeyError.${errorMessageKey}`, { key: t('workflow.env.modal.name') }),
+        message: t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: t('env.modal.name', { ns: 'workflow' }) }),
       })
       return false
     }
@@ -157,6 +148,10 @@ const ChatVariableModal = ({
       setEditInJSON(true)
     if (v === ChatVarType.String || v === ChatVarType.Number || v === ChatVarType.Object)
       setEditInJSON(false)
+    if (v === ChatVarType.Boolean)
+      setValue(false)
+    if (v === ChatVarType.ArrayBoolean)
+      setValue([false])
     setType(v)
   }
 
@@ -202,6 +197,11 @@ const ChatVariableModal = ({
         setValue(value?.length ? value : [undefined])
       }
     }
+
+    if (type === ChatVarType.ArrayBoolean) {
+      if (editInJSON)
+        setEditorContent(JSON.stringify(value.map((item: boolean) => item ? 'True' : 'False')))
+    }
     setEditInJSON(editInJSON)
   }
 
@@ -213,7 +213,16 @@ const ChatVariableModal = ({
     else {
       setEditorContent(content)
       try {
-        const newValue = JSON.parse(content)
+        let newValue = JSON.parse(content)
+        if (type === ChatVarType.ArrayBoolean) {
+          newValue = newValue.map((item: string | boolean) => {
+            if (item === 'True' || item === 'true' || item === true)
+              return true
+            if (item === 'False' || item === 'false' || item === false)
+              return false
+            return undefined
+          }).filter((item?: boolean) => item !== undefined)
+        }
         setValue(newValue)
       }
       catch {
@@ -263,86 +272,92 @@ const ChatVariableModal = ({
     <div
       className={cn('flex h-full w-[360px] flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl', type === ChatVarType.Object && 'w-[480px]')}
     >
-      <div className='system-xl-semibold mb-3 flex shrink-0 items-center justify-between p-4 pb-0 text-text-primary'>
-        {!chatVar ? t('workflow.chatVariable.modal.title') : t('workflow.chatVariable.modal.editTitle')}
-        <div className='flex items-center'>
+      <div className="system-xl-semibold mb-3 flex shrink-0 items-center justify-between p-4 pb-0 text-text-primary">
+        {!chatVar ? t('chatVariable.modal.title', { ns: 'workflow' }) : t('chatVariable.modal.editTitle', { ns: 'workflow' })}
+        <div className="flex items-center">
           <div
-            className='flex h-6 w-6 cursor-pointer items-center justify-center'
+            className="flex h-6 w-6 cursor-pointer items-center justify-center"
             onClick={onClose}
           >
-            <RiCloseLine className='h-4 w-4 text-text-tertiary' />
+            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
           </div>
         </div>
       </div>
-      <div className='max-h-[480px] overflow-y-auto px-4 py-2'>
+      <div className="max-h-[480px] overflow-y-auto px-4 py-2">
         {/* name */}
-        <div className='mb-4'>
-          <div className='system-sm-semibold mb-1 flex h-6 items-center text-text-secondary'>{t('workflow.chatVariable.modal.name')}</div>
-          <div className='flex'>
+        <div className="mb-4">
+          <div className="system-sm-semibold mb-1 flex h-6 items-center text-text-secondary">{t('chatVariable.modal.name', { ns: 'workflow' })}</div>
+          <div className="flex">
             <Input
-              placeholder={t('workflow.chatVariable.modal.namePlaceholder') || ''}
+              placeholder={t('chatVariable.modal.namePlaceholder', { ns: 'workflow' }) || ''}
               value={name}
               onChange={handleVarNameChange}
               onBlur={e => checkVariableName(e.target.value)}
-              type='text'
+              type="text"
             />
           </div>
         </div>
         {/* type */}
-        <div className='mb-4'>
-          <div className='system-sm-semibold mb-1 flex h-6 items-center text-text-secondary'>{t('workflow.chatVariable.modal.type')}</div>
-          <div className='flex'>
+        <div className="mb-4">
+          <div className="system-sm-semibold mb-1 flex h-6 items-center text-text-secondary">{t('chatVariable.modal.type', { ns: 'workflow' })}</div>
+          <div className="flex">
             <VariableTypeSelector
               value={type}
               list={typeList}
               onSelect={handleTypeChange}
-              popupClassName='w-[327px]'
+              popupClassName="w-[327px]"
             />
           </div>
         </div>
         {/* default value */}
-        <div className='mb-4'>
-          <div className='system-sm-semibold mb-1 flex h-6 items-center justify-between text-text-secondary'>
-            <div>{t('workflow.chatVariable.modal.value')}</div>
-            {(type === ChatVarType.ArrayString || type === ChatVarType.ArrayNumber) && (
+        <div className="mb-4">
+          <div className="system-sm-semibold mb-1 flex h-6 items-center justify-between text-text-secondary">
+            <div>{t('chatVariable.modal.value', { ns: 'workflow' })}</div>
+            {(type === ChatVarType.ArrayString || type === ChatVarType.ArrayNumber || type === ChatVarType.ArrayBoolean) && (
               <Button
-                variant='ghost'
-                size='small'
-                className='text-text-tertiary'
+                variant="ghost"
+                size="small"
+                className="text-text-tertiary"
                 onClick={() => handleEditorChange(!editInJSON)}
               >
-                {editInJSON ? <RiInputField className='mr-1 h-3.5 w-3.5' /> : <RiDraftLine className='mr-1 h-3.5 w-3.5' />}
-                {editInJSON ? t('workflow.chatVariable.modal.oneByOne') : t('workflow.chatVariable.modal.editInJSON')}
+                {editInJSON ? <RiInputField className="mr-1 h-3.5 w-3.5" /> : <RiDraftLine className="mr-1 h-3.5 w-3.5" />}
+                {editInJSON ? t('chatVariable.modal.oneByOne', { ns: 'workflow' }) : t('chatVariable.modal.editInJSON', { ns: 'workflow' })}
               </Button>
             )}
             {type === ChatVarType.Object && (
               <Button
-                variant='ghost'
-                size='small'
-                className='text-text-tertiary'
+                variant="ghost"
+                size="small"
+                className="text-text-tertiary"
                 onClick={() => handleEditorChange(!editInJSON)}
               >
-                {editInJSON ? <RiInputField className='mr-1 h-3.5 w-3.5' /> : <RiDraftLine className='mr-1 h-3.5 w-3.5' />}
-                {editInJSON ? t('workflow.chatVariable.modal.editInForm') : t('workflow.chatVariable.modal.editInJSON')}
+                {editInJSON ? <RiInputField className="mr-1 h-3.5 w-3.5" /> : <RiDraftLine className="mr-1 h-3.5 w-3.5" />}
+                {editInJSON ? t('chatVariable.modal.editInForm', { ns: 'workflow' }) : t('chatVariable.modal.editInJSON', { ns: 'workflow' })}
               </Button>
             )}
           </div>
-          <div className='flex'>
+          <div className="flex">
             {type === ChatVarType.String && (
               // Input will remove \n\r, so use Textarea just like description area
               <textarea
-                className='system-sm-regular placeholder:system-sm-regular block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'
+                className="system-sm-regular placeholder:system-sm-regular block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
                 value={value}
-                placeholder={t('workflow.chatVariable.modal.valuePlaceholder') || ''}
+                placeholder={t('chatVariable.modal.valuePlaceholder', { ns: 'workflow' }) || ''}
                 onChange={e => setValue(e.target.value)}
               />
             )}
             {type === ChatVarType.Number && (
               <Input
-                placeholder={t('workflow.chatVariable.modal.valuePlaceholder') || ''}
+                placeholder={t('chatVariable.modal.valuePlaceholder', { ns: 'workflow' }) || ''}
                 value={value}
                 onChange={e => setValue(Number(e.target.value))}
-                type='number'
+                type="number"
+              />
+            )}
+            {type === ChatVarType.Boolean && (
+              <BoolValue
+                value={value}
+                onChange={setValue}
               />
             )}
             {type === ChatVarType.Object && !editInJSON && (
@@ -365,14 +380,21 @@ const ChatVariableModal = ({
                 onChange={setValue}
               />
             )}
+            {type === ChatVarType.ArrayBoolean && !editInJSON && (
+              <ArrayBoolList
+                list={value || [true]}
+                onChange={setValue}
+              />
+            )}
+
             {editInJSON && (
-              <div className='w-full rounded-[10px] bg-components-input-bg-normal py-2 pl-3 pr-1' style={{ height: editorMinHeight }}>
+              <div className="w-full rounded-[10px] bg-components-input-bg-normal py-2 pl-3 pr-1" style={{ height: editorMinHeight }}>
                 <CodeEditor
                   isExpand
                   noWrapper
                   language={CodeLanguage.json}
                   value={editorContent}
-                  placeholder={<div className='whitespace-pre'>{placeholder}</div>}
+                  placeholder={<div className="whitespace-pre">{placeholder}</div>}
                   onChange={handleEditorValueChange}
                 />
               </div>
@@ -380,22 +402,22 @@ const ChatVariableModal = ({
           </div>
         </div>
         {/* description */}
-        <div className=''>
-          <div className='system-sm-semibold mb-1 flex h-6 items-center text-text-secondary'>{t('workflow.chatVariable.modal.description')}</div>
-          <div className='flex'>
+        <div className="">
+          <div className="system-sm-semibold mb-1 flex h-6 items-center text-text-secondary">{t('chatVariable.modal.description', { ns: 'workflow' })}</div>
+          <div className="flex">
             <textarea
-              className='system-sm-regular placeholder:system-sm-regular block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'
+              className="system-sm-regular placeholder:system-sm-regular block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
               value={description}
-              placeholder={t('workflow.chatVariable.modal.descriptionPlaceholder') || ''}
+              placeholder={t('chatVariable.modal.descriptionPlaceholder', { ns: 'workflow' }) || ''}
               onChange={e => setDescription(e.target.value)}
             />
           </div>
         </div>
       </div>
-      <div className='flex flex-row-reverse rounded-b-2xl p-4 pt-2'>
-        <div className='flex gap-2'>
-          <Button onClick={onClose}>{t('common.operation.cancel')}</Button>
-          <Button variant='primary' onClick={handleSave}>{t('common.operation.save')}</Button>
+      <div className="flex flex-row-reverse rounded-b-2xl p-4 pt-2">
+        <div className="flex gap-2">
+          <Button onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
+          <Button variant="primary" onClick={handleSave}>{t('operation.save', { ns: 'common' })}</Button>
         </div>
       </div>
     </div>

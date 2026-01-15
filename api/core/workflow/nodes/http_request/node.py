@@ -1,20 +1,20 @@
 import logging
 import mimetypes
-from collections.abc import Mapping, Sequence
-from typing import Any, Optional
+from collections.abc import Callable, Mapping, Sequence
+from typing import TYPE_CHECKING, Any
 
 from configs import dify_config
-from core.file import File, FileTransferMethod
+from core.file import File, FileTransferMethod, file_manager
+from core.helper import ssrf_proxy
 from core.tools.tool_file_manager import ToolFileManager
 from core.variables.segments import ArrayFileSegment
-from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.variable_entities import VariableSelector
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.nodes.base import BaseNode
-from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
-from core.workflow.nodes.enums import ErrorStrategy, NodeType
+from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
+from core.workflow.node_events import NodeRunResult
+from core.workflow.nodes.base import variable_template_parser
+from core.workflow.nodes.base.entities import VariableSelector
+from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.http_request.executor import Executor
-from core.workflow.utils import variable_template_parser
+from core.workflow.nodes.protocols import FileManagerProtocol, HttpClientProtocol
 from factories import file_factory
 
 from .entities import (
@@ -32,35 +32,37 @@ HTTP_REQUEST_DEFAULT_TIMEOUT = HttpRequestNodeTimeout(
 
 logger = logging.getLogger(__name__)
 
+if TYPE_CHECKING:
+    from core.workflow.entities import GraphInitParams
+    from core.workflow.runtime import GraphRuntimeState
 
-class HttpRequestNode(BaseNode):
-    _node_type = NodeType.HTTP_REQUEST
 
-    _node_data: HttpRequestNodeData
+class HttpRequestNode(Node[HttpRequestNodeData]):
+    node_type = NodeType.HTTP_REQUEST
 
-    def init_node_data(self, data: Mapping[str, Any]) -> None:
-        self._node_data = HttpRequestNodeData.model_validate(data)
-
-    def _get_error_strategy(self) -> Optional[ErrorStrategy]:
-        return self._node_data.error_strategy
-
-    def _get_retry_config(self) -> RetryConfig:
-        return self._node_data.retry_config
-
-    def _get_title(self) -> str:
-        return self._node_data.title
-
-    def _get_description(self) -> Optional[str]:
-        return self._node_data.desc
-
-    def _get_default_value_dict(self) -> dict[str, Any]:
-        return self._node_data.default_value_dict
-
-    def get_base_node_data(self) -> BaseNodeData:
-        return self._node_data
+    def __init__(
+        self,
+        id: str,
+        config: Mapping[str, Any],
+        graph_init_params: "GraphInitParams",
+        graph_runtime_state: "GraphRuntimeState",
+        *,
+        http_client: HttpClientProtocol = ssrf_proxy,
+        tool_file_manager_factory: Callable[[], ToolFileManager] = ToolFileManager,
+        file_manager: FileManagerProtocol = file_manager,
+    ) -> None:
+        super().__init__(
+            id=id,
+            config=config,
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
+        )
+        self._http_client = http_client
+        self._tool_file_manager_factory = tool_file_manager_factory
+        self._file_manager = file_manager
 
     @classmethod
-    def get_default_config(cls, filters: Optional[dict[str, Any]] = None) -> dict:
+    def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
         return {
             "type": "http-request",
             "config": {
@@ -92,21 +94,23 @@ class HttpRequestNode(BaseNode):
         process_data = {}
         try:
             http_executor = Executor(
-                node_data=self._node_data,
-                timeout=self._get_request_timeout(self._node_data),
+                node_data=self.node_data,
+                timeout=self._get_request_timeout(self.node_data),
                 variable_pool=self.graph_runtime_state.variable_pool,
                 max_retries=0,
+                http_client=self._http_client,
+                file_manager=self._file_manager,
             )
             process_data["request"] = http_executor.to_log()
 
             response = http_executor.invoke()
             files = self.extract_files(url=http_executor.url, response=response)
-            if not response.response.is_success and (self.continue_on_error or self.retry):
+            if not response.response.is_success and (self.error_strategy or self.retry):
                 return NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
                     outputs={
                         "status_code": response.status_code,
-                        "body": response.text if not files else "",
+                        "body": response.text if not files.value else "",
                         "headers": response.headers,
                         "files": files,
                     },
@@ -129,7 +133,7 @@ class HttpRequestNode(BaseNode):
                 },
             )
         except HttpRequestNodeError as e:
-            logger.warning("http request node %s failed to run: %s", self.node_id, e)
+            logger.warning("http request node %s failed to run: %s", self._node_id, e)
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 error=str(e),
@@ -167,6 +171,8 @@ class HttpRequestNode(BaseNode):
             body_type = typed_node_data.body.type
             data = typed_node_data.body.data
             match body_type:
+                case "none":
+                    pass
                 case "binary":
                     if len(data) != 1:
                         raise RequestBodyError("invalid body data, should have only one item")
@@ -222,7 +228,7 @@ class HttpRequestNode(BaseNode):
         mime_type = (
             content_disposition_type or content_type or mimetypes.guess_type(filename)[0] or "application/octet-stream"
         )
-        tool_file_manager = ToolFileManager()
+        tool_file_manager = self._tool_file_manager_factory()
 
         tool_file = tool_file_manager.create_file_by_raw(
             user_id=self.user_id,
@@ -234,7 +240,7 @@ class HttpRequestNode(BaseNode):
 
         mapping = {
             "tool_file_id": tool_file.id,
-            "transfer_method": FileTransferMethod.TOOL_FILE.value,
+            "transfer_method": FileTransferMethod.TOOL_FILE,
         }
         file = file_factory.build_from_mapping(
             mapping=mapping,
@@ -245,9 +251,5 @@ class HttpRequestNode(BaseNode):
         return ArrayFileSegment(value=files)
 
     @property
-    def continue_on_error(self) -> bool:
-        return self._node_data.error_strategy is not None
-
-    @property
     def retry(self) -> bool:
-        return self._node_data.retry_config.retry_enabled
+        return self.node_data.retry_config.retry_enabled

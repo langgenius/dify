@@ -1,20 +1,20 @@
+import type { ContextBlockType } from '../../types'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { mergeRegister } from '@lexical/utils'
+import { noop } from 'es-toolkit/function'
+import { $applyNodeReplacement } from 'lexical'
 import {
   memo,
   useCallback,
   useEffect,
 } from 'react'
-import { $applyNodeReplacement } from 'lexical'
-import { mergeRegister } from '@lexical/utils'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { decoratorTransform } from '../../utils'
 import { CONTEXT_PLACEHOLDER_TEXT } from '../../constants'
-import type { ContextBlockType } from '../../types'
+import { decoratorTransform } from '../../utils'
 import {
   $createContextBlockNode,
   ContextBlockNode,
 } from '../context-block/node'
 import { CustomTextNode } from '../custom-text/node'
-import { noop } from 'lodash-es'
 
 const REGEX = new RegExp(CONTEXT_PLACEHOLDER_TEXT)
 

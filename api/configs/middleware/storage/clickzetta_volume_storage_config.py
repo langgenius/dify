@@ -1,7 +1,5 @@
 """ClickZetta Volume Storage Configuration"""
 
-from typing import Optional
-
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
@@ -9,17 +7,17 @@ from pydantic_settings import BaseSettings
 class ClickZettaVolumeStorageConfig(BaseSettings):
     """Configuration for ClickZetta Volume storage."""
 
-    CLICKZETTA_VOLUME_USERNAME: Optional[str] = Field(
+    CLICKZETTA_VOLUME_USERNAME: str | None = Field(
         description="Username for ClickZetta Volume authentication",
         default=None,
     )
 
-    CLICKZETTA_VOLUME_PASSWORD: Optional[str] = Field(
+    CLICKZETTA_VOLUME_PASSWORD: str | None = Field(
         description="Password for ClickZetta Volume authentication",
         default=None,
     )
 
-    CLICKZETTA_VOLUME_INSTANCE: Optional[str] = Field(
+    CLICKZETTA_VOLUME_INSTANCE: str | None = Field(
         description="ClickZetta instance identifier",
         default=None,
     )
@@ -49,7 +47,7 @@ class ClickZettaVolumeStorageConfig(BaseSettings):
         default="user",
     )
 
-    CLICKZETTA_VOLUME_NAME: Optional[str] = Field(
+    CLICKZETTA_VOLUME_NAME: str | None = Field(
         description="ClickZetta volume name for external volumes",
         default=None,
     )

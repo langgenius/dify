@@ -1,0 +1,16 @@
+[src]
+exclude = [
+    # TODO: enable when violations fixed
+    "core/app/apps/workflow_app_runner.py",
+    "controllers/console/app",
+    "controllers/console/explore",
+    "controllers/console/datasets",
+    "controllers/console/workspace",
+    # non-producition or generated code
+    "migrations",
+    "tests",
+]
+
+[rules]
+missing-argument = "ignore" # TODO: restore when **args for constructor is supported properly
+possibly-unbound-attribute = "ignore"

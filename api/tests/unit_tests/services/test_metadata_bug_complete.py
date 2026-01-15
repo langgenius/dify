@@ -1,9 +1,9 @@
-from unittest.mock import Mock, patch
+from pathlib import Path
+from unittest.mock import Mock, create_autospec, patch
 
 import pytest
-from flask_restful import reqparse
-from werkzeug.exceptions import BadRequest
 
+from models.account import Account
 from services.entities.knowledge_entities.knowledge_entities import MetadataArgs
 from services.metadata_service import MetadataService
 
@@ -35,19 +35,27 @@ class TestMetadataBugCompleteValidation:
         mock_metadata_args.name = None
         mock_metadata_args.type = "string"
 
-        with patch("services.metadata_service.current_user") as mock_user:
-            mock_user.current_tenant_id = "tenant-123"
-            mock_user.id = "user-456"
+        mock_user = create_autospec(Account, instance=True)
+        mock_user.current_tenant_id = "tenant-123"
+        mock_user.id = "user-456"
 
+        with patch(
+            "services.metadata_service.current_account_with_tenant",
+            return_value=(mock_user, mock_user.current_tenant_id),
+        ):
             # Should crash with TypeError
             with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
                 MetadataService.create_metadata("dataset-123", mock_metadata_args)
 
         # Test update method as well
-        with patch("services.metadata_service.current_user") as mock_user:
-            mock_user.current_tenant_id = "tenant-123"
-            mock_user.id = "user-456"
+        mock_user = create_autospec(Account, instance=True)
+        mock_user.current_tenant_id = "tenant-123"
+        mock_user.id = "user-456"
 
+        with patch(
+            "services.metadata_service.current_account_with_tenant",
+            return_value=(mock_user, mock_user.current_tenant_id),
+        ):
             with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
                 MetadataService.update_metadata_name("dataset-123", "metadata-456", None)
 
@@ -67,54 +75,39 @@ class TestMetadataBugCompleteValidation:
         assert type_column.nullable is False, "type column should be nullable=False"
         assert name_column.nullable is False, "name column should be nullable=False"
 
-    def test_4_fixed_api_layer_rejects_null(self, app):
-        """Test Layer 4: Fixed API configuration properly rejects null values."""
-        # Test Console API create endpoint (fixed)
-        parser = reqparse.RequestParser()
-        parser.add_argument("type", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("name", type=str, required=True, nullable=False, location="json")
+    def test_4_fixed_api_layer_rejects_null(self):
+        """Test Layer 4: Fixed API configuration properly rejects null values using Pydantic."""
+        with pytest.raises((ValueError, TypeError)):
+            MetadataArgs.model_validate({"type": None, "name": None})
 
-        with app.test_request_context(json={"type": None, "name": None}, content_type="application/json"):
-            with pytest.raises(BadRequest):
-                parser.parse_args()
+        with pytest.raises((ValueError, TypeError)):
+            MetadataArgs.model_validate({"type": "string", "name": None})
 
-        # Test with just name being null
-        with app.test_request_context(json={"type": "string", "name": None}, content_type="application/json"):
-            with pytest.raises(BadRequest):
-                parser.parse_args()
+        with pytest.raises((ValueError, TypeError)):
+            MetadataArgs.model_validate({"type": None, "name": "test"})
 
-        # Test with just type being null
-        with app.test_request_context(json={"type": None, "name": "test"}, content_type="application/json"):
-            with pytest.raises(BadRequest):
-                parser.parse_args()
-
-    def test_5_fixed_api_accepts_valid_values(self, app):
+    def test_5_fixed_api_accepts_valid_values(self):
         """Test that fixed API still accepts valid non-null values."""
-        parser = reqparse.RequestParser()
-        parser.add_argument("type", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("name", type=str, required=True, nullable=False, location="json")
+        args = MetadataArgs.model_validate({"type": "string", "name": "valid_name"})
+        assert args.type == "string"
+        assert args.name == "valid_name"
 
-        with app.test_request_context(json={"type": "string", "name": "valid_name"}, content_type="application/json"):
-            args = parser.parse_args()
-            assert args["type"] == "string"
-            assert args["name"] == "valid_name"
+    def test_6_simulated_buggy_behavior(self):
+        """Test simulating the original buggy behavior by bypassing Pydantic validation."""
+        mock_metadata_args = Mock()
+        mock_metadata_args.name = None
+        mock_metadata_args.type = None
 
-    def test_6_simulated_buggy_behavior(self, app):
-        """Test simulating the original buggy behavior with nullable=True."""
-        # Simulate the old buggy configuration
-        buggy_parser = reqparse.RequestParser()
-        buggy_parser.add_argument("type", type=str, required=True, nullable=True, location="json")
-        buggy_parser.add_argument("name", type=str, required=True, nullable=True, location="json")
+        mock_user = create_autospec(Account, instance=True)
+        mock_user.current_tenant_id = "tenant-123"
+        mock_user.id = "user-456"
 
-        with app.test_request_context(json={"type": None, "name": None}, content_type="application/json"):
-            # This would pass in the buggy version
-            args = buggy_parser.parse_args()
-            assert args["type"] is None
-            assert args["name"] is None
-
-            # But would crash when trying to create MetadataArgs
-            with pytest.raises((ValueError, TypeError)):
-                MetadataArgs(**args)
+        with patch(
+            "services.metadata_service.current_account_with_tenant",
+            return_value=(mock_user, mock_user.current_tenant_id),
+        ):
+            with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
+                MetadataService.create_metadata("dataset-123", mock_metadata_args)
 
     def test_7_end_to_end_validation_layers(self):
         """Test all validation layers work together correctly."""
@@ -127,7 +120,7 @@ class TestMetadataBugCompleteValidation:
         valid_data = {"type": "string", "name": "test_metadata"}
 
         # Should create valid Pydantic object
-        metadata_args = MetadataArgs(**valid_data)
+        metadata_args = MetadataArgs.model_validate(valid_data)
         assert metadata_args.type == "string"
         assert metadata_args.name == "test_metadata"
 
@@ -143,19 +136,17 @@ class TestMetadataBugCompleteValidation:
         # Console API create
         console_create_file = "api/controllers/console/datasets/metadata.py"
         if os.path.exists(console_create_file):
-            with open(console_create_file) as f:
-                content = f.read()
-                # Should contain nullable=False, not nullable=True
-                assert "nullable=True" not in content.split("class DatasetMetadataCreateApi")[1].split("class")[0]
+            content = Path(console_create_file).read_text()
+            # Should contain nullable=False, not nullable=True
+            assert "nullable=True" not in content.split("class DatasetMetadataCreateApi")[1].split("class")[0]
 
         # Service API create
         service_create_file = "api/controllers/service_api/dataset/metadata.py"
         if os.path.exists(service_create_file):
-            with open(service_create_file) as f:
-                content = f.read()
-                # Should contain nullable=False, not nullable=True
-                create_api_section = content.split("class DatasetMetadataCreateServiceApi")[1].split("class")[0]
-                assert "nullable=True" not in create_api_section
+            content = Path(service_create_file).read_text()
+            # Should contain nullable=False, not nullable=True
+            create_api_section = content.split("class DatasetMetadataCreateServiceApi")[1].split("class")[0]
+            assert "nullable=True" not in create_api_section
 
 
 class TestMetadataValidationSummary:

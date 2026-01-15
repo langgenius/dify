@@ -4,7 +4,8 @@ import logging
 import re
 import threading
 import uuid
-from typing import Optional
+from collections.abc import Mapping
+from typing import Any
 
 import pandas as pd
 from flask import Flask, current_app
@@ -14,14 +15,21 @@ from core.llm_generator.llm_generator import LLMGenerator
 from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.datasource.vdb.vector_factory import Vector
+from core.rag.docstore.dataset_docstore import DatasetDocumentStore
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.extract_processor import ExtractProcessor
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
-from core.rag.models.document import Document
+from core.rag.models.document import AttachmentDocument, Document, QAStructureChunk
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.text_processing_utils import remove_leading_symbols
 from libs import helper
+from models.account import Account
 from models.dataset import Dataset
+from models.dataset import Document as DatasetDocument
 from services.entities.knowledge_entities.knowledge_entities import Rule
+
+logger = logging.getLogger(__name__)
 
 
 class QAIndexProcessor(BaseIndexProcessor):
@@ -34,14 +42,14 @@ class QAIndexProcessor(BaseIndexProcessor):
         )
         return text_docs
 
-    def transform(self, documents: list[Document], **kwargs) -> list[Document]:
+    def transform(self, documents: list[Document], current_user: Account | None = None, **kwargs) -> list[Document]:
         preview = kwargs.get("preview")
         process_rule = kwargs.get("process_rule")
         if not process_rule:
             raise ValueError("No process rule found.")
         if not process_rule.get("rules"):
             raise ValueError("No rules found in process rule.")
-        rules = Rule(**process_rule.get("rules"))
+        rules = Rule.model_validate(process_rule.get("rules"))
         splitter = self._get_splitter(
             processing_rule_mode=process_rule.get("mode"),
             max_tokens=rules.segmentation.max_tokens if rules.segmentation else 0,
@@ -109,9 +117,9 @@ class QAIndexProcessor(BaseIndexProcessor):
 
         try:
             # Skip the first row
-            df = pd.read_csv(file)
+            df = pd.read_csv(file)  # type: ignore
             text_docs = []
-            for index, row in df.iterrows():
+            for _, row in df.iterrows():
                 data = Document(page_content=row.iloc[0], metadata={"answer": row.iloc[1]})
                 text_docs.append(data)
             if len(text_docs) == 0:
@@ -121,12 +129,21 @@ class QAIndexProcessor(BaseIndexProcessor):
             raise ValueError(str(e))
         return text_docs
 
-    def load(self, dataset: Dataset, documents: list[Document], with_keywords: bool = True, **kwargs):
+    def load(
+        self,
+        dataset: Dataset,
+        documents: list[Document],
+        multimodal_documents: list[AttachmentDocument] | None = None,
+        with_keywords: bool = True,
+        **kwargs,
+    ):
         if dataset.indexing_technique == "high_quality":
             vector = Vector(dataset)
             vector.create(documents)
+            if multimodal_documents and dataset.is_multimodal:
+                vector.create_multimodal(multimodal_documents)
 
-    def clean(self, dataset: Dataset, node_ids: Optional[list[str]], with_keywords: bool = True, **kwargs):
+    def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs):
         vector = Vector(dataset)
         if node_ids:
             vector.delete_by_ids(node_ids)
@@ -135,7 +152,7 @@ class QAIndexProcessor(BaseIndexProcessor):
 
     def retrieve(
         self,
-        retrieval_method: str,
+        retrieval_method: RetrievalMethod,
         query: str,
         dataset: Dataset,
         top_k: int,
@@ -156,10 +173,44 @@ class QAIndexProcessor(BaseIndexProcessor):
         for result in results:
             metadata = result.metadata
             metadata["score"] = result.score
-            if result.score > score_threshold:
+            if result.score >= score_threshold:
                 doc = Document(page_content=result.page_content, metadata=metadata)
                 docs.append(doc)
         return docs
+
+    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any):
+        qa_chunks = QAStructureChunk.model_validate(chunks)
+        documents = []
+        for qa_chunk in qa_chunks.qa_chunks:
+            metadata = {
+                "dataset_id": dataset.id,
+                "document_id": document.id,
+                "doc_id": str(uuid.uuid4()),
+                "doc_hash": helper.generate_text_hash(qa_chunk.question),
+                "answer": qa_chunk.answer,
+            }
+            doc = Document(page_content=qa_chunk.question, metadata=metadata)
+            documents.append(doc)
+        if documents:
+            # save node to document segment
+            doc_store = DatasetDocumentStore(dataset=dataset, user_id=document.created_by, document_id=document.id)
+            doc_store.add_documents(docs=documents, save_child=False)
+            if dataset.indexing_technique == "high_quality":
+                vector = Vector(dataset)
+                vector.create(documents)
+            else:
+                raise ValueError("Indexing technique must be high quality.")
+
+    def format_preview(self, chunks: Any) -> Mapping[str, Any]:
+        qa_chunks = QAStructureChunk.model_validate(chunks)
+        preview = []
+        for qa_chunk in qa_chunks.qa_chunks:
+            preview.append({"question": qa_chunk.question, "answer": qa_chunk.answer})
+        return {
+            "chunk_structure": IndexStructureType.QA_INDEX,
+            "qa_preview": preview,
+            "total_segments": len(qa_chunks.qa_chunks),
+        }
 
     def _format_qa_document(self, flask_app: Flask, tenant_id: str, document_node, all_qa_documents, document_language):
         format_documents = []
@@ -181,8 +232,8 @@ class QAIndexProcessor(BaseIndexProcessor):
                         qa_document.metadata["doc_hash"] = hash
                     qa_documents.append(qa_document)
                 format_documents.extend(qa_documents)
-            except Exception as e:
-                logging.exception("Failed to format qa document")
+            except Exception:
+                logger.exception("Failed to format qa document")
 
             all_qa_documents.extend(format_documents)
 

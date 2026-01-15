@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 import abc
 from collections.abc import Mapping
 from typing import Any, Protocol
 
 from sqlalchemy.orm import Session
 
-from core.workflow.nodes.enums import NodeType
+from core.workflow.enums import NodeType
 
 
 class DraftVariableSaver(Protocol):
@@ -23,7 +25,7 @@ class DraftVariableSaverFactory(Protocol):
         node_type: NodeType,
         node_execution_id: str,
         enclosing_node_id: str | None = None,
-    ) -> "DraftVariableSaver":
+    ) -> DraftVariableSaver:
         pass
 
 

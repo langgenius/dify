@@ -4,9 +4,8 @@ from dify_app import DifyApp
 
 def init_app(app: DifyApp):
     if dify_config.SENTRY_DSN:
-        import openai
         import sentry_sdk
-        from langfuse import parse_error  # type: ignore
+        from langfuse import parse_error
         from sentry_sdk.integrations.celery import CeleryIntegration
         from sentry_sdk.integrations.flask import FlaskIntegration
         from werkzeug.exceptions import HTTPException
@@ -15,7 +14,7 @@ def init_app(app: DifyApp):
 
         def before_send(event, hint):
             if "exc_info" in hint:
-                exc_type, exc_value, tb = hint["exc_info"]
+                _, exc_value, _ = hint["exc_info"]
                 if parse_error.defaultErrorResponse in str(exc_value):
                     return None
 
@@ -28,7 +27,6 @@ def init_app(app: DifyApp):
                 HTTPException,
                 ValueError,
                 FileNotFoundError,
-                openai.APIStatusError,
                 InvokeRateLimitError,
                 parse_error.defaultErrorResponse,
             ],

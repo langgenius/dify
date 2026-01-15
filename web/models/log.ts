@@ -1,28 +1,10 @@
 import type { Viewport } from 'reactflow'
-import type { VisionFile } from '@/types/app'
+import type { Metadata } from '@/app/components/base/chat/chat/type'
 import type {
   Edge,
   Node,
 } from '@/app/components/workflow/types'
-import type { Metadata } from '@/app/components/base/chat/chat/type'
-
-// Log type contains key:string conversation_id:string created_at:string question:string answer:string
-export type Conversation = {
-  id: string
-  key: string
-  conversationId: string
-  question: string
-  answer: string
-  userRate: number
-  adminRate: number
-}
-
-export type ConversationListResponse = {
-  logs: Conversation[]
-}
-
-export const fetchLogs = (url: string) =>
-  fetch(url).then<ConversationListResponse>(r => r.json())
+import type { VisionFile } from '@/types/app'
 
 export const CompletionParams = ['temperature', 'top_p', 'presence_penalty', 'max_token', 'stop', 'frequency_penalty'] as const
 
@@ -80,7 +62,7 @@ export type MessageContent = {
   conversation_id: string
   query: string
   inputs: Record<string, any>
-  message: { role: string; text: string; files?: VisionFile[] }[]
+  message: { role: string, text: string, files?: VisionFile[] }[]
   message_tokens: number
   answer_tokens: number
   answer: string
@@ -229,11 +211,38 @@ export type AnnotationsCountResponse = {
   count: number
 }
 
+export enum WorkflowRunTriggeredFrom {
+  DEBUGGING = 'debugging',
+  APP_RUN = 'app-run',
+  RAG_PIPELINE_RUN = 'rag-pipeline-run',
+  RAG_PIPELINE_DEBUGGING = 'rag-pipeline-debugging',
+  WEBHOOK = 'webhook',
+  SCHEDULE = 'schedule',
+  PLUGIN = 'plugin',
+}
+
+export type TriggerMetadata = {
+  type?: string
+  endpoint_id?: string
+  plugin_unique_identifier?: string
+  provider_id?: string
+  event_name?: string
+  icon_filename?: string
+  icon_dark_filename?: string
+  icon?: string | null
+  icon_dark?: string | null
+}
+
+export type WorkflowLogDetails = {
+  trigger_metadata?: TriggerMetadata
+}
+
 export type WorkflowRunDetail = {
   id: string
   version: string
   status: 'running' | 'succeeded' | 'failed' | 'stopped'
   error?: string
+  triggered_from?: WorkflowRunTriggeredFrom
   elapsed_time: number
   total_tokens: number
   total_price: number
@@ -255,6 +264,7 @@ export type EndUserInfo = {
 export type WorkflowAppLogDetail = {
   id: string
   workflow_run: WorkflowRunDetail
+  details?: WorkflowLogDetails
   created_from: 'service-api' | 'web-app' | 'explore'
   created_by_role: 'account' | 'end_user'
   created_by_account?: AccountInfo
@@ -285,8 +295,13 @@ export type WorkflowRunDetailResponse = {
     viewport?: Viewport
   }
   inputs: string
+  inputs_truncated: boolean
   status: 'running' | 'succeeded' | 'failed' | 'stopped'
   outputs?: string
+  outputs_truncated: boolean
+  outputs_full_content?: {
+    download_url: string
+  }
   error?: string
   elapsed_time?: number
   total_tokens?: number

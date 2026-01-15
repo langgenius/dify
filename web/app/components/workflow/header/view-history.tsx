@@ -1,52 +1,51 @@
 import {
-  memo,
-  useState,
-} from 'react'
-import useSWR from 'swr'
-import { useTranslation } from 'react-i18next'
-import { useShallow } from 'zustand/react/shallow'
-import {
   RiCheckboxCircleLine,
   RiCloseLine,
   RiErrorWarningLine,
 } from '@remixicon/react'
 import {
-  useIsChatMode,
-  useNodesInteractions,
-  useWorkflowInteractions,
-  useWorkflowRun,
-} from '../hooks'
-import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
-import { ControlMode, WorkflowRunningStatus } from '../types'
-import { formatWorkflowRunIdentifier } from '../utils'
-import cn from '@/utils/classnames'
+  memo,
+  useState,
+} from 'react'
+import { useTranslation } from 'react-i18next'
+import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
+import {
+  ClockPlay,
+  ClockPlaySlim,
+} from '@/app/components/base/icons/src/vender/line/time'
+import Loading from '@/app/components/base/loading'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import Tooltip from '@/app/components/base/tooltip'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import {
-  ClockPlay,
-  ClockPlaySlim,
-} from '@/app/components/base/icons/src/vender/line/time'
-import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
-import {
-  fetchChatRunHistory,
-  fetchWorkflowRunHistory,
-} from '@/service/workflow'
-import Loading from '@/app/components/base/loading'
+import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
 import {
   useStore,
   useWorkflowStore,
 } from '@/app/components/workflow/store'
+import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import { useWorkflowRunHistory } from '@/service/use-workflow'
+import { cn } from '@/utils/classnames'
+import {
+  useIsChatMode,
+  useNodesInteractions,
+  useWorkflowInteractions,
+  useWorkflowRun,
+} from '../hooks'
+import { ControlMode, WorkflowRunningStatus } from '../types'
+import { formatWorkflowRunIdentifier } from '../utils'
 
-type ViewHistoryProps = {
+export type ViewHistoryProps = {
   withText?: boolean
+  onClearLogAndMessageModal?: () => void
+  historyUrl?: string
 }
 const ViewHistory = ({
   withText,
+  onClearLogAndMessageModal,
+  historyUrl,
 }: ViewHistoryProps) => {
   const { t } = useTranslation()
   const isChatMode = useIsChatMode()
@@ -60,18 +59,15 @@ const ViewHistory = ({
   } = useWorkflowInteractions()
   const workflowStore = useWorkflowStore()
   const setControlMode = useStore(s => s.setControlMode)
-  const { appDetail, setCurrentLogItem, setShowMessageLogModal } = useAppStore(useShallow(state => ({
-    appDetail: state.appDetail,
-    setCurrentLogItem: state.setCurrentLogItem,
-    setShowMessageLogModal: state.setShowMessageLogModal,
-  })))
   const historyWorkflowData = useStore(s => s.historyWorkflowData)
   const { handleBackupDraft } = useWorkflowRun()
-  const { data: runList, isLoading: runListLoading } = useSWR((appDetail && !isChatMode && open) ? `/apps/${appDetail.id}/workflow-runs` : null, fetchWorkflowRunHistory)
-  const { data: chatList, isLoading: chatListLoading } = useSWR((appDetail && isChatMode && open) ? `/apps/${appDetail.id}/advanced-chat/workflow-runs` : null, fetchChatRunHistory)
+  const { closeAllInputFieldPanels } = useInputFieldPanel()
 
-  const data = isChatMode ? chatList : runList
-  const isLoading = isChatMode ? chatListLoading : runListLoading
+  const shouldFetchHistory = open && !!historyUrl
+  const {
+    data,
+    isLoading,
+  } = useWorkflowRunHistory(historyUrl, shouldFetchHistory)
 
   return (
     (
@@ -91,24 +87,24 @@ const ViewHistory = ({
                 'flex h-8 items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 shadow-xs',
                 'cursor-pointer text-[13px] font-medium text-components-button-secondary-text hover:bg-components-button-secondary-bg-hover',
                 open && 'bg-components-button-secondary-bg-hover',
-              )}>
+              )}
+              >
                 <ClockPlay
-                  className={'mr-1 h-4 w-4'}
+                  className="mr-1 h-4 w-4"
                 />
-                {t('workflow.common.showRunHistory')}
+                {t('common.showRunHistory', { ns: 'workflow' })}
               </div>
             )
           }
           {
             !withText && (
               <Tooltip
-                popupContent={t('workflow.common.viewRunHistory')}
+                popupContent={t('common.viewRunHistory', { ns: 'workflow' })}
               >
                 <div
                   className={cn('group flex h-7 w-7 cursor-pointer items-center justify-center rounded-md hover:bg-state-accent-hover', open && 'bg-state-accent-hover')}
                   onClick={() => {
-                    setCurrentLogItem()
-                    setShowMessageLogModal(false)
+                    onClearLogAndMessageModal?.()
                   }}
                 >
                   <ClockPlay className={cn('h-4 w-4 group-hover:text-components-button-secondary-accent-text', open ? 'text-components-button-secondary-accent-text' : 'text-components-button-ghost-text')} />
@@ -117,42 +113,41 @@ const ViewHistory = ({
             )
           }
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className='z-[12]'>
+        <PortalToFollowElemContent className="z-[12]">
           <div
-            className='ml-2 flex w-[240px] flex-col overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl'
+            className="ml-2 flex w-[240px] flex-col overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
             style={{
               maxHeight: 'calc(2 / 3 * 100vh)',
             }}
           >
-            <div className='sticky top-0 flex items-center justify-between bg-components-panel-bg px-4 pt-3 text-base font-semibold text-text-primary'>
-              <div className='grow'>{t('workflow.common.runHistory')}</div>
+            <div className="sticky top-0 flex items-center justify-between bg-components-panel-bg px-4 pt-3 text-base font-semibold text-text-primary">
+              <div className="grow">{t('common.runHistory', { ns: 'workflow' })}</div>
               <div
-                className='flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center'
+                className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center"
                 onClick={() => {
-                  setCurrentLogItem()
-                  setShowMessageLogModal(false)
+                  onClearLogAndMessageModal?.()
                   setOpen(false)
                 }}
               >
-                <RiCloseLine className='h-4 w-4 text-text-tertiary' />
+                <RiCloseLine className="h-4 w-4 text-text-tertiary" />
               </div>
             </div>
             {
               isLoading && (
-                <div className='flex h-10 items-center justify-center'>
+                <div className="flex h-10 items-center justify-center">
                   <Loading />
                 </div>
               )
             }
             {
               !isLoading && (
-                <div className='p-2'>
+                <div className="p-2">
                   {
                     !data?.data.length && (
-                      <div className='py-12'>
-                        <ClockPlaySlim className='mx-auto mb-2 h-8 w-8 text-text-quaternary' />
-                        <div className='text-center text-[13px] text-text-quaternary'>
-                          {t('workflow.common.notRunning')}
+                      <div className="py-12">
+                        <ClockPlaySlim className="mx-auto mb-2 h-8 w-8 text-text-quaternary" />
+                        <div className="text-center text-[13px] text-text-quaternary">
+                          {t('common.notRunning', { ns: 'workflow' })}
                         </div>
                       </div>
                     )
@@ -171,6 +166,7 @@ const ViewHistory = ({
                             showInputsPanel: false,
                             showEnvPanel: false,
                           })
+                          closeAllInputFieldPanels()
                           handleBackupDraft()
                           setOpen(false)
                           handleNodesCancelSelected()
@@ -180,17 +176,17 @@ const ViewHistory = ({
                       >
                         {
                           !isChatMode && item.status === WorkflowRunningStatus.Stopped && (
-                            <AlertTriangle className='mr-1.5 mt-0.5 h-3.5 w-3.5 text-[#F79009]' />
+                            <AlertTriangle className="mr-1.5 mt-0.5 h-3.5 w-3.5 text-[#F79009]" />
                           )
                         }
                         {
                           !isChatMode && item.status === WorkflowRunningStatus.Failed && (
-                            <RiErrorWarningLine className='mr-1.5 mt-0.5 h-3.5 w-3.5 text-[#F04438]' />
+                            <RiErrorWarningLine className="mr-1.5 mt-0.5 h-3.5 w-3.5 text-[#F04438]" />
                           )
                         }
                         {
                           !isChatMode && item.status === WorkflowRunningStatus.Succeeded && (
-                            <RiCheckboxCircleLine className='mr-1.5 mt-0.5 h-3.5 w-3.5 text-[#12B76A]' />
+                            <RiCheckboxCircleLine className="mr-1.5 mt-0.5 h-3.5 w-3.5 text-[#12B76A]" />
                           )
                         }
                         <div>
@@ -202,8 +198,11 @@ const ViewHistory = ({
                           >
                             {`Test ${isChatMode ? 'Chat' : 'Run'}${formatWorkflowRunIdentifier(item.finished_at)}`}
                           </div>
-                          <div className='flex items-center text-xs leading-[18px] text-text-tertiary'>
-                            {item.created_by_account?.name} · {formatTimeFromNow((item.finished_at || item.created_at) * 1000)}
+                          <div className="flex items-center text-xs leading-[18px] text-text-tertiary">
+                            {item.created_by_account?.name}
+                            {' '}
+                            ·
+                            {formatTimeFromNow((item.finished_at || item.created_at) * 1000)}
                           </div>
                         </div>
                       </div>

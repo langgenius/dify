@@ -1,35 +1,24 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { Item } from '@/app/components/base/select'
+import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
+import type { ChildChunkDetail, SegmentDetailModel, SegmentUpdater } from '@/models/datasets'
 import { useDebounceFn } from 'ahooks'
+import { noop } from 'es-toolkit/function'
+import { usePathname } from 'next/navigation'
+import * as React from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { createContext, useContext, useContextSelector } from 'use-context-selector'
-import { usePathname } from 'next/navigation'
-import { useDocumentContext } from '../index'
-import { ProcessStatus } from '../segment-add'
-import s from './style.module.css'
-import SegmentList from './segment-list'
-import DisplayToggle from './display-toggle'
-import BatchAction from './common/batch-action'
-import SegmentDetail from './segment-detail'
-import SegmentCard from './segment-card'
-import ChildSegmentList from './child-segment-list'
-import NewChildSegment from './new-child-segment'
-import FullScreenDrawer from './common/full-screen-drawer'
-import ChildSegmentDetail from './child-segment-detail'
-import StatusItem from './status-item'
-import Pagination from '@/app/components/base/pagination'
-import cn from '@/utils/classnames'
-import { formatNumber } from '@/utils/format'
+import Checkbox from '@/app/components/base/checkbox'
 import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
-import { ToastContext } from '@/app/components/base/toast'
-import type { Item } from '@/app/components/base/select'
+import Pagination from '@/app/components/base/pagination'
 import { SimpleSelect } from '@/app/components/base/select'
-import { type ChildChunkDetail, ChunkingMode, type SegmentDetailModel, type SegmentUpdater } from '@/models/datasets'
+import { ToastContext } from '@/app/components/base/toast'
 import NewSegment from '@/app/components/datasets/documents/detail/new-segment'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import Checkbox from '@/app/components/base/checkbox'
+import { ChunkingMode } from '@/models/datasets'
 import {
   useChildSegmentList,
   useChildSegmentListKey,
@@ -46,7 +35,21 @@ import {
   useUpdateSegment,
 } from '@/service/knowledge/use-segment'
 import { useInvalid } from '@/service/use-base'
-import { noop } from 'lodash-es'
+import { cn } from '@/utils/classnames'
+import { formatNumber } from '@/utils/format'
+import { useDocumentContext } from '../context'
+import { ProcessStatus } from '../segment-add'
+import ChildSegmentDetail from './child-segment-detail'
+import ChildSegmentList from './child-segment-list'
+import BatchAction from './common/batch-action'
+import FullScreenDrawer from './common/full-screen-drawer'
+import DisplayToggle from './display-toggle'
+import NewChildSegment from './new-child-segment'
+import SegmentCard from './segment-card'
+import SegmentDetail from './segment-detail'
+import SegmentList from './segment-list'
+import StatusItem from './status-item'
+import s from './style.module.css'
 
 const DEFAULT_LIMIT = 10
 
@@ -61,7 +64,7 @@ type CurrChildChunkType = {
   showModal: boolean
 }
 
-type SegmentListContextValue = {
+export type SegmentListContextValue = {
   isCollapsed: boolean
   fullScreen: boolean
   toggleFullScreen: (fullscreen?: boolean) => void
@@ -105,7 +108,6 @@ const Completed: FC<ICompletedProps> = ({
   const datasetId = useDocumentContext(s => s.datasetId) || ''
   const documentId = useDocumentContext(s => s.documentId) || ''
   const docForm = useDocumentContext(s => s.docForm)
-  const mode = useDocumentContext(s => s.mode)
   const parentMode = useDocumentContext(s => s.parentMode)
   // the current segment id and whether to show the modal
   const [currSegment, setCurrSegment] = useState<CurrSegmentType>({ showModal: false })
@@ -125,14 +127,15 @@ const Completed: FC<ICompletedProps> = ({
   const [limit, setLimit] = useState(DEFAULT_LIMIT)
   const [fullScreen, setFullScreen] = useState(false)
   const [showNewChildSegmentModal, setShowNewChildSegmentModal] = useState(false)
+  const [isRegenerationModalOpen, setIsRegenerationModalOpen] = useState(false)
 
   const segmentListRef = useRef<HTMLDivElement>(null)
   const childSegmentListRef = useRef<HTMLDivElement>(null)
   const needScrollToBottom = useRef(false)
   const statusList = useRef<Item[]>([
-    { value: 'all', name: t('datasetDocuments.list.index.all') },
-    { value: 0, name: t('datasetDocuments.list.status.disabled') },
-    { value: 1, name: t('datasetDocuments.list.status.enabled') },
+    { value: 'all', name: t('list.index.all', { ns: 'datasetDocuments' }) },
+    { value: 0, name: t('list.status.disabled', { ns: 'datasetDocuments' }) },
+    { value: 1, name: t('list.status.enabled', { ns: 'datasetDocuments' }) },
   ])
 
   const { run: handleSearch } = useDebounceFn(() => {
@@ -151,10 +154,10 @@ const Completed: FC<ICompletedProps> = ({
   }
 
   const isFullDocMode = useMemo(() => {
-    return mode === 'hierarchical' && parentMode === 'full-doc'
-  }, [mode, parentMode])
+    return docForm === ChunkingMode.parentChild && parentMode === 'full-doc'
+  }, [docForm, parentMode])
 
-  const { isFetching: isLoadingSegmentList, data: segmentListData } = useSegmentList(
+  const { isLoading: isLoadingSegmentList, data: segmentListData } = useSegmentList(
     {
       datasetId,
       documentId,
@@ -184,7 +187,7 @@ const Completed: FC<ICompletedProps> = ({
     }
   }, [segments])
 
-  const { isFetching: isLoadingChildSegmentList, data: childChunkListData } = useChildSegmentList(
+  const { isLoading: isLoadingChildSegmentList, data: childChunkListData } = useChildSegmentList(
     {
       datasetId,
       documentId,
@@ -264,7 +267,7 @@ const Completed: FC<ICompletedProps> = ({
     const operationApi = enable ? enableSegment : disableSegment
     await operationApi({ datasetId, documentId, segmentIds: segId ? [segId] : selectedSegmentIds }, {
       onSuccess: () => {
-        notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+        notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
         for (const seg of segments) {
           if (segId ? seg.id === segId : selectedSegmentIds.includes(seg.id))
             seg.enabled = enable
@@ -273,7 +276,7 @@ const Completed: FC<ICompletedProps> = ({
         refreshChunkListWithStatusChanged()
       },
       onError: () => {
-        notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+        notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
       },
     })
   }, [datasetId, documentId, selectedSegmentIds, segments, disableSegment, enableSegment, t, notify, refreshChunkListWithStatusChanged])
@@ -283,12 +286,13 @@ const Completed: FC<ICompletedProps> = ({
   const onDelete = useCallback(async (segId?: string) => {
     await deleteSegment({ datasetId, documentId, segmentIds: segId ? [segId] : selectedSegmentIds }, {
       onSuccess: () => {
-        notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+        notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
         resetList()
-        !segId && setSelectedSegmentIds([])
+        if (!segId)
+          setSelectedSegmentIds([])
       },
       onError: () => {
-        notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+        notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
       },
     })
   }, [datasetId, documentId, selectedSegmentIds, deleteSegment, resetList, t, notify])
@@ -317,21 +321,22 @@ const Completed: FC<ICompletedProps> = ({
     question: string,
     answer: string,
     keywords: string[],
+    attachments: FileEntity[],
     needRegenerate = false,
   ) => {
-    const params: SegmentUpdater = { content: '' }
+    const params: SegmentUpdater = { content: '', attachment_ids: [] }
     if (docForm === ChunkingMode.qa) {
       if (!question.trim())
-        return notify({ type: 'error', message: t('datasetDocuments.segment.questionEmpty') })
+        return notify({ type: 'error', message: t('segment.questionEmpty', { ns: 'datasetDocuments' }) })
       if (!answer.trim())
-        return notify({ type: 'error', message: t('datasetDocuments.segment.answerEmpty') })
+        return notify({ type: 'error', message: t('segment.answerEmpty', { ns: 'datasetDocuments' }) })
 
       params.content = question
       params.answer = answer
     }
     else {
       if (!question.trim())
-        return notify({ type: 'error', message: t('datasetDocuments.segment.contentEmpty') })
+        return notify({ type: 'error', message: t('segment.contentEmpty', { ns: 'datasetDocuments' }) })
 
       params.content = question
     }
@@ -339,13 +344,20 @@ const Completed: FC<ICompletedProps> = ({
     if (keywords.length)
       params.keywords = keywords
 
+    if (attachments.length) {
+      const notAllUploaded = attachments.some(item => !item.uploadedId)
+      if (notAllUploaded)
+        return notify({ type: 'error', message: t('segment.allFilesUploaded', { ns: 'datasetDocuments' }) })
+      params.attachment_ids = attachments.map(item => item.uploadedId!)
+    }
+
     if (needRegenerate)
       params.regenerate_child_chunks = needRegenerate
 
     eventEmitter?.emit('update-segment')
     await updateSegment({ datasetId, documentId, segmentId, body: params }, {
       onSuccess(res) {
-        notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+        notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
         if (!needRegenerate)
           onCloseSegmentDetail()
         for (const seg of segments) {
@@ -354,6 +366,7 @@ const Completed: FC<ICompletedProps> = ({
             seg.content = res.data.content
             seg.sign_content = res.data.sign_content
             seg.keywords = res.data.keywords
+            seg.attachments = res.data.attachments
             seg.word_count = res.data.word_count
             seg.hit_count = res.data.hit_count
             seg.enabled = res.data.enabled
@@ -413,17 +426,17 @@ const Completed: FC<ICompletedProps> = ({
     if (!isSearch) {
       const total = segmentListData?.total ? formatNumber(segmentListData.total) : '--'
       const count = total === '--' ? 0 : segmentListData!.total
-      const translationKey = (mode === 'hierarchical' && parentMode === 'paragraph')
-        ? 'datasetDocuments.segment.parentChunks'
-        : 'datasetDocuments.segment.chunks'
-      return `${total} ${t(translationKey, { count })}`
+      const translationKey = (docForm === ChunkingMode.parentChild && parentMode === 'paragraph')
+        ? 'segment.parentChunks' as const
+        : 'segment.chunks' as const
+      return `${total} ${t(translationKey, { ns: 'datasetDocuments', count })}`
     }
     else {
       const total = typeof segmentListData?.total === 'number' ? formatNumber(segmentListData.total) : 0
       const count = segmentListData?.total || 0
-      return `${total} ${t('datasetDocuments.segment.searchResults', { count })}`
+      return `${total} ${t('segment.searchResults', { ns: 'datasetDocuments', count })}`
     }
-  }, [segmentListData, mode, parentMode, searchValue, selectedStatus, t])
+  }, [segmentListData, docForm, parentMode, searchValue, selectedStatus, t])
 
   const toggleFullScreen = useCallback(() => {
     setFullScreen(!fullScreen)
@@ -439,7 +452,8 @@ const Completed: FC<ICompletedProps> = ({
     }
     else {
       resetList()
-      currentPage !== totalPages && setCurrentPage(totalPages)
+      if (currentPage !== totalPages)
+        setCurrentPage(totalPages)
     }
   }, [segmentListData, limit, currentPage, resetList])
 
@@ -450,14 +464,14 @@ const Completed: FC<ICompletedProps> = ({
       { datasetId, documentId, segmentId, childChunkId },
       {
         onSuccess: () => {
-          notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+          notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
           if (parentMode === 'paragraph')
             resetList()
           else
             resetChildList()
         },
         onError: () => {
-          notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+          notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
         },
       },
     )
@@ -492,7 +506,8 @@ const Completed: FC<ICompletedProps> = ({
     }
     else {
       resetChildList()
-      currentPage !== totalPages && setCurrentPage(totalPages)
+      if (currentPage !== totalPages)
+        setCurrentPage(totalPages)
     }
   }, [childChunkListData, limit, currentPage, resetChildList])
 
@@ -515,14 +530,14 @@ const Completed: FC<ICompletedProps> = ({
   ) => {
     const params: SegmentUpdater = { content: '' }
     if (!content.trim())
-      return notify({ type: 'error', message: t('datasetDocuments.segment.contentEmpty') })
+      return notify({ type: 'error', message: t('segment.contentEmpty', { ns: 'datasetDocuments' }) })
 
     params.content = content
 
     eventEmitter?.emit('update-child-segment')
     await updateChildSegment({ datasetId, documentId, segmentId, childChunkId, body: params }, {
       onSuccess: (res) => {
-        notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+        notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
         onCloseChildSegmentDetail()
         if (parentMode === 'paragraph') {
           for (const seg of segments) {
@@ -570,88 +585,96 @@ const Completed: FC<ICompletedProps> = ({
       toggleFullScreen,
       currSegment,
       currChildChunk,
-    }}>
+    }}
+    >
       {/* Menu Bar */}
-      {!isFullDocMode && <div className={s.docSearchWrapper}>
-        <Checkbox
-          className='shrink-0'
-          checked={isAllSelected}
-          indeterminate={!isAllSelected && isSomeSelected}
-          onCheck={onSelectedAll}
-          disabled={isLoadingSegmentList}
-        />
-        <div className={'system-sm-semibold-uppercase flex-1 pl-5 text-text-secondary'}>{totalText}</div>
-        <SimpleSelect
-          onSelect={onChangeStatus}
-          items={statusList.current}
-          defaultValue={selectDefaultValue}
-          className={s.select}
-          wrapperClassName='h-fit mr-2'
-          optionWrapClassName='w-[160px]'
-          optionClassName='p-0'
-          renderOption={({ item, selected }) => <StatusItem item={item} selected={selected} />}
-          notClearable
-        />
-        <Input
-          showLeftIcon
-          showClearIcon
-          wrapperClassName='!w-52'
-          value={inputValue}
-          onChange={e => handleInputChange(e.target.value)}
-          onClear={() => handleInputChange('')}
-        />
-        <Divider type='vertical' className='mx-3 h-3.5' />
-        <DisplayToggle isCollapsed={isCollapsed} toggleCollapsed={() => setIsCollapsed(!isCollapsed)} />
-      </div>}
+      {!isFullDocMode && (
+        <div className={s.docSearchWrapper}>
+          <Checkbox
+            className="shrink-0"
+            checked={isAllSelected}
+            indeterminate={!isAllSelected && isSomeSelected}
+            onCheck={onSelectedAll}
+            disabled={isLoadingSegmentList}
+          />
+          <div className="system-sm-semibold-uppercase flex-1 pl-5 text-text-secondary">{totalText}</div>
+          <SimpleSelect
+            onSelect={onChangeStatus}
+            items={statusList.current}
+            defaultValue={selectDefaultValue}
+            className={s.select}
+            wrapperClassName="h-fit mr-2"
+            optionWrapClassName="w-[160px]"
+            optionClassName="p-0"
+            renderOption={({ item, selected }) => <StatusItem item={item} selected={selected} />}
+            notClearable
+          />
+          <Input
+            showLeftIcon
+            showClearIcon
+            wrapperClassName="!w-52"
+            value={inputValue}
+            onChange={e => handleInputChange(e.target.value)}
+            onClear={() => handleInputChange('')}
+          />
+          <Divider type="vertical" className="mx-3 h-3.5" />
+          <DisplayToggle isCollapsed={isCollapsed} toggleCollapsed={() => setIsCollapsed(!isCollapsed)} />
+        </div>
+      )}
       {/* Segment list */}
       {
         isFullDocMode
-          ? <div className={cn(
-            'flex grow flex-col overflow-x-hidden',
-            (isLoadingSegmentList || isLoadingChildSegmentList) ? 'overflow-y-hidden' : 'overflow-y-auto',
-          )}>
-            <SegmentCard
-              detail={segments[0]}
-              onClick={() => onClickCard(segments[0])}
-              loading={isLoadingSegmentList}
-              focused={{
-                segmentIndex: currSegment?.segInfo?.id === segments[0]?.id,
-                segmentContent: currSegment?.segInfo?.id === segments[0]?.id,
-              }}
-            />
-            <ChildSegmentList
-              parentChunkId={segments[0]?.id}
-              onDelete={onDeleteChildChunk}
-              childChunks={childSegments}
-              handleInputChange={handleInputChange}
-              handleAddNewChildChunk={handleAddNewChildChunk}
-              onClickSlice={onClickSlice}
-              enabled={!archived}
-              total={childChunkListData?.total || 0}
-              inputValue={inputValue}
-              onClearFilter={onClearFilter}
-              isLoading={isLoadingSegmentList || isLoadingChildSegmentList}
-            />
-          </div>
-          : <SegmentList
-            ref={segmentListRef}
-            embeddingAvailable={embeddingAvailable}
-            isLoading={isLoadingSegmentList}
-            items={segments}
-            selectedSegmentIds={selectedSegmentIds}
-            onSelected={onSelected}
-            onChangeSwitch={onChangeSwitch}
-            onDelete={onDelete}
-            onClick={onClickCard}
-            archived={archived}
-            onDeleteChildChunk={onDeleteChildChunk}
-            handleAddNewChildChunk={handleAddNewChildChunk}
-            onClickSlice={onClickSlice}
-            onClearFilter={onClearFilter}
-          />
+          ? (
+              <div className={cn(
+                'flex grow flex-col overflow-x-hidden',
+                (isLoadingSegmentList || isLoadingChildSegmentList) ? 'overflow-y-hidden' : 'overflow-y-auto',
+              )}
+              >
+                <SegmentCard
+                  detail={segments[0]}
+                  onClick={() => onClickCard(segments[0])}
+                  loading={isLoadingSegmentList}
+                  focused={{
+                    segmentIndex: currSegment?.segInfo?.id === segments[0]?.id,
+                    segmentContent: currSegment?.segInfo?.id === segments[0]?.id,
+                  }}
+                />
+                <ChildSegmentList
+                  parentChunkId={segments[0]?.id}
+                  onDelete={onDeleteChildChunk}
+                  childChunks={childSegments}
+                  handleInputChange={handleInputChange}
+                  handleAddNewChildChunk={handleAddNewChildChunk}
+                  onClickSlice={onClickSlice}
+                  enabled={!archived}
+                  total={childChunkListData?.total || 0}
+                  inputValue={inputValue}
+                  onClearFilter={onClearFilter}
+                  isLoading={isLoadingSegmentList || isLoadingChildSegmentList}
+                />
+              </div>
+            )
+          : (
+              <SegmentList
+                ref={segmentListRef}
+                embeddingAvailable={embeddingAvailable}
+                isLoading={isLoadingSegmentList}
+                items={segments}
+                selectedSegmentIds={selectedSegmentIds}
+                onSelected={onSelected}
+                onChangeSwitch={onChangeSwitch}
+                onDelete={onDelete}
+                onClick={onClickCard}
+                archived={archived}
+                onDeleteChildChunk={onDeleteChildChunk}
+                handleAddNewChildChunk={handleAddNewChildChunk}
+                onClickSlice={onClickSlice}
+                onClearFilter={onClearFilter}
+              />
+            )
       }
       {/* Pagination */}
-      <Divider type='horizontal' className='mx-6 my-0 h-px w-auto bg-divider-subtle' />
+      <Divider type="horizontal" className="mx-6 my-0 h-px w-auto bg-divider-subtle" />
       <Pagination
         current={currentPage - 1}
         onChange={cur => setCurrentPage(cur + 1)}
@@ -665,13 +688,18 @@ const Completed: FC<ICompletedProps> = ({
         isOpen={currSegment.showModal}
         fullScreen={fullScreen}
         onClose={onCloseSegmentDetail}
+        showOverlay={false}
+        needCheckChunks
+        modal={isRegenerationModalOpen}
       >
         <SegmentDetail
+          key={currSegment.segInfo?.id}
           segInfo={currSegment.segInfo ?? { id: '' }}
           docForm={docForm}
           isEditMode={currSegment.isEditMode}
           onUpdate={handleUpdateSegment}
           onCancel={onCloseSegmentDetail}
+          onModalStateChange={setIsRegenerationModalOpen}
         />
       </FullScreenDrawer>
       {/* Create New Segment */}
@@ -679,6 +707,7 @@ const Completed: FC<ICompletedProps> = ({
         isOpen={showNewSegmentModal}
         fullScreen={fullScreen}
         onClose={onCloseNewSegmentModal}
+        modal
       >
         <NewSegment
           docForm={docForm}
@@ -692,8 +721,11 @@ const Completed: FC<ICompletedProps> = ({
         isOpen={currChildChunk.showModal}
         fullScreen={fullScreen}
         onClose={onCloseChildSegmentDetail}
+        showOverlay={false}
+        needCheckChunks
       >
         <ChildSegmentDetail
+          key={currChildChunk.childChunkInfo?.id}
           chunkId={currChunkId}
           childChunkInfo={currChildChunk.childChunkInfo ?? { id: '' }}
           docForm={docForm}
@@ -706,6 +738,7 @@ const Completed: FC<ICompletedProps> = ({
         isOpen={showNewChildSegmentModal}
         fullScreen={fullScreen}
         onClose={onCloseNewChildChunkModal}
+        modal
       >
         <NewChildSegment
           chunkId={currChunkId}
@@ -715,15 +748,16 @@ const Completed: FC<ICompletedProps> = ({
         />
       </FullScreenDrawer>
       {/* Batch Action Buttons */}
-      {selectedSegmentIds.length > 0
-        && <BatchAction
-          className='absolute bottom-16 left-0 z-20'
+      {selectedSegmentIds.length > 0 && (
+        <BatchAction
+          className="absolute bottom-16 left-0 z-20"
           selectedIds={selectedSegmentIds}
           onBatchEnable={onChangeSwitch.bind(null, true, '')}
           onBatchDisable={onChangeSwitch.bind(null, false, '')}
           onBatchDelete={onDelete.bind(null, '')}
           onCancel={onCancelBatchOperation}
-        />}
+        />
+      )}
     </SegmentListContext.Provider>
   )
 }

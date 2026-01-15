@@ -1,40 +1,18 @@
-from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any
 
+from jsonschema import Draft7Validator, ValidationError
+
+from core.app.app_config.entities import VariableEntityType
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
-from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.nodes.base import BaseNode
-from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
-from core.workflow.nodes.enums import ErrorStrategy, NodeType
+from core.workflow.enums import NodeExecutionType, NodeType, WorkflowNodeExecutionStatus
+from core.workflow.node_events import NodeRunResult
+from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.start.entities import StartNodeData
 
 
-class StartNode(BaseNode):
-    _node_type = NodeType.START
-
-    _node_data: StartNodeData
-
-    def init_node_data(self, data: Mapping[str, Any]) -> None:
-        self._node_data = StartNodeData(**data)
-
-    def _get_error_strategy(self) -> Optional[ErrorStrategy]:
-        return self._node_data.error_strategy
-
-    def _get_retry_config(self) -> RetryConfig:
-        return self._node_data.retry_config
-
-    def _get_title(self) -> str:
-        return self._node_data.title
-
-    def _get_description(self) -> Optional[str]:
-        return self._node_data.desc
-
-    def _get_default_value_dict(self) -> dict[str, Any]:
-        return self._node_data.default_value_dict
-
-    def get_base_node_data(self) -> BaseNodeData:
-        return self._node_data
+class StartNode(Node[StartNodeData]):
+    node_type = NodeType.START
+    execution_type = NodeExecutionType.ROOT
 
     @classmethod
     def version(cls) -> str:
@@ -42,6 +20,7 @@ class StartNode(BaseNode):
 
     def _run(self) -> NodeRunResult:
         node_inputs = dict(self.graph_runtime_state.variable_pool.user_inputs)
+        self._validate_and_normalize_json_object_inputs(node_inputs)
         system_inputs = self.graph_runtime_state.variable_pool.system_variables.to_dict()
 
         # TODO: System variables should be directly accessible, no need for special handling
@@ -51,3 +30,34 @@ class StartNode(BaseNode):
         outputs = dict(node_inputs)
 
         return NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs=node_inputs, outputs=outputs)
+
+    def _validate_and_normalize_json_object_inputs(self, node_inputs: dict[str, Any]) -> None:
+        for variable in self.node_data.variables:
+            if variable.type != VariableEntityType.JSON_OBJECT:
+                continue
+
+            key = variable.variable
+            value = node_inputs.get(key)
+
+            if value is None and variable.required:
+                raise ValueError(f"{key} is required in input form")
+
+            # If no value provided, skip further processing for this key
+            if not value:
+                continue
+
+            if not isinstance(value, dict):
+                raise ValueError(f"JSON object for '{key}' must be an object")
+
+            # Overwrite with normalized dict to ensure downstream consistency
+            node_inputs[key] = value
+
+            # If schema exists, then validate against it
+            schema = variable.json_schema
+            if not schema:
+                continue
+
+            try:
+                Draft7Validator(schema).validate(value)
+            except ValidationError as e:
+                raise ValueError(f"JSON object for '{key}' does not match schema: {e.message}")

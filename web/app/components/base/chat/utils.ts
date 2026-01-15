@@ -1,6 +1,6 @@
-import { UUID_NIL } from './constants'
 import type { IChatItem } from './chat/type'
 import type { ChatItem, ChatItemInTree } from './types'
+import { UUID_NIL } from './constants'
 
 async function decodeBase64AndDecompress(base64String: string) {
   try {
@@ -43,6 +43,16 @@ async function getProcessedInputsFromUrlParams(): Promise<Record<string, any>> {
 
 async function getProcessedSystemVariablesFromUrlParams(): Promise<Record<string, any>> {
   const urlParams = new URLSearchParams(window.location.search)
+  const redirectUrl = urlParams.get('redirect_url')
+  if (redirectUrl) {
+    const decodedRedirectUrl = decodeURIComponent(redirectUrl)
+    const queryString = decodedRedirectUrl.split('?')[1]
+    if (queryString) {
+      const redirectParams = new URLSearchParams(queryString)
+      for (const [key, value] of redirectParams.entries())
+        urlParams.set(key, value)
+    }
+  }
   const systemVariables: Record<string, any> = {}
   const entriesArray = Array.from(urlParams.entries())
   await Promise.all(
@@ -144,10 +154,12 @@ function buildChatItemTree(allMessages: IChatItem[]): ChatItemInTree[] {
       if (
         !parentMessageId
         || !allMessages.some(item => item.id === parentMessageId) // parent message might not be fetched yet, in this case we will append the question to the root nodes
-      )
+      ) {
         rootNodes.push(questionNode)
-      else
+      }
+      else {
         map[parentMessageId]?.children!.push(questionNode)
+      }
     }
   }
 
@@ -221,13 +233,13 @@ function getThreadMessages(tree: ChatItemInTree[], targetMessageId?: string): Ch
 }
 
 export {
-  getRawInputsFromUrlParams,
+  buildChatItemTree,
+  getLastAnswer,
   getProcessedInputsFromUrlParams,
   getProcessedSystemVariablesFromUrlParams,
   getProcessedUserVariablesFromUrlParams,
+  getRawInputsFromUrlParams,
   getRawUserVariablesFromUrlParams,
-  isValidGeneratedAnswer,
-  getLastAnswer,
-  buildChatItemTree,
   getThreadMessages,
+  isValidGeneratedAnswer,
 }

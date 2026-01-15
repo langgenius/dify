@@ -1,10 +1,10 @@
-import { useState } from 'react'
-import Operate from './Operate'
-import KeyInput from './KeyInput'
-import { useValidate } from './hooks'
 import type { Form, KeyFrom, Status, ValidateValue } from './declarations'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { useState } from 'react'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { useValidate } from './hooks'
+import KeyInput from './KeyInput'
+import Operate from './Operate'
 
 export type KeyValidatorProps = {
   type: string
@@ -75,10 +75,11 @@ const KeyValidator = ({
   }
 
   return (
-    <div className='mb-2 rounded-md border-[0.5px] border-gray-200 bg-gray-50'>
+    <div className="mb-2 rounded-md border-[0.5px] border-gray-200 bg-gray-50">
       <div className={
         `flex h-[52px] cursor-pointer items-center justify-between px-4 ${isOpen && 'border-b-[0.5px] border-b-gray-200'}`
-      }>
+      }
+      >
         {title}
         <Operate
           isOpen={isOpen}
@@ -92,12 +93,12 @@ const KeyValidator = ({
       </div>
       {
         isOpen && !disabled && (
-          <div className='px-4 py-3'>
+          <div className="px-4 py-3">
             {
               forms.map(form => (
                 <KeyInput
                   key={form.key}
-                  className='mb-4'
+                  className="mb-4"
                   name={form.title}
                   placeholder={form.placeholder}
                   value={value[form.key] as string || ''}
@@ -108,9 +109,9 @@ const KeyValidator = ({
                 />
               ))
             }
-            <a className="flex cursor-pointer items-center text-xs text-primary-600" href={keyFrom.link} target='_blank' rel='noopener noreferrer'>
+            <a className="flex cursor-pointer items-center text-xs text-primary-600" href={keyFrom.link} target="_blank" rel="noopener noreferrer">
               {keyFrom.text}
-              <LinkExternal02 className='ml-1 h-3 w-3 text-primary-600' />
+              <LinkExternal02 className="ml-1 h-3 w-3 text-primary-600" />
             </a>
           </div>
         )

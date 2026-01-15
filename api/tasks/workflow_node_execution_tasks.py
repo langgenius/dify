@@ -8,7 +8,7 @@ improving performance by offloading storage operations to background workers.
 import json
 import logging
 
-from celery import shared_task  # type: ignore[import-untyped]
+from celery import shared_task
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
@@ -140,9 +140,7 @@ def _create_node_execution_from_domain(
     return node_execution
 
 
-def _update_node_execution_from_domain(
-    node_execution: WorkflowNodeExecutionModel, execution: WorkflowNodeExecution
-) -> None:
+def _update_node_execution_from_domain(node_execution: WorkflowNodeExecutionModel, execution: WorkflowNodeExecution):
     """
     Update a WorkflowNodeExecutionModel database model from a WorkflowNodeExecution domain entity.
     """

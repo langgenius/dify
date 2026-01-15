@@ -1,43 +1,23 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useParams } from 'next/navigation'
-import useSWRInfinite from 'swr/infinite'
-import { flatten } from 'lodash-es'
-import produce from 'immer'
+import type { NavItem } from '../nav/nav-selector'
 import {
   RiRobot2Fill,
   RiRobot2Line,
 } from '@remixicon/react'
-import Nav from '../nav'
-import type { NavItem } from '../nav/nav-selector'
-import { fetchAppList } from '@/service/apps'
+import { flatten } from 'es-toolkit/compat'
+import { produce } from 'immer'
+import { useParams } from 'next/navigation'
+import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import CreateAppTemplateDialog from '@/app/components/app/create-app-dialog'
 import CreateAppModal from '@/app/components/app/create-app-modal'
 import CreateFromDSLModal from '@/app/components/app/create-from-dsl-modal'
-import type { AppListResponse } from '@/models/app'
-import { useAppContext } from '@/context/app-context'
 import { useStore as useAppStore } from '@/app/components/app/store'
-
-const getKey = (
-  pageIndex: number,
-  previousPageData: AppListResponse,
-  activeTab: string,
-  keywords: string,
-) => {
-  if (!pageIndex || previousPageData.has_more) {
-    const params: any = { url: 'apps', params: { page: pageIndex + 1, limit: 30, name: keywords } }
-
-    if (activeTab !== 'all')
-      params.params.mode = activeTab
-    else
-      delete params.params.mode
-
-    return params
-  }
-  return null
-}
+import { useAppContext } from '@/context/app-context'
+import { useInfiniteAppList } from '@/service/use-apps'
+import { AppModeEnum } from '@/types/app'
+import Nav from '../nav'
 
 const AppNav = () => {
   const { t } = useTranslation()
@@ -49,17 +29,21 @@ const AppNav = () => {
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(false)
   const [navItems, setNavItems] = useState<NavItem[]>([])
 
-  const { data: appsData, setSize, mutate } = useSWRInfinite(
-    appId
-      ? (pageIndex: number, previousPageData: AppListResponse) => getKey(pageIndex, previousPageData, 'all', '')
-      : () => null,
-    fetchAppList,
-    { revalidateFirstPage: false },
-  )
+  const {
+    data: appsData,
+    fetchNextPage,
+    hasNextPage,
+    refetch,
+  } = useInfiniteAppList({
+    page: 1,
+    limit: 30,
+    name: '',
+  }, { enabled: !!appId })
 
-  const handleLoadmore = useCallback(() => {
-    setSize(size => size + 1)
-  }, [setSize])
+  const handleLoadMore = useCallback(() => {
+    if (hasNextPage)
+      fetchNextPage()
+  }, [fetchNextPage, hasNextPage])
 
   const openModal = (state: string) => {
     if (state === 'blank')
@@ -72,14 +56,14 @@ const AppNav = () => {
 
   useEffect(() => {
     if (appsData) {
-      const appItems = flatten(appsData?.map(appData => appData.data))
+      const appItems = flatten((appsData.pages ?? []).map(appData => appData.data))
       const navItems = appItems.map((app) => {
         const link = ((isCurrentWorkspaceEditor, app) => {
           if (!isCurrentWorkspaceEditor) {
             return `/app/${app.id}/overview`
           }
           else {
-            if (app.mode === 'workflow' || app.mode === 'advanced-chat')
+            if (app.mode === AppModeEnum.WORKFLOW || app.mode === AppModeEnum.ADVANCED_CHAT)
               return `/app/${app.id}/workflow`
             else
               return `/app/${app.id}/configuration`
@@ -117,31 +101,31 @@ const AppNav = () => {
     <>
       <Nav
         isApp
-        icon={<RiRobot2Line className='h-4 w-4' />}
-        activeIcon={<RiRobot2Fill className='h-4 w-4' />}
-        text={t('common.menus.apps')}
+        icon={<RiRobot2Line className="h-4 w-4" />}
+        activeIcon={<RiRobot2Fill className="h-4 w-4" />}
+        text={t('menus.apps', { ns: 'common' })}
         activeSegment={['apps', 'app']}
-        link='/apps'
-        curNav={appDetail as any}
-        navs={navItems}
-        createText={t('common.menus.newApp')}
+        link="/apps"
+        curNav={appDetail}
+        navigationItems={navItems}
+        createText={t('menus.newApp', { ns: 'common' })}
         onCreate={openModal}
-        onLoadmore={handleLoadmore}
+        onLoadMore={handleLoadMore}
       />
       <CreateAppModal
         show={showNewAppDialog}
         onClose={() => setShowNewAppDialog(false)}
-        onSuccess={() => mutate()}
+        onSuccess={() => refetch()}
       />
       <CreateAppTemplateDialog
         show={showNewAppTemplateDialog}
         onClose={() => setShowNewAppTemplateDialog(false)}
-        onSuccess={() => mutate()}
+        onSuccess={() => refetch()}
       />
       <CreateFromDSLModal
         show={showCreateFromDSLModal}
         onClose={() => setShowCreateFromDSLModal(false)}
-        onSuccess={() => mutate()}
+        onSuccess={() => refetch()}
       />
     </>
   )

@@ -1,4 +1,4 @@
-from flask_restful import fields
+from flask_restx import fields
 
 from fields.dataset_fields import dataset_fields
 from libs.helper import TimestampField

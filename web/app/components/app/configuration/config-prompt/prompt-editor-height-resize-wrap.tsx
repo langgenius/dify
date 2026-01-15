@@ -1,8 +1,9 @@
 'use client'
-import React, { useCallback, useEffect, useState } from 'react'
 import type { FC } from 'react'
 import { useDebounceFn } from 'ahooks'
-import cn from '@/utils/classnames'
+import * as React from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   className?: string
@@ -25,7 +26,7 @@ const PromptEditorHeightResizeWrap: FC<Props> = ({
 }) => {
   const [clientY, setClientY] = useState(0)
   const [isResizing, setIsResizing] = useState(false)
-  const [prevUserSelectStyle, setPrevUserSelectStyle] = useState(getComputedStyle(document.body).userSelect)
+  const [prevUserSelectStyle, setPrevUserSelectStyle] = useState(() => getComputedStyle(document.body).userSelect)
   const [oldHeight, setOldHeight] = useState(height)
 
   const handleStartResize = useCallback((e: React.MouseEvent<HTMLElement>) => {
@@ -72,9 +73,10 @@ const PromptEditorHeightResizeWrap: FC<Props> = ({
 
   return (
     <div
-      className='relative'
+      className="relative"
     >
-      <div className={cn(className, 'overflow-y-auto')}
+      <div
+        className={cn(className, 'overflow-y-auto')}
         style={{
           height,
         }}
@@ -85,9 +87,10 @@ const PromptEditorHeightResizeWrap: FC<Props> = ({
       {footer}
       {!hideResize && (
         <div
-          className='absolute bottom-0 left-0 flex h-2 w-full cursor-row-resize justify-center'
-          onMouseDown={handleStartResize}>
-          <div className='h-[3px] w-5 rounded-sm bg-gray-300'></div>
+          className="absolute bottom-0 left-0 flex h-2 w-full cursor-row-resize justify-center"
+          onMouseDown={handleStartResize}
+        >
+          <div className="h-[3px] w-5 rounded-sm bg-gray-300"></div>
         </div>
       )}
     </div>

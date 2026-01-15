@@ -1,20 +1,29 @@
 """Paragraph index processor."""
 
+import json
 import uuid
-from typing import Optional
+from collections.abc import Mapping
+from typing import Any
 
 from configs import dify_config
 from core.model_manager import ModelInstance
 from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.datasource.vdb.vector_factory import Vector
+from core.rag.docstore.dataset_docstore import DatasetDocumentStore
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.extract_processor import ExtractProcessor
+from core.rag.index_processor.constant.doc_type import DocType
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
-from core.rag.models.document import ChildDocument, Document
+from core.rag.models.document import AttachmentDocument, ChildDocument, Document, ParentChildStructureChunk
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
 from libs import helper
-from models.dataset import ChildChunk, Dataset, DocumentSegment
+from models import Account
+from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment
+from models.dataset import Document as DatasetDocument
+from services.account_service import AccountService
 from services.entities.knowledge_entities.knowledge_entities import ParentMode, Rule
 
 
@@ -29,14 +38,14 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
 
         return text_docs
 
-    def transform(self, documents: list[Document], **kwargs) -> list[Document]:
+    def transform(self, documents: list[Document], current_user: Account | None = None, **kwargs) -> list[Document]:
         process_rule = kwargs.get("process_rule")
         if not process_rule:
             raise ValueError("No process rule found.")
         if not process_rule.get("rules"):
             raise ValueError("No rules found in process rule.")
-        rules = Rule(**process_rule.get("rules"))
-        all_documents = []  # type: ignore
+        rules = Rule.model_validate(process_rule.get("rules"))
+        all_documents: list[Document] = []
         if rules.parent_mode == ParentMode.PARAGRAPH:
             # Split the text documents into nodes.
             if not rules.segmentation:
@@ -71,6 +80,9 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                             page_content = page_content
                         if len(page_content) > 0:
                             document_node.page_content = page_content
+                            multimodel_documents = self._get_content_files(document_node, current_user)
+                            if multimodel_documents:
+                                document_node.attachments = multimodel_documents
                             # parse document to child nodes
                             child_nodes = self._split_child_nodes(
                                 document_node, rules, process_rule.get("mode"), kwargs.get("embedding_model_instance")
@@ -81,6 +93,9 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         elif rules.parent_mode == ParentMode.FULL_DOC:
             page_content = "\n".join([document.page_content for document in documents])
             document = Document(page_content=page_content, metadata=documents[0].metadata)
+            multimodel_documents = self._get_content_files(document)
+            if multimodel_documents:
+                document.attachments = multimodel_documents
             # parse document to child nodes
             child_nodes = self._split_child_nodes(
                 document, rules, process_rule.get("mode"), kwargs.get("embedding_model_instance")
@@ -98,50 +113,74 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
 
         return all_documents
 
-    def load(self, dataset: Dataset, documents: list[Document], with_keywords: bool = True, **kwargs):
+    def load(
+        self,
+        dataset: Dataset,
+        documents: list[Document],
+        multimodal_documents: list[AttachmentDocument] | None = None,
+        with_keywords: bool = True,
+        **kwargs,
+    ):
         if dataset.indexing_technique == "high_quality":
             vector = Vector(dataset)
             for document in documents:
                 child_documents = document.children
                 if child_documents:
                     formatted_child_documents = [
-                        Document(**child_document.model_dump()) for child_document in child_documents
+                        Document.model_validate(child_document.model_dump()) for child_document in child_documents
                     ]
                     vector.create(formatted_child_documents)
+            if multimodal_documents and dataset.is_multimodal:
+                vector.create_multimodal(multimodal_documents)
 
-    def clean(self, dataset: Dataset, node_ids: Optional[list[str]], with_keywords: bool = True, **kwargs):
+    def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs):
         # node_ids is segment's node_ids
         if dataset.indexing_technique == "high_quality":
             delete_child_chunks = kwargs.get("delete_child_chunks") or False
+            precomputed_child_node_ids = kwargs.get("precomputed_child_node_ids")
             vector = Vector(dataset)
+
             if node_ids:
-                child_node_ids = (
-                    db.session.query(ChildChunk.index_node_id)
-                    .join(DocumentSegment, ChildChunk.segment_id == DocumentSegment.id)
-                    .where(
-                        DocumentSegment.dataset_id == dataset.id,
-                        DocumentSegment.index_node_id.in_(node_ids),
-                        ChildChunk.dataset_id == dataset.id,
+                # Use precomputed child_node_ids if available (to avoid race conditions)
+                if precomputed_child_node_ids is not None:
+                    child_node_ids = precomputed_child_node_ids
+                else:
+                    # Fallback to original query (may fail if segments are already deleted)
+                    child_node_ids = (
+                        db.session.query(ChildChunk.index_node_id)
+                        .join(DocumentSegment, ChildChunk.segment_id == DocumentSegment.id)
+                        .where(
+                            DocumentSegment.dataset_id == dataset.id,
+                            DocumentSegment.index_node_id.in_(node_ids),
+                            ChildChunk.dataset_id == dataset.id,
+                        )
+                        .all()
                     )
-                    .all()
-                )
-                child_node_ids = [child_node_id[0] for child_node_id in child_node_ids]
-                vector.delete_by_ids(child_node_ids)
-                if delete_child_chunks:
+                    child_node_ids = [child_node_id[0] for child_node_id in child_node_ids if child_node_id[0]]
+
+                # Delete from vector index
+                if child_node_ids:
+                    vector.delete_by_ids(child_node_ids)
+
+                # Delete from database
+                if delete_child_chunks and child_node_ids:
                     db.session.query(ChildChunk).where(
                         ChildChunk.dataset_id == dataset.id, ChildChunk.index_node_id.in_(child_node_ids)
-                    ).delete()
+                    ).delete(synchronize_session=False)
                     db.session.commit()
             else:
                 vector.delete()
 
                 if delete_child_chunks:
-                    db.session.query(ChildChunk).where(ChildChunk.dataset_id == dataset.id).delete()
+                    # Use existing compound index: (tenant_id, dataset_id, ...)
+                    db.session.query(ChildChunk).where(
+                        ChildChunk.tenant_id == dataset.tenant_id, ChildChunk.dataset_id == dataset.id
+                    ).delete(synchronize_session=False)
                     db.session.commit()
 
     def retrieve(
         self,
-        retrieval_method: str,
+        retrieval_method: RetrievalMethod,
         query: str,
         dataset: Dataset,
         top_k: int,
@@ -162,7 +201,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         for result in results:
             metadata = result.metadata
             metadata["score"] = result.score
-            if result.score > score_threshold:
+            if result.score >= score_threshold:
                 doc = Document(page_content=result.page_content, metadata=metadata)
                 docs.append(doc)
         return docs
@@ -172,7 +211,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         document_node: Document,
         rules: Rule,
         process_rule_mode: str,
-        embedding_model_instance: Optional[ModelInstance],
+        embedding_model_instance: ModelInstance | None,
     ) -> list[ChildDocument]:
         if not rules.subchunk_segmentation:
             raise ValueError("No subchunk segmentation found in rules.")
@@ -202,3 +241,88 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                     child_document.page_content = child_page_content
                     child_nodes.append(child_document)
         return child_nodes
+
+    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any):
+        parent_childs = ParentChildStructureChunk.model_validate(chunks)
+        documents = []
+        for parent_child in parent_childs.parent_child_chunks:
+            metadata = {
+                "dataset_id": dataset.id,
+                "document_id": document.id,
+                "doc_id": str(uuid.uuid4()),
+                "doc_hash": helper.generate_text_hash(parent_child.parent_content),
+            }
+            child_documents = []
+            for child in parent_child.child_contents:
+                child_metadata = {
+                    "dataset_id": dataset.id,
+                    "document_id": document.id,
+                    "doc_id": str(uuid.uuid4()),
+                    "doc_hash": helper.generate_text_hash(child),
+                }
+                child_documents.append(ChildDocument(page_content=child, metadata=child_metadata))
+            doc = Document(page_content=parent_child.parent_content, metadata=metadata, children=child_documents)
+            if parent_child.files and len(parent_child.files) > 0:
+                attachments = []
+                for file in parent_child.files:
+                    file_metadata = {
+                        "doc_id": file.id,
+                        "doc_hash": "",
+                        "document_id": document.id,
+                        "dataset_id": dataset.id,
+                        "doc_type": DocType.IMAGE,
+                    }
+                    file_document = AttachmentDocument(page_content=file.filename or "", metadata=file_metadata)
+                    attachments.append(file_document)
+                doc.attachments = attachments
+            else:
+                account = AccountService.load_user(document.created_by)
+                if not account:
+                    raise ValueError("Invalid account")
+                doc.attachments = self._get_content_files(doc, current_user=account)
+            documents.append(doc)
+        if documents:
+            # update document parent mode
+            dataset_process_rule = DatasetProcessRule(
+                dataset_id=dataset.id,
+                mode="hierarchical",
+                rules=json.dumps(
+                    {
+                        "parent_mode": parent_childs.parent_mode,
+                    }
+                ),
+                created_by=document.created_by,
+            )
+            db.session.add(dataset_process_rule)
+            db.session.flush()
+            document.dataset_process_rule_id = dataset_process_rule.id
+            db.session.commit()
+            # save node to document segment
+            doc_store = DatasetDocumentStore(dataset=dataset, user_id=document.created_by, document_id=document.id)
+            # add document segments
+            doc_store.add_documents(docs=documents, save_child=True)
+            if dataset.indexing_technique == "high_quality":
+                all_child_documents = []
+                all_multimodal_documents = []
+                for doc in documents:
+                    if doc.children:
+                        all_child_documents.extend(doc.children)
+                    if doc.attachments:
+                        all_multimodal_documents.extend(doc.attachments)
+                vector = Vector(dataset)
+                if all_child_documents:
+                    vector.create(all_child_documents)
+                if all_multimodal_documents and dataset.is_multimodal:
+                    vector.create_multimodal(all_multimodal_documents)
+
+    def format_preview(self, chunks: Any) -> Mapping[str, Any]:
+        parent_childs = ParentChildStructureChunk.model_validate(chunks)
+        preview = []
+        for parent_child in parent_childs.parent_child_chunks:
+            preview.append({"content": parent_child.parent_content, "child_chunks": parent_child.child_contents})
+        return {
+            "chunk_structure": IndexStructureType.PARENT_CHILD_INDEX,
+            "parent_mode": parent_childs.parent_mode,
+            "preview": preview,
+            "total_segments": len(parent_childs.parent_child_chunks),
+        }

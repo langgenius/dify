@@ -1,8 +1,10 @@
 import logging
+from typing import Any
 
-from flask_restful import reqparse
+from pydantic import BaseModel
 from werkzeug.exceptions import InternalServerError
 
+from controllers.common.schema import register_schema_model
 from controllers.console.app.error import (
     CompletionRequestError,
     ProviderModelCurrentlyNotSupportError,
@@ -20,30 +22,43 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from core.model_runtime.errors.invoke import InvokeError
+from core.workflow.graph_engine.manager import GraphEngineManager
 from libs import helper
-from libs.login import current_user
+from libs.login import current_account_with_tenant
 from models.model import AppMode, InstalledApp
 from services.app_generate_service import AppGenerateService
 from services.errors.llm import InvokeRateLimitError
 
+from .. import console_ns
+
 logger = logging.getLogger(__name__)
 
 
+class WorkflowRunPayload(BaseModel):
+    inputs: dict[str, Any]
+    files: list[dict[str, Any]] | None = None
+
+
+register_schema_model(console_ns, WorkflowRunPayload)
+
+
+@console_ns.route("/installed-apps/<uuid:installed_app_id>/workflows/run")
 class InstalledAppWorkflowRunApi(InstalledAppResource):
+    @console_ns.expect(console_ns.models[WorkflowRunPayload.__name__])
     def post(self, installed_app: InstalledApp):
         """
         Run workflow
         """
+        current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
+        if not app_model:
+            raise NotWorkflowAppError()
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode != AppMode.WORKFLOW:
             raise NotWorkflowAppError()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("files", type=list, required=False, location="json")
-        args = parser.parse_args()
-
+        payload = WorkflowRunPayload.model_validate(console_ns.payload or {})
+        args = payload.model_dump(exclude_none=True)
         try:
             response = AppGenerateService.generate(
                 app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True
@@ -63,20 +78,28 @@ class InstalledAppWorkflowRunApi(InstalledAppResource):
         except ValueError as e:
             raise e
         except Exception:
-            logging.exception("internal server error.")
+            logger.exception("internal server error.")
             raise InternalServerError()
 
 
+@console_ns.route("/installed-apps/<uuid:installed_app_id>/workflows/tasks/<string:task_id>/stop")
 class InstalledAppWorkflowTaskStopApi(InstalledAppResource):
     def post(self, installed_app: InstalledApp, task_id: str):
         """
         Stop workflow task
         """
         app_model = installed_app.app
+        if not app_model:
+            raise NotWorkflowAppError()
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode != AppMode.WORKFLOW:
             raise NotWorkflowAppError()
 
-        AppQueueManager.set_stop_flag(task_id, InvokeFrom.EXPLORE, current_user.id)
+        # Stop using both mechanisms for backward compatibility
+        # Legacy stop flag mechanism (without user check)
+        AppQueueManager.set_stop_flag_no_user_check(task_id)
+
+        # New graph engine command channel mechanism
+        GraphEngineManager.send_stop_command(task_id)
 
         return {"result": "success"}

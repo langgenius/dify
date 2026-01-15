@@ -1,10 +1,9 @@
-from typing import IO, Optional
+from typing import IO
 
 from pydantic import ConfigDict
 
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers.__base.ai_model import AIModel
-from core.plugin.impl.model import PluginModelClient
 
 
 class Speech2TextModel(AIModel):
@@ -17,7 +16,7 @@ class Speech2TextModel(AIModel):
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 
-    def invoke(self, model: str, credentials: dict, file: IO[bytes], user: Optional[str] = None) -> str:
+    def invoke(self, model: str, credentials: dict, file: IO[bytes], user: str | None = None) -> str:
         """
         Invoke speech to text model
 
@@ -28,6 +27,8 @@ class Speech2TextModel(AIModel):
         :return: text for given audio file
         """
         try:
+            from core.plugin.impl.model import PluginModelClient
+
             plugin_model_manager = PluginModelClient()
             return plugin_model_manager.invoke_speech_to_text(
                 tenant_id=self.tenant_id,

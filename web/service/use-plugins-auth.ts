@@ -1,14 +1,14 @@
+import type { FormSchema } from '@/app/components/base/form/types'
+import type {
+  Credential,
+  CredentialTypeEnum,
+} from '@/app/components/plugins/plugin-auth/types'
 import {
   useMutation,
   useQuery,
 } from '@tanstack/react-query'
 import { del, get, post } from './base'
 import { useInvalid } from './use-base'
-import type {
-  Credential,
-  CredentialTypeEnum,
-} from '@/app/components/plugins/plugin-auth/types'
-import type { FormSchema } from '@/app/components/base/form/types'
 
 const NAME_SPACE = 'plugins-auth'
 
@@ -19,10 +19,11 @@ export const useGetPluginCredentialInfo = (
     enabled: !!url,
     queryKey: [NAME_SPACE, 'credential-info', url],
     queryFn: () => get<{
-        supported_credential_types: string[]
-        credentials: Credential[]
-        is_oauth_custom_client_enabled: boolean
-      }>(url),
+      allow_custom_token?: boolean
+      supported_credential_types: string[]
+      credentials: Credential[]
+      is_oauth_custom_client_enabled: boolean
+    }>(url),
     staleTime: 0,
   })
 }
@@ -94,6 +95,7 @@ export const useGetPluginCredentialSchema = (
   url: string,
 ) => {
   return useQuery({
+    enabled: !!url,
     queryKey: [NAME_SPACE, 'credential-schema', url],
     queryFn: () => get<FormSchema[]>(url),
   })
@@ -106,11 +108,12 @@ export const useGetPluginOAuthUrl = (
     mutationKey: [NAME_SPACE, 'oauth-url', url],
     mutationFn: () => {
       return get<
-      {
-        authorization_url: string
-        state: string
-        context_id: string
-      }>(url)
+        {
+          authorization_url: string
+          state: string
+          context_id: string
+        }
+      >(url)
     },
   })
 }
@@ -119,6 +122,7 @@ export const useGetPluginOAuthClientSchema = (
   url: string,
 ) => {
   return useQuery({
+    enabled: !!url,
     queryKey: [NAME_SPACE, 'oauth-client-schema', url],
     queryFn: () => get<{
       schema: FormSchema[]
@@ -142,9 +146,9 @@ export const useSetPluginOAuthCustomClient = (
 ) => {
   return useMutation({
     mutationFn: (params: {
-        client_params: Record<string, any>
-        enable_oauth_custom_client: boolean
-      }) => {
+      client_params: Record<string, any>
+      enable_oauth_custom_client: boolean
+    }) => {
       return post<{ result: string }>(url, { body: params })
     },
   })

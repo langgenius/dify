@@ -1,6 +1,8 @@
 import time
+from collections.abc import Sequence
 
 import click
+from sqlalchemy import select
 
 import app
 from configs import dify_config
@@ -15,11 +17,9 @@ def update_tidb_serverless_status_task():
     start_at = time.perf_counter()
     try:
         # check the number of idle tidb serverless
-        tidb_serverless_list = (
-            db.session.query(TidbAuthBinding)
-            .where(TidbAuthBinding.active == False, TidbAuthBinding.status == "CREATING")
-            .all()
-        )
+        tidb_serverless_list = db.session.scalars(
+            select(TidbAuthBinding).where(TidbAuthBinding.active == False, TidbAuthBinding.status == "CREATING")
+        ).all()
         if len(tidb_serverless_list) == 0:
             return
         # update tidb serverless status
@@ -32,7 +32,7 @@ def update_tidb_serverless_status_task():
     click.echo(click.style(f"Update tidb serverless status task success latency: {end_at - start_at}", fg="green"))
 
 
-def update_clusters(tidb_serverless_list: list[TidbAuthBinding]):
+def update_clusters(tidb_serverless_list: Sequence[TidbAuthBinding]):
     try:
         # batch 20
         for i in range(0, len(tidb_serverless_list), 20):
