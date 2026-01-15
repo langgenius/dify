@@ -36,6 +36,16 @@ import useAppsQueryState from './hooks/use-apps-query-state'
 import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
 import NewAppCard from './new-app-card'
 
+// Define valid tabs at module scope to avoid re-creation on each render and stale closures
+const validTabs = new Set<string | AppModeEnum>([
+  'all',
+  AppModeEnum.WORKFLOW,
+  AppModeEnum.ADVANCED_CHAT,
+  AppModeEnum.CHAT,
+  AppModeEnum.AGENT_CHAT,
+  AppModeEnum.COMPLETION,
+])
+
 const TagManagementModal = dynamic(() => import('@/app/components/base/tag-management'), {
   ssr: false,
 })
@@ -53,6 +63,7 @@ const List = () => {
     'category',
     parseAsString.withDefault('all').withOptions({ history: 'push' }),
   )
+
   const { query: { tagIDs = [], keywords = '', isCreatedByMe: queryIsCreatedByMe = false }, setQuery } = useAppsQueryState()
   const [isCreatedByMe, setIsCreatedByMe] = useState(queryIsCreatedByMe)
   const [tagFilterValue, setTagFilterValue] = useState<string[]>(tagIDs)
