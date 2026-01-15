@@ -20,11 +20,9 @@ Rules:
   - Update the related note(s) to reflect what changed, why, and any new edge cases/tests.
   - Keep notes concise and accurate; they are meant to prevent repeated rediscovery.
 
-
 ## Skill Index
 
 Start with the section that best matches your need. Each entry lists the problems it solves plus key files/concepts so you know what to expect before opening it.
-
 
 ### Platform Foundations
 
@@ -43,7 +41,6 @@ Start with the section that best matches your need. Each entry lists the problem
   - Observability hooks
   - SSRF proxy usage
   - Core CLI commands
-
 
 ### Plugin & Extension Development
 
@@ -70,7 +67,6 @@ Start with the section that best matches your need. Each entry lists the problem
   - OAuth client bootstrap (`services/plugin/oauth_service.py`, `services/plugin/plugin_parameter_service.py`)
   - How console/API layers expose the flows
 
-
 ### Workflow Entry & Execution
 
 #### [Trigger Concepts](agent_skills/trigger.md)
@@ -86,7 +82,6 @@ Start with the section that best matches your need. Each entry lists the problem
   - Debug event bus
   - Storage/logging interactions
 
-
 ## General Reminders
 
 - All skill docs assume you follow the coding style rules below—run the lint/type/test commands before submitting changes.
@@ -94,7 +89,6 @@ Start with the section that best matches your need. Each entry lists the problem
 - If you run into cross-cutting concerns (tenancy, configuration, storage), check the infrastructure guide first; it links to most supporting modules.
 - Keep multi-tenancy and configuration central: everything flows through `configs.dify_config` and `tenant_id`.
 - When touching plugins or triggers, consult both the system overview and the specialised doc to ensure you adjust lifecycle, storage, and observability consistently.
-
 
 ## Coding Style
 
