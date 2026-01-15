@@ -57,7 +57,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 'lts/*'
+          node-version: 24
           cache: pnpm
           cache-dependency-path: ./web/pnpm-lock.yaml
 
