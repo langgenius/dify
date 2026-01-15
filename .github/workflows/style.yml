@@ -110,6 +110,7 @@ jobs:
         continue-on-error: true
 
       - name: Annotate Code
+        if: steps.changed-files.outputs.any_changed == 'true'
         uses: DerLev/eslint-annotations@51347b3a0abfb503fc8734d5ae31c4b151297fae
         with:
           eslint-report: web/eslint_report.json
