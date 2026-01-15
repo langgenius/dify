@@ -189,7 +189,7 @@ class BaseAppGenerator:
                     elif value == 0:
                         value = False
             case VariableEntityType.JSON_OBJECT:
-                if not isinstance(value, dict):
+                if value and not isinstance(value, dict):
                     raise ValueError(f"{variable_entity.variable} in input form must be a dict")
             case _:
                 raise AssertionError("this statement should be unreachable.")
