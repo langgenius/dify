@@ -80,7 +80,7 @@ class HumanInputFormApi(Resource):
 
         service = HumanInputService(db.engine)
         form = service.get_form_by_token(form_token)
-        if form is None or form.recipient_type not in {RecipientType.STANDALONE_WEB_APP, RecipientType.BACKSTAGE}:
+        if form is None:
             raise NotFoundError("Form not found")
 
         try:
