@@ -19,6 +19,7 @@ export type PanelProps = {
     right?: React.ReactNode
   }
   versionHistoryPanelProps?: VersionHistoryPanelProps
+  topOffset?: number
 }
 
 /**
@@ -69,6 +70,7 @@ const useResizeObserver = (
 const Panel: FC<PanelProps> = ({
   components,
   versionHistoryPanelProps,
+  topOffset,
 }) => {
   const selectedNode = useReactflow(useShallow((s) => {
     const nodes = s.getNodes()
@@ -128,6 +130,7 @@ const Panel: FC<PanelProps> = ({
       ref={rightPanelRef}
       tabIndex={-1}
       className={cn('absolute bottom-1 right-0 top-14 z-10 flex outline-none')}
+      style={topOffset === undefined ? undefined : { top: `${topOffset}px` }}
       key={`${isRestoring}`}
     >
       {components?.left}

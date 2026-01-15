@@ -2,7 +2,6 @@ import type { Node } from 'reactflow'
 import { memo, useCallback, useEffect, useMemo, useRef } from 'react'
 import { MiniMap } from 'reactflow'
 import UndoRedo from '../header/undo-redo'
-import { useHooksStore } from '../hooks-store'
 import { useStore } from '../store'
 import VariableInspectPanel from '../variable-inspect'
 import VariableTrigger from '../variable-inspect/trigger'
@@ -15,19 +14,16 @@ export type OperatorProps = {
 
 const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
   const bottomPanelRef = useRef<HTMLDivElement>(null)
-  const interactionMode = useHooksStore(s => s.interactionMode)
   const workflowCanvasWidth = useStore(s => s.workflowCanvasWidth)
   const rightPanelWidth = useStore(s => s.rightPanelWidth)
-  const nodePanelWidth = useStore(s => s.nodePanelWidth)
   const setBottomPanelWidth = useStore(s => s.setBottomPanelWidth)
   const setBottomPanelHeight = useStore(s => s.setBottomPanelHeight)
 
   const bottomPanelWidth = useMemo(() => {
-    const panelWidth = rightPanelWidth || nodePanelWidth
-    if (!workflowCanvasWidth || !panelWidth)
+    if (!workflowCanvasWidth || !rightPanelWidth)
       return 'auto'
-    return Math.max((workflowCanvasWidth - panelWidth), 400)
-  }, [interactionMode, nodePanelWidth, rightPanelWidth, workflowCanvasWidth])
+    return Math.max((workflowCanvasWidth - rightPanelWidth), 400)
+  }, [workflowCanvasWidth, rightPanelWidth])
 
   const getMiniMapNodeClassName = useCallback((node: Node) => {
     return node.data?.selected
