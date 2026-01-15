@@ -237,6 +237,17 @@ class QAIndexProcessor(BaseIndexProcessor):
             "total_segments": len(qa_chunks.qa_chunks),
         }
 
+    def generate_summary_preview(
+        self, tenant_id: str, preview_texts: list[PreviewDetail], summary_index_setting: dict
+    ) -> list[PreviewDetail]:
+        """
+        QA model doesn't generate summaries, so this method returns preview_texts unchanged.
+        
+        Note: QA model uses question-answer pairs, which don't require summary generation.
+        """
+        # QA model doesn't generate summaries, return as-is
+        return preview_texts
+
     def _format_qa_document(self, flask_app: Flask, tenant_id: str, document_node, all_qa_documents, document_language):
         format_documents = []
         if document_node.page_content is None or not document_node.page_content.strip():

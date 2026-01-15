@@ -1,11 +1,13 @@
 """Paragraph index processor."""
 
 import json
+import logging
 import uuid
 from collections.abc import Mapping
 from typing import Any
 
 from configs import dify_config
+from core.entities.knowledge_entities import PreviewDetail
 from core.model_manager import ModelInstance
 from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.retrieval_service import RetrievalService
@@ -26,6 +28,8 @@ from models.dataset import Document as DatasetDocument
 from services.account_service import AccountService
 from services.entities.knowledge_entities.knowledge_entities import ParentMode, Rule
 from services.summary_index_service import SummaryIndexService
+
+logger = logging.getLogger(__name__)
 
 
 class ParentChildIndexProcessor(BaseIndexProcessor):
@@ -350,3 +354,57 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
             "preview": preview,
             "total_segments": len(parent_childs.parent_child_chunks),
         }
+
+    def generate_summary_preview(
+        self, tenant_id: str, preview_texts: list[PreviewDetail], summary_index_setting: dict
+    ) -> list[PreviewDetail]:
+        """
+        For each parent chunk in preview_texts, concurrently call generate_summary to generate a summary
+        and write it to the summary attribute of PreviewDetail.
+        
+        Note: For parent-child structure, we only generate summaries for parent chunks.
+        """
+        import concurrent.futures
+
+        from flask import current_app
+
+        # Capture Flask app context for worker threads
+        flask_app = None
+        try:
+            flask_app = current_app._get_current_object()  # type: ignore
+        except RuntimeError:
+            logger.warning("No Flask application context available, summary generation may fail")
+
+        def process(preview: PreviewDetail) -> None:
+            """Generate summary for a single preview item (parent chunk)."""
+            try:
+                if flask_app:
+                    # Ensure Flask app context in worker thread
+                    with flask_app.app_context():
+                        # Use ParagraphIndexProcessor's generate_summary method
+                        from core.rag.index_processor.processor.paragraph_index_processor import ParagraphIndexProcessor
+                        summary = ParagraphIndexProcessor.generate_summary(
+                            tenant_id=tenant_id,
+                            text=preview.content,
+                            summary_index_setting=summary_index_setting,
+                        )
+                        if summary:
+                            preview.summary = summary
+                else:
+                    # Fallback: try without app context (may fail)
+                    from core.rag.index_processor.processor.paragraph_index_processor import ParagraphIndexProcessor
+                    summary = ParagraphIndexProcessor.generate_summary(
+                        tenant_id=tenant_id,
+                        text=preview.content,
+                        summary_index_setting=summary_index_setting,
+                    )
+                    if summary:
+                        preview.summary = summary
+            except Exception:
+                logger.exception("Failed to generate summary for preview")
+                # Don't fail the entire preview if summary generation fails
+                preview.summary = None
+
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            list(executor.map(process, preview_texts))
+        return preview_texts
