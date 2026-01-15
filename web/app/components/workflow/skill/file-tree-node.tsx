@@ -77,11 +77,6 @@ const FileTreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeDat
     })
   }, [isFolder, node.data.id, storeApi])
 
-  // Dropdown close handler
-  const handleDropdownClose = useCallback(() => {
-    setShowDropdown(false)
-  }, [])
-
   // More button click handler
   const handleMoreClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
@@ -164,7 +159,7 @@ const FileTreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeDat
           <PortalToFollowElemContent className="z-[100]">
             <FileOperationsMenu
               nodeId={node.data.id}
-              onClose={handleDropdownClose}
+              onClose={() => setShowDropdown(false)}
             />
           </PortalToFollowElemContent>
         </PortalToFollowElem>

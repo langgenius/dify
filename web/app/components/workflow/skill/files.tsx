@@ -92,7 +92,7 @@ const Files: React.FC<FilesProps> = ({ className }) => {
 
     // Update store for state persistence
     if (ancestors.length > 0)
-      storeApi.getState().revealFile(activeTabId, ancestors)
+      storeApi.getState().revealFile(ancestors)
 
     // Use Tree API for immediate UI update (initialOpenState only applies on first render)
     const timeoutId = setTimeout(() => {

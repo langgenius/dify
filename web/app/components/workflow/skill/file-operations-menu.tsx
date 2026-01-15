@@ -22,6 +22,30 @@ import { cn } from '@/utils/classnames'
  * - Upload Folder: Upload entire folder structure (webkitdirectory)
  */
 
+type MenuItemProps = {
+  icon: React.ElementType
+  label: string
+  onClick: () => void
+  disabled?: boolean
+}
+
+const MenuItem: React.FC<MenuItemProps> = ({ icon: Icon, label, onClick, disabled }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    disabled={disabled}
+    className={cn(
+      'flex w-full items-center gap-2 rounded-lg px-3 py-2',
+      'hover:bg-state-base-hover disabled:cursor-not-allowed disabled:opacity-50',
+    )}
+  >
+    <Icon className="size-4 text-text-tertiary" />
+    <span className="system-sm-regular text-text-secondary">
+      {label}
+    </span>
+  </button>
+)
+
 type FileOperationsMenuProps = {
   /** Target folder ID, or 'root' for root level */
   nodeId: string
@@ -121,16 +145,6 @@ const FileOperationsMenu: FC<FileOperationsMenuProps> = ({
       onClose()
     }
   }, [appId, createFolder, onClose, parentId, t])
-
-  // Handle Upload File button click
-  const handleUploadFileClick = useCallback(() => {
-    fileInputRef.current?.click()
-  }, [])
-
-  // Handle Upload Folder button click
-  const handleUploadFolderClick = useCallback(() => {
-    folderInputRef.current?.click()
-  }, [])
 
   // Handle file input change (single or multiple files)
   const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -280,72 +294,34 @@ const FileOperationsMenu: FC<FileOperationsMenuProps> = ({
         onChange={handleFolderChange}
       />
 
-      {/* New File */}
-      <button
-        type="button"
+      <MenuItem
+        icon={RiFileAddLine}
+        label={t('skillSidebar.menu.newFile')}
         onClick={handleNewFile}
         disabled={isLoading}
-        className={cn(
-          'flex w-full items-center gap-2 rounded-lg px-3 py-2',
-          'hover:bg-state-base-hover disabled:cursor-not-allowed disabled:opacity-50',
-        )}
-      >
-        <RiFileAddLine className="size-4 text-text-tertiary" />
-        <span className="system-sm-regular text-text-secondary">
-          {t('skillSidebar.menu.newFile')}
-        </span>
-      </button>
-
-      {/* New Folder */}
-      <button
-        type="button"
+      />
+      <MenuItem
+        icon={RiFolderAddLine}
+        label={t('skillSidebar.menu.newFolder')}
         onClick={handleNewFolder}
         disabled={isLoading}
-        className={cn(
-          'flex w-full items-center gap-2 rounded-lg px-3 py-2',
-          'hover:bg-state-base-hover disabled:cursor-not-allowed disabled:opacity-50',
-        )}
-      >
-        <RiFolderAddLine className="size-4 text-text-tertiary" />
-        <span className="system-sm-regular text-text-secondary">
-          {t('skillSidebar.menu.newFolder')}
-        </span>
-      </button>
+      />
 
       {/* Divider */}
       <div className="my-1 h-px bg-divider-subtle" />
 
-      {/* Upload File */}
-      <button
-        type="button"
-        onClick={handleUploadFileClick}
+      <MenuItem
+        icon={RiUploadLine}
+        label={t('skillSidebar.menu.uploadFile')}
+        onClick={() => fileInputRef.current?.click()}
         disabled={isLoading}
-        className={cn(
-          'flex w-full items-center gap-2 rounded-lg px-3 py-2',
-          'hover:bg-state-base-hover disabled:cursor-not-allowed disabled:opacity-50',
-        )}
-      >
-        <RiUploadLine className="size-4 text-text-tertiary" />
-        <span className="system-sm-regular text-text-secondary">
-          {t('skillSidebar.menu.uploadFile')}
-        </span>
-      </button>
-
-      {/* Upload Folder */}
-      <button
-        type="button"
-        onClick={handleUploadFolderClick}
+      />
+      <MenuItem
+        icon={RiFolderUploadLine}
+        label={t('skillSidebar.menu.uploadFolder')}
+        onClick={() => folderInputRef.current?.click()}
         disabled={isLoading}
-        className={cn(
-          'flex w-full items-center gap-2 rounded-lg px-3 py-2',
-          'hover:bg-state-base-hover disabled:cursor-not-allowed disabled:opacity-50',
-        )}
-      >
-        <RiFolderUploadLine className="size-4 text-text-tertiary" />
-        <span className="system-sm-regular text-text-secondary">
-          {t('skillSidebar.menu.uploadFolder')}
-        </span>
-      </button>
+      />
     </div>
   )
 }

@@ -98,7 +98,7 @@ export type FileTreeSliceShape = {
   /** Toggle a folder's expanded state */
   toggleFolder: (folderId: string) => void
   /** Reveal a file by expanding all ancestor folders */
-  revealFile: (fileId: string, ancestorFolderIds: string[]) => void
+  revealFile: (ancestorFolderIds: string[]) => void
 }
 
 export const createFileTreeSlice: StateCreator<FileTreeSliceShape> = (set, get) => ({
@@ -119,7 +119,7 @@ export const createFileTreeSlice: StateCreator<FileTreeSliceShape> = (set, get) 
     set({ expandedFolderIds: newSet })
   },
 
-  revealFile: (_fileId: string, ancestorFolderIds: string[]) => {
+  revealFile: (ancestorFolderIds: string[]) => {
     const { expandedFolderIds } = get()
     const newSet = new Set(expandedFolderIds)
     // Expand all ancestors

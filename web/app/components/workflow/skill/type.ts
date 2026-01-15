@@ -102,11 +102,7 @@ export function getAncestorIds(nodeId: string, nodes: AppAssetTreeView[]): strin
  * @returns Object for react-arborist opens prop
  */
 export function toOpensObject(expandedIds: Set<string>): Record<string, boolean> {
-  const opens: Record<string, boolean> = {}
-  expandedIds.forEach((id) => {
-    opens[id] = true
-  })
-  return opens
+  return Object.fromEntries([...expandedIds].map(id => [id, true]))
 }
 
 /**
