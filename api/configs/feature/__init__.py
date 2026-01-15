@@ -949,6 +949,12 @@ class MailConfig(BaseSettings):
         default=False,
     )
 
+    SMTP_LOCAL_HOSTNAME: str | None = Field(
+        description="Override the local hostname used in SMTP HELO/EHLO. "
+        "Useful behind NAT or when the default hostname causes rejections.",
+        default=None,
+    )
+
     EMAIL_SEND_IP_LIMIT_PER_MINUTE: PositiveInt = Field(
         description="Maximum number of emails allowed to be sent from the same IP address in a minute",
         default=50,

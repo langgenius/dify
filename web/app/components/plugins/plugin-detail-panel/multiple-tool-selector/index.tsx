@@ -12,6 +12,7 @@ import Divider from '@/app/components/base/divider'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
 import Tooltip from '@/app/components/base/tooltip'
 import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
+import { useMCPToolAvailability } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
 import { useAllMCPTools } from '@/service/use-tools'
 import { cn } from '@/utils/classnames'
 
@@ -27,7 +28,6 @@ type Props = {
   nodeOutputVars: NodeOutPutVar[]
   availableNodes: Node[]
   nodeId?: string
-  canChooseMCPTool?: boolean
 }
 
 const MultipleToolSelector = ({
@@ -42,14 +42,14 @@ const MultipleToolSelector = ({
   nodeOutputVars,
   availableNodes,
   nodeId,
-  canChooseMCPTool,
 }: Props) => {
   const { t } = useTranslation()
+  const { allowed: isMCPToolAllowed } = useMCPToolAvailability()
   const { data: mcpTools } = useAllMCPTools()
   const enabledCount = value.filter((item) => {
     const isMCPTool = mcpTools?.find(tool => tool.id === item.provider_name)
     if (isMCPTool)
-      return item.enabled && canChooseMCPTool
+      return item.enabled && isMCPToolAllowed
     return item.enabled
   }).length
   // collapse control
@@ -167,7 +167,6 @@ const MultipleToolSelector = ({
                 onSelectMultiple={handleAddMultiple}
                 onDelete={() => handleDelete(index)}
                 supportEnableSwitch
-                canChooseMCPTool={canChooseMCPTool}
                 isEdit
               />
             </div>
@@ -190,7 +189,6 @@ const MultipleToolSelector = ({
         panelShowState={panelShowState}
         onPanelShowStateChange={setPanelShowState}
         isEdit={false}
-        canChooseMCPTool={canChooseMCPTool}
         onSelectMultiple={handleAddMultiple}
       />
     </>

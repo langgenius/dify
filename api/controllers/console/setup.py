@@ -84,10 +84,11 @@ class SetupApi(Resource):
             raise NotInitValidateError()
 
         args = SetupRequestPayload.model_validate(console_ns.payload)
+        normalized_email = args.email.lower()
 
         # setup
         RegisterService.setup(
-            email=args.email,
+            email=normalized_email,
             name=args.name,
             password=args.password,
             ip_address=extract_remote_ip(request),
