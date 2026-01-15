@@ -81,7 +81,7 @@ class ExternalKnowledgeApiPayload(BaseModel):
 class ExternalDatasetCreatePayload(BaseModel):
     external_knowledge_api_id: str
     external_knowledge_id: str
-    name: str = Field(..., min_length=1, max_length=40)
+    name: str = Field(..., min_length=1, max_length=100)
     description: str | None = Field(None, max_length=400)
     external_retrieval_model: dict[str, object] | None = None
 
