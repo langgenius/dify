@@ -19,6 +19,7 @@ Enable **true streaming** for Agent ReAct “Final Answer” output by emitting 
 - Strategy:
   - First try `pydantic_core.from_json(action_json, allow_partial=True)` to parse **partial JSON** and detect whether `"action": "Final Answer"` is present early.
   - If strict parsing fails (common when models emit non-strict JSON such as literal newlines inside strings), fall back to a lightweight regex match for the `"action"` field.
+  - When scanning the partially-parsed dict, **don’t return `False` early** based on `"tool"`/`"name"` values; only return early on a positive `"Final Answer"` match so we don’t miss `"action": "Final Answer"` appearing later in the dict.
 
 This gives us a reliable “we are in Final Answer mode” signal **before** `action_input` is complete.
 
@@ -36,7 +37,7 @@ This keeps streaming stable and avoids broken escape artifacts.
 
 #### 3) Supported action JSON layouts
 
-This parser supports the common ReAct layouts encountered in practice:
+This parser supports common ReAct layouts encountered in practice:
 
 - Inline JSON: `Action: {"action": "...", "action_input": "..."}`
 - Fenced JSON blocks: \`Action: ````` json ... ```` (and case variants like  `````JSON)
@@ -70,6 +71,7 @@ Unit tests live in:
 They cover:
 
 - Action parsing across multiple JSON formats.
+- Regression: `Final Answer` detection should still work when `"tool"` appears before `"action": "Final Answer"` in the same JSON object.
 - “Manual boundary” edge cases:
   - unfinished `\\uXXXX` escape
   - trailing `\\` at end of stream

@@ -15,17 +15,16 @@ Rules:
 - **During working**:
   - Keep the note in sync as you discover constraints, make decisions, or change approach.
   - Record non-obvious edge cases, trade-offs, and the test/verification plan as you go (not just at the end).
+  - Keep notes **coherent**: integrate new findings into the relevant sections and rewrite for clarity; avoid append-only “recent fix” / changelog-style additions unless the note is explicitly intended to be a changelog.
 - **When finishing work**:
   - Update the related note(s) to reflect what changed, why, and any new edge cases/tests.
   - Keep notes concise and accurate; they are meant to prevent repeated rediscovery.
 
-______________________________________________________________________
 
 ## Skill Index
 
 Start with the section that best matches your need. Each entry lists the problems it solves plus key files/concepts so you know what to expect before opening it.
 
-______________________________________________________________________
 
 ### Platform Foundations
 
@@ -45,7 +44,6 @@ ______________________________________________________________________
   - SSRF proxy usage
   - Core CLI commands
 
-______________________________________________________________________
 
 ### Plugin & Extension Development
 
@@ -72,7 +70,6 @@ ______________________________________________________________________
   - OAuth client bootstrap (`services/plugin/oauth_service.py`, `services/plugin/plugin_parameter_service.py`)
   - How console/API layers expose the flows
 
-______________________________________________________________________
 
 ### Workflow Entry & Execution
 
@@ -89,7 +86,6 @@ ______________________________________________________________________
   - Debug event bus
   - Storage/logging interactions
 
-______________________________________________________________________
 
 ## General Reminders
 
@@ -99,7 +95,6 @@ ______________________________________________________________________
 - Keep multi-tenancy and configuration central: everything flows through `configs.dify_config` and `tenant_id`.
 - When touching plugins or triggers, consult both the system overview and the specialised doc to ensure you adjust lifecycle, storage, and observability consistently.
 
-______________________________________________________________________
 
 ## Coding Style
 

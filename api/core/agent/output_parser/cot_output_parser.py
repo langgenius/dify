@@ -79,7 +79,9 @@ class CotAgentOutputParser:
             if isinstance(data, dict):
                 for k, v in data.items():
                     if isinstance(k, str) and k.lower() in {"action", "tool", "name"} and isinstance(v, str):
-                        return v.strip().lower() == "final answer"
+                        # Don't return False early: other keys (e.g. "action") may appear later.
+                        if v.strip().lower() == "final answer":
+                            return True
             return False
 
         def _stream_action_input_incrementally(

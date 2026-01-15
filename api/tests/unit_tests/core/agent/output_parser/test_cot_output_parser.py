@@ -95,6 +95,25 @@ def test_cot_output_parser_streams_final_answer_action_input_inline_json():
     assert usage_dict.get("final_answer_streamed") is True
 
 
+def test_cot_output_parser_streams_final_answer_when_tool_key_appears_before_action():
+    """
+    Regression: `_maybe_mark_final_action` must not return False prematurely when it sees
+    a non-Final-Answer `"tool"`/`"name"` key before the actual `"action": "Final Answer"`.
+    """
+    text = 'Action: {"tool": "search", "action": "Final Answer", "action_input": "hello world'
+    llm_response = mock_llm_response(text)
+    usage_dict: dict = {}
+    results = CotAgentOutputParser.handle_react_stream_output(llm_response, usage_dict)
+
+    streamed = ""
+    for item in results:
+        if isinstance(item, str):
+            streamed += item
+
+    assert "hello world" in streamed
+    assert usage_dict.get("final_answer_streamed") is True
+
+
 def test_cot_output_parser_streams_final_answer_action_input_code_block_json():
     """
     Same as the inline JSON case, but with the common ```json fenced block format.
