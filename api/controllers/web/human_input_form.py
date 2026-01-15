@@ -46,16 +46,14 @@ class HumanInputFormApi(Resource):
         GET /api/form/human_input/<form_token>
         """
         service = HumanInputService(db.engine)
-        try:
-            form = service.get_form_definition_by_token(RecipientType.STANDALONE_WEB_APP, form_token)
-            if form is None:
-                form = service.get_form_definition_by_token(RecipientType.BACKSTAGE, form_token)
-        except FormNotFoundError:
-            raise NotFoundError("Form not found")
+        # TODO(QuantumGhost): forbid submision for form tokens
+        # that are only for console.
+        form = service.get_form_by_token(form_token)
 
         if form is None:
             raise NotFoundError("Form not found")
 
+        service._ensure_not_submitted(form)
         app_model, site = _get_app_site_from_form(form)
 
         return _jsonify_form_definition(form, site_payload=serialize_app_site_payload(app_model, site, None))
