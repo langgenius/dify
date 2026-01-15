@@ -219,7 +219,7 @@ const StepTwo: FC<StepTwoProps> = ({
             onReset={segmentation.resetToDefaults}
             locale={locale}
             summaryIndexSetting={indexing.summaryIndexSetting}
-            onSummaryIndexSettingChange={indexing.setSummaryIndexSetting}
+            onSummaryIndexSettingChange={indexing.handleSummaryIndexSettingChange}
           />
         )}
         {showParentChildOption && (
@@ -240,7 +240,7 @@ const StepTwo: FC<StepTwoProps> = ({
             onPreview={updatePreview}
             onReset={segmentation.resetToDefaults}
             summaryIndexSetting={indexing.summaryIndexSetting}
-            onSummaryIndexSettingChange={indexing.setSummaryIndexSetting}
+            onSummaryIndexSettingChange={indexing.handleSummaryIndexSettingChange}
           />
         )}
         <Divider className="my-5" />
