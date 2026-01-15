@@ -56,7 +56,6 @@ export const useWorkflowInit = () => {
   } = useWorkflowConfig('/files/upload', handleUpdateWorkflowFileUploadConfig)
 
   const handleGetInitialWorkflowData = useCallback(async () => {
-    setIsLoading(true)
     try {
       const res = await fetchWorkflowDraft(`/apps/${appDetail.id}/workflows/draft`)
       setData(res)
