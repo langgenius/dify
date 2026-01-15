@@ -70,7 +70,13 @@ def _mock_user(*, is_dataset_editor: bool = True) -> SimpleNamespace:
     return SimpleNamespace(is_dataset_editor=is_dataset_editor, id="user-123")
 
 
-def _mock_document(*, tenant_id: str, data_source_type: str, upload_file_id: str | None) -> SimpleNamespace:
+def _mock_document(
+    *,
+    document_id: str,
+    tenant_id: str,
+    data_source_type: str,
+    upload_file_id: str | None,
+) -> SimpleNamespace:
     """Build a minimal document object used by the controller."""
     data_source_info_dict: dict[str, Any] | None = None
     if upload_file_id is not None:
@@ -79,6 +85,7 @@ def _mock_document(*, tenant_id: str, data_source_type: str, upload_file_id: str
         data_source_info_dict = {}
 
     return SimpleNamespace(
+        id=document_id,
         tenant_id=tenant_id,
         data_source_type=data_source_type,
         data_source_info_dict=data_source_info_dict,
@@ -107,6 +114,7 @@ def _wire_common_success_mocks(
 
     # Return a document that will be validated inside DocumentResource.get_document.
     document = _mock_document(
+        document_id="doc-1",
         tenant_id=document_tenant_id,
         data_source_type=data_source_type,
         upload_file_id=upload_file_id,
@@ -154,8 +162,18 @@ def test_batch_download_zip_returns_send_file(
     )
 
     # Two upload-file documents, each referencing an UploadFile.
-    doc1 = _mock_document(tenant_id="tenant-123", data_source_type="upload_file", upload_file_id="file-1")
-    doc2 = _mock_document(tenant_id="tenant-123", data_source_type="upload_file", upload_file_id="file-2")
+    doc1 = _mock_document(
+        document_id="doc-1",
+        tenant_id="tenant-123",
+        data_source_type="upload_file",
+        upload_file_id="file-1",
+    )
+    doc2 = _mock_document(
+        document_id="doc-2",
+        tenant_id="tenant-123",
+        data_source_type="upload_file",
+        upload_file_id="file-2",
+    )
     monkeypatch.setattr(
         datasets_document_module.DocumentService,
         "get_documents_by_ids",
@@ -208,7 +226,12 @@ def test_batch_download_zip_rejects_non_upload_file_document(
         datasets_document_module.DatasetService, "check_dataset_permission", lambda *_args, **_kwargs: None
     )
 
-    doc = _mock_document(tenant_id="tenant-123", data_source_type="website_crawl", upload_file_id="file-1")
+    doc = _mock_document(
+        document_id="doc-1",
+        tenant_id="tenant-123",
+        data_source_type="website_crawl",
+        upload_file_id="file-1",
+    )
     monkeypatch.setattr(
         datasets_document_module.DocumentService,
         "get_documents_by_ids",

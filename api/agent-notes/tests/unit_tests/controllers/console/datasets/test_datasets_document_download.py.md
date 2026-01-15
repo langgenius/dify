@@ -14,6 +14,7 @@ Unit tests for the console dataset document download endpoint:
   - `DocumentService.get_documents_by_ids` + `get_upload_files_by_ids` for ZIP download tests
   - `db.session.query(...).where(...).first()` chain for `UploadFile` in single-file tests
   - `core.file.helpers.get_signed_file_url` to return a deterministic URL
+- Document mocks include `id` fields so batch lookups can map documents by id.
 
 ## Covered cases
 
