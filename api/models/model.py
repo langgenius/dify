@@ -1447,7 +1447,7 @@ class MessageAnnotation(Base):
         return account
 
 
-class AppAnnotationHitHistory(Base):
+class AppAnnotationHitHistory(TypeBase):
     __tablename__ = "app_annotation_hit_histories"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="app_annotation_hit_histories_pkey"),
@@ -1457,17 +1457,19 @@ class AppAnnotationHitHistory(Base):
         sa.Index("app_annotation_hit_histories_message_idx", "message_id"),
     )
 
-    id = mapped_column(StringUUID, default=lambda: str(uuid4()))
-    app_id = mapped_column(StringUUID, nullable=False)
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     annotation_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    source = mapped_column(LongText, nullable=False)
-    question = mapped_column(LongText, nullable=False)
-    account_id = mapped_column(StringUUID, nullable=False)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    score = mapped_column(Float, nullable=False, server_default=sa.text("0"))
-    message_id = mapped_column(StringUUID, nullable=False)
-    annotation_question = mapped_column(LongText, nullable=False)
-    annotation_content = mapped_column(LongText, nullable=False)
+    source: Mapped[str] = mapped_column(LongText, nullable=False)
+    question: Mapped[str] = mapped_column(LongText, nullable=False)
+    account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+    score: Mapped[float] = mapped_column(Float, nullable=False, server_default=sa.text("0"))
+    message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    annotation_question: Mapped[str] = mapped_column(LongText, nullable=False)
+    annotation_content: Mapped[str] = mapped_column(LongText, nullable=False)
 
     @property
     def account(self):
@@ -2083,7 +2085,7 @@ class TraceAppConfig(TypeBase):
         }
 
 
-class TenantCreditPool(Base):
+class TenantCreditPool(TypeBase):
     __tablename__ = "tenant_credit_pools"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="tenant_credit_pool_pkey"),
@@ -2091,14 +2093,20 @@ class TenantCreditPool(Base):
         sa.Index("tenant_credit_pool_pool_type_idx", "pool_type"),
     )
 
-    id = mapped_column(StringUUID, primary_key=True, server_default=text("uuid_generate_v4()"))
-    tenant_id = mapped_column(StringUUID, nullable=False)
-    pool_type = mapped_column(String(40), nullable=False, default="trial", server_default="trial")
-    quota_limit = mapped_column(BigInteger, nullable=False, default=0)
-    quota_used = mapped_column(BigInteger, nullable=False, default=0)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
-    updated_at = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, server_default=text("uuid_generate_v4()"), init=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    pool_type: Mapped[str] = mapped_column(String(40), nullable=False, default="trial", server_default="trial")
+    quota_limit: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    quota_used: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"), init=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        init=False,
     )
 
     @property
