@@ -2,7 +2,7 @@ import json
 import logging
 from argparse import ArgumentTypeError
 from collections.abc import Sequence
-from typing import Literal, cast
+from typing import Any, Literal, cast
 
 import sqlalchemy as sa
 from flask import request
@@ -27,6 +27,7 @@ from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
+from core.file import helpers as file_helpers
 from extensions.ext_database import db
 from fields.dataset_fields import dataset_fields
 from fields.document_fields import (
@@ -851,6 +852,44 @@ class DocumentApi(DocumentResource):
             raise DocumentIndexingError("Cannot delete document during indexing.")
 
         return {"result": "success"}, 204
+
+
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/download")
+class DocumentDownloadApi(DocumentResource):
+    """Return a signed download URL for a dataset document's original uploaded file."""
+
+    @console_ns.doc("get_dataset_document_download_url")
+    @console_ns.doc(description="Get a signed download URL for a dataset document's original uploaded file")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
+    def get(self, dataset_id: str, document_id: str) -> dict[str, Any]:
+        # Reuse the shared permission/tenant checks implemented in DocumentResource.
+        document = self.get_document(str(dataset_id), str(document_id))
+
+        # Only upload-file documents have an `upload_file_id` we can download.
+        if document.data_source_type != "upload_file":
+            raise NotFound("Document does not have an uploaded file to download.")
+
+        data_source_info: dict[str, Any] = document.data_source_info_dict or {}
+        upload_file_id = data_source_info.get("upload_file_id")
+        if not upload_file_id:
+            raise NotFound("Uploaded file not found.")
+
+        # Ensure the referenced UploadFile exists and belongs to the same tenant.
+        upload_file = (
+            db.session.query(UploadFile)
+            .where(UploadFile.tenant_id == document.tenant_id, UploadFile.id == str(upload_file_id))
+            .first()
+        )
+        if not upload_file:
+            raise NotFound("Uploaded file not found.")
+
+        # Generate a signed URL that forces browser download (Content-Disposition: attachment).
+        url = file_helpers.get_signed_file_url(upload_file_id=upload_file.id, as_attachment=True)
+
+        return {"url": url}
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/<string:action>")

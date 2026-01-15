@@ -1,0 +1,236 @@
+"""
+Unit tests for the dataset document download endpoint.
+
+These tests validate that the controller returns a signed download URL for
+upload-file documents, and rejects unsupported or missing file cases.
+"""
+
+from __future__ import annotations
+
+import importlib
+import sys
+from types import SimpleNamespace
+from typing import Any
+from unittest.mock import MagicMock
+
+import pytest
+from flask import Flask
+from werkzeug.exceptions import Forbidden, NotFound
+
+
+@pytest.fixture
+def app() -> Flask:
+    """Create a minimal Flask app for request-context based controller tests."""
+    app = Flask(__name__)
+    app.config["TESTING"] = True
+    return app
+
+
+@pytest.fixture
+def datasets_document_module(monkeypatch: pytest.MonkeyPatch):
+    """
+    Reload `controllers.console.datasets.datasets_document` with lightweight decorators.
+
+    We patch auth / setup / rate-limit decorators to no-ops so we can unit test the
+    controller logic without requiring the full console stack.
+    """
+
+    from controllers.console import console_ns, wraps
+    from libs import login
+
+    def _noop(func):  # type: ignore[no-untyped-def]
+        return func
+
+    # Bypass login/setup/account checks in unit tests.
+    monkeypatch.setattr(login, "login_required", _noop)
+    monkeypatch.setattr(wraps, "setup_required", _noop)
+    monkeypatch.setattr(wraps, "account_initialization_required", _noop)
+
+    # Bypass billing-related decorators used by other endpoints in this module.
+    monkeypatch.setattr(wraps, "cloud_edition_billing_resource_check", lambda *_args, **_kwargs: (lambda f: f))
+    monkeypatch.setattr(wraps, "cloud_edition_billing_rate_limit_check", lambda *_args, **_kwargs: (lambda f: f))
+
+    # Avoid Flask-RESTX route registration side effects during import.
+    def _noop_route(*_args, **_kwargs):  # type: ignore[override]
+        def _decorator(cls):
+            return cls
+
+        return _decorator
+
+    monkeypatch.setattr(console_ns, "route", _noop_route)
+
+    module_name = "controllers.console.datasets.datasets_document"
+    sys.modules.pop(module_name, None)
+    return importlib.import_module(module_name)
+
+
+def _mock_user(*, is_dataset_editor: bool = True) -> SimpleNamespace:
+    """Build a minimal user object compatible with dataset permission checks."""
+    return SimpleNamespace(is_dataset_editor=is_dataset_editor, id="user-123")
+
+
+def _mock_document(*, tenant_id: str, data_source_type: str, upload_file_id: str | None) -> SimpleNamespace:
+    """Build a minimal document object used by the controller."""
+    data_source_info_dict: dict[str, Any] | None = None
+    if upload_file_id is not None:
+        data_source_info_dict = {"upload_file_id": upload_file_id}
+    else:
+        data_source_info_dict = {}
+
+    return SimpleNamespace(
+        tenant_id=tenant_id,
+        data_source_type=data_source_type,
+        data_source_info_dict=data_source_info_dict,
+    )
+
+
+def _wire_common_success_mocks(
+    *,
+    module,
+    monkeypatch: pytest.MonkeyPatch,
+    current_tenant_id: str,
+    document_tenant_id: str,
+    data_source_type: str,
+    upload_file_id: str | None,
+    upload_file_exists: bool,
+    signed_url: str,
+) -> None:
+    """Patch controller dependencies to create a deterministic test environment."""
+
+    # Make `current_account_with_tenant()` return a known user + tenant id.
+    monkeypatch.setattr(module, "current_account_with_tenant", lambda: (_mock_user(), current_tenant_id))
+
+    # Return a dataset object and allow permission checks to pass.
+    monkeypatch.setattr(module.DatasetService, "get_dataset", lambda _dataset_id: SimpleNamespace(id="ds-1"))
+    monkeypatch.setattr(module.DatasetService, "check_dataset_permission", lambda *_args, **_kwargs: None)
+
+    # Return a document that will be validated inside DocumentResource.get_document.
+    document = _mock_document(
+        tenant_id=document_tenant_id,
+        data_source_type=data_source_type,
+        upload_file_id=upload_file_id,
+    )
+    monkeypatch.setattr(module.DocumentService, "get_document", lambda *_args, **_kwargs: document)
+
+    # Mock UploadFile lookup through SQLAlchemy session chain.
+    session = MagicMock()
+    query = session.query.return_value
+    where = query.where.return_value
+    where.first.return_value = SimpleNamespace(id=str(upload_file_id)) if upload_file_exists else None
+    monkeypatch.setattr(module, "db", SimpleNamespace(session=session))
+
+    # Mock signing helper so the returned URL is deterministic.
+    monkeypatch.setattr(module.file_helpers, "get_signed_file_url", lambda **_kwargs: signed_url)
+
+
+def test_document_download_returns_url_for_upload_file_document(
+    app: Flask, datasets_document_module, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ensure upload-file documents return a `{url}` JSON payload."""
+
+    _wire_common_success_mocks(
+        module=datasets_document_module,
+        monkeypatch=monkeypatch,
+        current_tenant_id="tenant-123",
+        document_tenant_id="tenant-123",
+        data_source_type="upload_file",
+        upload_file_id="file-123",
+        upload_file_exists=True,
+        signed_url="https://example.com/signed",
+    )
+
+    # Build a request context then call the resource method directly.
+    with app.test_request_context("/datasets/ds-1/documents/doc-1/download", method="GET"):
+        api = datasets_document_module.DocumentDownloadApi()
+        result = api.get(dataset_id="ds-1", document_id="doc-1")
+
+    assert result == {"url": "https://example.com/signed"}
+
+
+def test_document_download_rejects_non_upload_file_document(
+    app: Flask, datasets_document_module, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ensure non-upload documents raise 404 (no file to download)."""
+
+    _wire_common_success_mocks(
+        module=datasets_document_module,
+        monkeypatch=monkeypatch,
+        current_tenant_id="tenant-123",
+        document_tenant_id="tenant-123",
+        data_source_type="website_crawl",
+        upload_file_id="file-123",
+        upload_file_exists=True,
+        signed_url="https://example.com/signed",
+    )
+
+    with app.test_request_context("/datasets/ds-1/documents/doc-1/download", method="GET"):
+        api = datasets_document_module.DocumentDownloadApi()
+        with pytest.raises(NotFound):
+            api.get(dataset_id="ds-1", document_id="doc-1")
+
+
+def test_document_download_rejects_missing_upload_file_id(
+    app: Flask, datasets_document_module, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ensure missing `upload_file_id` raises 404."""
+
+    _wire_common_success_mocks(
+        module=datasets_document_module,
+        monkeypatch=monkeypatch,
+        current_tenant_id="tenant-123",
+        document_tenant_id="tenant-123",
+        data_source_type="upload_file",
+        upload_file_id=None,
+        upload_file_exists=False,
+        signed_url="https://example.com/signed",
+    )
+
+    with app.test_request_context("/datasets/ds-1/documents/doc-1/download", method="GET"):
+        api = datasets_document_module.DocumentDownloadApi()
+        with pytest.raises(NotFound):
+            api.get(dataset_id="ds-1", document_id="doc-1")
+
+
+def test_document_download_rejects_when_upload_file_record_missing(
+    app: Flask, datasets_document_module, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ensure missing UploadFile row raises 404."""
+
+    _wire_common_success_mocks(
+        module=datasets_document_module,
+        monkeypatch=monkeypatch,
+        current_tenant_id="tenant-123",
+        document_tenant_id="tenant-123",
+        data_source_type="upload_file",
+        upload_file_id="file-123",
+        upload_file_exists=False,
+        signed_url="https://example.com/signed",
+    )
+
+    with app.test_request_context("/datasets/ds-1/documents/doc-1/download", method="GET"):
+        api = datasets_document_module.DocumentDownloadApi()
+        with pytest.raises(NotFound):
+            api.get(dataset_id="ds-1", document_id="doc-1")
+
+
+def test_document_download_rejects_tenant_mismatch(
+    app: Flask, datasets_document_module, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ensure tenant mismatch is rejected by the shared `get_document()` permission check."""
+
+    _wire_common_success_mocks(
+        module=datasets_document_module,
+        monkeypatch=monkeypatch,
+        current_tenant_id="tenant-123",
+        document_tenant_id="tenant-999",
+        data_source_type="upload_file",
+        upload_file_id="file-123",
+        upload_file_exists=True,
+        signed_url="https://example.com/signed",
+    )
+
+    with app.test_request_context("/datasets/ds-1/documents/doc-1/download", method="GET"):
+        api = datasets_document_module.DocumentDownloadApi()
+        with pytest.raises(Forbidden):
+            api.get(dataset_id="ds-1", document_id="doc-1")
+
