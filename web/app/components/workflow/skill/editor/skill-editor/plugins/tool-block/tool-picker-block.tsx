@@ -95,6 +95,7 @@ const ToolPickerBlock: FC<ToolPickerBlockProps> = ({ scope = 'all' }) => {
           closeMenu()
         }}
         scope={scope}
+        preventFocusLoss
       />,
       anchorElementRef.current,
     )

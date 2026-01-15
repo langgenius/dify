@@ -51,6 +51,7 @@ type Props = {
   supportAddCustomTool?: boolean
   scope?: string
   selectedTools?: ToolValue[]
+  preventFocusLoss?: boolean
 }
 
 const ToolPicker: FC<Props> = ({
@@ -67,6 +68,7 @@ const ToolPicker: FC<Props> = ({
   scope = 'all',
   selectedTools,
   panelClassName,
+  preventFocusLoss = false,
 }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
@@ -173,7 +175,17 @@ const ToolPicker: FC<Props> = ({
       </PortalToFollowElemTrigger>
 
       <PortalToFollowElemContent className="z-[1000]">
-        <div className={cn('relative min-h-20 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm', panelClassName)}>
+        <div
+          className={cn('relative min-h-20 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm', panelClassName)}
+          onMouseDown={(e) => {
+            if (!preventFocusLoss)
+              return
+            const target = e.target as HTMLElement
+            if (target.closest('input, textarea, select'))
+              return
+            e.preventDefault()
+          }}
+        >
           <div className="p-2 pb-1">
             <SearchBox
               search={searchText}
