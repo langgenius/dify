@@ -1,7 +1,7 @@
 'use client'
 
 import type { NodeRendererProps } from 'react-arborist'
-import type { TreeNodeData } from './type'
+import type { TreeNodeData } from '../type'
 import type { FileAppearanceType } from '@/app/components/base/file-uploader/types'
 import { RiFolderLine, RiFolderOpenLine, RiMoreFill } from '@remixicon/react'
 import * as React from 'react'
@@ -14,10 +14,12 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { cn } from '@/utils/classnames'
+import { useSkillEditorStore, useSkillEditorStoreApi } from '../store'
+import { getFileIconType } from '../utils/file-utils'
 import FileNodeMenu from './file-node-menu'
 import FolderNodeMenu from './folder-node-menu'
-import { useSkillEditorStore, useSkillEditorStoreApi } from './store'
-import { getFileIconType } from './utils/file-utils'
+import TreeEditInput from './tree-edit-input'
+import TreeGuideLines from './tree-guide-lines'
 
 const TreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeData>) => {
   const { t } = useTranslation('workflow')
@@ -83,7 +85,7 @@ const TreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeData>) 
       aria-selected={isSelected}
       aria-expanded={isFolder ? node.isOpen : undefined}
       className={cn(
-        'group flex h-6 cursor-pointer items-center gap-2 rounded-md px-2',
+        'group relative flex h-6 cursor-pointer items-center gap-2 rounded-md px-2',
         'hover:bg-state-base-hover',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-components-input-border-active',
         isSelected && 'bg-state-base-active',
@@ -94,6 +96,7 @@ const TreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeData>) 
       onKeyDown={handleKeyDown}
       onContextMenu={handleContextMenu}
     >
+      <TreeGuideLines level={node.level} />
       <div className="flex size-5 shrink-0 items-center justify-center">
         {isFolder
           ? (
@@ -122,16 +125,22 @@ const TreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeData>) 
             )}
       </div>
 
-      <span
-        className={cn(
-          'min-w-0 flex-1 truncate text-[13px] font-normal leading-4',
-          isSelected
-            ? 'text-text-primary'
-            : 'text-text-secondary',
-        )}
-      >
-        {node.data.name}
-      </span>
+      {node.isEditing
+        ? (
+            <TreeEditInput node={node} />
+          )
+        : (
+            <span
+              className={cn(
+                'min-w-0 flex-1 truncate text-[13px] font-normal leading-4',
+                isSelected
+                  ? 'text-text-primary'
+                  : 'text-text-secondary',
+              )}
+            >
+              {node.data.name}
+            </span>
+          )}
 
       <PortalToFollowElem
         placement="bottom-start"

@@ -2,7 +2,7 @@
 
 import type { FC } from 'react'
 import type { NodeApi, TreeApi } from 'react-arborist'
-import type { TreeNodeData } from './type'
+import type { TreeNodeData } from '../type'
 import {
   RiDeleteBinLine,
   RiEdit2Line,
@@ -11,7 +11,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Confirm from '@/app/components/base/confirm'
 import { cn } from '@/utils/classnames'
-import { useFileOperations } from './hooks/use-file-operations'
+import { useFileOperations } from '../hooks/use-file-operations'
 
 type MenuItemProps = {
   icon: React.ElementType

@@ -1,8 +1,8 @@
 'use client'
 
 import type { NodeApi, TreeApi } from 'react-arborist'
-import type { OpensObject } from './store'
-import type { TreeNodeData } from './type'
+import type { OpensObject } from '../store'
+import type { TreeNodeData } from '../type'
 import { RiDragDropLine } from '@remixicon/react'
 import { useIsMutating } from '@tanstack/react-query'
 import { useSize } from 'ahooks'
@@ -15,11 +15,11 @@ import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
 import { useRenameAppAssetNode } from '@/service/use-app-asset'
 import { cn } from '@/utils/classnames'
-import { useSkillAssetTreeData } from './hooks/use-skill-asset-tree'
-import { useSkillEditorStore, useSkillEditorStoreApi } from './store'
+import { useSkillAssetTreeData } from '../hooks/use-skill-asset-tree'
+import { useSkillEditorStore, useSkillEditorStoreApi } from '../store'
+import { getAncestorIds } from '../utils/tree-utils'
 import TreeContextMenu from './tree-context-menu'
 import TreeNode from './tree-node'
-import { getAncestorIds } from './utils/tree-utils'
 
 type FileTreeProps = {
   className?: string

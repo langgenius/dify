@@ -2,15 +2,15 @@
 
 import type { FC } from 'react'
 import type { TreeApi } from 'react-arborist'
-import type { TreeNodeData } from './type'
+import type { TreeNodeData } from '../type'
 import { useClickAway } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useMemo, useRef } from 'react'
+import { useSkillAssetTreeData } from '../hooks/use-skill-asset-tree'
+import { useSkillEditorStore, useSkillEditorStoreApi } from '../store'
+import { findNodeById } from '../utils/tree-utils'
 import FileNodeMenu from './file-node-menu'
 import FolderNodeMenu from './folder-node-menu'
-import { useSkillAssetTreeData } from './hooks/use-skill-asset-tree'
-import { useSkillEditorStore, useSkillEditorStoreApi } from './store'
-import { findNodeById } from './utils/tree-utils'
 
 type TreeContextMenuProps = {
   treeRef: React.RefObject<TreeApi<TreeNodeData> | null>
