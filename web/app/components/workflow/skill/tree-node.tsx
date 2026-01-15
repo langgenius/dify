@@ -13,14 +13,17 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { cn } from '@/utils/classnames'
-import FileOperationsMenu from './file-operations-menu'
+import FileNodeMenu from './file-node-menu'
+import FolderNodeMenu from './folder-node-menu'
 import { useSkillEditorStore, useSkillEditorStoreApi } from './store'
 import { getFileIconType } from './utils/file-utils'
 
-const FileTreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeData>) => {
+const TreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeData>) => {
   const isFolder = node.data.node_type === 'folder'
   const isSelected = node.isSelected
   const isDirty = useSkillEditorStore(s => s.dirtyContents.has(node.data.id))
+  const contextMenuNodeId = useSkillEditorStore(s => s.contextMenu?.nodeId)
+  const hasContextMenu = contextMenuNodeId === node.data.id
   const storeApi = useSkillEditorStoreApi()
 
   const [showDropdown, setShowDropdown] = useState(false)
@@ -44,9 +47,6 @@ const FileTreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeDat
   }
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
-    if (!isFolder)
-      return
-
     e.preventDefault()
     e.stopPropagation()
 
@@ -55,7 +55,7 @@ const FileTreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeDat
       left: e.clientX,
       nodeId: node.data.id,
     })
-  }, [isFolder, node.data.id, storeApi])
+  }, [node.data.id, storeApi])
 
   const handleMoreClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
@@ -70,6 +70,7 @@ const FileTreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeDat
         'group flex h-6 cursor-pointer items-center gap-2 rounded-md px-2',
         'hover:bg-state-base-hover',
         isSelected && 'bg-state-base-active',
+        hasContextMenu && !isSelected && 'bg-state-base-hover',
       )}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
@@ -109,39 +110,47 @@ const FileTreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeDat
         {node.data.name}
       </span>
 
-      {isFolder && (
-        <PortalToFollowElem
-          placement="bottom-start"
-          offset={4}
-          open={showDropdown}
-          onOpenChange={setShowDropdown}
-        >
-          <PortalToFollowElemTrigger asChild>
-            <button
-              type="button"
-              onClick={handleMoreClick}
-              className={cn(
-                'flex size-5 shrink-0 items-center justify-center rounded',
-                'hover:bg-state-base-hover-alt',
-                'invisible group-hover:visible',
-                showDropdown && 'visible',
+      <PortalToFollowElem
+        placement="bottom-start"
+        offset={4}
+        open={showDropdown}
+        onOpenChange={setShowDropdown}
+      >
+        <PortalToFollowElemTrigger asChild>
+          <button
+            type="button"
+            onClick={handleMoreClick}
+            className={cn(
+              'flex size-5 shrink-0 items-center justify-center rounded',
+              'hover:bg-state-base-hover-alt',
+              'invisible group-hover:visible',
+              showDropdown && 'visible',
+            )}
+            aria-label="File operations"
+          >
+            <RiMoreFill className="size-4 text-text-tertiary" />
+          </button>
+        </PortalToFollowElemTrigger>
+        <PortalToFollowElemContent className="z-[100]">
+          {isFolder
+            ? (
+                <FolderNodeMenu
+                  nodeId={node.data.id}
+                  onClose={() => setShowDropdown(false)}
+                  node={node}
+                />
+              )
+            : (
+                <FileNodeMenu
+                  nodeId={node.data.id}
+                  onClose={() => setShowDropdown(false)}
+                  node={node}
+                />
               )}
-              aria-label="File operations"
-            >
-              <RiMoreFill className="size-4 text-text-tertiary" />
-            </button>
-          </PortalToFollowElemTrigger>
-          <PortalToFollowElemContent className="z-[100]">
-            <FileOperationsMenu
-              nodeId={node.data.id}
-              onClose={() => setShowDropdown(false)}
-              node={node}
-            />
-          </PortalToFollowElemContent>
-        </PortalToFollowElem>
-      )}
+        </PortalToFollowElemContent>
+      </PortalToFollowElem>
     </div>
   )
 }
 
-export default React.memo(FileTreeNode)
+export default React.memo(TreeNode)

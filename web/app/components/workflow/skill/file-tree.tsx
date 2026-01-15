@@ -13,12 +13,12 @@ import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
 import { useGetAppAssetTree, useRenameAppAssetNode } from '@/service/use-app-asset'
 import { cn } from '@/utils/classnames'
-import FileTreeContextMenu from './file-tree-context-menu'
-import FileTreeNode from './file-tree-node'
 import { useSkillEditorStore, useSkillEditorStoreApi } from './store'
+import TreeContextMenu from './tree-context-menu'
+import TreeNode from './tree-node'
 import { getAncestorIds } from './utils/tree-utils'
 
-type FilesProps = {
+type FileTreeProps = {
   className?: string
 }
 
@@ -34,7 +34,7 @@ const DropTip = () => {
   )
 }
 
-const Files: React.FC<FilesProps> = ({ className }) => {
+const FileTree: React.FC<FileTreeProps> = ({ className }) => {
   const { t } = useTranslation('workflow')
   const treeRef = useRef<TreeApi<TreeNodeData>>(null)
 
@@ -151,13 +151,13 @@ const Files: React.FC<FilesProps> = ({ className }) => {
           disableDrag
           disableDrop
         >
-          {FileTreeNode}
+          {TreeNode}
         </Tree>
       </div>
       <DropTip />
-      <FileTreeContextMenu treeRef={treeRef} />
+      <TreeContextMenu treeRef={treeRef} />
     </div>
   )
 }
 
-export default React.memo(Files)
+export default React.memo(FileTree)

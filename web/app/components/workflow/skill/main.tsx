@@ -5,7 +5,7 @@ import * as React from 'react'
 import EditorArea from './editor-area'
 import EditorBody from './editor-body'
 import EditorTabs from './editor-tabs'
-import Files from './files'
+import FileTree from './file-tree'
 import Sidebar from './sidebar'
 import SidebarSearchAdd from './sidebar-search-add'
 import SkillDocEditor from './skill-doc-editor'
@@ -17,7 +17,7 @@ const SkillMain: FC = () => {
       <SkillPageLayout>
         <Sidebar>
           <SidebarSearchAdd />
-          <Files />
+          <FileTree />
         </Sidebar>
         <EditorArea>
           <EditorTabs />
