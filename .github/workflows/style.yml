@@ -90,7 +90,7 @@ jobs:
         uses: actions/setup-node@v6
         if: steps.changed-files.outputs.any_changed == 'true'
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
           cache-dependency-path: ./web/pnpm-lock.yaml
 

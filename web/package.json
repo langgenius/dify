@@ -10,9 +10,6 @@
       "default": "./i18n-config/lib.client.ts"
     }
   },
-  "engines": {
-    "node": ">=22.12.0"
-  },
   "browserslist": [
     "last 1 Chrome version",
     "last 1 Firefox version",
