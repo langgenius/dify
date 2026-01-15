@@ -88,7 +88,7 @@ def _build_form(db_session_with_containers, tenant, account):
     engine = db_session_with_containers.get_bind()
     repo = HumanInputFormRepositoryImpl(session_factory=engine, tenant_id=tenant.id)
     params = FormCreateParams(
-        app_id="app-1",
+        app_id=str(uuid.uuid4()),
         workflow_execution_id=str(uuid.uuid4()),
         node_id="node-1",
         form_config=node_data,
@@ -115,4 +115,4 @@ def test_dispatch_human_input_email_task_integration(monkeypatch: pytest.MonkeyP
         send_args = [call.kwargs for call in mock_mail.send.call_args_list]
         recipients = {kwargs["to"] for kwargs in send_args}
         assert recipients == {"owner@example.com", "external@example.com"}
-        assert all("console.example.com/api/form/human_input/" in kwargs["html"] for kwargs in send_args)
+        assert all("console.example.com/form/" in kwargs["html"] for kwargs in send_args)

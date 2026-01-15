@@ -48,7 +48,7 @@ def _build_form_link(token: str | None) -> str | None:
     base_url = dify_config.CONSOLE_WEB_URL
     if not base_url:
         return None
-    return f"{base_url.rstrip('/')}/api/form/human_input/{token}"
+    return f"{base_url.rstrip('/')}/form/{token}"
 
 
 def _parse_recipient_payload(payload: str) -> tuple[str | None, RecipientType | None]:
