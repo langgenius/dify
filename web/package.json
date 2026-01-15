@@ -1,7 +1,7 @@
 {
   "name": "dify-web",
   "type": "module",
-  "version": "1.11.3",
+  "version": "1.11.4",
   "private": true,
   "packageManager": "pnpm@10.27.0+sha512.72d699da16b1179c14ba9e64dc71c9a40988cbdc65c264cb0e489db7de917f20dcf4d64d8723625f2969ba52d4b7e2a1170682d9ac2a5dcaeaab732b7e16f04a",
   "imports": {
@@ -9,9 +9,6 @@
       "react-server": "./i18n-config/lib.server.ts",
       "default": "./i18n-config/lib.client.ts"
     }
-  },
-  "engines": {
-    "node": ">=22.12.0"
   },
   "browserslist": [
     "last 1 Chrome version",
@@ -31,9 +28,10 @@
     "build:docker": "next build && node scripts/optimize-standalone.js",
     "start": "node ./scripts/copy-and-start.mjs",
     "lint": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache",
-    "lint:fix": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --fix",
-    "lint:quiet": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --quiet",
-    "lint:complexity": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --rule 'complexity: [error, {max: 15}]' --quiet",
+    "lint:fix": "pnpm lint --fix",
+    "lint:quiet": "pnpm lint --quiet",
+    "lint:complexity": "pnpm lint --rule 'complexity: [error, {max: 15}]' --quiet",
+    "lint:report": "pnpm lint --output-file eslint_report.json --format json",
     "type-check": "tsc --noEmit",
     "type-check:tsgo": "tsgo --noEmit",
     "prepare": "cd ../ && node -e \"if (process.env.NODE_ENV !== 'production'){process.exit(1)} \" || husky ./web/.husky",
