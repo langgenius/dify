@@ -24,6 +24,8 @@ from core.workflow.enums import NodeType
 from core.workflow.repositories.workflow_node_execution_repository import OrderConfig, WorkflowNodeExecutionRepository
 from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from extensions.logstore.aliyun_logstore import AliyunLogStore
+from extensions.logstore.repositories import safe_float, safe_int
+from extensions.logstore.sql_escape import escape_identifier
 from libs.helper import extract_tenant_id
 from models import (
     Account,
@@ -73,7 +75,7 @@ def _dict_to_workflow_node_execution(data: dict[str, Any]) -> WorkflowNodeExecut
         node_execution_id=data.get("node_execution_id"),
         workflow_id=data.get("workflow_id", ""),
         workflow_execution_id=data.get("workflow_run_id"),
-        index=int(data.get("index", 0)),
+        index=safe_int(data.get("index", 0)),
         predecessor_node_id=data.get("predecessor_node_id"),
         node_id=data.get("node_id", ""),
         node_type=NodeType(data.get("node_type", "start")),
@@ -83,7 +85,7 @@ def _dict_to_workflow_node_execution(data: dict[str, Any]) -> WorkflowNodeExecut
         outputs=outputs,
         status=status,
         error=data.get("error"),
-        elapsed_time=float(data.get("elapsed_time", 0.0)),
+        elapsed_time=safe_float(data.get("elapsed_time", 0.0)),
         metadata=domain_metadata,
         created_at=created_at,
         finished_at=finished_at,
@@ -147,7 +149,7 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
 
         # Control flag for dual-write (write to both LogStore and SQL database)
         # Set to True to enable dual-write for safe migration, False to use LogStore only
-        self._enable_dual_write = os.environ.get("LOGSTORE_DUAL_WRITE_ENABLED", "true").lower() == "true"
+        self._enable_dual_write = os.environ.get("LOGSTORE_DUAL_WRITE_ENABLED", "false").lower() == "true"
 
     def _to_logstore_model(self, domain_model: WorkflowNodeExecution) -> Sequence[tuple[str, str]]:
         logger.debug(
@@ -274,16 +276,34 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         Save or update the inputs, process_data, or outputs associated with a specific
         node_execution record.
 
-        For LogStore implementation, this is similar to save() since we always write
-        complete records. We append a new record with updated data fields.
+        For LogStore implementation, this is a no-op for the LogStore write because save()
+        already writes all fields including inputs, process_data, and outputs. The caller
+        typically calls save() first to persist status/metadata, then calls save_execution_data()
+        to persist data fields. Since LogStore writes complete records atomically, we don't
+        need a separate write here to avoid duplicate records.
+
+        However, if dual-write is enabled, we still need to call the SQL repository's
+        save_execution_data() method to properly update the SQL database.
 
         Args:
             execution: The NodeExecution instance with data to save
         """
-        logger.debug("save_execution_data: id=%s, node_execution_id=%s", execution.id, execution.node_execution_id)
-        # In LogStore, we simply write a new complete record with the data
-        # The log_version timestamp will ensure this is treated as the latest version
-        self.save(execution)
+        logger.debug(
+            "save_execution_data: no-op for LogStore (data already saved by save()): id=%s, node_execution_id=%s",
+            execution.id,
+            execution.node_execution_id,
+        )
+        # No-op for LogStore: save() already writes all fields including inputs, process_data, and outputs
+        # Calling save() again would create a duplicate record in the append-only LogStore
+
+        # Dual-write to SQL database if enabled (for safe migration)
+        if self._enable_dual_write:
+            try:
+                self.sql_repository.save_execution_data(execution)
+                logger.debug("Dual-write: saved node execution data to SQL database: id=%s", execution.id)
+            except Exception:
+                logger.exception("Failed to dual-write node execution data to SQL database: id=%s", execution.id)
+                # Don't raise - LogStore write succeeded, SQL is just a backup
 
     def get_by_workflow_run(
         self,
@@ -292,8 +312,8 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
     ) -> Sequence[WorkflowNodeExecution]:
         """
         Retrieve all NodeExecution instances for a specific workflow run.
-        Uses LogStore SQL query with finished_at IS NOT NULL filter for deduplication.
-        This ensures we only get the final version of each node execution.
+        Uses LogStore SQL query with window function to get the latest version of each node execution.
+        This ensures we only get the most recent version of each node execution record.
         Args:
             workflow_run_id: The workflow run ID
             order_config: Optional configuration for ordering results
@@ -304,16 +324,19 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             A list of NodeExecution instances
 
         Note:
-            This method filters by finished_at IS NOT NULL to avoid duplicates from
-            version updates. For complete history including intermediate states,
-            a different query strategy would be needed.
+            This method uses ROW_NUMBER() window function partitioned by node_execution_id
+            to get the latest version (highest log_version) of each node execution.
         """
         logger.debug("get_by_workflow_run: workflow_run_id=%s, order_config=%s", workflow_run_id, order_config)
-        # Build SQL query with deduplication using finished_at IS NOT NULL
-        # This optimization avoids window functions for common case where we only
-        # want the final state of each node execution
+        # Build SQL query with deduplication using window function
+        # ROW_NUMBER() OVER (PARTITION BY node_execution_id ORDER BY log_version DESC)
+        # ensures we get the latest version of each node execution
 
-        # Build ORDER BY clause
+        # Escape parameters to prevent SQL injection
+        escaped_workflow_run_id = escape_identifier(workflow_run_id)
+        escaped_tenant_id = escape_identifier(self._tenant_id)
+
+        # Build ORDER BY clause for outer query
         order_clause = ""
         if order_config and order_config.order_by:
             order_fields = []
@@ -327,16 +350,23 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             if order_fields:
                 order_clause = "ORDER BY " + ", ".join(order_fields)
 
-        sql = f"""
-            SELECT *
-            FROM {AliyunLogStore.workflow_node_execution_logstore}
-            WHERE workflow_run_id='{workflow_run_id}'
-              AND tenant_id='{self._tenant_id}'
-              AND finished_at IS NOT NULL
-        """
-
+        # Build app_id filter for subquery
+        app_id_filter = ""
         if self._app_id:
-            sql += f" AND app_id='{self._app_id}'"
+            escaped_app_id = escape_identifier(self._app_id)
+            app_id_filter = f" AND app_id='{escaped_app_id}'"
+
+        # Use window function to get latest version of each node execution
+        sql = f"""
+            SELECT * FROM (
+                SELECT *, ROW_NUMBER() OVER (PARTITION BY node_execution_id ORDER BY log_version DESC) AS rn
+                FROM {AliyunLogStore.workflow_node_execution_logstore}
+                WHERE workflow_run_id='{escaped_workflow_run_id}'
+                  AND tenant_id='{escaped_tenant_id}'
+                  {app_id_filter}
+            ) t
+            WHERE rn = 1
+        """
 
         if order_clause:
             sql += f" {order_clause}"
