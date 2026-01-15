@@ -106,10 +106,9 @@ jobs:
           pnpm run lint:report
         continue-on-error: true
 
-      - name: Annotate Code Linting Results
-        uses: ataylorme/eslint-annotate-action@v3
+      - uses: DerLev/eslint-annotations@v2
         with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          eslint-report: eslint_report.json
 
       - name: Web type check
         if: steps.changed-files.outputs.any_changed == 'true'
