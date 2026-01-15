@@ -731,11 +731,7 @@ export class CollaborationManager {
 
     newEdges.forEach((newEdge) => {
       const oldEdge = oldEdgesMap.get(newEdge.id)
-      if (!oldEdge) {
-        const clonedEdge = cloneDeep(newEdge)
-        this.edgesMap?.set(newEdge.id, clonedEdge)
-      }
-      else if (!isEqual(oldEdge, newEdge)) {
+      if (!oldEdge || !isEqual(oldEdge, newEdge)) {
         const clonedEdge = cloneDeep(newEdge)
         this.edgesMap?.set(newEdge.id, clonedEdge)
       }
