@@ -4,7 +4,7 @@ import type { SystemFeatures } from '@/types/feature'
 import { useQuery } from '@tanstack/react-query'
 import { create } from 'zustand'
 import Loading from '@/app/components/base/loading'
-import { getSystemFeatures } from '@/service/common'
+import { consoleClient } from '@/service/client'
 import { defaultSystemFeatures } from '@/types/feature'
 import { fetchSetupStatusWithCache } from '@/utils/setup-status'
 
@@ -22,7 +22,7 @@ const systemFeaturesQueryKey = ['systemFeatures'] as const
 const setupStatusQueryKey = ['setupStatus'] as const
 
 async function fetchSystemFeatures() {
-  const data = await getSystemFeatures()
+  const data = await consoleClient.systemFeatures()
   const { setSystemFeatures } = useGlobalPublicStore.getState()
   setSystemFeatures({ ...defaultSystemFeatures, ...data })
   return data
