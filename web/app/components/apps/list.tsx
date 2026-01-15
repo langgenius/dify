@@ -12,7 +12,6 @@ import { useDebounceFn } from 'ahooks'
 import dynamic from 'next/dynamic'
 import {
   useRouter,
-  useSearchParams,
 } from 'next/navigation'
 import { parseAsString, useQueryState } from 'nuqs'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -29,7 +28,6 @@ import { CheckModal } from '@/hooks/use-pay'
 import { useInfiniteAppList } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
 import { cn } from '@/utils/classnames'
-import { isServer } from '@/utils/client'
 import AppCard from './app-card'
 import { AppCardSkeleton } from './app-card-skeleton'
 import Empty from './empty'
@@ -59,7 +57,6 @@ const List = () => {
   const { t } = useTranslation()
   const { systemFeatures } = useGlobalPublicStore()
   const router = useRouter()
-  const searchParams = useSearchParams()
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, isLoadingCurrentWorkspace } = useAppContext()
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
   const [activeTab, setActiveTab] = useQueryState(
@@ -67,33 +64,6 @@ const List = () => {
     parseAsString.withDefault('all').withOptions({ history: 'push' }),
   )
 
-  // valid tabs for apps list; anything else should fallback to 'all'
-
-  // 1) Normalize legacy/incorrect query params like ?mode=discover -> ?category=all
-  useEffect(() => {
-    // avoid running on server
-    if (isServer)
-      return
-    const mode = searchParams.get('mode')
-    if (!mode)
-      return
-    const url = new URL(window.location.href)
-    url.searchParams.delete('mode')
-    if (validTabs.has(mode)) {
-      // migrate to category key
-      url.searchParams.set('category', mode)
-    }
-    else {
-      url.searchParams.set('category', 'all')
-    }
-    router.replace(url.pathname + url.search)
-  }, [router, searchParams])
-
-  // 2) If category has an invalid value (e.g., 'discover'), reset to 'all'
-  useEffect(() => {
-    if (!validTabs.has(activeTab))
-      setActiveTab('all')
-  }, [activeTab, setActiveTab])
   const { query: { tagIDs = [], keywords = '', isCreatedByMe: queryIsCreatedByMe = false }, setQuery } = useAppsQueryState()
   const [isCreatedByMe, setIsCreatedByMe] = useState(queryIsCreatedByMe)
   const [tagFilterValue, setTagFilterValue] = useState<string[]>(tagIDs)
