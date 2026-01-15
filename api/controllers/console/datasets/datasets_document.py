@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 from argparse import ArgumentTypeError
 from collections.abc import Sequence
 from contextlib import ExitStack
@@ -137,6 +138,22 @@ def _get_upload_file_from_upload_file_document(document: Document) -> UploadFile
         raise NotFound("Uploaded file not found.")
 
     return upload_file
+
+
+def _dedupe_zip_filename(original_name: str, used_names: set[str]) -> str:
+    """
+    Return a unique ZIP filename, inserting suffixes before the extension.
+    """
+    if original_name not in used_names:
+        return original_name
+    # Split once so the suffix is added before the extension.
+    stem, extension = os.path.splitext(original_name)
+    suffix = 1
+    while True:
+        candidate = f"{stem} ({suffix}){extension}"
+        if candidate not in used_names:
+            return candidate
+        suffix += 1
 
 
 # Register models for flask_restx to avoid dict type issues in Swagger
@@ -1042,13 +1059,7 @@ class DocumentBatchDownloadZipApi(DocumentResource):
                     upload_file = upload_files_by_document_id[document_id]
 
                     # Ensure each filename in the ZIP is unique.
-                    arcname = upload_file.name
-                    if arcname in used_names:
-                        base = arcname
-                        suffix = 1
-                        while f"{base} ({suffix})" in used_names:
-                            suffix += 1
-                        arcname = f"{base} ({suffix})"
+                    arcname = _dedupe_zip_filename(upload_file.name, used_names)
                     used_names.add(arcname)
 
                     # Stream file content from storage into the zip entry.

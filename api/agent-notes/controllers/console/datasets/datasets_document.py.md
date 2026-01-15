@@ -45,3 +45,5 @@
 - `_get_upload_file_from_upload_file_document(document)` centralizes the “Document → UploadFile” lookup.
 - `DocumentResource.get_documents_and_upload_files_for_zip(...)` batches lookups and returns a
   `document_id -> UploadFile` map for ZIP downloads.
+- ZIP deduplication preserves extensions by inserting suffixes before the extension
+  (e.g., `doc.txt` → `doc (1).txt`).
