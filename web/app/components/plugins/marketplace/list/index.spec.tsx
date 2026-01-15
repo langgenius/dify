@@ -1,6 +1,6 @@
 import type { MarketplaceCollection, SearchParamsFromCollection } from '../types'
 import type { Plugin } from '@/app/components/plugins/types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import List from './index'
@@ -30,23 +30,27 @@ vi.mock('#i18n', () => ({
   useLocale: () => 'en-US',
 }))
 
-// Mock useMarketplaceContext with controllable values
-const mockContextValues = {
-  plugins: undefined as Plugin[] | undefined,
-  pluginsTotal: 0,
-  marketplaceCollectionsFromClient: undefined as MarketplaceCollection[] | undefined,
-  marketplaceCollectionPluginsMapFromClient: undefined as Record<string, Plugin[]> | undefined,
-  isLoading: false,
-  isSuccessCollections: false,
-  handleQueryPlugins: vi.fn(),
-  searchPluginText: '',
-  filterPluginTags: [] as string[],
-  page: 1,
-  handleMoreClick: vi.fn(),
-}
+// Mock marketplace state hooks with controllable values
+const { mockMarketplaceData, mockMoreClick } = vi.hoisted(() => {
+  return {
+    mockMarketplaceData: {
+      plugins: undefined as Plugin[] | undefined,
+      pluginsTotal: 0,
+      marketplaceCollections: undefined as MarketplaceCollection[] | undefined,
+      marketplaceCollectionPluginsMap: undefined as Record<string, Plugin[]> | undefined,
+      isLoading: false,
+      page: 1,
+    },
+    mockMoreClick: vi.fn(),
+  }
+})
 
-vi.mock('../context', () => ({
-  useMarketplaceContext: (selector: (v: typeof mockContextValues) => unknown) => selector(mockContextValues),
+vi.mock('../state', () => ({
+  useMarketplaceData: () => mockMarketplaceData,
+}))
+
+vi.mock('../atoms', () => ({
+  useMarketplaceMoreClick: () => mockMoreClick,
 }))
 
 // Mock useLocale context
@@ -578,7 +582,7 @@ describe('ListWithCollection', () => {
   // View More Button Tests
   // ================================
   describe('View More Button', () => {
-    it('should render View More button when collection is searchable and onMoreClick is provided', () => {
+    it('should render View More button when collection is searchable', () => {
       const collections = [createMockCollection({
         name: 'collection-0',
         searchable: true,
@@ -587,14 +591,12 @@ describe('ListWithCollection', () => {
       const pluginsMap: Record<string, Plugin[]> = {
         'collection-0': createMockPluginList(1),
       }
-      const onMoreClick = vi.fn()
 
       render(
         <ListWithCollection
           {...defaultProps}
           marketplaceCollections={collections}
           marketplaceCollectionPluginsMap={pluginsMap}
-          onMoreClick={onMoreClick}
         />,
       )
 
@@ -609,42 +611,19 @@ describe('ListWithCollection', () => {
       const pluginsMap: Record<string, Plugin[]> = {
         'collection-0': createMockPluginList(1),
       }
-      const onMoreClick = vi.fn()
 
       render(
         <ListWithCollection
           {...defaultProps}
           marketplaceCollections={collections}
           marketplaceCollectionPluginsMap={pluginsMap}
-          onMoreClick={onMoreClick}
         />,
       )
 
       expect(screen.queryByText('View More')).not.toBeInTheDocument()
     })
 
-    it('should not render View More button when onMoreClick is not provided', () => {
-      const collections = [createMockCollection({
-        name: 'collection-0',
-        searchable: true,
-      })]
-      const pluginsMap: Record<string, Plugin[]> = {
-        'collection-0': createMockPluginList(1),
-      }
-
-      render(
-        <ListWithCollection
-          {...defaultProps}
-          marketplaceCollections={collections}
-          marketplaceCollectionPluginsMap={pluginsMap}
-          onMoreClick={undefined}
-        />,
-      )
-
-      expect(screen.queryByText('View More')).not.toBeInTheDocument()
-    })
-
-    it('should call onMoreClick with search_params when View More is clicked', () => {
+    it('should call moreClick hook with search_params when View More is clicked', () => {
       const searchParams: SearchParamsFromCollection = { query: 'test-query', sort_by: 'install_count' }
       const collections = [createMockCollection({
         name: 'collection-0',
@@ -654,21 +633,19 @@ describe('ListWithCollection', () => {
       const pluginsMap: Record<string, Plugin[]> = {
         'collection-0': createMockPluginList(1),
       }
-      const onMoreClick = vi.fn()
 
       render(
         <ListWithCollection
           {...defaultProps}
           marketplaceCollections={collections}
           marketplaceCollectionPluginsMap={pluginsMap}
-          onMoreClick={onMoreClick}
         />,
       )
 
       fireEvent.click(screen.getByText('View More'))
 
-      expect(onMoreClick).toHaveBeenCalledTimes(1)
-      expect(onMoreClick).toHaveBeenCalledWith(searchParams)
+      expect(mockMoreClick).toHaveBeenCalledTimes(1)
+      expect(mockMoreClick).toHaveBeenCalledWith(searchParams)
     })
   })
 
@@ -802,24 +779,15 @@ describe('ListWithCollection', () => {
 // ListWrapper Component Tests
 // ================================
 describe('ListWrapper', () => {
-  const defaultProps = {
-    marketplaceCollections: [] as MarketplaceCollection[],
-    marketplaceCollectionPluginsMap: {} as Record<string, Plugin[]>,
-    showInstallButton: false,
-  }
-
   beforeEach(() => {
     vi.clearAllMocks()
-    // Reset context values
-    mockContextValues.plugins = undefined
-    mockContextValues.pluginsTotal = 0
-    mockContextValues.marketplaceCollectionsFromClient = undefined
-    mockContextValues.marketplaceCollectionPluginsMapFromClient = undefined
-    mockContextValues.isLoading = false
-    mockContextValues.isSuccessCollections = false
-    mockContextValues.searchPluginText = ''
-    mockContextValues.filterPluginTags = []
-    mockContextValues.page = 1
+    // Reset mock data
+    mockMarketplaceData.plugins = undefined
+    mockMarketplaceData.pluginsTotal = 0
+    mockMarketplaceData.marketplaceCollections = undefined
+    mockMarketplaceData.marketplaceCollectionPluginsMap = undefined
+    mockMarketplaceData.isLoading = false
+    mockMarketplaceData.page = 1
   })
 
   // ================================
@@ -827,32 +795,32 @@ describe('ListWrapper', () => {
   // ================================
   describe('Rendering', () => {
     it('should render without crashing', () => {
-      render(<ListWrapper {...defaultProps} />)
+      render(<ListWrapper />)
 
       expect(document.body).toBeInTheDocument()
     })
 
     it('should render with scrollbarGutter style', () => {
-      const { container } = render(<ListWrapper {...defaultProps} />)
+      const { container } = render(<ListWrapper />)
 
       const wrapper = container.firstChild as HTMLElement
       expect(wrapper).toHaveStyle({ scrollbarGutter: 'stable' })
     })
 
     it('should render Loading component when isLoading is true and page is 1', () => {
-      mockContextValues.isLoading = true
-      mockContextValues.page = 1
+      mockMarketplaceData.isLoading = true
+      mockMarketplaceData.page = 1
 
-      render(<ListWrapper {...defaultProps} />)
+      render(<ListWrapper />)
 
       expect(screen.getByTestId('loading-component')).toBeInTheDocument()
     })
 
     it('should not render Loading component when page > 1', () => {
-      mockContextValues.isLoading = true
-      mockContextValues.page = 2
+      mockMarketplaceData.isLoading = true
+      mockMarketplaceData.page = 2
 
-      render(<ListWrapper {...defaultProps} />)
+      render(<ListWrapper />)
 
       expect(screen.queryByTestId('loading-component')).not.toBeInTheDocument()
     })
@@ -863,26 +831,26 @@ describe('ListWrapper', () => {
   // ================================
   describe('Plugins Header', () => {
     it('should render plugins result count when plugins are present', () => {
-      mockContextValues.plugins = createMockPluginList(5)
-      mockContextValues.pluginsTotal = 5
+      mockMarketplaceData.plugins = createMockPluginList(5)
+      mockMarketplaceData.pluginsTotal = 5
 
-      render(<ListWrapper {...defaultProps} />)
+      render(<ListWrapper />)
 
       expect(screen.getByText('5 plugins found')).toBeInTheDocument()
     })
 
     it('should render SortDropdown when plugins are present', () => {
-      mockContextValues.plugins = createMockPluginList(1)
+      mockMarketplaceData.plugins = createMockPluginList(1)
 
-      render(<ListWrapper {...defaultProps} />)
+      render(<ListWrapper />)
 
       expect(screen.getByTestId('sort-dropdown')).toBeInTheDocument()
     })
 
     it('should not render plugins header when plugins is undefined', () => {
-      mockContextValues.plugins = undefined
+      mockMarketplaceData.plugins = undefined
 
-      render(<ListWrapper {...defaultProps} />)
+      render(<ListWrapper />)
 
       expect(screen.queryByTestId('sort-dropdown')).not.toBeInTheDocument()
     })
@@ -892,197 +860,60 @@ describe('ListWrapper', () => {
   // List Rendering Logic Tests
   // ================================
   describe('List Rendering Logic', () => {
-    it('should render List when not loading', () => {
-      mockContextValues.isLoading = false
-      const collections = createMockCollectionList(1)
-      const pluginsMap: Record<string, Plugin[]> = {
+    it('should render collections when not loading', () => {
+      mockMarketplaceData.isLoading = false
+      mockMarketplaceData.marketplaceCollections = createMockCollectionList(1)
+      mockMarketplaceData.marketplaceCollectionPluginsMap = {
         'collection-0': createMockPluginList(1),
       }
 
-      render(
-        <ListWrapper
-          {...defaultProps}
-          marketplaceCollections={collections}
-          marketplaceCollectionPluginsMap={pluginsMap}
-        />,
-      )
+      render(<ListWrapper />)
 
       expect(screen.getByText('Collection 0')).toBeInTheDocument()
     })
 
     it('should render List when loading but page > 1', () => {
-      mockContextValues.isLoading = true
-      mockContextValues.page = 2
-      const collections = createMockCollectionList(1)
-      const pluginsMap: Record<string, Plugin[]> = {
+      mockMarketplaceData.isLoading = true
+      mockMarketplaceData.page = 2
+      mockMarketplaceData.marketplaceCollections = createMockCollectionList(1)
+      mockMarketplaceData.marketplaceCollectionPluginsMap = {
         'collection-0': createMockPluginList(1),
       }
 
-      render(
-        <ListWrapper
-          {...defaultProps}
-          marketplaceCollections={collections}
-          marketplaceCollectionPluginsMap={pluginsMap}
-        />,
-      )
+      render(<ListWrapper />)
 
       expect(screen.getByText('Collection 0')).toBeInTheDocument()
-    })
-
-    it('should use client collections when available', () => {
-      const serverCollections = createMockCollectionList(1)
-      serverCollections[0].label = { 'en-US': 'Server Collection' }
-      const clientCollections = createMockCollectionList(1)
-      clientCollections[0].label = { 'en-US': 'Client Collection' }
-
-      const serverPluginsMap: Record<string, Plugin[]> = {
-        'collection-0': createMockPluginList(1),
-      }
-      const clientPluginsMap: Record<string, Plugin[]> = {
-        'collection-0': createMockPluginList(1),
-      }
-
-      mockContextValues.marketplaceCollectionsFromClient = clientCollections
-      mockContextValues.marketplaceCollectionPluginsMapFromClient = clientPluginsMap
-
-      render(
-        <ListWrapper
-          {...defaultProps}
-          marketplaceCollections={serverCollections}
-          marketplaceCollectionPluginsMap={serverPluginsMap}
-        />,
-      )
-
-      expect(screen.getByText('Client Collection')).toBeInTheDocument()
-      expect(screen.queryByText('Server Collection')).not.toBeInTheDocument()
-    })
-
-    it('should use server collections when client collections are not available', () => {
-      const serverCollections = createMockCollectionList(1)
-      serverCollections[0].label = { 'en-US': 'Server Collection' }
-      const serverPluginsMap: Record<string, Plugin[]> = {
-        'collection-0': createMockPluginList(1),
-      }
-
-      mockContextValues.marketplaceCollectionsFromClient = undefined
-      mockContextValues.marketplaceCollectionPluginsMapFromClient = undefined
-
-      render(
-        <ListWrapper
-          {...defaultProps}
-          marketplaceCollections={serverCollections}
-          marketplaceCollectionPluginsMap={serverPluginsMap}
-        />,
-      )
-
-      expect(screen.getByText('Server Collection')).toBeInTheDocument()
     })
   })
 
   // ================================
-  // Context Integration Tests
+  // Data Integration Tests
   // ================================
-  describe('Context Integration', () => {
-    it('should pass plugins from context to List', () => {
-      const plugins = createMockPluginList(2)
-      mockContextValues.plugins = plugins
+  describe('Data Integration', () => {
+    it('should pass plugins from state to List', () => {
+      mockMarketplaceData.plugins = createMockPluginList(2)
 
-      render(<ListWrapper {...defaultProps} />)
+      render(<ListWrapper />)
 
       expect(screen.getByTestId('card-plugin-0')).toBeInTheDocument()
       expect(screen.getByTestId('card-plugin-1')).toBeInTheDocument()
     })
 
-    it('should pass handleMoreClick from context to List', () => {
-      const mockHandleMoreClick = vi.fn()
-      mockContextValues.handleMoreClick = mockHandleMoreClick
-
-      const collections = [createMockCollection({
+    it('should show View More button and call moreClick hook', () => {
+      mockMarketplaceData.marketplaceCollections = [createMockCollection({
         name: 'collection-0',
         searchable: true,
         search_params: { query: 'test' },
       })]
-      const pluginsMap: Record<string, Plugin[]> = {
+      mockMarketplaceData.marketplaceCollectionPluginsMap = {
         'collection-0': createMockPluginList(1),
       }
 
-      render(
-        <ListWrapper
-          {...defaultProps}
-          marketplaceCollections={collections}
-          marketplaceCollectionPluginsMap={pluginsMap}
-        />,
-      )
+      render(<ListWrapper />)
 
       fireEvent.click(screen.getByText('View More'))
 
-      expect(mockHandleMoreClick).toHaveBeenCalled()
-    })
-  })
-
-  // ================================
-  // Effect Tests (handleQueryPlugins)
-  // ================================
-  describe('handleQueryPlugins Effect', () => {
-    it('should call handleQueryPlugins when conditions are met', async () => {
-      const mockHandleQueryPlugins = vi.fn()
-      mockContextValues.handleQueryPlugins = mockHandleQueryPlugins
-      mockContextValues.isSuccessCollections = true
-      mockContextValues.marketplaceCollectionsFromClient = undefined
-      mockContextValues.searchPluginText = ''
-      mockContextValues.filterPluginTags = []
-
-      render(<ListWrapper {...defaultProps} />)
-
-      await waitFor(() => {
-        expect(mockHandleQueryPlugins).toHaveBeenCalled()
-      })
-    })
-
-    it('should not call handleQueryPlugins when client collections exist', async () => {
-      const mockHandleQueryPlugins = vi.fn()
-      mockContextValues.handleQueryPlugins = mockHandleQueryPlugins
-      mockContextValues.isSuccessCollections = true
-      mockContextValues.marketplaceCollectionsFromClient = createMockCollectionList(1)
-      mockContextValues.searchPluginText = ''
-      mockContextValues.filterPluginTags = []
-
-      render(<ListWrapper {...defaultProps} />)
-
-      // Give time for effect to run
-      await waitFor(() => {
-        expect(mockHandleQueryPlugins).not.toHaveBeenCalled()
-      })
-    })
-
-    it('should not call handleQueryPlugins when search text exists', async () => {
-      const mockHandleQueryPlugins = vi.fn()
-      mockContextValues.handleQueryPlugins = mockHandleQueryPlugins
-      mockContextValues.isSuccessCollections = true
-      mockContextValues.marketplaceCollectionsFromClient = undefined
-      mockContextValues.searchPluginText = 'search text'
-      mockContextValues.filterPluginTags = []
-
-      render(<ListWrapper {...defaultProps} />)
-
-      await waitFor(() => {
-        expect(mockHandleQueryPlugins).not.toHaveBeenCalled()
-      })
-    })
-
-    it('should not call handleQueryPlugins when filter tags exist', async () => {
-      const mockHandleQueryPlugins = vi.fn()
-      mockContextValues.handleQueryPlugins = mockHandleQueryPlugins
-      mockContextValues.isSuccessCollections = true
-      mockContextValues.marketplaceCollectionsFromClient = undefined
-      mockContextValues.searchPluginText = ''
-      mockContextValues.filterPluginTags = ['tag1']
-
-      render(<ListWrapper {...defaultProps} />)
-
-      await waitFor(() => {
-        expect(mockHandleQueryPlugins).not.toHaveBeenCalled()
-      })
+      expect(mockMoreClick).toHaveBeenCalled()
     })
   })
 
@@ -1090,32 +921,32 @@ describe('ListWrapper', () => {
   // Edge Cases Tests
   // ================================
   describe('Edge Cases', () => {
-    it('should handle empty plugins array from context', () => {
-      mockContextValues.plugins = []
-      mockContextValues.pluginsTotal = 0
+    it('should handle empty plugins array', () => {
+      mockMarketplaceData.plugins = []
+      mockMarketplaceData.pluginsTotal = 0
 
-      render(<ListWrapper {...defaultProps} />)
+      render(<ListWrapper />)
 
       expect(screen.getByText('0 plugins found')).toBeInTheDocument()
       expect(screen.getByTestId('empty-component')).toBeInTheDocument()
     })
 
     it('should handle large pluginsTotal', () => {
-      mockContextValues.plugins = createMockPluginList(10)
-      mockContextValues.pluginsTotal = 10000
+      mockMarketplaceData.plugins = createMockPluginList(10)
+      mockMarketplaceData.pluginsTotal = 10000
 
-      render(<ListWrapper {...defaultProps} />)
+      render(<ListWrapper />)
 
       expect(screen.getByText('10000 plugins found')).toBeInTheDocument()
     })
 
     it('should handle both loading and has plugins', () => {
-      mockContextValues.isLoading = true
-      mockContextValues.page = 2
-      mockContextValues.plugins = createMockPluginList(5)
-      mockContextValues.pluginsTotal = 50
+      mockMarketplaceData.isLoading = true
+      mockMarketplaceData.page = 2
+      mockMarketplaceData.plugins = createMockPluginList(5)
+      mockMarketplaceData.pluginsTotal = 50
 
-      render(<ListWrapper {...defaultProps} />)
+      render(<ListWrapper />)
 
       // Should show plugins header and list
       expect(screen.getByText('50 plugins found')).toBeInTheDocument()
@@ -1428,106 +1259,72 @@ describe('CardWrapper (via List integration)', () => {
 describe('Combined Workflows', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockContextValues.plugins = undefined
-    mockContextValues.pluginsTotal = 0
-    mockContextValues.isLoading = false
-    mockContextValues.page = 1
-    mockContextValues.marketplaceCollectionsFromClient = undefined
-    mockContextValues.marketplaceCollectionPluginsMapFromClient = undefined
+    mockMarketplaceData.plugins = undefined
+    mockMarketplaceData.pluginsTotal = 0
+    mockMarketplaceData.isLoading = false
+    mockMarketplaceData.page = 1
+    mockMarketplaceData.marketplaceCollections = undefined
+    mockMarketplaceData.marketplaceCollectionPluginsMap = undefined
   })
 
   it('should transition from loading to showing collections', async () => {
-    mockContextValues.isLoading = true
-    mockContextValues.page = 1
+    mockMarketplaceData.isLoading = true
+    mockMarketplaceData.page = 1
 
-    const { rerender } = render(
-      <ListWrapper
-        marketplaceCollections={[]}
-        marketplaceCollectionPluginsMap={{}}
-      />,
-    )
+    const { rerender } = render(<ListWrapper />)
 
     expect(screen.getByTestId('loading-component')).toBeInTheDocument()
 
     // Simulate loading complete
-    mockContextValues.isLoading = false
-    const collections = createMockCollectionList(1)
-    const pluginsMap: Record<string, Plugin[]> = {
+    mockMarketplaceData.isLoading = false
+    mockMarketplaceData.marketplaceCollections = createMockCollectionList(1)
+    mockMarketplaceData.marketplaceCollectionPluginsMap = {
       'collection-0': createMockPluginList(1),
     }
-    mockContextValues.marketplaceCollectionsFromClient = collections
-    mockContextValues.marketplaceCollectionPluginsMapFromClient = pluginsMap
 
-    rerender(
-      <ListWrapper
-        marketplaceCollections={[]}
-        marketplaceCollectionPluginsMap={{}}
-      />,
-    )
+    rerender(<ListWrapper />)
 
     expect(screen.queryByTestId('loading-component')).not.toBeInTheDocument()
     expect(screen.getByText('Collection 0')).toBeInTheDocument()
   })
 
   it('should transition from collections to search results', async () => {
-    const collections = createMockCollectionList(1)
-    const pluginsMap: Record<string, Plugin[]> = {
+    mockMarketplaceData.marketplaceCollections = createMockCollectionList(1)
+    mockMarketplaceData.marketplaceCollectionPluginsMap = {
       'collection-0': createMockPluginList(1),
     }
-    mockContextValues.marketplaceCollectionsFromClient = collections
-    mockContextValues.marketplaceCollectionPluginsMapFromClient = pluginsMap
 
-    const { rerender } = render(
-      <ListWrapper
-        marketplaceCollections={[]}
-        marketplaceCollectionPluginsMap={{}}
-      />,
-    )
+    const { rerender } = render(<ListWrapper />)
 
     expect(screen.getByText('Collection 0')).toBeInTheDocument()
 
     // Simulate search results
-    mockContextValues.plugins = createMockPluginList(5)
-    mockContextValues.pluginsTotal = 5
+    mockMarketplaceData.plugins = createMockPluginList(5)
+    mockMarketplaceData.pluginsTotal = 5
 
-    rerender(
-      <ListWrapper
-        marketplaceCollections={[]}
-        marketplaceCollectionPluginsMap={{}}
-      />,
-    )
+    rerender(<ListWrapper />)
 
     expect(screen.queryByText('Collection 0')).not.toBeInTheDocument()
     expect(screen.getByText('5 plugins found')).toBeInTheDocument()
   })
 
   it('should handle empty search results', () => {
-    mockContextValues.plugins = []
-    mockContextValues.pluginsTotal = 0
+    mockMarketplaceData.plugins = []
+    mockMarketplaceData.pluginsTotal = 0
 
-    render(
-      <ListWrapper
-        marketplaceCollections={[]}
-        marketplaceCollectionPluginsMap={{}}
-      />,
-    )
+    render(<ListWrapper />)
 
     expect(screen.getByTestId('empty-component')).toBeInTheDocument()
     expect(screen.getByText('0 plugins found')).toBeInTheDocument()
   })
 
   it('should support pagination (page > 1)', () => {
-    mockContextValues.plugins = createMockPluginList(40)
-    mockContextValues.pluginsTotal = 80
-    mockContextValues.isLoading = true
-    mockContextValues.page = 2
+    mockMarketplaceData.plugins = createMockPluginList(40)
+    mockMarketplaceData.pluginsTotal = 80
+    mockMarketplaceData.isLoading = true
+    mockMarketplaceData.page = 2
 
-    render(
-      <ListWrapper
-        marketplaceCollections={[]}
-        marketplaceCollectionPluginsMap={{}}
-      />,
-    )
+    render(<ListWrapper />)
 
     // Should show existing results while loading more
     expect(screen.getByText('80 plugins found')).toBeInTheDocument()
@@ -1542,9 +1339,9 @@ describe('Combined Workflows', () => {
 describe('Accessibility', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockContextValues.plugins = undefined
-    mockContextValues.isLoading = false
-    mockContextValues.page = 1
+    mockMarketplaceData.plugins = undefined
+    mockMarketplaceData.isLoading = false
+    mockMarketplaceData.page = 1
   })
 
   it('should have semantic structure with collections', () => {
@@ -1573,13 +1370,11 @@ describe('Accessibility', () => {
     const pluginsMap: Record<string, Plugin[]> = {
       'collection-0': createMockPluginList(1),
     }
-    const onMoreClick = vi.fn()
 
     render(
       <ListWithCollection
         marketplaceCollections={collections}
         marketplaceCollectionPluginsMap={pluginsMap}
-        onMoreClick={onMoreClick}
       />,
     )
 

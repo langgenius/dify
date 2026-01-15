@@ -96,7 +96,7 @@
   "plansCommon.memberAfter": "Member",
   "plansCommon.messageRequest.title": "{{count,number}} message credits",
   "plansCommon.messageRequest.titlePerMonth": "{{count,number}} message credits/month",
-  "plansCommon.messageRequest.tooltip": "Message credits are provided to help you easily try out different OpenAI models in Dify. Credits are consumed based on the model type. Once they’re used up, you can switch to your own OpenAI API key.",
+  "plansCommon.messageRequest.tooltip": "Message credits are provided to help you easily try out different models from OpenAI, Anthropic, Gemini, xAI, DeepSeek and Tongyi in Dify. Credits are consumed based on the model type. Once they're used up, you can switch to your own API key.",
   "plansCommon.modelProviders": "Support OpenAI/Anthropic/Llama2/Azure OpenAI/Hugging Face/Replicate",
   "plansCommon.month": "month",
   "plansCommon.mostPopular": "Popular",

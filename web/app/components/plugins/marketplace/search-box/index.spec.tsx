@@ -26,16 +26,19 @@ vi.mock('#i18n', () => ({
   }),
 }))
 
-// Mock useMarketplaceContext
-const mockContextValues = {
-  searchPluginText: '',
-  handleSearchPluginTextChange: vi.fn(),
-  filterPluginTags: [] as string[],
-  handleFilterPluginTagsChange: vi.fn(),
-}
+// Mock marketplace state hooks
+const { mockSearchPluginText, mockHandleSearchPluginTextChange, mockFilterPluginTags, mockHandleFilterPluginTagsChange } = vi.hoisted(() => {
+  return {
+    mockSearchPluginText: '',
+    mockHandleSearchPluginTextChange: vi.fn(),
+    mockFilterPluginTags: [] as string[],
+    mockHandleFilterPluginTagsChange: vi.fn(),
+  }
+})
 
-vi.mock('../context', () => ({
-  useMarketplaceContext: (selector: (v: typeof mockContextValues) => unknown) => selector(mockContextValues),
+vi.mock('../atoms', () => ({
+  useSearchPluginText: () => [mockSearchPluginText, mockHandleSearchPluginTextChange],
+  useFilterPluginTags: () => [mockFilterPluginTags, mockHandleFilterPluginTagsChange],
 }))
 
 // Mock useTags hook
@@ -430,9 +433,6 @@ describe('SearchBoxWrapper', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPortalOpenState = false
-    // Reset context values
-    mockContextValues.searchPluginText = ''
-    mockContextValues.filterPluginTags = []
   })
 
   describe('Rendering', () => {
@@ -456,28 +456,14 @@ describe('SearchBoxWrapper', () => {
     })
   })
 
-  describe('Context Integration', () => {
-    it('should use searchPluginText from context', () => {
-      mockContextValues.searchPluginText = 'context search'
-      render(<SearchBoxWrapper />)
-
-      expect(screen.getByDisplayValue('context search')).toBeInTheDocument()
-    })
-
+  describe('Hook Integration', () => {
     it('should call handleSearchPluginTextChange when search changes', () => {
       render(<SearchBoxWrapper />)
 
       const input = screen.getByRole('textbox')
       fireEvent.change(input, { target: { value: 'new search' } })
 
-      expect(mockContextValues.handleSearchPluginTextChange).toHaveBeenCalledWith('new search')
-    })
-
-    it('should use filterPluginTags from context', () => {
-      mockContextValues.filterPluginTags = ['agent', 'rag']
-      render(<SearchBoxWrapper />)
-
-      expect(screen.getByTestId('portal-elem')).toBeInTheDocument()
+      expect(mockHandleSearchPluginTextChange).toHaveBeenCalledWith('new search')
     })
   })
 
