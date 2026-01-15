@@ -86,87 +86,83 @@ class CotAgentOutputParser:
             *,
             action_json: str,
             prev_cursor: int,
-            pending_escape: str,
+            pending_raw: str,
         ) -> tuple[str, int, str]:
             """
             Stream the `action_input` JSON string value as it is being produced.
 
             Returns:
-              - text to emit (already JSON-unescaped for common sequences)
+              - text to emit (decoded as a JSON string, best-effort)
               - new cursor position
-              - pending escape buffer (for partial escape sequences at chunk boundary)
+              - pending raw buffer (for partial escape sequences at chunk boundary)
             """
             # Find `"action_input": "` prefix first.
             m = re.search(r'"action_input"\s*:\s*"', action_json, flags=re.IGNORECASE)
             if not m:
-                return "", prev_cursor, pending_escape
+                return "", prev_cursor, pending_raw
 
             start = m.end()
             # Ensure cursor starts from the value start.
             cursor = max(prev_cursor, start)
 
-            out = ""
+            def _decode_safe_json_string_prefix(raw: str) -> tuple[str, str]:
+                """
+                Decode the longest *safe* prefix of a JSON string body.
+
+                Instead of manually decoding escapes, we delegate to `json.loads(..., strict=False)`,
+                but only for a prefix that doesn't end in the middle of an escape sequence.
+                """
+                if not raw:
+                    return "", raw
+
+                i = 0
+                while i < len(raw):
+                    if raw[i] != "\\":
+                        i += 1
+                        continue
+                    # Need at least one more character for any escape
+                    if i + 1 >= len(raw):
+                        break
+                    if raw[i + 1] == "u":
+                        # Need \uXXXX (6 chars total: \ u 0 0 0 0)
+                        if i + 6 > len(raw):
+                            break
+                        i += 6
+                        continue
+                    i += 2
+
+                safe_end = i
+                prefix = raw[:safe_end]
+                remainder = raw[safe_end:]
+                if not prefix:
+                    return "", remainder
+
+                try:
+                    decoded = json.loads(f'"{prefix}"', strict=False)
+                    return decoded, remainder
+                except Exception:
+                    # If model output is malformed JSON, pass through raw prefix.
+                    return prefix, remainder
+
             i = cursor
-            esc = pending_escape
-
-            # JSON string decoding (incremental):
-            # - stop at the first unescaped closing quote
-            # - decode simple escapes so UI receives readable text while streaming
+            # Find the first unescaped closing quote for the JSON string value.
             while i < len(action_json):
-                ch = action_json[i]
-
-                # If we have an unfinished escape from previous step, complete it here.
-                if esc:
-                    esc += ch
-                    # Handle \uXXXX (need 6 chars total: backslash + 'u' + 4 hex)
-                    if esc.startswith("\\u"):
-                        if len(esc) < 6:
-                            i += 1
-                            continue
-                        hex_part = esc[2:6]
-                        try:
-                            out += chr(int(hex_part, 16))
-                        except ValueError:
-                            # Fallback: emit raw if malformed
-                            out += esc
-                        esc = ""
-                        i += 1
-                        continue
-
-                    # Handle common 2-char escapes
-                    mapping = {
-                        "\\n": "\n",
-                        "\\r": "\r",
-                        "\\t": "\t",
-                        "\\\\": "\\",
-                        '\\"': '"',
-                        "\\/": "/",
-                    }
-                    if len(esc) == 2:
-                        out += mapping.get(esc, esc)
-                        esc = ""
-                        i += 1
-                        continue
-
-                    # Unknown/longer escape: flush raw and continue
-                    out += esc
-                    esc = ""
-                    i += 1
-                    continue
-
-                # Stop at end quote (unescaped)
-                if ch == '"':
-                    break
-
-                if ch == "\\":
-                    esc = "\\"
-                    i += 1
-                    continue
-
-                out += ch
+                if action_json[i] == '"':
+                    backslashes = 0
+                    j = i - 1
+                    while j >= cursor and action_json[j] == "\\":
+                        backslashes += 1
+                        j -= 1
+                    if backslashes % 2 == 0:
+                        break
                 i += 1
 
-            return out, i, esc
+            raw_delta = action_json[cursor:i]
+            cursor = i
+
+            pending_raw += raw_delta
+            decoded, pending_raw = _decode_safe_json_string_prefix(pending_raw)
+            return decoded, cursor, pending_raw
 
         code_block_cache = ""
         code_block_delimiter_count = 0
@@ -189,10 +185,10 @@ class CotAgentOutputParser:
         # Streaming state for Final Answer in ReAct JSON
         final_action_detected = False
         streamed_cursor = 0
-        pending_escape = ""
+        pending_raw = ""
         code_block_action_detected = False
         code_streamed_cursor = 0
-        code_pending_escape = ""
+        code_pending_raw = ""
 
         # Track JSON text inside ```json ...``` code blocks incrementally (partial)
         code_json_cache = ""
@@ -246,10 +242,10 @@ class CotAgentOutputParser:
                                 usage_dict["final_answer_streamed"] = True
 
                         if code_block_action_detected:
-                            emitted, code_streamed_cursor, code_pending_escape = _stream_action_input_incrementally(
+                            emitted, code_streamed_cursor, code_pending_raw = _stream_action_input_incrementally(
                                 action_json=code_json_cache,
                                 prev_cursor=code_streamed_cursor,
-                                pending_escape=code_pending_escape,
+                                pending_raw=code_pending_raw,
                             )
                             if emitted:
                                 yield emitted
@@ -334,14 +330,14 @@ class CotAgentOutputParser:
                         # entering a new code block: reset per-block JSON streaming state
                         code_block_action_detected = False
                         code_streamed_cursor = 0
-                        code_pending_escape = ""
+                        code_pending_raw = ""
                         code_json_cache = ""
                         code_in_json = False
                     else:
                         # leaving a code block: clear any leftover state
                         code_block_action_detected = False
                         code_streamed_cursor = 0
-                        code_pending_escape = ""
+                        code_pending_raw = ""
                         code_json_cache = ""
                         code_in_json = False
                     code_block_delimiter_count = 0
@@ -377,10 +373,10 @@ class CotAgentOutputParser:
                                 usage_dict["final_answer_streamed"] = True
 
                         if final_action_detected:
-                            emitted, streamed_cursor, pending_escape = _stream_action_input_incrementally(
+                            emitted, streamed_cursor, pending_raw = _stream_action_input_incrementally(
                                 action_json=json_cache,
                                 prev_cursor=streamed_cursor,
-                                pending_escape=pending_escape,
+                                pending_raw=pending_raw,
                             )
                             if emitted:
                                 # Emit the final answer text as plain stream output.
@@ -396,7 +392,7 @@ class CotAgentOutputParser:
                         in_json = False
                         final_action_detected = False
                         streamed_cursor = 0
-                        pending_escape = ""
+                        pending_raw = ""
 
                 if not in_code_block and not in_json:
                     last_character = delta

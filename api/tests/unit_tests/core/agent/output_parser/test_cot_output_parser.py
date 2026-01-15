@@ -112,3 +112,57 @@ def test_cot_output_parser_streams_final_answer_action_input_code_block_json():
 
     assert "hello" in streamed
     assert usage_dict.get("final_answer_streamed") is True
+
+
+def test_cot_output_parser_does_not_emit_partial_unicode_escape_in_action_input():
+    """
+    Ensure we don't emit partial escape fragments when `action_input` is incomplete.
+
+    The parser keeps a small amount of manual logic to avoid cutting in the middle of
+    escape sequences (e.g. a partial `\\uXXXX`). This test locks that behavior.
+    """
+    # Incomplete unicode escape (missing 2 hex digits).
+    # Note: intentionally omit the closing `"` / `}` to simulate an unfinished stream.
+    text = 'Action: {"action": "Final Answer", "action_input": "hello ' + "\\u4f"
+    llm_response = mock_llm_response(text)
+    usage_dict: dict = {}
+    results = CotAgentOutputParser.handle_react_stream_output(llm_response, usage_dict)
+
+    streamed_chunks: list[str] = []
+    for item in results:
+        if isinstance(item, str):
+            streamed_chunks.append(item)
+
+    # In this invalid-JSON case, the parser may later yield the raw JSON buffer (fallback path).
+    # We only want to validate the *streamed final answer text* produced by the incremental
+    # action_input streamer (which should never include partial escape fragments).
+    streamed_final = "".join(c for c in streamed_chunks if '"action"' not in c and '"action_input"' not in c)
+
+    # We should have streamed the safe prefix, but not the broken escape fragment.
+    assert "hello " in streamed_final
+    assert "\\u4f" not in streamed_final
+    assert "\\" not in streamed_final
+    assert usage_dict.get("final_answer_streamed") is True
+
+
+def test_cot_output_parser_does_not_emit_trailing_backslash_in_action_input():
+    """
+    Ensure we don't emit a dangling backslash when `action_input` ends mid-escape.
+    """
+    # Simulate an LLM stopping mid-token: JSON string ends with a single backslash.
+    # (This is invalid JSON, but can happen during streaming.)
+    text = 'Action: {"action": "Final Answer", "action_input": "hello ' + "\\"
+    llm_response = mock_llm_response(text)
+    usage_dict: dict = {}
+    results = CotAgentOutputParser.handle_react_stream_output(llm_response, usage_dict)
+
+    streamed_chunks: list[str] = []
+    for item in results:
+        if isinstance(item, str):
+            streamed_chunks.append(item)
+
+    streamed_final = "".join(c for c in streamed_chunks if '"action"' not in c and '"action_input"' not in c)
+
+    assert "hello " in streamed_final
+    assert "\\" not in streamed_final
+    assert usage_dict.get("final_answer_streamed") is True
