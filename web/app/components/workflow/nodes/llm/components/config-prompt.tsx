@@ -6,7 +6,6 @@ import * as React from 'react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
-import { useStoreApi } from 'reactflow'
 import { v4 as uuid4 } from 'uuid'
 import { DragHandle } from '@/app/components/base/icons/src/vender/line/others'
 import {
@@ -18,7 +17,6 @@ import AddButton from '@/app/components/workflow/nodes/_base/components/add-butt
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 import { cn } from '@/utils/classnames'
-import { useWorkflow } from '../../../hooks'
 import { useStore, useWorkflowStore } from '../../../store'
 import { BlockEnum, EditionType, isPromptMessageContext, PromptRole, VarType } from '../../../types'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
@@ -26,7 +24,6 @@ import ConfigContextItem from './config-context-item'
 import ConfigPromptItem from './config-prompt-item'
 
 const i18nPrefix = 'nodes.llm'
-
 type Props = {
   readOnly: boolean
   nodeId: string
@@ -65,9 +62,6 @@ const ConfigPrompt: FC<Props> = ({
   const {
     setControlPromptEditorRerenderKey,
   } = workflowStore.getState()
-
-  const store = useStoreApi()
-  const { getBeforeNodesInSameBranch } = useWorkflow()
 
   const [isContextMenuOpen, setIsContextMenuOpen] = useState(false)
   const contextMenuTriggerRef = useRef<HTMLDivElement>(null)
@@ -122,40 +116,21 @@ const ConfigPrompt: FC<Props> = ({
     return Array.from(merged.values())
   }, [availableNodesWithParent, parentAvailableNodes])
 
-  const contextAgentNodes = useMemo(() => {
-    const agentNodes = mergedAvailableNodesWithParent
-      .filter(node => node.data.type === BlockEnum.Agent)
-
-    const { getNodes } = store.getState()
-    const allNodes = getNodes()
-    const currentNode = allNodes.find(n => n.id === nodeId)
-    const parentNodeId = currentNode?.parentId
-
-    if (parentNodeId) {
-      const beforeNodes = getBeforeNodesInSameBranch(parentNodeId)
-      const parentAgentNodes = beforeNodes
-        .filter(node => node.data.type === BlockEnum.Agent)
-        .filter(node => !agentNodes.some(n => n.id === node.id))
-
-      agentNodes.unshift(...parentAgentNodes)
-    }
-
-    return agentNodes
-  }, [mergedAvailableNodesWithParent, nodeId, store, getBeforeNodesInSameBranch])
-
   const contextVarOptions = useMemo<NodeOutPutVar[]>(() => {
-    return contextAgentNodes.map(node => ({
-      nodeId: node.id,
-      title: node.data.title,
-      vars: [
-        {
-          variable: 'context',
-          type: VarType.arrayObject,
-          schemaType: 'List[promptMessage]',
-        },
-      ],
-    }))
-  }, [contextAgentNodes])
+    return mergedAvailableNodesWithParent
+      .filter(node => node.data.type === BlockEnum.Agent || node.data.type === BlockEnum.LLM)
+      .map(node => ({
+        nodeId: node.id,
+        title: node.data.title,
+        vars: [
+          {
+            variable: 'context',
+            type: VarType.arrayObject,
+            schemaType: 'List[promptMessage]',
+          },
+        ],
+      }))
+  }, [mergedAvailableNodesWithParent])
 
   const handleChatModePromptChange = useCallback((index: number) => {
     return (prompt: string) => {

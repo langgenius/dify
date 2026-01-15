@@ -33,7 +33,6 @@ import Placeholder from './placeholder'
  * Example: {{@agent-123.context@}} -> captures "agent-123"
  */
 const AGENT_CONTEXT_VAR_PATTERN = /\{\{[@#]([^.@#]+)\.context[@#]\}\}/g
-
 const DEFAULT_MENTION_CONFIG: MentionConfig = {
   extractor_node_id: '',
   output_selector: [],
@@ -151,6 +150,15 @@ const MixedVariableTextInput = ({
     }, {} as Record<string, Node>)
   }, [availableNodes])
 
+  const contextNodeIds = useMemo(() => {
+    const ids = new Set<string>()
+    availableNodes.forEach((node) => {
+      if (node.data.type === BlockEnum.Agent || node.data.type === BlockEnum.LLM)
+        ids.add(node.id)
+    })
+    return ids
+  }, [availableNodes])
+
   type DetectedAgent = {
     nodeId: string
     name: string
@@ -165,7 +173,7 @@ const MixedVariableTextInput = ({
       const variablePath = match[1]
       const nodeId = variablePath.split('.')[0]
       const node = nodesByIdMap[nodeId]
-      if (node?.data.type === BlockEnum.Agent) {
+      if (node && contextNodeIds.has(nodeId)) {
         return {
           nodeId,
           name: node.data.title,
@@ -173,20 +181,22 @@ const MixedVariableTextInput = ({
       }
     }
     return null
-  }, [nodesByIdMap])
+  }, [contextNodeIds, nodesByIdMap])
 
   const detectedAgentFromValue: DetectedAgent | null = useMemo(() => {
     return detectAgentFromText(value)
   }, [detectAgentFromText, value])
 
   const agentNodes = useMemo(() => {
+    if (!contextNodeIds.size)
+      return []
     return availableNodes
-      .filter(node => node.data.type === BlockEnum.Agent)
+      .filter(node => contextNodeIds.has(node.id))
       .map(node => ({
         id: node.id,
         title: node.data.title,
       }))
-  }, [availableNodes])
+  }, [availableNodes, contextNodeIds])
 
   const syncExtractorPromptFromText = useCallback((text: string) => {
     if (!toolNodeId || !paramKey)

@@ -220,7 +220,7 @@ const ComponentPicker = ({
                       <AgentNodeList
                         nodes={agentNodes.map(node => ({
                           ...node,
-                          type: BlockEnum.Agent,
+                          type: BlockEnum.Agent || BlockEnum.LLM,
                         }))}
                         onSelect={handleSelectAgent}
                         onClose={handleClose}

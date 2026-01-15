@@ -49,27 +49,32 @@ const SubGraphModal: FC<SubGraphModalProps> = ({
   const toolParam = (toolNode?.data as ToolNodeType | undefined)?.tool_parameters?.[paramKey]
   const toolParamValue = toolParam?.value as string | undefined
 
-  const parentAgentNodes = useMemo(() => {
+  const parentBeforeNodes = useMemo(() => {
     if (!isOpen)
       return []
-    const beforeNodes = getBeforeNodesInSameBranch(toolNodeId, workflowNodes, workflowEdges)
-    return beforeNodes.filter(node => node.data.type === BlockEnum.Agent)
+    return getBeforeNodesInSameBranch(toolNodeId, workflowNodes, workflowEdges)
   }, [getBeforeNodesInSameBranch, isOpen, toolNodeId, workflowEdges, workflowNodes])
 
-  const parentAgentNodeIds = useMemo(() => {
-    return parentAgentNodes.map(node => node.id)
-  }, [parentAgentNodes])
+  const parentContextNodes = useMemo(() => {
+    if (!parentBeforeNodes.length)
+      return []
+    return parentBeforeNodes.filter(node => node.data.type === BlockEnum.Agent || node.data.type === BlockEnum.LLM)
+  }, [parentBeforeNodes])
+
+  const parentContextNodeIds = useMemo(() => {
+    return parentContextNodes.map(node => node.id)
+  }, [parentContextNodes])
 
   const parentAvailableVars = useMemo(() => {
-    if (!parentAgentNodeIds.length)
+    if (!parentContextNodeIds.length)
       return []
     const vars = getNodeAvailableVars({
-      beforeNodes: parentAgentNodes,
+      beforeNodes: parentContextNodes,
       isChatMode,
       filterVar: () => true,
     })
-    return vars.filter(nodeVar => parentAgentNodeIds.includes(nodeVar.nodeId))
-  }, [getNodeAvailableVars, isChatMode, parentAgentNodeIds, parentAgentNodes])
+    return vars.filter(nodeVar => parentContextNodeIds.includes(nodeVar.nodeId))
+  }, [getNodeAvailableVars, isChatMode, parentContextNodeIds, parentContextNodes])
 
   const mentionConfig = useMemo<MentionConfig>(() => {
     const current = toolParam?.mention_config
@@ -240,7 +245,7 @@ const SubGraphModal: FC<SubGraphModalProps> = ({
                     onMentionConfigChange={handleMentionConfigChange}
                     extractorNode={extractorNode}
                     toolParamValue={toolParamValue}
-                    parentAvailableNodes={parentAgentNodes}
+                    parentAvailableNodes={parentContextNodes}
                     parentAvailableVars={parentAvailableVars}
                     onSave={handleSave}
                     onSyncWorkflowDraft={doSyncWorkflowDraft}

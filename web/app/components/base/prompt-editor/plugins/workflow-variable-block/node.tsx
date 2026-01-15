@@ -123,8 +123,9 @@ export class WorkflowVariableBlockNode extends DecoratorNode<React.JSX.Element> 
   getTextContent(): string {
     const variables = this.getVariables()
     const node = this.getWorkflowNodesMap()?.[variables[0]]
-    const isAgentContextVariable = node?.type === BlockEnum.Agent && variables[variables.length - 1] === 'context'
-    const marker = isAgentContextVariable ? '@' : '#'
+    const isContextVariable = (node?.type === BlockEnum.Agent || node?.type === BlockEnum.LLM)
+      && variables[variables.length - 1] === 'context'
+    const marker = isContextVariable ? '@' : '#'
     return `{{${marker}${variables.join('.')}${marker}}}`
   }
 }

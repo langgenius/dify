@@ -132,6 +132,11 @@ export const SUPPORT_OUTPUT_VARS_NODE = [
 
 export const AGENT_OUTPUT_STRUCT: Var[] = [
   {
+    variable: 'context',
+    type: VarType.arrayObject,
+    schemaType: 'List[promptMessage]',
+  },
+  {
     variable: 'usage',
     type: VarType.object,
   },
@@ -141,6 +146,11 @@ export const LLM_OUTPUT_STRUCT: Var[] = [
   {
     variable: 'text',
     type: VarType.string,
+  },
+  {
+    variable: 'context',
+    type: VarType.arrayObject,
+    schemaType: 'List[promptMessage]',
   },
   {
     variable: 'reasoning_content',
