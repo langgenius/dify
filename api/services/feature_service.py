@@ -211,7 +211,10 @@ class FeatureService:
             return True
         if not tenant_id:
             return False
-        return features.billing.enabled and features.billing.subscription.plan == CloudPlan.PROFESSIONAL
+        return features.billing.enabled and features.billing.subscription.plan in (
+            CloudPlan.PROFESSIONAL,
+            CloudPlan.TEAM,
+        )
 
     @classmethod
     def get_system_features(cls) -> SystemFeatureModel:
