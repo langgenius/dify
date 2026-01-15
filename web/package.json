@@ -31,6 +31,7 @@
     "lint:fix": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --fix",
     "lint:quiet": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --quiet",
     "lint:complexity": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --rule 'complexity: [error, {max: 15}]' --quiet",
+    "lint:report": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --output-file eslint_report.json --format json",
     "type-check": "tsc --noEmit",
     "type-check:tsgo": "tsgo --noEmit",
     "prepare": "cd ../ && node -e \"if (process.env.NODE_ENV !== 'production'){process.exit(1)} \" || husky ./web/.husky",

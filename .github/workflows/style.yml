@@ -103,7 +103,13 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
         run: |
-          pnpm run lint
+          pnpm run lint:report
+        continue-on-error: true
+
+      - name: Annotate Code Linting Results
+        uses: ataylorme/eslint-annotate-action@v3
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Web type check
         if: steps.changed-files.outputs.any_changed == 'true'
