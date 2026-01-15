@@ -28,7 +28,6 @@ import { getFileIconType } from './utils'
 type EditorTabItemProps = {
   fileId: string
   name: string
-  extension?: string
   isActive: boolean
   isDirty: boolean
   onClick: (fileId: string) => void
@@ -38,7 +37,6 @@ type EditorTabItemProps = {
 const EditorTabItem: FC<EditorTabItemProps> = ({
   fileId,
   name,
-  extension: _extension,
   isActive,
   isDirty,
   onClick,

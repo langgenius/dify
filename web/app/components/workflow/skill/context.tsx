@@ -1,8 +1,8 @@
 'use client'
 
-import type { SkillEditorStore } from './store'
 import {
   useEffect,
+  useMemo,
   useRef,
 } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -23,30 +23,24 @@ export type SkillEditorProviderProps = {
 }
 
 export const SkillEditorProvider = ({ children }: SkillEditorProviderProps) => {
-  const storeRef = useRef<SkillEditorStore | undefined>(undefined)
+  // Create store once using useMemo (stable across re-renders)
+  const store = useMemo(() => createSkillEditorStore(), [])
+
   const appDetail = useAppStore(s => s.appDetail)
   const appId = appDetail?.id
   const prevAppIdRef = useRef<string | undefined>(undefined)
 
-  // Create store on first render (pattern recommended by React)
-  if (storeRef.current === null || storeRef.current === undefined)
-    storeRef.current = createSkillEditorStore()
-
   // Reset store when appId changes
   useEffect(() => {
-    if (prevAppIdRef.current !== undefined && prevAppIdRef.current !== appId) {
-      // appId changed, reset the store
-      storeRef.current?.getState().reset()
-    }
+    if (prevAppIdRef.current !== undefined && prevAppIdRef.current !== appId)
+      store.getState().reset()
+
     prevAppIdRef.current = appId
-  }, [appId])
+  }, [appId, store])
 
   return (
-    <SkillEditorContext.Provider value={storeRef.current}>
+    <SkillEditorContext.Provider value={store}>
       {children}
     </SkillEditorContext.Provider>
   )
 }
-
-// Re-export for convenience
-export { SkillEditorContext } from './store'

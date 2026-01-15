@@ -84,32 +84,35 @@ const Files: React.FC<FilesProps> = ({ className }) => {
 
   // Auto-reveal when activeTabId changes (sync from tab click to tree)
   useEffect(() => {
-    if (!activeTabId || !treeData?.children)
+    if (!activeTabId || !treeData?.children || !treeRef.current)
       return
 
-    // Get ancestors and expand them
     const ancestors = getAncestorIds(activeTabId, treeData.children)
-    if (ancestors.length > 0) {
-      storeApi.getState().revealFile(activeTabId, ancestors)
-    }
 
-    // Scroll to and select the node
-    if (treeRef.current) {
-      // Small delay to allow tree to update
-      const timeoutId = setTimeout(() => {
-        const node = treeRef.current?.get(activeTabId)
-        if (node) {
-          node.select()
-          // Open all parents programmatically
-          ancestors.forEach((ancestorId) => {
-            const ancestorNode = treeRef.current?.get(ancestorId)
-            if (ancestorNode && !ancestorNode.isOpen)
-              ancestorNode.open()
-          })
-        }
-      }, 0)
-      return () => clearTimeout(timeoutId)
-    }
+    // Update store for state persistence
+    if (ancestors.length > 0)
+      storeApi.getState().revealFile(activeTabId, ancestors)
+
+    // Use Tree API for immediate UI update (initialOpenState only applies on first render)
+    const timeoutId = setTimeout(() => {
+      const tree = treeRef.current
+      if (!tree)
+        return
+
+      // Open all ancestor folders
+      for (const ancestorId of ancestors) {
+        const ancestorNode = tree.get(ancestorId)
+        if (ancestorNode && !ancestorNode.isOpen)
+          ancestorNode.open()
+      }
+
+      // Select the target node
+      const node = tree.get(activeTabId)
+      if (node)
+        node.select()
+    }, 0)
+
+    return () => clearTimeout(timeoutId)
   }, [activeTabId, treeData?.children, storeApi])
 
   // Loading state

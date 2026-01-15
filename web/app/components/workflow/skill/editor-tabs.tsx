@@ -36,11 +36,12 @@ const EditorTabs: FC = () => {
   const storeApi = useSkillEditorStoreApi()
 
   // Build node map for quick lookup
+  const treeChildren = treeData?.children
   const nodeMap = useMemo(() => {
-    if (!treeData?.children)
+    if (!treeChildren)
       return new Map<string, AppAssetTreeView>()
-    return buildNodeMap(treeData.children)
-  }, [treeData?.children])
+    return buildNodeMap(treeChildren)
+  }, [treeChildren])
 
   // Handle tab click
   const handleTabClick = (fileId: string) => {
@@ -69,7 +70,6 @@ const EditorTabs: FC = () => {
       {openTabIds.map((fileId) => {
         const node = nodeMap.get(fileId)
         const name = node?.name ?? fileId
-        const extension = node?.extension ?? ''
         const isActive = activeTabId === fileId
         const isDirty = dirtyContents.has(fileId)
 
@@ -78,7 +78,6 @@ const EditorTabs: FC = () => {
             key={fileId}
             fileId={fileId}
             name={name}
-            extension={extension}
             isActive={isActive}
             isDirty={isDirty}
             onClick={handleTabClick}

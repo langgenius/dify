@@ -1,5 +1,6 @@
 'use client'
 
+import type { OnMount } from '@monaco-editor/react'
 import type { FC } from 'react'
 import type { AppAssetTreeView } from './type'
 import Editor, { loader } from '@monaco-editor/react'
@@ -39,7 +40,7 @@ const SkillDocEditor: FC = () => {
   const { t } = useTranslation('workflow')
   const { theme: appTheme } = useTheme()
   const [isMounted, setIsMounted] = useState(false)
-  const editorRef = useRef<any>(null)
+  const editorRef = useRef<Parameters<OnMount>[0] | null>(null)
 
   // Get appId from app store
   const appDetail = useAppStore(s => s.appDetail)
@@ -54,11 +55,12 @@ const SkillDocEditor: FC = () => {
   const { data: treeData } = useGetAppAssetTree(appId)
 
   // Build node map for quick lookup
+  const treeChildren = treeData?.children
   const nodeMap = useMemo(() => {
-    if (!treeData?.children)
+    if (!treeChildren)
       return new Map<string, AppAssetTreeView>()
-    return buildNodeMap(treeData.children)
-  }, [treeData?.children])
+    return buildNodeMap(treeChildren)
+  }, [treeChildren])
 
   // Get current file node
   const currentFileNode = activeTabId ? nodeMap.get(activeTabId) : undefined
@@ -138,7 +140,7 @@ const SkillDocEditor: FC = () => {
   }, [handleSave])
 
   // Handle editor mount
-  const handleEditorDidMount = useCallback((editor: any, monaco: any) => {
+  const handleEditorDidMount: OnMount = useCallback((editor, monaco) => {
     editorRef.current = editor
     monaco.editor.setTheme(appTheme === Theme.light ? 'light' : 'vs-dark')
     setIsMounted(true)

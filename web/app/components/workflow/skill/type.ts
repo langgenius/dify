@@ -97,18 +97,6 @@ export function getAncestorIds(nodeId: string, nodes: AppAssetTreeView[]): strin
 }
 
 /**
- * Get file extension from file name
- * @param name - File name (e.g., 'file.txt')
- * @returns Extension without dot (e.g., 'txt') or empty string
- */
-export function getExtension(name: string): string {
-  const lastDot = name.lastIndexOf('.')
-  if (lastDot === -1 || lastDot === 0)
-    return ''
-  return name.slice(lastDot + 1).toLowerCase()
-}
-
-/**
  * Convert expanded folder IDs set to react-arborist opens object
  * @param expandedIds - Set of expanded folder IDs
  * @returns Object for react-arborist opens prop
@@ -119,18 +107,4 @@ export function toOpensObject(expandedIds: Set<string>): Record<string, boolean>
     opens[id] = true
   })
   return opens
-}
-
-/**
- * Convert react-arborist opens object to Set
- * @param opens - Opens object from react-arborist
- * @returns Set of expanded folder IDs
- */
-export function fromOpensObject(opens: Record<string, boolean>): Set<string> {
-  const set = new Set<string>()
-  Object.entries(opens).forEach(([id, isOpen]) => {
-    if (isOpen)
-      set.add(id)
-  })
-  return set
 }
