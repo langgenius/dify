@@ -1309,7 +1309,8 @@ class DocumentService:
         if not upload_file_ids:
             return {}
         upload_file_id_list: list[str] = [str(upload_file_id) for upload_file_id in upload_file_ids]
-        unique_upload_file_ids: list[str] = list({upload_file_id for upload_file_id in upload_file_id_list})
+        # Deduplicate ids before using them in the IN clause.
+        unique_upload_file_ids: list[str] = list(set(upload_file_id_list))
         # Fetch upload files in one query for efficient batch access.
         upload_files: list[UploadFile] = db.session.scalars(
             select(UploadFile).where(
