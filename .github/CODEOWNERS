@@ -128,7 +128,7 @@
 /api/configs/middleware/vdb/* @JohnJyong
 
 # Frontend
-/web/ @iamjoel
+/web/ @iamjoel @hyoban
 
 # Frontend - Web Tests
 /.github/workflows/web-tests.yml @iamjoel
