@@ -3,10 +3,9 @@ import type { FC } from 'react'
 import * as React from 'react'
 import EditorArea from './editor-area'
 import EditorBody from './editor-body'
-import EditorTabItem from './editor-tab-item'
 import EditorTabs from './editor-tabs'
 import Files from './files'
-import { mockSkillItems } from './mock-data'
+import { mockSkillItems, mockSkillTabs } from './mock-data'
 import Sidebar from './sidebar'
 import SidebarSearchAdd from './sidebar-search-add'
 import SkillDocEditor from './skill-doc-editor'
@@ -23,10 +22,7 @@ const SkillMain: FC = () => {
           <Files items={mockSkillItems} activeItemId={activeItemId} />
         </Sidebar>
         <EditorArea>
-          <EditorTabs>
-            <EditorTabItem />
-            <EditorTabItem />
-          </EditorTabs>
+          <EditorTabs items={mockSkillTabs} />
           <EditorBody>
             <SkillDocEditor />
           </EditorBody>

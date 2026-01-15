@@ -1,15 +1,24 @@
-import type { FC, PropsWithChildren } from 'react'
+import type { FC } from 'react'
+import type { SkillTabItem } from './mock-data'
 import * as React from 'react'
+import { cn } from '@/utils/classnames'
+import EditorTabItem from './editor-tab-item'
 
-type EditorTabsProps = PropsWithChildren
+type EditorTabsProps = {
+  items: SkillTabItem[]
+}
 
-const EditorTabs: FC<EditorTabsProps> = ({ children }) => {
+const EditorTabs: FC<EditorTabsProps> = ({ items }) => {
   return (
     <div
-      className="flex items-center gap-2"
+      className={cn(
+        'flex items-center overflow-hidden rounded-t-lg border-b border-components-panel-border-subtle bg-components-panel-bg-alt',
+      )}
       data-component="editor-tabs"
     >
-      {children}
+      {items.map(item => (
+        <EditorTabItem key={item.id} item={item} />
+      ))}
     </div>
   )
 }

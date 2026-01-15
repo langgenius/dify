@@ -6,7 +6,7 @@ type EditorBodyProps = PropsWithChildren
 const EditorBody: FC<EditorBodyProps> = ({ children }) => {
   return (
     <div
-      className="flex flex-1 rounded-md bg-gray-50 p-3"
+      className="flex flex-1"
       data-component="editor-body"
     >
       {children}

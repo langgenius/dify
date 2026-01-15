@@ -119,3 +119,35 @@ export const mockSkillItems: ResourceItem[] = [
     kind: ResourceKind.folder,
   },
 ]
+
+export type SkillTabType = 'start' | 'file'
+export type SkillTabItem = {
+  id: string
+  type: SkillTabType
+  name: string
+  active?: boolean
+}
+
+export const mockSkillTabs: SkillTabItem[] = [
+  {
+    id: 'tab-start',
+    type: 'start',
+    name: 'Start',
+  },
+  {
+    id: 'tab-skill',
+    type: 'file',
+    name: 'SKILL.md',
+    active: true,
+  },
+  {
+    id: 'tab-output',
+    type: 'file',
+    name: 'output.schema.json',
+  },
+  {
+    id: 'tab-prompt',
+    type: 'file',
+    name: 'prompt.md',
+  },
+]
