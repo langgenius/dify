@@ -30,6 +30,7 @@ import { useDatasetDetailContextWithSelector as useDatasetDetailContext } from '
 import useTimestamp from '@/hooks/use-timestamp'
 import { ChunkingMode, DataSourceType, DocumentActionType } from '@/models/datasets'
 import { DatasourceType } from '@/models/pipeline'
+import { downloadDocumentsZip } from '@/service/datasets'
 import { useDocumentArchive, useDocumentBatchRetryIndex, useDocumentDelete, useDocumentDisable, useDocumentEnable } from '@/service/knowledge/use-document'
 import { asyncRunSafe } from '@/utils'
 import { cn } from '@/utils/classnames'
@@ -300,6 +301,32 @@ const DocumentList: FC<IDocumentListProps> = ({
     return dataSourceType === DatasourceType.onlineDrive
   }, [])
 
+  const downloadableSelectedIds = useMemo(() => {
+    const selectedSet = new Set(selectedIds)
+    return localDocs
+      .filter(doc => selectedSet.has(doc.id) && doc.data_source_type === DataSourceType.FILE)
+      .map(doc => doc.id)
+  }, [localDocs, selectedIds])
+
+  const handleBatchDownload = useCallback(async () => {
+    // Download as a single ZIP to avoid browser caps on multiple automatic downloads.
+    const [e, blob] = await asyncRunSafe(downloadDocumentsZip({ datasetId, documentIds: downloadableSelectedIds }))
+    if (e || !blob) {
+      Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      return
+    }
+
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `dataset-${datasetId}-documents.zip`
+    a.rel = 'noopener noreferrer'
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }, [datasetId, downloadableSelectedIds, t])
+
   return (
     <div className="relative mt-3 flex h-full w-full flex-col">
       <div className="relative h-0 grow overflow-x-auto">
@@ -463,6 +490,7 @@ const DocumentList: FC<IDocumentListProps> = ({
           onArchive={handleAction(DocumentActionType.archive)}
           onBatchEnable={handleAction(DocumentActionType.enable)}
           onBatchDisable={handleAction(DocumentActionType.disable)}
+          onBatchDownload={downloadableSelectedIds.length > 0 ? handleBatchDownload : undefined}
           onBatchDelete={handleAction(DocumentActionType.delete)}
           onEditMetadata={showEditModal}
           onBatchReIndex={hasErrorDocumentsSelected ? handleBatchReIndex : undefined}

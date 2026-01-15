@@ -176,9 +176,6 @@ const Operations = ({
     const a = document.createElement('a')
     a.href = res.url
     a.rel = 'noopener noreferrer'
-    a.target = '_self'
-    // The server sets Content-Disposition, so filename is handled server-side; this just forces download semantics.
-    a.download = ''
     document.body.appendChild(a)
     a.click()
     a.remove()
