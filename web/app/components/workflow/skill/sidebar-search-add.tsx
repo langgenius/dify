@@ -65,6 +65,7 @@ const SidebarSearchAdd: FC = () => {
       return 'root'
     return getTargetFolderIdFromSelection(activeTabId, treeData.children)
   }, [activeTabId, treeData?.children])
+  const menuOffset = useMemo(() => ({ mainAxis: 4 }), [])
 
   const {
     fileInputRef,
@@ -91,7 +92,7 @@ const SidebarSearchAdd: FC = () => {
         open={showMenu}
         onOpenChange={setShowMenu}
         placement="bottom-end"
-        offset={{ mainAxis: 4 }}
+        offset={menuOffset}
       >
         <PortalToFollowElemTrigger onClick={() => setShowMenu(!showMenu)}>
           <Button
