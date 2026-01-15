@@ -308,24 +308,36 @@ const DocumentList: FC<IDocumentListProps> = ({
       .map(doc => doc.id)
   }, [localDocs, selectedIds])
 
+  /**
+   * Generate a random ZIP filename for bulk document downloads.
+   * We intentionally avoid leaking dataset info in the exported archive name.
+   */
+  const generateDocsZipFileName = useCallback((): string => {
+    // Prefer UUID for uniqueness; fall back to time+random when unavailable.
+    const randomPart = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+      ? crypto.randomUUID()
+      : `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`
+    return `${randomPart}-docs.zip`
+  }, [])
+
   const handleBatchDownload = useCallback(async () => {
     // Download as a single ZIP to avoid browser caps on multiple automatic downloads.
     const [e, blob] = await asyncRunSafe(downloadDocumentsZip({ datasetId, documentIds: downloadableSelectedIds }))
     if (e || !blob) {
-      Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      Toast.notify({ type: 'error', message: t('actionMsg.downloadUnsuccessfully', { ns: 'common' }) })
       return
     }
 
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `dataset-${datasetId}-documents.zip`
+    a.download = generateDocsZipFileName()
     a.rel = 'noopener noreferrer'
     document.body.appendChild(a)
     a.click()
     a.remove()
     URL.revokeObjectURL(url)
-  }, [datasetId, downloadableSelectedIds, t])
+  }, [datasetId, downloadableSelectedIds, generateDocsZipFileName, t])
 
   return (
     <div className="relative mt-3 flex h-full w-full flex-col">
