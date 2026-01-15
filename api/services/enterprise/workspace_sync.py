@@ -12,6 +12,8 @@ logger = logging.getLogger(__name__)
 WORKSPACE_SYNC_QUEUE = "enterprise:workspace:sync:queue"
 WORKSPACE_SYNC_PROCESSING = "enterprise:workspace:sync:processing"
 
+TASK_TYPE_SYNC_TO_WORKSPACE = "sync_to_workspace"
+
 
 class WorkspaceSyncService:
     """Service to publish workspace sync tasks to Redis queue for enterprise backend consumption"""
@@ -38,6 +40,7 @@ class WorkspaceSyncService:
                 "retry_count": 0,
                 "created_at": datetime.now(UTC).isoformat(),
                 "source": source,
+                "type": TASK_TYPE_SYNC_TO_WORKSPACE,
             }
 
             # Push to Redis list (queue) - LPUSH adds to the head, worker consumes from tail with RPOP
