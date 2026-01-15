@@ -1,7 +1,7 @@
 {
   "name": "dify-web",
   "type": "module",
-  "version": "1.11.3",
+  "version": "1.11.4",
   "private": true,
   "packageManager": "pnpm@10.28.0+sha512.05df71d1421f21399e053fde567cea34d446fa02c76571441bfc1c7956e98e363088982d940465fd34480d4d90a0668bc12362f8aa88000a64e83d0b0e47be48",
   "imports": {
@@ -9,9 +9,6 @@
       "react-server": "./i18n-config/lib.server.ts",
       "default": "./i18n-config/lib.client.ts"
     }
-  },
-  "engines": {
-    "node": ">=22.12.0"
   },
   "browserslist": [
     "last 1 Chrome version",

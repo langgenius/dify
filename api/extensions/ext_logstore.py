@@ -10,6 +10,7 @@ import os
 
 from dotenv import load_dotenv
 
+from configs import dify_config
 from dify_app import DifyApp
 
 logger = logging.getLogger(__name__)
@@ -19,12 +20,17 @@ def is_enabled() -> bool:
     """
     Check if logstore extension is enabled.
 
+    Logstore is considered enabled when:
+    1. All required Aliyun SLS environment variables are set
+    2. At least one repository configuration points to a logstore implementation
+
     Returns:
-        True if all required Aliyun SLS environment variables are set, False otherwise
+        True if logstore should be initialized, False otherwise
     """
     # Load environment variables from .env file
     load_dotenv()
 
+    # Check if Aliyun SLS connection parameters are configured
     required_vars = [
         "ALIYUN_SLS_ACCESS_KEY_ID",
         "ALIYUN_SLS_ACCESS_KEY_SECRET",
@@ -33,24 +39,32 @@ def is_enabled() -> bool:
         "ALIYUN_SLS_PROJECT_NAME",
     ]
 
-    all_set = all(os.environ.get(var) for var in required_vars)
+    sls_vars_set = all(os.environ.get(var) for var in required_vars)
 
-    if not all_set:
-        logger.info("Logstore extension disabled: required Aliyun SLS environment variables not set")
+    if not sls_vars_set:
+        return False
 
-    return all_set
+    # Check if any repository configuration points to logstore implementation
+    repository_configs = [
+        dify_config.CORE_WORKFLOW_EXECUTION_REPOSITORY,
+        dify_config.CORE_WORKFLOW_NODE_EXECUTION_REPOSITORY,
+        dify_config.API_WORKFLOW_NODE_EXECUTION_REPOSITORY,
+        dify_config.API_WORKFLOW_RUN_REPOSITORY,
+    ]
+
+    uses_logstore = any("logstore" in config.lower() for config in repository_configs)
+
+    if not uses_logstore:
+        return False
+
+    logger.info("Logstore extension enabled: SLS variables set and repository configured to use logstore")
+    return True
 
 
 def init_app(app: DifyApp):
     """
     Initialize logstore on application startup.
-
-    This function:
-    1. Creates Aliyun SLS project if it doesn't exist
-    2. Creates logstores (workflow_execution, workflow_node_execution) if they don't exist
-    3. Creates indexes with field configurations based on PostgreSQL table structures
-
-    This operation is idempotent and only executes once during application startup.
+    If initialization fails, the application continues running without logstore features.
 
     Args:
         app: The Dify application instance
@@ -58,17 +72,23 @@ def init_app(app: DifyApp):
     try:
         from extensions.logstore.aliyun_logstore import AliyunLogStore
 
-        logger.info("Initializing logstore...")
+        logger.info("Initializing Aliyun SLS Logstore...")
 
-        # Create logstore client and initialize project/logstores/indexes
+        # Create logstore client and initialize resources
         logstore_client = AliyunLogStore()
         logstore_client.init_project_logstore()
 
-        # Attach to app for potential later use
         app.extensions["logstore"] = logstore_client
 
         logger.info("Logstore initialized successfully")
+
     except Exception:
-        logger.exception("Failed to initialize logstore")
-        # Don't raise - allow application to continue even if logstore init fails
-        # This ensures that the application can still run if logstore is misconfigured
+        logger.exception(
+            "Logstore initialization failed. Configuration: endpoint=%s, region=%s, project=%s, timeout=%ss. "
+            "Application will continue but logstore features will NOT work.",
+            os.environ.get("ALIYUN_SLS_ENDPOINT"),
+            os.environ.get("ALIYUN_SLS_REGION"),
+            os.environ.get("ALIYUN_SLS_PROJECT_NAME"),
+            os.environ.get("ALIYUN_SLS_CHECK_CONNECTIVITY_TIMEOUT", "30"),
+        )
+        # Don't raise - allow application to continue even if logstore setup fails
