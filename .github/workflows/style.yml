@@ -65,6 +65,9 @@ jobs:
     defaults:
       run:
         working-directory: ./web
+    permissions:
+      checks: write
+      pull-requests: read
 
     steps:
       - name: Checkout code
@@ -94,9 +97,6 @@ jobs:
           cache: pnpm
           cache-dependency-path: ./web/pnpm-lock.yaml
 
-      - name: 'Add custom eslint matcher' # see https://github.com/actions/setup-node/issues/403
-        run: echo "::add-matcher::.github/workflows/eslint-matcher.json"
-
       - name: Web dependencies
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
@@ -106,7 +106,14 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
         run: |
-          pnpm run lint
+          pnpm run lint --output-file eslint_report.json --format json
+        continue-on-error: true
+
+      - name: Annotate Code
+        uses: DerLev/eslint-annotations@v2
+        with:
+          eslint-report: eslint_report.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Web type check
         if: steps.changed-files.outputs.any_changed == 'true'
