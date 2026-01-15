@@ -61,7 +61,8 @@ check:
 
 lint:
 	@echo "🔧 Running ruff format, check with fixes, import linter, and dotenv-linter..."
-	@uv run --project api --dev sh -c 'ruff format ./api && ruff check --fix ./api'
+	@uv run --project api --dev ruff format ./api
+	@uv run --project api --dev ruff check --fix ./api
 	@uv run --directory api --dev lint-imports
 	@uv run --project api --dev dotenv-linter ./api/.env.example ./web/.env.example
 	@echo "✅ Linting complete"
