@@ -7,7 +7,6 @@ import { memo, useEffect, useMemo } from 'react'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
 import { NODE_WIDTH_X_OFFSET, START_INITIAL_POSITION } from '@/app/components/workflow/constants'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
-import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum, EditionType, isPromptMessageContext, PromptRole } from '@/app/components/workflow/types'
 import SubGraphMain from './components/sub-graph-main'
@@ -42,12 +41,12 @@ const SubGraphContent: FC<SubGraphProps> = (props) => {
     toolParamValue,
     parentAvailableNodes,
     parentAvailableVars,
+    configsMap,
     onSave,
   } = props
 
   const setParentAvailableVars = useStore(state => state.setParentAvailableVars)
   const setParentAvailableNodes = useStore(state => state.setParentAvailableNodes)
-  const configsMap = useHooksStore(state => state.configsMap)
 
   useEffect(() => {
     setParentAvailableVars?.(parentAvailableVars || [])

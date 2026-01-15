@@ -76,7 +76,7 @@ const SubGraphChildren: FC<SubGraphChildrenProps> = ({
 
   return (
     <Panel
-      topOffset={0}
+      withHeader={false}
       components={{
         right: panelRight,
       }}
