@@ -12,6 +12,7 @@ from flask import Flask
 from werkzeug.exceptions import Forbidden
 
 import controllers.web.human_input_form as human_input_module
+import controllers.web.site as site_module
 
 HumanInputFormApi = human_input_module.HumanInputFormApi
 RecipientType = human_input_module.RecipientType
@@ -71,13 +72,18 @@ def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask):
 
     form = _FakeForm()
 
-    tenant = SimpleNamespace(status=TenantStatus.NORMAL)
-    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", tenant=tenant)
+    tenant = SimpleNamespace(
+        id="tenant-1",
+        status=TenantStatus.NORMAL,
+        plan="basic",
+        custom_config_dict={"remove_webapp_brand": True, "replace_webapp_logo": False},
+    )
+    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", tenant=tenant, enable_site=True)
     workflow_run = SimpleNamespace(app_id="app-1")
     site_model = SimpleNamespace(
         title="My Site",
         icon_type="emoji",
-        icon=None,
+        icon="robot",
         icon_background="#fff",
         description="desc",
         default_language="en",
@@ -100,15 +106,46 @@ def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask):
     db_stub = _FakeDB(_FakeSession({"WorkflowRun": workflow_run, "App": app_model, "Site": site_model}))
     monkeypatch.setattr(human_input_module, "db", db_stub)
 
-    # Patch serialize_site to a predictable value.
-    monkeypatch.setattr(human_input_module, "serialize_site", lambda site: {"title": site.title})
+    monkeypatch.setattr(
+        site_module.FeatureService,
+        "get_features",
+        lambda tenant_id: SimpleNamespace(can_replace_logo=True),
+    )
 
     with app.test_request_context("/api/form/human_input/token-1", method="GET"):
         response = HumanInputFormApi().get("token-1")
 
     body = json.loads(response.get_data(as_text=True))
     assert body["form_content"] == "hello"
-    assert body["site"] == {"title": "My Site"}
+    assert body["site"] == {
+        "app_id": "app-1",
+        "end_user_id": None,
+        "enable_site": True,
+        "site": {
+            "title": "My Site",
+            "chat_color_theme": "light",
+            "chat_color_theme_inverted": False,
+            "icon_type": "emoji",
+            "icon": "robot",
+            "icon_background": "#fff",
+            "icon_url": None,
+            "description": "desc",
+            "copyright": None,
+            "privacy_policy": None,
+            "custom_disclaimer": None,
+            "default_language": "en",
+            "prompt_public": False,
+            "show_workflow_steps": True,
+            "use_icon_as_answer_icon": False,
+        },
+        "model_config": None,
+        "plan": "basic",
+        "can_replace_logo": True,
+        "custom_config": {
+            "remove_webapp_brand": True,
+            "replace_webapp_logo": None,
+        },
+    }
     service_mock.get_form_definition_by_token.assert_called_once_with(
         RecipientType.STANDALONE_WEB_APP,
         "token-1",
@@ -131,13 +168,18 @@ def test_get_form_allows_backstage_token(monkeypatch: pytest.MonkeyPatch, app: F
             return _FakeDefinition()
 
     form = _FakeForm()
-    tenant = SimpleNamespace(status=TenantStatus.NORMAL)
-    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", tenant=tenant)
+    tenant = SimpleNamespace(
+        id="tenant-1",
+        status=TenantStatus.NORMAL,
+        plan="basic",
+        custom_config_dict={"remove_webapp_brand": True, "replace_webapp_logo": False},
+    )
+    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", tenant=tenant, enable_site=True)
     workflow_run = SimpleNamespace(app_id="app-1")
     site_model = SimpleNamespace(
         title="My Site",
         icon_type="emoji",
-        icon=None,
+        icon="robot",
         icon_background="#fff",
         description="desc",
         default_language="en",
@@ -158,14 +200,46 @@ def test_get_form_allows_backstage_token(monkeypatch: pytest.MonkeyPatch, app: F
     db_stub = _FakeDB(_FakeSession({"WorkflowRun": workflow_run, "App": app_model, "Site": site_model}))
     monkeypatch.setattr(human_input_module, "db", db_stub)
 
-    monkeypatch.setattr(human_input_module, "serialize_site", lambda site: {"title": site.title})
+    monkeypatch.setattr(
+        site_module.FeatureService,
+        "get_features",
+        lambda tenant_id: SimpleNamespace(can_replace_logo=True),
+    )
 
     with app.test_request_context("/api/form/human_input/token-1", method="GET"):
         response = HumanInputFormApi().get("token-1")
 
     body = json.loads(response.get_data(as_text=True))
     assert body["form_content"] == "hello"
-    assert body["site"] == {"title": "My Site"}
+    assert body["site"] == {
+        "app_id": "app-1",
+        "end_user_id": None,
+        "enable_site": True,
+        "site": {
+            "title": "My Site",
+            "chat_color_theme": "light",
+            "chat_color_theme_inverted": False,
+            "icon_type": "emoji",
+            "icon": "robot",
+            "icon_background": "#fff",
+            "icon_url": None,
+            "description": "desc",
+            "copyright": None,
+            "privacy_policy": None,
+            "custom_disclaimer": None,
+            "default_language": "en",
+            "prompt_public": False,
+            "show_workflow_steps": True,
+            "use_icon_as_answer_icon": False,
+        },
+        "model_config": None,
+        "plan": "basic",
+        "can_replace_logo": True,
+        "custom_config": {
+            "remove_webapp_brand": True,
+            "replace_webapp_logo": None,
+        },
+    }
     assert service_mock.get_form_definition_by_token.call_args_list == [
         call(RecipientType.STANDALONE_WEB_APP, "token-1"),
         call(RecipientType.BACKSTAGE, "token-1"),

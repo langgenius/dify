@@ -11,7 +11,7 @@ from werkzeug.exceptions import Forbidden
 
 from controllers.web import web_ns
 from controllers.web.error import NotFoundError
-from controllers.web.site import serialize_site
+from controllers.web.site import serialize_app_site_payload
 from extensions.ext_database import db
 from models.account import TenantStatus
 from models.human_input import RecipientType
@@ -56,9 +56,9 @@ class HumanInputFormApi(Resource):
         if form is None:
             raise NotFoundError("Form not found")
 
-        site = _get_site_from_form(form)
+        app_model, site = _get_app_site_from_form(form)
 
-        return _jsonify_form_definition(form, site_payload=serialize_site(site))
+        return _jsonify_form_definition(form, site_payload=serialize_app_site_payload(app_model, site, None))
 
     # def post(self, _app_model: App, _end_user: EndUser, form_token: str):
     def post(self, form_token: str):
@@ -100,8 +100,8 @@ class HumanInputFormApi(Resource):
         return {}, 200
 
 
-def _get_site_from_form(form: Form) -> Site:
-    """Resolve Site for the form's app and validate tenant status."""
+def _get_app_site_from_form(form: Form) -> tuple[App, Site]:
+    """Resolve App/Site for the form's app and validate tenant status."""
     app_model = db.session.query(App).where(App.id == form.app_id).first()
     if app_model is None or app_model.tenant_id != form.tenant_id:
         raise NotFoundError("Form not found")
@@ -113,4 +113,4 @@ def _get_site_from_form(form: Form) -> Site:
     if app_model.tenant and app_model.tenant.status == TenantStatus.ARCHIVE:
         raise Forbidden()
 
-    return site
+    return app_model, site
