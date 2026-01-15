@@ -110,9 +110,9 @@ jobs:
         continue-on-error: true
 
       - name: Annotate Code
-        uses: hyoban/eslint-annotations/@64bf939688eead49ce5f1c6e732783d465ccd33d
+        uses: DerLev/eslint-annotations/@51347b3a0abfb503fc8734d5ae31c4b151297fae
         with:
-          eslint-report: eslint_report.json
+          eslint-report: web/eslint_report.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Web type check
