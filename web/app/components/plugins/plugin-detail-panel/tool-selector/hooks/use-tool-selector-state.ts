@@ -2,7 +2,6 @@
 import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/block-selector/types'
 import { useCallback, useMemo, useState } from 'react'
 import { generateFormValue, getPlainValue, getStructureValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
-import { MARKETPLACE_API_PREFIX } from '@/config'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import {
   useAllBuiltInTools,
@@ -11,6 +10,7 @@ import {
   useAllWorkflowTools,
   useInvalidateAllBuiltInTools,
 } from '@/service/use-tools'
+import { getIconFromMarketPlace } from '@/utils/get-icon'
 import { usePluginInstalledCheck } from './use-plugin-installed-check'
 
 export type TabType = 'settings' | 'params'
@@ -44,7 +44,7 @@ export const useToolSelectorState = ({
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
 
   // Plugin info check
-  const { inMarketPlace, manifest } = usePluginInstalledCheck(value?.provider_name)
+  const { inMarketPlace, manifest, pluginID } = usePluginInstalledCheck(value?.provider_name)
 
   // Merge all tools and find current provider
   const currentProvider = useMemo(() => {
@@ -98,10 +98,10 @@ export const useToolSelectorState = ({
 
   // Manifest icon URL
   const manifestIcon = useMemo(() => {
-    if (!manifest)
+    if (!manifest || !pluginID)
       return ''
-    return `${MARKETPLACE_API_PREFIX}/plugins/${(manifest as any).plugin_id}/icon`
-  }, [manifest])
+    return getIconFromMarketPlace(pluginID)
+  }, [manifest, pluginID])
 
   // Convert tool default value to tool value format
   const getToolValue = useCallback((tool: ToolDefaultValue): ToolValue => {
@@ -141,47 +141,67 @@ export const useToolSelectorState = ({
   }, [getToolValue, onSelectMultiple])
 
   const handleDescriptionChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    if (!value)
+      return
     onSelect({
       ...value,
       extra: {
-        ...value?.extra,
+        ...value.extra,
         description: e.target.value || '',
       },
-    } as ToolValue)
+    })
   }, [value, onSelect])
 
   const handleSettingsFormChange = useCallback((v: Record<string, any>) => {
+    if (!value)
+      return
     const newValue = getStructureValue(v)
     onSelect({
       ...value,
       settings: newValue,
-    } as ToolValue)
+    })
   }, [value, onSelect])
 
   const handleParamsFormChange = useCallback((v: Record<string, any>) => {
+    if (!value)
+      return
     onSelect({
       ...value,
       parameters: v,
-    } as ToolValue)
+    })
   }, [value, onSelect])
 
   const handleEnabledChange = useCallback((state: boolean) => {
+    if (!value)
+      return
     onSelect({
       ...value,
       enabled: state,
-    } as ToolValue)
+    })
   }, [value, onSelect])
 
   const handleAuthorizationItemClick = useCallback((id: string) => {
+    if (!value)
+      return
     onSelect({
       ...value,
       credential_id: id,
-    } as ToolValue)
+    })
   }, [value, onSelect])
 
   const handleInstall = useCallback(async () => {
-    invalidateAllBuiltinTools()
-    invalidateInstalledPluginList()
+    try {
+      await invalidateAllBuiltinTools()
+    }
+    catch (error) {
+      console.error('Failed to invalidate built-in tools cache', error)
+    }
+    try {
+      await invalidateInstalledPluginList()
+    }
+    catch (error) {
+      console.error('Failed to invalidate installed plugin list cache', error)
+    }
   }, [invalidateAllBuiltinTools, invalidateInstalledPluginList])
 
   const getSettingsValue = useCallback(() => {

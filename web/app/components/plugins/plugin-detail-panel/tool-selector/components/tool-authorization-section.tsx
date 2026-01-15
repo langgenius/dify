@@ -36,7 +36,6 @@ const ToolAuthorizationSection: FC<ToolAuthorizationSectionProps> = ({
             provider: currentProvider.name,
             category: AuthCategory.tool,
             providerType: currentProvider.type,
-            detail: currentProvider as any,
           }}
           credentialId={credentialId}
           onAuthorizationItemClick={onAuthorizationItemClick}

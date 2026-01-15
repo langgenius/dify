@@ -1,6 +1,7 @@
 'use client'
 import type { OffsetOptions } from '@floating-ui/react'
 import type { FC } from 'react'
+import type { PluginDetail } from '@/app/components/plugins/types'
 import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { useTranslation } from 'react-i18next'
@@ -48,7 +49,13 @@ const ToolBaseForm: FC<ToolBaseFormProps> = ({
       <div className="flex flex-col gap-1">
         <div className="system-sm-semibold flex h-6 items-center justify-between text-text-secondary">
           {t('detailPanel.toolSelector.toolLabel', { ns: 'plugin' })}
-          <ReadmeEntrance pluginDetail={currentProvider as any} showShortTip className="pb-0" />
+          {currentProvider?.plugin_unique_identifier && (
+            <ReadmeEntrance
+              pluginDetail={currentProvider as unknown as PluginDetail}
+              showShortTip
+              className="pb-0"
+            />
+          )}
         </div>
         <ToolPicker
           placement="bottom"
@@ -61,7 +68,7 @@ const ToolBaseForm: FC<ToolBaseFormProps> = ({
             />
           )}
           isShow={panelShowState || isShowChooseTool}
-          onShowChange={hasTrigger ? onPanelShowStateChange as any : onShowChange}
+          onShowChange={hasTrigger ? (onPanelShowStateChange || (() => {})) : onShowChange}
           disabled={false}
           supportAddCustomTool
           onSelect={onSelectTool}

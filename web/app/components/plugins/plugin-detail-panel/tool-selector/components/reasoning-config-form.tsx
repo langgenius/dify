@@ -1,4 +1,6 @@
 import type { Node } from 'reactflow'
+import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema'
 import type { SchemaRoot } from '@/app/components/workflow/nodes/llm/types'
 import type { ToolVarInputs } from '@/app/components/workflow/nodes/tool/types'
 import type {
@@ -35,7 +37,7 @@ import SchemaModal from './schema-modal'
 type Props = {
   value: Record<string, any>
   onChange: (val: Record<string, any>) => void
-  schemas: any[]
+  schemas: ToolFormSchema[]
   nodeOutputVars: NodeOutPutVar[]
   availableNodes: Node[]
   nodeId: string
@@ -51,7 +53,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const language = useLanguage()
-  const getVarKindType = (type: FormTypeEnum) => {
+  const getVarKindType = (type: string) => {
     if (type === FormTypeEnum.file || type === FormTypeEnum.files)
       return VarKindType.variable
     if (type === FormTypeEnum.select || type === FormTypeEnum.checkbox || type === FormTypeEnum.textNumber || type === FormTypeEnum.array || type === FormTypeEnum.object)
@@ -60,7 +62,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
       return VarKindType.mixed
   }
 
-  const handleAutomatic = (key: string, val: any, type: FormTypeEnum) => {
+  const handleAutomatic = (key: string, val: any, type: string) => {
     onChange({
       ...value,
       [key]: {
@@ -80,7 +82,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
       onChange(res)
     }
   }, [onChange, value])
-  const handleValueChange = useCallback((variable: string, varType: FormTypeEnum) => {
+  const handleValueChange = useCallback((variable: string, varType: string) => {
     return (newValue: any) => {
       const res = produce(value, (draft: ToolVarInputs) => {
         draft[variable].value = {
@@ -134,7 +136,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
   const [schema, setSchema] = useState<SchemaRoot | null>(null)
   const [schemaRootName, setSchemaRootName] = useState<string>('')
 
-  const renderField = (schema: any, showSchema: (schema: SchemaRoot, rootName: string) => void) => {
+  const renderField = (schema: ToolFormSchema, showSchema: (schema: SchemaRoot, rootName: string) => void) => {
     const {
       default: defaultValue,
       variable,
@@ -275,16 +277,16 @@ const ReasoningConfigForm: React.FC<Props> = ({
                 onChange={handleValueChange(variable, type)}
               />
             )}
-            {isSelect && (
+            {isSelect && options && (
               <SimpleSelect
                 wrapperClassName="h-8 grow"
                 defaultValue={varInput?.value}
-                items={options.filter((option: { show_on: any[] }) => {
+                items={options.filter((option) => {
                   if (option.show_on.length)
                     return option.show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value)
 
                   return true
-                }).map((option: { value: any, label: { [x: string]: any, en_US: any } }) => ({ value: option.value, name: option.label[language] || option.label.en_US }))}
+                }).map(option => ({ value: option.value, name: option.label[language] || option.label.en_US }))}
                 onSelect={item => handleValueChange(variable, type)(item.value as string)}
                 placeholder={placeholder?.[language] || placeholder?.en_US}
               />
@@ -332,7 +334,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
                 value={varInput?.value || []}
                 onChange={handleVariableSelectorChange(variable)}
                 filterVar={getFilterVar()}
-                schema={schema}
+                schema={schema as Partial<CredentialFormSchema>}
                 valueTypePlaceHolder={targetVarType()}
               />
             )}

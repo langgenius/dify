@@ -1,7 +1,40 @@
 import type { TriggerEventParameter } from '../../plugins/types'
 import type { ToolCredential, ToolParameter } from '../types'
+import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { SchemaRoot } from '@/app/components/workflow/nodes/llm/types'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+
+/**
+ * Form schema type for tool parameters.
+ * This type represents the schema returned by toolParametersToFormSchemas.
+ */
+export type ToolFormSchema = {
+  name: string
+  variable: string
+  label: TypeWithI18N
+  type: string
+  _type: string
+  form: string
+  required: boolean
+  default?: string
+  tooltip?: TypeWithI18N
+  show_on: { variable: string, value: string }[]
+  options?: {
+    label: TypeWithI18N
+    value: string
+    show_on: { variable: string, value: string }[]
+  }[]
+  placeholder?: TypeWithI18N
+  min?: number
+  max?: number
+  llm_description?: string
+  human_description?: TypeWithI18N
+  multiple?: boolean
+  url?: string
+  scope?: string
+  input_schema?: SchemaRoot
+}
 
 export const toType = (type: string) => {
   switch (type) {
@@ -30,11 +63,11 @@ export const triggerEventParametersToFormSchemas = (parameters: TriggerEventPara
   })
 }
 
-export const toolParametersToFormSchemas = (parameters: ToolParameter[]) => {
+export const toolParametersToFormSchemas = (parameters: ToolParameter[]): ToolFormSchema[] => {
   if (!parameters)
     return []
 
-  const formSchemas = parameters.map((parameter) => {
+  const formSchemas = parameters.map((parameter): ToolFormSchema => {
     return {
       ...parameter,
       variable: parameter.name,

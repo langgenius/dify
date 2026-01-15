@@ -350,6 +350,18 @@ const createToolDefaultValue = (overrides: Partial<ToolDefaultValue> = {}): Tool
   ...overrides,
 } as ToolDefaultValue)
 
+// Helper to create mock ToolFormSchema for testing
+const createMockFormSchema = (name: string) => ({
+  name,
+  variable: name,
+  label: { en_US: name, zh_Hans: name },
+  type: 'text-input',
+  _type: 'string',
+  form: 'llm',
+  required: false,
+  show_on: [],
+})
+
 const createToolWithProvider = (overrides: Record<string, unknown> = {}): ToolWithProvider => ({
   id: 'test-provider/tool',
   name: 'test-provider',
@@ -1089,7 +1101,7 @@ describe('ToolSettingsPanel Component', () => {
   const defaultSettingsPanelProps = {
     nodeId: 'node-1',
     currType: 'settings' as const,
-    settingsFormSchemas: [{ name: 'setting1', type: 'string' }],
+    settingsFormSchemas: [createMockFormSchema('setting1')],
     paramsFormSchemas: [],
     settingsValue: {},
     showTabSlider: false,
@@ -1146,8 +1158,8 @@ describe('ToolSettingsPanel Component', () => {
         <ToolSettingsPanel
           {...defaultSettingsPanelProps}
           currentProvider={provider}
-          settingsFormSchemas={[{ name: 'setting1' }]}
-          paramsFormSchemas={[{ name: 'param1' }]}
+          settingsFormSchemas={[createMockFormSchema('setting1')]}
+          paramsFormSchemas={[createMockFormSchema('param1')]}
           showTabSlider={true}
           userSettingsOnly={false}
         />,
@@ -1163,7 +1175,7 @@ describe('ToolSettingsPanel Component', () => {
           {...defaultSettingsPanelProps}
           currentProvider={provider}
           currType="params"
-          paramsFormSchemas={[{ name: 'param1' }]}
+          paramsFormSchemas={[createMockFormSchema('param1')]}
           reasoningConfigOnly={true}
           userSettingsOnly={false}
         />,
@@ -1198,7 +1210,7 @@ describe('ToolSettingsPanel Component', () => {
           {...defaultSettingsPanelProps}
           currentProvider={provider}
           currType="params"
-          paramsFormSchemas={[{ name: 'param1' }]}
+          paramsFormSchemas={[createMockFormSchema('param1')]}
           reasoningConfigOnly={true}
           userSettingsOnly={false}
           onParamsFormChange={onParamsFormChange}
@@ -1218,8 +1230,8 @@ describe('ToolSettingsPanel Component', () => {
           {...defaultSettingsPanelProps}
           currentProvider={provider}
           currType="params"
-          settingsFormSchemas={[{ name: 'setting1' }]}
-          paramsFormSchemas={[{ name: 'param1' }]}
+          settingsFormSchemas={[createMockFormSchema('setting1')]}
+          paramsFormSchemas={[createMockFormSchema('param1')]}
           showTabSlider={true}
           userSettingsOnly={false}
         />,
@@ -1647,7 +1659,7 @@ describe('Edge Cases', () => {
           currentProvider={undefined}
           nodeId="node-1"
           currType="settings"
-          settingsFormSchemas={[{ name: 'setting1' }]}
+          settingsFormSchemas={[createMockFormSchema('setting1')]}
           paramsFormSchemas={[]}
           settingsValue={{}}
           showTabSlider={false}
@@ -2408,8 +2420,8 @@ describe('Additional Coverage Tests', () => {
           currentProvider={provider}
           nodeId="node-1"
           currType="settings"
-          settingsFormSchemas={[{ name: 'setting1' }]}
-          paramsFormSchemas={[{ name: 'param1' }]}
+          settingsFormSchemas={[createMockFormSchema('setting1')]}
+          paramsFormSchemas={[createMockFormSchema('param1')]}
           settingsValue={{}}
           showTabSlider={true}
           userSettingsOnly={false}
@@ -2440,8 +2452,8 @@ describe('Additional Coverage Tests', () => {
           currentProvider={provider}
           nodeId="node-1"
           currType="settings"
-          settingsFormSchemas={[{ name: 'setting1' }]}
-          paramsFormSchemas={[{ name: 'param1' }]}
+          settingsFormSchemas={[createMockFormSchema('setting1')]}
+          paramsFormSchemas={[createMockFormSchema('param1')]}
           settingsValue={{}}
           showTabSlider={true}
           userSettingsOnly={false}
@@ -2460,8 +2472,8 @@ describe('Additional Coverage Tests', () => {
           currentProvider={provider}
           nodeId="node-1"
           currType="params"
-          settingsFormSchemas={[{ name: 'setting1' }]}
-          paramsFormSchemas={[{ name: 'param1' }]}
+          settingsFormSchemas={[createMockFormSchema('setting1')]}
+          paramsFormSchemas={[createMockFormSchema('param1')]}
           settingsValue={{}}
           showTabSlider={true}
           userSettingsOnly={false}

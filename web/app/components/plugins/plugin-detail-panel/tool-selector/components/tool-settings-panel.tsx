@@ -2,6 +2,8 @@
 import type { FC } from 'react'
 import type { Node } from 'reactflow'
 import type { TabType } from '../hooks/use-tool-selector-state'
+import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { NodeOutPutVar, ToolWithProvider } from '@/app/components/workflow/types'
 import { useTranslation } from 'react-i18next'
@@ -15,8 +17,8 @@ type ToolSettingsPanelProps = {
   currentProvider?: ToolWithProvider
   nodeId: string
   currType: TabType
-  settingsFormSchemas: any[]
-  paramsFormSchemas: any[]
+  settingsFormSchemas: ToolFormSchema[]
+  paramsFormSchemas: ToolFormSchema[]
   settingsValue: Record<string, any>
   showTabSlider: boolean
   userSettingsOnly: boolean
@@ -84,7 +86,10 @@ const ToolSettingsPanel: FC<ToolSettingsPanelProps> = ({
           noBorderBottom
           smallItem
           value={currType}
-          onChange={value => onCurrTypeChange(value as TabType)}
+          onChange={(v) => {
+            if (v === 'settings' || v === 'params')
+              onCurrTypeChange(v)
+          }}
           options={[
             { value: 'settings', text: t('detailPanel.toolSelector.settings', { ns: 'plugin' })! },
             { value: 'params', text: t('detailPanel.toolSelector.params', { ns: 'plugin' })! },
@@ -125,7 +130,7 @@ const ToolSettingsPanel: FC<ToolSettingsPanelProps> = ({
             inPanel
             readOnly={false}
             nodeId={nodeId}
-            schema={settingsFormSchemas as any}
+            schema={settingsFormSchemas as CredentialFormSchema[]}
             value={settingsValue}
             onChange={onSettingsFormChange}
           />
@@ -137,7 +142,7 @@ const ToolSettingsPanel: FC<ToolSettingsPanelProps> = ({
         <ReasoningConfigForm
           value={value?.parameters || {}}
           onChange={onParamsFormChange}
-          schemas={paramsFormSchemas as any}
+          schemas={paramsFormSchemas}
           nodeOutputVars={nodeOutputVars}
           availableNodes={availableNodes}
           nodeId={nodeId}
