@@ -20,7 +20,7 @@ from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 
-from .entities import DeliveryChannelConfig, HumanInputNodeData
+from .entities import DeliveryChannelConfig, HumanInputNodeData, apply_debug_email_recipient
 from .enums import DeliveryMethodType, HumanInputFormStatus, PlaceholderType
 
 if TYPE_CHECKING:
@@ -169,8 +169,15 @@ class HumanInputNode(Node[HumanInputNodeData]):
     def _effective_delivery_methods(self) -> Sequence[DeliveryChannelConfig]:
         enabled_methods = [method for method in self._node_data.delivery_methods if method.enabled]
         if self.invoke_from in {InvokeFrom.DEBUGGER, InvokeFrom.EXPLORE}:
-            return [method for method in enabled_methods if method.type != DeliveryMethodType.WEBAPP]
-        return enabled_methods
+            enabled_methods = [method for method in enabled_methods if method.type != DeliveryMethodType.WEBAPP]
+        return [
+            apply_debug_email_recipient(
+                method,
+                enabled=self.invoke_from == InvokeFrom.DEBUGGER,
+                user_id=self.user_id or "",
+            )
+            for method in enabled_methods
+        ]
 
     def _human_input_required_event(self, form_entity: HumanInputFormEntity) -> HumanInputRequired:
         node_data = self._node_data

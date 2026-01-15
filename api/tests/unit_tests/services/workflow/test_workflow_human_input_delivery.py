@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy.orm import sessionmaker
 
 from core.workflow.enums import NodeType
 from core.workflow.nodes.human_input.entities import (
@@ -11,9 +12,14 @@ from core.workflow.nodes.human_input.entities import (
     EmailRecipients,
     ExternalRecipient,
     HumanInputNodeData,
+    MemberRecipient,
 )
 from services import workflow_service as workflow_service_module
 from services.workflow_service import WorkflowService
+
+
+def _make_service() -> WorkflowService:
+    return WorkflowService(session_maker=sessionmaker())
 
 
 def _build_node_config(delivery_methods):
@@ -28,7 +34,7 @@ def _build_node_config(delivery_methods):
     return {"id": "node-1", "data": node_data}
 
 
-def _make_email_method(enabled: bool = True) -> EmailDeliveryMethod:
+def _make_email_method(enabled: bool = True, debug_mode: bool = False) -> EmailDeliveryMethod:
     return EmailDeliveryMethod(
         id=uuid.uuid4(),
         enabled=enabled,
@@ -39,12 +45,13 @@ def _make_email_method(enabled: bool = True) -> EmailDeliveryMethod:
             ),
             subject="Test subject",
             body="Test body",
+            debug_mode=debug_mode,
         ),
     )
 
 
 def test_human_input_delivery_requires_draft_workflow():
-    service = WorkflowService()
+    service = _make_service()
     service.get_draft_workflow = MagicMock(return_value=None)  # type: ignore[method-assign]
     app_model = SimpleNamespace(tenant_id="tenant-1", id="app-1")
     account = SimpleNamespace(id="account-1")
@@ -59,7 +66,7 @@ def test_human_input_delivery_requires_draft_workflow():
 
 
 def test_human_input_delivery_rejects_disabled_method():
-    service = WorkflowService()
+    service = _make_service()
     delivery_method = _make_email_method(enabled=False)
     node_config = _build_node_config([delivery_method])
     workflow = MagicMock()
@@ -79,7 +86,7 @@ def test_human_input_delivery_rejects_disabled_method():
 
 
 def test_human_input_delivery_dispatches_to_test_service(monkeypatch: pytest.MonkeyPatch):
-    service = WorkflowService()
+    service = _make_service()
     delivery_method = _make_email_method(enabled=True)
     node_config = _build_node_config([delivery_method])
     workflow = MagicMock()
@@ -105,3 +112,40 @@ def test_human_input_delivery_dispatches_to_test_service(monkeypatch: pytest.Mon
     )
 
     test_service_instance.send_test.assert_called_once()
+
+
+def test_human_input_delivery_debug_mode_overrides_recipients(monkeypatch: pytest.MonkeyPatch):
+    service = _make_service()
+    delivery_method = _make_email_method(enabled=True, debug_mode=True)
+    node_config = _build_node_config([delivery_method])
+    workflow = MagicMock()
+    workflow.get_node_config_by_id.return_value = node_config
+    service.get_draft_workflow = MagicMock(return_value=workflow)  # type: ignore[method-assign]
+    service._render_human_input_content_for_test = MagicMock(return_value="rendered")  # type: ignore[attr-defined]
+
+    test_service_instance = MagicMock()
+    monkeypatch.setattr(
+        workflow_service_module,
+        "HumanInputDeliveryTestService",
+        MagicMock(return_value=test_service_instance),
+    )
+
+    app_model = SimpleNamespace(tenant_id="tenant-1", id="app-1")
+    account = SimpleNamespace(id="account-1")
+
+    service.test_human_input_delivery(
+        app_model=app_model,
+        account=account,
+        node_id="node-1",
+        delivery_method_id=str(delivery_method.id),
+    )
+
+    test_service_instance.send_test.assert_called_once()
+    sent_method = test_service_instance.send_test.call_args.kwargs["method"]
+    assert isinstance(sent_method, EmailDeliveryMethod)
+    assert sent_method.config.debug_mode is True
+    assert sent_method.config.recipients.whole_workspace is False
+    assert len(sent_method.config.recipients.items) == 1
+    recipient = sent_method.config.recipients.items[0]
+    assert isinstance(recipient, MemberRecipient)
+    assert recipient.user_id == account.id

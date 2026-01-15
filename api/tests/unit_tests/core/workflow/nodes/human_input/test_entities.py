@@ -405,6 +405,84 @@ class TestHumanInputNodeVariableResolution:
         assert isinstance(pause_event, PauseRequestedEvent)
         assert pause_event.reason.form_token == "console-token"
 
+    def test_debugger_debug_mode_overrides_email_recipients(self):
+        variable_pool = VariablePool(
+            system_variables=SystemVariable(
+                user_id="user-123",
+                app_id="app",
+                workflow_id="workflow",
+                workflow_execution_id="exec-3",
+            ),
+            user_inputs={},
+            conversation_variables=[],
+        )
+        runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=0.0)
+        graph_init_params = GraphInitParams(
+            tenant_id="tenant",
+            app_id="app",
+            workflow_id="workflow",
+            graph_config={"nodes": [], "edges": []},
+            user_id="user-123",
+            user_from="account",
+            invoke_from="debugger",
+            call_depth=0,
+        )
+
+        node_data = HumanInputNodeData(
+            title="Human Input",
+            form_content="Provide your name",
+            inputs=[],
+            user_actions=[UserAction(id="submit", title="Submit")],
+            delivery_methods=[
+                EmailDeliveryMethod(
+                    enabled=True,
+                    config=EmailDeliveryConfig(
+                        recipients=EmailRecipients(
+                            whole_workspace=False,
+                            items=[ExternalRecipient(type=EmailRecipientType.EXTERNAL, email="target@example.com")],
+                        ),
+                        subject="Subject",
+                        body="Body",
+                        debug_mode=True,
+                    ),
+                )
+            ],
+        )
+        config = {"id": "human", "data": node_data.model_dump()}
+
+        mock_repo = MagicMock(spec=HumanInputFormRepository)
+        mock_repo.get_form.return_value = None
+        mock_repo.create_form.return_value = SimpleNamespace(
+            id="form-3",
+            rendered_content="Provide your name",
+            web_app_token="token",
+            recipients=[],
+            submitted=False,
+        )
+
+        node = HumanInputNode(
+            id=config["id"],
+            config=config,
+            graph_init_params=graph_init_params,
+            graph_runtime_state=runtime_state,
+            form_repository=mock_repo,
+        )
+
+        run_result = node._run()
+        pause_event = next(run_result)
+        assert isinstance(pause_event, PauseRequestedEvent)
+
+        params = mock_repo.create_form.call_args.args[0]
+        assert len(params.delivery_methods) == 1
+        method = params.delivery_methods[0]
+        assert isinstance(method, EmailDeliveryMethod)
+        assert method.config.debug_mode is True
+        assert method.config.recipients.whole_workspace is False
+        assert len(method.config.recipients.items) == 1
+        recipient = method.config.recipients.items[0]
+        assert isinstance(recipient, MemberRecipient)
+        assert recipient.user_id == "user-123"
+
 
 class TestValidation:
     """Test validation scenarios."""

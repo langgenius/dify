@@ -27,6 +27,7 @@ from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.human_input.entities import (
     DeliveryChannelConfig,
     HumanInputNodeData,
+    apply_debug_email_recipient,
     validate_human_input_submission,
 )
 from core.workflow.nodes.human_input.human_input_node import HumanInputNode
@@ -918,6 +919,11 @@ class WorkflowService:
             raise ValueError("Delivery method not found.")
         if not delivery_method.enabled:
             raise ValueError("Delivery method is disabled.")
+        delivery_method = apply_debug_email_recipient(
+            delivery_method,
+            enabled=True,
+            user_id=account.id or "",
+        )
 
         rendered_content = self._render_human_input_content_for_test(
             app_model=app_model,

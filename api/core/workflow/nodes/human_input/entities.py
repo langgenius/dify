@@ -62,6 +62,14 @@ class EmailDeliveryConfig(BaseModel):
     # Body is the content of email, it may contain the speical placeholder `{{#url#}}`, which
     # represent the url to submit the form.
     body: str
+    debug_mode: bool = False
+
+    def with_debug_recipient(self, user_id: str) -> "EmailDeliveryConfig":
+        if not user_id:
+            debug_recipients = EmailRecipients(whole_workspace=False, items=[])
+            return self.model_copy(update={"recipients": debug_recipients})
+        debug_recipients = EmailRecipients(whole_workspace=False, items=[MemberRecipient(user_id=user_id)])
+        return self.model_copy(update={"recipients": debug_recipients})
 
     @classmethod
     def replace_url_placeholder(cls, body: str, url: str | None) -> str:
@@ -96,6 +104,22 @@ class EmailDeliveryMethod(_DeliveryMethodBase):
 
 
 DeliveryChannelConfig = Annotated[WebAppDeliveryMethod | EmailDeliveryMethod, Field(discriminator="type")]
+
+
+def apply_debug_email_recipient(
+    method: DeliveryChannelConfig,
+    *,
+    enabled: bool,
+    user_id: str,
+) -> DeliveryChannelConfig:
+    if not enabled:
+        return method
+    if not isinstance(method, EmailDeliveryMethod):
+        return method
+    if not method.config.debug_mode:
+        return method
+    debug_config = method.config.with_debug_recipient(user_id or "")
+    return method.model_copy(update={"config": debug_config})
 
 
 class FormInputPlaceholder(BaseModel):
