@@ -28,6 +28,57 @@ from models.model import Message
 logger = logging.getLogger(__name__)
 
 
+def _stream_text_as_llm_chunks(
+    *,
+    text: str,
+    model: str,
+    prompt_messages: Sequence[PromptMessage],
+    usage: LLMUsage | None,
+    chunk_size: int,
+) -> Generator[LLMResultChunk, None, None]:
+    """
+    Stream plain text as incremental `LLMResultChunk` deltas.
+
+    This is used by the ReAct(CoT) agent runner to stream the **final answer** token-ish
+    to the client. The rest of the Agent streaming pipeline (queue -> SSE -> UI) already
+    supports incremental `agent_message` events; the missing piece was emitting the final
+    answer as multiple chunks instead of a single chunk.
+    """
+    # Keep behavior stable for empty output: emit a single empty chunk.
+    if not text:
+        yield LLMResultChunk(
+            model=model,
+            prompt_messages=list(prompt_messages),
+            delta=LLMResultChunkDelta(
+                index=0,
+                message=AssistantPromptMessage(content=""),
+                usage=usage,
+            ),
+            system_fingerprint="",
+        )
+        return
+
+    # Chunk policy: default to 1-char (closest to token streaming). For very long texts,
+    # batch a few chars per chunk to reduce SSE overhead while keeping the UI responsive.
+    effective_chunk_size = 8 if len(text) >= 2048 else chunk_size
+    chunk_index = 0
+    for start in range(0, len(text), effective_chunk_size):
+        piece = text[start : start + effective_chunk_size]
+        # Only attach usage to the last chunk to avoid repeated payloads.
+        delta_usage = usage if (start + effective_chunk_size) >= len(text) else None
+        yield LLMResultChunk(
+            model=model,
+            prompt_messages=list(prompt_messages),
+            delta=LLMResultChunkDelta(
+                index=chunk_index,
+                message=AssistantPromptMessage(content=piece),
+                usage=delta_usage,
+            ),
+            system_fingerprint="",
+        )
+        chunk_index += 1
+
+
 class CotAgentRunner(BaseAgentRunner, ABC):
     _is_first_iteration = True
     _ignore_observation_providers = ["wenxin"]
@@ -78,6 +129,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         final_answer = ""
         prompt_messages: list = []  # Initialize prompt_messages
         agent_thought_id = ""  # Initialize agent_thought_id
+        final_answer_streamed_live = False
 
         def increase_usage(final_llm_usage_dict: dict[str, LLMUsage | None], usage: LLMUsage):
             if not final_llm_usage_dict["usage"]:
@@ -162,6 +214,10 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                         delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content=chunk), usage=None),
                     )
 
+            # If the parser streamed the Final Answer action_input while tokens were produced,
+            # remember it so we don't re-stream the final answer after generation completes.
+            final_answer_streamed_live = final_answer_streamed_live or bool(usage_dict.get("final_answer_streamed"))
+
             assert scratchpad.thought is not None
             scratchpad.thought = scratchpad.thought.strip() or "I am thinking about how to help you"
             self._agent_scratchpad.append(scratchpad)
@@ -244,14 +300,16 @@ class CotAgentRunner(BaseAgentRunner, ABC):
 
             iteration_step += 1
 
-        yield LLMResultChunk(
-            model=model_instance.model,
-            prompt_messages=prompt_messages,
-            delta=LLMResultChunkDelta(
-                index=0, message=AssistantPromptMessage(content=final_answer), usage=llm_usage["usage"]
-            ),
-            system_fingerprint="",
-        )
+        # If we didn't manage to stream the final answer as it was produced (e.g. the model
+        # didn't use the ReAct JSON action format), fallback to streaming it at the end.
+        if not final_answer_streamed_live:
+            yield from _stream_text_as_llm_chunks(
+                text=final_answer,
+                model=model_instance.model,
+                prompt_messages=prompt_messages,
+                usage=llm_usage["usage"],
+                chunk_size=1,
+            )
 
         # save agent thought
         self.save_agent_thought(
