@@ -15,7 +15,6 @@ import Confirm from '@/app/components/base/confirm'
 import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
 import { InputVarType } from '@/app/components/workflow/types'
-import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 import ConfigContext from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useModalContext } from '@/context/modal-context'
@@ -58,8 +57,6 @@ const buildPromptVariableFromInput = (payload: InputVar): PromptVariable => {
     key: variable,
     name: label as string,
   }
-  if (payload.type === InputVarType.textInput)
-    nextItem.max_length = nextItem.max_length || DEFAULT_VALUE_MAX_LEN
 
   if (payload.type !== InputVarType.select)
     delete nextItem.options
