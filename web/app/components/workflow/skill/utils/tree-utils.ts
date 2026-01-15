@@ -84,3 +84,21 @@ export function getAllDescendantFileIds(
 
   return fileIds
 }
+
+export function getTargetFolderIdFromSelection(
+  selectedId: string | null,
+  nodes: AppAssetTreeView[],
+): string {
+  if (!selectedId)
+    return 'root'
+
+  const selectedNode = findNodeById(nodes, selectedId)
+  if (!selectedNode)
+    return 'root'
+
+  if (selectedNode.node_type === 'folder')
+    return selectedNode.id
+
+  const ancestors = getAncestorIds(selectedId, nodes)
+  return ancestors.length > 0 ? ancestors[ancestors.length - 1] : 'root'
+}
