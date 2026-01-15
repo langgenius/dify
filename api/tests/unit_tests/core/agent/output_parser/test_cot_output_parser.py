@@ -1,4 +1,3 @@
-import json
 from collections.abc import Generator
 
 from core.agent.entities import AgentScratchpadUnit
