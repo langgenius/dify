@@ -173,7 +173,8 @@ const Panel: FC = () => {
           return !systemVars.find(v => v.id === currentVarId)
         default: {
           const targetNode = nodesWithInspectVars.find(node => node.nodeId === currentFocusNodeId)
-          return !targetNode?.vars.find(v => v.id === currentVarId)
+          const currentVar = targetNode?.vars.find(v => v.id === currentVarId)
+          return !currentVar || !currentVar.visible
         }
       }
     })()
@@ -196,8 +197,9 @@ const Panel: FC = () => {
         break
       default: {
         const targetNode = nodesWithInspectVars.find(node => node.nodeId === currentFocusNodeId)
-        if (targetNode?.vars.length)
-          setCurrentVarId(targetNode.vars[0].id)
+        const visibleVars = targetNode?.vars.filter(v => v.visible)
+        if (visibleVars?.length)
+          setCurrentVarId(visibleVars[0].id)
         break
       }
     }
