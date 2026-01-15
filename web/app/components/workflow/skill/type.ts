@@ -108,3 +108,25 @@ export function toOpensObject(expandedIds: Set<string>): Record<string, boolean>
   })
   return opens
 }
+
+/**
+ * Find a node by ID in the tree (recursive search)
+ * @param nodes - Tree nodes from API (nested structure)
+ * @param nodeId - Target node ID
+ * @returns Node if found, null otherwise
+ */
+export function findNodeById(
+  nodes: AppAssetTreeView[],
+  nodeId: string,
+): AppAssetTreeView | null {
+  for (const node of nodes) {
+    if (node.id === nodeId)
+      return node
+    if (node.children && node.children.length > 0) {
+      const found = findNodeById(node.children, nodeId)
+      if (found)
+        return found
+    }
+  }
+  return null
+}

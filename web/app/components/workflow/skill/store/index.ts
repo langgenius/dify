@@ -173,6 +173,30 @@ export const createDirtySlice: StateCreator<DirtySliceShape> = (set, get) => ({
 })
 
 // ============================================================================
+// File Operations Menu Slice
+// ============================================================================
+
+export type FileOperationsMenuSliceShape = {
+  /** Context menu state (right-click) - null when closed */
+  contextMenu: {
+    top: number
+    left: number
+    nodeId: string
+  } | null
+
+  /** Set or clear context menu */
+  setContextMenu: (menu: FileOperationsMenuSliceShape['contextMenu']) => void
+}
+
+export const createFileOperationsMenuSlice: StateCreator<FileOperationsMenuSliceShape> = set => ({
+  contextMenu: null,
+
+  setContextMenu: (contextMenu) => {
+    set({ contextMenu })
+  },
+})
+
+// ============================================================================
 // Combined Store Shape
 // ============================================================================
 
@@ -180,6 +204,7 @@ export type SkillEditorShape
   = TabSliceShape
     & FileTreeSliceShape
     & DirtySliceShape
+    & FileOperationsMenuSliceShape
     & {
     /** Reset all state (called when appId changes) */
       reset: () => void
@@ -194,6 +219,7 @@ export const createSkillEditorStore = (): StoreApi<SkillEditorShape> => {
     ...createTabSlice(...args),
     ...createFileTreeSlice(...args),
     ...createDirtySlice(...args),
+    ...createFileOperationsMenuSlice(...args),
 
     reset: () => {
       const [set] = args
@@ -203,6 +229,7 @@ export const createSkillEditorStore = (): StoreApi<SkillEditorShape> => {
         previewTabId: null,
         expandedFolderIds: new Set<string>(),
         dirtyContents: new Map<string, string>(),
+        contextMenu: null,
       })
     },
   }))

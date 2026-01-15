@@ -11,6 +11,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
 import { useGetAppAssetTree } from '@/service/use-app-asset'
 import { cn } from '@/utils/classnames'
+import FileTreeContextMenu from './file-tree-context-menu'
 import FileTreeNode from './file-tree-node'
 import { useSkillEditorStore, useSkillEditorStoreApi } from './store'
 import { getAncestorIds, toOpensObject } from './type'
@@ -180,6 +181,8 @@ const Files: React.FC<FilesProps> = ({ className }) => {
         </Tree>
       </div>
       <DropTip />
+      {/* Right-click context menu */}
+      <FileTreeContextMenu />
     </div>
   )
 }
