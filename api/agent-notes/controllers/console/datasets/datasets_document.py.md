@@ -20,6 +20,12 @@
   - Applies `cloud_edition_billing_rate_limit_check("knowledge")` to match other KB operations.
   - Response body is **only**: `{ "url": "<signed-url>" }`.
 
+- `POST /datasets/<dataset_id>/documents/download-zip`
+  - Accepts `{ "document_ids": ["..."] }` (upload-file only).
+  - Returns `application/zip` as a single attachment download.
+  - Rationale: browsers often block multiple automatic downloads; a ZIP avoids that limitation.
+  - Applies `cloud_edition_billing_rate_limit_check("knowledge")`.
+
 ## Verification plan
 
 - Upload a document from a local file into a dataset.
@@ -27,4 +33,9 @@
 - Open the URL and confirm:
   - Response headers force download (`Content-Disposition`), and
   - Downloaded bytes match the uploaded file.
+ - Select multiple uploaded-file documents and download as ZIP; confirm all selected files exist in the archive.
+
+## Shared helper
+
+- `_get_upload_file_from_upload_file_document(document)` centralizes the “Document → UploadFile” lookup and validation.
 

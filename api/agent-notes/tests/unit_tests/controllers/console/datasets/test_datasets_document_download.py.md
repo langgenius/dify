@@ -21,4 +21,6 @@ Unit tests for the console dataset document download endpoint:
 - 404 when `upload_file_id` is missing.
 - 404 when referenced `UploadFile` row does not exist.
 - 403 when document tenant does not match current tenant.
+- Batch ZIP download returns `application/zip` for upload-file documents.
+- Batch ZIP download rejects non-upload-file documents.
 

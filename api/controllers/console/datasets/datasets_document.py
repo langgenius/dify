@@ -2,10 +2,13 @@ import json
 import logging
 from argparse import ArgumentTypeError
 from collections.abc import Sequence
+from contextlib import ExitStack
+from tempfile import NamedTemporaryFile
 from typing import Any, Literal, cast
+from zipfile import ZIP_DEFLATED, ZipFile
 
 import sqlalchemy as sa
-from flask import request
+from flask import request, send_file
 from flask_restx import Resource, fields, marshal, marshal_with
 from pydantic import BaseModel, Field
 from sqlalchemy import asc, desc, select
@@ -29,6 +32,7 @@ from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
 from extensions.ext_database import db
+from extensions.ext_storage import storage
 from fields.dataset_fields import dataset_fields
 from fields.document_fields import (
     dataset_and_document_fields,
@@ -66,12 +70,46 @@ from ..wraps import (
 
 logger = logging.getLogger(__name__)
 
+# NOTE: Keep constants near the top of the module for discoverability.
+DOCUMENT_BATCH_DOWNLOAD_ZIP_MAX_DOCS = 100
+DOCUMENT_BATCH_DOWNLOAD_ZIP_FILENAME_TEMPLATE = "dataset-{dataset_id}-documents.zip"
+
 
 def _get_or_create_model(model_name: str, field_def):
     existing = console_ns.models.get(model_name)
     if existing is None:
         existing = console_ns.model(model_name, field_def)
     return existing
+
+
+def _get_upload_file_from_upload_file_document(document: Document) -> UploadFile:
+    """
+    Resolve the `UploadFile` row for a dataset document created from an uploaded file.
+
+    This helper centralizes the shared validation logic used by:
+    - single-document download URL (`/documents/<id>/download`)
+    - batch ZIP download (`/documents/download-zip`)
+    """
+    # Validate that this document is backed by an UploadFile.
+    if document.data_source_type != "upload_file":
+        raise NotFound("Document does not have an uploaded file to download.")
+
+    # Extract the upload file id from the document's data source info.
+    data_source_info: dict[str, Any] = document.data_source_info_dict or {}
+    upload_file_id = data_source_info.get("upload_file_id")
+    if not upload_file_id:
+        raise NotFound("Uploaded file not found.")
+
+    # Load the UploadFile row scoped by tenant to prevent cross-tenant access.
+    upload_file = (
+        db.session.query(UploadFile)
+        .where(UploadFile.tenant_id == document.tenant_id, UploadFile.id == str(upload_file_id))
+        .first()
+    )
+    if not upload_file:
+        raise NotFound("Uploaded file not found.")
+
+    return upload_file
 
 
 # Register models for flask_restx to avoid dict type issues in Swagger
@@ -105,6 +143,12 @@ class DocumentRenamePayload(BaseModel):
     name: str
 
 
+class DocumentBatchDownloadZipPayload(BaseModel):
+    """Request payload for bulk downloading documents as a zip archive."""
+
+    document_ids: list[str] = Field(..., min_length=1, max_length=DOCUMENT_BATCH_DOWNLOAD_ZIP_MAX_DOCS)
+
+
 class DocumentDatasetListParam(BaseModel):
     page: int = Field(1, title="Page", description="Page number.")
     limit: int = Field(20, title="Limit", description="Page size.")
@@ -121,6 +165,7 @@ register_schema_models(
     RetrievalModel,
     DocumentRetryPayload,
     DocumentRenamePayload,
+    DocumentBatchDownloadZipPayload,
 )
 
 
@@ -868,28 +913,96 @@ class DocumentDownloadApi(DocumentResource):
         # Reuse the shared permission/tenant checks implemented in DocumentResource.
         document = self.get_document(str(dataset_id), str(document_id))
 
-        # Only upload-file documents have an `upload_file_id` we can download.
-        if document.data_source_type != "upload_file":
-            raise NotFound("Document does not have an uploaded file to download.")
-
-        data_source_info: dict[str, Any] = document.data_source_info_dict or {}
-        upload_file_id = data_source_info.get("upload_file_id")
-        if not upload_file_id:
-            raise NotFound("Uploaded file not found.")
-
-        # Ensure the referenced UploadFile exists and belongs to the same tenant.
-        upload_file = (
-            db.session.query(UploadFile)
-            .where(UploadFile.tenant_id == document.tenant_id, UploadFile.id == str(upload_file_id))
-            .first()
-        )
-        if not upload_file:
-            raise NotFound("Uploaded file not found.")
+        # Resolve the underlying UploadFile via shared helper.
+        upload_file = _get_upload_file_from_upload_file_document(document)
 
         # Generate a signed URL that forces browser download (Content-Disposition: attachment).
         url = file_helpers.get_signed_file_url(upload_file_id=upload_file.id, as_attachment=True)
 
         return {"url": url}
+
+
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/download-zip")
+class DocumentBatchDownloadZipApi(Resource):
+    """Download multiple uploaded-file documents as a single ZIP (avoids browser multi-download limits)."""
+
+    @console_ns.doc("download_dataset_documents_as_zip")
+    @console_ns.doc(description="Download selected dataset documents as a single ZIP archive (upload-file only)")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
+    @console_ns.expect(console_ns.models[DocumentBatchDownloadZipPayload.__name__])
+    def post(self, dataset_id: str):
+        # Parse and validate request payload.
+        payload = DocumentBatchDownloadZipPayload.model_validate(console_ns.payload or {})
+
+        current_user, current_tenant_id = current_account_with_tenant()
+        dataset_id = str(dataset_id)
+
+        # Validate dataset existence and permissions (once for the whole batch).
+        dataset = DatasetService.get_dataset(dataset_id)
+        if not dataset:
+            raise NotFound("Dataset not found.")
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user)
+        except services.errors.account.NoPermissionError as e:
+            raise Forbidden(str(e))
+
+        used_names: set[str] = set()
+
+        # Build a ZIP in a temp file using a context manager.
+        #
+        # We must keep the file open until the response finishes streaming. We do that by:
+        # - creating the temp file with `delete=True`
+        # - transferring its cleanup to `response.call_on_close(...)` via `ExitStack.pop_all()`
+        #
+        # This avoids explicit try/except while still ensuring cleanup.
+        with ExitStack() as stack:
+            tmp = stack.enter_context(NamedTemporaryFile(mode="w+b", suffix=".zip", delete=True))
+
+            with ZipFile(tmp, mode="w", compression=ZIP_DEFLATED) as zf:
+                for document_id in payload.document_ids:
+                    document_id = str(document_id)
+
+                    # Fetch document and enforce tenant isolation.
+                    document = DocumentService.get_document(dataset_id, document_id)
+                    if not document:
+                        raise NotFound("Document not found.")
+                    if document.tenant_id != current_tenant_id:
+                        raise Forbidden("No permission.")
+
+                    try:
+                        upload_file = _get_upload_file_from_upload_file_document(document)
+                    except NotFound:
+                        # Provide a clearer message for the batch ZIP endpoint.
+                        raise NotFound("Only uploaded-file documents can be downloaded as ZIP.")
+
+                    # Ensure each filename in the ZIP is unique.
+                    arcname = upload_file.name
+                    if arcname in used_names:
+                        base = arcname
+                        suffix = 1
+                        while f"{base} ({suffix})" in used_names:
+                            suffix += 1
+                        arcname = f"{base} ({suffix})"
+                    used_names.add(arcname)
+
+                    # Stream file content from storage into the zip entry.
+                    with zf.open(arcname, "w") as entry:
+                        for chunk in storage.load(upload_file.key, stream=True):
+                            entry.write(chunk)
+
+            tmp.seek(0)
+            response = send_file(
+                tmp,
+                mimetype="application/zip",
+                as_attachment=True,
+                download_name=DOCUMENT_BATCH_DOWNLOAD_ZIP_FILENAME_TEMPLATE.format(dataset_id=dataset_id),
+            )
+            cleanup = stack.pop_all()
+            response.call_on_close(cleanup.close)
+            return response
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/<string:action>")
