@@ -3,8 +3,7 @@ import shlex
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from core.sandbox.manager import SandboxManager
-from core.sandbox.utils.debug import sandbox_debug
+from core.sandbox import SandboxManager, sandbox_debug
 from core.virtual_environment.__base.command_future import CommandCancelledError, CommandTimeoutError
 from core.virtual_environment.__base.helpers import submit_command, with_connection
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment

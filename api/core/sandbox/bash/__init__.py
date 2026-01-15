@@ -1,4 +1,4 @@
-from core.sandbox.bash.dify_cli import (
+from .dify_cli import (
     DifyCliBinary,
     DifyCliConfig,
     DifyCliEnvConfig,

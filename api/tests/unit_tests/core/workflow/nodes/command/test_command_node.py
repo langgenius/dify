@@ -5,7 +5,7 @@ from typing import Any
 
 import pytest
 
-from core.sandbox.manager import SandboxManager
+from core.sandbox import SandboxManager
 from core.virtual_environment.__base.entities import (
     Arch,
     CommandStatus,

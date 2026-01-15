@@ -492,7 +492,11 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 if workflow.get_feature(WorkflowFeatures.SANDBOX).enabled:
                     graph_engine_layers = (
                         *graph_engine_layers,
-                        SandboxLayer(tenant_id=application_generate_entity.app_config.tenant_id),
+                        SandboxLayer(
+                            tenant_id=application_generate_entity.app_config.tenant_id,
+                            app_id=application_generate_entity.app_config.app_id,
+                            sandbox_id=application_generate_entity.workflow_execution_id,
+                        ),
                     )
 
                 # Determine system_user_id based on invocation source

@@ -14,7 +14,7 @@ from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfig
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.file import File
 from core.repositories import DifyCoreRepositoryFactory
-from core.sandbox.manager import SandboxManager
+from core.sandbox import SandboxManager
 from core.variables import Variable, VariableBase
 from core.workflow.entities import WorkflowNodeExecution
 from core.workflow.enums import ErrorStrategy, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
@@ -701,7 +701,7 @@ class WorkflowService:
         sandbox = None
         single_step_execution_id: str | None = None
         if draft_workflow.get_feature(WorkflowFeatures.SANDBOX).enabled:
-            from core.sandbox.initializer import AppAssetsInitializer, DifyCliInitializer
+            from core.sandbox import AppAssetsInitializer, DifyCliInitializer
 
             sandbox = (
                 SandboxProviderService.create_sandbox_builder(draft_workflow.tenant_id)

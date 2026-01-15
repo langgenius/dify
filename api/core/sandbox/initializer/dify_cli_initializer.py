@@ -2,11 +2,12 @@ import logging
 from io import BytesIO
 from pathlib import Path
 
-from core.sandbox.bash.dify_cli import DifyCliLocator
-from core.sandbox.constants import DIFY_CLI_PATH
-from core.sandbox.initializer.base import SandboxInitializer
 from core.virtual_environment.__base.helpers import execute
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
+
+from ..bash.dify_cli import DifyCliLocator
+from ..constants import DIFY_CLI_PATH
+from .base import SandboxInitializer
 
 logger = logging.getLogger(__name__)
 

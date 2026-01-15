@@ -1,7 +1,6 @@
 from collections.abc import Generator
 from typing import Any
 
-from core.sandbox.utils.debug import sandbox_debug
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.common_entities import I18nObject
@@ -15,6 +14,8 @@ from core.tools.entities.tool_entities import (
 )
 from core.virtual_environment.__base.helpers import submit_command, with_connection
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
+
+from ..utils.debug import sandbox_debug
 
 COMMAND_TIMEOUT_SECONDS = 60
 

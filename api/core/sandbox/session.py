@@ -4,16 +4,21 @@ import json
 import logging
 from io import BytesIO
 from types import TracebackType
+from typing import TYPE_CHECKING
 
-from core.sandbox.bash.bash_tool import SandboxBashTool
-from core.sandbox.bash.dify_cli import DifyCliConfig
-from core.sandbox.constants import DIFY_CLI_CONFIG_PATH, DIFY_CLI_PATH
-from core.sandbox.manager import SandboxManager
-from core.sandbox.utils.debug import sandbox_debug
 from core.session.cli_api import CliApiSessionManager
-from core.tools.__base.tool import Tool
 from core.virtual_environment.__base.helpers import execute
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
+
+from .bash.dify_cli import DifyCliConfig
+from .constants import DIFY_CLI_CONFIG_PATH, DIFY_CLI_PATH
+from .manager import SandboxManager
+from .utils.debug import sandbox_debug
+
+if TYPE_CHECKING:
+    from core.tools.__base.tool import Tool
+
+    from .bash.bash_tool import SandboxBashTool
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +67,8 @@ class SandboxSession:
             CliApiSessionManager().delete(session.id)
             self._session_id = None
             raise
+
+        from .bash.bash_tool import SandboxBashTool
 
         self._sandbox = sandbox
         self._bash_tool = SandboxBashTool(sandbox=sandbox, tenant_id=self._tenant_id)

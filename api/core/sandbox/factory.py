@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 
 if TYPE_CHECKING:
-    from core.sandbox.initializer import SandboxInitializer
+    from .initializer import SandboxInitializer
 
 
 class VMType(StrEnum):

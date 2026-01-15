@@ -6,10 +6,11 @@ from typing import TYPE_CHECKING, Any
 from pydantic import BaseModel, Field
 
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.sandbox.constants import DIFY_CLI_PATH_PATTERN
 from core.session.cli_api import CliApiSession
 from core.tools.entities.tool_entities import ToolParameter, ToolProviderType
 from core.virtual_environment.__base.entities import Arch, OperatingSystem
+
+from ..constants import DIFY_CLI_PATH_PATTERN
 
 if TYPE_CHECKING:
     from core.tools.__base.tool import Tool

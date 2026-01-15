@@ -1,10 +1,11 @@
 import logging
 from io import BytesIO
 
-from core.sandbox.storage.sandbox_storage import SandboxStorage
 from core.virtual_environment.__base.helpers import try_execute
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 from extensions.ext_storage import Storage
+
+from .sandbox_storage import SandboxStorage
 
 logger = logging.getLogger(__name__)
 

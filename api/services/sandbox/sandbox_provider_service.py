@@ -19,8 +19,7 @@ from sqlalchemy.orm import Session
 from configs import dify_config
 from constants import HIDDEN_VALUE
 from core.entities.provider_entities import BasicProviderConfig
-from core.sandbox.factory import VMBuilder, VMType
-from core.sandbox.utils.encryption import create_sandbox_config_encrypter, masked_config
+from core.sandbox import VMBuilder, VMType, create_sandbox_config_encrypter, masked_config
 from core.tools.utils.system_encryption import (
     decrypt_system_params,
 )

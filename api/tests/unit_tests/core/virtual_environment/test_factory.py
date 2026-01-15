@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from core.sandbox.factory import VMBuilder, VMType
+from core.sandbox import VMBuilder, VMType
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 
 

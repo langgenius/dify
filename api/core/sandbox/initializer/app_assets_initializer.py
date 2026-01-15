@@ -3,13 +3,14 @@ from io import BytesIO
 
 from sqlalchemy.orm import Session
 
-from core.sandbox.constants import APP_ASSETS_PATH, APP_ASSETS_ZIP_PATH
-from core.sandbox.initializer.base import SandboxInitializer
 from core.virtual_environment.__base.helpers import execute, with_connection
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.app_asset import AppAssetDraft
+
+from ..constants import APP_ASSETS_PATH, APP_ASSETS_ZIP_PATH
+from .base import SandboxInitializer
 
 logger = logging.getLogger(__name__)
 
