@@ -1,0 +1,52 @@
+.lineNumbersScope {
+  --line-number-gutter: 32px;
+  --line-number-gap: 12px;
+}
+
+.lineNumbers {
+  counter-reset: line;
+  padding-left: calc(var(--line-number-gutter) + var(--line-number-gap));
+}
+
+.lineNumbers :global(p),
+.lineNumbers :global(h1),
+.lineNumbers :global(h2),
+.lineNumbers :global(h3),
+.lineNumbers :global(h4),
+.lineNumbers :global(h5),
+.lineNumbers :global(h6),
+.lineNumbers :global(li),
+.lineNumbers :global(blockquote),
+.lineNumbers :global(pre) {
+  position: relative;
+  display: block;
+  min-height: 1.5em;
+}
+
+.lineNumbers :global(p)::before,
+.lineNumbers :global(h1)::before,
+.lineNumbers :global(h2)::before,
+.lineNumbers :global(h3)::before,
+.lineNumbers :global(h4)::before,
+.lineNumbers :global(h5)::before,
+.lineNumbers :global(h6)::before,
+.lineNumbers :global(li)::before,
+.lineNumbers :global(blockquote)::before,
+.lineNumbers :global(pre)::before {
+  counter-increment: line;
+  content: counter(line);
+  position: absolute;
+  top: 0;
+  left: calc(-1 * (var(--line-number-gutter) + var(--line-number-gap)));
+  width: var(--line-number-gutter);
+  text-align: right;
+  color: var(--color-text-quaternary);
+  line-height: inherit;
+  user-select: none;
+  pointer-events: none;
+}
+
+.lineNumbersPlaceholder {
+  pointer-events: none;
+  left: calc(var(--line-number-gutter) + var(--line-number-gap));
+}

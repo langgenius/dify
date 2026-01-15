@@ -34,6 +34,7 @@ import {
   UPDATE_DATASETS_EVENT_EMITTER,
   UPDATE_HISTORY_EVENT_EMITTER,
 } from './constants'
+import styles from './line-numbers.module.css'
 import ComponentPickerBlock from './plugins/component-picker-block'
 import {
   ContextBlock,
@@ -46,12 +47,12 @@ import {
   CurrentBlockReplacementBlock,
 } from './plugins/current-block'
 import { CustomTextNode } from './plugins/custom-text/node'
+
 import {
   ErrorMessageBlock,
   ErrorMessageBlockNode,
   ErrorMessageBlockReplacementBlock,
 } from './plugins/error-message-block'
-
 import {
   HistoryBlock,
   HistoryBlockNode,
@@ -88,6 +89,7 @@ export type PromptEditorProps = {
   className?: string
   placeholder?: string | React.ReactNode
   placeholderClassName?: string
+  showLineNumbers?: boolean
   style?: React.CSSProperties
   value?: string
   editable?: boolean
@@ -113,6 +115,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
   className,
   placeholder,
   placeholderClassName,
+  showLineNumbers,
   style,
   value,
   editable = true,
@@ -178,13 +181,14 @@ const PromptEditor: FC<PromptEditorProps> = ({
 
   return (
     <LexicalComposer initialConfig={{ ...initialConfig, editable }}>
-      <div className={cn('relative', wrapperClassName)}>
+      <div className={cn('relative', showLineNumbers && styles.lineNumbersScope, wrapperClassName)}>
         <RichTextPlugin
           contentEditable={(
             <ContentEditable
               className={cn(
                 'text-text-secondary outline-none',
                 compact ? 'text-[13px] leading-5' : 'text-sm leading-6',
+                showLineNumbers && styles.lineNumbers,
                 className,
               )}
               style={style || {}}
@@ -193,7 +197,11 @@ const PromptEditor: FC<PromptEditorProps> = ({
           placeholder={(
             <Placeholder
               value={placeholder}
-              className={cn('truncate', placeholderClassName)}
+              className={cn(
+                'truncate',
+                showLineNumbers && styles.lineNumbersPlaceholder,
+                placeholderClassName,
+              )}
               compact={compact}
             />
           )}
