@@ -5,6 +5,18 @@ import {
   systemFeaturesContract,
 } from './console'
 import {
+  createFileContract,
+  createFolderContract,
+  deleteNodeContract,
+  getFileContentContract,
+  moveNodeContract,
+  publishContract,
+  renameNodeContract,
+  reorderNodeContract,
+  treeContract,
+  updateFileContentContract,
+} from './console/app-asset'
+import {
   activateSandboxProviderContract,
   deleteSandboxProviderConfigContract,
   getActiveSandboxProviderContract,
@@ -32,6 +44,18 @@ export const consoleRouterContract = {
   deleteSandboxProviderConfig: deleteSandboxProviderConfigContract,
   activateSandboxProvider: activateSandboxProviderContract,
   getActiveSandboxProvider: getActiveSandboxProviderContract,
+  appAsset: {
+    tree: treeContract,
+    createFolder: createFolderContract,
+    createFile: createFileContract,
+    getFileContent: getFileContentContract,
+    updateFileContent: updateFileContentContract,
+    deleteNode: deleteNodeContract,
+    renameNode: renameNodeContract,
+    moveNode: moveNodeContract,
+    reorderNode: reorderNodeContract,
+    publish: publishContract,
+  },
 }
 
 export type ConsoleInputs = InferContractRouterInputs<typeof consoleRouterContract>
