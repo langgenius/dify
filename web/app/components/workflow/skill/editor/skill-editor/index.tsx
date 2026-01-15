@@ -14,13 +14,13 @@ import {
   TextNode,
 } from 'lexical'
 import * as React from 'react'
-import styles from '@/app/components/base/prompt-editor/line-numbers.module.css'
 import { CustomTextNode } from '@/app/components/base/prompt-editor/plugins/custom-text/node'
 import OnBlurBlock from '@/app/components/base/prompt-editor/plugins/on-blur-or-focus-block'
 import Placeholder from '@/app/components/base/prompt-editor/plugins/placeholder'
 import UpdateBlock from '@/app/components/base/prompt-editor/plugins/update-block'
 import { textToEditorState } from '@/app/components/base/prompt-editor/utils'
 import { cn } from '@/utils/classnames'
+import styles from './line-numbers.module.css'
 import {
   ToolBlock,
   ToolBlockNode,
