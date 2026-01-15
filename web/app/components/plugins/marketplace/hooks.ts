@@ -236,6 +236,8 @@ export const useMarketplaceContainerScroll = (
       callback()
   }, [callback])
 
+  console.log('useMarketplaceContainerScroll set up')
+
   useEffect(() => {
     const container = document.getElementById(scrollContainerId)
     if (container)
