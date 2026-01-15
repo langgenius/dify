@@ -94,6 +94,9 @@ jobs:
           cache: pnpm
           cache-dependency-path: ./web/pnpm-lock.yaml
 
+      - name: 'Add custom eslint matcher' # see https://github.com/actions/setup-node/issues/403
+        run: echo "::add-matcher::.github/workflows/eslint-matcher.json"
+
       - name: Web dependencies
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
@@ -104,9 +107,6 @@ jobs:
         working-directory: ./web
         run: |
           pnpm run lint
-
-      - name: 'Add custom eslint matcher' # see https://github.com/actions/setup-node/issues/403
-        run: echo "::add-matcher::.github/workflows/eslint-matcher.json"
 
       - name: Web type check
         if: steps.changed-files.outputs.any_changed == 'true'
