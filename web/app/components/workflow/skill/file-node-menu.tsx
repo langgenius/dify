@@ -96,8 +96,8 @@ const FileItemMenu: FC<FileItemMenuProps> = ({
       <Confirm
         isShow={showDeleteConfirm}
         type="danger"
-        title={t('skillSidebar.menu.deleteConfirmTitle')}
-        content={t('skillSidebar.menu.deleteConfirmContent')}
+        title={t('skillSidebar.menu.fileDeleteConfirmTitle')}
+        content={t('skillSidebar.menu.fileDeleteConfirmContent')}
         onConfirm={handleDeleteConfirm}
         onCancel={handleDeleteCancel}
         isLoading={isDeleting}

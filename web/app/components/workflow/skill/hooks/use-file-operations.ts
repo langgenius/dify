@@ -240,6 +240,7 @@ export function useFileOperations({
   }, [])
 
   const handleDeleteConfirm = useCallback(async () => {
+    const isFolder = node?.data?.node_type === 'folder'
     try {
       const descendantFileIds = treeData?.children
         ? getAllDescendantFileIds(nodeId, treeData.children)
@@ -252,22 +253,32 @@ export function useFileOperations({
         storeApi.getState().clearDraftContent(fileId)
       })
 
+      // Also close and clear the node itself if it's a file
+      if (!isFolder) {
+        storeApi.getState().closeTab(nodeId)
+        storeApi.getState().clearDraftContent(nodeId)
+      }
+
       Toast.notify({
         type: 'success',
-        message: t('skillSidebar.menu.deleted'),
+        message: isFolder
+          ? t('skillSidebar.menu.deleted')
+          : t('skillSidebar.menu.fileDeleted'),
       })
     }
     catch {
       Toast.notify({
         type: 'error',
-        message: t('skillSidebar.menu.deleteError'),
+        message: isFolder
+          ? t('skillSidebar.menu.deleteError')
+          : t('skillSidebar.menu.fileDeleteError'),
       })
     }
     finally {
       setShowDeleteConfirm(false)
       onClose()
     }
-  }, [appId, nodeId, deleteNode, storeApi, treeData?.children, onClose, t])
+  }, [appId, nodeId, node?.data?.node_type, deleteNode, storeApi, treeData?.children, onClose, t])
 
   const handleDeleteCancel = useCallback(() => {
     setShowDeleteConfirm(false)
