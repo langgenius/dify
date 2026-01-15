@@ -1,11 +1,11 @@
 import logging
 
-from core.sandbox import ArchiveSandboxStorage, SandboxManager
+from core.sandbox import SandboxManager
 from core.sandbox.storage.sandbox_storage import SandboxStorage
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 from core.workflow.graph_engine.layers.base import GraphEngineLayer
 from core.workflow.graph_events.base import GraphEngineEvent
-from extensions.ext_storage import storage
+from core.workflow.graph_events.graph import GraphRunPausedEvent
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +31,7 @@ class SandboxLayer(GraphEngineLayer):
 
     def on_graph_start(self) -> None:
         try:
+            # Initialize sandbox
             from core.sandbox import AppAssetsInitializer, DifyCliInitializer
             from services.sandbox.sandbox_provider_service import SandboxProviderService
 
@@ -51,19 +52,17 @@ class SandboxLayer(GraphEngineLayer):
                 sandbox.metadata.arch,
             )
 
-            sandbox_storage = ArchiveSandboxStorage(
-                storage=storage,
-                tenant_id=self._tenant_id,
-                sandbox_id=self._sandbox_id,
-            )
-            if sandbox_storage.mount(sandbox):
+            # Check if sandbox is initialized
+            if self._sandbox_storage.mount(sandbox):
                 logger.info("Sandbox files restored, sandbox_id=%s", self._sandbox_id)
         except Exception as e:
             logger.exception("Failed to initialize sandbox")
             raise SandboxInitializationError(f"Failed to initialize sandbox: {e}") from e
 
     def on_event(self, event: GraphEngineEvent) -> None:
-        pass
+        # TODO: handle graph run paused event
+        if not isinstance(event, GraphRunPausedEvent):
+            return
 
     def on_graph_end(self, error: Exception | None) -> None:
         if self._sandbox_id is None:
