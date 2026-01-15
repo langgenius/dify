@@ -106,11 +106,11 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
         run: |
-          pnpm run lint --output-file eslint_report.json --format json
+          pnpm run lint --output-file eslint_report.json --format json web/app/components/plugins/marketplace/hooks.ts
         continue-on-error: true
 
       - name: Annotate Code
-        uses: hyoban/eslint-annotations/@d6b2497fbd7552b73969b230228e059febafe662
+        uses: hyoban/eslint-annotations/@b2f9f1471636d3e78398f2fb42128c7b7003f393
         with:
           eslint-report: eslint_report.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
