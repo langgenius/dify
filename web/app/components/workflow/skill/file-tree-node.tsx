@@ -160,6 +160,7 @@ const FileTreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeDat
             <FileOperationsMenu
               nodeId={node.data.id}
               onClose={() => setShowDropdown(false)}
+              node={node}
             />
           </PortalToFollowElemContent>
         </PortalToFollowElem>

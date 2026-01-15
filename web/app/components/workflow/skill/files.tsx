@@ -9,7 +9,8 @@ import { Tree } from 'react-arborist'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
-import { useGetAppAssetTree } from '@/service/use-app-asset'
+import Toast from '@/app/components/base/toast'
+import { useGetAppAssetTree, useRenameAppAssetNode } from '@/service/use-app-asset'
 import { cn } from '@/utils/classnames'
 import FileTreeContextMenu from './file-tree-context-menu'
 import FileTreeNode from './file-tree-node'
@@ -63,6 +64,9 @@ const Files: React.FC<FilesProps> = ({ className }) => {
   const activeTabId = useSkillEditorStore(s => s.activeTabId)
   const storeApi = useSkillEditorStoreApi()
 
+  // Rename mutation for inline editing
+  const renameNode = useRenameAppAssetNode()
+
   // Convert Set to react-arborist OpenMap for initial state
   const initialOpenState = useMemo(() => toOpensObject(expandedFolderIds), [expandedFolderIds])
 
@@ -82,6 +86,20 @@ const Files: React.FC<FilesProps> = ({ className }) => {
       node.toggle()
     }
   }, [storeApi])
+
+  // Handle rename from react-arborist inline editing
+  const handleRename = useCallback(({ id, name }: { id: string, name: string }) => {
+    renameNode.mutateAsync({
+      appId,
+      nodeId: id,
+      payload: { name },
+    }).catch(() => {
+      Toast.notify({
+        type: 'error',
+        message: t('skillSidebar.menu.renameError'),
+      })
+    })
+  }, [appId, renameNode, t])
 
   // Auto-reveal when activeTabId changes (sync from tab click to tree)
   useEffect(() => {
@@ -172,17 +190,17 @@ const Files: React.FC<FilesProps> = ({ className }) => {
           // Events
           onToggle={handleToggle}
           onActivate={handleActivate}
+          onRename={handleRename}
           // Disable features not in MVP
           disableDrag
           disableDrop
-          disableEdit
         >
           {FileTreeNode}
         </Tree>
       </div>
       <DropTip />
       {/* Right-click context menu */}
-      <FileTreeContextMenu />
+      <FileTreeContextMenu treeRef={treeRef} />
     </div>
   )
 }

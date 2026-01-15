@@ -126,3 +126,39 @@ export function findNodeById(
   }
   return null
 }
+
+/**
+ * Get all descendant file IDs recursively (for tab cleanup on node delete)
+ * @param nodeId - Target node ID (file or folder)
+ * @param nodes - Tree nodes from API
+ * @returns Array of file IDs to close (the node itself if file, or all descendants if folder)
+ */
+export function getAllDescendantFileIds(
+  nodeId: string,
+  nodes: AppAssetTreeView[],
+): string[] {
+  const targetNode = findNodeById(nodes, nodeId)
+  if (!targetNode)
+    return []
+
+  // If deleting a file, return just that file's ID
+  if (targetNode.node_type === 'file')
+    return [targetNode.id]
+
+  // For folders, collect all descendant files
+  const fileIds: string[] = []
+
+  function collectFileIds(nodeList: AppAssetTreeView[]) {
+    for (const node of nodeList) {
+      if (node.node_type === 'file')
+        fileIds.push(node.id)
+      if (node.children && node.children.length > 0)
+        collectFileIds(node.children)
+    }
+  }
+
+  if (targetNode.children)
+    collectFileIds(targetNode.children)
+
+  return fileIds
+}

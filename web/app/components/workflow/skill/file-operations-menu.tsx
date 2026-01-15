@@ -1,14 +1,31 @@
 'use client'
 
 import type { FC } from 'react'
-import { RiFileAddLine, RiFolderAddLine, RiFolderUploadLine, RiUploadLine } from '@remixicon/react'
+import type { NodeApi, TreeApi } from 'react-arborist'
+import type { TreeNodeData } from './type'
+import {
+  RiDeleteBinLine,
+  RiEdit2Line,
+  RiFileAddLine,
+  RiFolderAddLine,
+  RiFolderUploadLine,
+  RiUploadLine,
+} from '@remixicon/react'
 import * as React from 'react'
-import { useCallback, useRef } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import Confirm from '@/app/components/base/confirm'
 import Toast from '@/app/components/base/toast'
-import { useCreateAppAssetFile, useCreateAppAssetFolder } from '@/service/use-app-asset'
+import {
+  useCreateAppAssetFile,
+  useCreateAppAssetFolder,
+  useDeleteAppAssetNode,
+  useGetAppAssetTree,
+} from '@/service/use-app-asset'
 import { cn } from '@/utils/classnames'
+import { useSkillEditorStoreApi } from './store'
+import { getAllDescendantFileIds } from './type'
 
 /**
  * FileOperationsMenu - Menu content for file operations
@@ -53,12 +70,18 @@ type FileOperationsMenuProps = {
   onClose: () => void
   /** Optional className */
   className?: string
+  /** Tree API ref for context menu (to call node.edit()) */
+  treeRef?: React.RefObject<TreeApi<TreeNodeData> | null>
+  /** Node API for dropdown menu (to call node.edit()) */
+  node?: NodeApi<TreeNodeData>
 }
 
 const FileOperationsMenu: FC<FileOperationsMenuProps> = ({
   nodeId,
   onClose,
   className,
+  treeRef,
+  node,
 }) => {
   const { t } = useTranslation('workflow')
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -68,9 +91,19 @@ const FileOperationsMenu: FC<FileOperationsMenuProps> = ({
   const appDetail = useAppStore(s => s.appDetail)
   const appId = appDetail?.id || ''
 
+  // Store API for tab cleanup
+  const storeApi = useSkillEditorStoreApi()
+
   // Mutations
   const createFolder = useCreateAppAssetFolder()
   const createFile = useCreateAppAssetFile()
+  const deleteNode = useDeleteAppAssetNode()
+
+  // Tree data for descendant lookup
+  const { data: treeData } = useGetAppAssetTree(appId)
+
+  // Delete confirmation state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   // Determine parent_id (null for root)
   const parentId = nodeId === 'root' ? null : nodeId
@@ -268,7 +301,59 @@ const FileOperationsMenu: FC<FileOperationsMenuProps> = ({
     }
   }, [appId, createFile, createFolder, onClose, parentId, t])
 
-  const isLoading = createFile.isPending || createFolder.isPending
+  // Handle Rename - trigger react-arborist inline editing
+  const handleRename = useCallback(() => {
+    // Context menu: use treeRef
+    if (treeRef?.current) {
+      const targetNode = treeRef.current.get(nodeId)
+      targetNode?.edit()
+    }
+    // Dropdown: use node directly
+    else if (node) {
+      node.edit()
+    }
+    onClose()
+  }, [nodeId, node, onClose, treeRef])
+
+  // Handle Delete click - show confirmation
+  const handleDeleteClick = useCallback(() => {
+    setShowDeleteConfirm(true)
+  }, [])
+
+  // Handle Delete confirm
+  const handleDeleteConfirm = useCallback(async () => {
+    try {
+      // Find descendant file IDs for tab cleanup
+      const descendantFileIds = treeData?.children
+        ? getAllDescendantFileIds(nodeId, treeData.children)
+        : []
+
+      await deleteNode.mutateAsync({ appId, nodeId })
+
+      // Close tabs for deleted files
+      descendantFileIds.forEach((fileId) => {
+        storeApi.getState().closeTab(fileId)
+        storeApi.getState().clearDraftContent(fileId)
+      })
+
+      Toast.notify({
+        type: 'success',
+        message: t('skillSidebar.menu.deleted'),
+      })
+    }
+    catch {
+      Toast.notify({
+        type: 'error',
+        message: t('skillSidebar.menu.deleteError'),
+      })
+    }
+    finally {
+      setShowDeleteConfirm(false)
+      onClose()
+    }
+  }, [appId, nodeId, deleteNode, storeApi, treeData?.children, onClose, t])
+
+  const isLoading = createFile.isPending || createFolder.isPending || deleteNode.isPending
 
   return (
     <div className={cn(
@@ -321,6 +406,46 @@ const FileOperationsMenu: FC<FileOperationsMenuProps> = ({
         label={t('skillSidebar.menu.uploadFolder')}
         onClick={() => folderInputRef.current?.click()}
         disabled={isLoading}
+      />
+
+      {/* Divider before destructive actions */}
+      {nodeId !== 'root' && (
+        <>
+          <div className="my-1 h-px bg-divider-subtle" />
+
+          <MenuItem
+            icon={RiEdit2Line}
+            label={t('skillSidebar.menu.rename')}
+            onClick={handleRename}
+            disabled={isLoading}
+          />
+          <button
+            type="button"
+            onClick={handleDeleteClick}
+            disabled={isLoading}
+            className={cn(
+              'flex w-full items-center gap-2 rounded-lg px-3 py-2',
+              'hover:bg-state-destructive-hover disabled:cursor-not-allowed disabled:opacity-50',
+              'group',
+            )}
+          >
+            <RiDeleteBinLine className="size-4 text-text-tertiary group-hover:text-text-destructive" />
+            <span className="system-sm-regular text-text-secondary group-hover:text-text-destructive">
+              {t('skillSidebar.menu.delete')}
+            </span>
+          </button>
+        </>
+      )}
+
+      {/* Delete confirmation modal */}
+      <Confirm
+        isShow={showDeleteConfirm}
+        type="danger"
+        title={t('skillSidebar.menu.deleteConfirmTitle')}
+        content={t('skillSidebar.menu.deleteConfirmContent')}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setShowDeleteConfirm(false)}
+        isLoading={deleteNode.isPending}
       />
     </div>
   )

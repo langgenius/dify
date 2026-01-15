@@ -1,11 +1,17 @@
 'use client'
 
 import type { FC } from 'react'
+import type { TreeApi } from 'react-arborist'
+import type { TreeNodeData } from './type'
 import { useClickAway } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useRef } from 'react'
 import FileOperationsMenu from './file-operations-menu'
 import { useSkillEditorStore, useSkillEditorStoreApi } from './store'
+
+type FileTreeContextMenuProps = {
+  treeRef: React.RefObject<TreeApi<TreeNodeData> | null>
+}
 
 /**
  * FileTreeContextMenu - Right-click context menu for file tree
@@ -13,7 +19,7 @@ import { useSkillEditorStore, useSkillEditorStoreApi } from './store'
  * Renders at absolute position when contextMenu state is set.
  * Uses useClickAway to close when clicking outside.
  */
-const FileTreeContextMenu: FC = () => {
+const FileTreeContextMenu: FC<FileTreeContextMenuProps> = ({ treeRef }) => {
   const ref = useRef<HTMLDivElement>(null)
   const contextMenu = useSkillEditorStore(s => s.contextMenu)
   const storeApi = useSkillEditorStoreApi()
@@ -41,6 +47,7 @@ const FileTreeContextMenu: FC = () => {
       <FileOperationsMenu
         nodeId={contextMenu.nodeId}
         onClose={handleClose}
+        treeRef={treeRef}
       />
     </div>
   )
