@@ -4,6 +4,7 @@ QueueBasedGraphEngine - Main orchestrator for queue-based workflow execution.
 This engine uses a modular architecture with separated packages following
 Domain-Driven Design principles for improved maintainability and testability.
 """
+
 from __future__ import annotations
 
 import logging
