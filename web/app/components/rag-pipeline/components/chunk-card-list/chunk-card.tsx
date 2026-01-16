@@ -63,7 +63,7 @@ const ChunkCard = (props: ChunkCardProps) => {
 
   const summaryElement = useMemo(() => {
     if (chunkType === ChunkingMode.parentChild) {
-      return (content as ParentChildChunk).parent_content.summary
+      return (content as ParentChildChunk).parent_summary
     }
     if (chunkType === ChunkingMode.text) {
       return (content as GeneralChunk).summary

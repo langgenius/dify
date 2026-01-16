@@ -22,7 +22,7 @@ const createGeneralChunks = (overrides: GeneralChunks = []): GeneralChunks => {
 
 const createParentChildChunk = (overrides: Partial<ParentChildChunk> = {}): ParentChildChunk => ({
   child_contents: ['Child content 1', 'Child content 2'],
-  parent_content: { content: 'This is the parent content that contains the children.' },
+  parent_content: 'This is the parent content that contains the children.',
   parent_mode: 'paragraph',
   ...overrides,
 })
@@ -32,7 +32,7 @@ const createParentChildChunks = (overrides: Partial<ParentChildChunks> = {}): Pa
     createParentChildChunk(),
     createParentChildChunk({
       child_contents: ['Another child 1', 'Another child 2', 'Another child 3'],
-      parent_content: { content: 'Another parent content here.' },
+      parent_content: 'Another parent content here.',
     }),
   ],
   parent_mode: 'paragraph',
@@ -706,7 +706,7 @@ describe('ChunkCardList', () => {
       const chunks = createParentChildChunks({
         parent_child_chunks: [
           createParentChildChunk({
-            parent_content: { content: 'Parent' }, // 6 characters
+            parent_content: 'Parent', // 6 characters
             child_contents: ['Child'],
           }),
         ],
@@ -1047,7 +1047,7 @@ describe('ChunkCardList Integration', () => {
       const parentChildChunks = createParentChildChunks({
         parent_child_chunks: [
           {
-            parent_content: { content: 'Main section about React components and their lifecycle.' },
+            parent_content: 'Main section about React components and their lifecycle.',
             child_contents: [
               'React components are building blocks.',
               'Lifecycle methods control component behavior.',

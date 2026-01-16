@@ -357,7 +357,9 @@ const Form = () => {
         </div>
       )}
       {
-        indexMethod === IndexingType.QUALIFIED && (
+        indexMethod === IndexingType.QUALIFIED
+        && [ChunkingMode.text, ChunkingMode.parentChild].includes(currentDataset?.doc_form as ChunkingMode)
+        && (
           <>
             <Divider
               type="horizontal"
