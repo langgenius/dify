@@ -321,9 +321,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         node_executions_deleted = (
             cast(
                 CursorResult,
-                session.execute(
-                    delete(WorkflowNodeExecutionModel).where(run_id_filter)
-                ),
+                session.execute(delete(WorkflowNodeExecutionModel).where(run_id_filter)),
             ).rowcount
             or 0
         )
