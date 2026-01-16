@@ -92,7 +92,7 @@ const List = () => {
 
   const appListQueryParams = {
     page: 1,
-    limit: 3, // TODO: Change back to 30 - reduced for testing loading indicator
+    limit: 30,
     name: searchKeywords,
     tag_ids: tagIDs,
     is_created_by_me: isCreatedByMe,

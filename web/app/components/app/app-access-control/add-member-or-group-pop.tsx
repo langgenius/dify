@@ -1,7 +1,7 @@
 'use client'
 import type { AccessControlAccount, AccessControlGroup, Subject, SubjectAccount, SubjectGroup } from '@/models/access-control'
 import { FloatingOverlay } from '@floating-ui/react'
-import { RiAddCircleFill, RiArrowRightSLine, RiLoader2Line, RiOrganizationChart } from '@remixicon/react'
+import { RiAddCircleFill, RiArrowRightSLine, RiOrganizationChart } from '@remixicon/react'
 import { useDebounce } from 'ahooks'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -69,11 +69,7 @@ export default function AddMemberOrGroupDialog() {
                         </div>
                         <div className="p-1">
                           {renderGroupOrMember(data?.pages ?? [])}
-                          {isFetchingNextPage && (
-                            <div className="flex justify-center py-2">
-                              <RiLoader2Line className="h-4 w-4 animate-spin text-text-tertiary" />
-                            </div>
-                          )}
+                          {isFetchingNextPage && <Loading />}
                         </div>
                         <div ref={anchorRef} className="h-0"> </div>
                       </>

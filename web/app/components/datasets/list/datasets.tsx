@@ -1,8 +1,8 @@
 'use client'
 
-import { RiLoader2Line } from '@remixicon/react'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import Loading from '@/app/components/base/loading'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useDatasetList, useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import DatasetCard from './dataset-card'
@@ -62,11 +62,7 @@ const Datasets = ({
         {datasetList?.pages.map(({ data: datasets }) => datasets.map(dataset => (
           <DatasetCard key={dataset.id} dataset={dataset} onSuccess={invalidDatasetList} />),
         ))}
-        {isFetchingNextPage && (
-          <div className="col-span-full flex justify-center py-4">
-            <RiLoader2Line className="h-5 w-5 animate-spin text-text-tertiary" />
-          </div>
-        )}
+        {isFetchingNextPage && <Loading />}
         <div ref={anchorRef} className="h-0" />
       </nav>
     </>
