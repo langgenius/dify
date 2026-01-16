@@ -2,6 +2,7 @@
 
 import type { FC } from 'react'
 import * as React from 'react'
+import { useCallback, useState } from 'react'
 import EditorArea from './editor-area'
 import EditorBody from './editor-body'
 import EditorTabs from './editor-tabs'
@@ -12,12 +13,18 @@ import SkillDocEditor from './skill-doc-editor'
 import SkillPageLayout from './skill-page-layout'
 
 const SkillMain: FC = () => {
+  const [searchTerm, setSearchTerm] = useState('')
+
+  const handleSearchChange = useCallback((term: string) => {
+    setSearchTerm(term)
+  }, [])
+
   return (
     <div className="h-full bg-workflow-canvas-workflow-top-bar-1 pl-3 pt-[52px]">
       <SkillPageLayout>
         <Sidebar>
-          <SidebarSearchAdd />
-          <FileTree />
+          <SidebarSearchAdd onSearchChange={handleSearchChange} />
+          <FileTree searchTerm={searchTerm} />
         </Sidebar>
         <EditorArea>
           <EditorTabs />

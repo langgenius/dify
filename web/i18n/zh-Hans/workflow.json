@@ -1018,6 +1018,7 @@
   "skillSidebar.menu.newFolderPrompt": "请输入文件夹名称：",
   "skillSidebar.menu.rename": "重命名",
   "skillSidebar.menu.renameError": "重命名失败",
+  "skillSidebar.menu.renamed": "重命名成功",
   "skillSidebar.menu.uploadError": "上传失败",
   "skillSidebar.menu.uploadFile": "上传文件",
   "skillSidebar.menu.uploadFolder": "上传文件夹",

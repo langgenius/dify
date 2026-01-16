@@ -1025,6 +1025,7 @@
   "skillSidebar.menu.newFolderPrompt": "Enter folder name:",
   "skillSidebar.menu.rename": "Rename",
   "skillSidebar.menu.renameError": "Failed to rename",
+  "skillSidebar.menu.renamed": "Renamed successfully",
   "skillSidebar.menu.uploadError": "Failed to upload",
   "skillSidebar.menu.uploadFile": "Upload File",
   "skillSidebar.menu.uploadFolder": "Upload Folder",

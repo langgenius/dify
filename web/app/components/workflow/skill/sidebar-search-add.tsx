@@ -8,8 +8,9 @@ import {
   RiFolderUploadLine,
   RiUploadLine,
 } from '@remixicon/react'
+import { useDebounce } from 'ahooks'
 import * as React from 'react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import {
@@ -23,6 +24,10 @@ import { cn } from '@/utils/classnames'
 import { useFileOperations } from './hooks/use-file-operations'
 import { useSkillAssetTreeData } from './hooks/use-skill-asset-tree'
 import { getTargetFolderIdFromSelection } from './utils/tree-utils'
+
+type SidebarSearchAddProps = {
+  onSearchChange?: (searchTerm: string) => void
+}
 
 type MenuItemProps = {
   icon: React.ElementType
@@ -49,10 +54,15 @@ const MenuItem: React.FC<MenuItemProps> = ({ icon: Icon, label, onClick, disable
   </button>
 )
 
-const SidebarSearchAdd: FC = () => {
+const SidebarSearchAdd: FC<SidebarSearchAddProps> = ({ onSearchChange }) => {
   const { t } = useTranslation('workflow')
   const [searchValue, setSearchValue] = useState('')
+  const debouncedSearchValue = useDebounce(searchValue, { wait: 300 })
   const [showMenu, setShowMenu] = useState(false)
+
+  useEffect(() => {
+    onSearchChange?.(debouncedSearchValue)
+  }, [debouncedSearchValue, onSearchChange])
 
   const { data: treeData } = useSkillAssetTreeData()
   const activeTabId = useStore(s => s.activeTabId)

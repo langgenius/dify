@@ -23,6 +23,7 @@ import TreeNode from './tree-node'
 
 type FileTreeProps = {
   className?: string
+  searchTerm?: string
 }
 
 const DropTip = () => {
@@ -37,7 +38,7 @@ const DropTip = () => {
   )
 }
 
-const FileTree: React.FC<FileTreeProps> = ({ className }) => {
+const FileTree: React.FC<FileTreeProps> = ({ className, searchTerm = '' }) => {
   const { t } = useTranslation('workflow')
   const treeRef = useRef<TreeApi<TreeNodeData>>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -77,6 +78,11 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
       appId,
       nodeId: id,
       payload: { name },
+    }).then(() => {
+      Toast.notify({
+        type: 'success',
+        message: t('skillSidebar.menu.renamed'),
+      })
     }).catch(() => {
       Toast.notify({
         type: 'error',
@@ -84,6 +90,13 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
       })
     })
   }, [appId, renameNode, t])
+
+  const searchMatch = useCallback(
+    (node: NodeApi<TreeNodeData>, term: string) => {
+      return node.data.name.toLowerCase().includes(term.toLowerCase())
+    },
+    [],
+  )
 
   useSyncTreeWithActiveTab({
     treeRef,
@@ -150,6 +163,8 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
             onToggle={handleToggle}
             onActivate={handleActivate}
             onRename={handleRename}
+            searchTerm={searchTerm}
+            searchMatch={searchMatch}
             disableDrag
             disableDrop
           >
