@@ -6,6 +6,7 @@ from flask import Blueprint, Flask, current_app, got_request_exception
 from flask_restx import Api
 from werkzeug.exceptions import HTTPException
 from werkzeug.http import HTTP_STATUS_CODES
+from werkzeug.wrappers import Response as WerkzeugResponse
 
 from configs import dify_config
 from core.errors.error import AppInvokeQuotaExceededError
@@ -17,8 +18,8 @@ def http_status_message(code):
 
 
 def register_external_error_handlers(api: Api):
-    @api.errorhandler(HTTPException)
-    def handle_http_exception(e: HTTPException):
+    @api.errorhandler(HTTPException)  # type: ignore
+    def handle_http_exception(e: HTTPException) -> WerkzeugResponse | tuple[dict[str, Any], int, dict[str, Any]]:
         got_request_exception.send(current_app, exception=e)
 
         # If Werkzeug already prepared a Response, just use it.
@@ -37,7 +38,7 @@ def register_external_error_handlers(api: Api):
             default_data["message"] = "Invalid JSON payload received or JSON payload is empty."
 
         # Use headers on the exception if present; otherwise none.
-        headers = {}
+        headers: dict[str, Any] = {}
         exc_headers = getattr(e, "headers", None)
         if exc_headers:
             headers.update(exc_headers)
@@ -76,8 +77,8 @@ def register_external_error_handlers(api: Api):
 
     _ = handle_http_exception
 
-    @api.errorhandler(ValueError)
-    def handle_value_error(e: ValueError):
+    @api.errorhandler(ValueError)  # type: ignore
+    def handle_value_error(e: ValueError) -> tuple[dict[str, Any], int]:
         got_request_exception.send(current_app, exception=e)
         status_code = 400
         data = {"code": "invalid_param", "message": str(e), "status": status_code}
@@ -85,8 +86,8 @@ def register_external_error_handlers(api: Api):
 
     _ = handle_value_error
 
-    @api.errorhandler(AppInvokeQuotaExceededError)
-    def handle_quota_exceeded(e: AppInvokeQuotaExceededError):
+    @api.errorhandler(AppInvokeQuotaExceededError)  # type: ignore
+    def handle_quota_exceeded(e: AppInvokeQuotaExceededError) -> tuple[dict[str, Any], int]:
         got_request_exception.send(current_app, exception=e)
         status_code = 429
         data = {"code": "too_many_requests", "message": str(e), "status": status_code}
@@ -94,8 +95,8 @@ def register_external_error_handlers(api: Api):
 
     _ = handle_quota_exceeded
 
-    @api.errorhandler(Exception)
-    def handle_general_exception(e: Exception):
+    @api.errorhandler(Exception)  # type: ignore
+    def handle_general_exception(e: Exception) -> tuple[dict[str, Any], int]:
         got_request_exception.send(current_app, exception=e)
 
         status_code = 500
