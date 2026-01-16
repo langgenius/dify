@@ -767,6 +767,7 @@
   "nodes.templateTransform.inputVars": "Input Variables",
   "nodes.templateTransform.outputVars.output": "Transformed content",
   "nodes.tool.authorize": "Authorize",
+  "nodes.tool.assembleVariables": "Assemble variables",
   "nodes.tool.inputVars": "Input Variables",
   "nodes.tool.insertPlaceholder1": "Type or press",
   "nodes.tool.insertPlaceholder2": "insert variable",

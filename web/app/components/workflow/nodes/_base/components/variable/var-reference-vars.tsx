@@ -10,6 +10,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 import { CodeAssistant, MagicEdit } from '@/app/components/base/icons/src/vender/line/general'
+import { MagicWand } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import Input from '@/app/components/base/input'
 import {
@@ -255,6 +256,8 @@ type Props = {
   isInCodeGeneratorInstructionEditor?: boolean
   showManageInputField?: boolean
   onManageInputField?: () => void
+  showAssembleVariables?: boolean
+  onAssembleVariables?: () => void
   autoFocus?: boolean
   preferSchemaType?: boolean
 }
@@ -272,6 +275,8 @@ const VarReferenceVars: FC<Props> = ({
   isInCodeGeneratorInstructionEditor,
   showManageInputField,
   onManageInputField,
+  showAssembleVariables,
+  onAssembleVariables,
   autoFocus = true,
   preferSchemaType,
 }) => {
@@ -283,6 +288,13 @@ const VarReferenceVars: FC<Props> = ({
       e.preventDefault()
       onClose?.()
     }
+  }
+
+  const handleAssembleVariables = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    onAssembleVariables?.()
+    onClose?.()
   }
 
   const filteredVars = vars.filter((v) => {
@@ -391,6 +403,25 @@ const VarReferenceVars: FC<Props> = ({
           <ManageInputField
             onManage={onManageInputField || noop}
           />
+        )
+      }
+      {
+        showAssembleVariables && (
+          <div className="flex items-center border-t border-divider-subtle pt-1">
+            <button
+              type="button"
+              className="flex h-8 w-full items-center px-3 text-text-tertiary hover:text-text-secondary"
+              onClick={handleAssembleVariables}
+              onMouseDown={e => e.preventDefault()}
+            >
+              <span className="mr-1 flex h-4 w-4 items-center justify-center rounded bg-util-colors-indigo-indigo-500/10">
+                <MagicWand className="h-3.5 w-3.5 text-util-colors-indigo-indigo-500" />
+              </span>
+              <span className="system-xs-medium truncate" title={t('nodes.tool.assembleVariables', { ns: 'workflow' })}>
+                {t('nodes.tool.assembleVariables', { ns: 'workflow' })}
+              </span>
+            </button>
+          </div>
         )
       }
     </>

@@ -161,6 +161,19 @@ const ComponentPicker = ({
     editor.dispatchCommand(KEY_ESCAPE_COMMAND, escapeEvent)
   }, [editor])
 
+  const handleSelectAssembleVariables = useCallback(() => {
+    editor.update(() => {
+      const match = checkForTriggerMatch(triggerString, editor)
+      if (!match)
+        return
+      const needRemove = $splitNodeContainingQuery(match)
+      if (needRemove)
+        needRemove.remove()
+    })
+    workflowVariableBlock?.onAssembleVariables?.()
+    handleClose()
+  }, [editor, checkForTriggerMatch, triggerString, workflowVariableBlock, handleClose])
+
   const handleSelectAgent = useCallback((agent: { id: string, title: string }) => {
     editor.update(() => {
       const needRemove = $splitNodeContainingQuery(checkForTriggerMatch(triggerString, editor)!)
@@ -182,6 +195,7 @@ const ComponentPicker = ({
   }, [editor, checkForTriggerMatch, triggerString, agentBlock, handleClose])
 
   const isAgentTrigger = triggerString === '@' && agentBlock?.show
+  const showAssembleVariables = triggerString === '/' && workflowVariableBlock?.showAssembleVariables
   const agentNodes = agentBlock?.agentNodes || []
 
   const renderMenu = useCallback<MenuRenderFn<PickerBlockMenuOption>>((
@@ -246,6 +260,8 @@ const ComponentPicker = ({
                                 onBlur={handleClose}
                                 showManageInputField={workflowVariableBlock.showManageInputField}
                                 onManageInputField={workflowVariableBlock.onManageInputField}
+                                showAssembleVariables={showAssembleVariables}
+                                onAssembleVariables={showAssembleVariables ? handleSelectAssembleVariables : undefined}
                                 autoFocus={false}
                                 isInCodeGeneratorInstructionEditor={currentBlock?.generatorType === GeneratorType.code}
                               />
@@ -289,7 +305,7 @@ const ComponentPicker = ({
         }
       </>
     )
-  }, [isAgentTrigger, agentNodes, allFlattenOptions.length, workflowVariableBlock?.show, floatingStyles, isPositioned, refs, handleSelectAgent, handleClose, workflowVariableOptions, isSupportFileVar, currentBlock?.generatorType, handleSelectWorkflowVariable, queryString, workflowVariableBlock?.showManageInputField, workflowVariableBlock?.onManageInputField])
+  }, [isAgentTrigger, agentNodes, allFlattenOptions.length, workflowVariableBlock?.show, floatingStyles, isPositioned, refs, handleSelectAgent, handleClose, workflowVariableOptions, isSupportFileVar, currentBlock?.generatorType, handleSelectWorkflowVariable, queryString, workflowVariableBlock?.showManageInputField, workflowVariableBlock?.onManageInputField, showAssembleVariables, handleSelectAssembleVariables])
 
   return (
     <LexicalTypeaheadMenuPlugin

@@ -71,6 +71,8 @@ export type WorkflowVariableBlockType = {
   getVarType?: GetVarType
   showManageInputField?: boolean
   onManageInputField?: () => void
+  showAssembleVariables?: boolean
+  onAssembleVariables?: () => void
 }
 
 export type AgentNode = {
