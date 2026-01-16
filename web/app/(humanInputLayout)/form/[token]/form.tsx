@@ -24,7 +24,7 @@ export type FormData = {
   site: any
   form_content: string
   inputs: FormInputItem[]
-  placeholder_values: Record<string, string>
+  resolved_placeholder_values: Record<string, string>
   user_actions: UserAction[]
   expiration_time: number
 }
@@ -225,7 +225,7 @@ const FormContent = () => {
               formInputFields={formData.inputs}
               inputs={inputs}
               onInputChange={handleInputsChange}
-              resolvedPlaceholderValues={formData.placeholder_values}
+              resolvedPlaceholderValues={formData.resolved_placeholder_values}
             />
           ))}
           <div className="flex flex-wrap gap-1 py-1">
@@ -240,7 +240,7 @@ const FormContent = () => {
               </Button>
             ))}
           </div>
-          <ExpirationTime expirationTime={formData.expiration_time} />
+          <ExpirationTime expirationTime={formData.expiration_time * 1000} />
         </div>
         <div className="flex flex-row-reverse px-2 py-3">
           <div className={cn(
