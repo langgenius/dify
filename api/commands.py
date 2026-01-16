@@ -931,7 +931,7 @@ def clean_workflow_runs(
     if (from_days_ago is None) ^ (to_days_ago is None):
         raise click.UsageError("--from-days-ago and --to-days-ago must be provided together.")
 
-    if from_days_ago is not None:
+    if from_days_ago is not None and to_days_ago is not None:
         if start_from or end_before:
             raise click.UsageError("Choose either day offsets or explicit dates, not both.")
         if from_days_ago <= to_days_ago:
