@@ -7,8 +7,8 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
+import Toast from '@/app/components/base/toast'
 import { renameDocumentName } from '@/service/datasets'
-import Toast from '../../base/toast'
 
 type Props = {
   datasetId: string

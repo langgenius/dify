@@ -20,7 +20,6 @@ import Select from '@/app/components/base/select'
 import Textarea from '@/app/components/base/textarea'
 import Tooltip from '@/app/components/base/tooltip'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
-import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 import ConfigContext from '@/context/debug-configuration'
 import { AppModeEnum, ModelModeType } from '@/types/app'
 import { cn } from '@/utils/classnames'
@@ -142,7 +141,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                         onChange={(e) => { handleInputValueChange(key, e.target.value) }}
                         placeholder={name}
                         autoFocus={index === 0}
-                        maxLength={max_length || DEFAULT_VALUE_MAX_LEN}
+                        maxLength={max_length}
                       />
                     )}
                     {type === 'paragraph' && (
@@ -170,7 +169,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                         onChange={(e) => { handleInputValueChange(key, e.target.value) }}
                         placeholder={name}
                         autoFocus={index === 0}
-                        maxLength={max_length || DEFAULT_VALUE_MAX_LEN}
+                        maxLength={max_length}
                       />
                     )}
                     {type === 'checkbox' && (
