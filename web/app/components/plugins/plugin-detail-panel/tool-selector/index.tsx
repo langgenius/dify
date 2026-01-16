@@ -64,7 +64,6 @@ type Props = {
   nodeOutputVars: NodeOutPutVar[]
   availableNodes: Node[]
   nodeId?: string
-  canChooseMCPTool?: boolean
 }
 const ToolSelector: FC<Props> = ({
   value,
@@ -86,7 +85,6 @@ const ToolSelector: FC<Props> = ({
   nodeOutputVars,
   availableNodes,
   nodeId = '',
-  canChooseMCPTool,
 }) => {
   const { t } = useTranslation()
   const [isShow, onShowChange] = useState(false)
@@ -267,7 +265,6 @@ const ToolSelector: FC<Props> = ({
                   </p>
                 </div>
               )}
-              canChooseMCPTool={canChooseMCPTool}
             />
           )}
         </PortalToFollowElemTrigger>
@@ -300,7 +297,6 @@ const ToolSelector: FC<Props> = ({
                     onSelectMultiple={handleSelectMultipleTool}
                     scope={scope}
                     selectedTools={selectedTools}
-                    canChooseMCPTool={canChooseMCPTool}
                   />
                 </div>
                 <div className="flex flex-col gap-1">

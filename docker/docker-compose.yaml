@@ -425,6 +425,7 @@ x-shared-env: &shared-api-worker-env
   SMTP_PASSWORD: ${SMTP_PASSWORD:-}
   SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
   SMTP_OPPORTUNISTIC_TLS: ${SMTP_OPPORTUNISTIC_TLS:-false}
+  SMTP_LOCAL_HOSTNAME: ${SMTP_LOCAL_HOSTNAME:-}
   SENDGRID_API_KEY: ${SENDGRID_API_KEY:-}
   INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: ${INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH:-4000}
   INVITE_EXPIRY_HOURS: ${INVITE_EXPIRY_HOURS:-72}
@@ -704,7 +705,7 @@ services:
 
   # API service
   api:
-    image: langgenius/dify-api:1.11.3
+    image: langgenius/dify-api:1.11.4
     restart: always
     environment:
       # Use the shared environment variables.
@@ -746,7 +747,7 @@ services:
   # worker service
   # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
-    image: langgenius/dify-api:1.11.3
+    image: langgenius/dify-api:1.11.4
     restart: always
     environment:
       # Use the shared environment variables.
@@ -785,7 +786,7 @@ services:
   # worker_beat service
   # Celery beat for scheduling periodic tasks.
   worker_beat:
-    image: langgenius/dify-api:1.11.3
+    image: langgenius/dify-api:1.11.4
     restart: always
     environment:
       # Use the shared environment variables.
@@ -815,7 +816,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.11.3
+    image: langgenius/dify-web:1.11.4
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
