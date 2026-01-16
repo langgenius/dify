@@ -1,8 +1,8 @@
 'use client'
 
 import type { NodeApi, TreeApi } from 'react-arborist'
-import type { OpensObject } from '../store'
 import type { TreeNodeData } from '../type'
+import type { OpensObject } from '@/app/components/workflow/store/workflow/skill-editor-slice'
 import { RiDragDropLine } from '@remixicon/react'
 import { useIsMutating } from '@tanstack/react-query'
 import { useSize } from 'ahooks'

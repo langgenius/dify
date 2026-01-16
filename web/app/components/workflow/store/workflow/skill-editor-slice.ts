@@ -24,7 +24,7 @@ export type TabSliceShape = {
   isPreviewTab: (fileId: string) => boolean
 }
 
-export const createTabSlice: StateCreator<TabSliceShape> = (set, get) => ({
+const createTabSlice: StateCreator<TabSliceShape> = (set, get) => ({
   openTabIds: [],
   activeTabId: null,
   previewTabId: null,
@@ -114,7 +114,7 @@ export type FileTreeSliceShape = {
   getOpensObject: () => OpensObject
 }
 
-export const createFileTreeSlice: StateCreator<FileTreeSliceShape> = (set, get) => ({
+const createFileTreeSlice: StateCreator<FileTreeSliceShape> = (set, get) => ({
   expandedFolderIds: new Set<string>(),
 
   setExpandedFolderIds: (ids: Set<string>) => {
@@ -164,7 +164,7 @@ export type DirtySliceShape = {
   getDraftContent: (fileId: string) => string | undefined
 }
 
-export const createDirtySlice: StateCreator<DirtySliceShape> = (set, get) => ({
+const createDirtySlice: StateCreator<DirtySliceShape> = (set, get) => ({
   dirtyContents: new Map<string, string>(),
 
   setDraftContent: (fileId: string, content: string) => {
@@ -199,7 +199,7 @@ export type FileOperationsMenuSliceShape = {
   setContextMenu: (menu: FileOperationsMenuSliceShape['contextMenu']) => void
 }
 
-export const createFileOperationsMenuSlice: StateCreator<FileOperationsMenuSliceShape> = set => ({
+const createFileOperationsMenuSlice: StateCreator<FileOperationsMenuSliceShape> = set => ({
   contextMenu: null,
 
   setContextMenu: (contextMenu) => {
