@@ -67,15 +67,17 @@ const SearchInput: FC<SearchInputProps> = ({
         autoComplete="off"
       />
       {value && (
-        <div
-          className="group/clear flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center"
+        <button
+          type="button"
+          aria-label={t('operation.clear', { ns: 'common' })}
+          className="group/clear flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center border-none bg-transparent p-0"
           onClick={() => {
             onChange('')
             inputRef.current?.focus()
           }}
         >
           <RiCloseCircleFill className="h-4 w-4 text-text-quaternary group-hover/clear:text-text-tertiary" />
-        </div>
+        </button>
       )}
     </div>
   )
