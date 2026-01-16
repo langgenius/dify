@@ -16,14 +16,14 @@ jobs:
 
       - name: Check Docker Compose inputs
         id: docker-compose-changes
-        uses: tj-actions/changed-files@v46
+        uses: tj-actions/changed-files@v47
         with:
           files: |
             docker/generate_docker_compose
             docker/.env.example
             docker/docker-compose-template.yaml
             docker/docker-compose.yaml
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
