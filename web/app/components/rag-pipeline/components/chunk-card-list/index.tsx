@@ -25,7 +25,7 @@ export const ChunkCardList = (props: ChunkCardListProps) => {
 
   const getWordCount = (seg: GeneralChunk | ParentChildChunk | QAChunk) => {
     if (chunkType === ChunkingMode.parentChild)
-      return (seg as ParentChildChunk).parent_content.content?.length
+      return (seg as ParentChildChunk).parent_content?.length
     if (chunkType === ChunkingMode.text)
       return (seg as GeneralChunk).content.length
     return (seg as QAChunk).question.length + (seg as QAChunk).answer.length

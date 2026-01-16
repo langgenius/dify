@@ -170,7 +170,9 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
                   <Split className="h-[1px]" />
                 </div>
                 {
-                  data.indexing_technique === IndexMethodEnum.QUALIFIED && (
+                  data.indexing_technique === IndexMethodEnum.QUALIFIED
+                  && [ChunkStructureEnum.general, ChunkStructureEnum.parent_child].includes(data.chunk_structure)
+                  && (
                     <>
                       <SummaryIndexSetting
                         summaryIndexSetting={data.summary_index_setting}
