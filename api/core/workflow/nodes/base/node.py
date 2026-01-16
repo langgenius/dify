@@ -285,7 +285,7 @@ class Node(Generic[NodeDataT]):
                 extractor_configs.append(node_config)
         return extractor_configs
 
-    def _execute_extractor_nodes(self) -> Generator[GraphNodeEventBase, None, None]:
+    def _execute_mention_nodes(self) -> Generator[GraphNodeEventBase, None, None]:
         """
         Execute all extractor nodes associated with this node.
 
@@ -349,7 +349,7 @@ class Node(Generic[NodeDataT]):
         self._start_at = naive_utc_now()
 
         # Step 1: Execute associated extractor nodes before main node execution
-        yield from self._execute_extractor_nodes()
+        yield from self._execute_mention_nodes()
 
         # Create and push start event with required fields
         start_event = NodeRunStartedEvent(

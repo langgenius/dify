@@ -246,13 +246,9 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         # transform result into standard format
         result = self._transform_result(data=node_data, result=result or {})
 
-        # Save to node memory if in node memory mode
-        llm_utils.save_node_memory(
-            memory=memory,
-            variable_pool=variable_pool,
-            user_query=query,
-            assistant_response=json.dumps(result, ensure_ascii=False),
-        )
+        # Build context from prompt messages and response
+        assistant_response = json.dumps(result, ensure_ascii=False)
+        context = llm_utils.build_context(prompt_messages, assistant_response)
 
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
@@ -262,6 +258,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
                 "__is_success": 1 if not error else 0,
                 "__reason": error,
                 "__usage": jsonable_encoder(usage),
+                "context": context,
                 **result,
             },
             metadata={
