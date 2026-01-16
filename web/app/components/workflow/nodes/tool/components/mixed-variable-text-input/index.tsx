@@ -125,6 +125,8 @@ type MixedVariableTextInputProps = {
   disableVariableInsertion?: boolean
   toolNodeId?: string
   paramKey?: string
+  varType?: VarKindType
+  mentionConfig?: MentionConfig | null
 }
 
 const MixedVariableTextInput = ({
@@ -138,6 +140,8 @@ const MixedVariableTextInput = ({
   disableVariableInsertion = false,
   toolNodeId,
   paramKey = '',
+  varType,
+  mentionConfig,
 }: MixedVariableTextInputProps) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
@@ -224,16 +228,23 @@ const MixedVariableTextInput = ({
     return Boolean(errorMessage)
   }, [language, nodesMetaDataMap, strategyProviders, t])
 
+  const extractorNodeId = useMemo(() => {
+    if (mentionConfig?.extractor_node_id)
+      return mentionConfig.extractor_node_id
+    if (varType === VarKindTypeEnum.mention && toolNodeId && paramKey)
+      return `${toolNodeId}_ext_${paramKey}`
+    return ''
+  }, [mentionConfig?.extractor_node_id, paramKey, toolNodeId, varType])
+
   const hasAgentWarning = useMemo(() => {
     if (!detectedAgentFromValue)
       return false
     const agentWarning = getNodeWarning(nodesById[detectedAgentFromValue.nodeId])
-    if (!toolNodeId || !paramKey)
+    if (!extractorNodeId)
       return agentWarning
-    const extractorNodeId = `${toolNodeId}_ext_${paramKey}`
     const extractorWarning = getNodeWarning(nodesById[extractorNodeId])
     return agentWarning || extractorWarning
-  }, [detectedAgentFromValue, getNodeWarning, nodesById, paramKey, toolNodeId])
+  }, [detectedAgentFromValue, extractorNodeId, getNodeWarning, nodesById])
 
   const syncExtractorPromptFromText = useCallback((text: string) => {
     if (!toolNodeId || !paramKey)

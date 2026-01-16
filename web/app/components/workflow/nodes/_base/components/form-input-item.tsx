@@ -351,6 +351,8 @@ const FormInputItem: FC<Props> = ({
           disableVariableInsertion={disableVariableInsertion}
           toolNodeId={nodeId}
           paramKey={variable}
+          varType={varInput?.type}
+          mentionConfig={varInput?.mention_config}
         />
       )}
       {isNumber && isConstant && (
