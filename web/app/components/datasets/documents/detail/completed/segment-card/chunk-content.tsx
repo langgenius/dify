@@ -1,11 +1,9 @@
 import type { FC } from 'react'
+import type { SegmentListContextValue } from '..'
 import * as React from 'react'
-import type { FC } from 'react'
-import * as React from 'react'
-import { Markdown } from '@/app/components/base/markdown'
 import { Markdown } from '@/app/components/base/markdown'
 import { cn } from '@/utils/classnames'
-import { SegmentListContextValue, useSegmentListContext } from '..'
+import { useSegmentListContext } from '..'
 
 type ChunkContentProps = {
   detail: {
