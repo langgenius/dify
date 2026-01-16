@@ -72,7 +72,7 @@ class LLMGenerator:
                 prompt_messages=list(prompts), model_parameters={"max_tokens": 500, "temperature": 1}, stream=False
             )
         answer = response.message.get_text_content()
-        if answer is None:
+        if answer == "":
             return ""
         try:
             result_dict = json.loads(answer)
