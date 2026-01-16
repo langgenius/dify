@@ -39,7 +39,7 @@ vi.mock('../atoms', () => ({
 let mockPortalOpenState = false
 
 vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open, onOpenChange }: {
+  PortalToFollowElem: ({ children, open, onOpenChange: _onOpenChange }: {
     children: React.ReactNode
     open: boolean
     onOpenChange: (open: boolean) => void

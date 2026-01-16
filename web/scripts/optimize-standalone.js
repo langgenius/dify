@@ -137,13 +137,13 @@ const checkForJest = (dir) => {
             jestFiles.push(path.relative(standaloneDir, fullPath))
           }
         }
-        catch (err) {
+        catch (_err) {
           // Skip files that can't be accessed
           continue
         }
       }
     }
-    catch (err) {
+    catch (_err) {
       // Skip directories that can't be read
 
     }

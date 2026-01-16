@@ -116,7 +116,7 @@ async function getKeysFromLanguage(language) {
       }
 
       // Filter only .json files
-      const translationFiles = files.filter(file => /\.json$/.test(file))
+      const translationFiles = files.filter(file => file.endsWith('.json'))
 
       translationFiles.forEach((file) => {
         const filePath = path.join(folderPath, file)
@@ -263,7 +263,7 @@ async function main() {
           // Get all translation files
           const i18nFolder = path.resolve(__dirname, '../i18n', language)
           const files = fs.readdirSync(i18nFolder)
-            .filter(file => /\.json$/.test(file))
+            .filter(file => file.endsWith('.json'))
             .map(file => file.replace(/\.json$/, ''))
             .filter(f => targetFiles.length === 0 || targetFiles.includes(f))
 
