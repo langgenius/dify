@@ -2,7 +2,6 @@
 import type { FC } from 'react'
 import type { QuadrantData } from './types'
 import { useMemo } from 'react'
-import { cn } from '@/utils/classnames'
 import QuadrantCard from './quadrant-card'
 import { isValidQuadrantData, QUADRANT_CONFIGS } from './types'
 
@@ -28,9 +27,9 @@ const QuadrantMatrix: FC<QuadrantMatrixProps> = ({ content }) => {
 
   if (!parsedData) {
     return (
-      <div className="flex items-center justify-center rounded-lg bg-components-panel-bg-blur p-8">
+      <div className="flex items-center justify-center rounded-xl bg-components-panel-bg-blur p-8">
         <div className="text-center text-text-secondary">
-          <div className="mb-2 text-lg">Invalid Quadrant Data</div>
+          <div className="system-md-semibold mb-2">Invalid Quadrant Data</div>
           <div className="text-sm text-text-tertiary">
             Expected JSON format with q1, q2, q3, q4 arrays
           </div>
@@ -46,7 +45,7 @@ const QuadrantMatrix: FC<QuadrantMatrixProps> = ({ content }) => {
       + parsedData.q4.length
 
   return (
-    <div className="w-full rounded-lg bg-components-panel-bg-blur p-4">
+    <div className="w-full overflow-hidden rounded-xl bg-components-panel-bg-blur p-4">
       {/* Header */}
       <div className="mb-4 flex items-center justify-between">
         <div>
@@ -59,78 +58,77 @@ const QuadrantMatrix: FC<QuadrantMatrixProps> = ({ content }) => {
             task
             {totalTasks !== 1 ? 's' : ''}
             {' '}
-            across 4 quadrants
+            prioritized
           </div>
         </div>
-        <div className="flex items-center gap-1 text-xs text-text-quaternary">
-          <span className="text-text-accent">I</span>
-          =Importance
-          <span className="ml-2 text-text-warning">U</span>
-          =Urgency
+        {/* Legend */}
+        <div className="flex items-center gap-3 text-[11px] text-text-quaternary">
+          <span>
+            <span className="font-medium text-text-accent">I</span>
+            {' '}
+            = Importance
+          </span>
+          <span>
+            <span className="font-medium text-text-warning">U</span>
+            {' '}
+            = Urgency
+          </span>
         </div>
       </div>
 
-      {/* Axis Labels */}
-      <div className="relative">
-        {/* Importance Label (Top Center) */}
-        <div className="mb-2 flex items-center justify-center">
-          <span className="rounded bg-state-accent-hover px-2 py-0.5 text-xs font-medium text-text-accent">
-            Important
+      {/* Axis Labels - Horizontal */}
+      <div className="mb-2 grid grid-cols-2 gap-3 pl-9">
+        <div className="text-center text-[11px] text-text-tertiary">
+          <span className="rounded bg-components-panel-on-panel-item-bg px-2 py-0.5">
+            Not Urgent
           </span>
         </div>
+        <div className="text-center text-[11px] text-text-warning">
+          <span className="rounded bg-state-warning-hover px-2 py-0.5">
+            Urgent
+          </span>
+        </div>
+      </div>
 
-        {/* Main Grid with Urgency Labels */}
-        <div className="flex gap-2">
-          {/* Left: Not Urgent Label */}
-          <div className="flex w-6 shrink-0 items-center justify-center">
-            <span
-              className={cn(
-                '-rotate-90 whitespace-nowrap rounded px-2 py-0.5 text-xs font-medium',
-                'bg-components-panel-on-panel-item-bg text-text-tertiary',
-              )}
-            >
-              Not Urgent
+      {/* Main Grid with Row Labels */}
+      <div className="flex gap-3">
+        {/* Row Labels - Vertical (rotated 90 degrees) */}
+        <div className="flex w-6 shrink-0 flex-col gap-3">
+          <div className="flex min-h-[200px] items-center justify-center">
+            <span className="-rotate-90 whitespace-nowrap rounded bg-state-accent-hover px-2 py-0.5 text-[11px] text-text-accent">
+              Important
             </span>
           </div>
-
-          {/* Center: 2x2 Grid */}
-          <div className="flex-1">
-            <div className="grid grid-cols-2 gap-3">
-              {/* Row 1: Important */}
-              <QuadrantCard
-                config={QUADRANT_CONFIGS.q2}
-                tasks={parsedData.q2}
-              />
-              <QuadrantCard
-                config={QUADRANT_CONFIGS.q1}
-                tasks={parsedData.q1}
-              />
-
-              {/* Row 2: Not Important */}
-              <QuadrantCard
-                config={QUADRANT_CONFIGS.q4}
-                tasks={parsedData.q4}
-              />
-              <QuadrantCard
-                config={QUADRANT_CONFIGS.q3}
-                tasks={parsedData.q3}
-              />
-            </div>
-          </div>
-
-          {/* Right: Urgent Label */}
-          <div className="flex w-6 shrink-0 items-center justify-center">
-            <span className="-rotate-90 whitespace-nowrap rounded bg-state-warning-hover px-2 py-0.5 text-xs font-medium text-text-warning">
-              Urgent
+          <div className="flex min-h-[200px] items-center justify-center">
+            <span className="-rotate-90 whitespace-nowrap rounded bg-components-panel-on-panel-item-bg px-2 py-0.5 text-[11px] text-text-tertiary">
+              Not Important
             </span>
           </div>
         </div>
 
-        {/* Not Important Label (Bottom Center) */}
-        <div className="mt-2 flex items-center justify-center">
-          <span className="rounded bg-components-panel-on-panel-item-bg px-2 py-0.5 text-xs font-medium text-text-tertiary">
-            Not Important
-          </span>
+        {/* 2x2 Grid */}
+        <div className="min-w-0 flex-1">
+          <div className="grid grid-cols-2 gap-3">
+            {/* Row 1: Important */}
+            <QuadrantCard
+              config={QUADRANT_CONFIGS.q2}
+              tasks={parsedData.q2}
+            />
+            <QuadrantCard
+              config={QUADRANT_CONFIGS.q1}
+              tasks={parsedData.q1}
+            />
+
+            {/* Row 2: Not Important */}
+            <QuadrantCard
+              config={QUADRANT_CONFIGS.q4}
+              tasks={parsedData.q4}
+            />
+            <QuadrantCard
+              config={QUADRANT_CONFIGS.q3}
+              tasks={parsedData.q3}
+            />
+          </div>
         </div>
       </div>
     </div>

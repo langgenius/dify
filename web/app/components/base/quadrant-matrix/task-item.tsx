@@ -3,22 +3,6 @@ import type { FC } from 'react'
 import type { Task } from './types'
 import { cn } from '@/utils/classnames'
 
-type ScoreBadgeProps = {
-  label: string
-  score: number
-  colorClass: string
-}
-
-const ScoreBadge: FC<ScoreBadgeProps> = ({ label, score, colorClass }) => {
-  return (
-    <span className={cn('text-xs font-medium', colorClass)}>
-      {label}
-      :
-      {score}
-    </span>
-  )
-}
-
 type TaskItemProps = {
   task: Task
   showScores?: boolean
@@ -28,47 +12,52 @@ const TaskItem: FC<TaskItemProps> = ({ task, showScores = true }) => {
   const { name, description, deadline, importance_score, urgency_score, action_advice } = task
 
   return (
-    <div className="group rounded-lg bg-components-panel-bg p-2.5 shadow-xs transition-all hover:shadow-sm">
-      {/* Task Name */}
-      <div className="system-sm-medium text-text-primary">{name}</div>
+    <div className="group min-w-0 rounded-lg bg-components-panel-bg p-2.5 shadow-xs transition-all hover:shadow-sm">
+      {/* Header: Task Name + Scores */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="system-sm-medium min-w-0 flex-1 truncate text-text-primary" title={name}>
+          {name}
+        </div>
+        {showScores && (
+          <div className="flex shrink-0 items-center gap-1 text-[10px] font-medium">
+            <span className="text-text-accent">
+              I:
+              {importance_score}
+            </span>
+            <span className="text-text-warning">
+              U:
+              {urgency_score}
+            </span>
+          </div>
+        )}
+      </div>
 
-      {/* Description (if exists) */}
+      {/* Description */}
       {description && (
         <div className="mt-1 line-clamp-2 text-xs text-text-tertiary">
           {description}
         </div>
       )}
 
-      {/* Metadata Row */}
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        {/* Deadline Badge */}
-        {deadline && (
-          <span className="bg-components-badge-bg-gray inline-flex items-center rounded px-1.5 py-0.5 text-xs text-text-tertiary">
+      {/* Deadline Badge */}
+      {deadline && (
+        <div className="mt-1.5">
+          <span className={cn(
+            'inline-flex items-center rounded px-1.5 py-0.5 text-[10px]',
+            'bg-components-badge-bg-gray text-text-tertiary',
+          )}
+          >
             {deadline}
           </span>
-        )}
+        </div>
+      )}
 
-        {/* Scores (optional) */}
-        {showScores && (
-          <div className="flex items-center gap-1.5">
-            <ScoreBadge
-              label="I"
-              score={importance_score}
-              colorClass="text-text-accent"
-            />
-            <ScoreBadge
-              label="U"
-              score={urgency_score}
-              colorClass="text-text-warning"
-            />
-          </div>
-        )}
-      </div>
-
-      {/* Action Advice (if exists) */}
+      {/* Action Advice */}
       {action_advice && (
-        <div className="mt-2 border-t border-divider-subtle pt-2 text-xs italic text-text-quaternary">
-          {action_advice}
+        <div className="mt-2 overflow-hidden border-t border-divider-subtle pt-2">
+          <p className="line-clamp-2 text-xs italic text-text-quaternary" title={action_advice}>
+            {action_advice}
+          </p>
         </div>
       )}
     </div>
