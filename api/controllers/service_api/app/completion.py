@@ -244,7 +244,7 @@ class ChatApi(Resource):
             # Handle workflow_alias or workflow_id
             workflow_alias = args.get("workflow_alias")
             workflow_id = args.get("workflow_id")
-            
+
             if workflow_alias:
                 resolved_workflow_id = self._resolve_workflow_identifier(app_model=app_model, identifier=workflow_alias)
                 args["workflow_id"] = resolved_workflow_id
@@ -289,23 +289,23 @@ class ChatApi(Resource):
         """
         Resolve identifier to workflow_id and verify it exists
         Priority: UUID format > alias
-        
+
         Args:
             app_model: The app model
             identifier: workflow_id (UUID) or workflow_alias
-            
+
         Returns:
             The resolved workflow_id
-            
+
         Raises:
             WorkflowIdFormatError: If identifier is invalid or workflow doesn't exist
         """
         import uuid
 
         from models.workflow import Workflow
-        
+
         workflow_service = WorkflowService()
-        
+
         # First try to parse as UUID
         try:
             uuid.UUID(identifier)
@@ -315,14 +315,12 @@ class ChatApi(Resource):
                 if workflow and str(workflow.app_id) == str(app_model.id):
                     return identifier
                 # UUID format but workflow doesn't exist or belongs to different app
-                raise WorkflowIdFormatError(
-                    f"Workflow with ID '{identifier}' not found."
-                )
+                raise WorkflowIdFormatError(f"Workflow with ID '{identifier}' not found.")
         except WorkflowIdFormatError:
             raise
         except (ValueError, TypeError):
             pass
-        
+
         # Then try to find by alias
         with Session(db.engine) as session:
             workflow = workflow_service.get_workflow_by_alias(
@@ -330,10 +328,10 @@ class ChatApi(Resource):
                 app_id=app_model.id,
                 name=identifier,
             )
-            
+
             if workflow:
                 return workflow.id
-        
+
         # Neither valid UUID with existing workflow nor valid alias
         raise WorkflowIdFormatError(
             f"Invalid identifier '{identifier}'. Must be a valid workflow alias or UUID format."
