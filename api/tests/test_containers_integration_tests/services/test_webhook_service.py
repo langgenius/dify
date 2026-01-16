@@ -233,7 +233,7 @@ class TestWebhookService:
             "/webhook",
             method="POST",
             headers={"Content-Type": "multipart/form-data"},
-            data={"message": "test", "upload": file_storage},
+            data={"message": "test", "file": file_storage},
         ):
             webhook_trigger = MagicMock()
             webhook_trigger.tenant_id = "test_tenant"
@@ -242,7 +242,7 @@ class TestWebhookService:
 
             assert webhook_data["method"] == "POST"
             assert webhook_data["body"]["message"] == "test"
-            assert "upload" in webhook_data["files"]
+            assert "file" in webhook_data["files"]
 
             # Verify file processing was called
             mock_external_dependencies["tool_file_manager"].assert_called_once()
@@ -414,7 +414,7 @@ class TestWebhookService:
                 "data": {
                     "method": "post",
                     "content_type": "multipart/form-data",
-                    "body": [{"name": "upload", "type": "file", "required": True}],
+                    "body": [{"name": "file", "type": "file", "required": True}],
                 }
             }
 

@@ -1,13 +1,13 @@
 import type { FC, PropsWithChildren } from 'react'
+import type { ModelItem } from '../declarations'
+import { cn } from '@/utils/classnames'
+import { useLanguage } from '../hooks'
+import ModelBadge from '../model-badge'
+import FeatureIcon from '../model-selector/feature-icon'
 import {
   modelTypeFormat,
   sizeFormat,
 } from '../utils'
-import { useLanguage } from '../hooks'
-import type { ModelItem } from '../declarations'
-import ModelBadge from '../model-badge'
-import FeatureIcon from '../model-selector/feature-icon'
-import cn from '@/utils/classnames'
 
 type ModelNameProps = PropsWithChildren<{
   modelItem: ModelItem
@@ -41,12 +41,12 @@ const ModelName: FC<ModelNameProps> = ({
   return (
     <div className={cn('system-sm-regular flex items-center gap-0.5 overflow-hidden truncate text-ellipsis text-components-input-text-filled', className)}>
       <div
-        className='truncate'
+        className="truncate"
         title={modelItem.label[language] || modelItem.label.en_US}
       >
         {modelItem.label[language] || modelItem.label.en_US}
       </div>
-      <div className='flex items-center gap-0.5'>
+      <div className="flex items-center gap-0.5">
         {
           showModelType && modelItem.model_type && (
             <ModelBadge className={modelTypeClassName}>

@@ -1,7 +1,7 @@
 import urllib.parse
 
 import httpx
-from flask_restx import Resource, marshal_with
+from flask_restx import Resource
 from pydantic import BaseModel, Field
 
 import services
@@ -11,19 +11,22 @@ from controllers.common.errors import (
     RemoteFileUploadError,
     UnsupportedFileTypeError,
 )
+from controllers.common.schema import register_schema_models
 from core.file import helpers as file_helpers
 from core.helper import ssrf_proxy
 from extensions.ext_database import db
-from fields.file_fields import file_fields_with_signed_url, remote_file_info_fields
+from fields.file_fields import FileWithSignedUrl, RemoteFileInfo
 from libs.login import current_account_with_tenant
 from services.file_service import FileService
 
 from . import console_ns
 
+register_schema_models(console_ns, RemoteFileInfo, FileWithSignedUrl)
+
 
 @console_ns.route("/remote-files/<path:url>")
 class RemoteFileInfoApi(Resource):
-    @marshal_with(remote_file_info_fields)
+    @console_ns.response(200, "Remote file info", console_ns.models[RemoteFileInfo.__name__])
     def get(self, url):
         decoded_url = urllib.parse.unquote(url)
         resp = ssrf_proxy.head(decoded_url)
@@ -31,10 +34,11 @@ class RemoteFileInfoApi(Resource):
             # failed back to get method
             resp = ssrf_proxy.get(decoded_url, timeout=3)
         resp.raise_for_status()
-        return {
-            "file_type": resp.headers.get("Content-Type", "application/octet-stream"),
-            "file_length": int(resp.headers.get("Content-Length", 0)),
-        }
+        info = RemoteFileInfo(
+            file_type=resp.headers.get("Content-Type", "application/octet-stream"),
+            file_length=int(resp.headers.get("Content-Length", 0)),
+        )
+        return info.model_dump(mode="json")
 
 
 class RemoteFileUploadPayload(BaseModel):
@@ -50,7 +54,7 @@ console_ns.schema_model(
 @console_ns.route("/remote-files/upload")
 class RemoteFileUploadApi(Resource):
     @console_ns.expect(console_ns.models[RemoteFileUploadPayload.__name__])
-    @marshal_with(file_fields_with_signed_url)
+    @console_ns.response(201, "Remote file uploaded", console_ns.models[FileWithSignedUrl.__name__])
     def post(self):
         args = RemoteFileUploadPayload.model_validate(console_ns.payload)
         url = args.url
@@ -85,13 +89,14 @@ class RemoteFileUploadApi(Resource):
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError()
 
-        return {
-            "id": upload_file.id,
-            "name": upload_file.name,
-            "size": upload_file.size,
-            "extension": upload_file.extension,
-            "url": file_helpers.get_signed_file_url(upload_file_id=upload_file.id),
-            "mime_type": upload_file.mime_type,
-            "created_by": upload_file.created_by,
-            "created_at": upload_file.created_at,
-        }, 201
+        payload = FileWithSignedUrl(
+            id=upload_file.id,
+            name=upload_file.name,
+            size=upload_file.size,
+            extension=upload_file.extension,
+            url=file_helpers.get_signed_file_url(upload_file_id=upload_file.id),
+            mime_type=upload_file.mime_type,
+            created_by=upload_file.created_by,
+            created_at=int(upload_file.created_at.timestamp()),
+        )
+        return payload.model_dump(mode="json"), 201

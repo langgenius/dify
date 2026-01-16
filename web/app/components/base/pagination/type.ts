@@ -56,9 +56,9 @@ type PageButtonProps = ButtonProps & {
 }
 
 export type {
+  ButtonProps,
+  IPagination,
   IPaginationProps,
   IUsePagination,
-  IPagination,
-  ButtonProps,
   PageButtonProps,
 }

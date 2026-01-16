@@ -1,93 +1,85 @@
-from flask_restx import Api, Namespace, fields
+from __future__ import annotations
 
-from libs.helper import TimestampField
+from datetime import datetime
 
-upload_config_fields = {
-    "file_size_limit": fields.Integer,
-    "batch_count_limit": fields.Integer,
-    "image_file_size_limit": fields.Integer,
-    "video_file_size_limit": fields.Integer,
-    "audio_file_size_limit": fields.Integer,
-    "workflow_file_upload_limit": fields.Integer,
-    "image_file_batch_limit": fields.Integer,
-    "single_chunk_attachment_limit": fields.Integer,
-}
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
-def build_upload_config_model(api_or_ns: Api | Namespace):
-    """Build the upload config model for the API or Namespace.
-
-    Args:
-        api_or_ns: Flask-RestX Api or Namespace instance
-
-    Returns:
-        The registered model
-    """
-    return api_or_ns.model("UploadConfig", upload_config_fields)
+class ResponseModel(BaseModel):
+    model_config = ConfigDict(
+        from_attributes=True,
+        extra="ignore",
+        populate_by_name=True,
+        serialize_by_alias=True,
+        protected_namespaces=(),
+    )
 
 
-file_fields = {
-    "id": fields.String,
-    "name": fields.String,
-    "size": fields.Integer,
-    "extension": fields.String,
-    "mime_type": fields.String,
-    "created_by": fields.String,
-    "created_at": TimestampField,
-    "preview_url": fields.String,
-    "source_url": fields.String,
-}
+def _to_timestamp(value: datetime | int | None) -> int | None:
+    if isinstance(value, datetime):
+        return int(value.timestamp())
+    return value
 
 
-def build_file_model(api_or_ns: Api | Namespace):
-    """Build the file model for the API or Namespace.
-
-    Args:
-        api_or_ns: Flask-RestX Api or Namespace instance
-
-    Returns:
-        The registered model
-    """
-    return api_or_ns.model("File", file_fields)
-
-
-remote_file_info_fields = {
-    "file_type": fields.String(attribute="file_type"),
-    "file_length": fields.Integer(attribute="file_length"),
-}
+class UploadConfig(ResponseModel):
+    file_size_limit: int
+    batch_count_limit: int
+    file_upload_limit: int | None = None
+    image_file_size_limit: int
+    video_file_size_limit: int
+    audio_file_size_limit: int
+    workflow_file_upload_limit: int
+    image_file_batch_limit: int
+    single_chunk_attachment_limit: int
+    attachment_image_file_size_limit: int | None = None
 
 
-def build_remote_file_info_model(api_or_ns: Api | Namespace):
-    """Build the remote file info model for the API or Namespace.
+class FileResponse(ResponseModel):
+    id: str
+    name: str
+    size: int
+    extension: str | None = None
+    mime_type: str | None = None
+    created_by: str | None = None
+    created_at: int | None = None
+    preview_url: str | None = None
+    source_url: str | None = None
+    original_url: str | None = None
+    user_id: str | None = None
+    tenant_id: str | None = None
+    conversation_id: str | None = None
+    file_key: str | None = None
 
-    Args:
-        api_or_ns: Flask-RestX Api or Namespace instance
-
-    Returns:
-        The registered model
-    """
-    return api_or_ns.model("RemoteFileInfo", remote_file_info_fields)
-
-
-file_fields_with_signed_url = {
-    "id": fields.String,
-    "name": fields.String,
-    "size": fields.Integer,
-    "extension": fields.String,
-    "url": fields.String,
-    "mime_type": fields.String,
-    "created_by": fields.String,
-    "created_at": TimestampField,
-}
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
+        return _to_timestamp(value)
 
 
-def build_file_with_signed_url_model(api_or_ns: Api | Namespace):
-    """Build the file with signed URL model for the API or Namespace.
+class RemoteFileInfo(ResponseModel):
+    file_type: str
+    file_length: int
 
-    Args:
-        api_or_ns: Flask-RestX Api or Namespace instance
 
-    Returns:
-        The registered model
-    """
-    return api_or_ns.model("FileWithSignedUrl", file_fields_with_signed_url)
+class FileWithSignedUrl(ResponseModel):
+    id: str
+    name: str
+    size: int
+    extension: str | None = None
+    url: str | None = None
+    mime_type: str | None = None
+    created_by: str | None = None
+    created_at: int | None = None
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
+        return _to_timestamp(value)
+
+
+__all__ = [
+    "FileResponse",
+    "FileWithSignedUrl",
+    "RemoteFileInfo",
+    "UploadConfig",
+]

@@ -1,23 +1,23 @@
 import type { RefObject } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { LLMNodeType } from './types'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import type { InputVar, PromptItem, Var, Variable } from '@/app/components/workflow/types'
-import { InputVarType, VarType } from '@/app/components/workflow/types'
-import type { LLMNodeType } from './types'
-import { EditionType } from '../../types'
-import useNodeCrud from '../_base/hooks/use-node-crud'
-import { useIsChatMode } from '../../hooks'
+import { noop } from 'es-toolkit/function'
 import { useCallback } from 'react'
-import useConfigVision from '../../hooks/use-config-vision'
-import { noop } from 'lodash-es'
-import { findVariableWhenOnLLMVision } from '../utils'
-import useAvailableVarList from '../_base/hooks/use-available-var-list'
+import { useTranslation } from 'react-i18next'
+import { InputVarType, VarType } from '@/app/components/workflow/types'
 import { AppModeEnum } from '@/types/app'
+import { useIsChatMode } from '../../hooks'
+import useConfigVision from '../../hooks/use-config-vision'
+import { EditionType } from '../../types'
+import useAvailableVarList from '../_base/hooks/use-available-var-list'
+import useNodeCrud from '../_base/hooks/use-node-crud'
+import { findVariableWhenOnLLMVision } from '../utils'
 
-const i18nPrefix = 'workflow.nodes.llm'
+const i18nPrefix = 'nodes.llm'
 type Params = {
-  id: string,
-  payload: LLMNodeType,
+  id: string
+  payload: LLMNodeType
   runInputData: Record<string, any>
   runInputDataRef: RefObject<Record<string, any>>
   getInputVars: (textList: string[]) => InputVar[]
@@ -125,7 +125,7 @@ const useSingleRunFormParams = ({
     if (varInputs.length > 0) {
       forms.push(
         {
-          label: t(`${i18nPrefix}.singleRun.variable`)!,
+          label: t(`${i18nPrefix}.singleRun.variable`, { ns: 'workflow' })!,
           inputs: varInputs,
           values: inputVarValues,
           onChange: setInputVarValues,
@@ -136,7 +136,7 @@ const useSingleRunFormParams = ({
     if (inputs.context?.variable_selector && inputs.context?.variable_selector.length > 0) {
       forms.push(
         {
-          label: t(`${i18nPrefix}.context`)!,
+          label: t(`${i18nPrefix}.context`, { ns: 'workflow' })!,
           inputs: [{
             label: '',
             variable: '#context#',
@@ -153,7 +153,7 @@ const useSingleRunFormParams = ({
 
       forms.push(
         {
-          label: t(`${i18nPrefix}.vision`)!,
+          label: t(`${i18nPrefix}.vision`, { ns: 'workflow' })!,
           inputs: [{
             label: currentVariable?.variable as any,
             variable: '#files#',
@@ -186,10 +186,10 @@ const useSingleRunFormParams = ({
   }
 
   const getDependentVar = (variable: string) => {
-    if(variable === '#context#')
+    if (variable === '#context#')
       return payload.context.variable_selector
 
-    if(variable === '#files#')
+    if (variable === '#files#')
       return payload.vision.configs?.variable_selector
 
     return false

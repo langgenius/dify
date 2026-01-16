@@ -27,7 +27,9 @@ const SegmentedControlDemo = ({
       <div className="flex items-center justify-between text-xs uppercase tracking-[0.18em] text-text-tertiary">
         <span>Segmented control</span>
         <code className="rounded-md bg-background-default px-2 py-1 text-[11px] text-text-tertiary">
-          value="{value}"
+          value="
+          {value}
+          "
         </code>
       </div>
       <SegmentedControl

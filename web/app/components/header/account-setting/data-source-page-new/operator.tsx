@@ -1,9 +1,7 @@
-import {
-  memo,
-  useCallback,
-  useMemo,
-} from 'react'
-import { useTranslation } from 'react-i18next'
+import type {
+  DataSourceCredential,
+} from './types'
+import type { Item } from '@/app/components/base/dropdown'
 import {
   RiDeleteBinLine,
   RiEditLine,
@@ -11,11 +9,13 @@ import {
   RiHome9Line,
   RiStickyNoteAddLine,
 } from '@remixicon/react'
+import {
+  memo,
+  useCallback,
+  useMemo,
+} from 'react'
+import { useTranslation } from 'react-i18next'
 import Dropdown from '@/app/components/base/dropdown'
-import type { Item } from '@/app/components/base/dropdown'
-import type {
-  DataSourceCredential,
-} from './types'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 
 type OperatorProps = {
@@ -37,40 +37,40 @@ const Operator = ({
       {
         value: 'setDefault',
         text: (
-          <div className='flex items-center'>
-            <RiHome9Line className='mr-2 h-4 w-4 text-text-tertiary' />
-            <div className='system-sm-semibold text-text-secondary'>{t('plugin.auth.setDefault')}</div>
+          <div className="flex items-center">
+            <RiHome9Line className="mr-2 h-4 w-4 text-text-tertiary" />
+            <div className="system-sm-semibold text-text-secondary">{t('auth.setDefault', { ns: 'plugin' })}</div>
           </div>
         ),
       },
       ...(
         type === CredentialTypeEnum.OAUTH2
           ? [
-            {
-              value: 'rename',
-              text: (
-                <div className='flex items-center'>
-                  <RiEditLine className='mr-2 h-4 w-4 text-text-tertiary' />
-                  <div className='system-sm-semibold text-text-secondary'>{t('common.operation.rename')}</div>
-                </div>
-              ),
-            },
-          ]
+              {
+                value: 'rename',
+                text: (
+                  <div className="flex items-center">
+                    <RiEditLine className="mr-2 h-4 w-4 text-text-tertiary" />
+                    <div className="system-sm-semibold text-text-secondary">{t('operation.rename', { ns: 'common' })}</div>
+                  </div>
+                ),
+              },
+            ]
           : []
       ),
       ...(
         type === CredentialTypeEnum.API_KEY
           ? [
-            {
-              value: 'edit',
-              text: (
-                <div className='flex items-center'>
-                  <RiEqualizer2Line className='mr-2 h-4 w-4 text-text-tertiary' />
-                  <div className='system-sm-semibold text-text-secondary'>{t('common.operation.edit')}</div>
-                </div>
-              ),
-            },
-          ]
+              {
+                value: 'edit',
+                text: (
+                  <div className="flex items-center">
+                    <RiEqualizer2Line className="mr-2 h-4 w-4 text-text-tertiary" />
+                    <div className="system-sm-semibold text-text-secondary">{t('operation.edit', { ns: 'common' })}</div>
+                  </div>
+                ),
+              },
+            ]
           : []
       ),
     ]
@@ -79,9 +79,9 @@ const Operator = ({
         {
           value: 'change',
           text: (
-            <div className='flex items-center'>
-              <RiStickyNoteAddLine className='mr-2 h-4 w-4 text-text-tertiary' />
-              <div className='system-sm-semibold mb-1 text-text-secondary'>{t('common.dataSource.notion.changeAuthorizedPages')}</div>
+            <div className="flex items-center">
+              <RiStickyNoteAddLine className="mr-2 h-4 w-4 text-text-tertiary" />
+              <div className="system-sm-semibold mb-1 text-text-secondary">{t('dataSource.notion.changeAuthorizedPages', { ns: 'common' })}</div>
             </div>
           ),
         },
@@ -96,10 +96,10 @@ const Operator = ({
       {
         value: 'delete',
         text: (
-          <div className='flex items-center'>
-            <RiDeleteBinLine className='mr-2 h-4 w-4 text-text-tertiary' />
-            <div className='system-sm-semibold text-text-secondary'>
-              {t('common.operation.remove')}
+          <div className="flex items-center">
+            <RiDeleteBinLine className="mr-2 h-4 w-4 text-text-tertiary" />
+            <div className="system-sm-semibold text-text-secondary">
+              {t('operation.remove', { ns: 'common' })}
             </div>
           </div>
         ),
@@ -122,12 +122,12 @@ const Operator = ({
       items={items}
       secondItems={secondItems}
       onSelect={handleSelect}
-      popupClassName='z-[61]'
+      popupClassName="z-[61]"
       triggerProps={{
         size: 'l',
       }}
-      itemClassName='py-2 h-auto hover:bg-state-base-hover'
-      secondItemClassName='py-2 h-auto hover:bg-state-base-hover'
+      itemClassName="py-2 h-auto hover:bg-state-base-hover"
+      secondItemClassName="py-2 h-auto hover:bg-state-base-hover"
     />
   )
 }

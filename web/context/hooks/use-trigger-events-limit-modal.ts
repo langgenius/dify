@@ -1,15 +1,16 @@
-import { type Dispatch, type SetStateAction, useCallback, useEffect, useRef, useState } from 'react'
+import type { Dispatch, SetStateAction } from 'react'
+import type { ModalState } from '../modal-context'
 import dayjs from 'dayjs'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { NUM_INFINITE } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'
 import { IS_CLOUD_EDITION } from '@/config'
-import type { ModalState } from '../modal-context'
+import { isServer } from '@/utils/client'
 
 export type TriggerEventsLimitModalPayload = {
   usage: number
   total: number
   resetInDays?: number
-  planType: Plan
   storageKey?: string
   persistDismiss?: boolean
 }
@@ -46,7 +47,7 @@ export const useTriggerEventsLimitModal = ({
   useEffect(() => {
     if (!IS_CLOUD_EDITION)
       return
-    if (typeof window === 'undefined')
+    if (isServer)
       return
     if (!currentWorkspaceId)
       return
@@ -98,7 +99,6 @@ export const useTriggerEventsLimitModal = ({
       payload: {
         usage: usage.triggerEvents,
         total: total.triggerEvents,
-        planType: type,
         resetInDays: triggerResetInDays,
         storageKey,
         persistDismiss,

@@ -6,6 +6,7 @@ import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities import GraphInitParams
+from core.workflow.enums import WorkflowNodeExecutionStatus
 from core.workflow.graph import Graph
 from core.workflow.nodes.http_request.node import HttpRequestNode
 from core.workflow.nodes.node_factory import DifyNodeFactory
@@ -169,13 +170,14 @@ def test_custom_authorization_header(setup_http_mock):
 
 
 @pytest.mark.parametrize("setup_http_mock", [["none"]], indirect=True)
-def test_custom_auth_with_empty_api_key_does_not_set_header(setup_http_mock):
-    """Test: In custom authentication mode, when the api_key is empty, no header should be set."""
+def test_custom_auth_with_empty_api_key_raises_error(setup_http_mock):
+    """Test: In custom authentication mode, when the api_key is empty, AuthorizationConfigError should be raised."""
     from core.workflow.nodes.http_request.entities import (
         HttpRequestNodeAuthorization,
         HttpRequestNodeData,
         HttpRequestNodeTimeout,
     )
+    from core.workflow.nodes.http_request.exc import AuthorizationConfigError
     from core.workflow.nodes.http_request.executor import Executor
     from core.workflow.runtime import VariablePool
     from core.workflow.system_variable import SystemVariable
@@ -208,16 +210,13 @@ def test_custom_auth_with_empty_api_key_does_not_set_header(setup_http_mock):
         ssl_verify=True,
     )
 
-    # Create executor
-    executor = Executor(
-        node_data=node_data, timeout=HttpRequestNodeTimeout(connect=10, read=30, write=10), variable_pool=variable_pool
-    )
-
-    # Get assembled headers
-    headers = executor._assembling_headers()
-
-    # When api_key is empty, the custom header should NOT be set
-    assert "X-Custom-Auth" not in headers
+    # Create executor should raise AuthorizationConfigError
+    with pytest.raises(AuthorizationConfigError, match="API key is required"):
+        Executor(
+            node_data=node_data,
+            timeout=HttpRequestNodeTimeout(connect=10, read=30, write=10),
+            variable_pool=variable_pool,
+        )
 
 
 @pytest.mark.parametrize("setup_http_mock", [["none"]], indirect=True)
@@ -305,9 +304,10 @@ def test_basic_authorization_with_custom_header_ignored(setup_http_mock):
 @pytest.mark.parametrize("setup_http_mock", [["none"]], indirect=True)
 def test_custom_authorization_with_empty_api_key(setup_http_mock):
     """
-    Test that custom authorization doesn't set header when api_key is empty.
-    This test verifies the fix for issue #23554.
+    Test that custom authorization raises error when api_key is empty.
+    This test verifies the fix for issue #21830.
     """
+
     node = init_http_node(
         config={
             "id": "1",
@@ -333,11 +333,10 @@ def test_custom_authorization_with_empty_api_key(setup_http_mock):
     )
 
     result = node._run()
-    assert result.process_data is not None
-    data = result.process_data.get("request", "")
-
-    # Custom header should NOT be set when api_key is empty
-    assert "X-Custom-Auth:" not in data
+    # Should fail with AuthorizationConfigError
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
+    assert "API key is required" in result.error
+    assert result.error_type == "AuthorizationConfigError"
 
 
 @pytest.mark.parametrize("setup_http_mock", [["none"]], indirect=True)

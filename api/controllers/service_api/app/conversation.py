@@ -3,8 +3,7 @@ from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
-from flask_restx._http import HTTPStatus
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, TypeAdapter, field_validator, model_validator
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound
 
@@ -16,9 +15,9 @@ from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from fields.conversation_fields import (
-    build_conversation_delete_model,
-    build_conversation_infinite_scroll_pagination_model,
-    build_simple_conversation_model,
+    ConversationDelete,
+    ConversationInfiniteScrollPagination,
+    SimpleConversation,
 )
 from fields.conversation_variable_fields import (
     build_conversation_variable_infinite_scroll_pagination_model,
@@ -37,13 +36,46 @@ class ConversationListQuery(BaseModel):
 
 
 class ConversationRenamePayload(BaseModel):
-    name: str = Field(description="New conversation name")
+    name: str | None = Field(default=None, description="New conversation name (required if auto_generate is false)")
     auto_generate: bool = Field(default=False, description="Auto-generate conversation name")
+
+    @model_validator(mode="after")
+    def validate_name_requirement(self):
+        if not self.auto_generate:
+            if self.name is None or not self.name.strip():
+                raise ValueError("name is required when auto_generate is false")
+        return self
 
 
 class ConversationVariablesQuery(BaseModel):
     last_id: UUID | None = Field(default=None, description="Last variable ID for pagination")
     limit: int = Field(default=20, ge=1, le=100, description="Number of variables to return")
+    variable_name: str | None = Field(
+        default=None, description="Filter variables by name", min_length=1, max_length=255
+    )
+
+    @field_validator("variable_name", mode="before")
+    @classmethod
+    def validate_variable_name(cls, v: str | None) -> str | None:
+        """
+        Validate variable_name to prevent injection attacks.
+        """
+        if v is None:
+            return v
+
+        # Only allow safe characters: alphanumeric, underscore, hyphen, period
+        if not v.replace("-", "").replace("_", "").replace(".", "").isalnum():
+            raise ValueError(
+                "Variable name can only contain letters, numbers, hyphens (-), underscores (_), and periods (.)"
+            )
+
+        # Prevent SQL injection patterns
+        dangerous_patterns = ["'", '"', ";", "--", "/*", "*/", "xp_", "sp_"]
+        for pattern in dangerous_patterns:
+            if pattern in v.lower():
+                raise ValueError(f"Variable name contains invalid characters: {pattern}")
+
+        return v
 
 
 class ConversationVariableUpdatePayload(BaseModel):
@@ -72,7 +104,6 @@ class ConversationApi(Resource):
         }
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
-    @service_api_ns.marshal_with(build_conversation_infinite_scroll_pagination_model(service_api_ns))
     def get(self, app_model: App, end_user: EndUser):
         """List all conversations for the current user.
 
@@ -87,7 +118,7 @@ class ConversationApi(Resource):
 
         try:
             with Session(db.engine) as session:
-                return ConversationService.pagination_by_last_id(
+                pagination = ConversationService.pagination_by_last_id(
                     session=session,
                     app_model=app_model,
                     user=end_user,
@@ -96,6 +127,13 @@ class ConversationApi(Resource):
                     invoke_from=InvokeFrom.SERVICE_API,
                     sort_by=query_args.sort_by,
                 )
+                adapter = TypeAdapter(SimpleConversation)
+                conversations = [adapter.validate_python(item, from_attributes=True) for item in pagination.data]
+                return ConversationInfiniteScrollPagination(
+                    limit=pagination.limit,
+                    has_more=pagination.has_more,
+                    data=conversations,
+                ).model_dump(mode="json")
         except services.errors.conversation.LastConversationNotExistsError:
             raise NotFound("Last Conversation Not Exists.")
 
@@ -113,7 +151,6 @@ class ConversationDetailApi(Resource):
         }
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
-    @service_api_ns.marshal_with(build_conversation_delete_model(service_api_ns), code=HTTPStatus.NO_CONTENT)
     def delete(self, app_model: App, end_user: EndUser, c_id):
         """Delete a specific conversation."""
         app_mode = AppMode.value_of(app_model.mode)
@@ -126,7 +163,7 @@ class ConversationDetailApi(Resource):
             ConversationService.delete(app_model, conversation_id, end_user)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
-        return {"result": "success"}, 204
+        return ConversationDelete(result="success").model_dump(mode="json"), 204
 
 
 @service_api_ns.route("/conversations/<uuid:c_id>/name")
@@ -143,7 +180,6 @@ class ConversationRenameApi(Resource):
         }
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
-    @service_api_ns.marshal_with(build_simple_conversation_model(service_api_ns))
     def post(self, app_model: App, end_user: EndUser, c_id):
         """Rename a conversation or auto-generate a name."""
         app_mode = AppMode.value_of(app_model.mode)
@@ -155,7 +191,14 @@ class ConversationRenameApi(Resource):
         payload = ConversationRenamePayload.model_validate(service_api_ns.payload or {})
 
         try:
-            return ConversationService.rename(app_model, conversation_id, end_user, payload.name, payload.auto_generate)
+            conversation = ConversationService.rename(
+                app_model, conversation_id, end_user, payload.name, payload.auto_generate
+            )
+            return (
+                TypeAdapter(SimpleConversation)
+                .validate_python(conversation, from_attributes=True)
+                .model_dump(mode="json")
+            )
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 
@@ -192,7 +235,7 @@ class ConversationVariablesApi(Resource):
 
         try:
             return ConversationService.get_conversational_variable(
-                app_model, conversation_id, end_user, query_args.limit, last_id
+                app_model, conversation_id, end_user, query_args.limit, last_id, query_args.variable_name
             )
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")

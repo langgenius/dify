@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useRef } from 'react'
-import { createPortal } from 'react-dom'
-import cn from '@/utils/classnames'
 import { useKeyPress } from 'ahooks'
+import * as React from 'react'
+import { useCallback, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
+import { cn } from '@/utils/classnames'
 import { useSegmentListContext } from '..'
 
 type DrawerProps = {
@@ -32,14 +33,16 @@ const Drawer = ({
   const currChildChunk = useSegmentListContext(s => s.currChildChunk)
 
   useKeyPress('esc', (e) => {
-    if (!open) return
+    if (!open)
+      return
     e.preventDefault()
     onClose()
   }, { exactMatch: true, useCapture: true })
 
   const shouldCloseDrawer = useCallback((target: Node | null) => {
     const panelContent = panelContentRef.current
-    if (!panelContent) return false
+    if (!panelContent)
+      return false
     const chunks = document.querySelectorAll('.chunk-card')
     const childChunks = document.querySelectorAll('.child-chunk')
     const imagePreviewer = document.querySelector('.image-previewer')
@@ -56,9 +59,11 @@ const Drawer = ({
   }, [currSegment, currChildChunk, needCheckChunks])
 
   const onDownCapture = useCallback((e: PointerEvent) => {
-    if (!open || modal) return
+    if (!open || modal)
+      return
     const panelContent = panelContentRef.current
-    if (!panelContent) return
+    if (!panelContent)
+      return
     const target = e.target as Node | null
     if (shouldCloseDrawer(target))
       queueMicrotask(onClose)
@@ -73,22 +78,24 @@ const Drawer = ({
   const isHorizontal = side === 'left' || side === 'right'
 
   const content = (
-    <div className='pointer-events-none fixed inset-0 z-[9999]'>
-      {showOverlay ? (
-        <div
-          onClick={modal ? onClose : undefined}
-          aria-hidden='true'
-          className={cn(
-            'fixed inset-0 bg-black/30 opacity-0 transition-opacity duration-200 ease-in',
-            open && 'opacity-100',
-            modal && open ? 'pointer-events-auto' : 'pointer-events-none',
-          )}
-        />
-      ) : null}
+    <div className="pointer-events-none fixed inset-0 z-[9999]">
+      {showOverlay
+        ? (
+            <div
+              onClick={modal ? onClose : undefined}
+              aria-hidden="true"
+              className={cn(
+                'fixed inset-0 bg-black/30 opacity-0 transition-opacity duration-200 ease-in',
+                open && 'opacity-100',
+                modal && open ? 'pointer-events-auto' : 'pointer-events-none',
+              )}
+            />
+          )
+        : null}
 
       {/* Drawer panel */}
       <div
-        role='dialog'
+        role="dialog"
         aria-modal={modal ? 'true' : 'false'}
         className={cn(
           'pointer-events-auto fixed flex flex-col',

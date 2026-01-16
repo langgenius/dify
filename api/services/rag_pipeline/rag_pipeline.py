@@ -36,7 +36,7 @@ from core.rag.entities.event import (
 )
 from core.repositories.factory import DifyCoreRepositoryFactory
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
-from core.variables.variables import Variable
+from core.variables.variables import VariableBase
 from core.workflow.entities.workflow_node_execution import (
     WorkflowNodeExecution,
     WorkflowNodeExecutionStatus,
@@ -270,8 +270,8 @@ class RagPipelineService:
         graph: dict,
         unique_hash: str | None,
         account: Account,
-        environment_variables: Sequence[Variable],
-        conversation_variables: Sequence[Variable],
+        environment_variables: Sequence[VariableBase],
+        conversation_variables: Sequence[VariableBase],
         rag_pipeline_variables: list,
     ) -> Workflow:
         """
@@ -874,7 +874,7 @@ class RagPipelineService:
             variable_pool = node_instance.graph_runtime_state.variable_pool
             invoke_from = variable_pool.get(["sys", SystemVariableKey.INVOKE_FROM])
             if invoke_from:
-                if invoke_from.value == InvokeFrom.PUBLISHED:
+                if invoke_from.value == InvokeFrom.PUBLISHED_PIPELINE:
                     document_id = variable_pool.get(["sys", SystemVariableKey.DOCUMENT_ID])
                     if document_id:
                         document = db.session.query(Document).where(Document.id == document_id.value).first()
@@ -1248,14 +1248,13 @@ class RagPipelineService:
             session.commit()
         return workflow_node_execution_db_model
 
-    def get_recommended_plugins(self) -> dict:
+    def get_recommended_plugins(self, type: str) -> dict:
         # Query active recommended plugins
-        pipeline_recommended_plugins = (
-            db.session.query(PipelineRecommendedPlugin)
-            .where(PipelineRecommendedPlugin.active == True)
-            .order_by(PipelineRecommendedPlugin.position.asc())
-            .all()
-        )
+        query = db.session.query(PipelineRecommendedPlugin).where(PipelineRecommendedPlugin.active == True)
+        if type and type != "all":
+            query = query.where(PipelineRecommendedPlugin.type == type)
+
+        pipeline_recommended_plugins = query.order_by(PipelineRecommendedPlugin.position.asc()).all()
 
         if not pipeline_recommended_plugins:
             return {
@@ -1319,7 +1318,7 @@ class RagPipelineService:
                 "datasource_info_list": [json.loads(document_pipeline_execution_log.datasource_info)],
                 "original_document_id": document.id,
             },
-            invoke_from=InvokeFrom.PUBLISHED,
+            invoke_from=InvokeFrom.PUBLISHED_PIPELINE,
             streaming=False,
             call_depth=0,
             workflow_thread_pool_id=None,

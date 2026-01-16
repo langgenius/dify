@@ -144,7 +144,8 @@ class DatasetService:
             query = query.where(Dataset.permission == DatasetPermissionEnum.ALL_TEAM)
 
         if search:
-            query = query.where(Dataset.name.ilike(f"%{search}%"))
+            escaped_search = helper.escape_like_pattern(search)
+            query = query.where(Dataset.name.ilike(f"%{escaped_search}%", escape="\\"))
 
         # Check if tag_ids is not empty to avoid WHERE false condition
         if tag_ids and len(tag_ids) > 0:
@@ -673,6 +674,8 @@ class DatasetService:
         Returns:
             str: Action to perform ('add', 'remove', 'update', or None)
         """
+        if "indexing_technique" not in data:
+            return None
         if dataset.indexing_technique != data["indexing_technique"]:
             if data["indexing_technique"] == "economy":
                 # Remove embedding model configuration for economy mode
@@ -1417,7 +1420,7 @@ class DocumentService:
 
         document.name = name
         db.session.add(document)
-        if document.data_source_info_dict:
+        if document.data_source_info_dict and "upload_file_id" in document.data_source_info_dict:
             db.session.query(UploadFile).where(
                 UploadFile.id == document.data_source_info_dict["upload_file_id"]
             ).update({UploadFile.name: name})
@@ -1634,6 +1637,20 @@ class DocumentService:
                         return [], ""
                     db.session.add(dataset_process_rule)
                     db.session.flush()
+                else:
+                    # Fallback when no process_rule provided in knowledge_config:
+                    # 1) reuse dataset.latest_process_rule if present
+                    # 2) otherwise create an automatic rule
+                    dataset_process_rule = getattr(dataset, "latest_process_rule", None)
+                    if not dataset_process_rule:
+                        dataset_process_rule = DatasetProcessRule(
+                            dataset_id=dataset.id,
+                            mode="automatic",
+                            rules=json.dumps(DatasetProcessRule.AUTOMATIC_RULES),
+                            created_by=account.id,
+                        )
+                        db.session.add(dataset_process_rule)
+                        db.session.flush()
             lock_name = f"add_document_lock_dataset_id_{dataset.id}"
             try:
                 with redis_client.lock(lock_name, timeout=600):
@@ -1645,65 +1662,67 @@ class DocumentService:
                         if not knowledge_config.data_source.info_list.file_info_list:
                             raise ValueError("File source info is required")
                         upload_file_list = knowledge_config.data_source.info_list.file_info_list.file_ids
-                        for file_id in upload_file_list:
-                            file = (
-                                db.session.query(UploadFile)
-                                .where(UploadFile.tenant_id == dataset.tenant_id, UploadFile.id == file_id)
-                                .first()
+                        files = (
+                            db.session.query(UploadFile)
+                            .where(
+                                UploadFile.tenant_id == dataset.tenant_id,
+                                UploadFile.id.in_(upload_file_list),
                             )
+                            .all()
+                        )
+                        if len(files) != len(set(upload_file_list)):
+                            raise FileNotExistsError("One or more files not found.")
 
-                            # raise error if file not found
-                            if not file:
-                                raise FileNotExistsError()
-
-                            file_name = file.name
+                        file_names = [file.name for file in files]
+                        db_documents = (
+                            db.session.query(Document)
+                            .where(
+                                Document.dataset_id == dataset.id,
+                                Document.tenant_id == current_user.current_tenant_id,
+                                Document.data_source_type == "upload_file",
+                                Document.enabled == True,
+                                Document.name.in_(file_names),
+                            )
+                            .all()
+                        )
+                        documents_map = {document.name: document for document in db_documents}
+                        for file in files:
                             data_source_info: dict[str, str | bool] = {
-                                "upload_file_id": file_id,
+                                "upload_file_id": file.id,
                             }
-                            # check duplicate
-                            if knowledge_config.duplicate:
-                                document = (
-                                    db.session.query(Document)
-                                    .filter_by(
-                                        dataset_id=dataset.id,
-                                        tenant_id=current_user.current_tenant_id,
-                                        data_source_type="upload_file",
-                                        enabled=True,
-                                        name=file_name,
-                                    )
-                                    .first()
+                            document = documents_map.get(file.name)
+                            if knowledge_config.duplicate and document:
+                                document.dataset_process_rule_id = dataset_process_rule.id
+                                document.updated_at = naive_utc_now()
+                                document.created_from = created_from
+                                document.doc_form = knowledge_config.doc_form
+                                document.doc_language = knowledge_config.doc_language
+                                document.data_source_info = json.dumps(data_source_info)
+                                document.batch = batch
+                                document.indexing_status = "waiting"
+                                db.session.add(document)
+                                documents.append(document)
+                                duplicate_document_ids.append(document.id)
+                                continue
+                            else:
+                                document = DocumentService.build_document(
+                                    dataset,
+                                    dataset_process_rule.id,
+                                    knowledge_config.data_source.info_list.data_source_type,
+                                    knowledge_config.doc_form,
+                                    knowledge_config.doc_language,
+                                    data_source_info,
+                                    created_from,
+                                    position,
+                                    account,
+                                    file.name,
+                                    batch,
                                 )
-                                if document:
-                                    document.dataset_process_rule_id = dataset_process_rule.id
-                                    document.updated_at = naive_utc_now()
-                                    document.created_from = created_from
-                                    document.doc_form = knowledge_config.doc_form
-                                    document.doc_language = knowledge_config.doc_language
-                                    document.data_source_info = json.dumps(data_source_info)
-                                    document.batch = batch
-                                    document.indexing_status = "waiting"
-                                    db.session.add(document)
-                                    documents.append(document)
-                                    duplicate_document_ids.append(document.id)
-                                    continue
-                            document = DocumentService.build_document(
-                                dataset,
-                                dataset_process_rule.id,
-                                knowledge_config.data_source.info_list.data_source_type,
-                                knowledge_config.doc_form,
-                                knowledge_config.doc_language,
-                                data_source_info,
-                                created_from,
-                                position,
-                                account,
-                                file_name,
-                                batch,
-                            )
-                            db.session.add(document)
-                            db.session.flush()
-                            document_ids.append(document.id)
-                            documents.append(document)
-                            position += 1
+                                db.session.add(document)
+                                db.session.flush()
+                                document_ids.append(document.id)
+                                documents.append(document)
+                                position += 1
                     elif knowledge_config.data_source.info_list.data_source_type == "notion_import":
                         notion_info_list = knowledge_config.data_source.info_list.notion_info_list  # type: ignore
                         if not notion_info_list:
@@ -2799,20 +2818,20 @@ class SegmentService:
                     db.session.add(binding)
                 db.session.commit()
 
-                # save vector index
-                try:
-                    VectorService.create_segments_vector(
-                        [args["keywords"]], [segment_document], dataset, document.doc_form
-                    )
-                except Exception as e:
-                    logger.exception("create segment index failed")
-                    segment_document.enabled = False
-                    segment_document.disabled_at = naive_utc_now()
-                    segment_document.status = "error"
-                    segment_document.error = str(e)
-                    db.session.commit()
-                segment = db.session.query(DocumentSegment).where(DocumentSegment.id == segment_document.id).first()
-                return segment
+            # save vector index
+            try:
+                keywords = args.get("keywords")
+                keywords_list = [keywords] if keywords is not None else None
+                VectorService.create_segments_vector(keywords_list, [segment_document], dataset, document.doc_form)
+            except Exception as e:
+                logger.exception("create segment index failed")
+                segment_document.enabled = False
+                segment_document.disabled_at = naive_utc_now()
+                segment_document.status = "error"
+                segment_document.error = str(e)
+                db.session.commit()
+            segment = db.session.query(DocumentSegment).where(DocumentSegment.id == segment_document.id).first()
+            return segment
         except LockNotOwnedError:
             pass
 
@@ -3405,7 +3424,8 @@ class SegmentService:
             .order_by(ChildChunk.position.asc())
         )
         if keyword:
-            query = query.where(ChildChunk.content.ilike(f"%{keyword}%"))
+            escaped_keyword = helper.escape_like_pattern(keyword)
+            query = query.where(ChildChunk.content.ilike(f"%{escaped_keyword}%", escape="\\"))
         return db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
 
     @classmethod
@@ -3438,9 +3458,10 @@ class SegmentService:
             query = query.where(DocumentSegment.status.in_(status_list))
 
         if keyword:
-            query = query.where(DocumentSegment.content.ilike(f"%{keyword}%"))
+            escaped_keyword = helper.escape_like_pattern(keyword)
+            query = query.where(DocumentSegment.content.ilike(f"%{escaped_keyword}%", escape="\\"))
 
-        query = query.order_by(DocumentSegment.position.asc())
+        query = query.order_by(DocumentSegment.position.asc(), DocumentSegment.id.asc())
         paginated_segments = db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
 
         return paginated_segments.items, paginated_segments.total

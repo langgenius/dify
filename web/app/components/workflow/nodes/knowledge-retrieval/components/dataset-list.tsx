@@ -1,12 +1,13 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useMemo } from 'react'
-import { produce } from 'immer'
-import { useTranslation } from 'react-i18next'
-import Item from './dataset-item'
 import type { DataSet } from '@/models/datasets'
+import { produce } from 'immer'
+import * as React from 'react'
+import { useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
 import { hasEditPermissionForDataset } from '@/utils/permission'
+import Item from './dataset-item'
 
 type Props = {
   list: DataSet[]
@@ -55,26 +56,25 @@ const DatasetList: FC<Props> = ({
   }, [list, userProfile?.id])
 
   return (
-    <div className='space-y-1'>
+    <div className="space-y-1">
       {formattedList.length
         ? formattedList.map((item, index) => {
-          return (
-            <Item
-              key={index}
-              payload={item}
-              onRemove={handleRemove(index)}
-              onChange={handleChange(index)}
-              readonly={readonly}
-              editable={item.editable}
-            />
-          )
-        })
+            return (
+              <Item
+                key={index}
+                payload={item}
+                onRemove={handleRemove(index)}
+                onChange={handleChange(index)}
+                readonly={readonly}
+                editable={item.editable}
+              />
+            )
+          })
         : (
-          <div className='cursor-default select-none rounded-lg bg-background-section p-3 text-center text-xs text-text-tertiary'>
-            {t('appDebug.datasetConfig.knowledgeTip')}
-          </div>
-        )
-      }
+            <div className="cursor-default select-none rounded-lg bg-background-section p-3 text-center text-xs text-text-tertiary">
+              {t('datasetConfig.knowledgeTip', { ns: 'appDebug' })}
+            </div>
+          )}
 
     </div>
   )

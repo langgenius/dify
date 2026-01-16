@@ -1,11 +1,12 @@
-import mime from 'mime'
-import { FileAppearanceTypeEnum } from './types'
+import type { TFunction } from 'i18next'
 import type { FileEntity } from './types'
-import { upload } from '@/service/base'
+import type { FileResponse } from '@/types/workflow'
+import mime from 'mime'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
-import type { FileResponse } from '@/types/workflow'
+import { upload } from '@/service/base'
 import { TransferMethod } from '@/types/app'
+import { FileAppearanceTypeEnum } from './types'
 
 /**
  * Get appropriate error message for file upload errors
@@ -14,14 +15,14 @@ import { TransferMethod } from '@/types/app'
  * @param t - Translation function
  * @returns Localized error message
  */
-export const getFileUploadErrorMessage = (error: any, defaultMessage: string, t: (key: string) => string): string => {
+export const getFileUploadErrorMessage = (error: any, defaultMessage: string, t: TFunction): string => {
   const errorCode = error?.response?.code
 
   if (errorCode === 'forbidden')
     return error?.response?.message
 
   if (errorCode === 'file_extension_blocked')
-    return t('common.fileUploader.fileExtensionBlocked')
+    return t('fileUploader.fileExtensionBlocked', { ns: 'common' })
 
   return defaultMessage
 }
@@ -187,8 +188,9 @@ export const getProcessedFilesFromResponse = (files: FileResponse[]) => {
       if (detectedTypeFromFileName
         && detectedTypeFromMime
         && detectedTypeFromFileName === detectedTypeFromMime
-        && detectedTypeFromFileName !== fileItem.type)
+        && detectedTypeFromFileName !== fileItem.type) {
         supportFileType = detectedTypeFromFileName
+      }
     }
 
     return {

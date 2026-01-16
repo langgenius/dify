@@ -1,32 +1,34 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useDebounce } from 'ahooks'
-import { RiEqualizer2Line } from '@remixicon/react'
-import Toast from '../../base/toast'
-import Filter from './filter'
 import type { QueryParam } from './filter'
-import List from './list'
-import EmptyElement from './empty-element'
-import HeaderOpts from './header-opts'
-import { AnnotationEnableStatus, type AnnotationItem, type AnnotationItemBasic, JobStatus } from './type'
-import ViewAnnotationModal from './view-annotation-modal'
-import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
+import type { AnnotationItem, AnnotationItemBasic } from './type'
+import type { AnnotationReplyConfig } from '@/models/debug'
+import type { App } from '@/types/app'
+import { RiEqualizer2Line } from '@remixicon/react'
+import { useDebounce } from 'ahooks'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
+import ConfigParamModal from '@/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal'
+import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
+import Loading from '@/app/components/base/loading'
 import Pagination from '@/app/components/base/pagination'
 import Switch from '@/app/components/base/switch'
-import { addAnnotation, delAnnotation, fetchAnnotationConfig as doFetchAnnotationConfig, editAnnotation, fetchAnnotationList, queryAnnotationJobStatus, updateAnnotationScore, updateAnnotationStatus } from '@/service/annotation'
-import Loading from '@/app/components/base/loading'
-import { APP_PAGE_LIMIT } from '@/config'
-import ConfigParamModal from '@/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal'
-import type { AnnotationReplyConfig } from '@/models/debug'
-import { sleep } from '@/utils'
-import { useProviderContext } from '@/context/provider-context'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
-import { type App, AppModeEnum } from '@/types/app'
-import cn from '@/utils/classnames'
-import { delAnnotations } from '@/service/annotation'
+import { APP_PAGE_LIMIT } from '@/config'
+import { useProviderContext } from '@/context/provider-context'
+import { addAnnotation, delAnnotation, delAnnotations, fetchAnnotationConfig as doFetchAnnotationConfig, editAnnotation, fetchAnnotationList, queryAnnotationJobStatus, updateAnnotationScore, updateAnnotationStatus } from '@/service/annotation'
+import { AppModeEnum } from '@/types/app'
+import { sleep } from '@/utils'
+import { cn } from '@/utils/classnames'
+import Toast from '../../base/toast'
+import EmptyElement from './empty-element'
+import Filter from './filter'
+import HeaderOpts from './header-opts'
+import List from './list'
+import { AnnotationEnableStatus, JobStatus } from './type'
+import ViewAnnotationModal from './view-annotation-modal'
 
 type Props = {
   appDetail: App
@@ -61,13 +63,15 @@ const Annotation: FC<Props> = (props) => {
   }
 
   useEffect(() => {
-    if (isChatApp) fetchAnnotationConfig()
+    if (isChatApp)
+      fetchAnnotationConfig()
   }, [])
 
   const ensureJobCompleted = async (jobId: string, status: AnnotationEnableStatus) => {
     while (true) {
       const res: any = await queryAnnotationJobStatus(appDetail.id, status, jobId)
-      if (res.job_status === JobStatus.completed) break
+      if (res.job_status === JobStatus.completed)
+        break
       await sleep(2000)
     }
   }
@@ -94,14 +98,14 @@ const Annotation: FC<Props> = (props) => {
 
   const handleAdd = async (payload: AnnotationItemBasic) => {
     await addAnnotation(appDetail.id, payload)
-    Toast.notify({ message: t('common.api.actionSuccess'), type: 'success' })
+    Toast.notify({ message: t('api.actionSuccess', { ns: 'common' }), type: 'success' })
     fetchList()
     setControlUpdateList(Date.now())
   }
 
   const handleRemove = async (id: string) => {
     await delAnnotation(appDetail.id, id)
-    Toast.notify({ message: t('common.api.actionSuccess'), type: 'success' })
+    Toast.notify({ message: t('api.actionSuccess', { ns: 'common' }), type: 'success' })
     fetchList()
     setControlUpdateList(Date.now())
   }
@@ -109,13 +113,13 @@ const Annotation: FC<Props> = (props) => {
   const handleBatchDelete = async () => {
     try {
       await delAnnotations(appDetail.id, selectedIds)
-      Toast.notify({ message: t('common.api.actionSuccess'), type: 'success' })
+      Toast.notify({ message: t('api.actionSuccess', { ns: 'common' }), type: 'success' })
       fetchList()
       setControlUpdateList(Date.now())
       setSelectedIds([])
     }
     catch (e: any) {
-      Toast.notify({ type: 'error', message: e.message || t('common.api.actionFailed') })
+      Toast.notify({ type: 'error', message: e.message || t('api.actionFailed', { ns: 'common' }) })
     }
   }
 
@@ -125,32 +129,34 @@ const Annotation: FC<Props> = (props) => {
   }
 
   const handleSave = async (question: string, answer: string) => {
-    if (!currItem) return
+    if (!currItem)
+      return
     await editAnnotation(appDetail.id, currItem.id, { question, answer })
-    Toast.notify({ message: t('common.api.actionSuccess'), type: 'success' })
+    Toast.notify({ message: t('api.actionSuccess', { ns: 'common' }), type: 'success' })
     fetchList()
     setControlUpdateList(Date.now())
   }
 
   useEffect(() => {
-    if (!isShowEdit) setControlRefreshSwitch(Date.now())
+    if (!isShowEdit)
+      setControlRefreshSwitch(Date.now())
   }, [isShowEdit])
 
   return (
-    <div className='flex h-full flex-col'>
-      <p className='system-sm-regular text-text-tertiary'>{t('appLog.description')}</p>
-      <div className='relative flex h-full flex-1 flex-col py-4'>
+    <div className="flex h-full flex-col">
+      <p className="system-sm-regular text-text-tertiary">{t('description', { ns: 'appLog' })}</p>
+      <div className="relative flex h-full flex-1 flex-col py-4">
         <Filter appId={appDetail.id} queryParams={queryParams} setQueryParams={setQueryParams}>
-          <div className='flex items-center space-x-2'>
+          <div className="flex items-center space-x-2">
             {isChatApp && (
               <>
                 <div className={cn(!annotationConfig?.enabled && 'pr-2', 'flex h-7 items-center space-x-1 rounded-lg border border-components-panel-border bg-components-panel-bg-blur pl-2')}>
-                  <MessageFast className='h-4 w-4 text-util-colors-indigo-indigo-600' />
-                  <div className='system-sm-medium text-text-primary'>{t('appAnnotation.name')}</div>
+                  <MessageFast className="h-4 w-4 text-util-colors-indigo-indigo-600" />
+                  <div className="system-sm-medium text-text-primary">{t('name', { ns: 'appAnnotation' })}</div>
                   <Switch
                     key={controlRefreshSwitch}
                     defaultValue={annotationConfig?.enabled}
-                    size='md'
+                    size="md"
                     onChange={async (value) => {
                       if (value) {
                         if (isAnnotationFull) {
@@ -165,22 +171,23 @@ const Annotation: FC<Props> = (props) => {
                         await ensureJobCompleted(jobId, AnnotationEnableStatus.disable)
                         await fetchAnnotationConfig()
                         Toast.notify({
-                          message: t('common.api.actionSuccess'),
+                          message: t('api.actionSuccess', { ns: 'common' }),
                           type: 'success',
                         })
                       }
                     }}
-                  ></Switch>
+                  >
+                  </Switch>
                   {annotationConfig?.enabled && (
-                    <div className='flex items-center pl-1.5'>
-                      <div className='mr-1 h-3.5 w-[1px] shrink-0 bg-divider-subtle'></div>
+                    <div className="flex items-center pl-1.5">
+                      <div className="mr-1 h-3.5 w-[1px] shrink-0 bg-divider-subtle"></div>
                       <ActionButton onClick={() => setIsShowEdit(true)}>
-                        <RiEqualizer2Line className='h-4 w-4 text-text-tertiary' />
+                        <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
                       </ActionButton>
                     </div>
                   )}
                 </div>
-                <div className='mx-3 h-3.5 w-[1px] shrink-0 bg-divider-regular'></div>
+                <div className="mx-3 h-3.5 w-[1px] shrink-0 bg-divider-regular"></div>
               </>
             )}
 
@@ -195,29 +202,32 @@ const Annotation: FC<Props> = (props) => {
           </div>
         </Filter>
         {isLoading
-          ? <Loading type='app' />
+          ? <Loading type="app" />
           // eslint-disable-next-line sonarjs/no-nested-conditional
           : total > 0
-            ? <List
-              list={list}
-              onRemove={handleRemove}
-              onView={handleView}
-              selectedIds={selectedIds}
-              onSelectedIdsChange={setSelectedIds}
-              onBatchDelete={handleBatchDelete}
-              onCancel={() => setSelectedIds([])}
-            />
-            : <div className='flex h-full grow items-center justify-center'><EmptyElement /></div>
-        }
+            ? (
+                <List
+                  list={list}
+                  onRemove={handleRemove}
+                  onView={handleView}
+                  selectedIds={selectedIds}
+                  onSelectedIdsChange={setSelectedIds}
+                  onBatchDelete={handleBatchDelete}
+                  onCancel={() => setSelectedIds([])}
+                />
+              )
+            : <div className="flex h-full grow items-center justify-center"><EmptyElement /></div>}
         {/* Show Pagination only if the total is more than the limit */}
         {(total && total > APP_PAGE_LIMIT)
-          ? <Pagination
-            current={currPage}
-            onChange={setCurrPage}
-            total={total}
-            limit={limit}
-            onLimitChange={setLimit}
-          />
+          ? (
+              <Pagination
+                current={currPage}
+                onChange={setCurrPage}
+                total={total}
+                limit={limit}
+                onLimitChange={setLimit}
+              />
+            )
           : null}
 
         {isShowViewModal && (
@@ -254,7 +264,7 @@ const Annotation: FC<Props> = (props) => {
 
               await fetchAnnotationConfig()
               Toast.notify({
-                message: t('common.api.actionSuccess'),
+                message: t('api.actionSuccess', { ns: 'common' }),
                 type: 'success',
               })
               setIsShowEdit(false)

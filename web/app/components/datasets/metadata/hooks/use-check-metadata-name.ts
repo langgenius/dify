@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 
-const i18nPrefix = 'dataset.metadata.checkName'
+const i18nPrefix = 'metadata.checkName'
 
 const useCheckMetadataName = () => {
   const { t } = useTranslation()
@@ -8,19 +8,19 @@ const useCheckMetadataName = () => {
     checkName: (name: string) => {
       if (!name) {
         return {
-          errorMsg: t(`${i18nPrefix}.empty`),
+          errorMsg: t(`${i18nPrefix}.empty`, { ns: 'dataset' }),
         }
       }
 
       if (!/^[a-z][a-z0-9_]*$/.test(name)) {
         return {
-          errorMsg: t(`${i18nPrefix}.invalid`),
+          errorMsg: t(`${i18nPrefix}.invalid`, { ns: 'dataset' }),
         }
       }
 
       if (name.length > 255) {
         return {
-          errorMsg: t(`${i18nPrefix}.tooLong`, { max: 255 }),
+          errorMsg: t(`${i18nPrefix}.tooLong`, { ns: 'dataset', max: 255 }),
         }
       }
 

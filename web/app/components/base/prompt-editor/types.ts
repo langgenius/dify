@@ -58,8 +58,8 @@ export type ExternalToolBlockType = {
 }
 
 export type GetVarType = (payload: {
-  nodeId: string,
-  valueSelector: ValueSelector,
+  nodeId: string
+  valueSelector: ValueSelector
 }) => Type
 
 export type WorkflowVariableBlockType = {

@@ -1,6 +1,6 @@
-import { useCallback } from 'react'
-import { produce } from 'immer'
 import type { Variable } from '@/app/components/workflow/types'
+import { produce } from 'immer'
+import { useCallback } from 'react'
 
 type Params<T> = {
   inputs: T

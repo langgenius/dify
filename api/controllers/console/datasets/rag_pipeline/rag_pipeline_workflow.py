@@ -4,7 +4,7 @@ from typing import Any, Literal, cast
 from uuid import UUID
 
 from flask import abort, request
-from flask_restx import Resource, marshal_with  # type: ignore
+from flask_restx import Resource, marshal_with, reqparse  # type: ignore
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
@@ -355,7 +355,7 @@ class PublishedRagPipelineRunApi(Resource):
                 pipeline=pipeline,
                 user=current_user,
                 args=args,
-                invoke_from=InvokeFrom.DEBUGGER if payload.is_preview else InvokeFrom.PUBLISHED,
+                invoke_from=InvokeFrom.DEBUGGER if payload.is_preview else InvokeFrom.PUBLISHED_PIPELINE,
                 streaming=streaming,
             )
 
@@ -975,6 +975,11 @@ class RagPipelineRecommendedPluginApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("type", type=str, location="args", required=False, default="all")
+        args = parser.parse_args()
+        type = args["type"]
+
         rag_pipeline_service = RagPipelineService()
-        recommended_plugins = rag_pipeline_service.get_recommended_plugins()
+        recommended_plugins = rag_pipeline_service.get_recommended_plugins(type)
         return recommended_plugins

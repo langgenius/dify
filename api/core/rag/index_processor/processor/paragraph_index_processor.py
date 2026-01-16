@@ -209,7 +209,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             if dataset.indexing_technique == "high_quality":
                 vector = Vector(dataset)
                 vector.create(documents)
-                if all_multimodal_documents:
+                if all_multimodal_documents and dataset.is_multimodal:
                     vector.create_multimodal(all_multimodal_documents)
             elif dataset.indexing_technique == "economy":
                 keyword = Keyword(dataset)

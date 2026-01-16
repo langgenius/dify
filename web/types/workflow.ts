@@ -1,26 +1,26 @@
-import type { Viewport } from 'reactflow'
-import type { BlockEnum, CommonNodeType, ConversationVariable, Edge, EnvironmentVariable, InputVar, Node, ValueSelector, VarType, Variable } from '@/app/components/workflow/types'
-import type { TransferMethod } from '@/types/app'
-import type { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
-import type { RAGPipelineVariables } from '@/models/pipeline'
-import type { BeforeRunFormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form'
-import type { SpecialResultPanelProps } from '@/app/components/workflow/run/special-result-panel'
 import type { RefObject } from 'react'
+import type { Viewport } from 'reactflow'
+import type { BeforeRunFormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form'
+import type { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
+import type { SpecialResultPanelProps } from '@/app/components/workflow/run/special-result-panel'
+import type { BlockEnum, CommonNodeType, ConversationVariable, Edge, EnvironmentVariable, InputVar, Node, ValueSelector, Variable, VarType } from '@/app/components/workflow/types'
+import type { RAGPipelineVariables } from '@/models/pipeline'
+import type { TransferMethod } from '@/types/app'
 
 export type AgentLogItem = {
-  node_execution_id: string,
-  message_id: string,
-  node_id: string,
-  parent_id?: string,
-  label: string,
-  data: object, // debug data
-  error?: string,
-  status: string,
+  node_execution_id: string
+  message_id: string
+  node_id: string
+  parent_id?: string
+  label: string
+  data: object // debug data
+  error?: string
+  status: string
   metadata?: {
     elapsed_time?: number
     provider?: string
     icon?: string
-  },
+  }
 }
 
 export type AgentLogItemWithChildren = AgentLogItem & {
@@ -126,7 +126,7 @@ export type FetchWorkflowDraftResponse = {
     id: string
     name: string
     email: string
-  },
+  }
   tool_published: boolean
   environment_variables?: EnvironmentVariable[]
   conversation_variables?: ConversationVariable[]
@@ -337,7 +337,7 @@ export type NodesDefaultConfigsResponse = {
 }[]
 
 export type ConversationVariableResponse = {
-  data: (ConversationVariable & { updated_at: number; created_at: number })[]
+  data: (ConversationVariable & { updated_at: number, created_at: number })[]
   has_more: boolean
   limit: number
   total: number

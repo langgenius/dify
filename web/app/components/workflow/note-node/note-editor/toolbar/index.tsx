@@ -1,10 +1,10 @@
-import { memo } from 'react'
-import Divider from './divider'
 import type { ColorPickerProps } from './color-picker'
-import ColorPicker from './color-picker'
-import FontSizeSelector from './font-size-selector'
-import Command from './command'
 import type { OperatorProps } from './operator'
+import { memo } from 'react'
+import ColorPicker from './color-picker'
+import Command from './command'
+import Divider from './divider'
+import FontSizeSelector from './font-size-selector'
 import Operator from './operator'
 
 type ToolbarProps = ColorPickerProps & OperatorProps
@@ -18,7 +18,7 @@ const Toolbar = ({
   onShowAuthorChange,
 }: ToolbarProps) => {
   return (
-    <div className='inline-flex items-center rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-sm'>
+    <div className="inline-flex items-center rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-sm">
       <ColorPicker
         theme={theme}
         onThemeChange={onThemeChange}
@@ -26,12 +26,12 @@ const Toolbar = ({
       <Divider />
       <FontSizeSelector />
       <Divider />
-      <div className='flex items-center space-x-0.5'>
-        <Command type='bold' />
-        <Command type='italic' />
-        <Command type='strikethrough' />
-        <Command type='link' />
-        <Command type='bullet' />
+      <div className="flex items-center space-x-0.5">
+        <Command type="bold" />
+        <Command type="italic" />
+        <Command type="strikethrough" />
+        <Command type="link" />
+        <Command type="bullet" />
       </div>
       <Divider />
       <Operator

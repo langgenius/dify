@@ -18,8 +18,8 @@ class WorkflowIdFormatError(Exception):
     pass
 
 
-class InvokeRateLimitError(Exception):
-    """Raised when rate limit is exceeded for workflow invocations."""
+class WorkflowQuotaLimitError(Exception):
+    """Raised when workflow execution quota is exceeded (for async/background workflows)."""
 
     pass
 

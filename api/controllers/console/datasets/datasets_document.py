@@ -7,7 +7,7 @@ from typing import Literal, cast
 import sqlalchemy as sa
 from flask import request
 from flask_restx import Resource, fields, marshal, marshal_with
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import asc, desc, select
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -102,6 +102,15 @@ class DocumentRetryPayload(BaseModel):
 
 class DocumentRenamePayload(BaseModel):
     name: str
+
+
+class DocumentDatasetListParam(BaseModel):
+    page: int = Field(1, title="Page", description="Page number.")
+    limit: int = Field(20, title="Limit", description="Page size.")
+    search: str | None = Field(None, alias="keyword", title="Search", description="Search keyword.")
+    sort_by: str = Field("-created_at", alias="sort", title="SortBy", description="Sort by field.")
+    status: str | None = Field(None, title="Status", description="Document status.")
+    fetch_val: str = Field("false", alias="fetch")
 
 
 register_schema_models(
@@ -225,14 +234,16 @@ class DatasetDocumentListApi(Resource):
     def get(self, dataset_id):
         current_user, current_tenant_id = current_account_with_tenant()
         dataset_id = str(dataset_id)
-        page = request.args.get("page", default=1, type=int)
-        limit = request.args.get("limit", default=20, type=int)
-        search = request.args.get("keyword", default=None, type=str)
-        sort = request.args.get("sort", default="-created_at", type=str)
-        status = request.args.get("status", default=None, type=str)
+        raw_args = request.args.to_dict()
+        param = DocumentDatasetListParam.model_validate(raw_args)
+        page = param.page
+        limit = param.limit
+        search = param.search
+        sort = param.sort_by
+        status = param.status
         # "yes", "true", "t", "y", "1" convert to True, while others convert to False.
         try:
-            fetch_val = request.args.get("fetch", default="false")
+            fetch_val = param.fetch_val
             if isinstance(fetch_val, bool):
                 fetch = fetch_val
             else:
@@ -572,7 +583,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                     datasource_type=DatasourceType.NOTION,
                     notion_info=NotionInfo.model_validate(
                         {
-                            "credential_id": data_source_info["credential_id"],
+                            "credential_id": data_source_info.get("credential_id"),
                             "notion_workspace_id": data_source_info["notion_workspace_id"],
                             "notion_obj_id": data_source_info["notion_page_id"],
                             "notion_page_type": data_source_info["type"],
@@ -751,12 +762,12 @@ class DocumentApi(DocumentResource):
         elif metadata == "without":
             dataset_process_rules = DatasetService.get_process_rules(dataset_id)
             document_process_rules = document.dataset_process_rule.to_dict() if document.dataset_process_rule else {}
-            data_source_info = document.data_source_detail_dict
             response = {
                 "id": document.id,
                 "position": document.position,
                 "data_source_type": document.data_source_type,
-                "data_source_info": data_source_info,
+                "data_source_info": document.data_source_info_dict,
+                "data_source_detail_dict": document.data_source_detail_dict,
                 "dataset_process_rule_id": document.dataset_process_rule_id,
                 "dataset_process_rule": dataset_process_rules,
                 "document_process_rule": document_process_rules,
@@ -784,12 +795,12 @@ class DocumentApi(DocumentResource):
         else:
             dataset_process_rules = DatasetService.get_process_rules(dataset_id)
             document_process_rules = document.dataset_process_rule.to_dict() if document.dataset_process_rule else {}
-            data_source_info = document.data_source_detail_dict
             response = {
                 "id": document.id,
                 "position": document.position,
                 "data_source_type": document.data_source_type,
-                "data_source_info": data_source_info,
+                "data_source_info": document.data_source_info_dict,
+                "data_source_detail_dict": document.data_source_detail_dict,
                 "dataset_process_rule_id": document.dataset_process_rule_id,
                 "dataset_process_rule": dataset_process_rules,
                 "document_process_rule": document_process_rules,

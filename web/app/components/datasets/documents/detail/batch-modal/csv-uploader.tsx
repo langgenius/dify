@@ -1,22 +1,23 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { FileItem } from '@/models/datasets'
 import {
   RiDeleteBinLine,
 } from '@remixicon/react'
+import * as React from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import cn from '@/utils/classnames'
-import { Csv as CSVIcon } from '@/app/components/base/icons/src/public/files'
-import { ToastContext } from '@/app/components/base/toast'
 import Button from '@/app/components/base/button'
-import type { FileItem } from '@/models/datasets'
-import { upload } from '@/service/base'
 import { getFileUploadErrorMessage } from '@/app/components/base/file-uploader/utils'
+import { Csv as CSVIcon } from '@/app/components/base/icons/src/public/files'
 import SimplePieChart from '@/app/components/base/simple-pie-chart'
-import { Theme } from '@/types/app'
+import { ToastContext } from '@/app/components/base/toast'
 import useTheme from '@/hooks/use-theme'
+import { upload } from '@/service/base'
 import { useFileUploadConfig } from '@/service/use-common'
+import { Theme } from '@/types/app'
+import { cn } from '@/utils/classnames'
 
 export type Props = {
   file: FileItem | undefined
@@ -74,7 +75,7 @@ const CSVUploader: FC<Props> = ({
         return Promise.resolve({ ...completeFile })
       })
       .catch((e) => {
-        const errorMessage = getFileUploadErrorMessage(e, t('datasetCreation.stepOne.uploader.failed'), t)
+        const errorMessage = getFileUploadErrorMessage(e, t('stepOne.uploader.failed', { ns: 'datasetCreation' }), t)
         notify({ type: 'error', message: errorMessage })
         const errorFile = {
           ...fileItem,
@@ -127,7 +128,7 @@ const CSVUploader: FC<Props> = ({
       return
     const files = [...e.dataTransfer.files]
     if (files.length > 1) {
-      notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.count') })
+      notify({ type: 'error', message: t('stepOne.uploader.validation.count', { ns: 'datasetCreation' }) })
       return
     }
     initialUpload(files[0])
@@ -158,11 +159,11 @@ const CSVUploader: FC<Props> = ({
     const ext = `.${getFileType(file)}`
     const isValidType = ext.toLowerCase() === '.csv'
     if (!isValidType)
-      notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.typeError') })
+      notify({ type: 'error', message: t('stepOne.uploader.validation.typeError', { ns: 'datasetCreation' }) })
 
     const isValidSize = size <= fileUploadConfig.file_size_limit * 1024 * 1024
     if (!isValidSize)
-      notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.size', { size: fileUploadConfig.file_size_limit }) })
+      notify({ type: 'error', message: t('stepOne.uploader.validation.size', { ns: 'datasetCreation', size: fileUploadConfig.file_size_limit }) })
 
     return isValidType && isValidSize
   }, [fileUploadConfig, notify, t])
@@ -192,46 +193,46 @@ const CSVUploader: FC<Props> = ({
   }, [])
 
   return (
-    <div className='mt-6'>
+    <div className="mt-6">
       <input
         ref={fileUploader}
         style={{ display: 'none' }}
         type="file"
         id="fileUploader"
-        accept='.csv'
+        accept=".csv"
         onChange={fileChangeHandle}
       />
       <div ref={dropRef}>
         {!file && (
           <div className={cn('flex h-20 items-center rounded-xl border border-dashed border-components-panel-border bg-components-panel-bg-blur text-sm font-normal', dragging && 'border border-divider-subtle  bg-components-panel-on-panel-item-bg-hover')}>
-            <div className='flex w-full items-center justify-center space-x-2'>
+            <div className="flex w-full items-center justify-center space-x-2">
               <CSVIcon className="shrink-0" />
-              <div className='text-text-secondary'>
-                {t('datasetDocuments.list.batchModal.csvUploadTitle')}
-                <span className='cursor-pointer text-text-accent' onClick={selectHandle}>{t('datasetDocuments.list.batchModal.browse')}</span>
+              <div className="text-text-secondary">
+                {t('list.batchModal.csvUploadTitle', { ns: 'datasetDocuments' })}
+                <span className="cursor-pointer text-text-accent" onClick={selectHandle}>{t('list.batchModal.browse', { ns: 'datasetDocuments' })}</span>
               </div>
             </div>
-            {dragging && <div ref={dragRef} className='absolute left-0 top-0 h-full w-full' />}
+            {dragging && <div ref={dragRef} className="absolute left-0 top-0 h-full w-full" />}
           </div>
         )}
         {file && (
           <div className={cn('group flex h-20 items-center rounded-xl border border-components-panel-border bg-components-panel-bg-blur px-6 text-sm font-normal', 'hover:border-divider-subtle hover:bg-components-panel-on-panel-item-bg-hover')}>
             <CSVIcon className="shrink-0" />
-            <div className='ml-2 flex w-0 grow'>
-              <span className='max-w-[calc(100%_-_30px)] overflow-hidden text-ellipsis whitespace-nowrap text-text-primary'>{file.file.name.replace(/.csv$/, '')}</span>
-              <span className='shrink-0 text-text-secondary'>.csv</span>
+            <div className="ml-2 flex w-0 grow">
+              <span className="max-w-[calc(100%_-_30px)] overflow-hidden text-ellipsis whitespace-nowrap text-text-primary">{file.file.name.replace(/.csv$/, '')}</span>
+              <span className="shrink-0 text-text-secondary">.csv</span>
             </div>
-            <div className='hidden items-center group-hover:flex'>
+            <div className="hidden items-center group-hover:flex">
               {(file.progress < 100 && file.progress >= 0) && (
                 <>
-                  <SimplePieChart percentage={file.progress} stroke={chartColor} fill={chartColor} animationDuration={0}/>
-                  <div className='mx-2 h-4 w-px bg-text-secondary'/>
+                  <SimplePieChart percentage={file.progress} stroke={chartColor} fill={chartColor} animationDuration={0} />
+                  <div className="mx-2 h-4 w-px bg-text-secondary" />
                 </>
               )}
-              <Button onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.change')}</Button>
-              <div className='mx-2 h-4 w-px bg-text-secondary' />
-              <div className='cursor-pointer p-2' onClick={removeFile}>
-                <RiDeleteBinLine className='h-4 w-4 text-text-secondary' />
+              <Button onClick={selectHandle}>{t('stepOne.uploader.change', { ns: 'datasetCreation' })}</Button>
+              <div className="mx-2 h-4 w-px bg-text-secondary" />
+              <div className="cursor-pointer p-2" onClick={removeFile}>
+                <RiDeleteBinLine className="h-4 w-4 text-text-secondary" />
               </div>
             </div>
           </div>

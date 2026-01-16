@@ -1,21 +1,21 @@
 import type { FC } from 'react'
-import React from 'react'
-import { useTranslation } from 'react-i18next'
+import type { TemplateTransformNodeType } from './types'
+import type { NodePanelProps } from '@/app/components/workflow/types'
 import {
   RiQuestionLine,
 } from '@remixicon/react'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
+import AddButton from '@/app/components/base/button/add-button'
+import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor/editor-support-vars'
+import Field from '@/app/components/workflow/nodes/_base/components/field'
+import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
+import Split from '@/app/components/workflow/nodes/_base/components/split'
+import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
 import { CodeLanguage } from '../code/types'
 import useConfig from './use-config'
-import type { TemplateTransformNodeType } from './types'
-import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
-import AddButton from '@/app/components/base/button/add-button'
-import Field from '@/app/components/workflow/nodes/_base/components/field'
-import Split from '@/app/components/workflow/nodes/_base/components/split'
-import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor/editor-support-vars'
-import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
-import type { NodePanelProps } from '@/app/components/workflow/types'
 
-const i18nPrefix = 'workflow.nodes.templateTransform'
+const i18nPrefix = 'nodes.templateTransform'
 
 const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
   id,
@@ -36,11 +36,11 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
   } = useConfig(id, data)
 
   return (
-    <div className='mt-2'>
-      <div className='space-y-4 px-4 pb-4'>
+    <div className="mt-2">
+      <div className="space-y-4 px-4 pb-4">
 
         <Field
-          title={t(`${i18nPrefix}.inputVars`)}
+          title={t(`${i18nPrefix}.inputVars`, { ns: 'workflow' })}
           operations={
             !readOnly ? <AddButton onClick={handleAddEmptyVariable} /> : undefined
           }
@@ -64,20 +64,21 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
           readOnly={readOnly}
           language={CodeLanguage.python3}
           title={
-            <div className='uppercase'>{t(`${i18nPrefix}.code`)}</div>
+            <div className="uppercase">{t(`${i18nPrefix}.code`, { ns: 'workflow' })}</div>
           }
-          headerRight={
-            <div className='flex items-center'>
+          headerRight={(
+            <div className="flex items-center">
               <a
-                className='flex h-[18px] items-center space-x-0.5 text-xs font-normal text-text-tertiary'
+                className="flex h-[18px] items-center space-x-0.5 text-xs font-normal text-text-tertiary"
                 href="https://jinja.palletsprojects.com/en/3.1.x/templates/"
-                target='_blank'>
-                <span>{t(`${i18nPrefix}.codeSupportTip`)}</span>
-                <RiQuestionLine className='h-3 w-3' />
+                target="_blank"
+              >
+                <span>{t(`${i18nPrefix}.codeSupportTip`, { ns: 'workflow' })}</span>
+                <RiQuestionLine className="h-3 w-3" />
               </a>
-              <div className='mx-1.5 h-3 w-px bg-divider-regular'></div>
+              <div className="mx-1.5 h-3 w-px bg-divider-regular"></div>
             </div>
-          }
+          )}
           value={inputs.template}
           onChange={handleCodeChange}
         />
@@ -87,9 +88,9 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
         <OutputVars>
           <>
             <VarItem
-              name='output'
-              type='string'
-              description={t(`${i18nPrefix}.outputVars.output`)}
+              name="output"
+              type="string"
+              description={t(`${i18nPrefix}.outputVars.output`, { ns: 'workflow' })}
             />
           </>
         </OutputVars>

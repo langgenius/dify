@@ -1,46 +1,46 @@
-import {
-  useCallback,
-} from 'react'
-import { uniqBy } from 'lodash-es'
-import {
-  getIncomers,
-  getOutgoers,
-  useStoreApi,
-} from 'reactflow'
 import type {
   Connection,
 } from 'reactflow'
+import type { IterationNodeType } from '../nodes/iteration/types'
+import type { LoopNodeType } from '../nodes/loop/types'
 import type {
   BlockEnum,
   Edge,
   Node,
   ValueSelector,
 } from '../types'
+import { uniqBy } from 'es-toolkit/compat'
 import {
-  WorkflowRunningStatus,
-} from '../types'
+  useCallback,
+} from 'react'
+import {
+  getIncomers,
+  getOutgoers,
+  useStoreApi,
+} from 'reactflow'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
+import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
+import { AppModeEnum } from '@/types/app'
+import { useNodesMetaData } from '.'
+import {
+  SUPPORT_OUTPUT_VARS_NODE,
+} from '../constants'
+import { findUsedVarNodes, getNodeOutputVars, updateNodeVars } from '../nodes/_base/components/variable/utils'
+import { CUSTOM_NOTE_NODE } from '../note-node/constants'
+
 import {
   useStore,
   useWorkflowStore,
 } from '../store'
 import {
+  WorkflowRunningStatus,
+} from '../types'
+import {
   getWorkflowEntryNode,
   isWorkflowEntryNode,
 } from '../utils/workflow-entry'
-import {
-  SUPPORT_OUTPUT_VARS_NODE,
-} from '../constants'
-import type { IterationNodeType } from '../nodes/iteration/types'
-import type { LoopNodeType } from '../nodes/loop/types'
-import { CUSTOM_NOTE_NODE } from '../note-node/constants'
-import { findUsedVarNodes, getNodeOutputVars, updateNodeVars } from '../nodes/_base/components/variable/utils'
 import { useAvailableBlocks } from './use-available-blocks'
-import { useStore as useAppStore } from '@/app/components/app/store'
-
-import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
-import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
-import { useNodesMetaData } from '.'
-import { AppModeEnum } from '@/types/app'
 
 export const useIsChatMode = () => {
   const appDetail = useAppStore(s => s.appDetail)

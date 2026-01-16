@@ -1,9 +1,9 @@
 'use client'
-import { useTranslation } from 'react-i18next'
-import React, { Fragment, useMemo } from 'react'
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import { RiArrowDownSLine } from '@remixicon/react'
-import NotionIcon from '../../notion-icon'
+import * as React from 'react'
+import { Fragment, useMemo } from 'react'
+import { CredentialIcon } from '@/app/components/datasets/common/credential-icon'
 
 export type NotionCredential = {
   credentialId: string
@@ -23,14 +23,10 @@ const CredentialSelector = ({
   items,
   onSelect,
 }: CredentialSelectorProps) => {
-  const { t } = useTranslation()
   const currentCredential = items.find(item => item.credentialId === value)!
 
   const getDisplayName = (item: NotionCredential) => {
-    return item.workspaceName || t('datasetPipeline.credentialSelector.name', {
-      credentialName: item.credentialName,
-      pluginName: 'Notion',
-    })
+    return item.workspaceName || item.credentialName
   }
 
   const currentDisplayName = useMemo(() => {
@@ -38,55 +34,57 @@ const CredentialSelector = ({
   }, [currentCredential])
 
   return (
-    <Menu as='div' className='relative inline-block text-left'>
+    <Menu as="div" className="relative inline-block text-left">
       {
         ({ open }) => (
           <>
             <MenuButton className={`flex h-7 items-center justify-center rounded-md p-1 pr-2 hover:bg-state-base-hover ${open && 'bg-state-base-hover'} cursor-pointer`}>
-              <NotionIcon
-                className='mr-2'
-                src={currentCredential?.workspaceIcon}
+              <CredentialIcon
+                className="mr-2"
+                avatarUrl={currentCredential?.workspaceIcon}
                 name={currentDisplayName}
+                size={20}
               />
               <div
-                className='mr-1 w-[90px] truncate text-left text-sm font-medium text-text-secondary'
+                className="mr-1 w-[90px] truncate text-left text-sm font-medium text-text-secondary"
                 title={currentDisplayName}
               >
                 {currentDisplayName}
               </div>
-              <RiArrowDownSLine className='h-4 w-4 text-text-secondary' />
+              <RiArrowDownSLine className="h-4 w-4 text-text-secondary" />
             </MenuButton>
             <Transition
               as={Fragment}
-              enter='transition ease-out duration-100'
-              enterFrom='transform opacity-0 scale-95'
-              enterTo='transform opacity-100 scale-100'
-              leave='transition ease-in duration-75'
-              leaveFrom='transform opacity-100 scale-100'
-              leaveTo='transform opacity-0 scale-95'
+              enter="transition ease-out duration-100"
+              enterFrom="transform opacity-0 scale-95"
+              enterTo="transform opacity-100 scale-100"
+              leave="transition ease-in duration-75"
+              leaveFrom="transform opacity-100 scale-100"
+              leaveTo="transform opacity-0 scale-95"
             >
               <MenuItems
-                className='absolute left-0 top-8 z-10 w-80
+                className="absolute left-0 top-8 z-10 w-80
                   origin-top-right rounded-lg border-[0.5px]
-                  border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5'
+                  border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5"
               >
-                <div className='max-h-50 overflow-auto p-1'>
+                <div className="max-h-50 overflow-auto p-1">
                   {
                     items.map((item) => {
                       const displayName = getDisplayName(item)
                       return (
                         <MenuItem key={item.credentialId}>
                           <div
-                            className='flex h-9 cursor-pointer items-center rounded-lg px-3 hover:bg-state-base-hover'
+                            className="flex h-9 cursor-pointer items-center rounded-lg px-3 hover:bg-state-base-hover"
                             onClick={() => onSelect(item.credentialId)}
                           >
-                            <NotionIcon
-                              className='mr-2 shrink-0'
-                              src={item.workspaceIcon}
+                            <CredentialIcon
+                              className="mr-2 shrink-0"
+                              avatarUrl={item.workspaceIcon}
                               name={displayName}
+                              size={20}
                             />
                             <div
-                              className='system-sm-medium mr-2 grow truncate text-text-secondary'
+                              className="system-sm-medium mr-2 grow truncate text-text-secondary"
                               title={displayName}
                             >
                               {displayName}

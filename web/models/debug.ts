@@ -1,8 +1,3 @@
-import type { AgentStrategy, ModelModeType, RETRIEVE_TYPE, ToolItem, TtsAutoPlay } from '@/types/app'
-import type {
-  RerankingModeEnum,
-  WeightedScoreEnum,
-} from '@/models/datasets'
 import type { FileUpload } from '@/app/components/base/features/types'
 import type {
   MetadataFilteringConditions,
@@ -10,6 +5,12 @@ import type {
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import type { ModelConfig as NodeModelConfig } from '@/app/components/workflow/types'
 import type { ExternalDataTool } from '@/models/common'
+import type {
+  RerankingModeEnum,
+  WeightedScoreEnum,
+} from '@/models/datasets'
+import type { AgentStrategy, ModelModeType, RETRIEVE_TYPE, ToolItem, TtsAutoPlay } from '@/types/app'
+
 export type Inputs = Record<string, string | number | object | boolean>
 
 export enum PromptMode {
@@ -61,7 +62,7 @@ export type PromptVariable = {
   icon?: string
   icon_background?: string
   hide?: boolean // used in frontend to hide variable
-  json_schema?: string
+  json_schema?: string | Record<string, any>
 }
 
 export type CompletionParams = {

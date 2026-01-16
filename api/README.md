@@ -84,7 +84,7 @@
 1. If you need to handle and debug the async tasks (e.g. dataset importing and documents indexing), please start the worker service.
 
 ```bash
-uv run celery -A app.celery worker -P threads -c 2 --loglevel INFO -Q dataset,priority_dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor
+uv run celery -A app.celery worker -P threads -c 2 --loglevel INFO -Q dataset,priority_dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor,retention
 ```
 
 Additionally, if you want to debug the celery scheduled tasks, you can run the following command in another terminal to start the beat service:

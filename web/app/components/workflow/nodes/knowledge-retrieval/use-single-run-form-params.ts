@@ -1,19 +1,19 @@
 import type { RefObject } from 'react'
-import { useTranslation } from 'react-i18next'
-import type { InputVar, Var, Variable } from '@/app/components/workflow/types'
-import { InputVarType, VarType } from '@/app/components/workflow/types'
-import { useCallback, useMemo } from 'react'
 import type { KnowledgeRetrievalNodeType } from './types'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
-import { useDatasetsDetailStore } from '../../datasets-detail-store/store'
+import type { InputVar, Var, Variable } from '@/app/components/workflow/types'
 import type { DataSet } from '@/models/datasets'
+import { useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { InputVarType, VarType } from '@/app/components/workflow/types'
+import { useDatasetsDetailStore } from '../../datasets-detail-store/store'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
 import { findVariableWhenOnLLMVision } from '../utils'
 
-const i18nPrefix = 'workflow.nodes.knowledgeRetrieval'
+const i18nPrefix = 'nodes.knowledgeRetrieval'
 
 type Params = {
-  id: string,
+  id: string
   payload: KnowledgeRetrievalNodeType
   runInputData: Record<string, any>
   runInputDataRef: RefObject<Record<string, any>>
@@ -70,7 +70,7 @@ const useSingleRunFormParams = ({
     const inputFields: FormProps[] = [
       {
         inputs: [{
-          label: t(`${i18nPrefix}.queryText`)!,
+          label: t(`${i18nPrefix}.queryText`, { ns: 'workflow' })!,
           variable: 'query',
           type: InputVarType.paragraph,
           required: false,
@@ -80,11 +80,11 @@ const useSingleRunFormParams = ({
       },
     ]
     if (hasMultiModalDatasets) {
-      const currentVariable = findVariableWhenOnLLMVision(payload.query_attachment_selector, availableFileVars)
+      const currentVariable = findVariableWhenOnLLMVision(payload.query_attachment_selector || [], availableFileVars)
       inputFields.push(
         {
           inputs: [{
-            label: t(`${i18nPrefix}.queryAttachment`)!,
+            label: t(`${i18nPrefix}.queryAttachment`, { ns: 'workflow' })!,
             variable: 'queryAttachment',
             type: currentVariable?.formType as InputVarType,
             required: false,
@@ -98,13 +98,13 @@ const useSingleRunFormParams = ({
   }, [query, setQuery, t, datasetsDetail, payload.dataset_ids, payload.query_attachment_selector, availableFileVars, queryAttachment, setQueryAttachment])
 
   const getDependentVars = () => {
-    return [payload.query_variable_selector, payload.query_attachment_selector]
+    return [payload.query_variable_selector, payload.query_attachment_selector || []]
   }
   const getDependentVar = (variable: string) => {
     if (variable === 'query')
       return payload.query_variable_selector
     if (variable === 'queryAttachment')
-      return payload.query_attachment_selector
+      return payload.query_attachment_selector || []
   }
 
   return {

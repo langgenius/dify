@@ -1,6 +1,5 @@
-import { InputTypeEnum } from './types'
-import { PipelineInputVarType } from '@/models/pipeline'
-import { useTranslation } from 'react-i18next'
+import type { InputType } from './types'
+import type { I18nKeysByPrefix } from '@/types/i18n'
 import {
   RiAlignLeft,
   RiCheckboxLine,
@@ -10,12 +9,21 @@ import {
   RiListCheck3,
   RiTextSnippet,
 } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
+import { PipelineInputVarType } from '@/models/pipeline'
+import { InputTypeEnum } from './types'
 
-const i18nFileTypeMap: Record<string, string> = {
+type VariableConfigKeySuffix = I18nKeysByPrefix<'appDebug', 'variableConfig.'>
+
+const i18nFileTypeMap = {
+  'text-input': 'text-input',
+  'paragraph': 'paragraph',
   'number': 'number',
+  'select': 'select',
+  'checkbox': 'checkbox',
   'file': 'single-file',
   'file-list': 'multi-files',
-}
+} satisfies Record<InputType, VariableConfigKeySuffix>
 
 const INPUT_TYPE_ICON = {
   [PipelineInputVarType.textInput]: RiTextSnippet,
@@ -44,7 +52,7 @@ export const useInputTypeOptions = (supportFile: boolean) => {
   return options.map((value) => {
     return {
       value,
-      label: t(`appDebug.variableConfig.${i18nFileTypeMap[value] || value}`),
+      label: t(`variableConfig.${i18nFileTypeMap[value]}`, { ns: 'appDebug' }),
       Icon: INPUT_TYPE_ICON[value],
       type: DATA_TYPE[value],
     }

@@ -55,14 +55,14 @@ const Template = ({
           manualClose={manualClose}
           disabled={disabled}
           btnElement={<span className="text-xs font-medium text-text-secondary">Popover trigger</span>}
-          htmlContent={
+          htmlContent={(
             <PopoverContent
               title={trigger === 'hover' ? 'Quick help' : 'More actions'}
               description={trigger === 'hover'
                 ? 'Use hover-triggered popovers for light contextual hints and inline docs.'
                 : 'Click-triggered popovers are ideal for menus that require user decisions.'}
             />
-          }
+          )}
         />
       </div>
     </div>

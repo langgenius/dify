@@ -1,24 +1,24 @@
+import type {
+  CommonNodeType,
+  OnSelectBlock,
+} from '@/app/components/workflow/types'
+import { RiMoreFill } from '@remixicon/react'
+import { intersection } from 'es-toolkit/array'
 import {
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiMoreFill } from '@remixicon/react'
-import { intersection } from 'lodash-es'
+import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import Button from '@/app/components/base/button'
 import BlockSelector from '@/app/components/workflow/block-selector'
 import {
   useAvailableBlocks,
   useNodesInteractions,
 } from '@/app/components/workflow/hooks'
-import type {
-  CommonNodeType,
-  OnSelectBlock,
-} from '@/app/components/workflow/types'
 
 type ChangeItemProps = {
   data: CommonNodeType
@@ -44,8 +44,8 @@ const ChangeItem = ({
 
   const renderTrigger = useCallback(() => {
     return (
-      <div className='flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover'>
-        {t('workflow.panel.change')}
+      <div className="flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover">
+        {t('panel.change', { ns: 'workflow' })}
       </div>
     )
   }, [t])
@@ -53,13 +53,13 @@ const ChangeItem = ({
   return (
     <BlockSelector
       onSelect={handleSelect}
-      placement='top-end'
+      placement="top-end"
       offset={{
         mainAxis: 6,
         crossAxis: 8,
       }}
       trigger={renderTrigger}
-      popupClassName='!w-[328px]'
+      popupClassName="!w-[328px]"
       availableBlocksTypes={intersection(availablePrevBlocks, availableNextBlocks).filter(item => item !== data.type)}
     />
   )
@@ -87,37 +87,37 @@ const Operator = ({
 
   return (
     <PortalToFollowElem
-      placement='bottom-end'
+      placement="bottom-end"
       offset={{ mainAxis: 4, crossAxis: -4 }}
       open={open}
       onOpenChange={onOpenChange}
     >
       <PortalToFollowElemTrigger onClick={() => onOpenChange(!open)}>
-        <Button className='h-6 w-6 p-0'>
-          <RiMoreFill className='h-4 w-4' />
+        <Button className="h-6 w-6 p-0">
+          <RiMoreFill className="h-4 w-4" />
         </Button>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-10'>
-        <div className='system-md-regular min-w-[120px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur text-text-secondary shadow-lg'>
-          <div className='p-1'>
+      <PortalToFollowElemContent className="z-10">
+        <div className="system-md-regular min-w-[120px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur text-text-secondary shadow-lg">
+          <div className="p-1">
             <ChangeItem
               data={data}
               nodeId={nodeId}
               sourceHandle={sourceHandle}
             />
             <div
-              className='flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover'
+              className="flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
               onClick={() => handleNodeDisconnect(nodeId)}
             >
-              {t('workflow.common.disconnect')}
+              {t('common.disconnect', { ns: 'workflow' })}
             </div>
           </div>
-          <div className='p-1'>
+          <div className="p-1">
             <div
-              className='flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover'
+              className="flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
               onClick={() => handleNodeDelete(nodeId)}
             >
-              {t('common.operation.delete')}
+              {t('operation.delete', { ns: 'common' })}
             </div>
           </div>
         </div>

@@ -8,8 +8,18 @@ This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next
 
 Before starting the web frontend service, please make sure the following environment is ready.
 
-- [Node.js](https://nodejs.org) >= v22.11.x
-- [pnpm](https://pnpm.io) v10.x
+- [Node.js](https://nodejs.org)
+- [pnpm](https://pnpm.io)
+
+> [!TIP]
+> It is recommended to install and enable Corepack to manage package manager versions automatically:
+>
+> ```bash
+> npm install -g corepack
+> corepack enable
+> ```
+>
+> Learn more: [Corepack](https://github.com/nodejs/corepack#readme)
 
 First, install the dependencies:
 
@@ -99,14 +109,14 @@ If your IDE is VSCode, rename `web/.vscode/settings.example.json` to `web/.vscod
 
 ## Test
 
-We use [Jest](https://jestjs.io/) and [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/) for Unit Testing.
+We use [Vitest](https://vitest.dev/) and [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/) for Unit Testing.
 
 **📖 Complete Testing Guide**: See [web/testing/testing.md](./testing/testing.md) for detailed testing specifications, best practices, and examples.
 
 Run test:
 
 ```bash
-pnpm run test
+pnpm test
 ```
 
 ### Example Code

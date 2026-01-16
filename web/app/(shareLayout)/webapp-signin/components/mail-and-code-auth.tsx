@@ -1,15 +1,14 @@
+import { noop } from 'es-toolkit/function'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { useContext } from 'use-context-selector'
-import Input from '@/app/components/base/input'
 import Button from '@/app/components/base/button'
-import { emailRegex } from '@/config'
+import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
-import { sendWebAppEMailLoginCode } from '@/service/common'
 import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/countdown'
-import I18NContext from '@/context/i18n'
-import { noop } from 'lodash-es'
+import { emailRegex } from '@/config'
+import { useLocale } from '@/context/i18n'
+import { sendWebAppEMailLoginCode } from '@/service/common'
 
 export default function MailAndCodeAuth() {
   const { t } = useTranslation()
@@ -18,19 +17,19 @@ export default function MailAndCodeAuth() {
   const emailFromLink = decodeURIComponent(searchParams.get('email') || '')
   const [email, setEmail] = useState(emailFromLink)
   const [loading, setIsLoading] = useState(false)
-  const { locale } = useContext(I18NContext)
+  const locale = useLocale()
 
   const handleGetEMailVerificationCode = async () => {
     try {
       if (!email) {
-        Toast.notify({ type: 'error', message: t('login.error.emailEmpty') })
+        Toast.notify({ type: 'error', message: t('error.emailEmpty', { ns: 'login' }) })
         return
       }
 
       if (!emailRegex.test(email)) {
         Toast.notify({
           type: 'error',
-          message: t('login.error.emailInValid'),
+          message: t('error.emailInValid', { ns: 'login' }),
         })
         return
       }
@@ -52,17 +51,18 @@ export default function MailAndCodeAuth() {
     }
   }
 
-  return (<form onSubmit={noop}>
-    <input type='text' className='hidden' />
-    <div className='mb-2'>
-      <label htmlFor="email" className='system-md-semibold my-2 text-text-secondary'>{t('login.email')}</label>
-      <div className='mt-1'>
-        <Input id='email' type="email" value={email} placeholder={t('login.emailPlaceholder') as string} onChange={e => setEmail(e.target.value)} />
+  return (
+    <form onSubmit={noop}>
+      <input type="text" className="hidden" />
+      <div className="mb-2">
+        <label htmlFor="email" className="system-md-semibold my-2 text-text-secondary">{t('email', { ns: 'login' })}</label>
+        <div className="mt-1">
+          <Input id="email" type="email" value={email} placeholder={t('emailPlaceholder', { ns: 'login' }) as string} onChange={e => setEmail(e.target.value)} />
+        </div>
+        <div className="mt-3">
+          <Button loading={loading} disabled={loading || !email} variant="primary" className="w-full" onClick={handleGetEMailVerificationCode}>{t('signup.verifyMail', { ns: 'login' })}</Button>
+        </div>
       </div>
-      <div className='mt-3'>
-        <Button loading={loading} disabled={loading || !email} variant='primary' className='w-full' onClick={handleGetEMailVerificationCode}>{t('login.signup.verifyMail')}</Button>
-      </div>
-    </div>
-  </form>
+    </form>
   )
 }

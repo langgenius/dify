@@ -26,7 +26,7 @@ console_ns.schema_model(Parser.__name__, Parser.model_json_schema(ref_template=D
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/datasource/nodes/<string:node_id>/preview")
 class DataSourceContentPreviewApi(Resource):
-    @console_ns.expect(console_ns.models[Parser.__name__], validate=True)
+    @console_ns.expect(console_ns.models[Parser.__name__])
     @setup_required
     @login_required
     @account_initialization_required

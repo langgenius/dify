@@ -78,7 +78,7 @@ class Dataset(Base):
     pipeline_id = mapped_column(StringUUID, nullable=True)
     chunk_structure = mapped_column(sa.String(255), nullable=True)
     enable_api = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
-    is_multimodal = mapped_column(sa.Boolean, nullable=False, server_default=db.text("false"))
+    is_multimodal = mapped_column(sa.Boolean, default=False, nullable=False, server_default=db.text("false"))
 
     @property
     def total_documents(self):
@@ -1149,7 +1149,7 @@ class DatasetCollectionBinding(TypeBase):
     )
 
 
-class TidbAuthBinding(Base):
+class TidbAuthBinding(TypeBase):
     __tablename__ = "tidb_auth_bindings"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="tidb_auth_bindings_pkey"),
@@ -1158,7 +1158,13 @@ class TidbAuthBinding(Base):
         sa.Index("tidb_auth_bindings_created_at_idx", "created_at"),
         sa.Index("tidb_auth_bindings_status_idx", "status"),
     )
-    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default=lambda: str(uuid4()))
+    id: Mapped[str] = mapped_column(
+        StringUUID,
+        primary_key=True,
+        insert_default=lambda: str(uuid4()),
+        default_factory=lambda: str(uuid4()),
+        init=False,
+    )
     tenant_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     cluster_id: Mapped[str] = mapped_column(String(255), nullable=False)
     cluster_name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -1166,7 +1172,9 @@ class TidbAuthBinding(Base):
     status: Mapped[str] = mapped_column(sa.String(255), nullable=False, server_default=sa.text("'CREATING'"))
     account: Mapped[str] = mapped_column(String(255), nullable=False)
     password: Mapped[str] = mapped_column(String(255), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
 
 class Whitelist(TypeBase):
@@ -1532,6 +1540,7 @@ class PipelineRecommendedPlugin(TypeBase):
     )
     plugin_id: Mapped[str] = mapped_column(LongText, nullable=False)
     provider_name: Mapped[str] = mapped_column(LongText, nullable=False)
+    type: Mapped[str] = mapped_column(sa.String(50), nullable=False, server_default=sa.text("'tool'"))
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(

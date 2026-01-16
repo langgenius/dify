@@ -230,7 +230,7 @@ class ModelProviderModelApi(Resource):
 
         return {"result": "success"}, 200
 
-    @console_ns.expect(console_ns.models[ParserDeleteModels.__name__], validate=True)
+    @console_ns.expect(console_ns.models[ParserDeleteModels.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -282,9 +282,10 @@ class ModelProviderModelCredentialApi(Resource):
                 tenant_id=tenant_id, provider_name=provider
             )
         else:
-            model_type = args.model_type
+            # Normalize model_type to the origin value stored in DB (e.g., "text-generation" for LLM)
+            normalized_model_type = args.model_type.to_origin_model_type()
             available_credentials = model_provider_service.provider_manager.get_provider_model_available_credentials(
-                tenant_id=tenant_id, provider_name=provider, model_type=model_type, model_name=args.model
+                tenant_id=tenant_id, provider_name=provider, model_type=normalized_model_type, model_name=args.model
             )
 
         return jsonable_encoder(

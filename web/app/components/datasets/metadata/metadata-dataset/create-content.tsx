@@ -1,16 +1,17 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useState } from 'react'
-import { DataType } from '../types'
-import ModalLikeWrap from '../../../base/modal-like-wrap'
-import Field from './field'
-import OptionCard from '../../../workflow/nodes/_base/components/option-card'
-import Input from '@/app/components/base/input'
 import { RiArrowLeftLine } from '@remixicon/react'
+import { noop } from 'es-toolkit/function'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { noop } from 'lodash-es'
+import Input from '@/app/components/base/input'
+import ModalLikeWrap from '../../../base/modal-like-wrap'
+import OptionCard from '../../../workflow/nodes/_base/components/option-card'
+import { DataType } from '../types'
+import Field from './field'
 
-const i18nPrefix = 'dataset.metadata.createMetadata'
+const i18nPrefix = 'metadata.createMetadata'
 
 export type Props = {
   onClose?: () => void
@@ -45,42 +46,42 @@ const CreateContent: FC<Props> = ({
 
   return (
     <ModalLikeWrap
-      title={t(`${i18nPrefix}.title`)}
+      title={t(`${i18nPrefix}.title`, { ns: 'dataset' })}
       onClose={onClose}
       onConfirm={handleSave}
       hideCloseBtn={hasBack}
       beforeHeader={hasBack && (
-        <div className='relative left-[-4px] mb-1 flex cursor-pointer items-center space-x-1 py-1 text-text-accent' onClick={onBack}>
-          <RiArrowLeftLine className='size-4' />
-          <div className='system-xs-semibold-uppercase'>{t(`${i18nPrefix}.back`)}</div>
+        <div className="relative left-[-4px] mb-1 flex cursor-pointer items-center space-x-1 py-1 text-text-accent" onClick={onBack}>
+          <RiArrowLeftLine className="size-4" />
+          <div className="system-xs-semibold-uppercase">{t(`${i18nPrefix}.back`, { ns: 'dataset' })}</div>
         </div>
       )}
     >
-      <div className='space-y-3'>
-        <Field label={t(`${i18nPrefix}.type`)}>
-          <div className='grid grid-cols-3 gap-2'>
+      <div className="space-y-3">
+        <Field label={t(`${i18nPrefix}.type`, { ns: 'dataset' })}>
+          <div className="grid grid-cols-3 gap-2">
             <OptionCard
-              title='String'
+              title="String"
               selected={type === DataType.string}
               onSelect={handleTypeChange(DataType.string)}
             />
             <OptionCard
-              title='Number'
+              title="Number"
               selected={type === DataType.number}
               onSelect={handleTypeChange(DataType.number)}
             />
             <OptionCard
-              title='Time'
+              title="Time"
               selected={type === DataType.time}
               onSelect={handleTypeChange(DataType.time)}
             />
           </div>
         </Field>
-        <Field label={t(`${i18nPrefix}.name`)}>
+        <Field label={t(`${i18nPrefix}.name`, { ns: 'dataset' })}>
           <Input
             value={name}
             onChange={handleNameChange}
-            placeholder={t(`${i18nPrefix}.namePlaceholder`)}
+            placeholder={t(`${i18nPrefix}.namePlaceholder`, { ns: 'dataset' })}
           />
         </Field>
       </div>

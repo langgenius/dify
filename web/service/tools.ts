@@ -1,4 +1,3 @@
-import { get, post } from './base'
 import type {
   Collection,
   CustomCollectionBackend,
@@ -9,6 +8,7 @@ import type {
   WorkflowToolProviderResponse,
 } from '@/app/components/tools/types'
 import { buildProviderQuery } from './_tools_util'
+import { get, post } from './base'
 
 export const fetchCollectionList = () => {
   return get<Collection[]>('/workspaces/current/tool-providers')
@@ -58,7 +58,7 @@ export const removeBuiltInToolCredential = (collectionName: string) => {
 }
 
 export const parseParamsSchema = (schema: string) => {
-  return post<{ parameters_schema: CustomParamSchema[]; schema_type: string }>('/workspaces/current/tool-provider/api/schema', {
+  return post<{ parameters_schema: CustomParamSchema[], schema_type: string }>('/workspaces/current/tool-provider/api/schema', {
     body: {
       schema,
     },

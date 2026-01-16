@@ -13,7 +13,6 @@ from controllers.service_api.dataset.error import DatasetInUseError, DatasetName
 from controllers.service_api.wraps import (
     DatasetApiResource,
     cloud_edition_billing_rate_limit_check,
-    validate_dataset_token,
 )
 from core.model_runtime.entities.model_entities import ModelType
 from core.provider_manager import ProviderManager
@@ -49,7 +48,7 @@ class DatasetUpdatePayload(BaseModel):
     embedding_model: str | None = None
     embedding_model_provider: str | None = None
     retrieval_model: RetrievalModel | None = None
-    partial_member_list: list[str] | None = None
+    partial_member_list: list[dict[str, str]] | None = None
     external_retrieval_model: dict[str, Any] | None = None
     external_knowledge_id: str | None = None
     external_knowledge_api_id: str | None = None
@@ -460,9 +459,8 @@ class DatasetTagsApi(DatasetApiResource):
             401: "Unauthorized - invalid API token",
         }
     )
-    @validate_dataset_token
     @service_api_ns.marshal_with(build_dataset_tag_fields(service_api_ns))
-    def get(self, _, dataset_id):
+    def get(self, _):
         """Get all knowledge type tags."""
         assert isinstance(current_user, Account)
         cid = current_user.current_tenant_id
@@ -482,8 +480,7 @@ class DatasetTagsApi(DatasetApiResource):
         }
     )
     @service_api_ns.marshal_with(build_dataset_tag_fields(service_api_ns))
-    @validate_dataset_token
-    def post(self, _, dataset_id):
+    def post(self, _):
         """Add a knowledge type tag."""
         assert isinstance(current_user, Account)
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
@@ -506,8 +503,7 @@ class DatasetTagsApi(DatasetApiResource):
         }
     )
     @service_api_ns.marshal_with(build_dataset_tag_fields(service_api_ns))
-    @validate_dataset_token
-    def patch(self, _, dataset_id):
+    def patch(self, _):
         assert isinstance(current_user, Account)
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
@@ -533,9 +529,8 @@ class DatasetTagsApi(DatasetApiResource):
             403: "Forbidden - insufficient permissions",
         }
     )
-    @validate_dataset_token
     @edit_permission_required
-    def delete(self, _, dataset_id):
+    def delete(self, _):
         """Delete a knowledge type tag."""
         payload = TagDeletePayload.model_validate(service_api_ns.payload or {})
         TagService.delete_tag(payload.tag_id)
@@ -555,8 +550,7 @@ class DatasetTagBindingApi(DatasetApiResource):
             403: "Forbidden - insufficient permissions",
         }
     )
-    @validate_dataset_token
-    def post(self, _, dataset_id):
+    def post(self, _):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         assert isinstance(current_user, Account)
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
@@ -580,8 +574,7 @@ class DatasetTagUnbindingApi(DatasetApiResource):
             403: "Forbidden - insufficient permissions",
         }
     )
-    @validate_dataset_token
-    def post(self, _, dataset_id):
+    def post(self, _):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         assert isinstance(current_user, Account)
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
@@ -604,7 +597,6 @@ class DatasetTagsBindingStatusApi(DatasetApiResource):
             401: "Unauthorized - invalid API token",
         }
     )
-    @validate_dataset_token
     def get(self, _, *args, **kwargs):
         """Get all knowledge type tags."""
         dataset_id = kwargs.get("dataset_id")

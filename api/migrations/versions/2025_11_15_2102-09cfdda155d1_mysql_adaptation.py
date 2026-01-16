@@ -1,4 +1,4 @@
-"""empty message
+"""mysql adaptation
 
 Revision ID: 09cfdda155d1
 Revises: 669ffd70119c
@@ -97,11 +97,31 @@ def downgrade():
               batch_op.alter_column('include_plugins',
                      existing_type=sa.JSON(),
                      type_=postgresql.ARRAY(sa.VARCHAR(length=255)),
-                     existing_nullable=False)
+                     existing_nullable=False,
+                     postgresql_using="""
+                     COALESCE(
+                         regexp_replace(
+                             replace(replace(include_plugins::text, '[', '{'), ']', '}'),
+                             '"',
+                             '',
+                             'g'
+                         )::varchar(255)[],
+                         ARRAY[]::varchar(255)[]
+                     )""")
               batch_op.alter_column('exclude_plugins',
                      existing_type=sa.JSON(),
                      type_=postgresql.ARRAY(sa.VARCHAR(length=255)),
-                     existing_nullable=False)
+                     existing_nullable=False,
+                     postgresql_using="""
+                     COALESCE(
+                         regexp_replace(
+                             replace(replace(exclude_plugins::text, '[', '{'), ']', '}'),
+                             '"',
+                             '',
+                             'g'
+                         )::varchar(255)[],
+                         ARRAY[]::varchar(255)[]
+                     )""")
 
        with op.batch_alter_table('external_knowledge_bindings', schema=None) as batch_op:
               batch_op.alter_column('external_knowledge_id',

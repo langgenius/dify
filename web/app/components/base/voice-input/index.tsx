@@ -1,17 +1,17 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useParams, usePathname } from 'next/navigation'
 import {
   RiCloseLine,
   RiLoader2Line,
 } from '@remixicon/react'
-import Recorder from 'js-audio-recorder'
 import { useRafInterval } from 'ahooks'
-import { convertToMp3 } from './utils'
-import s from './index.module.css'
-import cn from '@/utils/classnames'
+import Recorder from 'js-audio-recorder'
+import { useParams, usePathname } from 'next/navigation'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import { audioToText } from '@/service/share'
+import { cn } from '@/utils/classnames'
+import s from './index.module.css'
+import { convertToMp3 } from './utils'
 
 type VoiceInputTypes = {
   onConverted: (text: string) => void
@@ -167,23 +167,23 @@ const VoiceInput = ({
 
   return (
     <div className={cn(s.wrapper, 'absolute inset-0 rounded-xl')}>
-      <div className='absolute inset-[1.5px] flex items-center overflow-hidden rounded-[10.5px] bg-primary-25 py-[14px] pl-[14.5px] pr-[6.5px]'>
-        <canvas id='voice-input-record' className='absolute bottom-0 left-0 h-4 w-full' />
+      <div className="absolute inset-[1.5px] flex items-center overflow-hidden rounded-[10.5px] bg-primary-25 py-[14px] pl-[14.5px] pr-[6.5px]">
+        <canvas id="voice-input-record" className="absolute bottom-0 left-0 h-4 w-full" />
         {
-          startConvert && <RiLoader2Line className='mr-2 h-4 w-4 animate-spin text-primary-700' />
+          startConvert && <RiLoader2Line className="mr-2 h-4 w-4 animate-spin text-primary-700" />
         }
-        <div className='grow'>
+        <div className="grow">
           {
             startRecord && (
-              <div className='text-sm text-gray-500'>
-                {t('common.voiceInput.speaking')}
+              <div className="text-sm text-gray-500">
+                {t('voiceInput.speaking', { ns: 'common' })}
               </div>
             )
           }
           {
             startConvert && (
               <div className={cn(s.convert, 'text-sm')}>
-                {t('common.voiceInput.converting')}
+                {t('voiceInput.converting', { ns: 'common' })}
               </div>
             )
           }
@@ -191,20 +191,20 @@ const VoiceInput = ({
         {
           startRecord && (
             <div
-              className='mr-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg  hover:bg-primary-100'
+              className="mr-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg  hover:bg-primary-100"
               onClick={handleStopRecorder}
             >
-              <StopCircle className='h-5 w-5 text-primary-600' />
+              <StopCircle className="h-5 w-5 text-primary-600" />
             </div>
           )
         }
         {
           startConvert && (
             <div
-              className='mr-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg  hover:bg-gray-200'
+              className="mr-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg  hover:bg-gray-200"
               onClick={onCancel}
             >
-              <RiCloseLine className='h-4 w-4 text-gray-500' />
+              <RiCloseLine className="h-4 w-4 text-gray-500" />
             </div>
           )
         }

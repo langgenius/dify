@@ -1,32 +1,34 @@
 'use client'
-import React, { useEffect, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { AppDetailResponse } from '@/models/app'
+import type { AppSSO } from '@/types/app'
 import { RiEditLine, RiLoopLeftLine } from '@remixicon/react'
+import * as React from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import Confirm from '@/app/components/base/confirm'
+import CopyFeedback from '@/app/components/base/copy-feedback'
+import Divider from '@/app/components/base/divider'
 import {
   Mcp,
 } from '@/app/components/base/icons/src/vender/other'
-import Button from '@/app/components/base/button'
-import Tooltip from '@/app/components/base/tooltip'
 import Switch from '@/app/components/base/switch'
-import Divider from '@/app/components/base/divider'
-import CopyFeedback from '@/app/components/base/copy-feedback'
-import Confirm from '@/app/components/base/confirm'
-import type { AppDetailResponse } from '@/models/app'
-import { useAppContext } from '@/context/app-context'
-import { AppModeEnum, type AppSSO } from '@/types/app'
+import Tooltip from '@/app/components/base/tooltip'
 import Indicator from '@/app/components/header/indicator'
 import MCPServerModal from '@/app/components/tools/mcp/mcp-server-modal'
-import { useAppWorkflow } from '@/service/use-workflow'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { useAppContext } from '@/context/app-context'
+import { useDocLink } from '@/context/i18n'
+import { fetchAppDetail } from '@/service/apps'
 import {
   useInvalidateMCPServerDetail,
   useMCPServerDetail,
   useRefreshMCPServerCode,
   useUpdateMCPServer,
 } from '@/service/use-tools'
-import { BlockEnum } from '@/app/components/workflow/types'
-import cn from '@/utils/classnames'
-import { fetchAppDetail } from '@/service/apps'
-import { useDocLink } from '@/context/i18n'
+import { useAppWorkflow } from '@/service/use-workflow'
+import { AppModeEnum } from '@/types/app'
+import { cn } from '@/utils/classnames'
 
 export type IAppCardProps = {
   appInfo: AppDetailResponse & Partial<AppSSO>
@@ -54,7 +56,7 @@ function MCPServiceCard({
   const { data: currentWorkflow } = useAppWorkflow(isAdvancedApp ? appId : '')
   const [basicAppConfig, setBasicAppConfig] = useState<any>({})
   const basicAppInputForm = useMemo(() => {
-    if(!isBasicApp || !basicAppConfig?.user_input_form)
+    if (!isBasicApp || !basicAppConfig?.user_input_form)
       return []
     return basicAppConfig.user_input_form.map((item: any) => {
       const type = Object.keys(item)[0]
@@ -65,7 +67,7 @@ function MCPServiceCard({
     })
   }, [basicAppConfig.user_input_form, isBasicApp])
   useEffect(() => {
-    if(isBasicApp && appId) {
+    if (isBasicApp && appId) {
       (async () => {
         const res = await fetchAppDetail({ url: '/apps', id: appId })
         setBasicAppConfig(res?.model_config || {})
@@ -89,7 +91,7 @@ function MCPServiceCard({
   const [activated, setActivated] = useState(serverActivated)
 
   const latestParams = useMemo(() => {
-    if(isAdvancedApp) {
+    if (isAdvancedApp) {
       if (!currentWorkflow?.graph)
         return []
       const startNode = currentWorkflow?.graph.nodes.find(node => node.data.type === BlockEnum.Start) as any
@@ -150,55 +152,63 @@ function MCPServiceCard({
       <div className={cn('w-full max-w-full rounded-xl border-l-[0.5px] border-t border-effects-highlight', isMinimalState && 'h-12')}>
         <div className={cn('relative rounded-xl bg-background-default', triggerModeDisabled && 'opacity-60')}>
           {triggerModeDisabled && (
-            triggerModeMessage ? (
-              <Tooltip
-                popupContent={triggerModeMessage}
-                popupClassName="max-w-64 rounded-xl bg-components-panel-bg px-3 py-2 text-xs text-text-secondary shadow-lg"
-                position="right"
-              >
-                <div className='absolute inset-0 z-10 cursor-not-allowed rounded-xl' aria-hidden="true"></div>
-              </Tooltip>
-            ) : <div className='absolute inset-0 z-10 cursor-not-allowed rounded-xl' aria-hidden="true"></div>
+            triggerModeMessage
+              ? (
+                  <Tooltip
+                    popupContent={triggerModeMessage}
+                    popupClassName="max-w-64 rounded-xl bg-components-panel-bg px-3 py-2 text-xs text-text-secondary shadow-lg"
+                    position="right"
+                  >
+                    <div className="absolute inset-0 z-10 cursor-not-allowed rounded-xl" aria-hidden="true"></div>
+                  </Tooltip>
+                )
+              : <div className="absolute inset-0 z-10 cursor-not-allowed rounded-xl" aria-hidden="true"></div>
           )}
           <div className={cn('flex w-full flex-col items-start justify-center gap-3 self-stretch p-3', isMinimalState ? 'border-0' : 'border-b-[0.5px] border-divider-subtle')}>
-            <div className='flex w-full items-center gap-3 self-stretch'>
-              <div className='flex grow items-center'>
-                <div className='mr-2 shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-brand-blue-brand-500 p-1 shadow-md'>
-                  <Mcp className='h-4 w-4 text-text-primary-on-surface' />
+            <div className="flex w-full items-center gap-3 self-stretch">
+              <div className="flex grow items-center">
+                <div className="mr-2 shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-brand-blue-brand-500 p-1 shadow-md">
+                  <Mcp className="h-4 w-4 text-text-primary-on-surface" />
                 </div>
                 <div className="group w-full">
                   <div className="system-md-semibold min-w-0 overflow-hidden text-ellipsis break-normal text-text-secondary group-hover:text-text-primary">
-                    {t('tools.mcp.server.title')}
+                    {t('mcp.server.title', { ns: 'tools' })}
                   </div>
                 </div>
               </div>
-              <div className='flex items-center gap-1'>
+              <div className="flex items-center gap-1">
                 <Indicator color={serverActivated ? 'green' : 'yellow'} />
                 <div className={`${serverActivated ? 'text-text-success' : 'text-text-warning'} system-xs-semibold-uppercase`}>
                   {serverActivated
-                    ? t('appOverview.overview.status.running')
-                    : t('appOverview.overview.status.disable')}
+                    ? t('overview.status.running', { ns: 'appOverview' })
+                    : t('overview.status.disable', { ns: 'appOverview' })}
                 </div>
               </div>
               <Tooltip
                 popupContent={
-                  toggleDisabled ? (
-                    appUnpublished ? (
-                      t('tools.mcp.server.publishTip')
-                    ) : missingStartNode ? (
-                      <>
-                        <div className="mb-1 text-xs font-normal text-text-secondary">
-                          {t('appOverview.overview.appInfo.enableTooltip.description')}
-                        </div>
-                        <div
-                          className="cursor-pointer text-xs font-normal text-text-accent hover:underline"
-                          onClick={() => window.open(docLink('/guides/workflow/node/user-input'), '_blank')}
-                        >
-                          {t('appOverview.overview.appInfo.enableTooltip.learnMore')}
-                        </div>
-                      </>
-                    ) : triggerModeMessage || ''
-                  ) : ''
+                  toggleDisabled
+                    ? (
+                        appUnpublished
+                          ? (
+                              t('mcp.server.publishTip', { ns: 'tools' })
+                            )
+                          : missingStartNode
+                            ? (
+                                <>
+                                  <div className="mb-1 text-xs font-normal text-text-secondary">
+                                    {t('overview.appInfo.enableTooltip.description', { ns: 'appOverview' })}
+                                  </div>
+                                  <div
+                                    className="cursor-pointer text-xs font-normal text-text-accent hover:underline"
+                                    onClick={() => window.open(docLink('/guides/workflow/node/user-input'), '_blank')}
+                                  >
+                                    {t('overview.appInfo.enableTooltip.learnMore', { ns: 'appOverview' })}
+                                  </div>
+                                </>
+                              )
+                            : triggerModeMessage || ''
+                      )
+                    : ''
                 }
                 position="right"
                 popupClassName="w-58 max-w-60 rounded-xl bg-components-panel-bg px-3.5 py-3 shadow-lg"
@@ -210,9 +220,9 @@ function MCPServiceCard({
               </Tooltip>
             </div>
             {!isMinimalState && (
-              <div className='flex flex-col items-start justify-center self-stretch'>
+              <div className="flex flex-col items-start justify-center self-stretch">
                 <div className="system-xs-medium pb-1 text-text-tertiary">
-                  {t('tools.mcp.server.url')}
+                  {t('mcp.server.url', { ns: 'tools' })}
                 </div>
                 <div className="inline-flex h-9 w-full items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 pl-2">
                   <div className="flex h-4 min-w-0 flex-1 items-start justify-start gap-2 px-1">
@@ -224,18 +234,18 @@ function MCPServiceCard({
                     <>
                       <CopyFeedback
                         content={serverURL}
-                        className={'!size-6'}
+                        className="!size-6"
                       />
                       <Divider type="vertical" className="!mx-0.5 !h-3.5 shrink-0" />
                       {isCurrentWorkspaceManager && (
                         <Tooltip
-                          popupContent={t('appOverview.overview.appInfo.regenerate') || ''}
+                          popupContent={t('overview.appInfo.regenerate', { ns: 'appOverview' }) || ''}
                         >
                           <div
                             className="cursor-pointer rounded-md p-1 hover:bg-state-base-hover"
                             onClick={() => setShowConfirmDelete(true)}
                           >
-                            <RiLoopLeftLine className={cn('h-4 w-4 text-text-tertiary hover:text-text-secondary', genLoading && 'animate-spin')}/>
+                            <RiLoopLeftLine className={cn('h-4 w-4 text-text-tertiary hover:text-text-secondary', genLoading && 'animate-spin')} />
                           </div>
                         </Tooltip>
                       )}
@@ -246,17 +256,17 @@ function MCPServiceCard({
             )}
           </div>
           {!isMinimalState && (
-            <div className='flex items-center gap-1 self-stretch p-3'>
+            <div className="flex items-center gap-1 self-stretch p-3">
               <Button
                 disabled={toggleDisabled}
-                size='small'
-                variant='ghost'
+                size="small"
+                variant="ghost"
                 onClick={() => setShowMCPServerModal(true)}
               >
 
                 <div className="flex items-center justify-center gap-[1px]">
                   <RiEditLine className="h-3.5 w-3.5" />
-                  <div className="system-xs-medium px-[3px] text-text-tertiary">{serverPublished ? t('tools.mcp.server.edit') : t('tools.mcp.server.addDescription')}</div>
+                  <div className="system-xs-medium px-[3px] text-text-tertiary">{serverPublished ? t('mcp.server.edit', { ns: 'tools' }) : t('mcp.server.addDescription', { ns: 'tools' })}</div>
                 </div>
               </Button>
             </div>
@@ -276,9 +286,9 @@ function MCPServiceCard({
       {/* button copy link/ button regenerate */}
       {showConfirmDelete && (
         <Confirm
-          type='warning'
-          title={t('appOverview.overview.appInfo.regenerate')}
-          content={t('tools.mcp.server.reGen')}
+          type="warning"
+          title={t('overview.appInfo.regenerate', { ns: 'appOverview' })}
+          content={t('mcp.server.reGen', { ns: 'tools' })}
           isShow={showConfirmDelete}
           onConfirm={() => {
             onGenCode()

@@ -1,26 +1,23 @@
 import type { FC } from 'react'
-import { useState } from 'react'
-import useSWR from 'swr'
-import { useContext } from 'use-context-selector'
-import { useTranslation } from 'react-i18next'
-import FormGeneration from '@/app/components/base/features/new-feature-panel/moderation/form-generation'
-import Modal from '@/app/components/base/modal'
-import Button from '@/app/components/base/button'
-import EmojiPicker from '@/app/components/base/emoji-picker'
-import ApiBasedExtensionSelector from '@/app/components/header/account-setting/api-based-extension-page/selector'
-import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
-import { fetchCodeBasedExtensionList } from '@/service/common'
-import { SimpleSelect } from '@/app/components/base/select'
-import I18n from '@/context/i18n'
-import { LanguagesSupported } from '@/i18n-config/language'
 import type {
   CodeBasedExtensionItem,
   ExternalDataTool,
 } from '@/models/common'
-import { useToastContext } from '@/app/components/base/toast'
+import { noop } from 'es-toolkit/function'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import { noop } from 'lodash-es'
-import { useDocLink } from '@/context/i18n'
+import Button from '@/app/components/base/button'
+import EmojiPicker from '@/app/components/base/emoji-picker'
+import FormGeneration from '@/app/components/base/features/new-feature-panel/moderation/form-generation'
+import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
+import Modal from '@/app/components/base/modal'
+import { SimpleSelect } from '@/app/components/base/select'
+import { useToastContext } from '@/app/components/base/toast'
+import ApiBasedExtensionSelector from '@/app/components/header/account-setting/api-based-extension-page/selector'
+import { useDocLink, useLocale } from '@/context/i18n'
+import { LanguagesSupported } from '@/i18n-config/language'
+import { useCodeBasedExtensions } from '@/service/use-common'
 
 const systemTypes = ['api']
 type ExternalDataToolModalProps = {
@@ -43,28 +40,25 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
   const { t } = useTranslation()
   const docLink = useDocLink()
   const { notify } = useToastContext()
-  const { locale } = useContext(I18n)
+  const locale = useLocale()
   const [localeData, setLocaleData] = useState(data.type ? data : { ...data, type: 'api' })
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
-  const { data: codeBasedExtensionList } = useSWR(
-    '/code-based-extension?module=external_data_tool',
-    fetchCodeBasedExtensionList,
-  )
+  const { data: codeBasedExtensionList } = useCodeBasedExtensions('external_data_tool')
 
   const providers: Provider[] = [
     {
       key: 'api',
-      name: t('common.apiBasedExtension.selector.title'),
+      name: t('apiBasedExtension.selector.title', { ns: 'common' }),
     },
     ...(
       codeBasedExtensionList
         ? codeBasedExtensionList.data.map((item) => {
-          return {
-            key: item.name,
-            name: locale === 'zh-Hans' ? item.label['zh-Hans'] : item.label['en-US'],
-            form_schema: item.form_schema,
-          }
-        })
+            return {
+              key: item.name,
+              name: locale === 'zh-Hans' ? item.label['zh-Hans'] : item.label['en-US'],
+              form_schema: item.form_schema,
+            }
+          })
         : []
     ),
   ]
@@ -139,27 +133,27 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
 
   const handleSave = () => {
     if (!localeData.type) {
-      notify({ type: 'error', message: t('appDebug.errorMessage.valueOfVarRequired', { key: t('appDebug.feature.tools.modal.toolType.title') }) })
+      notify({ type: 'error', message: t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: t('feature.tools.modal.toolType.title', { ns: 'appDebug' }) }) })
       return
     }
 
     if (!localeData.label) {
-      notify({ type: 'error', message: t('appDebug.errorMessage.valueOfVarRequired', { key: t('appDebug.feature.tools.modal.name.title') }) })
+      notify({ type: 'error', message: t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: t('feature.tools.modal.name.title', { ns: 'appDebug' }) }) })
       return
     }
 
     if (!localeData.variable) {
-      notify({ type: 'error', message: t('appDebug.errorMessage.valueOfVarRequired', { key: t('appDebug.feature.tools.modal.variableName.title') }) })
+      notify({ type: 'error', message: t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: t('feature.tools.modal.variableName.title', { ns: 'appDebug' }) }) })
       return
     }
 
-    if (localeData.variable && !/^[a-zA-Z_]\w{0,29}$/.test(localeData.variable)) {
-      notify({ type: 'error', message: t('appDebug.varKeyError.notValid', { key: t('appDebug.feature.tools.modal.variableName.title') }) })
+    if (localeData.variable && !/^[a-z_]\w{0,29}$/i.test(localeData.variable)) {
+      notify({ type: 'error', message: t('varKeyError.notValid', { ns: 'appDebug', key: t('feature.tools.modal.variableName.title', { ns: 'appDebug' }) }) })
       return
     }
 
     if (localeData.type === 'api' && !localeData.config?.api_based_extension_id) {
-      notify({ type: 'error', message: t('appDebug.errorMessage.valueOfVarRequired', { key: locale !== LanguagesSupported[1] ? 'API Extension' : 'API 扩展' }) })
+      notify({ type: 'error', message: t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? 'API Extension' : 'API 扩展' }) })
       return
     }
 
@@ -168,7 +162,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
         if (!localeData.config?.[currentProvider.form_schema[i].variable] && currentProvider.form_schema[i].required) {
           notify({
             type: 'error',
-            message: t('appDebug.errorMessage.valueOfVarRequired', { key: locale !== LanguagesSupported[1] ? currentProvider.form_schema[i].label['en-US'] : currentProvider.form_schema[i].label['zh-Hans'] }),
+            message: t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? currentProvider.form_schema[i].label['en-US'] : currentProvider.form_schema[i].label['zh-Hans'] }),
           })
           return
         }
@@ -183,20 +177,20 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
     onSave(formatData(formattedData))
   }
 
-  const action = data.type ? t('common.operation.edit') : t('common.operation.add')
+  const action = data.type ? t('operation.edit', { ns: 'common' }) : t('operation.add', { ns: 'common' })
 
   return (
     <Modal
       isShow
       onClose={noop}
-      className='!w-[640px] !max-w-none !p-8 !pb-6'
+      className="!w-[640px] !max-w-none !p-8 !pb-6"
     >
-      <div className='mb-2 text-xl font-semibold text-text-primary'>
-        {`${action} ${t('appDebug.variableConfig.apiBasedVar')}`}
+      <div className="mb-2 text-xl font-semibold text-text-primary">
+        {`${action} ${t('variableConfig.apiBasedVar', { ns: 'appDebug' })}`}
       </div>
-      <div className='py-2'>
-        <div className='text-sm font-medium leading-9 text-text-primary'>
-          {t('common.apiBasedExtension.type')}
+      <div className="py-2">
+        <div className="text-sm font-medium leading-9 text-text-primary">
+          {t('apiBasedExtension.type', { ns: 'common' })}
         </div>
         <SimpleSelect
           defaultValue={localeData.type}
@@ -209,48 +203,50 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
           onSelect={item => handleDataTypeChange(item.value as string)}
         />
       </div>
-      <div className='py-2'>
-        <div className='text-sm font-medium leading-9 text-text-primary'>
-          {t('appDebug.feature.tools.modal.name.title')}
+      <div className="py-2">
+        <div className="text-sm font-medium leading-9 text-text-primary">
+          {t('feature.tools.modal.name.title', { ns: 'appDebug' })}
         </div>
-        <div className='flex items-center'>
+        <div className="flex items-center">
           <input
             value={localeData.label || ''}
             onChange={e => handleValueChange({ label: e.target.value })}
-            className='mr-2 block h-9 grow appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-components-input-text-filled outline-none'
-            placeholder={t('appDebug.feature.tools.modal.name.placeholder') || ''}
+            className="mr-2 block h-9 grow appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-components-input-text-filled outline-none"
+            placeholder={t('feature.tools.modal.name.placeholder', { ns: 'appDebug' }) || ''}
           />
-          <AppIcon size='large'
+          <AppIcon
+            size="large"
             onClick={() => { setShowEmojiPicker(true) }}
-            className='!h-9 !w-9 cursor-pointer rounded-lg border-[0.5px] border-components-panel-border '
+            className="!h-9 !w-9 cursor-pointer rounded-lg border-[0.5px] border-components-panel-border "
             icon={localeData.icon}
             background={localeData.icon_background}
           />
         </div>
       </div>
-      <div className='py-2'>
-        <div className='text-sm font-medium leading-9 text-text-primary'>
-          {t('appDebug.feature.tools.modal.variableName.title')}
+      <div className="py-2">
+        <div className="text-sm font-medium leading-9 text-text-primary">
+          {t('feature.tools.modal.variableName.title', { ns: 'appDebug' })}
         </div>
         <input
           value={localeData.variable || ''}
           onChange={e => handleValueChange({ variable: e.target.value })}
-          className='block h-9 w-full appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-components-input-text-filled outline-none'
-          placeholder={t('appDebug.feature.tools.modal.variableName.placeholder') || ''}
+          className="block h-9 w-full appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-components-input-text-filled outline-none"
+          placeholder={t('feature.tools.modal.variableName.placeholder', { ns: 'appDebug' }) || ''}
         />
       </div>
       {
         localeData.type === 'api' && (
-          <div className='py-2'>
-            <div className='flex h-9 items-center justify-between text-sm font-medium text-text-primary'>
-              {t('common.apiBasedExtension.selector.title')}
+          <div className="py-2">
+            <div className="flex h-9 items-center justify-between text-sm font-medium text-text-primary">
+              {t('apiBasedExtension.selector.title', { ns: 'common' })}
               <a
                 href={docLink('/guides/extension/api-based-extension/README')}
-                target='_blank' rel='noopener noreferrer'
-                className='group flex items-center text-xs font-normal text-text-tertiary hover:text-text-accent'
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-center text-xs font-normal text-text-tertiary hover:text-text-accent"
               >
-                <BookOpen01 className='mr-1 h-3 w-3 text-text-tertiary group-hover:text-text-accent' />
-                {t('common.apiBasedExtension.link')}
+                <BookOpen01 className="mr-1 h-3 w-3 text-text-tertiary group-hover:text-text-accent" />
+                {t('apiBasedExtension.link', { ns: 'common' })}
               </a>
             </div>
             <ApiBasedExtensionSelector
@@ -271,18 +267,18 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
           />
         )
       }
-      <div className='mt-6 flex items-center justify-end'>
+      <div className="mt-6 flex items-center justify-end">
         <Button
           onClick={onCancel}
-          className='mr-2'
+          className="mr-2"
         >
-          {t('common.operation.cancel')}
+          {t('operation.cancel', { ns: 'common' })}
         </Button>
         <Button
-          variant='primary'
+          variant="primary"
           onClick={handleSave}
         >
-          {t('common.operation.save')}
+          {t('operation.save', { ns: 'common' })}
         </Button>
       </div>
       {

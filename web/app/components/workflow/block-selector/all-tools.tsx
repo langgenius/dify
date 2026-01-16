@@ -3,34 +3,34 @@ import type {
   RefObject,
   SetStateAction,
 } from 'react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { Plugin } from '../../plugins/types'
 import type {
   BlockEnum,
   ToolWithProvider,
 } from '../types'
 import type { ToolDefaultValue, ToolValue } from './types'
-import { ToolTypeEnum } from './types'
-import Tools from './tools'
-import { useToolTabs } from './hooks'
-import ViewTypeSelect, { ViewType } from './view-type-select'
-import cn from '@/utils/classnames'
-import Button from '@/app/components/base/button'
-import { SearchMenu } from '@/app/components/base/icons/src/vender/line/general'
-import type { ListRef } from '@/app/components/workflow/block-selector/market-place-plugin/list'
-import PluginList, { type ListProps } from '@/app/components/workflow/block-selector/market-place-plugin/list'
-import type { Plugin } from '../../plugins/types'
-import { PluginCategoryEnum } from '../../plugins/types'
-import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
-import { useGlobalPublicStore } from '@/context/global-public-context'
-import RAGToolRecommendations from './rag-tool-recommendations'
-import FeaturedTools from './featured-tools'
-import Link from 'next/link'
-import Divider from '@/app/components/base/divider'
-import { RiArrowRightUpLine } from '@remixicon/react'
-import { getMarketplaceUrl } from '@/utils/var'
-import { useGetLanguage } from '@/context/i18n'
+import type { ListProps, ListRef } from '@/app/components/workflow/block-selector/market-place-plugin/list'
 import type { OnSelectBlock } from '@/app/components/workflow/types'
+import { RiArrowRightUpLine } from '@remixicon/react'
+import Link from 'next/link'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import Divider from '@/app/components/base/divider'
+import { SearchMenu } from '@/app/components/base/icons/src/vender/line/general'
+import PluginList from '@/app/components/workflow/block-selector/market-place-plugin/list'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useGetLanguage } from '@/context/i18n'
+import { cn } from '@/utils/classnames'
+import { getMarketplaceUrl } from '@/utils/var'
+import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
+import { PluginCategoryEnum } from '../../plugins/types'
+import FeaturedTools from './featured-tools'
+import { useToolTabs } from './hooks'
+import RAGToolRecommendations from './rag-tool-recommendations'
+import Tools from './tools'
+import { ToolTypeEnum } from './types'
+import ViewTypeSelect, { ViewType } from './view-type-select'
 
 const marketplaceFooterClassName = 'system-sm-medium z-10 flex h-8 flex-none cursor-pointer items-center rounded-b-lg border-[0.5px] border-t border-components-panel-border bg-components-panel-bg-blur px-4 py-1 text-text-accent-light-mode-only shadow-lg'
 
@@ -47,7 +47,6 @@ type AllToolsProps = {
   canNotSelectMultiple?: boolean
   onSelectMultiple?: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   selectedTools?: ToolValue[]
-  canChooseMCPTool?: boolean
   onTagsChange?: Dispatch<SetStateAction<string[]>>
   isInRAGPipeline?: boolean
   featuredPlugins?: Plugin[]
@@ -71,7 +70,6 @@ const AllTools = ({
   customTools,
   mcpTools = [],
   selectedTools,
-  canChooseMCPTool,
   onTagsChange,
   isInRAGPipeline = false,
   featuredPlugins = [],
@@ -172,7 +170,8 @@ const AllTools = ({
   const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
 
   useEffect(() => {
-    if (!enable_marketplace) return
+    if (!enable_marketplace)
+      return
     if (hasFilter) {
       fetchPlugins({
         query: searchText,
@@ -204,9 +203,9 @@ const AllTools = ({
   }, [onSelect])
 
   return (
-    <div className={cn('min-w-[400px] max-w-[500px]', className)}>
-      <div className='flex items-center justify-between border-b border-divider-subtle px-3'>
-        <div className='flex h-8 items-center space-x-1'>
+    <div className={cn('max-w-[500px]', className)}>
+      <div className="flex items-center justify-between border-b border-divider-subtle px-3">
+        <div className="flex h-8 items-center space-x-1">
           {
             tabs.map(tab => (
               <div
@@ -227,10 +226,10 @@ const AllTools = ({
           <ViewTypeSelect viewType={activeView} onChange={setActiveView} />
         )}
       </div>
-      <div className='flex max-h-[464px] flex-col'>
+      <div className="flex max-h-[464px] flex-col">
         <div
           ref={wrapElemRef}
-          className='flex-1 overflow-y-auto'
+          className="flex-1 overflow-y-auto"
           onScroll={() => pluginRef.current?.handleScroll()}
         >
           <div className={cn(shouldShowEmptyState && 'hidden')}>
@@ -248,21 +247,20 @@ const AllTools = ({
                   providerMap={providerMap}
                   onSelect={onSelect}
                   selectedTools={selectedTools}
-                  canChooseMCPTool={canChooseMCPTool}
                   isLoading={featuredLoading}
                   onInstallSuccess={async () => {
                     await onFeaturedInstallSuccess?.()
                   }}
                 />
-                <div className='px-3'>
-                  <Divider className='!h-px' />
+                <div className="px-3">
+                  <Divider className="!h-px" />
                 </div>
               </>
             )}
             {hasToolsListContent && (
               <>
-                <div className='px-3 pb-1 pt-2'>
-                  <span className='system-xs-medium text-text-primary'>{t('tools.allTools')}</span>
+                <div className="px-3 pb-1 pt-2">
+                  <span className="system-xs-medium text-text-primary">{t('allTools', { ns: 'tools' })}</span>
                 </div>
                 <Tools
                   className={toolContentClassName}
@@ -274,7 +272,6 @@ const AllTools = ({
                   viewType={isSupportGroupView ? activeView : ViewType.flat}
                   hasSearchText={hasSearchText}
                   selectedTools={selectedTools}
-                  canChooseMCPTool={canChooseMCPTool}
                 />
               </>
             )}
@@ -293,21 +290,21 @@ const AllTools = ({
           </div>
 
           {shouldShowEmptyState && (
-            <div className='flex h-full flex-col items-center justify-center gap-3 py-12 text-center'>
-              <SearchMenu className='h-8 w-8 text-text-quaternary' />
-              <div className='text-sm font-medium text-text-secondary'>
-                {t('workflow.tabs.noPluginsFound')}
+            <div className="flex h-full flex-col items-center justify-center gap-3 py-12 text-center">
+              <SearchMenu className="h-8 w-8 text-text-quaternary" />
+              <div className="text-sm font-medium text-text-secondary">
+                {t('tabs.noPluginsFound', { ns: 'workflow' })}
               </div>
               <Link
-                href='https://github.com/langgenius/dify-plugins/issues/new?template=plugin_request.yaml'
-                target='_blank'
+                href="https://github.com/langgenius/dify-plugins/issues/new?template=plugin_request.yaml"
+                target="_blank"
               >
                 <Button
-                  size='small'
-                  variant='secondary-accent'
-                  className='h-6 cursor-pointer px-3 text-xs'
+                  size="small"
+                  variant="secondary-accent"
+                  className="h-6 cursor-pointer px-3 text-xs"
                 >
-                  {t('workflow.tabs.requestToCommunity')}
+                  {t('tabs.requestToCommunity', { ns: 'workflow' })}
                 </Button>
               </Link>
             </div>
@@ -317,10 +314,10 @@ const AllTools = ({
           <Link
             className={marketplaceFooterClassName}
             href={getMarketplaceUrl('', { category: PluginCategoryEnum.tool })}
-            target='_blank'
+            target="_blank"
           >
-            <span>{t('plugin.findMoreInMarketplace')}</span>
-            <RiArrowRightUpLine className='ml-0.5 h-3 w-3' />
+            <span>{t('findMoreInMarketplace', { ns: 'plugin' })}</span>
+            <RiArrowRightUpLine className="ml-0.5 h-3 w-3" />
           </Link>
         )}
       </div>

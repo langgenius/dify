@@ -1,8 +1,8 @@
 'use client'
 
-import { createContext, useContext } from 'use-context-selector'
-import { useEventEmitter } from 'ahooks'
 import type { EventEmitter } from 'ahooks/lib/useEventEmitter'
+import { useEventEmitter } from 'ahooks'
+import { createContext, useContext } from 'use-context-selector'
 
 const EventEmitterContext = createContext<{ eventEmitter: EventEmitter<string> | null }>({
   eventEmitter: null,

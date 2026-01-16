@@ -39,7 +39,7 @@ from core.trigger.errors import (
 plugin_daemon_inner_api_baseurl = URL(str(dify_config.PLUGIN_DAEMON_URL))
 _plugin_daemon_timeout_config = cast(
     float | httpx.Timeout | None,
-    getattr(dify_config, "PLUGIN_DAEMON_TIMEOUT", 300.0),
+    getattr(dify_config, "PLUGIN_DAEMON_TIMEOUT", 600.0),
 )
 plugin_daemon_request_timeout: httpx.Timeout | None
 if _plugin_daemon_timeout_config is None:
@@ -103,6 +103,9 @@ class BasePluginClient:
         prepared_headers["X-Api-Key"] = dify_config.PLUGIN_DAEMON_KEY
         prepared_headers.setdefault("Accept-Encoding", "gzip, deflate, br")
 
+        # Inject traceparent header for distributed tracing
+        self._inject_trace_headers(prepared_headers)
+
         prepared_data: bytes | dict[str, Any] | str | None = (
             data if isinstance(data, (bytes, str, dict)) or data is None else None
         )
@@ -113,6 +116,31 @@ class BasePluginClient:
                 prepared_data = data
 
         return str(url), prepared_headers, prepared_data, params, files
+
+    def _inject_trace_headers(self, headers: dict[str, str]) -> None:
+        """
+        Inject W3C traceparent header for distributed tracing.
+
+        This ensures trace context is propagated to plugin daemon even if
+        HTTPXClientInstrumentor doesn't cover module-level httpx functions.
+        """
+        if not dify_config.ENABLE_OTEL:
+            return
+
+        import contextlib
+
+        # Skip if already present (case-insensitive check)
+        for key in headers:
+            if key.lower() == "traceparent":
+                return
+
+        # Inject traceparent - works as fallback when OTEL instrumentation doesn't cover this call
+        with contextlib.suppress(Exception):
+            from core.helper.trace_id_helper import generate_traceparent_header
+
+            traceparent = generate_traceparent_header()
+            if traceparent:
+                headers["traceparent"] = traceparent
 
     def _stream_request(
         self,

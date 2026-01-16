@@ -1,26 +1,26 @@
 import type { FC, Ref } from 'react'
-import { memo } from 'react'
+import type { Theme } from '../../embedded-chatbot/theme/theme-context'
+import type {
+  EnableType,
+} from '../../types'
+import type { FileUpload } from '@/app/components/base/features/types'
 import {
   RiMicLine,
   RiSendPlane2Fill,
 } from '@remixicon/react'
-import type {
-  EnableType,
-} from '../../types'
-import type { Theme } from '../../embedded-chatbot/theme/theme-context'
-import Button from '@/app/components/base/button'
+import { memo } from 'react'
 import ActionButton from '@/app/components/base/action-button'
+import Button from '@/app/components/base/button'
 import { FileUploaderInChatInput } from '@/app/components/base/file-uploader'
-import type { FileUpload } from '@/app/components/base/features/types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type OperationProps = {
   fileConfig?: FileUpload
   speechToTextConfig?: EnableType
   onShowVoiceInput?: () => void
   onSend: () => void
-  theme?: Theme | null,
-  ref?: Ref<HTMLDivElement>;
+  theme?: Theme | null
+  ref?: Ref<HTMLDivElement>
 }
 const Operation: FC<OperationProps> = ({
   ref,
@@ -37,35 +37,35 @@ const Operation: FC<OperationProps> = ({
       )}
     >
       <div
-        className='flex items-center pl-1'
+        className="flex items-center pl-1"
         ref={ref}
       >
-        <div className='flex items-center space-x-1'>
+        <div className="flex items-center space-x-1">
           {fileConfig?.enabled && <FileUploaderInChatInput fileConfig={fileConfig} />}
           {
             speechToTextConfig?.enabled && (
               <ActionButton
-                size='l'
+                size="l"
                 onClick={onShowVoiceInput}
               >
-                <RiMicLine className='h-5 w-5' />
+                <RiMicLine className="h-5 w-5" />
               </ActionButton>
             )
           }
         </div>
         <Button
-          className='ml-3 w-8 px-0'
-          variant='primary'
+          className="ml-3 w-8 px-0"
+          variant="primary"
           onClick={onSend}
           style={
             theme
               ? {
-                backgroundColor: theme.primaryColor,
-              }
+                  backgroundColor: theme.primaryColor,
+                }
               : {}
           }
         >
-          <RiSendPlane2Fill className='h-4 w-4' />
+          <RiSendPlane2Fill className="h-4 w-4" />
         </Button>
       </div>
     </div>

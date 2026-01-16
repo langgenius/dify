@@ -1,11 +1,10 @@
-import json
 import logging
 from typing import Literal
 from uuid import UUID
 
 from flask import request
-from flask_restx import Namespace, Resource, fields
-from pydantic import BaseModel, Field
+from flask_restx import Resource
+from pydantic import BaseModel, Field, TypeAdapter
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
@@ -14,10 +13,8 @@ from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.app.entities.app_invoke_entities import InvokeFrom
-from fields.conversation_fields import build_message_file_model
-from fields.message_fields import build_agent_thought_model, build_feedback_model
-from fields.raws import FilesContainedField
-from libs.helper import TimestampField
+from fields.conversation_fields import ResultResponse
+from fields.message_fields import MessageInfiniteScrollPagination, MessageListItem
 from models.model import App, AppMode, EndUser
 from services.errors.message import (
     FirstMessageNotExistsError,
@@ -48,49 +45,6 @@ class FeedbackListQuery(BaseModel):
 register_schema_models(service_api_ns, MessageListQuery, MessageFeedbackPayload, FeedbackListQuery)
 
 
-def build_message_model(api_or_ns: Namespace):
-    """Build the message model for the API or Namespace."""
-    # First build the nested models
-    feedback_model = build_feedback_model(api_or_ns)
-    agent_thought_model = build_agent_thought_model(api_or_ns)
-    message_file_model = build_message_file_model(api_or_ns)
-
-    # Then build the message fields with nested models
-    message_fields = {
-        "id": fields.String,
-        "conversation_id": fields.String,
-        "parent_message_id": fields.String,
-        "inputs": FilesContainedField,
-        "query": fields.String,
-        "answer": fields.String(attribute="re_sign_file_url_answer"),
-        "message_files": fields.List(fields.Nested(message_file_model)),
-        "feedback": fields.Nested(feedback_model, attribute="user_feedback", allow_null=True),
-        "retriever_resources": fields.Raw(
-            attribute=lambda obj: json.loads(obj.message_metadata).get("retriever_resources", [])
-            if obj.message_metadata
-            else []
-        ),
-        "created_at": TimestampField,
-        "agent_thoughts": fields.List(fields.Nested(agent_thought_model)),
-        "status": fields.String,
-        "error": fields.String,
-    }
-    return api_or_ns.model("Message", message_fields)
-
-
-def build_message_infinite_scroll_pagination_model(api_or_ns: Namespace):
-    """Build the message infinite scroll pagination model for the API or Namespace."""
-    # Build the nested message model first
-    message_model = build_message_model(api_or_ns)
-
-    message_infinite_scroll_pagination_fields = {
-        "limit": fields.Integer,
-        "has_more": fields.Boolean,
-        "data": fields.List(fields.Nested(message_model)),
-    }
-    return api_or_ns.model("MessageInfiniteScrollPagination", message_infinite_scroll_pagination_fields)
-
-
 @service_api_ns.route("/messages")
 class MessageListApi(Resource):
     @service_api_ns.expect(service_api_ns.models[MessageListQuery.__name__])
@@ -104,7 +58,6 @@ class MessageListApi(Resource):
         }
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
-    @service_api_ns.marshal_with(build_message_infinite_scroll_pagination_model(service_api_ns))
     def get(self, app_model: App, end_user: EndUser):
         """List messages in a conversation.
 
@@ -119,9 +72,16 @@ class MessageListApi(Resource):
         first_id = str(query_args.first_id) if query_args.first_id else None
 
         try:
-            return MessageService.pagination_by_first_id(
+            pagination = MessageService.pagination_by_first_id(
                 app_model, end_user, conversation_id, first_id, query_args.limit
             )
+            adapter = TypeAdapter(MessageListItem)
+            items = [adapter.validate_python(message, from_attributes=True) for message in pagination.data]
+            return MessageInfiniteScrollPagination(
+                limit=pagination.limit,
+                has_more=pagination.has_more,
+                data=items,
+            ).model_dump(mode="json")
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
         except FirstMessageNotExistsError:
@@ -162,7 +122,7 @@ class MessageFeedbackApi(Resource):
         except MessageNotExistsError:
             raise NotFound("Message Not Exists.")
 
-        return {"result": "success"}
+        return ResultResponse(result="success").model_dump(mode="json")
 
 
 @service_api_ns.route("/app/feedbacks")

@@ -6,18 +6,19 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound, Unauthorized
 
-P = ParamSpec("P")
-R = TypeVar("R")
 from configs import dify_config
 from constants.languages import supported_language
 from controllers.console import console_ns
 from controllers.console.wraps import only_edition_cloud
+from core.db.session_factory import session_factory
 from extensions.ext_database import db
 from libs.token import extract_access_token
 from models.model import App, InstalledApp, RecommendedApp
+
+P = ParamSpec("P")
+R = TypeVar("R")
 
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
@@ -90,7 +91,7 @@ class InsertExploreAppListApi(Resource):
             privacy_policy = site.privacy_policy or payload.privacy_policy or ""
             custom_disclaimer = site.custom_disclaimer or payload.custom_disclaimer or ""
 
-        with Session(db.engine) as session:
+        with session_factory.create_session() as session:
             recommended_app = session.execute(
                 select(RecommendedApp).where(RecommendedApp.app_id == payload.app_id)
             ).scalar_one_or_none()
@@ -138,7 +139,7 @@ class InsertExploreAppApi(Resource):
     @only_edition_cloud
     @admin_required
     def delete(self, app_id):
-        with Session(db.engine) as session:
+        with session_factory.create_session() as session:
             recommended_app = session.execute(
                 select(RecommendedApp).where(RecommendedApp.app_id == str(app_id))
             ).scalar_one_or_none()
@@ -146,13 +147,13 @@ class InsertExploreAppApi(Resource):
         if not recommended_app:
             return {"result": "success"}, 204
 
-        with Session(db.engine) as session:
+        with session_factory.create_session() as session:
             app = session.execute(select(App).where(App.id == recommended_app.app_id)).scalar_one_or_none()
 
         if app:
             app.is_public = False
 
-        with Session(db.engine) as session:
+        with session_factory.create_session() as session:
             installed_apps = (
                 session.execute(
                     select(InstalledApp).where(

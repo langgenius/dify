@@ -1,17 +1,17 @@
-import { isValidCronExpression, parseCronExpression } from './cron-parser'
-import { getNextExecutionTime, getNextExecutionTimes } from './execution-time-calculator'
 import type { ScheduleTriggerNodeType } from '../types'
 import { BlockEnum } from '../../../types'
+import { isValidCronExpression, parseCronExpression } from './cron-parser'
+import { getNextExecutionTime, getNextExecutionTimes } from './execution-time-calculator'
 
 // Comprehensive integration tests for cron-parser and execution-time-calculator compatibility
 describe('cron-parser + execution-time-calculator integration', () => {
   beforeAll(() => {
-    jest.useFakeTimers()
-    jest.setSystemTime(new Date('2024-01-15T10:00:00Z'))
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2024-01-15T10:00:00Z'))
   })
 
   afterAll(() => {
-    jest.useRealTimers()
+    vi.useRealTimers()
   })
 
   const createCronData = (overrides: Partial<ScheduleTriggerNodeType> = {}): ScheduleTriggerNodeType => ({
@@ -176,9 +176,12 @@ describe('cron-parser + execution-time-calculator integration', () => {
           expect(date.getHours()).toBe(hour)
           expect(date.getMinutes()).toBe(minute)
 
-          if (weekday !== undefined) expect(date.getDay()).toBe(weekday)
-          if (day !== undefined) expect(date.getDate()).toBe(day)
-          if (month !== undefined) expect(date.getMonth()).toBe(month)
+          if (weekday !== undefined)
+            expect(date.getDay()).toBe(weekday)
+          if (day !== undefined)
+            expect(date.getDate()).toBe(day)
+          if (month !== undefined)
+            expect(date.getMonth()).toBe(month)
         })
       })
     })
@@ -211,7 +214,7 @@ describe('cron-parser + execution-time-calculator integration', () => {
   describe('DST and timezone edge cases', () => {
     it('handles DST transitions consistently', () => {
       // Test around DST spring forward (March 2024)
-      jest.setSystemTime(new Date('2024-03-08T10:00:00Z'))
+      vi.setSystemTime(new Date('2024-03-08T10:00:00Z'))
 
       const expression = '0 2 * * *' // 2 AM daily (problematic during DST)
       const timezone = 'America/New_York'

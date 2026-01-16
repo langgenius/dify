@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
 import type { StructuredOutput } from '../../../../../llm/types'
-import Field from './field'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import Field from './field'
 
 type Props = {
   payload: StructuredOutput
@@ -19,11 +19,11 @@ const ShowPanel: FC<Props> = ({
     ...payload,
     schema: {
       ...payload.schema,
-      description: t('app.structOutput.LLMResponse'),
+      description: t('structOutput.LLMResponse', { ns: 'app' }),
     },
   }
   return (
-    <div className='relative left-[-7px]'>
+    <div className="relative left-[-7px]">
       {Object.keys(schema.schema.properties!).map(name => (
         <Field
           key={name}

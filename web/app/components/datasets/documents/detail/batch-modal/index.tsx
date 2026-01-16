@@ -1,14 +1,15 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { ChunkingMode, FileItem } from '@/models/datasets'
 import { RiCloseLine } from '@remixicon/react'
-import CSVUploader from './csv-uploader'
-import CSVDownloader from './csv-downloader'
+import { noop } from 'es-toolkit/function'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
-import type { ChunkingMode, FileItem } from '@/models/datasets'
-import { noop } from 'lodash-es'
+import CSVDownloader from './csv-downloader'
+import CSVUploader from './csv-uploader'
 
 export type IBatchModalProps = {
   isShow: boolean
@@ -40,10 +41,10 @@ const BatchModal: FC<IBatchModalProps> = ({
   }, [isShow])
 
   return (
-    <Modal isShow={isShow} onClose={noop} className='!max-w-[520px] !rounded-xl px-8 py-6'>
-      <div className='relative pb-1 text-xl font-medium leading-[30px] text-text-primary'>{t('datasetDocuments.list.batchModal.title')}</div>
-      <div className='absolute right-4 top-4 cursor-pointer p-2' onClick={onCancel}>
-        <RiCloseLine className='h-4 w-4 text-text-secondary' />
+    <Modal isShow={isShow} onClose={noop} className="!max-w-[520px] !rounded-xl px-8 py-6">
+      <div className="relative pb-1 text-xl font-medium leading-[30px] text-text-primary">{t('list.batchModal.title', { ns: 'datasetDocuments' })}</div>
+      <div className="absolute right-4 top-4 cursor-pointer p-2" onClick={onCancel}>
+        <RiCloseLine className="h-4 w-4 text-text-secondary" />
       </div>
       <CSVUploader
         file={currentCSV}
@@ -52,12 +53,12 @@ const BatchModal: FC<IBatchModalProps> = ({
       <CSVDownloader
         docForm={docForm}
       />
-      <div className='mt-[28px] flex justify-end pt-6'>
-        <Button className='mr-2' onClick={onCancel}>
-          {t('datasetDocuments.list.batchModal.cancel')}
+      <div className="mt-[28px] flex justify-end pt-6">
+        <Button className="mr-2" onClick={onCancel}>
+          {t('list.batchModal.cancel', { ns: 'datasetDocuments' })}
         </Button>
         <Button variant="primary" onClick={handleSend} disabled={!currentCSV || !currentCSV.file || !currentCSV.file.id}>
-          {t('datasetDocuments.list.batchModal.run')}
+          {t('list.batchModal.run', { ns: 'datasetDocuments' })}
         </Button>
       </div>
     </Modal>

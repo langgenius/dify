@@ -1,4 +1,4 @@
-import React from 'react'
+import * as React from 'react'
 
 type ImageRenderProps = {
   sourceUrl: string
@@ -10,9 +10,9 @@ const ImageRender = ({
   name,
 }: ImageRenderProps) => {
   return (
-    <div className='size-full border-[2px] border-effects-image-frame shadow-xs'>
+    <div className="size-full border-[2px] border-effects-image-frame shadow-xs">
       <img
-        className='size-full object-cover'
+        className="size-full object-cover"
         src={sourceUrl}
         alt={name}
       />

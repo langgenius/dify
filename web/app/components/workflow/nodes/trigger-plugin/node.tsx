@@ -1,12 +1,13 @@
-import NodeStatus, { NodeStatusEnum } from '@/app/components/base/node-status'
-import type { NodeProps } from '@/app/components/workflow/types'
 import type { FC } from 'react'
-import React, { useEffect, useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
-import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
-import { useNodePluginInstallation } from '@/app/components/workflow/hooks/use-node-plugin-installation'
-import { useNodeDataUpdate } from '@/app/components/workflow/hooks/use-node-data-update'
 import type { PluginTriggerNodeType } from './types'
+import type { NodeProps } from '@/app/components/workflow/types'
+import * as React from 'react'
+import { useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import NodeStatus, { NodeStatusEnum } from '@/app/components/base/node-status'
+import { useNodeDataUpdate } from '@/app/components/workflow/hooks/use-node-data-update'
+import { useNodePluginInstallation } from '@/app/components/workflow/hooks/use-node-plugin-installation'
+import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
 import useConfig from './use-config'
 
 const formatConfigValue = (rawValue: any): string => {
@@ -93,7 +94,7 @@ const Node: FC<NodeProps<PluginTriggerNodeType>> = ({
         </div>
       )}
       <div className="space-y-0.5" aria-disabled={shouldDim}>
-        {!isValidSubscription && <NodeStatus status={NodeStatusEnum.warning} message={t('pluginTrigger.node.status.warning')} />}
+        {!isValidSubscription && <NodeStatus status={NodeStatusEnum.warning} message={t('node.status.warning', { ns: 'pluginTrigger' })} />}
         {isValidSubscription && configKeys.map((key, index) => (
           <div
             key={index}

@@ -1,34 +1,34 @@
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useState } from 'react'
-import useBoolean from 'ahooks/lib/useBoolean'
-import { useTranslation } from 'react-i18next'
-import { languageMap } from '../../../../workflow/nodes/_base/components/editor/code-editor/index'
-import { generateRule } from '@/service/debug'
-import type { GenRes } from '@/service/debug'
-import type { AppModeEnum, ModelModeType } from '@/types/app'
-import type { CompletionParams, Model } from '@/types/app'
-import Modal from '@/app/components/base/modal'
-import Button from '@/app/components/base/button'
-import { Generator } from '@/app/components/base/icons/src/vender/other'
-import Toast from '@/app/components/base/toast'
-import Loading from '@/app/components/base/loading'
-import Confirm from '@/app/components/base/confirm'
-import type { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
-import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import IdeaOutput from '../automatic/idea-output'
-import { GeneratorType } from '../automatic/types'
-import InstructionEditor from '../automatic/instruction-editor-in-workflow'
-import useGenData from '../automatic/use-gen-data'
-import Result from '../automatic/result'
-import ResPlaceholder from '../automatic/res-placeholder'
-import { useGenerateRuleTemplate } from '@/service/use-apps'
+import type { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import type { GenRes } from '@/service/debug'
+import type { AppModeEnum, CompletionParams, Model, ModelModeType } from '@/types/app'
 import { useSessionStorageState } from 'ahooks'
+import useBoolean from 'ahooks/lib/useBoolean'
+import * as React from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import Confirm from '@/app/components/base/confirm'
+import { Generator } from '@/app/components/base/icons/src/vender/other'
+import Loading from '@/app/components/base/loading'
+import Modal from '@/app/components/base/modal'
+import Toast from '@/app/components/base/toast'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import { generateRule } from '@/service/debug'
+import { useGenerateRuleTemplate } from '@/service/use-apps'
+import { languageMap } from '../../../../workflow/nodes/_base/components/editor/code-editor/index'
+import IdeaOutput from '../automatic/idea-output'
+import InstructionEditor from '../automatic/instruction-editor-in-workflow'
+import ResPlaceholder from '../automatic/res-placeholder'
+import Result from '../automatic/result'
 import s from '../automatic/style.module.css'
+import { GeneratorType } from '../automatic/types'
+import useGenData from '../automatic/use-gen-data'
 
-const i18nPrefix = 'appDebug.generate'
+const i18nPrefix = 'generate'
 export type IGetCodeGeneratorResProps = {
   flowId: string
   nodeId: string
@@ -97,8 +97,9 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
     if (instruction.trim() === '') {
       Toast.notify({
         type: 'error',
-        message: t('common.errorMsg.fieldRequired', {
-          field: t('appDebug.code.instruction'),
+        message: t('errorMsg.fieldRequired', {
+          ns: 'common',
+          field: t('code.instruction', { ns: 'appDebug' }),
         }),
       })
       return false
@@ -106,7 +107,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
     return true
   }
 
-  const handleModelChange = useCallback((newValue: { modelId: string; provider: string; mode?: string; features?: string[] }) => {
+  const handleModelChange = useCallback((newValue: { modelId: string, provider: string, mode?: string, features?: string[] }) => {
     const newModel = {
       ...model,
       provider: newValue.provider,
@@ -190,9 +191,9 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
   }, [defaultModel])
 
   const renderLoading = (
-    <div className='flex h-full w-0 grow flex-col items-center justify-center space-y-3'>
+    <div className="flex h-full w-0 grow flex-col items-center justify-center space-y-3">
       <Loading />
-      <div className='text-[13px] text-text-tertiary'>{t('appDebug.codegen.loading')}</div>
+      <div className="text-[13px] text-text-tertiary">{t('codegen.loading', { ns: 'appDebug' })}</div>
     </div>
   )
 
@@ -200,18 +201,18 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
     <Modal
       isShow={isShow}
       onClose={onClose}
-      className='min-w-[1140px] !p-0'
+      className="min-w-[1140px] !p-0"
     >
-      <div className='relative flex h-[680px] flex-wrap'>
-        <div className='h-full w-[570px] shrink-0 overflow-y-auto border-r border-divider-regular p-6'>
-          <div className='mb-5'>
-            <div className={`text-lg font-bold leading-[28px] ${s.textGradient}`}>{t('appDebug.codegen.title')}</div>
-            <div className='mt-1 text-[13px] font-normal text-text-tertiary'>{t('appDebug.codegen.description')}</div>
+      <div className="relative flex h-[680px] flex-wrap">
+        <div className="h-full w-[570px] shrink-0 overflow-y-auto border-r border-divider-regular p-6">
+          <div className="mb-5">
+            <div className={`text-lg font-bold leading-[28px] ${s.textGradient}`}>{t('codegen.title', { ns: 'appDebug' })}</div>
+            <div className="mt-1 text-[13px] font-normal text-text-tertiary">{t('codegen.description', { ns: 'appDebug' })}</div>
           </div>
-          <div className='mb-4'>
+          <div className="mb-4">
             <ModelParameterModal
-              popupClassName='!w-[520px]'
-              portalToFollowElemContentClassName='z-[1000]'
+              popupClassName="!w-[520px]"
+              portalToFollowElemContentClassName="z-[1000]"
               isAdvancedMode={true}
               provider={model.provider}
               completionParams={model.completion_params}
@@ -222,8 +223,8 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
             />
           </div>
           <div>
-            <div className='text-[0px]'>
-              <div className='system-sm-semibold-uppercase mb-1.5 text-text-secondary'>{t('appDebug.codegen.instruction')}</div>
+            <div className="text-[0px]">
+              <div className="system-sm-semibold-uppercase mb-1.5 text-text-secondary">{t('codegen.instruction', { ns: 'appDebug' })}</div>
               <InstructionEditor
                 editorKey={editorKey}
                 value={instruction}
@@ -238,16 +239,16 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
               onChange={setIdeaOutput}
             />
 
-            <div className='mt-7 flex justify-end space-x-2'>
-              <Button onClick={onClose}>{t(`${i18nPrefix}.dismiss`)}</Button>
+            <div className="mt-7 flex justify-end space-x-2">
+              <Button onClick={onClose}>{t(`${i18nPrefix}.dismiss`, { ns: 'appDebug' })}</Button>
               <Button
-                className='flex space-x-1'
-                variant='primary'
+                className="flex space-x-1"
+                variant="primary"
                 onClick={onGenerate}
                 disabled={isLoading}
               >
-                <Generator className='h-4 w-4' />
-                <span className='text-xs font-semibold '>{t('appDebug.codegen.generate')}</span>
+                <Generator className="h-4 w-4" />
+                <span className="text-xs font-semibold ">{t('codegen.generate', { ns: 'appDebug' })}</span>
               </Button>
             </div>
           </div>
@@ -255,7 +256,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
         {isLoading && renderLoading}
         {!isLoading && !current && <ResPlaceholder />}
         {(!isLoading && current) && (
-          <div className='h-full w-0 grow bg-background-default-subtle p-6 pb-0'>
+          <div className="h-full w-0 grow bg-background-default-subtle p-6 pb-0">
             <Result
               current={current!}
               currentVersionIndex={currentVersionIndex || 0}
@@ -269,8 +270,8 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
       </div>
       {isShowConfirmOverwrite && (
         <Confirm
-          title={t('appDebug.codegen.overwriteConfirmTitle')}
-          content={t('appDebug.codegen.overwriteConfirmMessage')}
+          title={t('codegen.overwriteConfirmTitle', { ns: 'appDebug' })}
+          content={t('codegen.overwriteConfirmMessage', { ns: 'appDebug' })}
           isShow
           onConfirm={() => {
             hideShowConfirmOverwrite()

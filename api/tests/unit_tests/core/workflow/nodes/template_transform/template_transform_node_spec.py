@@ -5,8 +5,8 @@ from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 
-from core.helper.code_executor.code_executor import CodeExecutionError
 from core.workflow.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
+from core.workflow.nodes.template_transform.template_renderer import TemplateRenderError
 from core.workflow.nodes.template_transform.template_transform_node import TemplateTransformNode
 from models.workflow import WorkflowType
 
@@ -127,7 +127,9 @@ class TestTemplateTransformNode:
         """Test version class method."""
         assert TemplateTransformNode.version() == "1"
 
-    @patch("core.workflow.nodes.template_transform.template_transform_node.CodeExecutor.execute_workflow_code_template")
+    @patch(
+        "core.workflow.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template"
+    )
     def test_run_simple_template(
         self, mock_execute, basic_node_data, mock_graph, mock_graph_runtime_state, graph_init_params
     ):
@@ -145,7 +147,7 @@ class TestTemplateTransformNode:
         mock_graph_runtime_state.variable_pool.get.side_effect = lambda selector: variable_map.get(tuple(selector))
 
         # Setup mock executor
-        mock_execute.return_value = {"result": "Hello Alice, you are 30 years old!"}
+        mock_execute.return_value = "Hello Alice, you are 30 years old!"
 
         node = TemplateTransformNode(
             id="test_node",
@@ -162,7 +164,9 @@ class TestTemplateTransformNode:
         assert result.inputs["name"] == "Alice"
         assert result.inputs["age"] == 30
 
-    @patch("core.workflow.nodes.template_transform.template_transform_node.CodeExecutor.execute_workflow_code_template")
+    @patch(
+        "core.workflow.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template"
+    )
     def test_run_with_none_values(self, mock_execute, mock_graph, mock_graph_runtime_state, graph_init_params):
         """Test _run with None variable values."""
         node_data = {
@@ -172,7 +176,7 @@ class TestTemplateTransformNode:
         }
 
         mock_graph_runtime_state.variable_pool.get.return_value = None
-        mock_execute.return_value = {"result": "Value: "}
+        mock_execute.return_value = "Value: "
 
         node = TemplateTransformNode(
             id="test_node",
@@ -187,13 +191,15 @@ class TestTemplateTransformNode:
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert result.inputs["value"] is None
 
-    @patch("core.workflow.nodes.template_transform.template_transform_node.CodeExecutor.execute_workflow_code_template")
+    @patch(
+        "core.workflow.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template"
+    )
     def test_run_with_code_execution_error(
         self, mock_execute, basic_node_data, mock_graph, mock_graph_runtime_state, graph_init_params
     ):
         """Test _run when code execution fails."""
         mock_graph_runtime_state.variable_pool.get.return_value = MagicMock()
-        mock_execute.side_effect = CodeExecutionError("Template syntax error")
+        mock_execute.side_effect = TemplateRenderError("Template syntax error")
 
         node = TemplateTransformNode(
             id="test_node",
@@ -208,14 +214,16 @@ class TestTemplateTransformNode:
         assert result.status == WorkflowNodeExecutionStatus.FAILED
         assert "Template syntax error" in result.error
 
-    @patch("core.workflow.nodes.template_transform.template_transform_node.CodeExecutor.execute_workflow_code_template")
+    @patch(
+        "core.workflow.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template"
+    )
     @patch("core.workflow.nodes.template_transform.template_transform_node.MAX_TEMPLATE_TRANSFORM_OUTPUT_LENGTH", 10)
     def test_run_output_length_exceeds_limit(
         self, mock_execute, basic_node_data, mock_graph, mock_graph_runtime_state, graph_init_params
     ):
         """Test _run when output exceeds maximum length."""
         mock_graph_runtime_state.variable_pool.get.return_value = MagicMock()
-        mock_execute.return_value = {"result": "This is a very long output that exceeds the limit"}
+        mock_execute.return_value = "This is a very long output that exceeds the limit"
 
         node = TemplateTransformNode(
             id="test_node",
@@ -230,7 +238,9 @@ class TestTemplateTransformNode:
         assert result.status == WorkflowNodeExecutionStatus.FAILED
         assert "Output length exceeds" in result.error
 
-    @patch("core.workflow.nodes.template_transform.template_transform_node.CodeExecutor.execute_workflow_code_template")
+    @patch(
+        "core.workflow.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template"
+    )
     def test_run_with_complex_jinja2_template(
         self, mock_execute, mock_graph, mock_graph_runtime_state, graph_init_params
     ):
@@ -257,7 +267,7 @@ class TestTemplateTransformNode:
             ("sys", "show_total"): mock_show_total,
         }
         mock_graph_runtime_state.variable_pool.get.side_effect = lambda selector: variable_map.get(tuple(selector))
-        mock_execute.return_value = {"result": "apple, banana, orange (Total: 3)"}
+        mock_execute.return_value = "apple, banana, orange (Total: 3)"
 
         node = TemplateTransformNode(
             id="test_node",
@@ -292,7 +302,9 @@ class TestTemplateTransformNode:
         assert mapping["node_123.var1"] == ["sys", "input1"]
         assert mapping["node_123.var2"] == ["sys", "input2"]
 
-    @patch("core.workflow.nodes.template_transform.template_transform_node.CodeExecutor.execute_workflow_code_template")
+    @patch(
+        "core.workflow.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template"
+    )
     def test_run_with_empty_variables(self, mock_execute, mock_graph, mock_graph_runtime_state, graph_init_params):
         """Test _run with no variables (static template)."""
         node_data = {
@@ -301,7 +313,7 @@ class TestTemplateTransformNode:
             "template": "This is a static message.",
         }
 
-        mock_execute.return_value = {"result": "This is a static message."}
+        mock_execute.return_value = "This is a static message."
 
         node = TemplateTransformNode(
             id="test_node",
@@ -317,7 +329,9 @@ class TestTemplateTransformNode:
         assert result.outputs["output"] == "This is a static message."
         assert result.inputs == {}
 
-    @patch("core.workflow.nodes.template_transform.template_transform_node.CodeExecutor.execute_workflow_code_template")
+    @patch(
+        "core.workflow.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template"
+    )
     def test_run_with_numeric_values(self, mock_execute, mock_graph, mock_graph_runtime_state, graph_init_params):
         """Test _run with numeric variable values."""
         node_data = {
@@ -339,7 +353,7 @@ class TestTemplateTransformNode:
             ("sys", "quantity"): mock_quantity,
         }
         mock_graph_runtime_state.variable_pool.get.side_effect = lambda selector: variable_map.get(tuple(selector))
-        mock_execute.return_value = {"result": "Total: $31.5"}
+        mock_execute.return_value = "Total: $31.5"
 
         node = TemplateTransformNode(
             id="test_node",
@@ -354,7 +368,9 @@ class TestTemplateTransformNode:
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert result.outputs["output"] == "Total: $31.5"
 
-    @patch("core.workflow.nodes.template_transform.template_transform_node.CodeExecutor.execute_workflow_code_template")
+    @patch(
+        "core.workflow.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template"
+    )
     def test_run_with_dict_values(self, mock_execute, mock_graph, mock_graph_runtime_state, graph_init_params):
         """Test _run with dictionary variable values."""
         node_data = {
@@ -367,7 +383,7 @@ class TestTemplateTransformNode:
         mock_user.to_object.return_value = {"name": "John Doe", "email": "john@example.com"}
 
         mock_graph_runtime_state.variable_pool.get.return_value = mock_user
-        mock_execute.return_value = {"result": "Name: John Doe, Email: john@example.com"}
+        mock_execute.return_value = "Name: John Doe, Email: john@example.com"
 
         node = TemplateTransformNode(
             id="test_node",
@@ -383,7 +399,9 @@ class TestTemplateTransformNode:
         assert "John Doe" in result.outputs["output"]
         assert "john@example.com" in result.outputs["output"]
 
-    @patch("core.workflow.nodes.template_transform.template_transform_node.CodeExecutor.execute_workflow_code_template")
+    @patch(
+        "core.workflow.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template"
+    )
     def test_run_with_list_values(self, mock_execute, mock_graph, mock_graph_runtime_state, graph_init_params):
         """Test _run with list variable values."""
         node_data = {
@@ -396,7 +414,7 @@ class TestTemplateTransformNode:
         mock_tags.to_object.return_value = ["python", "ai", "workflow"]
 
         mock_graph_runtime_state.variable_pool.get.return_value = mock_tags
-        mock_execute.return_value = {"result": "Tags: #python #ai #workflow "}
+        mock_execute.return_value = "Tags: #python #ai #workflow "
 
         node = TemplateTransformNode(
             id="test_node",

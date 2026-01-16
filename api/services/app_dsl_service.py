@@ -32,7 +32,7 @@ from extensions.ext_redis import redis_client
 from factories import variable_factory
 from libs.datetime_utils import naive_utc_now
 from models import Account, App, AppMode
-from models.model import AppModelConfig
+from models.model import AppModelConfig, IconType
 from models.workflow import Workflow
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.workflow_draft_variable_service import WorkflowDraftVariableService
@@ -155,6 +155,7 @@ class AppDslService:
                     parsed_url.scheme == "https"
                     and parsed_url.netloc == "github.com"
                     and parsed_url.path.endswith((".yml", ".yaml"))
+                    and "/blob/" in parsed_url.path
                 ):
                     yaml_url = yaml_url.replace("https://github.com", "https://raw.githubusercontent.com")
                     yaml_url = yaml_url.replace("/blob/", "/")
@@ -427,10 +428,10 @@ class AppDslService:
 
         # Set icon type
         icon_type_value = icon_type or app_data.get("icon_type")
-        if icon_type_value in ["emoji", "link", "image"]:
+        if icon_type_value in [IconType.EMOJI.value, IconType.IMAGE.value, IconType.LINK.value]:
             icon_type = icon_type_value
         else:
-            icon_type = "emoji"
+            icon_type = IconType.EMOJI.value
         icon = icon or str(app_data.get("icon", ""))
 
         if app:
