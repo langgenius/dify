@@ -285,6 +285,10 @@ def build_segment_with_type(segment_type: SegmentType, value: Any) -> Segment:
     ):
         segment_class = _segment_factory[inferred_type]
         return segment_class(value_type=inferred_type, value=value)
+    elif segment_type == SegmentType.ARRAY_PROMPT_MESSAGE and inferred_type == SegmentType.ARRAY_OBJECT:
+        # PromptMessage serializes to dict, so ARRAY_OBJECT is compatible with ARRAY_PROMPT_MESSAGE
+        segment_class = _segment_factory[segment_type]
+        return segment_class(value_type=segment_type, value=value)
     else:
         raise TypeMismatchError(f"Type mismatch: expected {segment_type}, but got {inferred_type}, value={value}")
 

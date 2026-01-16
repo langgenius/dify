@@ -17,7 +17,7 @@ from controllers.console.wraps import account_initialization_required, edit_perm
 from controllers.web.error import InvalidArgumentError, NotFoundError
 from core.file import helpers as file_helpers
 from core.variables.segment_group import SegmentGroup
-from core.variables.segments import ArrayFileSegment, FileSegment, Segment
+from core.variables.segments import ArrayFileSegment, ArrayPromptMessageSegment, FileSegment, Segment
 from core.variables.types import SegmentType
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from extensions.ext_database import db
@@ -58,6 +58,8 @@ def _convert_values_to_json_serializable_object(value: Segment):
         return value.value.model_dump()
     elif isinstance(value, ArrayFileSegment):
         return [i.model_dump() for i in value.value]
+    elif isinstance(value, ArrayPromptMessageSegment):
+        return value.to_object()
     elif isinstance(value, SegmentGroup):
         return [_convert_values_to_json_serializable_object(i) for i in value.value]
     else:
