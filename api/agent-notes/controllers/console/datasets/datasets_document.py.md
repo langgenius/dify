@@ -41,9 +41,12 @@
 
 ## Shared helper
 
-- `_get_upload_file_id_from_upload_file_document(...)` normalizes the upload file id and enforces source checks.
-- `_get_upload_file_from_upload_file_document(document)` centralizes the “Document → UploadFile” lookup.
-- `DocumentResource.get_documents_and_upload_files_for_zip(...)` batches lookups and returns a
+- `_get_upload_file_id_for_upload_file_document(...)` normalizes the upload file id and enforces source checks.
+- `_get_upload_file_for_upload_file_document(document)` centralizes the “Document → UploadFile” lookup.
+- `_get_upload_files_by_document_id_for_zip_download(...)` batches lookups and returns a
   `document_id -> UploadFile` map for ZIP downloads.
-- ZIP deduplication preserves extensions by inserting suffixes before the extension
-  (e.g., `doc.txt` → `doc (1).txt`).
+- ZIP packing is handled by `FileService.build_upload_files_zip_tempfile(...)`, which also:
+  - sanitizes entry names to avoid path traversal, and
+  - deduplicates names while preserving extensions (e.g., `doc.txt` → `doc (1).txt`).
+  Streaming the response and deferring cleanup is handled by the route via `send_file(...)` + `ExitStack` +
+  `response.call_on_close(...)`.

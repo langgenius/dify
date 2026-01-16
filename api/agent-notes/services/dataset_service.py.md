@@ -7,7 +7,7 @@
 - Batch document workflows should avoid N+1 database queries by using set-based lookups.
 - Tenant checks must be enforced consistently across dataset/document operations.
 - `DocumentService.get_documents_by_ids(...)` fetches documents for a dataset using `id.in_(...)`.
-- `DocumentService.get_upload_files_by_ids(...)` deduplicates ids with `set(...)` before the tenant-scoped query.
+- `FileService.get_upload_files_by_ids(...)` performs tenant-scoped batch lookup for `UploadFile` (dedupes ids with `set(...)`).
 
 ## Verification plan
 

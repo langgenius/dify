@@ -1,13 +1,10 @@
 import json
 import logging
-import os
 from argparse import ArgumentTypeError
 from collections.abc import Sequence
 from contextlib import ExitStack
-from tempfile import NamedTemporaryFile
 from typing import Any, Literal, cast
 from uuid import uuid4
-from zipfile import ZIP_DEFLATED, ZipFile
 
 import sqlalchemy as sa
 from flask import request, send_file
@@ -34,7 +31,6 @@ from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
 from extensions.ext_database import db
-from extensions.ext_storage import storage
 from fields.dataset_fields import dataset_fields
 from fields.document_fields import (
     dataset_and_document_fields,
@@ -49,6 +45,7 @@ from models import DatasetProcessRule, Document, DocumentSegment, UploadFile
 from models.dataset import DocumentPipelineExecutionLog
 from services.dataset_service import DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig, ProcessRule, RetrievalModel
+from services.file_service import FileService
 
 from ..app.error import (
     ProviderModelCurrentlyNotSupportError,
@@ -95,65 +92,102 @@ def _get_or_create_model(model_name: str, field_def):
     return existing
 
 
-def _get_upload_file_id_from_upload_file_document(
+def _get_upload_file_id_for_upload_file_document(
     document: Document,
     *,
     invalid_source_message: str,
     missing_file_message: str,
 ) -> str:
     """
-    Validate an upload-file document and return its UploadFile id.
+    Download-only helper to normalize and validate `Document -> UploadFile` linkage.
+
+    This logic is tightly coupled to the dataset document download endpoints, so it stays local to this controller
+    module rather than living in a generic file service.
     """
-    # Extract and normalize the upload file id for downstream lookups.
+    # Ensure the document is backed by an uploaded file before reading data_source_info.
     if document.data_source_type != "upload_file":
         raise NotFound(invalid_source_message)
+
+    # Read the upload_file_id from the document's data_source_info payload.
     data_source_info: dict[str, Any] = document.data_source_info_dict or {}
     upload_file_id: str | None = data_source_info.get("upload_file_id")
     if not upload_file_id:
         raise NotFound(missing_file_message)
+
     return str(upload_file_id)
 
 
-def _get_upload_file_from_upload_file_document(document: Document) -> UploadFile:
+def _get_upload_file_for_upload_file_document(document: Document) -> UploadFile:
     """
-    Resolve the `UploadFile` row for a dataset document created from an uploaded file.
-
-    This helper centralizes the shared validation logic used by:
-    - single-document download URL (`/documents/<id>/download`)
-    - batch ZIP download (`/documents/download-zip`)
+    Download-only helper to load the `UploadFile` row for an upload-file document.
     """
-    upload_file_id: str = _get_upload_file_id_from_upload_file_document(
+    # Parse a stable upload file id and keep error messages consistent.
+    upload_file_id: str = _get_upload_file_id_for_upload_file_document(
         document,
         invalid_source_message="Document does not have an uploaded file to download.",
         missing_file_message="Uploaded file not found.",
     )
 
-    # Load the UploadFile row scoped by tenant to prevent cross-tenant access.
-    upload_file = (
-        db.session.query(UploadFile)
-        .where(UploadFile.tenant_id == document.tenant_id, UploadFile.id == upload_file_id)
-        .first()
+    # Query via FileService (UploadFile is a file concern, not a document concern).
+    upload_files_by_id: dict[str, UploadFile] = FileService.get_upload_files_by_ids(
+        document.tenant_id, [upload_file_id]
     )
+    upload_file = upload_files_by_id.get(upload_file_id)
     if not upload_file:
         raise NotFound("Uploaded file not found.")
 
     return upload_file
 
 
-def _dedupe_zip_filename(original_name: str, used_names: set[str]) -> str:
+def _get_upload_files_by_document_id_for_zip_download(
+    *,
+    dataset_id: str,
+    document_ids: Sequence[str],
+    tenant_id: str,
+) -> dict[str, UploadFile]:
     """
-    Return a unique ZIP filename, inserting suffixes before the extension.
+    Download-only helper to batch load upload files keyed by document id for ZIP downloads.
     """
-    if original_name not in used_names:
-        return original_name
-    # Split once so the suffix is added before the extension.
-    stem, extension = os.path.splitext(original_name)
-    suffix = 1
-    while True:
-        candidate = f"{stem} ({suffix}){extension}"
-        if candidate not in used_names:
-            return candidate
-        suffix += 1
+    # Normalize ids once for stable dict/set operations downstream.
+    document_id_list: list[str] = [str(document_id) for document_id in document_ids]
+
+    # Batch-fetch documents to avoid N+1 queries.
+    documents: Sequence[Document] = DocumentService.get_documents_by_ids(dataset_id, document_id_list)
+    documents_by_id: dict[str, Document] = {str(document.id): document for document in documents}
+
+    # If any requested document is missing, fail the whole request.
+    missing_document_ids: set[str] = set(document_id_list) - set(documents_by_id.keys())
+    if missing_document_ids:
+        raise NotFound("Document not found.")
+
+    upload_file_ids: list[str] = []
+    upload_file_ids_by_document_id: dict[str, str] = {}
+    for document_id, document in documents_by_id.items():
+        # Enforce per-document tenant ownership to prevent cross-tenant access.
+        if document.tenant_id != tenant_id:
+            raise Forbidden("No permission.")
+
+        # Parse and validate the upload_file_id for each document.
+        upload_file_id: str = _get_upload_file_id_for_upload_file_document(
+            document,
+            invalid_source_message="Only uploaded-file documents can be downloaded as ZIP.",
+            missing_file_message="Only uploaded-file documents can be downloaded as ZIP.",
+        )
+        upload_file_ids.append(upload_file_id)
+        # Keep a per-document mapping to avoid re-parsing data_source_info later.
+        upload_file_ids_by_document_id[document_id] = upload_file_id
+
+    # Batch-fetch upload files and ensure they all exist for the tenant.
+    upload_files_by_id: dict[str, UploadFile] = FileService.get_upload_files_by_ids(tenant_id, upload_file_ids)
+    missing_upload_file_ids: set[str] = set(upload_file_ids) - set(upload_files_by_id.keys())
+    if missing_upload_file_ids:
+        raise NotFound("Only uploaded-file documents can be downloaded as ZIP.")
+
+    # Return map for constant-time lookups in the ZIP loop.
+    return {
+        document_id: upload_files_by_id[upload_file_id]
+        for document_id, upload_file_id in upload_file_ids_by_document_id.items()
+    }
 
 
 # Register models for flask_restx to avoid dict type issues in Swagger
@@ -252,48 +286,6 @@ class DocumentResource(Resource):
             raise NotFound("Documents not found.")
 
         return documents
-
-    def get_documents_and_upload_files_for_zip(
-        self,
-        dataset_id: str,
-        document_ids: Sequence[str],
-    ) -> dict[str, UploadFile]:
-        """Load upload files keyed by document id for a batch ZIP download."""
-        _, current_tenant_id = current_account_with_tenant()
-        document_id_list: list[str] = [str(document_id) for document_id in document_ids]
-        documents: Sequence[Document] = DocumentService.get_documents_by_ids(dataset_id, document_id_list)
-        documents_by_id: dict[str, Document] = {str(document.id): document for document in documents}
-        missing_document_ids: set[str] = set(document_id_list) - set(documents_by_id.keys())
-        if missing_document_ids:
-            raise NotFound("Document not found.")
-
-        upload_file_ids: list[str] = []
-        upload_file_ids_by_document_id: dict[str, str] = {}
-        for document_id, document in documents_by_id.items():
-            if document.tenant_id != current_tenant_id:
-                raise Forbidden("No permission.")
-            upload_file_id: str = _get_upload_file_id_from_upload_file_document(
-                document,
-                invalid_source_message="Only uploaded-file documents can be downloaded as ZIP.",
-                missing_file_message="Only uploaded-file documents can be downloaded as ZIP.",
-            )
-            upload_file_ids.append(upload_file_id)
-            # Keep a per-document mapping to avoid re-parsing data_source_info later.
-            upload_file_ids_by_document_id[document_id] = upload_file_id
-
-        upload_files_by_id: dict[str, UploadFile] = DocumentService.get_upload_files_by_ids(
-            current_tenant_id,
-            upload_file_ids,
-        )
-        missing_upload_file_ids: set[str] = set(upload_file_ids) - set(upload_files_by_id.keys())
-        if missing_upload_file_ids:
-            raise NotFound("Only uploaded-file documents can be downloaded as ZIP.")
-        upload_files_by_document_id: dict[str, UploadFile] = {
-            document_id: upload_files_by_id[upload_file_id]
-            for document_id, upload_file_id in upload_file_ids_by_document_id.items()
-        }
-        # Return map for constant-time lookups in the ZIP loop.
-        return upload_files_by_document_id
 
 
 @console_ns.route("/datasets/process-rule")
@@ -1000,7 +992,7 @@ class DocumentDownloadApi(DocumentResource):
         document = self.get_document(str(dataset_id), str(document_id))
 
         # Resolve the underlying UploadFile via shared helper.
-        upload_file = _get_upload_file_from_upload_file_document(document)
+        upload_file = _get_upload_file_for_upload_file_document(document)
 
         # Generate a signed URL that forces browser download (Content-Disposition: attachment).
         url = file_helpers.get_signed_file_url(upload_file_id=upload_file.id, as_attachment=True)
@@ -1024,7 +1016,7 @@ class DocumentBatchDownloadZipApi(DocumentResource):
         # Parse and validate request payload.
         payload = DocumentBatchDownloadZipPayload.model_validate(console_ns.payload or {})
 
-        current_user, _ = current_account_with_tenant()
+        current_user, current_tenant_id = current_account_with_tenant()
         dataset_id = str(dataset_id)
 
         # Validate dataset existence and permissions (once for the whole batch).
@@ -1038,41 +1030,19 @@ class DocumentBatchDownloadZipApi(DocumentResource):
 
         document_ids: list[str] = [str(document_id) for document_id in payload.document_ids]
         # Batch-load documents and upload files to avoid per-item queries.
-        upload_files_by_document_id: dict[str, UploadFile] = self.get_documents_and_upload_files_for_zip(
-            dataset_id,
-            document_ids,
+        upload_files_by_document_id: dict[str, UploadFile] = _get_upload_files_by_document_id_for_zip_download(
+            dataset_id=dataset_id, document_ids=document_ids, tenant_id=current_tenant_id
         )
-        used_names: set[str] = set()
+        # Preserve request order when packing the ZIP.
+        upload_files: list[UploadFile] = [upload_files_by_document_id[document_id] for document_id in document_ids]
 
-        # Build a ZIP in a temp file using a context manager.
-        #
-        # We must keep the file open until the response finishes streaming. We do that by:
-        # - creating the temp file with `delete=True`
-        # - transferring its cleanup to `response.call_on_close(...)` via `ExitStack.pop_all()`
-        #
-        # This avoids explicit try/except while still ensuring cleanup.
+        # Delegate ZIP packing to FileService, but keep Flask response+cleanup in the route.
         with ExitStack() as stack:
-            tmp = stack.enter_context(NamedTemporaryFile(mode="w+b", suffix=".zip", delete=True))
-
-            with ZipFile(tmp, mode="w", compression=ZIP_DEFLATED) as zf:
-                for document_id in document_ids:
-                    upload_file = upload_files_by_document_id[document_id]
-
-                    # Ensure each filename in the ZIP is unique.
-                    arcname = _dedupe_zip_filename(upload_file.name, used_names)
-                    used_names.add(arcname)
-
-                    # Stream file content from storage into the zip entry.
-                    with zf.open(arcname, "w") as entry:
-                        for chunk in storage.load(upload_file.key, stream=True):
-                            entry.write(chunk)
-
-            tmp.seek(0)
+            tmp = stack.enter_context(FileService.build_upload_files_zip_tempfile(upload_files=upload_files))
             response = send_file(
                 tmp,
                 mimetype="application/zip",
                 as_attachment=True,
-                # Use a random attachment name to avoid collisions in browser download managers.
                 download_name=_generate_document_batch_download_zip_filename(),
             )
             cleanup = stack.pop_all()

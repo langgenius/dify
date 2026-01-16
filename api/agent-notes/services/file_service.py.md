@@ -1,0 +1,32 @@
+## Purpose
+
+`api/services/file_service.py` owns business logic around `UploadFile` objects: upload validation, storage persistence,
+previews/generators, and deletion.
+
+## Key invariants
+
+- All storage I/O goes through `extensions.ext_storage.storage`.
+- Uploaded file keys follow: `upload_files/<tenant_id>/<uuid>.<ext>`.
+- Upload validation is enforced in `FileService.upload_file(...)` (blocked extensions, size limits, dataset-only types).
+
+## Batch lookup helpers
+
+- `FileService.get_upload_files_by_ids(tenant_id, upload_file_ids)` is the canonical tenant-scoped batch loader for
+  `UploadFile`.
+
+## Dataset document download helpers
+
+The dataset document download/ZIP endpoints keep their feature-specific “Document → UploadFile” glue in the controller
+module (`api/controllers/console/datasets/datasets_document.py`). `FileService` stays focused on generic `UploadFile`
+operations (uploading, previews, deletion), plus generic ZIP serving.
+
+### ZIP serving
+
+- `FileService.build_upload_files_zip_tempfile(...)` builds a ZIP from `UploadFile` objects and yields a seeked
+  `IO[bytes]` handle (`NamedTemporaryFile(...).file`) so callers can stream it (e.g., `send_file(...)`).
+- Flask `send_file(...)` and the `ExitStack`/`call_on_close(...)` cleanup pattern are handled in the route layer.
+
+## Verification plan
+
+- Unit: `api/tests/unit_tests/controllers/console/datasets/test_datasets_document_download.py`
+  - Verify signed URL generation for upload-file documents and ZIP download behavior for multiple documents.

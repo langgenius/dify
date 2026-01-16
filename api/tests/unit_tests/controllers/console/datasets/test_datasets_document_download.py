@@ -12,7 +12,6 @@ import sys
 from collections import UserDict
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
@@ -121,12 +120,11 @@ def _wire_common_success_mocks(
     )
     monkeypatch.setattr(module.DocumentService, "get_document", lambda *_args, **_kwargs: document)
 
-    # Mock UploadFile lookup through SQLAlchemy session chain.
-    session = MagicMock()
-    query = session.query.return_value
-    where = query.where.return_value
-    where.first.return_value = SimpleNamespace(id=str(upload_file_id)) if upload_file_exists else None
-    monkeypatch.setattr(module, "db", SimpleNamespace(session=session))
+    # Mock UploadFile lookup via FileService batch helper.
+    upload_files_by_id: dict[str, Any] = {}
+    if upload_file_exists and upload_file_id is not None:
+        upload_files_by_id[str(upload_file_id)] = SimpleNamespace(id=str(upload_file_id))
+    monkeypatch.setattr(module.FileService, "get_upload_files_by_ids", lambda *_args, **_kwargs: upload_files_by_id)
 
     # Mock signing helper so the returned URL is deterministic.
     monkeypatch.setattr(module.file_helpers, "get_signed_file_url", lambda **_kwargs: signed_url)
@@ -180,7 +178,7 @@ def test_batch_download_zip_returns_send_file(
         lambda *_args, **_kwargs: [doc1, doc2],
     )
     monkeypatch.setattr(
-        datasets_document_module.DocumentService,
+        datasets_document_module.FileService,
         "get_upload_files_by_ids",
         lambda *_args, **_kwargs: {
             "file-1": SimpleNamespace(id="file-1", name="a.txt", key="k1"),
@@ -189,9 +187,11 @@ def test_batch_download_zip_returns_send_file(
     )
 
     # Mock storage streaming content.
-    monkeypatch.setattr(datasets_document_module.storage, "load", lambda _key, stream=True: [b"hello"])
+    import services.file_service as file_service_module
 
-    # Replace send_file to avoid dealing with a real Flask response object.
+    monkeypatch.setattr(file_service_module.storage, "load", lambda _key, stream=True: [b"hello"])
+
+    # Replace send_file used by the controller to avoid a real Flask response object.
     monkeypatch.setattr(datasets_document_module, "send_file", _mock_send_file)
 
     # Act
