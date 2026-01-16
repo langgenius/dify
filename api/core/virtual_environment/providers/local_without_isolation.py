@@ -8,6 +8,7 @@ from platform import machine, system
 from typing import Any
 from uuid import uuid4
 
+from core.entities.provider_entities import BasicProviderConfig
 from core.virtual_environment.__base.entities import (
     Arch,
     CommandStatus,
@@ -71,6 +72,12 @@ class LocalVirtualEnvironment(VirtualEnvironment):
     WARNING: This provider does not provide any isolation. It's only suitable for development and testing purposes.
     NEVER USE IT IN PRODUCTION ENVIRONMENTS.
     """
+
+    @classmethod
+    def get_config_schema(cls) -> list[BasicProviderConfig]:
+        return [
+            BasicProviderConfig(type=BasicProviderConfig.Type.TEXT_INPUT, name="base_working_path"),
+        ]
 
     @classmethod
     def validate(cls, options: Mapping[str, Any]) -> None:

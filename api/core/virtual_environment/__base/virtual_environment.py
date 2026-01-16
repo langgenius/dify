@@ -3,6 +3,7 @@ from collections.abc import Mapping, Sequence
 from io import BytesIO
 from typing import Any
 
+from core.entities.provider_entities import BasicProviderConfig
 from core.virtual_environment.__base.entities import CommandStatus, ConnectionHandle, FileState, Metadata
 from core.virtual_environment.channel.transport import TransportReadCloser, TransportWriteCloser
 
@@ -174,3 +175,8 @@ class VirtualEnvironment(ABC):
         Returns:
             CommandStatus: The status of the command execution.
         """
+
+    @classmethod
+    @abstractmethod
+    def get_config_schema(cls) -> list[BasicProviderConfig]:
+        pass

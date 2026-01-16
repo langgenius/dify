@@ -15,6 +15,7 @@ import docker.errors
 from docker.models.containers import Container
 
 import docker
+from core.entities.provider_entities import BasicProviderConfig
 from core.virtual_environment.__base.entities import (
     Arch,
     CommandStatus,
@@ -255,6 +256,13 @@ class DockerDaemonEnvironment(VirtualEnvironment):
         DOCKER_SOCK = "docker_sock"
         DOCKER_IMAGE = "docker_image"
         DOCKER_COMMAND = "docker_command"
+
+    @classmethod
+    def get_config_schema(cls) -> list[BasicProviderConfig]:
+        return [
+            BasicProviderConfig(type=BasicProviderConfig.Type.TEXT_INPUT, name=cls.OptionsKey.DOCKER_SOCK),
+            BasicProviderConfig(type=BasicProviderConfig.Type.TEXT_INPUT, name=cls.OptionsKey.DOCKER_IMAGE),
+        ]
 
     @classmethod
     def validate(cls, options: Mapping[str, Any]) -> None:

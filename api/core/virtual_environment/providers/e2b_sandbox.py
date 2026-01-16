@@ -10,6 +10,7 @@ from uuid import uuid4
 
 from e2b_code_interpreter import Sandbox  # type: ignore[import-untyped]
 
+from core.entities.provider_entities import BasicProviderConfig
 from core.virtual_environment.__base.entities import (
     Arch,
     CommandStatus,
@@ -95,6 +96,14 @@ class E2BEnvironment(VirtualEnvironment):
 
     class StoreKey(StrEnum):
         SANDBOX = "sandbox"
+
+    @classmethod
+    def get_config_schema(cls) -> list[BasicProviderConfig]:
+        return [
+            BasicProviderConfig(type=BasicProviderConfig.Type.SECRET_INPUT, name=cls.OptionsKey.API_KEY),
+            BasicProviderConfig(type=BasicProviderConfig.Type.TEXT_INPUT, name=cls.OptionsKey.E2B_API_URL),
+            BasicProviderConfig(type=BasicProviderConfig.Type.TEXT_INPUT, name=cls.OptionsKey.E2B_DEFAULT_TEMPLATE),
+        ]
 
     @classmethod
     def validate(cls, options: Mapping[str, Any]) -> None:

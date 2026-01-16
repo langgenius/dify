@@ -16,8 +16,6 @@ import { bindPartnerStackContract, invoicesContract } from './console/billing'
 import {
   activateSandboxProviderContract,
   deleteSandboxProviderConfigContract,
-  getActiveSandboxProviderContract,
-  getSandboxProviderContract,
   getSandboxProviderListContract,
   saveSandboxProviderConfigContract,
 } from './console/sandbox-provider'
@@ -40,11 +38,9 @@ export const consoleRouterContract = {
   },
   sandboxProvider: {
     getSandboxProviderList: getSandboxProviderListContract,
-    getSandboxProvider: getSandboxProviderContract,
     saveSandboxProviderConfig: saveSandboxProviderConfigContract,
     deleteSandboxProviderConfig: deleteSandboxProviderConfigContract,
     activateSandboxProvider: activateSandboxProviderContract,
-    getActiveSandboxProvider: getActiveSandboxProviderContract,
   },
   appAsset: {
     tree: treeContract,

@@ -51,7 +51,7 @@ class SandboxProvider(TypeBase):
     __tablename__ = "sandbox_providers"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="sandbox_provider_pkey"),
-        sa.UniqueConstraint("tenant_id", "provider_type", name="unique_sandbox_provider_tenant_type"),
+        sa.UniqueConstraint("tenant_id", "provider_type", "configure_type", name="unique_sandbox_provider_tenant_type"),
         sa.Index("idx_sandbox_providers_tenant_id", "tenant_id"),
         sa.Index("idx_sandbox_providers_tenant_active", "tenant_id", "is_active"),
     )
@@ -62,6 +62,7 @@ class SandboxProvider(TypeBase):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_type: Mapped[str] = mapped_column(String(50), nullable=False, comment="e2b, docker, local")
     encrypted_config: Mapped[str] = mapped_column(LongText, nullable=False, comment="Encrypted config JSON")
+    configure_type: Mapped[str] = mapped_column(String(20), nullable=False, server_default="user", default="user")
     is_active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"), default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False

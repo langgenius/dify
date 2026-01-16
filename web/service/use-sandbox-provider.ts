@@ -12,14 +12,6 @@ export const useGetSandboxProviderList = () => {
   })
 }
 
-export const useGetSandboxProvider = (providerType: string) => {
-  return useQuery({
-    queryKey: consoleQuery.sandboxProvider.getSandboxProvider.queryKey({ input: { params: { providerType } } }),
-    queryFn: () => consoleClient.sandboxProvider.getSandboxProvider({ params: { providerType } }),
-    enabled: !!providerType,
-  })
-}
-
 export const useSaveSandboxProviderConfig = () => {
   const queryClient = useQueryClient()
   return useMutation({
@@ -63,12 +55,5 @@ export const useActivateSandboxProvider = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: consoleQuery.sandboxProvider.getSandboxProviderList.queryKey() })
     },
-  })
-}
-
-export const useGetActiveSandboxProvider = () => {
-  return useQuery({
-    queryKey: consoleQuery.sandboxProvider.getActiveSandboxProvider.queryKey(),
-    queryFn: () => consoleClient.sandboxProvider.getActiveSandboxProvider(),
   })
 }

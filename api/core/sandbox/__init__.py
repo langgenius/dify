@@ -12,13 +12,13 @@ from .constants import (
     DIFY_CLI_PATH,
     DIFY_CLI_PATH_PATTERN,
 )
-from .factory import VMBuilder, VMType
 from .initializer import AppAssetsInitializer, DifyCliInitializer, SandboxInitializer
 from .manager import SandboxManager
 from .session import SandboxSession
 from .storage import ArchiveSandboxStorage, SandboxStorage
 from .utils.debug import sandbox_debug
 from .utils.encryption import create_sandbox_config_encrypter, masked_config
+from .vm import SandboxBuilder, SandboxType, VMConfig
 
 __all__ = [
     "APP_ASSETS_PATH",
@@ -34,12 +34,13 @@ __all__ = [
     "DifyCliInitializer",
     "DifyCliLocator",
     "DifyCliToolConfig",
+    "SandboxBuilder",
     "SandboxInitializer",
     "SandboxManager",
     "SandboxSession",
     "SandboxStorage",
-    "VMBuilder",
-    "VMType",
+    "SandboxType",
+    "VMConfig",
     "create_sandbox_config_encrypter",
     "masked_config",
     "sandbox_debug",

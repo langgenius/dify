@@ -47,7 +47,7 @@ const ProviderCard = ({
           <span className="system-md-semibold text-text-primary">
             {provider.label}
           </span>
-          {provider.is_system_configured && (
+          {provider.is_system_configured && !provider.is_tenant_configured && (
             <span className="system-2xs-medium rounded-[5px] border border-divider-deep px-[5px] py-[3px] text-text-tertiary">
               {t('sandboxProvider.managedBySaas', { ns: 'common' })}
             </span>

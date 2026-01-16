@@ -10,18 +10,6 @@ export const getSandboxProviderListContract = base
   .input(type<unknown>())
   .output(type<SandboxProvider[]>())
 
-export const getSandboxProviderContract = base
-  .route({
-    path: '/workspaces/current/sandbox-provider/{providerType}',
-    method: 'GET',
-  })
-  .input(type<{
-    params: {
-      providerType: string
-    }
-  }>())
-  .output(type<SandboxProvider>())
-
 export const saveSandboxProviderConfigContract = base
   .route({
     path: '/workspaces/current/sandbox-provider/{providerType}/config',
@@ -60,11 +48,3 @@ export const activateSandboxProviderContract = base
     }
   }>())
   .output(type<{ result: string }>())
-
-export const getActiveSandboxProviderContract = base
-  .route({
-    path: '/workspaces/current/sandbox-provider/active',
-    method: 'GET',
-  })
-  .input(type<unknown>())
-  .output(type<{ provider_type: string | null }>())
