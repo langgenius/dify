@@ -72,12 +72,12 @@ chat_parser = (
 )
 chat_parser.add_argument("workflow_id", type=str, required=False, location="json", help="Workflow ID for advanced chat")
 chat_parser.add_argument(
-    "workflow_alias",
+    "workflow_tag",
     type=str,
     required=False,
     default="",
     location="json",
-    help="Workflow alias for advanced chat",
+    help="Workflow tag for advanced chat",
 )
 
 
@@ -90,7 +90,7 @@ class ChatRequestPayload(BaseModel):
     retriever_from: str = Field(default="dev")
     auto_generate_name: bool = Field(default=True, description="Auto generate conversation name")
     workflow_id: str | None = Field(default=None, description="Workflow ID for advanced chat")
-    workflow_alias: str | None = Field(default=None, description="Workflow alias for advanced chat")
+    workflow_tag: str | None = Field(default=None, description="Workflow tag for advanced chat")
 
     @field_validator("conversation_id", mode="before")
     @classmethod
@@ -241,12 +241,12 @@ class ChatApi(Resource):
         streaming = payload.response_mode == "streaming"
 
         try:
-            # Handle workflow_alias or workflow_id
-            workflow_alias = args.get("workflow_alias")
+            # Handle workflow_tag or workflow_id
+            workflow_tag = args.get("workflow_tag")
             workflow_id = args.get("workflow_id")
-
-            if workflow_alias:
-                resolved_workflow_id = self._resolve_workflow_identifier(app_model=app_model, identifier=workflow_alias)
+            
+            if workflow_tag:
+                resolved_workflow_id = self._resolve_workflow_identifier(app_model=app_model, identifier=workflow_tag)
                 args["workflow_id"] = resolved_workflow_id
             elif workflow_id:
                 resolved_workflow_id = self._resolve_workflow_identifier(app_model=app_model, identifier=workflow_id)
@@ -288,12 +288,12 @@ class ChatApi(Resource):
     def _resolve_workflow_identifier(self, app_model: App, identifier: str) -> str:
         """
         Resolve identifier to workflow_id and verify it exists
-        Priority: UUID format > alias
-
+        Priority: UUID format > tag
+        
         Args:
             app_model: The app model
-            identifier: workflow_id (UUID) or workflow_alias
-
+            identifier: workflow_id (UUID) or workflow_tag
+            
         Returns:
             The resolved workflow_id
 
@@ -320,10 +320,10 @@ class ChatApi(Resource):
             raise
         except (ValueError, TypeError):
             pass
-
-        # Then try to find by alias
+        
+        # Then try to find by tag
         with Session(db.engine) as session:
-            workflow = workflow_service.get_workflow_by_alias(
+            workflow = workflow_service.get_workflow_by_tag(
                 session=session,
                 app_id=app_model.id,
                 name=identifier,
@@ -331,10 +331,10 @@ class ChatApi(Resource):
 
             if workflow:
                 return workflow.id
-
-        # Neither valid UUID with existing workflow nor valid alias
+        
+        # Neither valid UUID with existing workflow nor valid tag
         raise WorkflowIdFormatError(
-            f"Invalid identifier '{identifier}'. Must be a valid workflow alias or UUID format."
+            f"Invalid identifier '{identifier}'. Must be a valid workflow tag or UUID format."
         )
 
 

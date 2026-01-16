@@ -37,7 +37,7 @@ from models import Account
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
-from models.workflow_alias import WorkflowNameAlias
+from models.workflow_tag import WorkflowNameTag
 from repositories.factory import DifyAPIRepositoryFactory
 from services.billing_service import BillingService
 from services.enterprise.plugin_manager_service import PluginCredentialType
@@ -1036,23 +1036,23 @@ class WorkflowService:
         session.delete(workflow)
         return True
 
-    def get_workflow_by_alias(
+    def get_workflow_by_tag(
         self,
         session: Union[Session, "scoped_session"],
         app_id: str,
         name: str,
     ) -> Workflow | None:
-        alias = session.scalar(
-            select(WorkflowNameAlias).where(
-                WorkflowNameAlias.app_id == app_id,
-                WorkflowNameAlias.name == name,
+        tag = session.scalar(
+            select(WorkflowNameTag).where(
+                WorkflowNameTag.app_id == app_id,
+                WorkflowNameTag.name == name,
             )
         )
 
-        if not alias:
+        if not tag:
             return None
 
-        return session.get(Workflow, alias.workflow_id)
+        return session.get(Workflow, tag.workflow_id)
 
 
 def _setup_variable_pool(

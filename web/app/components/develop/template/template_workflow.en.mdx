@@ -339,18 +339,18 @@ Workflow applications offers non-session support and is ideal for translation, a
 />
 <Row>
   <Col>
-    Execute a specific version of workflow, supporting both workflow ID and alias.
+    Execute a specific version of workflow, supporting both workflow ID and tag.
 
     ### Path
     - `identifier` (string) Required Workflow identifier
       - Workflow ID (UUID format)
-      - Workflow alias
+      - Workflow tag
       
-      System prioritizes UUID format processing, falls back to alias lookup if not a valid UUID format.
+      System prioritizes UUID format processing, falls back to tag lookup if not a valid UUID format.
       
       **How to obtain:**
       - Workflow ID: Obtain specific version workflow ID through the version history page
-      - Workflow alias: Obtain corresponding workflow alias through the version history page
+      - Workflow tag: Obtain corresponding workflow tag through the version history page
 
     ### Request Body
       - `inputs` (object) Required

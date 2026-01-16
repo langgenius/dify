@@ -491,14 +491,14 @@ export enum VersionHistoryContextMenuOptions {
   delete = 'delete',
   exportDSL = 'exportDSL',
   copyId = 'copyId',
-  manageAlias = 'manageAlias',
+  manageTag = 'manageTag',
 }
 
 export type ChildNodeTypeCount = {
   [key: string]: number
 }
 
-export type WorkflowAlias = {
+export type WorkflowTag = {
   id: string
   tenant_id: string
   app_id: string
@@ -515,8 +515,8 @@ export type WorkflowAlias = {
   old_workflow_id?: string
 }
 
-export type WorkflowAliasList = {
-  items: WorkflowAlias[]
+export type WorkflowTagList = {
+  items: WorkflowTag[]
   page: number
   limit: number
   has_more: boolean

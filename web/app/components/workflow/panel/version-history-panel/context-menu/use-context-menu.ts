@@ -43,8 +43,8 @@ const useContextMenu = (props: ContextMenuProps) => {
         name: t('versionHistory.copyId', { ns: 'workflow' }),
       },
       {
-        key: VersionHistoryContextMenuOptions.manageAlias,
-        name: t('alias.manageAlias', { ns: 'workflow' }),
+        key: VersionHistoryContextMenuOptions.manageTag,
+        name: t('tag.manageTag', { ns: 'workflow' }),
       },
     ]
   }, [isNamedVersion, t, pipelineId])

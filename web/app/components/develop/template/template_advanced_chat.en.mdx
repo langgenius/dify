@@ -77,8 +77,8 @@ Chat applications support session persistence, allowing previous chat history to
       <Property name='workflow_id' type='string' key='workflow_id'>
       (Optional) Workflow ID to specify a specific version, if not provided, uses the default published version.
       </Property>
-      <Property name='workflow_alias' type='string' key='workflow_alias'>
-      (Optional) Workflow alias to specify a specific version of workflow. System searches in the following priority order: workflow_alias > workflow_id > latest published version.
+      <Property name='workflow_tag' type='string' key='workflow_tag'>
+      (Optional) Workflow tag to specify a specific version of workflow. System searches in the following priority order: workflow_tag > workflow_id > latest published version.
       </Property>
       <Property name='trace_id' type='string' key='trace_id'>
         (Optional) Trace ID. Used for integration with existing business trace components to achieve end-to-end distributed tracing. If not provided, the system will automatically generate a trace_id. Supports the following three ways to pass, in order of priority:<br/>

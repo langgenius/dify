@@ -107,7 +107,7 @@ from .workflow import (
     WorkflowRun,
     WorkflowType,
 )
-from .workflow_alias import WorkflowNameAlias
+from .workflow_tag import WorkflowNameTag
 
 __all__ = [
     "APIBasedExtension",
@@ -198,7 +198,7 @@ __all__ = [
     "Workflow",
     "WorkflowAppLog",
     "WorkflowAppLogCreatedFrom",
-    "WorkflowNameAlias",
+    "WorkflowNameTag",
     "WorkflowNodeExecutionModel",
     "WorkflowNodeExecutionOffload",
     "WorkflowNodeExecutionTriggeredFrom",

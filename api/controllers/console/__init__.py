@@ -73,8 +73,8 @@ from .app import (
     workflow_trigger,
 )
 
-# Register workflow alias routes
-from .app.workflow_alias import WorkflowAliasApi
+# Register workflow tag routes
+from .app.workflow_tag import WorkflowTagApi
 
 # Import auth controllers
 from .auth import (
@@ -139,7 +139,7 @@ from .workspace import (
 )
 
 api.add_resource(
-    WorkflowAliasApi, "/apps/<uuid:app_id>/workflow-aliases", "/apps/<uuid:app_id>/workflow-aliases/<uuid:alias_id>"
+    WorkflowTagApi, "/apps/<uuid:app_id>/workflow-tags", "/apps/<uuid:app_id>/workflow-tags/<uuid:tag_id>"
 )
 api.add_namespace(console_ns)
 

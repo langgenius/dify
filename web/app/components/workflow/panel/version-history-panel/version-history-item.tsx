@@ -1,6 +1,6 @@
 import type { VersionHistoryContextMenuOptions } from '../../types'
+import type { WorkflowTag } from '@/app/components/workflow/types'
 import type { VersionHistory } from '@/types/workflow'
-import type { WorkflowAlias } from '@/app/components/workflow/types'
 import dayjs from 'dayjs'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
@@ -17,7 +17,7 @@ type VersionHistoryItemProps = {
   onClick: (item: VersionHistory) => void
   handleClickMenuItem: (operation: VersionHistoryContextMenuOptions) => void
   isLast: boolean
-  aliases: WorkflowAlias[]
+  tags: WorkflowTag[]
 }
 
 const formatVersion = (versionHistory: VersionHistory, latestVersionId: string): string => {
@@ -46,7 +46,7 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
   onClick,
   handleClickMenuItem,
   isLast,
-  aliases,
+  tags,
 }) => {
   const { t } = useTranslation()
   const [isHovering, setIsHovering] = useState(false)
@@ -111,22 +111,23 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
             </div>
           )}
         </div>
-        {!isDraft && aliases && aliases.length > 0 && (
-          <div className='mt-0.5 flex flex-wrap items-center gap-0.5'>
-            {aliases
+        {!isDraft && tags && tags.length > 0 && (
+          <div className="mt-0.5 flex flex-wrap items-center gap-0.5">
+            {tags
               .slice(0, 2)
-              .map((alias: WorkflowAlias) => (
+              .map((tag: WorkflowTag) => (
                 <Tag
-                  key={alias.id}
+                  key={tag.id}
                   color="green"
                   className="px-1.5 py-0.5 text-xs"
                 >
-                  {alias.name}
+                  {tag.name}
                 </Tag>
               ))}
-            {aliases.length > 2 && (
+            {tags.length > 2 && (
               <span className="ml-1 text-xs text-text-tertiary">
-                +{aliases.length - 2}
+                +
+                {tags.length - 2}
               </span>
             )}
           </div>

@@ -9,30 +9,30 @@ from .base import Base
 from .types import StringUUID
 
 
-class WorkflowNameAlias(Base):
+class WorkflowNameTag(Base):
     """
-    Workflow Alias for managing version aliases across different environments.
+    Workflow Tag for managing version tags across different environments.
 
-    This table allows users to assign human-readable aliases to workflow versions,
+    This table allows users to assign human-readable tags to workflow versions,
     making it easier to manage deployments across different environments.
 
     Attributes:
-        - id (uuid): Alias ID, primary key
+        - id (uuid): Tag ID, primary key
         - app_id (uuid): App ID
         - workflow_id (uuid): Workflow version ID
-        - name (string): Alias name (e.g., 'production', 'staging', 'v1.0')
+        - name (string): Tag name (e.g., 'production', 'staging', 'v1.0')
 
         - created_by (uuid): Creator ID
         - created_at (timestamp): Creation time
         - updated_at (timestamp): Last update time
     """
 
-    __tablename__ = "workflow_name_aliases"
+    __tablename__ = "workflow_name_tags"
     __allow_unmapped__ = True  # Allow non-mapped attributes
     __slots__ = ("is_transferred", "old_workflow_id")
     __table_args__ = (
-        # Ensure alias name is unique within an app
-        sa.UniqueConstraint("app_id", "name", name="unique_workflow_alias_app_name"),
+        # Ensure tag name is unique within an app
+        sa.UniqueConstraint("app_id", "name", name="unique_workflow_tag_app_name"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, primary_key=True, server_default=sa.text("uuidv7()"))
@@ -49,7 +49,7 @@ class WorkflowNameAlias(Base):
     # Relationship to Account without foreign key constraint
     created_by_account: Mapped[Account] = relationship(
         Account,
-        primaryjoin=lambda: Account.id == WorkflowNameAlias.created_by,
+        primaryjoin=lambda: Account.id == WorkflowNameTag.created_by,
         foreign_keys=[created_by],
         lazy="select",
         viewonly=True,
@@ -61,4 +61,4 @@ class WorkflowNameAlias(Base):
         self.old_workflow_id: str | None = None
 
     def __repr__(self):
-        return f"<WorkflowNameAlias(id='{self.id}', app_id='{self.app_id}', name='{self.name}')>"
+        return f"<WorkflowNameTag(id='{self.id}', app_id='{self.app_id}', name='{self.name}')>"

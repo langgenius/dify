@@ -181,8 +181,8 @@ class WorkflowRunApi(Resource):
 class WorkflowRunByIdentifierApi(Resource):
     @service_api_ns.expect(service_api_ns.models[WorkflowRunPayload.__name__])
     @service_api_ns.doc("run_workflow_by_identifier")
-    @service_api_ns.doc(description="Execute a specific workflow by ID or alias")
-    @service_api_ns.doc(params={"identifier": "Workflow ID or alias to execute"})
+    @service_api_ns.doc(description="Execute a specific workflow by ID or tag")
+    @service_api_ns.doc(params={"identifier": "Workflow ID or tag to execute"})
     @service_api_ns.doc(
         responses={
             200: "Workflow executed successfully",
@@ -195,9 +195,9 @@ class WorkflowRunByIdentifierApi(Resource):
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     def post(self, app_model: App, end_user: EndUser, identifier: str):
-        """Run specific workflow by ID or alias name.
+        """Run specific workflow by ID or tag name.
 
-        Executes a specific workflow version identified by its ID or alias name.
+        Executes a specific workflow version identified by its ID or tag name.
         """
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode != AppMode.WORKFLOW:
@@ -245,25 +245,25 @@ class WorkflowRunByIdentifierApi(Resource):
     def _resolve_workflow_id(self, app_model: App, identifier: str) -> str:
         """
         Resolve identifier to workflow_id
-        Priority: workflow_id > alias
+        Priority: workflow_id > tag
         """
         try:
             uuid.UUID(identifier)
             return identifier
         except (ValueError, TypeError):
             with Session(db.engine) as session, session.begin():
-                workflow = self._get_workflow_by_alias(session, app_model, identifier)
+                workflow = self._get_workflow_by_tag(session, app_model, identifier)
                 if workflow:
                     return workflow.id
 
             raise WorkflowIdFormatError(
-                f"Invalid identifier '{identifier}'. Must be a valid workflow alias or UUID format."
+                f"Invalid identifier '{identifier}'. Must be a valid workflow tag or UUID format."
             )
 
-    def _get_workflow_by_alias(self, session: Session, app_model: App, alias_name: str) -> Workflow | None:
-        """Get workflow by alias name"""
+    def _get_workflow_by_tag(self, session: Session, app_model: App, tag_name: str) -> Workflow | None:
+        """Get workflow by tag name"""
         workflow_service = WorkflowService()
-        return workflow_service.get_workflow_by_alias(session=session, app_id=app_model.id, name=alias_name)
+        return workflow_service.get_workflow_by_tag(session=session, app_id=app_model.id, name=tag_name)
 
 
 @service_api_ns.route("/workflows/tasks/<string:task_id>/stop")

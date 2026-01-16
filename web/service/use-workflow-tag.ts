@@ -1,8 +1,8 @@
+import type { WorkflowTag, WorkflowTagList } from '@/app/components/workflow/types'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { del, get, post } from './base'
-import type { WorkflowAlias, WorkflowAliasList } from '@/app/components/workflow/types'
 
-export const useWorkflowAliasList = ({
+export const useWorkflowTagList = ({
   appId,
   workflowIds,
   limit = 100,
@@ -13,8 +13,8 @@ export const useWorkflowAliasList = ({
   limit?: number
   offset?: number
 }) => {
-  return useQuery<WorkflowAliasList>({
-    queryKey: ['workflow-aliases', appId, workflowIds, limit, offset],
+  return useQuery<WorkflowTagList>({
+    queryKey: ['workflow-tags', appId, workflowIds, limit, offset],
     queryFn: async () => {
       const params = new URLSearchParams()
 
@@ -25,15 +25,15 @@ export const useWorkflowAliasList = ({
       params.append('offset', offset.toString())
 
       const queryString = params.toString()
-      const url = queryString ? `/apps/${appId}/workflow-aliases?${queryString}` : `/apps/${appId}/workflow-aliases`
+      const url = queryString ? `/apps/${appId}/workflow-tags?${queryString}` : `/apps/${appId}/workflow-tags`
 
-      return get<WorkflowAliasList>(url)
+      return get<WorkflowTagList>(url)
     },
     enabled: !!appId && (workflowIds === undefined || workflowIds.length > 0),
   })
 }
 
-export const useWorkflowAliasListPaginated = ({
+export const useWorkflowTagListPaginated = ({
   appId,
   workflowIds,
   limit = 100,
@@ -42,8 +42,8 @@ export const useWorkflowAliasListPaginated = ({
   workflowIds?: string[]
   limit?: number
 }) => {
-  return useInfiniteQuery<WorkflowAliasList>({
-    queryKey: ['workflow-aliases-paginated', appId, workflowIds, limit],
+  return useInfiniteQuery<WorkflowTagList>({
+    queryKey: ['workflow-tags-paginated', appId, workflowIds, limit],
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
       const params = new URLSearchParams()
@@ -55,9 +55,9 @@ export const useWorkflowAliasListPaginated = ({
       params.append('offset', ((pageParam as number) * limit).toString())
 
       const queryString = params.toString()
-      const url = `/apps/${appId}/workflow-aliases?${queryString}`
+      const url = `/apps/${appId}/workflow-tags?${queryString}`
 
-      const response = await get<WorkflowAliasList>(url)
+      const response = await get<WorkflowTagList>(url)
       return response
     },
     getNextPageParam: (lastPage, allPages) => {
@@ -69,7 +69,7 @@ export const useWorkflowAliasListPaginated = ({
   })
 }
 
-export const useCreateWorkflowAlias = (appId: string) => {
+export const useCreateWorkflowTag = (appId: string) => {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -77,7 +77,7 @@ export const useCreateWorkflowAlias = (appId: string) => {
       workflow_id: string
       name: string
     }) => {
-      return post<WorkflowAlias>(`/apps/${appId}/workflow-aliases`, {
+      return post<WorkflowTag>(`/apps/${appId}/workflow-tags`, {
         body: {
           workflow_id: data.workflow_id,
           name: data.name,
@@ -85,22 +85,22 @@ export const useCreateWorkflowAlias = (appId: string) => {
       })
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workflow-aliases', appId] })
-      queryClient.invalidateQueries({ queryKey: ['workflow-aliases-paginated', appId] })
+      queryClient.invalidateQueries({ queryKey: ['workflow-tags', appId] })
+      queryClient.invalidateQueries({ queryKey: ['workflow-tags-paginated', appId] })
     },
   })
 }
 
-export const useDeleteWorkflowAlias = (appId: string) => {
+export const useDeleteWorkflowTag = (appId: string) => {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (aliasId: string) => {
-      return del(`/apps/${appId}/workflow-aliases/${aliasId}`)
+    mutationFn: async (tagId: string) => {
+      return del(`/apps/${appId}/workflow-tags/${tagId}`)
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workflow-aliases', appId] })
-      queryClient.invalidateQueries({ queryKey: ['workflow-aliases-paginated', appId] })
+      queryClient.invalidateQueries({ queryKey: ['workflow-tags', appId] })
+      queryClient.invalidateQueries({ queryKey: ['workflow-tags-paginated', appId] })
     },
   })
 }

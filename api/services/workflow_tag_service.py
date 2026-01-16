@@ -11,23 +11,23 @@ from libs.uuid_utils import uuidv7
 if TYPE_CHECKING:
     from sqlalchemy.orm import scoped_session
 
-from models import Workflow, WorkflowNameAlias
+from models import Workflow, WorkflowNameTag
 
 
-class WorkflowAliasArgs(BaseModel):
+class WorkflowTagArgs(BaseModel):
     app_id: str = Field(..., description="App ID")
     workflow_id: str = Field(..., description="Workflow ID")
-    name: str = Field(..., description="Alias name", max_length=100)
-    created_by: str | None = Field(default=None, description="User ID who created the alias")
+    name: str = Field(..., description="Tag name", max_length=100)
+    created_by: str | None = Field(default=None, description="User ID who created the tag")
 
 
 logger = logging.getLogger(__name__)
 
 
-class WorkflowAliasService:
+class WorkflowTagService:
     def __init__(self, session: Union[Session, "scoped_session"] | None = None):
         """
-        Initialize WorkflowAliasService with optional database session.
+        Initialize WorkflowTagService with optional database session.
 
         Args:
             session: Database session. If provided, will be used for all operations.
@@ -35,13 +35,13 @@ class WorkflowAliasService:
         """
         self._session = session
 
-    def create_alias(
+    def create_tag(
         self,
-        request: WorkflowAliasArgs,
+        request: WorkflowTagArgs,
         session: Union[Session, "scoped_session"] | None = None,
-    ) -> WorkflowNameAlias:
+    ) -> WorkflowNameTag:
         """
-        Create a new workflow alias. Raises an error if alias already exists.
+        Create a new workflow tag. Raises an error if tag already exists.
         """
         # Use instance session if provided, otherwise use method parameter
         db_session = self._session or session
@@ -53,19 +53,19 @@ class WorkflowAliasService:
             raise ValueError(f"Workflow {request.workflow_id} not found")
 
         if workflow.version == Workflow.VERSION_DRAFT:
-            raise ValueError("Cannot create aliases for draft workflows")
+            raise ValueError("Cannot create tags for draft workflows")
 
-        # Check if alias already exists
-        existing_alias = db_session.scalar(
-            select(WorkflowNameAlias).where(
-                and_(WorkflowNameAlias.app_id == request.app_id, WorkflowNameAlias.name == request.name)
+        # Check if tag already exists
+        existing_tag = db_session.scalar(
+            select(WorkflowNameTag).where(
+                and_(WorkflowNameTag.app_id == request.app_id, WorkflowNameTag.name == request.name)
             )
         )
 
-        if existing_alias:
-            raise ValueError(f"Alias '{request.name}' already exists for app {request.app_id}")
+        if existing_tag:
+            raise ValueError(f"Tag '{request.name}' already exists for app {request.app_id}")
 
-        alias = WorkflowNameAlias(
+        tag = WorkflowNameTag(
             id=str(uuidv7()),
             app_id=request.app_id,
             workflow_id=request.workflow_id,
@@ -73,16 +73,16 @@ class WorkflowAliasService:
             created_by=request.created_by,
         )
 
-        db_session.add(alias)
-        return alias
+        db_session.add(tag)
+        return tag
 
-    def update_alias(
+    def update_tag(
         self,
-        request: WorkflowAliasArgs,
+        request: WorkflowTagArgs,
         session: Union[Session, "scoped_session"] | None = None,
-    ) -> WorkflowNameAlias:
+    ) -> WorkflowNameTag:
         """
-        Update an existing workflow alias. Raises an error if alias doesn't exist.
+        Update an existing workflow tag. Raises an error if tag doesn't exist.
         """
         # Use instance session if provided, otherwise use method parameter
         db_session = self._session or session
@@ -94,60 +94,60 @@ class WorkflowAliasService:
             raise ValueError(f"Workflow {request.workflow_id} not found")
 
         if workflow.version == Workflow.VERSION_DRAFT:
-            raise ValueError("Cannot update aliases for draft workflows")
+            raise ValueError("Cannot update tags for draft workflows")
 
-        # Find existing alias to update
-        existing_alias = db_session.scalar(
-            select(WorkflowNameAlias).where(
-                and_(WorkflowNameAlias.app_id == request.app_id, WorkflowNameAlias.name == request.name)
+        # Find existing tag to update
+        existing_tag = db_session.scalar(
+            select(WorkflowNameTag).where(
+                and_(WorkflowNameTag.app_id == request.app_id, WorkflowNameTag.name == request.name)
             )
         )
 
-        if not existing_alias:
-            raise ValueError(f"Alias '{request.name}' not found for app {request.app_id}")
+        if not existing_tag:
+            raise ValueError(f"Tag '{request.name}' not found for app {request.app_id}")
 
-        old_workflow_id = existing_alias.workflow_id
-        existing_alias.workflow_id = request.workflow_id
-        existing_alias.updated_at = func.current_timestamp()
+        old_workflow_id = existing_tag.workflow_id
+        existing_tag.workflow_id = request.workflow_id
+        existing_tag.updated_at = func.current_timestamp()
 
         # Mark as transferred if workflow ID changed
         if old_workflow_id != request.workflow_id:
-            existing_alias.is_transferred = True
-            existing_alias.old_workflow_id = old_workflow_id
+            existing_tag.is_transferred = True
+            existing_tag.old_workflow_id = old_workflow_id
 
-        return existing_alias
+        return existing_tag
 
-    def get_aliases_by_app(
+    def get_tags_by_app(
         self,
         app_id: str,
         workflow_ids: list[str] | None = None,
         limit: int = 100,
         offset: int = 0,
         session: Union[Session, "scoped_session"] | None = None,
-    ) -> Sequence[WorkflowNameAlias]:
+    ) -> Sequence[WorkflowNameTag]:
         # Use instance session if provided, otherwise use method parameter
         db_session = self._session or session
         if not db_session:
             raise ValueError("Database session is required")
 
-        conditions = [WorkflowNameAlias.app_id == app_id]
+        conditions = [WorkflowNameTag.app_id == app_id]
 
         if workflow_ids:
-            conditions.append(WorkflowNameAlias.workflow_id.in_(workflow_ids))
+            conditions.append(WorkflowNameTag.workflow_id.in_(workflow_ids))
 
         stmt = (
-            select(WorkflowNameAlias)
+            select(WorkflowNameTag)
             .where(and_(*conditions))
-            .order_by(WorkflowNameAlias.created_at.desc())
+            .order_by(WorkflowNameTag.created_at.desc())
             .limit(limit)
             .offset(offset)
         )
 
         return list(db_session.scalars(stmt))
 
-    def delete_alias(
+    def delete_tag(
         self,
-        alias_id: str,
+        tag_id: str,
         app_id: str,
         session: Union[Session, "scoped_session"] | None = None,
     ) -> bool:
@@ -156,9 +156,9 @@ class WorkflowAliasService:
         if not db_session:
             raise ValueError("Database session is required")
 
-        alias = db_session.get(WorkflowNameAlias, alias_id)
-        if not alias or alias.app_id != app_id:
-            raise ValueError("Alias not found")
+        tag = db_session.get(WorkflowNameTag, tag_id)
+        if not tag or tag.app_id != app_id:
+            raise ValueError("Tag not found")
 
-        db_session.delete(alias)
+        db_session.delete(tag)
         return True
