@@ -153,7 +153,7 @@ class Example:
 
 ### SQLAlchemy Patterns
 
-- Models inherit from `models.base.Base`; do not create ad-hoc metadata or engines.
+- Models inherit from `models.base.TypeBase`; do not create ad-hoc metadata or engines.
 - Open sessions with context managers:
 
 ```python
@@ -226,7 +226,6 @@ Before opening a PR / submitting:
 
 - Controllers: parse input via Pydantic, invoke services, return serialised responses; no business logic.
 - Services: coordinate repositories, providers, background tasks; keep side effects explicit.
-- Avoid repositories unless necessary; direct SQLAlchemy usage is preferred for typical tables.
 - Document non-obvious behaviour with concise comments.
 
 ### Miscellaneous
