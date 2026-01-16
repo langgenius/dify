@@ -16,6 +16,7 @@ import { Theme } from '@/types/app'
 import SVGRenderer from '../svg-gallery' // Assumes svg-gallery.tsx is in /base directory
 
 const Flowchart = dynamic(() => import('@/app/components/base/mermaid'), { ssr: false })
+const QuadrantMatrix = dynamic(() => import('@/app/components/base/quadrant-matrix'), { ssr: false })
 
 // Available language https://github.com/react-syntax-highlighter/react-syntax-highlighter/blob/master/AVAILABLE_LANGUAGES_HLJS.MD
 const capitalizationLanguageNameMap: Record<string, string> = {
@@ -40,6 +41,7 @@ const capitalizationLanguageNameMap: Record<string, string> = {
   latex: 'Latex',
   svg: 'SVG',
   abc: 'ABC',
+  quadrant: 'Quadrant',
 }
 const getCorrectCapitalizationLanguageName = (language: string) => {
   if (!language)
@@ -407,6 +409,12 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
         return (
           <ErrorBoundary>
             <MarkdownMusic children={content} />
+          </ErrorBoundary>
+        )
+      case 'quadrant':
+        return (
+          <ErrorBoundary>
+            <QuadrantMatrix content={content} />
           </ErrorBoundary>
         )
       default:
