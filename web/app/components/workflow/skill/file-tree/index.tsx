@@ -49,8 +49,8 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
   const { data: treeData, isLoading, error } = useSkillAssetTreeData()
   const isMutating = useIsMutating() > 0
 
-  const expandedFolderIds = useStore(s => s.expandedFolderIds!)
-  const activeTabId = useStore(s => s.activeTabId!)
+  const expandedFolderIds = useStore(s => s.expandedFolderIds)
+  const activeTabId = useStore(s => s.activeTabId)
   const storeApi = useWorkflowStore()
 
   const renameNode = useRenameAppAssetNode()
@@ -62,12 +62,12 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
   }, [expandedFolderIds])
 
   const handleToggle = useCallback((id: string) => {
-    storeApi.getState().toggleFolder?.(id)
+    storeApi.getState().toggleFolder(id)
   }, [storeApi])
 
   const handleActivate = useCallback((node: NodeApi<TreeNodeData>) => {
     if (node.data.node_type === 'file')
-      storeApi.getState().openTab?.(node.data.id, { pinned: true })
+      storeApi.getState().openTab(node.data.id, { pinned: true })
     else
       node.toggle()
   }, [storeApi])
@@ -95,7 +95,7 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
 
     const ancestors = getAncestorIds(activeTabId, treeData.children)
     if (ancestors.length > 0)
-      storeApi.getState().revealFile?.(ancestors)
+      storeApi.getState().revealFile(ancestors)
     requestAnimationFrame(() => {
       const node = tree.get(activeTabId)
       if (node) {

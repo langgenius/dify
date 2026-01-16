@@ -23,6 +23,7 @@ import {
 } from 'zustand'
 import { createStore } from 'zustand/vanilla'
 import { WorkflowContext } from '@/app/components/workflow/context'
+import { createSkillEditorSlice } from '@/app/components/workflow/skill/store'
 import { createChatVariableSlice } from './chat-variable-slice'
 import { createInspectVarsSlice } from './debug/inspect-vars-slice'
 import { createEnvVariableSlice } from './env-variable-slice'
@@ -41,7 +42,6 @@ import { createWorkflowSlice } from './workflow-slice'
 export type SliceFromInjection
   = Partial<WorkflowAppSliceShape>
     & Partial<RagPipelineSliceShape>
-    & Partial<SkillEditorSliceShape>
 
 export type Shape
   = ChatVariableSliceShape
@@ -57,6 +57,7 @@ export type Shape
     & WorkflowSliceShape
     & InspectVarsSliceShape
     & LayoutSliceShape
+    & SkillEditorSliceShape
     & SliceFromInjection
 
 export type InjectWorkflowStoreSliceFn = StateCreator<SliceFromInjection>
@@ -82,6 +83,7 @@ export const createWorkflowStore = (params: CreateWorkflowStoreParams) => {
     ...createWorkflowSlice(...args),
     ...createInspectVarsSlice(...args),
     ...createLayoutSlice(...args),
+    ...createSkillEditorSlice(...args),
     ...(injectWorkflowStoreSliceFn?.(...args) || {} as SliceFromInjection),
   }))
 }

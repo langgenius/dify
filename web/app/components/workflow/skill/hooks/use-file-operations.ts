@@ -250,14 +250,14 @@ export function useFileOperations({
       await deleteNode.mutateAsync({ appId, nodeId })
 
       descendantFileIds.forEach((fileId) => {
-        storeApi.getState().closeTab?.(fileId)
-        storeApi.getState().clearDraftContent?.(fileId)
+        storeApi.getState().closeTab(fileId)
+        storeApi.getState().clearDraftContent(fileId)
       })
 
       // Also close and clear the node itself if it's a file
       if (!isFolder) {
-        storeApi.getState().closeTab?.(nodeId)
-        storeApi.getState().clearDraftContent?.(nodeId)
+        storeApi.getState().closeTab(nodeId)
+        storeApi.getState().clearDraftContent(nodeId)
       }
 
       Toast.notify({

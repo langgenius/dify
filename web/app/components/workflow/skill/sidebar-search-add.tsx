@@ -55,7 +55,7 @@ const SidebarSearchAdd: FC = () => {
   const [showMenu, setShowMenu] = useState(false)
 
   const { data: treeData } = useSkillAssetTreeData()
-  const activeTabId = useStore(s => s.activeTabId!)
+  const activeTabId = useStore(s => s.activeTabId)
 
   const targetFolderId = useMemo(() => {
     if (!treeData?.children)

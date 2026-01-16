@@ -26,7 +26,7 @@ const TreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeData>) 
   const { t } = useTranslation('workflow')
   const isFolder = node.data.node_type === 'folder'
   const isSelected = node.isSelected
-  const isDirty = useStore(s => s.dirtyContents?.has(node.data.id) ?? false)
+  const isDirty = useStore(s => s.dirtyContents.has(node.data.id))
   const contextMenuNodeId = useStore(s => s.contextMenu?.nodeId)
   const hasContextMenu = contextMenuNodeId === node.data.id
   const storeApi = useWorkflowStore()
@@ -41,11 +41,11 @@ const TreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeData>) 
   )
 
   const openFilePreview = useCallback(() => {
-    storeApi.getState().openTab?.(node.data.id, { pinned: false })
+    storeApi.getState().openTab(node.data.id, { pinned: false })
   }, [node.data.id, storeApi])
 
   const openFilePinned = useCallback(() => {
-    storeApi.getState().openTab?.(node.data.id, { pinned: true })
+    storeApi.getState().openTab(node.data.id, { pinned: true })
   }, [node.data.id, storeApi])
 
   const { handleClick: handleFileClick, handleDoubleClick: handleFileDoubleClick } = useDelayedClick({
@@ -79,7 +79,7 @@ const TreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeData>) 
     e.preventDefault()
     e.stopPropagation()
 
-    storeApi.getState().setContextMenu?.({
+    storeApi.getState().setContextMenu({
       top: e.clientY,
       left: e.clientX,
       nodeId: node.data.id,
@@ -97,7 +97,7 @@ const TreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeData>) 
       if (isFolder)
         node.toggle()
       else
-        storeApi.getState().openTab?.(node.data.id, { pinned: true })
+        storeApi.getState().openTab(node.data.id, { pinned: true })
     }
   }, [isFolder, node, storeApi])
 

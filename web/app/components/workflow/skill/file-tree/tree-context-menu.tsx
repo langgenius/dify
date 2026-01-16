@@ -22,7 +22,7 @@ const TreeContextMenu: FC<TreeContextMenuProps> = ({ treeRef }) => {
   const { data: treeData } = useSkillAssetTreeData()
 
   const handleClose = useCallback(() => {
-    storeApi.getState().setContextMenu?.(null)
+    storeApi.getState().setContextMenu(null)
   }, [storeApi])
 
   useClickAway(() => {

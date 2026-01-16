@@ -216,13 +216,19 @@ export type SkillEditorSliceShape
       resetSkillEditor: () => void
     }
 
-export const createSkillEditorSlice: StateCreator<SkillEditorSliceShape, [], [], SkillEditorSliceShape> = (set, get, store) => {
-  const args = [set, get, store] as Parameters<StateCreator<SkillEditorSliceShape>>
+export const createSkillEditorSlice: StateCreator<SkillEditorSliceShape> = (set, get, store) => {
+  // Type assertion via unknown to allow composition with other slices in a larger store
+  // This is safe because all slice creators only use set/get for their own properties
+  const tabArgs = [set, get, store] as unknown as Parameters<StateCreator<TabSliceShape>>
+  const fileTreeArgs = [set, get, store] as unknown as Parameters<StateCreator<FileTreeSliceShape>>
+  const dirtyArgs = [set, get, store] as unknown as Parameters<StateCreator<DirtySliceShape>>
+  const menuArgs = [set, get, store] as unknown as Parameters<StateCreator<FileOperationsMenuSliceShape>>
+
   return {
-    ...createTabSlice(...args),
-    ...createFileTreeSlice(...args),
-    ...createDirtySlice(...args),
-    ...createFileOperationsMenuSlice(...args),
+    ...createTabSlice(...tabArgs),
+    ...createFileTreeSlice(...fileTreeArgs),
+    ...createDirtySlice(...dirtyArgs),
+    ...createFileOperationsMenuSlice(...menuArgs),
 
     resetSkillEditor: () => {
       set({

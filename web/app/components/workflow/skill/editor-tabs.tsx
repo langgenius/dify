@@ -12,26 +12,26 @@ import { useSkillAssetNodeMap } from './hooks/use-skill-asset-tree'
 
 const EditorTabs: FC = () => {
   const { t } = useTranslation('workflow')
-  const openTabIds = useStore(s => s.openTabIds!)
-  const activeTabId = useStore(s => s.activeTabId!)
-  const previewTabId = useStore(s => s.previewTabId!)
-  const dirtyContents = useStore(s => s.dirtyContents!)
+  const openTabIds = useStore(s => s.openTabIds)
+  const activeTabId = useStore(s => s.activeTabId)
+  const previewTabId = useStore(s => s.previewTabId)
+  const dirtyContents = useStore(s => s.dirtyContents)
   const storeApi = useWorkflowStore()
   const { data: nodeMap } = useSkillAssetNodeMap()
 
   const [pendingCloseId, setPendingCloseId] = useState<string | null>(null)
 
   const handleTabClick = useCallback((fileId: string) => {
-    storeApi.getState().activateTab?.(fileId)
+    storeApi.getState().activateTab(fileId)
   }, [storeApi])
 
   const handleTabDoubleClick = useCallback((fileId: string) => {
-    storeApi.getState().pinTab?.(fileId)
+    storeApi.getState().pinTab(fileId)
   }, [storeApi])
 
   const closeTab = useCallback((fileId: string) => {
-    storeApi.getState().closeTab?.(fileId)
-    storeApi.getState().clearDraftContent?.(fileId)
+    storeApi.getState().closeTab(fileId)
+    storeApi.getState().clearDraftContent(fileId)
   }, [storeApi])
 
   const handleTabClose = useCallback((fileId: string) => {

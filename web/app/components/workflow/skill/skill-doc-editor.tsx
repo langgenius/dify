@@ -34,8 +34,8 @@ const SkillDocEditor: FC = () => {
   const appDetail = useAppStore(s => s.appDetail)
   const appId = appDetail?.id || ''
 
-  const activeTabId = useStore(s => s.activeTabId!)
-  const dirtyContents = useStore(s => s.dirtyContents!)
+  const activeTabId = useStore(s => s.activeTabId)
+  const dirtyContents = useStore(s => s.dirtyContents)
   const storeApi = useWorkflowStore()
   const { data: nodeMap } = useSkillAssetNodeMap()
 
@@ -68,8 +68,8 @@ const SkillDocEditor: FC = () => {
   const handleEditorChange = useCallback((value: string | undefined) => {
     if (!activeTabId || !isEditable)
       return
-    storeApi.getState().setDraftContent?.(activeTabId, value ?? '')
-    storeApi.getState().pinTab?.(activeTabId)
+    storeApi.getState().setDraftContent(activeTabId, value ?? '')
+    storeApi.getState().pinTab(activeTabId)
   }, [activeTabId, isEditable, storeApi])
 
   const handleSave = useCallback(async () => {
@@ -86,7 +86,7 @@ const SkillDocEditor: FC = () => {
         nodeId: activeTabId,
         payload: { content },
       })
-      storeApi.getState().clearDraftContent?.(activeTabId)
+      storeApi.getState().clearDraftContent(activeTabId)
       Toast.notify({
         type: 'success',
         message: t('api.saved', { ns: 'common' }),
