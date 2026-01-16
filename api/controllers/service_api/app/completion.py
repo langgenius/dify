@@ -234,11 +234,6 @@ class ChatApi(Resource):
         payload = ChatRequestPayload.model_validate(service_api_ns.payload or {})
         args = payload.model_dump(exclude_none=True)
 
-        workflow_alias = args.get("workflow_alias")
-        if workflow_alias:
-            workflow_id = self._fetch_workflow_id_by_alias(app_model=app_model, workflow_alias=workflow_alias)
-            args["workflow_id"] = workflow_id
-
         external_trace_id = get_external_trace_id(request)
         if external_trace_id:
             args["external_trace_id"] = external_trace_id
@@ -246,6 +241,16 @@ class ChatApi(Resource):
         streaming = payload.response_mode == "streaming"
 
         try:
+            # Handle workflow_alias or workflow_id
+            workflow_alias = args.get("workflow_alias")
+            workflow_id = args.get("workflow_id")
+            
+            if workflow_alias:
+                resolved_workflow_id = self._resolve_workflow_identifier(app_model=app_model, identifier=workflow_alias)
+                args["workflow_id"] = resolved_workflow_id
+            elif workflow_id:
+                resolved_workflow_id = self._resolve_workflow_identifier(app_model=app_model, identifier=workflow_id)
+                args["workflow_id"] = resolved_workflow_id
             response = AppGenerateService.generate(
                 app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.SERVICE_API, streaming=streaming
             )
@@ -280,25 +285,59 @@ class ChatApi(Resource):
             logger.exception("internal server error.")
             raise InternalServerError()
 
-    def _fetch_workflow_id_by_alias(self, *, app_model: App, workflow_alias: str) -> str:
+    def _resolve_workflow_identifier(self, app_model: App, identifier: str) -> str:
         """
-        Resolve workflow_alias to workflow_id
-        Priority: workflow_alias > workflow_id > latest published workflow
+        Resolve identifier to workflow_id and verify it exists
+        Priority: UUID format > alias
+        
+        Args:
+            app_model: The app model
+            identifier: workflow_id (UUID) or workflow_alias
+            
+        Returns:
+            The resolved workflow_id
+            
+        Raises:
+            WorkflowIdFormatError: If identifier is invalid or workflow doesn't exist
         """
+        import uuid
+
+        from models.workflow import Workflow
+        
         workflow_service = WorkflowService()
+        
+        # First try to parse as UUID
+        try:
+            uuid.UUID(identifier)
+            # UUID format is valid, verify the workflow exists
+            with Session(db.engine) as session:
+                workflow = session.get(Workflow, identifier)
+                if workflow and str(workflow.app_id) == str(app_model.id):
+                    return identifier
+                # UUID format but workflow doesn't exist or belongs to different app
+                raise WorkflowIdFormatError(
+                    f"Workflow with ID '{identifier}' not found."
+                )
+        except WorkflowIdFormatError:
+            raise
+        except (ValueError, TypeError):
+            pass
+        
+        # Then try to find by alias
         with Session(db.engine) as session:
             workflow = workflow_service.get_workflow_by_alias(
                 session=session,
                 app_id=app_model.id,
-                name=workflow_alias,
+                name=identifier,
             )
-
-            if not workflow:
-                raise WorkflowNotFoundError(f"Workflow with alias '{workflow_alias}' not found")
-
-            workflow_id = workflow.id
-
-        return workflow_id
+            
+            if workflow:
+                return workflow.id
+        
+        # Neither valid UUID with existing workflow nor valid alias
+        raise WorkflowIdFormatError(
+            f"Invalid identifier '{identifier}'. Must be a valid workflow alias or UUID format."
+        )
 
 
 @service_api_ns.route("/chat-messages/<string:task_id>/stop")
