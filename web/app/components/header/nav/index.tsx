@@ -2,9 +2,9 @@
 
 import type { INavSelectorProps } from './nav-selector'
 import Link from 'next/link'
-import { usePathname, useSearchParams, useSelectedLayoutSegment } from 'next/navigation'
+import { useSelectedLayoutSegment } from 'next/navigation'
 import * as React from 'react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
 import { cn } from '@/utils/classnames'
@@ -36,14 +36,6 @@ const Nav = ({
   const [hovered, setHovered] = useState(false)
   const segment = useSelectedLayoutSegment()
   const isActivated = Array.isArray(activeSegment) ? activeSegment.includes(segment!) : segment === activeSegment
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const [linkLastSearchParams, setLinkLastSearchParams] = useState('')
-
-  useEffect(() => {
-    if (pathname === link)
-      setLinkLastSearchParams(searchParams.toString())
-  }, [pathname, searchParams])
 
   return (
     <div className={`
@@ -52,7 +44,7 @@ const Nav = ({
       ${!curNav && !isActivated && 'hover:bg-components-main-nav-nav-button-bg-hover'}
     `}
     >
-      <Link href={link + (linkLastSearchParams && `?${linkLastSearchParams}`)}>
+      <Link href={link}>
         <div
           onClick={(e) => {
             // Don't clear state if opening in new tab/window
