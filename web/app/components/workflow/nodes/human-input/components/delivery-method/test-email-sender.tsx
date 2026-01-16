@@ -141,13 +141,14 @@ const EmailSenderModal = ({
         appID: appDetail?.id || '',
         nodeID: nodeId,
         deliveryID: deliveryId,
+        inputs,
       })
       setDone(true)
     }
     finally {
       setSendingEmail(false)
     }
-  }, [appDetail, nodeId, deliveryId, testEmailSender])
+  }, [testEmailSender, appDetail?.id, nodeId, deliveryId, inputs])
 
   if (done) {
     return (

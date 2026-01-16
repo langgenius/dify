@@ -231,6 +231,14 @@ export const useEditInspectorVar = (flowType: FlowType, flowId: string) => {
 export const useTestEmailSender = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'test email sender'],
-    mutationFn: async (data: { appID: string, nodeID: string, deliveryID: string }) => post<CommonResponse>(`apps/${data.appID}/human-input/test-delivery/${data.nodeID}/${data.deliveryID}`),
+    mutationFn: async (data: { appID: string, nodeID: string, deliveryID: string, inputs: Record<string, any> }) => {
+      const { appID, nodeID, deliveryID, inputs } = data
+      return post<CommonResponse>(`/apps/${appID}/workflows/draft/human-input/nodes/${nodeID}/delivery-test`, {
+        body: {
+          delivery_method_id: deliveryID,
+          inputs,
+        },
+      })
+    },
   })
 }
