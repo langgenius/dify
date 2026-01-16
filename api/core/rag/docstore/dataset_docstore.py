@@ -128,6 +128,7 @@ class DatasetDocumentStore:
                 if save_child:
                     if doc.children:
                         for position, child in enumerate(doc.children, start=1):
+                            assert self._document_id is not None
                             child_segment = ChildChunk(
                                 tenant_id=self._dataset.tenant_id,
                                 dataset_id=self._dataset.id,
@@ -162,6 +163,7 @@ class DatasetDocumentStore:
                     ).delete()
                     # add new child chunks
                     for position, child in enumerate(doc.children, start=1):
+                        assert self._document_id is not None
                         child_segment = ChildChunk(
                             tenant_id=self._dataset.tenant_id,
                             dataset_id=self._dataset.id,
