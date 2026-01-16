@@ -53,6 +53,14 @@ export default antfu(
       },
     },
   },
+  {
+    files: ['**/*.ts', '**/*.tsx'],
+    settings: {
+      'react-x': {
+        additionalStateHooks: '/^use\\w*State(?:s)?|useAtom$/u',
+      },
+    },
+  },
   // downgrade some rules from error to warn for gradual adoption
   // we should fix these in following pull requests
   {
