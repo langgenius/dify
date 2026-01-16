@@ -1,4 +1,5 @@
 export { default as AtSign } from './AtSign'
+export { default as AssembleVariables } from './AssembleVariables'
 export { default as Bookmark } from './Bookmark'
 export { default as Check } from './Check'
 export { default as CheckDone01 } from './CheckDone01'

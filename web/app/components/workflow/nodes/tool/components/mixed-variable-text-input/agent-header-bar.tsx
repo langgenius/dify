@@ -11,6 +11,7 @@ type AgentHeaderBarProps = {
   onRemove: () => void
   onViewInternals?: () => void
   hasWarning?: boolean
+  showAtPrefix?: boolean
 }
 
 const AgentHeaderBar: FC<AgentHeaderBarProps> = ({
@@ -18,6 +19,7 @@ const AgentHeaderBar: FC<AgentHeaderBarProps> = ({
   onRemove,
   onViewInternals,
   hasWarning,
+  showAtPrefix = true,
 }) => {
   const { t } = useTranslation()
 
@@ -36,7 +38,7 @@ const AgentHeaderBar: FC<AgentHeaderBarProps> = ({
             <Agent className="h-3 w-3 text-text-primary-on-surface" />
           </div>
           <span className="system-xs-medium text-text-secondary">
-            @
+            {showAtPrefix && '@'}
             {agentName}
           </span>
           <button
@@ -48,17 +50,19 @@ const AgentHeaderBar: FC<AgentHeaderBarProps> = ({
           </button>
         </div>
       </div>
-      <button
-        type="button"
-        className="flex items-center gap-1 text-text-tertiary hover:text-text-secondary"
-        onClick={onViewInternals}
-      >
-        <RiEqualizer2Line className="h-3.5 w-3.5" />
-        <span className="system-xs-medium">{t('common.viewInternals', { ns: 'workflow' })}</span>
-        {hasWarning && (
-          <AlertTriangle className="h-3.5 w-3.5 text-text-warning-secondary" />
-        )}
-      </button>
+      {onViewInternals && (
+        <button
+          type="button"
+          className="flex items-center gap-1 text-text-tertiary hover:text-text-secondary"
+          onClick={onViewInternals}
+        >
+          <RiEqualizer2Line className="h-3.5 w-3.5" />
+          <span className="system-xs-medium">{t('common.viewInternals', { ns: 'workflow' })}</span>
+          {hasWarning && (
+            <AlertTriangle className="h-3.5 w-3.5 text-text-warning-secondary" />
+          )}
+        </button>
+      )}
     </div>
   )
 }
