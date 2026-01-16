@@ -3,6 +3,7 @@ import datetime
 import json
 import logging
 import secrets
+import time
 from typing import Any
 
 import click
@@ -46,6 +47,8 @@ from services.clear_free_plan_tenant_expired_logs import ClearFreePlanTenantExpi
 from services.plugin.data_migration import PluginDataMigration
 from services.plugin.plugin_migration import PluginMigration
 from services.plugin.plugin_service import PluginService
+from services.retention.conversation.messages_clean_policy import create_message_clean_policy
+from services.retention.conversation.messages_clean_service import MessagesCleanService
 from services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs import WorkflowRunCleanup
 from tasks.remove_app_and_related_data_task import delete_draft_variables_batch
 
@@ -2172,3 +2175,79 @@ def migrate_oss(
             except Exception as e:
                 db.session.rollback()
                 click.echo(click.style(f"Failed to update DB storage_type: {str(e)}", fg="red"))
+
+
+@click.command("clean-expired-messages", help="Clean expired messages.")
+@click.option(
+    "--start-from",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    required=True,
+    help="Lower bound (inclusive) for created_at.",
+)
+@click.option(
+    "--end-before",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    required=True,
+    help="Upper bound (exclusive) for created_at.",
+)
+@click.option("--batch-size", default=1000, show_default=True, help="Batch size for selecting messages.")
+@click.option(
+    "--graceful-period",
+    default=21,
+    show_default=True,
+    help="Graceful period in days after subscription expiration, will be ignored when billing is disabled.",
+)
+@click.option("--dry-run", is_flag=True, default=False, help="Show messages logs would be cleaned without deleting")
+def clean_expired_messages(
+    batch_size: int,
+    graceful_period: int,
+    start_from: datetime.datetime,
+    end_before: datetime.datetime,
+    dry_run: bool,
+):
+    """
+    Clean expired messages and related data for tenants based on clean policy.
+    """
+    click.echo(click.style("clean_messages: start clean messages.", fg="green"))
+
+    start_at = time.perf_counter()
+
+    try:
+        # Create policy based on billing configuration
+        # NOTE: graceful_period will be ignored when billing is disabled.
+        policy = create_message_clean_policy(graceful_period_days=graceful_period)
+
+        # Create and run the cleanup service
+        service = MessagesCleanService.from_time_range(
+            policy=policy,
+            start_from=start_from,
+            end_before=end_before,
+            batch_size=batch_size,
+            dry_run=dry_run,
+        )
+        stats = service.run()
+
+        end_at = time.perf_counter()
+        click.echo(
+            click.style(
+                f"clean_messages: completed successfully\n"
+                f"  - Latency: {end_at - start_at:.2f}s\n"
+                f"  - Batches processed: {stats['batches']}\n"
+                f"  - Total messages scanned: {stats['total_messages']}\n"
+                f"  - Messages filtered: {stats['filtered_messages']}\n"
+                f"  - Messages deleted: {stats['total_deleted']}",
+                fg="green",
+            )
+        )
+    except Exception as e:
+        end_at = time.perf_counter()
+        logger.exception("clean_messages failed")
+        click.echo(
+            click.style(
+                f"clean_messages: failed after {end_at - start_at:.2f}s - {str(e)}",
+                fg="red",
+            )
+        )
+        raise
+
+    click.echo(click.style("messages cleanup completed.", fg="green"))
