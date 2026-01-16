@@ -235,7 +235,14 @@ class AgentNode(Node[AgentNodeData]):
                                 0,
                             ):
                                 value_param = param.get("value", {})
-                                params[key] = value_param.get("value", "") if value_param is not None else None
+                                if value_param.get('type', '') == 'variable':
+                                    variable = variable_pool.get(value_param.get("value"))
+                                    if variable is not None:
+                                        params[key] = variable.value
+                                    else:
+                                        raise AgentVariableNotFoundError(str(value_param.get("value")))
+                                else:
+                                    params[key] = value_param.get("value", "") if value_param is not None else None
                             else:
                                 params[key] = None
                         parameters = params
