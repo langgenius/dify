@@ -21,6 +21,7 @@ const offlineUrl = `${basePath}/_offline.html`
 const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
   skipWaiting: true,
+  disableDevLogs: true,
   clientsClaim: true,
   navigationPreload: true,
   runtimeCaching: [
