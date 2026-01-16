@@ -199,19 +199,16 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
                 "model_provider": model_config.provider,
                 "model_name": model_config.model,
             }
+            # Build context from prompt messages and response
+            assistant_response = f"class_name: {category_name}, class_id: {category_id}"
+            context = llm_utils.build_context(prompt_messages, assistant_response)
+
             outputs = {
                 "class_name": category_name,
                 "class_id": category_id,
                 "usage": jsonable_encoder(usage),
+                "context": context,
             }
-
-            # Save to node memory if in node memory mode
-            llm_utils.save_node_memory(
-                memory=memory,
-                variable_pool=variable_pool,
-                user_query=query or "",
-                assistant_response=f"class_name: {category_name}, class_id: {category_id}",
-            )
 
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,

@@ -17,6 +17,12 @@ from core.memory.node_token_buffer_memory import NodeTokenBufferMemory
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
+from core.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    PromptMessage,
+    ToolPromptMessage,
+    UserPromptMessage,
+)
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.entities.advanced_prompt_entities import MemoryMode
@@ -527,6 +533,95 @@ class AgentNode(Node[AgentNodeData]):
             # Conversation-level memory doesn't need saving here
             return None
 
+    def _build_context(
+        self,
+        parameters_for_log: dict[str, Any],
+        user_query: str,
+        assistant_response: str,
+        agent_logs: list[AgentLogEvent],
+    ) -> list[PromptMessage]:
+        """
+        Build context from user query, tool calls, and assistant response.
+        Format: user -> assistant(with tool_calls) -> tool -> assistant
+
+        The context includes:
+        - Current user query (always present, may be empty)
+        - Assistant message with tool_calls (if tools were called)
+        - Tool results
+        - Assistant's final response
+        """
+        context_messages: list[PromptMessage] = []
+
+        # Always add user query (even if empty, to maintain conversation structure)
+        context_messages.append(UserPromptMessage(content=user_query or ""))
+
+        # Extract actual tool calls from agent logs
+        # Only include logs with label starting with "CALL " - these are real tool invocations
+        tool_calls: list[AssistantPromptMessage.ToolCall] = []
+        tool_results: list[tuple[str, str, str]] = []  # (tool_call_id, tool_name, result)
+
+        for log in agent_logs:
+            if log.status == "success" and log.label and log.label.startswith("CALL "):
+                # Extract tool name from label (format: "CALL tool_name")
+                tool_name = log.label[5:]  # Remove "CALL " prefix
+                tool_call_id = log.message_id
+
+                # Parse tool response from data
+                data = log.data or {}
+                tool_response = ""
+
+                # Try to extract the actual tool response
+                if "tool_response" in data:
+                    tool_response = data["tool_response"]
+                elif "output" in data:
+                    tool_response = data["output"]
+                elif "result" in data:
+                    tool_response = data["result"]
+
+                if isinstance(tool_response, dict):
+                    tool_response = str(tool_response)
+
+                # Get tool input for arguments
+                tool_input = data.get("tool_call_input", {}) or data.get("input", {})
+                if isinstance(tool_input, dict):
+                    import json
+
+                    tool_input_str = json.dumps(tool_input, ensure_ascii=False)
+                else:
+                    tool_input_str = str(tool_input) if tool_input else ""
+
+                if tool_response:
+                    tool_calls.append(
+                        AssistantPromptMessage.ToolCall(
+                            id=tool_call_id,
+                            type="function",
+                            function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                                name=tool_name,
+                                arguments=tool_input_str,
+                            ),
+                        )
+                    )
+                    tool_results.append((tool_call_id, tool_name, str(tool_response)))
+
+        # Add assistant message with tool_calls if there were tool calls
+        if tool_calls:
+            context_messages.append(AssistantPromptMessage(content="", tool_calls=tool_calls))
+
+            # Add tool result messages
+            for tool_call_id, tool_name, result in tool_results:
+                context_messages.append(
+                    ToolPromptMessage(
+                        content=result,
+                        tool_call_id=tool_call_id,
+                        name=tool_name,
+                    )
+                )
+
+        # Add final assistant response
+        context_messages.append(AssistantPromptMessage(content=assistant_response))
+
+        return context_messages
+
     def _transform_message(
         self,
         messages: Generator[ToolInvokeMessage, None, None],
@@ -782,20 +877,11 @@ class AgentNode(Node[AgentNodeData]):
                 is_final=True,
             )
 
-        # Save to node memory if in node memory mode
-        from core.workflow.nodes.llm import llm_utils
+        # Get user query from parameters for building context
+        user_query = parameters_for_log.get("query", "")
 
-        # Get user query from sys.query
-        user_query_var = self.graph_runtime_state.variable_pool.get(["sys", SystemVariableKey.QUERY])
-        user_query = user_query_var.text if user_query_var else ""
-
-        llm_utils.save_node_memory(
-            memory=memory,
-            variable_pool=self.graph_runtime_state.variable_pool,
-            user_query=user_query,
-            assistant_response=text,
-            assistant_files=files,
-        )
+        # Build context from history, user query, tool calls and assistant response
+        context = self._build_context(parameters_for_log, user_query, text, agent_logs)
 
         yield StreamCompletedEvent(
             node_run_result=NodeRunResult(
@@ -805,6 +891,7 @@ class AgentNode(Node[AgentNodeData]):
                     "usage": jsonable_encoder(llm_usage),
                     "files": ArrayFileSegment(value=files),
                     "json": json_output,
+                    "context": context,
                     **variables,
                 },
                 metadata={

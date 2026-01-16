@@ -20,7 +20,6 @@ from core.memory.base import BaseMemory
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities import (
     ImagePromptMessageContent,
-    MultiModalPromptMessageContent,
     PromptMessage,
     PromptMessageContentType,
     TextPromptMessageContent,
@@ -327,24 +326,12 @@ class LLMNode(Node[LLMNodeData]):
                 "reasoning_content": reasoning_content,
                 "usage": jsonable_encoder(usage),
                 "finish_reason": finish_reason,
-                "context": self._build_context(prompt_messages, clean_text),
+                "context": llm_utils.build_context(prompt_messages, clean_text),
             }
             if structured_output:
                 outputs["structured_output"] = structured_output.structured_output
             if self._file_outputs:
                 outputs["files"] = ArrayFileSegment(value=self._file_outputs)
-
-            # Write to Node Memory if in node memory mode
-            # Resolve the query template to get actual user content
-            actual_query = variable_pool.convert_template(query or "").text
-            llm_utils.save_node_memory(
-                memory=memory,
-                variable_pool=variable_pool,
-                user_query=actual_query,
-                assistant_response=clean_text,
-                user_files=files,
-                assistant_files=self._file_outputs,
-            )
 
             # Send final chunk event to indicate streaming is complete
             yield StreamChunkEvent(
@@ -607,48 +594,6 @@ class LLMNode(Node[LLMNodeData]):
         # Separated mode: always return clean text and reasoning_content
         return clean_text, reasoning_content or ""
 
-    @staticmethod
-    def _build_context(
-        prompt_messages: Sequence[PromptMessage],
-        assistant_response: str,
-    ) -> list[PromptMessage]:
-        """
-        Build context from prompt messages and assistant response.
-        Excludes system messages and includes the current LLM response.
-        Returns list[PromptMessage] for use with ArrayPromptMessageSegment.
-
-        Note: Multi-modal content base64 data is truncated to avoid storing large data in context.
-        """
-        context_messages: list[PromptMessage] = [
-            LLMNode._truncate_multimodal_content(m) for m in prompt_messages if m.role != PromptMessageRole.SYSTEM
-        ]
-        context_messages.append(AssistantPromptMessage(content=assistant_response))
-        return context_messages
-
-    @staticmethod
-    def _truncate_multimodal_content(message: PromptMessage) -> PromptMessage:
-        """
-        Truncate multi-modal content base64 data in a message to avoid storing large data.
-        Preserves the PromptMessage structure for ArrayPromptMessageSegment compatibility.
-        """
-        content = message.content
-        if content is None or isinstance(content, str):
-            return message
-
-        # Process list content, truncating multi-modal base64 data
-        new_content: list[PromptMessageContentUnionTypes] = []
-        for item in content:
-            if isinstance(item, MultiModalPromptMessageContent):
-                # Truncate base64_data similar to prompt_messages_to_prompt_for_saving
-                truncated_base64 = ""
-                if item.base64_data:
-                    truncated_base64 = item.base64_data[:10] + "...[TRUNCATED]..." + item.base64_data[-10:]
-                new_content.append(item.model_copy(update={"base64_data": truncated_base64}))
-            else:
-                new_content.append(item)
-
-        return message.model_copy(update={"content": new_content})
-
     def _transform_chat_messages(
         self, messages: Sequence[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate, /
     ) -> Sequence[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate:
@@ -716,53 +661,157 @@ class LLMNode(Node[LLMNodeData]):
         """
         variable_pool = self.graph_runtime_state.variable_pool
 
-        # Build a map from context index to its messages
-        context_messages_map: dict[int, list[PromptMessage]] = {}
+        # Process messages in DSL order: iterate once and handle each type directly
+        combined_messages: list[PromptMessage] = []
         context_idx = 0
-        for idx, type_ in template_order:
+        static_idx = 0
+
+        for _, type_ in template_order:
             if type_ == "context":
+                # Handle context reference
                 ctx_ref = context_refs[context_idx]
                 ctx_var = variable_pool.get(ctx_ref.value_selector)
                 if ctx_var is None:
                     raise VariableNotFoundError(f"Variable {'.'.join(ctx_ref.value_selector)} not found")
                 if not isinstance(ctx_var, ArrayPromptMessageSegment):
                     raise InvalidVariableTypeError(f"Variable {'.'.join(ctx_ref.value_selector)} is not array[message]")
-                context_messages_map[idx] = list(ctx_var.value)
+                combined_messages.extend(ctx_var.value)
                 context_idx += 1
-
-        # Process static messages
-        static_prompt_messages: Sequence[PromptMessage] = []
-        stop: Sequence[str] | None = None
-        if static_messages:
-            static_prompt_messages, stop = LLMNode.fetch_prompt_messages(
-                sys_query=query,
-                sys_files=files,
-                context=context,
-                memory=memory,
-                model_config=model_config,
-                prompt_template=cast(Sequence[LLMNodeChatModelMessage], self.node_data.prompt_template),
-                memory_config=self.node_data.memory,
-                vision_enabled=self.node_data.vision.enabled,
-                vision_detail=self.node_data.vision.configs.detail,
-                variable_pool=variable_pool,
-                jinja2_variables=self.node_data.prompt_config.jinja2_variables,
-                tenant_id=self.tenant_id,
-                context_files=context_files,
-            )
-
-        # Combine messages according to original DSL order
-        combined_messages: list[PromptMessage] = []
-        static_msg_iter = iter(static_prompt_messages)
-        for idx, type_ in template_order:
-            if type_ == "context":
-                combined_messages.extend(context_messages_map[idx])
             else:
-                if msg := next(static_msg_iter, None):
-                    combined_messages.append(msg)
-        # Append any remaining static messages (e.g., memory messages)
-        combined_messages.extend(static_msg_iter)
+                # Handle static message
+                static_msg = static_messages[static_idx]
+                processed_msgs = LLMNode.handle_list_messages(
+                    messages=[static_msg],
+                    context=context,
+                    jinja2_variables=self.node_data.prompt_config.jinja2_variables or [],
+                    variable_pool=variable_pool,
+                    vision_detail_config=self.node_data.vision.configs.detail,
+                )
+                combined_messages.extend(processed_msgs)
+                static_idx += 1
+
+        # Append memory messages
+        memory_messages = _handle_memory_chat_mode(
+            memory=memory,
+            memory_config=self.node_data.memory,
+            model_config=model_config,
+        )
+        combined_messages.extend(memory_messages)
+
+        # Append current query if provided
+        if query:
+            query_message = LLMNodeChatModelMessage(
+                text=query,
+                role=PromptMessageRole.USER,
+                edition_type="basic",
+            )
+            query_msgs = LLMNode.handle_list_messages(
+                messages=[query_message],
+                context="",
+                jinja2_variables=[],
+                variable_pool=variable_pool,
+                vision_detail_config=self.node_data.vision.configs.detail,
+            )
+            combined_messages.extend(query_msgs)
+
+        # Handle files (sys_files and context_files)
+        combined_messages = self._append_files_to_messages(
+            messages=combined_messages,
+            sys_files=files,
+            context_files=context_files,
+            model_config=model_config,
+        )
+
+        # Filter empty messages and get stop sequences
+        combined_messages = self._filter_messages(combined_messages, model_config)
+        stop = self._get_stop_sequences(model_config)
 
         return combined_messages, stop
+
+    def _append_files_to_messages(
+        self,
+        *,
+        messages: list[PromptMessage],
+        sys_files: Sequence[File],
+        context_files: list[File],
+        model_config: ModelConfigWithCredentialsEntity,
+    ) -> list[PromptMessage]:
+        """Append sys_files and context_files to messages."""
+        vision_enabled = self.node_data.vision.enabled
+        vision_detail = self.node_data.vision.configs.detail
+
+        # Handle sys_files (will be deprecated later)
+        if vision_enabled and sys_files:
+            file_prompts = [
+                file_manager.to_prompt_message_content(file, image_detail_config=vision_detail) for file in sys_files
+            ]
+            if messages and isinstance(messages[-1], UserPromptMessage) and isinstance(messages[-1].content, list):
+                messages[-1] = UserPromptMessage(content=file_prompts + messages[-1].content)
+            else:
+                messages.append(UserPromptMessage(content=file_prompts))
+
+        # Handle context_files
+        if vision_enabled and context_files:
+            file_prompts = [
+                file_manager.to_prompt_message_content(file, image_detail_config=vision_detail)
+                for file in context_files
+            ]
+            if messages and isinstance(messages[-1], UserPromptMessage) and isinstance(messages[-1].content, list):
+                messages[-1] = UserPromptMessage(content=file_prompts + messages[-1].content)
+            else:
+                messages.append(UserPromptMessage(content=file_prompts))
+
+        return messages
+
+    def _filter_messages(
+        self, messages: list[PromptMessage], model_config: ModelConfigWithCredentialsEntity
+    ) -> list[PromptMessage]:
+        """Filter empty messages and unsupported content types."""
+        filtered_messages: list[PromptMessage] = []
+
+        for message in messages:
+            if isinstance(message.content, list):
+                filtered_content: list[PromptMessageContentUnionTypes] = []
+                for content_item in message.content:
+                    # Skip non-text content if features are not defined
+                    if not model_config.model_schema.features:
+                        if content_item.type != PromptMessageContentType.TEXT:
+                            continue
+                        filtered_content.append(content_item)
+                        continue
+
+                    # Skip content if corresponding feature is not supported
+                    feature_map = {
+                        PromptMessageContentType.IMAGE: ModelFeature.VISION,
+                        PromptMessageContentType.DOCUMENT: ModelFeature.DOCUMENT,
+                        PromptMessageContentType.VIDEO: ModelFeature.VIDEO,
+                        PromptMessageContentType.AUDIO: ModelFeature.AUDIO,
+                    }
+                    required_feature = feature_map.get(content_item.type)
+                    if required_feature and required_feature not in model_config.model_schema.features:
+                        continue
+                    filtered_content.append(content_item)
+
+                # Simplify single text content
+                if len(filtered_content) == 1 and filtered_content[0].type == PromptMessageContentType.TEXT:
+                    message.content = filtered_content[0].data
+                else:
+                    message.content = filtered_content
+
+            if not message.is_empty():
+                filtered_messages.append(message)
+
+        if not filtered_messages:
+            raise NoPromptFoundError(
+                "No prompt found in the LLM configuration. "
+                "Please ensure a prompt is properly configured before proceeding."
+            )
+
+        return filtered_messages
+
+    def _get_stop_sequences(self, model_config: ModelConfigWithCredentialsEntity) -> Sequence[str] | None:
+        """Get stop sequences from model config."""
+        return model_config.stop
 
     def _fetch_jinja_inputs(self, node_data: LLMNodeData) -> dict[str, str]:
         variables: dict[str, Any] = {}

@@ -276,7 +276,5 @@ class ToolPromptMessage(PromptMessage):
 
         :return: True if prompt message is empty, False otherwise
         """
-        if not super().is_empty() and not self.tool_call_id:
-            return False
-
-        return True
+        # ToolPromptMessage is not empty if it has content OR has a tool_call_id
+        return super().is_empty() and not self.tool_call_id
