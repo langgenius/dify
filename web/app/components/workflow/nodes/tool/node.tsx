@@ -71,7 +71,8 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
   }, [nodes])
 
   const mentionEntries = useMemo(() => {
-    const entries: Array<{ agentNodeId: string, extractorNodeId?: string }> = []
+    const entries: Array<{ agentNodeId: string, extractorNodeId?: string, paramKey: string }> = []
+    const seen = new Set<string>()
     const toolParams = data.tool_parameters || {}
     Object.entries(toolParams).forEach(([paramKey, param]) => {
       const value = param?.value
@@ -82,8 +83,13 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
         const agentNodeId = match[1]
         if (!agentNodeId)
           continue
+        const entryKey = `${paramKey}:${agentNodeId}`
+        if (seen.has(entryKey))
+          continue
+        seen.add(entryKey)
         entries.push({
           agentNodeId,
+          paramKey,
           extractorNodeId: param?.mention_config?.extractor_node_id
             || (param?.type === VarType.mention ? `${id}_ext_${paramKey}` : undefined),
         })
@@ -119,9 +125,7 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
       return Boolean(errorMessage)
     }
 
-    const itemsMap = new Map<string, { key: string, label: string, type: BlockEnum, hasWarning: boolean }>()
-
-    mentionEntries.forEach(({ agentNodeId, extractorNodeId }) => {
+    return mentionEntries.map(({ agentNodeId, extractorNodeId, paramKey }) => {
       const agentNode = nodesById[agentNodeId]
       const agentLabel = `@${agentNode?.data.title || agentNodeId}`
       const agentWarning = getNodeWarning(agentNode)
@@ -129,20 +133,14 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
       const extractorWarning = extractorNodeId
         ? getNodeWarning(nodesById[extractorNodeId])
         : false
-
-      const key = `agent-${agentNodeId}`
-      const existing = itemsMap.get(key)
-      const hasWarning = (existing?.hasWarning || false) || agentWarning || extractorWarning
-
-      itemsMap.set(key, {
-        key,
+      const hasWarning = agentWarning || extractorWarning
+      return {
+        key: `${paramKey}-${agentNodeId}-${extractorNodeId || 'no-extractor'}`,
         label: agentLabel,
         type: BlockEnum.Agent,
         hasWarning,
-      })
+      }
     })
-
-    return Array.from(itemsMap.values())
   }, [mentionEntries, nodesById, nodesMetaDataMap, strategyProviders, language, t])
 
   const hasConfigs = toolConfigs.length > 0
