@@ -5,7 +5,6 @@ import logging
 from collections.abc import Generator, Mapping, Sequence
 from typing import Any, cast
 
-from flask import has_request_context
 from sqlalchemy import select
 
 from core.db.session_factory import session_factory
@@ -27,6 +26,21 @@ from models.model import App, EndUser
 from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
+
+
+def _try_resolve_user_from_request() -> Account | EndUser | None:
+    """
+    Try to resolve user from Flask request context.
+
+    Returns None if not in a request context or if user is not available.
+    """
+    # Note: `current_user` is a LocalProxy. Never compare it with None directly.
+    # Use _get_current_object() to dereference the proxy
+    user = getattr(current_user, "_get_current_object", lambda: current_user)()
+    # Check if we got a valid user object
+    if user is not None and hasattr(user, "id"):
+        return user
+    return None
 
 
 class WorkflowTool(Tool):
@@ -209,21 +223,13 @@ class WorkflowTool(Tool):
         Returns:
             Account | EndUser | None: The resolved user object, or None if resolution fails.
         """
-        if has_request_context():
-            return self._resolve_user_from_request()
-        else:
-            return self._resolve_user_from_database(user_id=user_id)
+        # Try to resolve user from request context first
+        user = _try_resolve_user_from_request()
+        if user is not None:
+            return user
 
-    def _resolve_user_from_request(self) -> Account | EndUser | None:
-        """
-        Resolve user from Flask request context.
-        """
-        try:
-            # Note: `current_user` is a LocalProxy. Never compare it with None directly.
-            return getattr(current_user, "_get_current_object", lambda: current_user)()
-        except Exception as e:
-            logger.warning("Failed to resolve user from request context: %s", e)
-            return None
+        # Fall back to database resolution
+        return self._resolve_user_from_database(user_id=user_id)
 
     def _resolve_user_from_database(self, user_id: str) -> Account | EndUser | None:
         """

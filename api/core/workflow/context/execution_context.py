@@ -1,0 +1,216 @@
+"""
+Execution Context - Abstracted context management for workflow execution.
+"""
+
+import contextvars
+from abc import ABC, abstractmethod
+from collections.abc import Generator
+from contextlib import AbstractContextManager, contextmanager
+from typing import Any, Protocol, final, runtime_checkable
+
+
+class AppContext(ABC):
+    """
+    Abstract application context interface.
+
+    This abstraction allows workflow execution to work with or without Flask
+    by providing a common interface for application context management.
+    """
+
+    @abstractmethod
+    def get_config(self, key: str, default: Any = None) -> Any:
+        """Get configuration value by key."""
+        pass
+
+    @abstractmethod
+    def get_extension(self, name: str) -> Any:
+        """Get Flask extension by name (e.g., 'db', 'cache')."""
+        pass
+
+    @abstractmethod
+    def enter(self) -> AbstractContextManager[None]:
+        """Enter the application context."""
+        pass
+
+
+@runtime_checkable
+class IExecutionContext(Protocol):
+    """
+    Protocol for execution context.
+
+    This protocol defines the interface that all execution contexts must implement,
+    allowing both ExecutionContext and FlaskExecutionContext to be used interchangeably.
+    """
+
+    def __enter__(self) -> "IExecutionContext":
+        """Enter the execution context."""
+        ...
+
+    def __exit__(self, *args: Any) -> None:
+        """Exit the execution context."""
+        ...
+
+    @property
+    def user(self) -> Any:
+        """Get user object."""
+        ...
+
+
+@final
+class ExecutionContext:
+    """
+    Execution context for workflow execution in worker threads.
+
+    This class encapsulates all context needed for workflow execution:
+    - Application context (Flask app or standalone)
+    - Context variables for Python contextvars
+    - User information (optional)
+
+    It is designed to be serializable and passable to worker threads.
+    """
+
+    def __init__(
+        self,
+        app_context: AppContext | None = None,
+        context_vars: contextvars.Context | None = None,
+        user: Any = None,
+    ) -> None:
+        """
+        Initialize execution context.
+
+        Args:
+            app_context: Application context (Flask or standalone)
+            context_vars: Python contextvars to preserve
+            user: User object (optional)
+        """
+        self._app_context = app_context
+        self._context_vars = context_vars
+        self._user = user
+
+    @property
+    def app_context(self) -> AppContext | None:
+        """Get application context."""
+        return self._app_context
+
+    @property
+    def context_vars(self) -> contextvars.Context | None:
+        """Get context variables."""
+        return self._context_vars
+
+    @property
+    def user(self) -> Any:
+        """Get user object."""
+        return self._user
+
+    @contextmanager
+    def enter(self) -> Generator[None, None, None]:
+        """
+        Enter this execution context.
+
+        This is a convenience method that creates a context manager.
+        """
+        # Restore context variables if provided
+        if self._context_vars:
+            for var, val in self._context_vars.items():
+                var.set(val)
+
+        # Enter app context if available
+        if self._app_context is not None:
+            with self._app_context.enter():
+                yield
+        else:
+            yield
+
+    def __enter__(self) -> "ExecutionContext":
+        """Enter the execution context."""
+        self._cm = self.enter()
+        self._cm.__enter__()
+        return self
+
+    def __exit__(self, *args: Any) -> None:
+        """Exit the execution context."""
+        if hasattr(self, "_cm"):
+            self._cm.__exit__(*args)
+
+
+class NullAppContext(AppContext):
+    """
+    Null implementation of AppContext for non-Flask environments.
+
+    This is used when running without Flask (e.g., in tests or standalone mode).
+    """
+
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
+        """
+        Initialize null app context.
+
+        Args:
+            config: Optional configuration dictionary
+        """
+        self._config = config or {}
+        self._extensions: dict[str, Any] = {}
+
+    def get_config(self, key: str, default: Any = None) -> Any:
+        """Get configuration value by key."""
+        return self._config.get(key, default)
+
+    def get_extension(self, name: str) -> Any:
+        """Get extension by name."""
+        return self._extensions.get(name)
+
+    def set_extension(self, name: str, extension: Any) -> None:
+        """Set extension by name."""
+        self._extensions[name] = extension
+
+    @contextmanager
+    def enter(self) -> Generator[None, None, None]:
+        """Enter null context (no-op)."""
+        yield
+
+
+class ExecutionContextBuilder:
+    """
+    Builder for creating ExecutionContext instances.
+
+    This provides a fluent API for building execution contexts.
+    """
+
+    def __init__(self) -> None:
+        self._app_context: AppContext | None = None
+        self._context_vars: contextvars.Context | None = None
+        self._user: Any = None
+
+    def with_app_context(self, app_context: AppContext) -> "ExecutionContextBuilder":
+        """Set application context."""
+        self._app_context = app_context
+        return self
+
+    def with_context_vars(self, context_vars: contextvars.Context) -> "ExecutionContextBuilder":
+        """Set context variables."""
+        self._context_vars = context_vars
+        return self
+
+    def with_user(self, user: Any) -> "ExecutionContextBuilder":
+        """Set user."""
+        self._user = user
+        return self
+
+    def build(self) -> ExecutionContext:
+        """Build the execution context."""
+        return ExecutionContext(
+            app_context=self._app_context,
+            context_vars=self._context_vars,
+            user=self._user,
+        )
+
+
+def capture_current_context() -> IExecutionContext:
+    """
+    Capture current execution context from the calling environment.
+
+    Returns:
+        IExecutionContext with captured context
+    """
+    from context import capture_current_context
+
+    return capture_current_context()
