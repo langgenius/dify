@@ -64,6 +64,8 @@ const ReasoningConfigForm: React.FC<Props> = ({
   }
 
   const handleAutomatic = (key: string, val: any, type: FormTypeEnum) => {
+    if (type === FormTypeEnum.modelSelector)
+      return
     onChange({
       ...value,
       [key]: {
@@ -151,7 +153,8 @@ const ReasoningConfigForm: React.FC<Props> = ({
       placeholder,
       options,
     } = schema
-    const auto = value[variable]?.auto
+    const canUseAuto = type !== FormTypeEnum.modelSelector
+    const auto = canUseAuto ? value[variable]?.auto : 0
     const tooltipContent = (tooltip && (
       <Tooltip
         popupContent={(
@@ -241,14 +244,16 @@ const ReasoningConfigForm: React.FC<Props> = ({
             )}
 
           </div>
-          <div className="flex cursor-pointer items-center gap-1 rounded-[6px] border border-divider-subtle bg-background-default-lighter px-2 py-1 hover:bg-state-base-hover" onClick={() => handleAutomatic(variable, !auto, type)}>
-            <span className="system-xs-medium text-text-secondary">{t('detailPanel.toolSelector.auto', { ns: 'plugin' })}</span>
-            <Switch
-              size="xs"
-              defaultValue={!!auto}
-              onChange={val => handleAutomatic(variable, val, type)}
-            />
-          </div>
+          {canUseAuto && (
+            <div className="flex cursor-pointer items-center gap-1 rounded-[6px] border border-divider-subtle bg-background-default-lighter px-2 py-1 hover:bg-state-base-hover" onClick={() => handleAutomatic(variable, !auto, type)}>
+              <span className="system-xs-medium text-text-secondary">{t('detailPanel.toolSelector.auto', { ns: 'plugin' })}</span>
+              <Switch
+                size="xs"
+                defaultValue={!!auto}
+                onChange={val => handleAutomatic(variable, val, type)}
+              />
+            </div>
+          )}
         </div>
         {auto === 0 && (
           <div className={cn('gap-1', !(isShowJSONEditor && isConstant) && 'flex')}>

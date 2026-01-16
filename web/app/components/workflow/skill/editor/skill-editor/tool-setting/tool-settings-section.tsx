@@ -45,7 +45,6 @@ const ToolSettingsSection: FC<ToolSettingsSectionProps> = ({
   const settingsFormSchemas = useMemo(() => toolParametersToFormSchemas(currentToolSettings), [currentToolSettings])
   const paramsFormSchemas = useMemo(() => toolParametersToFormSchemas(currentToolParams), [currentToolParams])
 
-  const allowReasoning = !!safeNodeId
   const handleSettingsFormChange = (v: Record<string, any>) => {
     if (!value || !onChange)
       return
@@ -71,7 +70,7 @@ const ToolSettingsSection: FC<ToolSettingsSectionProps> = ({
     return null
 
   const showSettingsSection = currentToolSettings.length > 0
-  const showParamsSection = allowReasoning && currentToolParams.length > 0
+  const showParamsSection = currentToolParams.length > 0
   const getVarKindType = (type: FormTypeEnum) => {
     if (type === FormTypeEnum.file || type === FormTypeEnum.files)
       return VarKindType.variable
@@ -109,20 +108,9 @@ const ToolSettingsSection: FC<ToolSettingsSectionProps> = ({
   return (
     <>
       <Divider className="my-1 w-full" />
-      {showSettingsSection && (
-        <div className="p-4 pb-1">
-          <div className="system-sm-semibold-uppercase text-text-primary">{t('detailPanel.toolSelector.settings', { ns: 'plugin' })}</div>
-        </div>
-      )}
-      {showParamsSection && (
-        <div className="mb-1 p-4 pb-1">
-          <div className="system-sm-semibold-uppercase text-text-primary">{t('detailPanel.toolSelector.params', { ns: 'plugin' })}</div>
-          <div className="pb-1">
-            <div className="system-xs-regular text-text-tertiary">{t('detailPanel.toolSelector.paramsTip1', { ns: 'plugin' })}</div>
-            <div className="system-xs-regular text-text-tertiary">{t('detailPanel.toolSelector.paramsTip2', { ns: 'plugin' })}</div>
-          </div>
-        </div>
-      )}
+      <div className="p-4 pb-1">
+        <div className="system-sm-semibold-uppercase text-text-primary">{t('detailPanel.toolSelector.settings', { ns: 'plugin' })}</div>
+      </div>
       {showSettingsSection && (
         <ReasoningConfigForm
           value={getSafeConfigValue(value?.settings, settingsFormSchemas)}
