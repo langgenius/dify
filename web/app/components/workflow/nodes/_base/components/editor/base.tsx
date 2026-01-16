@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import type { CodeLanguage } from '../../../code/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
-import { RiMenuSearchLine } from '@remixicon/react'
+import { RiCrosshairLine } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useCallback, useRef, useState } from 'react'
@@ -125,7 +125,7 @@ const Base: FC<Props> = ({
             {showVariableInspectButton && nodeId && (
               <Tooltip popupContent={t('debug.variableInspect.view', { ns: 'workflow' })}>
                 <ActionButton className="ml-1" onClick={handleOpenVariableInspect}>
-                  <RiMenuSearchLine className="h-4 w-4" />
+                  <RiCrosshairLine className="h-4 w-4" />
                 </ActionButton>
               </Tooltip>
             )}
