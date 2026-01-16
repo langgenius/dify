@@ -42,6 +42,7 @@ class BillingService:
         params = {"tenant_id": tenant_id}
 
         billing_info = cls._send_request("GET", "/subscription/info", params=params)
+        cls._log_expiration_date_if_missing(tenant_id, billing_info, "get_info")
         return billing_info
 
     @classmethod
@@ -281,6 +282,7 @@ class BillingService:
                     try:
                         subscription_plan = subscription_adapter.validate_python(plan)
                         results[tenant_id] = subscription_plan
+                        cls._log_expiration_date_if_missing(tenant_id, subscription_plan, "get_plan_bulk")
                     except Exception:
                         logger.exception(
                             "get_plan_bulk: failed to validate subscription plan for tenant(%s)", tenant_id
@@ -295,6 +297,21 @@ class BillingService:
     @classmethod
     def _make_plan_cache_key(cls, tenant_id: str) -> str:
         return f"{cls._PLAN_CACHE_KEY_PREFIX}{tenant_id}"
+
+    @staticmethod
+    def _log_expiration_date_if_missing(tenant_id: str, payload: dict, source: str) -> None:
+        expiration_date = None
+        if isinstance(payload, dict):
+            if "expiration_date" in payload:
+                expiration_date = payload.get("expiration_date")
+            elif isinstance(payload.get("subscription"), dict):
+                expiration_date = payload["subscription"].get("expiration_date")
+        if expiration_date == -1:
+            logger.warning(
+                "billing %s: tenant %s returned expiration_date=-1",
+                source,
+                tenant_id,
+            )
 
     @classmethod
     def get_plan_bulk_with_cache(cls, tenant_ids: Sequence[str]) -> dict[str, SubscriptionPlan]:
