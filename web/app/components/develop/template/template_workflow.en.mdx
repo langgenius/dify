@@ -332,19 +332,25 @@ Workflow applications offers non-session support and is ideal for translation, a
 ---
 
 <Heading
-  url='/workflows/:workflow_id/run'
+  url='/workflows/:identifier/run'
   method='POST'
   title='Execute Specific Workflow'
   name='#Execute-Specific-Workflow'
 />
 <Row>
   <Col>
-    Execute a specific version of workflow by specifying the workflow ID in the path parameter.
+    Execute a specific version of workflow, supporting both workflow ID and tag.
 
     ### Path
-          - `workflow_id` (string) Required Workflow ID to specify a specific version of workflow
-
-      How to obtain: In the version history interface, click the copy icon on the right side of each version entry to copy the complete workflow ID. Each version entry contains a copyable ID field.
+    - `identifier` (string) Required Workflow identifier
+      - Workflow ID (UUID format)
+      - Workflow tag
+      
+      System prioritizes UUID format processing, falls back to tag lookup if not a valid UUID format.
+      
+      **How to obtain:**
+      - Workflow ID: Obtain specific version workflow ID through the version history page
+      - Workflow tag: Obtain corresponding workflow tag through the version history page
 
     ### Request Body
       - `inputs` (object) Required
@@ -501,8 +507,8 @@ Workflow applications offers non-session support and is ideal for translation, a
     <CodeGroup
       title="Request"
       tag="POST"
-      label="/workflows/:workflow_id/run"
-      targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/{workflow_id}/run' \\
+      label="/workflows/:identifier/run"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/{identifier}/run' \\
 --header 'Authorization: Bearer {api_key}' \\
 --header 'Content-Type: application/json' \\
 --data-raw '{

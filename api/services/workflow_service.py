@@ -2,10 +2,10 @@ import json
 import time
 import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
-from typing import Any, cast
+from typing import Any, Union, cast
 
 from sqlalchemy import exists, select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 from configs import dify_config
 from core.app.app_config.entities import VariableEntityType
@@ -37,6 +37,7 @@ from models import Account
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
+from models.workflow_tag import WorkflowNameTag
 from repositories.factory import DifyAPIRepositoryFactory
 from services.billing_service import BillingService
 from services.enterprise.plugin_manager_service import PluginCredentialType
@@ -1034,6 +1035,24 @@ class WorkflowService:
 
         session.delete(workflow)
         return True
+
+    def get_workflow_by_tag(
+        self,
+        session: Union[Session, "scoped_session"],
+        app_id: str,
+        name: str,
+    ) -> Workflow | None:
+        tag = session.scalar(
+            select(WorkflowNameTag).where(
+                WorkflowNameTag.app_id == app_id,
+                WorkflowNameTag.name == name,
+            )
+        )
+
+        if not tag:
+            return None
+
+        return session.get(Workflow, tag.workflow_id)
 
 
 def _setup_variable_pool(

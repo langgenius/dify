@@ -332,19 +332,25 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 ---
 
 <Heading
-  url='/workflows/:workflow_id/run'
+  url='/workflows/:identifier/run'
   method='POST'
   title='特定バージョンのワークフローを実行'
   name='#Execute-Specific-Workflow'
 />
 <Row>
   <Col>
-    パスパラメータでワークフローIDを指定して、特定バージョンのワークフローを実行します。
+    特定バージョンのワークフローを実行し、ワークフローIDまたはエイリアスでバージョンを指定できます。
 
     ### パス
-    - `workflow_id` (string) 必須 特定バージョンのワークフローを指定するためのワークフローID
-
-      取得方法：バージョン履歴インターフェースで、各バージョンエントリの右側にあるコピーアイコンをクリックすると、完全なワークフローIDをコピーできます。
+    - `identifier` (string) 必須 ワークフロー識別子
+      - ワークフローID（UUID形式）
+      - ワークフロータグ
+      
+      システムは UUID 形式の処理を優先し、有効な UUID 形式でない場合はタグ検索にフォールバックします。
+      
+      **しゅとくほうほう：**
+      - ワークフローID：バージョン履歴インターフェースで、各バージョンエントリの右側にあるコピーアイコンをクリックすると、完全なワークフローIDをコピーできます。
+      - ワークフロータグ：バージョン履歴ページから対応するワークフロータグを取得
 
     ### リクエストボディ
       - `inputs` (object) 必須
@@ -496,8 +502,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     <CodeGroup
       title="リクエスト"
       tag="POST"
-      label="/workflows/:workflow_id/run"
-      targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/{workflow_id}/run' \\
+      label="/workflows/:identifier/run"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/{identifier}/run' \\
 --header 'Authorization: Bearer {api_key}' \\
 --header 'Content-Type: application/json' \\
 --data-raw '{

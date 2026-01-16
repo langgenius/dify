@@ -1,4 +1,5 @@
 import logging
+import uuid
 from typing import Any, Literal
 
 from dateutil.parser import isoparse
@@ -35,11 +36,13 @@ from fields.workflow_app_log_fields import build_workflow_app_log_pagination_mod
 from libs import helper
 from libs.helper import TimestampField
 from models.model import App, AppMode, EndUser
+from models.workflow import Workflow
 from repositories.factory import DifyAPIRepositoryFactory
 from services.app_generate_service import AppGenerateService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_app_service import WorkflowAppService
+from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
 
@@ -174,12 +177,12 @@ class WorkflowRunApi(Resource):
             raise InternalServerError()
 
 
-@service_api_ns.route("/workflows/<string:workflow_id>/run")
-class WorkflowRunByIdApi(Resource):
+@service_api_ns.route("/workflows/<string:identifier>/run")
+class WorkflowRunByIdentifierApi(Resource):
     @service_api_ns.expect(service_api_ns.models[WorkflowRunPayload.__name__])
-    @service_api_ns.doc("run_workflow_by_id")
-    @service_api_ns.doc(description="Execute a specific workflow by ID")
-    @service_api_ns.doc(params={"workflow_id": "Workflow ID to execute"})
+    @service_api_ns.doc("run_workflow_by_identifier")
+    @service_api_ns.doc(description="Execute a specific workflow by ID or tag")
+    @service_api_ns.doc(params={"identifier": "Workflow ID or tag to execute"})
     @service_api_ns.doc(
         responses={
             200: "Workflow executed successfully",
@@ -191,10 +194,10 @@ class WorkflowRunByIdApi(Resource):
         }
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
-    def post(self, app_model: App, end_user: EndUser, workflow_id: str):
-        """Run specific workflow by ID.
+    def post(self, app_model: App, end_user: EndUser, identifier: str):
+        """Run specific workflow by ID or tag name.
 
-        Executes a specific workflow version identified by its ID.
+        Executes a specific workflow version identified by its ID or tag name.
         """
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode != AppMode.WORKFLOW:
@@ -203,15 +206,15 @@ class WorkflowRunByIdApi(Resource):
         payload = WorkflowRunPayload.model_validate(service_api_ns.payload or {})
         args = payload.model_dump(exclude_none=True)
 
-        # Add workflow_id to args for AppGenerateService
-        args["workflow_id"] = workflow_id
-
         external_trace_id = get_external_trace_id(request)
         if external_trace_id:
             args["external_trace_id"] = external_trace_id
         streaming = payload.response_mode == "streaming"
 
         try:
+            workflow_id = self._resolve_workflow_id(app_model, identifier)
+            # Add workflow_id to args for AppGenerateService
+            args["workflow_id"] = workflow_id
             response = AppGenerateService.generate(
                 app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.SERVICE_API, streaming=streaming
             )
@@ -238,6 +241,29 @@ class WorkflowRunByIdApi(Resource):
         except Exception:
             logger.exception("internal server error.")
             raise InternalServerError()
+
+    def _resolve_workflow_id(self, app_model: App, identifier: str) -> str:
+        """
+        Resolve identifier to workflow_id
+        Priority: workflow_id > tag
+        """
+        try:
+            uuid.UUID(identifier)
+            return identifier
+        except (ValueError, TypeError):
+            with Session(db.engine) as session, session.begin():
+                workflow = self._get_workflow_by_tag(session, app_model, identifier)
+                if workflow:
+                    return workflow.id
+
+            raise WorkflowIdFormatError(
+                f"Invalid identifier '{identifier}'. Must be a valid workflow tag or UUID format."
+            )
+
+    def _get_workflow_by_tag(self, session: Session, app_model: App, tag_name: str) -> Workflow | None:
+        """Get workflow by tag name"""
+        workflow_service = WorkflowService()
+        return workflow_service.get_workflow_by_tag(session=session, app_id=app_model.id, name=tag_name)
 
 
 @service_api_ns.route("/workflows/tasks/<string:task_id>/stop")

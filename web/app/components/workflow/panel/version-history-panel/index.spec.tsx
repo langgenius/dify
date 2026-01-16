@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { WorkflowVersion } from '../../types'
 
@@ -7,6 +8,17 @@ const mockSetCurrentVersion = vi.fn()
 
 vi.mock('@/context/app-context', () => ({
   useSelector: () => ({ id: 'test-user-id' }),
+}))
+
+vi.mock('@/service/use-workflow-tag', () => ({
+  useWorkflowTagListPaginated: () => ({
+    data: {
+      pages: [],
+    },
+    refetch: vi.fn(),
+    fetchNextPage: vi.fn(),
+    hasNextPage: false,
+  }),
 }))
 
 vi.mock('@/service/use-workflow', () => ({
@@ -115,7 +127,14 @@ vi.mock('@/app/components/app/app-publisher/version-info-modal', () => ({
 }))
 
 describe('VersionHistoryPanel', () => {
+  let queryClient: QueryClient
+
   beforeEach(() => {
+    queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+      },
+    })
     vi.clearAllMocks()
   })
 
@@ -124,9 +143,11 @@ describe('VersionHistoryPanel', () => {
       const { VersionHistoryPanel } = await import('./index')
 
       render(
-        <VersionHistoryPanel
-          latestVersionId="published-version-id"
-        />,
+        <QueryClientProvider client={queryClient}>
+          <VersionHistoryPanel
+            latestVersionId="published-version-id"
+          />
+        </QueryClientProvider>,
       )
 
       // Draft version auto-clicks on mount via useEffect in VersionHistoryItem
@@ -138,9 +159,11 @@ describe('VersionHistoryPanel', () => {
       const { VersionHistoryPanel } = await import('./index')
 
       render(
-        <VersionHistoryPanel
-          latestVersionId="published-version-id"
-        />,
+        <QueryClientProvider client={queryClient}>
+          <VersionHistoryPanel
+            latestVersionId="published-version-id"
+          />
+        </QueryClientProvider>,
       )
 
       // Clear mocks after initial render (draft version auto-clicks on mount)

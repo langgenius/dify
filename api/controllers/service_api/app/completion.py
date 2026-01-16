@@ -3,8 +3,9 @@ from typing import Any, Literal
 from uuid import UUID
 
 from flask import request
-from flask_restx import Resource
+from flask_restx import Resource, reqparse
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
@@ -29,12 +30,15 @@ from core.errors.error import (
 )
 from core.helper.trace_id_helper import get_external_trace_id
 from core.model_runtime.errors.invoke import InvokeError
+from extensions.ext_database import db
 from libs import helper
+from libs.helper import uuid_value
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
+from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +51,36 @@ class CompletionRequestPayload(BaseModel):
     retriever_from: str = Field(default="dev")
 
 
+# Define parser for chat API
+chat_parser = (
+    reqparse.RequestParser()
+    .add_argument("inputs", type=dict, required=True, location="json", help="Input parameters for chat")
+    .add_argument("query", type=str, required=True, location="json", help="The chat query")
+    .add_argument("files", type=list, required=False, location="json", help="List of file attachments")
+    .add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json", help="Response mode")
+    .add_argument("conversation_id", type=uuid_value, location="json", help="Existing conversation ID")
+    .add_argument("retriever_from", type=str, required=False, default="dev", location="json", help="Retriever source")
+    .add_argument(
+        "auto_generate_name",
+        type=bool,
+        required=False,
+        default=True,
+        location="json",
+        help="Auto generate conversation name",
+    )
+    .add_argument("workflow_id", type=str, required=False, location="json", help="Workflow ID for advanced chat")
+)
+chat_parser.add_argument("workflow_id", type=str, required=False, location="json", help="Workflow ID for advanced chat")
+chat_parser.add_argument(
+    "workflow_tag",
+    type=str,
+    required=False,
+    default="",
+    location="json",
+    help="Workflow tag for advanced chat",
+)
+
+
 class ChatRequestPayload(BaseModel):
     inputs: dict[str, Any]
     query: str
@@ -56,6 +90,7 @@ class ChatRequestPayload(BaseModel):
     retriever_from: str = Field(default="dev")
     auto_generate_name: bool = Field(default=True, description="Auto generate conversation name")
     workflow_id: str | None = Field(default=None, description="Workflow ID for advanced chat")
+    workflow_tag: str | None = Field(default=None, description="Workflow tag for advanced chat")
 
     @field_validator("conversation_id", mode="before")
     @classmethod
@@ -197,15 +232,25 @@ class ChatApi(Resource):
             raise NotChatAppError()
 
         payload = ChatRequestPayload.model_validate(service_api_ns.payload or {})
+        args = payload.model_dump(exclude_none=True)
 
         external_trace_id = get_external_trace_id(request)
-        args = payload.model_dump(exclude_none=True)
         if external_trace_id:
             args["external_trace_id"] = external_trace_id
 
         streaming = payload.response_mode == "streaming"
 
         try:
+            # Handle workflow_tag or workflow_id
+            workflow_tag = args.get("workflow_tag")
+            workflow_id = args.get("workflow_id")
+
+            if workflow_tag:
+                resolved_workflow_id = self._resolve_workflow_identifier(app_model=app_model, identifier=workflow_tag)
+                args["workflow_id"] = resolved_workflow_id
+            elif workflow_id:
+                resolved_workflow_id = self._resolve_workflow_identifier(app_model=app_model, identifier=workflow_id)
+                args["workflow_id"] = resolved_workflow_id
             response = AppGenerateService.generate(
                 app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.SERVICE_API, streaming=streaming
             )
@@ -239,6 +284,56 @@ class ChatApi(Resource):
         except Exception:
             logger.exception("internal server error.")
             raise InternalServerError()
+
+    def _resolve_workflow_identifier(self, app_model: App, identifier: str) -> str:
+        """
+        Resolve identifier to workflow_id and verify it exists
+        Priority: UUID format > tag
+
+        Args:
+            app_model: The app model
+            identifier: workflow_id (UUID) or workflow_tag
+
+        Returns:
+            The resolved workflow_id
+
+        Raises:
+            WorkflowIdFormatError: If identifier is invalid or workflow doesn't exist
+        """
+        import uuid
+
+        from models.workflow import Workflow
+
+        workflow_service = WorkflowService()
+
+        # First try to parse as UUID
+        try:
+            uuid.UUID(identifier)
+            # UUID format is valid, verify the workflow exists
+            with Session(db.engine) as session:
+                workflow = session.get(Workflow, identifier)
+                if workflow and str(workflow.app_id) == str(app_model.id):
+                    return identifier
+                # UUID format but workflow doesn't exist or belongs to different app
+                raise WorkflowIdFormatError(f"Workflow with ID '{identifier}' not found.")
+        except WorkflowIdFormatError:
+            raise
+        except (ValueError, TypeError):
+            pass
+
+        # Then try to find by tag
+        with Session(db.engine) as session:
+            workflow = workflow_service.get_workflow_by_tag(
+                session=session,
+                app_id=app_model.id,
+                name=identifier,
+            )
+
+            if workflow:
+                return workflow.id
+
+        # Neither valid UUID with existing workflow nor valid tag
+        raise WorkflowIdFormatError(f"Invalid identifier '{identifier}'. Must be a valid workflow tag or UUID format.")
 
 
 @service_api_ns.route("/chat-messages/<string:task_id>/stop")

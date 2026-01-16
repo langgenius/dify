@@ -1,0 +1,64 @@
+from datetime import datetime
+
+import sqlalchemy as sa
+from sqlalchemy import func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from .account import Account
+from .base import Base
+from .types import StringUUID
+
+
+class WorkflowNameTag(Base):
+    """
+    Workflow Tag for managing version tags across different environments.
+
+    This table allows users to assign human-readable tags to workflow versions,
+    making it easier to manage deployments across different environments.
+
+    Attributes:
+        - id (uuid): Tag ID, primary key
+        - app_id (uuid): App ID
+        - workflow_id (uuid): Workflow version ID
+        - name (string): Tag name (e.g., 'production', 'staging', 'v1.0')
+
+        - created_by (uuid): Creator ID
+        - created_at (timestamp): Creation time
+        - updated_at (timestamp): Last update time
+    """
+
+    __tablename__ = "workflow_name_tags"
+    __allow_unmapped__ = True  # Allow non-mapped attributes
+    __slots__ = ("is_transferred", "old_workflow_id")
+    __table_args__ = (
+        # Ensure tag name is unique within an app
+        sa.UniqueConstraint("app_id", "name", name="unique_workflow_tag_app_name"),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, server_default=sa.text("uuidv7()"))
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    name: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
+
+    # Relationship to Account without foreign key constraint
+    created_by_account: Mapped[Account] = relationship(
+        Account,
+        primaryjoin=lambda: Account.id == WorkflowNameTag.created_by,
+        foreign_keys=[created_by],
+        lazy="select",
+        viewonly=True,
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.is_transferred = False
+        self.old_workflow_id: str | None = None
+
+    def __repr__(self):
+        return f"<WorkflowNameTag(id='{self.id}', app_id='{self.app_id}', name='{self.name}')>"

@@ -1,9 +1,11 @@
 import type { VersionHistoryContextMenuOptions } from '../../types'
+import type { WorkflowTag } from '@/app/components/workflow/types'
 import type { VersionHistory } from '@/types/workflow'
 import dayjs from 'dayjs'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Tag from '@/app/components/base/tag'
 import { cn } from '@/utils/classnames'
 import { WorkflowVersion } from '../../types'
 import ContextMenu from './context-menu'
@@ -15,6 +17,7 @@ type VersionHistoryItemProps = {
   onClick: (item: VersionHistory) => void
   handleClickMenuItem: (operation: VersionHistoryContextMenuOptions) => void
   isLast: boolean
+  tags: WorkflowTag[]
 }
 
 const formatVersion = (versionHistory: VersionHistory, latestVersionId: string): string => {
@@ -43,6 +46,7 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
   onClick,
   handleClickMenuItem,
   isLast,
+  tags,
 }) => {
   const { t } = useTranslation()
   const [isHovering, setIsHovering] = useState(false)
@@ -107,6 +111,27 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
             </div>
           )}
         </div>
+        {!isDraft && tags && tags.length > 0 && (
+          <div className="mt-0.5 flex flex-wrap items-center gap-0.5">
+            {tags
+              .slice(0, 2)
+              .map((tag: WorkflowTag) => (
+                <Tag
+                  key={tag.id}
+                  color="green"
+                  className="px-1.5 py-0.5 text-xs"
+                >
+                  {tag.name}
+                </Tag>
+              ))}
+            {tags.length > 2 && (
+              <span className="ml-1 text-xs text-text-tertiary">
+                +
+                {tags.length - 2}
+              </span>
+            )}
+          </div>
+        )}
         {
           !isDraft && (
             <div className="system-xs-regular break-words text-text-secondary">

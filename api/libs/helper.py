@@ -173,6 +173,20 @@ def alphanumeric(value: str):
     raise ValueError(f"{value} is not a valid alphanumeric value")
 
 
+def tag_name(value: str):
+    """Validate tag name according to business rules."""
+    if not value or not value.strip():
+        raise ValueError("Tag name is required")
+
+    if len(value) > 100:
+        raise ValueError("Tag name cannot exceed 100 characters")
+
+    if not re.match(r"^[a-zA-Z0-9_.-]+$", value):
+        raise ValueError("Tag name can only contain letters, numbers, hyphens, underscores, and dots")
+
+    return value
+
+
 def timestamp_value(timestamp):
     try:
         int_timestamp = int(timestamp)
