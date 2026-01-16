@@ -191,8 +191,10 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
             <div
               key={item.key}
               className={cn(
-                'flex h-6 items-center justify-between space-x-1 rounded-md px-1 text-xs font-normal text-text-secondary',
-                item.hasWarning ? 'bg-components-badge-status-light-warning-halo' : 'bg-workflow-block-parma-bg',
+                'flex h-6 items-center justify-between space-x-1 rounded-md border px-1 text-xs font-normal text-text-secondary',
+                item.hasWarning
+                  ? 'border-text-warning-secondary bg-components-badge-status-light-warning-halo'
+                  : 'border-transparent bg-workflow-block-parma-bg',
               )}
             >
               <div className="flex min-w-0 items-center gap-1">

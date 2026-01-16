@@ -28,7 +28,7 @@ const AgentHeaderBar: FC<AgentHeaderBarProps> = ({
           className={cn(
             'flex items-center gap-1 rounded-md border-[0.5px] px-1.5 py-0.5 shadow-xs',
             hasWarning
-              ? 'border-components-badge-status-light-warning-border-inner bg-components-badge-status-light-warning-halo'
+              ? 'border-text-warning-secondary bg-components-badge-status-light-warning-halo'
               : 'border-components-panel-border-subtle bg-components-badge-white-to-dark',
           )}
         >
