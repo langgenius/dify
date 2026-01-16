@@ -71,7 +71,7 @@ class LLMGenerator:
             response: LLMResult = model_instance.invoke_llm(
                 prompt_messages=list(prompts), model_parameters={"max_tokens": 500, "temperature": 1}, stream=False
             )
-        answer = cast(str, response.message.content)
+        answer = response.message.get_text_content()
         if answer is None:
             return ""
         try:
@@ -184,7 +184,7 @@ class LLMGenerator:
                     prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
                 )
 
-                rule_config["prompt"] = cast(str, response.message.content)
+                rule_config["prompt"] = response.message.get_text_content()
 
             except InvokeError as e:
                 error = str(e)
@@ -315,7 +315,7 @@ class LLMGenerator:
                 prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
             )
 
-            generated_code = cast(str, response.message.content)
+            generated_code = response.message.get_text_content()
             return {"code": generated_code, "language": code_language, "error": ""}
 
         except InvokeError as e:
@@ -351,7 +351,7 @@ class LLMGenerator:
             raise TypeError("Expected LLMResult when stream=False")
         response = result
 
-        answer = cast(str, response.message.content)
+        answer = response.message.get_text_content()
         return answer.strip()
 
     @classmethod
@@ -375,10 +375,7 @@ class LLMGenerator:
                 prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
             )
 
-            raw_content = response.message.content
-
-            if not isinstance(raw_content, str):
-                raise ValueError(f"LLM response content must be a string, got: {type(raw_content)}")
+            raw_content = response.message.get_text_content()
 
             try:
                 parsed_content = json.loads(raw_content)
