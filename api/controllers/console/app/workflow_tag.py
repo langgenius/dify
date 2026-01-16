@@ -19,8 +19,8 @@ from libs.helper import tag_name, uuid_value
 from libs.login import current_user, login_required
 from models import App, AppMode
 from models.account import Account
-from services.workflow_tag_service import WorkflowTagArgs, WorkflowTagService
 from services.workflow_service import WorkflowService
+from services.workflow_tag_service import WorkflowTagArgs, WorkflowTagService
 
 logger = logging.getLogger(__name__)
 
