@@ -7,10 +7,12 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import { genActionId } from '../utils'
+import Toast from '@/app/components/base/toast'
 import ButtonStyleDropdown from './button-style-dropdown'
 
 const i18nPrefix = 'nodes.humanInput'
+const ACTION_ID_MAX_LENGTH = 20
+const BUTTON_TEXT_MAX_LENGTH = 40
 
 type UserActionItemProps = {
   data: UserAction
@@ -28,17 +30,42 @@ const UserActionItem: FC<UserActionItemProps> = ({
   const { t } = useTranslation()
 
   const handleIDChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.value.trim())
-      onChange({ ...data, id: genActionId() })
-    else
-      onChange({ ...data, id: e.target.value })
+    const value = e.target.value
+    if (!value.trim()) {
+      onChange({ ...data, id: '' })
+      return
+    }
+    // Convert spaces to underscores, then only allow characters matching /^[A-Za-z_][A-Za-z0-9_]*$/
+    const withUnderscores = value.replace(/ /g, '_')
+    let sanitized = withUnderscores
+      .split('')
+      .filter((char, index) => {
+        if (index === 0)
+          return /^[a-z_]$/i.test(char)
+        return /^\w$/.test(char)
+      })
+      .join('')
+
+    if (sanitized !== withUnderscores)
+      Toast.notify({ type: 'error', message: t(`${i18nPrefix}.userActions.invalidActionIdFormat`, { ns: 'workflow' }) })
+
+    // Limit to 20 characters
+    if (sanitized.length > ACTION_ID_MAX_LENGTH) {
+      sanitized = sanitized.slice(0, ACTION_ID_MAX_LENGTH)
+      Toast.notify({ type: 'error', message: t(`${i18nPrefix}.userActions.actionIdTooLong`, { ns: 'workflow' }) })
+    }
+
+    if (sanitized)
+      onChange({ ...data, id: sanitized })
   }
 
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.value.trim())
-      onChange({ ...data, title: 'Button Text' })
-    else
-      onChange({ ...data, title: e.target.value })
+    let value = e.target.value
+    if (value.length > BUTTON_TEXT_MAX_LENGTH) {
+      value = value.slice(0, BUTTON_TEXT_MAX_LENGTH)
+      Toast.notify({ type: 'error', message: t(`${i18nPrefix}.userActions.buttonTextTooLong`, { ns: 'workflow' }) })
+    }
+    onChange({ ...data, title: value })
   }
 
   return (

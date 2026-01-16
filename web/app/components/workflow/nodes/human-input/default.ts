@@ -42,6 +42,25 @@ const nodeDefault: NodeDefault<HumanInputNodeType> = {
     if (!errorMessages && !payload.user_actions.length)
       errorMessages = t(`${i18nPrefix}.noUserActions`, { ns: 'workflow' })
 
+    if (!errorMessages && payload.user_actions.length > 0) {
+      const actionIds = payload.user_actions.map(action => action.id)
+      const hasDuplicateIds = actionIds.length !== new Set(actionIds).size
+      if (hasDuplicateIds)
+        errorMessages = t(`${i18nPrefix}.duplicateActionId`, { ns: 'workflow' })
+    }
+
+    if (!errorMessages && payload.user_actions.length > 0) {
+      const hasEmptyId = payload.user_actions.some(action => !action.id?.trim())
+      if (hasEmptyId)
+        errorMessages = t(`${i18nPrefix}.emptyActionId`, { ns: 'workflow' })
+    }
+
+    if (!errorMessages && payload.user_actions.length > 0) {
+      const hasEmptyTitle = payload.user_actions.some(action => !action.title?.trim())
+      if (hasEmptyTitle)
+        errorMessages = t(`${i18nPrefix}.emptyActionTitle`, { ns: 'workflow' })
+    }
+
     return {
       isValid: !errorMessages,
       errorMessage: errorMessages,

@@ -316,20 +316,7 @@ const useOneStepRun = <T>({
         invalidateSysVarValues()
       invalidateConversationVarValues() // loop, iteration, variable assigner node can update the conversation variables, but to simple the logic(some nodes may also can update in the future), all nodes refresh.
     }
-  }, [
-    isRunAfterSingleRun,
-    runningStatus,
-    flowId,
-    id,
-    store,
-    appendNodeInspectVars,
-    updateNodeInspectRunningState,
-    invalidLastRun,
-    isStartNode,
-    isTriggerNode,
-    invalidateSysVarValues,
-    invalidateConversationVarValues,
-  ])
+  }, [isRunAfterSingleRun, runningStatus, flowType, flowId, id, store, appendNodeInspectVars, updateNodeInspectRunningState, invalidLastRun, isStartNode, isTriggerNode, invalidateSysVarValues, invalidateConversationVarValues])
 
   const { handleNodeDataUpdate }: { handleNodeDataUpdate: (data: any) => void } = useNodeDataUpdate()
   const setNodeRunning = () => {
