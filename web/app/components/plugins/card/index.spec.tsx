@@ -22,8 +22,9 @@ import Card from './index'
 // ================================
 
 // Mock useTheme hook
+let mockTheme = 'light'
 vi.mock('@/hooks/use-theme', () => ({
-  default: () => ({ theme: 'light' }),
+  default: () => ({ theme: mockTheme }),
 }))
 
 // Mock i18n-config
@@ -237,6 +238,43 @@ describe('Card', () => {
       // Check for background image style on icon element
       const iconElement = container.querySelector('[style*="background-image"]')
       expect(iconElement).toBeInTheDocument()
+    })
+
+    it('should use icon_dark when theme is dark and icon_dark is provided', () => {
+      // Set theme to dark
+      mockTheme = 'dark'
+
+      const plugin = createMockPlugin({
+        icon: '/light-icon.png',
+        icon_dark: '/dark-icon.png',
+      })
+
+      const { container } = render(<Card payload={plugin} />)
+
+      // Check that icon uses dark icon
+      const iconElement = container.querySelector('[style*="background-image"]')
+      expect(iconElement).toBeInTheDocument()
+      expect(iconElement).toHaveStyle({ backgroundImage: 'url(/dark-icon.png)' })
+
+      // Reset theme
+      mockTheme = 'light'
+    })
+
+    it('should use icon when theme is dark but icon_dark is not provided', () => {
+      mockTheme = 'dark'
+
+      const plugin = createMockPlugin({
+        icon: '/light-icon.png',
+      })
+
+      const { container } = render(<Card payload={plugin} />)
+
+      // Should fallback to light icon
+      const iconElement = container.querySelector('[style*="background-image"]')
+      expect(iconElement).toBeInTheDocument()
+      expect(iconElement).toHaveStyle({ backgroundImage: 'url(/light-icon.png)' })
+
+      mockTheme = 'light'
     })
 
     it('should render corner mark with category label', () => {
@@ -882,6 +920,58 @@ describe('Icon', () => {
   })
 
   // ================================
+  // Object src Tests
+  // ================================
+  describe('Object src', () => {
+    it('should render AppIcon with correct icon prop', () => {
+      render(<Icon src={{ content: '🎉', background: '#ffffff' }} />)
+
+      const appIcon = screen.getByTestId('app-icon')
+      expect(appIcon).toHaveAttribute('data-icon', '🎉')
+    })
+
+    it('should render AppIcon with correct background prop', () => {
+      render(<Icon src={{ content: '🔥', background: '#ff0000' }} />)
+
+      const appIcon = screen.getByTestId('app-icon')
+      expect(appIcon).toHaveAttribute('data-background', '#ff0000')
+    })
+
+    it('should render AppIcon with emoji iconType', () => {
+      render(<Icon src={{ content: '⭐', background: '#ffff00' }} />)
+
+      const appIcon = screen.getByTestId('app-icon')
+      expect(appIcon).toHaveAttribute('data-icon-type', 'emoji')
+    })
+
+    it('should render AppIcon with correct size', () => {
+      render(<Icon src={{ content: '📦', background: '#0000ff' }} size="small" />)
+
+      const appIcon = screen.getByTestId('app-icon')
+      expect(appIcon).toHaveAttribute('data-size', 'small')
+    })
+
+    it('should apply className to wrapper div for object src', () => {
+      const { container } = render(
+        <Icon src={{ content: '🎨', background: '#00ff00' }} className="custom-class" />,
+      )
+
+      expect(container.querySelector('.relative.custom-class')).toBeInTheDocument()
+    })
+
+    it('should render with all size options for object src', () => {
+      const sizes = ['xs', 'tiny', 'small', 'medium', 'large'] as const
+      sizes.forEach((size) => {
+        const { unmount } = render(
+          <Icon src={{ content: '📱', background: '#ffffff' }} size={size} />,
+        )
+        expect(screen.getByTestId('app-icon')).toHaveAttribute('data-size', size)
+        unmount()
+      })
+    })
+  })
+
+  // ================================
   // Edge Cases Tests
   // ================================
   describe('Edge Cases', () => {
@@ -896,6 +986,18 @@ describe('Icon', () => {
 
       const iconDiv = container.firstChild as HTMLElement
       expect(iconDiv).toHaveStyle({ backgroundImage: 'url(/icon?name=test&size=large)' })
+    })
+
+    it('should handle object src with special emoji', () => {
+      render(<Icon src={{ content: '👨‍💻', background: '#123456' }} />)
+
+      expect(screen.getByTestId('app-icon')).toBeInTheDocument()
+    })
+
+    it('should handle object src with empty content', () => {
+      render(<Icon src={{ content: '', background: '#ffffff' }} />)
+
+      expect(screen.getByTestId('app-icon')).toBeInTheDocument()
     })
   })
 })
@@ -1038,6 +1140,40 @@ describe('Description', () => {
         <Description text="Test" descriptionLineRows={5} />,
       )
 
+      expect(container.querySelector('.h-12.line-clamp-3')).toBeInTheDocument()
+    })
+
+    it('should apply h-12 line-clamp-3 for descriptionLineRows of 4', () => {
+      const { container } = render(
+        <Description text="Test" descriptionLineRows={4} />,
+      )
+
+      expect(container.querySelector('.h-12.line-clamp-3')).toBeInTheDocument()
+    })
+
+    it('should apply h-12 line-clamp-3 for descriptionLineRows of 10', () => {
+      const { container } = render(
+        <Description text="Test" descriptionLineRows={10} />,
+      )
+
+      expect(container.querySelector('.h-12.line-clamp-3')).toBeInTheDocument()
+    })
+
+    it('should apply h-12 line-clamp-3 for descriptionLineRows of 0', () => {
+      const { container } = render(
+        <Description text="Test" descriptionLineRows={0} />,
+      )
+
+      // 0 is neither 1 nor 2, so it should use the else branch
+      expect(container.querySelector('.h-12.line-clamp-3')).toBeInTheDocument()
+    })
+
+    it('should apply h-12 line-clamp-3 for negative descriptionLineRows', () => {
+      const { container } = render(
+        <Description text="Test" descriptionLineRows={-1} />,
+      )
+
+      // negative is neither 1 nor 2, so it should use the else branch
       expect(container.querySelector('.h-12.line-clamp-3')).toBeInTheDocument()
     })
   })
