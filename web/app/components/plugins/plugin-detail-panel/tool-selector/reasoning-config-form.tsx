@@ -36,21 +36,24 @@ type Props = {
   value: Record<string, any>
   onChange: (val: Record<string, any>) => void
   schemas: any[]
-  nodeOutputVars: NodeOutPutVar[]
-  availableNodes: Node[]
-  nodeId: string
+  nodeOutputVars?: NodeOutPutVar[]
+  availableNodes?: Node[]
+  nodeId?: string
+  disableVariableReference?: boolean
 }
 
 const ReasoningConfigForm: React.FC<Props> = ({
   value,
   onChange,
   schemas,
-  nodeOutputVars,
-  availableNodes,
+  nodeOutputVars = [],
+  availableNodes = [],
   nodeId,
+  disableVariableReference = false,
 }) => {
   const { t } = useTranslation()
   const language = useLanguage()
+  const allowVariableReference = !disableVariableReference && !!nodeId
   const getVarKindType = (type: FormTypeEnum) => {
     if (type === FormTypeEnum.file || type === FormTypeEnum.files)
       return VarKindType.variable
@@ -173,7 +176,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
     const isModelSelector = type === FormTypeEnum.modelSelector
     const showTypeSwitch = isNumber || isObject || isArray
     const isConstant = varInput?.type === VarKindType.constant || !varInput?.type
-    const showVariableSelector = isFile || varInput?.type === VarKindType.variable
+    const showVariableSelector = allowVariableReference && (isFile || varInput?.type === VarKindType.variable)
     const targetVarType = () => {
       if (isString)
         return VarType.string
@@ -252,12 +255,20 @@ const ReasoningConfigForm: React.FC<Props> = ({
             {showTypeSwitch && (
               <FormInputTypeSwitch value={varInput?.type || VarKindType.constant} onChange={handleTypeChange(variable, defaultValue)} />
             )}
-            {isString && (
+            {isString && allowVariableReference && (
               <MixedVariableTextInput
                 value={varInput?.value as string || ''}
                 onChange={handleValueChange(variable, type)}
                 nodesOutputVars={nodeOutputVars}
                 availableNodes={availableNodes}
+              />
+            )}
+            {isString && !allowVariableReference && (
+              <Input
+                className="h-8 grow"
+                value={varInput?.value || ''}
+                onChange={e => handleValueChange(variable, type)(e.target.value)}
+                placeholder={placeholder?.[language] || placeholder?.en_US}
               />
             )}
             {isNumber && isConstant && (
@@ -328,7 +339,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
                 className="h-8 grow"
                 readonly={false}
                 isShowNodeName
-                nodeId={nodeId}
+                nodeId={nodeId || ''}
                 value={varInput?.value || []}
                 onChange={handleVariableSelectorChange(variable)}
                 filterVar={getFilterVar()}

@@ -1,26 +1,23 @@
 'use client'
 
 import type { FC } from 'react'
-import type { Node } from 'reactflow'
 import type { Tool } from '@/app/components/tools/types'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
-import type { NodeOutPutVar, ToolWithProvider } from '@/app/components/workflow/types'
+import type { ToolWithProvider } from '@/app/components/workflow/types'
 import * as React from 'react'
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import TabSlider from '@/app/components/base/tab-slider-plain'
+import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import ReasoningConfigForm from '@/app/components/plugins/plugin-detail-panel/tool-selector/reasoning-config-form'
-import { getPlainValue, getStructureValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
-import ToolForm from '@/app/components/workflow/nodes/tool/components/tool-form'
+import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 
 type ToolSettingsSectionProps = {
   currentProvider?: ToolWithProvider
   currentTool?: Tool
   value?: ToolValue
   nodeId?: string
-  nodeOutputVars?: NodeOutPutVar[]
-  availableNodes?: Node[]
   onChange?: (value: ToolValue) => void
 }
 
@@ -29,12 +26,9 @@ const ToolSettingsSection: FC<ToolSettingsSectionProps> = ({
   currentTool,
   value,
   nodeId,
-  nodeOutputVars = [],
-  availableNodes = [],
   onChange,
 }) => {
   const { t } = useTranslation()
-  const [currType, setCurrType] = useState<'settings' | 'params'>('settings')
   const safeNodeId = nodeId ?? ''
 
   const currentToolSettings = useMemo(() => {
@@ -52,17 +46,12 @@ const ToolSettingsSection: FC<ToolSettingsSectionProps> = ({
   const paramsFormSchemas = useMemo(() => toolParametersToFormSchemas(currentToolParams), [currentToolParams])
 
   const allowReasoning = !!safeNodeId
-  const showTabSlider = allowReasoning && currentToolSettings.length > 0 && currentToolParams.length > 0
-  const userSettingsOnly = currentToolSettings.length > 0 && (!allowReasoning || !currentToolParams.length)
-  const reasoningConfigOnly = allowReasoning && currentToolParams.length > 0 && currentToolSettings.length === 0
-
   const handleSettingsFormChange = (v: Record<string, any>) => {
     if (!value || !onChange)
       return
-    const newValue = getStructureValue(v)
     onChange({
       ...value,
-      settings: newValue,
+      settings: v,
     })
   }
 
@@ -81,40 +70,51 @@ const ToolSettingsSection: FC<ToolSettingsSectionProps> = ({
   if (!currentToolSettings.length && !currentToolParams.length)
     return null
 
+  const showSettingsSection = currentToolSettings.length > 0
+  const showParamsSection = allowReasoning && currentToolParams.length > 0
+  const getVarKindType = (type: FormTypeEnum) => {
+    if (type === FormTypeEnum.file || type === FormTypeEnum.files)
+      return VarKindType.variable
+    if (type === FormTypeEnum.select || type === FormTypeEnum.checkbox || type === FormTypeEnum.textNumber || type === FormTypeEnum.array || type === FormTypeEnum.object)
+      return VarKindType.constant
+    if (type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput)
+      return VarKindType.mixed
+    return VarKindType.constant
+  }
+  const getSafeConfigValue = (rawValue: Record<string, any> | undefined, schemas: any[]) => {
+    const nextValue = { ...(rawValue || {}) }
+    schemas.forEach((schema) => {
+      if (!nextValue[schema.variable]) {
+        nextValue[schema.variable] = {
+          auto: 0,
+          value: {
+            type: getVarKindType(schema.type as FormTypeEnum),
+            value: schema.default ?? null,
+          },
+        }
+        return
+      }
+      if (nextValue[schema.variable].auto === undefined)
+        nextValue[schema.variable].auto = 0
+      if (nextValue[schema.variable].value === undefined) {
+        nextValue[schema.variable].value = {
+          type: getVarKindType(schema.type as FormTypeEnum),
+          value: schema.default ?? null,
+        }
+      }
+    })
+    return nextValue
+  }
+
   return (
     <>
       <Divider className="my-1 w-full" />
-      {/* tabs */}
-      {showTabSlider && (
-        <TabSlider
-          className="mt-1 shrink-0 px-4"
-          itemClassName="py-3"
-          noBorderBottom
-          smallItem
-          value={currType}
-          onChange={(value) => {
-            setCurrType(value as 'settings' | 'params')
-          }}
-          options={[
-            { value: 'settings', text: t('detailPanel.toolSelector.settings', { ns: 'plugin' })! },
-            { value: 'params', text: t('detailPanel.toolSelector.params', { ns: 'plugin' })! },
-          ]}
-        />
-      )}
-      {showTabSlider && currType === 'params' && (
-        <div className="px-4 py-2">
-          <div className="system-xs-regular text-text-tertiary">{t('detailPanel.toolSelector.paramsTip1', { ns: 'plugin' })}</div>
-          <div className="system-xs-regular text-text-tertiary">{t('detailPanel.toolSelector.paramsTip2', { ns: 'plugin' })}</div>
-        </div>
-      )}
-      {/* user settings only */}
-      {userSettingsOnly && (
+      {showSettingsSection && (
         <div className="p-4 pb-1">
           <div className="system-sm-semibold-uppercase text-text-primary">{t('detailPanel.toolSelector.settings', { ns: 'plugin' })}</div>
         </div>
       )}
-      {/* reasoning config only */}
-      {reasoningConfigOnly && (
+      {showParamsSection && (
         <div className="mb-1 p-4 pb-1">
           <div className="system-sm-semibold-uppercase text-text-primary">{t('detailPanel.toolSelector.params', { ns: 'plugin' })}</div>
           <div className="pb-1">
@@ -123,28 +123,22 @@ const ToolSettingsSection: FC<ToolSettingsSectionProps> = ({
           </div>
         </div>
       )}
-      {/* user settings form */}
-      {(currType === 'settings' || userSettingsOnly) && (
-        <div className="px-4 py-2">
-          <ToolForm
-            inPanel
-            readOnly={false}
-            nodeId={safeNodeId}
-            schema={settingsFormSchemas as any}
-            value={getPlainValue(value?.settings || {})}
-            onChange={handleSettingsFormChange}
-          />
-        </div>
-      )}
-      {/* reasoning config form */}
-      {allowReasoning && (currType === 'params' || reasoningConfigOnly) && (
+      {showSettingsSection && (
         <ReasoningConfigForm
-          value={value?.parameters || {}}
+          value={getSafeConfigValue(value?.settings, settingsFormSchemas)}
+          onChange={handleSettingsFormChange}
+          schemas={settingsFormSchemas as any}
+          nodeId={safeNodeId}
+          disableVariableReference
+        />
+      )}
+      {showParamsSection && (
+        <ReasoningConfigForm
+          value={getSafeConfigValue(value?.parameters, paramsFormSchemas)}
           onChange={handleParamsFormChange}
           schemas={paramsFormSchemas as any}
-          nodeOutputVars={nodeOutputVars}
-          availableNodes={availableNodes}
           nodeId={safeNodeId}
+          disableVariableReference
         />
       )}
     </>

@@ -240,8 +240,6 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
                   value={toolValue}
                   onChange={handleToolValueChange}
                   nodeId={undefined}
-                  nodeOutputVars={[]}
-                  availableNodes={[]}
                 />
               </>
             )}
