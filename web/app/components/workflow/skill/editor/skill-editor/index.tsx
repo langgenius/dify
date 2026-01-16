@@ -88,7 +88,10 @@ const SkillEditor: FC<SkillEditorProps> = ({
 
   return (
     <LexicalComposer initialConfig={{ ...initialConfig, editable }}>
-      <div className={cn('relative', showLineNumbers && styles.lineNumbersScope, wrapperClassName)}>
+      <div
+        className={cn('relative', showLineNumbers && styles.lineNumbersScope, wrapperClassName)}
+        data-skill-editor-root="true"
+      >
         <RichTextPlugin
           contentEditable={(
             <ContentEditable

@@ -4,17 +4,13 @@ import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import { useSelectOrDelete } from '@/app/components/base/prompt-editor/hooks'
 import ToolAuthorizationSection from '@/app/components/plugins/plugin-detail-panel/tool-selector/sections/tool-authorization-section'
-import ToolSettingsSection from '@/app/components/plugins/plugin-detail-panel/tool-selector/sections/tool-settings-section'
 import { generateFormValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
+import ToolSettingsSection from '@/app/components/workflow/skill/editor/skill-editor/tool-setting/tool-settings-section'
 import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import {
@@ -62,6 +58,7 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
   const { theme } = useTheme()
   const [isSettingOpen, setIsSettingOpen] = useState(false)
   const [toolValue, setToolValue] = useState<ToolValue | null>(null)
+  const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null)
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
@@ -125,6 +122,35 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
       setToolValue(defaultToolValue)
   }, [defaultToolValue, toolValue])
 
+  useEffect(() => {
+    const containerFromRef = ref.current?.closest('[data-skill-editor-root="true"]') as HTMLElement | null
+    const fallbackContainer = document.querySelector('[data-skill-editor-root="true"]') as HTMLElement | null
+    const container = containerFromRef || fallbackContainer
+    if (container)
+      setPortalContainer(container)
+  }, [ref])
+
+  useEffect(() => {
+    if (!isSettingOpen)
+      return
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node | null
+      const triggerEl = ref.current
+      const panelEl = portalContainer?.querySelector('[data-tool-setting-panel="true"]')
+      if (!target || !panelEl)
+        return
+      if (panelEl.contains(target))
+        return
+      if (triggerEl && triggerEl.contains(target))
+        return
+      setIsSettingOpen(false)
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [isSettingOpen, portalContainer, ref])
+
   const displayLabel = label || toolMeta?.label || tool
   const resolvedIcon = (() => {
     const fromNode = theme === Theme.dark ? iconDark : icon
@@ -173,60 +199,57 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
   }
 
   return (
-    <PortalToFollowElem
-      placement="bottom-start"
-      offset={8}
-      open={isSettingOpen}
-      onOpenChange={setIsSettingOpen}
-    >
-      <PortalToFollowElemTrigger
-        asChild
-        onClick={() => {
+    <>
+      <span
+        ref={ref}
+        className={cn(
+          'inline-flex cursor-pointer items-center gap-[2px] rounded-[5px] border border-state-accent-hover-alt bg-state-accent-hover px-[4px] py-[1px] shadow-xs',
+          isSelected && 'border-text-accent',
+        )}
+        title={`${provider}.${tool}`}
+        data-tool-config-id={configId}
+        onMouseDown={() => {
           if (!currentProvider || !currentTool)
             return
           setIsSettingOpen(true)
         }}
       >
-        <span
-          ref={ref}
-          className={cn(
-            'inline-flex cursor-pointer items-center gap-[2px] rounded-[5px] border border-state-accent-hover-alt bg-state-accent-hover px-[4px] py-[1px] shadow-xs',
-            isSelected && 'border-text-accent',
-          )}
-          title={`${provider}.${tool}`}
-          data-tool-config-id={configId}
-        >
-          {renderIcon()}
-          <span className="system-xs-medium max-w-[180px] truncate text-text-accent">
-            {displayLabel}
-          </span>
+        {renderIcon()}
+        <span className="system-xs-medium max-w-[180px] truncate text-text-accent">
+          {displayLabel}
         </span>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[999]">
-        <div className={cn('relative max-h-[642px] min-h-20 w-[361px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pb-4 shadow-lg backdrop-blur-sm', 'overflow-y-auto pb-2')}>
-          <div className="system-xl-semibold px-4 pb-1 pt-3.5 text-text-primary">{t('detailPanel.toolSelector.toolSetting', { ns: 'plugin' })}</div>
-          {currentProvider && currentTool && toolValue && (
-            <>
-              <div className="px-4 pb-2 text-xs text-text-tertiary">{displayLabel}</div>
-              <ToolAuthorizationSection
-                currentProvider={currentProvider}
-                credentialId={toolValue.credential_id}
-                onAuthorizationItemClick={handleAuthorizationItemClick}
-              />
-              <ToolSettingsSection
-                currentProvider={currentProvider}
-                currentTool={currentTool}
-                value={toolValue}
-                onChange={handleToolValueChange}
-                nodeId={undefined}
-                nodeOutputVars={[]}
-                availableNodes={[]}
-              />
-            </>
-          )}
-        </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </span>
+      {portalContainer && isSettingOpen && createPortal(
+        <div
+          className="absolute right-4 top-4 z-[999]"
+          data-tool-setting-panel="true"
+        >
+          <div className={cn('relative max-h-[642px] min-h-20 w-[361px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pb-4 shadow-lg backdrop-blur-sm', 'overflow-y-auto pb-2')}>
+            <div className="system-xl-semibold px-4 pb-1 pt-3.5 text-text-primary">{t('detailPanel.toolSelector.toolSetting', { ns: 'plugin' })}</div>
+            {currentProvider && currentTool && toolValue && (
+              <>
+                <div className="px-4 pb-2 text-xs text-text-tertiary">{displayLabel}</div>
+                <ToolAuthorizationSection
+                  currentProvider={currentProvider}
+                  credentialId={toolValue.credential_id}
+                  onAuthorizationItemClick={handleAuthorizationItemClick}
+                />
+                <ToolSettingsSection
+                  currentProvider={currentProvider}
+                  currentTool={currentTool}
+                  value={toolValue}
+                  onChange={handleToolValueChange}
+                  nodeId={undefined}
+                  nodeOutputVars={[]}
+                  availableNodes={[]}
+                />
+              </>
+            )}
+          </div>
+        </div>,
+        portalContainer,
+      )}
+    </>
   )
 }
 
