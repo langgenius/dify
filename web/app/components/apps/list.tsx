@@ -249,6 +249,11 @@ const List = () => {
             // No apps - show empty state
             return <Empty />
           })()}
+          {isFetchingNextPage && (
+            <div className="col-span-full flex justify-center py-4">
+              <RiLoader2Line className="h-5 w-5 animate-spin text-text-tertiary" />
+            </div>
+          )}
         </div>
 
         {isCurrentWorkspaceEditor && (
@@ -265,11 +270,6 @@ const List = () => {
           <Footer />
         )}
         <CheckModal />
-        {isFetchingNextPage && (
-          <div className="flex justify-center py-4">
-            <RiLoader2Line className="h-5 w-5 animate-spin text-text-tertiary" />
-          </div>
-        )}
         <div ref={anchorRef} className="h-0"> </div>
         {showTagManagementModal && (
           <TagManagementModal type="app" show={showTagManagementModal} />
