@@ -5,7 +5,6 @@ import {
   RiDragDropLine,
   RiExchange2Line,
   RiFile4Line,
-  RiLoader2Line,
   RiMessage3Line,
   RiRobot3Line,
 } from '@remixicon/react'
@@ -93,7 +92,7 @@ const List = () => {
 
   const appListQueryParams = {
     page: 1,
-    limit: 30,
+    limit: 3, // TODO: Change back to 30 - reduced for testing loading indicator
     name: searchKeywords,
     tag_ids: tagIDs,
     is_created_by_me: isCreatedByMe,
@@ -250,9 +249,7 @@ const List = () => {
             return <Empty />
           })()}
           {isFetchingNextPage && (
-            <div className="col-span-full flex justify-center py-4">
-              <RiLoader2Line className="h-5 w-5 animate-spin text-text-tertiary" />
-            </div>
+            <AppCardSkeleton count={3} />
           )}
         </div>
 
