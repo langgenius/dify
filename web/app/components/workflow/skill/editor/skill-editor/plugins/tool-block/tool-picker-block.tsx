@@ -46,7 +46,7 @@ const ToolPickerBlock: FC<ToolPickerBlockProps> = ({ scope = 'all' }) => {
       tools.forEach((tool, index) => {
         nodes.push(
           $createToolBlockNode({
-            provider: tool.provider_name,
+            provider: tool.provider_id, // TODO: not sure use which tool.plugin_id ask
             tool: tool.tool_name,
             configId: uuid(),
             label: tool.tool_label,
@@ -104,8 +104,8 @@ const ToolPickerBlock: FC<ToolPickerBlockProps> = ({ scope = 'all' }) => {
   return (
     <LexicalTypeaheadMenuPlugin
       options={options}
-      onSelectOption={() => {}}
-      onQueryChange={() => {}}
+      onSelectOption={() => { }}
+      onQueryChange={() => { }}
       menuRenderFn={renderMenu}
       triggerFn={checkForTriggerMatch}
       anchorClassName="z-[999999] translate-y-[calc(-100%-3px)]"

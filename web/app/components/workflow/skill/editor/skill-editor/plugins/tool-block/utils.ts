@@ -1,9 +1,9 @@
 export const getToolTokenRegexString = (): string => {
-  return '§tool\\.[a-zA-Z0-9_-]+\\.[a-zA-Z0-9_-]+\\.[a-fA-F0-9-]{36}§'
+  return '§tool\\.[a-zA-Z0-9_-]+(?:\\/[a-zA-Z0-9_-]+)*\\.[a-zA-Z0-9_-]+\\.[a-fA-F0-9-]{36}§'
 }
 
 export const parseToolToken = (text: string) => {
-  const match = /^§tool\.([\w-]+)\.([\w-]+)\.([a-fA-F0-9-]{36})§$/.exec(text)
+  const match = /^§tool\.([\w-]+(?:\/[\w-]+)*)\.([\w-]+)\.([a-fA-F0-9-]{36})§$/.exec(text)
   if (!match)
     return null
   return {
