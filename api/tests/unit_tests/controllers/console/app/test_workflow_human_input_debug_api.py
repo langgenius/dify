@@ -160,8 +160,8 @@ class DeliveryTestCase:
     "case",
     [
         DeliveryTestCase(
-            resource_cls=workflow_module.AdvancedChatDraftHumanInputDeliveryTestApi,
-            path="/console/api/apps/app-123/advanced-chat/workflows/draft/human-input/nodes/node-7/delivery-test",
+            resource_cls=workflow_module.WorkflowDraftHumanInputDeliveryTestApi,
+            path="/console/api/apps/app-123/workflows/draft/human-input/nodes/node-7/delivery-test",
             mode=AppMode.ADVANCED_CHAT,
         ),
         DeliveryTestCase(
@@ -207,12 +207,12 @@ def test_human_input_delivery_test_maps_validation_error(app: Flask, monkeypatch
     monkeypatch.setattr(workflow_module, "WorkflowService", MagicMock(return_value=service_instance))
 
     with app.test_request_context(
-        "/console/api/apps/app-123/advanced-chat/workflows/draft/human-input/nodes/node-1/delivery-test",
+        "/console/api/apps/app-123/workflows/draft/human-input/nodes/node-1/delivery-test",
         method="POST",
         json={"delivery_method_id": "bad"},
     ):
         with pytest.raises(InvalidArgumentError):
-            workflow_module.AdvancedChatDraftHumanInputDeliveryTestApi().post(app_id=app_model.id, node_id="node-1")
+            workflow_module.WorkflowDraftHumanInputDeliveryTestApi().post(app_id=app_model.id, node_id="node-1")
 
 
 def test_human_input_preview_rejects_non_mapping(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:

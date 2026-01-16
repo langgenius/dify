@@ -669,36 +669,6 @@ class WorkflowDraftHumanInputFormRunApi(Resource):
         return jsonable_encoder(result)
 
 
-@console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/human-input/nodes/<string:node_id>/delivery-test")
-class AdvancedChatDraftHumanInputDeliveryTestApi(Resource):
-    @console_ns.doc("test_advanced_chat_draft_human_input_delivery")
-    @console_ns.doc(description="Test human input delivery for advanced chat workflow")
-    @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @console_ns.expect(console_ns.models[HumanInputDeliveryTestPayload.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT])
-    @edit_permission_required
-    def post(self, app_model: App, node_id: str):
-        """
-        Test human input delivery
-        """
-        current_user, _ = current_account_with_tenant()
-        args = HumanInputDeliveryTestPayload.model_validate(console_ns.payload or {})
-        workflow_service = WorkflowService()
-        try:
-            workflow_service.test_human_input_delivery(
-                app_model=app_model,
-                account=current_user,
-                node_id=node_id,
-                delivery_method_id=args.delivery_method_id,
-            )
-        except ValueError as exc:
-            raise InvalidArgumentError(str(exc))
-        return jsonable_encoder({})
-
-
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/human-input/nodes/<string:node_id>/delivery-test")
 class WorkflowDraftHumanInputDeliveryTestApi(Resource):
     @console_ns.doc("test_workflow_draft_human_input_delivery")
@@ -708,7 +678,7 @@ class WorkflowDraftHumanInputDeliveryTestApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.WORKFLOW])
+    @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
     @edit_permission_required
     def post(self, app_model: App, node_id: str):
         """
