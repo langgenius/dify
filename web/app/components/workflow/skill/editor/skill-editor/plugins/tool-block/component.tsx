@@ -5,7 +5,6 @@ import type { ToolWithProvider } from '@/app/components/workflow/types'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { useSelectOrDelete } from '@/app/components/base/prompt-editor/hooks'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -28,6 +27,7 @@ import { canFindTool } from '@/utils'
 import { cn } from '@/utils/classnames'
 import { basePath } from '@/utils/var'
 import { DELETE_TOOL_BLOCK_COMMAND } from './index'
+import ToolHeader from './tool-header'
 
 type ToolBlockComponentProps = {
   nodeKey: string
@@ -85,7 +85,6 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
 }) => {
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_TOOL_BLOCK_COMMAND)
   const language = useGetLanguage()
-  const { t } = useTranslation()
   const { theme } = useTheme()
   const [isSettingOpen, setIsSettingOpen] = useState(false)
   const [toolValue, setToolValue] = useState<ToolValue | null>(null)
@@ -126,6 +125,17 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
       iconDark: currentProvider.icon_dark,
     }
   }, [currentProvider, currentTool, language, tool])
+
+  const toolDescriptionText = useMemo(() => {
+    if (toolValue?.tool_description)
+      return toolValue.tool_description
+    if (currentTool?.description) {
+      return typeof currentTool.description === 'object'
+        ? (currentTool.description?.[language] || '')
+        : (currentTool.description || '')
+    }
+    return ''
+  }, [currentTool?.description, language, toolValue?.tool_description])
 
   const toolConfigFromMetadata = useMemo(() => {
     if (!activeTabId)
@@ -345,14 +355,19 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
       </span>
       {portalContainer && isSettingOpen && createPortal(
         <div
-          className="absolute right-4 top-4 z-[999]"
+          className="absolute bottom-4 right-4 top-4 z-[999]"
           data-tool-setting-panel="true"
         >
-          <div className={cn('relative max-h-[642px] min-h-20 w-[361px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pb-4 shadow-lg backdrop-blur-sm', 'overflow-y-auto pb-2')}>
-            <div className="system-xl-semibold px-4 pb-1 pt-3.5 text-text-primary">{t('detailPanel.toolSelector.toolSetting', { ns: 'plugin' })}</div>
+          <div className={cn('relative h-full min-h-20 w-[361px] overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pb-4 shadow-lg backdrop-blur-sm', 'overflow-y-auto pb-2')}>
             {currentProvider && currentTool && toolValue && (
               <>
-                <div className="px-4 pb-2 text-xs text-text-tertiary">{displayLabel}</div>
+                <ToolHeader
+                  icon={resolvedIcon}
+                  providerLabel={currentProvider.label?.[language] || currentProvider.name || provider}
+                  toolLabel={toolValue.tool_label || displayLabel}
+                  description={toolDescriptionText}
+                  onClose={() => setIsSettingOpen(false)}
+                />
                 <ToolAuthorizationSection
                   currentProvider={currentProvider}
                   credentialId={toolValue.credential_id}
