@@ -916,9 +916,9 @@ class TestChildChunk:
             content="Child chunk content",
             word_count=3,
             created_by=created_by,
-            type='automatic',
-            index_node_id='xxx',
-            index_node_hash='xxx',
+            type="automatic",
+            index_node_id="xxx",
+            index_node_hash="xxx",
         )
 
         # Assert
@@ -950,7 +950,7 @@ class TestChildChunk:
             created_by=str(uuid4()),
             index_node_id=index_node_id,
             index_node_hash=index_node_hash,
-            type='automatic'
+            type="automatic",
         )
 
         # Assert

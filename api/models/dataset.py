@@ -930,9 +930,7 @@ class ChildChunk(TypeBase):
     # indexing fields
     index_node_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     index_node_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    type: Mapped[str] = mapped_column(
-        String(255), nullable=False, server_default=sa.text("'automatic'")
-    )
+    type: Mapped[str] = mapped_column(String(255), nullable=False, server_default=sa.text("'automatic'"))
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=sa.func.current_timestamp(), init=False
