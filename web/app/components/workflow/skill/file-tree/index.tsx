@@ -16,8 +16,8 @@ import Toast from '@/app/components/base/toast'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { useRenameAppAssetNode } from '@/service/use-app-asset'
 import { cn } from '@/utils/classnames'
-import { useRevealActiveTab } from '../hooks/use-reveal-active-tab'
 import { useSkillAssetTreeData } from '../hooks/use-skill-asset-tree'
+import { useSyncTreeWithActiveTab } from '../hooks/use-sync-tree-with-active-tab'
 import TreeContextMenu from './tree-context-menu'
 import TreeNode from './tree-node'
 
@@ -85,10 +85,9 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
     })
   }, [appId, renameNode, t])
 
-  useRevealActiveTab({
+  useSyncTreeWithActiveTab({
     treeRef,
     activeTabId,
-    treeChildren: treeData?.children,
   })
 
   if (isLoading) {
