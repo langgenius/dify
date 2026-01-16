@@ -10,12 +10,17 @@ import { useSkillEditorStore, useSkillEditorStoreApi } from './store'
 const EditorTabs: FC = () => {
   const openTabIds = useSkillEditorStore(s => s.openTabIds)
   const activeTabId = useSkillEditorStore(s => s.activeTabId)
+  const previewTabId = useSkillEditorStore(s => s.previewTabId)
   const dirtyContents = useSkillEditorStore(s => s.dirtyContents)
   const storeApi = useSkillEditorStoreApi()
   const { data: nodeMap } = useSkillAssetNodeMap()
 
   const handleTabClick = (fileId: string) => {
     storeApi.getState().activateTab(fileId)
+  }
+
+  const handleTabDoubleClick = (fileId: string) => {
+    storeApi.getState().pinTab(fileId)
   }
 
   const handleTabClose = (fileId: string) => {
@@ -37,6 +42,7 @@ const EditorTabs: FC = () => {
         const name = node?.name ?? fileId
         const isActive = activeTabId === fileId
         const isDirty = dirtyContents.has(fileId)
+        const isPreview = previewTabId === fileId
 
         return (
           <EditorTabItem
@@ -45,8 +51,10 @@ const EditorTabs: FC = () => {
             name={name}
             isActive={isActive}
             isDirty={isDirty}
+            isPreview={isPreview}
             onClick={handleTabClick}
             onClose={handleTabClose}
+            onDoubleClick={handleTabDoubleClick}
           />
         )
       })}

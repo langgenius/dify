@@ -67,7 +67,7 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
 
   const handleActivate = useCallback((node: NodeApi<TreeNodeData>) => {
     if (node.data.node_type === 'file')
-      storeApi.getState().openTab(node.data.id)
+      storeApi.getState().openTab(node.data.id, { pinned: true })
     else
       node.toggle()
   }, [storeApi])

@@ -36,13 +36,19 @@ const TreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeData>) 
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation()
-    node.handleClick(e)
+    node.select()
+    if (isFolder)
+      node.toggle()
+    else
+      storeApi.getState().openTab(node.data.id, { pinned: false })
   }
 
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation()
-    if (!isFolder)
-      node.activate()
+    if (isFolder)
+      node.toggle()
+    else
+      storeApi.getState().openTab(node.data.id, { pinned: true })
   }
 
   const handleToggle = (e: React.MouseEvent) => {
@@ -72,9 +78,9 @@ const TreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeData>) 
       if (isFolder)
         node.toggle()
       else
-        node.activate()
+        storeApi.getState().openTab(node.data.id, { pinned: true })
     }
-  }, [isFolder, node])
+  }, [isFolder, node, storeApi])
 
   return (
     <div

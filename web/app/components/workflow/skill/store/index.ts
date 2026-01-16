@@ -4,15 +4,28 @@ import { useContext } from 'react'
 import { useStore as useZustandStore } from 'zustand'
 import { createStore } from 'zustand/vanilla'
 
+export type OpenTabOptions = {
+  /** true = Pinned (permanent), false/undefined = Preview (temporary) */
+  pinned?: boolean
+}
+
 export type TabSliceShape = {
   /** Ordered list of open tab file IDs */
   openTabIds: string[]
   /** Currently active tab file ID */
   activeTabId: string | null
+  /** Current preview tab file ID (at most one) */
   previewTabId: string | null
-  openTab: (fileId: string) => void
+  /** Open a file tab with optional pinned mode */
+  openTab: (fileId: string, options?: OpenTabOptions) => void
+  /** Close a tab */
   closeTab: (fileId: string) => void
+  /** Activate an existing tab */
   activateTab: (fileId: string) => void
+  /** Convert preview tab to pinned tab */
+  pinTab: (fileId: string) => void
+  /** Check if a tab is in preview mode */
+  isPreviewTab: (fileId: string) => boolean
 }
 
 export const createTabSlice: StateCreator<TabSliceShape> = (set, get) => ({
@@ -20,41 +33,54 @@ export const createTabSlice: StateCreator<TabSliceShape> = (set, get) => ({
   activeTabId: null,
   previewTabId: null,
 
-  openTab: (fileId: string) => {
-    const { openTabIds, activeTabId } = get()
-    // If already open, just activate
+  openTab: (fileId: string, options?: OpenTabOptions) => {
+    const { openTabIds, activeTabId, previewTabId } = get()
+    const isPinned = options?.pinned ?? false
+
     if (openTabIds.includes(fileId)) {
-      if (activeTabId !== fileId)
+      if (isPinned && previewTabId === fileId)
+        set({ activeTabId: fileId, previewTabId: null })
+      else if (activeTabId !== fileId)
         set({ activeTabId: fileId })
       return
     }
-    // Add to tabs and activate
-    set({
-      openTabIds: [...openTabIds, fileId],
-      activeTabId: fileId,
-    })
+
+    let newOpenTabIds = [...openTabIds]
+
+    if (!isPinned) {
+      if (previewTabId && openTabIds.includes(previewTabId))
+        newOpenTabIds = newOpenTabIds.filter(id => id !== previewTabId)
+      set({
+        openTabIds: [...newOpenTabIds, fileId],
+        activeTabId: fileId,
+        previewTabId: fileId,
+      })
+    }
+    else {
+      set({
+        openTabIds: [...newOpenTabIds, fileId],
+        activeTabId: fileId,
+      })
+    }
   },
 
   closeTab: (fileId: string) => {
-    const { openTabIds, activeTabId } = get()
+    const { openTabIds, activeTabId, previewTabId } = get()
     const newOpenTabIds = openTabIds.filter(id => id !== fileId)
 
-    // If closing the active tab, activate adjacent tab
     let newActiveTabId = activeTabId
     if (activeTabId === fileId) {
       const closedIndex = openTabIds.indexOf(fileId)
-      if (newOpenTabIds.length > 0) {
-        // Prefer next, fallback to previous
+      if (newOpenTabIds.length > 0)
         newActiveTabId = newOpenTabIds[Math.min(closedIndex, newOpenTabIds.length - 1)]
-      }
-      else {
+      else
         newActiveTabId = null
-      }
     }
 
     set({
       openTabIds: newOpenTabIds,
       activeTabId: newActiveTabId,
+      previewTabId: previewTabId === fileId ? null : previewTabId,
     })
   },
 
@@ -62,6 +88,16 @@ export const createTabSlice: StateCreator<TabSliceShape> = (set, get) => ({
     const { openTabIds } = get()
     if (openTabIds.includes(fileId))
       set({ activeTabId: fileId })
+  },
+
+  pinTab: (fileId: string) => {
+    const { previewTabId } = get()
+    if (previewTabId === fileId)
+      set({ previewTabId: null })
+  },
+
+  isPreviewTab: (fileId: string) => {
+    return get().previewTabId === fileId
   },
 })
 

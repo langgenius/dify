@@ -15,8 +15,10 @@ type EditorTabItemProps = {
   name: string
   isActive: boolean
   isDirty: boolean
+  isPreview: boolean
   onClick: (fileId: string) => void
   onClose: (fileId: string) => void
+  onDoubleClick: (fileId: string) => void
 }
 
 const EditorTabItem: FC<EditorTabItemProps> = ({
@@ -24,8 +26,10 @@ const EditorTabItem: FC<EditorTabItemProps> = ({
   name,
   isActive,
   isDirty,
+  isPreview,
   onClick,
   onClose,
+  onDoubleClick,
 }) => {
   const { t } = useTranslation()
   const iconType = getFileIconType(name)
@@ -33,6 +37,11 @@ const EditorTabItem: FC<EditorTabItemProps> = ({
   const handleClick = useCallback(() => {
     onClick(fileId)
   }, [onClick, fileId])
+
+  const handleDoubleClick = useCallback(() => {
+    if (isPreview)
+      onDoubleClick(fileId)
+  }, [onDoubleClick, fileId, isPreview])
 
   const handleClose = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
@@ -53,6 +62,7 @@ const EditorTabItem: FC<EditorTabItemProps> = ({
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-components-input-border-active',
         )}
         onClick={handleClick}
+        onDoubleClick={handleDoubleClick}
       >
         <div className="relative flex size-5 shrink-0 items-center justify-center">
           <FileTypeIcon type={iconType as FileAppearanceType} size="sm" />
@@ -64,6 +74,7 @@ const EditorTabItem: FC<EditorTabItemProps> = ({
         <span
           className={cn(
             'max-w-40 truncate text-[13px] font-normal leading-4',
+            isPreview && 'italic',
             isActive
               ? 'text-text-primary'
               : 'text-text-tertiary',
