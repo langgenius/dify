@@ -1,6 +1,7 @@
-import type { ParametersSchema, PluginMeta, PluginTriggerSubscriptionConstructor, SupportedCreationMethods, TriggerEvent } from '../../plugins/types'
+import type { ParametersSchema, PluginMeta, PluginTriggerSubscriptionConstructor, SupportedCreationMethods, TriggerEvent, PluginMeta as WorkflowPluginMeta } from '../../plugins/types'
 import type { Collection, Event } from '../../tools/types'
 import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { AgentToolActivationCondition } from '@/app/components/workflow/nodes/agent/types'
 
 export enum TabsEnum {
   Start = 'start',
@@ -56,7 +57,7 @@ export type ToolDefaultValue = PluginCommonDefaultValue & {
   paramSchemas: Record<string, unknown>[]
   output_schema?: Record<string, unknown>
   credential_id?: string
-  meta?: PluginMeta
+  meta?: WorkflowPluginMeta
   plugin_id?: string
   provider_icon?: Collection['icon']
   provider_icon_dark?: Collection['icon']
@@ -87,6 +88,7 @@ export type ToolValue = {
   enabled?: boolean
   extra?: { description?: string } & Record<string, unknown>
   credential_id?: string
+  activation_condition?: AgentToolActivationCondition
 }
 
 export type DataSourceItem = {

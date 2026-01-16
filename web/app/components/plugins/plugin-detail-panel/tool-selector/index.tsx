@@ -30,6 +30,7 @@ import ToolTrigger from '@/app/components/plugins/plugin-detail-panel/tool-selec
 import { CollectionType } from '@/app/components/tools/types'
 import { generateFormValue, getPlainValue, getStructureValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import ToolPicker from '@/app/components/workflow/block-selector/tool-picker'
+import { AgentToolConditionEditor } from '@/app/components/workflow/nodes/agent/components/tool-condition'
 import ToolForm from '@/app/components/workflow/nodes/tool/components/tool-form'
 import { MARKETPLACE_API_PREFIX } from '@/config'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
@@ -129,6 +130,7 @@ const ToolSelector: FC<Props> = ({
         description: tool.tool_description,
       },
       schemas: tool.paramSchemas,
+      activation_condition: value?.activation_condition,
     }
   }
   const handleSelectTool = (tool: ToolDefaultValue) => {
@@ -148,6 +150,15 @@ const ToolSelector: FC<Props> = ({
         ...value?.extra,
         description: e.target.value || '',
       },
+    } as any)
+  }
+
+  const handleActivationConditionChange = (condition?: ToolValue['activation_condition']) => {
+    if (!value)
+      return
+    onSelect({
+      ...value,
+      activation_condition: condition,
     } as any)
   }
 
@@ -269,7 +280,7 @@ const ToolSelector: FC<Props> = ({
           )}
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className="z-10">
-          <div className={cn('relative max-h-[642px] min-h-20 w-[361px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pb-4 shadow-lg backdrop-blur-sm', 'overflow-y-auto pb-2')}>
+          <div className={cn('relative max-h-[642px] min-h-20 w-[480px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pb-4 shadow-lg backdrop-blur-sm', 'overflow-y-auto pb-2')}>
             <>
               <div className="system-xl-semibold px-4 pb-1 pt-3.5 text-text-primary">{t(`detailPanel.toolSelector.${isEdit ? 'toolSetting' : 'title'}`, { ns: 'plugin' })}</div>
               {/* base form */}
@@ -395,6 +406,20 @@ const ToolSelector: FC<Props> = ({
                       nodeId={nodeId}
                     />
                   )}
+                </>
+              )}
+              {value?.provider_name && nodeId && (
+                <>
+                  <Divider className="my-1 w-full" />
+                  <div className="px-4 py-2">
+                    <AgentToolConditionEditor
+                      value={value.activation_condition}
+                      onChange={handleActivationConditionChange}
+                      availableVars={nodeOutputVars}
+                      availableNodes={availableNodes}
+                      disabled={disabled}
+                    />
+                  </div>
                 </>
               )}
             </>
