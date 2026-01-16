@@ -48,5 +48,5 @@
 - ZIP packing is handled by `FileService.build_upload_files_zip_tempfile(...)`, which also:
   - sanitizes entry names to avoid path traversal, and
   - deduplicates names while preserving extensions (e.g., `doc.txt` → `doc (1).txt`).
-    Streaming the response and deferring cleanup is handled by the route via `send_file(...)` + `ExitStack` +
-    `response.call_on_close(...)`.
+    Streaming the response and deferring cleanup is handled by the route via `send_file(path, ...)` + `ExitStack` +
+    `response.call_on_close(...)` (the file is deleted when the response is closed).

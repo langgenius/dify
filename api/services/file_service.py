@@ -3,9 +3,9 @@ import hashlib
 import os
 import uuid
 from collections.abc import Iterator, Sequence
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from tempfile import NamedTemporaryFile
-from typing import IO, Literal, Union
+from typing import Literal, Union
 from zipfile import ZIP_DEFLATED, ZipFile
 
 from sqlalchemy import Engine, select
@@ -324,30 +324,40 @@ class FileService:
     def build_upload_files_zip_tempfile(
         *,
         upload_files: Sequence[UploadFile],
-    ) -> Iterator[IO[bytes]]:
+    ) -> Iterator[str]:
         """
-        Build a ZIP from `UploadFile`s and yield a seeked tempfile.
+        Build a ZIP from `UploadFile`s and yield a tempfile path.
 
-        This contextmanager is intentionally tempfile-only (no Flask / ExitStack) so the route can decide how to
-        stream the file (e.g., `send_file`) and how to manage cleanup (e.g., `response.call_on_close(...)`).
+        We yield a path (rather than an open file handle) to avoid "read of closed file" issues when Flask/Werkzeug
+        streams responses. The caller is expected to keep this context open until the response is fully sent, then
+        close it (e.g., via `response.call_on_close(...)`) to delete the tempfile.
         """
         used_names: set[str] = set()
 
-        # Build a ZIP in a temp file.
-        with NamedTemporaryFile(mode="w+b", suffix=".zip") as tmp:
-            with ZipFile(tmp, mode="w", compression=ZIP_DEFLATED) as zf:
-                for upload_file in upload_files:
-                    # Ensure the entry name is safe and unique.
-                    safe_name = FileService._sanitize_zip_entry_name(upload_file.name)
-                    arcname = FileService._dedupe_zip_entry_name(safe_name, used_names)
-                    used_names.add(arcname)
+        # Build a ZIP in a temp file and keep it on disk until the caller finishes streaming it.
+        tmp_path: str | None = None
+        try:
+            with NamedTemporaryFile(mode="w+b", suffix=".zip", delete=False) as tmp:
+                tmp_path = tmp.name
+                with ZipFile(tmp, mode="w", compression=ZIP_DEFLATED) as zf:
+                    for upload_file in upload_files:
+                        # Ensure the entry name is safe and unique.
+                        safe_name = FileService._sanitize_zip_entry_name(upload_file.name)
+                        arcname = FileService._dedupe_zip_entry_name(safe_name, used_names)
+                        used_names.add(arcname)
 
-                    # Stream file bytes from storage into the ZIP entry.
-                    with zf.open(arcname, "w") as entry:
-                        for chunk in storage.load(upload_file.key, stream=True):
-                            entry.write(chunk)
+                        # Stream file bytes from storage into the ZIP entry.
+                        with zf.open(arcname, "w") as entry:
+                            for chunk in storage.load(upload_file.key, stream=True):
+                                entry.write(chunk)
 
-            # Rewind so callers can stream from the beginning.
-            tmp.seek(0)
-            # Yield the underlying file object to satisfy static typing (NamedTemporaryFile returns a wrapper).
-            yield tmp.file
+                # Flush so `send_file(path, ...)` can re-open it safely on all platforms.
+                tmp.flush()
+
+            assert tmp_path is not None
+            yield tmp_path
+        finally:
+            # Remove the temp file when the context is closed (typically after the response finishes streaming).
+            if tmp_path is not None:
+                with suppress(FileNotFoundError):
+                    os.remove(tmp_path)

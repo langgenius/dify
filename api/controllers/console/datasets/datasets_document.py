@@ -1038,9 +1038,9 @@ class DocumentBatchDownloadZipApi(DocumentResource):
 
         # Delegate ZIP packing to FileService, but keep Flask response+cleanup in the route.
         with ExitStack() as stack:
-            tmp = stack.enter_context(FileService.build_upload_files_zip_tempfile(upload_files=upload_files))
+            zip_path = stack.enter_context(FileService.build_upload_files_zip_tempfile(upload_files=upload_files))
             response = send_file(
-                tmp,
+                zip_path,
                 mimetype="application/zip",
                 as_attachment=True,
                 download_name=_generate_document_batch_download_zip_filename(),

@@ -8,6 +8,7 @@ Unit tests for `api/services/file_service.py` helper methods that are not covere
   - ZIP entry name sanitization (no directory components / traversal)
   - name deduplication while preserving extensions
   - writing streamed bytes from `storage.load(...)` into ZIP entries
+  - yields a tempfile path so callers can open/stream the ZIP without holding a live file handle
 - `FileService.get_upload_files_by_ids(...)`
   - returns `{}` for empty id lists
   - returns an id-keyed mapping for non-empty lists

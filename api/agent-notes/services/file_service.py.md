@@ -23,7 +23,8 @@ operations (uploading, previews, deletion), plus generic ZIP serving.
 ### ZIP serving
 
 - `FileService.build_upload_files_zip_tempfile(...)` builds a ZIP from `UploadFile` objects and yields a seeked
-  `IO[bytes]` handle (`NamedTemporaryFile(...).file`) so callers can stream it (e.g., `send_file(...)`).
+  tempfile **path** so callers can stream it (e.g., `send_file(path, ...)`) without hitting "read of closed file"
+  issues from file-handle lifecycle during streamed responses.
 - Flask `send_file(...)` and the `ExitStack`/`call_on_close(...)` cleanup pattern are handled in the route layer.
 
 ## Verification plan
