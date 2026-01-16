@@ -18,8 +18,7 @@ import { cn } from '@/utils/classnames'
 import { useDelayedClick } from '../hooks/use-delayed-click'
 import { useSkillEditorStore, useSkillEditorStoreApi } from '../store'
 import { getFileIconType } from '../utils/file-utils'
-import FileNodeMenu from './file-node-menu'
-import FolderNodeMenu from './folder-node-menu'
+import NodeMenu from './node-menu'
 import TreeEditInput from './tree-edit-input'
 import TreeGuideLines from './tree-guide-lines'
 
@@ -192,19 +191,11 @@ const TreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeData>) 
           </button>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className="z-[100]">
-          {isFolder
-            ? (
-                <FolderNodeMenu
-                  onClose={() => setShowDropdown(false)}
-                  node={node}
-                />
-              )
-            : (
-                <FileNodeMenu
-                  onClose={() => setShowDropdown(false)}
-                  node={node}
-                />
-              )}
+          <NodeMenu
+            type={isFolder ? 'folder' : 'file'}
+            onClose={() => setShowDropdown(false)}
+            node={node}
+          />
         </PortalToFollowElemContent>
       </PortalToFollowElem>
     </div>

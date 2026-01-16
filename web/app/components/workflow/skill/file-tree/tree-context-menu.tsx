@@ -9,8 +9,7 @@ import { useCallback, useMemo, useRef } from 'react'
 import { useSkillAssetTreeData } from '../hooks/use-skill-asset-tree'
 import { useSkillEditorStore, useSkillEditorStoreApi } from '../store'
 import { findNodeById } from '../utils/tree-utils'
-import FileNodeMenu from './file-node-menu'
-import FolderNodeMenu from './folder-node-menu'
+import NodeMenu from './node-menu'
 
 type TreeContextMenuProps = {
   treeRef: React.RefObject<TreeApi<TreeNodeData> | null>
@@ -50,21 +49,12 @@ const TreeContextMenu: FC<TreeContextMenuProps> = ({ treeRef }) => {
         left: contextMenu.left,
       }}
     >
-      {isFolder
-        ? (
-            <FolderNodeMenu
-              nodeId={contextMenu.nodeId}
-              onClose={handleClose}
-              treeRef={treeRef}
-            />
-          )
-        : (
-            <FileNodeMenu
-              nodeId={contextMenu.nodeId}
-              onClose={handleClose}
-              treeRef={treeRef}
-            />
-          )}
+      <NodeMenu
+        type={isFolder ? 'folder' : 'file'}
+        nodeId={contextMenu.nodeId}
+        onClose={handleClose}
+        treeRef={treeRef}
+      />
     </div>
   )
 }
