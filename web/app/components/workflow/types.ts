@@ -77,6 +77,7 @@ export type CommonNodeType<T = {}> = {
   _isCandidate?: boolean
   _isBundled?: boolean
   _children?: { nodeId: string, nodeType: BlockEnum }[]
+  parent_node_id?: string
   _isEntering?: boolean
   _showAddVariablePopup?: boolean
   _holdAddVariablePopup?: boolean

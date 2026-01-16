@@ -197,7 +197,12 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
           {referenceItems.map(item => (
             <div
               key={item.key}
-              className="flex h-6 items-center justify-between space-x-1 rounded-md bg-workflow-block-parma-bg px-1 text-xs font-normal text-text-secondary"
+              className={cn(
+                'flex h-6 items-center justify-between space-x-1 rounded-md border px-1 text-xs font-normal text-text-secondary',
+                item.hasWarning
+                  ? 'border-text-warning-secondary bg-components-badge-status-light-warning-halo'
+                  : 'border-transparent bg-workflow-block-parma-bg',
+              )}
             >
               <div className="flex min-w-0 items-center gap-1">
                 <BlockIcon

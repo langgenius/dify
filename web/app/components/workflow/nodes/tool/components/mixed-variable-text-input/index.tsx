@@ -1,12 +1,15 @@
-import type { AgentNode } from '@/app/components/base/prompt-editor/types'
+import type { AgentNode, WorkflowVariableBlockType } from '@/app/components/base/prompt-editor/types'
+import type { StrategyDetail, StrategyPluginDetail } from '@/app/components/plugins/types'
 import type { MentionConfig, VarKindType } from '@/app/components/workflow/nodes/_base/types'
+import type { AgentNodeType } from '@/app/components/workflow/nodes/agent/types'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type {
-  Node,
+  CommonNodeType,
   NodeOutPutVar,
   PromptItem,
   PromptTemplateItem,
   ValueSelector,
+  Node as WorkflowNode,
 } from '@/app/components/workflow/types'
 import {
   memo,
@@ -15,7 +18,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStoreApi } from 'reactflow'
+import { useNodes, useStoreApi } from 'reactflow'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { useNodesMetaData, useNodesSyncDraft } from '@/app/components/workflow/hooks'
 import { VarKindType as VarKindTypeEnum } from '@/app/components/workflow/nodes/_base/types'
@@ -23,6 +26,8 @@ import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum, EditionType, isPromptMessageContext, PromptRole } from '@/app/components/workflow/types'
 import { generateNewNode, getNodeCustomTypeByNodeDataType } from '@/app/components/workflow/utils'
+import { useGetLanguage } from '@/context/i18n'
+import { useStrategyProviders } from '@/service/use-strategy'
 import { cn } from '@/utils/classnames'
 import SubGraphModal from '../sub-graph-modal'
 import AgentHeaderBar from './agent-header-bar'
@@ -39,6 +44,14 @@ const DEFAULT_MENTION_CONFIG: MentionConfig = {
   null_strategy: 'use_default',
   default_value: '',
 }
+type AgentCheckValidContext = {
+  provider?: StrategyPluginDetail
+  strategy?: StrategyDetail
+  language: string
+  isReadyForCheckValid: boolean
+}
+
+type WorkflowNodesMap = NonNullable<WorkflowVariableBlockType['workflowNodesMap']>
 
 const resolvePromptText = (item?: PromptItem) => {
   if (!item)
@@ -113,7 +126,7 @@ const buildPromptTemplateWithText = (promptTemplate: PromptTemplateItem[] | Prom
 type MixedVariableTextInputProps = {
   readOnly?: boolean
   nodesOutputVars?: NodeOutPutVar[]
-  availableNodes?: Node[]
+  availableNodes?: WorkflowNode[]
   value?: string
   onChange?: (text: string, type?: VarKindType, mentionConfig?: MentionConfig | null) => void
   showManageInputField?: boolean
@@ -136,7 +149,10 @@ const MixedVariableTextInput = ({
   paramKey = '',
 }: MixedVariableTextInputProps) => {
   const { t } = useTranslation()
+  const language = useGetLanguage()
+  const { data: strategyProviders } = useStrategyProviders()
   const reactFlowStore = useStoreApi()
+  const nodes = useNodes<CommonNodeType>()
   const controlPromptEditorRerenderKey = useStore(s => s.controlPromptEditorRerenderKey)
   const setControlPromptEditorRerenderKey = useStore(s => s.setControlPromptEditorRerenderKey)
   const { nodesMap: nodesMetaDataMap } = useNodesMetaData()
@@ -147,7 +163,7 @@ const MixedVariableTextInput = ({
     return availableNodes.reduce((acc, node) => {
       acc[node.id] = node
       return acc
-    }, {} as Record<string, Node>)
+    }, {} as Record<string, WorkflowNode>)
   }, [availableNodes])
 
   const contextNodeIds = useMemo(() => {
@@ -158,6 +174,13 @@ const MixedVariableTextInput = ({
     })
     return ids
   }, [availableNodes])
+
+  const nodesById = useMemo(() => {
+    return nodes.reduce((acc, node) => {
+      acc[node.id] = node
+      return acc
+    }, {} as Record<string, WorkflowNode>)
+  }, [nodes])
 
   type DetectedAgent = {
     nodeId: string
@@ -198,6 +221,63 @@ const MixedVariableTextInput = ({
       }))
   }, [availableNodes, contextNodeIds])
 
+  const workflowNodesMap = useMemo<WorkflowNodesMap>(() => {
+    const acc: WorkflowNodesMap = {}
+    availableNodes.forEach((node) => {
+      acc[node.id] = {
+        title: node.data.title,
+        type: node.data.type,
+        height: node.data.height,
+        width: node.data.width,
+        position: node.data.position,
+      }
+      if (node.data.type === BlockEnum.Start) {
+        acc.sys = {
+          title: t('blocks.start', { ns: 'workflow' }),
+          type: BlockEnum.Start,
+          height: node.data.height,
+          width: node.data.width,
+          position: node.data.position,
+        }
+      }
+    })
+    return acc
+  }, [availableNodes, t])
+
+  const getNodeWarning = useCallback((node?: WorkflowNode) => {
+    if (!node)
+      return true
+    const validator = nodesMetaDataMap?.[node.data.type as BlockEnum]?.checkValid
+    if (!validator)
+      return false
+    let moreDataForCheckValid: AgentCheckValidContext | undefined
+    if (node.data.type === BlockEnum.Agent) {
+      const agentData = node.data as AgentNodeType
+      const isReadyForCheckValid = !!strategyProviders
+      const provider = strategyProviders?.find(provider => provider.declaration.identity.name === agentData.agent_strategy_provider_name)
+      const strategy = provider?.declaration.strategies?.find(s => s.identity.name === agentData.agent_strategy_name)
+      moreDataForCheckValid = {
+        provider,
+        strategy,
+        language,
+        isReadyForCheckValid,
+      }
+    }
+    const { errorMessage } = validator(node.data, t, moreDataForCheckValid)
+    return Boolean(errorMessage)
+  }, [language, nodesMetaDataMap, strategyProviders, t])
+
+  const hasAgentWarning = useMemo(() => {
+    if (!detectedAgentFromValue)
+      return false
+    const agentWarning = getNodeWarning(nodesById[detectedAgentFromValue.nodeId])
+    if (!toolNodeId || !paramKey)
+      return agentWarning
+    const extractorNodeId = `${toolNodeId}_ext_${paramKey}`
+    const extractorWarning = getNodeWarning(nodesById[extractorNodeId])
+    return agentWarning || extractorWarning
+  }, [detectedAgentFromValue, getNodeWarning, nodesById, paramKey, toolNodeId])
+
   const syncExtractorPromptFromText = useCallback((text: string) => {
     if (!toolNodeId || !paramKey)
       return
@@ -213,7 +293,7 @@ const MixedVariableTextInput = ({
     const extractorNodeId = `${toolNodeId}_ext_${paramKey}`
     const { getNodes, setNodes } = reactFlowStore.getState()
     const nodes = getNodes()
-    const extractorNode = nodes.find(node => node.id === extractorNodeId) as Node<LLMNodeType> | undefined
+    const extractorNode = nodes.find(node => node.id === extractorNodeId) as WorkflowNode<LLMNodeType> | undefined
     if (!extractorNode?.data?.prompt_template)
       return
 
@@ -278,7 +358,7 @@ const MixedVariableTextInput = ({
 
     if (toolNodeId && paramKey) {
       const extractorNodeId = `${toolNodeId}_ext_${paramKey}`
-      const defaultValue = nodesMetaDataMap?.[BlockEnum.LLM]?.defaultValue
+      const defaultValue = nodesMetaDataMap?.[BlockEnum.LLM]?.defaultValue as Partial<LLMNodeType> | undefined
       const { getNodes, setNodes } = reactFlowStore.getState()
       const nodes = getNodes()
       const hasExtractorNode = nodes.some(node => node.id === extractorNodeId)
@@ -288,8 +368,9 @@ const MixedVariableTextInput = ({
           id: extractorNodeId,
           type: getNodeCustomTypeByNodeDataType(BlockEnum.LLM),
           data: {
-            ...(defaultValue as any),
-            title: defaultValue.title,
+            ...defaultValue,
+            type: BlockEnum.LLM,
+            title: defaultValue?.title ?? '',
             desc: defaultValue.desc || '',
             parent_node_id: toolNodeId,
             structured_output_enabled: true,
@@ -351,6 +432,7 @@ const MixedVariableTextInput = ({
           agentName={detectedAgentFromValue.name}
           onRemove={handleAgentRemove}
           onViewInternals={handleOpenSubGraphModal}
+          hasWarning={hasAgentWarning}
         />
       )}
       <PromptEditor
@@ -362,19 +444,7 @@ const MixedVariableTextInput = ({
         workflowVariableBlock={{
           show: !disableVariableInsertion,
           variables: nodesOutputVars || [],
-          workflowNodesMap: availableNodes.reduce((acc, node) => {
-            acc[node.id] = {
-              title: node.data.title,
-              type: node.data.type,
-            }
-            if (node.data.type === BlockEnum.Start) {
-              acc.sys = {
-                title: t('blocks.start', { ns: 'workflow' }),
-                type: BlockEnum.Start,
-              }
-            }
-            return acc
-          }, {} as any),
+          workflowNodesMap,
           showManageInputField,
           onManageInputField,
         }}

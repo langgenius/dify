@@ -20,7 +20,7 @@ import {
   BlockEnum,
 } from '../types'
 
-export function generateNewNode({ data, position, id, zIndex, type, ...rest }: Omit<Node, 'id'> & { id?: string }): {
+export function generateNewNode<T = {}>({ data, position, id, zIndex, type, ...rest }: Omit<Node<T>, 'id'> & { id?: string }): {
   newNode: Node
   newIterationStartNode?: Node
   newLoopStartNode?: Node
