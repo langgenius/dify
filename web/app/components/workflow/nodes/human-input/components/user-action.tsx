@@ -12,7 +12,7 @@ import ButtonStyleDropdown from './button-style-dropdown'
 
 const i18nPrefix = 'nodes.humanInput'
 const ACTION_ID_MAX_LENGTH = 20
-const BUTTON_TEXT_MAX_LENGTH = 40
+const BUTTON_TEXT_MAX_LENGTH = 20
 
 type UserActionItemProps = {
   data: UserAction
