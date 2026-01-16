@@ -61,7 +61,7 @@ class TestWorkflowDraftVariableFields:
         """Test that _serialize_full_content handles None cases properly."""
 
         # Test with no file_id
-        draft_var = WorkflowDraftVariable(file_id=None)
+        draft_var = MagicMock(spec=WorkflowDraftVariable, file_id=None)
         result = _serialize_full_content(draft_var)
         assert result is None
 
