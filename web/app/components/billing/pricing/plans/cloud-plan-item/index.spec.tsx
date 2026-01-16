@@ -27,7 +27,9 @@ vi.mock('@/service/billing', () => ({
 
 vi.mock('@/service/client', () => ({
   consoleClient: {
-    billingUrl: vi.fn(),
+    billing: {
+      invoices: vi.fn(),
+    },
   },
 }))
 
@@ -43,7 +45,7 @@ vi.mock('../../assets', () => ({
 
 const mockUseAppContext = useAppContext as Mock
 const mockUseAsyncWindowOpen = useAsyncWindowOpen as Mock
-const mockBillingUrl = consoleClient.billingUrl as Mock
+const mockBillingInvoices = consoleClient.billing.invoices as Mock
 const mockFetchSubscriptionUrls = fetchSubscriptionUrls as Mock
 const mockToastNotify = Toast.notify as Mock
 
@@ -75,7 +77,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   mockUseAppContext.mockReturnValue({ isCurrentWorkspaceManager: true })
   mockUseAsyncWindowOpen.mockReturnValue(vi.fn(async open => await open()))
-  mockBillingUrl.mockResolvedValue({ url: 'https://billing.example' })
+  mockBillingInvoices.mockResolvedValue({ url: 'https://billing.example' })
   mockFetchSubscriptionUrls.mockResolvedValue({ url: 'https://subscription.example' })
   assignedHref = ''
 })
@@ -149,7 +151,7 @@ describe('CloudPlanItem', () => {
         type: 'error',
         message: 'billing.buyPermissionDeniedTip',
       }))
-      expect(mockBillingUrl).not.toHaveBeenCalled()
+      expect(mockBillingInvoices).not.toHaveBeenCalled()
     })
 
     it('should open billing portal when upgrading current paid plan', async () => {
@@ -168,7 +170,7 @@ describe('CloudPlanItem', () => {
       fireEvent.click(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' }))
 
       await waitFor(() => {
-        expect(mockBillingUrl).toHaveBeenCalledTimes(1)
+        expect(mockBillingInvoices).toHaveBeenCalledTimes(1)
       })
       expect(openWindow).toHaveBeenCalledTimes(1)
     })

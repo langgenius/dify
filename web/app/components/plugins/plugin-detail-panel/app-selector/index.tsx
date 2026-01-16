@@ -16,7 +16,7 @@ import {
 import AppInputsPanel from '@/app/components/plugins/plugin-detail-panel/app-selector/app-inputs-panel'
 import AppPicker from '@/app/components/plugins/plugin-detail-panel/app-selector/app-picker'
 import AppTrigger from '@/app/components/plugins/plugin-detail-panel/app-selector/app-trigger'
-import { useInfiniteAppList } from '@/service/use-apps'
+import { useAppDetail, useInfiniteAppList } from '@/service/use-apps'
 
 const PAGE_SIZE = 20
 
@@ -69,6 +69,30 @@ const AppSelector: FC<Props> = ({
       return []
     return pages.flatMap(({ data: apps }) => apps)
   }, [pages])
+
+  // fetch selected app by id to avoid pagination gaps
+  const { data: selectedAppDetail } = useAppDetail(value?.app_id || '')
+
+  // Ensure the currently selected app is available for display and in the picker options
+  const currentAppInfo = useMemo(() => {
+    if (!value?.app_id)
+      return undefined
+    return selectedAppDetail || displayedApps.find(app => app.id === value.app_id)
+  }, [value?.app_id, selectedAppDetail, displayedApps])
+
+  const appsForPicker = useMemo(() => {
+    if (!currentAppInfo)
+      return displayedApps
+
+    const appIndex = displayedApps.findIndex(a => a.id === currentAppInfo.id)
+
+    if (appIndex === -1)
+      return [currentAppInfo, ...displayedApps]
+
+    const updatedApps = [...displayedApps]
+    updatedApps[appIndex] = currentAppInfo
+    return updatedApps
+  }, [currentAppInfo, displayedApps])
 
   const hasMore = hasNextPage ?? true
 
@@ -127,12 +151,6 @@ const AppSelector: FC<Props> = ({
     }
   }, [value])
 
-  const currentAppInfo = useMemo(() => {
-    if (!displayedApps || !value)
-      return undefined
-    return displayedApps.find(app => app.id === value.app_id)
-  }, [displayedApps, value])
-
   return (
     <>
       <PortalToFollowElem
@@ -168,7 +186,7 @@ const AppSelector: FC<Props> = ({
                 disabled={false}
                 onSelect={handleSelectApp}
                 scope={scope || 'all'}
-                apps={displayedApps}
+                apps={appsForPicker}
                 isLoading={isLoading || isLoadingMore || isFetchingNextPage}
                 hasMore={hasMore}
                 onLoadMore={handleLoadMore}
