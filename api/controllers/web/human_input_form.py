@@ -14,7 +14,6 @@ from controllers.web.error import NotFoundError
 from controllers.web.site import serialize_app_site_payload
 from extensions.ext_database import db
 from models.account import TenantStatus
-from models.human_input import RecipientType
 from models.model import App, Site
 from services.human_input_service import Form, FormNotFoundError, HumanInputService
 
