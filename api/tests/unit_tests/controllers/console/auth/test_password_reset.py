@@ -106,7 +106,7 @@ class TestForgotPasswordSendEmailApi:
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.forgot_password.AccountService.is_email_send_ip_limit")
-    def test_send_reset_email_ip_rate_limited(self, mock_is_ip_limit, mock_db, app):
+    def test_send_reset_email_ip_rate_limited(self, mock_is_ip_limit, mock_db, app: Flask):
         """
         Test password reset email blocked by IP rate limit.
 
@@ -250,7 +250,7 @@ class TestForgotPasswordCheckApi:
         mock_get_data,
         mock_is_rate_limit,
         mock_db,
-        app,
+        app: Flask,
     ):
         mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_is_rate_limit.return_value = False
@@ -273,7 +273,7 @@ class TestForgotPasswordCheckApi:
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.forgot_password.AccountService.is_forgot_password_error_rate_limit")
-    def test_verify_code_rate_limited(self, mock_is_rate_limit, mock_db, app):
+    def test_verify_code_rate_limited(self, mock_is_rate_limit, mock_db, app: Flask):
         """
         Test code verification blocked by rate limit.
 
@@ -298,7 +298,7 @@ class TestForgotPasswordCheckApi:
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.forgot_password.AccountService.is_forgot_password_error_rate_limit")
     @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data")
-    def test_verify_code_invalid_token(self, mock_get_data, mock_is_rate_limit, mock_db, app):
+    def test_verify_code_invalid_token(self, mock_get_data, mock_is_rate_limit, mock_db, app: Flask):
         """
         Test code verification with invalid token.
 
@@ -323,7 +323,7 @@ class TestForgotPasswordCheckApi:
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.forgot_password.AccountService.is_forgot_password_error_rate_limit")
     @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data")
-    def test_verify_code_email_mismatch(self, mock_get_data, mock_is_rate_limit, mock_db, app):
+    def test_verify_code_email_mismatch(self, mock_get_data, mock_is_rate_limit, mock_db, app: Flask):
         """
         Test code verification with mismatched email.
 
@@ -350,7 +350,7 @@ class TestForgotPasswordCheckApi:
     @patch("controllers.console.auth.forgot_password.AccountService.is_forgot_password_error_rate_limit")
     @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data")
     @patch("controllers.console.auth.forgot_password.AccountService.add_forgot_password_error_rate_limit")
-    def test_verify_code_wrong_code(self, mock_add_rate_limit, mock_get_data, mock_is_rate_limit, mock_db, app):
+    def test_verify_code_wrong_code(self, mock_add_rate_limit, mock_get_data, mock_is_rate_limit, mock_db, app: Flask):
         """
         Test code verification with incorrect code.
 
@@ -438,7 +438,7 @@ class TestForgotPasswordResetApi:
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data")
-    def test_reset_password_mismatch(self, mock_get_data, mock_db, app):
+    def test_reset_password_mismatch(self, mock_get_data, mock_db, app: Flask):
         """
         Test password reset with mismatched passwords.
 
@@ -462,7 +462,7 @@ class TestForgotPasswordResetApi:
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data")
-    def test_reset_password_invalid_token(self, mock_get_data, mock_db, app):
+    def test_reset_password_invalid_token(self, mock_get_data, mock_db, app: Flask):
         """
         Test password reset with invalid token.
 
@@ -485,7 +485,7 @@ class TestForgotPasswordResetApi:
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data")
-    def test_reset_password_wrong_phase(self, mock_get_data, mock_db, app):
+    def test_reset_password_wrong_phase(self, mock_get_data, mock_db, app: Flask):
         """
         Test password reset with token not in reset phase.
 

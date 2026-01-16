@@ -146,7 +146,7 @@ class ControllerApiTestDataFactory:
         return app
 
     @staticmethod
-    def create_api_instance(app):
+    def create_api_instance(app: Flask):
         """
         Create a Flask-RESTX API instance.
 
@@ -160,7 +160,12 @@ class ControllerApiTestDataFactory:
         return api
 
     @staticmethod
-    def create_test_client(app, api, resource_class, route):
+    def create_test_client(
+        app: Flask,
+        api: Api,
+        resource_class: type,
+        route: str,
+    ):
         """
         Create a Flask test client with a resource registered.
 
@@ -302,7 +307,7 @@ class TestDatasetListApi:
         return ControllerApiTestDataFactory.create_flask_app()
 
     @pytest.fixture
-    def api(self, app):
+    def api(self, app: Flask):
         """
         Create Flask-RESTX API instance.
 
@@ -311,7 +316,7 @@ class TestDatasetListApi:
         return ControllerApiTestDataFactory.create_api_instance(app)
 
     @pytest.fixture
-    def client(self, app, api):
+    def client(self, app: Flask, api: Api):
         """
         Create test client with DatasetListApi registered.
 
@@ -472,12 +477,12 @@ class TestDatasetApiGet:
         return ControllerApiTestDataFactory.create_flask_app()
 
     @pytest.fixture
-    def api(self, app):
+    def api(self, app: Flask):
         """Create Flask-RESTX API instance."""
         return ControllerApiTestDataFactory.create_api_instance(app)
 
     @pytest.fixture
-    def client(self, app, api):
+    def client(self, app: Flask, api: Api):
         """Create test client with DatasetApi registered."""
         return ControllerApiTestDataFactory.create_test_client(app, api, DatasetApi, "/datasets/<uuid:dataset_id>")
 
@@ -588,12 +593,12 @@ class TestDatasetApiCreate:
         return ControllerApiTestDataFactory.create_flask_app()
 
     @pytest.fixture
-    def api(self, app):
+    def api(self, app: Flask):
         """Create Flask-RESTX API instance."""
         return ControllerApiTestDataFactory.create_api_instance(app)
 
     @pytest.fixture
-    def client(self, app, api):
+    def client(self, app: Flask, api: Api):
         """Create test client with DatasetApi registered."""
         return ControllerApiTestDataFactory.create_test_client(app, api, DatasetApi, "/datasets")
 
@@ -681,12 +686,12 @@ class TestHitTestingApi:
         return ControllerApiTestDataFactory.create_flask_app()
 
     @pytest.fixture
-    def api(self, app):
+    def api(self, app: Flask):
         """Create Flask-RESTX API instance."""
         return ControllerApiTestDataFactory.create_api_instance(app)
 
     @pytest.fixture
-    def client(self, app, api):
+    def client(self, app: Flask, api: Api):
         """Create test client with HitTestingApi registered."""
         return ControllerApiTestDataFactory.create_test_client(
             app, api, HitTestingApi, "/datasets/<uuid:dataset_id>/hit-testing"
@@ -799,12 +804,12 @@ class TestExternalDatasetApi:
         return ControllerApiTestDataFactory.create_flask_app()
 
     @pytest.fixture
-    def api(self, app):
+    def api(self, app: Flask):
         """Create Flask-RESTX API instance."""
         return ControllerApiTestDataFactory.create_api_instance(app)
 
     @pytest.fixture
-    def client_list(self, app, api):
+    def client_list(self, app: Flask, api: Api):
         """Create test client for external knowledge API list endpoint."""
         return ControllerApiTestDataFactory.create_test_client(
             app, api, ExternalApiTemplateListApi, "/datasets/external-knowledge-api"
