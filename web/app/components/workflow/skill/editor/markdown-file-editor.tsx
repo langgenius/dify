@@ -10,12 +10,17 @@ type MarkdownFileEditorProps = {
 
 const MarkdownFileEditor: FC<MarkdownFileEditorProps> = ({ value, onChange }) => {
   const { t } = useTranslation()
+  const handleChange = React.useCallback((val: string) => {
+    if (val !== value) {
+      onChange(val)
+    }
+  }, [value, onChange])
 
   return (
     <div className="h-full w-full bg-components-panel-bg">
       <SkillEditor
         value={value}
-        onChange={onChange}
+        onChange={handleChange}
         showLineNumbers
         className="h-full"
         wrapperClassName="h-full"
