@@ -1,5 +1,6 @@
 import type { LexicalNode } from 'lexical'
 import type { FC } from 'react'
+import type { ToolParameter } from '@/app/components/tools/types'
 import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { LexicalTypeaheadMenuPlugin, MenuOption } from '@lexical/react/LexicalTypeaheadMenuPlugin'
@@ -13,7 +14,10 @@ import ReactDOM from 'react-dom'
 import { v4 as uuid } from 'uuid'
 import { useBasicTypeaheadTriggerMatch } from '@/app/components/base/prompt-editor/hooks'
 import { $splitNodeContainingQuery } from '@/app/components/base/prompt-editor/utils'
+import { CollectionType } from '@/app/components/tools/types'
+import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import ToolPicker from '@/app/components/workflow/block-selector/tool-picker'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { $createToolBlockNode } from './node'
 
 class ToolPickerMenuOption extends MenuOption {
@@ -32,10 +36,17 @@ const ToolPickerBlock: FC<ToolPickerBlockProps> = ({ scope = 'all' }) => {
     minLength: 0,
     maxLength: 0,
   })
+  const activeTabId = useStore(s => s.activeTabId)
+  const fileMetadata = useStore(s => s.fileMetadata)
+  const storeApi = useWorkflowStore()
 
   const options = useMemo(() => [new ToolPickerMenuOption()], [])
 
   const insertTools = useCallback((tools: ToolDefaultValue[]) => {
+    const toolEntries = tools.map(tool => ({
+      configId: uuid(),
+      tool,
+    }))
     editor.update(() => {
       const match = checkForTriggerMatch('@', editor)
       const nodeToRemove = match ? $splitNodeContainingQuery(match) : null
@@ -43,12 +54,12 @@ const ToolPickerBlock: FC<ToolPickerBlockProps> = ({ scope = 'all' }) => {
         nodeToRemove.remove()
 
       const nodes: LexicalNode[] = []
-      tools.forEach((tool, index) => {
+      toolEntries.forEach(({ tool, configId }, index) => {
         nodes.push(
           $createToolBlockNode({
-            provider: tool.provider_id, // TODO: not sure use which tool.plugin_id ask
+            provider: tool.provider_id,
             tool: tool.tool_name,
-            configId: uuid(),
+            configId,
             label: tool.tool_label,
             icon: tool.provider_icon,
             iconDark: tool.provider_icon_dark,
@@ -61,7 +72,31 @@ const ToolPickerBlock: FC<ToolPickerBlockProps> = ({ scope = 'all' }) => {
       if (nodes.length)
         $insertNodes(nodes)
     })
-  }, [checkForTriggerMatch, editor])
+
+    const storeState = storeApi.getState()
+    const resolvedTabId = activeTabId || storeState.activeTabId
+    if (!resolvedTabId)
+      return
+    const metadata = (storeState.fileMetadata.get(resolvedTabId) || {}) as Record<string, any>
+    const nextTools = { ...(metadata.tools || {}) } as Record<string, any>
+    toolEntries.forEach(({ configId, tool }) => {
+      const schemas = toolParametersToFormSchemas((tool.paramSchemas || []) as ToolParameter[])
+      const fields = schemas.map((schema: any) => ({
+        id: schema.variable,
+        value: schema.default ?? null,
+        auto: schema.form === 'llm',
+      }))
+      nextTools[configId] = {
+        type: tool.provider_type === CollectionType.mcp ? 'mcp' : 'builtin',
+        configuration: { fields },
+      }
+    })
+    storeState.setDraftMetadata(resolvedTabId, {
+      ...metadata,
+      tools: nextTools,
+    })
+    storeState.pinTab(resolvedTabId)
+  }, [activeTabId, checkForTriggerMatch, editor, fileMetadata, storeApi])
 
   const renderMenu = useCallback((
     anchorElementRef: React.RefObject<HTMLElement | null>,
