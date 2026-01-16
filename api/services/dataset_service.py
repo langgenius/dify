@@ -965,6 +965,9 @@ class DatasetService:
             else:
                 raise ValueError("Invalid index method")
             dataset.retrieval_model = knowledge_configuration.retrieval_model.model_dump()
+            # Update summary_index_setting if provided
+            if knowledge_configuration.summary_index_setting is not None:
+                dataset.summary_index_setting = knowledge_configuration.summary_index_setting
             session.add(dataset)
         else:
             if dataset.chunk_structure and dataset.chunk_structure != knowledge_configuration.chunk_structure:
@@ -1070,6 +1073,9 @@ class DatasetService:
                     if dataset.keyword_number != knowledge_configuration.keyword_number:
                         dataset.keyword_number = knowledge_configuration.keyword_number
             dataset.retrieval_model = knowledge_configuration.retrieval_model.model_dump()
+            # Update summary_index_setting if provided
+            if knowledge_configuration.summary_index_setting is not None:
+                dataset.summary_index_setting = knowledge_configuration.summary_index_setting
             session.add(dataset)
             session.commit()
             if action:
