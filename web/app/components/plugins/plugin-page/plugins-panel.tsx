@@ -109,7 +109,7 @@ const PluginsPanel = () => {
                     <List pluginList={filteredList || []} />
                   </div>
                   {!isLastPage && (
-                    <div className="py-4">
+                    <div className="flex justify-center py-4">
                       {isFetching
                         ? <RiLoader2Line className="h-5 w-5 animate-spin text-text-tertiary" />
                         : (
