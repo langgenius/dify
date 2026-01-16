@@ -167,6 +167,22 @@ This is regular text that should not be included.`
       const viewer = screen.getByTestId('infographic-viewer')
       expect(viewer.textContent).not.toContain('regular text')
     })
+
+    it('stops extraction at non-indented content without preceding blank line', () => {
+      const content = `infographic list-row-simple-horizontal-arrow
+data
+  lists
+    - label Step 1
+      desc Description
+This is regular text immediately after without blank line.`
+      
+      const item = createChatItem(content)
+      render(<InfographicContent item={item} />)
+      
+      const viewer = screen.getByTestId('infographic-viewer')
+      expect(viewer.textContent).not.toContain('regular text')
+      expect(viewer.textContent).not.toContain('immediately after')
+    })
   })
 
   describe('Edge cases', () => {

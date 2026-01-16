@@ -104,6 +104,7 @@ const InfographicViewer: React.FC<InfographicProps> = ({
       img.src = URL.createObjectURL(blob)
     }
     catch (err) {
+      console.error('Failed to copy infographic image:', err)
       Toast.notify({
         type: 'error',
         message: t('common.actionMsg.copyFailed'),
@@ -127,13 +128,14 @@ const InfographicViewer: React.FC<InfographicProps> = ({
 
       Toast.notify({
         type: 'success',
-        message: 'Downloaded successfully',
+        message: t('common.actionMsg.downloadSuccessfully'),
       })
     }
     catch (err) {
+      console.error('Failed to download infographic image:', err)
       Toast.notify({
         type: 'error',
-        message: 'Download failed',
+        message: t('common.actionMsg.downloadFailed'),
       })
     }
   }
@@ -154,7 +156,7 @@ const InfographicViewer: React.FC<InfographicProps> = ({
           onClick={handleDownloadImage}
           disabled={isLoading || !!error}
           className="p-2 bg-white rounded-lg shadow-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          title="Download"
+          title={t('common.operation.download')}
         >
           <ArrowDownTrayIcon className="w-4 h-4 text-gray-700" />
         </button>

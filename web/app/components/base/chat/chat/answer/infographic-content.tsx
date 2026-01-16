@@ -37,7 +37,7 @@ function parseInfographicSyntax(content: string): string | null {
     }
     
     // Check for indented infographic syntax (common in AI responses)
-    const lines = content.split('\n')
+    const lines = content.split(/\r?\n/)
     let infographicStart = -1
     
     for (let i = 0; i < lines.length; i++) {
@@ -53,8 +53,8 @@ function parseInfographicSyntax(content: string): string | null {
       
       for (let i = infographicStart + 1; i < lines.length; i++) {
         const line = lines[i]
-        // Stop if we hit an empty line followed by non-indented content
-        if (line.trim() === '' && i + 1 < lines.length && !lines[i + 1].startsWith(' ')) {
+        // Stop if we hit a non-empty line that is not indented
+        if (line.trim() !== '' && !/^\s/.test(line)) {
           break
         }
         infographicLines.push(line)
@@ -65,7 +65,8 @@ function parseInfographicSyntax(content: string): string | null {
     
     return null
   }
-  catch {
+  catch (err) {
+    console.error('Failed to parse infographic syntax:', err)
     return null
   }
 }
