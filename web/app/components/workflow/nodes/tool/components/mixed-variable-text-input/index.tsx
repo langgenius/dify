@@ -1,5 +1,6 @@
 import type { AgentNode } from '@/app/components/base/prompt-editor/types'
 import type { MentionConfig, VarKindType } from '@/app/components/workflow/nodes/_base/types'
+import type { AgentNodeType } from '@/app/components/workflow/nodes/agent/types'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type {
   Node,
@@ -15,7 +16,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStoreApi } from 'reactflow'
+import { useStore as useReactflowStore, useStoreApi } from 'reactflow'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { useNodesMetaData, useNodesSyncDraft } from '@/app/components/workflow/hooks'
 import { VarKindType as VarKindTypeEnum } from '@/app/components/workflow/nodes/_base/types'
@@ -23,6 +24,8 @@ import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum, EditionType, isPromptMessageContext, PromptRole } from '@/app/components/workflow/types'
 import { generateNewNode, getNodeCustomTypeByNodeDataType } from '@/app/components/workflow/utils'
+import { useGetLanguage } from '@/context/i18n'
+import { useStrategyProviders } from '@/service/use-strategy'
 import { cn } from '@/utils/classnames'
 import SubGraphModal from '../sub-graph-modal'
 import AgentHeaderBar from './agent-header-bar'
@@ -137,7 +140,10 @@ const MixedVariableTextInput = ({
   paramKey = '',
 }: MixedVariableTextInputProps) => {
   const { t } = useTranslation()
+  const language = useGetLanguage()
+  const { data: strategyProviders } = useStrategyProviders()
   const reactFlowStore = useStoreApi()
+  const nodes = useReactflowStore(state => state.nodes)
   const controlPromptEditorRerenderKey = useStore(s => s.controlPromptEditorRerenderKey)
   const setControlPromptEditorRerenderKey = useStore(s => s.setControlPromptEditorRerenderKey)
   const { nodesMap: nodesMetaDataMap } = useNodesMetaData()
@@ -150,6 +156,13 @@ const MixedVariableTextInput = ({
       return acc
     }, {} as Record<string, Node>)
   }, [availableNodes])
+
+  const nodesById = useMemo(() => {
+    return nodes.reduce((acc, node) => {
+      acc[node.id] = node
+      return acc
+    }, {} as Record<string, Node>)
+  }, [nodes])
 
   type DetectedAgent = {
     nodeId: string
@@ -187,6 +200,40 @@ const MixedVariableTextInput = ({
         title: node.data.title,
       }))
   }, [availableNodes])
+
+  const getNodeWarning = useCallback((node?: Node) => {
+    if (!node)
+      return true
+    const validator = nodesMetaDataMap?.[node.data.type as BlockEnum]?.checkValid
+    if (!validator)
+      return false
+    let moreDataForCheckValid: any
+    if (node.data.type === BlockEnum.Agent) {
+      const agentData = node.data as AgentNodeType
+      const isReadyForCheckValid = !!strategyProviders
+      const provider = strategyProviders?.find(provider => provider.declaration.identity.name === agentData.agent_strategy_provider_name)
+      const strategy = provider?.declaration.strategies?.find(s => s.identity.name === agentData.agent_strategy_name)
+      moreDataForCheckValid = {
+        provider,
+        strategy,
+        language,
+        isReadyForCheckValid,
+      }
+    }
+    const { errorMessage } = validator(node.data as any, t, moreDataForCheckValid)
+    return Boolean(errorMessage)
+  }, [language, nodesMetaDataMap, strategyProviders, t])
+
+  const hasAgentWarning = useMemo(() => {
+    if (!detectedAgentFromValue)
+      return false
+    const agentWarning = getNodeWarning(nodesById[detectedAgentFromValue.nodeId])
+    if (!toolNodeId || !paramKey)
+      return agentWarning
+    const extractorNodeId = `${toolNodeId}_ext_${paramKey}`
+    const extractorWarning = getNodeWarning(nodesById[extractorNodeId])
+    return agentWarning || extractorWarning
+  }, [detectedAgentFromValue, getNodeWarning, nodesById, paramKey, toolNodeId])
 
   const syncExtractorPromptFromText = useCallback((text: string) => {
     if (!toolNodeId || !paramKey)
@@ -341,6 +388,7 @@ const MixedVariableTextInput = ({
           agentName={detectedAgentFromValue.name}
           onRemove={handleAgentRemove}
           onViewInternals={handleOpenSubGraphModal}
+          hasWarning={hasAgentWarning}
         />
       )}
       <PromptEditor
