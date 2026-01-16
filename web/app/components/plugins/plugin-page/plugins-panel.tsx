@@ -1,16 +1,15 @@
 'use client'
 import type { PluginDetail } from '../types'
 import type { FilterState } from './filter-management'
-import { RiLoader2Line } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
+import Loading from '@/app/components/base/loading'
 import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
 import { useGetLanguage } from '@/context/i18n'
 import { renderI18nObject } from '@/i18n-config'
 import { useInstalledLatestVersion, useInstalledPluginList, useInvalidateInstalledPluginList } from '@/service/use-plugins'
-import Loading from '../../base/loading'
 import { PluginSource } from '../types'
 import { usePluginPageContext } from './context'
 import Empty from './empty'
@@ -111,7 +110,7 @@ const PluginsPanel = () => {
                   {!isLastPage && (
                     <div className="flex justify-center py-4">
                       {isFetching
-                        ? <RiLoader2Line className="h-5 w-5 animate-spin text-text-tertiary" />
+                        ? <Loading />
                         : (
                             <Button onClick={loadNextPage}>
                               {t('common.loadMore', { ns: 'workflow' })}

@@ -5,7 +5,6 @@ import {
   RiAddLine,
   RiArrowDownSLine,
   RiArrowRightSLine,
-  RiLoader2Line,
 } from '@remixicon/react'
 import { debounce } from 'es-toolkit/compat'
 import { useRouter } from 'next/navigation'
@@ -15,6 +14,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
 import { FileArrow01, FilePlus01, FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
+import Loading from '@/app/components/base/loading'
 import { useAppContext } from '@/context/app-context'
 import { cn } from '@/utils/classnames'
 
@@ -110,7 +110,7 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
               }
               {isLoadingMore && (
                 <div className="flex justify-center py-2">
-                  <RiLoader2Line className="h-4 w-4 animate-spin text-text-tertiary" />
+                  <Loading />
                 </div>
               )}
             </div>

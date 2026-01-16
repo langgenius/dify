@@ -5,11 +5,11 @@ import type {
 } from '@floating-ui/react'
 import type { FC } from 'react'
 import type { App } from '@/types/app'
-import { RiLoader2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useRef } from 'react'
 import AppIcon from '@/app/components/base/app-icon'
 import Input from '@/app/components/base/input'
+import Loading from '@/app/components/base/loading'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -193,7 +193,7 @@ const AppPicker: FC<Props> = ({
             <div ref={observerTarget} className="h-4 w-full">
               {isLoading && (
                 <div className="flex justify-center py-2">
-                  <RiLoader2Line className="h-5 w-5 animate-spin text-text-tertiary" />
+                  <Loading />
                 </div>
               )}
             </div>
