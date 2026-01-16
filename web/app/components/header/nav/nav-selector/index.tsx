@@ -5,6 +5,7 @@ import {
   RiAddLine,
   RiArrowDownSLine,
   RiArrowRightSLine,
+  RiLoader2Line,
 } from '@remixicon/react'
 import { debounce } from 'es-toolkit/compat'
 import { useRouter } from 'next/navigation'
@@ -34,9 +35,10 @@ export type INavSelectorProps = {
   isApp?: boolean
   onCreate: (state: string) => void
   onLoadMore?: () => void
+  isLoadingMore?: boolean
 }
 
-const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onLoadMore }: INavSelectorProps) => {
+const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onLoadMore, isLoadingMore }: INavSelectorProps) => {
   const { t } = useTranslation()
   const router = useRouter()
   const { isCurrentWorkspaceEditor } = useAppContext()
@@ -106,6 +108,11 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
                   </MenuItem>
                 ))
               }
+              {isLoadingMore && (
+                <div className="flex justify-center py-2">
+                  <RiLoader2Line className="h-4 w-4 animate-spin text-text-tertiary" />
+                </div>
+              )}
             </div>
             {!isApp && isCurrentWorkspaceEditor && (
               <MenuItem as="div" className="w-full p-1">

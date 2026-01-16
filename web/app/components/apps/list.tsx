@@ -5,6 +5,7 @@ import {
   RiDragDropLine,
   RiExchange2Line,
   RiFile4Line,
+  RiLoader2Line,
   RiMessage3Line,
   RiRobot3Line,
 } from '@remixicon/react'
@@ -264,6 +265,11 @@ const List = () => {
           <Footer />
         )}
         <CheckModal />
+        {isFetchingNextPage && (
+          <div className="flex justify-center py-4">
+            <RiLoader2Line className="h-5 w-5 animate-spin text-text-tertiary" />
+          </div>
+        )}
         <div ref={anchorRef} className="h-0"> </div>
         {showTagManagementModal && (
           <TagManagementModal type="app" show={showTagManagementModal} />

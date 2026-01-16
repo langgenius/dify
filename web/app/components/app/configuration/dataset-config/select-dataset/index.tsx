@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { DataSet } from '@/models/datasets'
+import { RiLoader2Line } from '@remixicon/react'
 import { useInfiniteScroll } from 'ahooks'
 import Link from 'next/link'
 import * as React from 'react'
@@ -189,6 +190,11 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
                 }
               </div>
             ))}
+            {isFetchingNextPage && (
+              <div className="flex justify-center py-3">
+                <RiLoader2Line className="h-5 w-5 animate-spin text-text-tertiary" />
+              </div>
+            )}
           </div>
         </>
       )}

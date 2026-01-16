@@ -1,6 +1,7 @@
 'use client'
 import type { PluginDetail } from '../types'
 import type { FilterState } from './filter-management'
+import { RiLoader2Line } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -107,12 +108,17 @@ const PluginsPanel = () => {
                   <div className="w-full">
                     <List pluginList={filteredList || []} />
                   </div>
-                  {!isLastPage && !isFetching && (
-                    <Button onClick={loadNextPage}>
-                      {t('common.loadMore', { ns: 'workflow' })}
-                    </Button>
+                  {!isLastPage && (
+                    <div className="py-4">
+                      {isFetching
+                        ? <RiLoader2Line className="h-5 w-5 animate-spin text-text-tertiary" />
+                        : (
+                            <Button onClick={loadNextPage}>
+                              {t('common.loadMore', { ns: 'workflow' })}
+                            </Button>
+                          )}
+                    </div>
                   )}
-                  {isFetching && <div className="system-md-semibold text-text-secondary">{t('detail.loading', { ns: 'appLog' })}</div>}
                 </div>
               )
             : (

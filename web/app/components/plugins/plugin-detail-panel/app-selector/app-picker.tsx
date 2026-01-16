@@ -5,9 +5,9 @@ import type {
 } from '@floating-ui/react'
 import type { FC } from 'react'
 import type { App } from '@/types/app'
+import { RiLoader2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useRef } from 'react'
-import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Input from '@/app/components/base/input'
 import {
@@ -50,7 +50,6 @@ const AppPicker: FC<Props> = ({
   searchText,
   onSearchChange,
 }) => {
-  const { t } = useTranslation()
   const observerTarget = useRef<HTMLDivElement>(null)
   const observerRef = useRef<IntersectionObserver | null>(null)
   const loadingRef = useRef(false)
@@ -194,7 +193,7 @@ const AppPicker: FC<Props> = ({
             <div ref={observerTarget} className="h-4 w-full">
               {isLoading && (
                 <div className="flex justify-center py-2">
-                  <div className="text-sm text-gray-500">{t('loading', { ns: 'common' })}</div>
+                  <RiLoader2Line className="h-5 w-5 animate-spin text-text-tertiary" />
                 </div>
               )}
             </div>
