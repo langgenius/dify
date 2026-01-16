@@ -4,6 +4,7 @@ from dify_app import DifyApp
 def init_app(app: DifyApp):
     from commands import (
         add_qdrant_index,
+        clean_expired_messages,
         clean_workflow_runs,
         cleanup_orphaned_draft_variables,
         clear_free_plan_tenant_expired_logs,
@@ -58,6 +59,7 @@ def init_app(app: DifyApp):
         transform_datasource_credentials,
         install_rag_pipeline_plugins,
         clean_workflow_runs,
+        clean_expired_messages,
     ]
     for cmd in cmds_to_register:
         app.cli.add_command(cmd)

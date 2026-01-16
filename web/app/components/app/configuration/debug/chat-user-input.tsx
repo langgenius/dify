@@ -7,7 +7,6 @@ import Input from '@/app/components/base/input'
 import Select from '@/app/components/base/select'
 import Textarea from '@/app/components/base/textarea'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
-import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 import ConfigContext from '@/context/debug-configuration'
 import { cn } from '@/utils/classnames'
 
@@ -88,7 +87,7 @@ const ChatUserInput = ({
                     onChange={(e) => { handleInputValueChange(key, e.target.value) }}
                     placeholder={name}
                     autoFocus={index === 0}
-                    maxLength={max_length || DEFAULT_VALUE_MAX_LEN}
+                    maxLength={max_length}
                   />
                 )}
                 {type === 'paragraph' && (
@@ -115,7 +114,7 @@ const ChatUserInput = ({
                     onChange={(e) => { handleInputValueChange(key, e.target.value) }}
                     placeholder={name}
                     autoFocus={index === 0}
-                    maxLength={max_length || DEFAULT_VALUE_MAX_LEN}
+                    maxLength={max_length}
                   />
                 )}
                 {type === 'checkbox' && (
