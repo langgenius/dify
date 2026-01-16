@@ -2,6 +2,7 @@
 
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
+import dynamic from 'next/dynamic'
 import { useSearchParams } from 'next/navigation'
 import { useQueryState } from 'nuqs'
 import {
@@ -17,7 +18,6 @@ import WorkflowWithDefaultContext from '@/app/components/workflow'
 import {
   WorkflowContextProvider,
 } from '@/app/components/workflow/context'
-import SkillMain from '@/app/components/workflow/skill/main'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
 import {
@@ -40,6 +40,10 @@ import {
 } from './hooks/use-workflow-init'
 import { parseAsViewType, WORKFLOW_VIEW_PARAM_KEY } from './search-params'
 import { createWorkflowSlice } from './store/workflow/workflow-slice'
+
+const SkillMain = dynamic(() => import('@/app/components/workflow/skill/main'), {
+  ssr: false,
+})
 
 const WorkflowAppWithAdditionalContext = () => {
   const {
