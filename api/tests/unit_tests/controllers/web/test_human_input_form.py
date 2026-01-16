@@ -14,9 +14,9 @@ from werkzeug.exceptions import Forbidden
 
 import controllers.web.human_input_form as human_input_module
 import controllers.web.site as site_module
+from models.human_input import RecipientType
 
 HumanInputFormApi = human_input_module.HumanInputFormApi
-RecipientType = human_input_module.RecipientType
 TenantStatus = human_input_module.TenantStatus
 
 
@@ -132,13 +132,13 @@ def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask):
         "site",
         "form_content",
         "inputs",
-        "placeholder_values",
+        "resolved_placeholder_values",
         "user_actions",
         "expiration_time",
     }
     assert body["form_content"] == "Rendered {{#$output.name#}}"
     assert body["inputs"] == [{"type": "text", "output_variable_name": "name", "placeholder": None}]
-    assert body["placeholder_values"] == {"name": "Alice", "age": "30", "meta": '{"k": "v"}'}
+    assert body["resolved_placeholder_values"] == {"name": "Alice", "age": "30", "meta": '{"k": "v"}'}
     assert body["user_actions"] == [{"id": "approve", "title": "Approve", "button_style": "default"}]
     assert body["expiration_time"] == int(expiration_time.timestamp())
     assert body["site"] == {
@@ -245,13 +245,13 @@ def test_get_form_allows_backstage_token(monkeypatch: pytest.MonkeyPatch, app: F
         "site",
         "form_content",
         "inputs",
-        "placeholder_values",
+        "resolved_placeholder_values",
         "user_actions",
         "expiration_time",
     }
     assert body["form_content"] == "Rendered"
     assert body["inputs"] == []
-    assert body["placeholder_values"] == {}
+    assert body["resolved_placeholder_values"] == {}
     assert body["user_actions"] == []
     assert body["expiration_time"] == int(expiration_time.timestamp())
     assert body["site"] == {
