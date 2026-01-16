@@ -881,12 +881,25 @@ def clear_free_plan_tenant_expired_logs(days: int, batch: int, tenant_ids: list[
     is_flag=True,
     help="Preview cleanup results without deleting any workflow run data.",
 )
+@click.option(
+    "--log-sql",
+    is_flag=True,
+    help="Log SQL statements and timings for cleanup queries.",
+)
+@click.option(
+    "--log-sql-min-ms",
+    default=0,
+    show_default=True,
+    help="Only log SQL statements slower than N milliseconds (0 logs all).",
+)
 def clean_workflow_runs(
     days: int,
     batch_size: int,
     start_from: datetime.datetime | None,
     end_before: datetime.datetime | None,
     dry_run: bool,
+    log_sql: bool,
+    log_sql_min_ms: int,
 ):
     """
     Clean workflow runs and related workflow data for free tenants.
@@ -903,6 +916,8 @@ def clean_workflow_runs(
         start_from=start_from,
         end_before=end_before,
         dry_run=dry_run,
+        log_sql=log_sql,
+        log_sql_min_ms=log_sql_min_ms,
     ).run()
 
     end_time = datetime.datetime.now(datetime.UTC)
