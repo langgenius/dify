@@ -15,6 +15,7 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { cn } from '@/utils/classnames'
+import { useDelayedClick } from '../hooks/use-delayed-click'
 import { useSkillEditorStore, useSkillEditorStoreApi } from '../store'
 import { getFileIconType } from '../utils/file-utils'
 import FileNodeMenu from './file-node-menu'
@@ -40,13 +41,26 @@ const TreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeData>) 
     [node],
   )
 
+  const openFilePreview = useCallback(() => {
+    storeApi.getState().openTab(node.data.id, { pinned: false })
+  }, [node.data.id, storeApi])
+
+  const openFilePinned = useCallback(() => {
+    storeApi.getState().openTab(node.data.id, { pinned: true })
+  }, [node.data.id, storeApi])
+
+  const { handleClick: handleFileClick, handleDoubleClick: handleFileDoubleClick } = useDelayedClick({
+    onSingleClick: openFilePreview,
+    onDoubleClick: openFilePinned,
+  })
+
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation()
     node.select()
     if (isFolder)
       throttledToggle()
     else
-      storeApi.getState().openTab(node.data.id, { pinned: false })
+      handleFileClick()
   }
 
   const handleDoubleClick = (e: React.MouseEvent) => {
@@ -54,7 +68,7 @@ const TreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeData>) 
     if (isFolder)
       throttledToggle()
     else
-      storeApi.getState().openTab(node.data.id, { pinned: true })
+      handleFileDoubleClick()
   }
 
   const handleToggle = (e: React.MouseEvent) => {
@@ -181,14 +195,12 @@ const TreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeData>) 
           {isFolder
             ? (
                 <FolderNodeMenu
-                  nodeId={node.data.id}
                   onClose={() => setShowDropdown(false)}
                   node={node}
                 />
               )
             : (
                 <FileNodeMenu
-                  nodeId={node.data.id}
                   onClose={() => setShowDropdown(false)}
                   node={node}
                 />

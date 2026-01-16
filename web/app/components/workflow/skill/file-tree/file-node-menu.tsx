@@ -12,34 +12,10 @@ import { useTranslation } from 'react-i18next'
 import Confirm from '@/app/components/base/confirm'
 import { cn } from '@/utils/classnames'
 import { useFileOperations } from '../hooks/use-file-operations'
-
-type MenuItemProps = {
-  icon: React.ElementType
-  label: string
-  onClick: () => void
-  disabled?: boolean
-}
-
-const MenuItem: React.FC<MenuItemProps> = ({ icon: Icon, label, onClick, disabled }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    disabled={disabled}
-    className={cn(
-      'flex w-full items-center gap-2 rounded-lg px-3 py-2',
-      'hover:bg-state-base-hover disabled:cursor-not-allowed disabled:opacity-50',
-      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-components-input-border-active',
-    )}
-  >
-    <Icon className="size-4 text-text-tertiary" aria-hidden="true" />
-    <span className="system-sm-regular text-text-secondary">
-      {label}
-    </span>
-  </button>
-)
+import MenuItem from './menu-item'
 
 type FileItemMenuProps = {
-  nodeId: string
+  nodeId?: string
   onClose: () => void
   className?: string
   treeRef?: React.RefObject<TreeApi<TreeNodeData> | null>

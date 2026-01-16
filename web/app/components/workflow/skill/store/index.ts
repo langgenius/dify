@@ -77,10 +77,14 @@ export const createTabSlice: StateCreator<TabSliceShape> = (set, get) => ({
         newActiveTabId = null
     }
 
+    const newPreviewTabId = previewTabId === fileId
+      ? null
+      : (previewTabId && newOpenTabIds.includes(previewTabId) ? previewTabId : null)
+
     set({
       openTabIds: newOpenTabIds,
       activeTabId: newActiveTabId,
-      previewTabId: previewTabId === fileId ? null : previewTabId,
+      previewTabId: newPreviewTabId,
     })
   },
 

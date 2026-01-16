@@ -16,18 +16,19 @@ import { getAllDescendantFileIds } from '../utils/tree-utils'
 import { useSkillAssetTreeData } from './use-skill-asset-tree'
 
 type UseFileOperationsOptions = {
-  nodeId: string
+  nodeId?: string
   onClose: () => void
   treeRef?: React.RefObject<TreeApi<TreeNodeData> | null>
   node?: NodeApi<TreeNodeData>
 }
 
 export function useFileOperations({
-  nodeId,
+  nodeId: explicitNodeId,
   onClose,
   treeRef,
   node,
 }: UseFileOperationsOptions) {
+  const nodeId = node?.data.id ?? explicitNodeId ?? ''
   const { t } = useTranslation('workflow')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const folderInputRef = useRef<HTMLInputElement>(null)

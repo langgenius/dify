@@ -69,7 +69,6 @@ const SkillDocEditor: FC = () => {
     if (!activeTabId || !isEditable)
       return
     storeApi.getState().setDraftContent(activeTabId, value ?? '')
-    storeApi.getState().pinTab(activeTabId)
   }, [activeTabId, isEditable, storeApi])
 
   const handleSave = useCallback(async () => {
