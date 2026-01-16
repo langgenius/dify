@@ -15,11 +15,12 @@ export type QuadrantData = {
   q1: Task[] // Urgent & Important - Do First
   q2: Task[] // Not Urgent & Important - Schedule
   q3: Task[] // Urgent & Not Important - Delegate
-  q4: Task[] // Not Urgent & Not Important - Eliminate
+  q4: Task[] // Not Urgent & Not Important - Don't Do
 }
 
 export type QuadrantConfig = {
   key: 'q1' | 'q2' | 'q3' | 'q4'
+  number: number
   title: string
   subtitle: string
   bgClass: string
@@ -27,9 +28,13 @@ export type QuadrantConfig = {
   titleClass: string
 }
 
+// Layout based on Eisenhower Matrix:
+// Q1 (Do First) - top-left, Q2 (Schedule) - top-right
+// Q3 (Delegate) - bottom-left, Q4 (Don't Do) - bottom-right
 export const QUADRANT_CONFIGS: Record<string, QuadrantConfig> = {
   q1: {
     key: 'q1',
+    number: 1,
     title: 'Do First',
     subtitle: 'Urgent & Important',
     bgClass: 'bg-state-destructive-hover',
@@ -38,6 +43,7 @@ export const QUADRANT_CONFIGS: Record<string, QuadrantConfig> = {
   },
   q2: {
     key: 'q2',
+    number: 2,
     title: 'Schedule',
     subtitle: 'Important & Not Urgent',
     bgClass: 'bg-state-accent-hover',
@@ -46,6 +52,7 @@ export const QUADRANT_CONFIGS: Record<string, QuadrantConfig> = {
   },
   q3: {
     key: 'q3',
+    number: 3,
     title: 'Delegate',
     subtitle: 'Urgent & Not Important',
     bgClass: 'bg-state-warning-hover',
@@ -54,7 +61,8 @@ export const QUADRANT_CONFIGS: Record<string, QuadrantConfig> = {
   },
   q4: {
     key: 'q4',
-    title: 'Eliminate',
+    number: 4,
+    title: 'Don\'t Do',
     subtitle: 'Not Urgent & Not Important',
     bgClass: 'bg-components-panel-on-panel-item-bg',
     borderClass: 'border-divider-regular',

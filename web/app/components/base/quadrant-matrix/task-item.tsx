@@ -5,17 +5,24 @@ import { cn } from '@/utils/classnames'
 
 type TaskItemProps = {
   task: Task
+  expanded?: boolean
   showScores?: boolean
 }
 
-const TaskItem: FC<TaskItemProps> = ({ task, showScores = true }) => {
+const TaskItem: FC<TaskItemProps> = ({ task, expanded = false, showScores = true }) => {
   const { name, description, deadline, importance_score, urgency_score, action_advice } = task
 
   return (
     <div className="group min-w-0 rounded-lg bg-components-panel-bg p-2.5 shadow-xs transition-all hover:shadow-sm">
       {/* Header: Task Name + Scores */}
       <div className="flex items-start justify-between gap-2">
-        <div className="system-sm-medium min-w-0 flex-1 truncate text-text-primary" title={name}>
+        <div
+          className={cn(
+            'system-sm-medium min-w-0 flex-1 text-text-primary',
+            !expanded && 'truncate',
+          )}
+          title={name}
+        >
           {name}
         </div>
         {showScores && (
@@ -34,7 +41,11 @@ const TaskItem: FC<TaskItemProps> = ({ task, showScores = true }) => {
 
       {/* Description */}
       {description && (
-        <div className="mt-1 line-clamp-2 text-xs text-text-tertiary">
+        <div className={cn(
+          'mt-1 text-xs text-text-tertiary',
+          !expanded && 'line-clamp-2',
+        )}
+        >
           {description}
         </div>
       )}
@@ -42,11 +53,7 @@ const TaskItem: FC<TaskItemProps> = ({ task, showScores = true }) => {
       {/* Deadline Badge */}
       {deadline && (
         <div className="mt-1.5">
-          <span className={cn(
-            'inline-flex items-center rounded px-1.5 py-0.5 text-[10px]',
-            'bg-components-badge-bg-gray text-text-tertiary',
-          )}
-          >
+          <span className="bg-components-badge-bg-gray inline-flex items-center rounded px-1.5 py-0.5 text-[10px] text-text-tertiary">
             {deadline}
           </span>
         </div>
@@ -54,8 +61,14 @@ const TaskItem: FC<TaskItemProps> = ({ task, showScores = true }) => {
 
       {/* Action Advice */}
       {action_advice && (
-        <div className="mt-2 overflow-hidden border-t border-divider-subtle pt-2">
-          <p className="line-clamp-2 text-xs italic text-text-quaternary" title={action_advice}>
+        <div className="mt-2 border-t border-divider-subtle pt-2">
+          <p
+            className={cn(
+              'text-xs italic text-text-quaternary',
+              !expanded && 'line-clamp-2',
+            )}
+            title={!expanded ? action_advice : undefined}
+          >
             {action_advice}
           </p>
         </div>
