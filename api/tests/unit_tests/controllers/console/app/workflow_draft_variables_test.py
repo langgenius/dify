@@ -67,7 +67,7 @@ class TestWorkflowDraftVariableFields:
 
     def test_serialize_full_content_should_raises_when_file_id_exists_but_file_is_none(self):
         # Test with no file_id
-        draft_var = WorkflowDraftVariable(file_id=str(uuid.uuid4()), variable_file=None)
+        draft_var = MagicMock(spec=WorkflowDraftVariable, file_id=str(uuid.uuid4()), variable_file=None)
         with pytest.raises(AssertionError):
             result = _serialize_full_content(draft_var)
 
