@@ -235,7 +235,7 @@ class AgentNode(Node[AgentNodeData]):
                                 0,
                             ):
                                 value_param = param.get("value", {})
-                                if value_param and value_param.get('type', '') == 'variable':
+                                if value_param and value_param.get("type", "") == "variable":
                                     variable_selector = value_param.get("value")
                                     if not variable_selector:
                                         raise ValueError("Variable selector is missing for a variable-type parameter.")
