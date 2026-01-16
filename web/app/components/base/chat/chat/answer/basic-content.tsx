@@ -3,6 +3,7 @@ import type { ChatItem } from '../../types'
 import { memo } from 'react'
 import { Markdown } from '@/app/components/base/markdown'
 import { cn } from '@/utils/classnames'
+import InfographicContent from './infographic-content'
 
 type BasicContentProps = {
   item: ChatItem
@@ -26,12 +27,15 @@ const BasicContent: FC<BasicContentProps> = ({
   }
 
   return (
-    <Markdown
-      className={cn(
-        item.isError && '!text-[#F04438]',
-      )}
-      content={displayContent}
-    />
+    <>
+      <InfographicContent item={item} />
+      <Markdown
+        className={cn(
+          item.isError && '!text-[#F04438]',
+        )}
+        content={displayContent}
+      />
+    </>
   )
 }
 
