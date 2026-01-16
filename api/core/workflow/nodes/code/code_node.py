@@ -2,10 +2,12 @@ from collections.abc import Mapping, Sequence
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any, ClassVar, cast
 
+from core.helper import encrypter
 from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor, CodeLanguage
 from core.helper.code_executor.code_node_provider import CodeNodeProvider
 from core.helper.code_executor.javascript.javascript_code_provider import JavascriptCodeProvider
 from core.helper.code_executor.python3.python3_code_provider import Python3CodeProvider
+from core.variables import SecretVariable
 from core.variables.segments import ArrayFileSegment
 from core.variables.types import SegmentType
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
@@ -86,15 +88,24 @@ class CodeNode(Node[CodeNodeData]):
         code_language = self.node_data.code_language
         code = self.node_data.code
 
+        # to store secret variables used in the code block.
+        secret_variables = set()
+
         # Get variables
         variables = {}
         for variable_selector in self.node_data.variables:
             variable_name = variable_selector.variable
             variable = self.graph_runtime_state.variable_pool.get(variable_selector.value_selector)
+            if isinstance(variable, SecretVariable):
+                secret_variables.add(variable_name)
+
             if isinstance(variable, ArrayFileSegment):
                 variables[variable_name] = [v.to_dict() for v in variable.value] if variable.value else None
             else:
                 variables[variable_name] = variable.to_object() if variable else None
+
+        obfuscated_variables = encrypter.encrypt_secret_keys(variables, secret_variables, None)
+
         # Run code
         try:
             _ = self._select_code_provider(code_language)
@@ -108,10 +119,13 @@ class CodeNode(Node[CodeNodeData]):
             result = self._transform_result(result=result, output_schema=self.node_data.outputs)
         except (CodeExecutionError, CodeNodeError) as e:
             return NodeRunResult(
-                status=WorkflowNodeExecutionStatus.FAILED, inputs=variables, error=str(e), error_type=type(e).__name__
+                status=WorkflowNodeExecutionStatus.FAILED,
+                inputs=obfuscated_variables,
+                error=str(e),
+                error_type=type(e).__name__,
             )
 
-        return NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs=variables, outputs=result)
+        return NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs=obfuscated_variables, outputs=result)
 
     def _select_code_provider(self, code_language: CodeLanguage) -> type[CodeNodeProvider]:
         for provider in self._code_providers:
