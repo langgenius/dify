@@ -1,10 +1,9 @@
 'use client'
 import type { InvitationResult } from '@/models/common'
-import { RiPencilLine, RiUserAddLine } from '@remixicon/react'
+import { RiPencilLine } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Avatar from '@/app/components/base/avatar'
-import Button from '@/app/components/base/button'
 import Tooltip from '@/app/components/base/tooltip'
 import { NUM_INFINITE } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'
@@ -16,8 +15,8 @@ import { useProviderContext } from '@/context/provider-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { LanguagesSupported } from '@/i18n-config/language'
 import { useMembers } from '@/service/use-common'
-import { cn } from '@/utils/classnames'
 import EditWorkspaceModal from './edit-workspace-modal'
+import InviteButton from './invite-button'
 import InviteModal from './invite-modal'
 import InvitedModal from './invited-modal'
 import Operation from './operation'
@@ -37,7 +36,7 @@ const MembersPage = () => {
 
   const { userProfile, currentWorkspace, isCurrentWorkspaceOwner, isCurrentWorkspaceManager } = useAppContext()
   const { data, refetch } = useMembers()
-  const { systemFeatures } = useGlobalPublicStore()
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const [inviteModalVisible, setInviteModalVisible] = useState(false)
   const [invitationResults, setInvitationResults] = useState<InvitationResult[]>([])
@@ -104,10 +103,9 @@ const MembersPage = () => {
           {isMemberFull && (
             <UpgradeBtn className="mr-2" loc="member-invite" />
           )}
-          <Button variant="primary" className={cn('shrink-0')} disabled={!isCurrentWorkspaceManager || isMemberFull} onClick={() => setInviteModalVisible(true)}>
-            <RiUserAddLine className="mr-1 h-4 w-4" />
-            {t('members.invite', { ns: 'common' })}
-          </Button>
+          <div className="shrink-0">
+            <InviteButton disabled={!isCurrentWorkspaceManager || isMemberFull} onClick={() => setInviteModalVisible(true)} />
+          </div>
         </div>
         <div className="overflow-visible lg:overflow-visible">
           <div className="flex min-w-[480px] items-center border-b border-divider-regular py-[7px]">
