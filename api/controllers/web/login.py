@@ -1,9 +1,11 @@
 from flask import make_response, request
-from flask_restx import Resource, reqparse
+from flask_restx import Resource
 from jwt import InvalidTokenError
+from pydantic import BaseModel, Field, field_validator
 
 import services
 from configs import dify_config
+from controllers.common.schema import register_schema_models
 from controllers.console.auth.error import (
     AuthenticationFailedError,
     EmailCodeError,
@@ -18,7 +20,7 @@ from controllers.console.wraps import (
 )
 from controllers.web import web_ns
 from controllers.web.wraps import decode_jwt_token
-from libs.helper import email
+from libs.helper import EmailStr
 from libs.passport import PassportService
 from libs.password import valid_password
 from libs.token import (
@@ -30,10 +32,35 @@ from services.app_service import AppService
 from services.webapp_auth_service import WebAppAuthService
 
 
+class LoginPayload(BaseModel):
+    email: EmailStr
+    password: str
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, value: str) -> str:
+        return valid_password(value)
+
+
+class EmailCodeLoginSendPayload(BaseModel):
+    email: EmailStr
+    language: str | None = None
+
+
+class EmailCodeLoginVerifyPayload(BaseModel):
+    email: EmailStr
+    code: str
+    token: str = Field(min_length=1)
+
+
+register_schema_models(web_ns, LoginPayload, EmailCodeLoginSendPayload, EmailCodeLoginVerifyPayload)
+
+
 @web_ns.route("/login")
 class LoginApi(Resource):
     """Resource for web app email/password login."""
 
+    @web_ns.expect(web_ns.models[LoginPayload.__name__])
     @setup_required
     @only_edition_enterprise
     @web_ns.doc("web_app_login")
@@ -50,15 +77,10 @@ class LoginApi(Resource):
     @decrypt_password_field
     def post(self):
         """Authenticate user and login."""
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("email", type=email, required=True, location="json")
-            .add_argument("password", type=valid_password, required=True, location="json")
-        )
-        args = parser.parse_args()
+        payload = LoginPayload.model_validate(web_ns.payload or {})
 
         try:
-            account = WebAppAuthService.authenticate(args["email"], args["password"])
+            account = WebAppAuthService.authenticate(payload.email, payload.password)
         except services.errors.account.AccountLoginError:
             raise AccountBannedError()
         except services.errors.account.AccountPasswordError:
@@ -145,6 +167,7 @@ class EmailCodeLoginSendEmailApi(Resource):
     @only_edition_enterprise
     @web_ns.doc("send_email_code_login")
     @web_ns.doc(description="Send email verification code for login")
+    @web_ns.expect(web_ns.models[EmailCodeLoginSendPayload.__name__])
     @web_ns.doc(
         responses={
             200: "Email code sent successfully",
@@ -153,19 +176,14 @@ class EmailCodeLoginSendEmailApi(Resource):
         }
     )
     def post(self):
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("email", type=email, required=True, location="json")
-            .add_argument("language", type=str, required=False, location="json")
-        )
-        args = parser.parse_args()
+        payload = EmailCodeLoginSendPayload.model_validate(web_ns.payload or {})
 
-        if args["language"] is not None and args["language"] == "zh-Hans":
+        if payload.language == "zh-Hans":
             language = "zh-Hans"
         else:
             language = "en-US"
 
-        account = WebAppAuthService.get_user_through_email(args["email"])
+        account = WebAppAuthService.get_user_through_email(payload.email)
         if account is None:
             raise AuthenticationFailedError()
         else:
@@ -179,6 +197,7 @@ class EmailCodeLoginApi(Resource):
     @only_edition_enterprise
     @web_ns.doc("verify_email_code_login")
     @web_ns.doc(description="Verify email code and complete login")
+    @web_ns.expect(web_ns.models[EmailCodeLoginVerifyPayload.__name__])
     @web_ns.doc(
         responses={
             200: "Email code verified and login successful",
@@ -189,17 +208,11 @@ class EmailCodeLoginApi(Resource):
     )
     @decrypt_code_field
     def post(self):
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("email", type=str, required=True, location="json")
-            .add_argument("code", type=str, required=True, location="json")
-            .add_argument("token", type=str, required=True, location="json")
-        )
-        args = parser.parse_args()
+        payload = EmailCodeLoginVerifyPayload.model_validate(web_ns.payload or {})
 
-        user_email = args["email"].lower()
+        user_email = payload.email.lower()
 
-        token_data = WebAppAuthService.get_email_code_login_data(args["token"])
+        token_data = WebAppAuthService.get_email_code_login_data(payload.token)
         if token_data is None:
             raise InvalidTokenError()
 
@@ -210,10 +223,10 @@ class EmailCodeLoginApi(Resource):
         if normalized_token_email != user_email:
             raise InvalidEmailError()
 
-        if token_data["code"] != args["code"]:
+        if token_data["code"] != payload.code:
             raise EmailCodeError()
 
-        WebAppAuthService.revoke_email_code_login_token(args["token"])
+        WebAppAuthService.revoke_email_code_login_token(payload.token)
         account = WebAppAuthService.get_user_through_email(token_email)
         if not account:
             raise AuthenticationFailedError()
