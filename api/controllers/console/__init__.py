@@ -138,9 +138,7 @@ from .workspace import (
     workspace,
 )
 
-api.add_resource(
-    WorkflowTagApi, "/apps/<uuid:app_id>/workflow-tags", "/apps/<uuid:app_id>/workflow-tags/<uuid:tag_id>"
-)
+api.add_resource(WorkflowTagApi, "/apps/<uuid:app_id>/workflow-tags", "/apps/<uuid:app_id>/workflow-tags/<uuid:tag_id>")
 api.add_namespace(console_ns)
 
 __all__ = [

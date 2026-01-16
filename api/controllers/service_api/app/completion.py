@@ -244,7 +244,7 @@ class ChatApi(Resource):
             # Handle workflow_tag or workflow_id
             workflow_tag = args.get("workflow_tag")
             workflow_id = args.get("workflow_id")
-            
+
             if workflow_tag:
                 resolved_workflow_id = self._resolve_workflow_identifier(app_model=app_model, identifier=workflow_tag)
                 args["workflow_id"] = resolved_workflow_id
@@ -289,11 +289,11 @@ class ChatApi(Resource):
         """
         Resolve identifier to workflow_id and verify it exists
         Priority: UUID format > tag
-        
+
         Args:
             app_model: The app model
             identifier: workflow_id (UUID) or workflow_tag
-            
+
         Returns:
             The resolved workflow_id
 
@@ -320,7 +320,7 @@ class ChatApi(Resource):
             raise
         except (ValueError, TypeError):
             pass
-        
+
         # Then try to find by tag
         with Session(db.engine) as session:
             workflow = workflow_service.get_workflow_by_tag(
@@ -331,11 +331,9 @@ class ChatApi(Resource):
 
             if workflow:
                 return workflow.id
-        
+
         # Neither valid UUID with existing workflow nor valid tag
-        raise WorkflowIdFormatError(
-            f"Invalid identifier '{identifier}'. Must be a valid workflow tag or UUID format."
-        )
+        raise WorkflowIdFormatError(f"Invalid identifier '{identifier}'. Must be a valid workflow tag or UUID format.")
 
 
 @service_api_ns.route("/chat-messages/<string:task_id>/stop")
