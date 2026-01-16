@@ -11,13 +11,16 @@ Rules:
 - **Path mapping**: for a target file `<path>/<name>.py`, the note must be `agent-notes/<path>/<name>.py.md` (same folder structure, same filename, plus `.md`).
 - **Before working**:
   - If the note exists, read it first and follow any constraints/decisions recorded there.
+  - If the note conflicts with the current code, or references an "origin" file/path that has been deleted, renamed, or migrated, treat the **code as the single source of truth** and update the note to match reality.
   - If the note does not exist, create it with a short architecture/intent summary and any relevant invariants/edge cases.
 - **During working**:
   - Keep the note in sync as you discover constraints, make decisions, or change approach.
+  - If you move/rename a file, migrate its note to the new mapped path (and fix any outdated references inside the note).
   - Record non-obvious edge cases, trade-offs, and the test/verification plan as you go (not just at the end).
   - Keep notes **coherent**: integrate new findings into the relevant sections and rewrite for clarity; avoid append-only “recent fix” / changelog-style additions unless the note is explicitly intended to be a changelog.
 - **When finishing work**:
   - Update the related note(s) to reflect what changed, why, and any new edge cases/tests.
+  - If a file is deleted, remove or clearly deprecate the corresponding note so it cannot be mistaken as current guidance.
   - Keep notes concise and accurate; they are meant to prevent repeated rediscovery.
 
 ## Skill Index
@@ -97,7 +100,7 @@ This is the default standard for backend code in this repo. Follow it for new co
 ### Linting & Formatting
 
 - Use Ruff for formatting and linting (follow `.ruff.toml`).
-- Keep each line under 100 characters (including spaces).
+- Keep each line under 120 characters (including spaces).
 
 ### Naming Conventions
 
@@ -150,7 +153,7 @@ class Example:
 
 ### SQLAlchemy Patterns
 
-- Models inherit from `models.base.Base`; do not create ad-hoc metadata or engines.
+- Models inherit from `models.base.TypeBase`; do not create ad-hoc metadata or engines.
 - Open sessions with context managers:
 
 ```python
@@ -223,7 +226,6 @@ Before opening a PR / submitting:
 
 - Controllers: parse input via Pydantic, invoke services, return serialised responses; no business logic.
 - Services: coordinate repositories, providers, background tasks; keep side effects explicit.
-- Avoid repositories unless necessary; direct SQLAlchemy usage is preferred for typical tables.
 - Document non-obvious behaviour with concise comments.
 
 ### Miscellaneous
