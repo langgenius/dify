@@ -20,7 +20,6 @@ from constants import (
     VIDEO_EXTENSIONS,
 )
 from core.file import helpers as file_helpers
-from core.rag.extractor.extract_processor import ExtractProcessor
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
@@ -175,6 +174,9 @@ class FileService:
         """
         Return a short text preview extracted from a document file.
         """
+        # Lazy import to avoid circular imports during module initialization (ZIP/download paths don't need extractors).
+        from core.rag.extractor.extract_processor import ExtractProcessor
+
         with self._session_maker(expire_on_commit=False) as session:
             upload_file = session.query(UploadFile).where(UploadFile.id == file_id).first()
 
@@ -332,7 +334,7 @@ class FileService:
         used_names: set[str] = set()
 
         # Build a ZIP in a temp file.
-        with NamedTemporaryFile(mode="w+b", suffix=".zip", delete=True) as tmp:
+        with NamedTemporaryFile(mode="w+b", suffix=".zip") as tmp:
             with ZipFile(tmp, mode="w", compression=ZIP_DEFLATED) as zf:
                 for upload_file in upload_files:
                     # Ensure the entry name is safe and unique.

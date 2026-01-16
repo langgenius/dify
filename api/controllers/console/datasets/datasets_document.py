@@ -1047,7 +1047,7 @@ class DocumentBatchDownloadZipApi(DocumentResource):
             )
             cleanup = stack.pop_all()
             response.call_on_close(cleanup.close)
-            return response
+        return response
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/<string:action>")

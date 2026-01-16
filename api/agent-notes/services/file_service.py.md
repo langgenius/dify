@@ -30,3 +30,5 @@ operations (uploading, previews, deletion), plus generic ZIP serving.
 
 - Unit: `api/tests/unit_tests/controllers/console/datasets/test_datasets_document_download.py`
   - Verify signed URL generation for upload-file documents and ZIP download behavior for multiple documents.
+- Unit: `api/tests/unit_tests/services/test_file_service_zip_and_lookup.py`
+  - Verify ZIP packing produces a valid, openable archive and preserves file content.

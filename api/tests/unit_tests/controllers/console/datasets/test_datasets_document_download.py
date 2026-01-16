@@ -10,8 +10,10 @@ from __future__ import annotations
 import importlib
 import sys
 from collections import UserDict
+from io import BytesIO
 from types import SimpleNamespace
 from typing import Any
+from zipfile import ZipFile
 
 import pytest
 from flask import Flask
@@ -211,6 +213,73 @@ def test_batch_download_zip_returns_send_file(
     # Ensure our cleanup hook is registered and execute it to avoid temp file leaks in unit tests.
     assert getattr(result, "_on_close", None) is not None
     result._on_close()  # type: ignore[attr-defined]
+
+
+def test_batch_download_zip_response_is_openable_zip(
+    app: Flask, datasets_document_module, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ensure the real Flask `send_file` response body is a valid ZIP that can be opened."""
+
+    # Arrange: same controller mocks as the lightweight send_file test, but we keep the real `send_file`.
+    monkeypatch.setattr(datasets_document_module, "current_account_with_tenant", lambda: (_mock_user(), "tenant-123"))
+    monkeypatch.setattr(
+        datasets_document_module.DatasetService, "get_dataset", lambda _dataset_id: SimpleNamespace(id="ds-1")
+    )
+    monkeypatch.setattr(
+        datasets_document_module.DatasetService, "check_dataset_permission", lambda *_args, **_kwargs: None
+    )
+
+    doc1 = _mock_document(
+        document_id="doc-1",
+        tenant_id="tenant-123",
+        data_source_type="upload_file",
+        upload_file_id="file-1",
+    )
+    doc2 = _mock_document(
+        document_id="doc-2",
+        tenant_id="tenant-123",
+        data_source_type="upload_file",
+        upload_file_id="file-2",
+    )
+    monkeypatch.setattr(
+        datasets_document_module.DocumentService,
+        "get_documents_by_ids",
+        lambda *_args, **_kwargs: [doc1, doc2],
+    )
+    monkeypatch.setattr(
+        datasets_document_module.FileService,
+        "get_upload_files_by_ids",
+        lambda *_args, **_kwargs: {
+            "file-1": SimpleNamespace(id="file-1", name="a.txt", key="k1"),
+            "file-2": SimpleNamespace(id="file-2", name="b.txt", key="k2"),
+        },
+    )
+
+    # Stream distinct bytes per key so we can verify both ZIP entries.
+    import services.file_service as file_service_module
+
+    monkeypatch.setattr(
+        file_service_module.storage, "load", lambda key, stream=True: [b"one"] if key == "k1" else [b"two"]
+    )
+
+    # Act
+    with app.test_request_context(
+        "/datasets/ds-1/documents/download-zip",
+        method="POST",
+        json={"document_ids": ["doc-1", "doc-2"]},
+    ):
+        api = datasets_document_module.DocumentBatchDownloadZipApi()
+        response = api.post(dataset_id="ds-1")
+
+    # Assert: response body is a valid ZIP and contains the expected entries.
+    response.direct_passthrough = False
+    data = response.get_data()
+    response.close()
+
+    with ZipFile(BytesIO(data), mode="r") as zf:
+        assert zf.namelist() == ["a.txt", "b.txt"]
+        assert zf.read("a.txt") == b"one"
+        assert zf.read("b.txt") == b"two"
 
 
 def test_batch_download_zip_rejects_non_upload_file_document(
