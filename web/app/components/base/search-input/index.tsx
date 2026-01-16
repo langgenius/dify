@@ -20,6 +20,7 @@ const SearchInput: FC<SearchInputProps> = ({
   white,
 }) => {
   const { t } = useTranslation()
+  const inputRef = useRef<HTMLInputElement>(null)
   const [focus, setFocus] = useState<boolean>(false)
   const isComposing = useRef<boolean>(false)
   const [compositionValue, setCompositionValue] = useState<string>('')
@@ -36,6 +37,7 @@ const SearchInput: FC<SearchInputProps> = ({
         <RiSearchLine className="h-4 w-4 text-components-input-text-placeholder" aria-hidden="true" />
       </div>
       <input
+        ref={inputRef}
         type="text"
         name="query"
         className={cn(
@@ -69,6 +71,7 @@ const SearchInput: FC<SearchInputProps> = ({
           className="group/clear flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center"
           onClick={() => {
             onChange('')
+            inputRef.current?.focus()
           }}
         >
           <RiCloseCircleFill className="h-4 w-4 text-text-quaternary group-hover/clear:text-text-tertiary" />
