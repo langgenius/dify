@@ -100,7 +100,7 @@ This is the default standard for backend code in this repo. Follow it for new co
 ### Linting & Formatting
 
 - Use Ruff for formatting and linting (follow `.ruff.toml`).
-- Keep each line under 100 characters (including spaces).
+- Keep each line under 120 characters (including spaces).
 
 ### Naming Conventions
 
