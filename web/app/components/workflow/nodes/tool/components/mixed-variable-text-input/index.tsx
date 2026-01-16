@@ -2,6 +2,7 @@ import type { AgentNode, WorkflowVariableBlockType } from '@/app/components/base
 import type { StrategyDetail, StrategyPluginDetail } from '@/app/components/plugins/types'
 import type { MentionConfig, VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import type { AgentNodeType } from '@/app/components/workflow/nodes/agent/types'
+import type { CodeNodeType } from '@/app/components/workflow/nodes/code/types'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type {
   CommonNodeType,
@@ -24,7 +25,7 @@ import { useNodesMetaData, useNodesSyncDraft } from '@/app/components/workflow/h
 import { VarKindType as VarKindTypeEnum } from '@/app/components/workflow/nodes/_base/types'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { useStore } from '@/app/components/workflow/store'
-import { BlockEnum, EditionType, isPromptMessageContext, PromptRole } from '@/app/components/workflow/types'
+import { BlockEnum, EditionType, isPromptMessageContext, PromptRole, VarType } from '@/app/components/workflow/types'
 import { generateNewNode, getNodeCustomTypeByNodeDataType } from '@/app/components/workflow/utils'
 import { useGetLanguage } from '@/context/i18n'
 import { useStrategyProviders } from '@/service/use-strategy'
@@ -38,6 +39,11 @@ import Placeholder from './placeholder'
  * Example: {{@agent-123.context@}} -> captures "agent-123"
  */
 const AGENT_CONTEXT_VAR_PATTERN = /\{\{[@#]([^.@#]+)\.context[@#]\}\}/g
+const buildAssemblePlaceholder = (toolNodeId?: string, paramKey?: string) => {
+  if (!toolNodeId || !paramKey)
+    return ''
+  return `{{#${toolNodeId}_ext_${paramKey}.result#}}`
+}
 const DEFAULT_MENTION_CONFIG: MentionConfig = {
   extractor_node_id: '',
   output_selector: [],
@@ -166,6 +172,16 @@ const MixedVariableTextInput = ({
     }, {} as Record<string, WorkflowNode>)
   }, [availableNodes])
 
+  const assemblePlaceholder = useMemo(() => {
+    return buildAssemblePlaceholder(toolNodeId, paramKey)
+  }, [paramKey, toolNodeId])
+
+  const isAssembleValue = useMemo(() => {
+    if (!assemblePlaceholder)
+      return false
+    return value.trim() === assemblePlaceholder
+  }, [assemblePlaceholder, value])
+
   const contextNodeIds = useMemo(() => {
     const ids = new Set<string>()
     availableNodes.forEach((node) => {
@@ -181,6 +197,12 @@ const MixedVariableTextInput = ({
       return acc
     }, {} as Record<string, WorkflowNode>)
   }, [nodes])
+
+  const assembleExtractorNodeId = useMemo(() => {
+    if (!toolNodeId || !paramKey)
+      return ''
+    return `${toolNodeId}_ext_${paramKey}`
+  }, [paramKey, toolNodeId])
 
   type DetectedAgent = {
     nodeId: string
@@ -277,6 +299,12 @@ const MixedVariableTextInput = ({
     const extractorWarning = getNodeWarning(nodesById[extractorNodeId])
     return agentWarning || extractorWarning
   }, [detectedAgentFromValue, getNodeWarning, nodesById, paramKey, toolNodeId])
+
+  const hasAssembleWarning = useMemo(() => {
+    if (!isAssembleValue || !assembleExtractorNodeId)
+      return false
+    return getNodeWarning(nodesById[assembleExtractorNodeId])
+  }, [assembleExtractorNodeId, getNodeWarning, isAssembleValue, nodesById])
 
   const syncExtractorPromptFromText = useCallback((text: string) => {
     if (!toolNodeId || !paramKey)
@@ -408,6 +436,70 @@ const MixedVariableTextInput = ({
     setControlPromptEditorRerenderKey(Date.now())
   }, [handleSyncWorkflowDraft, nodesMetaDataMap, onChange, paramKey, reactFlowStore, setControlPromptEditorRerenderKey, syncExtractorPromptFromText, toolNodeId, value])
 
+  const handleAssembleSelect = useCallback(() => {
+    if (!onChange || !toolNodeId || !paramKey || !assemblePlaceholder)
+      return
+
+    const defaultValue = nodesMetaDataMap?.[BlockEnum.Code]?.defaultValue as Partial<CodeNodeType> | undefined
+    if (!defaultValue)
+      return
+
+    const extractorNodeId = `${toolNodeId}_ext_${paramKey}`
+    const { getNodes, setNodes } = reactFlowStore.getState()
+    const currentNodes = getNodes()
+    const existingNode = currentNodes.find(node => node.id === extractorNodeId)
+    const shouldReplace = existingNode && existingNode.data.type !== BlockEnum.Code
+    const shouldCreate = !existingNode || shouldReplace
+
+    if (shouldCreate) {
+      const nextNodes = shouldReplace
+        ? currentNodes.filter(node => node.id !== extractorNodeId)
+        : currentNodes
+      const { newNode } = generateNewNode({
+        id: extractorNodeId,
+        type: getNodeCustomTypeByNodeDataType(BlockEnum.Code),
+        data: {
+          ...defaultValue,
+          type: BlockEnum.Code,
+          title: defaultValue?.title ?? '',
+          desc: defaultValue?.desc || '',
+          parent_node_id: toolNodeId,
+          outputs: {
+            result: {
+              type: VarType.string,
+              children: null,
+            },
+          },
+        },
+        position: {
+          x: 0,
+          y: 0,
+        },
+        hidden: true,
+      })
+      setNodes([...nextNodes, newNode])
+      handleSyncWorkflowDraft()
+    }
+
+    const mentionConfigWithOutputSelector: MentionConfig = {
+      ...DEFAULT_MENTION_CONFIG,
+      extractor_node_id: extractorNodeId,
+      output_selector: ['result'],
+    }
+    onChange(assemblePlaceholder, VarKindTypeEnum.mention, mentionConfigWithOutputSelector)
+    setControlPromptEditorRerenderKey(Date.now())
+  }, [assemblePlaceholder, handleSyncWorkflowDraft, nodesMetaDataMap, onChange, paramKey, reactFlowStore, setControlPromptEditorRerenderKey, toolNodeId])
+
+  const handleAssembleRemove = useCallback(() => {
+    if (!onChange || !assemblePlaceholder)
+      return
+
+    const nextValue = value.replace(assemblePlaceholder, '')
+    removeExtractorNode()
+    onChange(nextValue, VarKindTypeEnum.mixed, null)
+    setControlPromptEditorRerenderKey(Date.now())
+  }, [assemblePlaceholder, onChange, removeExtractorNode, setControlPromptEditorRerenderKey, value])
+
   const handleOpenSubGraphModal = useCallback(() => {
     setIsSubGraphModalOpen(true)
   }, [])
@@ -427,7 +519,15 @@ const MixedVariableTextInput = ({
       'focus-within:border-components-input-border-active focus-within:bg-components-input-bg-active focus-within:shadow-xs',
     )}
     >
-      {detectedAgentFromValue && (
+      {isAssembleValue && (
+        <AgentHeaderBar
+          agentName={t('nodes.tool.assembleVariables', { ns: 'workflow' })}
+          onRemove={handleAssembleRemove}
+          hasWarning={hasAssembleWarning}
+          showAtPrefix={false}
+        />
+      )}
+      {!isAssembleValue && detectedAgentFromValue && (
         <AgentHeaderBar
           agentName={detectedAgentFromValue.name}
           onRemove={handleAgentRemove}
@@ -435,37 +535,41 @@ const MixedVariableTextInput = ({
           hasWarning={hasAgentWarning}
         />
       )}
-      <PromptEditor
-        key={controlPromptEditorRerenderKey}
-        wrapperClassName="min-h-8 px-2 py-1"
-        className="caret:text-text-accent"
-        editable={!readOnly}
-        value={value}
-        workflowVariableBlock={{
-          show: !disableVariableInsertion,
-          variables: nodesOutputVars || [],
-          workflowNodesMap,
-          showManageInputField,
-          onManageInputField,
-        }}
-        agentBlock={{
-          show: agentNodes.length > 0 && !detectedAgentFromValue,
-          agentNodes,
-          onSelect: handleAgentSelect,
-        }}
-        placeholder={<Placeholder disableVariableInsertion={disableVariableInsertion} hasSelectedAgent={!!detectedAgentFromValue} />}
-        onChange={(text) => {
-          const hasPlaceholder = new RegExp(AGENT_CONTEXT_VAR_PATTERN.source).test(text)
-          if (hasPlaceholder)
-            syncExtractorPromptFromText(text)
-          if (detectedAgentFromValue && !hasPlaceholder) {
-            removeExtractorNode()
-            onChange?.(text, VarKindTypeEnum.mixed, null)
-            return
-          }
-          onChange?.(text)
-        }}
-      />
+      {!isAssembleValue && (
+        <PromptEditor
+          key={controlPromptEditorRerenderKey}
+          wrapperClassName="min-h-8 px-2 py-1"
+          className="caret:text-text-accent"
+          editable={!readOnly}
+          value={value}
+          workflowVariableBlock={{
+            show: !disableVariableInsertion,
+            variables: nodesOutputVars || [],
+            workflowNodesMap,
+            showManageInputField,
+            onManageInputField,
+            showAssembleVariables: !disableVariableInsertion && !!toolNodeId && !!paramKey,
+            onAssembleVariables: handleAssembleSelect,
+          }}
+          agentBlock={{
+            show: agentNodes.length > 0 && !detectedAgentFromValue,
+            agentNodes,
+            onSelect: handleAgentSelect,
+          }}
+          placeholder={<Placeholder disableVariableInsertion={disableVariableInsertion} hasSelectedAgent={!!detectedAgentFromValue} />}
+          onChange={(text) => {
+            const hasPlaceholder = new RegExp(AGENT_CONTEXT_VAR_PATTERN.source).test(text)
+            if (hasPlaceholder)
+              syncExtractorPromptFromText(text)
+            if (detectedAgentFromValue && !hasPlaceholder) {
+              removeExtractorNode()
+              onChange?.(text, VarKindTypeEnum.mixed, null)
+              return
+            }
+            onChange?.(text)
+          }}
+        />
+      )}
       {toolNodeId && detectedAgentFromValue && sourceVariable && (
         <SubGraphModal
           isOpen={isSubGraphModalOpen}

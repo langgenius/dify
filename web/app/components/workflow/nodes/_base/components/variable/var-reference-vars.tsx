@@ -9,9 +9,8 @@ import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
-import { CodeAssistant, MagicEdit } from '@/app/components/base/icons/src/vender/line/general'
+import { AssembleVariables, CodeAssistant, MagicEdit } from '@/app/components/base/icons/src/vender/line/general'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
-import { MagicWand } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import Input from '@/app/components/base/input'
 import {
   PortalToFollowElem,
@@ -414,8 +413,10 @@ const VarReferenceVars: FC<Props> = ({
               onClick={handleAssembleVariables}
               onMouseDown={e => e.preventDefault()}
             >
-              <MagicWand className="h-3.5 w-3.5 shrink-0 text-text-accent" />
-              <span className="system-sm-medium ml-1 w-0 grow truncate text-left text-text-secondary" title={t('nodes.tool.assembleVariables', { ns: 'workflow' })}>
+              <span className="mr-1 flex h-4 w-4 items-center justify-center rounded bg-util-colors-blue-blue-500">
+                <AssembleVariables className="h-3 w-3 text-text-primary-on-surface" />
+              </span>
+              <span className="system-xs-medium truncate" title={t('nodes.tool.assembleVariables', { ns: 'workflow' })}>
                 {t('nodes.tool.assembleVariables', { ns: 'workflow' })}
               </span>
             </button>
