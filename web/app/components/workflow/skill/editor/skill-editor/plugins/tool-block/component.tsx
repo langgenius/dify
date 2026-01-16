@@ -8,9 +8,13 @@ import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { useSelectOrDelete } from '@/app/components/base/prompt-editor/hooks'
+import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import ToolAuthorizationSection from '@/app/components/plugins/plugin-detail-panel/tool-selector/sections/tool-authorization-section'
+import { CollectionType } from '@/app/components/tools/types'
 import { generateFormValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import ToolSettingsSection from '@/app/components/workflow/skill/editor/skill-editor/tool-setting/tool-settings-section'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import {
@@ -43,6 +47,33 @@ const normalizeProviderIcon = (icon?: ToolWithProvider['icon']) => {
   return icon
 }
 
+type ToolConfigField = {
+  id: string
+  value: unknown
+  auto: boolean
+}
+
+type ToolConfigMetadata = {
+  type: 'mcp' | 'builtin'
+  configuration: {
+    fields: ToolConfigField[]
+  }
+}
+
+type SkillFileMetadata = {
+  tools?: Record<string, ToolConfigMetadata>
+}
+
+const getVarKindType = (type: FormTypeEnum) => {
+  if (type === FormTypeEnum.file || type === FormTypeEnum.files)
+    return VarKindType.variable
+  if (type === FormTypeEnum.select || type === FormTypeEnum.checkbox || type === FormTypeEnum.textNumber || type === FormTypeEnum.array || type === FormTypeEnum.object)
+    return VarKindType.constant
+  if (type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput)
+    return VarKindType.mixed
+  return VarKindType.constant
+}
+
 const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
   nodeKey,
   provider,
@@ -59,6 +90,9 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
   const [isSettingOpen, setIsSettingOpen] = useState(false)
   const [toolValue, setToolValue] = useState<ToolValue | null>(null)
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null)
+  const activeTabId = useStore(s => s.activeTabId)
+  const fileMetadata = useStore(s => s.fileMetadata)
+  const storeApi = useWorkflowStore()
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
@@ -93,6 +127,13 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
     }
   }, [currentProvider, currentTool, language, tool])
 
+  const toolConfigFromMetadata = useMemo(() => {
+    if (!activeTabId)
+      return undefined
+    const metadata = fileMetadata.get(activeTabId) as SkillFileMetadata | undefined
+    return metadata?.tools?.[configId]
+  }, [activeTabId, configId, fileMetadata])
+
   const defaultToolValue = useMemo(() => {
     if (!currentProvider || !currentTool)
       return null
@@ -115,12 +156,64 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
     } as ToolValue
   }, [currentProvider, currentTool, language, tool])
 
+  const configuredToolValue = useMemo(() => {
+    if (!defaultToolValue || !currentTool)
+      return defaultToolValue
+    const fields = toolConfigFromMetadata?.configuration?.fields ?? []
+    if (!fields.length)
+      return defaultToolValue
+
+    const fieldsById = new Map(fields.map(field => [field.id, field]))
+    const settingsSchemas = toolParametersToFormSchemas(currentTool.parameters?.filter(param => param.form !== 'llm') || [])
+    const paramsSchemas = toolParametersToFormSchemas(currentTool.parameters?.filter(param => param.form === 'llm') || [])
+
+    const applyFields = (schemas: any[]) => {
+      const nextValue: Record<string, any> = {}
+      schemas.forEach((schema: any) => {
+        const field = fieldsById.get(schema.variable)
+        if (!field)
+          return
+        const isAuto = Boolean(field.auto)
+        if (isAuto) {
+          nextValue[schema.variable] = { auto: 1, value: null }
+          return
+        }
+        nextValue[schema.variable] = {
+          auto: 0,
+          value: {
+            type: getVarKindType(schema.type as FormTypeEnum),
+            value: field.value ?? null,
+          },
+        }
+      })
+      return nextValue
+    }
+
+    return {
+      ...defaultToolValue,
+      settings: {
+        ...(defaultToolValue.settings || {}),
+        ...applyFields(settingsSchemas),
+      },
+      parameters: {
+        ...(defaultToolValue.parameters || {}),
+        ...applyFields(paramsSchemas),
+      },
+    }
+  }, [currentTool, defaultToolValue, toolConfigFromMetadata])
+
   useEffect(() => {
-    if (!defaultToolValue)
+    if (!configuredToolValue)
       return
-    if (!toolValue || toolValue.tool_name !== defaultToolValue.tool_name || toolValue.provider_name !== defaultToolValue.provider_name)
-      setToolValue(defaultToolValue)
-  }, [defaultToolValue, toolValue])
+    if (!toolValue || toolValue.tool_name !== configuredToolValue.tool_name || toolValue.provider_name !== configuredToolValue.provider_name)
+      setToolValue(configuredToolValue)
+  }, [configuredToolValue, toolValue])
+
+  useEffect(() => {
+    if (!isSettingOpen || !configuredToolValue)
+      return
+    setToolValue(configuredToolValue)
+  }, [configuredToolValue, isSettingOpen])
 
   useEffect(() => {
     const containerFromRef = ref.current?.closest('[data-skill-editor-root="true"]') as HTMLElement | null
@@ -192,6 +285,35 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
 
   const handleToolValueChange = (nextValue: ToolValue) => {
     setToolValue(nextValue)
+    if (!activeTabId || !currentProvider || !currentTool)
+      return
+    const metadata = (fileMetadata.get(activeTabId) || {}) as SkillFileMetadata
+    const toolType = currentProvider.type === CollectionType.mcp ? 'mcp' : 'builtin'
+    const buildFields = (value: Record<string, any> | undefined) => {
+      if (!value)
+        return []
+      return Object.entries(value).map(([id, field]) => {
+        const auto = Boolean((field as any)?.auto)
+        const rawValue = auto ? null : (field as any)?.value?.value ?? null
+        return { id, value: rawValue, auto }
+      })
+    }
+    const fields = [
+      ...buildFields(nextValue.settings),
+      ...buildFields(nextValue.parameters),
+    ]
+    const nextMetadata: SkillFileMetadata = {
+      ...metadata,
+      tools: {
+        ...(metadata.tools || {}),
+        [configId]: {
+          type: toolType,
+          configuration: { fields },
+        },
+      },
+    }
+    storeApi.getState().setDraftMetadata(activeTabId, nextMetadata)
+    storeApi.getState().pinTab(activeTabId)
   }
 
   const handleAuthorizationItemClick = (id: string) => {

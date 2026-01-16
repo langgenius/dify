@@ -16,6 +16,7 @@ const EditorTabs: FC = () => {
   const activeTabId = useStore(s => s.activeTabId)
   const previewTabId = useStore(s => s.previewTabId)
   const dirtyContents = useStore(s => s.dirtyContents)
+  const dirtyMetadataIds = useStore(s => s.dirtyMetadataIds)
   const storeApi = useWorkflowStore()
   const { data: nodeMap } = useSkillAssetNodeMap()
 
@@ -32,15 +33,16 @@ const EditorTabs: FC = () => {
   const closeTab = useCallback((fileId: string) => {
     storeApi.getState().closeTab(fileId)
     storeApi.getState().clearDraftContent(fileId)
+    storeApi.getState().clearFileMetadata(fileId)
   }, [storeApi])
 
   const handleTabClose = useCallback((fileId: string) => {
-    if (dirtyContents.has(fileId)) {
+    if (dirtyContents.has(fileId) || dirtyMetadataIds.has(fileId)) {
       setPendingCloseId(fileId)
       return
     }
     closeTab(fileId)
-  }, [dirtyContents, closeTab])
+  }, [dirtyContents, dirtyMetadataIds, closeTab])
 
   const handleConfirmClose = useCallback(() => {
     if (pendingCloseId) {
@@ -67,7 +69,7 @@ const EditorTabs: FC = () => {
           const node = nodeMap?.get(fileId)
           const name = node?.name ?? fileId
           const isActive = activeTabId === fileId
-          const isDirty = dirtyContents.has(fileId)
+          const isDirty = dirtyContents.has(fileId) || dirtyMetadataIds.has(fileId)
           const isPreview = previewTabId === fileId
 
           return (

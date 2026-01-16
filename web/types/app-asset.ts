@@ -68,6 +68,7 @@ export type AppAssetTreeResponse = {
  */
 export type AppAssetFileContentResponse = {
   content: string
+  metadata?: Record<string, any>
 }
 
 /**
@@ -130,6 +131,8 @@ export type CreateFilePayload = {
 export type UpdateFileContentPayload = {
   /** New file content (UTF-8) */
   content: string
+  /** Optional metadata associated with the file */
+  metadata?: Record<string, any>
 }
 
 /**

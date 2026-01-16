@@ -36,6 +36,8 @@ const SkillDocEditor: FC = () => {
 
   const activeTabId = useStore(s => s.activeTabId)
   const dirtyContents = useStore(s => s.dirtyContents)
+  const dirtyMetadataIds = useStore(s => s.dirtyMetadataIds)
+  const fileMetadata = useStore(s => s.fileMetadata)
   const storeApi = useWorkflowStore()
   const { data: nodeMap } = useSkillAssetNodeMap()
 
@@ -65,6 +67,21 @@ const SkillDocEditor: FC = () => {
     return fileContent?.content ?? ''
   }, [activeTabId, dirtyContents, fileContent?.content])
 
+  const currentMetadata = useMemo(() => {
+    if (!activeTabId)
+      return undefined
+    return fileMetadata.get(activeTabId)
+  }, [activeTabId, fileMetadata])
+
+  useEffect(() => {
+    if (!activeTabId || !fileContent)
+      return
+    if (dirtyMetadataIds.has(activeTabId))
+      return
+    storeApi.getState().setFileMetadata(activeTabId, fileContent.metadata ?? {})
+    storeApi.getState().clearDraftMetadata(activeTabId)
+  }, [activeTabId, dirtyMetadataIds, fileContent, storeApi])
+
   const handleEditorChange = useCallback((value: string | undefined) => {
     if (!activeTabId || !isEditable)
       return
@@ -77,16 +94,21 @@ const SkillDocEditor: FC = () => {
       return
 
     const content = dirtyContents.get(activeTabId)
-    if (content === undefined)
+    const hasDirtyMetadata = dirtyMetadataIds.has(activeTabId)
+    if (content === undefined && !hasDirtyMetadata)
       return
 
     try {
       await updateContent.mutateAsync({
         appId,
         nodeId: activeTabId,
-        payload: { content },
+        payload: {
+          content: content ?? fileContent?.content ?? '',
+          ...(currentMetadata ? { metadata: currentMetadata } : {}),
+        },
       })
       storeApi.getState().clearDraftContent(activeTabId)
+      storeApi.getState().clearDraftMetadata(activeTabId)
       Toast.notify({
         type: 'success',
         message: t('api.saved', { ns: 'common' }),
@@ -98,7 +120,7 @@ const SkillDocEditor: FC = () => {
         message: String(error),
       })
     }
-  }, [activeTabId, appId, dirtyContents, isEditable, storeApi, t, updateContent])
+  }, [activeTabId, appId, currentMetadata, dirtyContents, dirtyMetadataIds, fileContent?.content, isEditable, storeApi, t, updateContent])
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent): void {
