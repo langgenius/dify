@@ -434,3 +434,494 @@ def test_get_attr():
     res = vp.get(["node", "name", "output"])
     assert res is not None
     assert res.value == "hello"
+
+
+class TestVariablePoolRenderTemplate:
+    """Test cases for VariablePool.render_template method."""
+
+    @pytest.fixture
+    def pool_with_variables(self):
+        """Create a VariablePool with various variables for testing."""
+        pool = VariablePool(
+            system_variables=SystemVariable(user_id="test_user", app_id="test_app", workflow_id="test_workflow"),
+            user_inputs={"name": "John Doe", "age": 30, "city": "New York"},
+        )
+
+        # Add some node variables
+        pool.add(("node1", "output"), StringSegment(value="Hello World"))
+        pool.add(("node1", "count"), IntegerSegment(value=42))
+        pool.add(("node1", "price"), FloatSegment(value=19.99))
+        pool.add(("node2", "data"), ObjectSegment(value={"key": "value", "nested": {"item": "test"}}))
+        pool.add(("node2", "items"), ArrayStringSegment(value=["apple", "banana", "orange"]))
+
+        # Add user inputs as variables (since they're not automatically accessible via templates)
+        pool.add(("user", "name"), StringSegment(value="John Doe"))
+        pool.add(("user", "age"), IntegerSegment(value=30))
+        pool.add(("user", "city"), StringSegment(value="New York"))
+
+        return pool
+
+    def test_render_template_with_none(self, pool_with_variables):
+        """Test that render_template returns None when template is None."""
+        result = pool_with_variables.render_template(None)
+        assert result is None
+
+    def test_render_template_with_primitives(self, pool_with_variables):
+        """Test that primitive types are returned as-is."""
+        # Integer
+        assert pool_with_variables.render_template(42) == 42
+
+        # Float
+        assert pool_with_variables.render_template(3.14) == 3.14
+
+        # Boolean
+        assert pool_with_variables.render_template(True) is True
+        assert pool_with_variables.render_template(False) is False
+
+        # Complex number
+        complex_num = complex(1, 2)
+        assert pool_with_variables.render_template(complex_num) == complex_num
+
+        # Bytes
+        bytes_data = b"hello"
+        assert pool_with_variables.render_template(bytes_data) == bytes_data
+
+        # Bytearray
+        bytearray_data = bytearray(b"world")
+        assert pool_with_variables.render_template(bytearray_data) == bytearray_data
+
+        # Memoryview
+        memview = memoryview(b"test")
+        assert pool_with_variables.render_template(memview) == memview
+
+    def test_render_template_with_string(self, pool_with_variables):
+        """Test rendering string templates with variable substitution."""
+        # Simple variable substitution
+        template = "Hello {{#node1.output#}}"
+        result = pool_with_variables.render_template(template)
+        assert result == "Hello Hello World"
+
+        # Multiple variables
+        template = "Count: {{#node1.count#}}, Price: {{#node1.price#}}"
+        result = pool_with_variables.render_template(template)
+        assert result == "Count: 42, Price: 19.99"
+
+        # User input variables (added as node variables)
+        template = "Name: {{#user.name#}}, Age: {{#user.age#}}"
+        result = pool_with_variables.render_template(template)
+        assert result == "Name: John Doe, Age: 30"
+
+        # Plain string without variables
+        template = "This is a plain string"
+        result = pool_with_variables.render_template(template)
+        assert result == "This is a plain string"
+
+    def test_render_template_with_list(self, pool_with_variables):
+        """Test rendering list templates."""
+        # List with strings containing variables
+        template = [
+            "Hello {{#node1.output#}}",
+            "Count is {{#node1.count#}}",
+            42,  # Primitive
+            True,  # Boolean
+            ["nested", "{{#node1.output#}}"],  # Nested list
+        ]
+
+        result = pool_with_variables.render_template(template)
+
+        assert isinstance(result, list)
+        assert len(result) == 5
+        assert result[0] == "Hello Hello World"
+        assert result[1] == "Count is 42"
+        assert result[2] == 42
+        assert result[3] is True
+        assert result[4] == ["nested", "Hello World"]
+
+    def test_render_template_with_tuple(self, pool_with_variables):
+        """Test rendering tuple templates."""
+        template = ("{{#node1.output#}}", 42, "Price: {{#node1.price#}}")
+
+        result = pool_with_variables.render_template(template)
+
+        assert isinstance(result, tuple)
+        assert len(result) == 3
+        assert result[0] == "Hello World"
+        assert result[1] == 42
+        assert result[2] == "Price: 19.99"
+
+    def test_render_template_with_dict(self, pool_with_variables):
+        """Test rendering dictionary templates."""
+        template = {
+            "greeting": "{{#node1.output#}}",
+            "count": "{{#node1.count#}}",
+            "static": "plain text",
+            "number": 100,
+            "nested": {"price": "{{#node1.price#}}", "user": "{{#user.name#}}"},
+        }
+
+        result = pool_with_variables.render_template(template)
+
+        assert isinstance(result, dict)
+        assert result["greeting"] == "Hello World"
+        assert result["count"] == "42"
+        assert result["static"] == "plain text"
+        assert result["number"] == 100
+        assert result["nested"]["price"] == "19.99"
+        assert result["nested"]["user"] == "John Doe"
+
+    def test_render_template_with_set(self, pool_with_variables):
+        """Test rendering set templates."""
+        template = {"{{#node1.output#}}", "static", "Count: {{#node1.count#}}"}
+
+        result = pool_with_variables.render_template(template)
+
+        assert isinstance(result, set)
+        assert len(result) == 3
+        assert "Hello World" in result
+        assert "static" in result
+        assert "Count: 42" in result
+
+    def test_render_template_with_complex_nested_structure(self, pool_with_variables):
+        """Test rendering complex nested data structures."""
+        template = {
+            "users": [{"name": "{{#user.name#}}", "age": "{{#user.age#}}", "location": "{{#user.city#}}"}],
+            "metadata": {
+                "app_id": "{{#sys.app_id#}}",
+                "counts": ["{{#node1.count#}}", 10, 20],
+                "flags": (True, False, "{{#node1.output#}}"),
+            },
+            "items": {"item1", "item2", "{{#node1.output#}}"},
+        }
+
+        result = pool_with_variables.render_template(template)
+
+        assert isinstance(result, dict)
+        assert len(result["users"]) == 1
+        assert result["users"][0]["name"] == "John Doe"
+        assert result["users"][0]["age"] == "30"
+        assert result["users"][0]["location"] == "New York"
+        assert result["metadata"]["app_id"] == "test_app"
+        assert result["metadata"]["counts"] == ["42", 10, 20]
+        assert result["metadata"]["flags"] == (True, False, "Hello World")
+        assert "Hello World" in result["items"]
+
+    def test_render_template_with_invalid_type(self, pool_with_variables):
+        """Test that render_template raises TypeError for unsupported types."""
+
+        class CustomClass:
+            pass
+
+        custom_obj = CustomClass()
+
+        with pytest.raises(TypeError) as exc_info:
+            pool_with_variables.render_template(custom_obj)
+
+        assert "unsupported template type" in str(exc_info.value)
+        assert "CustomClass" in str(exc_info.value)
+
+    def test_render_template_with_empty_collections(self, pool_with_variables):
+        """Test rendering empty collections."""
+        # Empty list
+        assert pool_with_variables.render_template([]) == []
+
+        # Empty tuple
+        assert pool_with_variables.render_template(()) == ()
+
+        # Empty dict
+        assert pool_with_variables.render_template({}) == {}
+
+        # Empty set
+        assert pool_with_variables.render_template(set()) == set()
+
+    def test_render_template_with_missing_variables(self, pool_with_variables):
+        """Test rendering templates with variables that don't exist."""
+        # Non-existent variable should be rendered as empty or the variable reference
+        template = "Missing: {{#nonexistent.variable#}}"
+        result = pool_with_variables.render_template(template)
+        assert isinstance(result, str)
+        assert result == "Missing: nonexistent.variable"
+
+    def test_render_template_preserves_types_in_collections(self, pool_with_variables):
+        """Test that types are preserved when rendering collections."""
+        template = [
+            42,  # int
+            3.14,  # float
+            True,  # bool
+            None,  # None should be handled
+            "text",  # string
+            b"bytes",  # bytes
+        ]
+
+        result = pool_with_variables.render_template(template)
+
+        assert result[0] == 42
+        assert isinstance(result[0], int)
+        assert result[1] == 3.14
+        assert isinstance(result[1], float)
+        assert result[2] is True
+        assert isinstance(result[2], bool)
+        assert result[3] is None
+        assert result[4] == "text"
+        assert isinstance(result[4], str)
+        assert result[5] == b"bytes"
+        assert isinstance(result[5], bytes)
+
+    def test_render_template_recursive_depth(self, pool_with_variables):
+        # The actual behavior depends on convert_template implementation.
+
+        # Create a deeply nested structure
+        template = {"level1": {"level2": {"level3": {"level4": {"value": "{{#node1.output#}}"}}}}}
+
+        result = pool_with_variables.render_template(template)
+
+        assert result["level1"]["level2"]["level3"]["level4"]["value"] == "Hello World"
+
+    def test_render_template_with_mixed_variable_references(self, pool_with_variables):
+        """Test templates with multiple types of variable references."""
+        template = {
+            "system_var": "{{#sys.user_id#}}",
+            "user_input": "{{#user.name#}}",
+            "node_output": "{{#node1.output#}}",
+            "combined": "User {{#user.name#}} has {{#node1.count#}} items",
+        }
+
+        result = pool_with_variables.render_template(template)
+
+        assert result["system_var"] == "test_user"
+        assert result["user_input"] == "John Doe"
+        assert result["node_output"] == "Hello World"
+        assert result["combined"] == "User John Doe has 42 items"
+
+    def test_render_template_with_base_model(self, pool_with_variables):
+        """Test rendering BaseModel instances with variable substitution."""
+        from pydantic import BaseModel, Field
+
+        class UserModel(BaseModel):
+            name: str = Field(default="")
+            age: str = Field(default="")
+            greeting: str = Field(default="")
+
+        # Create a model instance with template strings
+        user = UserModel(name="{{#user.name#}}", age="{{#user.age#}}", greeting="Hello {{#node1.output#}}")
+
+        result = pool_with_variables.render_template(user)
+
+        # Should return a new BaseModel instance with rendered values
+        assert isinstance(result, UserModel)
+        assert result is not user  # Should be a copy
+        assert result.name == "John Doe"
+        assert result.age == "30"
+        assert result.greeting == "Hello Hello World"
+
+    def test_render_template_with_nested_base_model(self, pool_with_variables):
+        """Test rendering nested BaseModel structures."""
+        from pydantic import BaseModel, Field
+
+        class AddressModel(BaseModel):
+            city: str = Field(default="")
+            country: str = Field(default="USA")
+
+        class PersonModel(BaseModel):
+            name: str = Field(default="")
+            address: AddressModel = Field(default_factory=AddressModel)
+            items: list[str] = Field(default_factory=list)
+
+        # Create nested model with templates
+        person = PersonModel(
+            name="{{#user.name#}}",
+            address=AddressModel(city="{{#user.city#}}", country="United States"),
+            items=["item1", "{{#node1.output#}}", "item3"],
+        )
+
+        result = pool_with_variables.render_template(person)
+
+        assert isinstance(result, PersonModel)
+        assert result.name == "John Doe"
+        assert isinstance(result.address, AddressModel)
+        assert result.address.city == "New York"
+        assert result.address.country == "United States"
+        assert result.items == ["item1", "Hello World", "item3"]
+
+    def test_render_template_with_base_model_partial_fields(self, pool_with_variables):
+        """Test BaseModel with only some fields set."""
+        from pydantic import BaseModel, Field
+
+        class ConfigModel(BaseModel):
+            app_id: str = Field(default="")
+            user_id: str = Field(default="")
+            optional_field: str | None = Field(default=None)
+            count: int = Field(default=0)
+
+        # Create model with only some fields set
+        config = ConfigModel(
+            app_id="{{#sys.app_id#}}",
+            user_id="{{#sys.user_id#}}",
+            # optional_field and count not set
+        )
+
+        result = pool_with_variables.render_template(config)
+
+        assert isinstance(result, ConfigModel)
+        assert result.app_id == "test_app"
+        assert result.user_id == "test_user"
+        assert result.optional_field is None
+        assert result.count == 0
+
+    def test_render_template_with_base_model_complex_types(self, pool_with_variables):
+        """Test BaseModel with complex field types."""
+        from pydantic import BaseModel, Field
+
+        class ComplexModel(BaseModel):
+            text: str = Field(default="")
+            numbers: list[int] = Field(default_factory=list)
+            mapping: dict[str, str] = Field(default_factory=dict)
+            tags: set[str] = Field(default_factory=set)
+
+        model = ComplexModel(
+            text="Count: {{#node1.count#}}",
+            numbers=[1, 2, 3],
+            mapping={"user": "{{#user.name#}}", "output": "{{#node1.output#}}"},
+            tags={"tag1", "{{#user.city#}}", "tag3"},
+        )
+
+        result = pool_with_variables.render_template(model)
+
+        assert isinstance(result, ComplexModel)
+        assert result.text == "Count: 42"
+        assert result.numbers == [1, 2, 3]
+        assert result.mapping["user"] == "John Doe"
+        assert result.mapping["output"] == "Hello World"
+        assert "New York" in result.tags
+        assert "tag1" in result.tags
+        assert "tag3" in result.tags
+
+    def test_render_template_with_base_model_in_collections(self, pool_with_variables):
+        """Test BaseModel instances within collections."""
+        from pydantic import BaseModel, Field
+
+        class ItemModel(BaseModel):
+            id: int = Field(default=0)
+            name: str = Field(default="")
+
+        # BaseModel in list
+        items_list = [ItemModel(id=1, name="{{#user.name#}}"), ItemModel(id=2, name="{{#node1.output#}}")]
+
+        result_list = pool_with_variables.render_template(items_list)
+        assert len(result_list) == 2
+        assert isinstance(result_list[0], ItemModel)
+        assert result_list[0].name == "John Doe"
+        assert isinstance(result_list[1], ItemModel)
+        assert result_list[1].name == "Hello World"
+
+        # BaseModel in dict
+        items_dict = {
+            "first": ItemModel(id=1, name="{{#user.city#}}"),
+            "second": ItemModel(id=2, name="Count: {{#node1.count#}}"),
+        }
+
+        result_dict = pool_with_variables.render_template(items_dict)
+        assert isinstance(result_dict["first"], ItemModel)
+        assert result_dict["first"].name == "New York"
+        assert isinstance(result_dict["second"], ItemModel)
+        assert result_dict["second"].name == "Count: 42"
+
+    def test_render_template_with_base_model_deep_copy(self, pool_with_variables):
+        """Test that BaseModel rendering creates deep copies."""
+        from pydantic import BaseModel, Field
+
+        class MutableModel(BaseModel):
+            items: list[str] = Field(default_factory=list)
+            data: dict[str, str] = Field(default_factory=dict)
+
+        original = MutableModel(items=["{{#user.name#}}", "item2"], data={"key": "{{#node1.output#}}"})
+
+        # Store references to original mutable objects
+        original_items = original.items
+        original_data = original.data
+
+        result = pool_with_variables.render_template(original)
+
+        # Verify deep copy - modifying result shouldn't affect original
+        assert result.items is not original_items
+        assert result.data is not original_data
+
+        # Verify values are rendered
+        assert result.items[0] == "John Doe"
+        assert result.data["key"] == "Hello World"
+
+        # Original should be unchanged
+        assert original.items[0] == "{{#user.name#}}"
+        assert original.data["key"] == "{{#node1.output#}}"
+
+    def test_render_template_with_base_model_validation(self, pool_with_variables):
+        """Test that BaseModel with validators works correctly after rendering."""
+        from pydantic import BaseModel, Field, field_validator
+
+        class ValidatedModel(BaseModel):
+            name: str = Field(min_length=1)
+            count: str = Field(default="")
+
+            @field_validator("count", mode="after")
+            @classmethod
+            def validate_count(cls, v: str) -> str:
+                # After rendering, should be a valid number string
+                if v and v != "{{#node1.count#}}" and not v.isdigit():
+                    raise ValueError("count must be numeric after rendering")
+                return v
+
+        # The template string passes validation initially
+        model = ValidatedModel(name="{{#user.name#}}", count="{{#node1.count#}}")
+
+        result = pool_with_variables.render_template(model)
+
+        assert isinstance(result, ValidatedModel)
+        assert result.name == "John Doe"
+        assert result.count == "42"
+
+        # Verify the rendered value passes validation
+        # This would fail if count wasn't numeric
+        ValidatedModel(name="Test", count=result.count)
+
+    def test_render_template_with_base_model_inheritance(self, pool_with_variables):
+        """Test BaseModel with inheritance."""
+        from pydantic import BaseModel, Field
+
+        class BaseConfig(BaseModel):
+            app_id: str = Field(default="")
+
+        class ExtendedConfig(BaseConfig):
+            user_name: str = Field(default="")
+            message: str = Field(default="")
+
+        config = ExtendedConfig(
+            app_id="{{#sys.app_id#}}", user_name="{{#user.name#}}", message="Welcome to {{#node1.output#}}"
+        )
+
+        result = pool_with_variables.render_template(config)
+
+        assert isinstance(result, ExtendedConfig)
+        assert result.app_id == "test_app"
+        assert result.user_name == "John Doe"
+        assert result.message == "Welcome to Hello World"
+
+    def test_render_template_with_base_model_only_set_fields(self, pool_with_variables):
+        """Test that only fields that were explicitly set are rendered."""
+        from pydantic import BaseModel, Field
+
+        class PartialModel(BaseModel):
+            field1: str = Field(default="default1")
+            field2: str = Field(default="default2")
+            field3: str = Field(default="default3")
+
+        # Only set field1 and field3
+        model = PartialModel(
+            field1="{{#user.name#}}",
+            field3="{{#node1.output#}}",
+            # field2 not set, should keep default
+        )
+
+        result = pool_with_variables.render_template(model)
+
+        assert result.field1 == "John Doe"
+        assert result.field2 == "default2"  # Should remain default
+        assert result.field3 == "Hello World"

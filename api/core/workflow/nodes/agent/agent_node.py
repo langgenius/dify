@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, cast
 
@@ -64,6 +65,8 @@ from .exc import (
 if TYPE_CHECKING:
     from core.agent.strategy.plugin import PluginAgentStrategy
     from core.plugin.entities.request import InvokeCredentials
+
+logger = logging.getLogger(__name__)
 
 
 class AgentNode(Node[AgentNodeData]):
@@ -198,24 +201,29 @@ class AgentNode(Node[AgentNodeData]):
                     raise AgentVariableNotFoundError(str(agent_input.value))
                 parameter_value = variable.value
             elif agent_input.type in {"mixed", "constant"}:
-                # variable_pool.convert_template expects a string template,
-                # but if passing a dict, convert to JSON string first before rendering
                 try:
-                    if not isinstance(agent_input.value, str):
-                        parameter_value = json.dumps(agent_input.value, ensure_ascii=False)
-                    else:
-                        parameter_value = str(agent_input.value)
+                    parameter_value = variable_pool.render_template(agent_input.value)
                 except TypeError:
-                    parameter_value = str(agent_input.value)
-                segment_group = variable_pool.convert_template(parameter_value)
-                parameter_value = segment_group.log if for_log else segment_group.text
-                # variable_pool.convert_template returns a string,
-                # so we need to convert it back to a dictionary
-                try:
-                    if not isinstance(agent_input.value, str):
-                        parameter_value = json.loads(parameter_value)
-                except json.JSONDecodeError:
-                    parameter_value = parameter_value
+                    logger.exception("render_template failed, input: %s", agent_input.value)
+
+                    # variable_pool.convert_template expects a string template,
+                    # but if passing a dict, convert to JSON string first before rendering
+                    try:
+                        if not isinstance(agent_input.value, str):
+                            parameter_value = json.dumps(agent_input.value, ensure_ascii=False)
+                        else:
+                            parameter_value = str(agent_input.value)
+                    except TypeError:
+                        parameter_value = str(agent_input.value)
+                    segment_group = variable_pool.convert_template(parameter_value)
+                    parameter_value = segment_group.log if for_log else segment_group.text
+                    # variable_pool.convert_template returns a string,
+                    # so we need to convert it back to a dictionary
+                    try:
+                        if not isinstance(agent_input.value, str):
+                            parameter_value = json.loads(parameter_value)
+                    except json.JSONDecodeError:
+                        parameter_value = parameter_value
             else:
                 raise AgentInputTypeError(agent_input.type)
             value = parameter_value
