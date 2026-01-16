@@ -48,7 +48,7 @@ const StructureOutput: FC<Props> = ({
           onClick={showConfigModal}
         >
           <RiEditLine className="mr-1 size-3.5" />
-          <div className="system-xs-medium text-components-button-secondary-text">{t('app.structOutput.configure')}</div>
+          <div className="system-xs-medium text-components-button-secondary-text">{t('structOutput.configure', { ns: 'app' })}</div>
         </Button>
       </div>
       {(value?.schema && value.schema.properties && Object.keys(value.schema.properties).length > 0)
@@ -58,7 +58,7 @@ const StructureOutput: FC<Props> = ({
             />
           )
         : (
-            <div className="system-xs-regular mt-1.5 flex h-10 cursor-pointer items-center justify-center rounded-[10px] bg-background-section text-text-tertiary" onClick={showConfigModal}>{t('app.structOutput.notConfiguredTip')}</div>
+            <div className="system-xs-regular mt-1.5 flex h-10 cursor-pointer items-center justify-center rounded-[10px] bg-background-section text-text-tertiary" onClick={showConfigModal}>{t('structOutput.notConfiguredTip', { ns: 'app' })}</div>
           )}
 
       {showConfig && (

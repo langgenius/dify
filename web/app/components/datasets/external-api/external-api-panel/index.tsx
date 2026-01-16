@@ -50,15 +50,15 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({ onClose }) => {
       >
         <div className="flex items-start self-stretch p-4 pb-0">
           <div className="flex grow flex-col items-start gap-1">
-            <div className="system-xl-semibold self-stretch text-text-primary">{t('dataset.externalAPIPanelTitle')}</div>
-            <div className="body-xs-regular self-stretch text-text-tertiary">{t('dataset.externalAPIPanelDescription')}</div>
+            <div className="system-xl-semibold self-stretch text-text-primary">{t('externalAPIPanelTitle', { ns: 'dataset' })}</div>
+            <div className="body-xs-regular self-stretch text-text-tertiary">{t('externalAPIPanelDescription', { ns: 'dataset' })}</div>
             <a
               className="flex cursor-pointer items-center justify-center gap-1 self-stretch"
               href={docLink('/guides/knowledge-base/connect-external-knowledge-base')}
               target="_blank"
             >
               <RiBookOpenLine className="h-3 w-3 text-text-accent" />
-              <div className="body-xs-regular grow text-text-accent">{t('dataset.externalAPIPanelDocumentation')}</div>
+              <div className="body-xs-regular grow text-text-accent">{t('externalAPIPanelDocumentation', { ns: 'dataset' })}</div>
             </a>
           </div>
           <div className="flex items-center">
@@ -74,7 +74,7 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({ onClose }) => {
             onClick={handleOpenExternalAPIModal}
           >
             <RiAddLine className="h-4 w-4 text-components-button-primary-text" />
-            <div className="system-sm-medium text-components-button-primary-text">{t('dataset.createExternalAPI')}</div>
+            <div className="system-sm-medium text-components-button-primary-text">{t('createExternalAPI', { ns: 'dataset' })}</div>
           </Button>
         </div>
         <div className="flex grow flex-col items-start gap-1 self-stretch px-4 py-0">

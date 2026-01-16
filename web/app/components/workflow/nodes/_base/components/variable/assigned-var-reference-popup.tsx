@@ -23,8 +23,8 @@ const AssignedVarReferencePopup: FC<Props> = ({
       {(!vars || vars.length === 0)
         ? (
             <ListEmpty
-              title={t('workflow.nodes.assigner.noAssignedVars') || ''}
-              description={t('workflow.nodes.assigner.assignedVarsDescription')}
+              title={t('nodes.assigner.noAssignedVars', { ns: 'workflow' }) || ''}
+              description={t('nodes.assigner.assignedVarsDescription', { ns: 'workflow' })}
             />
           )
         : (

@@ -1,7 +1,7 @@
 import type { VisualEditorProps } from '.'
 import type { Field } from '../../../types'
 import type { EditData } from './edit-card'
-import { noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import Toast from '@/app/components/base/toast'
 import { ArrayType, Type } from '../../../types'

@@ -88,7 +88,7 @@ export const useAuth = (
       })
       notify({
         type: 'success',
-        message: t('common.api.actionSuccess'),
+        message: t('api.actionSuccess', { ns: 'common' }),
       })
       handleRefreshModel(provider, undefined, true)
     }
@@ -123,7 +123,7 @@ export const useAuth = (
       }
       notify({
         type: 'success',
-        message: t('common.api.actionSuccess'),
+        message: t('api.actionSuccess', { ns: 'common' }),
       })
       handleRefreshModel(provider, undefined, true)
       onRemove?.(pendingOperationCredentialId.current ?? '')
@@ -146,7 +146,7 @@ export const useAuth = (
         res = await getAddCredentialService(!!isModelCredential)(payload as any)
 
       if (res.result === 'success') {
-        notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+        notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
         handleRefreshModel(provider, undefined, !payload.credential_id)
       }
     }

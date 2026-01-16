@@ -21,11 +21,11 @@ const Header = ({
             <DifyLogo className="h-[27px] w-[60px]" />
           </div>
           <span className="bg-billing-plan-title-bg bg-clip-text px-1.5 font-instrument text-[37px] italic leading-[1.2] text-transparent">
-            {t('billing.plansCommon.title.plans')}
+            {t('plansCommon.title.plans', { ns: 'billing' })}
           </span>
         </div>
         <p className="system-sm-regular text-text-tertiary">
-          {t('billing.plansCommon.title.description')}
+          {t('plansCommon.title.description', { ns: 'billing' })}
         </p>
         <Button
           variant="secondary"

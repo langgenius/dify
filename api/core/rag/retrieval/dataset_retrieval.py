@@ -7,7 +7,7 @@ from collections.abc import Generator, Mapping
 from typing import Any, Union, cast
 
 from flask import Flask, current_app
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, literal, or_, select
 from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import (
@@ -515,7 +515,11 @@ class DatasetRetrieval:
                         0
                     ].embedding_model_provider
                     weights["vector_setting"]["embedding_model_name"] = available_datasets[0].embedding_model
+        dataset_count = len(available_datasets)
         with measure_time() as timer:
+            cancel_event = threading.Event()
+            thread_exceptions: list[Exception] = []
+
             if query:
                 query_thread = threading.Thread(
                     target=self._multiple_retrieve_thread,
@@ -534,6 +538,9 @@ class DatasetRetrieval:
                         "score_threshold": score_threshold,
                         "query": query,
                         "attachment_id": None,
+                        "dataset_count": dataset_count,
+                        "cancel_event": cancel_event,
+                        "thread_exceptions": thread_exceptions,
                     },
                 )
                 all_threads.append(query_thread)
@@ -557,12 +564,26 @@ class DatasetRetrieval:
                             "score_threshold": score_threshold,
                             "query": None,
                             "attachment_id": attachment_id,
+                            "dataset_count": dataset_count,
+                            "cancel_event": cancel_event,
+                            "thread_exceptions": thread_exceptions,
                         },
                     )
                     all_threads.append(attachment_thread)
                     attachment_thread.start()
-            for thread in all_threads:
-                thread.join()
+
+            # Poll threads with short timeout to detect errors quickly (fail-fast)
+            while any(t.is_alive() for t in all_threads):
+                for thread in all_threads:
+                    thread.join(timeout=0.1)
+                    if thread_exceptions:
+                        cancel_event.set()
+                        break
+                if thread_exceptions:
+                    break
+
+            if thread_exceptions:
+                raise thread_exceptions[0]
         self._on_query(query, attachment_ids, dataset_ids, app_id, user_from, user_id)
 
         if all_documents:
@@ -1036,7 +1057,7 @@ class DatasetRetrieval:
             if automatic_metadata_filters:
                 conditions = []
                 for sequence, filter in enumerate(automatic_metadata_filters):
-                    self._process_metadata_filter_func(
+                    self.process_metadata_filter_func(
                         sequence,
                         filter.get("condition"),  # type: ignore
                         filter.get("metadata_name"),  # type: ignore
@@ -1072,7 +1093,7 @@ class DatasetRetrieval:
                             value=expected_value,
                         )
                     )
-                    filters = self._process_metadata_filter_func(
+                    filters = self.process_metadata_filter_func(
                         sequence,
                         condition.comparison_operator,
                         metadata_name,
@@ -1168,26 +1189,33 @@ class DatasetRetrieval:
             return None
         return automatic_metadata_filters
 
-    def _process_metadata_filter_func(
-        self, sequence: int, condition: str, metadata_name: str, value: Any | None, filters: list
+    @classmethod
+    def process_metadata_filter_func(
+        cls, sequence: int, condition: str, metadata_name: str, value: Any | None, filters: list
     ):
         if value is None and condition not in ("empty", "not empty"):
             return filters
 
         json_field = DatasetDocument.doc_metadata[metadata_name].as_string()
 
+        from libs.helper import escape_like_pattern
+
         match condition:
             case "contains":
-                filters.append(json_field.like(f"%{value}%"))
+                escaped_value = escape_like_pattern(str(value))
+                filters.append(json_field.like(f"%{escaped_value}%", escape="\\"))
 
             case "not contains":
-                filters.append(json_field.notlike(f"%{value}%"))
+                escaped_value = escape_like_pattern(str(value))
+                filters.append(json_field.notlike(f"%{escaped_value}%", escape="\\"))
 
             case "start with":
-                filters.append(json_field.like(f"{value}%"))
+                escaped_value = escape_like_pattern(str(value))
+                filters.append(json_field.like(f"{escaped_value}%", escape="\\"))
 
             case "end with":
-                filters.append(json_field.like(f"%{value}"))
+                escaped_value = escape_like_pattern(str(value))
+                filters.append(json_field.like(f"%{escaped_value}", escape="\\"))
 
             case "is" | "=":
                 if isinstance(value, str):
@@ -1218,6 +1246,20 @@ class DatasetRetrieval:
 
             case "≥" | ">=":
                 filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() >= value)
+            case "in" | "not in":
+                if isinstance(value, str):
+                    value_list = [v.strip() for v in value.split(",") if v.strip()]
+                elif isinstance(value, (list, tuple)):
+                    value_list = [str(v) for v in value if v is not None]
+                else:
+                    value_list = [str(value)] if value is not None else []
+
+                if not value_list:
+                    # `field in []` is False, `field not in []` is True
+                    filters.append(literal(condition == "not in"))
+                else:
+                    op = json_field.in_ if condition == "in" else json_field.notin_
+                    filters.append(op(value_list))
             case _:
                 pass
 
@@ -1389,69 +1431,89 @@ class DatasetRetrieval:
         score_threshold: float,
         query: str | None,
         attachment_id: str | None,
+        dataset_count: int,
+        cancel_event: threading.Event | None = None,
+        thread_exceptions: list[Exception] | None = None,
     ):
-        with flask_app.app_context():
-            threads = []
-            all_documents_item: list[Document] = []
-            index_type = None
-            for dataset in available_datasets:
-                index_type = dataset.indexing_technique
-                document_ids_filter = None
-                if dataset.provider != "external":
-                    if metadata_condition and not metadata_filter_document_ids:
-                        continue
-                    if metadata_filter_document_ids:
-                        document_ids = metadata_filter_document_ids.get(dataset.id, [])
-                        if document_ids:
-                            document_ids_filter = document_ids
-                        else:
+        try:
+            with flask_app.app_context():
+                threads = []
+                all_documents_item: list[Document] = []
+                index_type = None
+                for dataset in available_datasets:
+                    # Check for cancellation signal
+                    if cancel_event and cancel_event.is_set():
+                        break
+                    index_type = dataset.indexing_technique
+                    document_ids_filter = None
+                    if dataset.provider != "external":
+                        if metadata_condition and not metadata_filter_document_ids:
                             continue
-                retrieval_thread = threading.Thread(
-                    target=self._retriever,
-                    kwargs={
-                        "flask_app": flask_app,
-                        "dataset_id": dataset.id,
-                        "query": query,
-                        "top_k": top_k,
-                        "all_documents": all_documents_item,
-                        "document_ids_filter": document_ids_filter,
-                        "metadata_condition": metadata_condition,
-                        "attachment_ids": [attachment_id] if attachment_id else None,
-                    },
-                )
-                threads.append(retrieval_thread)
-                retrieval_thread.start()
-            for thread in threads:
-                thread.join()
+                        if metadata_filter_document_ids:
+                            document_ids = metadata_filter_document_ids.get(dataset.id, [])
+                            if document_ids:
+                                document_ids_filter = document_ids
+                            else:
+                                continue
+                    retrieval_thread = threading.Thread(
+                        target=self._retriever,
+                        kwargs={
+                            "flask_app": flask_app,
+                            "dataset_id": dataset.id,
+                            "query": query,
+                            "top_k": top_k,
+                            "all_documents": all_documents_item,
+                            "document_ids_filter": document_ids_filter,
+                            "metadata_condition": metadata_condition,
+                            "attachment_ids": [attachment_id] if attachment_id else None,
+                        },
+                    )
+                    threads.append(retrieval_thread)
+                    retrieval_thread.start()
 
-            if reranking_enable:
-                # do rerank for searched documents
-                data_post_processor = DataPostProcessor(tenant_id, reranking_mode, reranking_model, weights, False)
-                if query:
-                    all_documents_item = data_post_processor.invoke(
-                        query=query,
-                        documents=all_documents_item,
-                        score_threshold=score_threshold,
-                        top_n=top_k,
-                        query_type=QueryType.TEXT_QUERY,
-                    )
-                if attachment_id:
-                    all_documents_item = data_post_processor.invoke(
-                        documents=all_documents_item,
-                        score_threshold=score_threshold,
-                        top_n=top_k,
-                        query_type=QueryType.IMAGE_QUERY,
-                        query=attachment_id,
-                    )
-            else:
-                if index_type == IndexTechniqueType.ECONOMY:
-                    if not query:
-                        all_documents_item = []
-                    else:
-                        all_documents_item = self.calculate_keyword_score(query, all_documents_item, top_k)
-                elif index_type == IndexTechniqueType.HIGH_QUALITY:
-                    all_documents_item = self.calculate_vector_score(all_documents_item, top_k, score_threshold)
+                # Poll threads with short timeout to respond quickly to cancellation
+                while any(t.is_alive() for t in threads):
+                    for thread in threads:
+                        thread.join(timeout=0.1)
+                        if cancel_event and cancel_event.is_set():
+                            break
+                    if cancel_event and cancel_event.is_set():
+                        break
+
+                # Skip second reranking when there is only one dataset
+                if reranking_enable and dataset_count > 1:
+                    # do rerank for searched documents
+                    data_post_processor = DataPostProcessor(tenant_id, reranking_mode, reranking_model, weights, False)
+                    if query:
+                        all_documents_item = data_post_processor.invoke(
+                            query=query,
+                            documents=all_documents_item,
+                            score_threshold=score_threshold,
+                            top_n=top_k,
+                            query_type=QueryType.TEXT_QUERY,
+                        )
+                    if attachment_id:
+                        all_documents_item = data_post_processor.invoke(
+                            documents=all_documents_item,
+                            score_threshold=score_threshold,
+                            top_n=top_k,
+                            query_type=QueryType.IMAGE_QUERY,
+                            query=attachment_id,
+                        )
                 else:
-                    all_documents_item = all_documents_item[:top_k] if top_k else all_documents_item
-            if all_documents_item:
-                all_documents.extend(all_documents_item)
+                    if index_type == IndexTechniqueType.ECONOMY:
+                        if not query:
+                            all_documents_item = []
+                        else:
+                            all_documents_item = self.calculate_keyword_score(query, all_documents_item, top_k)
+                    elif index_type == IndexTechniqueType.HIGH_QUALITY:
+                        all_documents_item = self.calculate_vector_score(all_documents_item, top_k, score_threshold)
+                    else:
+                        all_documents_item = all_documents_item[:top_k] if top_k else all_documents_item
+                if all_documents_item:
+                    all_documents.extend(all_documents_item)
+        except Exception as e:
+            if cancel_event:
+                cancel_event.set()
+            if thread_exceptions is not None:
+                thread_exceptions.append(e)

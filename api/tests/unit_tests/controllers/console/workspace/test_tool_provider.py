@@ -41,13 +41,10 @@ def client():
 @patch(
     "controllers.console.workspace.tool_providers.current_account_with_tenant", return_value=(MagicMock(id="u1"), "t1")
 )
-@patch("controllers.console.workspace.tool_providers.ToolProviderListCache.invalidate_cache", return_value=None)
 @patch("controllers.console.workspace.tool_providers.Session")
 @patch("controllers.console.workspace.tool_providers.MCPToolManageService._reconnect_with_url")
 @pytest.mark.usefixtures("_mock_cache", "_mock_user_tenant")
-def test_create_mcp_provider_populates_tools(
-    mock_reconnect, mock_session, mock_invalidate_cache, mock_current_account_with_tenant, client
-):
+def test_create_mcp_provider_populates_tools(mock_reconnect, mock_session, mock_current_account_with_tenant, client):
     # Arrange: reconnect returns tools immediately
     mock_reconnect.return_value = ReconnectResult(
         authed=True,

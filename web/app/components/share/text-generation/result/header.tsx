@@ -25,7 +25,7 @@ const Header: FC<IResultHeaderProps> = ({
   const { t } = useTranslation()
   return (
     <div className="flex w-full items-center justify-between ">
-      <div className="text-2xl font-normal leading-4 text-gray-800">{t('share.generation.resultTitle')}</div>
+      <div className="text-2xl font-normal leading-4 text-gray-800">{t('generation.resultTitle', { ns: 'share' })}</div>
       <div className="flex items-center space-x-2">
         <Button
           className="h-7 p-[2px] pr-2"
@@ -36,7 +36,7 @@ const Header: FC<IResultHeaderProps> = ({
         >
           <>
             <ClipboardDocumentIcon className="mr-1 h-3 w-4 text-gray-500" />
-            <span className="text-xs leading-3 text-gray-500">{t('share.generation.copy')}</span>
+            <span className="text-xs leading-3 text-gray-500">{t('generation.copy', { ns: 'share' })}</span>
           </>
         </Button>
 

@@ -123,7 +123,7 @@ const Form = () => {
     if (loading)
       return
     if (!name?.trim()) {
-      Toast.notify({ type: 'error', message: t('datasetSettings.form.nameError') })
+      Toast.notify({ type: 'error', message: t('form.nameError', { ns: 'datasetSettings' }) })
       return
     }
     if (
@@ -133,7 +133,7 @@ const Form = () => {
         indexMethod,
       })
     ) {
-      Toast.notify({ type: 'error', message: t('appDebug.datasetConfig.rerankModelRequired') })
+      Toast.notify({ type: 'error', message: t('datasetConfig.rerankModelRequired', { ns: 'appDebug' }) })
       return
     }
     if (retrievalConfig.weights) {
@@ -178,14 +178,14 @@ const Form = () => {
         })
       }
       await updateDatasetSetting(requestParams)
-      Toast.notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       if (mutateDatasets) {
         await mutateDatasets()
         invalidDatasetList()
       }
     }
     catch {
-      Toast.notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+      Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
     }
     finally {
       setLoading(false)
@@ -213,7 +213,7 @@ const Form = () => {
       {/* Dataset name and icon */}
       <div className={rowClass}>
         <div className={labelClass}>
-          <div className="system-sm-semibold text-text-secondary">{t('datasetSettings.form.nameAndIcon')}</div>
+          <div className="system-sm-semibold text-text-secondary">{t('form.nameAndIcon', { ns: 'datasetSettings' })}</div>
         </div>
         <div className="flex grow items-center gap-x-2">
           <AppIcon
@@ -236,13 +236,13 @@ const Form = () => {
       {/* Dataset description */}
       <div className={rowClass}>
         <div className={labelClass}>
-          <div className="system-sm-semibold text-text-secondary">{t('datasetSettings.form.desc')}</div>
+          <div className="system-sm-semibold text-text-secondary">{t('form.desc', { ns: 'datasetSettings' })}</div>
         </div>
         <div className="grow">
           <Textarea
             disabled={!currentDataset?.embedding_available}
             className="resize-none"
-            placeholder={t('datasetSettings.form.descPlaceholder') || ''}
+            placeholder={t('form.descPlaceholder', { ns: 'datasetSettings' }) || ''}
             value={description}
             onChange={e => setDescription(e.target.value)}
           />
@@ -251,7 +251,7 @@ const Form = () => {
       {/* Permissions */}
       <div className={rowClass}>
         <div className={labelClass}>
-          <div className="system-sm-semibold text-text-secondary">{t('datasetSettings.form.permissions')}</div>
+          <div className="system-sm-semibold text-text-secondary">{t('form.permissions', { ns: 'datasetSettings' })}</div>
         </div>
         <div className="grow">
           <PermissionSelector
@@ -275,7 +275,7 @@ const Form = () => {
             <div className={rowClass}>
               <div className="flex w-[180px] shrink-0 flex-col">
                 <div className="system-sm-semibold flex h-8 items-center text-text-secondary">
-                  {t('datasetSettings.form.chunkStructure.title')}
+                  {t('form.chunkStructure.title', { ns: 'datasetSettings' })}
                 </div>
                 <div className="body-xs-regular text-text-tertiary">
                   <a
@@ -284,9 +284,9 @@ const Form = () => {
                     href={docLink('/guides/knowledge-base/create-knowledge-and-upload-documents/chunking-and-cleaning-text')}
                     className="text-text-accent"
                   >
-                    {t('datasetSettings.form.chunkStructure.learnMore')}
+                    {t('form.chunkStructure.learnMore', { ns: 'datasetSettings' })}
                   </a>
-                  {t('datasetSettings.form.chunkStructure.description')}
+                  {t('form.chunkStructure.description', { ns: 'datasetSettings' })}
                 </div>
               </div>
               <div className="grow">
@@ -307,7 +307,7 @@ const Form = () => {
       {isShowIndexMethod && (
         <div className={rowClass}>
           <div className={labelClass}>
-            <div className="system-sm-semibold text-text-secondary">{t('datasetSettings.form.indexMethod')}</div>
+            <div className="system-sm-semibold text-text-secondary">{t('form.indexMethod', { ns: 'datasetSettings' })}</div>
           </div>
           <div className="grow">
             <IndexMethod
@@ -325,7 +325,7 @@ const Form = () => {
                   <RiAlertFill className="size-4 text-text-warning-secondary" />
                 </div>
                 <span className="system-xs-medium text-text-primary">
-                  {t('datasetSettings.form.upgradeHighQualityTip')}
+                  {t('form.upgradeHighQualityTip', { ns: 'datasetSettings' })}
                 </span>
               </div>
             )}
@@ -336,7 +336,7 @@ const Form = () => {
         <div className={rowClass}>
           <div className={labelClass}>
             <div className="system-sm-semibold text-text-secondary">
-              {t('datasetSettings.form.embeddingModel')}
+              {t('form.embeddingModel', { ns: 'datasetSettings' })}
             </div>
           </div>
           <div className="grow">
@@ -358,7 +358,7 @@ const Form = () => {
               />
               <div className={rowClass}>
                 <div className={labelClass}>
-                  <div className="system-sm-semibold text-text-secondary">{t('datasetSettings.form.retrievalSetting.title')}</div>
+                  <div className="system-sm-semibold text-text-secondary">{t('form.retrievalSetting.title', { ns: 'datasetSettings' })}</div>
                 </div>
                 <RetrievalSettings
                   topK={topK}
@@ -374,7 +374,7 @@ const Form = () => {
               />
               <div className={rowClass}>
                 <div className={labelClass}>
-                  <div className="system-sm-semibold text-text-secondary">{t('datasetSettings.form.externalKnowledgeAPI')}</div>
+                  <div className="system-sm-semibold text-text-secondary">{t('form.externalKnowledgeAPI', { ns: 'datasetSettings' })}</div>
                 </div>
                 <div className="w-full">
                   <div className="flex h-full items-center gap-1 rounded-lg bg-components-input-bg-normal px-3 py-2">
@@ -391,7 +391,7 @@ const Form = () => {
               </div>
               <div className={rowClass}>
                 <div className={labelClass}>
-                  <div className="system-sm-semibold text-text-secondary">{t('datasetSettings.form.externalKnowledgeID')}</div>
+                  <div className="system-sm-semibold text-text-secondary">{t('form.externalKnowledgeID', { ns: 'datasetSettings' })}</div>
                 </div>
                 <div className="w-full">
                   <div className="flex h-full items-center gap-1 rounded-lg bg-components-input-bg-normal px-3 py-2">
@@ -415,7 +415,7 @@ const Form = () => {
                   <div className={labelClass}>
                     <div className="flex w-[180px] shrink-0 flex-col">
                       <div className="system-sm-semibold flex h-7 items-center pt-1 text-text-secondary">
-                        {t('datasetSettings.form.retrievalSetting.title')}
+                        {t('form.retrievalSetting.title', { ns: 'datasetSettings' })}
                       </div>
                       <div className="body-xs-regular text-text-tertiary">
                         <a
@@ -427,9 +427,9 @@ const Form = () => {
                           })}
                           className="text-text-accent"
                         >
-                          {t('datasetSettings.form.retrievalSetting.learnMore')}
+                          {t('form.retrievalSetting.learnMore', { ns: 'datasetSettings' })}
                         </a>
-                        {t('datasetSettings.form.retrievalSetting.description')}
+                        {t('form.retrievalSetting.description', { ns: 'datasetSettings' })}
                       </div>
                     </div>
                   </div>
@@ -467,7 +467,7 @@ const Form = () => {
             disabled={loading}
             onClick={handleSave}
           >
-            {t('datasetSettings.form.save')}
+            {t('form.save', { ns: 'datasetSettings' })}
           </Button>
         </div>
       </div>

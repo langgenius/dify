@@ -72,7 +72,7 @@ const DataSourceWebsite: FC<Props> = ({ provider }) => {
         setSources(sources.filter(item => item.provider !== provider))
         Toast.notify({
           type: 'success',
-          message: t('common.api.remove'),
+          message: t('api.remove', { ns: 'common' }),
         })
       }
     }

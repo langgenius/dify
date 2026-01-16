@@ -10,19 +10,19 @@ export const useChunkStructureConfig = () => {
   const GeneralOption: Option = {
     icon: <GeneralChunk className="size-4" />,
     title: 'General',
-    description: t('datasetCreation.stepTwo.generalTip'),
+    description: t('stepTwo.generalTip', { ns: 'datasetCreation' }),
     effectColor: EffectColor.indigo,
   }
   const ParentChildOption: Option = {
     icon: <ParentChildChunk className="size-4" />,
     title: 'Parent-Child',
-    description: t('datasetCreation.stepTwo.parentChildTip'),
+    description: t('stepTwo.parentChildTip', { ns: 'datasetCreation' }),
     effectColor: EffectColor.blueLight,
   }
   const QuestionAnswerOption: Option = {
     icon: <QuestionAndAnswer className="size-4" />,
     title: 'Q&A',
-    description: t('datasetCreation.stepTwo.qaTip'),
+    description: t('stepTwo.qaTip', { ns: 'datasetCreation' }),
     effectColor: EffectColor.green,
 
   }

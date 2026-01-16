@@ -431,10 +431,10 @@ class TestWorkflowResponseConverterServiceApiTruncation:
                 description="Explore calls should have truncation enabled",
             ),
             TestCase(
-                name="published_truncation_enabled",
-                invoke_from=InvokeFrom.PUBLISHED,
+                name="published_pipeline_truncation_enabled",
+                invoke_from=InvokeFrom.PUBLISHED_PIPELINE,
                 expected_truncation_enabled=True,
-                description="Published app calls should have truncation enabled",
+                description="Published pipeline calls should have truncation enabled",
             ),
         ],
         ids=lambda x: x.name,

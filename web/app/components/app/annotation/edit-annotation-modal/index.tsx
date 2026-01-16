@@ -73,12 +73,12 @@ const EditAnnotationModal: FC<Props> = ({
       }
 
       Toast.notify({
-        message: t('common.api.actionSuccess') as string,
+        message: t('api.actionSuccess', { ns: 'common' }) as string,
         type: 'success',
       })
     }
     catch (error) {
-      const fallbackMessage = t('common.api.actionFailed') as string
+      const fallbackMessage = t('api.actionFailed', { ns: 'common' }) as string
       const message = error instanceof Error && error.message ? error.message : fallbackMessage
       Toast.notify({
         message,
@@ -96,7 +96,7 @@ const EditAnnotationModal: FC<Props> = ({
         isShow={isShow}
         onHide={onHide}
         maxWidthClassName="!max-w-[480px]"
-        title={t('appAnnotation.editModal.title') as string}
+        title={t('editModal.title', { ns: 'appAnnotation' }) as string}
         body={(
           <div>
             <div className="space-y-6 p-6 pb-4">
@@ -120,7 +120,7 @@ const EditAnnotationModal: FC<Props> = ({
                   setShowModal(false)
                   onHide()
                 }}
-                title={t('appDebug.feature.annotation.removeConfirm')}
+                title={t('feature.annotation.removeConfirm', { ns: 'appDebug' })}
               />
             </div>
           </div>
@@ -142,13 +142,13 @@ const EditAnnotationModal: FC<Props> = ({
                         onClick={() => setShowModal(true)}
                       >
                         <MessageCheckRemove />
-                        <div>{t('appAnnotation.editModal.removeThisCache')}</div>
+                        <div>{t('editModal.removeThisCache', { ns: 'appAnnotation' })}</div>
                       </div>
                       {createdAt && (
                         <div>
-                          {t('appAnnotation.editModal.createdAt')}
+                          {t('editModal.createdAt', { ns: 'appAnnotation' })}
 &nbsp;
-                          {formatTime(createdAt, t('appLog.dateTimeFormat') as string)}
+                          {formatTime(createdAt, t('dateTimeFormat', { ns: 'appLog' }) as string)}
                         </div>
                       )}
                     </div>

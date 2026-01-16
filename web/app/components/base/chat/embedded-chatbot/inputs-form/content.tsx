@@ -50,7 +50,7 @@ const InputsFormContent = ({ showTip }: Props) => {
             <div className="flex h-6 items-center gap-1">
               <div className="system-md-semibold text-text-secondary">{form.label}</div>
               {!form.required && (
-                <div className="system-xs-regular text-text-tertiary">{t('workflow.panel.optional')}</div>
+                <div className="system-xs-regular text-text-tertiary">{t('panel.optional', { ns: 'workflow' })}</div>
               )}
             </div>
           )}
@@ -134,7 +134,7 @@ const InputsFormContent = ({ showTip }: Props) => {
         </div>
       ))}
       {showTip && (
-        <div className="system-xs-regular text-text-tertiary">{t('share.chat.chatFormTip')}</div>
+        <div className="system-xs-regular text-text-tertiary">{t('chat.chatFormTip', { ns: 'share' })}</div>
       )}
     </div>
   )

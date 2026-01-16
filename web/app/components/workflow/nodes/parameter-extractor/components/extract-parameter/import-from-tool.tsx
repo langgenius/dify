@@ -23,7 +23,7 @@ import { canFindTool } from '@/utils'
 import { cn } from '@/utils/classnames'
 import BlockSelector from '../../../../block-selector'
 
-const i18nPrefix = 'workflow.nodes.parameterExtractor'
+const i18nPrefix = 'nodes.parameterExtractor'
 
 type Props = {
   onImport: (params: Param[]) => void
@@ -82,7 +82,7 @@ const ImportFromTool: FC<Props> = ({
           open && 'bg-state-base-hover',
         )}
         >
-          {t(`${i18nPrefix}.importFromTool`)}
+          {t(`${i18nPrefix}.importFromTool`, { ns: 'workflow' })}
         </div>
       </div>
     )

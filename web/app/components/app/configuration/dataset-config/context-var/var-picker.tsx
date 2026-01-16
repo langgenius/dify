@@ -72,7 +72,7 @@ const VarPicker: FC<Props> = ({
                 )
               : (
                   <div>
-                    {notSelectedVarTip || t('appDebug.feature.dataSet.queryVariable.choosePlaceholder')}
+                    {notSelectedVarTip || t('feature.dataSet.queryVariable.choosePlaceholder', { ns: 'appDebug' })}
                   </div>
                 )}
           </div>
@@ -99,8 +99,8 @@ const VarPicker: FC<Props> = ({
             )
           : (
               <div className="w-[240px] rounded-lg border border-components-panel-border bg-components-panel-bg p-6 shadow-lg">
-                <div className="mb-1 text-sm font-medium text-text-secondary">{t('appDebug.feature.dataSet.queryVariable.noVar')}</div>
-                <div className="text-xs leading-normal text-text-tertiary">{t('appDebug.feature.dataSet.queryVariable.noVarTip')}</div>
+                <div className="mb-1 text-sm font-medium text-text-secondary">{t('feature.dataSet.queryVariable.noVar', { ns: 'appDebug' })}</div>
+                <div className="text-xs leading-normal text-text-tertiary">{t('feature.dataSet.queryVariable.noVarTip', { ns: 'appDebug' })}</div>
               </div>
             )}
 

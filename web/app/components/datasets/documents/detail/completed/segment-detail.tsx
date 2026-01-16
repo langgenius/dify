@@ -122,12 +122,12 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
     const contentLength = docForm === ChunkingMode.qa ? (question.length + answer.length) : question.length
     const total = formatNumber(isEditMode ? contentLength : segInfo!.word_count as number)
     const count = isEditMode ? contentLength : segInfo!.word_count as number
-    return `${total} ${t('datasetDocuments.segment.characters', { count })}`
+    return `${total} ${t('segment.characters', { ns: 'datasetDocuments', count })}`
   }, [isEditMode, question.length, answer.length, docForm, segInfo, t])
 
   const isFullDocMode = docForm === ChunkingMode.parentChild && parentMode === 'full-doc'
-  const titleText = isEditMode ? t('datasetDocuments.segment.editChunk') : t('datasetDocuments.segment.chunkDetail')
-  const labelPrefix = docForm === ChunkingMode.parentChild ? t('datasetDocuments.segment.parentChunk') : t('datasetDocuments.segment.chunk')
+  const titleText = isEditMode ? t('segment.editChunk', { ns: 'datasetDocuments' }) : t('segment.chunkDetail', { ns: 'datasetDocuments' })
+  const labelPrefix = docForm === ChunkingMode.parentChild ? t('segment.parentChunk', { ns: 'datasetDocuments' }) : t('segment.chunk', { ns: 'datasetDocuments' })
   const isECOIndexing = indexingTechnique === IndexingType.ECONOMICAL
 
   return (

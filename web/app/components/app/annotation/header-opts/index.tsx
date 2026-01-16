@@ -13,15 +13,14 @@ import { useTranslation } from 'react-i18next'
 import {
   useCSVDownloader,
 } from 'react-papaparse'
-import { useContext } from 'use-context-selector'
 import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 import { FileDownload02, FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
 import CustomPopover from '@/app/components/base/popover'
-import I18n from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
 import { clearAllAnnotations, fetchExportAnnotationList } from '@/service/annotation'
-import { cn } from '@/utils/classnames'
 
+import { cn } from '@/utils/classnames'
 import Button from '../../../base/button'
 import AddAnnotationModal from '../add-annotation-modal'
 import BatchAddModal from '../batch-add-annotation-modal'
@@ -44,7 +43,7 @@ const HeaderOptions: FC<Props> = ({
   controlUpdateList,
 }) => {
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
+  const locale = useLocale()
   const { CSVDownloader, Type } = useCSVDownloader()
   const [list, setList] = useState<AnnotationItemBasic[]>([])
   const annotationUnavailable = list.length === 0
@@ -108,12 +107,12 @@ const HeaderOptions: FC<Props> = ({
           }}
         >
           <FilePlus02 className="h-4 w-4 text-text-tertiary" />
-          <span className="system-sm-regular grow text-left text-text-secondary">{t('appAnnotation.table.header.bulkImport')}</span>
+          <span className="system-sm-regular grow text-left text-text-secondary">{t('table.header.bulkImport', { ns: 'appAnnotation' })}</span>
         </button>
         <Menu as="div" className="relative h-full w-full">
           <MenuButton className="mx-1 flex h-9 w-[calc(100%_-_8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50">
             <FileDownload02 className="h-4 w-4 text-text-tertiary" />
-            <span className="system-sm-regular grow text-left text-text-secondary">{t('appAnnotation.table.header.bulkExport')}</span>
+            <span className="system-sm-regular grow text-left text-text-secondary">{t('table.header.bulkExport', { ns: 'appAnnotation' })}</span>
             <ChevronRight className="h-[14px] w-[14px] shrink-0 text-text-tertiary" />
           </MenuButton>
           <Transition
@@ -156,7 +155,7 @@ const HeaderOptions: FC<Props> = ({
         >
           <RiDeleteBinLine className="h-4 w-4" />
           <span className="system-sm-regular grow text-left">
-            {t('appAnnotation.table.header.clearAll')}
+            {t('table.header.clearAll', { ns: 'appAnnotation' })}
           </span>
         </button>
       </div>
@@ -169,7 +168,7 @@ const HeaderOptions: FC<Props> = ({
     <div className="flex space-x-2">
       <Button variant="primary" onClick={() => setShowAddModal(true)}>
         <RiAddLine className="mr-0.5 h-4 w-4" />
-        <div>{t('appAnnotation.table.header.addAnnotation')}</div>
+        <div>{t('table.header.addAnnotation', { ns: 'appAnnotation' })}</div>
       </Button>
       <CustomPopover
         htmlContent={<Operations />}

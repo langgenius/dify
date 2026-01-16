@@ -64,6 +64,9 @@ engine.layer(DebugLoggingLayer(level="INFO"))
 engine.layer(ExecutionLimitsLayer(max_nodes=100))
 ```
 
+`engine.layer()` binds the read-only runtime state before execution, so layer hooks
+can assume `graph_runtime_state` is available.
+
 ### Event-Driven Architecture
 
 All node executions emit events for monitoring and integration:

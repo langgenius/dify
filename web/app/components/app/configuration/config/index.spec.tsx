@@ -17,13 +17,11 @@ vi.mock('use-context-selector', async (importOriginal) => {
 
 const mockFormattingDispatcher = vi.fn()
 vi.mock('../debug/hooks', () => ({
-  __esModule: true,
   useFormattingChangedDispatcher: () => mockFormattingDispatcher,
 }))
 
 let latestConfigPromptProps: any
 vi.mock('@/app/components/app/configuration/config-prompt', () => ({
-  __esModule: true,
   default: (props: any) => {
     latestConfigPromptProps = props
     return <div data-testid="config-prompt" />
@@ -32,7 +30,6 @@ vi.mock('@/app/components/app/configuration/config-prompt', () => ({
 
 let latestConfigVarProps: any
 vi.mock('@/app/components/app/configuration/config-var', () => ({
-  __esModule: true,
   default: (props: any) => {
     latestConfigVarProps = props
     return <div data-testid="config-var" />
@@ -40,33 +37,27 @@ vi.mock('@/app/components/app/configuration/config-var', () => ({
 }))
 
 vi.mock('../dataset-config', () => ({
-  __esModule: true,
   default: () => <div data-testid="dataset-config" />,
 }))
 
 vi.mock('./agent/agent-tools', () => ({
-  __esModule: true,
   default: () => <div data-testid="agent-tools" />,
 }))
 
 vi.mock('../config-vision', () => ({
-  __esModule: true,
   default: () => <div data-testid="config-vision" />,
 }))
 
 vi.mock('./config-document', () => ({
-  __esModule: true,
   default: () => <div data-testid="config-document" />,
 }))
 
 vi.mock('./config-audio', () => ({
-  __esModule: true,
   default: () => <div data-testid="config-audio" />,
 }))
 
 let latestHistoryPanelProps: any
 vi.mock('../config-prompt/conversation-history/history-panel', () => ({
-  __esModule: true,
   default: (props: any) => {
     latestHistoryPanelProps = props
     return <div data-testid="history-panel" />

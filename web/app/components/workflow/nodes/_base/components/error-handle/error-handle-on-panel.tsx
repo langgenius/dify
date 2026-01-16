@@ -55,9 +55,9 @@ const ErrorHandle = ({
               <div className="flex grow items-center justify-between pr-4">
                 <div className="flex items-center">
                   <div className="system-sm-semibold-uppercase mr-0.5 text-text-secondary">
-                    {t('workflow.nodes.common.errorHandle.title')}
+                    {t('nodes.common.errorHandle.title', { ns: 'workflow' })}
                   </div>
-                  <Tooltip popupContent={t('workflow.nodes.common.errorHandle.tip')} />
+                  <Tooltip popupContent={t('nodes.common.errorHandle.tip', { ns: 'workflow' })} />
                   {collapseIcon}
                 </div>
                 <ErrorHandleTypeSelector

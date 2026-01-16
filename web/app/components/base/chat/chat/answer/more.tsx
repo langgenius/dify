@@ -19,15 +19,15 @@ const More: FC<MoreProps> = ({
           <>
             <div
               className="mr-2 max-w-[25%] shrink-0 truncate"
-              title={`${t('appLog.detail.timeConsuming')} ${more.latency}${t('appLog.detail.second')}`}
+              title={`${t('detail.timeConsuming', { ns: 'appLog' })} ${more.latency}${t('detail.second', { ns: 'appLog' })}`}
             >
-              {`${t('appLog.detail.timeConsuming')} ${more.latency}${t('appLog.detail.second')}`}
+              {`${t('detail.timeConsuming', { ns: 'appLog' })} ${more.latency}${t('detail.second', { ns: 'appLog' })}`}
             </div>
             <div
               className="mr-2 max-w-[25%] shrink-0 truncate"
-              title={`${t('appLog.detail.tokenCost')} ${formatNumber(more.tokens)}`}
+              title={`${t('detail.tokenCost', { ns: 'appLog' })} ${formatNumber(more.tokens)}`}
             >
-              {`${t('appLog.detail.tokenCost')} ${formatNumber(more.tokens)}`}
+              {`${t('detail.tokenCost', { ns: 'appLog' })} ${formatNumber(more.tokens)}`}
             </div>
             {more.tokens_per_second && (
               <div

@@ -67,7 +67,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
           viewNewlyAddedChunk()
         }}
       >
-        {t('common.operation.view')}
+        {t('operation.view', { ns: 'common' })}
       </button>
     </>
   ), [viewNewlyAddedChunk, t])
@@ -89,13 +89,13 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
       if (!question.trim()) {
         return notify({
           type: 'error',
-          message: t('datasetDocuments.segment.questionEmpty'),
+          message: t('segment.questionEmpty', { ns: 'datasetDocuments' }),
         })
       }
       if (!answer.trim()) {
         return notify({
           type: 'error',
-          message: t('datasetDocuments.segment.answerEmpty'),
+          message: t('segment.answerEmpty', { ns: 'datasetDocuments' }),
         })
       }
 
@@ -106,7 +106,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
       if (!question.trim()) {
         return notify({
           type: 'error',
-          message: t('datasetDocuments.segment.contentEmpty'),
+          message: t('segment.contentEmpty', { ns: 'datasetDocuments' }),
         })
       }
 
@@ -124,7 +124,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
       onSuccess() {
         notify({
           type: 'success',
-          message: t('datasetDocuments.segment.chunkAdded'),
+          message: t('segment.chunkAdded', { ns: 'datasetDocuments' }),
           className: `!w-[296px] !bottom-0 ${appSidebarExpand === 'expand' ? '!left-[216px]' : '!left-14'}
           !top-auto !right-auto !mb-[52px] !ml-11`,
           customComponent: CustomButton,
@@ -147,7 +147,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
 
   const wordCountText = useMemo(() => {
     const count = docForm === ChunkingMode.qa ? (question.length + answer.length) : question.length
-    return `${formatNumber(count)} ${t('datasetDocuments.segment.characters', { count })}`
+    return `${formatNumber(count)} ${t('segment.characters', { ns: 'datasetDocuments', count })}`
   }, [question.length, answer.length, docForm, t])
 
   const isECOIndexing = indexingTechnique === IndexingType.ECONOMICAL
@@ -159,10 +159,10 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
       >
         <div className="flex flex-col">
           <div className="system-xl-semibold text-text-primary">
-            {t('datasetDocuments.segment.addChunk')}
+            {t('segment.addChunk', { ns: 'datasetDocuments' })}
           </div>
           <div className="flex items-center gap-x-2">
-            <SegmentIndexTag label={t('datasetDocuments.segment.newChunk')!} />
+            <SegmentIndexTag label={t('segment.newChunk', { ns: 'datasetDocuments' })!} />
             <Dot />
             <span className="system-xs-medium text-text-tertiary">{wordCountText}</span>
           </div>

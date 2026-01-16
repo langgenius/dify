@@ -2,7 +2,6 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import AnnotationFullModal from './modal'
 
 vi.mock('./usage', () => ({
-  __esModule: true,
   default: (props: { className?: string }) => {
     return (
       <div data-testid="usage-component" data-classname={props.className ?? ''}>
@@ -14,7 +13,6 @@ vi.mock('./usage', () => ({
 
 let mockUpgradeBtnProps: { loc?: string } | null = null
 vi.mock('../upgrade-btn', () => ({
-  __esModule: true,
   default: (props: { loc?: string }) => {
     mockUpgradeBtnProps = props
     return (
@@ -32,7 +30,6 @@ type ModalSnapshot = {
 }
 let mockModalProps: ModalSnapshot | null = null
 vi.mock('../../base/modal', () => ({
-  __esModule: true,
   default: ({ isShow, children, onClose, closable, className }: { isShow: boolean, children: React.ReactNode, onClose: () => void, closable?: boolean, className?: string }) => {
     mockModalProps = {
       isShow,

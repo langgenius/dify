@@ -29,7 +29,7 @@ const ConfigModel = ({
         onClick={onClick}
       >
         <RiScales3Line className="mr-0.5 h-3 w-3" />
-        {t('common.modelProvider.auth.authorizationError')}
+        {t('modelProvider.auth.authorizationError', { ns: 'common' })}
         <Indicator color="orange" className="absolute right-[-1px] top-[-1px] h-1.5 w-1.5" />
       </div>
     )
@@ -48,7 +48,7 @@ const ConfigModel = ({
       {
         credentialRemoved && (
           <>
-            {t('common.modelProvider.auth.credentialRemoved')}
+            {t('modelProvider.auth.credentialRemoved', { ns: 'common' })}
             <Indicator color="red" className="ml-2" />
           </>
         )
@@ -57,7 +57,7 @@ const ConfigModel = ({
         !loadBalancingEnabled && !credentialRemoved && !loadBalancingInvalid && (
           <>
             <RiEqualizer2Line className="mr-1 h-4 w-4" />
-            {t('common.operation.config')}
+            {t('operation.config', { ns: 'common' })}
           </>
         )
       }
@@ -65,7 +65,7 @@ const ConfigModel = ({
         loadBalancingEnabled && !credentialRemoved && !loadBalancingInvalid && (
           <>
             <RiScales3Line className="mr-1 h-4 w-4" />
-            {t('common.modelProvider.auth.configLoadBalancing')}
+            {t('modelProvider.auth.configLoadBalancing', { ns: 'common' })}
           </>
         )
       }

@@ -17,8 +17,8 @@ const LicenseNav = () => {
     return (
       <PremiumBadge color="orange" className="select-none">
         <RiHourglass2Fill className="flex size-3 items-center pl-0.5 text-components-premium-badge-indigo-text-stop-0" />
-        {count <= 1 && <span className="system-xs-medium px-0.5">{t('common.license.expiring', { count })}</span>}
-        {count > 1 && <span className="system-xs-medium px-0.5">{t('common.license.expiring_plural', { count })}</span>}
+        {count <= 1 && <span className="system-xs-medium px-0.5">{t('license.expiring', { ns: 'common', count })}</span>}
+        {count > 1 && <span className="system-xs-medium px-0.5">{t('license.expiring_plural', { ns: 'common', count })}</span>}
       </PremiumBadge>
     )
   }

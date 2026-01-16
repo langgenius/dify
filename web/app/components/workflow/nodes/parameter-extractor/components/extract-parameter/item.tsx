@@ -9,7 +9,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 
-const i18nPrefix = 'workflow.nodes.parameterExtractor'
+const i18nPrefix = 'nodes.parameterExtractor'
 
 type Props = {
   payload: Param
@@ -33,7 +33,7 @@ const Item: FC<Props> = ({
           <div className="ml-2 text-xs font-normal capitalize text-text-tertiary">{payload.type}</div>
         </div>
         {payload.required && (
-          <div className="text-xs font-normal uppercase leading-4 text-text-tertiary">{t(`${i18nPrefix}.addExtractParameterContent.required`)}</div>
+          <div className="text-xs font-normal uppercase leading-4 text-text-tertiary">{t(`${i18nPrefix}.addExtractParameterContent.required`, { ns: 'workflow' })}</div>
         )}
       </div>
       <div className="mt-0.5 text-xs font-normal leading-[18px] text-text-tertiary">{payload.description}</div>

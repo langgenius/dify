@@ -45,7 +45,7 @@ const AgentLogModal: FC<AgentLogModalProps> = ({
       }}
       ref={ref}
     >
-      <h1 className="text-md shrink-0 px-4 py-1 font-semibold text-text-primary">{t('appLog.runDetail.workflowTitle')}</h1>
+      <h1 className="text-md shrink-0 px-4 py-1 font-semibold text-text-primary">{t('runDetail.workflowTitle', { ns: 'appLog' })}</h1>
       <span className="absolute right-3 top-4 z-20 cursor-pointer p-1" onClick={onCancel}>
         <RiCloseLine className="h-4 w-4 text-text-tertiary" />
       </span>

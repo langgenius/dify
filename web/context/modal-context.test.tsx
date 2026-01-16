@@ -1,4 +1,5 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import * as React from 'react'
 import { defaultPlan } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'
@@ -38,7 +39,6 @@ const triggerEventsLimitModalMock = vi.fn((props: any) => {
 })
 
 vi.mock('@/app/components/billing/trigger-events-limit-modal', () => ({
-  __esModule: true,
   default: (props: any) => triggerEventsLimitModalMock(props),
 }))
 
@@ -72,9 +72,11 @@ const createPlan = (overrides: PlanOverrides = {}): PlanShape => ({
 })
 
 const renderProvider = () => render(
-  <ModalContextProvider>
-    <div data-testid="modal-context-test-child" />
-  </ModalContextProvider>,
+  <NuqsTestingAdapter>
+    <ModalContextProvider>
+      <div data-testid="modal-context-test-child" />
+    </ModalContextProvider>
+  </NuqsTestingAdapter>,
 )
 
 describe('ModalContextProvider trigger events limit modal', () => {

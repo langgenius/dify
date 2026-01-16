@@ -3,7 +3,6 @@ import type { InvitationResult } from '@/models/common'
 import { RiPencilLine, RiUserAddLine } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import Avatar from '@/app/components/base/avatar'
 import Button from '@/app/components/base/button'
 import Tooltip from '@/app/components/base/tooltip'
@@ -12,7 +11,7 @@ import { Plan } from '@/app/components/billing/type'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import I18n from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { LanguagesSupported } from '@/i18n-config/language'
@@ -28,13 +27,13 @@ import TransferOwnershipModal from './transfer-ownership-modal'
 const MembersPage = () => {
   const { t } = useTranslation()
   const RoleMap = {
-    owner: t('common.members.owner'),
-    admin: t('common.members.admin'),
-    editor: t('common.members.editor'),
-    dataset_operator: t('common.members.datasetOperator'),
-    normal: t('common.members.normal'),
+    owner: t('members.owner', { ns: 'common' }),
+    admin: t('members.admin', { ns: 'common' }),
+    editor: t('members.editor', { ns: 'common' }),
+    dataset_operator: t('members.datasetOperator', { ns: 'common' }),
+    normal: t('members.normal', { ns: 'common' }),
   }
-  const { locale } = useContext(I18n)
+  const locale = useLocale()
 
   const { userProfile, currentWorkspace, isCurrentWorkspaceOwner, isCurrentWorkspaceManager } = useAppContext()
   const { data, refetch } = useMembers()
@@ -63,7 +62,7 @@ const MembersPage = () => {
               {isCurrentWorkspaceOwner && (
                 <span>
                   <Tooltip
-                    popupContent={t('common.account.editWorkspaceInfo')}
+                    popupContent={t('account.editWorkspaceInfo', { ns: 'common' })}
                   >
                     <div
                       className="cursor-pointer rounded-md p-1 hover:bg-black/5"
@@ -82,19 +81,19 @@ const MembersPage = () => {
                 ? (
                     <div className="flex space-x-1">
                       <div>
-                        {t('billing.plansCommon.member')}
+                        {t('plansCommon.member', { ns: 'billing' })}
                         {locale !== LanguagesSupported[1] && accounts.length > 1 && 's'}
                       </div>
                       <div className="">{accounts.length}</div>
                       <div>/</div>
-                      <div>{plan.total.teamMembers === NUM_INFINITE ? t('billing.plansCommon.unlimited') : plan.total.teamMembers}</div>
+                      <div>{plan.total.teamMembers === NUM_INFINITE ? t('plansCommon.unlimited', { ns: 'billing' }) : plan.total.teamMembers}</div>
                     </div>
                   )
                 : (
                     <div className="flex space-x-1">
                       <div>{accounts.length}</div>
                       <div>
-                        {t('billing.plansCommon.memberAfter')}
+                        {t('plansCommon.memberAfter', { ns: 'billing' })}
                         {locale !== LanguagesSupported[1] && accounts.length > 1 && 's'}
                       </div>
                     </div>
@@ -107,14 +106,14 @@ const MembersPage = () => {
           )}
           <Button variant="primary" className={cn('shrink-0')} disabled={!isCurrentWorkspaceManager || isMemberFull} onClick={() => setInviteModalVisible(true)}>
             <RiUserAddLine className="mr-1 h-4 w-4" />
-            {t('common.members.invite')}
+            {t('members.invite', { ns: 'common' })}
           </Button>
         </div>
         <div className="overflow-visible lg:overflow-visible">
           <div className="flex min-w-[480px] items-center border-b border-divider-regular py-[7px]">
-            <div className="system-xs-medium-uppercase grow px-3 text-text-tertiary">{t('common.members.name')}</div>
-            <div className="system-xs-medium-uppercase w-[104px] shrink-0 text-text-tertiary">{t('common.members.lastActive')}</div>
-            <div className="system-xs-medium-uppercase w-[96px] shrink-0 px-3 text-text-tertiary">{t('common.members.role')}</div>
+            <div className="system-xs-medium-uppercase grow px-3 text-text-tertiary">{t('members.name', { ns: 'common' })}</div>
+            <div className="system-xs-medium-uppercase w-[104px] shrink-0 text-text-tertiary">{t('members.lastActive', { ns: 'common' })}</div>
+            <div className="system-xs-medium-uppercase w-[96px] shrink-0 px-3 text-text-tertiary">{t('members.role', { ns: 'common' })}</div>
           </div>
           <div className="relative min-w-[480px]">
             {
@@ -125,8 +124,8 @@ const MembersPage = () => {
                     <div className="">
                       <div className="system-sm-medium text-text-secondary">
                         {account.name}
-                        {account.status === 'pending' && <span className="system-xs-medium ml-1 text-text-warning">{t('common.members.pending')}</span>}
-                        {userProfile.email === account.email && <span className="system-xs-regular text-text-tertiary">{t('common.members.you')}</span>}
+                        {account.status === 'pending' && <span className="system-xs-medium ml-1 text-text-warning">{t('members.pending', { ns: 'common' })}</span>}
+                        {userProfile.email === account.email && <span className="system-xs-regular text-text-tertiary">{t('members.you', { ns: 'common' })}</span>}
                       </div>
                       <div className="system-xs-regular text-text-tertiary">{account.email}</div>
                     </div>

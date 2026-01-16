@@ -1,4 +1,4 @@
-from flask_restx import Api, Namespace, fields
+from flask_restx import Namespace, fields
 
 from libs.helper import TimestampField
 
@@ -29,12 +29,12 @@ conversation_variable_infinite_scroll_pagination_fields = {
 }
 
 
-def build_conversation_variable_model(api_or_ns: Api | Namespace):
+def build_conversation_variable_model(api_or_ns: Namespace):
     """Build the conversation variable model for the API or Namespace."""
     return api_or_ns.model("ConversationVariable", conversation_variable_fields)
 
 
-def build_conversation_variable_infinite_scroll_pagination_model(api_or_ns: Api | Namespace):
+def build_conversation_variable_infinite_scroll_pagination_model(api_or_ns: Namespace):
     """Build the conversation variable infinite scroll pagination model for the API or Namespace."""
     # Build the nested variable model first
     conversation_variable_model = build_conversation_variable_model(api_or_ns)

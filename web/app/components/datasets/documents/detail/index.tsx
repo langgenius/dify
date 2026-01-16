@@ -18,7 +18,7 @@ import { useDocumentDetail, useDocumentMetadata, useInvalidDocumentList } from '
 import { useCheckSegmentBatchImportProgress, useChildSegmentListKey, useSegmentBatchImport, useSegmentListKey } from '@/service/knowledge/use-segment'
 import { useInvalid } from '@/service/use-base'
 import { cn } from '@/utils/classnames'
-import Operations from '../operations'
+import Operations from '../components/operations'
 import StatusItem from '../status-item'
 import BatchModal from './batch-modal'
 import Completed from './completed'
@@ -59,11 +59,11 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
         if (res.job_status === ProcessStatus.WAITING || res.job_status === ProcessStatus.PROCESSING)
           setTimeout(() => checkProcess(res.job_id), 2500)
         if (res.job_status === ProcessStatus.ERROR)
-          Toast.notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}` })
+          Toast.notify({ type: 'error', message: `${t('list.batchModal.runError', { ns: 'datasetDocuments' })}` })
       },
       onError: (e) => {
         const message = 'message' in e ? `: ${e.message}` : ''
-        Toast.notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}${message}` })
+        Toast.notify({ type: 'error', message: `${t('list.batchModal.runError', { ns: 'datasetDocuments' })}${message}` })
       },
     })
   }
@@ -80,7 +80,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
       },
       onError: (e) => {
         const message = 'message' in e ? `: ${e.message}` : ''
-        Toast.notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}${message}` })
+        Toast.notify({ type: 'error', message: `${t('list.batchModal.runError', { ns: 'datasetDocuments' })}${message}` })
       },
     })
   }

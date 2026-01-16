@@ -7,7 +7,6 @@ import Input from '@/app/components/base/input'
 import Select from '@/app/components/base/select'
 import Textarea from '@/app/components/base/textarea'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
-import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 import ConfigContext from '@/context/debug-configuration'
 import { cn } from '@/utils/classnames'
 
@@ -78,7 +77,7 @@ const ChatUserInput = ({
               {type !== 'checkbox' && (
                 <div className="system-sm-semibold mb-1 flex h-6 items-center gap-1 text-text-secondary">
                   <div className="truncate">{name || key}</div>
-                  {!required && <span className="system-xs-regular text-text-tertiary">{t('workflow.panel.optional')}</span>}
+                  {!required && <span className="system-xs-regular text-text-tertiary">{t('panel.optional', { ns: 'workflow' })}</span>}
                 </div>
               )}
               <div className="grow">
@@ -88,7 +87,7 @@ const ChatUserInput = ({
                     onChange={(e) => { handleInputValueChange(key, e.target.value) }}
                     placeholder={name}
                     autoFocus={index === 0}
-                    maxLength={max_length || DEFAULT_VALUE_MAX_LEN}
+                    maxLength={max_length}
                   />
                 )}
                 {type === 'paragraph' && (
@@ -115,7 +114,7 @@ const ChatUserInput = ({
                     onChange={(e) => { handleInputValueChange(key, e.target.value) }}
                     placeholder={name}
                     autoFocus={index === 0}
-                    maxLength={max_length || DEFAULT_VALUE_MAX_LEN}
+                    maxLength={max_length}
                   />
                 )}
                 {type === 'checkbox' && (

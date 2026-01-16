@@ -116,7 +116,7 @@ const UpdateDSLModal = ({
 
         if (status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS) {
           if (!pipeline_id) {
-            notify({ type: 'error', message: t('workflow.common.importFailure') })
+            notify({ type: 'error', message: t('common.importFailure', { ns: 'workflow' }) })
             return
           }
           handleWorkflowUpdate(pipeline_id)
@@ -124,8 +124,8 @@ const UpdateDSLModal = ({
             onImport()
           notify({
             type: status === DSLImportStatus.COMPLETED ? 'success' : 'warning',
-            message: t(status === DSLImportStatus.COMPLETED ? 'workflow.common.importSuccess' : 'workflow.common.importWarning'),
-            children: status === DSLImportStatus.COMPLETED_WITH_WARNINGS && t('workflow.common.importWarningDetails'),
+            message: t(status === DSLImportStatus.COMPLETED ? 'common.importSuccess' : 'common.importWarning', { ns: 'workflow' }),
+            children: status === DSLImportStatus.COMPLETED_WITH_WARNINGS && t('common.importWarningDetails', { ns: 'workflow' }),
           })
           await handleCheckPluginDependencies(pipeline_id, true)
           setLoading(false)
@@ -144,14 +144,14 @@ const UpdateDSLModal = ({
         }
         else {
           setLoading(false)
-          notify({ type: 'error', message: t('workflow.common.importFailure') })
+          notify({ type: 'error', message: t('common.importFailure', { ns: 'workflow' }) })
         }
       }
     }
     // eslint-disable-next-line unused-imports/no-unused-vars
     catch (e) {
       setLoading(false)
-      notify({ type: 'error', message: t('workflow.common.importFailure') })
+      notify({ type: 'error', message: t('common.importFailure', { ns: 'workflow' }) })
     }
     isCreatingRef.current = false
   }, [currentFile, fileContent, onCancel, notify, t, onImport, handleWorkflowUpdate, handleCheckPluginDependencies, workflowStore, importDSL])
@@ -166,26 +166,26 @@ const UpdateDSLModal = ({
 
       if (status === DSLImportStatus.COMPLETED) {
         if (!pipeline_id) {
-          notify({ type: 'error', message: t('workflow.common.importFailure') })
+          notify({ type: 'error', message: t('common.importFailure', { ns: 'workflow' }) })
           return
         }
         handleWorkflowUpdate(pipeline_id)
         await handleCheckPluginDependencies(pipeline_id, true)
         if (onImport)
           onImport()
-        notify({ type: 'success', message: t('workflow.common.importSuccess') })
+        notify({ type: 'success', message: t('common.importSuccess', { ns: 'workflow' }) })
         setLoading(false)
         onCancel()
       }
       else if (status === DSLImportStatus.FAILED) {
         setLoading(false)
-        notify({ type: 'error', message: t('workflow.common.importFailure') })
+        notify({ type: 'error', message: t('common.importFailure', { ns: 'workflow' }) })
       }
     }
     // eslint-disable-next-line unused-imports/no-unused-vars
     catch (e) {
       setLoading(false)
-      notify({ type: 'error', message: t('workflow.common.importFailure') })
+      notify({ type: 'error', message: t('common.importFailure', { ns: 'workflow' }) })
     }
   }
 
@@ -197,7 +197,7 @@ const UpdateDSLModal = ({
         onClose={onCancel}
       >
         <div className="mb-3 flex items-center justify-between">
-          <div className="title-2xl-semi-bold text-text-primary">{t('workflow.common.importDSL')}</div>
+          <div className="title-2xl-semi-bold text-text-primary">{t('common.importDSL', { ns: 'workflow' })}</div>
           <div className="flex h-[22px] w-[22px] cursor-pointer items-center justify-center" onClick={onCancel}>
             <RiCloseLine className="h-[18px] w-[18px] text-text-tertiary" />
           </div>
@@ -208,7 +208,7 @@ const UpdateDSLModal = ({
             <RiAlertFill className="h-4 w-4 shrink-0 text-text-warning-secondary" />
           </div>
           <div className="flex grow flex-col items-start gap-0.5 py-1">
-            <div className="system-xs-medium whitespace-pre-line text-text-primary">{t('workflow.common.importDSLTip')}</div>
+            <div className="system-xs-medium whitespace-pre-line text-text-primary">{t('common.importDSLTip', { ns: 'workflow' })}</div>
             <div className="flex items-start gap-1 self-stretch pb-0.5 pt-1">
               <Button
                 size="small"
@@ -218,7 +218,7 @@ const UpdateDSLModal = ({
               >
                 <RiFileDownloadLine className="h-3.5 w-3.5 text-components-button-secondary-text" />
                 <div className="flex items-center justify-center gap-1 px-[3px]">
-                  {t('workflow.common.backupCurrentDraft')}
+                  {t('common.backupCurrentDraft', { ns: 'workflow' })}
                 </div>
               </Button>
             </div>
@@ -226,7 +226,7 @@ const UpdateDSLModal = ({
         </div>
         <div>
           <div className="system-md-semibold pt-2 text-text-primary">
-            {t('workflow.common.chooseDSL')}
+            {t('common.chooseDSL', { ns: 'workflow' })}
           </div>
           <div className="flex w-full flex-col items-start justify-center gap-4 self-stretch py-4">
             <Uploader
@@ -239,14 +239,14 @@ const UpdateDSLModal = ({
           </div>
         </div>
         <div className="flex items-center justify-end gap-2 self-stretch pt-5">
-          <Button onClick={onCancel}>{t('app.newApp.Cancel')}</Button>
+          <Button onClick={onCancel}>{t('newApp.Cancel', { ns: 'app' })}</Button>
           <Button
             disabled={!currentFile || loading}
             variant="warning"
             onClick={handleImport}
             loading={loading}
           >
-            {t('workflow.common.overwriteAndImport')}
+            {t('common.overwriteAndImport', { ns: 'workflow' })}
           </Button>
         </div>
       </Modal>
@@ -256,24 +256,24 @@ const UpdateDSLModal = ({
         className="w-[480px]"
       >
         <div className="flex flex-col items-start gap-2 self-stretch pb-4">
-          <div className="title-2xl-semi-bold text-text-primary">{t('app.newApp.appCreateDSLErrorTitle')}</div>
+          <div className="title-2xl-semi-bold text-text-primary">{t('newApp.appCreateDSLErrorTitle', { ns: 'app' })}</div>
           <div className="system-md-regular flex grow flex-col text-text-secondary">
-            <div>{t('app.newApp.appCreateDSLErrorPart1')}</div>
-            <div>{t('app.newApp.appCreateDSLErrorPart2')}</div>
+            <div>{t('newApp.appCreateDSLErrorPart1', { ns: 'app' })}</div>
+            <div>{t('newApp.appCreateDSLErrorPart2', { ns: 'app' })}</div>
             <br />
             <div>
-              {t('app.newApp.appCreateDSLErrorPart3')}
+              {t('newApp.appCreateDSLErrorPart3', { ns: 'app' })}
               <span className="system-md-medium">{versions?.importedVersion}</span>
             </div>
             <div>
-              {t('app.newApp.appCreateDSLErrorPart4')}
+              {t('newApp.appCreateDSLErrorPart4', { ns: 'app' })}
               <span className="system-md-medium">{versions?.systemVersion}</span>
             </div>
           </div>
         </div>
         <div className="flex items-start justify-end gap-2 self-stretch pt-6">
-          <Button variant="secondary" onClick={() => setShowErrorModal(false)}>{t('app.newApp.Cancel')}</Button>
-          <Button variant="primary" destructive onClick={onUpdateDSLConfirm}>{t('app.newApp.Confirm')}</Button>
+          <Button variant="secondary" onClick={() => setShowErrorModal(false)}>{t('newApp.Cancel', { ns: 'app' })}</Button>
+          <Button variant="primary" destructive onClick={onUpdateDSLConfirm}>{t('newApp.Confirm', { ns: 'app' })}</Button>
         </div>
       </Modal>
     </>

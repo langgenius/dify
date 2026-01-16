@@ -94,7 +94,7 @@ const JsonImporter: FC<JsonImporterProps> = ({
             open && 'bg-components-button-ghost-bg-hover',
           )}
         >
-          <span className="px-0.5">{t('workflow.nodes.llm.jsonSchema.import')}</span>
+          <span className="px-0.5">{t('nodes.llm.jsonSchema.import', { ns: 'workflow' })}</span>
         </button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-[100]">
@@ -105,7 +105,7 @@ const JsonImporter: FC<JsonImporterProps> = ({
               <RiCloseLine className="h-4 w-4 text-text-tertiary" />
             </div>
             <div className="system-xl-semibold flex pl-1 pr-8 text-text-primary">
-              {t('workflow.nodes.llm.jsonSchema.import')}
+              {t('nodes.llm.jsonSchema.import', { ns: 'workflow' })}
             </div>
           </div>
           {/* Content */}
@@ -122,10 +122,10 @@ const JsonImporter: FC<JsonImporterProps> = ({
           {/* Footer */}
           <div className="flex items-center justify-end gap-x-2 p-4 pt-2">
             <Button variant="secondary" onClick={onClose}>
-              {t('common.operation.cancel')}
+              {t('operation.cancel', { ns: 'common' })}
             </Button>
             <Button variant="primary" onClick={handleSubmit}>
-              {t('common.operation.submit')}
+              {t('operation.submit', { ns: 'common' })}
             </Button>
           </div>
         </div>

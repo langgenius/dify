@@ -49,6 +49,9 @@ const useConfigVision = (model: ModelConfig, {
           variable_selector: ['sys', 'files'],
         }
       }
+      else if (!enabled) {
+        delete draft.configs
+      }
     })
     onChange(newPayload)
   }, [isChatMode, onChange, payload])

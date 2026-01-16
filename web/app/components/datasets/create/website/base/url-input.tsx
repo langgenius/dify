@@ -7,7 +7,7 @@ import Button from '@/app/components/base/button'
 import { useDocLink } from '@/context/i18n'
 import Input from './input'
 
-const I18N_PREFIX = 'datasetCreation.stepOne.website'
+const I18N_PREFIX = 'stepOne.website'
 
 type Props = {
   isRunning: boolean
@@ -43,7 +43,7 @@ const UrlInput: FC<Props> = ({
         loading={isRunning}
         spinnerClassName="!ml-0"
       >
-        {!isRunning ? t(`${I18N_PREFIX}.run`) : ''}
+        {!isRunning ? t(`${I18N_PREFIX}.run`, { ns: 'datasetCreation' }) : ''}
       </Button>
     </div>
   )

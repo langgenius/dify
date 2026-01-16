@@ -22,8 +22,8 @@ const EditItem: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const avatar = type === EditItemType.Query ? <User className="h-6 w-6" /> : <Robot className="h-6 w-6" />
-  const name = type === EditItemType.Query ? t('appAnnotation.addModal.queryName') : t('appAnnotation.addModal.answerName')
-  const placeholder = type === EditItemType.Query ? t('appAnnotation.addModal.queryPlaceholder') : t('appAnnotation.addModal.answerPlaceholder')
+  const name = type === EditItemType.Query ? t('addModal.queryName', { ns: 'appAnnotation' }) : t('addModal.answerName', { ns: 'appAnnotation' })
+  const placeholder = type === EditItemType.Query ? t('addModal.queryPlaceholder', { ns: 'appAnnotation' }) : t('addModal.answerPlaceholder', { ns: 'appAnnotation' })
 
   return (
     <div className="flex" onClick={e => e.stopPropagation()}>

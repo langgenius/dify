@@ -1,4 +1,3 @@
-import type { Fetcher } from 'swr'
 import type {
   MarketplaceCollectionPluginsResponse,
   MarketplaceCollectionsResponse,
@@ -82,11 +81,11 @@ export const fetchPluginInfoFromMarketPlace = async ({
   return getMarketplace<{ data: { plugin: PluginInfoFromMarketPlace, version: { version: string } } }>(`/plugins/${org}/${name}`)
 }
 
-export const fetchMarketplaceCollections: Fetcher<MarketplaceCollectionsResponse, { url: string }> = ({ url }) => {
+export const fetchMarketplaceCollections = ({ url }: { url: string }): Promise<MarketplaceCollectionsResponse> => {
   return get<MarketplaceCollectionsResponse>(url)
 }
 
-export const fetchMarketplaceCollectionPlugins: Fetcher<MarketplaceCollectionPluginsResponse, { url: string }> = ({ url }) => {
+export const fetchMarketplaceCollectionPlugins = ({ url }: { url: string }): Promise<MarketplaceCollectionPluginsResponse> => {
   return get<MarketplaceCollectionPluginsResponse>(url)
 }
 

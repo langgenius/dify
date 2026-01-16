@@ -31,14 +31,14 @@ const ResultPreview = ({
       {isRunning && !outputs && (
         <div className="flex grow flex-col items-center justify-center gap-y-2 pb-20">
           <RiLoader2Line className="size-4 animate-spin text-text-tertiary" />
-          <div className="system-sm-regular text-text-tertiary">{t('pipeline.result.resultPreview.loading')}</div>
+          <div className="system-sm-regular text-text-tertiary">{t('result.resultPreview.loading', { ns: 'pipeline' })}</div>
         </div>
       )}
       {!isRunning && error && (
         <div className="flex grow flex-col items-center justify-center gap-y-2 pb-20">
-          <div className="system-sm-regular text-text-tertiary">{t('pipeline.result.resultPreview.error')}</div>
+          <div className="system-sm-regular text-text-tertiary">{t('result.resultPreview.error', { ns: 'pipeline' })}</div>
           <Button onClick={onSwitchToDetail}>
-            {t('pipeline.result.resultPreview.viewDetails')}
+            {t('result.resultPreview.viewDetails', { ns: 'pipeline' })}
           </Button>
         </div>
       )}
@@ -47,8 +47,8 @@ const ResultPreview = ({
           <ChunkCardList chunkType={outputs.chunk_structure} chunkInfo={previewChunks} />
           <div className="system-xs-regular mt-1 flex items-center gap-x-2 text-text-tertiary">
             <div className="h-px flex-1 bg-gradient-to-r from-background-gradient-mask-transparent to-divider-regular" />
-            <span className="shrink-0truncate" title={t('pipeline.result.resultPreview.footerTip', { count: RAG_PIPELINE_PREVIEW_CHUNK_NUM })}>
-              {t('pipeline.result.resultPreview.footerTip', { count: RAG_PIPELINE_PREVIEW_CHUNK_NUM })}
+            <span className="shrink-0truncate" title={t('result.resultPreview.footerTip', { ns: 'pipeline', count: RAG_PIPELINE_PREVIEW_CHUNK_NUM })}>
+              {t('result.resultPreview.footerTip', { ns: 'pipeline', count: RAG_PIPELINE_PREVIEW_CHUNK_NUM })}
             </span>
             <div className="h-px flex-1 bg-gradient-to-l from-background-gradient-mask-transparent to-divider-regular" />
           </div>

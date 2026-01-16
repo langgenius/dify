@@ -38,7 +38,7 @@ const AdvancedActions: FC<AdvancedActionsProps> = ({
   return (
     <div className="flex items-center gap-x-1">
       <Button size="small" variant="secondary" onClick={onCancel}>
-        {t('common.operation.cancel')}
+        {t('operation.cancel', { ns: 'common' })}
       </Button>
       <Button
         className="flex items-center gap-x-1"
@@ -47,7 +47,7 @@ const AdvancedActions: FC<AdvancedActionsProps> = ({
         variant="primary"
         onClick={onConfirm}
       >
-        <span>{t('common.operation.confirm')}</span>
+        <span>{t('operation.confirm', { ns: 'common' })}</span>
         <div className="flex items-center gap-x-0.5">
           <Key keyName={getKeyboardKeyNameBySystem('ctrl')} />
           <Key keyName="⏎" />

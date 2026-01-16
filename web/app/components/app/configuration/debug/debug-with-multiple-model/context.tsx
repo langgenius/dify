@@ -1,7 +1,7 @@
 'use client'
 
 import type { ModelAndParameter } from '../types'
-import { noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import { createContext, useContext } from 'use-context-selector'
 
 export type DebugWithMultipleModelContextType = {

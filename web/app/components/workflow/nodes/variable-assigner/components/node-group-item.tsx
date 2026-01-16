@@ -25,7 +25,7 @@ import {
 import { filterVar } from '../utils'
 import AddVariable from './add-variable'
 
-const i18nPrefix = 'workflow.nodes.variableAssigner'
+const i18nPrefix = 'nodes.variableAssigner'
 type GroupItem = {
   groupEnabled: boolean
   targetHandleId: string
@@ -119,7 +119,7 @@ const NodeGroupItem = ({
               (showSelectedBorder || showSelectionBorder) && '!bg-black/[0.02]',
             )}
           >
-            {t(`${i18nPrefix}.varNotSet`)}
+            {t(`${i18nPrefix}.varNotSet`, { ns: 'workflow' })}
           </div>
         )
       }

@@ -20,7 +20,7 @@ import checkTaskStatus from '../../base/check-task-status'
 import useRefreshPluginList from '../../hooks/use-refresh-plugin-list'
 import InstallMulti from './install-multi'
 
-const i18nPrefix = 'plugin.installModal'
+const i18nPrefix = 'installModal'
 
 type Props = {
   allPlugins: Dependency[]
@@ -173,7 +173,7 @@ const Install: FC<Props> = ({
     <>
       <div className="flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3">
         <div className="system-md-regular text-text-secondary">
-          <p>{t(`${i18nPrefix}.${selectedPluginsNum > 1 ? 'readyToInstallPackages' : 'readyToInstallPackage'}`, { num: selectedPluginsNum })}</p>
+          <p>{t(`${i18nPrefix}.${selectedPluginsNum > 1 ? 'readyToInstallPackages' : 'readyToInstallPackage'}`, { ns: 'plugin', num: selectedPluginsNum })}</p>
         </div>
         <div className="w-full space-y-1 rounded-2xl bg-background-section-burn p-2">
           <InstallMulti
@@ -195,14 +195,14 @@ const Install: FC<Props> = ({
             {canInstall && (
               <div className="flex items-center gap-x-2" onClick={handleClickSelectAll}>
                 <Checkbox checked={isSelectAll} indeterminate={isIndeterminate} />
-                <p className="system-sm-medium cursor-pointer text-text-secondary">{isSelectAll ? t('common.operation.deSelectAll') : t('common.operation.selectAll')}</p>
+                <p className="system-sm-medium cursor-pointer text-text-secondary">{isSelectAll ? t('operation.deSelectAll', { ns: 'common' }) : t('operation.selectAll', { ns: 'common' })}</p>
               </div>
             )}
           </div>
           <div className="flex items-center justify-end gap-2 self-stretch">
             {!canInstall && (
               <Button variant="secondary" className="min-w-[72px]" onClick={handleCancel}>
-                {t('common.operation.cancel')}
+                {t('operation.cancel', { ns: 'common' })}
               </Button>
             )}
             <Button
@@ -212,7 +212,7 @@ const Install: FC<Props> = ({
               onClick={handleInstall}
             >
               {isInstalling && <RiLoader2Line className="h-4 w-4 animate-spin-slow" />}
-              <span>{t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`)}</span>
+              <span>{t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`, { ns: 'plugin' })}</span>
             </Button>
           </div>
         </div>

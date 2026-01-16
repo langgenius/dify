@@ -257,7 +257,7 @@ const DatasetConfig: FC = () => {
   return (
     <FeaturePanel
       className="mt-2"
-      title={t('appDebug.feature.dataSet.title')}
+      title={t('feature.dataSet.title', { ns: 'appDebug' })}
       headerRight={(
         <div className="flex items-center gap-1">
           {!isAgent && <ParamsConfig disabled={!hasData} selectedDatasets={dataSet} />}
@@ -283,7 +283,7 @@ const DatasetConfig: FC = () => {
           )
         : (
             <div className="mt-1 px-3 pb-3">
-              <div className="pb-1 pt-2 text-xs text-text-tertiary">{t('appDebug.feature.dataSet.noData')}</div>
+              <div className="pb-1 pt-2 text-xs text-text-tertiary">{t('feature.dataSet.noData', { ns: 'appDebug' })}</div>
             </div>
           )}
 

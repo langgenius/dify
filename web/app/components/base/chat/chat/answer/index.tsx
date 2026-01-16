@@ -111,7 +111,7 @@ const Answer: FC<AnswerProps> = ({
     }
   }, [switchSibling, item.prevSibling, item.nextSibling])
 
-  const contentIsEmpty = content.trim() === ''
+  const contentIsEmpty = typeof content === 'string' && content.trim() === ''
 
   return (
     <div className="mb-2 flex last:mb-0">
@@ -201,7 +201,7 @@ const Answer: FC<AnswerProps> = ({
               annotation?.id && annotation.authorName && (
                 <EditTitle
                   className="mt-1"
-                  title={t('appAnnotation.editBy', { author: annotation.authorName })}
+                  title={t('editBy', { ns: 'appAnnotation', author: annotation.authorName })}
                 />
               )
             }

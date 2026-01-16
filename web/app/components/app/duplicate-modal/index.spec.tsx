@@ -9,7 +9,6 @@ import DuplicateAppModal from './index'
 
 const appsFullRenderSpy = vi.fn()
 vi.mock('@/app/components/billing/apps-full-in-dialog', () => ({
-  __esModule: true,
   default: ({ loc }: { loc: string }) => {
     appsFullRenderSpy(loc)
     return <div data-testid="apps-full">AppsFull</div>

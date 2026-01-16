@@ -2,7 +2,7 @@
 import type { FormRefObject, FormSchema } from '@/app/components/base/form/types'
 import type { ParametersSchema, PluginDetail } from '@/app/components/plugins/types'
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
-import { isEqual } from 'es-toolkit/compat'
+import { isEqual } from 'es-toolkit/predicate'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
@@ -84,14 +84,14 @@ const MultiSteps = ({ currentStep, onStepClick }: { currentStep: EditStep, onSte
     <div className="mb-6 flex w-1/3 items-center gap-2">
       <StatusStep
         isActive={currentStep === EditStep.EditCredentials}
-        text={t('pluginTrigger.modal.steps.verify')}
+        text={t('modal.steps.verify', { ns: 'pluginTrigger' })}
         onClick={() => onStepClick?.(EditStep.EditCredentials)}
         clickable={currentStep === EditStep.EditConfiguration}
       />
       <div className="h-px w-3 shrink-0 bg-divider-deep"></div>
       <StatusStep
         isActive={currentStep === EditStep.EditConfiguration}
-        text={t('pluginTrigger.modal.steps.configuration')}
+        text={t('modal.steps.configuration', { ns: 'pluginTrigger' })}
       />
     </div>
   )
@@ -145,14 +145,14 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
         onSuccess: () => {
           Toast.notify({
             type: 'success',
-            message: t('pluginTrigger.modal.apiKey.verify.success'),
+            message: t('modal.apiKey.verify.success', { ns: 'pluginTrigger' }),
           })
           // Only save credentials if any field was modified (not all hidden)
           setVerifiedCredentials(areAllCredentialsHidden(credentials) ? null : credentials)
           setCurrentStep(EditStep.EditConfiguration)
         },
         onError: async (error: unknown) => {
-          const errorMessage = await parsePluginErrorMessage(error) || t('pluginTrigger.modal.apiKey.verify.error')
+          const errorMessage = await parsePluginErrorMessage(error) || t('modal.apiKey.verify.error', { ns: 'pluginTrigger' })
           Toast.notify({
             type: 'error',
             message: errorMessage,
@@ -194,13 +194,13 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
         onSuccess: () => {
           Toast.notify({
             type: 'success',
-            message: t('pluginTrigger.subscription.list.item.actions.edit.success'),
+            message: t('subscription.list.item.actions.edit.success', { ns: 'pluginTrigger' }),
           })
           refetch?.()
           onClose()
         },
         onError: async (error: unknown) => {
-          const errorMessage = await parsePluginErrorMessage(error) || t('pluginTrigger.subscription.list.item.actions.edit.error')
+          const errorMessage = await parsePluginErrorMessage(error) || t('subscription.list.item.actions.edit.error', { ns: 'pluginTrigger' })
           Toast.notify({
             type: 'error',
             message: errorMessage,
@@ -220,21 +220,21 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
   const basicFormSchemas: FormSchema[] = useMemo(() => [
     {
       name: 'subscription_name',
-      label: t('pluginTrigger.modal.form.subscriptionName.label'),
-      placeholder: t('pluginTrigger.modal.form.subscriptionName.placeholder'),
+      label: t('modal.form.subscriptionName.label', { ns: 'pluginTrigger' }),
+      placeholder: t('modal.form.subscriptionName.placeholder', { ns: 'pluginTrigger' }),
       type: FormTypeEnum.textInput,
       required: true,
       default: subscription.name,
     },
     {
       name: 'callback_url',
-      label: t('pluginTrigger.modal.form.callbackUrl.label'),
-      placeholder: t('pluginTrigger.modal.form.callbackUrl.placeholder'),
+      label: t('modal.form.callbackUrl.label', { ns: 'pluginTrigger' }),
+      placeholder: t('modal.form.callbackUrl.placeholder', { ns: 'pluginTrigger' }),
       type: FormTypeEnum.textInput,
       required: false,
       default: subscription.endpoint || '',
       disabled: true,
-      tooltip: t('pluginTrigger.modal.form.callbackUrl.tooltip'),
+      tooltip: t('modal.form.callbackUrl.tooltip', { ns: 'pluginTrigger' }),
       showCopy: true,
     },
   ], [t, subscription.name, subscription.endpoint])
@@ -274,9 +274,9 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
 
   const getConfirmButtonText = () => {
     if (currentStep === EditStep.EditCredentials)
-      return isVerifying ? t('pluginTrigger.modal.common.verifying') : t('pluginTrigger.modal.common.verify')
+      return isVerifying ? t('modal.common.verifying', { ns: 'pluginTrigger' }) : t('modal.common.verify', { ns: 'pluginTrigger' })
 
-    return isUpdating ? t('common.operation.saving') : t('common.operation.save')
+    return isUpdating ? t('operation.saving', { ns: 'common' }) : t('operation.save', { ns: 'common' })
   }
 
   const handleBack = () => {
@@ -286,14 +286,14 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
 
   return (
     <Modal
-      title={t('pluginTrigger.subscription.list.item.actions.edit.title')}
+      title={t('subscription.list.item.actions.edit.title', { ns: 'pluginTrigger' })}
       confirmButtonText={getConfirmButtonText()}
       onClose={onClose}
       onCancel={onClose}
       onConfirm={handleConfirm}
       disabled={isUpdating || isVerifying}
       showExtraButton={currentStep === EditStep.EditConfiguration}
-      extraButtonText={t('pluginTrigger.modal.common.back')}
+      extraButtonText={t('modal.common.back', { ns: 'pluginTrigger' })}
       extraButtonVariant="secondary"
       onExtraButtonClick={handleBack}
       clickOutsideNotClose

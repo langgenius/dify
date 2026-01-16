@@ -27,7 +27,6 @@ def service_with_fake_configurations():
         description=None,
         icon_small=None,
         icon_small_dark=None,
-        icon_large=None,
         background=None,
         help=None,
         supported_model_types=[ModelType.LLM],

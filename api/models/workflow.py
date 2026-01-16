@@ -44,7 +44,7 @@ if TYPE_CHECKING:
 
 from constants import DEFAULT_FILE_NUMBER_LIMITS, HIDDEN_VALUE
 from core.helper import encrypter
-from core.variables import SecretVariable, Segment, SegmentType, Variable
+from core.variables import SecretVariable, Segment, SegmentType, VariableBase
 from factories import variable_factory
 from libs import helper
 
@@ -176,8 +176,8 @@ class Workflow(Base):  # bug
         graph: str,
         features: str,
         created_by: str,
-        environment_variables: Sequence[Variable],
-        conversation_variables: Sequence[Variable],
+        environment_variables: Sequence[VariableBase],
+        conversation_variables: Sequence[VariableBase],
         rag_pipeline_variables: list[dict],
         marked_name: str = "",
         marked_comment: str = "",
@@ -445,7 +445,7 @@ class Workflow(Base):  # bug
 
         # decrypt secret variables value
         def decrypt_func(
-            var: Variable,
+            var: VariableBase,
         ) -> StringVariable | IntegerVariable | FloatVariable | SecretVariable:
             if isinstance(var, SecretVariable):
                 return var.model_copy(update={"value": encrypter.decrypt_token(tenant_id=tenant_id, token=var.value)})
@@ -461,7 +461,7 @@ class Workflow(Base):  # bug
         return decrypted_results
 
     @environment_variables.setter
-    def environment_variables(self, value: Sequence[Variable]):
+    def environment_variables(self, value: Sequence[VariableBase]):
         if not value:
             self._environment_variables = "{}"
             return
@@ -485,7 +485,7 @@ class Workflow(Base):  # bug
                 value[i] = origin_variables_dictionary[variable.id].model_copy(update={"name": variable.name})
 
         # encrypt secret variables value
-        def encrypt_func(var: Variable) -> Variable:
+        def encrypt_func(var: VariableBase) -> VariableBase:
             if isinstance(var, SecretVariable):
                 return var.model_copy(update={"value": encrypter.encrypt_token(tenant_id=tenant_id, token=var.value)})
             else:
@@ -515,7 +515,7 @@ class Workflow(Base):  # bug
         return result
 
     @property
-    def conversation_variables(self) -> Sequence[Variable]:
+    def conversation_variables(self) -> Sequence[VariableBase]:
         # TODO: find some way to init `self._conversation_variables` when instance created.
         if self._conversation_variables is None:
             self._conversation_variables = "{}"
@@ -525,7 +525,7 @@ class Workflow(Base):  # bug
         return results
 
     @conversation_variables.setter
-    def conversation_variables(self, value: Sequence[Variable]):
+    def conversation_variables(self, value: Sequence[VariableBase]):
         self._conversation_variables = json.dumps(
             {var.name: var.model_dump() for var in value},
             ensure_ascii=False,
@@ -595,6 +595,7 @@ class WorkflowRun(Base):
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="workflow_run_pkey"),
         sa.Index("workflow_run_triggerd_from_idx", "tenant_id", "app_id", "triggered_from"),
+        sa.Index("workflow_run_created_at_id_idx", "created_at", "id"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
@@ -1181,7 +1182,7 @@ class ConversationVariable(TypeBase):
     )
 
     @classmethod
-    def from_variable(cls, *, app_id: str, conversation_id: str, variable: Variable) -> "ConversationVariable":
+    def from_variable(cls, *, app_id: str, conversation_id: str, variable: VariableBase) -> "ConversationVariable":
         obj = cls(
             id=variable.id,
             app_id=app_id,
@@ -1190,7 +1191,7 @@ class ConversationVariable(TypeBase):
         )
         return obj
 
-    def to_variable(self) -> Variable:
+    def to_variable(self) -> VariableBase:
         mapping = json.loads(self.data)
         return variable_factory.build_conversation_variable_from_mapping(mapping)
 
@@ -1506,6 +1507,7 @@ class WorkflowDraftVariable(Base):
         file_id: str | None = None,
     ) -> "WorkflowDraftVariable":
         variable = WorkflowDraftVariable()
+        variable.id = str(uuid4())
         variable.created_at = naive_utc_now()
         variable.updated_at = naive_utc_now()
         variable.description = description

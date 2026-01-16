@@ -154,7 +154,7 @@ const Tabs: FC<TabsProps> = ({
                       key={tab.key}
                       position="top"
                       popupClassName="max-w-[200px]"
-                      popupContent={t('workflow.tabs.startDisabledTip')}
+                      popupContent={t('tabs.startDisabledTip', { ns: 'workflow' })}
                     >
                       <div {...commonProps}>
                         {tab.name}
@@ -223,7 +223,6 @@ const Tabs: FC<TabsProps> = ({
             customTools={customTools || []}
             workflowTools={workflowTools || []}
             mcpTools={mcpTools || []}
-            canChooseMCPTool
             onTagsChange={onTagsChange}
             isInRAGPipeline={inRAGPipeline}
             featuredPlugins={featuredPlugins}

@@ -2,9 +2,8 @@
 import type { Collection, Tool } from '../types'
 import * as React from 'react'
 import { useState } from 'react'
-import { useContext } from 'use-context-selector'
 import SettingBuiltInTool from '@/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool'
-import I18n from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import { getLanguage } from '@/i18n-config/language'
 import { cn } from '@/utils/classnames'
 
@@ -23,7 +22,7 @@ const ToolItem = ({
   isBuiltIn,
   isModel,
 }: Props) => {
-  const { locale } = useContext(I18n)
+  const locale = useLocale()
   const language = getLanguage(locale)
   const [showDetail, setShowDetail] = useState(false)
 

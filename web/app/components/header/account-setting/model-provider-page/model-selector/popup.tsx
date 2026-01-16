@@ -97,7 +97,7 @@ const Popup: FC<PopupProps> = ({
           />
           <input
             className="block h-[18px] grow appearance-none bg-transparent text-[13px] text-text-primary outline-none"
-            placeholder={t('datasetSettings.form.searchModel') || ''}
+            placeholder={t('form.searchModel', { ns: 'datasetSettings' }) || ''}
             value={searchText}
             onChange={e => setSearchText(e.target.value)}
           />
@@ -137,7 +137,7 @@ const Popup: FC<PopupProps> = ({
           setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
         }}
       >
-        <span className="system-xs-medium">{t('common.model.settingsLink')}</span>
+        <span className="system-xs-medium">{t('model.settingsLink', { ns: 'common' })}</span>
         <RiArrowRightUpLine className="ml-0.5 h-3 w-3" />
       </div>
     </div>
