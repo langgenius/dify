@@ -169,10 +169,13 @@ class SandboxProviderService:
             .first()
         )
         if tenant_configed:
-            config = _get_encrypter(tenant_id, tenant_configed.provider_type).decrypt(tenant_configed.config)
-            return SandboxProviderEntity(
-                id=tenant_configed.id, provider_type=tenant_configed.provider_type, config=config
-            )
+            if tenant_configed.configure_type == "user":
+                config = _get_encrypter(tenant_id, tenant_configed.provider_type).decrypt(tenant_configed.config)
+                return SandboxProviderEntity(
+                    id=tenant_configed.id, provider_type=tenant_configed.provider_type, config=config
+                )
+            else:
+                return cls.get_system_default_config(session, tenant_id)
 
         system_configed: SandboxProviderSystemConfig | None = session.query(SandboxProviderSystemConfig).first()
         if system_configed:
@@ -185,7 +188,18 @@ class SandboxProviderService:
         raise ValueError(f"No sandbox provider configured for tenant {tenant_id}")
 
     @classmethod
+    def get_system_default_config(cls, session: Session, tenant_id: str) -> SandboxProviderEntity:
+        system_configed: SandboxProviderSystemConfig | None = session.query(SandboxProviderSystemConfig).first()
+        if system_configed:
+            return SandboxProviderEntity(
+                id=system_configed.id,
+                provider_type=system_configed.provider_type,
+                config=decrypt_system_params(system_configed.encrypted_config),
+            )
+        raise ValueError(f"No system default provider configured for tenant {tenant_id}")
+
+    @classmethod
     def create_sandbox_builder(cls, tenant_id: str) -> SandboxBuilder:
         with Session(db.engine, expire_on_commit=False) as session:
-            provider_type, config = cls.get_active_sandbox_config(session, tenant_id)
-            return SandboxBuilder(tenant_id, SandboxType(provider_type)).options(config)
+            active_config = cls.get_active_sandbox_config(session, tenant_id)
+            return SandboxBuilder(tenant_id, SandboxType(active_config.provider_type)).options(active_config.config)

@@ -36,7 +36,7 @@ class DifyCliLocator:
         elif dify_config.SANDBOX_DIFY_CLI_ROOT:
             self._root = Path(dify_config.SANDBOX_DIFY_CLI_ROOT)
         else:
-            api_root = Path(__file__).resolve().parents[2]
+            api_root = Path(__file__).resolve().parents[3]
             self._root = api_root / "bin"
 
     def resolve(self, operating_system: OperatingSystem, arch: Arch) -> DifyCliBinary:
