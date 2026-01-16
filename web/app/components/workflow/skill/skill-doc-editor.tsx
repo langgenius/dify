@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import useTheme from '@/hooks/use-theme'
 import { useGetAppAssetFileContent, useUpdateAppAssetFileContent } from '@/service/use-app-asset'
 import { Theme } from '@/types/app'
@@ -19,7 +20,6 @@ import MediaFilePreview from './editor/media-file-preview'
 import OfficeFilePlaceholder from './editor/office-file-placeholder'
 import UnsupportedFileDownload from './editor/unsupported-file-download'
 import { useSkillAssetNodeMap } from './hooks/use-skill-asset-tree'
-import { useSkillEditorStore, useSkillEditorStoreApi } from './store'
 import { getFileExtension, getFileLanguage, isCodeOrTextFile, isImageFile, isMarkdownFile, isOfficeFile, isVideoFile } from './utils/file-utils'
 
 if (typeof window !== 'undefined')
@@ -34,9 +34,9 @@ const SkillDocEditor: FC = () => {
   const appDetail = useAppStore(s => s.appDetail)
   const appId = appDetail?.id || ''
 
-  const activeTabId = useSkillEditorStore(s => s.activeTabId)
-  const dirtyContents = useSkillEditorStore(s => s.dirtyContents)
-  const storeApi = useSkillEditorStoreApi()
+  const activeTabId = useStore(s => s.activeTabId!)
+  const dirtyContents = useStore(s => s.dirtyContents!)
+  const storeApi = useWorkflowStore()
   const { data: nodeMap } = useSkillAssetNodeMap()
 
   const currentFileNode = activeTabId ? nodeMap?.get(activeTabId) : undefined
@@ -68,8 +68,8 @@ const SkillDocEditor: FC = () => {
   const handleEditorChange = useCallback((value: string | undefined) => {
     if (!activeTabId || !isEditable)
       return
-    storeApi.getState().setDraftContent(activeTabId, value ?? '')
-    storeApi.getState().pinTab(activeTabId)
+    storeApi.getState().setDraftContent?.(activeTabId, value ?? '')
+    storeApi.getState().pinTab?.(activeTabId)
   }, [activeTabId, isEditable, storeApi])
 
   const handleSave = useCallback(async () => {
@@ -86,7 +86,7 @@ const SkillDocEditor: FC = () => {
         nodeId: activeTabId,
         payload: { content },
       })
-      storeApi.getState().clearDraftContent(activeTabId)
+      storeApi.getState().clearDraftContent?.(activeTabId)
       Toast.notify({
         type: 'success',
         message: t('api.saved', { ns: 'common' }),

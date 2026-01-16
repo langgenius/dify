@@ -6,8 +6,8 @@ import type { TreeNodeData } from '../type'
 import { useClickAway } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useMemo, useRef } from 'react'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { useSkillAssetTreeData } from '../hooks/use-skill-asset-tree'
-import { useSkillEditorStore, useSkillEditorStoreApi } from '../store'
 import { findNodeById } from '../utils/tree-utils'
 import NodeMenu from './node-menu'
 
@@ -17,12 +17,12 @@ type TreeContextMenuProps = {
 
 const TreeContextMenu: FC<TreeContextMenuProps> = ({ treeRef }) => {
   const ref = useRef<HTMLDivElement>(null)
-  const contextMenu = useSkillEditorStore(s => s.contextMenu)
-  const storeApi = useSkillEditorStoreApi()
+  const contextMenu = useStore(s => s.contextMenu)
+  const storeApi = useWorkflowStore()
   const { data: treeData } = useSkillAssetTreeData()
 
   const handleClose = useCallback(() => {
-    storeApi.getState().setContextMenu(null)
+    storeApi.getState().setContextMenu?.(null)
   }, [storeApi])
 
   useClickAway(() => {

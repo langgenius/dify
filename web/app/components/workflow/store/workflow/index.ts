@@ -16,6 +16,7 @@ import type { WorkflowDraftSliceShape } from './workflow-draft-slice'
 import type { WorkflowSliceShape } from './workflow-slice'
 import type { RagPipelineSliceShape } from '@/app/components/rag-pipeline/store'
 import type { WorkflowSliceShape as WorkflowAppSliceShape } from '@/app/components/workflow-app/store/workflow/workflow-slice'
+import type { SkillEditorSliceShape } from '@/app/components/workflow/skill/store'
 import { useContext } from 'react'
 import {
   useStore as useZustandStore,
@@ -40,6 +41,7 @@ import { createWorkflowSlice } from './workflow-slice'
 export type SliceFromInjection
   = Partial<WorkflowAppSliceShape>
     & Partial<RagPipelineSliceShape>
+    & Partial<SkillEditorSliceShape>
 
 export type Shape
   = ChatVariableSliceShape

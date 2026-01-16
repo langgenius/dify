@@ -6,12 +6,12 @@ import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Toast from '@/app/components/base/toast'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import {
   useCreateAppAssetFile,
   useCreateAppAssetFolder,
   useDeleteAppAssetNode,
 } from '@/service/use-app-asset'
-import { useSkillEditorStoreApi } from '../store'
 import { getAllDescendantFileIds } from '../utils/tree-utils'
 import { useSkillAssetTreeData } from './use-skill-asset-tree'
 
@@ -36,7 +36,7 @@ export function useFileOperations({
 
   const appDetail = useAppStore(s => s.appDetail)
   const appId = appDetail?.id || ''
-  const storeApi = useSkillEditorStoreApi()
+  const storeApi = useWorkflowStore()
 
   const createFolder = useCreateAppAssetFolder()
   const createFile = useCreateAppAssetFile()
@@ -250,14 +250,14 @@ export function useFileOperations({
       await deleteNode.mutateAsync({ appId, nodeId })
 
       descendantFileIds.forEach((fileId) => {
-        storeApi.getState().closeTab(fileId)
-        storeApi.getState().clearDraftContent(fileId)
+        storeApi.getState().closeTab?.(fileId)
+        storeApi.getState().clearDraftContent?.(fileId)
       })
 
       // Also close and clear the node itself if it's a file
       if (!isFolder) {
-        storeApi.getState().closeTab(nodeId)
-        storeApi.getState().clearDraftContent(nodeId)
+        storeApi.getState().closeTab?.(nodeId)
+        storeApi.getState().clearDraftContent?.(nodeId)
       }
 
       Toast.notify({

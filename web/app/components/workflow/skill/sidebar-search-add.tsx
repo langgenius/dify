@@ -18,10 +18,10 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import SearchInput from '@/app/components/base/search-input'
+import { useStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
 import { useFileOperations } from './hooks/use-file-operations'
 import { useSkillAssetTreeData } from './hooks/use-skill-asset-tree'
-import { useSkillEditorStore } from './store'
 import { getTargetFolderIdFromSelection } from './utils/tree-utils'
 
 type MenuItemProps = {
@@ -55,7 +55,7 @@ const SidebarSearchAdd: FC = () => {
   const [showMenu, setShowMenu] = useState(false)
 
   const { data: treeData } = useSkillAssetTreeData()
-  const activeTabId = useSkillEditorStore(s => s.activeTabId)
+  const activeTabId = useStore(s => s.activeTabId!)
 
   const targetFolderId = useMemo(() => {
     if (!treeData?.children)

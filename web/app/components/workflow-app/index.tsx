@@ -1,7 +1,8 @@
 'use client'
 
+import type { WorkflowSliceShape } from './store/workflow/workflow-slice'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
-import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
+import type { SkillEditorSliceShape } from '@/app/components/workflow/skill/store'
 import { useSearchParams } from 'next/navigation'
 import { useQueryState } from 'nuqs'
 import {
@@ -17,8 +18,8 @@ import WorkflowWithDefaultContext from '@/app/components/workflow'
 import {
   WorkflowContextProvider,
 } from '@/app/components/workflow/context'
-import { SkillEditorProvider } from '@/app/components/workflow/skill/context'
 import SkillMain from '@/app/components/workflow/skill/main'
+import { createSkillEditorSlice } from '@/app/components/workflow/skill/store'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
 import {
@@ -247,14 +248,31 @@ const WorkflowAppWithAdditionalContext = () => {
   )
 }
 
+type WorkflowAppInjectedSlice = WorkflowSliceShape & SkillEditorSliceShape
+type SliceCreatorArgs = Parameters<import('zustand').StateCreator<WorkflowAppInjectedSlice>>
+
+const injectWorkflowStoreSliceFn: import('@/app/components/workflow/store').InjectWorkflowStoreSliceFn = (
+  set,
+  get,
+  store,
+) => {
+  const args: SliceCreatorArgs = [
+    set as SliceCreatorArgs[0],
+    get as SliceCreatorArgs[1],
+    store as SliceCreatorArgs[2],
+  ]
+  return {
+    ...createWorkflowSlice(...args),
+    ...createSkillEditorSlice(...args),
+  }
+}
+
 const WorkflowAppWrapper = () => {
   return (
     <WorkflowContextProvider
-      injectWorkflowStoreSliceFn={createWorkflowSlice as InjectWorkflowStoreSliceFn}
+      injectWorkflowStoreSliceFn={injectWorkflowStoreSliceFn}
     >
-      <SkillEditorProvider>
-        <WorkflowAppWithAdditionalContext />
-      </SkillEditorProvider>
+      <WorkflowAppWithAdditionalContext />
     </WorkflowContextProvider>
   )
 }

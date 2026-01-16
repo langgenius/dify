@@ -5,33 +5,33 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Confirm from '@/app/components/base/confirm'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
 import EditorTabItem from './editor-tab-item'
 import { useSkillAssetNodeMap } from './hooks/use-skill-asset-tree'
-import { useSkillEditorStore, useSkillEditorStoreApi } from './store'
 
 const EditorTabs: FC = () => {
   const { t } = useTranslation('workflow')
-  const openTabIds = useSkillEditorStore(s => s.openTabIds)
-  const activeTabId = useSkillEditorStore(s => s.activeTabId)
-  const previewTabId = useSkillEditorStore(s => s.previewTabId)
-  const dirtyContents = useSkillEditorStore(s => s.dirtyContents)
-  const storeApi = useSkillEditorStoreApi()
+  const openTabIds = useStore(s => s.openTabIds!)
+  const activeTabId = useStore(s => s.activeTabId!)
+  const previewTabId = useStore(s => s.previewTabId!)
+  const dirtyContents = useStore(s => s.dirtyContents!)
+  const storeApi = useWorkflowStore()
   const { data: nodeMap } = useSkillAssetNodeMap()
 
   const [pendingCloseId, setPendingCloseId] = useState<string | null>(null)
 
   const handleTabClick = useCallback((fileId: string) => {
-    storeApi.getState().activateTab(fileId)
+    storeApi.getState().activateTab?.(fileId)
   }, [storeApi])
 
   const handleTabDoubleClick = useCallback((fileId: string) => {
-    storeApi.getState().pinTab(fileId)
+    storeApi.getState().pinTab?.(fileId)
   }, [storeApi])
 
   const closeTab = useCallback((fileId: string) => {
-    storeApi.getState().closeTab(fileId)
-    storeApi.getState().clearDraftContent(fileId)
+    storeApi.getState().closeTab?.(fileId)
+    storeApi.getState().clearDraftContent?.(fileId)
   }, [storeApi])
 
   const handleTabClose = useCallback((fileId: string) => {

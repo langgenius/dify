@@ -1,8 +1,4 @@
-import type { StateCreator, StoreApi } from 'zustand'
-import * as React from 'react'
-import { useContext } from 'react'
-import { useStore as useZustandStore } from 'zustand'
-import { createStore } from 'zustand/vanilla'
+import type { StateCreator } from 'zustand'
 
 export type OpenTabOptions = {
   /** true = Pinned (permanent), false/undefined = Preview (temporary) */
@@ -211,24 +207,24 @@ export const createFileOperationsMenuSlice: StateCreator<FileOperationsMenuSlice
   },
 })
 
-export type SkillEditorShape
+export type SkillEditorSliceShape
   = TabSliceShape
     & FileTreeSliceShape
     & DirtySliceShape
     & FileOperationsMenuSliceShape
     & {
-      reset: () => void
+      resetSkillEditor: () => void
     }
 
-export const createSkillEditorStore = (): StoreApi<SkillEditorShape> => {
-  return createStore<SkillEditorShape>((...args) => ({
+export const createSkillEditorSlice: StateCreator<SkillEditorSliceShape, [], [], SkillEditorSliceShape> = (set, get, store) => {
+  const args = [set, get, store] as Parameters<StateCreator<SkillEditorSliceShape>>
+  return {
     ...createTabSlice(...args),
     ...createFileTreeSlice(...args),
     ...createDirtySlice(...args),
     ...createFileOperationsMenuSlice(...args),
 
-    reset: () => {
-      const [set] = args
+    resetSkillEditor: () => {
       set({
         openTabIds: [],
         activeTabId: null,
@@ -238,25 +234,5 @@ export const createSkillEditorStore = (): StoreApi<SkillEditorShape> => {
         contextMenu: null,
       })
     },
-  }))
-}
-
-export type SkillEditorStore = StoreApi<SkillEditorShape>
-
-export const SkillEditorContext = React.createContext<SkillEditorStore | null>(null)
-
-export function useSkillEditorStore<T>(selector: (state: SkillEditorShape) => T): T {
-  const store = useContext(SkillEditorContext)
-  if (!store)
-    throw new Error('Missing SkillEditorContext.Provider in the tree')
-
-  return useZustandStore(store, selector)
-}
-
-export const useSkillEditorStoreApi = (): SkillEditorStore => {
-  const store = useContext(SkillEditorContext)
-  if (!store)
-    throw new Error('Missing SkillEditorContext.Provider in the tree')
-
-  return store
+  }
 }

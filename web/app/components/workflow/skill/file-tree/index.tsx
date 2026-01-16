@@ -13,10 +13,10 @@ import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { useRenameAppAssetNode } from '@/service/use-app-asset'
 import { cn } from '@/utils/classnames'
 import { useSkillAssetTreeData } from '../hooks/use-skill-asset-tree'
-import { useSkillEditorStore, useSkillEditorStoreApi } from '../store'
 import { getAncestorIds } from '../utils/tree-utils'
 import TreeContextMenu from './tree-context-menu'
 import TreeNode from './tree-node'
@@ -49,9 +49,9 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
   const { data: treeData, isLoading, error } = useSkillAssetTreeData()
   const isMutating = useIsMutating() > 0
 
-  const expandedFolderIds = useSkillEditorStore(s => s.expandedFolderIds)
-  const activeTabId = useSkillEditorStore(s => s.activeTabId)
-  const storeApi = useSkillEditorStoreApi()
+  const expandedFolderIds = useStore(s => s.expandedFolderIds!)
+  const activeTabId = useStore(s => s.activeTabId!)
+  const storeApi = useWorkflowStore()
 
   const renameNode = useRenameAppAssetNode()
 
@@ -62,12 +62,12 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
   }, [expandedFolderIds])
 
   const handleToggle = useCallback((id: string) => {
-    storeApi.getState().toggleFolder(id)
+    storeApi.getState().toggleFolder?.(id)
   }, [storeApi])
 
   const handleActivate = useCallback((node: NodeApi<TreeNodeData>) => {
     if (node.data.node_type === 'file')
-      storeApi.getState().openTab(node.data.id, { pinned: true })
+      storeApi.getState().openTab?.(node.data.id, { pinned: true })
     else
       node.toggle()
   }, [storeApi])
@@ -95,7 +95,7 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
 
     const ancestors = getAncestorIds(activeTabId, treeData.children)
     if (ancestors.length > 0)
-      storeApi.getState().revealFile(ancestors)
+      storeApi.getState().revealFile?.(ancestors)
     requestAnimationFrame(() => {
       const node = tree.get(activeTabId)
       if (node) {
