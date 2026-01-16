@@ -13,6 +13,7 @@ import type {
   WorkflowVariableBlockType,
 } from '../../types'
 import type { PickerBlockMenuOption } from './menu'
+import type { AgentNode } from '@/app/components/base/prompt-editor/types'
 import {
   flip,
   offset,
@@ -30,6 +31,7 @@ import {
   Fragment,
   memo,
   useCallback,
+  useMemo,
   useState,
 } from 'react'
 import ReactDOM from 'react-dom'
@@ -195,8 +197,8 @@ const ComponentPicker = ({
   }, [editor, checkForTriggerMatch, triggerString, agentBlock, handleClose])
 
   const isAgentTrigger = triggerString === '@' && agentBlock?.show
-  const showAssembleVariables = triggerString === '/' && workflowVariableBlock?.showAssembleVariables
-  const agentNodes = agentBlock?.agentNodes || []
+  const showAssembleVariables = triggerString === '/'
+  const agentNodes: AgentNode[] = useMemo(() => agentBlock?.agentNodes || [], [agentBlock?.agentNodes])
 
   const renderMenu = useCallback<MenuRenderFn<PickerBlockMenuOption>>((
     anchorElementRef,
