@@ -91,7 +91,9 @@ export const createTabSlice: StateCreator<TabSliceShape> = (set, get) => ({
   },
 
   pinTab: (fileId: string) => {
-    const { previewTabId } = get()
+    const { previewTabId, openTabIds } = get()
+    if (!openTabIds.includes(fileId))
+      return
     if (previewTabId === fileId)
       set({ previewTabId: null })
   },

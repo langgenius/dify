@@ -4,8 +4,9 @@ import type { NodeRendererProps } from 'react-arborist'
 import type { TreeNodeData } from '../type'
 import type { FileAppearanceType } from '@/app/components/base/file-uploader/types'
 import { RiFolderLine, RiFolderOpenLine, RiMoreFill } from '@remixicon/react'
+import { throttle } from 'es-toolkit/function'
 import * as React from 'react'
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import FileTypeIcon from '@/app/components/base/file-uploader/file-type-icon'
 import {
@@ -34,11 +35,16 @@ const TreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeData>) 
 
   const fileIconType = !isFolder ? getFileIconType(node.data.name) : null
 
+  const throttledToggle = useMemo(
+    () => throttle(() => node.toggle(), 300, { edges: ['leading'] }),
+    [node],
+  )
+
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation()
     node.select()
     if (isFolder)
-      node.toggle()
+      throttledToggle()
     else
       storeApi.getState().openTab(node.data.id, { pinned: false })
   }
@@ -46,14 +52,14 @@ const TreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeData>) 
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation()
     if (isFolder)
-      node.toggle()
+      throttledToggle()
     else
       storeApi.getState().openTab(node.data.id, { pinned: true })
   }
 
   const handleToggle = (e: React.MouseEvent) => {
     e.stopPropagation()
-    node.toggle()
+    throttledToggle()
   }
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
