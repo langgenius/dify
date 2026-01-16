@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
@@ -58,19 +59,30 @@ class _FakeDB:
 def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask):
     """GET returns form definition merged with site payload."""
 
+    expiration_time = datetime(2024, 1, 1, tzinfo=UTC)
+
     class _FakeDefinition:
         def model_dump(self):
-            return {"form_content": "hello"}
+            return {
+                "form_content": "Raw content",
+                "rendered_content": "Rendered {{#$output.name#}}",
+                "inputs": [{"type": "text", "output_variable_name": "name", "placeholder": None}],
+                "placeholder_values": {"name": "Alice", "age": 30, "meta": {"k": "v"}},
+                "user_actions": [{"id": "approve", "title": "Approve", "button_style": "default"}],
+            }
 
     class _FakeForm:
-        workflow_run_id = "workflow-1"
-        app_id = "app-1"
-        tenant_id = "tenant-1"
+        def __init__(self, expiration: datetime):
+            self.workflow_run_id = "workflow-1"
+            self.app_id = "app-1"
+            self.tenant_id = "tenant-1"
+            self.expiration_time = expiration
+            self.recipient_type = RecipientType.BACKSTAGE
 
         def get_definition(self):
             return _FakeDefinition()
 
-    form = _FakeForm()
+    form = _FakeForm(expiration_time)
 
     tenant = SimpleNamespace(
         id="tenant-1",
@@ -99,7 +111,7 @@ def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask):
 
     # Patch service to return fake form.
     service_mock = MagicMock()
-    service_mock.get_form_definition_by_token.return_value = form
+    service_mock.get_form_by_token.return_value = form
     monkeypatch.setattr(human_input_module, "HumanInputService", lambda engine: service_mock)
 
     # Patch db session.
@@ -116,7 +128,19 @@ def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask):
         response = HumanInputFormApi().get("token-1")
 
     body = json.loads(response.get_data(as_text=True))
-    assert body["form_content"] == "hello"
+    assert set(body.keys()) == {
+        "site",
+        "form_content",
+        "inputs",
+        "placeholder_values",
+        "user_actions",
+        "expiration_time",
+    }
+    assert body["form_content"] == "Rendered {{#$output.name#}}"
+    assert body["inputs"] == [{"type": "text", "output_variable_name": "name", "placeholder": None}]
+    assert body["placeholder_values"] == {"name": "Alice", "age": "30", "meta": '{"k": "v"}'}
+    assert body["user_actions"] == [{"id": "approve", "title": "Approve", "button_style": "default"}]
+    assert body["expiration_time"] == int(expiration_time.timestamp())
     assert body["site"] == {
         "app_id": "app-1",
         "end_user_id": None,
@@ -146,28 +170,35 @@ def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask):
             "replace_webapp_logo": None,
         },
     }
-    service_mock.get_form_definition_by_token.assert_called_once_with(
-        RecipientType.STANDALONE_WEB_APP,
-        "token-1",
-    )
+    service_mock.get_form_by_token.assert_called_once_with("token-1")
 
 
 def test_get_form_allows_backstage_token(monkeypatch: pytest.MonkeyPatch, app: Flask):
-    """GET falls back to backstage token lookup."""
+    """GET returns form payload for backstage token."""
+
+    expiration_time = datetime(2024, 1, 2, tzinfo=UTC)
 
     class _FakeDefinition:
         def model_dump(self):
-            return {"form_content": "hello"}
+            return {
+                "form_content": "Raw content",
+                "rendered_content": "Rendered",
+                "inputs": [],
+                "placeholder_values": {},
+                "user_actions": [],
+            }
 
     class _FakeForm:
-        workflow_run_id = "workflow-1"
-        app_id = "app-1"
-        tenant_id = "tenant-1"
+        def __init__(self, expiration: datetime):
+            self.workflow_run_id = "workflow-1"
+            self.app_id = "app-1"
+            self.tenant_id = "tenant-1"
+            self.expiration_time = expiration
 
         def get_definition(self):
             return _FakeDefinition()
 
-    form = _FakeForm()
+    form = _FakeForm(expiration_time)
     tenant = SimpleNamespace(
         id="tenant-1",
         status=TenantStatus.NORMAL,
@@ -194,7 +225,7 @@ def test_get_form_allows_backstage_token(monkeypatch: pytest.MonkeyPatch, app: F
     )
 
     service_mock = MagicMock()
-    service_mock.get_form_definition_by_token.side_effect = [None, form]
+    service_mock.get_form_by_token.return_value = form
     monkeypatch.setattr(human_input_module, "HumanInputService", lambda engine: service_mock)
 
     db_stub = _FakeDB(_FakeSession({"WorkflowRun": workflow_run, "App": app_model, "Site": site_model}))
@@ -210,7 +241,19 @@ def test_get_form_allows_backstage_token(monkeypatch: pytest.MonkeyPatch, app: F
         response = HumanInputFormApi().get("token-1")
 
     body = json.loads(response.get_data(as_text=True))
-    assert body["form_content"] == "hello"
+    assert set(body.keys()) == {
+        "site",
+        "form_content",
+        "inputs",
+        "placeholder_values",
+        "user_actions",
+        "expiration_time",
+    }
+    assert body["form_content"] == "Rendered"
+    assert body["inputs"] == []
+    assert body["placeholder_values"] == {}
+    assert body["user_actions"] == []
+    assert body["expiration_time"] == int(expiration_time.timestamp())
     assert body["site"] == {
         "app_id": "app-1",
         "end_user_id": None,
@@ -240,34 +283,41 @@ def test_get_form_allows_backstage_token(monkeypatch: pytest.MonkeyPatch, app: F
             "replace_webapp_logo": None,
         },
     }
-    assert service_mock.get_form_definition_by_token.call_args_list == [
-        call(RecipientType.STANDALONE_WEB_APP, "token-1"),
-        call(RecipientType.BACKSTAGE, "token-1"),
-    ]
+    service_mock.get_form_by_token.assert_called_once_with("token-1")
 
 
 def test_get_form_raises_forbidden_when_site_missing(monkeypatch: pytest.MonkeyPatch, app: Flask):
     """GET raises Forbidden if site cannot be resolved."""
 
+    expiration_time = datetime(2024, 1, 3, tzinfo=UTC)
+
     class _FakeDefinition:
         def model_dump(self):
-            return {"form_content": "hello"}
+            return {
+                "form_content": "Raw content",
+                "rendered_content": "Rendered",
+                "inputs": [],
+                "placeholder_values": {},
+                "user_actions": [],
+            }
 
     class _FakeForm:
-        workflow_run_id = "workflow-1"
-        app_id = "app-1"
-        tenant_id = "tenant-1"
+        def __init__(self, expiration: datetime):
+            self.workflow_run_id = "workflow-1"
+            self.app_id = "app-1"
+            self.tenant_id = "tenant-1"
+            self.expiration_time = expiration
 
         def get_definition(self):
             return _FakeDefinition()
 
-    form = _FakeForm()
+    form = _FakeForm(expiration_time)
     tenant = SimpleNamespace(status=TenantStatus.NORMAL)
     app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", tenant=tenant)
     workflow_run = SimpleNamespace(app_id="app-1")
 
     service_mock = MagicMock()
-    service_mock.get_form_definition_by_token.return_value = form
+    service_mock.get_form_by_token.return_value = form
     monkeypatch.setattr(human_input_module, "HumanInputService", lambda engine: service_mock)
 
     db_stub = _FakeDB(_FakeSession({"WorkflowRun": workflow_run, "App": app_model, "Site": None}))

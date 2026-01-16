@@ -4,6 +4,7 @@ Web App Human Input Form APIs.
 
 import json
 import logging
+from datetime import datetime
 
 from flask import Response
 from flask_restx import Resource, reqparse
@@ -20,9 +21,32 @@ from services.human_input_service import Form, FormNotFoundError, HumanInputServ
 logger = logging.getLogger(__name__)
 
 
+def _stringify_placeholder_values(values: dict[str, object]) -> dict[str, str]:
+    result: dict[str, str] = {}
+    for key, value in values.items():
+        if value is None:
+            result[key] = ""
+        elif isinstance(value, (dict, list)):
+            result[key] = json.dumps(value, ensure_ascii=False)
+        else:
+            result[key] = str(value)
+    return result
+
+
+def _to_timestamp(value: datetime) -> int:
+    return int(value.timestamp())
+
+
 def _jsonify_form_definition(form: Form, site_payload: dict | None = None) -> Response:
-    """Return the Pydantic definition (optionally with site) as a JSON response."""
-    payload = form.get_definition().model_dump()
+    """Return the form payload (optionally with site) as a JSON response."""
+    definition_payload = form.get_definition().model_dump()
+    payload = {
+        "form_content": definition_payload["rendered_content"],
+        "inputs": definition_payload["inputs"],
+        "placeholder_values": _stringify_placeholder_values(definition_payload["placeholder_values"]),
+        "user_actions": definition_payload["user_actions"],
+        "expiration_time": _to_timestamp(form.expiration_time),
+    }
     if site_payload is not None:
         payload["site"] = site_payload
     return Response(json.dumps(payload, ensure_ascii=False), mimetype="application/json")
