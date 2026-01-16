@@ -19,7 +19,7 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { fetchDocumentDownloadUrl } from '@/service/datasets'
+import { useDocumentDownload } from '@/service/knowledge/use-document'
 import ProgressTooltip from './progress-tooltip'
 import Tooltip from './tooltip'
 
@@ -34,10 +34,11 @@ const Popup: FC<PopupProps> = ({
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
-  const [isDownloading, setIsDownloading] = useState(false)
   const fileType = data.dataSourceType !== 'notion'
     ? (/\.([^.]*)$/.exec(data.documentName)?.[1] || '')
     : 'notion'
+
+  const { mutateAsync: downloadDocument, isPending: isDownloading } = useDocumentDownload()
 
   /**
    * Download the original uploaded file for citations whose data source is upload-file.
@@ -55,16 +56,10 @@ const Popup: FC<PopupProps> = ({
     if (!isUploadFile || !datasetId || !documentId || isDownloading)
       return
 
-    setIsDownloading(true)
-    try {
-      // Fetch signed URL (usually points to `/files/<id>/file-preview?...&as_attachment=true`).
-      const res = await fetchDocumentDownloadUrl({ datasetId, documentId })
-      if (res?.url)
-        downloadFile(res.url, data.documentName)
-    }
-    finally {
-      setIsDownloading(false)
-    }
+    // Fetch signed URL (usually points to `/files/<id>/file-preview?...&as_attachment=true`).
+    const res = await downloadDocument({ datasetId, documentId })
+    if (res?.url)
+      downloadFile(res.url, data.documentName)
   }
 
   return (

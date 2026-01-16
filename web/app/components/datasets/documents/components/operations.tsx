@@ -83,7 +83,7 @@ const Operations = ({
   const { mutateAsync: enableDocument } = useDocumentEnable()
   const { mutateAsync: disableDocument } = useDocumentDisable()
   const { mutateAsync: deleteDocument } = useDocumentDelete()
-  const { mutateAsync: downloadDocument } = useDocumentDownload()
+  const { mutateAsync: downloadDocument, isPending: isDownloading } = useDocumentDownload()
   const { mutateAsync: syncDocument } = useSyncDocument()
   const { mutateAsync: syncWebsite } = useSyncWebsite()
   const { mutateAsync: pauseDocument } = useDocumentPause()
@@ -163,6 +163,10 @@ const Operations = ({
   }, [onUpdate])
 
   const handleDownload = useCallback(async () => {
+    // Avoid repeated clicks while the signed URL request is in-flight.
+    if (isDownloading)
+      return
+
     // Request a signed URL first (it points to `/files/<id>/file-preview?...&as_attachment=true`).
     const [e, res] = await asyncRunSafe<DocumentDownloadResponse>(
       downloadDocument({ datasetId, documentId: id }) as Promise<DocumentDownloadResponse>,
@@ -179,7 +183,7 @@ const Operations = ({
     document.body.appendChild(a)
     a.click()
     a.remove()
-  }, [datasetId, downloadDocument, id, notify, t])
+  }, [datasetId, downloadDocument, id, isDownloading, notify, t])
 
   return (
     <div className="flex items-center" onClick={e => e.stopPropagation()}>
