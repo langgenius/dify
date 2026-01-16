@@ -926,9 +926,7 @@ class TestWorkflowService:
         from models.model import AppModelConfig
 
         app_model_config = AppModelConfig(
-            id=fake.uuid4(),
             app_id=app.id,
-            tenant_id=app.tenant_id,
             provider="openai",
             model_id="gpt-3.5-turbo",
             # Set the model field directly - this is what model_dict property returns
@@ -944,6 +942,7 @@ class TestWorkflowService:
             created_by=account.id,
             updated_by=account.id,
         )
+        app_model_config.id = fake.uuid4()
 
         from extensions.ext_database import db
 
@@ -989,9 +988,7 @@ class TestWorkflowService:
         from models.model import AppModelConfig
 
         app_model_config = AppModelConfig(
-            id=fake.uuid4(),
             app_id=app.id,
-            tenant_id=app.tenant_id,
             provider="openai",
             model_id="gpt-3.5-turbo",
             # Set the model field directly - this is what model_dict property returns
@@ -1007,6 +1004,7 @@ class TestWorkflowService:
             created_by=account.id,
             updated_by=account.id,
         )
+        app_model_config.id = fake.uuid4()
 
         from extensions.ext_database import db
 

@@ -227,7 +227,6 @@ class TestAppDslService:
 
         # Create model config for the app
         model_config = AppModelConfig(
-            id=fake.uuid4(),
             app_id=app.id,
             provider="openai",
             model_id="gpt-3.5-turbo",
@@ -247,6 +246,7 @@ class TestAppDslService:
             created_by=account.id,
             updated_by=account.id,
         )
+        model_config.id = fake.uuid4()
 
         # Set the app_model_config_id to link the config
         app.app_model_config_id = model_config.id
