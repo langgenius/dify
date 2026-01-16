@@ -99,7 +99,7 @@ const InfographicViewer: React.FC<InfographicProps> = ({
             navigator.clipboard.write([item]).then(() => {
               Toast.notify({
                 type: 'success',
-                message: t('actionMsg.copySuccessfully'),
+                message: t('actionMsg.copySuccessfully', { ns: 'common' }),
               })
             })
           }
@@ -112,7 +112,7 @@ const InfographicViewer: React.FC<InfographicProps> = ({
       console.error('Failed to copy infographic image:', err)
       Toast.notify({
         type: 'error',
-        message: t('actionMsg.copyFailed'),
+        message: t('actionMsg.copyFailed', { ns: 'common' }),
       })
     }
   }
@@ -139,14 +139,14 @@ const InfographicViewer: React.FC<InfographicProps> = ({
 
       Toast.notify({
         type: 'success',
-        message: t('actionMsg.downloadSuccessfully'),
+        message: t('operation.downloadSuccess', { ns: 'common' }),
       })
     }
     catch (err) {
       console.error('Failed to download infographic image:', err)
       Toast.notify({
         type: 'error',
-        message: t('actionMsg.downloadFailed'),
+        message: t('operation.downloadFailed', { ns: 'common' }),
       })
     }
   }
@@ -159,7 +159,7 @@ const InfographicViewer: React.FC<InfographicProps> = ({
           onClick={handleCopyImage}
           disabled={isLoading || !!error}
           className="p-2 bg-white rounded-lg shadow-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          title={t('operation.copy')}
+          title={t('operation.copy', { ns: 'common' })}
         >
           <ClipboardDocumentIcon className="w-4 h-4 text-gray-700" />
         </button>
@@ -167,7 +167,7 @@ const InfographicViewer: React.FC<InfographicProps> = ({
           onClick={handleDownloadImage}
           disabled={isLoading || !!error}
           className="p-2 bg-white rounded-lg shadow-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          title={t('operation.download')}
+          title={t('operation.download', { ns: 'common' })}
         >
           <ArrowDownTrayIcon className="w-4 h-4 text-gray-700" />
         </button>
