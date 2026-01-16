@@ -157,6 +157,7 @@ const SkillDocEditor: FC = () => {
     <div className="h-full w-full overflow-auto bg-components-panel-bg">
       {isMarkdown && (
         <MarkdownFileEditor
+          key={activeTabId}
           value={currentContent}
           onChange={handleEditorChange}
         />
