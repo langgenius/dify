@@ -1,10 +1,20 @@
 import type { FC } from 'react'
 import type { Emoji } from '@/app/components/tools/types'
+import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import * as React from 'react'
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
+import {
+  PortalToFollowElem,
+  PortalToFollowElemContent,
+  PortalToFollowElemTrigger,
+} from '@/app/components/base/portal-to-follow-elem'
 import { useSelectOrDelete } from '@/app/components/base/prompt-editor/hooks'
+import ToolAuthorizationSection from '@/app/components/plugins/plugin-detail-panel/tool-selector/sections/tool-authorization-section'
+import ToolSettingsSection from '@/app/components/plugins/plugin-detail-panel/tool-selector/sections/tool-settings-section'
+import { generateFormValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import {
@@ -23,6 +33,7 @@ type ToolBlockComponentProps = {
   nodeKey: string
   provider: string
   tool: string
+  configId: string
   label?: string
   icon?: string | Emoji
   iconDark?: string | Emoji
@@ -40,35 +51,79 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
   nodeKey,
   provider,
   tool,
+  configId,
   label,
   icon,
   iconDark,
 }) => {
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_TOOL_BLOCK_COMMAND)
   const language = useGetLanguage()
+  const { t } = useTranslation()
   const { theme } = useTheme()
+  const [isSettingOpen, setIsSettingOpen] = useState(false)
+  const [toolValue, setToolValue] = useState<ToolValue | null>(null)
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
   const { data: mcpTools } = useAllMCPTools()
 
-  const toolMeta = useMemo(() => {
-    const collections = [buildInTools, customTools, workflowTools, mcpTools].filter(Boolean) as ToolWithProvider[][]
-    for (const collection of collections) {
+  const mergedTools = useMemo(() => {
+    return [buildInTools, customTools, workflowTools, mcpTools].filter(Boolean) as ToolWithProvider[][]
+  }, [buildInTools, customTools, workflowTools, mcpTools])
+
+  const currentProvider = useMemo(() => {
+    for (const collection of mergedTools) {
       const providerItem = collection.find(item => item.name === provider || item.id === provider || canFindTool(item.id, provider))
-      if (!providerItem)
-        continue
-      const toolItem = providerItem.tools?.find(item => item.name === tool)
-      if (!toolItem)
-        continue
-      return {
-        label: toolItem.label?.[language] || tool,
-        icon: providerItem.icon,
-        iconDark: providerItem.icon_dark,
-      }
+      if (providerItem)
+        return providerItem
     }
-    return null
-  }, [buildInTools, customTools, workflowTools, mcpTools, language, provider, tool])
+    return undefined
+  }, [mergedTools, provider])
+
+  const currentTool = useMemo(() => {
+    if (!currentProvider)
+      return undefined
+    return currentProvider.tools?.find(item => item.name === tool)
+  }, [currentProvider, tool])
+
+  const toolMeta = useMemo(() => {
+    if (!currentProvider || !currentTool)
+      return null
+    return {
+      label: currentTool.label?.[language] || tool,
+      icon: currentProvider.icon,
+      iconDark: currentProvider.icon_dark,
+    }
+  }, [currentProvider, currentTool, language, tool])
+
+  const defaultToolValue = useMemo(() => {
+    if (!currentProvider || !currentTool)
+      return null
+    const settingsSchemas = toolParametersToFormSchemas(currentTool.parameters?.filter(param => param.form !== 'llm') || [])
+    const paramsSchemas = toolParametersToFormSchemas(currentTool.parameters?.filter(param => param.form === 'llm') || [])
+    const toolLabel = currentTool.label?.[language] || tool
+    const toolDescription = typeof currentTool.description === 'object'
+      ? (currentTool.description?.[language] || '')
+      : (currentTool.description || '')
+    return {
+      provider_name: currentProvider.id,
+      provider_show_name: currentProvider.name,
+      tool_name: currentTool.name,
+      tool_label: toolLabel,
+      tool_description: toolDescription,
+      settings: generateFormValue({}, settingsSchemas as any),
+      parameters: generateFormValue({}, paramsSchemas as any, true),
+      enabled: true,
+      extra: { description: toolDescription },
+    } as ToolValue
+  }, [currentProvider, currentTool, language, tool])
+
+  useEffect(() => {
+    if (!defaultToolValue)
+      return
+    if (!toolValue || toolValue.tool_name !== defaultToolValue.tool_name || toolValue.provider_name !== defaultToolValue.provider_name)
+      setToolValue(defaultToolValue)
+  }, [defaultToolValue, toolValue])
 
   const displayLabel = label || toolMeta?.label || tool
   const resolvedIcon = (() => {
@@ -109,20 +164,69 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
     )
   }
 
+  const handleToolValueChange = (nextValue: ToolValue) => {
+    setToolValue(nextValue)
+  }
+
+  const handleAuthorizationItemClick = (id: string) => {
+    setToolValue(prev => (prev ? { ...prev, credential_id: id } : prev))
+  }
+
   return (
-    <span
-      ref={ref}
-      className={cn(
-        'inline-flex items-center gap-[2px] rounded-[5px] border border-state-accent-hover-alt bg-state-accent-hover px-[4px] py-[1px] shadow-xs',
-        isSelected && 'border-text-accent',
-      )}
-      title={`${provider}.${tool}`}
+    <PortalToFollowElem
+      placement="bottom-start"
+      offset={8}
+      open={isSettingOpen}
+      onOpenChange={setIsSettingOpen}
     >
-      {renderIcon()}
-      <span className="system-xs-medium max-w-[180px] truncate text-text-accent">
-        {displayLabel}
-      </span>
-    </span>
+      <PortalToFollowElemTrigger
+        asChild
+        onClick={() => {
+          if (!currentProvider || !currentTool)
+            return
+          setIsSettingOpen(true)
+        }}
+      >
+        <span
+          ref={ref}
+          className={cn(
+            'inline-flex cursor-pointer items-center gap-[2px] rounded-[5px] border border-state-accent-hover-alt bg-state-accent-hover px-[4px] py-[1px] shadow-xs',
+            isSelected && 'border-text-accent',
+          )}
+          title={`${provider}.${tool}`}
+          data-tool-config-id={configId}
+        >
+          {renderIcon()}
+          <span className="system-xs-medium max-w-[180px] truncate text-text-accent">
+            {displayLabel}
+          </span>
+        </span>
+      </PortalToFollowElemTrigger>
+      <PortalToFollowElemContent className="z-[999]">
+        <div className={cn('relative max-h-[642px] min-h-20 w-[361px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pb-4 shadow-lg backdrop-blur-sm', 'overflow-y-auto pb-2')}>
+          <div className="system-xl-semibold px-4 pb-1 pt-3.5 text-text-primary">{t('detailPanel.toolSelector.toolSetting', { ns: 'plugin' })}</div>
+          {currentProvider && currentTool && toolValue && (
+            <>
+              <div className="px-4 pb-2 text-xs text-text-tertiary">{displayLabel}</div>
+              <ToolAuthorizationSection
+                currentProvider={currentProvider}
+                credentialId={toolValue.credential_id}
+                onAuthorizationItemClick={handleAuthorizationItemClick}
+              />
+              <ToolSettingsSection
+                currentProvider={currentProvider}
+                currentTool={currentTool}
+                value={toolValue}
+                onChange={handleToolValueChange}
+                nodeId={undefined}
+                nodeOutputVars={[]}
+                availableNodes={[]}
+              />
+            </>
+          )}
+        </div>
+      </PortalToFollowElemContent>
+    </PortalToFollowElem>
   )
 }
 

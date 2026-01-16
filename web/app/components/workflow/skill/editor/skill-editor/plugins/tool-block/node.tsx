@@ -71,6 +71,7 @@ export class ToolBlockNode extends DecoratorNode<React.JSX.Element> {
         nodeKey={this.getKey()}
         provider={this.__provider}
         tool={this.__tool}
+        configId={this.__configId}
         label={this.__label}
         icon={this.__icon}
         iconDark={this.__iconDark}

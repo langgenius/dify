@@ -11,26 +11,20 @@ import Link from 'next/link'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import TabSlider from '@/app/components/base/tab-slider-plain'
 import Textarea from '@/app/components/base/textarea'
-import {
-  AuthCategory,
-  PluginAuthInAgent,
-} from '@/app/components/plugins/plugin-auth'
 import { usePluginInstalledCheck } from '@/app/components/plugins/plugin-detail-panel/tool-selector/hooks'
-import ReasoningConfigForm from '@/app/components/plugins/plugin-detail-panel/tool-selector/reasoning-config-form'
+import ToolAuthorizationSection from '@/app/components/plugins/plugin-detail-panel/tool-selector/sections/tool-authorization-section'
+import ToolSettingsSection from '@/app/components/plugins/plugin-detail-panel/tool-selector/sections/tool-settings-section'
 import ToolItem from '@/app/components/plugins/plugin-detail-panel/tool-selector/tool-item'
 import ToolTrigger from '@/app/components/plugins/plugin-detail-panel/tool-selector/tool-trigger'
 import { CollectionType } from '@/app/components/tools/types'
-import { generateFormValue, getPlainValue, getStructureValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
+import { generateFormValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import ToolPicker from '@/app/components/workflow/block-selector/tool-picker'
-import ToolForm from '@/app/components/workflow/nodes/tool/components/tool-form'
 import { MARKETPLACE_API_PREFIX } from '@/config'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import {
@@ -149,41 +143,6 @@ const ToolSelector: FC<Props> = ({
         description: e.target.value || '',
       },
     } as any)
-  }
-
-  // tool settings & params
-  const currentToolSettings = useMemo(() => {
-    if (!currentProvider)
-      return []
-    return currentProvider.tools.find(tool => tool.name === value?.tool_name)?.parameters.filter(param => param.form !== 'llm') || []
-  }, [currentProvider, value])
-  const currentToolParams = useMemo(() => {
-    if (!currentProvider)
-      return []
-    return currentProvider.tools.find(tool => tool.name === value?.tool_name)?.parameters.filter(param => param.form === 'llm') || []
-  }, [currentProvider, value])
-  const [currType, setCurrType] = useState('settings')
-  const showTabSlider = currentToolSettings.length > 0 && currentToolParams.length > 0
-  const userSettingsOnly = currentToolSettings.length > 0 && !currentToolParams.length
-  const reasoningConfigOnly = currentToolParams.length > 0 && !currentToolSettings.length
-
-  const settingsFormSchemas = useMemo(() => toolParametersToFormSchemas(currentToolSettings), [currentToolSettings])
-  const paramsFormSchemas = useMemo(() => toolParametersToFormSchemas(currentToolParams), [currentToolParams])
-
-  const handleSettingsFormChange = (v: Record<string, any>) => {
-    const newValue = getStructureValue(v)
-    const toolValue = {
-      ...value,
-      settings: newValue,
-    }
-    onSelect(toolValue as any)
-  }
-  const handleParamsFormChange = (v: Record<string, any>) => {
-    const toolValue = {
-      ...value,
-      parameters: v,
-    }
-    onSelect(toolValue as any)
   }
 
   const handleEnabledChange = (state: boolean) => {
@@ -311,92 +270,21 @@ const ToolSelector: FC<Props> = ({
                 </div>
               </div>
               {/* authorization */}
-              {currentProvider && currentProvider.type === CollectionType.builtIn && currentProvider.allow_delete && (
-                <>
-                  <Divider className="my-1 w-full" />
-                  <div className="px-4 py-2">
-                    <PluginAuthInAgent
-                      pluginPayload={{
-                        provider: currentProvider.name,
-                        category: AuthCategory.tool,
-                        providerType: currentProvider.type,
-                        detail: currentProvider as any,
-                      }}
-                      credentialId={value?.credential_id}
-                      onAuthorizationItemClick={handleAuthorizationItemClick}
-                    />
-                  </div>
-                </>
-              )}
+              <ToolAuthorizationSection
+                currentProvider={currentProvider}
+                credentialId={value?.credential_id}
+                onAuthorizationItemClick={handleAuthorizationItemClick}
+              />
               {/* tool settings */}
-              {(currentToolSettings.length > 0 || currentToolParams.length > 0) && currentProvider?.is_team_authorization && (
-                <>
-                  <Divider className="my-1 w-full" />
-                  {/* tabs */}
-                  {nodeId && showTabSlider && (
-                    <TabSlider
-                      className="mt-1 shrink-0 px-4"
-                      itemClassName="py-3"
-                      noBorderBottom
-                      smallItem
-                      value={currType}
-                      onChange={(value) => {
-                        setCurrType(value)
-                      }}
-                      options={[
-                        { value: 'settings', text: t('detailPanel.toolSelector.settings', { ns: 'plugin' })! },
-                        { value: 'params', text: t('detailPanel.toolSelector.params', { ns: 'plugin' })! },
-                      ]}
-                    />
-                  )}
-                  {nodeId && showTabSlider && currType === 'params' && (
-                    <div className="px-4 py-2">
-                      <div className="system-xs-regular text-text-tertiary">{t('detailPanel.toolSelector.paramsTip1', { ns: 'plugin' })}</div>
-                      <div className="system-xs-regular text-text-tertiary">{t('detailPanel.toolSelector.paramsTip2', { ns: 'plugin' })}</div>
-                    </div>
-                  )}
-                  {/* user settings only */}
-                  {userSettingsOnly && (
-                    <div className="p-4 pb-1">
-                      <div className="system-sm-semibold-uppercase text-text-primary">{t('detailPanel.toolSelector.settings', { ns: 'plugin' })}</div>
-                    </div>
-                  )}
-                  {/* reasoning config only */}
-                  {nodeId && reasoningConfigOnly && (
-                    <div className="mb-1 p-4 pb-1">
-                      <div className="system-sm-semibold-uppercase text-text-primary">{t('detailPanel.toolSelector.params', { ns: 'plugin' })}</div>
-                      <div className="pb-1">
-                        <div className="system-xs-regular text-text-tertiary">{t('detailPanel.toolSelector.paramsTip1', { ns: 'plugin' })}</div>
-                        <div className="system-xs-regular text-text-tertiary">{t('detailPanel.toolSelector.paramsTip2', { ns: 'plugin' })}</div>
-                      </div>
-                    </div>
-                  )}
-                  {/* user settings form */}
-                  {(currType === 'settings' || userSettingsOnly) && (
-                    <div className="px-4 py-2">
-                      <ToolForm
-                        inPanel
-                        readOnly={false}
-                        nodeId={nodeId}
-                        schema={settingsFormSchemas as any}
-                        value={getPlainValue(value?.settings || {})}
-                        onChange={handleSettingsFormChange}
-                      />
-                    </div>
-                  )}
-                  {/* reasoning config form */}
-                  {nodeId && (currType === 'params' || reasoningConfigOnly) && (
-                    <ReasoningConfigForm
-                      value={value?.parameters || {}}
-                      onChange={handleParamsFormChange}
-                      schemas={paramsFormSchemas as any}
-                      nodeOutputVars={nodeOutputVars}
-                      availableNodes={availableNodes}
-                      nodeId={nodeId}
-                    />
-                  )}
-                </>
-              )}
+              <ToolSettingsSection
+                currentProvider={currentProvider}
+                currentTool={currentTool}
+                value={value}
+                nodeId={nodeId}
+                nodeOutputVars={nodeOutputVars}
+                availableNodes={availableNodes}
+                onChange={onSelect}
+              />
             </>
           </div>
         </PortalToFollowElemContent>
