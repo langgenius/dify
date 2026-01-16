@@ -235,12 +235,16 @@ class AgentNode(Node[AgentNodeData]):
                                 0,
                             ):
                                 value_param = param.get("value", {})
-                                if value_param.get('type', '') == 'variable':
-                                    variable = variable_pool.get(value_param.get("value"))
-                                    if variable is not None:
-                                        params[key] = variable.value
-                                    else:
-                                        raise AgentVariableNotFoundError(str(value_param.get("value")))
+                                if value_param and value_param.get('type', '') == 'variable':
+                                    variable_selector = value_param.get("value")
+                                    if not variable_selector:
+                                        raise ValueError("Variable selector is missing for a variable-type parameter.")
+
+                                    variable = variable_pool.get(variable_selector)
+                                    if variable is None:
+                                        raise AgentVariableNotFoundError(str(variable_selector))
+
+                                    params[key] = variable.value
                                 else:
                                     params[key] = value_param.get("value", "") if value_param is not None else None
                             else:
