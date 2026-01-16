@@ -78,7 +78,21 @@ const SkillDocEditor: FC = () => {
       return
     if (dirtyMetadataIds.has(activeTabId))
       return
-    storeApi.getState().setFileMetadata(activeTabId, fileContent.metadata ?? {})
+    let nextMetadata: Record<string, any> = {}
+    if (fileContent.metadata) {
+      if (typeof fileContent.metadata === 'string') {
+        try {
+          nextMetadata = JSON.parse(fileContent.metadata)
+        }
+        catch {
+          nextMetadata = {}
+        }
+      }
+      else {
+        nextMetadata = fileContent.metadata
+      }
+    }
+    storeApi.getState().setFileMetadata(activeTabId, nextMetadata)
     storeApi.getState().clearDraftMetadata(activeTabId)
   }, [activeTabId, dirtyMetadataIds, fileContent, storeApi])
 

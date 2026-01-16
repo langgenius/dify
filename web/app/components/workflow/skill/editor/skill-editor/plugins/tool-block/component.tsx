@@ -333,6 +333,8 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
         onMouseDown={() => {
           if (!currentProvider || !currentTool)
             return
+          if (configuredToolValue)
+            setToolValue(configuredToolValue)
           setIsSettingOpen(true)
         }}
       >
