@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { Task } from './types'
+import { RiCalendarLine } from '@remixicon/react'
 import { cn } from '@/utils/classnames'
 
 type TaskItemProps = {
@@ -53,8 +54,12 @@ const TaskItem: FC<TaskItemProps> = ({ task, expanded = false, showScores = true
       {/* Deadline Badge */}
       {deadline && (
         <div className="mt-1.5">
-          <span className="bg-components-badge-bg-gray inline-flex items-center rounded px-1.5 py-0.5 text-[10px] text-text-tertiary">
-            {deadline}
+          <span className="bg-components-badge-bg-gray inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-text-tertiary">
+            <RiCalendarLine className="h-3 w-3" />
+            <span>
+              DDL:
+              {deadline}
+            </span>
           </span>
         </div>
       )}
