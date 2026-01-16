@@ -172,7 +172,7 @@ const Operations = ({
       downloadDocument({ datasetId, documentId: id }) as Promise<DocumentDownloadResponse>,
     )
     if (e || !res?.url) {
-      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      notify({ type: 'error', message: t('actionMsg.downloadUnsuccessfully', { ns: 'common' }) })
       return
     }
 
