@@ -39,7 +39,7 @@ data
 
   it('renders without crashing', () => {
     render(<InfographicViewer syntax={validSyntax} />)
-    expect(screen.getByTitle('Download')).toBeInTheDocument()
+    expect(screen.getByTitle('operation.download')).toBeInTheDocument()
   })
 
   it('calls render with the syntax string', () => {

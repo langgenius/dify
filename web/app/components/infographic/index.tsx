@@ -71,11 +71,16 @@ const InfographicViewer: React.FC<InfographicProps> = ({
 
   const handleCopyImage = async () => {
     try {
-      if (!infographicRef.current)
+      if (!containerRef.current)
         return
 
-      // Export to SVG and convert to blob
-      const svgString = await infographicRef.current.toSVG()
+      // Get SVG element from container
+      const svgElement = containerRef.current.querySelector('svg')
+      if (!svgElement)
+        return
+
+      // Serialize SVG to string
+      const svgString = new XMLSerializer().serializeToString(svgElement)
       const blob = new Blob([svgString], { type: 'image/svg+xml' })
       
       // For clipboard, we need to convert SVG to PNG
@@ -84,8 +89,8 @@ const InfographicViewer: React.FC<InfographicProps> = ({
       const ctx = canvas.getContext('2d')
       
       img.onload = () => {
-        canvas.width = img.width
-        canvas.height = img.height
+        canvas.width = img.width || svgElement.clientWidth
+        canvas.height = img.height || svgElement.clientHeight
         ctx?.drawImage(img, 0, 0)
         
         canvas.toBlob((pngBlob) => {
@@ -94,7 +99,7 @@ const InfographicViewer: React.FC<InfographicProps> = ({
             navigator.clipboard.write([item]).then(() => {
               Toast.notify({
                 type: 'success',
-                message: t('common.actionMsg.copySuccessfully'),
+                message: t('actionMsg.copySuccessfully'),
               })
             })
           }
@@ -107,17 +112,23 @@ const InfographicViewer: React.FC<InfographicProps> = ({
       console.error('Failed to copy infographic image:', err)
       Toast.notify({
         type: 'error',
-        message: t('common.actionMsg.copyFailed'),
+        message: t('actionMsg.copyFailed'),
       })
     }
   }
 
   const handleDownloadImage = async () => {
     try {
-      if (!infographicRef.current)
+      if (!containerRef.current)
         return
 
-      const svgString = await infographicRef.current.toSVG()
+      // Get SVG element from container
+      const svgElement = containerRef.current.querySelector('svg')
+      if (!svgElement)
+        return
+
+      // Serialize SVG to string
+      const svgString = new XMLSerializer().serializeToString(svgElement)
       const blob = new Blob([svgString], { type: 'image/svg+xml' })
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
@@ -128,14 +139,14 @@ const InfographicViewer: React.FC<InfographicProps> = ({
 
       Toast.notify({
         type: 'success',
-        message: t('common.actionMsg.downloadSuccessfully'),
+        message: t('actionMsg.downloadSuccessfully'),
       })
     }
     catch (err) {
       console.error('Failed to download infographic image:', err)
       Toast.notify({
         type: 'error',
-        message: t('common.actionMsg.downloadFailed'),
+        message: t('actionMsg.downloadFailed'),
       })
     }
   }
@@ -148,7 +159,7 @@ const InfographicViewer: React.FC<InfographicProps> = ({
           onClick={handleCopyImage}
           disabled={isLoading || !!error}
           className="p-2 bg-white rounded-lg shadow-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          title={t('common.operation.copy')}
+          title={t('operation.copy')}
         >
           <ClipboardDocumentIcon className="w-4 h-4 text-gray-700" />
         </button>
@@ -156,7 +167,7 @@ const InfographicViewer: React.FC<InfographicProps> = ({
           onClick={handleDownloadImage}
           disabled={isLoading || !!error}
           className="p-2 bg-white rounded-lg shadow-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          title={t('common.operation.download')}
+          title={t('operation.download')}
         >
           <ArrowDownTrayIcon className="w-4 h-4 text-gray-700" />
         </button>
