@@ -7,7 +7,7 @@ import { RiDragDropLine } from '@remixicon/react'
 import { useIsMutating } from '@tanstack/react-query'
 import { useSize } from 'ahooks'
 import * as React from 'react'
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import { Tree } from 'react-arborist'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -16,8 +16,8 @@ import Toast from '@/app/components/base/toast'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { useRenameAppAssetNode } from '@/service/use-app-asset'
 import { cn } from '@/utils/classnames'
+import { useRevealActiveTab } from '../hooks/use-reveal-active-tab'
 import { useSkillAssetTreeData } from '../hooks/use-skill-asset-tree'
-import { getAncestorIds } from '../utils/tree-utils'
 import TreeContextMenu from './tree-context-menu'
 import TreeNode from './tree-node'
 
@@ -85,25 +85,11 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
     })
   }, [appId, renameNode, t])
 
-  useEffect(() => {
-    if (!activeTabId || !treeData?.children)
-      return
-
-    const tree = treeRef.current
-    if (!tree)
-      return
-
-    const ancestors = getAncestorIds(activeTabId, treeData.children)
-    if (ancestors.length > 0)
-      storeApi.getState().revealFile(ancestors)
-    requestAnimationFrame(() => {
-      const node = tree.get(activeTabId)
-      if (node) {
-        tree.openParents(node)
-        tree.scrollTo(activeTabId)
-      }
-    })
-  }, [activeTabId, treeData?.children, storeApi])
+  useRevealActiveTab({
+    treeRef,
+    activeTabId,
+    treeChildren: treeData?.children,
+  })
 
   if (isLoading) {
     return (

@@ -4,9 +4,8 @@ import type { NodeRendererProps } from 'react-arborist'
 import type { TreeNodeData } from '../type'
 import type { FileAppearanceType } from '@/app/components/base/file-uploader/types'
 import { RiFolderLine, RiFolderOpenLine, RiMoreFill } from '@remixicon/react'
-import { throttle } from 'es-toolkit/function'
 import * as React from 'react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import FileTypeIcon from '@/app/components/base/file-uploader/file-type-icon'
 import {
@@ -14,9 +13,9 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
+import { useStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
-import { useDelayedClick } from '../hooks/use-delayed-click'
+import { useTreeNodeHandlers } from '../hooks/use-tree-node-handlers'
 import { getFileIconType } from '../utils/file-utils'
 import NodeMenu from './node-menu'
 import TreeEditInput from './tree-edit-input'
@@ -29,77 +28,23 @@ const TreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeData>) 
   const isDirty = useStore(s => s.dirtyContents.has(node.data.id))
   const contextMenuNodeId = useStore(s => s.contextMenu?.nodeId)
   const hasContextMenu = contextMenuNodeId === node.data.id
-  const storeApi = useWorkflowStore()
 
   const [showDropdown, setShowDropdown] = useState(false)
 
   const fileIconType = !isFolder ? getFileIconType(node.data.name) : null
 
-  const throttledToggle = useMemo(
-    () => throttle(() => node.toggle(), 300, { edges: ['leading'] }),
-    [node],
-  )
-
-  const openFilePreview = useCallback(() => {
-    storeApi.getState().openTab(node.data.id, { pinned: false })
-  }, [node.data.id, storeApi])
-
-  const openFilePinned = useCallback(() => {
-    storeApi.getState().openTab(node.data.id, { pinned: true })
-  }, [node.data.id, storeApi])
-
-  const { handleClick: handleFileClick, handleDoubleClick: handleFileDoubleClick } = useDelayedClick({
-    onSingleClick: openFilePreview,
-    onDoubleClick: openFilePinned,
-  })
-
-  const handleClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    node.select()
-    if (isFolder)
-      throttledToggle()
-    else
-      handleFileClick()
-  }
-
-  const handleDoubleClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (isFolder)
-      throttledToggle()
-    else
-      handleFileDoubleClick()
-  }
-
-  const handleToggle = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    throttledToggle()
-  }
-
-  const handleContextMenu = useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-
-    storeApi.getState().setContextMenu({
-      top: e.clientY,
-      left: e.clientX,
-      nodeId: node.data.id,
-    })
-  }, [node.data.id, storeApi])
+  const {
+    handleClick,
+    handleDoubleClick,
+    handleToggle,
+    handleContextMenu,
+    handleKeyDown,
+  } = useTreeNodeHandlers({ node })
 
   const handleMoreClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
     setShowDropdown(prev => !prev)
   }, [])
-
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault()
-      if (isFolder)
-        node.toggle()
-      else
-        storeApi.getState().openTab(node.data.id, { pinned: true })
-    }
-  }, [isFolder, node, storeApi])
 
   return (
     <div
