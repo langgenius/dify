@@ -104,6 +104,14 @@ export const useGetAppAssetFileContent = (appId: string, nodeId: string) => {
   })
 }
 
+export const useGetAppAssetFileDownloadUrl = (appId: string, nodeId: string, options?: { enabled?: boolean }) => {
+  return useQuery({
+    queryKey: consoleQuery.appAsset.getFileDownloadUrl.queryKey({ input: { params: { appId, nodeId } } }),
+    queryFn: () => consoleClient.appAsset.getFileDownloadUrl({ params: { appId, nodeId } }),
+    enabled: (options?.enabled ?? true) && !!appId && !!nodeId,
+  })
+}
+
 export const useUpdateAppAssetFileContent = () => {
   const queryClient = useQueryClient()
   return useMutation({

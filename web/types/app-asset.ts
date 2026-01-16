@@ -71,6 +71,14 @@ export type AppAssetFileContentResponse = {
 }
 
 /**
+ * File download URL response (GET /apps/{app_id}/assets/files/{node_id}/download-url)
+ */
+export type AppAssetFileDownloadUrlResponse = {
+  /** Presigned download URL */
+  download_url: string
+}
+
+/**
  * Delete node response (DELETE /apps/{app_id}/assets/nodes/{node_id})
  */
 export type AppAssetDeleteResponse = {

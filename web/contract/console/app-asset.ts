@@ -1,6 +1,7 @@
 import type {
   AppAssetDeleteResponse,
   AppAssetFileContentResponse,
+  AppAssetFileDownloadUrlResponse,
   AppAssetNode,
   AppAssetPublishResponse,
   AppAssetTreeResponse,
@@ -53,6 +54,16 @@ export const getFileContentContract = base
     params: { appId: string, nodeId: string }
   }>())
   .output(type<AppAssetFileContentResponse>())
+
+export const getFileDownloadUrlContract = base
+  .route({
+    path: '/apps/{appId}/assets/files/{nodeId}/download-url',
+    method: 'GET',
+  })
+  .input(type<{
+    params: { appId: string, nodeId: string }
+  }>())
+  .output(type<AppAssetFileDownloadUrlResponse>())
 
 export const updateFileContentContract = base
   .route({
