@@ -19,6 +19,7 @@ from constants import (
     IMAGE_EXTENSIONS,
     VIDEO_EXTENSIONS,
 )
+from core.rag.extractor.extract_processor import ExtractProcessor
 from core.file import helpers as file_helpers
 from extensions.ext_database import db
 from extensions.ext_storage import storage
@@ -174,9 +175,6 @@ class FileService:
         """
         Return a short text preview extracted from a document file.
         """
-        # Lazy import to avoid circular imports during module initialization (ZIP/download paths don't need extractors).
-        from core.rag.extractor.extract_processor import ExtractProcessor
-
         with self._session_maker(expire_on_commit=False) as session:
             upload_file = session.query(UploadFile).where(UploadFile.id == file_id).first()
 
