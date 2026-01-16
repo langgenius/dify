@@ -164,6 +164,7 @@ const SkillDocEditor: FC = () => {
       )}
       {isCodeOrText && (
         <CodeFileEditor
+          key={activeTabId}
           language={language}
           theme={isMounted ? theme : 'default-theme'}
           value={currentContent}
