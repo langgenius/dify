@@ -126,6 +126,34 @@ class TestUserAction:
 
         assert action.button_style == ButtonStyle.DEFAULT
 
+    def test_user_action_length_boundaries(self):
+        """Test user action id and title length boundaries."""
+        action = UserAction(id="a" * 20, title="b" * 20)
+
+        assert action.id == "a" * 20
+        assert action.title == "b" * 20
+
+    @pytest.mark.parametrize(
+        ("field_name", "value"),
+        [
+            ("id", "a" * 21),
+            ("title", "b" * 21),
+        ],
+    )
+    def test_user_action_length_limits(self, field_name: str, value: str):
+        """User action fields should enforce max length."""
+        data = {"id": "approve", "title": "Approve"}
+        data[field_name] = value
+
+        with pytest.raises(ValidationError) as exc_info:
+            UserAction(**data)
+
+        errors = exc_info.value.errors()
+        assert any(
+            error["loc"] == (field_name,) and error["type"] == "string_too_long"
+            for error in errors
+        )
+
 
 class TestHumanInputNodeData:
     """Test HumanInputNodeData entity."""

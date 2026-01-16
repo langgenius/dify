@@ -166,8 +166,8 @@ class UserAction(BaseModel):
     # It also serves as the identifiers of output handle.
     #
     # The id must be a valid identifier (satisfy the _IDENTIFIER_PATTERN above.)
-    id: str
-    title: str
+    id: str = Field(max_length=20)
+    title: str = Field(max_length=20)
     button_style: ButtonStyle = ButtonStyle.DEFAULT
 
     @field_validator("id")
