@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { QuadrantConfig, Task } from './types'
+import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
 import TaskItem from './task-item'
 
@@ -17,7 +18,8 @@ const QuadrantCard: FC<QuadrantCardProps> = ({
   expanded = false,
   maxDisplay = 3,
 }) => {
-  const { number, title, subtitle, bgClass, borderClass, titleClass } = config
+  const { t } = useTranslation()
+  const { number, titleKey, subtitleKey, bgClass, borderClass, titleClass } = config
   const displayLimit = expanded ? Infinity : maxDisplay
   const displayTasks = tasks.slice(0, displayLimit)
   const remainingCount = Math.max(0, tasks.length - displayLimit)
@@ -43,14 +45,14 @@ const QuadrantCard: FC<QuadrantCardProps> = ({
           >
             {number}
           </span>
-          <span className={cn('system-sm-semibold', titleClass)}>{title}</span>
+          <span className={cn('system-sm-semibold', titleClass)}>{t(titleKey, { ns: 'app' })}</span>
           {tasks.length > 0 && (
             <span className="bg-components-badge-bg-gray rounded-full px-1.5 py-0.5 text-[10px] font-medium text-text-tertiary">
               {tasks.length}
             </span>
           )}
         </div>
-        <div className="text-[11px] text-text-tertiary">{subtitle}</div>
+        <div className="text-[11px] text-text-tertiary">{t(subtitleKey, { ns: 'app' })}</div>
       </div>
 
       {/* Task List */}
@@ -61,17 +63,28 @@ const QuadrantCard: FC<QuadrantCardProps> = ({
       >
         {displayTasks.length > 0
           ? (
-              displayTasks.map((task, index) => (
-                <TaskItem
-                  key={`${task.name}-${index}`}
-                  task={task}
-                  expanded={expanded}
-                />
-              ))
+              displayTasks.map((task) => {
+                const taskKey = [
+                  task.name,
+                  task.deadline ?? 'no-deadline',
+                  task.importance_score,
+                  task.urgency_score,
+                  task.description ?? '',
+                  task.action_advice ?? '',
+                ].join('|')
+
+                return (
+                  <TaskItem
+                    key={taskKey}
+                    task={task}
+                    expanded={expanded}
+                  />
+                )
+              })
             )
           : (
               <div className="flex flex-1 items-center justify-center text-xs text-text-quaternary">
-                No tasks
+                {t('quadrantMatrix.noTasks', { ns: 'app' })}
               </div>
             )}
       </div>
@@ -79,10 +92,7 @@ const QuadrantCard: FC<QuadrantCardProps> = ({
       {/* More indicator (only in non-expanded mode) */}
       {!expanded && remainingCount > 0 && (
         <div className="mt-2 shrink-0 text-center text-[11px] text-text-tertiary">
-          +
-          {remainingCount}
-          {' '}
-          more
+          {t('quadrantMatrix.more', { ns: 'app', count: remainingCount })}
         </div>
       )}
     </div>

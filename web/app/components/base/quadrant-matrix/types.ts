@@ -1,6 +1,7 @@
 /**
  * Type definitions for Eisenhower Matrix (Task Quadrant) visualization
  */
+import type { I18nKeysWithPrefix } from '@/types/i18n'
 
 export type Task = {
   name: string
@@ -18,11 +19,15 @@ export type QuadrantData = {
   q4: Task[] // Not Urgent & Not Important - Don't Do
 }
 
+type QuadrantKeyBase = I18nKeysWithPrefix<'app', 'quadrantMatrix.q'>
+type QuadrantTitleKey = Extract<QuadrantKeyBase, `${string}.title`>
+type QuadrantSubtitleKey = Extract<QuadrantKeyBase, `${string}.subtitle`>
+
 export type QuadrantConfig = {
   key: 'q1' | 'q2' | 'q3' | 'q4'
   number: number
-  title: string
-  subtitle: string
+  titleKey: QuadrantTitleKey // i18n key for title
+  subtitleKey: QuadrantSubtitleKey // i18n key for subtitle
   bgClass: string
   borderClass: string
   titleClass: string
@@ -35,8 +40,8 @@ export const QUADRANT_CONFIGS: Record<string, QuadrantConfig> = {
   q1: {
     key: 'q1',
     number: 1,
-    title: 'Do First',
-    subtitle: 'Urgent & Important',
+    titleKey: 'quadrantMatrix.q1.title',
+    subtitleKey: 'quadrantMatrix.q1.subtitle',
     bgClass: 'bg-state-destructive-hover',
     borderClass: 'border-state-destructive-border',
     titleClass: 'text-text-destructive',
@@ -44,8 +49,8 @@ export const QUADRANT_CONFIGS: Record<string, QuadrantConfig> = {
   q2: {
     key: 'q2',
     number: 2,
-    title: 'Schedule',
-    subtitle: 'Important & Not Urgent',
+    titleKey: 'quadrantMatrix.q2.title',
+    subtitleKey: 'quadrantMatrix.q2.subtitle',
     bgClass: 'bg-state-accent-hover',
     borderClass: 'border-state-accent-border',
     titleClass: 'text-text-accent',
@@ -53,8 +58,8 @@ export const QUADRANT_CONFIGS: Record<string, QuadrantConfig> = {
   q3: {
     key: 'q3',
     number: 3,
-    title: 'Delegate',
-    subtitle: 'Urgent & Not Important',
+    titleKey: 'quadrantMatrix.q3.title',
+    subtitleKey: 'quadrantMatrix.q3.subtitle',
     bgClass: 'bg-state-warning-hover',
     borderClass: 'border-state-warning-border',
     titleClass: 'text-text-warning',
@@ -62,8 +67,8 @@ export const QUADRANT_CONFIGS: Record<string, QuadrantConfig> = {
   q4: {
     key: 'q4',
     number: 4,
-    title: 'Don\'t Do',
-    subtitle: 'Not Urgent & Not Important',
+    titleKey: 'quadrantMatrix.q4.title',
+    subtitleKey: 'quadrantMatrix.q4.subtitle',
     bgClass: 'bg-components-panel-on-panel-item-bg',
     borderClass: 'border-divider-regular',
     titleClass: 'text-text-tertiary',

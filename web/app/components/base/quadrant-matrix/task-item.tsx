@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { Task } from './types'
 import { RiCalendarLine } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
 
 type TaskItemProps = {
@@ -11,6 +12,7 @@ type TaskItemProps = {
 }
 
 const TaskItem: FC<TaskItemProps> = ({ task, expanded = false, showScores = true }) => {
+  const { t } = useTranslation()
   const { name, description, deadline, importance_score, urgency_score, action_advice } = task
 
   return (
@@ -57,7 +59,8 @@ const TaskItem: FC<TaskItemProps> = ({ task, expanded = false, showScores = true
           <span className="bg-components-badge-bg-gray inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-text-tertiary">
             <RiCalendarLine className="h-3 w-3" />
             <span>
-              DDL:
+              {t('quadrantMatrix.deadline', { ns: 'app' })}
+              {' '}
               {deadline}
             </span>
           </span>
