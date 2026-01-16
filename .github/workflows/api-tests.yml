@@ -72,6 +72,7 @@ jobs:
           OPENDAL_FS_ROOT: /tmp/dify-storage
         run: |
           uv run --project api pytest \
+            -n auto \
             --timeout "${PYTEST_TIMEOUT:-180}" \
             api/tests/integration_tests/workflow \
             api/tests/integration_tests/tools \

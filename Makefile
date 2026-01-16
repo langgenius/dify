@@ -72,8 +72,8 @@ type-check:
 	@echo "✅ Type check complete"
 
 test:
-	@echo "🧪 Running backend unit tests..."
-	@uv run --project api --dev dev/pytest/pytest_unit_tests.sh
+	@echo "🧪 Running backend unit tests with xdist..."
+	@PYTEST_XDIST_ARGS="-n auto" uv run --project api --dev dev/pytest/pytest_unit_tests.sh
 	@echo "✅ Tests complete"
 
 # Build Docker images
