@@ -74,7 +74,7 @@ class TestWorkflowDraftVariableService:
             enable_api=True,
             created_by=fake.uuid4(),
         )
-        app.updated_by=app.created_by,
+        app.updated_by = (app.created_by,)
 
         from extensions.ext_database import db
 
