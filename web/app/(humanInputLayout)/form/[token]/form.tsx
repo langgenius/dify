@@ -12,9 +12,9 @@ import AppIcon from '@/app/components/base/app-icon'
 import Button from '@/app/components/base/button'
 import ContentItem from '@/app/components/base/chat/chat/answer/human-input-content/content-item'
 import ExpirationTime from '@/app/components/base/chat/chat/answer/human-input-content/expiration-time'
+import { getButtonStyle } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
 import Loading from '@/app/components/base/loading'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
-import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { getHumanInputForm, submitHumanInputForm } from '@/service/share'
 import { asyncRunSafe } from '@/utils'
@@ -45,17 +45,6 @@ const FormContent = () => {
   const [submitted, setSubmitted] = useState(false)
 
   const site = formData?.site.site
-
-  const getButtonStyle = (style: UserActionButtonType) => {
-    if (style === UserActionButtonType.Primary)
-      return 'primary'
-    if (style === UserActionButtonType.Default)
-      return 'secondary'
-    if (style === UserActionButtonType.Accent)
-      return 'secondary-accent'
-    if (style === UserActionButtonType.Ghost)
-      return 'ghost'
-  }
 
   const splitByOutputVar = (content: string): string[] => {
     const outputVarRegex = /(\{\{#\$output\.[^#]+#\}\})/g
