@@ -110,63 +110,69 @@ const TreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeData>) 
       aria-selected={isSelected}
       aria-expanded={isFolder ? node.isOpen : undefined}
       className={cn(
-        'group relative flex h-6 cursor-pointer items-center gap-2 rounded-md px-2',
+        'group relative flex h-6 cursor-pointer items-center rounded-md px-2',
         'hover:bg-state-base-hover',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-components-input-border-active',
         isSelected && 'bg-state-base-active',
         hasContextMenu && !isSelected && 'bg-state-base-hover',
       )}
-      onClick={handleClick}
-      onDoubleClick={handleDoubleClick}
       onKeyDown={handleKeyDown}
       onContextMenu={handleContextMenu}
     >
       <TreeGuideLines level={node.level} />
-      <div className="flex size-5 shrink-0 items-center justify-center">
-        {isFolder
+      {/* Main content area - isolated click/double-click handling */}
+      <div
+        className="flex min-w-0 flex-1 items-center gap-2"
+        onClick={handleClick}
+        onDoubleClick={handleDoubleClick}
+      >
+        <div className="flex size-5 shrink-0 items-center justify-center">
+          {isFolder
+            ? (
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={handleToggle}
+                  aria-label={t('skillSidebar.toggleFolder')}
+                  className={cn(
+                    'flex size-full items-center justify-center rounded',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-components-input-border-active',
+                  )}
+                >
+                  {node.isOpen
+                    ? <RiFolderOpenLine className="size-4 text-text-accent" aria-hidden="true" />
+                    : <RiFolderLine className="size-4 text-text-secondary" aria-hidden="true" />}
+                </button>
+              )
+            : (
+                <div className="relative flex size-full items-center justify-center">
+                  <FileTypeIcon type={fileIconType as FileAppearanceType} size="sm" />
+                  {isDirty && (
+                    <span className="absolute -bottom-px -right-px size-[7px] rounded-full border border-white bg-text-warning-secondary" />
+                  )}
+                </div>
+              )}
+        </div>
+
+        {node.isEditing
           ? (
-              <button
-                type="button"
-                tabIndex={-1}
-                onClick={handleToggle}
-                aria-label={t('skillSidebar.toggleFolder')}
-                className={cn(
-                  'flex size-full items-center justify-center rounded',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-components-input-border-active',
-                )}
-              >
-                {node.isOpen
-                  ? <RiFolderOpenLine className="size-4 text-text-accent" aria-hidden="true" />
-                  : <RiFolderLine className="size-4 text-text-secondary" aria-hidden="true" />}
-              </button>
+              <TreeEditInput node={node} />
             )
           : (
-              <div className="relative flex size-full items-center justify-center">
-                <FileTypeIcon type={fileIconType as FileAppearanceType} size="sm" />
-                {isDirty && (
-                  <span className="absolute -bottom-px -right-px size-[7px] rounded-full border border-white bg-text-warning-secondary" />
+              <span
+                className={cn(
+                  'min-w-0 flex-1 truncate text-[13px] font-normal leading-4',
+                  isSelected
+                    ? 'text-text-primary'
+                    : 'text-text-secondary',
                 )}
-              </div>
+              >
+                {node.data.name}
+              </span>
             )}
       </div>
 
-      {node.isEditing
-        ? (
-            <TreeEditInput node={node} />
-          )
-        : (
-            <span
-              className={cn(
-                'min-w-0 flex-1 truncate text-[13px] font-normal leading-4',
-                isSelected
-                  ? 'text-text-primary'
-                  : 'text-text-secondary',
-              )}
-            >
-              {node.data.name}
-            </span>
-          )}
-
+      {/* More button - separate from main content click handling */}
       <PortalToFollowElem
         placement="bottom-start"
         offset={4}
