@@ -1,7 +1,7 @@
 import type { SlashCommandHandler } from './types'
 import { RiFeedbackLine } from '@remixicon/react'
 import * as React from 'react'
-import i18n from '@/i18n-config/i18next-config'
+import { getI18n } from 'react-i18next'
 import { registerCommands, unregisterCommands } from './command-bus'
 
 // Forum command dependency types
@@ -22,6 +22,7 @@ export const forumCommand: SlashCommandHandler<ForumDeps> = {
   },
 
   async search(args: string, locale: string = 'en') {
+    const i18n = getI18n()
     return [{
       id: 'forum',
       title: i18n.t('userProfile.forum', { ns: 'common', lng: locale }),

@@ -2,7 +2,7 @@ import type { CommandSearchResult } from '../types'
 import type { SlashCommandHandler } from './types'
 import { RiComputerLine, RiMoonLine, RiSunLine } from '@remixicon/react'
 import * as React from 'react'
-import i18n from '@/i18n-config/i18next-config'
+import { getI18n } from 'react-i18next'
 import { registerCommands, unregisterCommands } from './command-bus'
 
 // Theme dependency types
@@ -32,6 +32,7 @@ const THEME_ITEMS = [
 ] as const
 
 const buildThemeCommands = (query: string, locale?: string): CommandSearchResult[] => {
+  const i18n = getI18n()
   const q = query.toLowerCase()
   const list = THEME_ITEMS.filter(item =>
     !q

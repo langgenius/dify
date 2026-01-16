@@ -19,7 +19,6 @@ import Textarea from '@/app/components/base/textarea'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
-import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { cn } from '@/utils/classnames'
 
@@ -140,7 +139,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                         placeholder={item.name}
                         value={inputs[item.key]}
                         onChange={(e: ChangeEvent<HTMLInputElement>) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
-                        maxLength={item.max_length || DEFAULT_VALUE_MAX_LEN}
+                        maxLength={item.max_length}
                       />
                     )}
                     {item.type === 'paragraph' && (
@@ -195,7 +194,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                         noWrapper
                         className="bg h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
                         placeholder={
-                          <div className="whitespace-pre">{item.json_schema}</div>
+                          <div className="whitespace-pre">{typeof item.json_schema === 'string' ? item.json_schema : JSON.stringify(item.json_schema || '', null, 2)}</div>
                         }
                       />
                     )}

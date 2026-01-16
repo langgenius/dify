@@ -59,7 +59,7 @@ export const useUpdateAppPinStatus = () => {
 export const useGetInstalledAppAccessModeByAppId = (appId: string | null) => {
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   return useQuery({
-    queryKey: [NAME_SPACE, 'appAccessMode', appId],
+    queryKey: [NAME_SPACE, 'appAccessMode', appId, systemFeatures.webapp_auth.enabled],
     queryFn: () => {
       if (systemFeatures.webapp_auth.enabled === false) {
         return {

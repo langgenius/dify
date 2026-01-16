@@ -26,11 +26,39 @@ import 'dayjs/locale/zh-tw'
  * Formats a number with comma separators.
  * @example formatNumber(1234567) will return '1,234,567'
  * @example formatNumber(1234567.89) will return '1,234,567.89'
+ * @example formatNumber(0.0000008) will return '0.0000008'
  */
 export const formatNumber = (num: number | string) => {
   if (!num)
     return num
-  const parts = num.toString().split('.')
+  const n = typeof num === 'string' ? Number(num) : num
+
+  let numStr: string
+
+  // Force fixed decimal for small numbers to avoid scientific notation
+  if (Math.abs(n) < 0.001 && n !== 0) {
+    const str = n.toString()
+    const match = str.match(/e-(\d+)$/)
+    let precision: number
+    if (match) {
+      // Scientific notation: precision is exponent + decimal digits in mantissa
+      const exponent = Number.parseInt(match[1], 10)
+      const mantissa = str.split('e')[0]
+      const mantissaDecimalPart = mantissa.split('.')[1]
+      precision = exponent + (mantissaDecimalPart?.length || 0)
+    }
+    else {
+      // Decimal notation: count decimal places
+      const decimalPart = str.split('.')[1]
+      precision = decimalPart?.length || 0
+    }
+    numStr = n.toFixed(precision)
+  }
+  else {
+    numStr = n.toString()
+  }
+
+  const parts = numStr.split('.')
   parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',')
   return parts.join('.')
 }

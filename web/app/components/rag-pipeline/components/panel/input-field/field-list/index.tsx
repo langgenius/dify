@@ -53,6 +53,7 @@ const FieldList = ({
           {LabelRightContent}
         </div>
         <ActionButton
+          data-testid="field-list-add-btn"
           onClick={() => handleOpenInputFieldEditor()}
           disabled={readonly}
           className={cn(readonly && 'cursor-not-allowed')}

@@ -17,7 +17,7 @@ vi.mock('@/hooks/use-app-favicon', () => ({
   useAppFavicon: vi.fn(),
 }))
 
-vi.mock('@/i18n-config/i18next-config', () => ({
+vi.mock('@/i18n-config/client', () => ({
   changeLanguage: vi.fn().mockResolvedValue(undefined),
 }))
 
@@ -170,8 +170,12 @@ describe('useChatWithHistory', () => {
       await waitFor(() => {
         expect(mockFetchChatList).toHaveBeenCalledWith('conversation-1', false, 'app-1')
       })
-      expect(result.current.pinnedConversationList).toEqual(pinnedData.data)
-      expect(result.current.conversationList).toEqual(listData.data)
+      await waitFor(() => {
+        expect(result.current.pinnedConversationList).toEqual(pinnedData.data)
+      })
+      await waitFor(() => {
+        expect(result.current.conversationList).toEqual(listData.data)
+      })
     })
   })
 

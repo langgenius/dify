@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import type { ActivePluginType } from '../../marketplace/constants'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,7 +13,7 @@ import {
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
 import { useInstalledPluginList } from '@/service/use-plugins'
 import { cn } from '@/utils/classnames'
-import { PLUGIN_TYPE_SEARCH_MAP } from '../../marketplace/plugin-type-switch'
+import { PLUGIN_TYPE_SEARCH_MAP } from '../../marketplace/constants'
 import { PluginSource } from '../../types'
 import NoDataPlaceholder from './no-data-placeholder'
 import ToolItem from './tool-item'
@@ -73,7 +74,7 @@ const ToolPicker: FC<Props> = ({
     },
   ]
 
-  const [pluginType, setPluginType] = useState(PLUGIN_TYPE_SEARCH_MAP.all)
+  const [pluginType, setPluginType] = useState<ActivePluginType>(PLUGIN_TYPE_SEARCH_MAP.all)
   const [query, setQuery] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const { data, isLoading } = useInstalledPluginList()
