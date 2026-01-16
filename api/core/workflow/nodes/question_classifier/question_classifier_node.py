@@ -160,6 +160,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
                 file_outputs=self._file_outputs,
                 node_id=self._node_id,
                 node_type=self.node_type,
+                variable_pool=variable_pool,
             )
 
             for event in generator:

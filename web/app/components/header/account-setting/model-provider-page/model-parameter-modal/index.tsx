@@ -47,6 +47,10 @@ export type ModelParameterModalProps = {
   readonly?: boolean
   isInWorkflow?: boolean
   scope?: string
+  nodeId?: string
+  filterVar?: (payload: any, valueSelector: any) => boolean
+  availableVars?: any[]
+  availableNodes?: any[]
 }
 
 const ModelParameterModal: FC<ModelParameterModalProps> = ({
@@ -64,6 +68,10 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   renderTrigger,
   readonly,
   isInWorkflow,
+  nodeId,
+  filterVar,
+  availableVars,
+  availableNodes,
 }) => {
   const { t } = useTranslation()
   const { isAPIKeySet } = useProviderContext()
@@ -218,6 +226,10 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                       onChange={v => handleParamChange(parameter.name, v)}
                       onSwitch={(checked, assignValue) => handleSwitch(parameter.name, checked, assignValue)}
                       isInWorkflow={isInWorkflow}
+                      nodeId={nodeId}
+                      filterVar={filterVar}
+                      availableVars={availableVars}
+                      availableNodes={availableNodes}
                     />
                   ))
                 )

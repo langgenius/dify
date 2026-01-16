@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import type { ModelParameterRule } from '../declarations'
+import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { useEffect, useRef, useState } from 'react'
 import Radio from '@/app/components/base/radio'
 import { SimpleSelect } from '@/app/components/base/select'
@@ -7,6 +8,7 @@ import Slider from '@/app/components/base/slider'
 import Switch from '@/app/components/base/switch'
 import TagInput from '@/app/components/base/tag-input'
 import Tooltip from '@/app/components/base/tooltip'
+import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
 import { cn } from '@/utils/classnames'
 import { useLanguage } from '../hooks'
 import { isNullOrUndefined } from '../utils'
@@ -19,6 +21,10 @@ type ParameterItemProps = {
   onChange?: (value: ParameterValue) => void
   onSwitch?: (checked: boolean, assignValue: ParameterValue) => void
   isInWorkflow?: boolean
+  nodeId?: string
+  filterVar?: (payload: Var, valueSelector: ValueSelector) => boolean
+  availableVars?: any[]
+  availableNodes?: any[]
 }
 const ParameterItem: FC<ParameterItemProps> = ({
   parameterRule,
@@ -26,6 +32,10 @@ const ParameterItem: FC<ParameterItemProps> = ({
   onChange,
   onSwitch,
   isInWorkflow,
+  nodeId,
+  filterVar,
+  availableVars,
+  availableNodes,
 }) => {
   const language = useLanguage()
   const [localValue, setLocalValue] = useState(value)
@@ -201,6 +211,25 @@ const ParameterItem: FC<ParameterItemProps> = ({
     }
 
     if (parameterRule.type === 'string' && !parameterRule.options?.length) {
+      // In workflow, support variable reference for string parameters
+      // Use MixedVariableTextInput to support both direct string input and variable references
+      // without showing Variable/Constant selector
+      if (isInWorkflow && nodeId) {
+        return (
+          <div className="ml-4 flex-1">
+            <MixedVariableTextInput
+              readOnly={false}
+              nodesOutputVars={availableVars}
+              availableNodes={availableNodes || []}
+              value={typeof renderValue === 'string' ? renderValue : ''}
+              onChange={(text: string) => {
+                handleInputChange(text)
+              }}
+            />
+          </div>
+        )
+      }
+
       return (
         <input
           className={cn(isInWorkflow ? 'w-[150px]' : 'w-full', 'system-sm-regular ml-4 flex h-8 appearance-none items-center rounded-lg bg-components-input-bg-normal px-3 text-components-input-text-filled outline-none')}

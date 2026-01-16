@@ -570,6 +570,10 @@ const FormInputItem: FC<Props> = ({
           setModel={handleAppOrModelSelect}
           readonly={readOnly}
           scope={scope}
+          nodeId={nodeId}
+          filterVar={getFilterVar()}
+          availableVars={availableVars}
+          availableNodes={availableNodesWithParent}
         />
       )}
       {showVariableSelector && (
