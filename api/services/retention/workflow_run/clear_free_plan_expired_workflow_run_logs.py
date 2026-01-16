@@ -316,21 +316,6 @@ class WorkflowRunCleanup:
         return trigger_repo.count_by_run_ids(run_ids)
 
     @staticmethod
-    def _build_run_contexts(
-        runs: Sequence[WorkflowRun],
-    ) -> list[DifyAPISQLAlchemyWorkflowNodeExecutionRepository.RunContext]:
-        return [
-            {
-                "run_id": run.id,
-                "tenant_id": run.tenant_id,
-                "app_id": run.app_id,
-                "workflow_id": run.workflow_id,
-                "triggered_from": run.triggered_from,
-            }
-            for run in runs
-        ]
-
-    @staticmethod
     def _empty_related_counts() -> dict[str, int]:
         return {
             "node_executions": 0,
@@ -353,9 +338,9 @@ class WorkflowRunCleanup:
         )
 
     def _count_node_executions(self, session: Session, runs: Sequence[WorkflowRun]) -> tuple[int, int]:
-        run_contexts = self._build_run_contexts(runs)
-        return DifyAPISQLAlchemyWorkflowNodeExecutionRepository.count_by_runs(session, run_contexts)
+        run_ids = [run.id for run in runs]
+        return DifyAPISQLAlchemyWorkflowNodeExecutionRepository.count_by_runs(session, run_ids)
 
     def _delete_node_executions(self, session: Session, runs: Sequence[WorkflowRun]) -> tuple[int, int]:
-        run_contexts = self._build_run_contexts(runs)
-        return DifyAPISQLAlchemyWorkflowNodeExecutionRepository.delete_by_runs(session, run_contexts)
+        run_ids = [run.id for run in runs]
+        return DifyAPISQLAlchemyWorkflowNodeExecutionRepository.delete_by_runs(session, run_ids)

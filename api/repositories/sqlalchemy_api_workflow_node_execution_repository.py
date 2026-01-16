@@ -7,17 +7,15 @@ using SQLAlchemy 2.0 style queries for WorkflowNodeExecutionModel operations.
 
 from collections.abc import Sequence
 from datetime import datetime
-from typing import TypedDict, cast
+from typing import cast
 
 from sqlalchemy import asc, delete, desc, func, select
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import (
     WorkflowNodeExecutionModel,
     WorkflowNodeExecutionOffload,
-    WorkflowNodeExecutionTriggeredFrom,
 )
 from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
 
@@ -48,26 +46,6 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
             session_maker: SQLAlchemy sessionmaker for creating database sessions
         """
         self._session_maker = session_maker
-
-    @staticmethod
-    def _map_run_triggered_from_to_node_triggered_from(triggered_from: str) -> str:
-        """
-        Map workflow run triggered_from values to workflow node execution triggered_from values.
-        """
-        if triggered_from in {
-            WorkflowRunTriggeredFrom.APP_RUN.value,
-            WorkflowRunTriggeredFrom.DEBUGGING.value,
-            WorkflowRunTriggeredFrom.SCHEDULE.value,
-            WorkflowRunTriggeredFrom.PLUGIN.value,
-            WorkflowRunTriggeredFrom.WEBHOOK.value,
-        }:
-            return WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value
-        if triggered_from in {
-            WorkflowRunTriggeredFrom.RAG_PIPELINE_RUN.value,
-            WorkflowRunTriggeredFrom.RAG_PIPELINE_DEBUGGING.value,
-        }:
-            return WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN.value
-        return ""
 
     def get_node_last_execution(
         self,
@@ -316,24 +294,15 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
             session.commit()
             return result.rowcount
 
-    class RunContext(TypedDict):
-        run_id: str
-        tenant_id: str
-        app_id: str
-        workflow_id: str
-        triggered_from: str
-
     @staticmethod
-    def delete_by_runs(session: Session, runs: Sequence[RunContext]) -> tuple[int, int]:
+    def delete_by_runs(session: Session, run_ids: Sequence[str]) -> tuple[int, int]:
         """
-        Delete node executions (and offloads) for the given workflow runs using indexed columns.
-
-        Uses the workflow_run_id index to target executions by run id.
+        Delete node executions (and offloads) for the given workflow runs using workflow_run_id.
         """
-        if not runs:
+        if not run_ids:
             return 0, 0
 
-        run_ids = [run["run_id"] for run in runs]
+        run_ids = list(run_ids)
         run_id_filter = WorkflowNodeExecutionModel.workflow_run_id.in_(run_ids)
         node_execution_ids = select(WorkflowNodeExecutionModel.id).where(run_id_filter)
 
@@ -362,14 +331,14 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         return node_executions_deleted, offloads_deleted
 
     @staticmethod
-    def count_by_runs(session: Session, runs: Sequence[RunContext]) -> tuple[int, int]:
+    def count_by_runs(session: Session, run_ids: Sequence[str]) -> tuple[int, int]:
         """
-        Count node executions (and offloads) for the given workflow runs using indexed columns.
+        Count node executions (and offloads) for the given workflow runs using workflow_run_id.
         """
-        if not runs:
+        if not run_ids:
             return 0, 0
 
-        run_ids = [run["run_id"] for run in runs]
+        run_ids = list(run_ids)
         run_id_filter = WorkflowNodeExecutionModel.workflow_run_id.in_(run_ids)
 
         node_executions_count = (
