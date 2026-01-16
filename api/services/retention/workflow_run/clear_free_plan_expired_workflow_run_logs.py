@@ -145,8 +145,7 @@ class WorkflowRunCleanup:
 
                 if not free_runs:
                     skipped_message = (
-                        f"[batch #{batch_index}] skipped (no sandbox runs in batch, "
-                        f"{paid_or_skipped} paid/unknown)"
+                        f"[batch #{batch_index}] skipped (no sandbox runs in batch, {paid_or_skipped} paid/unknown)"
                     )
                     click.echo(
                         click.style(
