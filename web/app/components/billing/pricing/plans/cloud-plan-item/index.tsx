@@ -77,7 +77,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
     try {
       if (isCurrentPaidPlan) {
         await openAsyncWindow(async () => {
-          const res = await consoleClient.billingUrl()
+          const res = await consoleClient.billing.invoices()
           if (res.url)
             return res.url
           throw new Error('Failed to open billing page')
