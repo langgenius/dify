@@ -675,7 +675,9 @@ class LLMNode(Node[LLMNodeData]):
                     raise VariableNotFoundError(f"Variable {'.'.join(ctx_ref.value_selector)} not found")
                 if not isinstance(ctx_var, ArrayPromptMessageSegment):
                     raise InvalidVariableTypeError(f"Variable {'.'.join(ctx_ref.value_selector)} is not array[message]")
-                combined_messages.extend(ctx_var.value)
+                # Restore multimodal content (base64/url) that was truncated when saving context
+                restored_messages = llm_utils.restore_multimodal_content_in_messages(ctx_var.value)
+                combined_messages.extend(restored_messages)
                 context_idx += 1
             else:
                 # Handle static message

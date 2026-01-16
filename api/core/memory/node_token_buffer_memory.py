@@ -15,20 +15,24 @@ Design:
 
 import logging
 from collections.abc import Sequence
+from typing import cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core.file import file_manager
 from core.memory.base import BaseMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities import (
     AssistantPromptMessage,
+    MultiModalPromptMessageContent,
     PromptMessage,
     PromptMessageRole,
     SystemPromptMessage,
     ToolPromptMessage,
     UserPromptMessage,
 )
+from core.model_runtime.entities.message_entities import PromptMessageContentUnionTypes
 from core.prompt.utils.extract_thread_messages import extract_thread_messages
 from extensions.ext_database import db
 from models.model import Message
@@ -108,10 +112,35 @@ class NodeTokenBufferMemory(BaseMemory):
         messages = []
         for msg_dict in context_data:
             try:
-                messages.append(self._deserialize_prompt_message(msg_dict))
+                msg = self._deserialize_prompt_message(msg_dict)
+                msg = self._restore_multimodal_content(msg)
+                messages.append(msg)
             except Exception as e:
                 logger.warning("Failed to deserialize prompt message: %s", e)
         return messages
+
+    def _restore_multimodal_content(self, message: PromptMessage) -> PromptMessage:
+        """
+        Restore multimodal content (base64 or url) from file_ref.
+
+        When context is saved, base64_data is cleared to save storage space.
+        This method restores the content by parsing file_ref (format: "method:id_or_url").
+        """
+        content = message.content
+        if content is None or isinstance(content, str):
+            return message
+
+        # Process list content, restoring multimodal data from file references
+        restored_content: list[PromptMessageContentUnionTypes] = []
+        for item in content:
+            if isinstance(item, MultiModalPromptMessageContent):
+                # restore_multimodal_content preserves the concrete subclass type
+                restored_item = file_manager.restore_multimodal_content(item)
+                restored_content.append(cast(PromptMessageContentUnionTypes, restored_item))
+            else:
+                restored_content.append(item)
+
+        return message.model_copy(update={"content": restored_content})
 
     def get_history_prompt_messages(
         self,

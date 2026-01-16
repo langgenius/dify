@@ -233,21 +233,63 @@ def _truncate_multimodal_content(message: PromptMessage) -> PromptMessage:
     """
     Truncate multi-modal content base64 data in a message to avoid storing large data.
     Preserves the PromptMessage structure for ArrayPromptMessageSegment compatibility.
+
+    If file_ref is present, clears base64_data and url (they can be restored later).
+    Otherwise, truncates base64_data as fallback for legacy data.
     """
     content = message.content
     if content is None or isinstance(content, str):
         return message
 
-    # Process list content, truncating multi-modal base64 data
+    # Process list content, handling multi-modal data based on file_ref availability
     new_content: list[PromptMessageContentUnionTypes] = []
     for item in content:
         if isinstance(item, MultiModalPromptMessageContent):
-            # Truncate base64_data similar to prompt_messages_to_prompt_for_saving
-            truncated_base64 = ""
-            if item.base64_data:
-                truncated_base64 = item.base64_data[:10] + "...[TRUNCATED]..." + item.base64_data[-10:]
-            new_content.append(item.model_copy(update={"base64_data": truncated_base64}))
+            if item.file_ref:
+                # Clear base64 and url, keep file_ref for later restoration
+                new_content.append(item.model_copy(update={"base64_data": "", "url": ""}))
+            else:
+                # Fallback: truncate base64_data if no file_ref (legacy data)
+                truncated_base64 = ""
+                if item.base64_data:
+                    truncated_base64 = item.base64_data[:10] + "...[TRUNCATED]..." + item.base64_data[-10:]
+                new_content.append(item.model_copy(update={"base64_data": truncated_base64}))
         else:
             new_content.append(item)
 
     return message.model_copy(update={"content": new_content})
+
+
+def restore_multimodal_content_in_messages(messages: Sequence[PromptMessage]) -> list[PromptMessage]:
+    """
+    Restore multimodal content (base64 or url) in a list of PromptMessages.
+
+    When context is saved, base64_data is cleared to save storage space.
+    This function restores the content by parsing file_ref in each MultiModalPromptMessageContent.
+
+    Args:
+        messages: List of PromptMessages that may contain truncated multimodal content
+
+    Returns:
+        List of PromptMessages with restored multimodal content
+    """
+    from core.file import file_manager
+
+    return [_restore_message_content(msg, file_manager) for msg in messages]
+
+
+def _restore_message_content(message: PromptMessage, file_manager) -> PromptMessage:
+    """Restore multimodal content in a single PromptMessage."""
+    content = message.content
+    if content is None or isinstance(content, str):
+        return message
+
+    restored_content: list[PromptMessageContentUnionTypes] = []
+    for item in content:
+        if isinstance(item, MultiModalPromptMessageContent):
+            restored_item = file_manager.restore_multimodal_content(item)
+            restored_content.append(cast(PromptMessageContentUnionTypes, restored_item))
+        else:
+            restored_content.append(item)
+
+    return message.model_copy(update={"content": restored_content})
