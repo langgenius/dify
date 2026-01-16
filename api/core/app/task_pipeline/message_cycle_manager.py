@@ -30,11 +30,13 @@ from core.app.entities.task_entities import (
     StreamEvent,
     WorkflowTaskState,
 )
+from core.file import FileTransferMethod
 from core.llm_generator.llm_generator import LLMGenerator
 from core.tools.signature import sign_tool_file
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.model import AppMode, Conversation, MessageAnnotation, MessageFile
+from models.tools import ToolFile
 from services.annotation_service import AppAnnotationService
 
 logger = logging.getLogger(__name__)
@@ -195,8 +197,20 @@ class MessageCycleManager:
         :param event: event
         :return:
         """
+        message_file: MessageFile | None = None
+        tool_file: ToolFile | None = None
         with Session(db.engine, expire_on_commit=False) as session:
-            message_file = session.scalar(select(MessageFile).where(MessageFile.id == event.message_file_id))
+            stmt = (
+                select(MessageFile, ToolFile)
+                .outerjoin(ToolFile, ToolFile.id == MessageFile.upload_file_id)
+                .where(MessageFile.id == event.message_file_id)
+            )
+            row = session.execute(stmt).first()
+            if row:
+                message_file, tool_file = row
+                # Only honor tool_file when transfer method is tool_file
+                if message_file and message_file.transfer_method != FileTransferMethod.TOOL_FILE:
+                    tool_file = None
 
         if message_file and message_file.url is not None:
             # get tool file id
@@ -223,6 +237,13 @@ class MessageCycleManager:
                 type=message_file.type,
                 belongs_to=message_file.belongs_to or "user",
                 url=url,
+                upload_file_id=message_file.upload_file_id,
+                transfer_method=message_file.transfer_method,
+                mime_type=tool_file.mimetype if tool_file else "application/octet-stream",
+                filename=tool_file.name if tool_file else "",
+                size=tool_file.size if tool_file else 0,
+                related_id=tool_file.id if tool_file else None,
+                extension=extension,
             )
 
         return None
