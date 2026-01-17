@@ -1,52 +1,28 @@
 """
-Constants for workflow generation.
-
-This module provides:
-- Placeholder values for workflow generation
-- Retry and timeout configurations
-- Temperature and token limits for LLM calls
-- Intent classification model settings
+Constants for Workflow Generator.
+Replaces magic strings throughout the codebase.
 """
 
-# ============================================================
-# Placeholder and Default Values
-# ============================================================
-
+# Placeholder value for LLM to indicate "needs user input"
 PLACEHOLDER_VALUE = "__PLACEHOLDER__"
-"""Placeholder value used during workflow generation."""
 
-# ============================================================
-# Retry Configuration
-# ============================================================
-
+# Retry configuration
 MAX_RETRIES = 3
-"""Maximum number of retries for failed operations."""
+INITIAL_RETRY_DELAY_MS = 1000
 
-# ============================================================
-# LLM Temperature Settings
-# ============================================================
-
-TEMPERATURE_MIN = 0.0
-"""Minimum temperature value for LLM calls."""
-
-TEMPERATURE_MAX = 2.0
-"""Maximum temperature value for LLM calls."""
-
+# Temperature settings for retry strategies
 TEMPERATURE_DEFAULT = 0.7
-"""Default temperature value for LLM calls."""
+TEMPERATURE_HIGH = 0.9
+TEMPERATURE_LOW = 0.3
 
-# ============================================================
-# Intent Classification Settings
-# ============================================================
+# Intent types
+INTENT_GENERATE = "generate"
+INTENT_OFF_TOPIC = "off_topic"
+INTENT_ERROR = "error"
 
-INTENT_CLASSIFICATION_MODEL_PROVIDER = "openai"
-"""Default model provider for intent classification."""
+# Node types that require model configuration
+MODEL_REQUIRED_NODE_TYPES = frozenset({"llm", "question-classifier", "parameter-extractor"})
 
-INTENT_CLASSIFICATION_MODEL_NAME = "gpt-4o-mini"
-"""Default model name for intent classification."""
-
-INTENT_CLASSIFICATION_TEMPERATURE = 0.0
-"""Temperature for intent classification (deterministic)."""
-
-INTENT_CLASSIFICATION_MAX_TOKENS = 100
-"""Maximum tokens for intent classification output."""
+# Stability warning messages (i18n keys in the future)
+STABILITY_WARNING_EN = "The generated workflow may require debugging."
+STABILITY_WARNING_ZH = "生成的 Workflow 可能需要调试。"

@@ -30,41 +30,24 @@ class ErrorType(StrEnum):
 
 
 class ErrorCode(StrEnum):
-    """
-    Specific error codes for workflow generation.
-
-    System errors:
-        MODEL_UNAVAILABLE: LLM model is not available
-        RATE_LIMITED: Rate limit exceeded for LLM API
-        DATABASE_ERROR: Database operation failed
-        NETWORK_ERROR: Network connectivity issue
-
-    User errors:
-        INVALID_INPUT: User provided invalid input
-        MISSING_CONFIGURATION: Required configuration is missing
-        UNAUTHORIZED: User lacks required permissions
-
-    Generation errors:
-        VALIDATION_FAILED: Generated workflow failed validation
-        TIMEOUT: Workflow generation timed out
-        CONTEXT_TOO_LARGE: Context exceeds model limits
-    """
-
+    """Specific error codes for programmatic handling."""
     # System errors
     MODEL_UNAVAILABLE = "MODEL_UNAVAILABLE"
     RATE_LIMITED = "RATE_LIMITED"
-    DATABASE_ERROR = "DATABASE_ERROR"
-    NETWORK_ERROR = "NETWORK_ERROR"
+    PROVIDER_ERROR = "PROVIDER_ERROR"
 
     # User errors
-    INVALID_INPUT = "INVALID_INPUT"
-    MISSING_CONFIGURATION = "MISSING_CONFIGURATION"
-    UNAUTHORIZED = "UNAUTHORIZED"
+    INVALID_INSTRUCTION = "INVALID_INSTRUCTION"
+    MISSING_CONFIG = "MISSING_CONFIG"
+    OFF_TOPIC = "OFF_TOPIC"
 
     # Generation errors
+    PLANNING_FAILED = "PLANNING_FAILED"
+    BUILDING_FAILED = "BUILDING_FAILED"
     VALIDATION_FAILED = "VALIDATION_FAILED"
-    TIMEOUT = "TIMEOUT"
-    CONTEXT_TOO_LARGE = "CONTEXT_TOO_LARGE"
+    GRAPH_DISCONNECTED = "GRAPH_DISCONNECTED"
+    JSON_PARSE_FAILED = "JSON_PARSE_FAILED"
+    MAX_RETRIES_EXCEEDED = "MAX_RETRIES_EXCEEDED"
 
 
 class WorkflowGenerationError(BaseModel):
@@ -76,6 +59,7 @@ class WorkflowGenerationError(BaseModel):
         code: Specific error code
         message: Human-readable error message
         is_retryable: Whether the operation can be retried
+        severity: Error severity level (error | warning)
         details: Additional error context
         suggestions: User-facing suggestions for resolution
     """
@@ -84,6 +68,7 @@ class WorkflowGenerationError(BaseModel):
     code: ErrorCode
     message: str
     is_retryable: bool = False
+    severity: str = Field(default="error")  # error | warning
     details: dict[str, Any] = Field(default_factory=dict)
     suggestions: list[str] = Field(default_factory=list)
 
@@ -99,6 +84,7 @@ class WorkflowGenerationError(BaseModel):
             "code": self.code.value,
             "message": self.message,
             "is_retryable": self.is_retryable,
+            "severity": self.severity,
             "details": self.details,
             "suggestions": self.suggestions,
         }
@@ -109,91 +95,33 @@ class WorkflowGenerationError(BaseModel):
 # ============================================================
 
 
-def model_unavailable_error(
-    model_name: str,
-    provider: str | None = None,
-    details: dict[str, Any] | None = None,
-) -> WorkflowGenerationError:
-    """
-    Create a model unavailable error.
-
-    Args:
-        model_name: Name of the unavailable model
-        provider: Model provider name
-        details: Additional error details
-
-    Returns:
-        WorkflowGenerationError for model unavailability
-    """
-    provider_info = f" from {provider}" if provider else ""
+def model_unavailable_error(provider: str, model: str) -> WorkflowGenerationError:
     return WorkflowGenerationError(
         type=ErrorType.SYSTEM_ERROR,
         code=ErrorCode.MODEL_UNAVAILABLE,
-        message=f"Model '{model_name}'{provider_info} is not available",
-        is_retryable=True,
-        details=details or {"model": model_name, "provider": provider},
-        suggestions=[
-            "Check if the model is configured correctly",
-            "Verify model provider credentials",
-            "Try using a different model",
-        ],
+        message=f"Model {provider}/{model} is not available",
+        is_retryable=False,
+        suggestions=["Configure the model in Settings", "Choose a different model"],
     )
 
 
-def rate_limited_error(
-    retry_after: int | None = None,
-    details: dict[str, Any] | None = None,
-) -> WorkflowGenerationError:
-    """
-    Create a rate limit error.
-
-    Args:
-        retry_after: Seconds until retry is allowed
-        details: Additional error details
-
-    Returns:
-        WorkflowGenerationError for rate limiting
-    """
-    retry_msg = f" Retry after {retry_after} seconds." if retry_after else ""
+def rate_limited_error(retry_after: int | None = None) -> WorkflowGenerationError:
     return WorkflowGenerationError(
         type=ErrorType.SYSTEM_ERROR,
         code=ErrorCode.RATE_LIMITED,
-        message=f"Rate limit exceeded.{retry_msg}",
+        message="Rate limit exceeded",
         is_retryable=True,
-        details=details or {"retry_after": retry_after},
-        suggestions=[
-            "Wait before retrying the request",
-            "Consider using a different model provider",
-            "Check your API quota and limits",
-        ],
+        details={"retry_after": retry_after} if retry_after else {},
+        suggestions=["Wait and try again"],
     )
 
 
-def validation_failed_error(
-    validation_errors: list[str] | None = None,
-    details: dict[str, Any] | None = None,
-) -> WorkflowGenerationError:
-    """
-    Create a validation failed error.
-
-    Args:
-        validation_errors: List of validation error messages
-        details: Additional error details
-
-    Returns:
-        WorkflowGenerationError for validation failures
-    """
-    errors = validation_errors or []
-    error_list = "; ".join(errors) if errors else "Unknown validation error"
+def validation_failed_error(errors: list[dict]) -> WorkflowGenerationError:
     return WorkflowGenerationError(
         type=ErrorType.GENERATION_ERROR,
         code=ErrorCode.VALIDATION_FAILED,
-        message=f"Workflow validation failed: {error_list}",
+        message=f"Workflow validation failed with {len(errors)} error(s)",
         is_retryable=True,
-        details=details or {"validation_errors": errors},
-        suggestions=[
-            "Review the generated workflow structure",
-            "Check node configurations",
-            "Verify all required fields are present",
-        ],
+        details={"validation_errors": errors},
+        suggestions=["Review the generated workflow", "Try simplifying your request"],
     )
