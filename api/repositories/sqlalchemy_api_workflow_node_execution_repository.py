@@ -294,8 +294,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
             session.commit()
             return result.rowcount
 
-    @staticmethod
-    def delete_by_runs(session: Session, run_ids: Sequence[str]) -> tuple[int, int]:
+    def delete_by_runs(self, session: Session, run_ids: Sequence[str]) -> tuple[int, int]:
         """
         Delete node executions (and offloads) for the given workflow runs using workflow_run_id.
         """
@@ -328,8 +327,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
 
         return node_executions_deleted, offloads_deleted
 
-    @staticmethod
-    def count_by_runs(session: Session, run_ids: Sequence[str]) -> tuple[int, int]:
+    def count_by_runs(self, session: Session, run_ids: Sequence[str]) -> tuple[int, int]:
         """
         Count node executions (and offloads) for the given workflow runs using workflow_run_id.
         """
