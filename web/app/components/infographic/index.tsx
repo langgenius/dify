@@ -2,7 +2,7 @@
 
 import { Infographic } from '@antv/infographic'
 import { ArrowDownTrayIcon, ClipboardDocumentIcon } from '@heroicons/react/24/outline'
-import React, { useEffect, useRef, useState } from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
 
@@ -22,10 +22,10 @@ const InfographicViewer: React.FC<InfographicProps> = ({
   onError,
 }) => {
   const { t } = useTranslation()
-  const containerRef = useRef<HTMLDivElement>(null)
-  const infographicRef = useRef<Infographic | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const containerRef = React.useRef<HTMLDivElement>(null)
+  const infographicRef = React.useRef<Infographic | null>(null)
+  const [isLoading, setIsLoading] = React.useState(true)
+  const [error, setError] = React.useState<string | null>(null)
 
   const updateLoadingState = React.useCallback((loading: boolean) => {
     setIsLoading(loading)
@@ -35,7 +35,7 @@ const InfographicViewer: React.FC<InfographicProps> = ({
     setError(err)
   }, [])
 
-  useEffect(() => {
+  React.useEffect(() => {
     const renderInfographic = () => {
       if (!containerRef.current)
         return
