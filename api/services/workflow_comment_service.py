@@ -111,7 +111,7 @@ class WorkflowCommentService:
         content: str,
         position_x: float,
         position_y: float,
-        mentioned_user_ids: Optional[list[str]] = None,
+        mentioned_user_ids: list[str] | None = None,
     ) -> dict:
         """Create a new workflow comment."""
         WorkflowCommentService._validate_content(content)
@@ -152,9 +152,9 @@ class WorkflowCommentService:
         comment_id: str,
         user_id: str,
         content: str,
-        position_x: Optional[float] = None,
-        position_y: Optional[float] = None,
-        mentioned_user_ids: Optional[list[str]] = None,
+        position_x: float | None = None,
+        position_y: float | None = None,
+        mentioned_user_ids: list[str] | None = None,
     ) -> dict:
         """Update a workflow comment."""
         WorkflowCommentService._validate_content(content)
@@ -251,7 +251,7 @@ class WorkflowCommentService:
 
     @staticmethod
     def create_reply(
-        comment_id: str, content: str, created_by: str, mentioned_user_ids: Optional[list[str]] = None
+        comment_id: str, content: str, created_by: str, mentioned_user_ids: list[str] | None = None
     ) -> dict:
         """Add a reply to a workflow comment."""
         WorkflowCommentService._validate_content(content)
@@ -282,9 +282,7 @@ class WorkflowCommentService:
             return {"id": reply.id, "created_at": reply.created_at}
 
     @staticmethod
-    def update_reply(
-        reply_id: str, user_id: str, content: str, mentioned_user_ids: Optional[list[str]] = None
-    ) -> dict:
+    def update_reply(reply_id: str, user_id: str, content: str, mentioned_user_ids: list[str] | None = None) -> dict:
         """Update a comment reply."""
         WorkflowCommentService._validate_content(content)
 

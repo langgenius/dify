@@ -53,8 +53,8 @@ class WorkflowComment(Base):
         db.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
     resolved: Mapped[bool] = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
-    resolved_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime)
-    resolved_by: Mapped[Optional[str]] = mapped_column(StringUUID)
+    resolved_at: Mapped[datetime | None] = mapped_column(db.DateTime)
+    resolved_by: Mapped[str | None] = mapped_column(StringUUID)
 
     # Relationships
     replies: Mapped[list["WorkflowCommentReply"]] = relationship(
@@ -177,7 +177,7 @@ class WorkflowCommentMention(Base):
     comment_id: Mapped[str] = mapped_column(
         StringUUID, db.ForeignKey("workflow_comments.id", ondelete="CASCADE"), nullable=False
     )
-    reply_id: Mapped[Optional[str]] = mapped_column(
+    reply_id: Mapped[str | None] = mapped_column(
         StringUUID, db.ForeignKey("workflow_comment_replies.id", ondelete="CASCADE"), nullable=True
     )
     mentioned_user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)

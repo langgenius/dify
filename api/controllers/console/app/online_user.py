@@ -208,10 +208,10 @@ def get_or_set_leader(workflow_id: str, sid: str) -> str:
     # Fetch again
     raw_leader = redis_client.get(leader_key)
     current_leader = raw_leader.decode("utf-8") if isinstance(raw_leader, bytes) else raw_leader
-    
+
     if current_leader:
         return current_leader
-        
+
     # 5. Fallback (extremely rare race where leader expired/deleted right after SETNX failed)
     # Just return self (or recurse)
     return sid
