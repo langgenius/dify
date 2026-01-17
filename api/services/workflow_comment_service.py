@@ -1,6 +1,5 @@
 import logging
 from collections.abc import Sequence
-from typing import Optional
 
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session, selectinload
