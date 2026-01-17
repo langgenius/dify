@@ -147,18 +147,9 @@ class DataSourceNotionListApi(Resource):
         current_user, current_tenant_id = current_account_with_tenant()
 
         query = DataSourceNotionListQuery.model_validate(request.args.to_dict())
-        if not query.credential_id:
-            raise ValueError("Credential id is required.")
 
         # Get datasource_parameters from query string (optional, for GitHub and other datasources)
-        datasource_parameters = {}
-        if query.datasource_parameters:
-            try:
-                datasource_parameters = json.loads(query.datasource_parameters)
-                if not isinstance(datasource_parameters, dict):
-                    raise ValueError("datasource_parameters must be a JSON object.")
-            except json.JSONDecodeError:
-                raise ValueError("Invalid datasource_parameters JSON format.")
+        datasource_parameters = query.datasource_parameters
 
         datasource_provider_service = DatasourceProviderService()
         credential = datasource_provider_service.get_datasource_credentials(
