@@ -1,14 +1,14 @@
 import type { MouseEvent } from 'react'
-import {
-  useCallback,
-} from 'react'
-import { produce } from 'immer'
 import type {
   OnSelectionChangeFunc,
 } from 'reactflow'
+import type { Node } from '../types'
+import { produce } from 'immer'
+import {
+  useCallback,
+} from 'react'
 import { useStoreApi } from 'reactflow'
 import { useWorkflowStore } from '../store'
-import type { Node } from '../types'
 
 export const useSelectionInteractions = () => {
   const store = useStoreApi()

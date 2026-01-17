@@ -1,3 +1,5 @@
+import type { Features as FeaturesData } from '@/app/components/base/features/types'
+import type { WorkflowProps } from '@/app/components/workflow'
 import {
   useCallback,
   useEffect,
@@ -5,14 +7,15 @@ import {
   useRef,
   useState,
 } from 'react'
+import { useReactFlow, useStoreApi } from 'reactflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
-import type { Features as FeaturesData } from '@/app/components/base/features/types'
-import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
-import type { WorkflowProps } from '@/app/components/workflow'
-import WorkflowChildren from './workflow-children'
-
+import { collaborationManager, useCollaboration } from '@/app/components/workflow/collaboration'
+import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-interactions'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
+import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { fetchWorkflowDraft } from '@/service/workflow'
 import {
   useAvailableNodesMetaData,
   useConfigsMap,
@@ -25,12 +28,7 @@ import {
   useWorkflowRun,
   useWorkflowStartRun,
 } from '../hooks'
-import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-interactions'
-import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
-import { useCollaboration } from '@/app/components/workflow/collaboration'
-import { collaborationManager } from '@/app/components/workflow/collaboration'
-import { fetchWorkflowDraft } from '@/service/workflow'
-import { useReactFlow, useStoreApi } from 'reactflow'
+import WorkflowChildren from './workflow-children'
 
 type WorkflowMainProps = Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport'>
 const WorkflowMain = ({
@@ -140,7 +138,8 @@ const WorkflowMain = ({
   } = useWorkflowRun()
 
   useEffect(() => {
-    if (!appId || !isCollaborationEnabled) return
+    if (!appId || !isCollaborationEnabled)
+      return
 
     const unsubscribe = collaborationManager.onVarsAndFeaturesUpdate(async (update: any) => {
       try {
@@ -157,7 +156,8 @@ const WorkflowMain = ({
 
   // Listen for workflow updates from other users
   useEffect(() => {
-    if (!appId || !isCollaborationEnabled) return
+    if (!appId || !isCollaborationEnabled)
+      return
 
     const unsubscribe = collaborationManager.onWorkflowUpdate(async () => {
       console.log('Received workflow update from collaborator, fetching latest workflow data')
@@ -186,7 +186,8 @@ const WorkflowMain = ({
 
   // Listen for sync requests from other users (only processed by leader)
   useEffect(() => {
-    if (!appId || !isCollaborationEnabled) return
+    if (!appId || !isCollaborationEnabled)
+      return
 
     const unsubscribe = collaborationManager.onSyncRequest(() => {
       console.log('Leader received sync request, performing sync')

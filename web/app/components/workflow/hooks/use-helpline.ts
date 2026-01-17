@@ -1,8 +1,8 @@
+import type { Node } from '../types'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
-import type { Node } from '../types'
-import { BlockEnum, isTriggerNode } from '../types'
 import { useWorkflowStore } from '../store'
+import { BlockEnum, isTriggerNode } from '../types'
 
 // Entry node (Start/Trigger) wrapper offsets
 // The EntryNodeContainer adds a wrapper with status indicator above the actual node

@@ -1,26 +1,26 @@
 {
-	"icon": {
-		"type": "element",
-		"isRootNode": true,
-		"name": "svg",
-		"attributes": {
-			"width": "16",
-			"height": "16",
-			"viewBox": "0 0 16 16",
-			"fill": "none",
-			"xmlns": "http://www.w3.org/2000/svg"
-		},
-		"children": [
-			{
-				"type": "element",
-				"name": "path",
-				"attributes": {
-					"d": "M8 3.22388L3.86194 7.36193L4.80475 8.30473L8 5.10949L11.1953 8.30473L12.1381 7.36193L8 3.22388ZM8 6.99046L3.86194 11.1285L4.80475 12.0713L8 8.87606L11.1953 12.0713L12.1381 11.1285L8 6.99046Z",
-					"fill": "currentColor"
-				},
-				"children": []
-			}
-		]
-	},
-	"name": "ArrowUpDoubleLine"
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "16",
+      "height": "16",
+      "viewBox": "0 0 16 16",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "path",
+        "attributes": {
+          "d": "M8 3.22388L3.86194 7.36193L4.80475 8.30473L8 5.10949L11.1953 8.30473L12.1381 7.36193L8 3.22388ZM8 6.99046L3.86194 11.1285L4.80475 12.0713L8 8.87606L11.1953 12.0713L12.1381 11.1285L8 6.99046Z",
+          "fill": "currentColor"
+        },
+        "children": []
+      }
+    ]
+  },
+  "name": "ArrowUpDoubleLine"
 }

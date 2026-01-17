@@ -1,7 +1,4 @@
 import type { MouseEvent } from 'react'
-import { useCallback, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { produce } from 'immer'
 import type {
   NodeDragHandler,
   NodeMouseHandler,
@@ -10,15 +7,21 @@ import type {
   OnConnectStart,
   ResizeParamsWithDirection,
 } from 'reactflow'
+import type { PluginDefaultValue } from '../block-selector/types'
+import type { IterationNodeType } from '../nodes/iteration/types'
+import type { LoopNodeType } from '../nodes/loop/types'
+import type { VariableAssignerNodeType } from '../nodes/variable-assigner/types'
+import type { Edge, Node, OnNodeAdd } from '../types'
+import type { RAGPipelineVariables } from '@/models/pipeline'
+import { produce } from 'immer'
+import { useCallback, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   getConnectedEdges,
   getOutgoers,
   useReactFlow,
 } from 'reactflow'
-import type { PluginDefaultValue } from '../block-selector/types'
-import type { Edge, Node, OnNodeAdd } from '../types'
-import { BlockEnum, ControlMode, isTriggerNode } from '../types'
-import { useWorkflowStore } from '../store'
+import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import {
   CUSTOM_EDGE,
   ITERATION_CHILDREN_Z_INDEX,
@@ -29,39 +32,39 @@ import {
   X_OFFSET,
   Y_OFFSET,
 } from '../constants'
+import { getNodeUsedVars } from '../nodes/_base/components/variable/utils'
+import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
+import { useNodeIterationInteractions } from '../nodes/iteration/use-interactions'
+import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
+import { useNodeLoopInteractions } from '../nodes/loop/use-interactions'
+import { CUSTOM_NOTE_NODE } from '../note-node/constants'
+import { useWorkflowStore } from '../store'
+import { BlockEnum, ControlMode, isTriggerNode } from '../types'
+
 import {
-  genNewNodeTitleFromOld,
   generateNewNode,
+  genNewNodeTitleFromOld,
   getNestedNodePosition,
   getNodeCustomTypeByNodeDataType,
   getNodesConnectedSourceOrTargetHandleIdsMap,
   getTopLeftNodePosition,
 } from '../utils'
-import { CUSTOM_NOTE_NODE } from '../note-node/constants'
-import type { IterationNodeType } from '../nodes/iteration/types'
-import type { LoopNodeType } from '../nodes/loop/types'
-import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
-import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
-import type { VariableAssignerNodeType } from '../nodes/variable-assigner/types'
-import { useNodeIterationInteractions } from '../nodes/iteration/use-interactions'
-import { useNodeLoopInteractions } from '../nodes/loop/use-interactions'
-import { collaborationManager } from '../collaboration/core/collaboration-manager'
-import { useNodesSyncDraft } from './use-nodes-sync-draft'
+import { useWorkflowHistoryStore } from '../workflow-history-store'
+import { useAutoGenerateWebhookUrl } from './use-auto-generate-webhook-url'
+import { useCollaborativeWorkflow } from './use-collaborative-workflow'
 import { useHelpline } from './use-helpline'
+import useInspectVarsCrud from './use-inspect-vars-crud'
+import { useNodesMetaData } from './use-nodes-meta-data'
+import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import {
   useNodesReadOnly,
   useWorkflow,
   useWorkflowReadOnly,
 } from './use-workflow'
 import {
-  WorkflowHistoryEvent,
   useWorkflowHistory,
+  WorkflowHistoryEvent,
 } from './use-workflow-history'
-import { useNodesMetaData } from './use-nodes-meta-data'
-import type { RAGPipelineVariables } from '@/models/pipeline'
-import useInspectVarsCrud from './use-inspect-vars-crud'
-import { getNodeUsedVars } from '../nodes/_base/components/variable/utils'
-import { useCollaborativeWorkflow } from './use-collaborative-workflow'
 
 // Entry node deletion restriction has been removed to allow empty workflows
 
@@ -77,6 +80,7 @@ export const useNodesInteractions = () => {
   const collaborativeWorkflow = useCollaborativeWorkflow()
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
+  const { store: workflowHistoryStore } = useWorkflowHistoryStore()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { getAfterNodesInSameBranch } = useWorkflow()
   const { getNodesReadOnly } = useNodesReadOnly()
@@ -87,30 +91,34 @@ export const useNodesInteractions = () => {
   const { handleNodeLoopChildDrag, handleNodeLoopChildrenCopy }
     = useNodeLoopInteractions()
   const dragNodeStartPosition = useRef({ x: 0, y: 0 } as {
-    x: number;
-    y: number;
+    x: number
+    y: number
   })
   const { nodesMap: nodesMetaDataMap } = useNodesMetaData()
 
-  const { saveStateToHistory } = useWorkflowHistory()
+  const { saveStateToHistory, undo } = useWorkflowHistory()
+  const autoGenerateWebhookUrl = useAutoGenerateWebhookUrl()
 
   const handleNodeDragStart = useCallback<NodeDragHandler>(
     (_, node) => {
       workflowStore.setState({ nodeAnimation: false })
 
-      if (getNodesReadOnly()) return
+      if (getNodesReadOnly())
+        return
 
       if (
         node.type === CUSTOM_ITERATION_START_NODE
         || node.type === CUSTOM_NOTE_NODE
-      )
+      ) {
         return
+      }
 
       if (
         node.type === CUSTOM_LOOP_START_NODE
         || node.type === CUSTOM_NOTE_NODE
-      )
+      ) {
         return
+      }
 
       dragNodeStartPosition.current = {
         x: node.position.x,
@@ -122,11 +130,14 @@ export const useNodesInteractions = () => {
 
   const handleNodeDrag = useCallback<NodeDragHandler>(
     (e, node: Node) => {
-      if (getNodesReadOnly()) return
+      if (getNodesReadOnly())
+        return
 
-      if (node.type === CUSTOM_ITERATION_START_NODE) return
+      if (node.type === CUSTOM_ITERATION_START_NODE)
+        return
 
-      if (node.type === CUSTOM_LOOP_START_NODE) return
+      if (node.type === CUSTOM_LOOP_START_NODE)
+        return
 
       e.stopPropagation()
 
@@ -192,14 +203,17 @@ export const useNodesInteractions = () => {
         }
       })
       setNodes(newNodes)
-    }, [getNodesReadOnly, collaborativeWorkflow, handleNodeIterationChildDrag, handleNodeLoopChildDrag, handleSetHelpline])
+    },
+    [getNodesReadOnly, collaborativeWorkflow, handleNodeIterationChildDrag, handleNodeLoopChildDrag, handleSetHelpline],
+  )
 
   const handleNodeDragStop = useCallback<NodeDragHandler>(
     (_, node) => {
       const { setHelpLineHorizontal, setHelpLineVertical }
         = workflowStore.getState()
 
-      if (getNodesReadOnly()) return
+      if (getNodesReadOnly())
+        return
 
       const { x, y } = dragNodeStartPosition.current
       if (!(x === node.position.x && y === node.position.y)) {
@@ -225,19 +239,22 @@ export const useNodesInteractions = () => {
 
   const handleNodeEnter = useCallback<NodeMouseHandler>(
     (_, node) => {
-      if (getNodesReadOnly()) return
+      if (getNodesReadOnly())
+        return
 
       if (
         node.type === CUSTOM_NOTE_NODE
         || node.type === CUSTOM_ITERATION_START_NODE
-      )
+      ) {
         return
+      }
 
       if (
         node.type === CUSTOM_LOOP_START_NODE
         || node.type === CUSTOM_NOTE_NODE
-      )
+      ) {
         return
+      }
 
       const { nodes, edges, setNodes, setEdges } = collaborativeWorkflow.getState()
       const {
@@ -245,7 +262,8 @@ export const useNodesInteractions = () => {
         setEnteringNodePayload,
       } = workflowStore.getState()
       if (connectingNodePayload) {
-        if (connectingNodePayload.nodeId === node.id) return
+        if (connectingNodePayload.nodeId === node.id)
+          return
         const connectingNode: Node = nodes.find(
           n => n.id === connectingNodePayload.nodeId,
         )!
@@ -262,22 +280,23 @@ export const useNodesInteractions = () => {
             draft.forEach((n) => {
               if (
                 n.id === node.id
-              && fromType === 'source'
-              && (node.data.type === BlockEnum.VariableAssigner
-                || node.data.type === BlockEnum.VariableAggregator)
+                && fromType === 'source'
+                && (node.data.type === BlockEnum.VariableAssigner
+                  || node.data.type === BlockEnum.VariableAggregator)
               ) {
                 if (!node.data.advanced_settings?.group_enabled)
                   n.data._isEntering = true
               }
               if (
                 n.id === node.id
-              && fromType === 'target'
-              && (connectingNode.data.type === BlockEnum.VariableAssigner
-                || connectingNode.data.type === BlockEnum.VariableAggregator)
-              && node.data.type !== BlockEnum.IfElse
-              && node.data.type !== BlockEnum.QuestionClassifier
-              )
+                && fromType === 'target'
+                && (connectingNode.data.type === BlockEnum.VariableAssigner
+                  || connectingNode.data.type === BlockEnum.VariableAggregator)
+                && node.data.type !== BlockEnum.IfElse
+                && node.data.type !== BlockEnum.QuestionClassifier
+              ) {
                 n.data._isEntering = true
+              }
             })
           })
           setNodes(newNodes, false)
@@ -288,7 +307,8 @@ export const useNodesInteractions = () => {
 
         connectedEdges.forEach((edge) => {
           const currentEdge = draft.find(e => e.id === edge.id)
-          if (currentEdge) currentEdge.data._connectedNodeIsHovering = true
+          if (currentEdge)
+            currentEdge.data._connectedNodeIsHovering = true
         })
       })
       setEdges(newEdges, false)
@@ -298,19 +318,22 @@ export const useNodesInteractions = () => {
 
   const handleNodeLeave = useCallback<NodeMouseHandler>(
     (_, node) => {
-      if (getNodesReadOnly()) return
+      if (getNodesReadOnly())
+        return
 
       if (
         node.type === CUSTOM_NOTE_NODE
         || node.type === CUSTOM_ITERATION_START_NODE
-      )
+      ) {
         return
+      }
 
       if (
         node.type === CUSTOM_NOTE_NODE
         || node.type === CUSTOM_LOOP_START_NODE
-      )
+      ) {
         return
+      }
 
       const { setEnteringNodePayload } = workflowStore.getState()
       setEnteringNodePayload(undefined)
@@ -342,11 +365,13 @@ export const useNodesInteractions = () => {
       const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
       const selectedNode = nodes.find(node => node.data.selected)
 
-      if (!cancelSelection && selectedNode?.id === nodeId) return
+      if (!cancelSelection && selectedNode?.id === nodeId)
+        return
 
       const newNodes = produce(nodes, (draft) => {
         draft.forEach((node) => {
-          if (node.id === nodeId) node.data.selected = !cancelSelection
+          if (node.id === nodeId)
+            node.data.selected = !cancelSelection
           else node.data.selected = false
         })
       })
@@ -373,16 +398,23 @@ export const useNodesInteractions = () => {
         })
       })
       setEdges(newEdges, false)
-    }, [collaborativeWorkflow])
+    },
+    [collaborativeWorkflow],
+  )
 
   const handleNodeClick = useCallback<NodeMouseHandler>(
     (_, node) => {
       const { controlMode } = workflowStore.getState()
-      if (controlMode === ControlMode.Comment) return
-      if (node.type === CUSTOM_ITERATION_START_NODE) return
-      if (node.type === CUSTOM_LOOP_START_NODE) return
-      if (node.data.type === BlockEnum.DataSourceEmpty) return
-      if (node.data._pluginInstallLocked) return
+      if (controlMode === ControlMode.Comment)
+        return
+      if (node.type === CUSTOM_ITERATION_START_NODE)
+        return
+      if (node.type === CUSTOM_LOOP_START_NODE)
+        return
+      if (node.data.type === BlockEnum.DataSourceEmpty)
+        return
+      if (node.data._pluginInstallLocked)
+        return
       handleNodeSelect(node.id)
     },
     [handleNodeSelect, workflowStore],
@@ -390,20 +422,24 @@ export const useNodesInteractions = () => {
 
   const handleNodeConnect = useCallback<OnConnect>(
     ({ source, sourceHandle, target, targetHandle }) => {
-      if (source === target) return
-      if (getNodesReadOnly()) return
+      if (source === target)
+        return
+      if (getNodesReadOnly())
+        return
 
       const { nodes, edges, setNodes, setEdges } = collaborativeWorkflow.getState()
       const targetNode = nodes.find(node => node.id === target!)
       const sourceNode = nodes.find(node => node.id === source!)
 
-      if (targetNode?.parentId !== sourceNode?.parentId) return
+      if (targetNode?.parentId !== sourceNode?.parentId)
+        return
 
       if (
         sourceNode?.type === CUSTOM_NOTE_NODE
         || targetNode?.type === CUSTOM_NOTE_NODE
-      )
+      ) {
         return
+      }
 
       if (
         edges.find(
@@ -413,8 +449,9 @@ export const useNodesInteractions = () => {
             && edge.target === target
             && edge.targetHandle === targetHandle,
         )
-      )
+      ) {
         return
+      }
 
       const parendNode = nodes.find(node => node.id === targetNode?.parentId)
       const isInIteration
@@ -480,20 +517,24 @@ export const useNodesInteractions = () => {
 
   const handleNodeConnectStart = useCallback<OnConnectStart>(
     (_, { nodeId, handleType, handleId }) => {
-      if (getNodesReadOnly()) return
+      if (getNodesReadOnly())
+        return
 
       if (nodeId && handleType) {
         const { setConnectingNodePayload } = workflowStore.getState()
         const { nodes } = collaborativeWorkflow.getState()
         const node = nodes.find(n => n.id === nodeId)!
 
-        if (node.type === CUSTOM_NOTE_NODE) return
+        if (node.type === CUSTOM_NOTE_NODE)
+          return
 
         if (
           node.data.type === BlockEnum.VariableAggregator
           || node.data.type === BlockEnum.VariableAssigner
-        )
-          if (handleType === 'target') return
+        ) {
+          if (handleType === 'target')
+            return
+        }
 
         setConnectingNodePayload({
           nodeId,
@@ -502,11 +543,14 @@ export const useNodesInteractions = () => {
           handleId,
         })
       }
-    }, [collaborativeWorkflow, workflowStore, getNodesReadOnly])
+    },
+    [collaborativeWorkflow, workflowStore, getNodesReadOnly],
+  )
 
   const handleNodeConnectEnd = useCallback<OnConnectEnd>(
     (e: any) => {
-      if (getNodesReadOnly()) return
+      if (getNodesReadOnly())
+        return
 
       const {
         connectingNodePayload,
@@ -527,7 +571,8 @@ export const useNodesInteractions = () => {
         const toNode = nodes.find(n => n.id === enteringNodePayload.nodeId)!
         const toParentNode = nodes.find(n => n.id === toNode.parentId)
 
-        if (fromNode.parentId !== toNode.parentId) return
+        if (fromNode.parentId !== toNode.parentId)
+          return
 
         const { x, y } = screenToFlowPosition({ x: e.x, y: e.y })
 
@@ -582,19 +627,22 @@ export const useNodesInteractions = () => {
 
   const handleNodeDelete = useCallback(
     (nodeId: string) => {
-      if (getNodesReadOnly()) return
+      if (getNodesReadOnly())
+        return
 
       const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
       const currentNodeIndex = nodes.findIndex(node => node.id === nodeId)
       const currentNode = nodes[currentNodeIndex]
 
-      if (!currentNode) return
+      if (!currentNode)
+        return
 
       if (
         nodesMetaDataMap?.[currentNode.data.type as BlockEnum]?.metaData
           .isUndeletable
-      )
+      ) {
         return
+      }
 
       deleteNodeInspectorVars(nodeId)
       if (currentNode.data.type === BlockEnum.Iteration) {
@@ -620,8 +668,8 @@ export const useNodesInteractions = () => {
 
             if (!showConfirm) {
               setShowConfirm({
-                title: t('workflow.nodes.iteration.deleteTitle'),
-                desc: t('workflow.nodes.iteration.deleteDesc') || '',
+                title: t('nodes.iteration.deleteTitle', { ns: 'workflow' }),
+                desc: t('nodes.iteration.deleteDesc', { ns: 'workflow' }) || '',
                 onConfirm: () => {
                   iterationChildren.forEach((child) => {
                     handleNodeDelete(child.id)
@@ -660,8 +708,8 @@ export const useNodesInteractions = () => {
 
             if (!showConfirm) {
               setShowConfirm({
-                title: t('workflow.nodes.loop.deleteTitle'),
-                desc: t('workflow.nodes.loop.deleteDesc') || '',
+                title: t('nodes.loop.deleteTitle', { ns: 'workflow' }),
+                desc: t('nodes.loop.deleteDesc', { ns: 'workflow' }) || '',
                 onConfirm: () => {
                   loopChildren.forEach((child) => {
                     handleNodeDelete(child.id)
@@ -684,7 +732,8 @@ export const useNodesInteractions = () => {
         if (ragPipelineVariables && setRagPipelineVariables) {
           const newRagPipelineVariables: RAGPipelineVariables = []
           ragPipelineVariables.forEach((variable) => {
-            if (variable.belong_to_node_id === id) return
+            if (variable.belong_to_node_id === id)
+              return
             newRagPipelineVariables.push(variable)
           })
           setRagPipelineVariables(newRagPipelineVariables)
@@ -759,7 +808,8 @@ export const useNodesInteractions = () => {
       },
       { prevNodeId, prevNodeSourceHandle, nextNodeId, nextNodeTargetHandle },
     ) => {
-      if (getNodesReadOnly()) return
+      if (getNodesReadOnly())
+        return
 
       const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
       const nodesWithSameType = nodes.filter(
@@ -912,9 +962,11 @@ export const useNodesInteractions = () => {
           })
           draft.push(newNode)
 
-          if (newIterationStartNode) draft.push(newIterationStartNode)
+          if (newIterationStartNode)
+            draft.push(newIterationStartNode)
 
-          if (newLoopStartNode) draft.push(newLoopStartNode)
+          if (newLoopStartNode)
+            draft.push(newLoopStartNode)
         })
 
         if (
@@ -941,7 +993,8 @@ export const useNodesInteractions = () => {
               _connectedNodeIsSelected: false,
             }
           })
-          if (newEdge) draft.push(newEdge)
+          if (newEdge)
+            draft.push(newEdge)
         })
 
         setNodes(newNodes)
@@ -953,8 +1006,9 @@ export const useNodesInteractions = () => {
         if (
           nodeType !== BlockEnum.IfElse
           && nodeType !== BlockEnum.QuestionClassifier
-        )
+        ) {
           newNode.data._connectedSourceHandleIds = [sourceHandle]
+        }
         newNode.data._connectedTargetHandleIds = []
         newNode.position = {
           x: nextNode.position.x,
@@ -1078,8 +1132,10 @@ export const useNodesInteractions = () => {
             }
           })
           draft.push(newNode)
-          if (newIterationStartNode) draft.push(newIterationStartNode)
-          if (newLoopStartNode) draft.push(newLoopStartNode)
+          if (newIterationStartNode)
+            draft.push(newIterationStartNode)
+          if (newLoopStartNode)
+            draft.push(newLoopStartNode)
         })
         if (newEdge) {
           const newEdges = produce(edges, (draft) => {
@@ -1169,10 +1225,10 @@ export const useNodesInteractions = () => {
           = nodes.find(node => node.id === nextNode.parentId) || null
         const isNextNodeInIteration
           = !!nextNodeParentNode
-          && nextNodeParentNode.data.type === BlockEnum.Iteration
+            && nextNodeParentNode.data.type === BlockEnum.Iteration
         const isNextNodeInLoop
           = !!nextNodeParentNode
-          && nextNodeParentNode.data.type === BlockEnum.Loop
+            && nextNodeParentNode.data.type === BlockEnum.Loop
 
         if (
           nodeType !== BlockEnum.IfElse
@@ -1251,8 +1307,10 @@ export const useNodesInteractions = () => {
             }
           })
           draft.push(newNode)
-          if (newIterationStartNode) draft.push(newIterationStartNode)
-          if (newLoopStartNode) draft.push(newLoopStartNode)
+          if (newIterationStartNode)
+            draft.push(newIterationStartNode)
+          if (newLoopStartNode)
+            draft.push(newLoopStartNode)
         })
         setNodes(newNodes)
         if (
@@ -1280,9 +1338,11 @@ export const useNodesInteractions = () => {
               _connectedNodeIsSelected: false,
             }
           })
-          if (newPrevEdge) draft.push(newPrevEdge)
+          if (newPrevEdge)
+            draft.push(newPrevEdge)
 
-          if (newNextEdge) draft.push(newNextEdge)
+          if (newNextEdge)
+            draft.push(newNextEdge)
         })
         setEdges(newEdges)
       }
@@ -1307,7 +1367,8 @@ export const useNodesInteractions = () => {
       sourceHandle: string,
       pluginDefaultValue?: PluginDefaultValue,
     ) => {
-      if (getNodesReadOnly()) return
+      if (getNodesReadOnly())
+        return
 
       const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
       const currentNode = nodes.find(node => node.id === currentNodeId)!
@@ -1364,8 +1425,10 @@ export const useNodesInteractions = () => {
         const index = draft.findIndex(node => node.id === currentNodeId)
 
         draft.splice(index, 1, newCurrentNode)
-        if (newIterationStartNode) draft.push(newIterationStartNode)
-        if (newLoopStartNode) draft.push(newLoopStartNode)
+        if (newIterationStartNode)
+          draft.push(newIterationStartNode)
+        if (newLoopStartNode)
+          draft.push(newLoopStartNode)
       })
       setNodes(newNodes)
       const newEdges = produce(edges, (draft) => {
@@ -1379,7 +1442,14 @@ export const useNodesInteractions = () => {
         return filtered
       })
       setEdges(newEdges)
-      handleSyncWorkflowDraft()
+      if (nodeType === BlockEnum.TriggerWebhook) {
+        handleSyncWorkflowDraft(true, true, {
+          onSuccess: () => autoGenerateWebhookUrl(newCurrentNode.id),
+        })
+      }
+      else {
+        handleSyncWorkflowDraft()
+      }
 
       saveStateToHistory(WorkflowHistoryEvent.NodeChange, {
         nodeId: currentNodeId,
@@ -1391,6 +1461,7 @@ export const useNodesInteractions = () => {
       handleSyncWorkflowDraft,
       saveStateToHistory,
       nodesMetaDataMap,
+      autoGenerateWebhookUrl,
     ],
   )
 
@@ -1409,14 +1480,16 @@ export const useNodesInteractions = () => {
       if (
         node.type === CUSTOM_NOTE_NODE
         || node.type === CUSTOM_ITERATION_START_NODE
-      )
+      ) {
         return
+      }
 
       if (
         node.type === CUSTOM_NOTE_NODE
         || node.type === CUSTOM_LOOP_START_NODE
-      )
+      ) {
         return
+      }
 
       e.preventDefault()
       const container = document.querySelector('#workflow-container')
@@ -1435,7 +1508,8 @@ export const useNodesInteractions = () => {
 
   const handleNodesCopy = useCallback(
     (nodeId?: string) => {
-      if (getNodesReadOnly()) return
+      if (getNodesReadOnly())
+        return
 
       const { setClipboardElements } = workflowStore.getState()
 
@@ -1453,15 +1527,19 @@ export const useNodesInteractions = () => {
             && node.data.type !== BlockEnum.KnowledgeBase
             && node.data.type !== BlockEnum.DataSourceEmpty,
         )
-        if (nodeToCopy) setClipboardElements([nodeToCopy])
+        if (nodeToCopy)
+          setClipboardElements([nodeToCopy])
       }
       else {
         // If no nodeId is provided, fall back to the current behavior
         const bundledNodes = nodes.filter((node) => {
-          if (!node.data._isBundled) return false
-          if (node.type === CUSTOM_NOTE_NODE) return true
+          if (!node.data._isBundled)
+            return false
+          if (node.type === CUSTOM_NOTE_NODE)
+            return true
           const { metaData } = nodesMetaDataMap![node.data.type as BlockEnum]
-          if (metaData.isSingleton) return false
+          if (metaData.isSingleton)
+            return false
           return !node.data.isInIteration && !node.data.isInLoop
         })
 
@@ -1471,20 +1549,24 @@ export const useNodesInteractions = () => {
         }
 
         const selectedNode = nodes.find((node) => {
-          if (!node.data.selected) return false
-          if (node.type === CUSTOM_NOTE_NODE) return true
+          if (!node.data.selected)
+            return false
+          if (node.type === CUSTOM_NOTE_NODE)
+            return true
           const { metaData } = nodesMetaDataMap![node.data.type as BlockEnum]
           return !metaData.isSingleton
         })
 
-        if (selectedNode) setClipboardElements([selectedNode])
+        if (selectedNode)
+          setClipboardElements([selectedNode])
       }
     },
     [getNodesReadOnly, collaborativeWorkflow, workflowStore],
   )
 
   const handleNodesPaste = useCallback(() => {
-    if (getNodesReadOnly()) return
+    if (getNodesReadOnly())
+      return
 
     const { clipboardElements, mousePosition } = workflowStore.getState()
 
@@ -1503,6 +1585,7 @@ export const useNodesInteractions = () => {
       const offsetX = currentPosition.x - x
       const offsetY = currentPosition.y - y
       let idMapping: Record<string, string> = {}
+      const parentChildrenToAppend: { parentId: string, childId: string, childType: BlockEnum }[] = []
       clipboardElements.forEach((nodeToPaste, index) => {
         const nodeType = nodeToPaste.data.type
 
@@ -1516,6 +1599,7 @@ export const useNodesInteractions = () => {
               _isBundled: false,
               _connectedSourceHandleIds: [],
               _connectedTargetHandleIds: [],
+              _dimmed: false,
               title: genNewNodeTitleFromOld(nodeToPaste.data.title),
             },
             position: {
@@ -1583,34 +1667,32 @@ export const useNodesInteractions = () => {
               return
 
             // handle paste to nested block
-            if (selectedNode.data.type === BlockEnum.Iteration) {
-              newNode.data.isInIteration = true
-              newNode.data.iteration_id = selectedNode.data.iteration_id
+            if (selectedNode.data.type === BlockEnum.Iteration || selectedNode.data.type === BlockEnum.Loop) {
+              const isIteration = selectedNode.data.type === BlockEnum.Iteration
+
+              newNode.data.isInIteration = isIteration
+              newNode.data.iteration_id = isIteration ? selectedNode.id : undefined
+              newNode.data.isInLoop = !isIteration
+              newNode.data.loop_id = !isIteration ? selectedNode.id : undefined
+
               newNode.parentId = selectedNode.id
+              newNode.zIndex = isIteration ? ITERATION_CHILDREN_Z_INDEX : LOOP_CHILDREN_Z_INDEX
               newNode.positionAbsolute = {
                 x: newNode.position.x,
                 y: newNode.position.y,
               }
               // set position base on parent node
               newNode.position = getNestedNodePosition(newNode, selectedNode)
-            }
-            else if (selectedNode.data.type === BlockEnum.Loop) {
-              newNode.data.isInLoop = true
-              newNode.data.loop_id = selectedNode.data.loop_id
-              newNode.parentId = selectedNode.id
-              newNode.positionAbsolute = {
-                x: newNode.position.x,
-                y: newNode.position.y,
-              }
-              // set position base on parent node
-              newNode.position = getNestedNodePosition(newNode, selectedNode)
+              // update parent children array like native add
+              parentChildrenToAppend.push({ parentId: selectedNode.id, childId: newNode.id, childType: newNode.data.type })
             }
           }
         }
 
         nodesToPaste.push(newNode)
 
-        if (newChildren.length) nodesToPaste.push(...newChildren)
+        if (newChildren.length)
+          nodesToPaste.push(...newChildren)
       })
 
       // only handle edge when paste nested block
@@ -1633,7 +1715,17 @@ export const useNodesInteractions = () => {
         }
       })
 
-      setNodes([...nodes, ...nodesToPaste])
+      const newNodes = produce(nodes, (draft: Node[]) => {
+        parentChildrenToAppend.forEach(({ parentId, childId, childType }) => {
+          const p = draft.find(n => n.id === parentId)
+          if (p) {
+            p.data._children?.push({ nodeId: childId, nodeType: childType })
+          }
+        })
+        draft.push(...nodesToPaste)
+      })
+
+      setNodes(newNodes)
       setEdges([...edges, ...edgesToPaste])
       saveStateToHistory(WorkflowHistoryEvent.NodePaste, {
         nodeId: nodesToPaste?.[0]?.id,
@@ -1654,7 +1746,8 @@ export const useNodesInteractions = () => {
 
   const handleNodesDuplicate = useCallback(
     (nodeId?: string) => {
-      if (getNodesReadOnly()) return
+      if (getNodesReadOnly())
+        return
 
       handleNodesCopy(nodeId)
       handleNodesPaste()
@@ -1663,7 +1756,8 @@ export const useNodesInteractions = () => {
   )
 
   const handleNodesDelete = useCallback(() => {
-    if (getNodesReadOnly()) return
+    if (getNodesReadOnly())
+      return
 
     const { nodes, edges } = collaborativeWorkflow.getState()
 
@@ -1678,18 +1772,21 @@ export const useNodesInteractions = () => {
     }
 
     const edgeSelected = edges.some(edge => edge.selected)
-    if (edgeSelected) return
+    if (edgeSelected)
+      return
 
     const selectedNode = nodes.find(
       node => node.data.selected,
     )
 
-    if (selectedNode) handleNodeDelete(selectedNode.id)
+    if (selectedNode)
+      handleNodeDelete(selectedNode.id)
   }, [collaborativeWorkflow, getNodesReadOnly, handleNodeDelete])
 
   const handleNodeResize = useCallback(
     (nodeId: string, params: ResizeParamsWithDirection) => {
-      if (getNodesReadOnly()) return
+      if (getNodesReadOnly())
+        return
 
       const { nodes, setNodes } = collaborativeWorkflow.getState()
       const { x, y, width, height } = params
@@ -1713,8 +1810,9 @@ export const useNodesInteractions = () => {
           if (
             n.position.y + n.height!
             > bottomNode.position.y + bottomNode.height!
-          )
+          ) {
             bottomNode = n
+          }
         }
         else {
           bottomNode = n
@@ -1733,8 +1831,9 @@ export const useNodesInteractions = () => {
         if (
           height
           < bottomNode.position.y + bottomNode.height! + paddingMap.bottom
-        )
+        ) {
           return
+        }
       }
       const newNodes = produce(nodes, (draft) => {
         draft.forEach((n) => {
@@ -1757,7 +1856,8 @@ export const useNodesInteractions = () => {
 
   const handleNodeDisconnect = useCallback(
     (nodeId: string) => {
-      if (getNodesReadOnly()) return
+      if (getNodesReadOnly())
+        return
 
       const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
       const currentNode = nodes.find(node => node.id === nodeId)!
@@ -1794,7 +1894,8 @@ export const useNodesInteractions = () => {
   )
 
   const handleHistoryBack = useCallback(() => {
-    if (getNodesReadOnly() || getWorkflowReadOnly()) return
+    if (getNodesReadOnly() || getWorkflowReadOnly())
+      return
 
     // Use collaborative undo from Loro
     const undoResult = collaborationManager.undo()
@@ -1807,13 +1908,24 @@ export const useNodesInteractions = () => {
     else {
       console.log('Nothing to undo')
     }
+    const { edges, nodes } = workflowHistoryStore.getState()
+    if (edges.length === 0 && nodes.length === 0)
+      return
+    const { setNodes, setEdges } = collaborativeWorkflow.getState()
+
+    setEdges(edges)
+    setNodes(nodes)
   }, [
+    collaborativeWorkflow,
+    undo,
+    workflowHistoryStore,
     getNodesReadOnly,
     getWorkflowReadOnly,
   ])
 
   const handleHistoryForward = useCallback(() => {
-    if (getNodesReadOnly() || getWorkflowReadOnly()) return
+    if (getNodesReadOnly() || getWorkflowReadOnly())
+      return
 
     // Use collaborative redo from Loro
     const redoResult = collaborationManager.redo()
@@ -1826,6 +1938,13 @@ export const useNodesInteractions = () => {
     else {
       console.log('Nothing to redo')
     }
+    const { edges, nodes } = workflowHistoryStore.getState()
+    if (edges.length === 0 && nodes.length === 0)
+      return
+    const { setNodes, setEdges } = collaborativeWorkflow.getState()
+
+    setEdges(edges)
+    setNodes(nodes)
   }, [
     getNodesReadOnly,
     getWorkflowReadOnly,
@@ -1834,11 +1953,13 @@ export const useNodesInteractions = () => {
   const [isDimming, setIsDimming] = useState(false)
   /** Add opacity-30 to all nodes except the nodeId */
   const dimOtherNodes = useCallback(() => {
-    if (isDimming) return
+    if (isDimming)
+      return
     const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
 
     const selectedNode = nodes.find(n => n.data.selected)
-    if (!selectedNode) return
+    if (!selectedNode)
+      return
 
     setIsDimming(true)
 
@@ -1849,8 +1970,10 @@ export const useNodesInteractions = () => {
     const dependencyNodes: Node[] = []
     usedVars.forEach((valueSelector) => {
       const node = workflowNodes.find(node => node.id === valueSelector?.[0])
-      if (node)
-        if (!dependencyNodes.includes(node)) dependencyNodes.push(node)
+      if (node) {
+        if (!dependencyNodes.includes(node))
+          dependencyNodes.push(node)
+      }
     })
 
     const outgoers = getOutgoers(selectedNode as Node, nodes as Node[], edges)
@@ -1859,7 +1982,8 @@ export const useNodesInteractions = () => {
       const outgoersForNode = getOutgoers(node, nodes as Node[], edges)
       outgoersForNode.forEach((item) => {
         const existed = outgoers.some(v => v.id === item.id)
-        if (!existed) outgoers.push(item)
+        if (!existed)
+          outgoers.push(item)
       })
     }
 
@@ -1869,7 +1993,8 @@ export const useNodesInteractions = () => {
       const used = usedVars.some(v => v?.[0] === selectedNode.id)
       if (used) {
         const existed = dependentNodes.some(v => v.id === node.id)
-        if (!existed) dependentNodes.push(node)
+        if (!existed)
+          dependentNodes.push(node)
       }
     })
 
@@ -1878,7 +2003,8 @@ export const useNodesInteractions = () => {
     const newNodes = produce(nodes, (draft) => {
       draft.forEach((n) => {
         const dimNode = dimNodes.find(v => v.id === n.id)
-        if (!dimNode) n.data._dimmed = true
+        if (!dimNode)
+          n.data._dimmed = true
       })
     })
 

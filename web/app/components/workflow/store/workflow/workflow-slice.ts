@@ -33,19 +33,19 @@ export type WorkflowSliceShape = {
   setListeningTriggerIsAll: (isAll: boolean) => void
   clipboardElements: Node[]
   setClipboardElements: (clipboardElements: Node[]) => void
-  selection: null | { x1: number; y1: number; x2: number; y2: number }
+  selection: null | { x1: number, y1: number, x2: number, y2: number }
   setSelection: (selection: WorkflowSliceShape['selection']) => void
-  bundleNodeSize: { width: number; height: number } | null
+  bundleNodeSize: { width: number, height: number } | null
   setBundleNodeSize: (bundleNodeSize: WorkflowSliceShape['bundleNodeSize']) => void
   controlMode: 'pointer' | 'hand' | 'comment'
   setControlMode: (controlMode: WorkflowSliceShape['controlMode']) => void
   pendingComment: MousePosition | null
   setPendingComment: (pendingComment: WorkflowSliceShape['pendingComment']) => void
-  mousePosition: MousePosition
-  setMousePosition: (mousePosition: WorkflowSliceShape['mousePosition']) => void
   isCommentPreviewHovering: boolean
   setCommentPreviewHovering: (hovering: boolean) => void
-  showConfirm?: { title: string; desc?: string; onConfirm: () => void }
+  mousePosition: { pageX: number, pageY: number, elementX: number, elementY: number }
+  setMousePosition: (mousePosition: WorkflowSliceShape['mousePosition']) => void
+  showConfirm?: { title: string, desc?: string, onConfirm: () => void }
   setShowConfirm: (showConfirm: WorkflowSliceShape['showConfirm']) => void
   controlPromptEditorRerenderKey: number
   setControlPromptEditorRerenderKey: (controlPromptEditorRerenderKey: number) => void

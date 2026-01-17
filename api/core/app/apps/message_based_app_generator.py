@@ -156,79 +156,86 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         query = application_generate_entity.query or "New conversation"
         conversation_name = (query[:20] + "…") if len(query) > 20 else query
 
-        if not conversation:
-            conversation = Conversation(
+        try:
+            if not conversation:
+                conversation = Conversation(
+                    app_id=app_config.app_id,
+                    app_model_config_id=app_model_config_id,
+                    model_provider=model_provider,
+                    model_id=model_id,
+                    override_model_configs=json.dumps(override_model_configs) if override_model_configs else None,
+                    mode=app_config.app_mode.value,
+                    name=conversation_name,
+                    inputs=application_generate_entity.inputs,
+                    introduction=introduction,
+                    system_instruction="",
+                    system_instruction_tokens=0,
+                    status="normal",
+                    invoke_from=application_generate_entity.invoke_from.value,
+                    from_source=from_source,
+                    from_end_user_id=end_user_id,
+                    from_account_id=account_id,
+                )
+
+                db.session.add(conversation)
+                db.session.flush()
+                db.session.refresh(conversation)
+            else:
+                conversation.updated_at = naive_utc_now()
+
+            message = Message(
                 app_id=app_config.app_id,
-                app_model_config_id=app_model_config_id,
                 model_provider=model_provider,
                 model_id=model_id,
                 override_model_configs=json.dumps(override_model_configs) if override_model_configs else None,
-                mode=app_config.app_mode.value,
-                name=conversation_name,
+                conversation_id=conversation.id,
                 inputs=application_generate_entity.inputs,
-                introduction=introduction,
-                system_instruction="",
-                system_instruction_tokens=0,
-                status="normal",
+                query=application_generate_entity.query,
+                message="",
+                message_tokens=0,
+                message_unit_price=0,
+                message_price_unit=0,
+                answer="",
+                answer_tokens=0,
+                answer_unit_price=0,
+                answer_price_unit=0,
+                parent_message_id=getattr(application_generate_entity, "parent_message_id", None),
+                provider_response_latency=0,
+                total_price=0,
+                currency="USD",
                 invoke_from=application_generate_entity.invoke_from.value,
                 from_source=from_source,
                 from_end_user_id=end_user_id,
                 from_account_id=account_id,
+                app_mode=app_config.app_mode,
             )
 
-            db.session.add(conversation)
+            db.session.add(message)
+            db.session.flush()
+            db.session.refresh(message)
+
+            message_files = []
+            for file in application_generate_entity.files:
+                message_file = MessageFile(
+                    message_id=message.id,
+                    type=file.type,
+                    transfer_method=file.transfer_method,
+                    belongs_to="user",
+                    url=file.remote_url,
+                    upload_file_id=file.related_id,
+                    created_by_role=(CreatorUserRole.ACCOUNT if account_id else CreatorUserRole.END_USER),
+                    created_by=account_id or end_user_id or "",
+                )
+                message_files.append(message_file)
+
+            if message_files:
+                db.session.add_all(message_files)
+
             db.session.commit()
-            db.session.refresh(conversation)
-        else:
-            conversation.updated_at = naive_utc_now()
-            db.session.commit()
-
-        message = Message(
-            app_id=app_config.app_id,
-            model_provider=model_provider,
-            model_id=model_id,
-            override_model_configs=json.dumps(override_model_configs) if override_model_configs else None,
-            conversation_id=conversation.id,
-            inputs=application_generate_entity.inputs,
-            query=application_generate_entity.query,
-            message="",
-            message_tokens=0,
-            message_unit_price=0,
-            message_price_unit=0,
-            answer="",
-            answer_tokens=0,
-            answer_unit_price=0,
-            answer_price_unit=0,
-            parent_message_id=getattr(application_generate_entity, "parent_message_id", None),
-            provider_response_latency=0,
-            total_price=0,
-            currency="USD",
-            invoke_from=application_generate_entity.invoke_from.value,
-            from_source=from_source,
-            from_end_user_id=end_user_id,
-            from_account_id=account_id,
-            app_mode=app_config.app_mode,
-        )
-
-        db.session.add(message)
-        db.session.commit()
-        db.session.refresh(message)
-
-        for file in application_generate_entity.files:
-            message_file = MessageFile(
-                message_id=message.id,
-                type=file.type,
-                transfer_method=file.transfer_method,
-                belongs_to="user",
-                url=file.remote_url,
-                upload_file_id=file.related_id,
-                created_by_role=(CreatorUserRole.ACCOUNT if account_id else CreatorUserRole.END_USER),
-                created_by=account_id or end_user_id or "",
-            )
-            db.session.add(message_file)
-            db.session.commit()
-
-        return conversation, message
+            return conversation, message
+        except Exception:
+            db.session.rollback()
+            raise
 
     def _get_conversation_introduction(self, application_generate_entity: AppGenerateEntity) -> str:
         """

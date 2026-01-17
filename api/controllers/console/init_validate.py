@@ -1,29 +1,41 @@
 import os
 
 from flask import session
-from flask_restx import Resource, fields, reqparse
+from flask_restx import Resource, fields
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
 from extensions.ext_database import db
-from libs.helper import StrLen
 from models.model import DifySetup
 from services.account_service import TenantService
 
-from . import api, console_ns
+from . import console_ns
 from .error import AlreadySetupError, InitValidateFailedError
 from .wraps import only_edition_self_hosted
+
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
+
+class InitValidatePayload(BaseModel):
+    password: str = Field(..., max_length=30)
+
+
+console_ns.schema_model(
+    InitValidatePayload.__name__,
+    InitValidatePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
 
 
 @console_ns.route("/init")
 class InitValidateAPI(Resource):
-    @api.doc("get_init_status")
-    @api.doc(description="Get initialization validation status")
-    @api.response(
+    @console_ns.doc("get_init_status")
+    @console_ns.doc(description="Get initialization validation status")
+    @console_ns.response(
         200,
         "Success",
-        model=api.model(
+        model=console_ns.model(
             "InitStatusResponse",
             {"status": fields.String(description="Initialization status", enum=["finished", "not_started"])},
         ),
@@ -35,20 +47,15 @@ class InitValidateAPI(Resource):
             return {"status": "finished"}
         return {"status": "not_started"}
 
-    @api.doc("validate_init_password")
-    @api.doc(description="Validate initialization password for self-hosted edition")
-    @api.expect(
-        api.model(
-            "InitValidateRequest",
-            {"password": fields.String(required=True, description="Initialization password", max_length=30)},
-        )
-    )
-    @api.response(
+    @console_ns.doc("validate_init_password")
+    @console_ns.doc(description="Validate initialization password for self-hosted edition")
+    @console_ns.expect(console_ns.models[InitValidatePayload.__name__])
+    @console_ns.response(
         201,
         "Success",
-        model=api.model("InitValidateResponse", {"result": fields.String(description="Operation result")}),
+        model=console_ns.model("InitValidateResponse", {"result": fields.String(description="Operation result")}),
     )
-    @api.response(400, "Already setup or validation failed")
+    @console_ns.response(400, "Already setup or validation failed")
     @only_edition_self_hosted
     def post(self):
         """Validate initialization password"""
@@ -57,8 +64,8 @@ class InitValidateAPI(Resource):
         if tenant_count > 0:
             raise AlreadySetupError()
 
-        parser = reqparse.RequestParser().add_argument("password", type=StrLen(30), required=True, location="json")
-        input_password = parser.parse_args()["password"]
+        payload = InitValidatePayload.model_validate(console_ns.payload)
+        input_password = payload.password
 
         if input_password != os.environ.get("INIT_PASSWORD"):
             session["is_init_validated"] = False

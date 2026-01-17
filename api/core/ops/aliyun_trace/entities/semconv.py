@@ -1,6 +1,8 @@
 from enum import StrEnum
 from typing import Final
 
+ACS_ARMS_SERVICE_FEATURE: Final[str] = "acs.arms.service.feature"
+
 # Public attributes
 GEN_AI_SESSION_ID: Final[str] = "gen_ai.session.id"
 GEN_AI_USER_ID: Final[str] = "gen_ai.user.id"

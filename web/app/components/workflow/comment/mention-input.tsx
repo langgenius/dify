@@ -1,6 +1,9 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import type { UserProfile } from '@/service/workflow-comment'
+import { RiArrowUpLine, RiAtLine, RiLoader2Line } from '@remixicon/react'
+import { useParams } from 'next/navigation'
 import {
   forwardRef,
   memo,
@@ -13,16 +16,14 @@ import {
   useState,
 } from 'react'
 import { createPortal } from 'react-dom'
-import { useParams } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
-import { RiArrowUpLine, RiAtLine, RiLoader2Line } from '@remixicon/react'
 import Textarea from 'react-textarea-autosize'
-import Button from '@/app/components/base/button'
 import Avatar from '@/app/components/base/avatar'
-import cn from '@/utils/classnames'
-import { type UserProfile, fetchMentionableUsers } from '@/service/workflow-comment'
-import { useStore, useWorkflowStore } from '../store'
+import Button from '@/app/components/base/button'
 import { EnterKey } from '@/app/components/base/icons/src/public/common'
+import { fetchMentionableUsers } from '@/service/workflow-comment'
+import { cn } from '@/utils/classnames'
+import { useStore, useWorkflowStore } from '../store'
 
 type MentionInputProps = {
   value: string
@@ -72,7 +73,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
   const [mentionPosition, setMentionPosition] = useState(0)
   const [selectedMentionIndex, setSelectedMentionIndex] = useState(0)
   const [mentionedUserIds, setMentionedUserIds] = useState<string[]>([])
-  const resolvedPlaceholder = placeholder ?? t('workflow.comments.placeholder.add')
+  const resolvedPlaceholder = placeholder ?? t('comments.placeholder.add', { ns: 'workflow' })
   const BASE_PADDING = 4
   const [shouldReserveButtonGap, setShouldReserveButtonGap] = useState(isEditing)
   const [shouldReserveHorizontalSpace, setShouldReserveHorizontalSpace] = useState(() => !isEditing)
@@ -131,7 +132,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
 
       const mentionEnd = nextMatchStart + matchedName.length + 1
       segments.push(
-        <span key={`mention-${nextMatchStart}`} className='text-primary-600'>
+        <span key={`mention-${nextMatchStart}`} className="text-primary-600">
           {value.slice(nextMatchStart, mentionEnd)}
         </span>,
       )
@@ -276,7 +277,8 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
   }, [isEditing, evaluateContentLayout])
 
   const filteredMentionUsers = useMemo(() => {
-    if (!mentionQuery) return mentionUsers
+    if (!mentionQuery)
+      return mentionUsers
     return mentionUsers.filter(user =>
       user.name.toLowerCase().includes(mentionQuery.toLowerCase())
       || user.email.toLowerCase().includes(mentionQuery.toLowerCase()),
@@ -384,7 +386,8 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
 
   const insertMention = useCallback((user: UserProfile) => {
     const textarea = textareaRef.current
-    if (!textarea) return
+    if (!textarea)
+      return
 
     const beforeMention = value.slice(0, mentionPosition)
     const afterMention = value.slice(textarea.selectionStart || 0)
@@ -510,7 +513,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
             style={{ willChange: 'transform' }}
           >
             {highlightedValue}
-            {'​'}
+
           </div>
         </div>
         <Textarea
@@ -548,14 +551,14 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
               <RiAtLine className="h-4 w-4 text-text-tertiary" />
             </div>
             <Button
-              className='z-20 ml-2 w-8 px-0'
-              variant='primary'
+              className="z-20 ml-2 w-8 px-0"
+              variant="primary"
               disabled={!value.trim() || disabled || loading}
               onClick={handleSubmit}
             >
               {loading
-                ? <RiLoader2Line className='h-4 w-4 animate-spin text-components-button-primary-text' />
-                : <RiArrowUpLine className='h-4 w-4 text-components-button-primary-text' />}
+                ? <RiLoader2Line className="h-4 w-4 animate-spin text-components-button-primary-text" />
+                : <RiArrowUpLine className="h-4 w-4 text-components-button-primary-text" />}
             </Button>
           </div>
         )}
@@ -578,22 +581,22 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
             </div>
             <div
               ref={setActionRightRef}
-              className='flex items-center gap-2'
+              className="flex items-center gap-2"
             >
-              <Button variant='secondary' size='small' onClick={onCancel} disabled={loading}>
-                {t('common.operation.cancel')}
+              <Button variant="secondary" size="small" onClick={onCancel} disabled={loading}>
+                {t('operation.cancel', { ns: 'common' })}
               </Button>
               <Button
-                variant='primary'
-                size='small'
+                variant="primary"
+                size="small"
                 disabled={loading || !value.trim()}
                 onClick={() => handleSubmit()}
-                className='gap-1'
+                className="gap-1"
               >
-                {loading && <RiLoader2Line className='mr-1 h-3.5 w-3.5 animate-spin' />}
-                <span>{t('common.operation.save')}</span>
+                {loading && <RiLoader2Line className="mr-1 h-3.5 w-3.5 animate-spin" />}
+                <span>{t('operation.save', { ns: 'common' })}</span>
                 {!loading && (
-                  <EnterKey className='h-4 w-4' />
+                  <EnterKey className="h-4 w-4" />
                 )}
               </Button>
             </div>

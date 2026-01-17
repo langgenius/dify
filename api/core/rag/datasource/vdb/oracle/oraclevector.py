@@ -289,7 +289,7 @@ class OracleVector(BaseVector):
                 words = pseg.cut(query)
                 current_entity = ""
                 for word, pos in words:
-                    # nr: person name, ns: place name, nt: organization name
+                    # `nr`: Person, `ns`: Location, `nt`: Organization
                     if pos in {"nr", "Ng", "eng", "nz", "n", "ORG", "v"}:
                         current_entity += word
                     else:
@@ -303,8 +303,7 @@ class OracleVector(BaseVector):
                     nltk.data.find("tokenizers/punkt")
                     nltk.data.find("corpora/stopwords")
                 except LookupError:
-                    nltk.download("punkt")
-                    nltk.download("stopwords")
+                    raise LookupError("Unable to find the required NLTK data package: punkt and stopwords")
                 e_str = re.sub(r"[^\w ]", "", query)
                 all_tokens = nltk.word_tokenize(e_str)
                 stop_words = stopwords.words("english")

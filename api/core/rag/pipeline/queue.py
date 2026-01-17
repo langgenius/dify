@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 from collections.abc import Sequence
 from typing import Any
@@ -16,7 +18,7 @@ class TaskWrapper(BaseModel):
         return self.model_dump_json()
 
     @classmethod
-    def deserialize(cls, serialized_data: str) -> "TaskWrapper":
+    def deserialize(cls, serialized_data: str) -> TaskWrapper:
         return cls.model_validate_json(serialized_data)
 
 
@@ -53,6 +55,9 @@ class TenantIsolatedTaskQueue:
                 wrapper = TaskWrapper(data=task)
                 serialized_data = wrapper.serialize()
                 serialized_tasks.append(serialized_data)
+
+        if not serialized_tasks:
+            return
 
         redis_client.lpush(self._queue, *serialized_tasks)
 

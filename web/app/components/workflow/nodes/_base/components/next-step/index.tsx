@@ -1,21 +1,21 @@
+import type {
+  Node,
+} from '../../../../types'
+import { isEqual } from 'es-toolkit/predicate'
 import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { isEqual } from 'lodash-es'
 import {
   getConnectedEdges,
   getOutgoers,
   useStore,
 } from 'reactflow'
-import { useToolIcon } from '../../../../hooks'
-import BlockIcon from '../../../../block-icon'
-import type {
-  Node,
-} from '../../../../types'
-import { BlockEnum } from '../../../../types'
-import Line from './line'
-import Container from './container'
-import { hasErrorHandleNode } from '@/app/components/workflow/utils'
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
+import { hasErrorHandleNode } from '@/app/components/workflow/utils'
+import BlockIcon from '../../../../block-icon'
+import { useToolIcon } from '../../../../hooks'
+import { BlockEnum } from '../../../../types'
+import Container from './container'
+import Line from './line'
 
 type NextStepProps = {
   selectedNode: Node
@@ -53,7 +53,7 @@ const NextStep = ({
         return {
           branch: {
             ...branch,
-            name: data.type === BlockEnum.QuestionClassifier ? `${t('workflow.nodes.questionClassifiers.class')} ${index + 1}` : branch.name,
+            name: data.type === BlockEnum.QuestionClassifier ? `${t('nodes.questionClassifiers.class', { ns: 'workflow' })} ${index + 1}` : branch.name,
           },
           nextNodes,
         }
@@ -78,7 +78,7 @@ const NextStep = ({
         items.push({
           branch: {
             id: ErrorHandleTypeEnum.failBranch,
-            name: t('workflow.common.onFailure'),
+            name: t('common.onFailure', { ns: 'workflow' }),
           },
           nextNodes,
         })
@@ -89,8 +89,8 @@ const NextStep = ({
   }, [branches, connectedEdges, data.error_strategy, data.type, outgoers, t])
 
   return (
-    <div className='flex py-1'>
-      <div className='relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-divider-regular bg-background-default shadow-xs'>
+    <div className="flex py-1">
+      <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-divider-regular bg-background-default shadow-xs">
         <BlockIcon
           type={selectedNode!.data.type}
           toolIcon={toolIcon}
@@ -99,7 +99,7 @@ const NextStep = ({
       <Line
         list={list.length ? list.map(item => item.nextNodes.length + 1) : [1]}
       />
-      <div className='grow space-y-2'>
+      <div className="grow space-y-2">
         {
           list.map((item, index) => {
             return (

@@ -1,10 +1,9 @@
 from collections.abc import Callable
 from functools import wraps
-from typing import ParamSpec, TypeVar, cast
+from typing import ParamSpec, TypeVar
 
 from flask import current_app, request
 from flask_login import user_logged_in
-from flask_restx import reqparse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -15,6 +14,11 @@ from models.model import DefaultEndUserSessionID, EndUser
 
 P = ParamSpec("P")
 R = TypeVar("R")
+
+
+class TenantUserPayload(BaseModel):
+    tenant_id: str
+    user_id: str
 
 
 def get_user(tenant_id: str, user_id: str | None) -> EndUser:
@@ -67,58 +71,45 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
     return user_model
 
 
-def get_user_tenant(view: Callable[P, R] | None = None):
-    def decorator(view_func: Callable[P, R]):
-        @wraps(view_func)
-        def decorated_view(*args: P.args, **kwargs: P.kwargs):
-            # fetch json body
-            parser = (
-                reqparse.RequestParser()
-                .add_argument("tenant_id", type=str, required=True, location="json")
-                .add_argument("user_id", type=str, required=True, location="json")
-            )
+def get_user_tenant(view_func: Callable[P, R]):
+    @wraps(view_func)
+    def decorated_view(*args: P.args, **kwargs: P.kwargs):
+        payload = TenantUserPayload.model_validate(request.get_json(silent=True) or {})
 
-            p = parser.parse_args()
+        user_id = payload.user_id
+        tenant_id = payload.tenant_id
 
-            user_id = cast(str, p.get("user_id"))
-            tenant_id = cast(str, p.get("tenant_id"))
+        if not tenant_id:
+            raise ValueError("tenant_id is required")
 
-            if not tenant_id:
-                raise ValueError("tenant_id is required")
+        if not user_id:
+            user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID
 
-            if not user_id:
-                user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID
-
-            try:
-                tenant_model = (
-                    db.session.query(Tenant)
-                    .where(
-                        Tenant.id == tenant_id,
-                    )
-                    .first()
+        try:
+            tenant_model = (
+                db.session.query(Tenant)
+                .where(
+                    Tenant.id == tenant_id,
                 )
-            except Exception:
-                raise ValueError("tenant not found")
+                .first()
+            )
+        except Exception:
+            raise ValueError("tenant not found")
 
-            if not tenant_model:
-                raise ValueError("tenant not found")
+        if not tenant_model:
+            raise ValueError("tenant not found")
 
-            kwargs["tenant_model"] = tenant_model
+        kwargs["tenant_model"] = tenant_model
 
-            user = get_user(tenant_id, user_id)
-            kwargs["user_model"] = user
+        user = get_user(tenant_id, user_id)
+        kwargs["user_model"] = user
 
-            current_app.login_manager._update_request_context_with_user(user)  # type: ignore
-            user_logged_in.send(current_app._get_current_object(), user=current_user)  # type: ignore
+        current_app.login_manager._update_request_context_with_user(user)  # type: ignore
+        user_logged_in.send(current_app._get_current_object(), user=current_user)  # type: ignore
 
-            return view_func(*args, **kwargs)
+        return view_func(*args, **kwargs)
 
-        return decorated_view
-
-    if view is None:
-        return decorator
-    else:
-        return decorator(view)
+    return decorated_view
 
 
 def plugin_data(view: Callable[P, R] | None = None, *, payload_type: type[BaseModel]):

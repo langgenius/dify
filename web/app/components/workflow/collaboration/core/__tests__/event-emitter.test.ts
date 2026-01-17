@@ -3,7 +3,7 @@ import { EventEmitter } from '../event-emitter'
 describe('EventEmitter', () => {
   it('registers and invokes handlers via on/emit', () => {
     const emitter = new EventEmitter()
-    const handler = jest.fn()
+    const handler = vi.fn()
 
     emitter.on('test', handler)
     emitter.emit('test', { value: 42 })
@@ -13,8 +13,8 @@ describe('EventEmitter', () => {
 
   it('removes specific handler with off', () => {
     const emitter = new EventEmitter()
-    const handlerA = jest.fn()
-    const handlerB = jest.fn()
+    const handlerA = vi.fn()
+    const handlerB = vi.fn()
 
     emitter.on('test', handlerA)
     emitter.on('test', handlerB)
@@ -28,8 +28,8 @@ describe('EventEmitter', () => {
 
   it('clears all listeners when off is called without handler', () => {
     const emitter = new EventEmitter()
-    const handlerA = jest.fn()
-    const handlerB = jest.fn()
+    const handlerA = vi.fn()
+    const handlerB = vi.fn()
 
     emitter.on('trigger', handlerA)
     emitter.on('trigger', handlerB)
@@ -44,8 +44,8 @@ describe('EventEmitter', () => {
 
   it('removeAllListeners clears every registered event', () => {
     const emitter = new EventEmitter()
-    emitter.on('one', jest.fn())
-    emitter.on('two', jest.fn())
+    emitter.on('one', vi.fn())
+    emitter.on('two', vi.fn())
 
     emitter.removeAllListeners()
 
@@ -55,7 +55,7 @@ describe('EventEmitter', () => {
 
   it('returns an unsubscribe function from on', () => {
     const emitter = new EventEmitter()
-    const handler = jest.fn()
+    const handler = vi.fn()
 
     const unsubscribe = emitter.on('detach', handler)
     unsubscribe()
@@ -67,14 +67,14 @@ describe('EventEmitter', () => {
 
   it('continues emitting when a handler throws', () => {
     const emitter = new EventEmitter()
-    const errorHandler = jest
+    const errorHandler = vi
       .spyOn(console, 'error')
-      .mockImplementation()
+      .mockImplementation(() => undefined)
 
-    const failingHandler = jest.fn(() => {
+    const failingHandler = vi.fn(() => {
       throw new Error('boom')
     })
-    const succeedingHandler = jest.fn()
+    const succeedingHandler = vi.fn()
 
     emitter.on('safe', failingHandler)
     emitter.on('safe', succeedingHandler)

@@ -1,5 +1,6 @@
-import type { Locale } from '@/i18n-config'
 import type { Dayjs } from 'dayjs'
+import type { Locale } from '@/i18n-config'
+import { localeMap } from '@/i18n-config/language'
 import 'dayjs/locale/de'
 import 'dayjs/locale/es'
 import 'dayjs/locale/fa'
@@ -21,39 +22,43 @@ import 'dayjs/locale/vi'
 import 'dayjs/locale/zh-cn'
 import 'dayjs/locale/zh-tw'
 
-const localeMap: Record<Locale, string> = {
-  'en-US': 'en',
-  'zh-Hans': 'zh-cn',
-  'zh-Hant': 'zh-tw',
-  'pt-BR': 'pt-br',
-  'es-ES': 'es',
-  'fr-FR': 'fr',
-  'de-DE': 'de',
-  'ja-JP': 'ja',
-  'ko-KR': 'ko',
-  'ru-RU': 'ru',
-  'it-IT': 'it',
-  'th-TH': 'th',
-  'id-ID': 'id',
-  'uk-UA': 'uk',
-  'vi-VN': 'vi',
-  'ro-RO': 'ro',
-  'pl-PL': 'pl',
-  'hi-IN': 'hi',
-  'tr-TR': 'tr',
-  'fa-IR': 'fa',
-  'sl-SI': 'sl',
-}
-
 /**
  * Formats a number with comma separators.
  * @example formatNumber(1234567) will return '1,234,567'
  * @example formatNumber(1234567.89) will return '1,234,567.89'
+ * @example formatNumber(0.0000008) will return '0.0000008'
  */
 export const formatNumber = (num: number | string) => {
   if (!num)
     return num
-  const parts = num.toString().split('.')
+  const n = typeof num === 'string' ? Number(num) : num
+
+  let numStr: string
+
+  // Force fixed decimal for small numbers to avoid scientific notation
+  if (Math.abs(n) < 0.001 && n !== 0) {
+    const str = n.toString()
+    const match = str.match(/e-(\d+)$/)
+    let precision: number
+    if (match) {
+      // Scientific notation: precision is exponent + decimal digits in mantissa
+      const exponent = Number.parseInt(match[1], 10)
+      const mantissa = str.split('e')[0]
+      const mantissaDecimalPart = mantissa.split('.')[1]
+      precision = exponent + (mantissaDecimalPart?.length || 0)
+    }
+    else {
+      // Decimal notation: count decimal places
+      const decimalPart = str.split('.')[1]
+      precision = decimalPart?.length || 0
+    }
+    numStr = n.toFixed(precision)
+  }
+  else {
+    numStr = n.toString()
+  }
+
+  const parts = numStr.split('.')
   parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',')
   return parts.join('.')
 }
@@ -95,7 +100,7 @@ export const formatTime = (seconds: number) => {
   return `${seconds.toFixed(2)} ${units[index]}`
 }
 
-export const downloadFile = ({ data, fileName }: { data: Blob; fileName: string }) => {
+export const downloadFile = ({ data, fileName }: { data: Blob, fileName: string }) => {
   const url = window.URL.createObjectURL(data)
   const a = document.createElement('a')
   a.href = url
@@ -119,7 +124,8 @@ export const downloadFile = ({ data, fileName }: { data: Blob; fileName: string 
  */
 export const formatNumberAbbreviated = (num: number) => {
   // If less than 1000, return as-is
-  if (num < 1000) return num.toString()
+  if (num < 1000)
+    return num.toString()
 
   // Define thresholds and suffixes
   const units = [
@@ -130,14 +136,24 @@ export const formatNumberAbbreviated = (num: number) => {
 
   for (let i = 0; i < units.length; i++) {
     if (num >= units[i].value) {
-      const formatted = (num / units[i].value).toFixed(1)
+      const value = num / units[i].value
+      let rounded = Math.round(value * 10) / 10
+      let unitIndex = i
+
+      // If rounded value >= 1000, promote to next unit
+      if (rounded >= 1000 && i > 0) {
+        rounded = rounded / 1000
+        unitIndex = i - 1
+      }
+
+      const formatted = rounded.toFixed(1)
       return formatted.endsWith('.0')
-        ? `${Number.parseInt(formatted)}${units[i].symbol}`
-        : `${formatted}${units[i].symbol}`
+        ? `${Number.parseInt(formatted)}${units[unitIndex].symbol}`
+        : `${formatted}${units[unitIndex].symbol}`
     }
   }
 }
 
-export const formatToLocalTime = (time: Dayjs, local: string, format: string) => {
+export const formatToLocalTime = (time: Dayjs, local: Locale, format: string) => {
   return time.locale(localeMap[local] ?? 'en').format(format)
 }

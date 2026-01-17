@@ -114,7 +114,8 @@ class KnowledgeRetrievalNodeData(BaseNodeData):
     """
 
     type: str = "knowledge-retrieval"
-    query_variable_selector: list[str]
+    query_variable_selector: list[str] | None | str = None
+    query_attachment_selector: list[str] | None | str = None
     dataset_ids: list[str]
     retrieval_mode: Literal["single", "multiple"]
     multiple_retrieval_config: MultipleRetrievalConfig | None = None

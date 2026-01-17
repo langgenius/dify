@@ -26,6 +26,7 @@ class AliyunOssStorage(BaseStorage):
             self.bucket_name,
             connect_timeout=30,
             region=region,
+            cloudbox_id=dify_config.ALIYUN_CLOUDBOX_ID,
         )
 
     def save(self, filename, data):

@@ -3,28 +3,33 @@ from __future__ import annotations
 import time
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any
 
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.entities import GraphInitParams, GraphRuntimeState, VariablePool
+from core.workflow.entities import GraphInitParams
 from core.workflow.enums import ErrorStrategy, NodeExecutionType, NodeType
 from core.workflow.graph import Graph
 from core.workflow.graph.validation import GraphValidationError
-from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
+from core.workflow.nodes.base.entities import BaseNodeData
 from core.workflow.nodes.base.node import Node
+from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
 
 
-class _TestNode(Node):
+class _TestNodeData(BaseNodeData):
+    type: NodeType | str | None = None
+    execution_type: NodeExecutionType | str | None = None
+
+
+class _TestNode(Node[_TestNodeData]):
     node_type = NodeType.ANSWER
     execution_type = NodeExecutionType.EXECUTABLE
 
     @classmethod
     def version(cls) -> str:
-        return "test"
+        return "1"
 
     def __init__(
         self,
@@ -40,31 +45,8 @@ class _TestNode(Node):
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
-        data = config.get("data", {})
-        if isinstance(data, Mapping):
-            execution_type = data.get("execution_type")
-            if isinstance(execution_type, str):
-                self.execution_type = NodeExecutionType(execution_type)
-        self._base_node_data = BaseNodeData(title=str(data.get("title", self.id)))
-        self.data: dict[str, object] = {}
 
-    def init_node_data(self, data: Mapping[str, object]) -> None:
-        title = str(data.get("title", self.id))
-        desc = data.get("description")
-        error_strategy_value = data.get("error_strategy")
-        error_strategy: ErrorStrategy | None = None
-        if isinstance(error_strategy_value, ErrorStrategy):
-            error_strategy = error_strategy_value
-        elif isinstance(error_strategy_value, str):
-            error_strategy = ErrorStrategy(error_strategy_value)
-        self._base_node_data = BaseNodeData(
-            title=title,
-            desc=str(desc) if desc is not None else None,
-            error_strategy=error_strategy,
-        )
-        self.data = dict(data)
-
-        node_type_value = data.get("type")
+        node_type_value = self.data.get("type")
         if isinstance(node_type_value, NodeType):
             self.node_type = node_type_value
         elif isinstance(node_type_value, str):
@@ -76,23 +58,19 @@ class _TestNode(Node):
     def _run(self):
         raise NotImplementedError
 
-    def _get_error_strategy(self) -> ErrorStrategy | None:
-        return self._base_node_data.error_strategy
+    def post_init(self) -> None:
+        super().post_init()
+        self._maybe_override_execution_type()
+        self.data = dict(self.node_data.model_dump())
 
-    def _get_retry_config(self) -> RetryConfig:
-        return self._base_node_data.retry_config
-
-    def _get_title(self) -> str:
-        return self._base_node_data.title
-
-    def _get_description(self) -> str | None:
-        return self._base_node_data.desc
-
-    def _get_default_value_dict(self) -> dict[str, Any]:
-        return self._base_node_data.default_value_dict
-
-    def get_base_node_data(self) -> BaseNodeData:
-        return self._base_node_data
+    def _maybe_override_execution_type(self) -> None:
+        execution_type_value = self.node_data.execution_type
+        if execution_type_value is None:
+            return
+        if isinstance(execution_type_value, NodeExecutionType):
+            self.execution_type = execution_type_value
+        else:
+            self.execution_type = NodeExecutionType(execution_type_value)
 
 
 @dataclass(slots=True)
@@ -108,7 +86,6 @@ class _SimpleNodeFactory:
             graph_init_params=self.graph_init_params,
             graph_runtime_state=self.graph_runtime_state,
         )
-        node.init_node_data(node_config.get("data", {}))
         return node
 
 

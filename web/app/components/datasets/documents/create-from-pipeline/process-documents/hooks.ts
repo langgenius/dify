@@ -1,5 +1,5 @@
-import { usePublishedPipelineProcessingParams } from '@/service/use-pipeline'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { usePublishedPipelineProcessingParams } from '@/service/use-pipeline'
 
 export const useInputVariables = (datasourceNodeId: string) => {
   const pipelineId = useDatasetDetailContextWithSelector(state => state.dataset?.pipeline_id)

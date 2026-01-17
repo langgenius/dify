@@ -1,8 +1,9 @@
+import type { NodePanelPresenceMap, NodePanelPresenceUser } from '@/app/components/workflow/collaboration/types/collaboration'
+import type { Edge, Node } from '@/app/components/workflow/types'
 import { LoroDoc } from 'loro-crdt'
+import { Position } from 'reactflow'
 import { CollaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { BlockEnum } from '@/app/components/workflow/types'
-import type { Edge, Node } from '@/app/components/workflow/types'
-import type { NodePanelPresenceMap, NodePanelPresenceUser } from '@/app/components/workflow/collaboration/types/collaboration'
 
 const NODE_ID = '1760342909316'
 
@@ -56,21 +57,21 @@ const createNodeSnapshot = (variableNames: string[]): Node<{ variables: Workflow
   selected: true,
   selectable: true,
   draggable: true,
-  sourcePosition: 'right',
-  targetPosition: 'left',
+  sourcePosition: Position.Right,
+  targetPosition: Position.Left,
   data: {
     selected: true,
     title: '开始',
     desc: '',
     type: BlockEnum.Start,
-    variables: variableNames.map(createVariable),
+    variables: variableNames.map(name => createVariable(name)),
   },
 })
 
 const LLM_NODE_ID = 'llm-node'
 const PARAM_NODE_ID = 'param-extractor-node'
 
-const createLLMNodeSnapshot = (promptTemplates: PromptTemplateItem[]): Node<any> => ({
+const createLLMNodeSnapshot = (promptTemplates: PromptTemplateItem[]): Node<Record<string, any>> => ({
   id: LLM_NODE_ID,
   type: 'custom',
   position: { x: 200, y: 120 },
@@ -80,11 +81,12 @@ const createLLMNodeSnapshot = (promptTemplates: PromptTemplateItem[]): Node<any>
   selected: false,
   selectable: true,
   draggable: true,
-  sourcePosition: 'right',
-  targetPosition: 'left',
+  sourcePosition: Position.Right,
+  targetPosition: Position.Left,
   data: {
-    type: 'llm',
+    type: BlockEnum.LLM,
     title: 'LLM',
+    desc: '',
     selected: false,
     context: {
       enabled: false,
@@ -105,7 +107,7 @@ const createLLMNodeSnapshot = (promptTemplates: PromptTemplateItem[]): Node<any>
   },
 })
 
-const createParameterExtractorNodeSnapshot = (parameters: ParameterItem[]): Node<any> => ({
+const createParameterExtractorNodeSnapshot = (parameters: ParameterItem[]): Node<Record<string, any>> => ({
   id: PARAM_NODE_ID,
   type: 'custom',
   position: { x: 420, y: 220 },
@@ -115,11 +117,12 @@ const createParameterExtractorNodeSnapshot = (parameters: ParameterItem[]): Node
   selected: true,
   selectable: true,
   draggable: true,
-  sourcePosition: 'right',
-  targetPosition: 'left',
+  sourcePosition: Position.Right,
+  targetPosition: Position.Left,
   data: {
-    type: 'parameter-extractor',
+    type: BlockEnum.ParameterExtractor,
     title: '参数提取器',
+    desc: '',
     selected: true,
     model: {
       mode: 'chat',
@@ -391,12 +394,12 @@ describe('CollaborationManager syncNodes', () => {
     ])
     ;(promptManager as any).syncNodes([], [deepClone(base)])
 
-    const storedBefore = promptManager.getNodes().find(node => node.id === LLM_NODE_ID)
+    const storedBefore = promptManager.getNodes().find(node => node.id === LLM_NODE_ID) as Node<Record<string, any>> | undefined
     const firstTemplate = (storedBefore?.data as any).prompt_template?.[0]
     expect(firstTemplate?.text).toBe('base')
 
     // simulate consumer mutating the plain JSON array and syncing back
-    const mutatedNode = deepClone(storedBefore!)
+    const mutatedNode = deepClone(storedBefore!) as Node<Record<string, any>>
     mutatedNode.data.prompt_template.push({
       id: 'user',
       role: 'user',
@@ -424,8 +427,8 @@ describe('CollaborationManager syncNodes', () => {
     const node = createParameterExtractorNodeSnapshot(initialParameters)
     ;(parameterManager as any).syncNodes([], [deepClone(node)])
 
-    const stored = parameterManager.getNodes().find(n => n.id === PARAM_NODE_ID)!
-    const mutatedNode = deepClone(stored)
+    const stored = parameterManager.getNodes().find(n => n.id === PARAM_NODE_ID) as Node<Record<string, any>>
+    const mutatedNode = deepClone(stored) as Node<Record<string, any>>
     mutatedNode.data.parameters[0].description = 'updated'
 
     ;(parameterManager as any).syncNodes([stored], [mutatedNode])
@@ -437,14 +440,16 @@ describe('CollaborationManager syncNodes', () => {
   })
 
   it('filters out transient/private data keys while keeping allowlisted ones', () => {
-    const nodeWithPrivate: Node = {
+    const nodeWithPrivate: Node<Record<string, any>> = {
       id: 'private-node',
       type: 'custom',
       position: { x: 0, y: 0 },
       data: {
         type: BlockEnum.Start,
+        title: 'private',
+        desc: '',
         _foo: 'should disappear',
-        _children: ['child-a'],
+        _children: [{ nodeId: 'child-a', nodeType: BlockEnum.Start }],
         selected: true,
         variables: [],
       },
@@ -454,7 +459,7 @@ describe('CollaborationManager syncNodes', () => {
 
     const stored = (manager.getNodes() as Node[]).find(node => node.id === 'private-node')!
     expect((stored.data as any)._foo).toBeUndefined()
-    expect((stored.data as any)._children).toEqual(['child-a'])
+    expect((stored.data as any)._children).toEqual([{ nodeId: 'child-a', nodeType: BlockEnum.Start }])
     expect((stored.data as any).selected).toBeUndefined()
   })
 
@@ -508,20 +513,32 @@ describe('CollaborationManager syncNodes', () => {
       source: 'node-a',
       target: 'node-b',
       type: 'default',
-      data: { label: 'initial' },
-    } as Edge
+      data: {
+        sourceType: BlockEnum.Start,
+        targetType: BlockEnum.LLM,
+        _waitingRun: false,
+      },
+    }
 
     ;(edgeManager as any).setEdges([], [edge])
     expect(edgeManager.getEdges()).toHaveLength(1)
-    expect((edgeManager.getEdges()[0].data as any).label).toBe('initial')
+    const storedEdge = edgeManager.getEdges()[0]!
+    expect(storedEdge.data).toBeDefined()
+    expect(storedEdge.data!._waitingRun).toBe(false)
 
     const updatedEdge: Edge = {
       ...edge,
-      data: { label: 'updated' },
+      data: {
+        sourceType: BlockEnum.Start,
+        targetType: BlockEnum.LLM,
+        _waitingRun: true,
+      },
     }
     ;(edgeManager as any).setEdges([edge], [updatedEdge])
     expect(edgeManager.getEdges()).toHaveLength(1)
-    expect((edgeManager.getEdges()[0].data as any).label).toBe('updated')
+    const updatedStoredEdge = edgeManager.getEdges()[0]!
+    expect(updatedStoredEdge.data).toBeDefined()
+    expect(updatedStoredEdge.data!._waitingRun).toBe(true)
 
     ;(edgeManager as any).setEdges([updatedEdge], [])
     expect(edgeManager.getEdges()).toHaveLength(0)
@@ -532,11 +549,29 @@ describe('CollaborationManager public API wrappers', () => {
   let manager: CollaborationManager
   const baseNodes: Node[] = []
   const updatedNodes: Node[] = [
-    { id: 'new-node', type: 'custom', position: { x: 0, y: 0 }, data: {} } as Node,
+    {
+      id: 'new-node',
+      type: 'custom',
+      position: { x: 0, y: 0 },
+      data: {
+        type: BlockEnum.Start,
+        title: 'New node',
+        desc: '',
+      },
+    },
   ]
   const baseEdges: Edge[] = []
   const updatedEdges: Edge[] = [
-    { id: 'edge-1', source: 'source', target: 'target', type: 'default', data: {} } as Edge,
+    {
+      id: 'edge-1',
+      source: 'source',
+      target: 'target',
+      type: 'default',
+      data: {
+        sourceType: BlockEnum.Start,
+        targetType: BlockEnum.End,
+      },
+    },
   ]
 
   beforeEach(() => {
@@ -544,9 +579,9 @@ describe('CollaborationManager public API wrappers', () => {
   })
 
   it('setNodes delegates to syncNodes and commits the CRDT document', () => {
-    const commit = jest.fn()
+    const commit = vi.fn()
     ;(manager as any).doc = { commit }
-    const syncSpy = jest.spyOn(manager as any, 'syncNodes').mockImplementation(() => undefined)
+    const syncSpy = vi.spyOn(manager as any, 'syncNodes').mockImplementation(() => undefined)
 
     manager.setNodes(baseNodes, updatedNodes)
 
@@ -556,10 +591,10 @@ describe('CollaborationManager public API wrappers', () => {
   })
 
   it('setNodes skips syncing when undo/redo replay is running', () => {
-    const commit = jest.fn()
+    const commit = vi.fn()
     ;(manager as any).doc = { commit }
     ;(manager as any).isUndoRedoInProgress = true
-    const syncSpy = jest.spyOn(manager as any, 'syncNodes').mockImplementation(() => undefined)
+    const syncSpy = vi.spyOn(manager as any, 'syncNodes').mockImplementation(() => undefined)
 
     manager.setNodes(baseNodes, updatedNodes)
 
@@ -569,9 +604,9 @@ describe('CollaborationManager public API wrappers', () => {
   })
 
   it('setEdges delegates to syncEdges and commits the CRDT document', () => {
-    const commit = jest.fn()
+    const commit = vi.fn()
     ;(manager as any).doc = { commit }
-    const syncSpy = jest.spyOn(manager as any, 'syncEdges').mockImplementation(() => undefined)
+    const syncSpy = vi.spyOn(manager as any, 'syncEdges').mockImplementation(() => undefined)
 
     manager.setEdges(baseEdges, updatedEdges)
 
@@ -581,7 +616,7 @@ describe('CollaborationManager public API wrappers', () => {
   })
 
   it('disconnect tears down the collaboration state only when last connection closes', () => {
-    const forceSpy = jest.spyOn(manager as any, 'forceDisconnect').mockImplementation(() => undefined)
+    const forceSpy = vi.spyOn(manager as any, 'forceDisconnect').mockImplementation(() => undefined)
     ;(manager as any).activeConnections.add('conn-a')
     ;(manager as any).activeConnections.add('conn-b')
 

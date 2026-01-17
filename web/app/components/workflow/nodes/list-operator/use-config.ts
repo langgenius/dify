@@ -1,18 +1,18 @@
-import { useCallback, useMemo } from 'react'
-import { produce } from 'immer'
-import { useStoreApi } from 'reactflow'
 import type { ValueSelector, Var } from '../../types'
-import { VarType } from '../../types'
-import { getOperators } from '../if-else/utils'
-import { OrderBy } from './types'
 import type { Condition, Limit, ListFilterNodeType } from './types'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { produce } from 'immer'
+import { useCallback, useMemo } from 'react'
+import { useStoreApi } from 'reactflow'
 import {
   useIsChatMode,
   useNodesReadOnly,
   useWorkflow,
   useWorkflowVariables,
 } from '@/app/components/workflow/hooks'
+import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { VarType } from '../../types'
+import { getOperators } from '../if-else/utils'
+import { OrderBy } from './types'
 
 const useConfig = (id: string, payload: ListFilterNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()

@@ -1,28 +1,15 @@
 {
   "compilerOptions": {
+    "incremental": true,
     "target": "es2015",
+    "jsx": "preserve",
     "lib": [
       "dom",
       "dom.iterable",
       "esnext"
     ],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "forceConsistentCasingInFileNames": true,
-    "noEmit": true,
-    "esModuleInterop": true,
     "module": "esnext",
-    "moduleResolution": "node",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "jsx": "preserve",
-    "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
+    "moduleResolution": "bundler",
     "paths": {
       "@/*": [
         "./*"
@@ -30,7 +17,21 @@
       "~@/*": [
         "./*"
       ]
-    }
+    },
+    "resolveJsonModule": true,
+    "types": ["vitest/globals", "node"],
+    "allowJs": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
   },
   "include": [
     "next-env.d.ts",
@@ -40,11 +41,6 @@
     "app/components/develop/Prose.jsx"
   ],
   "exclude": [
-    "node_modules",
-    "**/*.test.ts",
-    "**/*.test.tsx",
-    "**/*.spec.ts",
-    "**/*.spec.tsx",
-    "__tests__/**"
+    "node_modules"
   ]
 }

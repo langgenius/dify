@@ -1,19 +1,17 @@
-import {
-  uniq,
-  xorBy,
-} from 'lodash-es'
 import type { MultipleRetrievalConfig } from './types'
 import type {
   DataSet,
   SelectedDatasetsMode,
 } from '@/models/datasets'
+import { uniq } from 'es-toolkit/array'
+import { xorBy } from 'es-toolkit/compat'
+import { DATASET_DEFAULT } from '@/config'
 import {
   DEFAULT_WEIGHTED_SCORE,
   RerankingModeEnum,
   WeightedScoreEnum,
 } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
-import { DATASET_DEFAULT } from '@/config'
 
 export const checkNodeValid = () => {
   return true
@@ -94,7 +92,7 @@ export const getMultipleRetrievalConfig = (
   multipleRetrievalConfig: MultipleRetrievalConfig,
   selectedDatasets: DataSet[],
   originalDatasets: DataSet[],
-  fallbackRerankModel?: { provider?: string; model?: string }, // fallback rerank model
+  fallbackRerankModel?: { provider?: string, model?: string }, // fallback rerank model
 ) => {
   // Check if the selected datasets are different from the original datasets
   const isDatasetsChanged = xorBy(selectedDatasets, originalDatasets, 'id').length > 0

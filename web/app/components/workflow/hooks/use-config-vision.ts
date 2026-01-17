@@ -1,12 +1,12 @@
+import type { ModelConfig, VisionSetting } from '@/app/components/workflow/types'
 import { produce } from 'immer'
 import { useCallback } from 'react'
-import { useIsChatMode } from './use-workflow'
-import type { ModelConfig, VisionSetting } from '@/app/components/workflow/types'
-import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import {
   ModelFeatureEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { Resolution } from '@/types/app'
+import { useIsChatMode } from './use-workflow'
 
 type Payload = {
   enabled: boolean
@@ -48,6 +48,9 @@ const useConfigVision = (model: ModelConfig, {
           detail: Resolution.high,
           variable_selector: ['sys', 'files'],
         }
+      }
+      else if (!enabled) {
+        delete draft.configs
       }
     })
     onChange(newPayload)

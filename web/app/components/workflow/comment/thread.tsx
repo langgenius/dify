@@ -1,23 +1,23 @@
 'use client'
 
 import type { FC, ReactNode } from 'react'
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useParams } from 'next/navigation'
-import { useReactFlow, useViewport } from 'reactflow'
-import { useTranslation } from 'react-i18next'
+import type { WorkflowCommentDetail, WorkflowCommentDetailReply } from '@/service/workflow-comment'
 import { RiArrowDownSLine, RiArrowUpSLine, RiCheckboxCircleFill, RiCheckboxCircleLine, RiCloseLine, RiDeleteBinLine, RiMoreFill } from '@remixicon/react'
+import { useParams } from 'next/navigation'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useReactFlow, useViewport } from 'reactflow'
 import Avatar from '@/app/components/base/avatar'
 import Divider from '@/app/components/base/divider'
-import Tooltip from '@/app/components/base/tooltip'
 import InlineDeleteConfirm from '@/app/components/base/inline-delete-confirm'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
-import cn from '@/utils/classnames'
-import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
-import type { WorkflowCommentDetail, WorkflowCommentDetailReply } from '@/service/workflow-comment'
-import { useAppContext } from '@/context/app-context'
-import { MentionInput } from './mention-input'
+import Tooltip from '@/app/components/base/tooltip'
 import { getUserColor } from '@/app/components/workflow/collaboration/utils/user-color'
+import { useAppContext } from '@/context/app-context'
+import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import { cn } from '@/utils/classnames'
 import { useStore } from '../store'
+import { MentionInput } from './mention-input'
 
 type CommentThreadProps = {
   comment: WorkflowCommentDetail
@@ -100,7 +100,7 @@ const ThreadMessage: FC<{
 
       const mentionEnd = nextMatchStart + matchedName.length + 1
       segments.push(
-        <span key={`mention-${nextMatchStart}`} className='text-primary-600'>
+        <span key={`mention-${nextMatchStart}`} className="text-primary-600">
           {content.slice(nextMatchStart, mentionEnd)}
         </span>,
       )
@@ -119,7 +119,7 @@ const ThreadMessage: FC<{
 
   return (
     <div className={cn('flex gap-3 pt-1', className)}>
-      <div className='shrink-0'>
+      <div className="shrink-0">
         <Avatar
           name={authorName}
           avatar={avatarUrl || null}
@@ -128,12 +128,12 @@ const ThreadMessage: FC<{
           backgroundColor={userColor}
         />
       </div>
-      <div className='min-w-0 flex-1 pb-4 text-text-primary last:pb-0'>
-        <div className='flex flex-wrap items-center gap-x-2 gap-y-1'>
-          <span className='system-sm-medium text-text-primary'>{authorName}</span>
-          <span className='system-2xs-regular text-text-tertiary'>{formatTimeFromNow(createdAt * 1000)}</span>
+      <div className="min-w-0 flex-1 pb-4 text-text-primary last:pb-0">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="system-sm-medium text-text-primary">{authorName}</span>
+          <span className="system-2xs-regular text-text-tertiary">{formatTimeFromNow(createdAt * 1000)}</span>
         </div>
-        <div className='system-sm-regular mt-1 whitespace-pre-wrap break-words text-text-secondary'>
+        <div className="system-sm-regular mt-1 whitespace-pre-wrap break-words text-text-secondary">
           {highlightedContent}
         </div>
       </div>
@@ -166,7 +166,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
   const { t } = useTranslation()
   const [replyContent, setReplyContent] = useState('')
   const [activeReplyMenuId, setActiveReplyMenuId] = useState<string | null>(null)
-  const [editingReply, setEditingReply] = useState<{ id: string; content: string }>({ id: '', content: '' })
+  const [editingReply, setEditingReply] = useState<{ id: string, content: string }>({ id: '', content: '' })
   const [deletingReplyId, setDeletingReplyId] = useState<string | null>(null)
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false)
 
@@ -211,10 +211,12 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't intercept if actively editing a reply
-      if (editingReply.id) return
+      if (editingReply.id)
+        return
 
       // Don't intercept if mention dropdown is open (let MentionInput handle it)
-      if (document.querySelector('[data-mention-dropdown]')) return
+      if (document.querySelector('[data-mention-dropdown]'))
+        return
 
       if (e.key === 'Escape') {
         e.preventDefault()
@@ -228,7 +230,8 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
   }, [onClose, editingReply.id])
 
   const handleReplySubmit = useCallback(async (content: string, mentionedUserIds: string[]) => {
-    if (!onReply || replySubmitting) return
+    if (!onReply || replySubmitting)
+      return
 
     setReplyContent('')
 
@@ -277,9 +280,11 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
   }, [])
 
   const handleEditSubmit = useCallback(async (content: string, mentionedUserIds: string[]) => {
-    if (!onReplyEdit || !editingReply) return
+    if (!onReplyEdit || !editingReply)
+      return
     const trimmed = content.trim()
-    if (!trimmed) return
+    if (!trimmed)
+      return
 
     setIsSubmittingEdit(true)
     try {
@@ -343,7 +348,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
 
   return (
     <div
-      className='absolute z-50 w-[360px] max-w-[360px]'
+      className="absolute z-50 w-[360px] max-w-[360px]"
       style={{
         left: canvasPosition.x + 40,
         top: canvasPosition.y,
@@ -354,98 +359,98 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
     >
       <div
         ref={threadRef}
-        className='relative flex h-[360px] flex-col overflow-hidden rounded-2xl border border-components-panel-border bg-components-panel-bg shadow-xl'
-        role='dialog'
-        aria-modal='true'
-        aria-labelledby='comment-thread-title'
+        className="relative flex h-[360px] flex-col overflow-hidden rounded-2xl border border-components-panel-border bg-components-panel-bg shadow-xl"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="comment-thread-title"
       >
-        <div className='flex items-center justify-between rounded-t-2xl border-b border-components-panel-border bg-components-panel-bg-blur px-4 py-3'>
+        <div className="flex items-center justify-between rounded-t-2xl border-b border-components-panel-border bg-components-panel-bg-blur px-4 py-3">
           <div
-            id='comment-thread-title'
-            className='font-semibold uppercase text-text-primary'
+            id="comment-thread-title"
+            className="font-semibold uppercase text-text-primary"
           >
-            {t('workflow.comments.panelTitle')}
+            {t('comments.panelTitle', { ns: 'workflow' })}
           </div>
-          <div className='flex items-center gap-1'>
+          <div className="flex items-center gap-1">
             <Tooltip
-              popupContent={t('workflow.comments.aria.deleteComment')}
-              position='top'
-              popupClassName='!px-2 !py-1.5'
+              popupContent={t('comments.aria.deleteComment', { ns: 'workflow' })}
+              position="top"
+              popupClassName="!px-2 !py-1.5"
             >
               <button
-                type='button'
+                type="button"
                 disabled={loading}
                 className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
                 onClick={onDelete}
-                aria-label={t('workflow.comments.aria.deleteComment')}
+                aria-label={t('comments.aria.deleteComment', { ns: 'workflow' })}
               >
-                <RiDeleteBinLine className='h-4 w-4' />
+                <RiDeleteBinLine className="h-4 w-4" />
               </button>
             </Tooltip>
             <Tooltip
-              popupContent={t('workflow.comments.aria.resolveComment')}
-              position='top'
-              popupClassName='!px-2 !py-1.5'
+              popupContent={t('comments.aria.resolveComment', { ns: 'workflow' })}
+              position="top"
+              popupClassName="!px-2 !py-1.5"
             >
               <button
-                type='button'
+                type="button"
                 disabled={comment.resolved || loading}
                 className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
                 onClick={onResolve}
-                aria-label={t('workflow.comments.aria.resolveComment')}
+                aria-label={t('comments.aria.resolveComment', { ns: 'workflow' })}
               >
-                {comment.resolved ? <RiCheckboxCircleFill className='h-4 w-4' /> : <RiCheckboxCircleLine className='h-4 w-4' />}
+                {comment.resolved ? <RiCheckboxCircleFill className="h-4 w-4" /> : <RiCheckboxCircleLine className="h-4 w-4" />}
               </button>
             </Tooltip>
-            <Divider type='vertical' className='h-3.5' />
+            <Divider type="vertical" className="h-3.5" />
             <Tooltip
-              popupContent={t('workflow.comments.aria.previousComment')}
-              position='top'
-              popupClassName='!px-2 !py-1.5'
+              popupContent={t('comments.aria.previousComment', { ns: 'workflow' })}
+              position="top"
+              popupClassName="!px-2 !py-1.5"
             >
               <button
-                type='button'
+                type="button"
                 disabled={!canGoPrev || loading}
                 className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
                 onClick={onPrev}
-                aria-label={t('workflow.comments.aria.previousComment')}
+                aria-label={t('comments.aria.previousComment', { ns: 'workflow' })}
               >
-                <RiArrowUpSLine className='h-4 w-4' />
+                <RiArrowUpSLine className="h-4 w-4" />
               </button>
             </Tooltip>
             <Tooltip
-              popupContent={t('workflow.comments.aria.nextComment')}
-              position='top'
-              popupClassName='!px-2 !py-1.5'
+              popupContent={t('comments.aria.nextComment', { ns: 'workflow' })}
+              position="top"
+              popupClassName="!px-2 !py-1.5"
             >
               <button
-                type='button'
+                type="button"
                 disabled={!canGoNext || loading}
                 className={cn('flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled')}
                 onClick={onNext}
-                aria-label={t('workflow.comments.aria.nextComment')}
+                aria-label={t('comments.aria.nextComment', { ns: 'workflow' })}
               >
-                <RiArrowDownSLine className='h-4 w-4' />
+                <RiArrowDownSLine className="h-4 w-4" />
               </button>
             </Tooltip>
             <button
-              type='button'
-              className='flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary'
+              type="button"
+              className="flex h-6 w-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
               onClick={onClose}
-              aria-label={t('workflow.comments.aria.closeComment')}
+              aria-label={t('comments.aria.closeComment', { ns: 'workflow' })}
             >
-              <RiCloseLine className='h-4 w-4' />
+              <RiCloseLine className="h-4 w-4" />
             </button>
           </div>
         </div>
         <div
           ref={messageListRef}
-          className='relative mt-2 flex-1 overflow-y-auto px-4 pb-4'
+          className="relative mt-2 flex-1 overflow-y-auto px-4 pb-4"
         >
-          <div className='-mx-4 rounded-lg px-4 py-2 transition-colors hover:bg-components-panel-on-panel-item-bg-hover'>
+          <div className="-mx-4 rounded-lg px-4 py-2 transition-colors hover:bg-components-panel-on-panel-item-bg-hover">
             <ThreadMessage
               authorId={comment.created_by_account?.id || ''}
-              authorName={comment.created_by_account?.name || t('workflow.comments.fallback.user')}
+              authorName={comment.created_by_account?.name || t('comments.fallback.user', { ns: 'workflow' })}
               avatarUrl={comment.created_by_account?.avatar_url || null}
               createdAt={comment.created_at}
               content={comment.content}
@@ -453,18 +458,18 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
             />
           </div>
           {replies.length > 0 && (
-            <div className='mt-2 space-y-3 pt-3'>
+            <div className="mt-2 space-y-3 pt-3">
               {replies.map((reply) => {
                 const isReplyEditing = editingReply?.id === reply.id
                 const isOwnReply = reply.created_by_account?.id === userProfile?.id
                 return (
                   <div
                     key={reply.id}
-                    className='group relative -mx-4 rounded-lg px-4 py-2 transition-colors hover:bg-components-panel-on-panel-item-bg-hover'
+                    className="group relative -mx-4 rounded-lg px-4 py-2 transition-colors hover:bg-components-panel-on-panel-item-bg-hover"
                   >
                     {isOwnReply && !isReplyEditing && (
                       <PortalToFollowElem
-                        placement='bottom-end'
+                        placement="bottom-end"
                         open={activeReplyMenuId === reply.id}
                         onOpenChange={(open) => {
                           if (!open) {
@@ -482,36 +487,36 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                         >
                           <PortalToFollowElemTrigger asChild>
                             <button
-                              type='button'
-                              className='flex h-6 w-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary'
+                              type="button"
+                              className="flex h-6 w-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
                               onClick={(e) => {
                                 e.stopPropagation()
                                 setDeletingReplyId(null)
                                 setActiveReplyMenuId(prev => prev === reply.id ? null : reply.id)
                               }}
-                              aria-label={t('workflow.comments.aria.replyActions')}
+                              aria-label={t('comments.aria.replyActions', { ns: 'workflow' })}
                             >
-                              <RiMoreFill className='h-4 w-4' />
+                              <RiMoreFill className="h-4 w-4" />
                             </button>
                           </PortalToFollowElemTrigger>
                         </div>
                         <PortalToFollowElemContent
-                          className='z-[100] w-36 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[10px]'
+                          className="z-[100] w-36 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[10px]"
                           data-reply-menu
                         >
                           {/* Menu buttons - hidden when showing delete confirm */}
                           <div className={cn(deletingReplyId === reply.id ? 'hidden' : 'block')}>
                             <button
-                              className='flex w-full items-center justify-start rounded-t-xl px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover'
+                              className="flex w-full items-center justify-start rounded-t-xl px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover"
                               onClick={(e) => {
                                 e.stopPropagation()
                                 handleStartEdit(reply)
                               }}
                             >
-                              {t('workflow.comments.actions.editReply')}
+                              {t('comments.actions.editReply', { ns: 'workflow' })}
                             </button>
                             <button
-                              className='text-negative flex w-full items-center justify-start rounded-b-xl px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover'
+                              className="text-negative flex w-full items-center justify-start rounded-b-xl px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover"
                               onClick={(e) => {
                                 e.stopPropagation()
                                 e.preventDefault()
@@ -524,14 +529,14 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                                 }
                               }}
                             >
-                              {t('workflow.comments.actions.deleteReply')}
+                              {t('comments.actions.deleteReply', { ns: 'workflow' })}
                             </button>
                           </div>
 
                           {/* Delete confirmation - shown when deletingReplyId matches */}
                           <div className={cn(deletingReplyId === reply.id ? 'block' : 'hidden')}>
                             <InlineDeleteConfirm
-                              title={t('workflow.comments.actions.deleteReply')}
+                              title={t('comments.actions.deleteReply', { ns: 'workflow' })}
                               onConfirm={() => {
                                 setDeletingReplyId(null)
                                 setActiveReplyMenuId(null)
@@ -540,49 +545,51 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                               onCancel={() => {
                                 setDeletingReplyId(null)
                               }}
-                              className='m-0 w-full border-0 shadow-none'
+                              className="m-0 w-full border-0 shadow-none"
                             />
                           </div>
                         </PortalToFollowElemContent>
                       </PortalToFollowElem>
                     )}
-                    {isReplyEditing ? (
-                      <div className='flex gap-3 pt-1'>
-                        <div className='shrink-0'>
-                          <Avatar
-                            name={reply.created_by_account?.name || t('workflow.comments.fallback.user')}
-                            avatar={reply.created_by_account?.avatar_url || null}
-                            size={24}
-                            className='h-8 w-8 rounded-full'
-                          />
-                        </div>
-                        <div className='min-w-0 flex-1'>
-                          <div className='rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-1 shadow-md backdrop-blur-[10px]'>
-                            <MentionInput
-                              value={editingReply?.content ?? ''}
-                              onChange={newContent => setEditingReply(prev => prev ? { ...prev, content: newContent } : prev)}
-                              onSubmit={handleEditSubmit}
-                              onCancel={handleCancelEdit}
-                              placeholder={t('workflow.comments.placeholder.editReply')}
-                              disabled={loading}
-                              loading={replyUpdating || isSubmittingEdit}
-                              isEditing={true}
-                              className="system-sm-regular"
-                              autoFocus
-                            />
+                    {isReplyEditing
+                      ? (
+                          <div className="flex gap-3 pt-1">
+                            <div className="shrink-0">
+                              <Avatar
+                                name={reply.created_by_account?.name || t('comments.fallback.user', { ns: 'workflow' })}
+                                avatar={reply.created_by_account?.avatar_url || null}
+                                size={24}
+                                className="h-8 w-8 rounded-full"
+                              />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-1 shadow-md backdrop-blur-[10px]">
+                                <MentionInput
+                                  value={editingReply?.content ?? ''}
+                                  onChange={newContent => setEditingReply(prev => prev ? { ...prev, content: newContent } : prev)}
+                                  onSubmit={handleEditSubmit}
+                                  onCancel={handleCancelEdit}
+                                  placeholder={t('comments.placeholder.editReply', { ns: 'workflow' })}
+                                  disabled={loading}
+                                  loading={replyUpdating || isSubmittingEdit}
+                                  isEditing={true}
+                                  className="system-sm-regular"
+                                  autoFocus
+                                />
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <ThreadMessage
-                        authorId={reply.created_by_account?.id || ''}
-                        authorName={reply.created_by_account?.name || t('workflow.comments.fallback.user')}
-                        avatarUrl={reply.created_by_account?.avatar_url || null}
-                        createdAt={reply.created_at}
-                        content={reply.content}
-                        mentionableNames={mentionableNames}
-                      />
-                    )}
+                        )
+                      : (
+                          <ThreadMessage
+                            authorId={reply.created_by_account?.id || ''}
+                            authorName={reply.created_by_account?.name || t('comments.fallback.user', { ns: 'workflow' })}
+                            avatarUrl={reply.created_by_account?.avatar_url || null}
+                            createdAt={reply.created_at}
+                            content={reply.content}
+                            mentionableNames={mentionableNames}
+                          />
+                        )}
                   </div>
                 )
               })}
@@ -590,26 +597,26 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
           )}
         </div>
         {loading && (
-          <div className='bg-components-panel-bg/70 absolute inset-0 z-30 flex items-center justify-center text-sm text-text-tertiary'>
-            {t('workflow.comments.loading')}
+          <div className="bg-components-panel-bg/70 absolute inset-0 z-30 flex items-center justify-center text-sm text-text-tertiary">
+            {t('comments.loading', { ns: 'workflow' })}
           </div>
         )}
         {onReply && (
-          <div className='border-t border-components-panel-border px-4 py-3'>
-            <div className='flex items-center gap-3'>
+          <div className="border-t border-components-panel-border px-4 py-3">
+            <div className="flex items-center gap-3">
               <Avatar
                 avatar={userProfile?.avatar_url || null}
-                name={userProfile?.name || t('common.you')}
+                name={userProfile?.name || t('you', { ns: 'common' })}
                 size={24}
-                className='h-8 w-8'
+                className="h-8 w-8"
               />
-              <div className='flex-1 rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-[2px] shadow-sm'>
+              <div className="flex-1 rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-[2px] shadow-sm">
                 <MentionInput
                   ref={replyInputRef}
                   value={replyContent}
                   onChange={setReplyContent}
                   onSubmit={handleReplySubmit}
-                  placeholder={t('workflow.comments.placeholder.reply')}
+                  placeholder={t('comments.placeholder.reply', { ns: 'workflow' })}
                   disabled={loading}
                   loading={replySubmitting}
                 />

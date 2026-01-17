@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 
 type Props = {
   loading?: boolean
@@ -15,7 +15,9 @@ const Spinner: FC<Props> = ({ loading = false, children, className }) => {
     >
       <span
         className="!absolute !-m-px !h-px !w-px !overflow-hidden !whitespace-nowrap !border-0 !p-0 ![clip:rect(0,0,0,0)]"
-      >Loading...</span>
+      >
+        Loading...
+      </span>
       {children}
     </div>
   )

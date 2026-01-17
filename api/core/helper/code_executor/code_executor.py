@@ -152,10 +152,5 @@ class CodeExecutor:
             raise CodeExecutionError(f"Unsupported language {language}")
 
         runner, preload = template_transformer.transform_caller(code, inputs)
-
-        try:
-            response = cls.execute_code(language, preload, runner)
-        except CodeExecutionError as e:
-            raise e
-
+        response = cls.execute_code(language, preload, runner)
         return template_transformer.transform_response(response)

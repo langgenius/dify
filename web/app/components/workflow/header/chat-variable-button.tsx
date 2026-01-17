@@ -3,7 +3,7 @@ import Button from '@/app/components/base/button'
 import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
 import { useStore } from '@/app/components/workflow/store'
 import useTheme from '@/hooks/use-theme'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 const ChatVariableButton = ({ disabled }: { disabled: boolean }) => {
   const { theme } = useTheme()
@@ -23,14 +23,14 @@ const ChatVariableButton = ({ disabled }: { disabled: boolean }) => {
   return (
     <Button
       className={cn(
-        'p-2',
-        theme === 'dark' && showChatVariablePanel && 'rounded-lg border border-black/5 bg-white/10 backdrop-blur-sm',
+        'rounded-lg border border-transparent p-2',
+        theme === 'dark' && showChatVariablePanel && 'border-black/5 bg-white/10 backdrop-blur-sm',
       )}
       disabled={disabled}
       onClick={handleClick}
-      variant='ghost'
+      variant="ghost"
     >
-      <BubbleX className='h-4 w-4 text-components-button-secondary-text' />
+      <BubbleX className="h-4 w-4 text-components-button-secondary-text" />
     </Button>
   )
 }

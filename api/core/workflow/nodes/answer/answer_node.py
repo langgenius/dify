@@ -2,48 +2,24 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from core.variables import ArrayFileSegment, FileSegment, Segment
-from core.workflow.enums import ErrorStrategy, NodeExecutionType, NodeType, WorkflowNodeExecutionStatus
+from core.workflow.enums import NodeExecutionType, NodeType, WorkflowNodeExecutionStatus
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.answer.entities import AnswerNodeData
-from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.template import Template
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
 
 
-class AnswerNode(Node):
+class AnswerNode(Node[AnswerNodeData]):
     node_type = NodeType.ANSWER
     execution_type = NodeExecutionType.RESPONSE
-
-    _node_data: AnswerNodeData
-
-    def init_node_data(self, data: Mapping[str, Any]):
-        self._node_data = AnswerNodeData.model_validate(data)
-
-    def _get_error_strategy(self) -> ErrorStrategy | None:
-        return self._node_data.error_strategy
-
-    def _get_retry_config(self) -> RetryConfig:
-        return self._node_data.retry_config
-
-    def _get_title(self) -> str:
-        return self._node_data.title
-
-    def _get_description(self) -> str | None:
-        return self._node_data.desc
-
-    def _get_default_value_dict(self) -> dict[str, Any]:
-        return self._node_data.default_value_dict
-
-    def get_base_node_data(self) -> BaseNodeData:
-        return self._node_data
 
     @classmethod
     def version(cls) -> str:
         return "1"
 
     def _run(self) -> NodeRunResult:
-        segments = self.graph_runtime_state.variable_pool.convert_template(self._node_data.answer)
+        segments = self.graph_runtime_state.variable_pool.convert_template(self.node_data.answer)
         files = self._extract_files_from_segments(segments.value)
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
@@ -93,4 +69,4 @@ class AnswerNode(Node):
         Returns:
             Template instance for this Answer node
         """
-        return Template.from_answer_template(self._node_data.answer)
+        return Template.from_answer_template(self.node_data.answer)

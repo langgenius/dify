@@ -1,15 +1,15 @@
-import {
-  memo,
-  useEffect,
-} from 'react'
+import type { CurrentBlockType } from '../../types'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { mergeRegister } from '@lexical/utils'
 import {
   $insertNodes,
   COMMAND_PRIORITY_EDITOR,
   createCommand,
 } from 'lexical'
-import { mergeRegister } from '@lexical/utils'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import type { CurrentBlockType } from '../../types'
+import {
+  memo,
+  useEffect,
+} from 'react'
 import {
   $createCurrentBlockNode,
   CurrentBlockNode,
@@ -62,5 +62,5 @@ const CurrentBlock = memo(({
 CurrentBlock.displayName = 'CurrentBlock'
 
 export { CurrentBlock }
-export { CurrentBlockNode } from './node'
 export { default as CurrentBlockReplacementBlock } from './current-block-replacement-block'
+export { CurrentBlockNode } from './node'

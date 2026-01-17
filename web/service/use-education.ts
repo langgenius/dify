@@ -1,10 +1,10 @@
-import { get, post } from './base'
+import type { EducationAddParams } from '@/app/education-apply/types'
 import {
   useMutation,
   useQuery,
 } from '@tanstack/react-query'
+import { get, post } from './base'
 import { useInvalid } from './use-base'
-import type { EducationAddParams } from '@/app/education-apply/types'
 
 const NAME_SPACE = 'education'
 
@@ -46,7 +46,7 @@ export const useEducationAutocomplete = () => {
         page = 0,
         limit = 40,
       } = searchParams
-      return get<{ data: string[]; has_next: boolean; curr_page: number }>(`/account/education/autocomplete?keywords=${keywords}&page=${page}&limit=${limit}`)
+      return get<{ data: string[], has_next: boolean, curr_page: number }>(`/account/education/autocomplete?keywords=${keywords}&page=${page}&limit=${limit}`)
     },
   })
 }
@@ -59,7 +59,7 @@ export const useEducationStatus = (disable?: boolean) => {
       return get<{ is_student: boolean, allow_refresh: boolean, expire_at: number | null }>('/account/education')
     },
     retry: false,
-    gcTime: 0, // No cache. Prevent switch account caused stale data
+    staleTime: 0, // Data expires immediately, ensuring fresh data on refetch
   })
 }
 

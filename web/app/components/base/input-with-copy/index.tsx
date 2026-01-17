@@ -1,13 +1,14 @@
 'use client'
-import React, { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { RiClipboardFill, RiClipboardLine } from '@remixicon/react'
-import { debounce } from 'lodash-es'
-import copy from 'copy-to-clipboard'
 import type { InputProps } from '../input'
-import Tooltip from '../tooltip'
+import { RiClipboardFill, RiClipboardLine } from '@remixicon/react'
+import copy from 'copy-to-clipboard'
+import { debounce } from 'es-toolkit/compat'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { cn } from '@/utils/classnames'
 import ActionButton from '../action-button'
-import cn from '@/utils/classnames'
+import Tooltip from '../tooltip'
 
 export type InputWithCopyProps = {
   showCopyButton?: boolean
@@ -15,7 +16,7 @@ export type InputWithCopyProps = {
   onCopy?: (value: string) => void // Callback when copy is triggered
 } & Omit<InputProps, 'showClearIcon' | 'onCopy'> // Remove conflicting props
 
-const prefixEmbedded = 'appOverview.overview.appInfo.embedded'
+const prefixEmbedded = 'overview.appInfo.embedded'
 
 const InputWithCopy = React.forwardRef<HTMLInputElement, InputWithCopyProps>((
   {
@@ -77,8 +78,8 @@ const InputWithCopy = React.forwardRef<HTMLInputElement, InputWithCopyProps>((
           <Tooltip
             popupContent={
               (isCopied
-                ? t(`${prefixEmbedded}.copied`)
-                : t(`${prefixEmbedded}.copy`)) || ''
+                ? t(`${prefixEmbedded}.copied`, { ns: 'appOverview' })
+                : t(`${prefixEmbedded}.copy`, { ns: 'appOverview' })) || ''
             }
           >
             <ActionButton
@@ -86,11 +87,13 @@ const InputWithCopy = React.forwardRef<HTMLInputElement, InputWithCopyProps>((
               onClick={onClickCopy}
               className="hover:bg-components-button-ghost-bg-hover"
             >
-              {isCopied ? (
-                <RiClipboardFill className='h-3.5 w-3.5 text-text-tertiary' />
-              ) : (
-                <RiClipboardLine className='h-3.5 w-3.5 text-text-tertiary' />
-              )}
+              {isCopied
+                ? (
+                    <RiClipboardFill className="h-3.5 w-3.5 text-text-tertiary" />
+                  )
+                : (
+                    <RiClipboardLine className="h-3.5 w-3.5 text-text-tertiary" />
+                  )}
             </ActionButton>
           </Tooltip>
         </div>

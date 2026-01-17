@@ -1,44 +1,40 @@
 from collections.abc import Callable
 from functools import wraps
+from typing import ParamSpec, TypeVar
 
 from controllers.console.datasets.error import PipelineNotFoundError
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant
 from models.dataset import Pipeline
 
+P = ParamSpec("P")
+R = TypeVar("R")
 
-def get_rag_pipeline(
-    view: Callable | None = None,
-):
-    def decorator(view_func):
-        @wraps(view_func)
-        def decorated_view(*args, **kwargs):
-            if not kwargs.get("pipeline_id"):
-                raise ValueError("missing pipeline_id in path parameters")
 
-            _, current_tenant_id = current_account_with_tenant()
+def get_rag_pipeline(view_func: Callable[P, R]):
+    @wraps(view_func)
+    def decorated_view(*args: P.args, **kwargs: P.kwargs):
+        if not kwargs.get("pipeline_id"):
+            raise ValueError("missing pipeline_id in path parameters")
 
-            pipeline_id = kwargs.get("pipeline_id")
-            pipeline_id = str(pipeline_id)
+        _, current_tenant_id = current_account_with_tenant()
 
-            del kwargs["pipeline_id"]
+        pipeline_id = kwargs.get("pipeline_id")
+        pipeline_id = str(pipeline_id)
 
-            pipeline = (
-                db.session.query(Pipeline)
-                .where(Pipeline.id == pipeline_id, Pipeline.tenant_id == current_tenant_id)
-                .first()
-            )
+        del kwargs["pipeline_id"]
 
-            if not pipeline:
-                raise PipelineNotFoundError()
+        pipeline = (
+            db.session.query(Pipeline)
+            .where(Pipeline.id == pipeline_id, Pipeline.tenant_id == current_tenant_id)
+            .first()
+        )
 
-            kwargs["pipeline"] = pipeline
+        if not pipeline:
+            raise PipelineNotFoundError()
 
-            return view_func(*args, **kwargs)
+        kwargs["pipeline"] = pipeline
 
-        return decorated_view
+        return view_func(*args, **kwargs)
 
-    if view is None:
-        return decorator
-    else:
-        return decorator(view)
+    return decorated_view

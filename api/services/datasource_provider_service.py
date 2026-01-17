@@ -29,8 +29,14 @@ def get_current_user():
     from models.account import Account
     from models.model import EndUser
 
-    if not isinstance(current_user._get_current_object(), (Account, EndUser)):  # type: ignore
-        raise TypeError(f"current_user must be Account or EndUser, got {type(current_user).__name__}")
+    try:
+        user_object = current_user._get_current_object()
+    except AttributeError:
+        # Handle case where current_user might not be a LocalProxy in test environments
+        user_object = current_user
+
+    if not isinstance(user_object, (Account, EndUser)):
+        raise TypeError(f"current_user must be Account or EndUser, got {type(user_object).__name__}")
     return current_user
 
 

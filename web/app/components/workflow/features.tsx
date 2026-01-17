@@ -1,21 +1,23 @@
+import type { StartNodeType } from './nodes/start/types'
+import type { CommonNodeType, InputVar, Node } from './types'
+import type { PromptVariable } from '@/models/debug'
+import type { WorkflowDraftFeaturesPayload } from '@/service/workflow'
 import {
   memo,
   useCallback,
 } from 'react'
 import { useNodes } from 'reactflow'
-import { useStore } from './store'
+import { useFeaturesStore } from '@/app/components/base/features/hooks'
+import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
+import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
+import { updateFeatures } from '@/service/workflow'
 import {
   useIsChatMode,
   useNodesReadOnly,
 } from './hooks'
-import { type CommonNodeType, type InputVar, InputVarType, type Node } from './types'
 import useConfig from './nodes/start/use-config'
-import type { StartNodeType } from './nodes/start/types'
-import type { PromptVariable } from '@/models/debug'
-import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
-import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
-import { useFeaturesStore } from '@/app/components/base/features/hooks'
-import { type WorkflowDraftFeaturesPayload, updateFeatures } from '@/service/workflow'
+import { useStore } from './store'
+import { InputVarType } from './types'
 
 const Features = () => {
   const setShowFeaturesPanel = useStore(s => s.setShowFeaturesPanel)
@@ -42,7 +44,8 @@ const Features = () => {
   }
 
   const handleFeaturesChange = useCallback(async () => {
-    if (!appId || !featuresStore) return
+    if (!appId || !featuresStore)
+      return
 
     try {
       const currentFeatures = featuresStore.getState().features

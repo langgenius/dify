@@ -1,36 +1,36 @@
 import type { FC } from 'react'
 import {
-  Fragment,
-  memo,
-  useCallback,
-  useState,
-} from 'react'
-import {
   RiCheckLine,
   RiFullscreenLine,
   RiZoomInLine,
   RiZoomOutLine,
 } from '@remixicon/react'
+import {
+  Fragment,
+  memo,
+  useCallback,
+  useState,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   useReactFlow,
   useViewport,
 } from 'reactflow'
 import {
-  useNodesSyncDraft,
-  useWorkflowReadOnly,
-} from '../hooks'
-
-import ShortcutsName from '../shortcuts-name'
-import Divider from '../../base/divider'
-import TipPopup from './tip-popup'
-import cn from '@/utils/classnames'
-import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+
+import { cn } from '@/utils/classnames'
+import Divider from '../../base/divider'
+import {
+  useNodesSyncDraft,
+  useWorkflowReadOnly,
+} from '../hooks'
+import ShortcutsName from '../shortcuts-name'
+import TipPopup from './tip-popup'
 
 enum ZoomType {
   zoomIn = 'zoomIn',
@@ -105,30 +105,30 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
       },
       {
         key: ZoomType.zoomToFit,
-        text: t('workflow.operator.zoomToFit'),
+        text: t('operator.zoomToFit', { ns: 'workflow' }),
       },
     ],
     isCollaborationEnabled
       ? [
-        {
-          key: ZoomType.toggleUserComments,
-          text: t('workflow.operator.showUserComments'),
-        },
-        {
-          key: ZoomType.toggleUserCursors,
-          text: t('workflow.operator.showUserCursors'),
-        },
-        {
-          key: ZoomType.toggleMiniMap,
-          text: t('workflow.operator.showMiniMap'),
-        },
-      ]
+          {
+            key: ZoomType.toggleUserComments,
+            text: t('operator.showUserComments', { ns: 'workflow' }),
+          },
+          {
+            key: ZoomType.toggleUserCursors,
+            text: t('operator.showUserCursors', { ns: 'workflow' }),
+          },
+          {
+            key: ZoomType.toggleMiniMap,
+            text: t('operator.showMiniMap', { ns: 'workflow' }),
+          },
+        ]
       : [
-        {
-          key: ZoomType.toggleMiniMap,
-          text: t('workflow.operator.showMiniMap'),
-        },
-      ],
+          {
+            key: ZoomType.toggleMiniMap,
+            text: t('operator.showMiniMap', { ns: 'workflow' }),
+          },
+        ],
   ]
 
   const handleZoom = (type: string) => {
@@ -182,7 +182,7 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
 
   return (
     <PortalToFollowElem
-      placement='top-start'
+      placement="top-start"
       open={open}
       onOpenChange={setOpen}
       offset={{
@@ -196,12 +196,14 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
           p-0.5 text-[13px] shadow-lg backdrop-blur-[5px]
           hover:bg-state-base-hover
           ${workflowReadOnly && '!cursor-not-allowed opacity-50'}
-        `}>
+        `}
+        >
           <div className={cn(
             'flex h-8 w-[98px] items-center justify-between rounded-lg',
-          )}>
+          )}
+          >
             <TipPopup
-              title={t('workflow.operator.zoomOut')}
+              title={t('operator.zoomOut', { ns: 'workflow' })}
               shortcuts={['ctrl', '-']}
             >
               <div
@@ -214,12 +216,15 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
                   zoomOut()
                 }}
               >
-                <RiZoomOutLine className='h-4 w-4 text-text-tertiary hover:text-text-secondary' />
+                <RiZoomOutLine className="h-4 w-4 text-text-tertiary hover:text-text-secondary" />
               </div>
             </TipPopup>
-            <div onClick={handleTrigger} className={cn('system-sm-medium w-[34px] text-text-tertiary hover:text-text-secondary')}>{Number.parseFloat(`${zoom * 100}`).toFixed(0)}%</div>
+            <div onClick={handleTrigger} className={cn('system-sm-medium w-[34px] text-text-tertiary hover:text-text-secondary')}>
+              {Number.parseFloat(`${zoom * 100}`).toFixed(0)}
+              %
+            </div>
             <TipPopup
-              title={t('workflow.operator.zoomIn')}
+              title={t('operator.zoomIn', { ns: 'workflow' })}
               shortcuts={['ctrl', '+']}
             >
               <div
@@ -232,23 +237,23 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
                   zoomIn()
                 }}
               >
-                <RiZoomInLine className='h-4 w-4 text-text-tertiary hover:text-text-secondary' />
+                <RiZoomInLine className="h-4 w-4 text-text-tertiary hover:text-text-secondary" />
               </div>
             </TipPopup>
           </div>
         </div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-[60]'>
-        <div className='w-[192px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]'>
+      <PortalToFollowElemContent className="z-[60]">
+        <div className="w-[192px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
           {
             ZOOM_IN_OUT_OPTIONS.map((options, i) => (
               <Fragment key={i}>
                 {
                   i !== 0 && (
-                    <Divider className='m-0' />
+                    <Divider className="m-0" />
                   )
                 }
-                <div className='p-1'>
+                <div className="p-1">
                   {
                     options.map(option => (
                       <div
@@ -260,37 +265,37 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
                         }`}
                         onClick={() => handleZoom(option.key)}
                       >
-                        <div className='flex items-center space-x-2'>
+                        <div className="flex items-center space-x-2">
                           {option.key === ZoomType.toggleUserComments && showUserComments && (
-                            <RiCheckLine className='h-4 w-4 text-text-accent' />
+                            <RiCheckLine className="h-4 w-4 text-text-accent" />
                           )}
                           {option.key === ZoomType.toggleUserComments && !showUserComments && (
-                            <div className='h-4 w-4' />
+                            <div className="h-4 w-4" />
                           )}
                           {option.key === ZoomType.toggleUserCursors && showUserCursors && (
-                            <RiCheckLine className='h-4 w-4 text-text-accent' />
+                            <RiCheckLine className="h-4 w-4 text-text-accent" />
                           )}
                           {option.key === ZoomType.toggleUserCursors && !showUserCursors && (
-                            <div className='h-4 w-4' />
+                            <div className="h-4 w-4" />
                           )}
                           {option.key === ZoomType.toggleMiniMap && showMiniMap && (
-                            <RiCheckLine className='h-4 w-4 text-text-accent' />
+                            <RiCheckLine className="h-4 w-4 text-text-accent" />
                           )}
                           {option.key === ZoomType.toggleMiniMap && !showMiniMap && (
-                            <div className='h-4 w-4' />
+                            <div className="h-4 w-4" />
                           )}
                           {option.key === ZoomType.zoomToFit && (
-                            <RiFullscreenLine className='h-4 w-4 text-text-tertiary' />
+                            <RiFullscreenLine className="h-4 w-4 text-text-tertiary" />
                           )}
                           {option.key !== ZoomType.toggleUserComments
-                           && option.key !== ZoomType.toggleUserCursors
-                           && option.key !== ZoomType.toggleMiniMap
-                           && option.key !== ZoomType.zoomToFit && (
-                            <div className='h-4 w-4' />
+                            && option.key !== ZoomType.toggleUserCursors
+                            && option.key !== ZoomType.toggleMiniMap
+                            && option.key !== ZoomType.zoomToFit && (
+                            <div className="h-4 w-4" />
                           )}
                           <span>{option.text}</span>
                         </div>
-                        <div className='flex items-center space-x-0.5'>
+                        <div className="flex items-center space-x-0.5">
                           {
                             option.key === ZoomType.zoomToFit && (
                               <ShortcutsName keys={['ctrl', '1']} />

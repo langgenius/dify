@@ -1,19 +1,19 @@
 'use client'
 
+import { LinkNode } from '@lexical/link'
+import {
+  ListItemNode,
+  ListNode,
+} from '@lexical/list'
+import { LexicalComposer } from '@lexical/react/LexicalComposer'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { $getRoot } from 'lexical'
 import {
   createContext,
   memo,
   useEffect,
   useRef,
 } from 'react'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { LinkNode } from '@lexical/link'
-import {
-  ListItemNode,
-  ListNode,
-} from '@lexical/list'
-import { $getRoot } from 'lexical'
 import { createNoteEditorStore } from './store'
 import theme from './theme'
 

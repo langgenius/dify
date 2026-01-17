@@ -130,7 +130,7 @@ class PipelineGenerator(BaseAppGenerator):
             pipeline=pipeline, workflow=workflow, start_node_id=start_node_id
         )
         documents: list[Document] = []
-        if invoke_from == InvokeFrom.PUBLISHED and not is_retry and not args.get("original_document_id"):
+        if invoke_from == InvokeFrom.PUBLISHED_PIPELINE and not is_retry and not args.get("original_document_id"):
             from services.dataset_service import DocumentService
 
             for datasource_info in datasource_info_list:
@@ -156,14 +156,14 @@ class PipelineGenerator(BaseAppGenerator):
         for i, datasource_info in enumerate(datasource_info_list):
             workflow_run_id = str(uuid.uuid4())
             document_id = args.get("original_document_id") or None
-            if invoke_from == InvokeFrom.PUBLISHED and not is_retry:
+            if invoke_from == InvokeFrom.PUBLISHED_PIPELINE and not is_retry:
                 document_id = document_id or documents[i].id
                 document_pipeline_execution_log = DocumentPipelineExecutionLog(
                     document_id=document_id,
                     datasource_type=datasource_type,
                     datasource_info=json.dumps(datasource_info),
                     datasource_node_id=start_node_id,
-                    input_data=inputs,
+                    input_data=dict(inputs),
                     pipeline_id=pipeline.id,
                     created_by=user.id,
                 )

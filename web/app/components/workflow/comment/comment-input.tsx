@@ -3,11 +3,11 @@ import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Avatar from '@/app/components/base/avatar'
 import { useAppContext } from '@/context/app-context'
+import { cn } from '@/utils/classnames'
 import { MentionInput } from './mention-input'
-import cn from '@/utils/classnames'
 
 type CommentInputProps = {
-  position: { x: number; y: number }
+  position: { x: number, y: number }
   onSubmit: (content: string, mentionedUserIds: string[]) => void
   onCancel: () => void
   onPositionChange?: (position: {
@@ -156,12 +156,12 @@ export const CommentInput: FC<CommentInputProps> = memo(({ position, onSubmit, o
             'relative z-10 flex-1 rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pb-[4px] shadow-md',
           )}
         >
-          <div className='relative pl-[9px] pt-[4px]'>
+          <div className="relative pl-[9px] pt-[4px]">
             <MentionInput
               value={content}
               onChange={setContent}
               onSubmit={handleMentionSubmit}
-              placeholder={t('workflow.comments.placeholder.add')}
+              placeholder={t('comments.placeholder.add', { ns: 'workflow' })}
               autoFocus
               className="relative"
             />

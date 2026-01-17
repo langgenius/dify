@@ -2,6 +2,18 @@ import type {
   FC,
   ReactNode,
 } from 'react'
+import type { ThemeBuilder } from '../embedded-chatbot/theme/theme-context'
+import type {
+  ChatConfig,
+  ChatItem,
+  Feedback,
+  OnRegenerate,
+  OnSend,
+} from '../types'
+import type { InputForm } from './type'
+import type { Emoji } from '@/app/components/tools/types'
+import type { AppData } from '@/models/share'
+import { debounce } from 'es-toolkit/compat'
 import {
   memo,
   useCallback,
@@ -10,30 +22,18 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { debounce } from 'lodash-es'
 import { useShallow } from 'zustand/react/shallow'
-import type {
-  ChatConfig,
-  ChatItem,
-  Feedback,
-  OnRegenerate,
-  OnSend,
-} from '../types'
-import type { ThemeBuilder } from '../embedded-chatbot/theme/theme-context'
-import Question from './question'
-import Answer from './answer'
-import ChatInputArea from './chat-input-area'
-import TryToAsk from './try-to-ask'
-import { ChatContextProvider } from './context'
-import type { InputForm } from './type'
-import cn from '@/utils/classnames'
-import type { Emoji } from '@/app/components/tools/types'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import AgentLogModal from '@/app/components/base/agent-log-modal'
 import Button from '@/app/components/base/button'
 import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
-import AgentLogModal from '@/app/components/base/agent-log-modal'
 import PromptLogModal from '@/app/components/base/prompt-log-modal'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import type { AppData } from '@/models/share'
+import { cn } from '@/utils/classnames'
+import Answer from './answer'
+import ChatInputArea from './chat-input-area'
+import { ChatContextProvider } from './context'
+import Question from './question'
+import TryToAsk from './try-to-ask'
 
 export type ChatProps = {
   appData?: AppData
@@ -71,7 +71,6 @@ export type ChatProps = {
   onFeatureBarClick?: (state: boolean) => void
   noSpacing?: boolean
   inputDisabled?: boolean
-  isMobile?: boolean
   sidebarCollapseState?: boolean
 }
 
@@ -110,7 +109,6 @@ const Chat: FC<ChatProps> = ({
   onFeatureBarClick,
   noSpacing,
   inputDisabled,
-  isMobile,
   sidebarCollapseState,
 }) => {
   const { t } = useTranslation()
@@ -128,10 +126,17 @@ const Chat: FC<ChatProps> = ({
   const chatFooterRef = useRef<HTMLDivElement>(null)
   const chatFooterInnerRef = useRef<HTMLDivElement>(null)
   const userScrolledRef = useRef(false)
+  const isAutoScrollingRef = useRef(false)
 
   const handleScrollToBottom = useCallback(() => {
-    if (chatList.length > 1 && chatContainerRef.current && !userScrolledRef.current)
+    if (chatList.length > 1 && chatContainerRef.current && !userScrolledRef.current) {
+      isAutoScrollingRef.current = true
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
+
+      requestAnimationFrame(() => {
+        isAutoScrollingRef.current = false
+      })
+    }
   }, [chatList.length])
 
   const handleWindowResize = useCallback(() => {
@@ -198,17 +203,38 @@ const Chat: FC<ChatProps> = ({
   }, [handleScrollToBottom])
 
   useEffect(() => {
-    const chatContainer = chatContainerRef.current
-    if (chatContainer) {
-      const setUserScrolled = () => {
-        // eslint-disable-next-line sonarjs/no-gratuitous-expressions
-        if (chatContainer) // its in event callback, chatContainer may be null
-          userScrolledRef.current = chatContainer.scrollHeight - chatContainer.scrollTop > chatContainer.clientHeight
-      }
-      chatContainer.addEventListener('scroll', setUserScrolled)
-      return () => chatContainer.removeEventListener('scroll', setUserScrolled)
+    const setUserScrolled = () => {
+      const container = chatContainerRef.current
+      if (!container)
+        return
+
+      if (isAutoScrollingRef.current)
+        return
+
+      const distanceToBottom = container.scrollHeight - container.clientHeight - container.scrollTop
+      const SCROLL_UP_THRESHOLD = 100
+
+      userScrolledRef.current = distanceToBottom > SCROLL_UP_THRESHOLD
     }
+
+    const container = chatContainerRef.current
+    if (!container)
+      return
+
+    container.addEventListener('scroll', setUserScrolled)
+    return () => container.removeEventListener('scroll', setUserScrolled)
   }, [])
+
+  // Reset user scroll state when conversation changes or a new chat starts
+  // Track the first message ID to detect conversation switches (fixes #29820)
+  const prevFirstMessageIdRef = useRef<string | undefined>(undefined)
+  useEffect(() => {
+    const firstMessageId = chatList[0]?.id
+    // Reset when: new chat (length <= 1) OR conversation switched (first message ID changed)
+    if (chatList.length <= 1 || (firstMessageId && prevFirstMessageIdRef.current !== firstMessageId))
+      userScrolledRef.current = false
+    prevFirstMessageIdRef.current = firstMessageId
+  }, [chatList])
 
   useEffect(() => {
     if (!sidebarCollapseState)
@@ -232,7 +258,7 @@ const Chat: FC<ChatProps> = ({
       onAnnotationRemoved={onAnnotationRemoved}
       onFeedback={onFeedback}
     >
-      <div className='relative h-full'>
+      <div className="relative h-full">
         <div
           ref={chatContainerRef}
           className={cn('relative h-full overflow-y-auto overflow-x-hidden', chatContainerClassName)}
@@ -288,10 +314,10 @@ const Chat: FC<ChatProps> = ({
           >
             {
               !noStopResponding && isResponding && (
-                <div className='mb-2 flex justify-center'>
-                  <Button className='border-components-panel-border bg-components-panel-bg text-components-button-secondary-text' onClick={onStopResponding}>
-                    <StopCircle className='mr-[5px] h-3.5 w-3.5' />
-                    <span className='text-xs font-normal'>{t('appDebug.operation.stopResponding')}</span>
+                <div className="mb-2 flex justify-center">
+                  <Button className="border-components-panel-border bg-components-panel-bg text-components-button-secondary-text" onClick={onStopResponding}>
+                    <StopCircle className="mr-[5px] h-3.5 w-3.5" />
+                    <span className="text-xs font-normal">{t('operation.stopResponding', { ns: 'appDebug' })}</span>
                   </Button>
                 </div>
               )
@@ -301,7 +327,6 @@ const Chat: FC<ChatProps> = ({
                 <TryToAsk
                   suggestedQuestions={suggestedQuestions}
                   onSend={onSend}
-                  isMobile={isMobile}
                 />
               )
             }

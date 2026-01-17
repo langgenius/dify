@@ -384,24 +384,24 @@ class TestCleanDatasetTask:
 
         # Create dataset metadata and bindings
         metadata = DatasetMetadata(
-            id=str(uuid.uuid4()),
             dataset_id=dataset.id,
             tenant_id=tenant.id,
             name="test_metadata",
             type="string",
             created_by=account.id,
-            created_at=datetime.now(),
         )
+        metadata.id = str(uuid.uuid4())
+        metadata.created_at = datetime.now()
 
         binding = DatasetMetadataBinding(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             metadata_id=metadata.id,
             document_id=documents[0].id,  # Use first document as example
             created_by=account.id,
-            created_at=datetime.now(),
         )
+        binding.id = str(uuid.uuid4())
+        binding.created_at = datetime.now()
 
         from extensions.ext_database import db
 
@@ -697,26 +697,26 @@ class TestCleanDatasetTask:
 
         for i in range(10):  # Create 10 metadata items
             metadata = DatasetMetadata(
-                id=str(uuid.uuid4()),
                 dataset_id=dataset.id,
                 tenant_id=tenant.id,
                 name=f"test_metadata_{i}",
                 type="string",
                 created_by=account.id,
-                created_at=datetime.now(),
             )
+            metadata.id = str(uuid.uuid4())
+            metadata.created_at = datetime.now()
             metadata_items.append(metadata)
 
             # Create binding for each metadata item
             binding = DatasetMetadataBinding(
-                id=str(uuid.uuid4()),
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 metadata_id=metadata.id,
                 document_id=documents[i % len(documents)].id,
                 created_by=account.id,
-                created_at=datetime.now(),
             )
+            binding.id = str(uuid.uuid4())
+            binding.created_at = datetime.now()
             bindings.append(binding)
 
         from extensions.ext_database import db
@@ -966,14 +966,15 @@ class TestCleanDatasetTask:
 
         # Create metadata with special characters
         special_metadata = DatasetMetadata(
-            id=str(uuid.uuid4()),
             dataset_id=dataset.id,
             tenant_id=tenant.id,
             name=f"metadata_{special_content}",
             type="string",
             created_by=account.id,
-            created_at=datetime.now(),
         )
+        special_metadata.id = str(uuid.uuid4())
+        special_metadata.created_at = datetime.now()
+
         db.session.add(special_metadata)
         db.session.commit()
 

@@ -1,23 +1,23 @@
-import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useWorkflowStore } from '../store'
-import { getVarType, toNodeAvailableVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import type { Type } from '../nodes/llm/types'
 import type {
   Node,
   NodeOutPutVar,
   ValueSelector,
   Var,
 } from '@/app/components/workflow/types'
-import { useIsChatMode } from './use-workflow'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
-import type { Type } from '../nodes/llm/types'
-import useMatchSchemaType from '../nodes/_base/components/variable/use-match-schema-type'
+import { getVarType, toNodeAvailableVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
   useAllMCPTools,
   useAllWorkflowTools,
 } from '@/service/use-tools'
+import useMatchSchemaType from '../nodes/_base/components/variable/use-match-schema-type'
+import { useWorkflowStore } from '../store'
+import { useIsChatMode } from './use-workflow'
 
 export const useWorkflowVariables = () => {
   const { t } = useTranslation()
@@ -137,8 +137,8 @@ export const useWorkflowVariableType = () => {
     nodeId,
     valueSelector,
   }: {
-    nodeId: string,
-    valueSelector: ValueSelector,
+    nodeId: string
+    valueSelector: ValueSelector
   }) => {
     const node = getNodes().find(n => n.id === nodeId)
     const isInIteration = !!node?.data.isInIteration

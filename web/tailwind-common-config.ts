@@ -1,8 +1,10 @@
+import tailwindTypography from '@tailwindcss/typography'
 import tailwindThemeVarDefine from './themes/tailwind-theme-var-define'
+import typography from './typography'
 
 const config = {
   theme: {
-    typography: require('./typography'),
+    typography,
     extend: {
       colors: {
         gray: {
@@ -142,9 +144,7 @@ const config = {
       },
     },
   },
-  plugins: [
-    require('@tailwindcss/typography'),
-  ],
+  plugins: [tailwindTypography],
   // https://github.com/tailwindlabs/tailwindcss/discussions/5969
   corePlugins: {
     preflight: false,

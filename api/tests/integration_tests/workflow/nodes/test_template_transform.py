@@ -82,7 +82,6 @@ def test_execute_code(setup_code_executor_mock):
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
     )
-    node.init_node_data(config.get("data", {}))
 
     # execute node
     result = node._run()

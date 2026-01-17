@@ -1,16 +1,26 @@
+import type { WorkflowDataUpdater } from '../types'
+import type { LayoutResult } from '../utils'
+import { produce } from 'immer'
 import {
   useCallback,
 } from 'react'
 import { useReactFlow } from 'reactflow'
-import { produce } from 'immer'
-import { useStore, useWorkflowStore } from '../store'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import {
   CUSTOM_NODE,
   NODE_LAYOUT_HORIZONTAL_PADDING,
   NODE_LAYOUT_VERTICAL_PADDING,
   WORKFLOW_DATA_UPDATE,
 } from '../constants'
-import type { WorkflowDataUpdater } from '../types'
+import {
+  useNodesReadOnly,
+  useSelectionInteractions,
+  useWorkflowReadOnly,
+} from '../hooks'
+import { useStore, useWorkflowStore } from '../store'
 import { BlockEnum, ControlMode } from '../types'
 import {
   getLayoutByDagre,
@@ -18,20 +28,10 @@ import {
   initialEdges,
   initialNodes,
 } from '../utils'
-import type { LayoutResult } from '../utils'
-import {
-  useNodesReadOnly,
-  useSelectionInteractions,
-  useWorkflowReadOnly,
-} from '../hooks'
 import { useEdgesInteractionsWithoutSync } from './use-edges-interactions-without-sync'
 import { useNodesInteractionsWithoutSync } from './use-nodes-interactions-without-sync'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
-import { WorkflowHistoryEvent, useWorkflowHistory } from './use-workflow-history'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useWorkflowHistory, WorkflowHistoryEvent } from './use-workflow-history'
 
 export const useWorkflowInteractions = () => {
   const workflowStore = useWorkflowStore()
@@ -114,8 +114,8 @@ export const useWorkflowOrganize = () => {
 
     const loopAndIterationNodes = nodes.filter(
       node => (node.data.type === BlockEnum.Loop || node.data.type === BlockEnum.Iteration)
-              && !node.parentId
-              && node.type === CUSTOM_NODE,
+        && !node.parentId
+        && node.type === CUSTOM_NODE,
     )
 
     const childLayoutEntries = await Promise.all(
@@ -134,7 +134,8 @@ export const useWorkflowOrganize = () => {
 
     loopAndIterationNodes.forEach((parentNode) => {
       const childLayout = childLayoutsMap[parentNode.id]
-      if (!childLayout) return
+      if (!childLayout)
+        return
 
       const {
         bounds,
@@ -156,7 +157,7 @@ export const useWorkflowOrganize = () => {
     const nodesWithUpdatedSizes = produce(nodes, (draft) => {
       draft.forEach((node) => {
         if ((node.data.type === BlockEnum.Loop || node.data.type === BlockEnum.Iteration)
-            && containerSizeChanges[node.id]) {
+          && containerSizeChanges[node.id]) {
           node.width = containerSizeChanges[node.id].width
           node.height = containerSizeChanges[node.id].height
 
@@ -175,7 +176,7 @@ export const useWorkflowOrganize = () => {
     const layout = await getLayoutByDagre(nodesWithUpdatedSizes, edges)
 
     // Build layer map for vertical alignment - nodes in the same layer should align
-    const layerMap = new Map<number, { minY: number; maxHeight: number }>()
+    const layerMap = new Map<number, { minY: number, maxHeight: number }>()
     layout.nodes.forEach((layoutInfo) => {
       if (layoutInfo.layer !== undefined) {
         const existing = layerMap.get(layoutInfo.layer)

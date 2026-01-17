@@ -1,11 +1,12 @@
 import { RiInstallLine } from '@remixicon/react'
+import * as React from 'react'
 import { formatNumber } from '@/utils/format'
 
 type Props = {
   downloadCount: number
 }
 
-const DownloadCount = ({
+const DownloadCountComponent = ({
   downloadCount,
 }: Props) => {
   return (
@@ -15,5 +16,8 @@ const DownloadCount = ({
     </div>
   )
 }
+
+// Memoize to prevent unnecessary re-renders
+const DownloadCount = React.memo(DownloadCountComponent)
 
 export default DownloadCount

@@ -1,11 +1,12 @@
 import logging
 
 from flask import request
-from flask_restx import Resource, fields, reqparse
+from flask_restx import Resource, fields
+from pydantic import BaseModel, Field
 from werkzeug.exceptions import InternalServerError
 
 import services
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.app.error import (
     AppUnavailableError,
     AudioTooLargeError,
@@ -32,20 +33,41 @@ from services.errors.audio import (
 )
 
 logger = logging.getLogger(__name__)
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
+
+class TextToSpeechPayload(BaseModel):
+    message_id: str | None = Field(default=None, description="Message ID")
+    text: str = Field(..., description="Text to convert")
+    voice: str | None = Field(default=None, description="Voice name")
+    streaming: bool | None = Field(default=None, description="Whether to stream audio")
+
+
+class TextToSpeechVoiceQuery(BaseModel):
+    language: str = Field(..., description="Language code")
+
+
+console_ns.schema_model(
+    TextToSpeechPayload.__name__, TextToSpeechPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
+)
+console_ns.schema_model(
+    TextToSpeechVoiceQuery.__name__,
+    TextToSpeechVoiceQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
 
 
 @console_ns.route("/apps/<uuid:app_id>/audio-to-text")
 class ChatMessageAudioApi(Resource):
-    @api.doc("chat_message_audio_transcript")
-    @api.doc(description="Transcript audio to text for chat messages")
-    @api.doc(params={"app_id": "App ID"})
-    @api.response(
+    @console_ns.doc("chat_message_audio_transcript")
+    @console_ns.doc(description="Transcript audio to text for chat messages")
+    @console_ns.doc(params={"app_id": "App ID"})
+    @console_ns.response(
         200,
         "Audio transcription successful",
-        api.model("AudioTranscriptResponse", {"text": fields.String(description="Transcribed text from audio")}),
+        console_ns.model("AudioTranscriptResponse", {"text": fields.String(description="Transcribed text from audio")}),
     )
-    @api.response(400, "Bad request - No audio uploaded or unsupported type")
-    @api.response(413, "Audio file too large")
+    @console_ns.response(400, "Bad request - No audio uploaded or unsupported type")
+    @console_ns.response(413, "Audio file too large")
     @setup_required
     @login_required
     @account_initialization_required
@@ -89,43 +111,26 @@ class ChatMessageAudioApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/text-to-audio")
 class ChatMessageTextApi(Resource):
-    @api.doc("chat_message_text_to_speech")
-    @api.doc(description="Convert text to speech for chat messages")
-    @api.doc(params={"app_id": "App ID"})
-    @api.expect(
-        api.model(
-            "TextToSpeechRequest",
-            {
-                "message_id": fields.String(description="Message ID"),
-                "text": fields.String(required=True, description="Text to convert to speech"),
-                "voice": fields.String(description="Voice to use for TTS"),
-                "streaming": fields.Boolean(description="Whether to stream the audio"),
-            },
-        )
-    )
-    @api.response(200, "Text to speech conversion successful")
-    @api.response(400, "Bad request - Invalid parameters")
+    @console_ns.doc("chat_message_text_to_speech")
+    @console_ns.doc(description="Convert text to speech for chat messages")
+    @console_ns.doc(params={"app_id": "App ID"})
+    @console_ns.expect(console_ns.models[TextToSpeechPayload.__name__])
+    @console_ns.response(200, "Text to speech conversion successful")
+    @console_ns.response(400, "Bad request - Invalid parameters")
     @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
     def post(self, app_model: App):
         try:
-            parser = (
-                reqparse.RequestParser()
-                .add_argument("message_id", type=str, location="json")
-                .add_argument("text", type=str, location="json")
-                .add_argument("voice", type=str, location="json")
-                .add_argument("streaming", type=bool, location="json")
-            )
-            args = parser.parse_args()
-
-            message_id = args.get("message_id", None)
-            text = args.get("text", None)
-            voice = args.get("voice", None)
+            payload = TextToSpeechPayload.model_validate(console_ns.payload)
 
             response = AudioService.transcript_tts(
-                app_model=app_model, text=text, voice=voice, message_id=message_id, is_draft=True
+                app_model=app_model,
+                text=payload.text,
+                voice=payload.voice,
+                message_id=payload.message_id,
+                is_draft=True,
             )
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
@@ -156,24 +161,25 @@ class ChatMessageTextApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/text-to-audio/voices")
 class TextModesApi(Resource):
-    @api.doc("get_text_to_speech_voices")
-    @api.doc(description="Get available TTS voices for a specific language")
-    @api.doc(params={"app_id": "App ID"})
-    @api.expect(api.parser().add_argument("language", type=str, required=True, location="args", help="Language code"))
-    @api.response(200, "TTS voices retrieved successfully", fields.List(fields.Raw(description="Available voices")))
-    @api.response(400, "Invalid language parameter")
+    @console_ns.doc("get_text_to_speech_voices")
+    @console_ns.doc(description="Get available TTS voices for a specific language")
+    @console_ns.doc(params={"app_id": "App ID"})
+    @console_ns.expect(console_ns.models[TextToSpeechVoiceQuery.__name__])
+    @console_ns.response(
+        200, "TTS voices retrieved successfully", fields.List(fields.Raw(description="Available voices"))
+    )
+    @console_ns.response(400, "Invalid language parameter")
     @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
     def get(self, app_model):
         try:
-            parser = reqparse.RequestParser().add_argument("language", type=str, required=True, location="args")
-            args = parser.parse_args()
+            args = TextToSpeechVoiceQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
             response = AudioService.transcript_tts_voices(
                 tenant_id=app_model.tenant_id,
-                language=args["language"],
+                language=args.language,
             )
 
             return response

@@ -1,9 +1,4 @@
-import { LoroDoc, LoroList, LoroMap, UndoManager } from 'loro-crdt'
-import { cloneDeep, isEqual } from 'lodash-es'
 import type { Socket } from 'socket.io-client'
-import { emitWithAuthGuard, webSocketClient } from './websocket-manager'
-import { CRDTProvider } from './crdt-provider'
-import { EventEmitter } from './event-emitter'
 import type {
   CommonNodeType,
   Edge,
@@ -17,6 +12,12 @@ import type {
   NodePanelPresenceUser,
   OnlineUser,
 } from '../types/collaboration'
+import { cloneDeep } from 'es-toolkit/object'
+import { isEqual } from 'es-toolkit/predicate'
+import { LoroDoc, LoroList, LoroMap, UndoManager } from 'loro-crdt'
+import { CRDTProvider } from './crdt-provider'
+import { EventEmitter } from './event-emitter'
+import { emitWithAuthGuard, webSocketClient } from './websocket-manager'
 
 type NodePanelPresenceEventData = {
   nodeId: string
@@ -151,13 +152,16 @@ export class CollaborationManager {
     container.set('sourcePosition', node.sourcePosition)
     container.set('targetPosition', node.targetPosition)
 
-    if (node.width === undefined) container.delete('width')
+    if (node.width === undefined)
+      container.delete('width')
     else container.set('width', node.width)
 
-    if (node.height === undefined) container.delete('height')
+    if (node.height === undefined)
+      container.delete('height')
     else container.set('height', node.height)
 
-    if (node.selected === undefined) container.delete('selected')
+    if (node.selected === undefined)
+      container.delete('selected')
     else container.set('selected', node.selected)
 
     const optionalProps: Array<keyof Node> = [
@@ -192,7 +196,8 @@ export class CollaborationManager {
     const handledKeys = new Set<string>()
 
     Object.entries(node.data || {}).forEach(([key, value]) => {
-      if (!this.shouldSyncDataKey(key)) return
+      if (!this.shouldSyncDataKey(key))
+        return
       handledKeys.add(key)
 
       if (listFields.has(key))
@@ -203,8 +208,10 @@ export class CollaborationManager {
 
     const existingData = dataContainer.toJSON() || {}
     Object.keys(existingData).forEach((key) => {
-      if (!this.shouldSyncDataKey(key)) return
-      if (handledKeys.has(key)) return
+      if (!this.shouldSyncDataKey(key))
+        return
+      if (handledKeys.has(key))
+        return
 
       dataContainer.delete(key)
     })
@@ -311,7 +318,8 @@ export class CollaborationManager {
   }
 
   setNodes = (oldNodes: Node[], newNodes: Node[]): void => {
-    if (!this.doc) return
+    if (!this.doc)
+      return
 
     // Don't track operations during undo/redo to prevent loops
     if (this.isUndoRedoInProgress)
@@ -322,7 +330,8 @@ export class CollaborationManager {
   }
 
   setEdges = (oldEdges: Edge[], newEdges: Edge[]): void => {
-    if (!this.doc) return
+    if (!this.doc)
+      return
 
     // Don't track operations during undo/redo to prevent loops
     if (this.isUndoRedoInProgress)
@@ -466,7 +475,8 @@ export class CollaborationManager {
   }
 
   getNodes(): Node[] {
-    if (!this.nodesMap) return []
+    if (!this.nodesMap)
+      return []
     return Array.from(this.nodesMap.keys()).map(id => this.exportNode(id as string))
   }
 
@@ -475,7 +485,8 @@ export class CollaborationManager {
   }
 
   emitCursorMove(position: CursorPosition): void {
-    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
+    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId))
+      return
 
     const socket = this.getActiveSocket()
     if (!socket)
@@ -490,7 +501,8 @@ export class CollaborationManager {
   }
 
   emitSyncRequest(): void {
-    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
+    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId))
+      return
 
     this.sendCollaborationEvent({
       type: 'sync_request',
@@ -500,7 +512,8 @@ export class CollaborationManager {
   }
 
   emitWorkflowUpdate(appId: string): void {
-    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
+    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId))
+      return
 
     this.sendCollaborationEvent({
       type: 'workflow_update',
@@ -510,10 +523,12 @@ export class CollaborationManager {
   }
 
   emitNodePanelPresence(nodeId: string, isOpen: boolean, user: NodePanelPresenceUser): void {
-    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
+    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId))
+      return
 
     const socket = this.getActiveSocket()
-    if (!socket || !nodeId || !user?.userId) return
+    if (!socket || !nodeId || !user?.userId)
+      return
 
     const payload: NodePanelPresenceEventData = {
       nodeId,
@@ -548,7 +563,7 @@ export class CollaborationManager {
     return this.eventEmitter.on('onlineUsers', callback)
   }
 
-  onWorkflowUpdate(callback: (update: { appId: string; timestamp: number }) => void): () => void {
+  onWorkflowUpdate(callback: (update: { appId: string, timestamp: number }) => void): () => void {
     return this.eventEmitter.on('workflowUpdate', callback)
   }
 
@@ -582,12 +597,13 @@ export class CollaborationManager {
     return this.eventEmitter.on('leaderChange', callback)
   }
 
-  onCommentsUpdate(callback: (update: { appId: string; timestamp: number }) => void): () => void {
+  onCommentsUpdate(callback: (update: { appId: string, timestamp: number }) => void): () => void {
     return this.eventEmitter.on('commentsUpdate', callback)
   }
 
   emitCommentsUpdate(appId: string): void {
-    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
+    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId))
+      return
 
     this.sendCollaborationEvent({
       type: 'comments_update',
@@ -596,7 +612,7 @@ export class CollaborationManager {
     })
   }
 
-  onUndoRedoStateChange(callback: (state: { canUndo: boolean; canRedo: boolean }) => void): () => void {
+  onUndoRedoStateChange(callback: (state: { canUndo: boolean, canRedo: boolean }) => void): () => void {
     return this.eventEmitter.on('undoRedoStateChange', callback)
   }
 
@@ -688,22 +704,26 @@ export class CollaborationManager {
   }
 
   canUndo(): boolean {
-    if (!this.undoManager) return false
+    if (!this.undoManager)
+      return false
     return this.undoManager.canUndo()
   }
 
   canRedo(): boolean {
-    if (!this.undoManager) return false
+    if (!this.undoManager)
+      return false
     return this.undoManager.canRedo()
   }
 
   clearUndoStack(): void {
-    if (!this.undoManager) return
+    if (!this.undoManager)
+      return
     this.undoManager.clear()
   }
 
   private syncNodes(oldNodes: Node[], newNodes: Node[]): void {
-    if (!this.nodesMap || !this.doc) return
+    if (!this.nodesMap || !this.doc)
+      return
 
     const newIdSet = new Set(newNodes.map(node => node.id))
 
@@ -719,7 +739,8 @@ export class CollaborationManager {
   }
 
   private syncEdges(oldEdges: Edge[], newEdges: Edge[]): void {
-    if (!this.edgesMap) return
+    if (!this.edgesMap)
+      return
 
     const oldEdgesMap = new Map(oldEdges.map(edge => [edge.id, edge]))
     const newEdgesMap = new Map(newEdges.map(edge => [edge.id, edge]))
@@ -816,7 +837,7 @@ export class CollaborationManager {
     socket.on('collaboration_update', (update: CollaborationUpdate) => {
       if (update.type === 'mouse_move') {
         // Update cursor state for this user
-        const data = update.data as { x: number; y: number }
+        const data = update.data as { x: number, y: number }
         this.cursors[update.userId] = {
           x: data.x,
           y: data.y,
@@ -861,7 +882,7 @@ export class CollaborationManager {
       }
     })
 
-    socket.on('online_users', (data: { users: OnlineUser[]; leader?: string }) => {
+    socket.on('online_users', (data: { users: OnlineUser[], leader?: string }) => {
       try {
         if (!data || !Array.isArray(data.users)) {
           console.warn('Invalid online_users data structure:', data)
@@ -951,7 +972,8 @@ export class CollaborationManager {
   // When a follower joins mid-session, it might miss earlier broadcasts and render stale data.
   // This lightweight checkpoint asks the leader to rebroadcast the latest graph snapshot once.
   private requestInitialSyncIfNeeded(): void {
-    if (!this.pendingInitialSync) return
+    if (!this.pendingInitialSync)
+      return
     if (this.isLeader) {
       this.pendingInitialSync = false
       return
@@ -962,7 +984,8 @@ export class CollaborationManager {
   }
 
   private emitGraphResyncRequest(): void {
-    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
+    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId))
+      return
 
     this.sendCollaborationEvent({
       type: 'graph_resync_request',
@@ -972,11 +995,14 @@ export class CollaborationManager {
   }
 
   private broadcastCurrentGraph(): void {
-    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
-    if (!this.doc) return
+    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId))
+      return
+    if (!this.doc)
+      return
 
     const socket = webSocketClient.getSocket(this.currentAppId)
-    if (!socket) return
+    if (!socket)
+      return
 
     try {
       const snapshot = this.doc.export({ mode: 'snapshot' })

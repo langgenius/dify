@@ -13,14 +13,17 @@ from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.extract_processor import ExtractProcessor
-from core.rag.index_processor.constant.index_type import IndexType
+from core.rag.index_processor.constant.doc_type import DocType
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
-from core.rag.models.document import ChildDocument, Document, ParentChildStructureChunk
+from core.rag.models.document import AttachmentDocument, ChildDocument, Document, ParentChildStructureChunk
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
 from libs import helper
+from models import Account
 from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment
 from models.dataset import Document as DatasetDocument
+from services.account_service import AccountService
 from services.entities.knowledge_entities.knowledge_entities import ParentMode, Rule
 
 
@@ -35,7 +38,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
 
         return text_docs
 
-    def transform(self, documents: list[Document], **kwargs) -> list[Document]:
+    def transform(self, documents: list[Document], current_user: Account | None = None, **kwargs) -> list[Document]:
         process_rule = kwargs.get("process_rule")
         if not process_rule:
             raise ValueError("No process rule found.")
@@ -77,6 +80,9 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                             page_content = page_content
                         if len(page_content) > 0:
                             document_node.page_content = page_content
+                            multimodel_documents = self._get_content_files(document_node, current_user)
+                            if multimodel_documents:
+                                document_node.attachments = multimodel_documents
                             # parse document to child nodes
                             child_nodes = self._split_child_nodes(
                                 document_node, rules, process_rule.get("mode"), kwargs.get("embedding_model_instance")
@@ -87,6 +93,9 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         elif rules.parent_mode == ParentMode.FULL_DOC:
             page_content = "\n".join([document.page_content for document in documents])
             document = Document(page_content=page_content, metadata=documents[0].metadata)
+            multimodel_documents = self._get_content_files(document)
+            if multimodel_documents:
+                document.attachments = multimodel_documents
             # parse document to child nodes
             child_nodes = self._split_child_nodes(
                 document, rules, process_rule.get("mode"), kwargs.get("embedding_model_instance")
@@ -104,7 +113,14 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
 
         return all_documents
 
-    def load(self, dataset: Dataset, documents: list[Document], with_keywords: bool = True, **kwargs):
+    def load(
+        self,
+        dataset: Dataset,
+        documents: list[Document],
+        multimodal_documents: list[AttachmentDocument] | None = None,
+        with_keywords: bool = True,
+        **kwargs,
+    ):
         if dataset.indexing_technique == "high_quality":
             vector = Vector(dataset)
             for document in documents:
@@ -114,6 +130,8 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                         Document.model_validate(child_document.model_dump()) for child_document in child_documents
                     ]
                     vector.create(formatted_child_documents)
+            if multimodal_documents and dataset.is_multimodal:
+                vector.create_multimodal(multimodal_documents)
 
     def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs):
         # node_ids is segment's node_ids
@@ -244,6 +262,24 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                 }
                 child_documents.append(ChildDocument(page_content=child, metadata=child_metadata))
             doc = Document(page_content=parent_child.parent_content, metadata=metadata, children=child_documents)
+            if parent_child.files and len(parent_child.files) > 0:
+                attachments = []
+                for file in parent_child.files:
+                    file_metadata = {
+                        "doc_id": file.id,
+                        "doc_hash": "",
+                        "document_id": document.id,
+                        "dataset_id": dataset.id,
+                        "doc_type": DocType.IMAGE,
+                    }
+                    file_document = AttachmentDocument(page_content=file.filename or "", metadata=file_metadata)
+                    attachments.append(file_document)
+                doc.attachments = attachments
+            else:
+                account = AccountService.load_user(document.created_by)
+                if not account:
+                    raise ValueError("Invalid account")
+                doc.attachments = self._get_content_files(doc, current_user=account)
             documents.append(doc)
         if documents:
             # update document parent mode
@@ -267,12 +303,17 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
             doc_store.add_documents(docs=documents, save_child=True)
             if dataset.indexing_technique == "high_quality":
                 all_child_documents = []
+                all_multimodal_documents = []
                 for doc in documents:
                     if doc.children:
                         all_child_documents.extend(doc.children)
+                    if doc.attachments:
+                        all_multimodal_documents.extend(doc.attachments)
+                vector = Vector(dataset)
                 if all_child_documents:
-                    vector = Vector(dataset)
                     vector.create(all_child_documents)
+                if all_multimodal_documents and dataset.is_multimodal:
+                    vector.create_multimodal(all_multimodal_documents)
 
     def format_preview(self, chunks: Any) -> Mapping[str, Any]:
         parent_childs = ParentChildStructureChunk.model_validate(chunks)
@@ -280,7 +321,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         for parent_child in parent_childs.parent_child_chunks:
             preview.append({"content": parent_child.parent_content, "child_chunks": parent_child.child_contents})
         return {
-            "chunk_structure": IndexType.PARENT_CHILD_INDEX,
+            "chunk_structure": IndexStructureType.PARENT_CHILD_INDEX,
             "parent_mode": parent_childs.parent_mode,
             "preview": preview,
             "total_segments": len(parent_childs.parent_child_chunks),

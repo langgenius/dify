@@ -1,13 +1,11 @@
-import ELK from 'elkjs/lib/elk.bundled.js'
 import type { ElkNode, LayoutOptions } from 'elkjs/lib/elk-api'
-import { cloneDeep } from 'lodash-es'
+import type { CaseItem, IfElseNodeType } from '@/app/components/workflow/nodes/if-else/types'
 import type {
   Edge,
   Node,
 } from '@/app/components/workflow/types'
-import {
-  BlockEnum,
-} from '@/app/components/workflow/types'
+import ELK from 'elkjs/lib/elk.bundled.js'
+import { cloneDeep } from 'es-toolkit/object'
 import {
   CUSTOM_NODE,
   NODE_LAYOUT_HORIZONTAL_PADDING,
@@ -15,7 +13,9 @@ import {
 } from '@/app/components/workflow/constants'
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
-import type { CaseItem, IfElseNodeType } from '@/app/components/workflow/nodes/if-else/types'
+import {
+  BlockEnum,
+} from '@/app/components/workflow/types'
 
 // Although the file name refers to Dagre, the implementation now relies on ELK's layered algorithm.
 // Keep the export signatures unchanged to minimise the blast radius while we migrate the layout stack.
@@ -284,7 +284,7 @@ const collectLayout = (graph: ElkNode, predicate: (id: string) => boolean): Layo
 const buildIfElseWithPorts = (
   ifElseNode: Node,
   edges: Edge[],
-): { node: ElkNodeShape; portMap: Map<string, string> } | null => {
+): { node: ElkNodeShape, portMap: Map<string, string> } | null => {
   const childEdges = edges.filter(edge => edge.source === ifElseNode.id)
 
   if (childEdges.length <= 1)

@@ -2,9 +2,9 @@ import type { Socket } from 'socket.io-client'
 import { CRDTProvider } from '../crdt-provider'
 
 type FakeDoc = {
-  export: jest.Mock<Uint8Array, [options?: { mode?: string }]>
-  import: jest.Mock<void, [Uint8Array]>
-  subscribe: jest.Mock<void, [(payload: any) => void]>
+  export: ReturnType<typeof vi.fn>
+  import: ReturnType<typeof vi.fn>
+  subscribe: ReturnType<typeof vi.fn>
   trigger: (event: any) => void
 }
 
@@ -12,9 +12,9 @@ const createFakeDoc = (): FakeDoc => {
   let handler: ((payload: any) => void) | null = null
 
   return {
-    export: jest.fn(() => new Uint8Array([1, 2, 3])),
-    import: jest.fn(),
-    subscribe: jest.fn((cb: (payload: any) => void) => {
+    export: vi.fn(() => new Uint8Array([1, 2, 3])),
+    import: vi.fn(),
+    subscribe: vi.fn((cb: (payload: any) => void) => {
       handler = cb
     }),
     trigger: (event: any) => {
@@ -27,11 +27,11 @@ const createMockSocket = () => {
   const handlers = new Map<string, (...args: any[]) => void>()
 
   const socket: any = {
-    emit: jest.fn(),
-    on: jest.fn((event: string, handler: (...args: any[]) => void) => {
+    emit: vi.fn(),
+    on: vi.fn((event: string, handler: (...args: any[]) => void) => {
       handlers.set(event, handler)
     }),
-    off: jest.fn((event: string) => {
+    off: vi.fn((event: string) => {
       handlers.delete(event)
     }),
     trigger: (event: string, ...args: any[]) => {
@@ -106,7 +106,7 @@ describe('CRDTProvider', () => {
 
     const provider = new CRDTProvider(socket, doc as unknown as any)
 
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined)
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
 
     socket.trigger('graph_update', new Uint8Array([1]))
     expect(errorSpy).toHaveBeenCalledWith('Error importing graph update:', expect.any(Error))

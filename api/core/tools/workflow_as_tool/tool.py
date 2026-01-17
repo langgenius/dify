@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import logging
 from collections.abc import Generator, Mapping, Sequence
@@ -5,8 +7,8 @@ from typing import Any, cast
 
 from flask import has_request_context
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
+from core.db.session_factory import session_factory
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
 from core.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
 from core.tools.__base.tool import Tool
@@ -18,7 +20,6 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
 )
 from core.tools.errors import ToolInvokeError
-from extensions.ext_database import db
 from factories.file_factory import build_from_mapping
 from libs.login import current_user
 from models import Account, Tenant
@@ -114,6 +115,11 @@ class WorkflowTool(Tool):
             for file in files:
                 yield self.create_file_message(file)  # type: ignore
 
+        # traverse `outputs` field and create variable messages
+        for key, value in outputs.items():
+            if key not in {"text", "json", "files"}:
+                yield self.create_variable_message(variable_name=key, variable_value=value)
+
         self._latest_usage = self._derive_usage_from_result(data)
 
         yield self.create_text_message(json.dumps(outputs, ensure_ascii=False))
@@ -176,7 +182,7 @@ class WorkflowTool(Tool):
                             return found
         return None
 
-    def fork_tool_runtime(self, runtime: ToolRuntime) -> "WorkflowTool":
+    def fork_tool_runtime(self, runtime: ToolRuntime) -> WorkflowTool:
         """
         fork a new tool with metadata
 
@@ -198,7 +204,7 @@ class WorkflowTool(Tool):
         Resolve user object in both HTTP and worker contexts.
 
         In HTTP context: dereference the current_user LocalProxy (can return Account or EndUser).
-        In worker context: load Account from database by user_id (only returns Account, never EndUser).
+        In worker context: load Account(knowledge pipeline) or EndUser(trigger) from database by user_id.
 
         Returns:
             Account | EndUser | None: The resolved user object, or None if resolution fails.
@@ -219,30 +225,36 @@ class WorkflowTool(Tool):
             logger.warning("Failed to resolve user from request context: %s", e)
             return None
 
-    def _resolve_user_from_database(self, user_id: str) -> Account | None:
+    def _resolve_user_from_database(self, user_id: str) -> Account | EndUser | None:
         """
         Resolve user from database (worker/Celery context).
         """
+        with session_factory.create_session() as session:
+            tenant_stmt = select(Tenant).where(Tenant.id == self.runtime.tenant_id)
+            tenant = session.scalar(tenant_stmt)
+            if not tenant:
+                return None
 
-        user_stmt = select(Account).where(Account.id == user_id)
-        user = db.session.scalar(user_stmt)
-        if not user:
+            user_stmt = select(Account).where(Account.id == user_id)
+            user = session.scalar(user_stmt)
+            if user:
+                user.current_tenant = tenant
+                session.expunge(user)
+                return user
+
+            end_user_stmt = select(EndUser).where(EndUser.id == user_id, EndUser.tenant_id == tenant.id)
+            end_user = session.scalar(end_user_stmt)
+            if end_user:
+                session.expunge(end_user)
+                return end_user
+
             return None
-
-        tenant_stmt = select(Tenant).where(Tenant.id == self.runtime.tenant_id)
-        tenant = db.session.scalar(tenant_stmt)
-        if not tenant:
-            return None
-
-        user.current_tenant = tenant
-
-        return user
 
     def _get_workflow(self, app_id: str, version: str) -> Workflow:
         """
         get the workflow by app id and version
         """
-        with Session(db.engine, expire_on_commit=False) as session, session.begin():
+        with session_factory.create_session() as session, session.begin():
             if not version:
                 stmt = (
                     select(Workflow)
@@ -254,22 +266,24 @@ class WorkflowTool(Tool):
                 stmt = select(Workflow).where(Workflow.app_id == app_id, Workflow.version == version)
                 workflow = session.scalar(stmt)
 
-        if not workflow:
-            raise ValueError("workflow not found or not published")
+            if not workflow:
+                raise ValueError("workflow not found or not published")
 
-        return workflow
+            session.expunge(workflow)
+            return workflow
 
     def _get_app(self, app_id: str) -> App:
         """
         get the app by app id
         """
         stmt = select(App).where(App.id == app_id)
-        with Session(db.engine, expire_on_commit=False) as session, session.begin():
+        with session_factory.create_session() as session, session.begin():
             app = session.scalar(stmt)
-        if not app:
-            raise ValueError("app not found")
+            if not app:
+                raise ValueError("app not found")
 
-        return app
+            session.expunge(app)
+            return app
 
     def _transform_args(self, tool_parameters: dict) -> tuple[dict, list[dict]]:
         """

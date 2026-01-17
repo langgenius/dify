@@ -55,6 +55,17 @@ export type SelfHostedPlanInfo = {
 
 export type UsagePlanInfo = Pick<PlanInfo, 'buildApps' | 'teamMembers' | 'annotatedResponse' | 'documentsUploadQuota' | 'apiRateLimit' | 'triggerEvents'> & { vectorSpace: number }
 
+export type UsageResetInfo = {
+  apiRateLimit?: number | null
+  triggerEvents?: number | null
+}
+
+export type BillingQuota = {
+  usage: number
+  limit: number
+  reset_date?: number | null
+}
+
 export enum DocumentProcessingPriority {
   standard = 'standard',
   priority = 'priority',
@@ -88,14 +99,8 @@ export type CurrentPlanInfoBackend = {
     size: number
     limit: number // total. 0 means unlimited
   }
-  api_rate_limit?: {
-    size: number
-    limit: number // total. 0 means unlimited
-  }
-  trigger_events?: {
-    size: number
-    limit: number // total. 0 means unlimited
-  }
+  api_rate_limit?: BillingQuota
+  trigger_event?: BillingQuota
   docs_processing: DocumentProcessingPriority
   can_replace_logo: boolean
   model_load_balancing_enabled: boolean
@@ -103,16 +108,16 @@ export type CurrentPlanInfoBackend = {
   education: {
     enabled: boolean
     activated: boolean
-  },
+  }
   webapp_copyright_enabled: boolean
   workspace_members: {
     size: number
     limit: number
-  },
+  }
   is_allow_transfer_workspace: boolean
   knowledge_pipeline: {
     publish_enabled: boolean
-  },
+  }
 }
 
 export type SubscriptionItem = {

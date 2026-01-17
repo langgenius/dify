@@ -1,24 +1,29 @@
 import type { Socket } from 'socket.io-client'
 
-const ioMock = jest.fn()
+const ioMock = vi.hoisted(() => vi.fn())
 
-jest.mock('socket.io-client', () => ({
+vi.mock('socket.io-client', () => ({
   io: (...args: any[]) => ioMock(...args),
 }))
 
-const createMockSocket = (id: string): Socket & {
+type MockSocket = Socket & {
   trigger: (event: string, ...args: any[]) => void
-} => {
+  emit: ReturnType<typeof vi.fn>
+  on: ReturnType<typeof vi.fn>
+  disconnect: ReturnType<typeof vi.fn>
+}
+
+const createMockSocket = (id: string): MockSocket => {
   const handlers = new Map<string, (...args: any[]) => void>()
 
   const socket: any = {
     id,
     connected: true,
-    emit: jest.fn(),
-    disconnect: jest.fn(() => {
+    emit: vi.fn(),
+    disconnect: vi.fn(() => {
       socket.connected = false
     }),
-    on: jest.fn((event: string, handler: (...args: any[]) => void) => {
+    on: vi.fn((event: string, handler: (...args: any[]) => void) => {
       handlers.set(event, handler)
     }),
     trigger: (event: string, ...args: any[]) => {
@@ -28,14 +33,14 @@ const createMockSocket = (id: string): Socket & {
     },
   }
 
-  return socket as Socket & { trigger: (event: string, ...args: any[]) => void }
+  return socket as MockSocket
 }
 
 describe('WebSocketClient', () => {
   let originalWindow: typeof window | undefined
 
   beforeEach(() => {
-    jest.resetModules()
+    vi.resetModules()
     ioMock.mockReset()
     originalWindow = globalThis.window
   })
@@ -87,7 +92,7 @@ describe('WebSocketClient', () => {
 
   it('attaches auth token from localStorage and emits user_connect on connect', async () => {
     const mockSocket = createMockSocket('socket-auth')
-    ioMock.mockImplementation((url, options) => {
+    ioMock.mockImplementation((url: string, options: { auth?: { token?: string } }) => {
       expect(options.auth).toEqual({ token: 'secret-token' })
       return mockSocket
     })
@@ -95,7 +100,7 @@ describe('WebSocketClient', () => {
     globalThis.window = {
       location: { protocol: 'https:', host: 'example.com' },
       localStorage: {
-        getItem: jest.fn(() => 'secret-token'),
+        getItem: vi.fn(() => 'secret-token'),
       },
     } as unknown as typeof window
 

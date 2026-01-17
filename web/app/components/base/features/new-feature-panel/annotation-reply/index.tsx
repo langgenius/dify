@@ -1,18 +1,19 @@
-import React, { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { usePathname, useRouter } from 'next/navigation'
-import { produce } from 'immer'
+import type { OnFeaturesChange } from '@/app/components/base/features/types'
+import type { AnnotationReplyConfig } from '@/models/debug'
 import { RiEqualizer2Line, RiExternalLinkLine } from '@remixicon/react'
-import { MessageFast } from '@/app/components/base/icons/src/vender/features'
-import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
+import { produce } from 'immer'
+import { usePathname, useRouter } from 'next/navigation'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
-import type { OnFeaturesChange } from '@/app/components/base/features/types'
-import useAnnotationConfig from '@/app/components/base/features/new-feature-panel/annotation-reply/use-annotation-config'
 import ConfigParamModal from '@/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal'
+import useAnnotationConfig from '@/app/components/base/features/new-feature-panel/annotation-reply/use-annotation-config'
+import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
+import { MessageFast } from '@/app/components/base/icons/src/vender/features'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
 import { ANNOTATION_DEFAULT } from '@/config'
-import type { AnnotationReplyConfig } from '@/models/debug'
 
 type Props = {
   disabled?: boolean
@@ -77,12 +78,12 @@ const AnnotationReply = ({
   return (
     <>
       <FeatureCard
-        icon={
-          <div className='shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-indigo-indigo-600 p-1 shadow-xs'>
-            <MessageFast className='h-4 w-4 text-text-primary-on-surface' />
+        icon={(
+          <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-indigo-indigo-600 p-1 shadow-xs">
+            <MessageFast className="h-4 w-4 text-text-primary-on-surface" />
           </div>
-        }
-        title={t('appDebug.feature.annotation.title')}
+        )}
+        title={t('feature.annotation.title', { ns: 'appDebug' })}
         value={!!annotationReply?.enabled}
         onChange={state => handleSwitch(state)}
         onMouseEnter={() => setIsHovering(true)}
@@ -91,34 +92,37 @@ const AnnotationReply = ({
       >
         <>
           {!annotationReply?.enabled && (
-            <div className='system-xs-regular line-clamp-2 min-h-8 text-text-tertiary'>{t('appDebug.feature.annotation.description')}</div>
+            <div className="system-xs-regular line-clamp-2 min-h-8 text-text-tertiary">{t('feature.annotation.description', { ns: 'appDebug' })}</div>
           )}
           {!!annotationReply?.enabled && (
             <>
               {!isHovering && (
-                <div className='flex items-center gap-4 pt-0.5'>
-                  <div className=''>
-                    <div className='system-2xs-medium-uppercase mb-0.5 text-text-tertiary'>{t('appDebug.feature.annotation.scoreThreshold.title')}</div>
-                    <div className='system-xs-regular text-text-secondary'>{annotationReply.score_threshold || '-'}</div>
+                <div className="flex items-center gap-4 pt-0.5">
+                  <div className="">
+                    <div className="system-2xs-medium-uppercase mb-0.5 text-text-tertiary">{t('feature.annotation.scoreThreshold.title', { ns: 'appDebug' })}</div>
+                    <div className="system-xs-regular text-text-secondary">{annotationReply.score_threshold || '-'}</div>
                   </div>
-                  <div className='h-[27px] w-px rotate-12 bg-divider-subtle'></div>
-                  <div className=''>
-                    <div className='system-2xs-medium-uppercase mb-0.5 text-text-tertiary'>{t('common.modelProvider.embeddingModel.key')}</div>
-                    <div className='system-xs-regular text-text-secondary'>{annotationReply.embedding_model?.embedding_model_name}</div>
+                  <div className="h-[27px] w-px rotate-12 bg-divider-subtle"></div>
+                  <div className="">
+                    <div className="system-2xs-medium-uppercase mb-0.5 text-text-tertiary">{t('modelProvider.embeddingModel.key', { ns: 'common' })}</div>
+                    <div className="system-xs-regular text-text-secondary">{annotationReply.embedding_model?.embedding_model_name}</div>
                   </div>
                 </div>
               )}
               {isHovering && (
-                <div className='flex items-center justify-between'>
-                  <Button className='w-[178px]' onClick={() => setIsShowAnnotationConfigInit(true)} disabled={disabled}>
-                    <RiEqualizer2Line className='mr-1 h-4 w-4' />
-                    {t('common.operation.params')}
+                <div className="flex items-center justify-between">
+                  <Button className="w-[178px]" onClick={() => setIsShowAnnotationConfigInit(true)} disabled={disabled}>
+                    <RiEqualizer2Line className="mr-1 h-4 w-4" />
+                    {t('operation.params', { ns: 'common' })}
                   </Button>
-                  <Button className='w-[178px]' onClick={() => {
-                    router.push(`/app/${appId}/annotations`)
-                  }}>
-                    <RiExternalLinkLine className='mr-1 h-4 w-4' />
-                    {t('appDebug.feature.annotation.cacheManagement')}
+                  <Button
+                    className="w-[178px]"
+                    onClick={() => {
+                      router.push(`/app/${appId}/annotations`)
+                    }}
+                  >
+                    <RiExternalLinkLine className="mr-1 h-4 w-4" />
+                    {t('feature.annotation.cacheManagement', { ns: 'appDebug' })}
                   </Button>
                 </div>
               )}

@@ -3,7 +3,8 @@ from functools import wraps
 from typing import Concatenate, ParamSpec, TypeVar
 
 from flask import jsonify, request
-from flask_restx import Resource, reqparse
+from flask_restx import Resource
+from pydantic import BaseModel
 from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.console.wraps import account_initialization_required, setup_required
@@ -20,14 +21,33 @@ R = TypeVar("R")
 T = TypeVar("T")
 
 
+class OAuthClientPayload(BaseModel):
+    client_id: str
+
+
+class OAuthProviderRequest(BaseModel):
+    client_id: str
+    redirect_uri: str
+
+
+class OAuthTokenRequest(BaseModel):
+    client_id: str
+    grant_type: str
+    code: str | None = None
+    client_secret: str | None = None
+    redirect_uri: str | None = None
+    refresh_token: str | None = None
+
+
 def oauth_server_client_id_required(view: Callable[Concatenate[T, OAuthProviderApp, P], R]):
     @wraps(view)
     def decorated(self: T, *args: P.args, **kwargs: P.kwargs):
-        parser = reqparse.RequestParser().add_argument("client_id", type=str, required=True, location="json")
-        parsed_args = parser.parse_args()
-        client_id = parsed_args.get("client_id")
-        if not client_id:
+        json_data = request.get_json()
+        if json_data is None:
             raise BadRequest("client_id is required")
+
+        payload = OAuthClientPayload.model_validate(json_data)
+        client_id = payload.client_id
 
         oauth_provider_app = OAuthServerService.get_oauth_provider_app(client_id)
         if not oauth_provider_app:
@@ -89,9 +109,8 @@ class OAuthServerAppApi(Resource):
     @setup_required
     @oauth_server_client_id_required
     def post(self, oauth_provider_app: OAuthProviderApp):
-        parser = reqparse.RequestParser().add_argument("redirect_uri", type=str, required=True, location="json")
-        parsed_args = parser.parse_args()
-        redirect_uri = parsed_args.get("redirect_uri")
+        payload = OAuthProviderRequest.model_validate(request.get_json())
+        redirect_uri = payload.redirect_uri
 
         # check if redirect_uri is valid
         if redirect_uri not in oauth_provider_app.redirect_uris:
@@ -130,33 +149,25 @@ class OAuthServerUserTokenApi(Resource):
     @setup_required
     @oauth_server_client_id_required
     def post(self, oauth_provider_app: OAuthProviderApp):
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("grant_type", type=str, required=True, location="json")
-            .add_argument("code", type=str, required=False, location="json")
-            .add_argument("client_secret", type=str, required=False, location="json")
-            .add_argument("redirect_uri", type=str, required=False, location="json")
-            .add_argument("refresh_token", type=str, required=False, location="json")
-        )
-        parsed_args = parser.parse_args()
+        payload = OAuthTokenRequest.model_validate(request.get_json())
 
         try:
-            grant_type = OAuthGrantType(parsed_args["grant_type"])
+            grant_type = OAuthGrantType(payload.grant_type)
         except ValueError:
             raise BadRequest("invalid grant_type")
 
         if grant_type == OAuthGrantType.AUTHORIZATION_CODE:
-            if not parsed_args["code"]:
+            if not payload.code:
                 raise BadRequest("code is required")
 
-            if parsed_args["client_secret"] != oauth_provider_app.client_secret:
+            if payload.client_secret != oauth_provider_app.client_secret:
                 raise BadRequest("client_secret is invalid")
 
-            if parsed_args["redirect_uri"] not in oauth_provider_app.redirect_uris:
+            if payload.redirect_uri not in oauth_provider_app.redirect_uris:
                 raise BadRequest("redirect_uri is invalid")
 
             access_token, refresh_token = OAuthServerService.sign_oauth_access_token(
-                grant_type, code=parsed_args["code"], client_id=oauth_provider_app.client_id
+                grant_type, code=payload.code, client_id=oauth_provider_app.client_id
             )
             return jsonable_encoder(
                 {
@@ -167,11 +178,11 @@ class OAuthServerUserTokenApi(Resource):
                 }
             )
         elif grant_type == OAuthGrantType.REFRESH_TOKEN:
-            if not parsed_args["refresh_token"]:
+            if not payload.refresh_token:
                 raise BadRequest("refresh_token is required")
 
             access_token, refresh_token = OAuthServerService.sign_oauth_access_token(
-                grant_type, refresh_token=parsed_args["refresh_token"], client_id=oauth_provider_app.client_id
+                grant_type, refresh_token=payload.refresh_token, client_id=oauth_provider_app.client_id
             )
             return jsonable_encoder(
                 {

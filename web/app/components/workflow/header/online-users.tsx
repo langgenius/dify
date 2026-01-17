@@ -1,20 +1,20 @@
 'use client'
+import { ChevronDownIcon } from '@heroicons/react/20/solid'
 import { useEffect, useState } from 'react'
 import { useReactFlow } from 'reactflow'
 import Avatar from '@/app/components/base/avatar'
-import { useCollaboration } from '../collaboration/hooks/use-collaboration'
-import { useStore } from '../store'
-import cn from '@/utils/classnames'
-import { ChevronDownIcon } from '@heroicons/react/20/solid'
-import { getUserColor } from '../collaboration/utils/user-color'
-import Tooltip from '@/app/components/base/tooltip'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import Tooltip from '@/app/components/base/tooltip'
 import { useAppContext } from '@/context/app-context'
 import { getAvatar } from '@/service/common'
+import { cn } from '@/utils/classnames'
+import { useCollaboration } from '../collaboration/hooks/use-collaboration'
+import { getUserColor } from '../collaboration/utils/user-color'
+import { useStore } from '../store'
 
 const useAvatarUrls = (users: any[]) => {
   const [avatarUrls, setAvatarUrls] = useState<Record<string, string>>({})
@@ -81,7 +81,8 @@ const OnlineUsers = () => {
   // Function to jump to user's cursor position
   const jumpToUserCursor = (userId: string) => {
     const cursor = cursors[userId]
-    if (!cursor) return
+    if (!cursor)
+      return
 
     // Convert world coordinates to center the view on the cursor
     reactFlow.setCenter(cursor.x, cursor.y, { zoom: 1, duration: 800 })
@@ -173,7 +174,8 @@ const OnlineUsers = () => {
                       visibleUsers.length > 0 && '-ml-1',
                     )}
                   >
-                    +{remainingCount}
+                    +
+                    {remainingCount}
                   </div>
                   <ChevronDownIcon className="h-3 w-3 cursor-pointer text-gray-500" />
                 </div>

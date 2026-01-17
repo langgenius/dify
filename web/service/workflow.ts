@@ -1,18 +1,3 @@
-import type { Fetcher } from 'swr'
-import { get, post } from './base'
-import type { CommonResponse } from '@/models/common'
-import type {
-  ChatRunHistoryResponse,
-  ConversationVariableResponse,
-  FetchWorkflowDraftResponse,
-  NodesDefaultConfigsResponse,
-  WorkflowRunHistoryResponse,
-} from '@/types/workflow'
-import type { BlockEnum } from '@/app/components/workflow/types'
-import type { VarInInspect } from '@/types/workflow'
-import type { FlowType } from '@/types/common'
-import { getFlowPrefix } from './utils'
-import type { ConversationVariable, EnvironmentVariable } from '@/app/components/workflow/types'
 import type {
   FileUpload,
   RetrieverResource,
@@ -21,6 +6,18 @@ import type {
   SuggestedQuestionsAfterAnswer,
   TextToSpeech,
 } from '@/app/components/base/features/types'
+import type { BlockEnum, ConversationVariable, EnvironmentVariable } from '@/app/components/workflow/types'
+import type { CommonResponse } from '@/models/common'
+import type { FlowType } from '@/types/common'
+import type {
+  ConversationVariableResponse,
+  FetchWorkflowDraftResponse,
+  NodesDefaultConfigsResponse,
+  VarInInspect,
+} from '@/types/workflow'
+import { get, post } from './base'
+import { getFlowPrefix } from './utils'
+import { sanitizeWorkflowDraftPayload } from './workflow-payload'
 
 export type WorkflowDraftFeaturesPayload = {
   opening_statement: string
@@ -41,19 +38,12 @@ export const syncWorkflowDraft = ({ url, params }: {
   url: string
   params: Pick<FetchWorkflowDraftResponse, 'graph' | 'features' | 'environment_variables' | 'conversation_variables'>
 }) => {
-  return post<CommonResponse & { updated_at: number; hash: string }>(url, { body: params }, { silent: true })
+  const sanitized = sanitizeWorkflowDraftPayload(params)
+  return post<CommonResponse & { updated_at: number, hash: string }>(url, { body: sanitized }, { silent: true })
 }
 
-export const fetchNodesDefaultConfigs: Fetcher<NodesDefaultConfigsResponse, string> = (url) => {
+export const fetchNodesDefaultConfigs = (url: string) => {
   return get<NodesDefaultConfigsResponse>(url)
-}
-
-export const fetchWorkflowRunHistory: Fetcher<WorkflowRunHistoryResponse, string> = (url) => {
-  return get<WorkflowRunHistoryResponse>(url)
-}
-
-export const fetchChatRunHistory: Fetcher<ChatRunHistoryResponse, string> = (url) => {
-  return get<ChatRunHistoryResponse>(url)
 }
 
 export const singleNodeRun = (flowType: FlowType, flowId: string, nodeId: string, params: object) => {
@@ -68,7 +58,7 @@ export const getLoopSingleNodeRunUrl = (flowType: FlowType, isChatFlow: boolean,
   return `${getFlowPrefix(flowType)}/${flowId}/${isChatFlow ? 'advanced-chat/' : ''}workflows/draft/loop/nodes/${nodeId}/run`
 }
 
-export const fetchPublishedWorkflow: Fetcher<FetchWorkflowDraftResponse, string> = (url) => {
+export const fetchPublishedWorkflow = (url: string) => {
   return get<FetchWorkflowDraftResponse>(url)
 }
 
@@ -88,15 +78,13 @@ export const fetchPipelineNodeDefault = (pipelineId: string, blockType: BlockEnu
   })
 }
 
-// TODO: archived
-export const updateWorkflowDraftFromDSL = (appId: string, data: string) => {
-  return post<FetchWorkflowDraftResponse>(`apps/${appId}/workflows/draft/import`, { body: { data } })
-}
-
-export const fetchCurrentValueOfConversationVariable: Fetcher<ConversationVariableResponse, {
+export const fetchCurrentValueOfConversationVariable = ({
+  url,
+  params,
+}: {
   url: string
   params: { conversation_id: string }
-}> = ({ url, params }) => {
+}) => {
   return get<ConversationVariableResponse>(url, { params })
 }
 

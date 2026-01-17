@@ -1,62 +1,82 @@
-from flask_restx import Resource, fields, reqparse
-from werkzeug.exceptions import Forbidden
+from typing import Any
 
-from controllers.console import api, console_ns
-from controllers.console.wraps import account_initialization_required, setup_required
+from flask import request
+from flask_restx import Resource, fields
+from pydantic import BaseModel, Field
+
+from controllers.console import console_ns
+from controllers.console.wraps import account_initialization_required, is_admin_or_owner_required, setup_required
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.impl.exc import PluginPermissionDeniedError
 from libs.login import current_account_with_tenant, login_required
 from services.plugin.endpoint_service import EndpointService
 
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
+
+class EndpointCreatePayload(BaseModel):
+    plugin_unique_identifier: str
+    settings: dict[str, Any]
+    name: str = Field(min_length=1)
+
+
+class EndpointIdPayload(BaseModel):
+    endpoint_id: str
+
+
+class EndpointUpdatePayload(EndpointIdPayload):
+    settings: dict[str, Any]
+    name: str = Field(min_length=1)
+
+
+class EndpointListQuery(BaseModel):
+    page: int = Field(ge=1)
+    page_size: int = Field(gt=0)
+
+
+class EndpointListForPluginQuery(EndpointListQuery):
+    plugin_id: str
+
+
+def reg(cls: type[BaseModel]):
+    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
+
+
+reg(EndpointCreatePayload)
+reg(EndpointIdPayload)
+reg(EndpointUpdatePayload)
+reg(EndpointListQuery)
+reg(EndpointListForPluginQuery)
+
 
 @console_ns.route("/workspaces/current/endpoints/create")
 class EndpointCreateApi(Resource):
-    @api.doc("create_endpoint")
-    @api.doc(description="Create a new plugin endpoint")
-    @api.expect(
-        api.model(
-            "EndpointCreateRequest",
-            {
-                "plugin_unique_identifier": fields.String(required=True, description="Plugin unique identifier"),
-                "settings": fields.Raw(required=True, description="Endpoint settings"),
-                "name": fields.String(required=True, description="Endpoint name"),
-            },
-        )
-    )
-    @api.response(
+    @console_ns.doc("create_endpoint")
+    @console_ns.doc(description="Create a new plugin endpoint")
+    @console_ns.expect(console_ns.models[EndpointCreatePayload.__name__])
+    @console_ns.response(
         200,
         "Endpoint created successfully",
-        api.model("EndpointCreateResponse", {"success": fields.Boolean(description="Operation success")}),
+        console_ns.model("EndpointCreateResponse", {"success": fields.Boolean(description="Operation success")}),
     )
-    @api.response(403, "Admin privileges required")
+    @console_ns.response(403, "Admin privileges required")
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     def post(self):
         user, tenant_id = current_account_with_tenant()
-        if not user.is_admin_or_owner:
-            raise Forbidden()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("plugin_unique_identifier", type=str, required=True)
-            .add_argument("settings", type=dict, required=True)
-            .add_argument("name", type=str, required=True)
-        )
-        args = parser.parse_args()
-
-        plugin_unique_identifier = args["plugin_unique_identifier"]
-        settings = args["settings"]
-        name = args["name"]
+        args = EndpointCreatePayload.model_validate(console_ns.payload)
 
         try:
             return {
                 "success": EndpointService.create_endpoint(
                     tenant_id=tenant_id,
                     user_id=user.id,
-                    plugin_unique_identifier=plugin_unique_identifier,
-                    name=name,
-                    settings=settings,
+                    plugin_unique_identifier=args.plugin_unique_identifier,
+                    name=args.name,
+                    settings=args.settings,
                 )
             }
         except PluginPermissionDeniedError as e:
@@ -65,17 +85,15 @@ class EndpointCreateApi(Resource):
 
 @console_ns.route("/workspaces/current/endpoints/list")
 class EndpointListApi(Resource):
-    @api.doc("list_endpoints")
-    @api.doc(description="List plugin endpoints with pagination")
-    @api.expect(
-        api.parser()
-        .add_argument("page", type=int, required=True, location="args", help="Page number")
-        .add_argument("page_size", type=int, required=True, location="args", help="Page size")
-    )
-    @api.response(
+    @console_ns.doc("list_endpoints")
+    @console_ns.doc(description="List plugin endpoints with pagination")
+    @console_ns.expect(console_ns.models[EndpointListQuery.__name__])
+    @console_ns.response(
         200,
         "Success",
-        api.model("EndpointListResponse", {"endpoints": fields.List(fields.Raw(description="Endpoint information"))}),
+        console_ns.model(
+            "EndpointListResponse", {"endpoints": fields.List(fields.Raw(description="Endpoint information"))}
+        ),
     )
     @setup_required
     @login_required
@@ -83,15 +101,10 @@ class EndpointListApi(Resource):
     def get(self):
         user, tenant_id = current_account_with_tenant()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("page", type=int, required=True, location="args")
-            .add_argument("page_size", type=int, required=True, location="args")
-        )
-        args = parser.parse_args()
+        args = EndpointListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
-        page = args["page"]
-        page_size = args["page_size"]
+        page = args.page
+        page_size = args.page_size
 
         return jsonable_encoder(
             {
@@ -107,18 +120,13 @@ class EndpointListApi(Resource):
 
 @console_ns.route("/workspaces/current/endpoints/list/plugin")
 class EndpointListForSinglePluginApi(Resource):
-    @api.doc("list_plugin_endpoints")
-    @api.doc(description="List endpoints for a specific plugin")
-    @api.expect(
-        api.parser()
-        .add_argument("page", type=int, required=True, location="args", help="Page number")
-        .add_argument("page_size", type=int, required=True, location="args", help="Page size")
-        .add_argument("plugin_id", type=str, required=True, location="args", help="Plugin ID")
-    )
-    @api.response(
+    @console_ns.doc("list_plugin_endpoints")
+    @console_ns.doc(description="List endpoints for a specific plugin")
+    @console_ns.expect(console_ns.models[EndpointListForPluginQuery.__name__])
+    @console_ns.response(
         200,
         "Success",
-        api.model(
+        console_ns.model(
             "PluginEndpointListResponse", {"endpoints": fields.List(fields.Raw(description="Endpoint information"))}
         ),
     )
@@ -128,17 +136,11 @@ class EndpointListForSinglePluginApi(Resource):
     def get(self):
         user, tenant_id = current_account_with_tenant()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("page", type=int, required=True, location="args")
-            .add_argument("page_size", type=int, required=True, location="args")
-            .add_argument("plugin_id", type=str, required=True, location="args")
-        )
-        args = parser.parse_args()
+        args = EndpointListForPluginQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
-        page = args["page"]
-        page_size = args["page_size"]
-        plugin_id = args["plugin_id"]
+        page = args.page
+        page_size = args.page_size
+        plugin_id = args.plugin_id
 
         return jsonable_encoder(
             {
@@ -155,147 +157,111 @@ class EndpointListForSinglePluginApi(Resource):
 
 @console_ns.route("/workspaces/current/endpoints/delete")
 class EndpointDeleteApi(Resource):
-    @api.doc("delete_endpoint")
-    @api.doc(description="Delete a plugin endpoint")
-    @api.expect(
-        api.model("EndpointDeleteRequest", {"endpoint_id": fields.String(required=True, description="Endpoint ID")})
-    )
-    @api.response(
+    @console_ns.doc("delete_endpoint")
+    @console_ns.doc(description="Delete a plugin endpoint")
+    @console_ns.expect(console_ns.models[EndpointIdPayload.__name__])
+    @console_ns.response(
         200,
         "Endpoint deleted successfully",
-        api.model("EndpointDeleteResponse", {"success": fields.Boolean(description="Operation success")}),
+        console_ns.model("EndpointDeleteResponse", {"success": fields.Boolean(description="Operation success")}),
     )
-    @api.response(403, "Admin privileges required")
+    @console_ns.response(403, "Admin privileges required")
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     def post(self):
         user, tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser().add_argument("endpoint_id", type=str, required=True)
-        args = parser.parse_args()
-
-        if not user.is_admin_or_owner:
-            raise Forbidden()
-
-        endpoint_id = args["endpoint_id"]
+        args = EndpointIdPayload.model_validate(console_ns.payload)
 
         return {
-            "success": EndpointService.delete_endpoint(tenant_id=tenant_id, user_id=user.id, endpoint_id=endpoint_id)
+            "success": EndpointService.delete_endpoint(
+                tenant_id=tenant_id, user_id=user.id, endpoint_id=args.endpoint_id
+            )
         }
 
 
 @console_ns.route("/workspaces/current/endpoints/update")
 class EndpointUpdateApi(Resource):
-    @api.doc("update_endpoint")
-    @api.doc(description="Update a plugin endpoint")
-    @api.expect(
-        api.model(
-            "EndpointUpdateRequest",
-            {
-                "endpoint_id": fields.String(required=True, description="Endpoint ID"),
-                "settings": fields.Raw(required=True, description="Updated settings"),
-                "name": fields.String(required=True, description="Updated name"),
-            },
-        )
-    )
-    @api.response(
+    @console_ns.doc("update_endpoint")
+    @console_ns.doc(description="Update a plugin endpoint")
+    @console_ns.expect(console_ns.models[EndpointUpdatePayload.__name__])
+    @console_ns.response(
         200,
         "Endpoint updated successfully",
-        api.model("EndpointUpdateResponse", {"success": fields.Boolean(description="Operation success")}),
+        console_ns.model("EndpointUpdateResponse", {"success": fields.Boolean(description="Operation success")}),
     )
-    @api.response(403, "Admin privileges required")
+    @console_ns.response(403, "Admin privileges required")
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     def post(self):
         user, tenant_id = current_account_with_tenant()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("endpoint_id", type=str, required=True)
-            .add_argument("settings", type=dict, required=True)
-            .add_argument("name", type=str, required=True)
-        )
-        args = parser.parse_args()
-
-        endpoint_id = args["endpoint_id"]
-        settings = args["settings"]
-        name = args["name"]
-
-        if not user.is_admin_or_owner:
-            raise Forbidden()
+        args = EndpointUpdatePayload.model_validate(console_ns.payload)
 
         return {
             "success": EndpointService.update_endpoint(
                 tenant_id=tenant_id,
                 user_id=user.id,
-                endpoint_id=endpoint_id,
-                name=name,
-                settings=settings,
+                endpoint_id=args.endpoint_id,
+                name=args.name,
+                settings=args.settings,
             )
         }
 
 
 @console_ns.route("/workspaces/current/endpoints/enable")
 class EndpointEnableApi(Resource):
-    @api.doc("enable_endpoint")
-    @api.doc(description="Enable a plugin endpoint")
-    @api.expect(
-        api.model("EndpointEnableRequest", {"endpoint_id": fields.String(required=True, description="Endpoint ID")})
-    )
-    @api.response(
+    @console_ns.doc("enable_endpoint")
+    @console_ns.doc(description="Enable a plugin endpoint")
+    @console_ns.expect(console_ns.models[EndpointIdPayload.__name__])
+    @console_ns.response(
         200,
         "Endpoint enabled successfully",
-        api.model("EndpointEnableResponse", {"success": fields.Boolean(description="Operation success")}),
+        console_ns.model("EndpointEnableResponse", {"success": fields.Boolean(description="Operation success")}),
     )
-    @api.response(403, "Admin privileges required")
+    @console_ns.response(403, "Admin privileges required")
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     def post(self):
         user, tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser().add_argument("endpoint_id", type=str, required=True)
-        args = parser.parse_args()
-
-        endpoint_id = args["endpoint_id"]
-
-        if not user.is_admin_or_owner:
-            raise Forbidden()
+        args = EndpointIdPayload.model_validate(console_ns.payload)
 
         return {
-            "success": EndpointService.enable_endpoint(tenant_id=tenant_id, user_id=user.id, endpoint_id=endpoint_id)
+            "success": EndpointService.enable_endpoint(
+                tenant_id=tenant_id, user_id=user.id, endpoint_id=args.endpoint_id
+            )
         }
 
 
 @console_ns.route("/workspaces/current/endpoints/disable")
 class EndpointDisableApi(Resource):
-    @api.doc("disable_endpoint")
-    @api.doc(description="Disable a plugin endpoint")
-    @api.expect(
-        api.model("EndpointDisableRequest", {"endpoint_id": fields.String(required=True, description="Endpoint ID")})
-    )
-    @api.response(
+    @console_ns.doc("disable_endpoint")
+    @console_ns.doc(description="Disable a plugin endpoint")
+    @console_ns.expect(console_ns.models[EndpointIdPayload.__name__])
+    @console_ns.response(
         200,
         "Endpoint disabled successfully",
-        api.model("EndpointDisableResponse", {"success": fields.Boolean(description="Operation success")}),
+        console_ns.model("EndpointDisableResponse", {"success": fields.Boolean(description="Operation success")}),
     )
-    @api.response(403, "Admin privileges required")
+    @console_ns.response(403, "Admin privileges required")
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     def post(self):
         user, tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser().add_argument("endpoint_id", type=str, required=True)
-        args = parser.parse_args()
-
-        endpoint_id = args["endpoint_id"]
-
-        if not user.is_admin_or_owner:
-            raise Forbidden()
+        args = EndpointIdPayload.model_validate(console_ns.payload)
 
         return {
-            "success": EndpointService.disable_endpoint(tenant_id=tenant_id, user_id=user.id, endpoint_id=endpoint_id)
+            "success": EndpointService.disable_endpoint(
+                tenant_id=tenant_id, user_id=user.id, endpoint_id=args.endpoint_id
+            )
         }

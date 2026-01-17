@@ -90,6 +90,7 @@ class AppQueueManager:
         """
         self._clear_task_belong_cache()
         self._q.put(None)
+        self._graph_runtime_state = None  # Release reference to allow GC to reclaim memory
 
     def _clear_task_belong_cache(self) -> None:
         """

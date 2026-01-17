@@ -64,6 +64,7 @@ class AppTriggerStatus(StrEnum):
     ENABLED = "enabled"
     DISABLED = "disabled"
     UNAUTHORIZED = "unauthorized"
+    RATE_LIMITED = "rate_limited"
 
 
 class AppTriggerType(StrEnum):

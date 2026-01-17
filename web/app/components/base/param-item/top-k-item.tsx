@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ParamItem from '.'
 
@@ -40,9 +40,9 @@ const TopKItem: FC<Props> = ({
   return (
     <ParamItem
       className={className}
-      id='top_k'
-      name={t('appDebug.datasetConfig.top_k')}
-      tip={t('appDebug.datasetConfig.top_kTip') as string}
+      id="top_k"
+      name={t('datasetConfig.top_k', { ns: 'appDebug' })}
+      tip={t('datasetConfig.top_kTip', { ns: 'appDebug' }) as string}
       {...VALUE_LIMIT}
       value={value}
       enable={enable}

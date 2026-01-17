@@ -1,41 +1,41 @@
 'use client'
 
+import type { Features as FeaturesData } from '@/app/components/base/features/types'
+import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
+import { useSearchParams } from 'next/navigation'
 import {
   useEffect,
   useMemo,
 } from 'react'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import { FeaturesProvider } from '@/app/components/base/features'
+import Loading from '@/app/components/base/loading'
+import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
+import WorkflowWithDefaultContext from '@/app/components/workflow'
+import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
+import {
+  WorkflowContextProvider,
+} from '@/app/components/workflow/context'
+import { useWorkflowStore } from '@/app/components/workflow/store'
+import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
 import {
   SupportUploadFileTypes,
 } from '@/app/components/workflow/types'
 import {
-  useWorkflowInit,
-} from './hooks/use-workflow-init'
-import { useAppTriggers } from '@/service/use-tools'
-import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { useWorkflowStore } from '@/app/components/workflow/store'
-import {
   initialEdges,
   initialNodes,
 } from '@/app/components/workflow/utils'
-import Loading from '@/app/components/base/loading'
-import { FeaturesProvider } from '@/app/components/base/features'
-import type { Features as FeaturesData } from '@/app/components/base/features/types'
-import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { useAppContext } from '@/context/app-context'
-import WorkflowWithDefaultContext from '@/app/components/workflow'
-import {
-  WorkflowContextProvider,
-} from '@/app/components/workflow/context'
-import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
-import { createWorkflowSlice } from './store/workflow/workflow-slice'
-import WorkflowAppMain from './components/workflow-main'
-import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
-import { useSearchParams } from 'next/navigation'
-
 import { fetchRunDetail } from '@/service/log'
-import { useGetRunAndTraceUrl } from './hooks/use-get-run-and-trace-url'
+import { useAppTriggers } from '@/service/use-tools'
 import { AppModeEnum } from '@/types/app'
+import WorkflowAppMain from './components/workflow-main'
+
+import { useGetRunAndTraceUrl } from './hooks/use-get-run-and-trace-url'
+import {
+  useWorkflowInit,
+} from './hooks/use-workflow-init'
+import { createWorkflowSlice } from './store/workflow/workflow-slice'
 
 const WorkflowAppWithAdditionalContext = () => {
   const {
@@ -167,7 +167,7 @@ const WorkflowAppWithAdditionalContext = () => {
 
   if (!data || isLoading || isLoadingCurrentWorkspace || !currentWorkspace.id) {
     return (
-      <div className='relative flex h-full w-full items-center justify-center'>
+      <div className="relative flex h-full w-full items-center justify-center">
         <Loading />
       </div>
     )

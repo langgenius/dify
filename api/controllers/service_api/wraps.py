@@ -1,3 +1,4 @@
+import logging
 import time
 from collections.abc import Callable
 from datetime import timedelta
@@ -27,6 +28,8 @@ from services.feature_service import FeatureService
 P = ParamSpec("P")
 R = TypeVar("R")
 T = TypeVar("T")
+
+logger = logging.getLogger(__name__)
 
 
 class WhereisUserArg(StrEnum):
@@ -238,8 +241,8 @@ def validate_dataset_token(view: Callable[Concatenate[T, P], R] | None = None):
                         # Basic check: UUIDs are 36 chars with hyphens
                         if len(str_id) == 36 and str_id.count("-") == 4:
                             dataset_id = str_id
-                    except:
-                        pass
+                    except Exception:
+                        logger.exception("Failed to parse dataset_id from class method args")
                 elif len(args) > 0:
                     # Not a class method, check if args[0] looks like a UUID
                     potential_id = args[0]
@@ -247,8 +250,8 @@ def validate_dataset_token(view: Callable[Concatenate[T, P], R] | None = None):
                         str_id = str(potential_id)
                         if len(str_id) == 36 and str_id.count("-") == 4:
                             dataset_id = str_id
-                    except:
-                        pass
+                    except Exception:
+                        logger.exception("Failed to parse dataset_id from positional args")
 
             # Validate dataset if dataset_id is provided
             if dataset_id:
@@ -316,18 +319,16 @@ def validate_and_get_api_token(scope: str | None = None):
                 ApiToken.type == scope,
             )
             .values(last_used_at=current_time)
-            .returning(ApiToken)
         )
+        stmt = select(ApiToken).where(ApiToken.token == auth_token, ApiToken.type == scope)
         result = session.execute(update_stmt)
-        api_token = result.scalar_one_or_none()
+        api_token = session.scalar(stmt)
+
+        if hasattr(result, "rowcount") and result.rowcount > 0:
+            session.commit()
 
         if not api_token:
-            stmt = select(ApiToken).where(ApiToken.token == auth_token, ApiToken.type == scope)
-            api_token = session.scalar(stmt)
-            if not api_token:
-                raise Unauthorized("Access token is invalid")
-        else:
-            session.commit()
+            raise Unauthorized("Access token is invalid")
 
     return api_token
 

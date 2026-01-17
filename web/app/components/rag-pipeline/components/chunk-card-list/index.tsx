@@ -1,7 +1,8 @@
-import { useMemo } from 'react'
-import cn from '@/utils/classnames'
 import type { ChunkInfo, GeneralChunks, ParentChildChunk, ParentChildChunks, QAChunk, QAChunks } from './types'
-import { ChunkingMode, type ParentMode } from '@/models/datasets'
+import type { ParentMode } from '@/models/datasets'
+import { useMemo } from 'react'
+import { ChunkingMode } from '@/models/datasets'
+import { cn } from '@/utils/classnames'
 import ChunkCard from './chunk-card'
 
 type ChunkCardListProps = {

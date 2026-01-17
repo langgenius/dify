@@ -3,7 +3,7 @@
  * Extracted from the main markdown renderer for modularity.
  * Uses the ImageGallery component to display images.
  */
-import React from 'react'
+import * as React from 'react'
 import ImageGallery from '@/app/components/base/image-gallery'
 
 const Img = ({ src }: any) => {

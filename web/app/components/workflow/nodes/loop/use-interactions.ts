@@ -1,19 +1,20 @@
-import { useCallback } from 'react'
-import { produce } from 'immer'
 import type {
   BlockEnum,
   Node,
 } from '../../types'
+import { produce } from 'immer'
+import { useCallback } from 'react'
+import { useNodesMetaData } from '@/app/components/workflow/hooks'
+import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
+import {
+  LOOP_CHILDREN_Z_INDEX,
+  LOOP_PADDING,
+} from '../../constants'
 import {
   generateNewNode,
   getNodeCustomTypeByNodeDataType,
 } from '../../utils'
-import {
-  LOOP_PADDING,
-} from '../../constants'
 import { CUSTOM_LOOP_START_NODE } from '../loop-start/constants'
-import { useNodesMetaData } from '@/app/components/workflow/hooks'
-import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 
 export const useNodeLoopInteractions = () => {
   const collaborativeWorkflow = useCollaborativeWorkflow()
@@ -71,7 +72,7 @@ export const useNodeLoopInteractions = () => {
   const handleNodeLoopChildDrag = useCallback((node: Node) => {
     const { nodes } = collaborativeWorkflow.getState()
 
-    const restrictPosition: { x?: number; y?: number } = { x: undefined, y: undefined }
+    const restrictPosition: { x?: number, y?: number } = { x: undefined, y: undefined }
 
     if (node.data.isInLoop) {
       const parentNode = nodes.find(n => n.id === node.parentId)
@@ -108,9 +109,7 @@ export const useNodeLoopInteractions = () => {
 
     return childrenNodes.map((child, index) => {
       const childNodeType = child.data.type as BlockEnum
-      const {
-        defaultValue,
-      } = nodesMetaDataMap![childNodeType]
+      const { defaultValue } = nodesMetaDataMap![childNodeType]
       const nodesWithSameType = nodes.filter(node => node.data.type === childNodeType)
       const { newNode } = generateNewNode({
         type: getNodeCustomTypeByNodeDataType(childNodeType),
@@ -121,15 +120,17 @@ export const useNodeLoopInteractions = () => {
           _isBundled: false,
           _connectedSourceHandleIds: [],
           _connectedTargetHandleIds: [],
+          _dimmed: false,
           title: nodesWithSameType.length > 0 ? `${defaultValue.title} ${nodesWithSameType.length + 1}` : defaultValue.title,
+          isInLoop: true,
           loop_id: newNodeId,
-
+          type: childNodeType,
         },
         position: child.position,
         positionAbsolute: child.positionAbsolute,
         parentId: newNodeId,
         extent: child.extent,
-        zIndex: child.zIndex,
+        zIndex: LOOP_CHILDREN_Z_INDEX,
       })
       newNode.id = `${newNodeId}${newNode.id + index}`
       return newNode

@@ -1,18 +1,18 @@
-import { useTranslation } from 'react-i18next'
-import { useCallback, useState } from 'react'
+import type { FormData, InputFieldFormProps } from './types'
 import type { MoreInfo } from '@/app/components/workflow/types'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import Divider from '@/app/components/base/divider'
+import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
+import { useAppForm } from '@/app/components/base/form'
+import Toast from '@/app/components/base/toast'
 import { ChangeType } from '@/app/components/workflow/types'
 import { useFileUploadConfig } from '@/service/use-common'
-import type { FormData, InputFieldFormProps } from './types'
-import { useAppForm } from '@/app/components/base/form'
-import { createInputFieldSchema } from './schema'
-import Toast from '@/app/components/base/toast'
-import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
-import Divider from '@/app/components/base/divider'
-import ShowAllSettings from './show-all-settings'
-import Button from '@/app/components/base/button'
-import InitialFields from './initial-fields'
 import HiddenFields from './hidden-fields'
+import InitialFields from './initial-fields'
+import { createInputFieldSchema } from './schema'
+import ShowAllSettings from './show-all-settings'
 
 const InputFieldForm = ({
   initialData,
@@ -81,16 +81,16 @@ const InputFieldForm = ({
 
   return (
     <form
-      className='w-full'
+      className="w-full"
       onSubmit={(e) => {
         e.preventDefault()
         e.stopPropagation()
         inputFieldForm.handleSubmit()
       }}
     >
-      <div className='flex flex-col gap-4 px-4 py-2'>
+      <div className="flex flex-col gap-4 px-4 py-2">
         <InitialFieldsComp form={inputFieldForm} />
-        <Divider type='horizontal' />
+        <Divider type="horizontal" />
         {!showAllSettings && (
           <ShowAllSettingComp form={inputFieldForm} />
         )}
@@ -98,9 +98,9 @@ const InputFieldForm = ({
           <HiddenFieldsComp form={inputFieldForm} />
         )}
       </div>
-      <div className='flex items-center justify-end gap-x-2 p-4 pt-2'>
-        <Button variant='secondary' onClick={onCancel}>
-          {t('common.operation.cancel')}
+      <div className="flex items-center justify-end gap-x-2 p-4 pt-2">
+        <Button variant="secondary" onClick={onCancel}>
+          {t('operation.cancel', { ns: 'common' })}
         </Button>
         <inputFieldForm.AppForm>
           <inputFieldForm.Actions />

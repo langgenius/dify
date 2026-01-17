@@ -1,23 +1,26 @@
 'use client'
 
 import type { Area } from 'react-easy-crop'
-import React, { useCallback, useState } from 'react'
+import type { OnImageInput } from '@/app/components/base/app-icon-picker/ImageInput'
+import type { AvatarProps } from '@/app/components/base/avatar'
+import type { ImageFile } from '@/types/app'
+import { RiDeleteBin5Line, RiPencilLine } from '@remixicon/react'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import { RiDeleteBin5Line, RiPencilLine } from '@remixicon/react'
-import { updateUserProfile } from '@/service/common'
-import { ToastContext } from '@/app/components/base/toast'
-import ImageInput, { type OnImageInput } from '@/app/components/base/app-icon-picker/ImageInput'
-import Modal from '@/app/components/base/modal'
-import Divider from '@/app/components/base/divider'
-import Button from '@/app/components/base/button'
-import Avatar, { type AvatarProps } from '@/app/components/base/avatar'
-import { useLocalFileUploader } from '@/app/components/base/image-uploader/hooks'
-import type { ImageFile } from '@/types/app'
+import ImageInput from '@/app/components/base/app-icon-picker/ImageInput'
 import getCroppedImg from '@/app/components/base/app-icon-picker/utils'
+import Avatar from '@/app/components/base/avatar'
+import Button from '@/app/components/base/button'
+import Divider from '@/app/components/base/divider'
+import { useLocalFileUploader } from '@/app/components/base/image-uploader/hooks'
+import Modal from '@/app/components/base/modal'
+import { ToastContext } from '@/app/components/base/toast'
 import { DISABLE_UPLOAD_IMAGE_AS_ICON } from '@/config'
+import { updateUserProfile } from '@/service/common'
 
-type InputImageInfo = { file: File } | { tempUrl: string; croppedAreaPixels: Area; fileName: string }
+type InputImageInfo = { file: File } | { tempUrl: string, croppedAreaPixels: Area, fileName: string }
 type AvatarWithEditProps = AvatarProps & { onSave?: () => void }
 
 const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
@@ -45,7 +48,7 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
       await updateUserProfile({ url: 'account/avatar', body: { avatar: uploadedFileId } })
       setIsShowAvatarPicker(false)
       onSave?.()
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
     }
     catch (e) {
       notify({ type: 'error', message: (e as Error).message })
@@ -55,7 +58,7 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
   const handleDeleteAvatar = useCallback(async () => {
     try {
       await updateUserProfile({ url: 'account/avatar', body: { avatar: '' } })
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       setIsShowDeleteConfirm(false)
       onSave?.()
     }
@@ -116,15 +119,17 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
               setHoverArea(isRight ? 'right' : 'left')
             }}
           >
-            {hoverArea === 'right' && !onAvatarError ? (
-              <span className="text-xs text-white">
-                <RiDeleteBin5Line />
-              </span>
-            ) : (
-              <span className="text-xs text-white">
-                <RiPencilLine />
-              </span>
-            )}
+            {hoverArea === 'right' && !onAvatarError
+              ? (
+                  <span className="text-xs text-white">
+                    <RiDeleteBin5Line />
+                  </span>
+                )
+              : (
+                  <span className="text-xs text-white">
+                    <RiPencilLine />
+                  </span>
+                )}
           </div>
         </div>
       </div>
@@ -135,16 +140,16 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
         isShow={isShowAvatarPicker}
         onClose={() => setIsShowAvatarPicker(false)}
       >
-        <ImageInput onImageInput={handleImageInput} cropShape='round' />
-        <Divider className='m-0' />
+        <ImageInput onImageInput={handleImageInput} cropShape="round" />
+        <Divider className="m-0" />
 
-        <div className='flex w-full items-center justify-center gap-2 p-3'>
-          <Button className='w-full' onClick={() => setIsShowAvatarPicker(false)}>
-            {t('app.iconPicker.cancel')}
+        <div className="flex w-full items-center justify-center gap-2 p-3">
+          <Button className="w-full" onClick={() => setIsShowAvatarPicker(false)}>
+            {t('iconPicker.cancel', { ns: 'app' })}
           </Button>
 
-          <Button variant="primary" className='w-full' disabled={uploading || !inputImageInfo} loading={uploading} onClick={handleSelect}>
-            {t('app.iconPicker.ok')}
+          <Button variant="primary" className="w-full" disabled={uploading || !inputImageInfo} loading={uploading} onClick={handleSelect}>
+            {t('iconPicker.ok', { ns: 'app' })}
           </Button>
         </div>
       </Modal>
@@ -155,16 +160,16 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
         isShow={isShowDeleteConfirm}
         onClose={() => setIsShowDeleteConfirm(false)}
       >
-        <div className="title-2xl-semi-bold mb-3 text-text-primary">{t('common.avatar.deleteTitle')}</div>
-        <p className="mb-8 text-text-secondary">{t('common.avatar.deleteDescription')}</p>
+        <div className="title-2xl-semi-bold mb-3 text-text-primary">{t('avatar.deleteTitle', { ns: 'common' })}</div>
+        <p className="mb-8 text-text-secondary">{t('avatar.deleteDescription', { ns: 'common' })}</p>
 
         <div className="flex w-full items-center justify-center gap-2">
           <Button className="w-full" onClick={() => setIsShowDeleteConfirm(false)}>
-            {t('common.operation.cancel')}
+            {t('operation.cancel', { ns: 'common' })}
           </Button>
 
           <Button variant="warning" className="w-full" onClick={handleDeleteAvatar}>
-            {t('common.operation.delete')}
+            {t('operation.delete', { ns: 'common' })}
           </Button>
         </div>
       </Modal>

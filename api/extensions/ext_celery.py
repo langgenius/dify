@@ -12,9 +12,8 @@ from dify_app import DifyApp
 
 def _get_celery_ssl_options() -> dict[str, Any] | None:
     """Get SSL configuration for Celery broker/backend connections."""
-    # Use REDIS_USE_SSL for consistency with the main Redis client
     # Only apply SSL if we're using Redis as broker/backend
-    if not dify_config.REDIS_USE_SSL:
+    if not dify_config.BROKER_USE_SSL:
         return None
 
     # Check if Celery is actually using Redis
@@ -47,7 +46,11 @@ def _get_celery_ssl_options() -> dict[str, Any] | None:
 def init_app(app: DifyApp) -> Celery:
     class FlaskTask(Task):
         def __call__(self, *args: object, **kwargs: object) -> object:
+            from core.logging.context import init_request_context
+
             with app.app_context():
+                # Initialize logging context for this task (similar to before_request in Flask)
+                init_request_context()
                 return self.run(*args, **kwargs)
 
     broker_transport_options = {}
@@ -159,6 +162,13 @@ def init_app(app: DifyApp) -> Celery:
         beat_schedule["clean_workflow_runlogs_precise"] = {
             "task": "schedule.clean_workflow_runlogs_precise.clean_workflow_runlogs_precise",
             "schedule": crontab(minute="0", hour="2"),
+        }
+    if dify_config.ENABLE_WORKFLOW_RUN_CLEANUP_TASK:
+        # for saas only
+        imports.append("schedule.clean_workflow_runs_task")
+        beat_schedule["clean_workflow_runs_task"] = {
+            "task": "schedule.clean_workflow_runs_task.clean_workflow_runs_task",
+            "schedule": crontab(minute="0", hour="0"),
         }
     if dify_config.ENABLE_WORKFLOW_SCHEDULE_POLLER_TASK:
         imports.append("schedule.workflow_schedule_task")

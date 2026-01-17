@@ -1,7 +1,7 @@
-import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import type { TriggerEventParameter } from '../../plugins/types'
 import type { ToolCredential, ToolParameter } from '../types'
+import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 
 export const toType = (type: string) => {
   switch (type) {
@@ -76,7 +76,7 @@ export const toolCredentialToFormSchemas = (parameters: ToolCredential[]) => {
   return formSchemas
 }
 
-export const addDefaultValue = (value: Record<string, any>, formSchemas: { variable: string; type: string; default?: any }[]) => {
+export const addDefaultValue = (value: Record<string, any>, formSchemas: { variable: string, type: string, default?: any }[]) => {
   const newValues = { ...value }
   formSchemas.forEach((formSchema) => {
     const itemValue = value[formSchema.variable]
@@ -122,7 +122,7 @@ const correctInitialData = (type: string, target: any, defaultValue: any) => {
   return target
 }
 
-export const generateFormValue = (value: Record<string, any>, formSchemas: { variable: string; default?: any; type: string }[], isReasoning = false) => {
+export const generateFormValue = (value: Record<string, any>, formSchemas: { variable: string, default?: any, type: string }[], isReasoning = false) => {
   const newValues = {} as any
   formSchemas.forEach((formSchema) => {
     const itemValue = value[formSchema.variable]
@@ -162,7 +162,7 @@ export const getStructureValue = (value: Record<string, any>) => {
   return newValue
 }
 
-export const getConfiguredValue = (value: Record<string, any>, formSchemas: { variable: string; type: string; default?: any }[]) => {
+export const getConfiguredValue = (value: Record<string, any>, formSchemas: { variable: string, type: string, default?: any }[]) => {
   const newValues = { ...value }
   formSchemas.forEach((formSchema) => {
     const itemValue = value[formSchema.variable]
@@ -187,7 +187,7 @@ const getVarKindType = (type: FormTypeEnum) => {
     return VarKindType.mixed
 }
 
-export const generateAgentToolValue = (value: Record<string, any>, formSchemas: { variable: string; default?: any; type: string }[], isReasoning = false) => {
+export const generateAgentToolValue = (value: Record<string, any>, formSchemas: { variable: string, default?: any, type: string }[], isReasoning = false) => {
   const newValues = {} as any
   if (!isReasoning) {
     formSchemas.forEach((formSchema) => {

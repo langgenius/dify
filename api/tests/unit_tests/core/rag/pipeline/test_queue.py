@@ -179,7 +179,7 @@ class TestTenantIsolatedTaskQueue:
         """Test pushing empty task list."""
         sample_queue.push_tasks([])
 
-        mock_redis.lpush.assert_called_once_with("tenant_self_test-key_task_queue:tenant-123")
+        mock_redis.lpush.assert_not_called()
 
     @patch("core.rag.pipeline.queue.redis_client")
     def test_pull_tasks_default_count(self, mock_redis, sample_queue):

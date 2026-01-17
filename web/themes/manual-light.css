@@ -44,6 +44,7 @@ html[data-theme="light"] {
             rgba(0, 0, 0, 0.00) 0%,
             rgba(16, 24, 40, 0.01) 8%,
             rgba(16, 24, 40, 0.18) 100%);
+    --color-dataset-warning-message-bg: linear-gradient(92deg, rgba(247, 144, 9, 0.25) 0%, rgba(255, 255, 255, 0.00) 100%);
     --color-dataset-chunk-process-success-bg: linear-gradient(92deg, rgba(23, 178, 106, 0.25) 0%, rgba(255, 255, 255, 0.00) 100%);
     --color-dataset-chunk-process-error-bg: linear-gradient(92deg, rgba(240, 68, 56, 0.25) 0%, rgba(255, 255, 255, 0.00) 100%);
     --color-dataset-chunk-detail-card-hover-bg: linear-gradient(180deg, #F2F4F7 0%, #F9FAFB 100%);

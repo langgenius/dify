@@ -1,5 +1,5 @@
-import { createStore } from 'zustand'
 import type { Features } from './types'
+import { createStore } from 'zustand'
 import { Resolution, TransferMethod } from '@/types/app'
 
 export type FeaturesModal = {
