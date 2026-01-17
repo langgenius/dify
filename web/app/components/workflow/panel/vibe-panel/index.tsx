@@ -245,56 +245,57 @@ const VibePanel: FC = () => {
         </div>
 
         {!isVibeGenerating && vibePanelIntent === 'off_topic' && renderOffTopic}
-
-        <div className="relative h-full w-0 grow bg-background-default-subtle p-6 pb-0">
-          <div className="flex h-full flex-col">
-            <div className="mb-3 flex shrink-0 items-center justify-between">
-              <div className="flex shrink-0 flex-col">
-                <div className="system-xl-semibold text-text-secondary">{t('vibe.panelTitle', { ns: 'workflow' })}</div>
-                <VersionSelector
-                  versionLen={versions.length}
-                  value={currentVersionIndex}
-                  onChange={handleVersionChange}
-                  contentClassName="z-[1200]"
+        {!isVibeGenerating && vibePanelIntent !== 'off_topic' && (vibePanelPreviewNodes.length > 0 || vibePanelMermaidCode) && (
+          <div className="relative h-full w-0 grow bg-background-default-subtle p-6 pb-0">
+            <div className="flex h-full flex-col">
+              <div className="mb-3 flex shrink-0 items-center justify-between">
+                <div className="flex shrink-0 flex-col">
+                  <div className="system-xl-semibold text-text-secondary">{t('vibe.panelTitle', { ns: 'workflow' })}</div>
+                  <VersionSelector
+                    versionLen={versions.length}
+                    value={currentVersionIndex}
+                    onChange={handleVersionChange}
+                    contentClassName="z-[1200]"
+                  />
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="secondary"
+                    size="medium"
+                    onClick={handleCopyMermaid}
+                    className="px-2"
+                  >
+                    <RiClipboardLine className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="medium"
+                    onClick={handleAccept}
+                  >
+                    {t('vibe.apply', { ns: 'workflow' })}
+                  </Button>
+                </div>
+              </div>
+              <div className="flex grow flex-col overflow-hidden pb-6">
+                <WorkflowPreview
+                  key={currentVersionIndex}
+                  fitView
+                  fitViewOptions={{ padding: 0.2 }}
+                  nodes={vibePanelPreviewNodes}
+                  edges={vibePanelPreviewEdges}
+                  className="rounded-lg border border-divider-subtle"
                 />
               </div>
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="secondary"
-                  size="medium"
-                  onClick={handleCopyMermaid}
-                  className="px-2"
-                >
-                  <RiClipboardLine className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="primary"
-                  size="medium"
-                  onClick={handleAccept}
-                >
-                  {t('vibe.apply', { ns: 'workflow' })}
-                </Button>
+            </div>
+
+            {isVibeGenerating && (
+              <div className="absolute bottom-0 left-0 right-0 top-0 z-[10] bg-background-default-subtle">
+                {renderLoading}
               </div>
-            </div>
-            <div className="flex grow flex-col overflow-hidden pb-6">
-              <WorkflowPreview
-                key={currentVersionIndex}
-                fitView
-                fitViewOptions={{ padding: 0.2 }}
-                nodes={vibePanelPreviewNodes}
-                edges={vibePanelPreviewEdges}
-                className="rounded-lg border border-divider-subtle"
-              />
-            </div>
+            )}
+
           </div>
-
-          {isVibeGenerating && (
-            <div className="absolute bottom-0 left-0 right-0 top-0 z-[10] bg-background-default-subtle">
-              {renderLoading}
-            </div>
-          )}
-
-        </div>
+        )}
         {!isVibeGenerating && vibePanelIntent !== 'off_topic' && vibePanelPreviewNodes.length === 0 && !vibePanelMermaidCode && <ResPlaceholder />}
       </div>
     </Modal>
