@@ -153,7 +153,13 @@ class DatasetListApi(DatasetApiResource):
                     item["embedding_available"] = False
             else:
                 item["embedding_available"] = True
-        response = {"data": data, "has_more": len(datasets) == query.limit, "limit": query.limit, "total": total, "page": query.page}
+        response = {
+            "data": data,
+            "has_more": len(datasets) == query.limit,
+            "limit": query.limit,
+            "total": total,
+            "page": query.page,
+        }
         return response, 200
 
     @service_api_ns.expect(service_api_ns.models[DatasetCreatePayload.__name__])
