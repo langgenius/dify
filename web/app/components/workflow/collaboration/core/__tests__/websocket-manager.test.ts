@@ -126,7 +126,11 @@ describe('WebSocketClient', () => {
     expect(connectHandler).toBeDefined()
     connectHandler()
 
-    expect(mockSocket.emit).toHaveBeenCalledWith('user_connect', { workflow_id: 'app-auth' })
+    expect(mockSocket.emit).toHaveBeenCalledWith(
+      'user_connect',
+      { workflow_id: 'app-auth' },
+      expect.any(Function),
+    )
   })
 
   it('disconnects a specific app and clears internal maps', async () => {

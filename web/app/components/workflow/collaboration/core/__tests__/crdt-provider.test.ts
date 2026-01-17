@@ -73,6 +73,7 @@ describe('CRDTProvider', () => {
     expect(socket.emit).toHaveBeenCalledWith(
       'graph_event',
       expect.any(Uint8Array),
+      expect.any(Function),
     )
     expect(doc.export).toHaveBeenCalledWith({ mode: 'update' })
   })
