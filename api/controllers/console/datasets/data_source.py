@@ -36,6 +36,16 @@ class NotionEstimatePayload(BaseModel):
     doc_language: str = Field(default="English")
 
 
+class DataSourceNotionListQuery(BaseModel):
+    dataset_id: str | None = Field(default=None, description="Dataset ID")
+    credential_id: str = Field(..., description="Credential ID", min_length=1)
+    datasource_parameters: dict[str, Any] | None = Field(default=None, description="Datasource parameters JSON string")
+
+
+class DataSourceNotionPreviewQuery(BaseModel):
+    credential_id: str = Field(..., description="Credential ID", min_length=1)
+
+
 register_schema_model(console_ns, NotionEstimatePayload)
 
 
@@ -136,26 +146,15 @@ class DataSourceNotionListApi(Resource):
     def get(self):
         current_user, current_tenant_id = current_account_with_tenant()
 
-        dataset_id = request.args.get("dataset_id", default=None, type=str)
-        credential_id = request.args.get("credential_id", default=None, type=str)
-        if not credential_id:
-            raise ValueError("Credential id is required.")
+        query = DataSourceNotionListQuery.model_validate(request.args.to_dict())
 
         # Get datasource_parameters from query string (optional, for GitHub and other datasources)
-        datasource_parameters_str = request.args.get("datasource_parameters", default=None, type=str)
-        datasource_parameters = {}
-        if datasource_parameters_str:
-            try:
-                datasource_parameters = json.loads(datasource_parameters_str)
-                if not isinstance(datasource_parameters, dict):
-                    raise ValueError("datasource_parameters must be a JSON object.")
-            except json.JSONDecodeError:
-                raise ValueError("Invalid datasource_parameters JSON format.")
+        datasource_parameters = query.datasource_parameters or {}
 
         datasource_provider_service = DatasourceProviderService()
         credential = datasource_provider_service.get_datasource_credentials(
             tenant_id=current_tenant_id,
-            credential_id=credential_id,
+            credential_id=query.credential_id,
             provider="notion_datasource",
             plugin_id="langgenius/notion_datasource",
         )
@@ -164,8 +163,8 @@ class DataSourceNotionListApi(Resource):
         exist_page_ids = []
         with Session(db.engine) as session:
             # import notion in the exist dataset
-            if dataset_id:
-                dataset = DatasetService.get_dataset(dataset_id)
+            if query.dataset_id:
+                dataset = DatasetService.get_dataset(query.dataset_id)
                 if not dataset:
                     raise NotFound("Dataset not found.")
                 if dataset.data_source_type != "notion_import":
@@ -173,7 +172,7 @@ class DataSourceNotionListApi(Resource):
 
                 documents = session.scalars(
                     select(Document).filter_by(
-                        dataset_id=dataset_id,
+                        dataset_id=query.dataset_id,
                         tenant_id=current_tenant_id,
                         data_source_type="notion_import",
                         enabled=True,
@@ -240,13 +239,12 @@ class DataSourceNotionApi(Resource):
     def get(self, page_id, page_type):
         _, current_tenant_id = current_account_with_tenant()
 
-        credential_id = request.args.get("credential_id", default=None, type=str)
-        if not credential_id:
-            raise ValueError("Credential id is required.")
+        query = DataSourceNotionPreviewQuery.model_validate(request.args.to_dict())
+
         datasource_provider_service = DatasourceProviderService()
         credential = datasource_provider_service.get_datasource_credentials(
             tenant_id=current_tenant_id,
-            credential_id=credential_id,
+            credential_id=query.credential_id,
             provider="notion_datasource",
             plugin_id="langgenius/notion_datasource",
         )
