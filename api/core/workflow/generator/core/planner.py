@@ -123,6 +123,16 @@ class Planner:
         planner_system = PLANNER_SYSTEM_PROMPT.format(tools_summary=planner_tools_context)
         planner_user = PLANNER_USER_PROMPT.format(instruction=instruction)
 
+        # --- DEBUG: Log planner input ---
+        logger.info(
+            "=== PLANNER LLM INPUT === system_len=%d, user_len=%d, tools_context_len=%d",
+            len(planner_system),
+            len(planner_user),
+            len(planner_tools_context),
+        )
+        logger.debug("Planner system prompt (first 500 chars): %s", planner_system[:500])
+        logger.debug("Planner user prompt: %s", planner_user)
+
         # Invoke LLM
         response = self.model_instance.invoke_llm(
             prompt_messages=[
@@ -135,6 +145,13 @@ class Planner:
         plan_content = response.message.content
         if not isinstance(plan_content, str):
             raise ValueError("LLM response content is not a string")
+
+        # --- DEBUG: Log planner output ---
+        logger.info(
+            "=== PLANNER LLM OUTPUT === content_len=%d, content=%s",
+            len(plan_content),
+            plan_content[:500].replace("\n", "\\n"),
+        )
 
         # Parse structured output
         plan_data = parse_structured_output(plan_content)

@@ -186,8 +186,21 @@ class WorkflowGenerator:
             # In creation mode, run Planner to validate intent and select tools
             try:
                 # Use enhanced Planner class (instead of direct LLM call)
+                logger.info(
+                    "=== PLANNER INPUT === instruction=%s, available_tools=%d",
+                    instruction[:200],
+                    len(available_tools_list),
+                )
                 planner = Planner(model_instance, model_parameters)
                 plan_output = planner.plan(instruction, available_tools_list)
+                tool_sel = plan_output.tool_selection
+                req_tools = tool_sel.required if hasattr(tool_sel, "required") else tool_sel.get("required", [])
+                logger.info(
+                    "=== PLANNER OUTPUT === intent=%s, required_tools=%s, analysis=%s",
+                    plan_output.intent,
+                    req_tools,
+                    str(plan_output.analysis)[:300],
+                )
 
                 # Handle off-topic intent
                 if plan_output.intent == INTENT_OFF_TOPIC:
@@ -305,6 +318,26 @@ class WorkflowGenerator:
                     )
 
             try:
+                # --- DEBUG: Log input prompts ---
+                logger.info(
+                    "=== BUILDER INPUT === system_prompt_len=%d, user_prompt_len=%d, instruction=%s",
+                    len(builder_system),
+                    len(builder_user),
+                    instruction[:200],
+                )
+                logger.debug(
+                    "Builder system prompt (first 500 chars): %s",
+                    builder_system[:500],
+                )
+                logger.debug(
+                    "Builder user prompt: %s",
+                    builder_user[:1000],
+                )
+                logger.info(
+                    "Model params: %s",
+                    json.dumps(current_params, ensure_ascii=False),
+                )
+
                 build_res = model_instance.invoke_llm(
                     prompt_messages=[
                         SystemPromptMessage(content=builder_system),
@@ -313,11 +346,28 @@ class WorkflowGenerator:
                     model_parameters=current_params,
                     stream=False,
                 )
-                # Builder output is raw JSON nodes/edges - use parse_structured_output
+
+                # --- DEBUG: Log raw LLM response ---
                 build_content = build_res.message.content
                 if not isinstance(build_content, str):
                     raise ValueError("LLM response content is not a string")
+
+                logger.info(
+                    "=== BUILDER OUTPUT === content_len=%d, content_start=%s, content_end=%s",
+                    len(build_content),
+                    build_content[:300].replace("\n", "\\n"),
+                    build_content[-200:].replace("\n", "\\n") if len(build_content) > 200 else "",
+                )
+
+                # Builder output is raw JSON nodes/edges - use parse_structured_output
                 workflow_data = parse_structured_output(build_content)
+
+                # --- DEBUG: Log parsed result ---
+                logger.info(
+                    "=== PARSED RESULT === nodes=%d, edges=%d",
+                    len(workflow_data.get("nodes", [])),
+                    len(workflow_data.get("edges", [])),
+                )
 
                 if "nodes" not in workflow_data:
                     workflow_data["nodes"] = []
