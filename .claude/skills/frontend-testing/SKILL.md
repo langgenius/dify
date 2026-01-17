@@ -83,6 +83,9 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/test',
 }))
 
+// ✅ Zustand stores: Use real stores (auto-mocked globally)
+// Set test state with: useAppStore.setState({ ... })
+
 // Shared state for mocks (if needed)
 let mockSharedState = false
 
@@ -296,7 +299,7 @@ For each test file generated, aim for:
 For more detailed information, refer to:
 
 - `references/workflow.md` - **Incremental testing workflow** (MUST READ for multi-file testing)
-- `references/mocking.md` - Mock patterns and best practices
+- `references/mocking.md` - Mock patterns, Zustand store testing, and best practices
 - `references/async-testing.md` - Async operations and API calls
 - `references/domain-components.md` - Workflow, Dataset, Configuration testing
 - `references/common-patterns.md` - Frequently used testing patterns

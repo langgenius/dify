@@ -42,6 +42,8 @@ vi.mock('@/app/components/workflow/store', () => ({
   useStore: (selector: (state: typeof mockStoreState) => unknown) => selector(mockStoreState),
   useWorkflowStore: () => ({
     getState: () => ({
+      setShowInputFieldPanel: mockSetShowInputFieldPanel,
+      setShowEnvPanel: mockSetShowEnvPanel,
       setIsPreparingDataSource: mockSetIsPreparingDataSource,
       setShowDebugAndPreviewPanel: mockSetShowDebugAndPreviewPanel,
       setPublishedAt: mockSetPublishedAt,
