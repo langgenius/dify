@@ -10,12 +10,13 @@ The Planner is responsible for:
 The execution plan provides structured guidance to the Builder,
 improving generation accuracy.
 """
+
 import logging
 from typing import Any
 
 from pydantic import BaseModel, Field
 
-from core.workflow.generator.types.constants import INTENT_GENERATE, INTENT_OFF_TOPIC
+from core.workflow.generator.types.constants import INTENT_GENERATE
 
 logger = logging.getLogger(__name__)
 
@@ -90,15 +91,77 @@ class Planner:
         self.model_instance = model_instance
         self.model_parameters = model_parameters or {}
 
+    def plan(
+        self,
+        instruction: str,
+        available_tools: list[dict[str, Any]],
+    ) -> PlannerOutput:
+        """
+        Analyze user instruction and create execution plan.
+
+        Args:
+            instruction: User's natural language request
+            available_tools: List of available tool configurations
+
+        Returns:
+            PlannerOutput with intent, analysis, and tool selection
+
+        Raises:
+            Exception: If LLM call or parsing fails
+        """
+        from core.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
+        from core.workflow.generator.prompts.planner_prompts import (
+            PLANNER_SYSTEM_PROMPT,
+            PLANNER_USER_PROMPT,
+            format_tools_for_planner,
+        )
+        from core.workflow.generator.strategies.output_strategy import parse_structured_output
+        from core.workflow.generator.types.constants import INTENT_OFF_TOPIC
+
+        # Build planner prompts
+        planner_tools_context = format_tools_for_planner(available_tools)
+        planner_system = PLANNER_SYSTEM_PROMPT.format(tools_summary=planner_tools_context)
+        planner_user = PLANNER_USER_PROMPT.format(instruction=instruction)
+
+        # Invoke LLM
+        response = self.model_instance.invoke_llm(
+            prompt_messages=[
+                SystemPromptMessage(content=planner_system),
+                UserPromptMessage(content=planner_user),
+            ],
+            model_parameters=self.model_parameters,
+            stream=False,
+        )
+        plan_content = response.message.content
+        if not isinstance(plan_content, str):
+            raise ValueError("LLM response content is not a string")
+
+        # Parse structured output
+        plan_data = parse_structured_output(plan_content)
+
+        # Handle off-topic intent
+        if plan_data.get("intent") == INTENT_OFF_TOPIC:
+            return PlannerOutput(
+                intent=INTENT_OFF_TOPIC,
+                message=plan_data.get("message", "I can only help with workflow creation."),
+                suggestions=plan_data.get("suggestions", []),
+            )
+
+        # Extract tool selection for generate intent
+        required_tools = plan_data.get("required_tool_keys", [])
+        return PlannerOutput(
+            intent=plan_data.get("intent", INTENT_GENERATE),
+            analysis={"plan_thought": plan_data.get("plan_thought", "")},
+            execution_plan=[],  # Full execution plan integration in next task
+            tool_selection={"required": required_tools, "optional": []},
+        )
+
     def filter_configured_tools(
         self,
         available_tools: list[dict[str, Any]],
     ) -> list[dict[str, Any]]:
         """Filter to only tools that are configured (authorized)."""
-        return [
-            tool for tool in available_tools
-            if tool.get("is_team_authorization", False)
-        ]
+        return [tool for tool in available_tools if tool.get("is_team_authorization", False)]
 
     def filter_tools_by_plan(
         self,
