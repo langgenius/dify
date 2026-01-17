@@ -38,12 +38,12 @@ class NotionEstimatePayload(BaseModel):
 
 class DataSourceNotionListQuery(BaseModel):
     dataset_id: str | None = Field(default=None, description="Dataset ID")
-    credential_id: str = Field(..., description="Credential ID")
+    credential_id: str = Field(..., description="Credential ID", min_length=1)
     datasource_parameters: dict | None = Field(default=None, description="Datasource parameters JSON string")
 
 
 class DataSourceNotionPreviewQuery(BaseModel):
-    credential_id: str | None = Field(default=None, description="Credential ID")
+    credential_id: str = Field(..., description="Credential ID", min_length=1)
 
 
 register_schema_model(console_ns, NotionEstimatePayload)
@@ -240,8 +240,7 @@ class DataSourceNotionApi(Resource):
         _, current_tenant_id = current_account_with_tenant()
 
         query = DataSourceNotionPreviewQuery.model_validate(request.args.to_dict())
-        if not query.credential_id:
-            raise ValueError("Credential id is required.")
+
         datasource_provider_service = DatasourceProviderService()
         credential = datasource_provider_service.get_datasource_credentials(
             tenant_id=current_tenant_id,
