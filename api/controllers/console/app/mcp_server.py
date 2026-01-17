@@ -83,6 +83,8 @@ class AppMCPServerController(Resource):
             app_id=app_model.id,
             tenant_id=current_tenant_id,
             server_code=AppMCPServer.generate_server_code(16),
+            created_at=naive_utc_now(),
+            updated_at=naive_utc_now(),
         )
         db.session.add(server)
         db.session.commit()

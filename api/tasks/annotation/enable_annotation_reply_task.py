@@ -59,13 +59,13 @@ def enable_annotation_reply_task(
                 )
                 if old_dataset_collection_binding and annotations:
                     old_dataset = Dataset(
-                        id=app_id,
                         tenant_id=tenant_id,
                         indexing_technique="high_quality",
                         embedding_model_provider=old_dataset_collection_binding.provider_name,
                         embedding_model=old_dataset_collection_binding.model_name,
                         collection_binding_id=old_dataset_collection_binding.id,
                     )
+                    old_dataset.id = app_id
 
                     old_vector = Vector(old_dataset, attributes=["doc_id", "annotation_id", "app_id"])
                     try:
@@ -88,13 +88,13 @@ def enable_annotation_reply_task(
             db.session.add(new_app_annotation_setting)
 
         dataset = Dataset(
-            id=app_id,
             tenant_id=tenant_id,
             indexing_technique="high_quality",
             embedding_model_provider=embedding_provider_name,
             embedding_model=embedding_model_name,
             collection_binding_id=dataset_collection_binding.id,
         )
+        dataset.id = app_id
         if annotations:
             for annotation in annotations:
                 document = Document(
