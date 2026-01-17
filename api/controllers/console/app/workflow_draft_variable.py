@@ -525,6 +525,7 @@ class ConversationVariableCollectionApi(Resource):
         return {"result": "success"}
 
 
+@console_ns.route("/apps/<uuid:app_id>/workflows/draft/system-variables")
 class SystemVariableCollectionApi(Resource):
     @console_ns.doc("get_system_variables")
     @console_ns.doc(description="Get system variables for workflow")
