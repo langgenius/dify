@@ -55,6 +55,38 @@ export default function SocialAuth(props: SocialAuthProps) {
           </Button>
         </a>
       </div>
+      <div className="w-full">
+        <a href={getOAuthLink('/oauth/login/casdoor')}>
+          <Button
+            disabled={props.disabled}
+            className="w-full"
+          >
+            <>
+              <span className={
+                cn(style.casdoorIcon, 'mr-2 h-5 w-5')
+              }
+              />
+              <span className="truncate leading-normal">{t('withCasdoor', { ns: 'login' })}</span>
+            </>
+          </Button>
+        </a>
+      </div>
+      <div className="w-full">
+        <a href={getOAuthLink('/oauth/login/keystone')}>
+          <Button
+            disabled={props.disabled}
+            className="w-full"
+          >
+            <>
+              <span className={
+                cn(style.keystoneIcon, 'mr-2 h-5 w-5')
+              }
+              />
+              <span className="truncate leading-normal">{t('withKeystone', { ns: 'login' })}</span>
+            </>
+          </Button>
+        </a>
+      </div>
     </>
   )
 }

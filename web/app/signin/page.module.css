@@ -9,3 +9,11 @@ html[data-theme="dark"] .githubIcon {
 .googleIcon {
   background: center/contain url('./assets/google.svg') no-repeat;
 }
+
+.casdoorIcon {
+  background: center/contain url('./assets/casdoor.svg') no-repeat;
+}
+
+.keystoneIcon {
+  background: center/contain url('./assets/keystone.svg') no-repeat;
+}

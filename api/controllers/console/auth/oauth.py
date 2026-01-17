@@ -13,7 +13,7 @@ from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.helper import extract_remote_ip
-from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
+from libs.oauth import CasdoorOAuth, GitHubOAuth, GoogleOAuth, KeystoneOAuth, OAuthUserInfo
 from libs.token import (
     set_access_token_to_cookie,
     set_csrf_token_to_cookie,
@@ -50,7 +50,32 @@ def get_oauth_providers():
                 redirect_uri=dify_config.CONSOLE_API_URL + "/console/api/oauth/authorize/google",
             )
 
-        OAUTH_PROVIDERS = {"github": github_oauth, "google": google_oauth}
+        if not dify_config.CASDOOR_CLIENT_ID or not dify_config.CASDOOR_CLIENT_SECRET or not dify_config.CASDOOR_SERVER_URL:
+            casdoor_oauth = None
+        else:
+            casdoor_oauth = CasdoorOAuth(
+                client_id=dify_config.CASDOOR_CLIENT_ID,
+                client_secret=dify_config.CASDOOR_CLIENT_SECRET,
+                redirect_uri=dify_config.CONSOLE_API_URL + "/console/api/oauth/authorize/casdoor",
+                server_url=dify_config.CASDOOR_SERVER_URL,
+            )
+
+        if not dify_config.KEYSTONE_CLIENT_ID or not dify_config.KEYSTONE_CLIENT_SECRET or not dify_config.KEYSTONE_SERVER_URL:
+            keystone_oauth = None
+        else:
+            keystone_oauth = KeystoneOAuth(
+                client_id=dify_config.KEYSTONE_CLIENT_ID,
+                client_secret=dify_config.KEYSTONE_CLIENT_SECRET,
+                redirect_uri=dify_config.CONSOLE_API_URL + "/console/api/oauth/authorize/keystone",
+                server_url=dify_config.KEYSTONE_SERVER_URL,
+            )
+
+        OAUTH_PROVIDERS = {
+            "github": github_oauth,
+            "google": google_oauth,
+            "casdoor": casdoor_oauth,
+            "keystone": keystone_oauth,
+        }
         return OAUTH_PROVIDERS
 
 
@@ -106,7 +131,9 @@ class OAuthCallback(Resource):
 
         try:
             token = oauth_provider.get_access_token(code)
+            print(token)
             user_info = oauth_provider.get_user_info(token)
+            print(user_info)
         except httpx.RequestError as e:
             error_text = str(e)
             if isinstance(e, httpx.HTTPStatusError):

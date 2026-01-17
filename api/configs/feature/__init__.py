@@ -807,6 +807,36 @@ class AuthConfig(BaseSettings):
         default=None,
     )
 
+    CASDOOR_CLIENT_ID: str | None = Field(
+        description="Casdoor OAuth client ID",
+        default=None,
+    )
+
+    CASDOOR_CLIENT_SECRET: str | None = Field(
+        description="Casdoor OAuth client secret",
+        default=None,
+    )
+
+    CASDOOR_SERVER_URL: str | None = Field(
+        description="Casdoor server URL",
+        default=None,
+    )
+
+    KEYSTONE_CLIENT_ID: str | None = Field(
+        description="Keystone OAuth client ID",
+        default=None,
+    )
+
+    KEYSTONE_CLIENT_SECRET: str | None = Field(
+        description="Keystone OAuth client secret",
+        default=None,
+    )
+
+    KEYSTONE_SERVER_URL: str | None = Field(
+        description="Keystone server URL",
+        default=None,
+    )
+
     ACCESS_TOKEN_EXPIRE_MINUTES: PositiveInt = Field(
         description="Expiration time for access tokens in minutes",
         default=60,
