@@ -183,7 +183,7 @@ spec:
         - name: TENCENT_VECTOR_DB_SHARD
           value: "1"
         - name: TENCENT_VECTOR_DB_REPLICAS
-          value: "2"
+          value: "0"
         - name: TENCENT_VECTOR_DB_ENABLE_HYBRID_SEARCH
           value: "false"
         image: ghcr.io/acedatacloud/dify-api:latest

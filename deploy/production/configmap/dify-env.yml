@@ -18,6 +18,9 @@ data:
   # Behind reverse proxies (EdgeOne / Nginx): respect forwarded headers for correct scheme/port.
   RESPECT_XFORWARD_HEADERS_ENABLED: "true"
 
+  # Tencent VectorDB serverless instances require replicas=0.
+  TENCENT_VECTOR_DB_REPLICAS: "0"
+
   # Plugin daemon tuning (avoid install timeouts in slow networks).
   PIP_MIRROR_URL: "https://mirrors.cloud.tencent.com/pypi/simple"
   # Keep API/plugin-daemon max package size consistent (API uses PLUGIN_MAX_PACKAGE_SIZE, daemon uses MAX_PLUGIN_PACKAGE_SIZE).
