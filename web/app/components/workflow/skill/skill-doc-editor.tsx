@@ -48,7 +48,7 @@ const SkillDocEditor: FC = () => {
   const isImage = isImageFile(fileExtension)
   const isVideo = isVideoFile(fileExtension)
   const isOffice = isOfficeFile(fileExtension)
-  const isEditable = isMarkdown || isCodeOrText
+  const isEditable = useMemo(() => isMarkdown || isCodeOrText, [isMarkdown, isCodeOrText])
 
   const {
     data: fileContent,
@@ -78,7 +78,7 @@ const SkillDocEditor: FC = () => {
       return
     if (dirtyMetadataIds.has(activeTabId))
       return
-    let nextMetadata: Record<string, any> = {}
+    let nextMetadata: Record<string, unknown> = {}
     if (fileContent.metadata) {
       if (typeof fileContent.metadata === 'string') {
         try {
