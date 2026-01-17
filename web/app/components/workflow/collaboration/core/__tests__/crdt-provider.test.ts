@@ -1,47 +1,63 @@
+import type { LoroDoc } from 'loro-crdt'
 import type { Socket } from 'socket.io-client'
 import { CRDTProvider } from '../crdt-provider'
+
+type FakeDocEvent = {
+  by: string
+}
 
 type FakeDoc = {
   export: ReturnType<typeof vi.fn>
   import: ReturnType<typeof vi.fn>
   subscribe: ReturnType<typeof vi.fn>
-  trigger: (event: any) => void
+  trigger: (event: FakeDocEvent) => void
 }
 
 const createFakeDoc = (): FakeDoc => {
-  let handler: ((payload: any) => void) | null = null
+  let handler: ((payload: FakeDocEvent) => void) | null = null
+
+  const exportFn = vi.fn(() => new Uint8Array([1, 2, 3]))
+  const importFn = vi.fn()
+  const subscribeFn = vi.fn((cb: (payload: FakeDocEvent) => void) => {
+    handler = cb
+  })
 
   return {
-    export: vi.fn(() => new Uint8Array([1, 2, 3])),
-    import: vi.fn(),
-    subscribe: vi.fn((cb: (payload: any) => void) => {
-      handler = cb
-    }),
-    trigger: (event: any) => {
+    export: exportFn,
+    import: importFn,
+    subscribe: subscribeFn,
+    trigger: (event: FakeDocEvent) => {
       handler?.(event)
     },
   }
 }
 
-const createMockSocket = () => {
-  const handlers = new Map<string, (...args: any[]) => void>()
+type MockSocket = {
+  trigger: (event: string, ...args: unknown[]) => void
+  emit: ReturnType<typeof vi.fn>
+  on: ReturnType<typeof vi.fn>
+  off: ReturnType<typeof vi.fn>
+}
 
-  const socket: any = {
+const createMockSocket = (): MockSocket => {
+  const handlers = new Map<string, (...args: unknown[]) => void>()
+
+  const socket: MockSocket = {
     emit: vi.fn(),
-    on: vi.fn((event: string, handler: (...args: any[]) => void) => {
+    on: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
       handlers.set(event, handler)
     }),
     off: vi.fn((event: string) => {
       handlers.delete(event)
     }),
-    trigger: (event: string, ...args: any[]) => {
+    trigger: (event: string, ...args: unknown[]) => {
       const handler = handlers.get(event)
       if (handler)
         handler(...args)
     },
   }
 
-  return socket as Socket & { trigger: (event: string, ...args: any[]) => void }
+  return socket
 }
 
 describe('CRDTProvider', () => {
@@ -49,7 +65,7 @@ describe('CRDTProvider', () => {
     const doc = createFakeDoc()
     const socket = createMockSocket()
 
-    const provider = new CRDTProvider(socket, doc as unknown as any)
+    const provider = new CRDTProvider(socket as unknown as Socket, doc as unknown as LoroDoc)
     expect(provider).toBeInstanceOf(CRDTProvider)
 
     doc.trigger({ by: 'local' })
@@ -65,7 +81,7 @@ describe('CRDTProvider', () => {
     const doc = createFakeDoc()
     const socket = createMockSocket()
 
-    const provider = new CRDTProvider(socket, doc as unknown as any)
+    const provider = new CRDTProvider(socket as unknown as Socket, doc as unknown as LoroDoc)
 
     doc.trigger({ by: 'remote' })
 
@@ -77,7 +93,7 @@ describe('CRDTProvider', () => {
     const doc = createFakeDoc()
     const socket = createMockSocket()
 
-    const provider = new CRDTProvider(socket, doc as unknown as any)
+    const provider = new CRDTProvider(socket as unknown as Socket, doc as unknown as LoroDoc)
 
     const payload = new Uint8Array([9, 9, 9])
     socket.trigger('graph_update', payload)
@@ -91,7 +107,7 @@ describe('CRDTProvider', () => {
     const doc = createFakeDoc()
     const socket = createMockSocket()
 
-    const provider = new CRDTProvider(socket, doc as unknown as any)
+    const provider = new CRDTProvider(socket as unknown as Socket, doc as unknown as LoroDoc)
     provider.destroy()
 
     expect(socket.off).toHaveBeenCalledWith('graph_update')
@@ -104,7 +120,7 @@ describe('CRDTProvider', () => {
       throw new Error('boom')
     })
 
-    const provider = new CRDTProvider(socket, doc as unknown as any)
+    const provider = new CRDTProvider(socket as unknown as Socket, doc as unknown as LoroDoc)
 
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
 

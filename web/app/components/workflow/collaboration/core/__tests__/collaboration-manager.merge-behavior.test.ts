@@ -1,3 +1,4 @@
+import type { LoroMap } from 'loro-crdt'
 import type { Node } from '@/app/components/workflow/types'
 import { LoroDoc } from 'loro-crdt'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -7,7 +8,79 @@ const NODE_ID = 'node-1'
 const LLM_NODE_ID = 'llm-node'
 const PARAM_NODE_ID = 'parameter-node'
 
-const createNode = (variables: string[]): Node<Record<string, any>> => ({
+type WorkflowVariable = {
+  variable: string
+  label: string
+  type: string
+  required: boolean
+  default: string
+  max_length: number
+  placeholder: string
+  options: string[]
+  hint: string
+}
+
+type PromptTemplateItem = {
+  id: string
+  role: string
+  text: string
+}
+
+type ParameterItem = {
+  description: string
+  name: string
+  required: boolean
+  type: string
+}
+
+type StartNodeData = {
+  variables: WorkflowVariable[]
+}
+
+type LLMNodeData = {
+  model: {
+    mode: string
+    name: string
+    provider: string
+    completion_params: {
+      temperature: number
+    }
+  }
+  context: {
+    enabled: boolean
+    variable_selector: string[]
+  }
+  vision: {
+    enabled: boolean
+  }
+  prompt_template: PromptTemplateItem[]
+}
+
+type ParameterExtractorNodeData = {
+  model: {
+    mode: string
+    name: string
+    provider: string
+    completion_params: {
+      temperature: number
+    }
+  }
+  parameters: ParameterItem[]
+  query: unknown[]
+  reasoning_mode: string
+  vision: {
+    enabled: boolean
+  }
+}
+
+type CollaborationManagerInternals = {
+  doc: LoroDoc
+  nodesMap: LoroMap
+  edgesMap: LoroMap
+  syncNodes: (oldNodes: Node[], newNodes: Node[]) => void
+}
+
+const createNode = (variables: string[]): Node<StartNodeData> => ({
   id: NODE_ID,
   type: 'custom',
   position: { x: 0, y: 0 },
@@ -29,7 +102,7 @@ const createNode = (variables: string[]): Node<Record<string, any>> => ({
   },
 })
 
-const createLLMNode = (templates: Array<{ id: string, role: string, text: string }>): Node<Record<string, any>> => ({
+const createLLMNode = (templates: PromptTemplateItem[]): Node<LLMNodeData> => ({
   id: LLM_NODE_ID,
   type: 'custom',
   position: { x: 200, y: 200 },
@@ -57,7 +130,7 @@ const createLLMNode = (templates: Array<{ id: string, role: string, text: string
   },
 })
 
-const createParameterExtractorNode = (parameters: Array<{ description: string, name: string, required: boolean, type: string }>): Node<Record<string, any>> => ({
+const createParameterExtractorNode = (parameters: ParameterItem[]): Node<ParameterExtractorNodeData> => ({
   id: PARAM_NODE_ID,
   type: 'custom',
   position: { x: 400, y: 120 },
@@ -83,18 +156,23 @@ const createParameterExtractorNode = (parameters: Array<{ description: string, n
   },
 })
 
+const getManagerInternals = (manager: CollaborationManager): CollaborationManagerInternals =>
+  manager as unknown as CollaborationManagerInternals
+
 const getManager = (doc: LoroDoc) => {
   const manager = new CollaborationManager()
-  ;(manager as any).doc = doc
-  ;(manager as any).nodesMap = doc.getMap('nodes')
-  ;(manager as any).edgesMap = doc.getMap('edges')
+  const internals = getManagerInternals(manager)
+  internals.doc = doc
+  internals.nodesMap = doc.getMap('nodes')
+  internals.edgesMap = doc.getMap('edges')
   return manager
 }
 
 const deepClone = <T>(value: T): T => JSON.parse(JSON.stringify(value))
 
 const syncNodes = (manager: CollaborationManager, previous: Node[], next: Node[]) => {
-  ;(manager as any).syncNodes(previous, next)
+  const internals = getManagerInternals(manager)
+  internals.syncNodes(previous, next)
 }
 
 const exportNodes = (manager: CollaborationManager) => manager.getNodes()
@@ -121,10 +199,6 @@ describe('Loro merge behavior smoke test', () => {
 
     const finalA = exportNodes(managerA)
     const finalB = exportNodes(managerB)
-
-    console.log('Final nodes on docA:', JSON.stringify(finalA, null, 2))
-
-    console.log('Final nodes on docB:', JSON.stringify(finalB, null, 2))
     expect(finalA.length).toBe(1)
     expect(finalB.length).toBe(1)
   })
@@ -171,8 +245,8 @@ describe('Loro merge behavior smoke test', () => {
     const updateForB = docA.export({ mode: 'update', from: docB.version() })
     docB.import(updateForB)
 
-    const finalA = exportNodes(managerA).find(node => node.id === LLM_NODE_ID)
-    const finalB = exportNodes(managerB).find(node => node.id === LLM_NODE_ID)
+    const finalA = exportNodes(managerA).find(node => node.id === LLM_NODE_ID) as Node<LLMNodeData> | undefined
+    const finalB = exportNodes(managerB).find(node => node.id === LLM_NODE_ID) as Node<LLMNodeData> | undefined
 
     expect(finalA).toBeDefined()
     expect(finalB).toBeDefined()
@@ -190,8 +264,8 @@ describe('Loro merge behavior smoke test', () => {
       },
     ]
 
-    expect((finalA!.data as any).prompt_template).toEqual(expectedTemplates)
-    expect((finalB!.data as any).prompt_template).toEqual(expectedTemplates)
+    expect(finalA!.data.prompt_template).toEqual(expectedTemplates)
+    expect(finalB!.data.prompt_template).toEqual(expectedTemplates)
   })
 
   it('converges when parameter lists are edited concurrently', () => {
@@ -213,13 +287,21 @@ describe('Loro merge behavior smoke test', () => {
       { description: 'dd', name: 'cc', required: false, type: 'string' },
       { description: 'new from A', name: 'ee', required: false, type: 'number' },
     ]
-    syncNodes(managerA, [createParameterExtractorNode(deepClone(baseParameters))], [createParameterExtractorNode(deepClone(docAUpdate))])
+    syncNodes(
+      managerA,
+      [createParameterExtractorNode(deepClone(baseParameters))],
+      [createParameterExtractorNode(deepClone(docAUpdate))],
+    )
 
     const docBUpdate = [
       { description: 'bb', name: 'aa', required: false, type: 'string' },
       { description: 'dd updated by B', name: 'cc', required: true, type: 'string' },
     ]
-    syncNodes(managerB, [createParameterExtractorNode(deepClone(baseParameters))], [createParameterExtractorNode(deepClone(docBUpdate))])
+    syncNodes(
+      managerB,
+      [createParameterExtractorNode(deepClone(baseParameters))],
+      [createParameterExtractorNode(deepClone(docBUpdate))],
+    )
 
     const updateForA = docB.export({ mode: 'update', from: docA.version() })
     docA.import(updateForA)
@@ -227,8 +309,12 @@ describe('Loro merge behavior smoke test', () => {
     const updateForB = docA.export({ mode: 'update', from: docB.version() })
     docB.import(updateForB)
 
-    const finalA = exportNodes(managerA).find(node => node.id === PARAM_NODE_ID)
-    const finalB = exportNodes(managerB).find(node => node.id === PARAM_NODE_ID)
+    const finalA = exportNodes(managerA).find(node => node.id === PARAM_NODE_ID) as
+      | Node<ParameterExtractorNodeData>
+      | undefined
+    const finalB = exportNodes(managerB).find(node => node.id === PARAM_NODE_ID) as
+      | Node<ParameterExtractorNodeData>
+      | undefined
 
     expect(finalA).toBeDefined()
     expect(finalB).toBeDefined()
@@ -239,7 +325,7 @@ describe('Loro merge behavior smoke test', () => {
       { description: 'new from A', name: 'ee', required: false, type: 'number' },
     ]
 
-    expect((finalA!.data as any).parameters).toEqual(expectedParameters)
-    expect((finalB!.data as any).parameters).toEqual(expectedParameters)
+    expect(finalA!.data.parameters).toEqual(expectedParameters)
+    expect(finalB!.data.parameters).toEqual(expectedParameters)
   })
 })

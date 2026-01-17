@@ -1,39 +1,53 @@
-import type { Socket } from 'socket.io-client'
+type MockSocket = {
+  trigger: (event: string, ...args: unknown[]) => void
+  emit: ReturnType<typeof vi.fn>
+  on: ReturnType<typeof vi.fn>
+  disconnect: ReturnType<typeof vi.fn>
+  connected: boolean
+}
+
+type IoOptions = {
+  auth?: { token?: string }
+  path?: string
+  transports?: string[]
+  withCredentials?: boolean
+}
 
 const ioMock = vi.hoisted(() => vi.fn())
 
 vi.mock('socket.io-client', () => ({
-  io: (...args: any[]) => ioMock(...args),
+  io: (...args: Parameters<typeof ioMock>) => ioMock(...args),
 }))
 
-type MockSocket = Socket & {
-  trigger: (event: string, ...args: any[]) => void
-  emit: ReturnType<typeof vi.fn>
-  on: ReturnType<typeof vi.fn>
-  disconnect: ReturnType<typeof vi.fn>
-}
-
 const createMockSocket = (id: string): MockSocket => {
-  const handlers = new Map<string, (...args: any[]) => void>()
+  const handlers = new Map<string, (...args: unknown[]) => void>()
 
-  const socket: any = {
+  const socket: MockSocket & { id: string } = {
     id,
     connected: true,
     emit: vi.fn(),
     disconnect: vi.fn(() => {
       socket.connected = false
     }),
-    on: vi.fn((event: string, handler: (...args: any[]) => void) => {
+    on: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
       handlers.set(event, handler)
     }),
-    trigger: (event: string, ...args: any[]) => {
+    trigger: (event: string, ...args: unknown[]) => {
       const handler = handlers.get(event)
       if (handler)
         handler(...args)
     },
   }
 
-  return socket as MockSocket
+  return socket
+}
+
+const setGlobalWindow = (value?: typeof window): void => {
+  const globalWithWindow = globalThis as Partial<typeof globalThis> & { window?: typeof window }
+  if (value)
+    globalWithWindow.window = value
+  else
+    delete globalWithWindow.window
 }
 
 describe('WebSocketClient', () => {
@@ -47,13 +61,13 @@ describe('WebSocketClient', () => {
 
   afterEach(() => {
     if (originalWindow)
-      globalThis.window = originalWindow
+      setGlobalWindow(originalWindow)
     else
-      delete (globalThis as any).window
+      setGlobalWindow(undefined)
   })
 
   it('connects with fallback url and registers base listeners when window is undefined', async () => {
-    delete (globalThis as any).window
+    setGlobalWindow(undefined)
 
     const mockSocket = createMockSocket('socket-fallback')
     ioMock.mockImplementation(() => mockSocket)
@@ -92,17 +106,17 @@ describe('WebSocketClient', () => {
 
   it('attaches auth token from localStorage and emits user_connect on connect', async () => {
     const mockSocket = createMockSocket('socket-auth')
-    ioMock.mockImplementation((url: string, options: { auth?: { token?: string } }) => {
+    ioMock.mockImplementation((url: string, options: IoOptions) => {
       expect(options.auth).toEqual({ token: 'secret-token' })
       return mockSocket
     })
 
-    globalThis.window = {
+    setGlobalWindow({
       location: { protocol: 'https:', host: 'example.com' },
       localStorage: {
         getItem: vi.fn(() => 'secret-token'),
       },
-    } as unknown as typeof window
+    } as unknown as typeof window)
 
     const { WebSocketClient } = await import('../websocket-manager')
     const client = new WebSocketClient()

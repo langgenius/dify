@@ -1,5 +1,9 @@
-import type { NodePanelPresenceMap, NodePanelPresenceUser } from '@/app/components/workflow/collaboration/types/collaboration'
-import type { Edge, Node } from '@/app/components/workflow/types'
+import type { LoroMap } from 'loro-crdt'
+import type {
+  NodePanelPresenceMap,
+  NodePanelPresenceUser,
+} from '@/app/components/workflow/collaboration/types/collaboration'
+import type { CommonNodeType, Edge, Node } from '@/app/components/workflow/types'
 import { LoroDoc } from 'loro-crdt'
 import { Position } from 'reactflow'
 import { CollaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
@@ -32,6 +36,72 @@ type ParameterItem = {
   type: string
 }
 
+type NodePanelPresenceEventData = {
+  nodeId: string
+  action: 'open' | 'close'
+  user: NodePanelPresenceUser
+  clientId: string
+  timestamp?: number
+}
+
+type StartNodeData = {
+  variables: WorkflowVariable[]
+}
+
+type LLMNodeData = {
+  context: {
+    enabled: boolean
+    variable_selector: string[]
+  }
+  model: {
+    mode: string
+    name: string
+    provider: string
+    completion_params: {
+      temperature: number
+    }
+  }
+  prompt_template: PromptTemplateItem[]
+  vision: {
+    enabled: boolean
+  }
+}
+
+type ParameterExtractorNodeData = {
+  model: {
+    mode: string
+    name: string
+    provider: string
+    completion_params: {
+      temperature: number
+    }
+  }
+  parameters: ParameterItem[]
+  query: unknown[]
+  reasoning_mode: string
+  vision: {
+    enabled: boolean
+  }
+}
+
+type LLMNodeDataWithUnknownTemplate = Omit<LLMNodeData, 'prompt_template'> & {
+  prompt_template: unknown
+}
+
+type ManagerDoc = LoroDoc | { commit: () => void }
+
+type CollaborationManagerInternals = {
+  doc: ManagerDoc
+  nodesMap: LoroMap
+  edgesMap: LoroMap
+  syncNodes: (oldNodes: Node[], newNodes: Node[]) => void
+  syncEdges: (oldEdges: Edge[], newEdges: Edge[]) => void
+  applyNodePanelPresenceUpdate: (update: NodePanelPresenceEventData) => void
+  forceDisconnect: () => void
+  activeConnections: Set<string>
+  isUndoRedoInProgress: boolean
+}
+
 const createVariable = (name: string, overrides: Partial<WorkflowVariable> = {}): WorkflowVariable => ({
   default: '',
   hint: '',
@@ -47,7 +117,7 @@ const createVariable = (name: string, overrides: Partial<WorkflowVariable> = {})
 
 const deepClone = <T>(value: T): T => JSON.parse(JSON.stringify(value))
 
-const createNodeSnapshot = (variableNames: string[]): Node<{ variables: WorkflowVariable[] }> => ({
+const createNodeSnapshot = (variableNames: string[]): Node<StartNodeData> => ({
   id: NODE_ID,
   type: 'custom',
   position: { x: 0, y: 24 },
@@ -71,7 +141,7 @@ const createNodeSnapshot = (variableNames: string[]): Node<{ variables: Workflow
 const LLM_NODE_ID = 'llm-node'
 const PARAM_NODE_ID = 'param-extractor-node'
 
-const createLLMNodeSnapshot = (promptTemplates: PromptTemplateItem[]): Node<Record<string, any>> => ({
+const createLLMNodeSnapshot = (promptTemplates: PromptTemplateItem[]): Node<LLMNodeData> => ({
   id: LLM_NODE_ID,
   type: 'custom',
   position: { x: 200, y: 120 },
@@ -107,7 +177,7 @@ const createLLMNodeSnapshot = (promptTemplates: PromptTemplateItem[]): Node<Reco
   },
 })
 
-const createParameterExtractorNodeSnapshot = (parameters: ParameterItem[]): Node<Record<string, any>> => ({
+const createParameterExtractorNodeSnapshot = (parameters: ParameterItem[]): Node<ParameterExtractorNodeData> => ({
   id: PARAM_NODE_ID,
   type: 'custom',
   position: { x: 420, y: 220 },
@@ -142,43 +212,58 @@ const createParameterExtractorNodeSnapshot = (parameters: ParameterItem[]): Node
 })
 
 const getVariables = (node: Node): string[] => {
-  const variables = (node.data as any)?.variables ?? []
-  return variables.map((item: WorkflowVariable) => item.variable)
+  const data = node.data as CommonNodeType<{ variables?: WorkflowVariable[] }>
+  const variables = data.variables ?? []
+  return variables.map(item => item.variable)
 }
 
 const getVariableObject = (node: Node, name: string): WorkflowVariable | undefined => {
-  const variables = (node.data as any)?.variables ?? []
-  return variables.find((item: WorkflowVariable) => item.variable === name)
+  const data = node.data as CommonNodeType<{ variables?: WorkflowVariable[] }>
+  const variables = data.variables ?? []
+  return variables.find(item => item.variable === name)
 }
 
 const getPromptTemplates = (node: Node): PromptTemplateItem[] => {
-  return ((node.data as any)?.prompt_template ?? []) as PromptTemplateItem[]
+  const data = node.data as CommonNodeType<{ prompt_template?: PromptTemplateItem[] }>
+  return data.prompt_template ?? []
 }
 
 const getParameters = (node: Node): ParameterItem[] => {
-  return ((node.data as any)?.parameters ?? []) as ParameterItem[]
+  const data = node.data as CommonNodeType<{ parameters?: ParameterItem[] }>
+  return data.parameters ?? []
+}
+
+const getManagerInternals = (manager: CollaborationManager): CollaborationManagerInternals =>
+  manager as unknown as CollaborationManagerInternals
+
+const setupManager = (): { manager: CollaborationManager, internals: CollaborationManagerInternals } => {
+  const manager = new CollaborationManager()
+  const doc = new LoroDoc()
+  const internals = getManagerInternals(manager)
+  internals.doc = doc
+  internals.nodesMap = doc.getMap('nodes')
+  internals.edgesMap = doc.getMap('edges')
+  return { manager, internals }
 }
 
 describe('CollaborationManager syncNodes', () => {
   let manager: CollaborationManager
+  let internals: CollaborationManagerInternals
 
   beforeEach(() => {
-    manager = new CollaborationManager()
-    // Bypass private guards for targeted unit testing
-    const doc = new LoroDoc()
-    ;(manager as any).doc = doc
-    ;(manager as any).nodesMap = doc.getMap('nodes')
-    ;(manager as any).edgesMap = doc.getMap('edges')
+    const setup = setupManager()
+    manager = setup.manager
+    internals = setup.internals
 
     const initialNode = createNodeSnapshot(['a'])
-    ;(manager as any).syncNodes([], [deepClone(initialNode)])
+    internals.syncNodes([], [deepClone(initialNode)])
   })
 
   it('updates collaborators map when a single client adds a variable', () => {
     const base = [createNodeSnapshot(['a'])]
     const next = [createNodeSnapshot(['a', 'b'])]
 
-    ;(manager as any).syncNodes(base, next)
+    internals.syncNodes(base, next)
 
     const stored = (manager.getNodes() as Node[]).find(node => node.id === NODE_ID)
     expect(stored).toBeDefined()
@@ -190,12 +275,12 @@ describe('CollaborationManager syncNodes', () => {
     const userA = [createNodeSnapshot(['a', 'b'])]
     const userB = [createNodeSnapshot(['a', 'c'])]
 
-    ;(manager as any).syncNodes(base, userA)
+    internals.syncNodes(base, userA)
 
     const afterUserA = (manager.getNodes() as Node[]).find(node => node.id === NODE_ID)
     expect(getVariables(afterUserA!)).toEqual(['a', 'b'])
 
-    ;(manager as any).syncNodes(base, userB)
+    internals.syncNodes(base, userB)
 
     const finalNode = (manager.getNodes() as Node[]).find(node => node.id === NODE_ID)
     const finalVariables = getVariables(finalNode!)
@@ -228,8 +313,8 @@ describe('CollaborationManager syncNodes', () => {
       },
     ]
 
-    ;(manager as any).syncNodes(base, userA)
-    ;(manager as any).syncNodes(base, userB)
+    internals.syncNodes(base, userA)
+    internals.syncNodes(base, userB)
 
     const finalNode = (manager.getNodes() as Node[]).find(node => node.id === NODE_ID)
     const finalVariable = getVariableObject(finalNode!, 'a')
@@ -240,7 +325,7 @@ describe('CollaborationManager syncNodes', () => {
 
   it('reflects the last writer when concurrent removal and edits happen', () => {
     const base = [createNodeSnapshot(['a', 'b'])]
-    ;(manager as any).syncNodes([], [deepClone(base[0])])
+    internals.syncNodes([], [deepClone(base[0])])
     const userA = [
       {
         ...createNodeSnapshot(['a']),
@@ -265,8 +350,8 @@ describe('CollaborationManager syncNodes', () => {
       },
     ]
 
-    ;(manager as any).syncNodes(base, userA)
-    ;(manager as any).syncNodes(base, userB)
+    internals.syncNodes(base, userA)
+    internals.syncNodes(base, userB)
 
     const finalNode = (manager.getNodes() as Node[]).find(node => node.id === NODE_ID)
     const finalVariables = getVariables(finalNode!)
@@ -275,11 +360,7 @@ describe('CollaborationManager syncNodes', () => {
   })
 
   it('synchronizes prompt_template list updates across collaborators', () => {
-    const promptManager = new CollaborationManager()
-    const doc = new LoroDoc()
-    ;(promptManager as any).doc = doc
-    ;(promptManager as any).nodesMap = doc.getMap('nodes')
-    ;(promptManager as any).edgesMap = doc.getMap('edges')
+    const { manager: promptManager, internals: promptInternals } = setupManager()
 
     const baseTemplate = [
       {
@@ -290,7 +371,7 @@ describe('CollaborationManager syncNodes', () => {
     ]
 
     const baseNode = createLLMNodeSnapshot(baseTemplate)
-    ;(promptManager as any).syncNodes([], [deepClone(baseNode)])
+    promptInternals.syncNodes([], [deepClone(baseNode)])
 
     const updatedTemplates = [
       ...baseTemplate,
@@ -302,7 +383,7 @@ describe('CollaborationManager syncNodes', () => {
     ]
 
     const updatedNode = createLLMNodeSnapshot(updatedTemplates)
-    ;(promptManager as any).syncNodes([deepClone(baseNode)], [deepClone(updatedNode)])
+    promptInternals.syncNodes([deepClone(baseNode)], [deepClone(updatedNode)])
 
     const stored = (promptManager.getNodes() as Node[]).find(node => node.id === LLM_NODE_ID)
     expect(stored).toBeDefined()
@@ -321,7 +402,7 @@ describe('CollaborationManager syncNodes', () => {
     ]
     const editedNode = createLLMNodeSnapshot(editedTemplates)
 
-    ;(promptManager as any).syncNodes([deepClone(updatedNode)], [deepClone(editedNode)])
+    promptInternals.syncNodes([deepClone(updatedNode)], [deepClone(editedNode)])
 
     const final = (promptManager.getNodes() as Node[]).find(node => node.id === LLM_NODE_ID)
     const finalTemplates = getPromptTemplates(final!)
@@ -330,11 +411,7 @@ describe('CollaborationManager syncNodes', () => {
   })
 
   it('keeps parameter list in sync when nodes add, edit, or remove parameters', () => {
-    const parameterManager = new CollaborationManager()
-    const doc = new LoroDoc()
-    ;(parameterManager as any).doc = doc
-    ;(parameterManager as any).nodesMap = doc.getMap('nodes')
-    ;(parameterManager as any).edgesMap = doc.getMap('edges')
+    const { manager: parameterManager, internals: parameterInternals } = setupManager()
 
     const baseParameters: ParameterItem[] = [
       { description: 'bb', name: 'aa', required: false, type: 'string' },
@@ -342,7 +419,7 @@ describe('CollaborationManager syncNodes', () => {
     ]
 
     const baseNode = createParameterExtractorNodeSnapshot(baseParameters)
-    ;(parameterManager as any).syncNodes([], [deepClone(baseNode)])
+    parameterInternals.syncNodes([], [deepClone(baseNode)])
 
     const updatedParameters: ParameterItem[] = [
       ...baseParameters,
@@ -350,7 +427,7 @@ describe('CollaborationManager syncNodes', () => {
     ]
 
     const updatedNode = createParameterExtractorNodeSnapshot(updatedParameters)
-    ;(parameterManager as any).syncNodes([deepClone(baseNode)], [deepClone(updatedNode)])
+    parameterInternals.syncNodes([deepClone(baseNode)], [deepClone(updatedNode)])
 
     const stored = (parameterManager.getNodes() as Node[]).find(node => node.id === PARAM_NODE_ID)
     expect(stored).toBeDefined()
@@ -361,7 +438,7 @@ describe('CollaborationManager syncNodes', () => {
     ]
     const editedNode = createParameterExtractorNodeSnapshot(editedParameters)
 
-    ;(parameterManager as any).syncNodes([deepClone(updatedNode)], [deepClone(editedNode)])
+    parameterInternals.syncNodes([deepClone(updatedNode)], [deepClone(editedNode)])
 
     const final = (parameterManager.getNodes() as Node[]).find(node => node.id === PARAM_NODE_ID)
     expect(getParameters(final!)).toEqual(editedParameters)
@@ -372,10 +449,10 @@ describe('CollaborationManager syncNodes', () => {
       id: 'empty-node',
       type: 'custom',
       position: { x: 0, y: 0 },
-      data: undefined as any,
+      data: undefined as unknown as CommonNodeType<Record<string, never>>,
     }
 
-    ;(manager as any).syncNodes([], [deepClone(emptyNode)])
+    internals.syncNodes([], [deepClone(emptyNode)])
 
     const stored = (manager.getNodes() as Node[]).find(node => node.id === 'empty-node')
     expect(stored).toBeDefined()
@@ -383,64 +460,60 @@ describe('CollaborationManager syncNodes', () => {
   })
 
   it('preserves CRDT list instances when synchronizing parsed state back into the manager', () => {
-    const promptManager = new CollaborationManager()
-    const doc = new LoroDoc()
-    ;(promptManager as any).doc = doc
-    ;(promptManager as any).nodesMap = doc.getMap('nodes')
-    ;(promptManager as any).edgesMap = doc.getMap('edges')
+    const { manager: promptManager, internals: promptInternals } = setupManager()
 
     const base = createLLMNodeSnapshot([
       { id: 'system', role: 'system', text: 'base' },
     ])
-    ;(promptManager as any).syncNodes([], [deepClone(base)])
+    promptInternals.syncNodes([], [deepClone(base)])
 
-    const storedBefore = promptManager.getNodes().find(node => node.id === LLM_NODE_ID) as Node<Record<string, any>> | undefined
-    const firstTemplate = (storedBefore?.data as any).prompt_template?.[0]
+    const storedBefore = promptManager.getNodes().find(node => node.id === LLM_NODE_ID) as Node<LLMNodeData> | undefined
+    expect(storedBefore).toBeDefined()
+    const firstTemplate = storedBefore?.data.prompt_template?.[0]
     expect(firstTemplate?.text).toBe('base')
 
     // simulate consumer mutating the plain JSON array and syncing back
-    const mutatedNode = deepClone(storedBefore!) as Node<Record<string, any>>
+    const baseNode = storedBefore!
+    const mutatedNode = deepClone(baseNode)
     mutatedNode.data.prompt_template.push({
       id: 'user',
       role: 'user',
       text: 'mutated',
     })
 
-    ;(promptManager as any).syncNodes([storedBefore], [mutatedNode])
+    promptInternals.syncNodes([baseNode], [mutatedNode])
 
-    const storedAfter = promptManager.getNodes().find(node => node.id === LLM_NODE_ID)
-    const templatesAfter = (storedAfter?.data as any).prompt_template
+    const storedAfter = promptManager.getNodes().find(node => node.id === LLM_NODE_ID) as Node<LLMNodeData> | undefined
+    const templatesAfter = storedAfter?.data.prompt_template
     expect(Array.isArray(templatesAfter)).toBe(true)
     expect(templatesAfter).toHaveLength(2)
   })
 
   it('reuses CRDT list when syncing parameters repeatedly', () => {
-    const parameterManager = new CollaborationManager()
-    const doc = new LoroDoc()
-    ;(parameterManager as any).doc = doc
-    ;(parameterManager as any).nodesMap = doc.getMap('nodes')
-    ;(parameterManager as any).edgesMap = doc.getMap('edges')
+    const { manager: parameterManager, internals: parameterInternals } = setupManager()
 
     const initialParameters: ParameterItem[] = [
       { description: 'desc', name: 'param', required: false, type: 'string' },
     ]
     const node = createParameterExtractorNodeSnapshot(initialParameters)
-    ;(parameterManager as any).syncNodes([], [deepClone(node)])
+    parameterInternals.syncNodes([], [deepClone(node)])
 
-    const stored = parameterManager.getNodes().find(n => n.id === PARAM_NODE_ID) as Node<Record<string, any>>
-    const mutatedNode = deepClone(stored) as Node<Record<string, any>>
+    const stored = parameterManager.getNodes().find(n => n.id === PARAM_NODE_ID) as Node<ParameterExtractorNodeData>
+    const mutatedNode = deepClone(stored)
     mutatedNode.data.parameters[0].description = 'updated'
 
-    ;(parameterManager as any).syncNodes([stored], [mutatedNode])
+    parameterInternals.syncNodes([stored], [mutatedNode])
 
-    const storedAfter = parameterManager.getNodes().find(n => n.id === PARAM_NODE_ID)!
-    const params = (storedAfter.data as any).parameters
+    const storedAfter = parameterManager.getNodes().find(n => n.id === PARAM_NODE_ID) as
+      | Node<ParameterExtractorNodeData>
+      | undefined
+    const params = storedAfter?.data.parameters ?? []
     expect(params).toHaveLength(1)
     expect(params[0].description).toBe('updated')
   })
 
   it('filters out transient/private data keys while keeping allowlisted ones', () => {
-    const nodeWithPrivate: Node<Record<string, any>> = {
+    const nodeWithPrivate: Node<{ _foo: string, variables: WorkflowVariable[] }> = {
       id: 'private-node',
       type: 'custom',
       position: { x: 0, y: 0 },
@@ -455,58 +528,52 @@ describe('CollaborationManager syncNodes', () => {
       },
     }
 
-    ;(manager as any).syncNodes([], [deepClone(nodeWithPrivate)])
+    internals.syncNodes([], [deepClone(nodeWithPrivate)])
 
     const stored = (manager.getNodes() as Node[]).find(node => node.id === 'private-node')!
-    expect((stored.data as any)._foo).toBeUndefined()
-    expect((stored.data as any)._children).toEqual([{ nodeId: 'child-a', nodeType: BlockEnum.Start }])
-    expect((stored.data as any).selected).toBeUndefined()
+    const storedData = stored.data as CommonNodeType<{ _foo?: string }>
+    expect(storedData._foo).toBeUndefined()
+    expect(storedData._children).toEqual([{ nodeId: 'child-a', nodeType: BlockEnum.Start }])
+    expect(storedData.selected).toBeUndefined()
   })
 
   it('removes list fields when they are omitted in the update snapshot', () => {
     const baseNode = createNodeSnapshot(['alpha'])
-    ;(manager as any).syncNodes([], [deepClone(baseNode)])
+    internals.syncNodes([], [deepClone(baseNode)])
 
-    const withoutVariables: Node = {
+    const withoutVariables: Node<StartNodeData> = {
       ...deepClone(baseNode),
       data: {
         ...deepClone(baseNode).data,
       },
     }
-    delete (withoutVariables.data as any).variables
+    delete (withoutVariables.data as CommonNodeType<{ variables?: WorkflowVariable[] }>).variables
 
-    ;(manager as any).syncNodes([deepClone(baseNode)], [withoutVariables])
+    internals.syncNodes([deepClone(baseNode)], [withoutVariables])
 
     const stored = (manager.getNodes() as Node[]).find(node => node.id === NODE_ID)!
-    expect((stored.data as any).variables).toBeUndefined()
+    const storedData = stored.data as CommonNodeType<{ variables?: WorkflowVariable[] }>
+    expect(storedData.variables).toBeUndefined()
   })
 
   it('treats non-array list inputs as empty lists during synchronization', () => {
-    const promptManager = new CollaborationManager()
-    const doc = new LoroDoc()
-    ;(promptManager as any).doc = doc
-    ;(promptManager as any).nodesMap = doc.getMap('nodes')
-    ;(promptManager as any).edgesMap = doc.getMap('edges')
+    const { manager: promptManager, internals: promptInternals } = setupManager()
 
-    const nodeWithInvalidTemplate = createLLMNodeSnapshot([] as any)
-    ;(promptManager as any).syncNodes([], [deepClone(nodeWithInvalidTemplate)])
+    const nodeWithInvalidTemplate = createLLMNodeSnapshot([])
+    promptInternals.syncNodes([], [deepClone(nodeWithInvalidTemplate)])
 
-    const mutated = deepClone(nodeWithInvalidTemplate)
-    ;(mutated.data as any).prompt_template = 'not-an-array'
+    const mutated = deepClone(nodeWithInvalidTemplate) as Node<LLMNodeDataWithUnknownTemplate>
+    mutated.data.prompt_template = 'not-an-array'
 
-    ;(promptManager as any).syncNodes([deepClone(nodeWithInvalidTemplate)], [mutated])
+    promptInternals.syncNodes([deepClone(nodeWithInvalidTemplate)], [mutated])
 
-    const stored = promptManager.getNodes().find(node => node.id === LLM_NODE_ID)!
-    expect(Array.isArray((stored.data as any).prompt_template)).toBe(true)
-    expect((stored.data as any).prompt_template).toHaveLength(0)
+    const stored = promptManager.getNodes().find(node => node.id === LLM_NODE_ID) as Node<LLMNodeData>
+    expect(Array.isArray(stored.data.prompt_template)).toBe(true)
+    expect(stored.data.prompt_template).toHaveLength(0)
   })
 
   it('updates edges map when edges are added, modified, and removed', () => {
-    const edgeManager = new CollaborationManager()
-    const doc = new LoroDoc()
-    ;(edgeManager as any).doc = doc
-    ;(edgeManager as any).nodesMap = doc.getMap('nodes')
-    ;(edgeManager as any).edgesMap = doc.getMap('edges')
+    const { manager: edgeManager } = setupManager()
 
     const edge: Edge = {
       id: 'edge-1',
@@ -520,7 +587,7 @@ describe('CollaborationManager syncNodes', () => {
       },
     }
 
-    ;(edgeManager as any).setEdges([], [edge])
+    edgeManager.setEdges([], [edge])
     expect(edgeManager.getEdges()).toHaveLength(1)
     const storedEdge = edgeManager.getEdges()[0]!
     expect(storedEdge.data).toBeDefined()
@@ -534,19 +601,20 @@ describe('CollaborationManager syncNodes', () => {
         _waitingRun: true,
       },
     }
-    ;(edgeManager as any).setEdges([edge], [updatedEdge])
+    edgeManager.setEdges([edge], [updatedEdge])
     expect(edgeManager.getEdges()).toHaveLength(1)
     const updatedStoredEdge = edgeManager.getEdges()[0]!
     expect(updatedStoredEdge.data).toBeDefined()
     expect(updatedStoredEdge.data!._waitingRun).toBe(true)
 
-    ;(edgeManager as any).setEdges([updatedEdge], [])
+    edgeManager.setEdges([updatedEdge], [])
     expect(edgeManager.getEdges()).toHaveLength(0)
   })
 })
 
 describe('CollaborationManager public API wrappers', () => {
   let manager: CollaborationManager
+  let internals: CollaborationManagerInternals
   const baseNodes: Node[] = []
   const updatedNodes: Node[] = [
     {
@@ -576,12 +644,13 @@ describe('CollaborationManager public API wrappers', () => {
 
   beforeEach(() => {
     manager = new CollaborationManager()
+    internals = getManagerInternals(manager)
   })
 
   it('setNodes delegates to syncNodes and commits the CRDT document', () => {
     const commit = vi.fn()
-    ;(manager as any).doc = { commit }
-    const syncSpy = vi.spyOn(manager as any, 'syncNodes').mockImplementation(() => undefined)
+    internals.doc = { commit }
+    const syncSpy = vi.spyOn(internals, 'syncNodes').mockImplementation(() => undefined)
 
     manager.setNodes(baseNodes, updatedNodes)
 
@@ -592,9 +661,9 @@ describe('CollaborationManager public API wrappers', () => {
 
   it('setNodes skips syncing when undo/redo replay is running', () => {
     const commit = vi.fn()
-    ;(manager as any).doc = { commit }
-    ;(manager as any).isUndoRedoInProgress = true
-    const syncSpy = vi.spyOn(manager as any, 'syncNodes').mockImplementation(() => undefined)
+    internals.doc = { commit }
+    internals.isUndoRedoInProgress = true
+    const syncSpy = vi.spyOn(internals, 'syncNodes').mockImplementation(() => undefined)
 
     manager.setNodes(baseNodes, updatedNodes)
 
@@ -605,8 +674,8 @@ describe('CollaborationManager public API wrappers', () => {
 
   it('setEdges delegates to syncEdges and commits the CRDT document', () => {
     const commit = vi.fn()
-    ;(manager as any).doc = { commit }
-    const syncSpy = vi.spyOn(manager as any, 'syncEdges').mockImplementation(() => undefined)
+    internals.doc = { commit }
+    const syncSpy = vi.spyOn(internals, 'syncEdges').mockImplementation(() => undefined)
 
     manager.setEdges(baseEdges, updatedEdges)
 
@@ -616,9 +685,9 @@ describe('CollaborationManager public API wrappers', () => {
   })
 
   it('disconnect tears down the collaboration state only when last connection closes', () => {
-    const forceSpy = vi.spyOn(manager as any, 'forceDisconnect').mockImplementation(() => undefined)
-    ;(manager as any).activeConnections.add('conn-a')
-    ;(manager as any).activeConnections.add('conn-b')
+    const forceSpy = vi.spyOn(internals, 'forceDisconnect').mockImplementation(() => undefined)
+    internals.activeConnections.add('conn-a')
+    internals.activeConnections.add('conn-b')
 
     manager.disconnect('conn-a')
     expect(forceSpy).not.toHaveBeenCalled()
@@ -636,7 +705,7 @@ describe('CollaborationManager public API wrappers', () => {
 
     const user: NodePanelPresenceUser = { userId: 'user-1', username: 'Dana' }
 
-    ;(manager as any).applyNodePanelPresenceUpdate({
+    internals.applyNodePanelPresenceUpdate({
       nodeId: 'node-a',
       action: 'open',
       user,
@@ -644,7 +713,7 @@ describe('CollaborationManager public API wrappers', () => {
       timestamp: 100,
     })
 
-    ;(manager as any).applyNodePanelPresenceUpdate({
+    internals.applyNodePanelPresenceUpdate({
       nodeId: 'node-b',
       action: 'open',
       user,
@@ -673,7 +742,7 @@ describe('CollaborationManager public API wrappers', () => {
 
     const user: NodePanelPresenceUser = { userId: 'user-2', username: 'Kai' }
 
-    ;(manager as any).applyNodePanelPresenceUpdate({
+    internals.applyNodePanelPresenceUpdate({
       nodeId: 'node-a',
       action: 'open',
       user,
@@ -681,7 +750,7 @@ describe('CollaborationManager public API wrappers', () => {
       timestamp: 300,
     })
 
-    ;(manager as any).applyNodePanelPresenceUpdate({
+    internals.applyNodePanelPresenceUpdate({
       nodeId: 'node-a',
       action: 'close',
       user,
