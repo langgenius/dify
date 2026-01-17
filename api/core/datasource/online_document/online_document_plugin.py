@@ -34,7 +34,7 @@ class OnlineDocumentDatasourcePlugin(DatasourcePlugin):
     def get_online_document_pages(
         self,
         user_id: str,
-        datasource_parameters: Mapping[str, Any],
+        datasource_parameters: dict[str, Any],
         provider_type: str,
     ) -> Generator[OnlineDocumentPagesMessage, None, None]:
         manager = PluginDatasourceManager()
