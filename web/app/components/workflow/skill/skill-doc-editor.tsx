@@ -99,9 +99,16 @@ const SkillDocEditor: FC = () => {
   const handleEditorChange = useCallback((value: string | undefined) => {
     if (!activeTabId || !isEditable)
       return
-    storeApi.getState().setDraftContent(activeTabId, value ?? '')
+    const newValue = value ?? ''
+    const originalContent = fileContent?.content ?? ''
+
+    if (newValue === originalContent)
+      storeApi.getState().clearDraftContent(activeTabId)
+    else
+      storeApi.getState().setDraftContent(activeTabId, newValue)
+
     storeApi.getState().pinTab(activeTabId)
-  }, [activeTabId, isEditable, storeApi])
+  }, [activeTabId, isEditable, storeApi, fileContent?.content])
 
   const handleSave = useCallback(async () => {
     if (!activeTabId || !appId || !isEditable)
