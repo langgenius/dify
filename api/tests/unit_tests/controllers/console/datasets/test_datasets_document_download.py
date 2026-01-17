@@ -163,13 +163,13 @@ def test_batch_download_zip_returns_send_file(
 
     # Two upload-file documents, each referencing an UploadFile.
     doc1 = _mock_document(
-        document_id="doc-1",
+        document_id="11111111-1111-1111-1111-111111111111",
         tenant_id="tenant-123",
         data_source_type="upload_file",
         upload_file_id="file-1",
     )
     doc2 = _mock_document(
-        document_id="doc-2",
+        document_id="22222222-2222-2222-2222-222222222222",
         tenant_id="tenant-123",
         data_source_type="upload_file",
         upload_file_id="file-2",
@@ -200,7 +200,7 @@ def test_batch_download_zip_returns_send_file(
     with app.test_request_context(
         "/datasets/ds-1/documents/download-zip",
         method="POST",
-        json={"document_ids": ["doc-1", "doc-2"]},
+        json={"document_ids": ["11111111-1111-1111-1111-111111111111", "22222222-2222-2222-2222-222222222222"]},
     ):
         api = datasets_document_module.DocumentBatchDownloadZipApi()
         result = api.post(dataset_id="ds-1")
@@ -230,13 +230,13 @@ def test_batch_download_zip_response_is_openable_zip(
     )
 
     doc1 = _mock_document(
-        document_id="doc-1",
+        document_id="33333333-3333-3333-3333-333333333333",
         tenant_id="tenant-123",
         data_source_type="upload_file",
         upload_file_id="file-1",
     )
     doc2 = _mock_document(
-        document_id="doc-2",
+        document_id="44444444-4444-4444-4444-444444444444",
         tenant_id="tenant-123",
         data_source_type="upload_file",
         upload_file_id="file-2",
@@ -266,7 +266,7 @@ def test_batch_download_zip_response_is_openable_zip(
     with app.test_request_context(
         "/datasets/ds-1/documents/download-zip",
         method="POST",
-        json={"document_ids": ["doc-1", "doc-2"]},
+        json={"document_ids": ["33333333-3333-3333-3333-333333333333", "44444444-4444-4444-4444-444444444444"]},
     ):
         api = datasets_document_module.DocumentBatchDownloadZipApi()
         response = api.post(dataset_id="ds-1")
@@ -296,7 +296,7 @@ def test_batch_download_zip_rejects_non_upload_file_document(
     )
 
     doc = _mock_document(
-        document_id="doc-1",
+        document_id="55555555-5555-5555-5555-555555555555",
         tenant_id="tenant-123",
         data_source_type="website_crawl",
         upload_file_id="file-1",
@@ -310,7 +310,7 @@ def test_batch_download_zip_rejects_non_upload_file_document(
     with app.test_request_context(
         "/datasets/ds-1/documents/download-zip",
         method="POST",
-        json={"document_ids": ["doc-1"]},
+        json={"document_ids": ["55555555-5555-5555-5555-555555555555"]},
     ):
         api = datasets_document_module.DocumentBatchDownloadZipApi()
         with pytest.raises(NotFound):

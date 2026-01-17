@@ -4,7 +4,7 @@ from argparse import ArgumentTypeError
 from collections.abc import Sequence
 from contextlib import ExitStack
 from typing import Any, Literal, cast
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import sqlalchemy as sa
 from flask import request, send_file
@@ -224,7 +224,7 @@ class DocumentRenamePayload(BaseModel):
 class DocumentBatchDownloadZipPayload(BaseModel):
     """Request payload for bulk downloading documents as a zip archive."""
 
-    document_ids: list[str] = Field(..., min_length=1, max_length=DOCUMENT_BATCH_DOWNLOAD_ZIP_MAX_DOCS)
+    document_ids: list[UUID] = Field(..., min_length=1, max_length=DOCUMENT_BATCH_DOWNLOAD_ZIP_MAX_DOCS)
 
 
 class DocumentDatasetListParam(BaseModel):
