@@ -50,7 +50,7 @@ export const useWorkflowInteractions = () => {
 }
 
 export const useWorkflowMoveMode = () => {
-  const setControlMode = useStore(s => s.setControlMode)
+  const workflowStore = useWorkflowStore()
   const {
     getNodesReadOnly,
   } = useNodesReadOnly()
@@ -60,16 +60,16 @@ export const useWorkflowMoveMode = () => {
     if (getNodesReadOnly())
       return
 
-    setControlMode(ControlMode.Pointer)
-  }, [getNodesReadOnly, setControlMode])
+    workflowStore.getState().setControlMode(ControlMode.Pointer)
+  }, [getNodesReadOnly, workflowStore])
 
   const handleModeHand = useCallback(() => {
     if (getNodesReadOnly())
       return
 
-    setControlMode(ControlMode.Hand)
+    workflowStore.getState().setControlMode(ControlMode.Hand)
     handleSelectionCancel()
-  }, [getNodesReadOnly, setControlMode, handleSelectionCancel])
+  }, [getNodesReadOnly, workflowStore, handleSelectionCancel])
 
   return {
     handleModePointer,
@@ -330,9 +330,9 @@ export const useWorkflowUpdate = () => {
 
 export const useWorkflowCanvasMaximize = () => {
   const { eventEmitter } = useEventEmitterContextContext()
+  const workflowStore = useWorkflowStore()
 
   const maximizeCanvas = useStore(s => s.maximizeCanvas)
-  const setMaximizeCanvas = useStore(s => s.setMaximizeCanvas)
   const {
     getNodesReadOnly,
   } = useNodesReadOnly()
@@ -341,13 +341,13 @@ export const useWorkflowCanvasMaximize = () => {
     if (getNodesReadOnly())
       return
 
-    setMaximizeCanvas(!maximizeCanvas)
+    workflowStore.getState().setMaximizeCanvas(!maximizeCanvas)
     localStorage.setItem('workflow-canvas-maximize', String(!maximizeCanvas))
     eventEmitter?.emit({
       type: 'workflow-canvas-maximize',
       payload: !maximizeCanvas,
     } as any)
-  }, [eventEmitter, getNodesReadOnly, maximizeCanvas, setMaximizeCanvas])
+  }, [eventEmitter, getNodesReadOnly, maximizeCanvas, workflowStore])
 
   return {
     handleToggleMaximizeCanvas,

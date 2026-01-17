@@ -7,7 +7,7 @@ import Loading from '@/app/components/base/loading'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import StructureOutputItem from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
-import { useStore } from '@/app/components/workflow/store'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { wrapStructuredVarItem } from '@/app/components/workflow/utils/tool'
 import Split from '../_base/components/split'
 import useMatchSchemaType, { getMatchedSchemaType } from '../_base/components/variable/use-match-schema-type'
@@ -38,8 +38,8 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
   } = useConfig(id, data)
 
   const [collapsed, setCollapsed] = React.useState(false)
+  const workflowStore = useWorkflowStore()
   const pipelineId = useStore(s => s.pipelineId)
-  const setShowInputFieldPanel = useStore(s => s.setShowInputFieldPanel)
   const { schemaTypeDefinitions } = useMatchSchemaType()
 
   if (isLoading) {
@@ -68,7 +68,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
                 currentProvider={currCollection}
                 currentTool={currTool}
                 showManageInputField={!!pipelineId}
-                onManageInputField={() => setShowInputFieldPanel?.(true)}
+                onManageInputField={() => workflowStore.getState().setShowInputFieldPanel?.(true)}
               />
             </Field>
           )}

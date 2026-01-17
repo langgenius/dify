@@ -7,10 +7,7 @@ import {
   useState,
 } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import {
-  useStore,
-  useWorkflowStore,
-} from '@/app/components/workflow/store'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useWorkflowConfig } from '@/service/use-workflow'
 import {
@@ -39,7 +36,6 @@ export const useWorkflowInit = () => {
     edges: edgesTemplate,
   } = useWorkflowTemplate()
   const appDetail = useAppStore(state => state.appDetail)!
-  const setSyncWorkflowDraftHash = useStore(s => s.setSyncWorkflowDraftHash)
   const [data, setData] = useState<FetchWorkflowDraftResponse>()
   const [isLoading, setIsLoading] = useState(true)
   useEffect(() => {
@@ -68,7 +64,7 @@ export const useWorkflowInit = () => {
         conversationVariables: res.conversation_variables || [],
         isWorkflowDataLoaded: true,
       })
-      setSyncWorkflowDraftHash(res.hash)
+      workflowStore.getState().setSyncWorkflowDraftHash(res.hash)
       setIsLoading(false)
     }
     catch (error: any) {
@@ -106,7 +102,7 @@ export const useWorkflowInit = () => {
         })
       }
     }
-  }, [appDetail, nodesTemplate, edgesTemplate, workflowStore, setSyncWorkflowDraftHash])
+  }, [appDetail, nodesTemplate, edgesTemplate, workflowStore])
 
   useEffect(() => {
     handleGetInitialWorkflowData()

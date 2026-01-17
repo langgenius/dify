@@ -107,13 +107,11 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
   useDocumentTitle(datasetRes?.name || t('menus.datasets', { ns: 'common' }))
 
-  const setAppSidebarExpand = useStore(state => state.setAppSidebarExpand)
-
   useEffect(() => {
     const localeMode = localStorage.getItem('app-detail-collapse-or-expand') || 'expand'
     const mode = isMobile ? 'collapse' : 'expand'
-    setAppSidebarExpand(isMobile ? mode : localeMode)
-  }, [isMobile, setAppSidebarExpand])
+    useStore.getState().setAppSidebarExpand(isMobile ? mode : localeMode)
+  }, [isMobile])
 
   if (!datasetRes && !error)
     return <Loading type="app" />

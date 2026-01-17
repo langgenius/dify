@@ -39,7 +39,6 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const docLink = useDocLink()
   const { notify } = useContext(ToastContext)
   const appDetail = useAppStore(state => state.appDetail)
-  const setAppDetail = useAppStore(state => state.setAppDetail)
 
   const isWorkflowApp = appDetail?.mode === AppModeEnum.WORKFLOW
   const showMCPCard = isInPanel
@@ -92,7 +91,7 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const updateAppDetail = async () => {
     try {
       const res = await fetchAppDetail({ url: '/apps', id: appId })
-      setAppDetail({ ...res })
+      useAppStore.getState().setAppDetail({ ...res })
     }
     catch (error) { console.error(error) }
   }

@@ -129,8 +129,6 @@ export const NodeSourceHandle = memo(({
 }: NodeHandleProps) => {
   const { t } = useTranslation()
   const shouldAutoOpenStartNodeSelector = useStore(s => s.shouldAutoOpenStartNodeSelector)
-  const setShouldAutoOpenStartNodeSelector = useStore(s => s.setShouldAutoOpenStartNodeSelector)
-  const setHasSelectedStartNode = useStore(s => s.setHasSelectedStartNode)
   const workflowStoreApi = useWorkflowStore()
   const [open, setOpen] = useState(false)
   const { handleNodeAdd } = useNodesInteractions()
@@ -165,23 +163,16 @@ export const NodeSourceHandle = memo(({
       return
 
     if (isChatMode) {
-      setShouldAutoOpenStartNodeSelector?.(false)
+      workflowStoreApi.getState().setShouldAutoOpenStartNodeSelector?.(false)
       return
     }
 
     if (data.type === BlockEnum.Start || data.type === BlockEnum.TriggerSchedule || data.type === BlockEnum.TriggerWebhook || data.type === BlockEnum.TriggerPlugin) {
       setOpen(true)
-      if (setShouldAutoOpenStartNodeSelector)
-        setShouldAutoOpenStartNodeSelector(false)
-      else
-        workflowStoreApi?.setState?.({ shouldAutoOpenStartNodeSelector: false })
-
-      if (setHasSelectedStartNode)
-        setHasSelectedStartNode(false)
-      else
-        workflowStoreApi?.setState?.({ hasSelectedStartNode: false })
+      workflowStoreApi.getState().setShouldAutoOpenStartNodeSelector?.(false)
+      workflowStoreApi.getState().setHasSelectedStartNode?.(false)
     }
-  }, [shouldAutoOpenStartNodeSelector, data.type, isChatMode, setShouldAutoOpenStartNodeSelector, setHasSelectedStartNode, workflowStoreApi])
+  }, [shouldAutoOpenStartNodeSelector, data.type, isChatMode, workflowStoreApi])
 
   return (
     <Handle

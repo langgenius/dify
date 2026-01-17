@@ -25,20 +25,19 @@ export default function AccessControl(props: AccessControlProps) {
   const { app, onClose, onConfirm } = props
   const { t } = useTranslation()
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
-  const setAppId = useAccessControlStore(s => s.setAppId)
   const specificGroups = useAccessControlStore(s => s.specificGroups)
   const specificMembers = useAccessControlStore(s => s.specificMembers)
   const currentMenu = useAccessControlStore(s => s.currentMenu)
-  const setCurrentMenu = useAccessControlStore(s => s.setCurrentMenu)
   const hideTip = systemFeatures.webapp_auth.enabled
     && (systemFeatures.webapp_auth.allow_sso
       || systemFeatures.webapp_auth.allow_email_password_login
       || systemFeatures.webapp_auth.allow_email_code_login)
 
   useEffect(() => {
+    const { setAppId, setCurrentMenu } = useAccessControlStore.getState()
     setAppId(app.id)
     setCurrentMenu(app.access_mode ?? AccessMode.SPECIFIC_GROUPS_MEMBERS)
-  }, [app, setAppId, setCurrentMenu])
+  }, [app])
 
   const { isPending, mutateAsync: updateAccessMode } = useUpdateAccessMode()
   const handleConfirm = useCallback(async () => {

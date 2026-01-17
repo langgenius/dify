@@ -27,7 +27,6 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const tagList = useTagStore(s => s.tagList)
-  const setTagList = useTagStore(s => s.setTagList)
 
   const [isEditing, setIsEditing] = useState(false)
   const [name, setName] = useState(tag.name)
@@ -52,7 +51,7 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
         }
         return tag
       })
-      setTagList([
+      useTagStore.getState().setTagList([
         ...newList,
       ])
       setIsEditing(false)
@@ -72,7 +71,7 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
         }
         return tag
       })
-      setTagList([
+      useTagStore.getState().setTagList([
         ...recoverList,
       ])
       setIsEditing(false)
@@ -88,7 +87,7 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
       await deleteTag(tagID)
       notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       const newList = tagList.filter(tag => tag.id !== tagID)
-      setTagList([
+      useTagStore.getState().setTagList([
         ...newList,
       ])
       setPending(false)

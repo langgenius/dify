@@ -12,7 +12,7 @@ import { getFieldType, getHasChildren } from '../../../utils'
 import AddField from './add-field'
 import Card from './card'
 import EditCard from './edit-card'
-import { useVisualEditorStore } from './store'
+import { useVisualEditorStore, useVisualEditorStoreApi } from './store'
 
 type SchemaNodeProps = {
   name: string
@@ -63,13 +63,13 @@ const SchemaNode: FC<SchemaNodeProps> = ({
   readOnly,
 }) => {
   const [isExpanded, setIsExpanded] = useState(true)
+  const visualEditorStore = useVisualEditorStoreApi()
   const hoveringProperty = useVisualEditorStore(state => state.hoveringProperty)
-  const setHoveringProperty = useVisualEditorStore(state => state.setHoveringProperty)
   const isAddingNewField = useVisualEditorStore(state => state.isAddingNewField)
   const advancedEditing = useVisualEditorStore(state => state.advancedEditing)
 
   const { run: setHoveringPropertyDebounced } = useDebounceFn((path: string | null) => {
-    setHoveringProperty(path)
+    visualEditorStore.getState().setHoveringProperty(path)
   }, { wait: 50 })
 
   const hasChildren = useMemo(() => getHasChildren(schema), [schema])

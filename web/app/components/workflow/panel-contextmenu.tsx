@@ -16,14 +16,14 @@ import {
 import AddBlock from './operator/add-block'
 import { useOperator } from './operator/hooks'
 import ShortcutsName from './shortcuts-name'
-import { useStore } from './store'
+import { useStore, useWorkflowStore } from './store'
 
 const PanelContextmenu = () => {
   const { t } = useTranslation()
   const ref = useRef(null)
   const panelMenu = useStore(s => s.panelMenu)
   const clipboardElements = useStore(s => s.clipboardElements)
-  const setShowImportDSLModal = useStore(s => s.setShowImportDSLModal)
+  const workflowStore = useWorkflowStore()
   const { handleNodesPaste } = useNodesInteractions()
   const { handlePaneContextmenuCancel, handleNodeContextmenuCancel } = usePanelInteractions()
   const { handleStartWorkflowRun } = useWorkflowStartRun()
@@ -118,7 +118,7 @@ const PanelContextmenu = () => {
         </div>
         <div
           className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
-          onClick={() => setShowImportDSLModal(true)}
+          onClick={() => workflowStore.getState().setShowImportDSLModal(true)}
         >
           {t('common.importDSL', { ns: 'workflow' })}
         </div>

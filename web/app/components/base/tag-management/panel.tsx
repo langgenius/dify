@@ -24,8 +24,6 @@ const Panel = (props: PanelProps) => {
   const { notify } = useContext(ToastContext)
   const { targetID, type, value, selectedTags, onCacheUpdate, onChange, onCreate } = props
   const tagList = useTagStore(s => s.tagList)
-  const setTagList = useTagStore(s => s.setTagList)
-  const setShowTagManagementModal = useTagStore(s => s.setShowTagManagementModal)
   const [selectedTagIDs, setSelectedTagIDs] = useState<string[]>(value)
   const [keywords, setKeywords] = useState('')
   const handleKeywordsChange = (value: string) => {
@@ -52,7 +50,7 @@ const Panel = (props: PanelProps) => {
       setCreating(true)
       const newTag = await createTag(keywords, type)
       notify({ type: 'success', message: t('tag.created', { ns: 'common' }) })
-      setTagList([
+      useTagStore.getState().setTagList([
         ...tagList,
         newTag,
       ])
@@ -198,7 +196,7 @@ const Panel = (props: PanelProps) => {
       <div className="p-1">
         <div
           className="flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover"
-          onClick={() => setShowTagManagementModal(true)}
+          onClick={() => useTagStore.getState().setShowTagManagementModal(true)}
         >
           <RiPriceTag3Line className="h-4 w-4 text-text-tertiary" />
           <div className="system-md-regular grow truncate px-1 text-text-secondary">

@@ -38,7 +38,6 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
   const { push, replace } = useRouter()
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const setAppDetail = useAppStore(s => s.setAppDetail)
 
   const { isCurrentWorkspaceEditor } = useAppContext()
   const { plan, enableBilling } = useProviderContext()
@@ -70,7 +69,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
         onClose()
       notify({ type: 'success', message: t('newApp.appCreated', { ns: 'app' }) })
       if (inAppDetail)
-        setAppDetail()
+        useAppStore.getState().setAppDetail()
       if (removeOriginal)
         await deleteApp(appDetail.id)
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')

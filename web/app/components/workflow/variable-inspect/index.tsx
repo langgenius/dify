@@ -6,14 +6,14 @@ import {
 } from 'react'
 import { cn } from '@/utils/classnames'
 import { useResizePanel } from '../nodes/_base/hooks/use-resize-panel'
-import { useStore } from '../store'
+import { useStore, useWorkflowStore } from '../store'
 import Panel from './panel'
 
 const VariableInspectPanel: FC = () => {
   const showVariableInspectPanel = useStore(s => s.showVariableInspectPanel)
+  const workflowStore = useWorkflowStore()
   const workflowCanvasHeight = useStore(s => s.workflowCanvasHeight)
   const variableInspectPanelHeight = useStore(s => s.variableInspectPanelHeight)
-  const setVariableInspectPanelHeight = useStore(s => s.setVariableInspectPanelHeight)
 
   const maxHeight = useMemo(() => {
     if (!workflowCanvasHeight)
@@ -23,8 +23,8 @@ const VariableInspectPanel: FC = () => {
 
   const handleResize = useCallback((width: number, height: number) => {
     localStorage.setItem('workflow-variable-inpsect-panel-height', `${height}`)
-    setVariableInspectPanelHeight(height)
-  }, [setVariableInspectPanelHeight])
+    workflowStore.getState().setVariableInspectPanelHeight(height)
+  }, [workflowStore])
 
   const {
     triggerRef,

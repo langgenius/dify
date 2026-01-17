@@ -4,20 +4,20 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { useMittContext } from './context'
-import { useVisualEditorStore } from './store'
+import { useVisualEditorStoreApi } from './store'
 
 const AddField = () => {
   const { t } = useTranslation()
-  const setIsAddingNewField = useVisualEditorStore(state => state.setIsAddingNewField)
+  const visualEditorStore = useVisualEditorStoreApi()
   const { emit } = useMittContext()
 
   const handleAddField = useCallback(() => {
-    setIsAddingNewField(true)
+    visualEditorStore.getState().setIsAddingNewField(true)
     // fix: when user change the last property type, the 'hoveringProperty' value will be reset by 'setHoveringPropertyDebounced(null)', that cause the EditCard not showing
     setTimeout(() => {
       emit('addField', { path: [] })
     }, 100)
-  }, [setIsAddingNewField, emit])
+  }, [visualEditorStore, emit])
 
   return (
     <div className="py-2 pl-5">

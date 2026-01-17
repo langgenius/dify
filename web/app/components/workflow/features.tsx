@@ -13,11 +13,11 @@ import {
   useNodesSyncDraft,
 } from './hooks'
 import useConfig from './nodes/start/use-config'
-import { useStore } from './store'
+import { useWorkflowStore } from './store'
 import { InputVarType } from './types'
 
 const Features = () => {
-  const setShowFeaturesPanel = useStore(s => s.setShowFeaturesPanel)
+  const workflowStore = useWorkflowStore()
   const isChatMode = useIsChatMode()
   const { nodesReadOnly } = useNodesReadOnly()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
@@ -42,8 +42,8 @@ const Features = () => {
 
   const handleFeaturesChange = useCallback(() => {
     handleSyncWorkflowDraft()
-    setShowFeaturesPanel(true)
-  }, [handleSyncWorkflowDraft, setShowFeaturesPanel])
+    workflowStore.getState().setShowFeaturesPanel(true)
+  }, [handleSyncWorkflowDraft, workflowStore])
 
   return (
     <NewFeaturePanel
@@ -51,7 +51,7 @@ const Features = () => {
       isChatMode={isChatMode}
       disabled={nodesReadOnly}
       onChange={handleFeaturesChange}
-      onClose={() => setShowFeaturesPanel(false)}
+      onClose={() => workflowStore.getState().setShowFeaturesPanel(false)}
       onAutoAddPromptVariable={handleAddOpeningStatementVariable}
       workflowVariables={data.variables}
     />

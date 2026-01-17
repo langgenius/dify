@@ -147,7 +147,6 @@ const AppPublisher = ({
   const [embeddingModalOpen, setEmbeddingModalOpen] = useState(false)
 
   const appDetail = useAppStore(state => state.appDetail)
-  const setAppDetail = useAppStore(s => s.setAppDetail)
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { app_base_url: appBaseURL = '', access_token: accessToken = '' } = appDetail?.site ?? {}
@@ -243,12 +242,12 @@ const AppPublisher = ({
       return
     try {
       const res = await fetchAppDetailDirect({ url: '/apps', id: appDetail.id })
-      setAppDetail(res)
+      useAppStore.getState().setAppDetail(res)
     }
     finally {
       setShowAppAccessControl(false)
     }
-  }, [appDetail, setAppDetail])
+  }, [appDetail])
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.p`, (e) => {
     e.preventDefault()

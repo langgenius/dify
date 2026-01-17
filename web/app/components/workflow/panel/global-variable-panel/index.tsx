@@ -5,7 +5,7 @@ import {
   memo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore } from '@/app/components/workflow/store'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 
 import { cn } from '@/utils/classnames'
 import { isInWorkflowPage } from '../../constants'
@@ -15,7 +15,7 @@ import Item from './item'
 const Panel = () => {
   const { t } = useTranslation()
   const isChatMode = useIsChatMode()
-  const setShowPanel = useStore(s => s.setShowGlobalVariablePanel)
+  const workflowStore = useWorkflowStore()
   const isWorkflowPage = isInWorkflowPage()
 
   const globalVariableList: GlobalVariable[] = [
@@ -71,7 +71,7 @@ const Panel = () => {
         <div className="flex items-center">
           <div
             className="flex h-6 w-6 cursor-pointer items-center justify-center"
-            onClick={() => setShowPanel(false)}
+            onClick={() => workflowStore.getState().setShowGlobalVariablePanel(false)}
           >
             <RiCloseLine className="h-4 w-4 text-text-tertiary" />
           </div>

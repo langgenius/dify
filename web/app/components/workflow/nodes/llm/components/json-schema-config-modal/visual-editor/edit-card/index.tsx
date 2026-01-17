@@ -11,7 +11,7 @@ import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
 import { cn } from '@/utils/classnames'
 import { ArrayType, Type } from '../../../../types'
 import { useMittContext } from '../context'
-import { useVisualEditorStore } from '../store'
+import { useVisualEditorStore, useVisualEditorStoreApi } from '../store'
 import Actions from './actions'
 import AdvancedActions from './advanced-actions'
 import AdvancedOptions from './advanced-options'
@@ -66,10 +66,9 @@ const EditCard: FC<EditCardProps> = ({
   const { t } = useTranslation()
   const [currentFields, setCurrentFields] = useState(fields)
   const [backupFields, setBackupFields] = useState<EditData | null>(null)
+  const visualEditorStore = useVisualEditorStoreApi()
   const isAddingNewField = useVisualEditorStore(state => state.isAddingNewField)
-  const setIsAddingNewField = useVisualEditorStore(state => state.setIsAddingNewField)
   const advancedEditing = useVisualEditorStore(state => state.advancedEditing)
-  const setAdvancedEditing = useVisualEditorStore(state => state.setAdvancedEditing)
   const { emit, useSubscribe } = useMittContext()
   const blurWithActions = useRef(false)
 
@@ -91,9 +90,9 @@ const EditCard: FC<EditCardProps> = ({
 
   useSubscribe('fieldChangeSuccess', () => {
     if (isAddingNewField)
-      setIsAddingNewField(false)
+      visualEditorStore.getState().setIsAddingNewField(false)
     if (advancedEditing)
-      setAdvancedEditing(false)
+      visualEditorStore.getState().setAdvancedEditing(false)
   })
 
   const emitPropertyNameChange = useCallback(() => {
@@ -184,8 +183,8 @@ const EditCard: FC<EditCardProps> = ({
 
   const handleAdvancedEdit = useCallback(() => {
     setBackupFields({ ...currentFields })
-    setAdvancedEditing(true)
-  }, [currentFields, setAdvancedEditing])
+    visualEditorStore.getState().setAdvancedEditing(true)
+  }, [currentFields, visualEditorStore])
 
   const handleAddChildField = useCallback(() => {
     blurWithActions.current = true
@@ -200,15 +199,15 @@ const EditCard: FC<EditCardProps> = ({
     if (isAddingNewField) {
       blurWithActions.current = true
       emit('restoreSchema')
-      setIsAddingNewField(false)
+      visualEditorStore.getState().setIsAddingNewField(false)
       return
     }
     if (backupFields) {
       setCurrentFields(backupFields)
       setBackupFields(null)
     }
-    setAdvancedEditing(false)
-  }, [isAddingNewField, emit, setIsAddingNewField, setAdvancedEditing, backupFields])
+    visualEditorStore.getState().setAdvancedEditing(false)
+  }, [isAddingNewField, emit, backupFields, visualEditorStore])
 
   useUnmount(() => {
     if (isAdvancedEditing || blurWithActions.current)

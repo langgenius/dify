@@ -11,10 +11,7 @@ import {
   useNodesReadOnly,
   useWorkflowRun,
 } from '../hooks'
-import {
-  useStore,
-  useWorkflowStore,
-} from '../store'
+import { useWorkflowStore } from '../store'
 import EditingTitle from './editing-title'
 import EnvButton from './env-button'
 import GlobalVariableButton from './global-variable-button'
@@ -37,18 +34,20 @@ const HeaderInNormal = ({
   const workflowStore = useWorkflowStore()
   const { nodesReadOnly } = useNodesReadOnly()
   const { handleNodeSelect } = useNodesInteractions()
-  const setShowWorkflowVersionHistoryPanel = useStore(s => s.setShowWorkflowVersionHistoryPanel)
-  const setShowEnvPanel = useStore(s => s.setShowEnvPanel)
-  const setShowDebugAndPreviewPanel = useStore(s => s.setShowDebugAndPreviewPanel)
-  const setShowVariableInspectPanel = useStore(s => s.setShowVariableInspectPanel)
-  const setShowChatVariablePanel = useStore(s => s.setShowChatVariablePanel)
-  const setShowGlobalVariablePanel = useStore(s => s.setShowGlobalVariablePanel)
   const nodes = useNodes<StartNodeType>()
   const selectedNode = nodes.find(node => node.data.selected)
   const { handleBackupDraft } = useWorkflowRun()
   const { closeAllInputFieldPanels } = useInputFieldPanel()
 
   const onStartRestoring = useCallback(() => {
+    const {
+      setShowWorkflowVersionHistoryPanel,
+      setShowEnvPanel,
+      setShowDebugAndPreviewPanel,
+      setShowVariableInspectPanel,
+      setShowChatVariablePanel,
+      setShowGlobalVariablePanel,
+    } = workflowStore.getState()
     workflowStore.setState({ isRestoring: true })
     handleBackupDraft()
     // clear right panel
@@ -61,7 +60,7 @@ const HeaderInNormal = ({
     setShowChatVariablePanel(false)
     setShowGlobalVariablePanel(false)
     closeAllInputFieldPanels()
-  }, [workflowStore, handleBackupDraft, selectedNode, handleNodeSelect, setShowWorkflowVersionHistoryPanel, setShowEnvPanel, setShowDebugAndPreviewPanel, setShowVariableInspectPanel, setShowChatVariablePanel, setShowGlobalVariablePanel])
+  }, [workflowStore, handleBackupDraft, selectedNode, handleNodeSelect, closeAllInputFieldPanels])
 
   return (
     <div className="flex w-full items-center justify-between">

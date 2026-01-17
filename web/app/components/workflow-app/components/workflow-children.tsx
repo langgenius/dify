@@ -17,7 +17,7 @@ import {
   usePanelInteractions,
 } from '@/app/components/workflow/hooks'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
-import { useStore } from '@/app/components/workflow/store'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { generateNewNode } from '@/app/components/workflow/utils'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -68,13 +68,10 @@ const getTriggerPluginNodeData = (
 const WorkflowChildren = () => {
   const { eventEmitter } = useEventEmitterContextContext()
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
+  const workflowStore = useWorkflowStore()
   const showFeaturesPanel = useStore(s => s.showFeaturesPanel)
   const showImportDSLModal = useStore(s => s.showImportDSLModal)
-  const setShowImportDSLModal = useStore(s => s.setShowImportDSLModal)
   const showOnboarding = useStore(s => s.showOnboarding)
-  const setShowOnboarding = useStore(s => s.setShowOnboarding)
-  const setHasSelectedStartNode = useStore(s => s.setHasSelectedStartNode)
-  const setShouldAutoOpenStartNodeSelector = useStore(s => s.setShouldAutoOpenStartNodeSelector)
   const reactFlowStore = useStoreApi()
   const availableNodesMetaData = useAvailableNodesMetaData()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
@@ -140,6 +137,11 @@ const WorkflowChildren = () => {
     setNodes([newNode])
     setEdges([])
 
+    const {
+      setShowOnboarding,
+      setHasSelectedStartNode,
+      setShouldAutoOpenStartNodeSelector,
+    } = workflowStore.getState()
     setShowOnboarding?.(false)
     setHasSelectedStartNode?.(true)
     setShouldAutoOpenStartNodeSelector?.(true)
@@ -153,7 +155,7 @@ const WorkflowChildren = () => {
         console.error('Failed to save node to draft')
       },
     })
-  }, [availableNodesMetaData, setShowOnboarding, setHasSelectedStartNode, reactFlowStore, handleSyncWorkflowDraft])
+  }, [availableNodesMetaData, reactFlowStore, handleSyncWorkflowDraft, workflowStore])
 
   return (
     <>
@@ -173,7 +175,7 @@ const WorkflowChildren = () => {
       {
         showImportDSLModal && (
           <UpdateDSLModal
-            onCancel={() => setShowImportDSLModal(false)}
+            onCancel={() => workflowStore.getState().setShowImportDSLModal(false)}
             onBackup={exportCheck!}
             onImport={handlePaneContextmenuCancel}
           />

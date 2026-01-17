@@ -51,7 +51,7 @@ import DataSourceBeforeRunForm from '@/app/components/workflow/nodes/data-source
 import { DataSourceClassification } from '@/app/components/workflow/nodes/data-source/types'
 import { useLogs } from '@/app/components/workflow/run/hooks'
 import SpecialResultPanel from '@/app/components/workflow/run/special-result-panel'
-import { useStore } from '@/app/components/workflow/store'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import {
   canRunBySingle,
@@ -113,14 +113,13 @@ const BasePanel: FC<BasePanelProps> = ({
     showMessageLogModal: state.showMessageLogModal,
   })))
   const isSingleRunning = data._singleRunningStatus === NodeRunningStatus.Running
+  const workflowStore = useWorkflowStore()
 
   const showSingleRunPanel = useStore(s => s.showSingleRunPanel)
   const workflowCanvasWidth = useStore(s => s.workflowCanvasWidth)
   const nodePanelWidth = useStore(s => s.nodePanelWidth)
   const otherPanelWidth = useStore(s => s.otherPanelWidth)
-  const setNodePanelWidth = useStore(s => s.setNodePanelWidth)
   const pendingSingleRun = useStore(s => s.pendingSingleRun)
-  const setPendingSingleRun = useStore(s => s.setPendingSingleRun)
 
   const reservedCanvasWidth = 400 // Reserve the minimum visible width for the canvas
 
@@ -139,8 +138,8 @@ const BasePanel: FC<BasePanelProps> = ({
     if (source === 'user')
       localStorage.setItem('workflow-node-panel-width', `${newValue}`)
 
-    setNodePanelWidth(newValue)
-  }, [maxNodePanelWidth, setNodePanelWidth])
+    workflowStore.getState().setNodePanelWidth(newValue)
+  }, [maxNodePanelWidth, workflowStore])
 
   const handleResize = useCallback((width: number) => {
     updateNodePanelWidth(width, 'user')
@@ -276,8 +275,8 @@ const BasePanel: FC<BasePanelProps> = ({
     else
       handleStop()
 
-    setPendingSingleRun(undefined)
-  }, [pendingSingleRun, id, handleSingleRun, handleStop, setPendingSingleRun])
+    workflowStore.getState().setPendingSingleRun(undefined)
+  }, [pendingSingleRun, id, handleSingleRun, handleStop, workflowStore])
 
   const logParams = useLogs()
   const passedLogParams = useMemo(() => [BlockEnum.Tool, BlockEnum.Agent, BlockEnum.Iteration, BlockEnum.Loop].includes(data.type) ? logParams : {}, [data.type, logParams])

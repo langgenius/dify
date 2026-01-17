@@ -32,12 +32,11 @@ const TagSelector: FC<TagSelectorProps> = ({
   minWidth,
 }) => {
   const tagList = useTagStore(s => s.tagList)
-  const setTagList = useTagStore(s => s.setTagList)
 
   const getTagList = useCallback(async () => {
     const res = await fetchTagList(type)
-    setTagList(res)
-  }, [setTagList, type])
+    useTagStore.getState().setTagList(res)
+  }, [type])
 
   const tags = useMemo(() => {
     if (selectedTags?.length)

@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import Tooltip from '@/app/components/base/tooltip'
-import { useStore } from '@/app/components/workflow/store'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { cn } from '@/utils/classnames'
 
@@ -57,8 +57,8 @@ const Editor: FC<Props> = ({
     onFocusChange?.(isFocus)
   }, [isFocus])
 
+  const workflowStore = useWorkflowStore()
   const pipelineId = useStore(s => s.pipelineId)
-  const setShowInputFieldPanel = useStore(s => s.setShowInputFieldPanel)
 
   return (
     <div className={cn(className, 'relative')}>
@@ -108,7 +108,7 @@ const Editor: FC<Props> = ({
               return acc
             }, {} as any),
             showManageInputField: !!pipelineId,
-            onManageInputField: () => setShowInputFieldPanel?.(true),
+            onManageInputField: () => workflowStore.getState().setShowInputFieldPanel?.(true),
           }}
           onChange={onChange}
           editable={!readOnly}

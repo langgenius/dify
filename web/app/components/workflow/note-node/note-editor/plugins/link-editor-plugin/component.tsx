@@ -20,7 +20,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { cn } from '@/utils/classnames'
-import { useStore } from '../../store'
+import { useNoteEditorStore, useStore } from '../../store'
 import { useLink } from './hooks'
 
 type LinkEditorComponentProps = {
@@ -34,11 +34,10 @@ const LinkEditorComponent = ({
     handleSaveLink,
     handleUnlink,
   } = useLink()
+  const noteEditorStore = useNoteEditorStore()
   const selectedLinkUrl = useStore(s => s.selectedLinkUrl)
   const linkAnchorElement = useStore(s => s.linkAnchorElement)
   const linkOperatorShow = useStore(s => s.linkOperatorShow)
-  const setLinkAnchorElement = useStore(s => s.setLinkAnchorElement)
-  const setLinkOperatorShow = useStore(s => s.setLinkOperatorShow)
   const [url, setUrl] = useState(selectedLinkUrl)
   const { refs, floatingStyles, elements } = useFloating({
     placement: 'top',
@@ -50,7 +49,7 @@ const LinkEditorComponent = ({
   })
 
   useClickAway(() => {
-    setLinkAnchorElement()
+    noteEditorStore.getState().setLinkAnchorElement()
   }, linkAnchorElement)
 
   useEffect(() => {
@@ -122,7 +121,7 @@ const LinkEditorComponent = ({
                       className="mr-0.5 flex h-6 cursor-pointer items-center rounded-md px-2 hover:bg-state-base-hover"
                       onClick={(e) => {
                         e.stopPropagation()
-                        setLinkOperatorShow(false)
+                        noteEditorStore.getState().setLinkOperatorShow(false)
                       }}
                     >
                       <RiEditLine className="mr-1 h-3 w-3" />

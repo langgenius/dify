@@ -14,7 +14,7 @@ import {
 } from '@/app/components/workflow/nodes/_base/components/layout'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import StructureOutputItem from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
-import { useStore } from '@/app/components/workflow/store'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { wrapStructuredVarItem } from '@/app/components/workflow/utils/tool'
 import useMatchSchemaType, { getMatchedSchemaType } from '../_base/components/variable/use-match-schema-type'
 import ToolForm from '../tool/components/tool-form'
@@ -48,8 +48,8 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
     return currentDataSourceItem ? toolParametersToFormSchemas(currentDataSourceItem.parameters) : []
   }, [currentDataSourceItem])
 
+  const workflowStore = useWorkflowStore()
   const pipelineId = useStore(s => s.pipelineId)
-  const setShowInputFieldPanel = useStore(s => s.setShowInputFieldPanel)
   const { schemaTypeDefinitions } = useMatchSchemaType()
   return (
     <div>
@@ -76,7 +76,7 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
                 currentProvider={currentDataSource}
                 currentTool={currentDataSourceItem}
                 showManageInputField={!!pipelineId}
-                onManageInputField={() => setShowInputFieldPanel?.(true)}
+                onManageInputField={() => workflowStore.getState().setShowInputFieldPanel?.(true)}
               />
             )}
           </BoxGroupField>

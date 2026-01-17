@@ -99,7 +99,6 @@ const DebugWithMultipleModel = () => {
     }
   }, [twoLine, threeLine, fourLine])
 
-  const setShowAppConfigureFeaturesModal = useAppStore(s => s.setShowAppConfigureFeaturesModal)
   const inputsForm = modelConfig.configs.prompt_variables
     .filter(item => item.type !== 'api')
     .map(item => ({
@@ -145,7 +144,7 @@ const DebugWithMultipleModel = () => {
             botName="Bot"
             showFeatureBar
             showFileUpload={false}
-            onFeatureBarClick={setShowAppConfigureFeaturesModal}
+            onFeatureBarClick={state => useAppStore.getState().setShowAppConfigureFeaturesModal(state)}
             onSend={handleSend}
             speechToTextConfig={speech2text as any}
             visionConfig={file}

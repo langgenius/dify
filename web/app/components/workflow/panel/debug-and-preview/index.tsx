@@ -17,7 +17,7 @@ import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows
 import Tooltip from '@/app/components/base/tooltip'
 import { useEdgesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-edges-interactions-without-sync'
 import { useNodesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-nodes-interactions-without-sync'
-import { useStore } from '@/app/components/workflow/store'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
 import {
   useWorkflowInteractions,
@@ -37,6 +37,7 @@ const DebugAndPreview = () => {
   const { handleEdgeCancelRunningStatus } = useEdgesInteractionsWithoutSync()
   const [expanded, setExpanded] = useState(true)
   const nodes = useNodes<StartNodeType>()
+  const workflowStore = useWorkflowStore()
   const selectedNode = nodes.find(node => node.data.selected)
   const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
   const variables = startNode?.data.variables || []
@@ -53,12 +54,11 @@ const DebugAndPreview = () => {
   const workflowCanvasWidth = useStore(s => s.workflowCanvasWidth)
   const nodePanelWidth = useStore(s => s.nodePanelWidth)
   const panelWidth = useStore(s => s.previewPanelWidth)
-  const setPanelWidth = useStore(s => s.setPreviewPanelWidth)
   const handleResize = useCallback((width: number, source: 'user' | 'system' = 'user') => {
     if (source === 'user')
       localStorage.setItem('debug-and-preview-panel-width', `${width}`)
-    setPanelWidth(width)
-  }, [setPanelWidth])
+    workflowStore.getState().setPreviewPanelWidth(width)
+  }, [workflowStore])
   const maxPanelWidth = useMemo(() => {
     if (!workflowCanvasWidth)
       return 720

@@ -105,8 +105,6 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
     setInputs(newInputs)
   }
 
-  const setShowAppConfigureFeaturesModal = useAppStore(s => s.setShowAppConfigureFeaturesModal)
-
   return (
     <>
       <div className="relative z-[1] mx-3 rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg shadow-md">
@@ -236,7 +234,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
         <FeatureBar
           showFileUpload={false}
           isChatMode={appType !== AppModeEnum.COMPLETION}
-          onFeatureBarClick={setShowAppConfigureFeaturesModal}
+          onFeatureBarClick={state => useAppStore.getState().setShowAppConfigureFeaturesModal(state)}
         />
       </div>
     </>

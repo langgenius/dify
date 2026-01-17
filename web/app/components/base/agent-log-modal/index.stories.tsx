@@ -70,10 +70,9 @@ const AgentLogModalDemo = ({
   width?: number
 }) => {
   const originalFetchRef = useRef<typeof globalThis.fetch>(null)
-  const setAppDetail = useAppStore(state => state.setAppDetail)
 
   useEffect(() => {
-    setAppDetail({
+    useAppStore.getState().setAppDetail({
       id: 'app-1',
       name: 'Analytics Agent',
       mode: 'agent-chat',
@@ -104,9 +103,9 @@ const AgentLogModalDemo = ({
     return () => {
       if (originalFetchRef.current)
         globalThis.fetch = originalFetchRef.current
-      setAppDetail(undefined)
+      useAppStore.getState().setAppDetail(undefined)
     }
-  }, [setAppDetail])
+  }, [])
 
   return (
     <ToastProvider>

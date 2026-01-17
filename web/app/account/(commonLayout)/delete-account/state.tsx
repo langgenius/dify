@@ -13,13 +13,12 @@ export const useAccountDeleteStore = create<State>(set => ({
 }))
 
 export function useSendDeleteAccountEmail() {
-  const updateEmailToken = useAccountDeleteStore(state => state.setSendEmailToken)
   return useMutation({
     mutationKey: ['delete-account'],
     mutationFn: sendDeleteAccountCode,
     onSuccess: (ret) => {
       if (ret.result === 'success')
-        updateEmailToken(ret.data)
+        useAccountDeleteStore.getState().setSendEmailToken(ret.data)
     },
   })
 }

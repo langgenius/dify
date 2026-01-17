@@ -11,7 +11,7 @@ import {
 } from '@/app/components/workflow/hooks'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import PluginDependency from '../../workflow/plugin-dependency'
-import { useStore } from '../../workflow/store'
+import { useStore, useWorkflowStore } from '../../workflow/store'
 import { useRagPipelineSearch } from '../hooks/use-rag-pipeline-search'
 import RagPipelinePanel from './panel'
 import PublishToast from './publish-toast'
@@ -21,8 +21,8 @@ import UpdateDSLModal from './update-dsl-modal'
 const RagPipelineChildren = () => {
   const { eventEmitter } = useEventEmitterContextContext()
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
+  const workflowStore = useWorkflowStore()
   const showImportDSLModal = useStore(s => s.showImportDSLModal)
-  const setShowImportDSLModal = useStore(s => s.setShowImportDSLModal)
   const {
     handlePaneContextmenuCancel,
   } = usePanelInteractions()
@@ -45,7 +45,7 @@ const RagPipelineChildren = () => {
       {
         showImportDSLModal && (
           <UpdateDSLModal
-            onCancel={() => setShowImportDSLModal(false)}
+            onCancel={() => workflowStore.getState().setShowImportDSLModal(false)}
             onBackup={exportCheck!}
             onImport={handlePaneContextmenuCancel}
           />

@@ -42,7 +42,6 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
   const { t } = useTranslation()
   const router = useRouter()
   const { isCurrentWorkspaceEditor } = useAppContext()
-  const setAppDetail = useAppStore(state => state.setAppDetail)
 
   const handleScroll = useCallback(debounce((e) => {
     if (typeof onLoadMore === 'function') {
@@ -84,7 +83,7 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
                       onClick={() => {
                         if (curNav?.id === nav.id)
                           return
-                        setAppDetail()
+                        useAppStore.getState().setAppDetail()
                         router.push(nav.link)
                       }}
                       title={nav.name}

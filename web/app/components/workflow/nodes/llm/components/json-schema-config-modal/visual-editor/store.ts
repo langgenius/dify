@@ -32,3 +32,11 @@ export const useVisualEditorStore = <T>(selector: (state: VisualEditorStore) => 
 
   return useStore(store, selector)
 }
+
+export const useVisualEditorStoreApi = () => {
+  const store = useContext(VisualEditorContext)
+  if (!store)
+    throw new Error('Missing VisualEditorContext.Provider in the tree')
+
+  return store
+}

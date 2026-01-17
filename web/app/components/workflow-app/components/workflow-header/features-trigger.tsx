@@ -51,7 +51,6 @@ const FeaturesTrigger = () => {
   const workflowStore = useWorkflowStore()
   const appDetail = useAppStore(s => s.appDetail)
   const appID = appDetail?.id
-  const setAppDetail = useAppStore(s => s.setAppDetail)
   const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
   const { plan, isFetchedPlan } = useProviderContext()
   const publishedAt = useStore(s => s.publishedAt)
@@ -128,12 +127,12 @@ const FeaturesTrigger = () => {
   const updateAppDetail = useCallback(async () => {
     try {
       const res = await fetchAppDetail({ url: '/apps', id: appID! })
-      setAppDetail({ ...res })
+      useAppStore.getState().setAppDetail({ ...res })
     }
     catch (error) {
       console.error(error)
     }
-  }, [appID, setAppDetail])
+  }, [appID])
 
   const { mutateAsync: publishWorkflow } = usePublishWorkflow()
   // const { validateBeforeRun } = useWorkflowRunValidation()

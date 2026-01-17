@@ -37,7 +37,6 @@ const HeaderInRestoring = ({
     deleteAllInspectVars,
   } = workflowStore.getState()
   const currentVersion = useStore(s => s.currentVersion)
-  const setShowWorkflowVersionHistoryPanel = useStore(s => s.setShowWorkflowVersionHistoryPanel)
 
   const {
     handleLoadBackupDraft,
@@ -47,11 +46,11 @@ const HeaderInRestoring = ({
   const handleCancelRestore = useCallback(() => {
     handleLoadBackupDraft()
     workflowStore.setState({ isRestoring: false })
-    setShowWorkflowVersionHistoryPanel(false)
-  }, [workflowStore, handleLoadBackupDraft, setShowWorkflowVersionHistoryPanel])
+    workflowStore.getState().setShowWorkflowVersionHistoryPanel(false)
+  }, [workflowStore, handleLoadBackupDraft])
 
   const handleRestore = useCallback(() => {
-    setShowWorkflowVersionHistoryPanel(false)
+    workflowStore.getState().setShowWorkflowVersionHistoryPanel(false)
     workflowStore.setState({ isRestoring: false })
     workflowStore.setState({ backupDraft: undefined })
     handleSyncWorkflowDraft(true, false, {
@@ -73,7 +72,7 @@ const HeaderInRestoring = ({
     })
     deleteAllInspectVars()
     invalidAllLastRun()
-  }, [setShowWorkflowVersionHistoryPanel, workflowStore, handleSyncWorkflowDraft, deleteAllInspectVars, invalidAllLastRun, t, onRestoreSettled])
+  }, [workflowStore, handleSyncWorkflowDraft, deleteAllInspectVars, invalidAllLastRun, t, onRestoreSettled])
 
   return (
     <>

@@ -20,14 +20,13 @@ const TagManagementPlayground = ({
 }) => {
   const originalFetchRef = useRef<typeof globalThis.fetch>(null)
   const tagsRef = useRef<Tag[]>(INITIAL_TAGS)
-  const setTagList = useTagStore(s => s.setTagList)
   const showModal = useTagStore(s => s.showTagManagementModal)
-  const setShowModal = useTagStore(s => s.setShowTagManagementModal)
 
   useEffect(() => {
+    const { setTagList, setShowTagManagementModal } = useTagStore.getState()
     setTagList(tagsRef.current)
-    setShowModal(true)
-  }, [setTagList, setShowModal])
+    setShowTagManagementModal(true)
+  }, [])
 
   useEffect(() => {
     originalFetchRef.current = globalThis.fetch?.bind(globalThis)
@@ -56,7 +55,7 @@ const TagManagementPlayground = ({
             binding_count: 0,
           }
           tagsRef.current = [newTag, ...tagsRef.current]
-          setTagList(tagsRef.current)
+          useTagStore.getState().setTagList(tagsRef.current)
           return new Response(JSON.stringify(newTag), {
             status: 200,
             headers: { 'Content-Type': 'application/json' },
@@ -83,7 +82,7 @@ const TagManagementPlayground = ({
       if (originalFetchRef.current)
         globalThis.fetch = originalFetchRef.current
     }
-  }, [setTagList])
+  }, [])
 
   return (
     <ToastProvider>
@@ -91,7 +90,7 @@ const TagManagementPlayground = ({
         <button
           type="button"
           className="self-start rounded-md border border-divider-subtle bg-background-default px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-state-base-hover"
-          onClick={() => setShowModal(true)}
+          onClick={() => useTagStore.getState().setShowTagManagementModal(true)}
         >
           Manage tags
         </button>

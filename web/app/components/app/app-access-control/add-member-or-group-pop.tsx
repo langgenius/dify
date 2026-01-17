@@ -103,16 +103,15 @@ function renderGroupOrMember(data: GroupOrMemberData) {
 
 function SelectedGroupsBreadCrumb() {
   const selectedGroupsForBreadcrumb = useAccessControlStore(s => s.selectedGroupsForBreadcrumb)
-  const setSelectedGroupsForBreadcrumb = useAccessControlStore(s => s.setSelectedGroupsForBreadcrumb)
   const { t } = useTranslation()
 
   const handleBreadCrumbClick = useCallback((index: number) => {
     const newGroups = selectedGroupsForBreadcrumb.slice(0, index + 1)
-    setSelectedGroupsForBreadcrumb(newGroups)
-  }, [setSelectedGroupsForBreadcrumb, selectedGroupsForBreadcrumb])
+    useAccessControlStore.getState().setSelectedGroupsForBreadcrumb(newGroups)
+  }, [selectedGroupsForBreadcrumb])
   const handleReset = useCallback(() => {
-    setSelectedGroupsForBreadcrumb([])
-  }, [setSelectedGroupsForBreadcrumb])
+    useAccessControlStore.getState().setSelectedGroupsForBreadcrumb([])
+  }, [])
   return (
     <div className="flex h-7 items-center gap-x-0.5 px-2 py-0.5">
       <span className={cn('system-xs-regular text-text-tertiary', selectedGroupsForBreadcrumb.length > 0 && 'cursor-pointer text-text-accent')} onClick={handleReset}>{t('accessControlDialog.operateGroupAndMember.allMembers', { ns: 'app' })}</span>
@@ -134,24 +133,22 @@ type GroupItemProps = {
 function GroupItem({ group }: GroupItemProps) {
   const { t } = useTranslation()
   const specificGroups = useAccessControlStore(s => s.specificGroups)
-  const setSpecificGroups = useAccessControlStore(s => s.setSpecificGroups)
   const selectedGroupsForBreadcrumb = useAccessControlStore(s => s.selectedGroupsForBreadcrumb)
-  const setSelectedGroupsForBreadcrumb = useAccessControlStore(s => s.setSelectedGroupsForBreadcrumb)
   const isChecked = specificGroups.some(g => g.id === group.id)
   const handleCheckChange = useCallback(() => {
     if (!isChecked) {
       const newGroups = [...specificGroups, group]
-      setSpecificGroups(newGroups)
+      useAccessControlStore.getState().setSpecificGroups(newGroups)
     }
     else {
       const newGroups = specificGroups.filter(g => g.id !== group.id)
-      setSpecificGroups(newGroups)
+      useAccessControlStore.getState().setSpecificGroups(newGroups)
     }
-  }, [specificGroups, setSpecificGroups, group, isChecked])
+  }, [specificGroups, group, isChecked])
 
   const handleExpandClick = useCallback(() => {
-    setSelectedGroupsForBreadcrumb([...selectedGroupsForBreadcrumb, group])
-  }, [selectedGroupsForBreadcrumb, setSelectedGroupsForBreadcrumb, group])
+    useAccessControlStore.getState().setSelectedGroupsForBreadcrumb([...selectedGroupsForBreadcrumb, group])
+  }, [selectedGroupsForBreadcrumb, group])
   return (
     <BaseItem>
       <Checkbox checked={isChecked} className="h-4 w-4 shrink-0" onCheck={handleCheckChange} />
@@ -185,18 +182,17 @@ function MemberItem({ member }: MemberItemProps) {
   const currentUser = useSelector(s => s.userProfile)
   const { t } = useTranslation()
   const specificMembers = useAccessControlStore(s => s.specificMembers)
-  const setSpecificMembers = useAccessControlStore(s => s.setSpecificMembers)
   const isChecked = specificMembers.some(m => m.id === member.id)
   const handleCheckChange = useCallback(() => {
     if (!isChecked) {
       const newMembers = [...specificMembers, member]
-      setSpecificMembers(newMembers)
+      useAccessControlStore.getState().setSpecificMembers(newMembers)
     }
     else {
       const newMembers = specificMembers.filter(m => m.id !== member.id)
-      setSpecificMembers(newMembers)
+      useAccessControlStore.getState().setSpecificMembers(newMembers)
     }
-  }, [specificMembers, setSpecificMembers, member, isChecked])
+  }, [specificMembers, member, isChecked])
   return (
     <BaseItem className="pr-3">
       <Checkbox checked={isChecked} className="h-4 w-4 shrink-0" onCheck={handleCheckChange} />

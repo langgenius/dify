@@ -2,16 +2,16 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { InputField } from '@/app/components/base/icons/src/vender/pipeline'
-import { useStore } from '@/app/components/workflow/store'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 
 const InputFieldButton = () => {
   const { t } = useTranslation()
-  const setShowInputFieldPanel = useStore(state => state.setShowInputFieldPanel)
-  const setShowEnvPanel = useStore(state => state.setShowEnvPanel)
+  const workflowStore = useWorkflowStore()
   const handleClick = useCallback(() => {
+    const { setShowInputFieldPanel, setShowEnvPanel } = workflowStore.getState()
     setShowInputFieldPanel?.(true)
     setShowEnvPanel(false)
-  }, [setShowInputFieldPanel, setShowEnvPanel])
+  }, [workflowStore])
 
   return (
     <Button

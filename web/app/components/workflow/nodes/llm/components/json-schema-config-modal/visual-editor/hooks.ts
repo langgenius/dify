@@ -7,7 +7,7 @@ import Toast from '@/app/components/base/toast'
 import { ArrayType, Type } from '../../../types'
 import { findPropertyWithPath } from '../../../utils'
 import { useMittContext } from './context'
-import { useVisualEditorStore } from './store'
+import { useVisualEditorStore, useVisualEditorStoreApi } from './store'
 
 type ChangeEventParams = {
   path: string[]
@@ -23,19 +23,16 @@ type AddEventParams = {
 export const useSchemaNodeOperations = (props: VisualEditorProps) => {
   const { schema: jsonSchema, onChange: doOnChange } = props
   const onChange = doOnChange || noop
+  const visualEditorStore = useVisualEditorStoreApi()
   const backupSchema = useVisualEditorStore(state => state.backupSchema)
-  const setBackupSchema = useVisualEditorStore(state => state.setBackupSchema)
   const isAddingNewField = useVisualEditorStore(state => state.isAddingNewField)
-  const setIsAddingNewField = useVisualEditorStore(state => state.setIsAddingNewField)
   const advancedEditing = useVisualEditorStore(state => state.advancedEditing)
-  const setAdvancedEditing = useVisualEditorStore(state => state.setAdvancedEditing)
-  const setHoveringProperty = useVisualEditorStore(state => state.setHoveringProperty)
   const { emit, useSubscribe } = useMittContext()
 
   useSubscribe('restoreSchema', () => {
     if (backupSchema) {
       onChange(backupSchema)
-      setBackupSchema(null)
+      visualEditorStore.getState().setBackupSchema(null)
     }
   })
 
@@ -44,13 +41,13 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
     callback?.(backupSchema)
     if (backupSchema) {
       onChange(backupSchema)
-      setBackupSchema(null)
+      visualEditorStore.getState().setBackupSchema(null)
     }
     if (isAddingNewField)
-      setIsAddingNewField(false)
+      visualEditorStore.getState().setIsAddingNewField(false)
     if (advancedEditing)
-      setAdvancedEditing(false)
-    setHoveringProperty(null)
+      visualEditorStore.getState().setAdvancedEditing(false)
+    visualEditorStore.getState().setHoveringProperty(null)
   })
 
   useSubscribe('propertyNameChange', (params) => {
@@ -227,10 +224,10 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
 
   useSubscribe('addField', (params) => {
     if (advancedEditing)
-      setAdvancedEditing(false)
-    setBackupSchema(jsonSchema)
+      visualEditorStore.getState().setAdvancedEditing(false)
+    visualEditorStore.getState().setBackupSchema(jsonSchema)
     const { path } = params as AddEventParams
-    setIsAddingNewField(true)
+    visualEditorStore.getState().setIsAddingNewField(true)
     const newSchema = produce(jsonSchema, (draft) => {
       const schema = findPropertyWithPath(draft, path) as Field
       if (schema.type === Type.object) {
@@ -240,7 +237,7 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
             type: Type.string,
           },
         }
-        setHoveringProperty([...path, 'properties', ''].join('.'))
+        visualEditorStore.getState().setHoveringProperty([...path, 'properties', ''].join('.'))
       }
       if (schema.type === Type.array && schema.items && schema.items.type === Type.object) {
         schema.items.properties = {
@@ -249,7 +246,7 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
             type: Type.string,
           },
         }
-        setHoveringProperty([...path, 'items', 'properties', ''].join('.'))
+        visualEditorStore.getState().setHoveringProperty([...path, 'items', 'properties', ''].join('.'))
       }
     })
     onChange(newSchema)

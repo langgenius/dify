@@ -30,7 +30,7 @@ import { useWorkflowVariableType } from '@/app/components/workflow/hooks'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor/editor-support-vars'
 import ToggleExpandBtn from '@/app/components/workflow/nodes/_base/components/toggle-expand-btn'
 import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
-import { useStore } from '@/app/components/workflow/store'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { cn } from '@/utils/classnames'
 import { BlockEnum, EditionType } from '../../../../types'
@@ -151,8 +151,8 @@ const Editor: FC<Props> = ({
   }
 
   const getVarType = useWorkflowVariableType()
+  const workflowStore = useWorkflowStore()
   const pipelineId = useStore(s => s.pipelineId)
-  const setShowInputFieldPanel = useStore(s => s.setShowInputFieldPanel)
 
   return (
     <Wrap className={cn(className, wrapClassName)} style={wrapStyle} isInNode isExpand={isExpand}>
@@ -288,7 +288,7 @@ const Editor: FC<Props> = ({
                           return acc
                         }, {} as any),
                         showManageInputField: !!pipelineId,
-                        onManageInputField: () => setShowInputFieldPanel?.(true),
+                        onManageInputField: () => workflowStore.getState().setShowInputFieldPanel?.(true),
                       }}
                       onChange={onChange}
                       onBlur={setBlur}

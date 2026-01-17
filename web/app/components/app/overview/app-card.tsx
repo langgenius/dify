@@ -77,7 +77,6 @@ function AppCard({
   const { data: currentWorkflow } = useAppWorkflow(appInfo.mode === AppModeEnum.WORKFLOW ? appInfo.id : '')
   const docLink = useDocLink()
   const appDetail = useAppStore(state => state.appDetail)
-  const setAppDetail = useAppStore(state => state.setAppDetail)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [showEmbedded, setShowEmbedded] = useState(false)
   const [showCustomizeModal, setShowCustomizeModal] = useState(false)
@@ -181,13 +180,13 @@ function AppCard({
   const handleAccessControlUpdate = useCallback(async () => {
     try {
       const res = await fetchAppDetailDirect({ url: '/apps', id: appDetail!.id })
-      setAppDetail(res)
+      useAppStore.getState().setAppDetail(res)
       setShowAccessControl(false)
     }
     catch (error) {
       console.error('Failed to fetch app detail:', error)
     }
-  }, [appDetail, setAppDetail])
+  }, [appDetail])
 
   return (
     <div

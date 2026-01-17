@@ -16,7 +16,7 @@ import {
   useWorkflow,
   useWorkflowVariables,
 } from '../../../hooks'
-import { useStore } from '../../../store'
+import { useStore, useWorkflowStore } from '../../../store'
 import { useVariableAssigner } from '../../variable-assigner/hooks'
 import { filterVar } from '../../variable-assigner/utils'
 import AddVariablePopup from './add-variable-popup'
@@ -31,7 +31,7 @@ const AddVariablePopupWithPosition = ({
 }: AddVariablePopupWithPositionProps) => {
   const ref = useRef<HTMLDivElement>(null)
   const showAssignVariablePopup = useStore(s => s.showAssignVariablePopup)
-  const setShowAssignVariablePopup = useStore(s => s.setShowAssignVariablePopup)
+  const workflowStore = useWorkflowStore()
   const { handleNodeDataUpdate } = useNodeDataUpdate()
   const { handleAddVariableInAddVariablePopupWithPosition } = useVariableAssigner()
   const isChatMode = useIsChatMode()
@@ -91,7 +91,7 @@ const AddVariablePopupWithPosition = ({
           _showAddVariablePopup: false,
         },
       })
-      setShowAssignVariablePopup(undefined)
+      workflowStore.getState().setShowAssignVariablePopup(undefined)
     }
   }, ref)
 

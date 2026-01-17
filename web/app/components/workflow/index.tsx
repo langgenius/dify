@@ -141,8 +141,6 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const showConfirm = useStore(s => s.showConfirm)
   const workflowCanvasHeight = useStore(s => s.workflowCanvasHeight)
   const bottomPanelHeight = useStore(s => s.bottomPanelHeight)
-  const setWorkflowCanvasWidth = useStore(s => s.setWorkflowCanvasWidth)
-  const setWorkflowCanvasHeight = useStore(s => s.setWorkflowCanvasHeight)
   const controlHeight = useMemo(() => {
     if (!workflowCanvasHeight)
       return '100%'
@@ -155,6 +153,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
       const resizeContainerObserver = new ResizeObserver((entries) => {
         for (const entry of entries) {
           const { inlineSize, blockSize } = entry.borderBoxSize[0]
+          const { setWorkflowCanvasWidth, setWorkflowCanvasHeight } = workflowStore.getState()
           setWorkflowCanvasWidth(inlineSize)
           setWorkflowCanvasHeight(blockSize)
         }
@@ -164,7 +163,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
         resizeContainerObserver.disconnect()
       }
     }
-  }, [setWorkflowCanvasHeight, setWorkflowCanvasWidth])
+  }, [workflowStore])
 
   const {
     setShowConfirm,

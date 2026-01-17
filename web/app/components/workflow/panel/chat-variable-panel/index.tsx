@@ -19,7 +19,7 @@ import RemoveEffectVarConfirm from '@/app/components/workflow/nodes/_base/compon
 import { findUsedVarNodes, updateNodeVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import VariableItem from '@/app/components/workflow/panel/chat-variable-panel/components/variable-item'
 import VariableModalTrigger from '@/app/components/workflow/panel/chat-variable-panel/components/variable-modal-trigger'
-import { useStore } from '@/app/components/workflow/store'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useDocLink } from '@/context/i18n'
 import { cn } from '@/utils/classnames'
@@ -29,9 +29,8 @@ const ChatVariablePanel = () => {
   const { t } = useTranslation()
   const docLink = useDocLink()
   const store = useStoreApi()
-  const setShowChatVariablePanel = useStore(s => s.setShowChatVariablePanel)
+  const workflowStore = useWorkflowStore()
   const varList = useStore(s => s.conversationVariables) as ConversationVariable[]
-  const updateChatVarList = useStore(s => s.setConversationVariables)
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
   const {
     invalidateConversationVarValues,
@@ -79,11 +78,11 @@ const ChatVariablePanel = () => {
 
   const handleDelete = useCallback((chatVar: ConversationVariable) => {
     removeUsedVarInNodes(chatVar)
-    updateChatVarList(varList.filter(v => v.id !== chatVar.id))
+    workflowStore.getState().setConversationVariables(varList.filter(v => v.id !== chatVar.id))
     setCacheForDelete(undefined)
     setShowRemoveConfirm(false)
     handleVarChanged()
-  }, [handleVarChanged, removeUsedVarInNodes, updateChatVarList, varList])
+  }, [handleVarChanged, removeUsedVarInNodes, workflowStore, varList])
 
   const deleteCheck = useCallback((chatVar: ConversationVariable) => {
     const effectedNodes = getEffectedNodes(chatVar)
@@ -100,13 +99,13 @@ const ChatVariablePanel = () => {
     // add chatVar
     if (!currentVar) {
       const newList = [chatVar, ...varList]
-      updateChatVarList(newList)
+      workflowStore.getState().setConversationVariables(newList)
       handleVarChanged()
       return
     }
     // edit chatVar
     const newList = varList.map(v => v.id === currentVar.id ? chatVar : v)
-    updateChatVarList(newList)
+    workflowStore.getState().setConversationVariables(newList)
     // side effects of rename env
     if (currentVar.name !== chatVar.name) {
       const { getNodes, setNodes } = store.getState()
@@ -120,7 +119,7 @@ const ChatVariablePanel = () => {
       setNodes(newNodes)
     }
     handleVarChanged()
-  }, [currentVar, getEffectedNodes, handleVarChanged, store, updateChatVarList, varList])
+  }, [currentVar, getEffectedNodes, handleVarChanged, store, workflowStore, varList])
 
   return (
     <div
@@ -136,7 +135,7 @@ const ChatVariablePanel = () => {
           </ActionButton>
           <div
             className="flex h-6 w-6 cursor-pointer items-center justify-center"
-            onClick={() => setShowChatVariablePanel(false)}
+            onClick={() => workflowStore.getState().setShowChatVariablePanel(false)}
           >
             <RiCloseLine className="h-4 w-4 text-text-tertiary" />
           </div>

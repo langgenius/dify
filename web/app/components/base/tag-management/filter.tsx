@@ -32,8 +32,6 @@ const TagFilter: FC<TagFilterProps> = ({
   const [open, setOpen] = useState(false)
 
   const tagList = useTagStore(s => s.tagList)
-  const setTagList = useTagStore(s => s.setTagList)
-  const setShowTagManagementModal = useTagStore(s => s.setShowTagManagementModal)
 
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
@@ -62,7 +60,7 @@ const TagFilter: FC<TagFilterProps> = ({
 
   useMount(() => {
     fetchTagList(type).then((res) => {
-      setTagList(res)
+      useTagStore.getState().setTagList(res)
     })
   })
 
@@ -146,7 +144,7 @@ const TagFilter: FC<TagFilterProps> = ({
               <div
                 className="flex cursor-pointer select-none items-center gap-2 rounded-lg py-[6px] pl-3 pr-2 hover:bg-state-base-hover"
                 onClick={() => {
-                  setShowTagManagementModal(true)
+                  useTagStore.getState().setShowTagManagementModal(true)
                   setOpen(false)
                 }}
               >

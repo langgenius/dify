@@ -15,7 +15,7 @@ import Divider from '@/app/components/base/divider'
 import Tooltip from '@/app/components/base/tooltip'
 import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks'
-import { useStore } from '@/app/components/workflow/store'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { cn } from '@/utils/classnames'
 import FieldList from './field-list'
@@ -32,8 +32,8 @@ const InputFieldPanel = () => {
     isPreviewing,
     isEditing,
   } = useInputFieldPanel()
+  const workflowStore = useWorkflowStore()
   const ragPipelineVariables = useStore(state => state.ragPipelineVariables)
-  const setRagPipelineVariables = useStore(state => state.setRagPipelineVariables)
 
   const getInputFieldsMap = () => {
     const inputFieldsMap: Record<string, InputVar[]> = {}
@@ -83,9 +83,9 @@ const InputFieldPanel = () => {
     })
     // Datasource node input fields come first, then global input fields
     const newRagPipelineVariables = [...datasourceNodeInputFields, ...globalInputFields]
-    setRagPipelineVariables?.(newRagPipelineVariables)
+    workflowStore.getState().setRagPipelineVariables?.(newRagPipelineVariables)
     handleSyncWorkflowDraft()
-  }, [setRagPipelineVariables, handleSyncWorkflowDraft])
+  }, [workflowStore, handleSyncWorkflowDraft])
 
   const closePanel = useCallback(() => {
     closeAllInputFieldPanels()

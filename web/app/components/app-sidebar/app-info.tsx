@@ -66,7 +66,6 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
   const { replace } = useRouter()
   const { onPlanInfoChanged } = useProviderContext()
   const appDetail = useAppStore(state => state.appDetail)
-  const setAppDetail = useAppStore(state => state.setAppDetail)
   const invalidateAppList = useInvalidateAppList()
   const [open, setOpen] = useState(openState)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -104,12 +103,12 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
         type: 'success',
         message: t('editDone', { ns: 'app' }),
       })
-      setAppDetail(app)
+      useAppStore.getState().setAppDetail(app)
     }
     catch {
       notify({ type: 'error', message: t('editFailed', { ns: 'app' }) })
     }
-  }, [appDetail, notify, setAppDetail, t])
+  }, [appDetail, notify, t])
 
   const onCopy: DuplicateAppModalProps['onConfirm'] = async ({ name, icon_type, icon, icon_background }) => {
     if (!appDetail)
@@ -195,7 +194,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
       notify({ type: 'success', message: t('appDeleted', { ns: 'app' }) })
       invalidateAppList()
       onPlanInfoChanged()
-      setAppDetail()
+      useAppStore.getState().setAppDetail()
       replace('/apps')
     }
     catch (e: any) {
@@ -205,7 +204,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
       })
     }
     setShowConfirmDelete(false)
-  }, [appDetail, invalidateAppList, notify, onPlanInfoChanged, replace, setAppDetail, t])
+  }, [appDetail, invalidateAppList, notify, onPlanInfoChanged, replace, t])
 
   const { isCurrentWorkspaceEditor } = useAppContext()
 

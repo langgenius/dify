@@ -24,7 +24,7 @@ import JsonSchemaGenerator from './json-schema-generator'
 import SchemaEditor from './schema-editor'
 import VisualEditor from './visual-editor'
 import { MittProvider, useMittContext, VisualEditorContextProvider } from './visual-editor/context'
-import { useVisualEditorStore } from './visual-editor/store'
+import { useVisualEditorStore, useVisualEditorStoreApi } from './visual-editor/store'
 
 type JsonSchemaConfigProps = {
   defaultSchema?: SchemaRoot
@@ -62,11 +62,9 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
   const [btnWidth, setBtnWidth] = useState(0)
   const [parseError, setParseError] = useState<Error | null>(null)
   const [validationError, setValidationError] = useState<string>('')
+  const visualEditorStore = useVisualEditorStoreApi()
   const advancedEditing = useVisualEditorStore(state => state.advancedEditing)
-  const setAdvancedEditing = useVisualEditorStore(state => state.setAdvancedEditing)
   const isAddingNewField = useVisualEditorStore(state => state.isAddingNewField)
-  const setIsAddingNewField = useVisualEditorStore(state => state.setIsAddingNewField)
-  const setHoveringProperty = useVisualEditorStore(state => state.setHoveringProperty)
   const { emit } = useMittContext()
 
   const updateBtnWidth = useCallback((width: number) => {
@@ -142,15 +140,15 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
 
   const handleResetDefaults = useCallback(() => {
     if (currentTab === SchemaView.VisualEditor) {
-      setHoveringProperty(null)
+      visualEditorStore.getState().setHoveringProperty(null)
       if (advancedEditing)
-        setAdvancedEditing(false)
+        visualEditorStore.getState().setAdvancedEditing(false)
       if (isAddingNewField)
-        setIsAddingNewField(false)
+        visualEditorStore.getState().setIsAddingNewField(false)
     }
     setJsonSchema(DEFAULT_SCHEMA)
     setJson(JSON.stringify(DEFAULT_SCHEMA, null, 2))
-  }, [currentTab, advancedEditing, isAddingNewField, setAdvancedEditing, setIsAddingNewField, setHoveringProperty])
+  }, [currentTab, advancedEditing, isAddingNewField, visualEditorStore])
 
   const handleCancel = useCallback(() => {
     onClose()

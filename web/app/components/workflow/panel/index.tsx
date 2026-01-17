@@ -6,7 +6,7 @@ import { useStore as useReactflow } from 'reactflow'
 import { useShallow } from 'zustand/react/shallow'
 import { cn } from '@/utils/classnames'
 import { Panel as NodePanel } from '../nodes'
-import { useStore } from '../store'
+import { useStore, useWorkflowStore } from '../store'
 import EnvPanel from './env-panel'
 
 const VersionHistoryPanel = dynamic(() => import('@/app/components/workflow/panel/version-history-panel'), {
@@ -85,11 +85,11 @@ const Panel: FC<PanelProps> = ({
   const showEnvPanel = useStore(s => s.showEnvPanel)
   const isRestoring = useStore(s => s.isRestoring)
   const showWorkflowVersionHistoryPanel = useStore(s => s.showWorkflowVersionHistoryPanel)
+  const workflowStore = useWorkflowStore()
 
   // widths used for adaptive layout
   const workflowCanvasWidth = useStore(s => s.workflowCanvasWidth)
   const previewPanelWidth = useStore(s => s.previewPanelWidth)
-  const setPreviewPanelWidth = useStore(s => s.setPreviewPanelWidth)
 
   // When a node is selected and the NodePanel appears, if the current width
   // of preview/otherPanel is too large, it may result in the total width of
@@ -107,20 +107,25 @@ const Panel: FC<PanelProps> = ({
     const maxAllowed = Math.max(workflowCanvasWidth - reservedCanvasWidth - minNodePanelWidth, 400)
 
     if (previewPanelWidth > maxAllowed)
-      setPreviewPanelWidth(maxAllowed)
-  }, [selectedNode, workflowCanvasWidth, previewPanelWidth, setPreviewPanelWidth])
+      workflowStore.getState().setPreviewPanelWidth(maxAllowed)
+  }, [selectedNode, workflowCanvasWidth, previewPanelWidth, workflowStore])
 
-  const setRightPanelWidth = useStore(s => s.setRightPanelWidth)
-  const setOtherPanelWidth = useStore(s => s.setOtherPanelWidth)
+  const handleRightPanelResize = useCallback((width: number) => {
+    workflowStore.getState().setRightPanelWidth(width)
+  }, [workflowStore])
+
+  const handleOtherPanelResize = useCallback((width: number) => {
+    workflowStore.getState().setOtherPanelWidth(width)
+  }, [workflowStore])
 
   const rightPanelRef = useResizeObserver(
-    setRightPanelWidth,
-    [setRightPanelWidth, selectedNode, showEnvPanel, showWorkflowVersionHistoryPanel],
+    handleRightPanelResize,
+    [handleRightPanelResize, selectedNode, showEnvPanel, showWorkflowVersionHistoryPanel],
   )
 
   const otherPanelRef = useResizeObserver(
-    setOtherPanelWidth,
-    [setOtherPanelWidth, showEnvPanel, showWorkflowVersionHistoryPanel],
+    handleOtherPanelResize,
+    [handleOtherPanelResize, showEnvPanel, showWorkflowVersionHistoryPanel],
   )
 
   return (

@@ -48,7 +48,6 @@ const ChatWrapper = (
   const appDetail = useAppStore(s => s.appDetail)
   const workflowStore = useWorkflowStore()
   const inputs = useStore(s => s.inputs)
-  const setInputs = useStore(s => s.setInputs)
 
   const initialInputs = useMemo(() => {
     const initInputs: Record<string, any> = {}
@@ -74,7 +73,6 @@ const ChatWrapper = (
       file_upload: features.file,
     }
   }, [features.opening, features.suggested, features.text2speech, features.speech2text, features.citation, features.moderation, features.file])
-  const setShowFeaturesPanel = useStore(s => s.setShowFeaturesPanel)
 
   const {
     conversationId,
@@ -97,8 +95,8 @@ const ChatWrapper = (
 
   const handleRestartChat = useCallback(() => {
     handleRestart()
-    setInputs(initialInputs)
-  }, [handleRestart, setInputs, initialInputs])
+    workflowStore.getState().setInputs(initialInputs)
+  }, [handleRestart, workflowStore, initialInputs])
 
   const doSend: OnSend = useCallback((message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
     handleSend(
@@ -135,7 +133,7 @@ const ChatWrapper = (
 
   useEffect(() => {
     if (Object.keys(initialInputs).length > 0) {
-      setInputs({
+      workflowStore.getState().setInputs({
         ...initialInputs,
         ...inputs,
       })
@@ -162,7 +160,7 @@ const ChatWrapper = (
         chatFooterInnerClassName="pb-0"
         showFileUpload
         showFeatureBar
-        onFeatureBarClick={setShowFeaturesPanel}
+        onFeatureBarClick={state => workflowStore.getState().setShowFeaturesPanel(state)}
         onSend={doSend}
         inputs={inputs}
         inputsForm={(startVariables || []) as any}

@@ -20,7 +20,7 @@ import {
 import ResultPanel from '../run/result-panel'
 import ResultText from '../run/result-text'
 import TracingPanel from '../run/tracing-panel'
-import { useStore } from '../store'
+import { useStore, useWorkflowStore } from '../store'
 import {
   WorkflowRunningStatus,
 } from '../types'
@@ -30,12 +30,12 @@ import InputsPanel from './inputs-panel'
 const WorkflowPreview = () => {
   const { t } = useTranslation()
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
+  const workflowStore = useWorkflowStore()
   const workflowRunningData = useStore(s => s.workflowRunningData)
   const isListening = useStore(s => s.isListening)
   const showInputsPanel = useStore(s => s.showInputsPanel)
   const workflowCanvasWidth = useStore(s => s.workflowCanvasWidth)
   const panelWidth = useStore(s => s.previewPanelWidth)
-  const setPreviewPanelWidth = useStore(s => s.setPreviewPanelWidth)
   const showDebugAndPreviewPanel = useStore(s => s.showDebugAndPreviewPanel)
   const [currentTab, setCurrentTab] = useState<string>(showInputsPanel ? 'INPUT' : 'TRACING')
 
@@ -81,9 +81,9 @@ const WorkflowPreview = () => {
       const maxAllowed = workflowCanvasWidth ? (workflowCanvasWidth - reservedCanvasWidth) : 1024
 
       if (newWidth >= 400 && newWidth <= maxAllowed)
-        setPreviewPanelWidth(newWidth)
+        workflowStore.getState().setPreviewPanelWidth(newWidth)
     }
-  }, [isResizing, workflowCanvasWidth, setPreviewPanelWidth])
+  }, [isResizing, workflowCanvasWidth, workflowStore])
 
   useEffect(() => {
     window.addEventListener('mousemove', resize)

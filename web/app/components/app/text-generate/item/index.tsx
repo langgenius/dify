@@ -109,9 +109,6 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     config,
   } = useChatContext()
 
-  const setCurrentLogItem = useAppStore(s => s.setCurrentLogItem)
-  const setShowPromptLogModal = useAppStore(s => s.setShowPromptLogModal)
-
   const handleFeedback = async (childFeedback: FeedbackType) => {
     await updateFeedback({ url: `/messages/${childMessageId}/feedbacks`, body: { rating: childFeedback.rating } }, isInstalledApp, installedAppId)
     setChildFeedback(childFeedback)
@@ -196,6 +193,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
               }
             : data.message],
         }
+    const { setCurrentLogItem, setShowPromptLogModal } = useAppStore.getState()
     setCurrentLogItem(logItem)
     setShowPromptLogModal(true)
   }

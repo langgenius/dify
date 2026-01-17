@@ -4,7 +4,7 @@ import type {
 } from '@/app/components/workflow/types'
 import { useTranslation } from 'react-i18next'
 import PromptEditor from '@/app/components/base/prompt-editor'
-import { useStore } from '@/app/components/workflow/store'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 
 type ConditionInputProps = {
@@ -23,8 +23,8 @@ const ConditionInput = ({
 }: ConditionInputProps) => {
   const { t } = useTranslation()
   const controlPromptEditorRerenderKey = useStore(s => s.controlPromptEditorRerenderKey)
+  const workflowStore = useWorkflowStore()
   const pipelineId = useStore(s => s.pipelineId)
-  const setShowInputFieldPanel = useStore(s => s.setShowInputFieldPanel)
 
   return (
     <PromptEditor
@@ -52,7 +52,7 @@ const ConditionInput = ({
           return acc
         }, {} as any),
         showManageInputField: !!pipelineId,
-        onManageInputField: () => setShowInputFieldPanel?.(true),
+        onManageInputField: () => workflowStore.getState().setShowInputFieldPanel?.(true),
       }}
       onChange={onChange}
       editable={!disabled}

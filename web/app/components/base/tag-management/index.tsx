@@ -22,12 +22,10 @@ const TagManagementModal = ({ show, type }: TagManagementModalProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const tagList = useTagStore(s => s.tagList)
-  const setTagList = useTagStore(s => s.setTagList)
-  const setShowTagManagementModal = useTagStore(s => s.setShowTagManagementModal)
 
   const getTagList = async (type: 'knowledge' | 'app') => {
     const res = await fetchTagList(type)
-    setTagList(res)
+    useTagStore.getState().setTagList(res)
   }
 
   const [pending, setPending] = useState<boolean>(false)
@@ -41,7 +39,7 @@ const TagManagementModal = ({ show, type }: TagManagementModalProps) => {
       setPending(true)
       const newTag = await createTag(name, type)
       notify({ type: 'success', message: t('tag.created', { ns: 'common' }) })
-      setTagList([
+      useTagStore.getState().setTagList([
         newTag,
         ...tagList,
       ])
@@ -62,10 +60,10 @@ const TagManagementModal = ({ show, type }: TagManagementModalProps) => {
     <Modal
       className="!w-[600px] !max-w-[600px] rounded-xl px-8 py-6"
       isShow={show}
-      onClose={() => setShowTagManagementModal(false)}
+      onClose={() => useTagStore.getState().setShowTagManagementModal(false)}
     >
       <div className="relative pb-2 text-xl font-semibold leading-[30px] text-text-primary">{t('tag.manageTags', { ns: 'common' })}</div>
-      <div className="absolute right-4 top-4 cursor-pointer p-2" onClick={() => setShowTagManagementModal(false)}>
+      <div className="absolute right-4 top-4 cursor-pointer p-2" onClick={() => useTagStore.getState().setShowTagManagementModal(false)}>
         <RiCloseLine className="h-4 w-4 text-text-tertiary" />
       </div>
       <div className="mt-3 flex flex-wrap gap-2">

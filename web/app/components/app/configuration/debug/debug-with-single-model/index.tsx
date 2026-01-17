@@ -146,8 +146,6 @@ const DebugWithSingleModel = (
     }
   }, [handleRestart])
 
-  const setShowAppConfigureFeaturesModal = useAppStore(s => s.setShowAppConfigureFeaturesModal)
-
   return (
     <Chat
       config={config}
@@ -157,7 +155,7 @@ const DebugWithSingleModel = (
       chatFooterClassName="px-3 pt-10 pb-0"
       showFeatureBar
       showFileUpload={false}
-      onFeatureBarClick={setShowAppConfigureFeaturesModal}
+      onFeatureBarClick={state => useAppStore.getState().setShowAppConfigureFeaturesModal(state)}
       suggestedQuestions={suggestedQuestions}
       onSend={doSend}
       inputs={inputs}

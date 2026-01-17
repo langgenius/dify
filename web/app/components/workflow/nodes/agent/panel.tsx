@@ -7,7 +7,7 @@ import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toType } from '@/app/components/tools/utils/to-form-schema'
 import { isSupportMCP } from '@/utils/plugin-version-feature'
-import { useStore } from '../../store'
+import { useWorkflowStore } from '../../store'
 import { AgentStrategy } from '../_base/components/agent-strategy'
 import Field from '../_base/components/field'
 import { MCPToolAvailabilityProvider } from '../_base/components/mcp-tool-availability'
@@ -46,7 +46,7 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
   const { t } = useTranslation()
   const isMCPVersionSupported = isSupportMCP(inputs.meta?.version)
 
-  const resetEditor = useStore(s => s.setControlPromptEditorRerenderKey)
+  const workflowStore = useWorkflowStore()
   return (
     <div className="my-2">
       <Field
@@ -77,7 +77,7 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
                 plugin_unique_identifier: strategy!.plugin_unique_identifier,
                 meta: strategy?.meta,
               })
-              resetEditor(Date.now())
+              workflowStore.getState().setControlPromptEditorRerenderKey(Date.now())
             }}
             formSchema={currentStrategy?.parameters?.map(strategyParamToCredientialForm) || []}
             formValue={formData}

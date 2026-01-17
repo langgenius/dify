@@ -2,7 +2,7 @@ import type { Node } from 'reactflow'
 import { memo, useCallback, useEffect, useMemo, useRef } from 'react'
 import { MiniMap } from 'reactflow'
 import UndoRedo from '../header/undo-redo'
-import { useStore } from '../store'
+import { useStore, useWorkflowStore } from '../store'
 import VariableInspectPanel from '../variable-inspect'
 import VariableTrigger from '../variable-inspect/trigger'
 import ZoomInOut from './zoom-in-out'
@@ -14,10 +14,9 @@ export type OperatorProps = {
 
 const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
   const bottomPanelRef = useRef<HTMLDivElement>(null)
+  const workflowStore = useWorkflowStore()
   const workflowCanvasWidth = useStore(s => s.workflowCanvasWidth)
   const rightPanelWidth = useStore(s => s.rightPanelWidth)
-  const setBottomPanelWidth = useStore(s => s.setBottomPanelWidth)
-  const setBottomPanelHeight = useStore(s => s.setBottomPanelHeight)
 
   const bottomPanelWidth = useMemo(() => {
     if (!workflowCanvasWidth || !rightPanelWidth)
@@ -37,6 +36,7 @@ const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
       const resizeContainerObserver = new ResizeObserver((entries) => {
         for (const entry of entries) {
           const { inlineSize, blockSize } = entry.borderBoxSize[0]
+          const { setBottomPanelWidth, setBottomPanelHeight } = workflowStore.getState()
           setBottomPanelWidth(inlineSize)
           setBottomPanelHeight(blockSize)
         }
@@ -46,7 +46,7 @@ const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
         resizeContainerObserver.disconnect()
       }
     }
-  }, [setBottomPanelHeight, setBottomPanelWidth])
+  }, [workflowStore])
 
   return (
     <div

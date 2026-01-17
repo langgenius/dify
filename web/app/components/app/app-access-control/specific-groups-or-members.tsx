@@ -14,15 +14,14 @@ import AddMemberOrGroupDialog from './add-member-or-group-pop'
 export default function SpecificGroupsOrMembers() {
   const currentMenu = useAccessControlStore(s => s.currentMenu)
   const appId = useAccessControlStore(s => s.appId)
-  const setSpecificGroups = useAccessControlStore(s => s.setSpecificGroups)
-  const setSpecificMembers = useAccessControlStore(s => s.setSpecificMembers)
   const { t } = useTranslation()
 
   const { isPending, data } = useAppWhiteListSubjects(appId, Boolean(appId) && currentMenu === AccessMode.SPECIFIC_GROUPS_MEMBERS)
   useEffect(() => {
+    const { setSpecificGroups, setSpecificMembers } = useAccessControlStore.getState()
     setSpecificGroups(data?.groups ?? [])
     setSpecificMembers(data?.members ?? [])
-  }, [data, setSpecificGroups, setSpecificMembers])
+  }, [data])
 
   if (currentMenu !== AccessMode.SPECIFIC_GROUPS_MEMBERS) {
     return (
@@ -80,10 +79,9 @@ type GroupItemProps = {
 }
 function GroupItem({ group }: GroupItemProps) {
   const specificGroups = useAccessControlStore(s => s.specificGroups)
-  const setSpecificGroups = useAccessControlStore(s => s.setSpecificGroups)
   const handleRemoveGroup = useCallback(() => {
-    setSpecificGroups(specificGroups.filter(g => g.id !== group.id))
-  }, [group, setSpecificGroups, specificGroups])
+    useAccessControlStore.getState().setSpecificGroups(specificGroups.filter(g => g.id !== group.id))
+  }, [group, specificGroups])
   return (
     <BaseItem
       icon={<RiOrganizationChart className="h-[14px] w-[14px] text-components-avatar-shape-fill-stop-0" />}
@@ -100,10 +98,9 @@ type MemberItemProps = {
 }
 function MemberItem({ member }: MemberItemProps) {
   const specificMembers = useAccessControlStore(s => s.specificMembers)
-  const setSpecificMembers = useAccessControlStore(s => s.setSpecificMembers)
   const handleRemoveMember = useCallback(() => {
-    setSpecificMembers(specificMembers.filter(m => m.id !== member.id))
-  }, [member, setSpecificMembers, specificMembers])
+    useAccessControlStore.getState().setSpecificMembers(specificMembers.filter(m => m.id !== member.id))
+  }, [member, specificMembers])
   return (
     <BaseItem
       icon={<Avatar className="h-[14px] w-[14px]" textClassName="text-[12px]" avatar={null} name={member.name} />}
