@@ -134,13 +134,6 @@ describe('BUILTIN_TOOLS_ARRAY', () => {
 // Store Tests
 // ================================
 describe('useReadmePanelStore', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    // Reset store state before each test
-    const { setCurrentPluginDetail } = useReadmePanelStore.getState()
-    setCurrentPluginDetail()
-  })
-
   describe('Initial State', () => {
     it('should have undefined currentPluginDetail initially', () => {
       const { currentPluginDetail } = useReadmePanelStore.getState()
@@ -228,12 +221,7 @@ describe('useReadmePanelStore', () => {
 // ReadmeEntrance Component Tests
 // ================================
 describe('ReadmeEntrance', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    // Reset store state
-    const { setCurrentPluginDetail } = useReadmePanelStore.getState()
-    setCurrentPluginDetail()
-  })
+  // Note: Store is automatically reset after each test by global zustand mock
 
   // ================================
   // Rendering Tests
@@ -416,12 +404,8 @@ describe('ReadmeEntrance', () => {
 // ReadmePanel Component Tests
 // ================================
 describe('ReadmePanel', () => {
+  // Note: Store is automatically reset after each test by global zustand mock
   beforeEach(() => {
-    vi.clearAllMocks()
-    // Reset store state
-    const { setCurrentPluginDetail } = useReadmePanelStore.getState()
-    setCurrentPluginDetail()
-    // Reset mock
     mockUsePluginReadme.mockReturnValue({
       data: null,
       isLoading: false,
