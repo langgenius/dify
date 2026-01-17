@@ -40,7 +40,7 @@ register_schema_models(
     TagBasePayload,
     TagBindingPayload,
     TagBindingRemovePayload,
-    TagListQuery,
+    TagListQueryParam,
 )
 
 
