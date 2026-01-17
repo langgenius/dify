@@ -221,7 +221,6 @@ describe('useReadmePanelStore', () => {
 // ReadmeEntrance Component Tests
 // ================================
 describe('ReadmeEntrance', () => {
-
   // ================================
   // Rendering Tests
   // ================================
