@@ -30,6 +30,35 @@ def test_parse_structured_output_with_markdown():
     assert result["nodes"] == [{"id": "start"}]
 
 
+def test_parse_structured_output_with_nested_code_blocks():
+    """Test that nested ``` in JSON strings (e.g., prompt templates) are handled correctly."""
+    # This simulates LLM generating a prompt template with code blocks inside
+    content = '''```json
+{
+  "nodes": [
+    {
+      "id": "llm_1",
+      "type": "llm",
+      "config": {
+        "prompt_template": [
+          {
+            "role": "user",
+            "text": "Review this code:\\n```python\\nprint('hello')\\n```\\nProvide feedback."
+          }
+        ]
+      }
+    }
+  ],
+  "edges": []
+}
+```'''
+    result = parse_structured_output(content)
+    assert result["nodes"][0]["id"] == "llm_1"
+    # Verify the nested code block is preserved in the prompt template
+    prompt_text = result["nodes"][0]["config"]["prompt_template"][0]["text"]
+    assert "```python" in prompt_text
+
+
 def test_parse_structured_output_invalid_raises():
     content = "not valid json at all"
     with pytest.raises(ValueError) as exc_info:

@@ -155,6 +155,9 @@ class WorkflowGenerator:
             return cls._error_response(error)
 
         model_parameters = model_config.get("completion_params", {})
+        # Ensure max_tokens is set to prevent output truncation
+        if "max_tokens" not in model_parameters:
+            model_parameters["max_tokens"] = 8192
         available_tools_list = list(available_tools) if available_tools else []
 
         # Initialize StructuredOutputStrategy to detect preferred output method

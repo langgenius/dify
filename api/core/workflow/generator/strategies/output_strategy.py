@@ -66,7 +66,7 @@ def parse_structured_output(content: str) -> dict[str, Any]:
 
     Handles:
     - Raw JSON
-    - JSON in markdown code blocks
+    - JSON in markdown code blocks (including nested ``` in content)
     - Minor JSON syntax issues (trailing commas)
 
     Raises:
@@ -76,9 +76,18 @@ def parse_structured_output(content: str) -> dict[str, Any]:
     content = content.strip()
 
     # Extract from markdown code block if present
-    json_match = re.search(r"```(?:json)?\s*([\s\S]+?)```", content)
+    # Use GREEDY match to handle nested ``` in JSON strings (e.g., prompt templates with code blocks)
+    # Find the LAST ``` to properly close the markdown block
+    json_match = re.search(r"```(?:json)?\s*([\s\S]+)```", content)
     if json_match:
-        content = json_match.group(1).strip()
+        extracted = json_match.group(1).strip()
+        # If extracted content doesn't look like valid JSON structure, try non-greedy as fallback
+        if not (extracted.startswith("{") and extracted.rstrip().endswith("}")):
+            # Fallback to non-greedy for simple cases
+            json_match_simple = re.search(r"```(?:json)?\s*([\s\S]+?)```", content)
+            if json_match_simple:
+                extracted = json_match_simple.group(1).strip()
+        content = extracted
 
     last_error: json.JSONDecodeError | None = None
 
