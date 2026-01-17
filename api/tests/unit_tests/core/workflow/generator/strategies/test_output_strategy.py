@@ -37,6 +37,20 @@ def test_parse_structured_output_invalid_raises():
     assert "Failed to parse" in str(exc_info.value)
 
 
+def test_parse_structured_output_truncated_json_reports_position():
+    """Test that truncated JSON reports the error position for debugging."""
+    # Simulate truncated JSON (missing closing brackets)
+    content = '{"nodes": [{"id": "start", "type": "start"'
+    with pytest.raises(ValueError) as exc_info:
+        parse_structured_output(content)
+    error_msg = str(exc_info.value)
+    # Should include position info from JSONDecodeError
+    assert "JSONDecodeError" in error_msg
+    assert "pos" in error_msg
+    # Should include content length for truncation detection
+    assert "Content length:" in error_msg
+
+
 def test_strategy_detect_tool_use_support():
     # Mock a model that supports tool use
     mock_model = MagicMock()

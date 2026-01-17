@@ -80,21 +80,44 @@ def parse_structured_output(content: str) -> dict[str, Any]:
     if json_match:
         content = json_match.group(1).strip()
 
+    last_error: json.JSONDecodeError | None = None
+
     # Try direct parse
     try:
         return json.loads(content)
-    except json.JSONDecodeError:
-        pass
+    except json.JSONDecodeError as e:
+        last_error = e
+        logger.debug("Direct JSON parse failed at pos %d: %s", e.pos, e.msg)
 
     # Try fixing trailing commas
     cleaned = re.sub(r",\s*([}\]])", r"\1", content)
     try:
         return json.loads(cleaned)
-    except json.JSONDecodeError:
-        pass
+    except json.JSONDecodeError as e:
+        last_error = e
+        logger.debug("Trailing comma fix parse failed at pos %d: %s", e.pos, e.msg)
 
-    # All attempts failed
-    raise ValueError(f"Failed to parse LLM response as JSON. Content preview: {content[:200]}")
+    # All attempts failed - log detailed diagnostics
+    content_len = len(content)
+    content_start = content[:200]
+    content_end = content[-200:] if content_len > 200 else content
+
+    error_details = ""
+    if last_error:
+        error_details = f" JSONDecodeError at pos {last_error.pos}/{content_len}: {last_error.msg}"
+
+    logger.error(
+        "JSON parse failed.%s Content length: %d, Start: %s... End: ...%s",
+        error_details,
+        content_len,
+        content_start[:100],
+        content_end[-100:],
+    )
+
+    raise ValueError(
+        f"Failed to parse LLM response as JSON.{error_details} "
+        f"Content length: {content_len}, preview: {content_start}"
+    )
 
 
 def validate_workflow_output(data: dict[str, Any]) -> WorkflowOutput:
