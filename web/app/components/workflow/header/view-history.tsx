@@ -58,7 +58,6 @@ const ViewHistory = ({
     handleCancelDebugAndPreviewPanel,
   } = useWorkflowInteractions()
   const workflowStore = useWorkflowStore()
-  const setControlMode = useStore(s => s.setControlMode)
   const historyWorkflowData = useStore(s => s.historyWorkflowData)
   const { handleBackupDraft } = useWorkflowRun()
   const { closeAllInputFieldPanels } = useInputFieldPanel()
@@ -171,7 +170,7 @@ const ViewHistory = ({
                           setOpen(false)
                           handleNodesCancelSelected()
                           handleCancelDebugAndPreviewPanel()
-                          setControlMode(ControlMode.Hand)
+                          workflowStore.getState().setControlMode(ControlMode.Hand)
                         }}
                       >
                         {

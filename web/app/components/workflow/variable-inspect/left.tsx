@@ -8,9 +8,7 @@ import { VarInInspectType } from '@/types/workflow'
 import { cn } from '@/utils/classnames'
 import useCurrentVars from '../hooks/use-inspect-vars-crud'
 import { useNodesInteractions } from '../hooks/use-nodes-interactions'
-import { useStore } from '../store'
-// import ActionButton from '@/app/components/base/action-button'
-// import Tooltip from '@/app/components/base/tooltip'
+import { useStore, useWorkflowStore } from '../store'
 import Group from './group'
 
 type Props = {
@@ -23,9 +21,8 @@ const Left = ({
   handleVarSelect,
 }: Props) => {
   const { t } = useTranslation()
-
+  const workflowStore = useWorkflowStore()
   const environmentVariables = useStore(s => s.environmentVariables)
-  const setCurrentFocusNodeId = useStore(s => s.setCurrentFocusNodeId)
 
   const {
     conversationVars,
@@ -40,12 +37,12 @@ const Left = ({
 
   const handleClearAll = () => {
     deleteAllInspectorVars()
-    setCurrentFocusNodeId('')
+    workflowStore.getState().setCurrentFocusNodeId('')
   }
 
   const handleClearNode = (nodeId: string) => {
     deleteNodeInspectorVars(nodeId)
-    setCurrentFocusNodeId('')
+    workflowStore.getState().setCurrentFocusNodeId('')
   }
 
   return (

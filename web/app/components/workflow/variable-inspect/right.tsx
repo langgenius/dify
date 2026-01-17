@@ -31,7 +31,7 @@ import useCurrentVars from '../hooks/use-inspect-vars-crud'
 import useNodeCrud from '../nodes/_base/hooks/use-node-crud'
 import useNodeInfo from '../nodes/_base/hooks/use-node-info'
 import { CodeLanguage } from '../nodes/code/types'
-import { useStore } from '../store'
+import { useStore, useWorkflowStore } from '../store'
 import { BlockEnum } from '../types'
 import Empty from './empty'
 import ValueContent from './value-content'
@@ -50,9 +50,8 @@ const Right = ({
   isValueFetching,
 }: Props) => {
   const { t } = useTranslation()
+  const workflowStore = useWorkflowStore()
   const bottomPanelWidth = useStore(s => s.bottomPanelWidth)
-  const setShowVariableInspectPanel = useStore(s => s.setShowVariableInspectPanel)
-  const setCurrentFocusNodeId = useStore(s => s.setCurrentFocusNodeId)
   const toolIcon = useToolIcon(currentNodeVar?.nodeData)
   const isTruncated = currentNodeVar?.var.is_truncated
   const fullContent = currentNodeVar?.var.full_content
@@ -76,6 +75,7 @@ const Right = ({
   }
 
   const handleClose = () => {
+    const { setShowVariableInspectPanel, setCurrentFocusNodeId } = workflowStore.getState()
     setShowVariableInspectPanel(false)
     setCurrentFocusNodeId('')
   }

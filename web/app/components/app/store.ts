@@ -24,7 +24,7 @@ type Action = {
   setShowAppConfigureFeaturesModal: (showAppConfigureFeaturesModal: boolean) => void
 }
 
-export const useStore = create<State & Action>(set => ({
+export const useStore = create<State & Action>()(set => ({
   appDetail: undefined,
   setAppDetail: appDetail => set(() => ({ appDetail })),
   appSidebarExpand: '',

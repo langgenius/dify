@@ -11,17 +11,15 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { cn } from '@/utils/classnames'
 import useCurrentVars from '../hooks/use-inspect-vars-crud'
 import { useNodesReadOnly } from '../hooks/use-workflow'
-import { useStore } from '../store'
+import { useStore, useWorkflowStore } from '../store'
 
 const VariableInspectTrigger: FC = () => {
   const { t } = useTranslation()
   const { eventEmitter } = useEventEmitterContextContext()
-
+  const workflowStore = useWorkflowStore()
   const showVariableInspectPanel = useStore(s => s.showVariableInspectPanel)
-  const setShowVariableInspectPanel = useStore(s => s.setShowVariableInspectPanel)
 
   const environmentVariables = useStore(s => s.environmentVariables)
-  const setCurrentFocusNodeId = useStore(s => s.setCurrentFocusNodeId)
   const {
     conversationVars,
     systemVars,
@@ -54,7 +52,13 @@ const VariableInspectTrigger: FC = () => {
 
   const handleClearAll = () => {
     deleteAllInspectorVars()
-    setCurrentFocusNodeId('')
+    workflowStore.getState().setCurrentFocusNodeId('')
+  }
+
+  const handleClick = () => {
+    if (getNodesReadOnly())
+      return
+    workflowStore.getState().setShowVariableInspectPanel(true)
   }
 
   if (showVariableInspectPanel)
@@ -65,11 +69,7 @@ const VariableInspectTrigger: FC = () => {
       {!isRunning && !currentVars.length && (
         <div
           className={cn('system-2xs-semibold-uppercase flex h-5 cursor-pointer items-center gap-1 rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-2 text-text-tertiary shadow-lg backdrop-blur-sm hover:bg-background-default-hover', nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')}
-          onClick={() => {
-            if (getNodesReadOnly())
-              return
-            setShowVariableInspectPanel(true)
-          }}
+          onClick={handleClick}
         >
           {t('debug.variableInspect.trigger.normal', { ns: 'workflow' })}
         </div>
@@ -78,11 +78,7 @@ const VariableInspectTrigger: FC = () => {
         <>
           <div
             className={cn('system-xs-medium flex h-6 cursor-pointer items-center gap-1 rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-2 text-text-accent shadow-lg backdrop-blur-sm hover:bg-components-actionbar-bg-accent', nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')}
-            onClick={() => {
-              if (getNodesReadOnly())
-                return
-              setShowVariableInspectPanel(true)
-            }}
+            onClick={handleClick}
           >
             {t('debug.variableInspect.trigger.cached', { ns: 'workflow' })}
           </div>
@@ -102,7 +98,7 @@ const VariableInspectTrigger: FC = () => {
         <>
           <div
             className="system-xs-medium flex h-6 cursor-pointer items-center gap-1 rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-2 text-text-accent shadow-lg backdrop-blur-sm hover:bg-components-actionbar-bg-accent"
-            onClick={() => setShowVariableInspectPanel(true)}
+            onClick={() => workflowStore.getState().setShowVariableInspectPanel(true)}
           >
             <RiLoader2Line className="h-4 w-4 animate-spin" />
             <span className="text-text-accent">{t('debug.variableInspect.trigger.running', { ns: 'workflow' })}</span>

@@ -16,13 +16,13 @@ import RemoveEffectVarConfirm from '@/app/components/workflow/nodes/_base/compon
 import { findUsedVarNodes, updateNodeVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import EnvItem from '@/app/components/workflow/panel/env-panel/env-item'
 import VariableTrigger from '@/app/components/workflow/panel/env-panel/variable-trigger'
-import { useStore } from '@/app/components/workflow/store'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
 
 const EnvPanel = () => {
   const { t } = useTranslation()
   const store = useStoreApi()
-  const setShowEnvPanel = useStore(s => s.setShowEnvPanel)
+  const workflowStore = useWorkflowStore()
   const envList = useStore(s => s.environmentVariables) as EnvironmentVariable[]
   const envSecrets = useStore(s => s.envSecrets)
   const updateEnvList = useStore(s => s.setEnvironmentVariables)
@@ -157,7 +157,7 @@ const EnvPanel = () => {
         <div className="flex items-center">
           <div
             className="flex h-6 w-6 cursor-pointer items-center justify-center"
-            onClick={() => setShowEnvPanel(false)}
+            onClick={() => workflowStore.getState().setShowEnvPanel(false)}
           >
             <RiCloseLine className="h-4 w-4 text-text-tertiary" />
           </div>

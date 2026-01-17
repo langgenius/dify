@@ -14,7 +14,7 @@ import { cn } from '@/utils/classnames'
 import useCurrentVars from '../hooks/use-inspect-vars-crud'
 import useMatchSchemaType from '../nodes/_base/components/variable/use-match-schema-type'
 
-import { useStore } from '../store'
+import { useStore, useWorkflowStore } from '../store'
 import Empty from './empty'
 import Left from './left'
 import Listening from './listening'
@@ -31,15 +31,13 @@ export type currentVarType = {
 
 const Panel: FC = () => {
   const { t } = useTranslation()
-
+  const workflowStore = useWorkflowStore()
   const bottomPanelWidth = useStore(s => s.bottomPanelWidth)
-  const setShowVariableInspectPanel = useStore(s => s.setShowVariableInspectPanel)
   const [showLeftPanel, setShowLeftPanel] = useState(true)
   const isListening = useStore(s => s.isListening)
 
   const environmentVariables = useStore(s => s.environmentVariables)
   const currentFocusNodeId = useStore(s => s.currentFocusNodeId)
-  const setCurrentFocusNodeId = useStore(s => s.setCurrentFocusNodeId)
   const [currentVarId, setCurrentVarId] = useState('')
 
   const {
@@ -138,9 +136,9 @@ const Panel: FC = () => {
   }, [currentNodeInfo, nodesWithInspectVars])
 
   const handleNodeVarSelect = useCallback((node: currentVarType) => {
-    setCurrentFocusNodeId(node.nodeId)
+    workflowStore.getState().setCurrentFocusNodeId(node.nodeId)
     setCurrentVarId(node.var.id)
-  }, [setCurrentFocusNodeId, setCurrentVarId])
+  }, [workflowStore])
 
   const { isLoading, schemaTypeDefinitions } = useMatchSchemaType()
   const { eventEmitter } = useEventEmitterContextContext()
@@ -148,6 +146,10 @@ const Panel: FC = () => {
   const handleStopListening = useCallback(() => {
     eventEmitter?.emit({ type: EVENT_WORKFLOW_STOP } as any)
   }, [eventEmitter])
+
+  const handleClick = () => {
+    workflowStore.getState().setShowVariableInspectPanel(false)
+  }
 
   useEffect(() => {
     if (currentFocusNodeId && currentVarId && !isLoading) {
@@ -162,7 +164,7 @@ const Panel: FC = () => {
       <div className={cn('flex h-full flex-col')}>
         <div className="flex shrink-0 items-center justify-between pl-4 pr-2 pt-2">
           <div className="system-sm-semibold-uppercase text-text-primary">{t('debug.variableInspect.title', { ns: 'workflow' })}</div>
-          <ActionButton onClick={() => setShowVariableInspectPanel(false)}>
+          <ActionButton onClick={handleClick}>
             <RiCloseLine className="h-4 w-4" />
           </ActionButton>
         </div>
@@ -180,7 +182,7 @@ const Panel: FC = () => {
       <div className={cn('flex h-full flex-col')}>
         <div className="flex shrink-0 items-center justify-between pl-4 pr-2 pt-2">
           <div className="system-sm-semibold-uppercase text-text-primary">{t('debug.variableInspect.title', { ns: 'workflow' })}</div>
-          <ActionButton onClick={() => setShowVariableInspectPanel(false)}>
+          <ActionButton onClick={handleClick}>
             <RiCloseLine className="h-4 w-4" />
           </ActionButton>
         </div>
