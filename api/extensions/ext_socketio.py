@@ -1,4 +1,4 @@
-import socketio
+import socketio  # type: ignore[reportMissingTypeStubs]
 
 from configs import dify_config
 

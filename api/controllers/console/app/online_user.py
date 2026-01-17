@@ -1,8 +1,10 @@
 import json
 import logging
 import time
+from collections.abc import Callable
+from typing import Any, cast
 
-from werkzeug.wrappers import Request as WerkzeugRequest
+from flask import Request as FlaskRequest
 
 from extensions.ext_redis import redis_client
 from extensions.ext_socketio import sio
@@ -40,7 +42,11 @@ def _refresh_session_state(workflow_id: str, sid: str) -> None:
         redis_client.expire(sid_key, SESSION_STATE_TTL_SECONDS)
 
 
-@sio.on("connect")
+def _sio_on(event: str) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+    return cast(Callable[[Callable[..., Any]], Callable[..., Any]], sio.on(event))
+
+
+@_sio_on("connect")
 def socket_connect(sid, environ, auth):
     """
     WebSocket connect event, do authentication here.
@@ -51,7 +57,7 @@ def socket_connect(sid, environ, auth):
 
     if not token:
         try:
-            request_environ = WerkzeugRequest(environ)
+            request_environ = FlaskRequest(environ)
             token = extract_access_token(request_environ)
         except Exception:
             logging.exception("Failed to extract token")
@@ -80,7 +86,7 @@ def socket_connect(sid, environ, auth):
         return False
 
 
-@sio.on("user_connect")
+@_sio_on("user_connect")
 def handle_user_connect(sid, data):
     """
     Handle user connect event. Each session (tab) is treated as an independent collaborator.
@@ -128,7 +134,7 @@ def handle_user_connect(sid, data):
     return {"msg": "connected", "user_id": user_id, "sid": sid, "isLeader": is_leader}
 
 
-@sio.on("disconnect")
+@_sio_on("disconnect")
 def handle_disconnect(sid):
     """
     Handle session disconnect event. Remove the specific session from online users.
@@ -252,7 +258,7 @@ def broadcast_leader_change(workflow_id, new_leader_sid):
     """
     sessions_json = redis_client.hgetall(_workflow_key(workflow_id))
 
-    for sid, session_info_json in sessions_json.items():
+    for sid in sessions_json:
         try:
             sid_str = sid.decode("utf-8") if isinstance(sid, bytes) else sid
             is_leader = sid_str == new_leader_sid
@@ -279,7 +285,7 @@ def broadcast_online_users(workflow_id):
     sessions_json = redis_client.hgetall(_workflow_key(workflow_id))
     users = []
 
-    for sid, session_info_json in sessions_json.items():
+    for session_info_json in sessions_json.values():
         try:
             session_info = json.loads(session_info_json)
             # Each session appears as a separate "user" in the UI
@@ -304,7 +310,7 @@ def broadcast_online_users(workflow_id):
     sio.emit("online_users", {"workflow_id": workflow_id, "users": users, "leader": leader_sid}, room=workflow_id)
 
 
-@sio.on("collaboration_event")
+@_sio_on("collaboration_event")
 def handle_collaboration_event(sid, data):
     """
     Handle general collaboration events, include:
@@ -345,7 +351,7 @@ def handle_collaboration_event(sid, data):
     return {"msg": "event_broadcasted"}
 
 
-@sio.on("graph_event")
+@_sio_on("graph_event")
 def handle_graph_event(sid, data):
     """
     Handle graph events - simple broadcast relay.

@@ -198,8 +198,8 @@ class WorkflowService:
         features: dict,
         unique_hash: str | None,
         account: Account,
-        environment_variables: Sequence[Variable],
-        conversation_variables: Sequence[Variable],
+        environment_variables: Sequence[VariableBase],
+        conversation_variables: Sequence[VariableBase],
         force_upload: bool = False,
     ) -> Workflow:
         """
@@ -255,7 +255,7 @@ class WorkflowService:
         self,
         *,
         app_model: App,
-        environment_variables: Sequence[Variable],
+        environment_variables: Sequence[VariableBase],
         account: Account,
     ):
         """
@@ -278,7 +278,7 @@ class WorkflowService:
         self,
         *,
         app_model: App,
-        conversation_variables: Sequence[Variable],
+        conversation_variables: Sequence[VariableBase],
         account: Account,
     ):
         """
