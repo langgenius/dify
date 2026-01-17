@@ -1,5 +1,6 @@
 from core.plugin.entities.endpoint import EndpointEntityWithInstance
 from core.plugin.impl.base import BasePluginClient
+from core.plugin.impl.exc import PluginDaemonInternalServerError
 
 
 class PluginEndpointClient(BasePluginClient):
@@ -70,18 +71,27 @@ class PluginEndpointClient(BasePluginClient):
     def delete_endpoint(self, tenant_id: str, user_id: str, endpoint_id: str):
         """
         Delete the given endpoint.
+
+        This operation is idempotent: if the endpoint is already deleted (record not found),
+        it will return True instead of raising an error.
         """
-        return self._request_with_plugin_daemon_response(
-            "POST",
-            f"plugin/{tenant_id}/endpoint/remove",
-            bool,
-            data={
-                "endpoint_id": endpoint_id,
-            },
-            headers={
-                "Content-Type": "application/json",
-            },
-        )
+        try:
+            return self._request_with_plugin_daemon_response(
+                "POST",
+                f"plugin/{tenant_id}/endpoint/remove",
+                bool,
+                data={
+                    "endpoint_id": endpoint_id,
+                },
+                headers={
+                    "Content-Type": "application/json",
+                },
+            )
+        except PluginDaemonInternalServerError as e:
+            # Make delete idempotent: if record is not found, consider it a success
+            if "record not found" in str(e.description).lower():
+                return True
+            raise
 
     def enable_endpoint(self, tenant_id: str, user_id: str, endpoint_id: str):
         """
