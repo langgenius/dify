@@ -68,21 +68,22 @@ class WorkflowConverter:
         )
 
         # create new app
-        new_app = App()
-        new_app.tenant_id = app_model.tenant_id
-        new_app.name = name or app_model.name + "(workflow)"
-        new_app.mode = AppMode.ADVANCED_CHAT if app_model.mode == AppMode.CHAT else AppMode.WORKFLOW
-        new_app.icon_type = icon_type or app_model.icon_type
-        new_app.icon = icon or app_model.icon
-        new_app.icon_background = icon_background or app_model.icon_background
-        new_app.enable_site = app_model.enable_site
-        new_app.enable_api = app_model.enable_api
-        new_app.api_rpm = app_model.api_rpm
-        new_app.api_rph = app_model.api_rph
-        new_app.is_demo = False
-        new_app.is_public = app_model.is_public
-        new_app.created_by = account.id
-        new_app.updated_by = account.id
+        new_app = App(
+            tenant_id=app_model.tenant_id,
+            name=name or app_model.name + "(workflow)",
+            mode=AppMode.ADVANCED_CHAT if app_model.mode == AppMode.CHAT else AppMode.WORKFLOW,
+            icon_type=icon_type or app_model.icon_type,
+            icon=icon or app_model.icon,
+            icon_background=icon_background or app_model.icon_background,
+            enable_site=app_model.enable_site,
+            enable_api=app_model.enable_api,
+            api_rpm=app_model.api_rpm,
+            api_rph=app_model.api_rph,
+            is_demo=False,
+            is_public=app_model.is_public,
+            created_by=account.id,
+            updated_by=account.id,
+        )
         db.session.add(new_app)
         db.session.flush()
 
