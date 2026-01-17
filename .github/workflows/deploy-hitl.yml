@@ -20,7 +20,7 @@ jobs:
       )
     steps:
       - name: Deploy to server
-        uses: appleboy/ssh-action@v0.1.8
+        uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.HITL_SSH_HOST }}
           username: ${{ secrets.SSH_USER }}

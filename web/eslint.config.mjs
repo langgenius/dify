@@ -26,7 +26,8 @@ export default antfu(
         'react-hooks/preserve-manual-memoization': 'warn',
         'react-hooks/purity': 'warn',
         'react-hooks/refs': 'warn',
-        'react-hooks/set-state-in-effect': 'warn',
+        // prefer react-hooks-extra/no-direct-set-state-in-use-effect
+        'react-hooks/set-state-in-effect': 'off',
         'react-hooks/set-state-in-render': 'warn',
         'react-hooks/static-components': 'warn',
         'react-hooks/unsupported-syntax': 'warn',
@@ -50,6 +51,14 @@ export default antfu(
     stylistic: {
       overrides: {
         'antfu/top-level-function': 'off',
+      },
+    },
+  },
+  {
+    files: ['**/*.ts', '**/*.tsx'],
+    settings: {
+      'react-x': {
+        additionalStateHooks: '/^use\\w*State(?:s)?|useAtom$/u',
       },
     },
   },

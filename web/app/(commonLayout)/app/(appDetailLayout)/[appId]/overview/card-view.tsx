@@ -65,15 +65,17 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
       <div className="text-xs text-text-secondary">
         {t('overview.disableTooltip.triggerMode', { ns: 'appOverview', feature: featureName })}
       </div>
-      <div
-        className="cursor-pointer text-xs font-medium text-text-accent hover:underline"
+      <a
+        href={triggerDocUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="block cursor-pointer text-xs font-medium text-text-accent hover:underline"
         onClick={(event) => {
           event.stopPropagation()
-          window.open(triggerDocUrl, '_blank')
         }}
       >
         {t('overview.appInfo.enableTooltip.learnMore', { ns: 'appOverview' })}
-      </div>
+      </a>
     </div>
   ), [t, triggerDocUrl])
 
