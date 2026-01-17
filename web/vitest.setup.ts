@@ -88,7 +88,6 @@ vi.mock('next/image')
 // mock zustand - auto-resets all stores after each test
 // Based on official Zustand testing guide: https://zustand.docs.pmnd.rs/guides/testing
 vi.mock('zustand')
-vi.mock('zustand/vanilla')
 
 // mock react-i18next
 vi.mock('react-i18next', async () => {
