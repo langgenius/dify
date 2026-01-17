@@ -12,7 +12,7 @@ Pipeline:
 
 import json
 import logging
-from collections.abc import Sequence
+from collections.abc import Generator, Sequence
 from typing import Any
 
 from core.model_manager import ModelManager
@@ -42,6 +42,12 @@ from core.workflow.generator.types.constants import (
     STABILITY_WARNING_ZH,
 )
 from core.workflow.generator.types.errors import ErrorCode, ErrorType, WorkflowGenerationError
+from core.workflow.generator.types.streaming import (
+    STAGE_BUILDING,
+    STAGE_PLANNING,
+    STAGE_VALIDATING,
+    get_stage_message,
+)
 from core.workflow.generator.utils.graph_validator import GraphValidator
 from core.workflow.generator.utils.mermaid_generator import generate_mermaid
 from core.workflow.generator.utils.workflow_validator import ValidationHint, WorkflowValidator
@@ -116,6 +122,147 @@ class WorkflowGenerator:
                 is_retryable=False,
             )
             return cls._error_response(error)
+
+    @classmethod
+    def generate_workflow_stream(
+        cls,
+        tenant_id: str,
+        instruction: str,
+        model_config: dict,
+        available_nodes: Sequence[dict[str, object]] | None = None,
+        existing_nodes: Sequence[dict[str, object]] | None = None,
+        existing_edges: Sequence[dict[str, object]] | None = None,
+        available_tools: Sequence[dict[str, object]] | None = None,
+        selected_node_ids: Sequence[str] | None = None,
+        previous_workflow: dict[str, object] | None = None,
+        regenerate_mode: bool = False,
+        preferred_language: str | None = None,
+        available_models: Sequence[dict[str, object]] | None = None,
+    ) -> Generator[dict[str, Any], None, None]:
+        """
+        Generate workflow with streaming stage progress.
+
+        Yields stage events during generation, then final complete/error event.
+
+        Yields:
+            dict with "event" key: "stage", "complete", or "error"
+        """
+
+        def make_stage_event(stage: str) -> dict[str, Any]:
+            return {
+                "event": "stage",
+                "stage": stage,
+                "message": get_stage_message(stage, preferred_language),
+            }
+
+        def make_complete_event(result: dict[str, Any]) -> dict[str, Any]:
+            return {"event": "complete", **result}
+
+        def make_error_event(error: WorkflowGenerationError) -> dict[str, Any]:
+            return {
+                "event": "error",
+                "intent": INTENT_ERROR,
+                "error": error.message,
+                "error_code": error.code.value,
+                "is_retryable": error.is_retryable,
+            }
+
+        try:
+            # Initialize model
+            try:
+                model_manager = ModelManager()
+                model_instance = model_manager.get_model_instance(
+                    tenant_id=tenant_id,
+                    model_type=ModelType.LLM,
+                    provider=model_config.get("provider", ""),
+                    model=model_config.get("name", ""),
+                )
+            except Exception as e:
+                logger.exception("Failed to initialize model")
+                error = WorkflowGenerationError(
+                    type=ErrorType.SYSTEM_ERROR,
+                    code=ErrorCode.MODEL_UNAVAILABLE,
+                    message=f"Model unavailable: {str(e)}",
+                    is_retryable=False,
+                )
+                yield make_error_event(error)
+                return
+
+            model_parameters = model_config.get("completion_params", {})
+            if "max_tokens" not in model_parameters:
+                model_parameters["max_tokens"] = 8192
+            available_tools_list = list(available_tools) if available_tools else []
+
+            has_existing_nodes = existing_nodes and len(list(existing_nodes)) > 0
+
+            # --- STAGE: PLANNING ---
+            if not has_existing_nodes:
+                yield make_stage_event(STAGE_PLANNING)
+
+                try:
+                    planner = Planner(model_instance, model_parameters)
+                    plan_output = planner.plan(instruction, available_tools_list)
+
+                    if plan_output.intent == INTENT_OFF_TOPIC:
+                        yield make_complete_event(
+                            {
+                                "intent": INTENT_OFF_TOPIC,
+                                "message": plan_output.message or "I can only help with workflow creation.",
+                                "suggestions": plan_output.suggestions,
+                            }
+                        )
+                        return
+
+                except Exception as e:
+                    logger.exception("Planner failed")
+                    error = WorkflowGenerationError(
+                        type=ErrorType.GENERATION_ERROR,
+                        code=ErrorCode.PLANNING_FAILED,
+                        message=f"Planning failed: {str(e)}",
+                        is_retryable=True,
+                    )
+                    yield make_error_event(error)
+                    return
+
+            # --- STAGE: BUILDING ---
+            yield make_stage_event(STAGE_BUILDING)
+
+            # Use the existing internal logic (includes retry loop and validation)
+            result = cls._generate_workflow_internal(
+                tenant_id=tenant_id,
+                instruction=instruction,
+                model_config=model_config,
+                available_nodes=available_nodes,
+                existing_nodes=existing_nodes,
+                existing_edges=existing_edges,
+                available_tools=available_tools,
+                selected_node_ids=selected_node_ids,
+                previous_workflow=previous_workflow,
+                regenerate_mode=regenerate_mode,
+                preferred_language=preferred_language,
+                available_models=available_models,
+            )
+
+            # Check if error occurred
+            if result.get("intent") == INTENT_ERROR:
+                yield {"event": "error", **result}
+                return
+
+            # --- STAGE: VALIDATING ---
+            yield make_stage_event(STAGE_VALIDATING)
+
+            # Yield complete event
+            yield make_complete_event(result)
+
+        except Exception as e:
+            logger.exception("Streaming generation failed")
+            error = WorkflowGenerationError(
+                type=ErrorType.GENERATION_ERROR,
+                code=ErrorCode.BUILDING_FAILED,
+                message=f"Generation failed: {str(e)}",
+                is_retryable=False,
+            )
+            yield make_error_event(error)
 
     @classmethod
     def _generate_workflow_internal(
