@@ -2,7 +2,11 @@ import type { IOnCompleted, IOnData, IOnError, IOnFile, IOnMessageEnd, IOnMessag
 import type { ModelParameterRule } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ChatPromptConfig, CompletionPromptConfig } from '@/models/debug'
 import type { AppModeEnum, ModelModeType } from '@/types/app'
+import Cookies from 'js-cookie'
+import Toast from '@/app/components/base/toast'
+import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/config'
 import { get, post, ssePost } from './base'
+import { getBaseOptions } from './fetch'
 
 export type BasicAppFirstRes = {
   prompt: string
@@ -139,6 +143,106 @@ export const generateFlowchart = (body: Record<string, any>) => {
   return post<FlowchartGenRes>('/flowchart-generate', {
     body,
   })
+}
+
+export type FlowchartStreamCallbacks = {
+  onStage?: (data: { stage: string, message: string }) => void
+  onComplete?: (data: FlowchartGenRes) => void
+  onError?: (error: string, errorCode?: string) => void
+  getAbortController?: (controller: AbortController) => void
+}
+
+export const generateFlowchartStream = async (
+  body: Record<string, any>,
+  callbacks: FlowchartStreamCallbacks,
+) => {
+  const { onStage, onComplete, onError, getAbortController } = callbacks
+  const abortController = new AbortController()
+  getAbortController?.(abortController)
+
+  // Use base options for credentials and CORS settings
+  const baseOptions = getBaseOptions()
+  const options: RequestInit = {
+    ...baseOptions,
+    method: 'POST',
+    headers: new Headers({
+      'Content-Type': 'application/json',
+      [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '',
+    }),
+    body: JSON.stringify(body),
+    signal: abortController.signal,
+  }
+
+  try {
+    const response = await globalThis.fetch(`${API_PREFIX}/flowchart-generate/stream`, options)
+
+    if (!response.ok) {
+      try {
+        const errorData = await response.json()
+        const errorMessage = errorData.message || 'Request failed'
+        Toast.notify({ type: 'error', message: errorMessage })
+        onError?.(errorMessage, errorData.code)
+      }
+      catch {
+        Toast.notify({ type: 'error', message: 'Request failed' })
+        onError?.('Request failed')
+      }
+      return
+    }
+
+    const reader = response.body?.getReader()
+    if (!reader)
+      return
+
+    const decoder = new TextDecoder('utf-8')
+    let buffer = ''
+    let done = false
+
+    while (!done) {
+      const result = await reader.read()
+      done = result.done
+
+      if (result.value) {
+        buffer += decoder.decode(result.value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (!line.startsWith('data: '))
+            continue
+
+          try {
+            const data = JSON.parse(line.substring(6))
+
+            if (data.event === 'stage') {
+              onStage?.({ stage: data.stage, message: data.message })
+            }
+            else if (data.event === 'complete') {
+              onComplete?.(data as FlowchartGenRes)
+            }
+            else if (data.event === 'error') {
+              Toast.notify({ type: 'error', message: data.error })
+              onError?.(data.error, data.error_code)
+            }
+          }
+          catch {
+            // Ignore parse errors for incomplete chunks
+          }
+        }
+      }
+    }
+  }
+  catch (error) {
+    // Ignore abort errors and read-only property errors (page leave)
+    if (error instanceof Error) {
+      const isAbortError = error.name === 'AbortError' || error.message.includes('AbortError')
+      const isReadOnlyError = error.message.includes('TypeError: Cannot assign to read only property')
+      if (!isAbortError && !isReadOnlyError) {
+        Toast.notify({ type: 'error', message: error.message })
+        onError?.(error.message)
+      }
+    }
+  }
 }
 
 export const fetchModelParams = (providerName: string, modelId: string) => {
