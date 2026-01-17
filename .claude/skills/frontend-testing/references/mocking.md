@@ -400,9 +400,9 @@ vi.mock('@/app/components/workflow/store', () => ({
 **Problems with manual mocking:**
 
 1. Loses `getState()`, `setState()`, `subscribe()` methods
-2. Conflicts with global Zustand mock behavior
-3. Requires manual maintenance of store API
-4. Tests don't reflect actual store behavior
+1. Conflicts with global Zustand mock behavior
+1. Requires manual maintenance of store API
+1. Tests don't reflect actual store behavior
 
 ### When Manual Store Mocking is Necessary
 
