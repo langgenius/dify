@@ -30,9 +30,9 @@ class TagBindingRemovePayload(BaseModel):
     type: Literal["knowledge", "app"] | None = Field(default=None, description="Tag type")
 
 
-class TagListQuery(BaseModel):
-    type: str = Field(default="", description="Tag type filter")
-    keyword: str | None = Field(default=None, description="Search keyword")
+class TagListQueryParam(BaseModel):
+    type: Literal["knowledge", "app", ""] = Field("", description="Tag type filter")
+    keyword: str | None = Field(None, description="Search keyword")
 
 
 register_schema_models(
@@ -49,11 +49,15 @@ class TagListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @console_ns.doc(
+        params={"type": 'Tag type filter. Can be "knowledge" or "app".', "keyword": "Search keyword for tag name."}
+    )
     @marshal_with(dataset_tag_fields)
     def get(self):
         _, current_tenant_id = current_account_with_tenant()
-        query = TagListQuery.model_validate(request.args.to_dict())
-        tags = TagService.get_tags(query.type, current_tenant_id, query.keyword)
+        raw_args = request.args.to_dict()
+        param = TagListQueryParam.model_validate(raw_args)
+        tags = TagService.get_tags(param.type, current_tenant_id, param.keyword)
 
         return tags, 200
 
