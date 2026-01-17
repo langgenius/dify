@@ -49,6 +49,11 @@ const ErrorHandleOnNode = ({
               t('nodes.common.errorHandle.failBranch.title', { ns: 'workflow' })
             )
           }
+          {
+            error_strategy === ErrorHandleTypeEnum.fallbackModel && (
+              t('nodes.common.errorHandle.fallbackModel.title', { ns: 'workflow' })
+            )
+          }
         </div>
         {
           error_strategy === ErrorHandleTypeEnum.failBranch && (
