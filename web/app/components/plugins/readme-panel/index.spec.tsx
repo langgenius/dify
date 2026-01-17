@@ -221,7 +221,6 @@ describe('useReadmePanelStore', () => {
 // ReadmeEntrance Component Tests
 // ================================
 describe('ReadmeEntrance', () => {
-  // Note: Store is automatically reset after each test by global zustand mock
 
   // ================================
   // Rendering Tests
