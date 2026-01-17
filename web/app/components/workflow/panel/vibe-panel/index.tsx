@@ -246,7 +246,7 @@ const VibePanel: FC = () => {
 
         {!isVibeGenerating && vibePanelIntent === 'off_topic' && renderOffTopic}
 
-        <div className="h-full w-0 grow bg-background-default-subtle p-6 pb-0">
+        <div className="relative h-full w-0 grow bg-background-default-subtle p-6 pb-0">
           <div className="flex h-full flex-col">
             <div className="mb-3 flex shrink-0 items-center justify-between">
               <div className="flex shrink-0 flex-col">
@@ -276,7 +276,7 @@ const VibePanel: FC = () => {
                 </Button>
               </div>
             </div>
-            <div className="relative flex grow flex-col overflow-hidden pb-6">
+            <div className="flex grow flex-col overflow-hidden pb-6">
               <WorkflowPreview
                 key={currentVersionIndex}
                 fitView
@@ -285,13 +285,14 @@ const VibePanel: FC = () => {
                 edges={vibePanelPreviewEdges}
                 className="rounded-lg border border-divider-subtle"
               />
-              {isVibeGenerating && (
-                <div className="absolute bottom-0 left-0 right-0 top-0 z-[10] bg-background-default-subtle">
-                  {renderLoading}
-                </div>
-              )}
             </div>
           </div>
+
+          {isVibeGenerating && (
+            <div className="absolute bottom-0 left-0 right-0 top-0 z-[10] bg-background-default-subtle">
+              {renderLoading}
+            </div>
+          )}
 
         </div>
         {!isVibeGenerating && vibePanelIntent !== 'off_topic' && vibePanelPreviewNodes.length === 0 && !vibePanelMermaidCode && <ResPlaceholder />}
