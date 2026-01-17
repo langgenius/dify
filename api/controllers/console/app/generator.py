@@ -2,6 +2,7 @@ import logging
 from collections.abc import Sequence
 from typing import Any
 
+from flask import Response, stream_with_context
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 
@@ -23,6 +24,7 @@ from core.helper.code_executor.python3.python3_code_provider import Python3CodeP
 from core.llm_generator.llm_generator import LLMGenerator
 from core.model_runtime.errors.invoke import InvokeError
 from core.workflow.generator import WorkflowGenerator
+from core.workflow.generator.types.streaming import format_sse_event
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
 from models import App
@@ -329,6 +331,60 @@ class FlowchartGenerateApi(Resource):
             raise CompletionRequestError(e.description)
 
         return result
+
+
+@console_ns.route("/flowchart-generate/stream")
+class FlowchartGenerateStreamApi(Resource):
+    @console_ns.doc("generate_workflow_flowchart_stream")
+    @console_ns.doc(description="Generate workflow flowchart with SSE streaming progress")
+    @console_ns.expect(console_ns.models[FlowchartGeneratePayload.__name__])
+    @console_ns.response(200, "SSE stream of generation progress")
+    @console_ns.response(400, "Invalid request parameters")
+    @console_ns.response(402, "Provider quota exceeded")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self):
+        args = FlowchartGeneratePayload.model_validate(console_ns.payload)
+        _, current_tenant_id = current_account_with_tenant()
+
+        previous_workflow_dict = args.previous_workflow.model_dump() if args.previous_workflow else None
+
+        def generate():
+            try:
+                for event in WorkflowGenerator.generate_workflow_stream(
+                    tenant_id=current_tenant_id,
+                    instruction=args.instruction,
+                    model_config=args.model_config_data,
+                    available_nodes=args.available_nodes,
+                    existing_nodes=args.existing_nodes,
+                    existing_edges=args.existing_edges,
+                    available_tools=args.available_tools,
+                    selected_node_ids=args.selected_node_ids,
+                    previous_workflow=previous_workflow_dict,
+                    regenerate_mode=args.regenerate_mode,
+                    preferred_language=args.language,
+                    available_models=args.available_models,
+                ):
+                    event_type = event.pop("event", "stage")
+                    yield format_sse_event(event_type, event)
+            except ProviderTokenNotInitError as ex:
+                yield format_sse_event("error", {"error": ex.description, "error_code": "provider_not_initialized"})
+            except QuotaExceededError:
+                yield format_sse_event("error", {"error": "Provider quota exceeded", "error_code": "quota_exceeded"})
+            except ModelCurrentlyNotSupportError:
+                yield format_sse_event("error", {"error": "Model not supported", "error_code": "model_not_supported"})
+            except InvokeError as e:
+                yield format_sse_event("error", {"error": e.description, "error_code": "invoke_error"})
+            except Exception as e:
+                logger.exception("Streaming generation failed")
+                yield format_sse_event("error", {"error": str(e), "error_code": "unknown_error"})
+
+        return Response(
+            stream_with_context(generate()),
+            status=200,
+            mimetype="text/event-stream",
+        )
 
 
 @console_ns.route("/instruction-generate/template")
