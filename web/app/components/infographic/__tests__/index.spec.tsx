@@ -1,19 +1,20 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
 import InfographicViewer from '../index'
 
-// Mock the @antv/infographic library
+// Mock the @antv/infographic library - must be before imports
 const mockRender = vi.fn()
 const mockDestroy = vi.fn()
 const mockToSVG = vi.fn().mockResolvedValue('<svg>test</svg>')
 
 vi.mock('@antv/infographic', () => ({
-  Infographic: class MockInfographic {
-    constructor(public options: any) {}
-    render = mockRender
-    destroy = mockDestroy
-    toSVG = mockToSVG
-  },
+  Infographic: vi.fn().mockImplementation(function (this: { options: unknown, render: typeof mockRender, destroy: typeof mockDestroy, toSVG: typeof mockToSVG }, options: unknown) {
+    this.options = options
+    this.render = mockRender
+    this.destroy = mockDestroy
+    this.toSVG = mockToSVG
+  }),
 }))
 
 // Mock Toast
@@ -69,13 +70,13 @@ data
   it('re-renders when syntax changes', () => {
     const { rerender } = render(<InfographicViewer syntax={validSyntax} />)
     expect(mockRender).toHaveBeenCalledTimes(1)
-    
+
     const newSyntax = `infographic list-column-simple-vertical
 data
   lists
     - label Item 1
       desc Description`
-    
+
     rerender(<InfographicViewer syntax={newSyntax} />)
     expect(mockDestroy).toHaveBeenCalled()
     expect(mockRender).toHaveBeenCalledTimes(2)
@@ -85,11 +86,11 @@ data
   it('calls onError when render fails', () => {
     const onError = vi.fn()
     const errorMessage = 'Render failed'
-    
+
     mockRender.mockImplementationOnce(() => {
       throw new Error(errorMessage)
     })
-    
+
     render(<InfographicViewer syntax={validSyntax} onError={onError} />)
     expect(onError).toHaveBeenCalledWith(expect.any(Error))
   })
@@ -98,7 +99,7 @@ data
     mockRender.mockImplementationOnce(() => {
       throw new Error('Test error')
     })
-    
+
     render(<InfographicViewer syntax={validSyntax} />)
     expect(screen.getByText('Test error')).toBeInTheDocument()
   })

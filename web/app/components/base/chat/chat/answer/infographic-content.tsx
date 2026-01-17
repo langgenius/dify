@@ -23,34 +23,34 @@ function parseInfographicSyntax(content: string): string | null {
     if (content.trim().startsWith('infographic ')) {
       return content.trim()
     }
-    
+
     // Try to extract from markdown code blocks
     // Look for ```infographic or ```yaml blocks
-    const codeBlockRegex = /```(?:infographic|yaml)?\s*\n([\s\S]*?)\n```/
+    const codeBlockRegex = /```(?:infographic|yaml)?\n([\s\S]*?)\n```/
     const match = content.match(codeBlockRegex)
-    
+
     if (match && match[1]) {
       const blockContent = match[1].trim()
       if (blockContent.startsWith('infographic ')) {
         return blockContent
       }
     }
-    
+
     // Check for indented infographic syntax (common in AI responses)
     const lines = content.split(/\r?\n/)
     let infographicStart = -1
-    
+
     for (let i = 0; i < lines.length; i++) {
       if (lines[i].trim().startsWith('infographic ')) {
         infographicStart = i
         break
       }
     }
-    
+
     if (infographicStart >= 0) {
       // Extract from the infographic line to the end or until we hit non-indented content
       const infographicLines = [lines[infographicStart]]
-      
+
       for (let i = infographicStart + 1; i < lines.length; i++) {
         const line = lines[i]
         // Stop if we hit a non-empty line that is not indented
@@ -59,10 +59,10 @@ function parseInfographicSyntax(content: string): string | null {
         }
         infographicLines.push(line)
       }
-      
+
       return infographicLines.join('\n').trim()
     }
-    
+
     return null
   }
   catch (err) {
@@ -77,7 +77,7 @@ const InfographicContent: FC<InfographicContentProps> = ({ item }) => {
   const infographicSyntax = useMemo(() => {
     if (typeof content !== 'string')
       return null
-    
+
     return parseInfographicSyntax(content)
   }, [content])
 

@@ -1,13 +1,16 @@
+import type { ChatItem } from '../../../types'
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import InfographicContent from '../infographic-content'
-import type { ChatItem } from '../../../types'
 
 // Mock the InfographicViewer component
 vi.mock('@/app/components/infographic', () => ({
   default: vi.fn(({ syntax }) => (
     <div data-testid="infographic-viewer">
-      Infographic rendered with syntax: {syntax.substring(0, 50)}...
+      Infographic rendered with syntax:
+      {' '}
+      {syntax.substring(0, 50)}
+      ...
     </div>
   )),
 }))
@@ -28,10 +31,10 @@ data
       desc First step
     - label Step 2
       desc Second step`
-      
+
       const item = createChatItem(syntax)
       render(<InfographicContent item={item} />)
-      
+
       expect(screen.getByTestId('infographic-viewer')).toBeInTheDocument()
       expect(screen.getByText(/infographic list-row-simple-horizontal-arrow/)).toBeInTheDocument()
     })
@@ -57,10 +60,10 @@ data
   lists
     - label Item 1
       desc Description`
-        
+
         const item = createChatItem(syntax)
         const { unmount } = render(<InfographicContent item={item} />)
-        
+
         expect(screen.getByTestId('infographic-viewer')).toBeInTheDocument()
         unmount()
       })
@@ -80,10 +83,10 @@ data
 \`\`\`
 
 That's the result!`
-      
+
       const item = createChatItem(content)
       render(<InfographicContent item={item} />)
-      
+
       expect(screen.getByTestId('infographic-viewer')).toBeInTheDocument()
     })
 
@@ -95,10 +98,10 @@ data
     - label Item 1
       desc Description
 \`\`\``
-      
+
       const item = createChatItem(content)
       render(<InfographicContent item={item} />)
-      
+
       expect(screen.getByTestId('infographic-viewer')).toBeInTheDocument()
     })
 
@@ -110,10 +113,10 @@ data
     - label 1
       desc First
 \`\`\``
-      
+
       const item = createChatItem(content)
       render(<InfographicContent item={item} />)
-      
+
       expect(screen.getByTestId('infographic-viewer')).toBeInTheDocument()
     })
 
@@ -122,10 +125,10 @@ data
 some: yaml
 data: here
 \`\`\``
-      
+
       const item = createChatItem(content)
       const { container } = render(<InfographicContent item={item} />)
-      
+
       expect(container.firstChild).toBeNull()
     })
   })
@@ -145,10 +148,10 @@ data
       desc QA testing
 
 Hope this helps!`
-      
+
       const item = createChatItem(content)
       render(<InfographicContent item={item} />)
-      
+
       expect(screen.getByTestId('infographic-viewer')).toBeInTheDocument()
     })
 
@@ -160,10 +163,10 @@ data
       desc Description
 
 This is regular text that should not be included.`
-      
+
       const item = createChatItem(content)
       render(<InfographicContent item={item} />)
-      
+
       const viewer = screen.getByTestId('infographic-viewer')
       expect(viewer.textContent).not.toContain('regular text')
     })
@@ -175,10 +178,10 @@ data
     - label Step 1
       desc Description
 This is regular text immediately after without blank line.`
-      
+
       const item = createChatItem(content)
       render(<InfographicContent item={item} />)
-      
+
       const viewer = screen.getByTestId('infographic-viewer')
       expect(viewer.textContent).not.toContain('regular text')
       expect(viewer.textContent).not.toContain('immediately after')
@@ -189,7 +192,7 @@ This is regular text immediately after without blank line.`
     it('handles non-string content', () => {
       const item = {
         id: '1',
-        content: 123 as any,
+        content: 123 as unknown,
         isAnswer: true,
       }
       const { container } = render(<InfographicContent item={item} />)
@@ -222,19 +225,19 @@ data
   lists
     - label Step 1
       desc Description  `
-      
+
       const item = createChatItem(syntax)
       render(<InfographicContent item={item} />)
-      
+
       expect(screen.getByTestId('infographic-viewer')).toBeInTheDocument()
     })
 
     it('handles syntax with Windows line endings', () => {
       const syntax = 'infographic list-row-simple-horizontal-arrow\r\ndata\r\n  lists\r\n    - label Step 1'
-      
+
       const item = createChatItem(syntax)
       render(<InfographicContent item={item} />)
-      
+
       expect(screen.getByTestId('infographic-viewer')).toBeInTheDocument()
     })
 
@@ -246,10 +249,10 @@ data
       desc Description
     - label Step 2
       desc Another description`
-      
+
       const item = createChatItem(syntax)
       render(<InfographicContent item={item} />)
-      
+
       expect(screen.getByTestId('infographic-viewer')).toBeInTheDocument()
     })
   })
@@ -260,10 +263,10 @@ data
 data
   lists
     - label Step 1`
-      
+
       const item = createChatItem(syntax)
       const { container } = render(<InfographicContent item={item} />)
-      
+
       expect(container.firstChild).toHaveClass('my-3')
     })
 
@@ -272,13 +275,13 @@ data
 data
   lists
     - label Step 1`
-      
+
       const item = createChatItem(syntax)
       const { rerender } = render(<InfographicContent item={item} />)
-      
+
       // Rerender with same content
       rerender(<InfographicContent item={item} />)
-      
+
       // Should only render once (memoization working)
       expect(screen.getByTestId('infographic-viewer')).toBeInTheDocument()
     })
