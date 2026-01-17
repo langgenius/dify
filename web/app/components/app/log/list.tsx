@@ -320,7 +320,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
 
     // Update pagination anchor ref with the oldest answer ID
     const answerItems = allChatItems.filter(item => item.isAnswer)
-    const oldestAnswer = answerItems[answerItems.length - 1]
+    const oldestAnswer = answerItems[0]
     if (oldestAnswer?.id)
       oldestAnswerIdRef.current = oldestAnswer.id
   }, [allChatItems, hasMore, detail?.model_config?.configs?.introduction])
@@ -515,7 +515,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
     if (outerDiv && outerDiv.scrollHeight > outerDiv.clientHeight) {
       scrollContainer = outerDiv
     }
-    else if (scrollableDiv && scrollableDiv.scrollHeight > scrollableDiv.clientHeight) {
+    else if (scrollableDiv) {
       scrollContainer = scrollableDiv
     }
     else if (chatContainer && chatContainer.scrollHeight > chatContainer.clientHeight) {
@@ -556,7 +556,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       scrollContainer!.removeEventListener('scroll', handleScroll)
       scrollContainer!.removeEventListener('wheel', handleWheel)
     }
-  }, [hasMore, isLoading, loadMoreMessages])
+  }, [hasMore, isLoading, loadMoreMessages, threadChatItems.length])
 
   const isChatMode = appDetail?.mode !== AppModeEnum.COMPLETION
   const isAdvanced = appDetail?.mode === AppModeEnum.ADVANCED_CHAT
