@@ -44,8 +44,7 @@ OFF_TOPIC_RESPONSES: dict[str, dict[str, str]] = {
             "But if you want to add code logic to your workflow, I can help you configure a Code node!"
         ),
         "zh": (
-            "我专注于Dify工作流设计，而非通用编程帮助。"
-            "但如果您想在工作流中添加代码逻辑，我可以帮您配置一个代码节点！"
+            "我专注于Dify工作流设计，而非通用编程帮助。但如果您想在工作流中添加代码逻辑，我可以帮您配置一个代码节点！"
         ),
     },
     "default": {
@@ -71,4 +70,3 @@ DEFAULT_SUGGESTIONS: dict[str, list[str]] = {
         "添加邮件通知到工作流",
     ],
 }
-

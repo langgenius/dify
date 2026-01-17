@@ -7,7 +7,6 @@ Tests cover:
 - Empty tool lists
 """
 
-
 from core.workflow.generator.prompts.planner_prompts import format_tools_for_planner
 
 

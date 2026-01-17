@@ -1,6 +1,5 @@
 """Tests for workflow generator error types."""
 
-
 from core.workflow.generator.types.errors import (
     ErrorCode,
     ErrorType,

@@ -31,6 +31,7 @@ class ErrorType(StrEnum):
 
 class ErrorCode(StrEnum):
     """Specific error codes for programmatic handling."""
+
     # System errors
     MODEL_UNAVAILABLE = "MODEL_UNAVAILABLE"
     RATE_LIMITED = "RATE_LIMITED"

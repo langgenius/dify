@@ -10,7 +10,6 @@ Tests cover:
 - Tool node formatting
 """
 
-
 from core.workflow.generator.utils.mermaid_generator import generate_mermaid
 
 
