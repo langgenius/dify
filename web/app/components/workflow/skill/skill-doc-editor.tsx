@@ -42,13 +42,20 @@ const SkillDocEditor: FC = () => {
   const { data: nodeMap } = useSkillAssetNodeMap()
 
   const currentFileNode = activeTabId ? nodeMap?.get(activeTabId) : undefined
-  const fileExtension = getFileExtension(currentFileNode?.name, currentFileNode?.extension)
-  const isMarkdown = isMarkdownFile(fileExtension)
-  const isCodeOrText = isCodeOrTextFile(fileExtension)
-  const isImage = isImageFile(fileExtension)
-  const isVideo = isVideoFile(fileExtension)
-  const isOffice = isOfficeFile(fileExtension)
-  const isEditable = useMemo(() => isMarkdown || isCodeOrText, [isMarkdown, isCodeOrText])
+
+  const { isMarkdown, isCodeOrText, isImage, isVideo, isOffice, isEditable } = useMemo(() => {
+    const ext = getFileExtension(currentFileNode?.name, currentFileNode?.extension)
+    const markdown = isMarkdownFile(ext)
+    const codeOrText = isCodeOrTextFile(ext)
+    return {
+      isMarkdown: markdown,
+      isCodeOrText: codeOrText,
+      isImage: isImageFile(ext),
+      isVideo: isVideoFile(ext),
+      isOffice: isOfficeFile(ext),
+      isEditable: markdown || codeOrText,
+    }
+  }, [currentFileNode?.name, currentFileNode?.extension])
 
   const {
     data: fileContent,
@@ -58,14 +65,16 @@ const SkillDocEditor: FC = () => {
 
   const updateContent = useUpdateAppAssetFileContent()
 
+  const originalContent = fileContent?.content ?? ''
+
   const currentContent = useMemo(() => {
     if (!activeTabId)
       return ''
     const draft = dirtyContents.get(activeTabId)
     if (draft !== undefined)
       return draft
-    return fileContent?.content ?? ''
-  }, [activeTabId, dirtyContents, fileContent?.content])
+    return originalContent
+  }, [activeTabId, dirtyContents, originalContent])
 
   const currentMetadata = useMemo(() => {
     if (!activeTabId)
@@ -100,7 +109,6 @@ const SkillDocEditor: FC = () => {
     if (!activeTabId || !isEditable)
       return
     const newValue = value ?? ''
-    const originalContent = fileContent?.content ?? ''
 
     if (newValue === originalContent)
       storeApi.getState().clearDraftContent(activeTabId)
@@ -108,7 +116,7 @@ const SkillDocEditor: FC = () => {
       storeApi.getState().setDraftContent(activeTabId, newValue)
 
     storeApi.getState().pinTab(activeTabId)
-  }, [activeTabId, isEditable, storeApi, fileContent?.content])
+  }, [activeTabId, isEditable, originalContent, storeApi])
 
   const handleSave = useCallback(async () => {
     if (!activeTabId || !appId || !isEditable)
@@ -124,7 +132,7 @@ const SkillDocEditor: FC = () => {
         appId,
         nodeId: activeTabId,
         payload: {
-          content: content ?? fileContent?.content ?? '',
+          content: content ?? originalContent,
           ...(currentMetadata ? { metadata: currentMetadata } : {}),
         },
       })
@@ -141,7 +149,7 @@ const SkillDocEditor: FC = () => {
         message: String(error),
       })
     }
-  }, [activeTabId, appId, currentMetadata, dirtyContents, dirtyMetadataIds, fileContent?.content, isEditable, storeApi, t, updateContent])
+  }, [activeTabId, appId, currentMetadata, dirtyContents, dirtyMetadataIds, isEditable, originalContent, storeApi, t, updateContent])
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent): void {
