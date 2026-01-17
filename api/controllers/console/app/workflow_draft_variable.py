@@ -50,9 +50,7 @@ class ConversationVariableUpdatePayload(BaseModel):
 
 
 class EnvironmentVariableUpdatePayload(BaseModel):
-    environment_variables: list[dict[str, Any]] = Field(
-        ..., description="Environment variables for the draft workflow"
-    )
+    environment_variables: list[dict[str, Any]] = Field(..., description="Environment variables for the draft workflow")
 
 
 console_ns.schema_model(
