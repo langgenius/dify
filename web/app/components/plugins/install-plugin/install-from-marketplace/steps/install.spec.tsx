@@ -64,7 +64,7 @@ let mockLangGeniusVersionInfo = { current_version: '1.0.0' }
 
 // Mock useCheckInstalled
 vi.mock('@/app/components/plugins/install-plugin/hooks/use-check-installed', () => ({
-  default: ({ pluginIds }: { pluginIds: string[], enabled: boolean }) => ({
+  default: ({ pluginIds: _pluginIds }: { pluginIds: string[], enabled: boolean }) => ({
     installedInfo: mockInstalledInfo,
     isLoading: mockIsLoading,
     error: null,
@@ -109,7 +109,7 @@ vi.mock('../../hooks/use-install-plugin-limit', () => ({
 
 // Mock Card component
 vi.mock('../../../card', () => ({
-  default: ({ payload, titleLeft, className, limitedInstall }: {
+  default: ({ payload, titleLeft, className: _className, limitedInstall }: {
     payload: any
     titleLeft?: React.ReactNode
     className?: string

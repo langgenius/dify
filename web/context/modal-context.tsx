@@ -199,7 +199,7 @@ export const ModalContextProvider = ({
 
   const setShowAccountSettingModal = useCallback((next: SetStateAction<ModalState<AccountSettingTab> | null>) => {
     const currentState = accountSettingTab
-      ? { payload: accountSettingTab, ...(accountSettingCallbacksRef.current ?? {}) }
+      ? { payload: accountSettingTab, ...accountSettingCallbacksRef.current }
       : null
     const resolvedState = typeof next === 'function' ? next(currentState) : next
     if (!resolvedState) {

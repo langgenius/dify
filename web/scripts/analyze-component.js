@@ -304,7 +304,7 @@ Create the test file at: ${testPath}
 }
 
 class TestReviewPromptBuilder {
-  build({ analysis, testPath, testCode, originalPromptSection }) {
+  build({ analysis, testPath, testCode: _testCode, originalPromptSection }) {
     const formattedOriginalPrompt = originalPromptSection
       ? originalPromptSection
           .split('\n')

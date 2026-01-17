@@ -130,7 +130,7 @@ describe('LogViewer', () => {
   })
 
   it('should parse request data when it is raw JSON', () => {
-    const log = createLog({ request: { ...createLog().request, data: '{\"hello\":1}' } })
+    const log = createLog({ request: { ...createLog().request, data: '{"hello":1}' } })
 
     render(<LogViewer logs={[log]} />)
 
