@@ -194,7 +194,7 @@ This is regular text immediately after without blank line.`
         id: '1',
         content: 123 as unknown,
         isAnswer: true,
-      }
+      } as ChatItem
       const { container } = render(<InfographicContent item={item} />)
       expect(container.firstChild).toBeNull()
     })

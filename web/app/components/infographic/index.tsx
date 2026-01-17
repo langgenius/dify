@@ -124,7 +124,7 @@ const InfographicViewer: React.FC<InfographicProps> = ({
       console.error('Failed to copy infographic image:', err)
       Toast.notify({
         type: 'error',
-        message: t('actionMsg.copyFailed', { ns: 'common' }),
+        message: t('api.actionFailed', { ns: 'common' }),
       })
     }
   }
