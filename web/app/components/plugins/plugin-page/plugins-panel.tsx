@@ -110,7 +110,7 @@ const PluginsPanel = () => {
                   {!isLastPage && (
                     <div className="flex justify-center py-4">
                       {isFetching
-                        ? <Loading />
+                        ? <Loading className="size-8" />
                         : (
                             <Button onClick={loadNextPage}>
                               {t('common.loadMore', { ns: 'workflow' })}

@@ -56,7 +56,7 @@ const ListWrapper = ({
       }
       {
         isFetchingNextPage && (
-          <Loading />
+          <Loading className="my-3" />
         )
       }
     </div>
