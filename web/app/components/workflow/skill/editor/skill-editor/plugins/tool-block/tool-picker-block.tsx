@@ -17,7 +17,7 @@ import { $splitNodeContainingQuery } from '@/app/components/base/prompt-editor/u
 import { CollectionType } from '@/app/components/tools/types'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import ToolPicker from '@/app/components/workflow/block-selector/tool-picker'
-import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import { $createToolBlockNode } from './node'
 
 class ToolPickerMenuOption extends MenuOption {
@@ -36,8 +36,6 @@ const ToolPickerBlock: FC<ToolPickerBlockProps> = ({ scope = 'all' }) => {
     minLength: 0,
     maxLength: 0,
   })
-  const activeTabId = useStore(s => s.activeTabId)
-  const fileMetadata = useStore(s => s.fileMetadata)
   const storeApi = useWorkflowStore()
 
   const options = useMemo(() => [new ToolPickerMenuOption()], [])
@@ -73,11 +71,10 @@ const ToolPickerBlock: FC<ToolPickerBlockProps> = ({ scope = 'all' }) => {
         $insertNodes(nodes)
     })
 
-    const storeState = storeApi.getState()
-    const resolvedTabId = activeTabId || storeState.activeTabId
-    if (!resolvedTabId)
+    const { activeTabId, fileMetadata, setDraftMetadata, pinTab } = storeApi.getState()
+    if (!activeTabId)
       return
-    const metadata = (storeState.fileMetadata.get(resolvedTabId) || {}) as Record<string, any>
+    const metadata = (fileMetadata.get(activeTabId) || {}) as Record<string, any>
     const nextTools = { ...(metadata.tools || {}) } as Record<string, any>
     toolEntries.forEach(({ configId, tool }) => {
       const schemas = toolParametersToFormSchemas((tool.paramSchemas || []) as ToolParameter[])
@@ -91,12 +88,12 @@ const ToolPickerBlock: FC<ToolPickerBlockProps> = ({ scope = 'all' }) => {
         configuration: { fields },
       }
     })
-    storeState.setDraftMetadata(resolvedTabId, {
+    setDraftMetadata(activeTabId, {
       ...metadata,
       tools: nextTools,
     })
-    storeState.pinTab(resolvedTabId)
-  }, [activeTabId, checkForTriggerMatch, editor, fileMetadata, storeApi])
+    pinTab(activeTabId)
+  }, [checkForTriggerMatch, editor, storeApi])
 
   const renderMenu = useCallback((
     anchorElementRef: React.RefObject<HTMLElement | null>,
