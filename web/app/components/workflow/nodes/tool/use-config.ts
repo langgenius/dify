@@ -1,5 +1,6 @@
 import type { ToolNodeType, ToolVarInputs } from './types'
 import type { InputVar } from '@/app/components/workflow/types'
+import { normalizeJsonSchemaType } from './output-schema-utils'
 import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -239,26 +240,29 @@ const useConfig = (id: string, payload: ToolNodeType) => {
 
     Object.keys(output_schema.properties).forEach((outputKey) => {
       const output = output_schema.properties[outputKey]
-      const type = output.type
-      if (type === 'object') {
+      // Use normalizeJsonSchemaType to handle complex schemas (anyOf, allOf, $ref, etc.)
+      const normalizedType = normalizeJsonSchemaType(output)
+      if (normalizedType === 'object') {
         res.push({
           name: outputKey,
           value: output,
         })
       }
       else {
+        // Get the normalized item type for arrays
+        const itemType = normalizedType === 'array' && output.items
+          ? normalizeJsonSchemaType(output.items)
+          : undefined
         res.push({
           name: outputKey,
           type:
-            output.type === 'array'
-              ? `Array[${output.items?.type
-                ? output.items.type.slice(0, 1).toLocaleUpperCase()
-                + output.items.type.slice(1)
+            normalizedType === 'array'
+              ? `Array[${itemType
+                ? itemType.slice(0, 1).toLocaleUpperCase() + itemType.slice(1)
                 : 'Unknown'
               }]`
-              : `${output.type
-                ? output.type.slice(0, 1).toLocaleUpperCase()
-                + output.type.slice(1)
+              : `${normalizedType
+                ? normalizedType.slice(0, 1).toLocaleUpperCase() + normalizedType.slice(1)
                 : 'Unknown'
               }`,
           description: output.description,
@@ -274,7 +278,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
       return false
     const properties = output_schema.properties
     return Object.keys(properties).some(
-      key => properties[key].type === 'object',
+      key => normalizeJsonSchemaType(properties[key]) === 'object',
     )
   }, [currTool])
 
