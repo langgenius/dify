@@ -1,8 +1,8 @@
 import type { FC } from 'react'
 import { memo } from 'react'
+import Avatar from '@/app/components/base/avatar'
 import { getUserColor } from '@/app/components/workflow/collaboration/utils/user-color'
 import { useAppContext } from '@/context/app-context'
-import Avatar from '@/app/components/base/avatar'
 
 type User = {
   id: string
@@ -26,7 +26,8 @@ export const UserAvatarList: FC<UserAvatarListProps> = memo(({
   showCount = true,
 }) => {
   const { userProfile } = useAppContext()
-  if (!users.length) return null
+  if (!users.length)
+    return null
 
   const shouldShowCount = showCount && users.length > maxVisible
   const actualMaxVisible = shouldShowCount ? Math.max(1, maxVisible - 1) : maxVisible
@@ -43,14 +44,14 @@ export const UserAvatarList: FC<UserAvatarListProps> = memo(({
         return (
           <div
             key={`${user.id}-${index}`}
-            className='relative'
+            className="relative"
             style={{ zIndex: visibleUsers.length - index }}
           >
             <Avatar
               name={user.name}
               avatar={user.avatar_url || null}
               size={size}
-              className='ring-2 ring-components-panel-bg'
+              className="ring-2 ring-components-panel-bg"
               backgroundColor={userColor}
             />
           </div>
@@ -60,14 +61,15 @@ export const UserAvatarList: FC<UserAvatarListProps> = memo(({
       )}
       {shouldShowCount && remainingCount > 0 && (
         <div
-          className={'flex items-center justify-center rounded-full bg-gray-500 text-[10px] leading-none text-white ring-2 ring-components-panel-bg'}
+          className="flex items-center justify-center rounded-full bg-gray-500 text-[10px] leading-none text-white ring-2 ring-components-panel-bg"
           style={{
             zIndex: 0,
             width: size,
             height: size,
           }}
         >
-          +{remainingCount}
+          +
+          {remainingCount}
         </div>
       )}
     </div>

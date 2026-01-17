@@ -1,9 +1,9 @@
 'use client'
 
 import type { FC } from 'react'
+import type { WorkflowCommentList } from '@/service/workflow-comment'
 import { memo, useEffect, useMemo } from 'react'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
-import type { WorkflowCommentList } from '@/service/workflow-comment'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useStore } from '../store'
 

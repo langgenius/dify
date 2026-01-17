@@ -13,7 +13,8 @@ export class EventEmitter {
   }
 
   off<T = any>(event: string, handler?: EventHandler<T>): void {
-    if (!this.events.has(event)) return
+    if (!this.events.has(event))
+      return
 
     const handlers = this.events.get(event)!
     if (handler)
@@ -26,7 +27,8 @@ export class EventEmitter {
   }
 
   emit<T = any>(event: string, data: T): void {
-    if (!this.events.has(event)) return
+    if (!this.events.has(event))
+      return
 
     const handlers = this.events.get(event)!
     handlers.forEach((handler) => {

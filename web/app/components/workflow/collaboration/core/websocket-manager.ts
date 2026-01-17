@@ -1,7 +1,7 @@
 import type { Socket } from 'socket.io-client'
+import type { DebugInfo, WebSocketConfig } from '../types/websocket'
 import { io } from 'socket.io-client'
 import { ACCESS_TOKEN_LOCAL_STORAGE_NAME } from '@/config'
-import type { DebugInfo, WebSocketConfig } from '../types/websocket'
 
 const isUnauthorizedAck = (...ackArgs: any[]): boolean => {
   const [first, second] = ackArgs

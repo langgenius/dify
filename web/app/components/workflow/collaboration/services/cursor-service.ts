@@ -1,6 +1,6 @@
 import type { RefObject } from 'react'
-import type { CursorPosition } from '../types/collaboration'
 import type { ReactFlowInstance } from 'reactflow'
+import type { CursorPosition } from '../types/collaboration'
 
 const CURSOR_MIN_MOVE_DISTANCE = 10
 const CURSOR_THROTTLE_MS = 300
@@ -12,14 +12,15 @@ export class CursorService {
   private onCursorUpdate: ((cursors: Record<string, CursorPosition>) => void) | null = null
   private onEmitPosition: ((position: CursorPosition) => void) | null = null
   private lastEmitTime = 0
-  private lastPosition: { x: number; y: number } | null = null
+  private lastPosition: { x: number, y: number } | null = null
 
   startTracking(
     containerRef: RefObject<HTMLElement>,
     onEmitPosition: (position: CursorPosition) => void,
     reactFlowInstance?: ReactFlowInstance,
   ): void {
-    if (this.isTracking) this.stopTracking()
+    if (this.isTracking)
+      this.stopTracking()
 
     this.containerRef = containerRef
     this.onEmitPosition = onEmitPosition
@@ -51,7 +52,8 @@ export class CursorService {
   }
 
   private handleMouseMove = (event: MouseEvent): void => {
-    if (!this.containerRef?.current || !this.onEmitPosition) return
+    if (!this.containerRef?.current || !this.onEmitPosition)
+      return
 
     const rect = this.containerRef.current.getBoundingClientRect()
     let x = event.clientX - rect.left

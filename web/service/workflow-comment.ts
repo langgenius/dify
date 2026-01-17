@@ -1,5 +1,5 @@
-import { del, get, post, put } from './base'
 import type { CommonResponse } from '@/models/common'
+import { del, get, post, put } from './base'
 
 export type UserProfile = {
   id: string

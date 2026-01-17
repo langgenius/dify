@@ -1,6 +1,6 @@
+import type { Edge, Node } from '../types'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
-import type { Edge, Node } from '../types'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 
 const sanitizeNodeForBroadcast = (node: Node): Node => {

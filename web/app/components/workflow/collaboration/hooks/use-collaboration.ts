@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
 import type { ReactFlowInstance } from 'reactflow'
+import type { CollaborationState } from '../types/collaboration'
+import { useEffect, useRef, useState } from 'react'
+import Toast from '@/app/components/base/toast'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import { collaborationManager } from '../core/collaboration-manager'
 import { CursorService } from '../services/cursor-service'
-import type { CollaborationState } from '../types/collaboration'
-import { useGlobalPublicStore } from '@/context/global-public-context'
-import Toast from '@/app/components/base/toast'
 
 export function useCollaboration(appId: string, reactFlowStore?: any) {
   const [state, setState] = useState<Partial<CollaborationState & { isLeader: boolean }>>({

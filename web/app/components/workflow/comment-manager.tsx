@@ -1,6 +1,6 @@
 import { useEventListener } from 'ahooks'
-import { useWorkflowStore } from './store'
 import { useWorkflowComment } from './hooks/use-workflow-comment'
+import { useWorkflowStore } from './store'
 
 const CommentManager = () => {
   const workflowStore = useWorkflowStore()

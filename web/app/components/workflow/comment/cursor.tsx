@@ -1,8 +1,8 @@
 import type { FC } from 'react'
 import { memo } from 'react'
+import { Comment } from '@/app/components/base/icons/src/public/other'
 import { useStore } from '../store'
 import { ControlMode } from '../types'
-import { Comment } from '@/app/components/base/icons/src/public/other'
 
 export const CommentCursor: FC = memo(() => {
   const controlMode = useStore(s => s.controlMode)

@@ -1,18 +1,18 @@
 'use client'
 
 import type { FC, PointerEvent as ReactPointerEvent } from 'react'
+import type { WorkflowCommentList } from '@/service/workflow-comment'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useReactFlow, useViewport } from 'reactflow'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
-import CommentPreview from './comment-preview'
-import type { WorkflowCommentList } from '@/service/workflow-comment'
 import { useAppContext } from '@/context/app-context'
+import CommentPreview from './comment-preview'
 
 type CommentIconProps = {
   comment: WorkflowCommentList
   onClick: () => void
   isActive?: boolean
-  onPositionUpdate?: (position: { x: number; y: number }) => void
+  onPositionUpdate?: (position: { x: number, y: number }) => void
 }
 
 export const CommentIcon: FC<CommentIconProps> = memo(({ comment, onClick, isActive = false, onPositionUpdate }) => {
@@ -21,7 +21,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(({ comment, onClick, isAct
   const { userProfile } = useAppContext()
   const isAuthor = comment.created_by_account?.id === userProfile?.id
   const [showPreview, setShowPreview] = useState(false)
-  const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null)
+  const [dragPosition, setDragPosition] = useState<{ x: number, y: number } | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const dragStateRef = useRef<{
     offsetX: number
@@ -181,8 +181,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(({ comment, onClick, isAct
 
   // Width calculation: first avatar + (additional avatars * (size - spacing)) + padding
   const dynamicWidth = Math.max(40, // minimum width
-    8 + avatarSize + Math.max(0, (showCount ? 2 : maxVisible - 1)) * (avatarSize - avatarSpacing) + 8,
-  )
+    8 + avatarSize + Math.max(0, (showCount ? 2 : maxVisible - 1)) * (avatarSize - avatarSpacing) + 8)
 
   const pointerEventHandlers = useMemo(() => ({
     onPointerDown: handlePointerDown,
@@ -200,7 +199,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(({ comment, onClick, isAct
           top: canvasPosition.y,
           transform: 'translate(-50%, -50%)',
         }}
-        data-role='comment-marker'
+        data-role="comment-marker"
         {...pointerEventHandlers}
       >
         <div
@@ -209,14 +208,15 @@ export const CommentIcon: FC<CommentIconProps> = memo(({ comment, onClick, isAct
           onMouseLeave={handleMouseLeave}
         >
           <div
-            className={'relative h-10 rounded-br-full rounded-tl-full rounded-tr-full'}
+            className="relative h-10 rounded-br-full rounded-tl-full rounded-tr-full"
             style={{ width: dynamicWidth }}
           >
             <div className={`absolute inset-[6px] overflow-hidden rounded-br-full rounded-tl-full rounded-tr-full border bg-components-panel-bg transition-shadow ${
               isActive
                 ? 'border-primary-500 ring-1 ring-primary-500'
                 : 'border-components-panel-border'
-            }`}>
+            }`}
+            >
               <div className="flex h-full w-full items-center justify-center px-1">
                 <UserAvatarList
                   users={participants}
@@ -238,15 +238,18 @@ export const CommentIcon: FC<CommentIconProps> = memo(({ comment, onClick, isAct
             top: (effectiveScreenPosition.y - containerTop) + 20,
             transform: 'translateY(-100%)',
           }}
-          data-role='comment-preview'
+          data-role="comment-preview"
           {...pointerEventHandlers}
           onMouseEnter={() => setShowPreview(true)}
           onMouseLeave={() => setShowPreview(false)}
         >
-          <CommentPreview comment={comment} onClick={() => {
-            setShowPreview(false)
-            onClick()
-          }} />
+          <CommentPreview
+            comment={comment}
+            onClick={() => {
+              setShowPreview(false)
+              onClick()
+            }}
+          />
         </div>
       )}
     </>
