@@ -11,6 +11,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from core.workflow.generator.types.constants import INTENT_GENERATE
+
 
 class WorkflowNode(BaseModel):
     """Workflow node configuration."""
@@ -72,7 +74,7 @@ class WorkflowData(BaseModel):
 class GenerationResult(BaseModel):
     """Result of workflow generation."""
 
-    intent: str = "generate"
+    intent: str = INTENT_GENERATE
     flowchart: str = ""
     nodes: list[dict[str, Any]] = Field(default_factory=list)
     edges: list[dict[str, Any]] = Field(default_factory=list)

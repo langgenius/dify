@@ -1,71 +1,43 @@
 """
-DEPRECATED: This module is kept for backward compatibility only.
-Please import from core.workflow.generator.types package instead.
+Backward compatibility layer.
 
-This module re-exports all types from the types package.
-The actual definitions have been moved to:
-- core.workflow.generator.types/__init__.py (TypedDict and Pydantic models)
-- core.workflow.generator.types/errors.py (Error types)
-- core.workflow.generator.types/constants.py (Constants)
+DEPRECATED: Import from core.workflow.generator.types instead.
 """
 
-# Re-export everything from the types package for backward compatibility
-from core.workflow.generator.types import (
-    INTENT_CLASSIFICATION_MAX_TOKENS,
-    INTENT_CLASSIFICATION_MODEL_NAME,
-    INTENT_CLASSIFICATION_MODEL_PROVIDER,
-    INTENT_CLASSIFICATION_TEMPERATURE,
+import warnings
+
+warnings.warn(
+    "Importing from core.workflow.generator.types (the file) is deprecated. "
+    "Use core.workflow.generator.types (the package) instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
+# Re-export everything for backward compatibility
+from core.workflow.generator.types import (  # noqa: F401
+    INITIAL_RETRY_DELAY_MS,
+    INTENT_ERROR,
+    INTENT_GENERATE,
+    INTENT_OFF_TOPIC,
     MAX_RETRIES,
+    MODEL_REQUIRED_NODE_TYPES,
     PLACEHOLDER_VALUE,
+    STABILITY_WARNING_EN,
+    STABILITY_WARNING_ZH,
     TEMPERATURE_DEFAULT,
-    TEMPERATURE_MAX,
-    TEMPERATURE_MIN,
+    TEMPERATURE_HIGH,
+    TEMPERATURE_LOW,
     AvailableModel,
-    AvailableModelDict,
     AvailableTool,
-    AvailableToolDict,
     ErrorCode,
     ErrorType,
+    GenerationResult,
     ToolParameter,
-    ToolParameterDict,
     WorkflowData,
-    WorkflowDataDict,
     WorkflowEdge,
-    WorkflowEdgeDict,
     WorkflowGenerationError,
     WorkflowNode,
-    WorkflowNodeDict,
     model_unavailable_error,
     rate_limited_error,
     validation_failed_error,
 )
-
-__all__ = [
-    "INTENT_CLASSIFICATION_MAX_TOKENS",
-    "INTENT_CLASSIFICATION_MODEL_NAME",
-    "INTENT_CLASSIFICATION_MODEL_PROVIDER",
-    "INTENT_CLASSIFICATION_TEMPERATURE",
-    "MAX_RETRIES",
-    "PLACEHOLDER_VALUE",
-    "TEMPERATURE_DEFAULT",
-    "TEMPERATURE_MAX",
-    "TEMPERATURE_MIN",
-    "AvailableModel",
-    "AvailableModelDict",
-    "AvailableTool",
-    "AvailableToolDict",
-    "ErrorCode",
-    "ErrorType",
-    "ToolParameter",
-    "ToolParameterDict",
-    "WorkflowData",
-    "WorkflowDataDict",
-    "WorkflowEdge",
-    "WorkflowEdgeDict",
-    "WorkflowGenerationError",
-    "WorkflowNode",
-    "WorkflowNodeDict",
-    "model_unavailable_error",
-    "rate_limited_error",
-    "validation_failed_error",
-]

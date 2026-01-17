@@ -166,9 +166,7 @@ def get_registry() -> RuleRegistry:
 # Helper Functions for Rule Implementations
 # =============================================================================
 
-# Explicit placeholder value defined in prompt contract
-# See: api/core/workflow/generator/prompts/vibe_prompts.py
-PLACEHOLDER_VALUE = "__PLACEHOLDER__"
+from core.workflow.generator.types.constants import PLACEHOLDER_VALUE
 
 # Variable reference pattern: {{#node_id.field#}}
 VARIABLE_REF_PATTERN = re.compile(r"\{\{#([^.#]+)\.([^#]+)#\}\}")

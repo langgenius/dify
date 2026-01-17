@@ -17,6 +17,9 @@ from core.workflow.generator.config import (
     OFF_TOPIC_RESPONSES,
 )
 from core.workflow.generator.types import (
+    INTENT_ERROR,
+    INTENT_GENERATE,
+    INTENT_OFF_TOPIC,
     AvailableModelDict,
     AvailableToolDict,
     WorkflowDataDict,
@@ -704,17 +707,17 @@ def parse_vibe_response(content: str) -> dict[str, Any]:
         except json.JSONDecodeError:
             # Return error format
             return {
-                "intent": "error",
+                "intent": INTENT_ERROR,
                 "error": "Failed to parse LLM response as JSON",
                 "raw_content": content[:500],  # First 500 chars for debugging
             }
 
     # Validate and normalize
     if "intent" not in data:
-        data["intent"] = "generate"  # Default assumption
+        data["intent"] = INTENT_GENERATE  # Default assumption
 
     # Ensure required fields for generate intent
-    if data["intent"] == "generate":
+    if data["intent"] == INTENT_GENERATE:
         data.setdefault("mermaid", "")
         data.setdefault("nodes", [])
         data.setdefault("edges", [])
@@ -722,7 +725,7 @@ def parse_vibe_response(content: str) -> dict[str, Any]:
         data.setdefault("warnings", [])
 
     # Ensure required fields for off_topic intent
-    if data["intent"] == "off_topic":
+    if data["intent"] == INTENT_OFF_TOPIC:
         data.setdefault("message", OFF_TOPIC_RESPONSES["default"]["en"])
         data.setdefault("suggestions", DEFAULT_SUGGESTIONS["en"])
 

@@ -1,4 +1,5 @@
 """Core generation logic for Workflow Generator."""
+
 from core.workflow.generator.core.planner import (
     ExecutionStep,
     Planner,
@@ -7,8 +8,8 @@ from core.workflow.generator.core.planner import (
 )
 
 __all__ = [
+    "ExecutionStep",
     "Planner",
     "PlannerOutput",
-    "ExecutionStep",
     "ToolSelection",
 ]

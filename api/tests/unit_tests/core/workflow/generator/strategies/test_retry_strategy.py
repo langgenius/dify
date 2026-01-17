@@ -110,10 +110,7 @@ def test_build_error_context_with_validation_errors():
     ctx = RetryContext(
         attempt=1,
         max_attempts=3,
-        validation_errors=[
-            {"message": "Node llm_1 missing model"},
-            {"message": "Invalid edge connection"}
-        ]
+        validation_errors=[{"message": "Node llm_1 missing model"}, {"message": "Invalid edge connection"}],
     )
     context_str = strategy.build_error_context(ctx)
     assert "<validation_feedback>" in context_str

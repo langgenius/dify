@@ -1,10 +1,10 @@
 # api/tests/unit_tests/core/workflow/generator/core/test_planner.py
-import pytest
 from unittest.mock import MagicMock
+
 from core.workflow.generator.core.planner import (
+    ExecutionStep,
     Planner,
     PlannerOutput,
-    ExecutionStep,
 )
 
 

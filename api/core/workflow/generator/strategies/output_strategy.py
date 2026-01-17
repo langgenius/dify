@@ -15,6 +15,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field, ValidationError
 
+from core.workflow.generator.types.constants import INTENT_GENERATE, INTENT_OFF_TOPIC
+
 logger = logging.getLogger(__name__)
 
 
@@ -29,7 +31,7 @@ class OutputMethod(StrEnum):
 class WorkflowOutput(BaseModel):
     """Expected structure of workflow generation output."""
 
-    intent: str = Field(default="generate")
+    intent: str = Field(default=INTENT_GENERATE)
     nodes: list[dict[str, Any]] = Field(default_factory=list)
     edges: list[dict[str, Any]] = Field(default_factory=list)
     message: str = Field(default="")
@@ -44,7 +46,11 @@ class WorkflowOutput(BaseModel):
 WORKFLOW_OUTPUT_SCHEMA = {
     "type": "object",
     "properties": {
-        "intent": {"type": "string", "enum": ["generate", "off_topic"], "description": "The intent of the response"},
+        "intent": {
+            "type": "string",
+            "enum": [INTENT_GENERATE, INTENT_OFF_TOPIC],
+            "description": "The intent of the response",
+        },
         "nodes": {"type": "array", "items": {"type": "object"}, "description": "Workflow nodes"},
         "edges": {"type": "array", "items": {"type": "object"}, "description": "Workflow edges"},
         "message": {"type": "string", "description": "User-friendly message"},
