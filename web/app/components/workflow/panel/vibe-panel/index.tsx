@@ -154,7 +154,7 @@ const VibePanel: FC = () => {
     return null
 
   const renderLoading = (
-    <div className="flex h-full w-0 w-full grow flex-col items-center justify-center space-y-3">
+    <div className="flex h-full w-full grow flex-col items-center justify-center space-y-3">
       <Loading />
       <div className="text-[13px] text-text-tertiary">{t('vibe.generatingFlowchart', { ns: 'workflow' })}</div>
     </div>
