@@ -40,6 +40,7 @@ import {
 } from '@/service/knowledge/use-document'
 import { asyncRunSafe } from '@/utils'
 import { cn } from '@/utils/classnames'
+import { downloadUrl } from '@/utils/download'
 import s from '../style.module.css'
 import RenameModal from './rename-modal'
 
@@ -72,7 +73,7 @@ const Operations = ({
   scene = 'list',
   className = '',
 }: OperationsProps) => {
-  const { id, enabled = false, archived = false, data_source_type, display_status } = detail || {}
+  const { id, name, enabled = false, archived = false, data_source_type, display_status } = detail || {}
   const [showModal, setShowModal] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const { notify } = useContext(ToastContext)
@@ -177,13 +178,8 @@ const Operations = ({
     }
 
     // Trigger download without navigating away (helps avoid duplicate downloads in some browsers).
-    const a = document.createElement('a')
-    a.href = res.url
-    a.rel = 'noopener noreferrer'
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-  }, [datasetId, downloadDocument, id, isDownloading, notify, t])
+    downloadUrl({ url: res.url, fileName: name })
+  }, [datasetId, downloadDocument, id, isDownloading, name, notify, t])
 
   return (
     <div className="flex items-center" onClick={e => e.stopPropagation()}>

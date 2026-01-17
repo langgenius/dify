@@ -30,10 +30,10 @@ import { useDatasetDetailContextWithSelector as useDatasetDetailContext } from '
 import useTimestamp from '@/hooks/use-timestamp'
 import { ChunkingMode, DataSourceType, DocumentActionType } from '@/models/datasets'
 import { DatasourceType } from '@/models/pipeline'
-import { downloadDocumentsZip } from '@/service/datasets'
-import { useDocumentArchive, useDocumentBatchRetryIndex, useDocumentDelete, useDocumentDisable, useDocumentEnable } from '@/service/knowledge/use-document'
+import { useDocumentArchive, useDocumentBatchRetryIndex, useDocumentDelete, useDocumentDisable, useDocumentDownloadZip, useDocumentEnable } from '@/service/knowledge/use-document'
 import { asyncRunSafe } from '@/utils'
 import { cn } from '@/utils/classnames'
+import { downloadBlob } from '@/utils/download'
 import { formatNumber } from '@/utils/format'
 import BatchAction from '../detail/completed/common/batch-action'
 import StatusItem from '../status-item'
@@ -223,6 +223,7 @@ const DocumentList: FC<IDocumentListProps> = ({
   const { mutateAsync: disableDocument } = useDocumentDisable()
   const { mutateAsync: deleteDocument } = useDocumentDelete()
   const { mutateAsync: retryIndexDocument } = useDocumentBatchRetryIndex()
+  const { mutateAsync: requestDocumentsZip, isPending: isDownloadingZip } = useDocumentDownloadZip()
 
   const handleAction = (actionName: DocumentActionType) => {
     return async () => {
@@ -321,23 +322,18 @@ const DocumentList: FC<IDocumentListProps> = ({
   }, [])
 
   const handleBatchDownload = useCallback(async () => {
+    if (isDownloadingZip)
+      return
+
     // Download as a single ZIP to avoid browser caps on multiple automatic downloads.
-    const [e, blob] = await asyncRunSafe(downloadDocumentsZip({ datasetId, documentIds: downloadableSelectedIds }))
+    const [e, blob] = await asyncRunSafe(requestDocumentsZip({ datasetId, documentIds: downloadableSelectedIds }))
     if (e || !blob) {
       Toast.notify({ type: 'error', message: t('actionMsg.downloadUnsuccessfully', { ns: 'common' }) })
       return
     }
 
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = generateDocsZipFileName()
-    a.rel = 'noopener noreferrer'
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-    URL.revokeObjectURL(url)
-  }, [datasetId, downloadableSelectedIds, generateDocsZipFileName, t])
+    downloadBlob({ data: blob, fileName: generateDocsZipFileName() })
+  }, [datasetId, downloadableSelectedIds, generateDocsZipFileName, isDownloadingZip, requestDocumentsZip, t])
 
   return (
     <div className="relative mt-3 flex h-full w-full flex-col">

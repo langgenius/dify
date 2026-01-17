@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { Fragment, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import FileIcon from '@/app/components/base/file-icon'
-import { downloadFile } from '@/app/components/base/file-uploader/utils'
 import { ArrowUpRight } from '@/app/components/base/icons/src/vender/line/arrows'
 import {
   BezierCurve03,
@@ -20,6 +19,7 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { useDocumentDownload } from '@/service/knowledge/use-document'
+import { downloadUrl } from '@/utils/download'
 import ProgressTooltip from './progress-tooltip'
 import Tooltip from './tooltip'
 
@@ -59,7 +59,7 @@ const Popup: FC<PopupProps> = ({
     // Fetch signed URL (usually points to `/files/<id>/file-preview?...&as_attachment=true`).
     const res = await downloadDocument({ datasetId, documentId })
     if (res?.url)
-      downloadFile(res.url, data.documentName)
+      downloadUrl({ url: res.url, fileName: data.documentName })
   }
 
   return (
