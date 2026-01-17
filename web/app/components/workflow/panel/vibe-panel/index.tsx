@@ -128,7 +128,7 @@ const VibePanel: FC = () => {
 
   const handleCopyMermaid = useCallback(() => {
     copy(vibePanelMermaidCode)
-    Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
+    Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
   }, [vibePanelMermaidCode, t])
 
   const handleSuggestionClick = useCallback((suggestion: string) => {
@@ -147,7 +147,7 @@ const VibePanel: FC = () => {
 
   // Button label - always use "Generate" (refinement mode removed)
   const generateButtonLabel = useMemo(() => {
-    return t('appDebug.generate.generate')
+    return t('generate.generate', { ns: 'appDebug' })
   }, [t])
 
   if (!showVibePanel)
@@ -156,26 +156,26 @@ const VibePanel: FC = () => {
   const renderLoading = (
     <div className="flex h-full w-0 grow flex-col items-center justify-center space-y-3">
       <Loading />
-      <div className="text-[13px] text-text-tertiary">{t('workflow.vibe.generatingFlowchart')}</div>
+      <div className="text-[13px] text-text-tertiary">{t('vibe.generatingFlowchart')}</div>
     </div>
   )
 
   const renderOffTopic = (
     <div className="flex h-full w-0 grow flex-col items-center justify-center bg-background-default-subtle p-6">
       <div className="flex max-w-[400px] flex-col items-center text-center">
-        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-state-warning-hover">
-          <RiInformation2Line className="h-6 w-6 text-text-warning" />
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-background-section-burn">
+          <RiInformation2Line className="h-6 w-6 text-text-tertiary" />
         </div>
-        <div className="mb-2 text-base font-semibold text-text-primary">
-          {t('workflow.vibe.offTopicTitle')}
+        <div className="system-md-semibold mb-2 text-text-primary">
+          {t('vibe.offTopicTitle')}
         </div>
-        <div className="mb-6 text-sm text-text-secondary">
-          {vibePanelMessage || t('workflow.vibe.offTopicDefault')}
+        <div className="system-sm-regular mb-6 text-text-secondary">
+          {vibePanelMessage || t('vibe.offTopicDefault')}
         </div>
         {vibePanelSuggestions.length > 0 && (
           <div className="w-full">
             <div className="mb-3 text-xs font-medium text-text-tertiary">
-              {t('workflow.vibe.trySuggestion')}
+              {t('vibe.trySuggestion')}
             </div>
             <div className="flex flex-col gap-2">
               {vibePanelSuggestions.map((suggestion, index) => (
@@ -204,8 +204,8 @@ const VibePanel: FC = () => {
       <div className="flex h-[680px] flex-wrap">
         <div className="h-full w-[300px] shrink-0 overflow-y-auto border-r border-divider-regular p-6">
           <div className="mb-5">
-            <div className="text-lg font-bold leading-[28px] text-text-primary">{t('app.gotoAnything.actions.vibeTitle')}</div>
-            <div className="mt-1 text-[13px] font-normal text-text-tertiary">{t('app.gotoAnything.actions.vibeDesc')}</div>
+            <div className="text-lg font-bold leading-[28px] text-text-primary">{t('gotoAnything.actions.vibeTitle', { ns: 'app' })}</div>
+            <div className="mt-1 text-[13px] font-normal text-text-tertiary">{t('gotoAnything.actions.vibeDesc', { ns: 'app' })}</div>
           </div>
           <div>
             <ModelParameterModal
@@ -221,17 +221,17 @@ const VibePanel: FC = () => {
             />
           </div>
           <div className="mt-4">
-            <div className="system-sm-semibold-uppercase mb-1.5 text-text-secondary">{t('appDebug.generate.instruction')}</div>
+            <div className="system-sm-semibold-uppercase mb-1.5 text-text-secondary">{t('generate.instruction', { ns: 'appDebug' })}</div>
             <Textarea
               className="min-h-[240px] resize-none rounded-[10px] px-4 pt-3"
-              placeholder={t('workflow.vibe.missingInstruction')}
+              placeholder={t('vibe.missingInstruction')}
               value={vibePanelInstruction}
               onChange={handleInstructionChange}
             />
           </div>
 
           <div className="mt-7 flex justify-end space-x-2">
-            <Button onClick={handleClose}>{t('appDebug.generate.dismiss')}</Button>
+            <Button onClick={handleClose}>{t('generate.dismiss', { ns: 'appDebug' })}</Button>
             <Button
               className="flex space-x-1"
               variant="primary"
@@ -250,7 +250,7 @@ const VibePanel: FC = () => {
             <div className="flex h-full flex-col">
               <div className="mb-3 flex shrink-0 items-center justify-between">
                 <div className="flex shrink-0 flex-col">
-                  <div className="system-xl-semibold text-text-secondary">{t('workflow.vibe.panelTitle')}</div>
+                  <div className="system-xl-semibold text-text-secondary">{t('vibe.panelTitle')}</div>
                   <VersionSelector
                     versionLen={versions.length}
                     value={currentVersionIndex}
@@ -272,7 +272,7 @@ const VibePanel: FC = () => {
                     size="medium"
                     onClick={handleAccept}
                   >
-                    {t('workflow.vibe.apply')}
+                    {t('vibe.apply')}
                   </Button>
                 </div>
               </div>

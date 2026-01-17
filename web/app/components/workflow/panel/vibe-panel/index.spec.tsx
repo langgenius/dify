@@ -203,7 +203,7 @@ describe('VibePanel', () => {
       })
 
       expect(screen.getByTestId('workflow-preview')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'workflow.vibe.apply' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'vibe.apply' })).toBeInTheDocument()
       expect(screen.getByText(/appDebug\.generate\.version/i)).toBeInTheDocument()
     })
   })
@@ -226,7 +226,7 @@ describe('VibePanel', () => {
     it('should update instruction in store when typing', async () => {
       const { workflowStore } = renderVibePanel()
 
-      const textarea = screen.getByPlaceholderText('workflow.vibe.missingInstruction')
+      const textarea = screen.getByPlaceholderText('vibe.missingInstruction')
       fireEvent.change(textarea, { target: { value: 'Build a vibe flow' } })
 
       await waitFor(() => {
@@ -286,7 +286,7 @@ describe('VibePanel', () => {
       const handler = vi.fn()
       document.addEventListener(VIBE_APPLY_EVENT, handler)
 
-      await user.click(screen.getByRole('button', { name: 'workflow.vibe.apply' }))
+      await user.click(screen.getByRole('button', { name: 'vibe.apply' }))
 
       expect(handler).toHaveBeenCalledTimes(1)
       const state = workflowStore.getState()

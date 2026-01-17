@@ -473,7 +473,7 @@ const buildEdge = (
 })
 
 export const useWorkflowVibe = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation('workflow')
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const configsMap = useHooksStore(s => s.configsMap)
@@ -645,7 +645,7 @@ export const useWorkflowVibe = () => {
     const nodes = getNodes()
 
     if (!nodesMetaDataMap) {
-      Toast.notify({ type: 'error', message: t('workflow.vibe.nodesUnavailable') })
+      Toast.notify({ type: 'error', message: t('vibe.nodesUnavailable') })
       return { nodes: [], edges: [] }
     }
 
@@ -913,7 +913,7 @@ export const useWorkflowVibe = () => {
     newNodes.splice(0, newNodes.length, ...initializedNodes)
 
     if (!newNodes.length) {
-      Toast.notify({ type: 'error', message: t('workflow.vibe.invalidFlowchart') })
+      Toast.notify({ type: 'error', message: t('vibe.invalidFlowchart') })
       return { nodes: [], edges: [] }
     }
 
@@ -1067,28 +1067,28 @@ export const useWorkflowVibe = () => {
       switch (parseResultToUse.error) {
         case 'missingNodeType':
         case 'missingNodeDefinition':
-          Toast.notify({ type: 'error', message: t('workflow.vibe.invalidFlowchart') })
+          Toast.notify({ type: 'error', message: t('vibe.invalidFlowchart') })
           return emptyGraph
         case 'unknownNodeId':
-          Toast.notify({ type: 'error', message: t('workflow.vibe.unknownNodeId', { id: parseResultToUse.detail }) })
+          Toast.notify({ type: 'error', message: t('vibe.unknownNodeId', { id: parseResultToUse.detail }) })
           return emptyGraph
         case 'unknownNodeType':
-          Toast.notify({ type: 'error', message: t('workflow.vibe.nodeTypeUnavailable', { type: parseResultToUse.detail }) })
+          Toast.notify({ type: 'error', message: t('vibe.nodeTypeUnavailable', { type: parseResultToUse.detail }) })
           return emptyGraph
         case 'unknownTool':
-          Toast.notify({ type: 'error', message: t('workflow.vibe.toolUnavailable', { tool: parseResultToUse.detail }) })
+          Toast.notify({ type: 'error', message: t('vibe.toolUnavailable', { tool: parseResultToUse.detail }) })
           return emptyGraph
         case 'unsupportedEdgeLabel':
-          Toast.notify({ type: 'error', message: t('workflow.vibe.unsupportedEdgeLabel', { label: parseResultToUse.detail }) })
+          Toast.notify({ type: 'error', message: t('vibe.unsupportedEdgeLabel', { label: parseResultToUse.detail }) })
           return emptyGraph
         default:
-          Toast.notify({ type: 'error', message: t('workflow.vibe.invalidFlowchart') })
+          Toast.notify({ type: 'error', message: t('vibe.invalidFlowchart') })
           return emptyGraph
       }
     }
 
     if (!nodesMetaDataMap) {
-      Toast.notify({ type: 'error', message: t('workflow.vibe.nodesUnavailable') })
+      Toast.notify({ type: 'error', message: t('vibe.nodesUnavailable') })
       return emptyGraph
     }
 
@@ -1133,7 +1133,7 @@ export const useWorkflowVibe = () => {
     })
 
     if (!newNodes.length) {
-      Toast.notify({ type: 'error', message: t('workflow.vibe.invalidFlowchart') })
+      Toast.notify({ type: 'error', message: t('vibe.invalidFlowchart') })
       return emptyGraph
     }
 
@@ -1235,7 +1235,7 @@ export const useWorkflowVibe = () => {
     const currentFlowGraph = workflowStore.getState().currentVibeFlow
 
     if (!currentFlowGraph || !currentFlowGraph.nodes || currentFlowGraph.nodes.length === 0) {
-      Toast.notify({ type: 'error', message: t('workflow.vibe.invalidFlowchart') })
+      Toast.notify({ type: 'error', message: t('vibe.invalidFlowchart') })
       return
     }
 
@@ -1268,24 +1268,24 @@ export const useWorkflowVibe = () => {
     regenerateMode = false,
   ) => {
     if (getNodesReadOnly()) {
-      Toast.notify({ type: 'error', message: t('workflow.vibe.readOnly') })
+      Toast.notify({ type: 'error', message: t('vibe.readOnly') })
       return
     }
 
     const trimmed = dsl?.trim() || ''
     if (!trimmed) {
-      Toast.notify({ type: 'error', message: t('workflow.vibe.missingInstruction') })
+      Toast.notify({ type: 'error', message: t('vibe.missingInstruction') })
       return
     }
 
     if (!nodesMetaDataMap || Object.keys(nodesMetaDataMap).length === 0) {
-      Toast.notify({ type: 'error', message: t('workflow.vibe.nodesUnavailable') })
+      Toast.notify({ type: 'error', message: t('vibe.nodesUnavailable') })
       return
     }
 
     const latestModelConfig = getLatestModelConfig()
     if (!latestModelConfig && !isMermaidFlowchart(trimmed)) {
-      Toast.notify({ type: 'error', message: t('workflow.vibe.modelUnavailable') })
+      Toast.notify({ type: 'error', message: t('vibe.modelUnavailable') })
       return
     }
 
@@ -1406,7 +1406,7 @@ export const useWorkflowVibe = () => {
           Toast.notify({ type: 'error', message: error })
           workflowStore.setState(state => ({
             ...state,
-            vibePanelMessage: `${error} ${t('workflow.vibe.regenerateReminder')}`,
+            vibePanelMessage: `${error} ${t('vibe.regenerateReminder')}`,
             isVibeGenerating: false,
           }))
           return
@@ -1417,7 +1417,7 @@ export const useWorkflowVibe = () => {
           workflowStore.setState(state => ({
             ...state,
             vibePanelMermaidCode: '',
-            vibePanelMessage: message || t('workflow.vibe.offTopicDefault'),
+            vibePanelMessage: message || t('vibe.offTopicDefault'),
             vibePanelSuggestions: suggestions || [],
             vibePanelIntent: 'off_topic',
             isVibeGenerating: false,
@@ -1426,7 +1426,7 @@ export const useWorkflowVibe = () => {
         }
 
         if (!flowchart) {
-          Toast.notify({ type: 'error', message: t('workflow.vibe.missingFlowchart') })
+          Toast.notify({ type: 'error', message: t('vibe.missingFlowchart') })
           setIsVibeGenerating(false)
           return
         }
@@ -1495,7 +1495,7 @@ export const useWorkflowVibe = () => {
       setIsVibeGenerating(false)
 
       // Extract error message from Response object or Error
-      let errorMessage = t('workflow.vibe.generateError')
+      let errorMessage = t('vibe.generateError')
       if (error instanceof Response) {
         try {
           const errorData = await error.json()
@@ -1512,7 +1512,7 @@ export const useWorkflowVibe = () => {
       Toast.notify({ type: 'error', message: errorMessage })
       workflowStore.setState(state => ({
         ...state,
-        vibePanelMessage: `${errorMessage} ${t('workflow.vibe.regenerateReminder')}`,
+        vibePanelMessage: `${errorMessage} ${t('vibe.regenerateReminder')}`,
         isVibeGenerating: false,
       }))
     }
