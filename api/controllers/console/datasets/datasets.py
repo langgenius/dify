@@ -183,7 +183,9 @@ class ConsoleDatasetListQuery(BaseModel):
     include_all: str = Field(default="false", description="Include all datasets")
 
 
-register_schema_models(console_ns, DatasetCreatePayload, DatasetUpdatePayload, IndexingEstimatePayload, ConsoleDatasetListQuery)
+register_schema_models(
+    console_ns, DatasetCreatePayload, DatasetUpdatePayload, IndexingEstimatePayload, ConsoleDatasetListQuery
+)
 
 
 def _get_retrieval_methods_by_vector_type(vector_type: str | None, is_mock: bool = False) -> dict[str, list[str]]:
@@ -323,7 +325,13 @@ class DatasetListApi(Resource):
             else:
                 item.update({"partial_member_list": []})
 
-        response = {"data": data, "has_more": len(datasets) == query.limit, "limit": query.limit, "total": total, "page": query.page}
+        response = {
+            "data": data,
+            "has_more": len(datasets) == query.limit,
+            "limit": query.limit,
+            "total": total,
+            "page": query.page,
+        }
         return response, 200
 
     @console_ns.doc("create_dataset")

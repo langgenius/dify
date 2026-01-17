@@ -5,7 +5,6 @@ from uuid import UUID
 from flask import request
 from flask_restx import marshal
 from pydantic import BaseModel, Field, model_validator
-from typing import Literal
 from sqlalchemy import desc, select
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -482,7 +481,9 @@ class DocumentListApi(DatasetApiResource):
 
         query = query.order_by(desc(Document.created_at), desc(Document.position))
 
-        paginated_documents = db.paginate(select=query, page=query_params.page, per_page=query_params.limit, max_per_page=100, error_out=False)
+        paginated_documents = db.paginate(
+            select=query, page=query_params.page, per_page=query_params.limit, max_per_page=100, error_out=False
+        )
         documents = paginated_documents.items
 
         response = {
