@@ -2,6 +2,7 @@
 
 import type {
   EdgeChange,
+  FitViewOptions,
   NodeChange,
   Viewport,
 } from 'reactflow'
@@ -59,14 +60,18 @@ const edgeTypes = {
 type WorkflowPreviewProps = {
   nodes: Node[]
   edges: Edge[]
-  viewport: Viewport
+  viewport?: Viewport
   className?: string
+  fitView?: boolean
+  fitViewOptions?: FitViewOptions
 }
 const WorkflowPreview = ({
   nodes,
   edges,
   viewport,
   className,
+  fitView,
+  fitViewOptions,
 }: WorkflowPreviewProps) => {
   const [nodesData, setNodesData] = useState(() => initialNodes(nodes, edges))
   const [edgesData, setEdgesData] = useState(() => initialEdges(edges, nodes))
@@ -124,6 +129,8 @@ const WorkflowPreview = ({
         selectionKeyCode={null}
         selectionMode={SelectionMode.Partial}
         minZoom={0.25}
+        fitView={fitView}
+        fitViewOptions={fitViewOptions}
       >
         <Background
           gap={[14, 14]}
