@@ -7,7 +7,7 @@ metadata:
   namespace: acedatacloud
 spec:
   replicas: 3
-  revisionHistoryLimit: 1
+  revisionHistoryLimit: 10
   selector:
     matchLabels:
       app: dify-plugin-daemon

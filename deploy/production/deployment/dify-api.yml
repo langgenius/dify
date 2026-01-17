@@ -10,7 +10,7 @@ spec:
   minReadySeconds: 10
   progressDeadlineSeconds: 600
   replicas: 2
-  revisionHistoryLimit: 1
+  revisionHistoryLimit: 10
   selector:
     matchLabels:
       app: dify-api
