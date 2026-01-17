@@ -92,6 +92,9 @@ vi.mock('@/app/components/workflow/store', () => {
     useWorkflowStore: () => ({
       getState: () => ({
         pipelineId: 'test-pipeline-id',
+        setShowInputFieldPanel: mockSetShowInputFieldPanel,
+        setShowEnvPanel: mockSetShowEnvPanel,
+        setShowImportDSLModal: mockSetShowImportDSLModal,
         setIsPreparingDataSource: mockSetIsPreparingDataSource,
         setShowDebugAndPreviewPanel: mockSetShowDebugAndPreviewPanel,
         setPublishedAt: mockSetPublishedAt,
