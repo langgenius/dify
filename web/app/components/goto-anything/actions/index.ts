@@ -8,7 +8,7 @@
 import type { ScopeContext, ScopeDescriptor, SearchResult } from './types'
 import { ACTION_KEYS } from '../constants'
 import { appScope } from './app'
-import { slashScope } from './commands'
+import { slashAction } from './commands'
 import { slashCommandRegistry } from './commands/registry'
 import { knowledgeScope } from './knowledge'
 import { pluginScope } from './plugin'
@@ -24,7 +24,7 @@ export const initGotoAnythingScopes = () => {
 
   scopesInitialized = true
 
-  scopeRegistry.register(slashScope)
+  scopeRegistry.register(slashAction)
   scopeRegistry.register(appScope)
   scopeRegistry.register(knowledgeScope)
   scopeRegistry.register(pluginScope)
