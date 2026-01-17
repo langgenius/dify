@@ -33,7 +33,7 @@ def test_parse_structured_output_with_markdown():
 def test_parse_structured_output_with_nested_code_blocks():
     """Test that nested ``` in JSON strings (e.g., prompt templates) are handled correctly."""
     # This simulates LLM generating a prompt template with code blocks inside
-    content = '''```json
+    content = """```json
 {
   "nodes": [
     {
@@ -51,7 +51,7 @@ def test_parse_structured_output_with_nested_code_blocks():
   ],
   "edges": []
 }
-```'''
+```"""
     result = parse_structured_output(content)
     assert result["nodes"][0]["id"] == "llm_1"
     # Verify the nested code block is preserved in the prompt template

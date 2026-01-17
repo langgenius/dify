@@ -124,8 +124,7 @@ def parse_structured_output(content: str) -> dict[str, Any]:
     )
 
     raise ValueError(
-        f"Failed to parse LLM response as JSON.{error_details} "
-        f"Content length: {content_len}, preview: {content_start}"
+        f"Failed to parse LLM response as JSON.{error_details} Content length: {content_len}, preview: {content_start}"
     )
 
 
