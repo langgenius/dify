@@ -65,16 +65,12 @@ class WorkflowCommentService:
 
         # Cache accounts on objects
         for comment in comments:
-            setattr(comment, "_created_by_account_cache", account_map.get(comment.created_by))
-            setattr(
-                comment,
-                "_resolved_by_account_cache",
-                account_map.get(comment.resolved_by) if comment.resolved_by else None,
-            )
+            comment._created_by_account_cache = account_map.get(comment.created_by)
+            comment._resolved_by_account_cache = account_map.get(comment.resolved_by) if comment.resolved_by else None
             for reply in comment.replies:
-                setattr(reply, "_created_by_account_cache", account_map.get(reply.created_by))
+                reply._created_by_account_cache = account_map.get(reply.created_by)
             for mention in comment.mentions:
-                setattr(mention, "_mentioned_user_account_cache", account_map.get(mention.mentioned_user_id))
+                mention._mentioned_user_account_cache = account_map.get(mention.mentioned_user_id)
 
     @staticmethod
     def get_comment(tenant_id: str, app_id: str, comment_id: str, session: Session | None = None) -> WorkflowComment:
