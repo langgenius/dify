@@ -107,6 +107,7 @@ jobs:
         working-directory: ./web
         run: |
           pnpm run lint
+        # pnpm run lint:report
         # continue-on-error: true
 
       # - name: Annotate Code
