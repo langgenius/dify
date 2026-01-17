@@ -214,15 +214,15 @@ class RetryStrategy:
         return "\n".join(lines)
 
 
-# Default strategy instance
-_default_strategy: RetryStrategy | None = None
-
-
 def get_retry_strategy(
     fallback_model_config: dict[str, Any] | None = None,
 ) -> RetryStrategy:
-    """Get or create the default retry strategy."""
-    global _default_strategy
-    if _default_strategy is None or fallback_model_config:
-        _default_strategy = RetryStrategy(fallback_model_config)
-    return _default_strategy
+    """Create a retry strategy instance.
+
+    Args:
+        fallback_model_config: Optional fallback model configuration
+
+    Returns:
+        RetryStrategy instance configured with the fallback model
+    """
+    return RetryStrategy(fallback_model_config)
