@@ -54,19 +54,23 @@ export default function Page() {
 **Alternative with children prop:**
 
 ```tsx
-async function Layout({ children }: { children: ReactNode }) {
-  const header = await fetchHeader()
-  return (
-    <div>
-      <div>{header}</div>
-      {children}
-    </div>
-  )
+async function Header() {
+  const data = await fetchHeader()
+  return <div>{data}</div>
 }
 
 async function Sidebar() {
   const items = await fetchSidebarItems()
   return <nav>{items.map(renderItem)}</nav>
+}
+
+function Layout({ children }: { children: ReactNode }) {
+  return (
+    <div>
+      <Header />
+      {children}
+    </div>
+  )
 }
 
 export default function Page() {

@@ -40,7 +40,9 @@ Comprehensive performance optimization guide for React and Next.js applications,
    - 3.5 [Use after() for Non-Blocking Operations](#35-use-after-for-non-blocking-operations)
 4. [Client-Side Data Fetching](#4-client-side-data-fetching) — **MEDIUM-HIGH**
    - 4.1 [Deduplicate Global Event Listeners](#41-deduplicate-global-event-listeners)
-   - 4.2 [Use SWR for Automatic Deduplication](#42-use-swr-for-automatic-deduplication)
+   - 4.2 [Use Passive Event Listeners for Scrolling Performance](#42-use-passive-event-listeners-for-scrolling-performance)
+   - 4.3 [Use SWR for Automatic Deduplication](#43-use-swr-for-automatic-deduplication)
+   - 4.4 [Version and Minimize localStorage Data](#44-version-and-minimize-localstorage-data)
 5. [Re-render Optimization](#5-re-render-optimization) — **MEDIUM**
    - 5.1 [Defer State Reads to Usage Point](#51-defer-state-reads-to-usage-point)
    - 5.2 [Extract to Memoized Components](#52-extract-to-memoized-components)
@@ -418,7 +420,7 @@ Load large data or modules only when a feature is activated.
 **Example: lazy-load animation frames**
 
 ```tsx
-function AnimationPlayer({ enabled }: { enabled: boolean }) {
+function AnimationPlayer({ enabled, setEnabled }: { enabled: boolean; setEnabled: React.Dispatch<React.SetStateAction<boolean>> }) {
   const [frames, setFrames] = useState<Frame[] | null>(null)
 
   useEffect(() => {
@@ -427,7 +429,7 @@ function AnimationPlayer({ enabled }: { enabled: boolean }) {
         .then(mod => setFrames(mod.frames))
         .catch(() => setEnabled(false))
     }
-  }, [enabled, frames])
+  }, [enabled, frames, setEnabled])
 
   if (!frames) return <Skeleton />
   return <Canvas frames={frames} />
@@ -688,19 +690,23 @@ export default function Page() {
 **Alternative with children prop:**
 
 ```tsx
-async function Layout({ children }: { children: ReactNode }) {
-  const header = await fetchHeader()
-  return (
-    <div>
-      <div>{header}</div>
-      {children}
-    </div>
-  )
+async function Header() {
+  const data = await fetchHeader()
+  return <div>{data}</div>
 }
 
 async function Sidebar() {
   const items = await fetchSidebarItems()
   return <nav>{items.map(renderItem)}</nav>
+}
+
+function Layout({ children }: { children: ReactNode }) {
+  return (
+    <div>
+      <Header />
+      {children}
+    </div>
+  )
 }
 
 export default function Page() {
@@ -733,6 +739,50 @@ export const getCurrentUser = cache(async () => {
 ```
 
 Within a single request, multiple calls to `getCurrentUser()` execute the query only once.
+
+**Avoid inline objects as arguments:**
+
+`React.cache()` uses shallow equality (`Object.is`) to determine cache hits. Inline objects create new references each call, preventing cache hits.
+
+**Incorrect: always cache miss**
+
+```typescript
+const getUser = cache(async (params: { uid: number }) => {
+  return await db.user.findUnique({ where: { id: params.uid } })
+})
+
+// Each call creates new object, never hits cache
+getUser({ uid: 1 })
+getUser({ uid: 1 })  // Cache miss, runs query again
+```
+
+**Correct: cache hit**
+
+```typescript
+const params = { uid: 1 }
+getUser(params)  // Query runs
+getUser(params)  // Cache hit (same reference)
+```
+
+If you must pass objects, pass the same reference:
+
+**Next.js-Specific Note:**
+
+In Next.js, the `fetch` API is automatically extended with request memoization. Requests with the same URL and options are automatically deduplicated within a single request, so you don't need `React.cache()` for `fetch` calls. However, `React.cache()` is still essential for other async tasks:
+
+- Database queries (Prisma, Drizzle, etc.)
+
+- Heavy computations
+
+- Authentication checks
+
+- File system operations
+
+- Any non-fetch async work
+
+Use `React.cache()` to deduplicate these operations across your component tree.
+
+Reference: [https://react.dev/reference/react/cache](https://react.dev/reference/react/cache)
 
 ### 3.5 Use after() for Non-Blocking Operations
 
@@ -886,7 +936,51 @@ function Profile() {
 }
 ```
 
-### 4.2 Use SWR for Automatic Deduplication
+### 4.2 Use Passive Event Listeners for Scrolling Performance
+
+**Impact: MEDIUM (eliminates scroll delay caused by event listeners)**
+
+Add `{ passive: true }` to touch and wheel event listeners to enable immediate scrolling. Browsers normally wait for listeners to finish to check if `preventDefault()` is called, causing scroll delay.
+
+**Incorrect:**
+
+```typescript
+useEffect(() => {
+  const handleTouch = (e: TouchEvent) => console.log(e.touches[0].clientX)
+  const handleWheel = (e: WheelEvent) => console.log(e.deltaY)
+  
+  document.addEventListener('touchstart', handleTouch)
+  document.addEventListener('wheel', handleWheel)
+  
+  return () => {
+    document.removeEventListener('touchstart', handleTouch)
+    document.removeEventListener('wheel', handleWheel)
+  }
+}, [])
+```
+
+**Correct:**
+
+```typescript
+useEffect(() => {
+  const handleTouch = (e: TouchEvent) => console.log(e.touches[0].clientX)
+  const handleWheel = (e: WheelEvent) => console.log(e.deltaY)
+  
+  document.addEventListener('touchstart', handleTouch, { passive: true })
+  document.addEventListener('wheel', handleWheel, { passive: true })
+  
+  return () => {
+    document.removeEventListener('touchstart', handleTouch)
+    document.removeEventListener('wheel', handleWheel)
+  }
+}, [])
+```
+
+**Use passive when:** tracking/analytics, logging, any listener that doesn't call `preventDefault()`.
+
+**Don't use passive when:** implementing custom swipe gestures, custom zoom controls, or any listener that needs `preventDefault()`.
+
+### 4.3 Use SWR for Automatic Deduplication
 
 **Impact: MEDIUM-HIGH (automatic deduplication)**
 
@@ -937,6 +1031,73 @@ function UpdateButton() {
 ```
 
 Reference: [https://swr.vercel.app](https://swr.vercel.app)
+
+### 4.4 Version and Minimize localStorage Data
+
+**Impact: MEDIUM (prevents schema conflicts, reduces storage size)**
+
+Add version prefix to keys and store only needed fields. Prevents schema conflicts and accidental storage of sensitive data.
+
+**Incorrect:**
+
+```typescript
+// No version, stores everything, no error handling
+localStorage.setItem('userConfig', JSON.stringify(fullUserObject))
+const data = localStorage.getItem('userConfig')
+```
+
+**Correct:**
+
+```typescript
+const VERSION = 'v2'
+
+function saveConfig(config: { theme: string; language: string }) {
+  try {
+    localStorage.setItem(`userConfig:${VERSION}`, JSON.stringify(config))
+  } catch {
+    // Throws in incognito/private browsing, quota exceeded, or disabled
+  }
+}
+
+function loadConfig() {
+  try {
+    const data = localStorage.getItem(`userConfig:${VERSION}`)
+    return data ? JSON.parse(data) : null
+  } catch {
+    return null
+  }
+}
+
+// Migration from v1 to v2
+function migrate() {
+  try {
+    const v1 = localStorage.getItem('userConfig:v1')
+    if (v1) {
+      const old = JSON.parse(v1)
+      saveConfig({ theme: old.darkMode ? 'dark' : 'light', language: old.lang })
+      localStorage.removeItem('userConfig:v1')
+    }
+  } catch {}
+}
+```
+
+**Store minimal fields from server responses:**
+
+```typescript
+// User object has 20+ fields, only store what UI needs
+function cachePrefs(user: FullUser) {
+  try {
+    localStorage.setItem('prefs:v1', JSON.stringify({
+      theme: user.preferences.theme,
+      notifications: user.preferences.notifications
+    }))
+  } catch {}
+}
+```
+
+**Always wrap in try-catch:** `getItem()` and `setItem()` throw in incognito/private browsing (Safari, Firefox), when quota exceeded, or when disabled.
+
+**Benefits:** Schema evolution via versioning, reduced storage size, prevents storing tokens/PII/internal flags.
 
 ---
 
@@ -1074,7 +1235,7 @@ Subscribe to derived boolean state instead of continuous values to reduce re-ren
 function Sidebar() {
   const width = useWindowWidth()  // updates continuously
   const isMobile = width < 768
-  return <nav className={isMobile ? 'mobile' : 'desktop'}>
+  return <nav className={isMobile ? 'mobile' : 'desktop'} />
 }
 ```
 
@@ -1083,7 +1244,7 @@ function Sidebar() {
 ```tsx
 function Sidebar() {
   const isMobile = useMediaQuery('(max-width: 767px)')
-  return <nav className={isMobile ? 'mobile' : 'desktop'}>
+  return <nav className={isMobile ? 'mobile' : 'desktop'} />
 }
 ```
 
