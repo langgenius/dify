@@ -91,7 +91,7 @@ class DatasetListQuery(BaseModel):
     page: int = Field(default=1, description="Page number")
     limit: int = Field(default=20, description="Number of items per page")
     keyword: str | None = Field(default=None, description="Search keyword")
-    include_all: str = Field(default="false", description="Include all datasets")
+    include_all: bool = Field(default=False, description="Include all datasets")
 
 
 register_schema_models(
@@ -124,7 +124,7 @@ class DatasetListApi(DatasetApiResource):
         query = DatasetListQuery.model_validate(request.args.to_dict())
         # provider = request.args.get("provider", default="vendor")
         tag_ids = request.args.getlist("tag_ids")
-        include_all = query.include_all.lower() == "true"
+        include_all = query.include_all
 
         datasets, total = DatasetService.get_datasets(
             query.page, query.limit, tenant_id, current_user, query.keyword, tag_ids, include_all
