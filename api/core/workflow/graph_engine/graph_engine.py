@@ -119,7 +119,11 @@ class GraphEngine:
 
         # === Error Handling ===
         # Centralized error handler for graph execution errors
-        self._error_handler = ErrorHandler(self._graph, self._graph_execution)
+        self._error_handler = ErrorHandler(
+            self._graph,
+            self._graph_execution,
+            self._graph_runtime_state,
+        )
 
         # === Graph Traversal Components ===
         # Propagates skip status through the graph when conditions aren't met
