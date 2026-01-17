@@ -106,7 +106,7 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
         run: |
-          pnpm run lint
+          pnpm run lint:ci
         # pnpm run lint:report
         # continue-on-error: true
 
