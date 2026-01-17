@@ -40,7 +40,12 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
             documents = []
             for content in content_list:
                 annotation = MessageAnnotation(
-                    app_id=app.id, content=content["answer"], question=content["question"], account_id=user_id
+                    app_id=app.id,
+                    content=content["answer"],
+                    conversation_id=None,
+                    message_id=None,
+                    question=content["question"],
+                    account_id=user_id,
                 )
                 db.session.add(annotation)
                 db.session.flush()
