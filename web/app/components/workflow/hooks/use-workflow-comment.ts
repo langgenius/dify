@@ -1,13 +1,15 @@
-import { useCallback, useEffect, useRef } from 'react'
+import type { UserProfile, WorkflowCommentDetail, WorkflowCommentList } from '@/service/workflow-comment'
 import { useParams } from 'next/navigation'
+import { useCallback, useEffect, useRef } from 'react'
 import { useReactFlow } from 'reactflow'
-import { useStore } from '../store'
-import { ControlMode } from '../types'
-import type { WorkflowCommentDetail, WorkflowCommentList } from '@/service/workflow-comment'
-import { createWorkflowComment, createWorkflowCommentReply, deleteWorkflowComment, deleteWorkflowCommentReply, fetchWorkflowComment, fetchWorkflowComments, resolveWorkflowComment, updateWorkflowComment, updateWorkflowCommentReply } from '@/service/workflow-comment'
 import { collaborationManager } from '@/app/components/workflow/collaboration'
 import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { createWorkflowComment, createWorkflowCommentReply, deleteWorkflowComment, deleteWorkflowCommentReply, fetchWorkflowComment, fetchWorkflowComments, resolveWorkflowComment, updateWorkflowComment, updateWorkflowCommentReply } from '@/service/workflow-comment'
+import { useStore } from '../store'
+import { ControlMode } from '../types'
+
+const EMPTY_USERS: UserProfile[] = []
 
 export const useWorkflowComment = () => {
   const params = useParams()
@@ -35,7 +37,7 @@ export const useWorkflowComment = () => {
   const rightPanelWidth = useStore(s => s.rightPanelWidth)
   const nodePanelWidth = useStore(s => s.nodePanelWidth)
   const mentionableUsers = useStore(state => (
-    appId ? state.mentionableUsersCache[appId] ?? [] : []
+    appId ? state.mentionableUsersCache[appId] ?? EMPTY_USERS : EMPTY_USERS
   ))
   const { userProfile } = useAppContext()
   const isCollaborationEnabled = useGlobalPublicStore(s => s.systemFeatures.enable_collaboration_mode)
@@ -51,7 +53,8 @@ export const useWorkflowComment = () => {
   }, [commentDetailCache])
 
   const refreshActiveComment = useCallback(async (commentId: string) => {
-    if (!appId) return
+    if (!appId)
+      return
 
     const detailResponse = await fetchWorkflowComment(appId, commentId)
     const detail = (detailResponse as any)?.data ?? detailResponse
@@ -65,7 +68,8 @@ export const useWorkflowComment = () => {
   }, [appId, setActiveComment, setCommentDetailCache])
 
   const loadComments = useCallback(async () => {
-    if (!appId || !isCollaborationEnabled) return
+    if (!appId || !isCollaborationEnabled)
+      return
 
     setCommentsLoading(true)
     try {
@@ -82,7 +86,8 @@ export const useWorkflowComment = () => {
 
   // Setup collaboration
   useEffect(() => {
-    if (!appId || !isCollaborationEnabled) return
+    if (!appId || !isCollaborationEnabled)
+      return
 
     const unsubscribe = collaborationManager.onCommentsUpdate(() => {
       loadComments()
@@ -98,7 +103,8 @@ export const useWorkflowComment = () => {
   }, [loadComments])
 
   const handleCommentSubmit = useCallback(async (content: string, mentionedUserIds: string[] = []) => {
-    if (!pendingComment) return
+    if (!pendingComment)
+      return
 
     console.log('Submitting comment:', { appId, pendingComment, content, mentionedUserIds })
 
@@ -234,7 +240,8 @@ export const useWorkflowComment = () => {
       { zoom: 1, duration: 600 },
     )
 
-    if (!appId) return
+    if (!appId)
+      return
 
     setActiveCommentLoading(!cachedDetail)
 
@@ -271,7 +278,8 @@ export const useWorkflowComment = () => {
   ])
 
   const handleCommentResolve = useCallback(async (commentId: string) => {
-    if (!appId) return
+    if (!appId)
+      return
 
     setActiveCommentLoading(true)
     try {
@@ -291,7 +299,8 @@ export const useWorkflowComment = () => {
   }, [appId, loadComments, refreshActiveComment, setActiveCommentLoading])
 
   const handleCommentDelete = useCallback(async (commentId: string) => {
-    if (!appId) return
+    if (!appId)
+      return
 
     setActiveCommentLoading(true)
     try {
@@ -331,11 +340,13 @@ export const useWorkflowComment = () => {
     }
   }, [appId, comments, handleCommentIconClick, loadComments, setActiveComment, setActiveCommentId, setActiveCommentLoading, setCommentDetailCache])
 
-  const handleCommentPositionUpdate = useCallback(async (commentId: string, position: { x: number; y: number }) => {
-    if (!appId) return
+  const handleCommentPositionUpdate = useCallback(async (commentId: string, position: { x: number, y: number }) => {
+    if (!appId)
+      return
 
     const targetComment = comments.find(c => c.id === commentId)
-    if (!targetComment) return
+    if (!targetComment)
+      return
 
     const nextPosition = {
       position_x: position.x,
@@ -395,9 +406,11 @@ export const useWorkflowComment = () => {
   }, [activeComment, appId, comments, setComments, setCommentDetailCache, setActiveComment])
 
   const handleCommentReply = useCallback(async (commentId: string, content: string, mentionedUserIds: string[] = []) => {
-    if (!appId) return
+    if (!appId)
+      return
     const trimmed = content.trim()
-    if (!trimmed) return
+    if (!trimmed)
+      return
 
     setReplySubmitting(true)
     try {
@@ -417,9 +430,11 @@ export const useWorkflowComment = () => {
   }, [appId, loadComments, refreshActiveComment, setReplySubmitting])
 
   const handleCommentReplyUpdate = useCallback(async (commentId: string, replyId: string, content: string, mentionedUserIds: string[] = []) => {
-    if (!appId) return
+    if (!appId)
+      return
     const trimmed = content.trim()
-    if (!trimmed) return
+    if (!trimmed)
+      return
 
     setReplyUpdating(true)
     try {
@@ -439,7 +454,8 @@ export const useWorkflowComment = () => {
   }, [appId, loadComments, refreshActiveComment, setReplyUpdating])
 
   const handleCommentReplyDelete = useCallback(async (commentId: string, replyId: string) => {
-    if (!appId) return
+    if (!appId)
+      return
 
     setActiveCommentLoading(true)
     try {
@@ -460,9 +476,11 @@ export const useWorkflowComment = () => {
 
   const handleCommentNavigate = useCallback((direction: 'prev' | 'next') => {
     const currentId = activeCommentIdRef.current
-    if (!currentId) return
+    if (!currentId)
+      return
     const idx = comments.findIndex(c => c.id === currentId)
-    if (idx === -1) return
+    if (idx === -1)
+      return
     const target = direction === 'prev' ? comments[idx - 1] : comments[idx + 1]
     if (target)
       handleCommentIconClick(target)
