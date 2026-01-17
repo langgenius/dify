@@ -4,12 +4,22 @@ Graph Validator for Workflow Generation
 Validates workflow graph structure using graph algorithms:
 - Reachability from start node (BFS)
 - Reachability to end node (reverse BFS)
+- Cycle detection using DFS with three-color marking
 - Branch edge validation for if-else and classifier nodes
 """
 
 import time
 from collections import deque
 from dataclasses import dataclass, field
+from enum import Enum
+
+
+class NodeColor(Enum):
+    """DFS node color for cycle detection."""
+
+    WHITE = 0  # Unvisited
+    GRAY = 1  # Currently visiting (in recursion stack)
+    BLACK = 2  # Finished visiting
 
 
 @dataclass
@@ -78,6 +88,35 @@ class GraphValidator:
                     queue.append(neighbor)
 
         return visited
+
+    @staticmethod
+    def _dfs_detect_cycle(
+        node: str,
+        adjacency: dict[str, list[str]],
+        colors: dict[str, NodeColor],
+        cycle_nodes: set[str],
+    ) -> bool:
+        """
+        DFS with three-color marking to detect cycles.
+
+        Returns True if a cycle is found from this node.
+        Marks all nodes in cycles in the cycle_nodes set.
+        """
+        colors[node] = NodeColor.GRAY
+
+        for neighbor in adjacency.get(node, []):
+            if colors.get(neighbor, NodeColor.WHITE) == NodeColor.GRAY:
+                # Back edge found - cycle detected
+                cycle_nodes.add(neighbor)
+                cycle_nodes.add(node)
+                return True
+            elif colors.get(neighbor, NodeColor.WHITE) == NodeColor.WHITE:
+                if GraphValidator._dfs_detect_cycle(neighbor, adjacency, colors, cycle_nodes):
+                    cycle_nodes.add(node)
+                    return True
+
+        colors[node] = NodeColor.BLACK
+        return False
 
     @staticmethod
     def validate(workflow_data: dict) -> GraphValidationResult:
@@ -170,6 +209,28 @@ class GraphValidator:
                     node_type=node.get("type", "unknown"),
                     error_type="dead_end",
                     message=f"Node '{node_id}' cannot reach any end node (dead end)",
+                )
+            )
+
+        # --- CYCLE DETECTION: DFS with three-color marking ---
+        colors: dict[str, NodeColor] = {}
+        cycle_nodes: set[str] = set()
+        cycles_found = 0
+
+        for node_id in nodes:
+            if colors.get(node_id, NodeColor.WHITE) == NodeColor.WHITE:
+                if GraphValidator._dfs_detect_cycle(node_id, outgoing, colors, cycle_nodes):
+                    cycles_found += 1
+
+        # Report cycle errors
+        for node_id in cycle_nodes:
+            node = nodes[node_id]
+            errors.append(
+                GraphError(
+                    node_id=node_id,
+                    node_type=node.get("type", "unknown"),
+                    error_type="cycle",
+                    message=f"Node '{node_id}' is part of a cycle (workflows must be acyclic)",
                 )
             )
 
@@ -276,5 +337,7 @@ class GraphValidator:
                 "can_reach_end": len(can_reach_end),
                 "unreachable": len(unreachable_nodes),
                 "dead_ends": len(dead_end_nodes - unreachable_nodes),
+                "cycles_found": cycles_found,
+                "nodes_in_cycles": len(cycle_nodes),
             },
         )
