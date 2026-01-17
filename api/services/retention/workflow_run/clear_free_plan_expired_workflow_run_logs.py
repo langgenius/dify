@@ -10,9 +10,7 @@ from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from models.workflow import WorkflowRun
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
-from repositories.sqlalchemy_api_workflow_node_execution_repository import (
-    DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
-)
+from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 from services.billing_service import BillingService, SubscriptionPlan
 
@@ -92,9 +90,12 @@ class WorkflowRunCleanup:
             paid_or_skipped = len(run_rows) - len(free_runs)
 
             if not free_runs:
+                skipped_message = (
+                    f"[batch #{batch_index}] skipped (no sandbox runs in batch, {paid_or_skipped} paid/unknown)"
+                )
                 click.echo(
                     click.style(
-                        f"[batch #{batch_index}] skipped (no sandbox runs in batch, {paid_or_skipped} paid/unknown)",
+                        skipped_message,
                         fg="yellow",
                     )
                 )
@@ -256,21 +257,6 @@ class WorkflowRunCleanup:
         return trigger_repo.count_by_run_ids(run_ids)
 
     @staticmethod
-    def _build_run_contexts(
-        runs: Sequence[WorkflowRun],
-    ) -> list[DifyAPISQLAlchemyWorkflowNodeExecutionRepository.RunContext]:
-        return [
-            {
-                "run_id": run.id,
-                "tenant_id": run.tenant_id,
-                "app_id": run.app_id,
-                "workflow_id": run.workflow_id,
-                "triggered_from": run.triggered_from,
-            }
-            for run in runs
-        ]
-
-    @staticmethod
     def _empty_related_counts() -> dict[str, int]:
         return {
             "node_executions": 0,
@@ -293,9 +279,15 @@ class WorkflowRunCleanup:
         )
 
     def _count_node_executions(self, session: Session, runs: Sequence[WorkflowRun]) -> tuple[int, int]:
-        run_contexts = self._build_run_contexts(runs)
-        return DifyAPISQLAlchemyWorkflowNodeExecutionRepository.count_by_runs(session, run_contexts)
+        run_ids = [run.id for run in runs]
+        repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+            session_maker=sessionmaker(bind=session.get_bind(), expire_on_commit=False)
+        )
+        return repo.count_by_runs(session, run_ids)
 
     def _delete_node_executions(self, session: Session, runs: Sequence[WorkflowRun]) -> tuple[int, int]:
-        run_contexts = self._build_run_contexts(runs)
-        return DifyAPISQLAlchemyWorkflowNodeExecutionRepository.delete_by_runs(session, run_contexts)
+        run_ids = [run.id for run in runs]
+        repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+            session_maker=sessionmaker(bind=session.get_bind(), expire_on_commit=False)
+        )
+        return repo.delete_by_runs(session, run_ids)

@@ -862,8 +862,27 @@ def clear_free_plan_tenant_expired_logs(days: int, batch: int, tenant_ids: list[
 
 
 @click.command("clean-workflow-runs", help="Clean expired workflow runs and related data for free tenants.")
-@click.option("--days", default=30, show_default=True, help="Delete workflow runs created before N days ago.")
+@click.option(
+    "--before-days",
+    "--days",
+    default=30,
+    show_default=True,
+    type=click.IntRange(min=0),
+    help="Delete workflow runs created before N days ago.",
+)
 @click.option("--batch-size", default=200, show_default=True, help="Batch size for selecting workflow runs.")
+@click.option(
+    "--from-days-ago",
+    default=None,
+    type=click.IntRange(min=0),
+    help="Lower bound in days ago (older). Must be paired with --to-days-ago.",
+)
+@click.option(
+    "--to-days-ago",
+    default=None,
+    type=click.IntRange(min=0),
+    help="Upper bound in days ago (newer). Must be paired with --from-days-ago.",
+)
 @click.option(
     "--start-from",
     type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
@@ -882,8 +901,10 @@ def clear_free_plan_tenant_expired_logs(days: int, batch: int, tenant_ids: list[
     help="Preview cleanup results without deleting any workflow run data.",
 )
 def clean_workflow_runs(
-    days: int,
+    before_days: int,
     batch_size: int,
+    from_days_ago: int | None,
+    to_days_ago: int | None,
     start_from: datetime.datetime | None,
     end_before: datetime.datetime | None,
     dry_run: bool,
@@ -894,11 +915,24 @@ def clean_workflow_runs(
     if (start_from is None) ^ (end_before is None):
         raise click.UsageError("--start-from and --end-before must be provided together.")
 
+    if (from_days_ago is None) ^ (to_days_ago is None):
+        raise click.UsageError("--from-days-ago and --to-days-ago must be provided together.")
+
+    if from_days_ago is not None and to_days_ago is not None:
+        if start_from or end_before:
+            raise click.UsageError("Choose either day offsets or explicit dates, not both.")
+        if from_days_ago <= to_days_ago:
+            raise click.UsageError("--from-days-ago must be greater than --to-days-ago.")
+        now = datetime.datetime.now()
+        start_from = now - datetime.timedelta(days=from_days_ago)
+        end_before = now - datetime.timedelta(days=to_days_ago)
+        before_days = 0
+
     start_time = datetime.datetime.now(datetime.UTC)
     click.echo(click.style(f"Starting workflow run cleanup at {start_time.isoformat()}.", fg="white"))
 
     WorkflowRunCleanup(
-        days=days,
+        days=before_days,
         batch_size=batch_size,
         start_from=start_from,
         end_before=end_before,
