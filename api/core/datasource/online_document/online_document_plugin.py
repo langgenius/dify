@@ -1,4 +1,4 @@
-from collections.abc import Generator, Mapping
+from collections.abc import Generator
 from typing import Any
 
 from core.datasource.__base.datasource_plugin import DatasourcePlugin
