@@ -1,7 +1,7 @@
 """Add workflow comments table
 
 Revision ID: 227822d22895
-Revises: 669ffd70119c
+Revises: 3334862ee907
 Create Date: 2025-08-22 17:26:15.255980
 
 """
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '227822d22895'
-down_revision = '669ffd70119c'
+down_revision = '3334862ee907'
 branch_labels = None
 depends_on = None
 
