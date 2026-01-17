@@ -28,6 +28,7 @@
     "build:docker": "next build && node scripts/optimize-standalone.js",
     "start": "node ./scripts/copy-and-start.mjs",
     "lint": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache",
+    "lint:ci": "pnpm lint --concurrency 3",
     "lint:fix": "pnpm lint --fix",
     "lint:quiet": "pnpm lint --quiet",
     "lint:complexity": "pnpm lint --rule 'complexity: [error, {max: 15}]' --quiet",
@@ -154,9 +155,9 @@
     "zustand": "^5.0.9"
   },
   "devDependencies": {
-    "@antfu/eslint-config": "^6.7.3",
+    "@antfu/eslint-config": "^7.0.1",
     "@chromatic-com/storybook": "^4.1.1",
-    "@eslint-react/eslint-plugin": "^2.3.13",
+    "@eslint-react/eslint-plugin": "^2.7.0",
     "@mdx-js/loader": "^3.1.1",
     "@mdx-js/react": "^3.1.1",
     "@next/bundle-analyzer": "15.5.9",
@@ -191,7 +192,7 @@
     "@types/semver": "^7.7.1",
     "@types/sortablejs": "^1.15.8",
     "@types/uuid": "^10.0.0",
-    "@typescript-eslint/parser": "^8.50.0",
+    "@typescript-eslint/parser": "^8.53.0",
     "@typescript/native-preview": "^7.0.0-dev",
     "@vitejs/plugin-react": "^5.1.2",
     "@vitest/coverage-v8": "4.0.16",
@@ -203,7 +204,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.26",
     "eslint-plugin-sonarjs": "^3.0.5",
-    "eslint-plugin-storybook": "^10.1.10",
+    "eslint-plugin-storybook": "^10.1.11",
     "eslint-plugin-tailwindcss": "^3.18.2",
     "husky": "^9.1.7",
     "jsdom": "^27.3.0",
@@ -226,7 +227,6 @@
   },
   "pnpm": {
     "overrides": {
-      "@eslint/plugin-kit@<0.3.4": "0.3.4",
       "@monaco-editor/loader": "1.5.0",
       "@nolyfill/safe-buffer": "npm:safe-buffer@^5.2.1",
       "array-includes": "npm:@nolyfill/array-includes@^1",
@@ -277,7 +277,6 @@
     ]
   },
   "resolutions": {
-    "@eslint/plugin-kit": "~0.3",
     "@types/react": "~19.2.7",
     "@types/react-dom": "~19.2.3",
     "brace-expansion": "~2.0",
