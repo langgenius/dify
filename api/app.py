@@ -9,7 +9,6 @@ def is_db_command() -> bool:
 
 
 # create app
-celery = None
 flask_app = None
 socketio_app = None
 
