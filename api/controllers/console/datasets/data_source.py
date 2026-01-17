@@ -39,7 +39,7 @@ class NotionEstimatePayload(BaseModel):
 class DataSourceNotionListQuery(BaseModel):
     dataset_id: str | None = Field(default=None, description="Dataset ID")
     credential_id: str = Field(..., description="Credential ID", min_length=1)
-    datasource_parameters: dict | None = Field(default=None, description="Datasource parameters JSON string")
+    datasource_parameters: dict[str, Any] | None = Field(default=None, description="Datasource parameters JSON string")
 
 
 class DataSourceNotionPreviewQuery(BaseModel):
