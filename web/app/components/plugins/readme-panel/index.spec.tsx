@@ -403,7 +403,6 @@ describe('ReadmeEntrance', () => {
 // ReadmePanel Component Tests
 // ================================
 describe('ReadmePanel', () => {
-  // Note: Store is automatically reset after each test by global zustand mock
   beforeEach(() => {
     mockUsePluginReadme.mockReturnValue({
       data: null,
