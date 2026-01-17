@@ -11,6 +11,8 @@ export type VibeWorkflowSliceShape = {
   setVibePanelMermaidCode: (vibePanelMermaidCode: string) => void
   isVibeGenerating: boolean
   setIsVibeGenerating: (isVibeGenerating: boolean) => void
+  vibeStageMessage: string
+  setVibeStageMessage: (vibeStageMessage: string) => void
   vibePanelInstruction: string
   setVibePanelInstruction: (vibePanelInstruction: string) => void
   vibeFlowVersions: FlowGraph[]
@@ -35,6 +37,8 @@ export const createVibeWorkflowSlice: StateCreator<VibeWorkflowSliceShape> = (se
   setVibePanelMermaidCode: vibePanelMermaidCode => set(() => ({ vibePanelMermaidCode })),
   isVibeGenerating: false,
   setIsVibeGenerating: isVibeGenerating => set(() => ({ isVibeGenerating })),
+  vibeStageMessage: '',
+  setVibeStageMessage: vibeStageMessage => set(() => ({ vibeStageMessage })),
   vibePanelInstruction: '',
   setVibePanelInstruction: vibePanelInstruction => set(() => ({ vibePanelInstruction })),
   vibeFlowVersions: [],

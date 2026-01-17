@@ -30,6 +30,7 @@ const VibePanel: FC = () => {
   const setShowVibePanel = useStore(s => s.setShowVibePanel)
   const isVibeGenerating = useStore(s => s.isVibeGenerating)
   const setIsVibeGenerating = useStore(s => s.setIsVibeGenerating)
+  const vibeStageMessage = useStore(s => s.vibeStageMessage)
   const vibePanelInstruction = useStore(s => s.vibePanelInstruction)
   const vibePanelMermaidCode = useStore(s => s.vibePanelMermaidCode)
   const setVibePanelMermaidCode = useStore(s => s.setVibePanelMermaidCode)
@@ -156,7 +157,7 @@ const VibePanel: FC = () => {
   const renderLoading = (
     <div className="flex h-full w-0 grow flex-col items-center justify-center space-y-3">
       <Loading />
-      <div className="text-[13px] text-text-tertiary">{t('vibe.generatingFlowchart')}</div>
+      <div className="text-[13px] text-text-tertiary">{vibeStageMessage || t('vibe.generatingFlowchart')}</div>
     </div>
   )
 

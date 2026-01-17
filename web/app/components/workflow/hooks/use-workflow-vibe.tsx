@@ -14,7 +14,7 @@ import Toast from '@/app/components/base/toast'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { useGetLanguage } from '@/context/i18n'
-import { generateFlowchart } from '@/service/debug'
+import { generateFlowchartStream } from '@/service/debug'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
@@ -1398,9 +1398,42 @@ export const useWorkflowVibe = () => {
           available_models: availableModelsPayload,
         }
 
-        const response = await generateFlowchart(requestPayload)
+        // Use streaming API with stage progress callbacks
+        const streamResult = await new Promise<{
+          error?: string
+          flowchart?: string
+          nodes?: BackendNodeSpec[]
+          edges?: BackendEdgeSpec[]
+          intent?: string
+          message?: string
+          warnings?: string[]
+          suggestions?: string[]
+        }>((resolve) => {
+          generateFlowchartStream(requestPayload, {
+            onStage: ({ message: stageMessage }) => {
+              workflowStore.setState(state => ({
+                ...state,
+                vibeStageMessage: stageMessage,
+              }))
+            },
+            onComplete: (data) => {
+              workflowStore.setState(state => ({
+                ...state,
+                vibeStageMessage: '',
+              }))
+              resolve(data)
+            },
+            onError: (errorMsg) => {
+              workflowStore.setState(state => ({
+                ...state,
+                vibeStageMessage: '',
+              }))
+              resolve({ error: errorMsg })
+            },
+          })
+        })
 
-        const { error, flowchart, nodes, edges, intent, message, warnings, suggestions } = response
+        const { error, flowchart, nodes, edges, intent, message, warnings, suggestions } = streamResult
 
         if (error) {
           Toast.notify({ type: 'error', message: error })
@@ -1462,6 +1495,10 @@ export const useWorkflowVibe = () => {
       }
 
       setIsVibeGenerating(false)
+      workflowStore.setState(state => ({
+        ...state,
+        vibeStageMessage: '',
+      }))
 
       // Add version for preview
       if (backendNodes && backendNodes.length > 0 && backendEdges) {
