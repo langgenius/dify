@@ -147,7 +147,11 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
     # Inject traceparent header for distributed tracing (when OTEL is not enabled)
     headers = kwargs.get("headers") or {}
     headers = _inject_trace_headers(headers)
-    kwargs["headers"] = headers
+    if "headers" in kwargs:
+        kwargs.pop("headers")
+
+    # Extract follow_redirects for client.send() - it's not a build_request parameter
+    follow_redirects = kwargs.pop("follow_redirects", True)
 
     # Preserve user-provided Host header
     # When using a forward proxy, httpx may override the Host header based on the URL.
@@ -161,9 +165,10 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
             # httpx may override the Host header when using a proxy
             headers = {k: v for k, v in headers.items() if k.lower() != "host"}
             if user_provided_host is not None:
-                headers["host"] = user_provided_host
-            kwargs["headers"] = headers
-            response = client.request(method=method, url=url, **kwargs)
+                headers["Host"] = user_provided_host
+
+            request = client.build_request(method, url, headers=headers, **kwargs)
+            response = client.send(request, follow_redirects=follow_redirects)
 
             # Check for SSRF protection by Squid proxy
             if response.status_code in (401, 403):

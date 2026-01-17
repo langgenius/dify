@@ -12,22 +12,27 @@ from core.helper.ssrf_proxy import (
 @patch("core.helper.ssrf_proxy._get_ssrf_client")
 def test_successful_request(mock_get_client):
     mock_client = MagicMock()
+    mock_request = MagicMock()
     mock_response = MagicMock()
     mock_response.status_code = 200
-    mock_client.request.return_value = mock_response
+    mock_client.build_request.return_value = mock_request
+    mock_client.send.return_value = mock_response
     mock_get_client.return_value = mock_client
 
     response = make_request("GET", "http://example.com")
     assert response.status_code == 200
-    mock_client.request.assert_called_once()
+    mock_client.build_request.assert_called_once()
+    mock_client.send.assert_called_once()
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client")
 def test_retry_exceed_max_retries(mock_get_client):
     mock_client = MagicMock()
+    mock_request = MagicMock()
     mock_response = MagicMock()
     mock_response.status_code = 500
-    mock_client.request.return_value = mock_response
+    mock_client.build_request.return_value = mock_request
+    mock_client.send.return_value = mock_response
     mock_get_client.return_value = mock_client
 
     with pytest.raises(Exception) as e:
@@ -75,18 +80,24 @@ class TestGetUserProvidedHostHeader:
 def test_host_header_preservation_with_user_header(mock_get_client):
     """Test that user-provided Host header is preserved in the request."""
     mock_client = MagicMock()
+    mock_request = MagicMock()
+    mock_request.headers = {}
     mock_response = MagicMock()
     mock_response.status_code = 200
-    mock_client.request.return_value = mock_response
+
+    mock_client.build_request.return_value = mock_request
+    mock_client.send.return_value = mock_response
     mock_get_client.return_value = mock_client
 
     custom_host = "custom.example.com:8080"
     response = make_request("GET", "http://example.com", headers={"Host": custom_host})
 
     assert response.status_code == 200
-    # Verify client.request was called with the host header preserved (lowercase)
-    call_kwargs = mock_client.request.call_args.kwargs
-    assert call_kwargs["headers"]["host"] == custom_host
+
+    call_kwargs_build = mock_client.build_request.call_args.kwargs
+    assert call_kwargs_build["headers"]["Host"] == custom_host
+
+    mock_client.send.assert_called_once_with(mock_request, follow_redirects=True)
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client")
@@ -94,83 +105,101 @@ def test_host_header_preservation_with_user_header(mock_get_client):
 def test_host_header_preservation_case_insensitive(mock_get_client, host_key):
     """Test that Host header is preserved regardless of case."""
     mock_client = MagicMock()
+    mock_request = MagicMock()
+    mock_request.headers = {}
     mock_response = MagicMock()
     mock_response.status_code = 200
-    mock_client.request.return_value = mock_response
+
+    mock_client.build_request.return_value = mock_request
+    mock_client.send.return_value = mock_response
     mock_get_client.return_value = mock_client
 
     response = make_request("GET", "http://example.com", headers={host_key: "api.example.com"})
 
     assert response.status_code == 200
-    # Host header should be normalized to lowercase "host"
-    call_kwargs = mock_client.request.call_args.kwargs
-    assert call_kwargs["headers"]["host"] == "api.example.com"
+
+    call_kwargs_build = mock_client.build_request.call_args.kwargs
+    assert call_kwargs_build["headers"]["Host"] == "api.example.com"
+
+    mock_client.send.assert_called_once_with(mock_request, follow_redirects=True)
 
 
 class TestFollowRedirectsParameter:
     """Tests for follow_redirects parameter handling.
 
-    These tests verify that follow_redirects is correctly passed to client.request().
+    These tests verify that follow_redirects is correctly passed to client.send().
     """
 
     @patch("core.helper.ssrf_proxy._get_ssrf_client")
     def test_follow_redirects_passed_to_request(self, mock_get_client):
-        """Verify follow_redirects IS passed to client.request()."""
+        """Verify follow_redirects IS passed to client.send()."""
         mock_client = MagicMock()
+        mock_request = MagicMock()
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_client.request.return_value = mock_response
+
+        mock_client.build_request.return_value = mock_request
+        mock_client.send.return_value = mock_response
         mock_get_client.return_value = mock_client
 
         make_request("GET", "http://example.com", follow_redirects=True)
 
-        # Verify follow_redirects was passed to request
-        call_kwargs = mock_client.request.call_args.kwargs
+        # Verify follow_redirects was passed to send
+        call_kwargs = mock_client.send.call_args.kwargs
         assert call_kwargs.get("follow_redirects") is True
 
     @patch("core.helper.ssrf_proxy._get_ssrf_client")
     def test_allow_redirects_converted_to_follow_redirects(self, mock_get_client):
         """Verify allow_redirects (requests-style) is converted to follow_redirects (httpx-style)."""
         mock_client = MagicMock()
+        mock_request = MagicMock()
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_client.request.return_value = mock_response
+
+        mock_client.build_request.return_value = mock_request
+        mock_client.send.return_value = mock_response
         mock_get_client.return_value = mock_client
 
         # Use allow_redirects (requests-style parameter)
         make_request("GET", "http://example.com", allow_redirects=True)
 
         # Verify it was converted to follow_redirects
-        call_kwargs = mock_client.request.call_args.kwargs
+        call_kwargs = mock_client.send.call_args.kwargs
         assert call_kwargs.get("follow_redirects") is True
         assert "allow_redirects" not in call_kwargs
 
     @patch("core.helper.ssrf_proxy._get_ssrf_client")
     def test_follow_redirects_not_set_when_not_specified(self, mock_get_client):
-        """Verify follow_redirects is not in kwargs when not specified (httpx default behavior)."""
+        """Verify follow_redirects defaults to True when not specified."""
         mock_client = MagicMock()
+        mock_request = MagicMock()
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_client.request.return_value = mock_response
+
+        mock_client.build_request.return_value = mock_request
+        mock_client.send.return_value = mock_response
         mock_get_client.return_value = mock_client
 
         make_request("GET", "http://example.com")
 
-        # follow_redirects should not be in kwargs, letting httpx use its default
-        call_kwargs = mock_client.request.call_args.kwargs
-        assert "follow_redirects" not in call_kwargs
+        # logic in ssrf_proxy.py: follow_redirects = kwargs.pop("follow_redirects", True)
+        call_kwargs = mock_client.send.call_args.kwargs
+        assert call_kwargs.get("follow_redirects") is True
 
     @patch("core.helper.ssrf_proxy._get_ssrf_client")
     def test_follow_redirects_takes_precedence_over_allow_redirects(self, mock_get_client):
         """Verify follow_redirects takes precedence when both are specified."""
         mock_client = MagicMock()
+        mock_request = MagicMock()
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_client.request.return_value = mock_response
+
+        mock_client.build_request.return_value = mock_request
+        mock_client.send.return_value = mock_response
         mock_get_client.return_value = mock_client
 
         # Both specified - follow_redirects should take precedence
         make_request("GET", "http://example.com", allow_redirects=False, follow_redirects=True)
 
-        call_kwargs = mock_client.request.call_args.kwargs
+        call_kwargs = mock_client.send.call_args.kwargs
         assert call_kwargs.get("follow_redirects") is True

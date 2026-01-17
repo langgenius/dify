@@ -5,7 +5,7 @@ import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type { ToolNodeType } from '@/app/components/workflow/nodes/tool/types'
 import type { CommonNodeType } from '@/app/components/workflow/types'
 import { useCallback, useEffect, useMemo } from 'react'
-import { ragPipelineNodesAction } from '@/app/components/goto-anything/actions/rag-pipeline-nodes'
+import { setRagPipelineNodesSearchFn } from '@/app/components/goto-anything/actions/rag-pipeline-nodes'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { useNodesInteractions } from '@/app/components/workflow/hooks/use-nodes-interactions'
 import { useGetToolIcon } from '@/app/components/workflow/hooks/use-tool-icon'
@@ -153,16 +153,15 @@ export const useRagPipelineSearch = () => {
     return results
   }, [searchableNodes, calculateScore])
 
-  // Directly set the search function on the action object
+  // Directly set the search function using the setter
   useEffect(() => {
     if (searchableNodes.length > 0) {
-      // Set the search function directly on the action
-      ragPipelineNodesAction.searchFn = searchRagPipelineNodes
+      setRagPipelineNodesSearchFn(searchRagPipelineNodes)
     }
 
     return () => {
       // Clean up when component unmounts
-      ragPipelineNodesAction.searchFn = undefined
+      setRagPipelineNodesSearchFn(() => [])
     }
   }, [searchableNodes, searchRagPipelineNodes])
 
