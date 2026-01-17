@@ -172,7 +172,6 @@ class TestAgentService:
 
         # Create app model config
         app_model_config = AppModelConfig(
-            id=fake.uuid4(),
             app_id=app.id,
             provider="openai",
             model_id="gpt-3.5-turbo",
@@ -180,6 +179,7 @@ class TestAgentService:
             model="gpt-3.5-turbo",
             agent_mode=json.dumps({"enabled": True, "strategy": "react", "tools": []}),
         )
+        app_model_config.id = fake.uuid4()
         db.session.add(app_model_config)
         db.session.commit()
 
@@ -413,7 +413,6 @@ class TestAgentService:
 
         # Create app model config
         app_model_config = AppModelConfig(
-            id=fake.uuid4(),
             app_id=app.id,
             provider="openai",
             model_id="gpt-3.5-turbo",
@@ -421,6 +420,7 @@ class TestAgentService:
             model="gpt-3.5-turbo",
             agent_mode=json.dumps({"enabled": True, "strategy": "react", "tools": []}),
         )
+        app_model_config.id = fake.uuid4()
         db.session.add(app_model_config)
         db.session.commit()
 
@@ -485,7 +485,6 @@ class TestAgentService:
 
         # Create app model config
         app_model_config = AppModelConfig(
-            id=fake.uuid4(),
             app_id=app.id,
             provider="openai",
             model_id="gpt-3.5-turbo",
@@ -493,6 +492,7 @@ class TestAgentService:
             model="gpt-3.5-turbo",
             agent_mode=json.dumps({"enabled": True, "strategy": "react", "tools": []}),
         )
+        app_model_config.id = fake.uuid4()
         db.session.add(app_model_config)
         db.session.commit()
 
