@@ -92,6 +92,13 @@ vi.mock('@/app/components/workflow/store', () => {
     useWorkflowStore: () => ({
       getState: () => ({
         pipelineId: 'test-pipeline-id',
+        knowledgeName: 'Test Knowledge',
+        knowledgeIcon: {
+          icon_type: 'emoji' as const,
+          icon: '📚',
+          icon_background: '#FFFFFF',
+          icon_url: '',
+        },
         setShowInputFieldPanel: mockSetShowInputFieldPanel,
         setShowEnvPanel: mockSetShowEnvPanel,
         setShowImportDSLModal: mockSetShowImportDSLModal,
