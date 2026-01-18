@@ -27,28 +27,30 @@ const InfographicViewer: React.FC<InfographicProps> = ({
   const [isLoading, setIsLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
 
-  const updateLoadingState = React.useCallback((loading: boolean) => {
-    setIsLoading(loading)
-  }, [])
-
-  const updateError = React.useCallback((err: string | null) => {
-    setError(err)
-  }, [])
-
   React.useEffect(() => {
-    const renderInfographic = () => {
+    let mounted = true
+
+    const renderInfographic = async () => {
       if (!containerRef.current)
         return
 
       try {
-        updateLoadingState(true)
-        updateError(null)
-
         // Clear previous instance
         if (infographicRef.current) {
           infographicRef.current.destroy()
           infographicRef.current = null
         }
+
+        // Defer state updates to avoid synchronous setState in useEffect
+        await new Promise((resolve) => {
+          const timer = setTimeout(resolve, 0)
+          return timer
+        })
+        if (!mounted)
+          return
+
+        setIsLoading(true)
+        setError(null)
 
         // Create new infographic instance
         const infographic = new Infographic({
@@ -61,12 +63,30 @@ const InfographicViewer: React.FC<InfographicProps> = ({
         // Render the infographic with the syntax
         infographic.render(syntax)
         infographicRef.current = infographic
-        updateLoadingState(false)
+
+        // Defer state update after render
+        await new Promise((resolve) => {
+          const timer = setTimeout(resolve, 0)
+          return timer
+        })
+        if (!mounted)
+          return
+
+        setIsLoading(false)
       }
       catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to render infographic'
-        updateError(errorMessage)
-        updateLoadingState(false)
+
+        // Defer error state updates
+        await new Promise((resolve) => {
+          const timer = setTimeout(resolve, 0)
+          return timer
+        })
+        if (!mounted)
+          return
+
+        setError(errorMessage)
+        setIsLoading(false)
         onError?.(err instanceof Error ? err : new Error(errorMessage))
       }
     }
@@ -74,12 +94,13 @@ const InfographicViewer: React.FC<InfographicProps> = ({
     renderInfographic()
 
     return () => {
+      mounted = false
       if (infographicRef.current) {
         infographicRef.current.destroy()
         infographicRef.current = null
       }
     }
-  }, [syntax, width, height, onError, updateLoadingState, updateError])
+  }, [syntax, width, height, onError])
 
   const handleCopyImage = async () => {
     try {
