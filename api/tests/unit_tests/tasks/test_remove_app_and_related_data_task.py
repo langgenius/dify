@@ -11,21 +11,18 @@ from tasks.remove_app_and_related_data_task import (
 
 class TestDeleteDraftVariablesBatch:
     @patch("tasks.remove_app_and_related_data_task._delete_draft_variable_offload_data")
-    @patch("tasks.remove_app_and_related_data_task.db")
-    def test_delete_draft_variables_batch_success(self, mock_db, mock_offload_cleanup):
+    @patch("tasks.remove_app_and_related_data_task.session_factory")
+    def test_delete_draft_variables_batch_success(self, mock_sf, mock_offload_cleanup):
         """Test successful deletion of draft variables in batches."""
         app_id = "test-app-id"
         batch_size = 100
 
-        # Mock database connection and engine
-        mock_conn = MagicMock()
-        mock_engine = MagicMock()
-        mock_db.engine = mock_engine
-        # Properly mock the context manager
+        # Mock session via session_factory
+        mock_session = MagicMock()
         mock_context_manager = MagicMock()
-        mock_context_manager.__enter__.return_value = mock_conn
+        mock_context_manager.__enter__.return_value = mock_session
         mock_context_manager.__exit__.return_value = None
-        mock_engine.begin.return_value = mock_context_manager
+        mock_sf.create_session.return_value = mock_context_manager
 
         # Mock two batches of results, then empty
         batch1_data = [(f"var-{i}", f"file-{i}" if i % 2 == 0 else None) for i in range(100)]
@@ -68,7 +65,7 @@ class TestDeleteDraftVariablesBatch:
         select_result3.__iter__.return_value = iter([])
 
         # Configure side effects in the correct order
-        mock_conn.execute.side_effect = [
+        mock_session.execute.side_effect = [
             select_result1,  # First SELECT
             delete_result1,  # First DELETE
             select_result2,  # Second SELECT
@@ -86,54 +83,49 @@ class TestDeleteDraftVariablesBatch:
         assert result == 150
 
         # Verify database calls
-        assert mock_conn.execute.call_count == 5  # 3 selects + 2 deletes
+        assert mock_session.execute.call_count == 5  # 3 selects + 2 deletes
 
         # Verify offload cleanup was called for both batches with file_ids
-        expected_offload_calls = [call(mock_conn, batch1_file_ids), call(mock_conn, batch2_file_ids)]
+        expected_offload_calls = [call(mock_session, batch1_file_ids), call(mock_session, batch2_file_ids)]
         mock_offload_cleanup.assert_has_calls(expected_offload_calls)
 
         # Simplified verification - check that the right number of calls were made
         # and that the SQL queries contain the expected patterns
-        actual_calls = mock_conn.execute.call_args_list
+        actual_calls = mock_session.execute.call_args_list
         for i, actual_call in enumerate(actual_calls):
+            sql_text = str(actual_call[0][0])
+            normalized = " ".join(sql_text.split())
             if i % 2 == 0:  # SELECT calls (even indices: 0, 2, 4)
-                # Verify it's a SELECT query that now includes file_id
-                sql_text = str(actual_call[0][0])
-                assert "SELECT id, file_id FROM workflow_draft_variables" in sql_text
-                assert "WHERE app_id = :app_id" in sql_text
-                assert "LIMIT :batch_size" in sql_text
+                assert "SELECT id, file_id FROM workflow_draft_variables" in normalized
+                assert "WHERE app_id = :app_id" in normalized
+                assert "LIMIT :batch_size" in normalized
             else:  # DELETE calls (odd indices: 1, 3)
-                # Verify it's a DELETE query
-                sql_text = str(actual_call[0][0])
-                assert "DELETE FROM workflow_draft_variables" in sql_text
-                assert "WHERE id IN :ids" in sql_text
+                assert "DELETE FROM workflow_draft_variables" in normalized
+                assert "WHERE id IN :ids" in normalized
 
     @patch("tasks.remove_app_and_related_data_task._delete_draft_variable_offload_data")
-    @patch("tasks.remove_app_and_related_data_task.db")
-    def test_delete_draft_variables_batch_empty_result(self, mock_db, mock_offload_cleanup):
+    @patch("tasks.remove_app_and_related_data_task.session_factory")
+    def test_delete_draft_variables_batch_empty_result(self, mock_sf, mock_offload_cleanup):
         """Test deletion when no draft variables exist for the app."""
         app_id = "nonexistent-app-id"
         batch_size = 1000
 
-        # Mock database connection
-        mock_conn = MagicMock()
-        mock_engine = MagicMock()
-        mock_db.engine = mock_engine
-        # Properly mock the context manager
+        # Mock session via session_factory
+        mock_session = MagicMock()
         mock_context_manager = MagicMock()
-        mock_context_manager.__enter__.return_value = mock_conn
+        mock_context_manager.__enter__.return_value = mock_session
         mock_context_manager.__exit__.return_value = None
-        mock_engine.begin.return_value = mock_context_manager
+        mock_sf.create_session.return_value = mock_context_manager
 
         # Mock empty result
         empty_result = MagicMock()
         empty_result.__iter__.return_value = iter([])
-        mock_conn.execute.return_value = empty_result
+        mock_session.execute.return_value = empty_result
 
         result = delete_draft_variables_batch(app_id, batch_size)
 
         assert result == 0
-        assert mock_conn.execute.call_count == 1  # Only one select query
+        assert mock_session.execute.call_count == 1  # Only one select query
         mock_offload_cleanup.assert_not_called()  # No files to clean up
 
     def test_delete_draft_variables_batch_invalid_batch_size(self):
@@ -147,22 +139,19 @@ class TestDeleteDraftVariablesBatch:
             delete_draft_variables_batch(app_id, 0)
 
     @patch("tasks.remove_app_and_related_data_task._delete_draft_variable_offload_data")
-    @patch("tasks.remove_app_and_related_data_task.db")
+    @patch("tasks.remove_app_and_related_data_task.session_factory")
     @patch("tasks.remove_app_and_related_data_task.logger")
-    def test_delete_draft_variables_batch_logs_progress(self, mock_logging, mock_db, mock_offload_cleanup):
+    def test_delete_draft_variables_batch_logs_progress(self, mock_logging, mock_sf, mock_offload_cleanup):
         """Test that batch deletion logs progress correctly."""
         app_id = "test-app-id"
         batch_size = 50
 
-        # Mock database
-        mock_conn = MagicMock()
-        mock_engine = MagicMock()
-        mock_db.engine = mock_engine
-        # Properly mock the context manager
+        # Mock session via session_factory
+        mock_session = MagicMock()
         mock_context_manager = MagicMock()
-        mock_context_manager.__enter__.return_value = mock_conn
+        mock_context_manager.__enter__.return_value = mock_session
         mock_context_manager.__exit__.return_value = None
-        mock_engine.begin.return_value = mock_context_manager
+        mock_sf.create_session.return_value = mock_context_manager
 
         # Mock one batch then empty
         batch_data = [(f"var-{i}", f"file-{i}" if i % 3 == 0 else None) for i in range(30)]
@@ -183,7 +172,7 @@ class TestDeleteDraftVariablesBatch:
         empty_result = MagicMock()
         empty_result.__iter__.return_value = iter([])
 
-        mock_conn.execute.side_effect = [
+        mock_session.execute.side_effect = [
             # Select query result
             select_result,
             # Delete query result
@@ -201,7 +190,7 @@ class TestDeleteDraftVariablesBatch:
 
         # Verify offload cleanup was called with file_ids
         if batch_file_ids:
-            mock_offload_cleanup.assert_called_once_with(mock_conn, batch_file_ids)
+            mock_offload_cleanup.assert_called_once_with(mock_session, batch_file_ids)
 
         # Verify logging calls
         assert mock_logging.info.call_count == 2
@@ -261,19 +250,19 @@ class TestDeleteDraftVariableOffloadData:
         actual_calls = mock_conn.execute.call_args_list
 
         # First call should be the SELECT query
-        select_call_sql = str(actual_calls[0][0][0])
+        select_call_sql = " ".join(str(actual_calls[0][0][0]).split())
         assert "SELECT wdvf.id, uf.key, uf.id as upload_file_id" in select_call_sql
         assert "FROM workflow_draft_variable_files wdvf" in select_call_sql
         assert "JOIN upload_files uf ON wdvf.upload_file_id = uf.id" in select_call_sql
         assert "WHERE wdvf.id IN :file_ids" in select_call_sql
 
         # Second call should be DELETE upload_files
-        delete_upload_call_sql = str(actual_calls[1][0][0])
+        delete_upload_call_sql = " ".join(str(actual_calls[1][0][0]).split())
         assert "DELETE FROM upload_files" in delete_upload_call_sql
         assert "WHERE id IN :upload_file_ids" in delete_upload_call_sql
 
         # Third call should be DELETE workflow_draft_variable_files
-        delete_variable_files_call_sql = str(actual_calls[2][0][0])
+        delete_variable_files_call_sql = " ".join(str(actual_calls[2][0][0]).split())
         assert "DELETE FROM workflow_draft_variable_files" in delete_variable_files_call_sql
         assert "WHERE id IN :file_ids" in delete_variable_files_call_sql
 
