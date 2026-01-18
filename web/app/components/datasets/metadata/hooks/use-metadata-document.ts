@@ -26,7 +26,7 @@ const useMetadataDocument = ({
   const { dataset } = useDatasetDetailContext()
   const embeddingAvailable = !!dataset?.embedding_available
 
-  const { mutateAsync } = useBatchUpdateDocMetadata()
+  const { mutate } = useBatchUpdateDocMetadata()
   const { checkName } = useCheckMetadataName()
 
   const [isEdit, setIsEdit] = useState(false)
@@ -39,7 +39,7 @@ const useMetadataDocument = ({
   const list = allList.filter(item => item.id !== 'built-in')
   const builtList = allList.filter(item => item.id === 'built-in')
   const [tempList, setTempList] = useState<MetadataItemWithValue[]>(list)
-  const { mutateAsync: doAddMetaData } = useCreateMetaData(datasetId)
+  const { mutate: doAddMetaData } = useCreateMetaData(datasetId)
   const handleSelectMetaData = useCallback((metaData: MetadataItemWithValue) => {
     setTempList((prev) => {
       const index = prev.findIndex(item => item.id === metaData.id)
@@ -49,35 +49,53 @@ const useMetadataDocument = ({
       return prev
     })
   }, [])
-  const handleAddMetaData = useCallback(async (payload: BuiltInMetadataItem) => {
+  const handleAddMetaData = useCallback((payload: BuiltInMetadataItem) => {
     const errorMsg = checkName(payload.name).errorMsg
     if (errorMsg) {
       Toast.notify({
         message: errorMsg,
         type: 'error',
       })
-      return Promise.reject(new Error(errorMsg))
+      return
     }
-    await doAddMetaData(payload)
-    Toast.notify({
-      type: 'success',
-      message: t('api.actionSuccess', { ns: 'common' }),
+    doAddMetaData(payload, {
+      onSuccess: () => {
+        Toast.notify({
+          type: 'success',
+          message: t('api.actionSuccess', { ns: 'common' }),
+        })
+      },
+      onError: (error: any) => {
+        Toast.notify({
+          type: 'error',
+          message: error?.message || t('api.actionFailed', { ns: 'common' }),
+        })
+      },
     })
   }, [checkName, doAddMetaData, t])
 
   const hasData = list.length > 0
-  const handleSave = async () => {
-    await mutateAsync({
+  const handleSave = () => {
+    mutate({
       dataset_id: datasetId,
       metadata_list: [{
         document_id: documentId,
         metadata_list: tempList,
       }],
-    })
-    setIsEdit(false)
-    Toast.notify({
-      type: 'success',
-      message: t('api.actionSuccess', { ns: 'common' }),
+    }, {
+      onSuccess: () => {
+        setIsEdit(false)
+        Toast.notify({
+          type: 'success',
+          message: t('api.actionSuccess', { ns: 'common' }),
+        })
+      },
+      onError: (error: any) => {
+        Toast.notify({
+          type: 'error',
+          message: error?.message || t('api.actionFailed', { ns: 'common' }),
+        })
+      },
     })
   }
 

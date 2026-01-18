@@ -7,6 +7,7 @@ import {
 } from '@remixicon/react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Toast from '@/app/components/base/toast'
 import { useAppContext } from '@/context/app-context'
 import { useLocale } from '@/context/i18n'
 import { getLanguage } from '@/i18n-config/language'
@@ -23,11 +24,20 @@ const NewMCPCard = ({ handleCreate }: Props) => {
   const language = getLanguage(locale)
   const { isCurrentWorkspaceManager } = useAppContext()
 
-  const { mutateAsync: createMCP } = useCreateMCP()
+  const { mutate: createMCP } = useCreateMCP()
 
-  const create = async (info: any) => {
-    const provider = await createMCP(info)
-    handleCreate(provider)
+  const create = (info: any) => {
+    createMCP(info, {
+      onSuccess: (provider) => {
+        handleCreate(provider)
+      },
+      onError: (error: any) => {
+        Toast.notify({
+          type: 'error',
+          message: error?.message || t('api.actionFailed', { ns: 'common' }),
+        })
+      },
+    })
   }
 
   const linkUrl = useMemo(() => {

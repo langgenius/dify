@@ -10,6 +10,7 @@ import { resetUser } from '@/app/components/base/amplitude/utils'
 import Avatar from '@/app/components/base/avatar'
 import { LogOut01 } from '@/app/components/base/icons/src/vender/line/general'
 import PremiumBadge from '@/app/components/base/premium-badge'
+import Toast from '@/app/components/base/toast'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useLogout } from '@/service/use-common'
@@ -24,15 +25,23 @@ export default function AppSelector() {
   const { userProfile } = useAppContext()
   const { isEducationAccount } = useProviderContext()
 
-  const { mutateAsync: logout } = useLogout()
-  const handleLogout = async () => {
-    await logout()
+  const { mutate: logout } = useLogout()
+  const handleLogout = () => {
+    logout(undefined, {
+      onSuccess: () => {
+        localStorage.removeItem('setup_status')
+        resetUser()
+        // Tokens are now stored in cookies and cleared by backend
 
-    localStorage.removeItem('setup_status')
-    resetUser()
-    // Tokens are now stored in cookies and cleared by backend
-
-    router.push('/signin')
+        router.push('/signin')
+      },
+      onError: (error: any) => {
+        Toast.notify({
+          type: 'error',
+          message: error?.message || t('api.actionFailed', { ns: 'common' }),
+        })
+      },
+    })
   }
 
   return (
