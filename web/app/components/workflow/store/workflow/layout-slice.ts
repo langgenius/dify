@@ -32,7 +32,7 @@ export const createLayoutSlice: StateCreator<LayoutSliceShape> = set => ({
   setWorkflowCanvasHeight: height => set(() => ({ workflowCanvasHeight: height })),
   rightPanelWidth: undefined,
   setRightPanelWidth: width => set(() => ({ rightPanelWidth: width })),
-  nodePanelWidth: storage.getNumber(STORAGE_KEYS.WORKFLOW.NODE_PANEL_WIDTH, 400),
+  nodePanelWidth: storage.getNumber(STORAGE_KEYS.WORKFLOW.NODE_PANEL_WIDTH, 420),
   setNodePanelWidth: width => set(() => ({ nodePanelWidth: width })),
   previewPanelWidth: storage.getNumber(STORAGE_KEYS.WORKFLOW.PREVIEW_PANEL_WIDTH, 400),
   setPreviewPanelWidth: width => set(() => ({ previewPanelWidth: width })),
