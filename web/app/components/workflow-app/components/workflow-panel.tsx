@@ -7,6 +7,7 @@ import {
 import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Panel from '@/app/components/workflow/panel'
+import CommentsPanel from '@/app/components/workflow/panel/comments-panel'
 import { useStore } from '@/app/components/workflow/store'
 import {
   useIsChatMode,
@@ -67,6 +68,7 @@ const WorkflowPanelOnRight = () => {
   const showDebugAndPreviewPanel = useStore(s => s.showDebugAndPreviewPanel)
   const showChatVariablePanel = useStore(s => s.showChatVariablePanel)
   const showGlobalVariablePanel = useStore(s => s.showGlobalVariablePanel)
+  const controlMode = useStore(s => s.controlMode)
 
   return (
     <>
@@ -100,6 +102,7 @@ const WorkflowPanelOnRight = () => {
           <GlobalVariablePanel />
         )
       }
+      {controlMode === 'comment' && <CommentsPanel />}
     </>
   )
 }

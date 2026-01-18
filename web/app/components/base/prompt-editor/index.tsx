@@ -17,6 +17,7 @@ import type {
 } from './types'
 import { CodeNode } from '@lexical/code'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin'
@@ -80,6 +81,29 @@ import {
   WorkflowVariableBlockReplacementBlock,
 } from './plugins/workflow-variable-block'
 import { textToEditorState } from './utils'
+
+const ValueSyncPlugin: FC<{ value?: string }> = ({ value }) => {
+  const [editor] = useLexicalComposerContext()
+
+  useEffect(() => {
+    if (value === undefined)
+      return
+
+    const incomingValue = value ?? ''
+    const shouldUpdate = editor.getEditorState().read(() => {
+      const currentText = $getRoot().getChildren().map(node => node.getTextContent()).join('\n')
+      return currentText !== incomingValue
+    })
+
+    if (!shouldUpdate)
+      return
+
+    const editorState = editor.parseEditorState(textToEditorState(incomingValue))
+    editor.setEditorState(editorState)
+  }, [editor, value])
+
+  return null
+}
 
 export type PromptEditorProps = {
   instanceId?: string
@@ -294,6 +318,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
             <VariableValueBlock />
           )
         }
+        <ValueSyncPlugin value={value} />
         <OnChangePlugin onChange={handleEditorChange} />
         <OnBlurBlock onBlur={onBlur} onFocus={onFocus} />
         <UpdateBlock instanceId={instanceId} />

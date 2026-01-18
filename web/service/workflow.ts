@@ -1,4 +1,12 @@
-import type { BlockEnum } from '@/app/components/workflow/types'
+import type {
+  FileUpload,
+  RetrieverResource,
+  SensitiveWordAvoidance,
+  SpeechToText,
+  SuggestedQuestionsAfterAnswer,
+  TextToSpeech,
+} from '@/app/components/base/features/types'
+import type { BlockEnum, ConversationVariable, EnvironmentVariable } from '@/app/components/workflow/types'
 import type { CommonResponse } from '@/models/common'
 import type { FlowType } from '@/types/common'
 import type {
@@ -10,6 +18,17 @@ import type {
 import { get, post } from './base'
 import { getFlowPrefix } from './utils'
 import { sanitizeWorkflowDraftPayload } from './workflow-payload'
+
+export type WorkflowDraftFeaturesPayload = {
+  opening_statement: string
+  suggested_questions: string[]
+  suggested_questions_after_answer?: SuggestedQuestionsAfterAnswer
+  text_to_speech?: TextToSpeech
+  speech_to_text?: SpeechToText
+  retriever_resource?: RetrieverResource
+  sensitive_word_avoidance?: SensitiveWordAvoidance
+  file_upload?: FileUpload
+}
 
 export const fetchWorkflowDraft = (url: string) => {
   return get(url, {}, { silent: true }) as Promise<FetchWorkflowDraftResponse>
@@ -95,4 +114,37 @@ export const fetchAllInspectVars = async (flowType: FlowType, flowId: string): P
 export const fetchNodeInspectVars = async (flowType: FlowType, flowId: string, nodeId: string): Promise<VarInInspect[]> => {
   const { items } = (await get(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/nodes/${nodeId}/variables`)) as { items: VarInInspect[] }
   return items
+}
+
+// Environment Variables API
+export const fetchEnvironmentVariables = async (appId: string): Promise<EnvironmentVariable[]> => {
+  const { items } = (await get(`apps/${appId}/workflows/draft/environment-variables`)) as { items: EnvironmentVariable[] }
+  return items
+}
+
+export const updateEnvironmentVariables = ({ appId, environmentVariables }: {
+  appId: string
+  environmentVariables: EnvironmentVariable[]
+}) => {
+  return post<CommonResponse>(`apps/${appId}/workflows/draft/environment-variables`, {
+    body: { environment_variables: environmentVariables },
+  })
+}
+
+export const updateConversationVariables = ({ appId, conversationVariables }: {
+  appId: string
+  conversationVariables: ConversationVariable[]
+}) => {
+  return post<CommonResponse>(`apps/${appId}/workflows/draft/conversation-variables`, {
+    body: { conversation_variables: conversationVariables },
+  })
+}
+
+export const updateFeatures = ({ appId, features }: {
+  appId: string
+  features: WorkflowDraftFeaturesPayload
+}) => {
+  return post<CommonResponse>(`apps/${appId}/workflows/draft/features`, {
+    body: { features },
+  })
 }

@@ -1,6 +1,7 @@
 export { default as D } from './D'
 export { default as DiagonalDividingLine } from './DiagonalDividingLine'
 export { default as Dify } from './Dify'
+export { default as EnterKey } from './EnterKey'
 export { default as Gdpr } from './Gdpr'
 export { default as Github } from './Github'
 export { default as Highlight } from './Highlight'

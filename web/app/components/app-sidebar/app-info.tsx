@@ -14,7 +14,7 @@ import {
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import * as React from 'react'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import CardView from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/card-view'
@@ -22,10 +22,12 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import Button from '@/app/components/base/button'
 import ContentDialog from '@/app/components/base/content-dialog'
 import { ToastContext } from '@/app/components/base/toast'
+import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
+import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
-import { copyApp, deleteApp, exportAppConfig, updateAppInfo } from '@/service/apps'
+import { copyApp, deleteApp, exportAppConfig, fetchAppDetail, updateAppInfo } from '@/service/apps'
 import { useInvalidateAppList } from '@/service/use-apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
@@ -77,6 +79,19 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
   const [showExportWarning, setShowExportWarning] = useState(false)
 
+  const emitAppMetaUpdate = useCallback(() => {
+    if (!appDetail?.id)
+      return
+    const socket = webSocketClient.getSocket(appDetail.id)
+    if (socket) {
+      socket.emit('collaboration_event', {
+        type: 'app_meta_update',
+        data: { timestamp: Date.now() },
+        timestamp: Date.now(),
+      })
+    }
+  }, [appDetail])
+
   const onEdit: CreateAppModalProps['onConfirm'] = useCallback(async ({
     name,
     icon_type,
@@ -105,11 +120,12 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
         message: t('editDone', { ns: 'app' }),
       })
       setAppDetail(app)
+      emitAppMetaUpdate()
     }
     catch {
       notify({ type: 'error', message: t('editFailed', { ns: 'app' }) })
     }
-  }, [appDetail, notify, setAppDetail, t])
+  }, [appDetail, notify, setAppDetail, t, emitAppMetaUpdate])
 
   const onCopy: DuplicateAppModalProps['onConfirm'] = async ({ name, icon_type, icon, icon_background }) => {
     if (!appDetail)
@@ -206,6 +222,23 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
     }
     setShowConfirmDelete(false)
   }, [appDetail, invalidateAppList, notify, onPlanInfoChanged, replace, setAppDetail, t])
+
+  useEffect(() => {
+    if (!appDetail?.id)
+      return
+
+    const unsubscribe = collaborationManager.onAppMetaUpdate(async () => {
+      try {
+        const res = await fetchAppDetail({ url: '/apps', id: appDetail.id })
+        setAppDetail({ ...res })
+      }
+      catch (error) {
+        console.error('failed to refresh app detail from collaboration update:', error)
+      }
+    })
+
+    return unsubscribe
+  }, [appDetail?.id, setAppDetail])
 
   const { isCurrentWorkspaceEditor } = useAppContext()
 

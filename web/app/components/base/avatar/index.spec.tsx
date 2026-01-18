@@ -35,12 +35,14 @@ describe('Avatar', () => {
       it.each([
         { size: undefined, expected: '30px', label: 'default (30px)' },
         { size: 50, expected: '50px', label: 'custom (50px)' },
-      ])('should apply $label size to img element', ({ size, expected }) => {
+      ])('should apply $label size to avatar container', ({ size, expected }) => {
         const props = { name: 'Test', avatar: 'https://example.com/avatar.jpg', size }
 
         render(<Avatar {...props} />)
 
-        expect(screen.getByRole('img')).toHaveStyle({
+        const img = screen.getByRole('img')
+        const wrapper = img.parentElement as HTMLElement
+        expect(wrapper).toHaveStyle({
           width: expected,
           height: expected,
           fontSize: expected,
@@ -60,7 +62,7 @@ describe('Avatar', () => {
     })
 
     describe('className prop', () => {
-      it('should merge className with default avatar classes on img', () => {
+      it('should merge className with default avatar classes on container', () => {
         const props = {
           name: 'Test',
           avatar: 'https://example.com/avatar.jpg',
@@ -70,8 +72,9 @@ describe('Avatar', () => {
         render(<Avatar {...props} />)
 
         const img = screen.getByRole('img')
-        expect(img).toHaveClass('custom-class')
-        expect(img).toHaveClass('shrink-0', 'flex', 'items-center', 'rounded-full', 'bg-primary-600')
+        const wrapper = img.parentElement as HTMLElement
+        expect(wrapper).toHaveClass('custom-class')
+        expect(wrapper).toHaveClass('shrink-0', 'flex', 'items-center', 'rounded-full', 'bg-primary-600')
       })
 
       it('should merge className with default avatar classes on fallback div', () => {
@@ -277,10 +280,11 @@ describe('Avatar', () => {
       render(<Avatar {...props} />)
 
       const img = screen.getByRole('img')
+      const wrapper = img.parentElement as HTMLElement
       expect(img).toHaveAttribute('alt', 'Test User')
       expect(img).toHaveAttribute('src', 'https://example.com/avatar.jpg')
-      expect(img).toHaveStyle({ width: '64px', height: '64px' })
-      expect(img).toHaveClass('custom-avatar')
+      expect(wrapper).toHaveStyle({ width: '64px', height: '64px' })
+      expect(wrapper).toHaveClass('custom-avatar')
 
       // Trigger load to verify onError callback
       fireEvent.load(img)

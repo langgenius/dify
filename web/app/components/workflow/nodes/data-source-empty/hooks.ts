@@ -22,9 +22,10 @@ export const useReplaceDataSourceNode = (id: string) => {
 
     if (emptyNodeIndex < 0)
       return
-    const {
-      defaultValue,
-    } = nodesMetaDataMap![type]
+    const nodeMetaData = nodesMetaDataMap?.[type]
+    if (!nodeMetaData)
+      return
+    const { defaultValue } = nodeMetaData
     const emptyNode = nodes[emptyNodeIndex]
     const { newNode } = generateNewNode({
       data: {

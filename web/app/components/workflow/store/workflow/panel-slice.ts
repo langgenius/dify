@@ -10,6 +10,12 @@ export type PanelSliceShape = {
   setShowInputsPanel: (showInputsPanel: boolean) => void
   showDebugAndPreviewPanel: boolean
   setShowDebugAndPreviewPanel: (showDebugAndPreviewPanel: boolean) => void
+  showCommentsPanel: boolean
+  setShowCommentsPanel: (showCommentsPanel: boolean) => void
+  showUserComments: boolean
+  setShowUserComments: (showUserComments: boolean) => void
+  showUserCursors: boolean
+  setShowUserCursors: (showUserCursors: boolean) => void
   panelMenu?: {
     top: number
     left: number
@@ -24,6 +30,8 @@ export type PanelSliceShape = {
   setShowVariableInspectPanel: (showVariableInspectPanel: boolean) => void
   initShowLastRunTab: boolean
   setInitShowLastRunTab: (initShowLastRunTab: boolean) => void
+  activeCommentId?: string | null
+  setActiveCommentId: (commentId: string | null) => void
 }
 
 export const createPanelSlice: StateCreator<PanelSliceShape> = set => ({
@@ -36,6 +44,12 @@ export const createPanelSlice: StateCreator<PanelSliceShape> = set => ({
   setShowInputsPanel: showInputsPanel => set(() => ({ showInputsPanel })),
   showDebugAndPreviewPanel: false,
   setShowDebugAndPreviewPanel: showDebugAndPreviewPanel => set(() => ({ showDebugAndPreviewPanel })),
+  showCommentsPanel: false,
+  setShowCommentsPanel: showCommentsPanel => set(() => ({ showCommentsPanel })),
+  showUserComments: true,
+  setShowUserComments: showUserComments => set(() => ({ showUserComments })),
+  showUserCursors: true,
+  setShowUserCursors: showUserCursors => set(() => ({ showUserCursors })),
   panelMenu: undefined,
   setPanelMenu: panelMenu => set(() => ({ panelMenu })),
   selectionMenu: undefined,
@@ -44,4 +58,6 @@ export const createPanelSlice: StateCreator<PanelSliceShape> = set => ({
   setShowVariableInspectPanel: showVariableInspectPanel => set(() => ({ showVariableInspectPanel })),
   initShowLastRunTab: false,
   setInitShowLastRunTab: initShowLastRunTab => set(() => ({ initShowLastRunTab })),
+  activeCommentId: null,
+  setActiveCommentId: (commentId: string | null) => set(() => ({ activeCommentId: commentId })),
 })

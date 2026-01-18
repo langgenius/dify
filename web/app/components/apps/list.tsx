@@ -8,13 +8,14 @@ import {
   RiMessage3Line,
   RiRobot3Line,
 } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import dynamic from 'next/dynamic'
 import {
   useRouter,
 } from 'next/navigation'
 import { parseAsString, useQueryState } from 'nuqs'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
@@ -25,6 +26,7 @@ import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { CheckModal } from '@/hooks/use-pay'
+import { fetchWorkflowOnlineUsers } from '@/service/apps'
 import { useInfiniteAppList } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
 import { cn } from '@/utils/classnames'
@@ -109,6 +111,37 @@ const List = () => {
     error,
     refetch,
   } = useInfiniteAppList(appListQueryParams, { enabled: !isCurrentWorkspaceDatasetOperator })
+
+  const apps = useMemo(() => data?.pages?.flatMap(page => page.data) ?? [], [data])
+
+  const workflowIds = useMemo(() => {
+    const ids = new Set<string>()
+    apps.forEach((appItem) => {
+      const workflowId = appItem.id
+      if (!workflowId)
+        return
+
+      if (appItem.mode === 'workflow' || appItem.mode === 'advanced-chat')
+        ids.add(workflowId)
+    })
+    return Array.from(ids)
+  }, [apps])
+
+  const { data: onlineUsersByWorkflow = {}, refetch: refreshOnlineUsers } = useQuery({
+    queryKey: ['apps', 'workflow-online-users', workflowIds],
+    queryFn: () => fetchWorkflowOnlineUsers({ workflowIds }),
+    enabled: workflowIds.length > 0,
+  })
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      refetch()
+      if (workflowIds.length)
+        refreshOnlineUsers()
+    }, 10000)
+
+    return () => window.clearInterval(timer)
+  }, [workflowIds.join(','), refetch, refreshOnlineUsers])
 
   const anchorRef = useRef<HTMLDivElement>(null)
   const options = [
@@ -241,7 +274,7 @@ const List = () => {
 
             if (hasAnyApp) {
               return pages.flatMap(({ data: apps }) => apps).map(app => (
-                <AppCard key={app.id} app={app} onRefresh={refetch} />
+                <AppCard key={app.id} app={app} onRefresh={refetch} onlineUsers={onlineUsersByWorkflow?.[app.id] ?? []} />
               ))
             }
 

@@ -23,7 +23,7 @@ export const useAvailableNodesMetaData = () => {
     },
     knowledgeBaseDefault,
     dataSourceEmptyDefault,
-  ], [])
+  ] as AvailableNodesMetaData['nodes'], [])
 
   const helpLinkUri = useMemo(() => {
     if (language === 'zh_Hans')
@@ -52,7 +52,7 @@ export const useAvailableNodesMetaData = () => {
         title,
       },
     }
-  }), [mergedNodesMetaData, t])
+  }) as AvailableNodesMetaData['nodes'], [mergedNodesMetaData, t])
 
   const availableNodesMetaDataMap = useMemo(() => availableNodesMetaData.reduce((acc, node) => {
     acc![node.metaData.type] = node

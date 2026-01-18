@@ -38,7 +38,7 @@ os.environ["OPENDAL_FS_ROOT"] = "/tmp/dify-storage"
 os.environ.setdefault("STORAGE_TYPE", "opendal")
 os.environ.setdefault("OPENDAL_SCHEME", "fs")
 
-_CACHED_APP = create_app()
+_SIO_APP, _CACHED_APP = create_app()
 
 
 @pytest.fixture

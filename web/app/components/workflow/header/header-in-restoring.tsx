@@ -3,11 +3,13 @@ import {
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import Button from '@/app/components/base/button'
 import useTheme from '@/hooks/use-theme'
 import { useInvalidAllLastRun } from '@/service/use-workflow'
 import { cn } from '@/utils/classnames'
 import Toast from '../../base/toast'
+import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import {
   useNodesSyncDraft,
   useWorkflowRun,
@@ -31,6 +33,7 @@ const HeaderInRestoring = ({
   const { t } = useTranslation()
   const { theme } = useTheme()
   const workflowStore = useWorkflowStore()
+  const appDetail = useAppStore.getState().appDetail
   const configsMap = useHooksStore(s => s.configsMap)
   const invalidAllLastRun = useInvalidAllLastRun(configsMap?.flowType, configsMap?.flowId)
   const {
@@ -60,6 +63,9 @@ const HeaderInRestoring = ({
           type: 'success',
           message: t('versionHistory.action.restoreSuccess', { ns: 'workflow' }),
         })
+        // Notify other collaboration clients about the workflow restore
+        if (appDetail)
+          collaborationManager.emitWorkflowUpdate(appDetail.id)
       },
       onError: () => {
         Toast.notify({
@@ -70,10 +76,10 @@ const HeaderInRestoring = ({
       onSettled: () => {
         onRestoreSettled?.()
       },
-    })
+    }, true) // Enable forceUpload for restore operation
     deleteAllInspectVars()
     invalidAllLastRun()
-  }, [setShowWorkflowVersionHistoryPanel, workflowStore, handleSyncWorkflowDraft, deleteAllInspectVars, invalidAllLastRun, t, onRestoreSettled])
+  }, [setShowWorkflowVersionHistoryPanel, workflowStore, handleSyncWorkflowDraft, deleteAllInspectVars, invalidAllLastRun, t, onRestoreSettled, appDetail])
 
   return (
     <>

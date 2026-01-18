@@ -364,7 +364,7 @@ def _create_app_with_containers() -> Flask:
 
     # Create and configure the Flask application
     logger.info("Initializing Flask application...")
-    app = create_app()
+    sio_app, app = create_app()
     logger.info("Flask application created successfully")
 
     # Initialize database schema
