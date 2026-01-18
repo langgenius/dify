@@ -70,6 +70,8 @@ logger = logging.getLogger(__name__)
 
 # NOTE: Keep constants near the top of the module for discoverability.
 DOCUMENT_BATCH_DOWNLOAD_ZIP_MAX_DOCS = 100
+
+
 def _get_or_create_model(model_name: str, field_def):
     existing = console_ns.models.get(model_name)
     if existing is None:
