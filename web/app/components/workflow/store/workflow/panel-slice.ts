@@ -29,7 +29,7 @@ export type PanelSliceShape = {
 }
 
 export const createPanelSlice: StateCreator<PanelSliceShape> = set => ({
-  panelWidth: storage.getNumber(STORAGE_KEYS.WORKFLOW.NODE_PANEL_WIDTH, 420) ?? 420,
+  panelWidth: storage.getNumber(STORAGE_KEYS.WORKFLOW.NODE_PANEL_WIDTH, 420),
   showFeaturesPanel: false,
   setShowFeaturesPanel: showFeaturesPanel => set(() => ({ showFeaturesPanel })),
   showWorkflowVersionHistoryPanel: false,

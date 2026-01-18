@@ -20,7 +20,7 @@ const HeaderWrapper = ({
   // Check if the current path is a workflow canvas & fullscreen
   const inWorkflowCanvas = pathname.endsWith('/workflow')
   const isPipelineCanvas = pathname.endsWith('/pipeline')
-  const workflowCanvasMaximize = storage.getBoolean(STORAGE_KEYS.WORKFLOW.CANVAS_MAXIMIZE, false) ?? false
+  const workflowCanvasMaximize = storage.getBoolean(STORAGE_KEYS.WORKFLOW.CANVAS_MAXIMIZE, false)
   const [hideHeader, setHideHeader] = useState(workflowCanvasMaximize)
   const { eventEmitter } = useEventEmitterContextContext()
 
