@@ -63,7 +63,7 @@ def create_flask_app_with_configs() -> DifyApp:
     return dify_app
 
 
-def create_app() -> tuple[Any, DifyApp]:
+def create_app() -> tuple[socketio.WSGIApp, DifyApp]:
     start_time = time.perf_counter()
     app = create_flask_app_with_configs()
     initialize_extensions(app)
