@@ -258,4 +258,5 @@ class WorkflowGitService:
 
         result = self.github_client._request("GET", endpoint, params=params)  # pyright: ignore[reportPrivateUsage]
         from typing import cast
+
         return cast(list[dict[str, Any]], result)
