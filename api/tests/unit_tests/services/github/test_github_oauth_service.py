@@ -78,7 +78,7 @@ class TestGitHubOAuthService:
     def test_handle_callback_success(self, mock_config, mock_redis, mock_db):
         """Test successful OAuth callback handling."""
         import json
-        
+
         code = "test-code-123"
         state = "test-state-123"
 
@@ -109,9 +109,10 @@ class TestGitHubOAuthService:
         # Mock Redis operations
         mock_redis.setex = MagicMock(return_value=True)
 
-        with patch.object(OAuthProxyService, "use_proxy_context", return_value=context_data), patch(
-            "services.github.github_oauth_service.make_request"
-        ) as mock_request:
+        with (
+            patch.object(OAuthProxyService, "use_proxy_context", return_value=context_data),
+            patch("services.github.github_oauth_service.make_request") as mock_request,
+        ):
             # First call: token exchange
             # Second call: user info
             mock_request.side_effect = [
@@ -134,13 +135,13 @@ class TestGitHubOAuthService:
             assert result.oauth_state == state
             assert result.repository_owner == "testuser"
             assert result.app_id == "app-789"
-            
+
             # Verify token was stored in Redis
             mock_redis.setex.assert_called_once()
             call_args = mock_redis.setex.call_args
             assert call_args[0][0] == f"github_oauth_token:{state}"
             assert call_args[0][1] == 600  # 10 minutes TTL
-            
+
             # Verify stored data
             stored_data = json.loads(call_args[0][2])
             assert stored_data["access_token"] == "gho_test_token_123"
@@ -175,9 +176,10 @@ class TestGitHubOAuthService:
             "error_description": "The code passed is incorrect or expired.",
         }
 
-        with patch.object(OAuthProxyService, "use_proxy_context", return_value=context_data), patch(
-            "services.github.github_oauth_service.make_request"
-        ) as mock_request:
+        with (
+            patch.object(OAuthProxyService, "use_proxy_context", return_value=context_data),
+            patch("services.github.github_oauth_service.make_request") as mock_request,
+        ):
             mock_request.return_value = MagicMock(
                 status_code=200,
                 json=lambda: token_response,
@@ -224,4 +226,3 @@ class TestGitHubOAuthService:
 
         with pytest.raises(NotImplementedError, match="GitHub OAuth refresh token flow is not yet implemented"):
             GitHubOAuthService.refresh_token(connection_id=connection_id)
-

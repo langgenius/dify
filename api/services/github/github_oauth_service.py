@@ -44,13 +44,13 @@ class GitHubOAuthService:
     ) -> tuple[str, str]:
         """
         Get GitHub OAuth authorization URL.
-        
+
         Args:
             tenant_id: Tenant ID
             user_id: User ID
             app_id: Optional app ID for app-specific connections
             redirect_uri: Optional custom redirect URI
-            
+
         Returns:
             Tuple of (authorization_url, state)
         """
@@ -61,7 +61,7 @@ class GitHubOAuthService:
         # Callback URL should point to backend API, not frontend
         if not dify_config.CONSOLE_API_URL:
             raise ValueError("CONSOLE_API_URL is not configured. Please set CONSOLE_API_URL in your environment.")
-        
+
         default_redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/github/oauth/callback"
 
         # Create proxy context for CSRF protection
@@ -103,11 +103,11 @@ class GitHubOAuthService:
     def handle_callback(code: str, state: str) -> OAuthResult:
         """
         Handle OAuth callback and store GitHub token temporarily in Redis.
-        
+
         Args:
             code: Authorization code from GitHub
             state: State parameter for CSRF protection
-            
+
         Returns:
             OAuthResult instance with oauth_state and repository_owner
         """
@@ -182,11 +182,11 @@ class GitHubOAuthService:
     def _exchange_code_for_token(code: str, redirect_uri: str) -> dict[str, Any]:
         """
         Exchange authorization code for access token.
-        
+
         Args:
             code: Authorization code
             redirect_uri: Redirect URI used in authorization
-            
+
         Returns:
             Token response data
         """
@@ -217,7 +217,7 @@ class GitHubOAuthService:
 
             return token_data
         except httpx.HTTPStatusError as e:
-            error_text = e.response.text if hasattr(e.response, 'text') else str(e)
+            error_text = e.response.text if hasattr(e.response, "text") else str(e)
             logger.exception(
                 "GitHub OAuth token exchange failed: status=%s, response=%s",
                 e.response.status_code,
@@ -232,10 +232,10 @@ class GitHubOAuthService:
     def _get_user_info(access_token: str) -> dict[str, Any]:
         """
         Get GitHub user information.
-        
+
         Args:
             access_token: GitHub access token
-            
+
         Returns:
             User information
         """
@@ -257,10 +257,10 @@ class GitHubOAuthService:
     def refresh_token(connection_id: str) -> GitHubConnection:
         """
         Refresh expired access token.
-        
+
         Args:
             connection_id: Connection ID
-            
+
         Returns:
             Updated GitHubConnection
         """
@@ -281,7 +281,7 @@ class GitHubOAuthService:
     def revoke_connection(connection_id: str, tenant_id: str) -> None:
         """
         Revoke and delete GitHub connection.
-        
+
         Args:
             connection_id: Connection ID
             tenant_id: Tenant ID for security check
@@ -312,4 +312,3 @@ class GitHubOAuthService:
         """Revoke GitHub webhook."""
         # This will be implemented when webhook support is added
         pass
-
