@@ -6,10 +6,9 @@ from typing import Any
 from core.app.entities.task_entities import (
     StreamEvent,
 )
-from extensions.ext_redis import redis_client
+from extensions.ext_redis import get_pubsub_broadcast_channel
 from libs.broadcast_channel.channel import Topic
 from libs.broadcast_channel.exc import SubscriptionClosedError
-from libs.broadcast_channel.redis.channel import BroadcastChannel as RedisBroadcastChannel
 from models.model import AppMode
 
 
@@ -21,7 +20,7 @@ class MessageGenerator:
     @classmethod
     def get_response_topic(cls, app_mode: AppMode, workflow_run_id: str) -> Topic:
         key = cls._make_channel_key(app_mode, workflow_run_id)
-        channel = RedisBroadcastChannel(redis_client)
+        channel = get_pubsub_broadcast_channel()
         topic = channel.topic(key)
         return topic
 

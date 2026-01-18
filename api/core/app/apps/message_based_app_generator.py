@@ -30,10 +30,9 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from extensions.ext_database import db
-from extensions.ext_redis import redis_client
+from extensions.ext_redis import get_pubsub_broadcast_channel
 from libs.broadcast_channel.channel import Topic
 from libs.broadcast_channel.exc import SubscriptionClosedError
-from libs.broadcast_channel.redis.channel import BroadcastChannel as RedisBroadcastChannel
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.enums import CreatorUserRole
@@ -303,7 +302,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
     @classmethod
     def get_response_topic(cls, app_mode: AppMode, workflow_run_id: uuid.UUID) -> Topic:
         key = cls._make_channel_key(app_mode, workflow_run_id)
-        channel = RedisBroadcastChannel(redis_client)
+        channel = get_pubsub_broadcast_channel()
         topic = channel.topic(key)
         return topic
 
