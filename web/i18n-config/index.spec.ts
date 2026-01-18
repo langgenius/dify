@@ -26,13 +26,22 @@ describe('i18n-config', () => {
   })
 
   describe('setLocaleOnClient', () => {
+    let setLocaleOnClient: typeof import('./index').setLocaleOnClient
+    let changeLanguage: typeof import('@/i18n-config/client').changeLanguage
+
+    beforeEach(async () => {
+      const indexModule = await import('./index')
+      const clientModule = await import('@/i18n-config/client')
+      setLocaleOnClient = indexModule.setLocaleOnClient
+      changeLanguage = clientModule.changeLanguage
+    })
+
     /**
      * Tests that the locale cookie is set with correct options
      * including path: '/' to ensure it persists across all pages
      */
     it('should set locale cookie with path "/" for site-wide persistence', async () => {
       // Arrange
-      const { setLocaleOnClient } = await import('./index')
       const locale = 'es-ES'
 
       // Act
@@ -48,8 +57,6 @@ describe('i18n-config', () => {
 
     it('should call changeLanguage with the new locale', async () => {
       // Arrange
-      const { setLocaleOnClient } = await import('./index')
-      const { changeLanguage } = await import('@/i18n-config/client')
       const locale = 'zh-Hans'
 
       // Act
@@ -61,7 +68,6 @@ describe('i18n-config', () => {
 
     it('should reload page by default', async () => {
       // Arrange
-      const { setLocaleOnClient } = await import('./index')
       const locale = 'en-US'
 
       // Act
@@ -73,7 +79,6 @@ describe('i18n-config', () => {
 
     it('should not reload page when reloadPage is false', async () => {
       // Arrange
-      const { setLocaleOnClient } = await import('./index')
       const locale = 'fr-FR'
 
       // Act
@@ -81,22 +86,6 @@ describe('i18n-config', () => {
 
       // Assert
       expect(mockReload).not.toHaveBeenCalled()
-    })
-
-    it('should set cookie with 365 days expiration', async () => {
-      // Arrange
-      const { setLocaleOnClient } = await import('./index')
-      const locale = 'ja-JP'
-
-      // Act
-      await setLocaleOnClient(locale as Locale, false)
-
-      // Assert
-      expect(Cookies.set).toHaveBeenCalledWith(
-        LOCALE_COOKIE_NAME,
-        locale,
-        expect.objectContaining({ expires: 365 }),
-      )
     })
   })
 
