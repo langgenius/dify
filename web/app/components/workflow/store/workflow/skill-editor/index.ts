@@ -20,33 +20,24 @@ export type SkillEditorSliceShape
       resetSkillEditor: () => void
     }
 
-export const createSkillEditorSlice: StateCreator<SkillEditorSliceShape> = (set, get, store) => {
-  // Type assertion via unknown to allow composition with other slices in a larger store
-  // This is safe because all slice creators only use set/get for their own properties
-  const tabArgs = [set, get, store] as unknown as Parameters<StateCreator<TabSliceShape>>
-  const fileTreeArgs = [set, get, store] as unknown as Parameters<StateCreator<FileTreeSliceShape>>
-  const dirtyArgs = [set, get, store] as unknown as Parameters<StateCreator<DirtySliceShape>>
-  const metadataArgs = [set, get, store] as unknown as Parameters<StateCreator<MetadataSliceShape>>
-  const menuArgs = [set, get, store] as unknown as Parameters<StateCreator<FileOperationsMenuSliceShape>>
+export const createSkillEditorSlice: StateCreator<SkillEditorSliceShape> = (...args) => ({
+  ...createTabSlice(...args),
+  ...createFileTreeSlice(...args),
+  ...createDirtySlice(...args),
+  ...createMetadataSlice(...args),
+  ...createFileOperationsMenuSlice(...args),
 
-  return {
-    ...createTabSlice(...tabArgs),
-    ...createFileTreeSlice(...fileTreeArgs),
-    ...createDirtySlice(...dirtyArgs),
-    ...createMetadataSlice(...metadataArgs),
-    ...createFileOperationsMenuSlice(...menuArgs),
-
-    resetSkillEditor: () => {
-      set({
-        openTabIds: [],
-        activeTabId: null,
-        previewTabId: null,
-        expandedFolderIds: new Set<string>(),
-        dirtyContents: new Map<string, string>(),
-        fileMetadata: new Map<string, Record<string, any>>(),
-        dirtyMetadataIds: new Set<string>(),
-        contextMenu: null,
-      })
-    },
-  }
-}
+  resetSkillEditor: () => {
+    const [set] = args
+    set({
+      openTabIds: [],
+      activeTabId: null,
+      previewTabId: null,
+      expandedFolderIds: new Set<string>(),
+      dirtyContents: new Map<string, string>(),
+      fileMetadata: new Map<string, Record<string, any>>(),
+      dirtyMetadataIds: new Set<string>(),
+      contextMenu: null,
+    })
+  },
+})
