@@ -17,6 +17,8 @@ import {
 } from '../store'
 import EditingTitle from './editing-title'
 import EnvButton from './env-button'
+import GitHubConnectionButton from './github-connection-button'
+import GitHubWorkflowActions from './github-workflow-actions'
 import GlobalVariableButton from './global-variable-button'
 import RunAndHistory from './run-and-history'
 import ScrollToSelectedNodeButton from './scroll-to-selected-node-button'
@@ -81,6 +83,8 @@ const HeaderInNormal = ({
           <GlobalVariableButton disabled={nodesReadOnly} />
         </div>
         {components?.middle}
+        <GitHubConnectionButton />
+        <GitHubWorkflowActions />
         <VersionHistoryButton onClick={onStartRestoring} />
       </div>
     </div>

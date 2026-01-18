@@ -113,6 +113,20 @@ from .explore import (
     saved_message,
 )
 
+# Import GitHub controllers
+from .github import (
+    branches as github_branches,
+)
+from .github import (
+    connection as github_connection,
+)
+from .github import (
+    oauth as github_oauth,
+)
+from .github import (
+    workflow as github_workflow,
+)
+
 # Import tag controllers
 from .tag import tags
 
@@ -167,6 +181,10 @@ __all__ = [
     "feature",
     "forgot_password",
     "generator",
+    "github_branches",
+    "github_connection",
+    "github_oauth",
+    "github_workflow",
     "hit_testing",
     "init_validate",
     "installed_app",

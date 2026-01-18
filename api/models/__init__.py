@@ -34,6 +34,7 @@ from .enums import (
     WorkflowRunTriggeredFrom,
     WorkflowTriggerStatus,
 )
+from .github_connection import GitHubConnection
 from .model import (
     ApiRequest,
     ApiToken,
@@ -152,6 +153,7 @@ __all__ = [
     "EndUser",
     "ExternalKnowledgeApis",
     "ExternalKnowledgeBindings",
+    "GitHubConnection",
     "IconType",
     "InstalledApp",
     "InvitationCode",
