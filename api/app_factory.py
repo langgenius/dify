@@ -1,6 +1,5 @@
 import logging
 import time
-from typing import Any
 
 import socketio  # type: ignore[reportMissingTypeStubs]
 from opentelemetry.trace import get_current_span
