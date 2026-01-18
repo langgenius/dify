@@ -256,4 +256,6 @@ class WorkflowGitService:
             "per_page": min(limit, 100),
         }
 
-        return self.github_client._request("GET", endpoint, params=params)  # pyright: ignore[reportPrivateUsage]
+        result = self.github_client._request("GET", endpoint, params=params)  # pyright: ignore[reportPrivateUsage]
+        from typing import cast
+        return cast(list[dict[str, Any]], result)

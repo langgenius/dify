@@ -1,5 +1,5 @@
 import logging
-from typing import Any
+from typing import Any, cast
 
 import httpx
 
@@ -103,7 +103,8 @@ class GitHubAPIClient:
             Repository information
         """
         endpoint = f"/repos/{self.connection.repository_full_name}"
-        return self._request("GET", endpoint)
+        result = self._request("GET", endpoint)
+        return cast(dict[str, Any], result)
 
     def list_branches(self) -> list[dict[str, Any]]:
         """
@@ -113,7 +114,8 @@ class GitHubAPIClient:
             List of branch information
         """
         endpoint = f"/repos/{self.connection.repository_full_name}/branches"
-        return self._request("GET", endpoint)
+        result = self._request("GET", endpoint)
+        return cast(list[dict[str, Any]], result)
 
     def get_branch(self, branch_name: str) -> dict[str, Any]:
         """
@@ -126,7 +128,8 @@ class GitHubAPIClient:
             Branch information
         """
         endpoint = f"/repos/{self.connection.repository_full_name}/branches/{branch_name}"
-        return self._request("GET", endpoint)
+        result = self._request("GET", endpoint)
+        return cast(dict[str, Any], result)
 
     def create_branch(self, branch_name: str, from_branch: str = "main") -> dict[str, Any]:
         """
@@ -165,7 +168,8 @@ class GitHubAPIClient:
         branch = branch or self.connection.branch
         endpoint = f"/repos/{self.connection.repository_full_name}/contents/{path}"
         params = {"ref": branch}
-        return self._request("GET", endpoint, params=params)
+        result = self._request("GET", endpoint, params=params)
+        return cast(dict[str, Any], result)
 
     def create_or_update_file(
         self,
@@ -200,7 +204,8 @@ class GitHubAPIClient:
         if sha:
             data["sha"] = sha
 
-        return self._request("PUT", endpoint, json_data=data)
+        result = self._request("PUT", endpoint, json_data=data)
+        return cast(dict[str, Any], result)
 
     def delete_file(self, path: str, message: str, branch: str | None = None, sha: str | None = None) -> dict[str, Any]:
         """
@@ -227,7 +232,8 @@ class GitHubAPIClient:
             "branch": branch,
         }
 
-        return self._request("DELETE", endpoint, json_data=data)
+        result = self._request("DELETE", endpoint, json_data=data)
+        return cast(dict[str, Any], result)
 
     def get_commit_history(self, branch: str | None = None, limit: int = 30) -> list[dict[str, Any]]:
         """
@@ -246,7 +252,8 @@ class GitHubAPIClient:
             "sha": branch,
             "per_page": min(limit, 100),  # GitHub API max is 100
         }
-        return self._request("GET", endpoint, params=params)
+        result = self._request("GET", endpoint, params=params)
+        return cast(list[dict[str, Any]], result)
 
     def get_commit(self, sha: str) -> dict[str, Any]:
         """
@@ -259,7 +266,8 @@ class GitHubAPIClient:
             Commit information
         """
         endpoint = f"/repos/{self.connection.repository_full_name}/commits/{sha}"
-        return self._request("GET", endpoint)
+        result = self._request("GET", endpoint)
+        return cast(dict[str, Any], result)
 
     def create_pull_request(
         self,
@@ -287,7 +295,8 @@ class GitHubAPIClient:
             "head": head,
             "base": base,
         }
-        return self._request("POST", endpoint, json_data=data)
+        result = self._request("POST", endpoint, json_data=data)
+        return cast(dict[str, Any], result)
 
     def list_repositories(self, type: str = "all") -> list[dict[str, Any]]:
         """
@@ -305,4 +314,5 @@ class GitHubAPIClient:
             "per_page": 100,
             "sort": "updated",
         }
-        return self._request("GET", endpoint, params=params)
+        result = self._request("GET", endpoint, params=params)
+        return cast(list[dict[str, Any]], result)

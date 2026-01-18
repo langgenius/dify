@@ -1,7 +1,7 @@
 import json
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from urllib.parse import urlencode
 
@@ -138,8 +138,7 @@ class GitHubOAuthService:
         expires_in = token_data.get("expires_in")
         token_expires_at = None
         if expires_in:
-            from datetime import timezone
-            token_expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
+            token_expires_at = datetime.now(UTC) + timedelta(seconds=expires_in)
 
         # Get user info to determine repository access
         user_info = GitHubOAuthService._get_user_info(access_token)
