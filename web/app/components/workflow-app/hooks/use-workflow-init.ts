@@ -57,7 +57,8 @@ export const useWorkflowInit = () => {
   } = useWorkflowConfig('/files/upload', handleUpdateWorkflowFileUploadConfig)
 
   const handleGetInitialWorkflowData = useCallback(async () => {
-    if (!appDetail) return
+    if (!appDetail)
+      return
 
     try {
       const res = await fetchWorkflowDraft(`/apps/${appDetail.id}/workflows/draft`)
@@ -116,7 +117,8 @@ export const useWorkflowInit = () => {
   }, [])
 
   const handleFetchPreloadData = useCallback(async () => {
-    if (!appDetail) return
+    if (!appDetail)
+      return
 
     try {
       const nodesDefaultConfigsData = await fetchNodesDefaultConfigs(`/apps/${appDetail.id}/workflows/default-workflow-block-configs`)

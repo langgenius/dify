@@ -35,9 +35,9 @@ const TagManagementModal: React.FC<TagManagementModalProps> = ({
   const { mutateAsync: createTag } = useCreateWorkflowTag(appDetail?.id || '')
   const { mutateAsync: deleteTag } = useDeleteWorkflowTag(appDetail?.id || '')
 
-  const resetForm = useCallback(() => {
+  const resetForm = () => {
     setNewTagName('')
-  }, [])
+  }
 
   const handleCreateTag = useCallback(async () => {
     if (!newTagName || !newTagName.trim()) {
@@ -74,16 +74,16 @@ const TagManagementModal: React.FC<TagManagementModalProps> = ({
       setIsAddingNew(false)
       onTagChange()
     }
-    catch (error: any) {
+    catch (error: unknown) {
       Toast.notify({
         type: 'error',
-        message: error.message || t('tag.createFailure', { ns: 'workflow' }),
+        message: (error instanceof Error ? error.message : String(error)) || t('tag.createFailure', { ns: 'workflow' }),
       })
     }
     finally {
       setIsCreating(false)
     }
-  }, [newTagName, versionHistory.id, createTag, resetForm, onTagChange, t])
+  }, [newTagName, versionHistory.id, createTag, onTagChange, t])
 
   const handleDeleteTag = useCallback(async (tag: WorkflowTag) => {
     try {
@@ -94,18 +94,23 @@ const TagManagementModal: React.FC<TagManagementModalProps> = ({
       })
       onTagChange()
     }
-    catch (error: any) {
+    catch (error: unknown) {
       Toast.notify({
         type: 'error',
-        message: error.message || t('tag.deleteFailure', { ns: 'workflow' }),
+        message: (error instanceof Error ? error.message : String(error)) || t('tag.deleteFailure', { ns: 'workflow' }),
       })
     }
   }, [deleteTag, onTagChange, t])
 
   useEffect(() => {
-    if (!isOpen)
-      resetForm()
-  }, [isOpen, resetForm])
+    if (!isOpen) {
+      // Use setTimeout to defer the state update
+      const timer = setTimeout(() => {
+        setNewTagName('')
+      }, 0)
+      return () => clearTimeout(timer)
+    }
+  }, [isOpen])
 
   return (
     <Modal
