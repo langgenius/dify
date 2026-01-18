@@ -41,13 +41,15 @@ const useKeyValueList = (value: string, onChange: (value: string) => void, noFil
   }, [noFilter, onChange, value])
 
   useEffect(() => {
-    doSetList((prev) => {
-      const targetItems = value ? strToKeyValueList(value) : []
-      const currentValue = stringifyList(prev, noFilter)
-      const targetValue = stringifyList(targetItems, noFilter)
-      if (currentValue === targetValue)
-        return prev
-      return normalizeList(targetItems)
+    Promise.resolve().then(() => {
+      doSetList((prev) => {
+        const targetItems = value ? strToKeyValueList(value) : []
+        const currentValue = stringifyList(prev, noFilter)
+        const targetValue = stringifyList(targetItems, noFilter)
+        if (currentValue === targetValue)
+          return prev
+        return normalizeList(targetItems)
+      })
     })
   }, [value, noFilter])
   const addItem = useCallback(() => {

@@ -190,7 +190,9 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
   }, [mentionUsers])
 
   useEffect(() => {
-    setReplyContent('')
+    Promise.resolve().then(() => {
+      setReplyContent('')
+    })
   }, [comment.id])
 
   useEffect(() => () => {

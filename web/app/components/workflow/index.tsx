@@ -4,10 +4,13 @@ import type { FC } from 'react'
 import type {
   Viewport,
 } from 'reactflow'
+import type { CursorPosition, OnlineUser } from './collaboration/types'
 import type { Shape as HooksStoreShape } from './hooks-store'
 import type { WorkflowSliceShape } from './store/workflow/workflow-slice'
 import type {
+  ConversationVariable,
   Edge,
+  EnvironmentVariable,
   Node,
 } from './types'
 import type { VarInInspect } from '@/types/workflow'
@@ -124,15 +127,37 @@ const edgeTypes = {
   [CUSTOM_EDGE]: CustomEdge,
 }
 
+type WorkflowDataUpdatePayload = {
+  nodes: Node[]
+  edges: Edge[]
+  viewport?: Viewport
+  hash?: string
+  features?: unknown
+  conversation_variables?: ConversationVariable[]
+  environment_variables?: EnvironmentVariable[]
+}
+
+type WorkflowEvent = {
+  type?: string
+  payload?: unknown
+}
+
+const isWorkflowDataUpdatePayload = (payload: unknown): payload is WorkflowDataUpdatePayload => {
+  if (!payload || typeof payload !== 'object')
+    return false
+  const candidate = payload as WorkflowDataUpdatePayload
+  return Array.isArray(candidate.nodes) && Array.isArray(candidate.edges)
+}
+
 export type WorkflowProps = {
   nodes: Node[]
   edges: Edge[]
   viewport?: Viewport
   children?: React.ReactNode
-  onWorkflowDataUpdate?: (v: any) => void
-  cursors?: Record<string, any>
+  onWorkflowDataUpdate?: (v: WorkflowDataUpdatePayload) => void
+  cursors?: Record<string, CursorPosition>
   myUserId?: string | null
-  onlineUsers?: any[]
+  onlineUsers?: OnlineUser[]
 }
 export const Workflow: FC<WorkflowProps> = memo(({
   nodes: originalNodes,
@@ -236,19 +261,20 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const { t } = useTranslation()
 
   const store = useStoreApi()
-  eventEmitter?.useSubscription((v: any) => {
-    if (v.type === WORKFLOW_DATA_UPDATE) {
-      setNodes(v.payload.nodes)
-      store.getState().setNodes(v.payload.nodes)
-      setEdges(v.payload.edges)
+  eventEmitter?.useSubscription((event) => {
+    const workflowEvent = event as unknown as WorkflowEvent
+    if (workflowEvent.type === WORKFLOW_DATA_UPDATE && isWorkflowDataUpdatePayload(workflowEvent.payload)) {
+      setNodes(workflowEvent.payload.nodes)
+      store.getState().setNodes(workflowEvent.payload.nodes)
+      setEdges(workflowEvent.payload.edges)
 
-      if (v.payload.viewport)
-        reactflow.setViewport(v.payload.viewport)
+      if (workflowEvent.payload.viewport)
+        reactflow.setViewport(workflowEvent.payload.viewport)
 
-      if (v.payload.hash)
-        setSyncWorkflowDraftHash(v.payload.hash)
+      if (workflowEvent.payload.hash)
+        setSyncWorkflowDraftHash(workflowEvent.payload.hash)
 
-      onWorkflowDataUpdate?.(v.payload)
+      onWorkflowDataUpdate?.(workflowEvent.payload)
 
       setTimeout(() => setControlPromptEditorRerenderKey(Date.now()))
     }
@@ -635,9 +661,9 @@ export const Workflow: FC<WorkflowProps> = memo(({
 
 type WorkflowWithInnerContextProps = WorkflowProps & {
   hooksStore?: Partial<HooksStoreShape>
-  cursors?: Record<string, any>
+  cursors?: Record<string, CursorPosition>
   myUserId?: string | null
-  onlineUsers?: any[]
+  onlineUsers?: OnlineUser[]
 }
 export const WorkflowWithInnerContext = memo(({
   hooksStore,

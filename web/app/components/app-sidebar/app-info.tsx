@@ -90,7 +90,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
         timestamp: Date.now(),
       })
     }
-  }, [appDetail?.id])
+  }, [appDetail])
 
   const onEdit: CreateAppModalProps['onConfirm'] = useCallback(async ({
     name,

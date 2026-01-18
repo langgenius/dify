@@ -3,27 +3,31 @@ import type { DebugInfo, WebSocketConfig } from '../types/websocket'
 import { io } from 'socket.io-client'
 import { ACCESS_TOKEN_LOCAL_STORAGE_NAME } from '@/config'
 
-const isUnauthorizedAck = (...ackArgs: any[]): boolean => {
+type AckArgs = unknown[]
+
+const isUnauthorizedAck = (...ackArgs: AckArgs): boolean => {
   const [first, second] = ackArgs
 
   if (second === 401 || first === 401)
     return true
 
-  if (first && typeof first === 'object' && first.msg === 'unauthorized')
-    return true
+  if (first && typeof first === 'object' && 'msg' in first) {
+    const message = (first as { msg?: unknown }).msg
+    return message === 'unauthorized'
+  }
 
   return false
 }
 
 export type EmitAckOptions = {
-  onAck?: (...ackArgs: any[]) => void
-  onUnauthorized?: (...ackArgs: any[]) => void
+  onAck?: (...ackArgs: AckArgs) => void
+  onUnauthorized?: (...ackArgs: AckArgs) => void
 }
 
 export const emitWithAuthGuard = (
   socket: Socket | null | undefined,
   event: string,
-  payload: any,
+  payload: unknown,
   options?: EmitAckOptions,
 ): void => {
   if (!socket)
@@ -32,7 +36,7 @@ export const emitWithAuthGuard = (
   socket.emit(
     event,
     payload,
-    (...ackArgs: any[]) => {
+    (...ackArgs: AckArgs) => {
       options?.onAck?.(...ackArgs)
       if (isUnauthorizedAck(...ackArgs))
         options?.onUnauthorized?.(...ackArgs)

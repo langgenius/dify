@@ -42,7 +42,9 @@ export const TitleInput = memo(({
 
   // Sync local state with incoming collaborative updates so remote title edits appear immediately.
   useEffect(() => {
-    setLocalValue(value)
+    Promise.resolve().then(() => {
+      setLocalValue(value)
+    })
   }, [value])
 
   return (

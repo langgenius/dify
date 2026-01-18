@@ -1,18 +1,16 @@
 import type { SyncCallback } from './use-nodes-sync-draft'
 import { produce } from 'immer'
 import { useCallback } from 'react'
-import { useStoreApi } from 'reactflow'
 import { useCollaborativeWorkflow } from './use-collaborative-workflow'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { useNodesReadOnly } from './use-workflow'
 
 type NodeDataUpdatePayload = {
   id: string
-  data: Record<string, any>
+  data: Record<string, unknown>
 }
 
 export const useNodeDataUpdate = () => {
-  const store = useStoreApi()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { getNodesReadOnly } = useNodesReadOnly()
   const collaborativeWorkflow = useCollaborativeWorkflow()
@@ -26,7 +24,7 @@ export const useNodeDataUpdate = () => {
         currentNode.data = { ...currentNode.data, ...data }
     })
     setNodes(newNodes)
-  }, [store])
+  }, [collaborativeWorkflow])
 
   const handleNodeDataUpdateWithSyncDraft = useCallback((
     payload: NodeDataUpdatePayload,

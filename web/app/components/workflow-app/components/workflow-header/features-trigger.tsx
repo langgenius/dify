@@ -1,3 +1,4 @@
+import type { ModelAndParameter } from '@/app/components/app/configuration/debug/types'
 import type { EndNodeType } from '@/app/components/workflow/nodes/end/types'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type {
@@ -140,7 +141,8 @@ const FeaturesTrigger = () => {
   const needWarningNodes = useChecklist(nodes, edges)
 
   const updatePublishedWorkflow = useInvalidateAppWorkflow()
-  const onPublish = useCallback(async (params?: PublishWorkflowParams) => {
+  const onPublish = useCallback(async (params?: ModelAndParameter | PublishWorkflowParams) => {
+    const publishParams = params && 'title' in params ? params : undefined
     // First check if there are any items in the checklist
     // if (!validateBeforeRun())
     //   throw new Error('Checklist has unresolved items')
@@ -154,8 +156,8 @@ const FeaturesTrigger = () => {
     if (await handleCheckBeforePublish()) {
       const res = await publishWorkflow({
         url: `/apps/${appID}/workflows/publish`,
-        title: params?.title || '',
-        releaseNotes: params?.releaseNotes || '',
+        title: publishParams?.title || '',
+        releaseNotes: publishParams?.releaseNotes || '',
       })
 
       if (res) {

@@ -10,6 +10,13 @@ import { useStore } from '../store'
 import { ControlMode } from '../types'
 
 const EMPTY_USERS: UserProfile[] = []
+type CommentDetailResponse = WorkflowCommentDetail | { data: WorkflowCommentDetail }
+
+const getCommentDetail = (response: CommentDetailResponse): WorkflowCommentDetail => {
+  if ('data' in response)
+    return response.data
+  return response
+}
 
 export const useWorkflowComment = () => {
   const params = useParams()
@@ -56,8 +63,8 @@ export const useWorkflowComment = () => {
     if (!appId)
       return
 
-    const detailResponse = await fetchWorkflowComment(appId, commentId)
-    const detail = (detailResponse as any)?.data ?? detailResponse
+    const detailResponse = await fetchWorkflowComment(appId, commentId) as CommentDetailResponse
+    const detail = getCommentDetail(detailResponse)
 
     commentDetailCacheRef.current = {
       ...commentDetailCacheRef.current,
@@ -106,8 +113,6 @@ export const useWorkflowComment = () => {
     if (!pendingComment)
       return
 
-    console.log('Submitting comment:', { appId, pendingComment, content, mentionedUserIds })
-
     if (!appId) {
       console.error('AppId is missing')
       return
@@ -128,9 +133,10 @@ export const useWorkflowComment = () => {
         mentioned_user_ids: mentionedUserIds,
       })
 
-      console.log('Comment created successfully:', newComment)
-
-      const createdAt = (newComment as any)?.created_at
+      const createdAt = Number(newComment.created_at)
+      const createdAtSeconds = Number.isNaN(createdAt)
+        ? Math.floor(Date.parse(newComment.created_at) / 1000)
+        : createdAt
       const createdByAccount = {
         id: userProfile?.id ?? '',
         name: userProfile?.name ?? '',
@@ -162,8 +168,8 @@ export const useWorkflowComment = () => {
         content,
         created_by: createdByAccount.id,
         created_by_account: createdByAccount,
-        created_at: createdAt,
-        updated_at: createdAt,
+        created_at: createdAtSeconds,
+        updated_at: createdAtSeconds,
         resolved: false,
         mention_count: mentionedUserIds.length,
         reply_count: 0,
@@ -177,8 +183,8 @@ export const useWorkflowComment = () => {
         content,
         created_by: createdByAccount.id,
         created_by_account: createdByAccount,
-        created_at: createdAt,
-        updated_at: createdAt,
+        created_at: createdAtSeconds,
+        updated_at: createdAtSeconds,
         resolved: false,
         replies: [],
         mentions: mentionedUserIds.map(mentionedId => ({
@@ -246,8 +252,8 @@ export const useWorkflowComment = () => {
     setActiveCommentLoading(!cachedDetail)
 
     try {
-      const detailResponse = await fetchWorkflowComment(appId, comment.id)
-      const detail = (detailResponse as any)?.data ?? detailResponse
+      const detailResponse = await fetchWorkflowComment(appId, comment.id) as CommentDetailResponse
+      const detail = getCommentDetail(detailResponse)
 
       commentDetailCacheRef.current = {
         ...commentDetailCacheRef.current,
@@ -499,13 +505,8 @@ export const useWorkflowComment = () => {
     elementX: number
     elementY: number
   }) => {
-    if (controlMode === ControlMode.Comment) {
-      console.log('Setting pending comment at screen position:', mousePosition)
+    if (controlMode === ControlMode.Comment)
       setPendingComment(mousePosition)
-    }
-    else {
-      console.log('Control mode is not Comment:', controlMode)
-    }
   }, [controlMode, setPendingComment])
 
   return {

@@ -1,5 +1,7 @@
 import type { ModelAndParameter } from '../configuration/debug/types'
+import type { CollaborationUpdate } from '@/app/components/workflow/collaboration/types/collaboration'
 import type { InputVar, Variable } from '@/app/components/workflow/types'
+import type { InstalledApp } from '@/models/explore'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import type { PublishWorkflowParams } from '@/types/workflow'
 import {
@@ -59,6 +61,10 @@ import SuggestedAction from './suggested-action'
 
 type AccessModeLabel = I18nKeysByPrefix<'app', 'accessControlDialog.accessItems.'>
 
+type InstalledAppsResponse = {
+  installed_apps?: InstalledApp[]
+}
+
 const ACCESS_MODE_MAP: Record<AccessMode, { label: AccessModeLabel, icon: React.ElementType }> = {
   [AccessMode.ORGANIZATION]: {
     label: 'organization',
@@ -105,8 +111,8 @@ export type AppPublisherProps = {
   debugWithMultipleModel?: boolean
   multipleModelConfigs?: ModelAndParameter[]
   /** modelAndParameter is passed when debugWithMultipleModel is true */
-  onPublish?: (params?: any) => Promise<any> | any
-  onRestore?: () => Promise<any> | any
+  onPublish?: (params?: ModelAndParameter | PublishWorkflowParams) => Promise<void> | void
+  onRestore?: () => Promise<void> | void
   onToggle?: (state: boolean) => void
   crossAxisOffset?: number
   toolPublished?: boolean
@@ -248,9 +254,10 @@ const AppPublisher = ({
     await openAsyncWindow(async () => {
       if (!appDetail?.id)
         throw new Error('App not found')
-      const { installed_apps }: any = await fetchInstalledAppList(appDetail?.id) || {}
-      if (installed_apps?.length > 0)
-        return `${basePath}/explore/installed/${installed_apps[0].id}`
+      const response = (await fetchInstalledAppList(appDetail?.id)) as InstalledAppsResponse
+      const installedApps = response?.installed_apps
+      if (installedApps?.length)
+        return `${basePath}/explore/installed/${installedApps[0].id}`
       throw new Error('No app found in Explore')
     }, {
       onError: (err) => {
@@ -283,8 +290,9 @@ const AppPublisher = ({
     if (!appId)
       return
 
-    const unsubscribe = collaborationManager.onAppPublishUpdate((update: any) => {
-      if (update?.data?.action === 'published')
+    const unsubscribe = collaborationManager.onAppPublishUpdate((update: CollaborationUpdate) => {
+      const action = typeof update.data.action === 'string' ? update.data.action : undefined
+      if (action === 'published')
         invalidateAppWorkflow(appId)
     })
 

@@ -1,4 +1,5 @@
 'use client'
+import type { OnlineUser } from '../collaboration/types'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
 import { useEffect, useState } from 'react'
 import { useReactFlow } from 'reactflow'
@@ -16,7 +17,7 @@ import { useCollaboration } from '../collaboration/hooks/use-collaboration'
 import { getUserColor } from '../collaboration/utils/user-color'
 import { useStore } from '../store'
 
-const useAvatarUrls = (users: any[]) => {
+const useAvatarUrls = (users: OnlineUser[]) => {
   const [avatarUrls, setAvatarUrls] = useState<Record<string, string>>({})
 
   useEffect(() => {
@@ -59,7 +60,7 @@ const OnlineUsers = () => {
   const currentUserId = userProfile?.id
 
   const renderDisplayName = (
-    user: any,
+    user: OnlineUser,
     baseClassName: string,
     suffixClassName: string,
   ) => {
@@ -99,7 +100,7 @@ const OnlineUsers = () => {
   const visibleUsers = onlineUsers.slice(0, maxVisible)
   const remainingCount = onlineUsers.length - maxVisible
 
-  const getAvatarUrl = (user: any) => {
+  const getAvatarUrl = (user: OnlineUser) => {
     return avatarUrls[user.sid] || user.avatar
   }
 

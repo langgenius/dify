@@ -27,7 +27,9 @@ const UndoRedo: FC<UndoRedoProps> = ({ handleUndo, handleRedo }) => {
     }
 
     // Initial state
-    updateButtonStates()
+    Promise.resolve().then(() => {
+      updateButtonStates()
+    })
 
     // Listen for undo/redo state changes
     const unsubscribe = collaborationManager.onUndoRedoStateChange((state) => {

@@ -815,7 +815,10 @@ export const useNodesInteractions = () => {
       const nodesWithSameType = nodes.filter(
         node => node.data.type === nodeType,
       )
-      const { defaultValue } = nodesMetaDataMap![nodeType]
+      const nodeMetaData = nodesMetaDataMap?.[nodeType]
+      if (!nodeMetaData)
+        return
+      const { defaultValue } = nodeMetaData
       const { newNode, newIterationStartNode, newLoopStartNode }
         = generateNewNode({
           type: getNodeCustomTypeByNodeDataType(nodeType),
@@ -1376,7 +1379,10 @@ export const useNodesInteractions = () => {
       const nodesWithSameType = nodes.filter(
         node => node.data.type === nodeType,
       )
-      const { defaultValue } = nodesMetaDataMap![nodeType]
+      const nodeMetaData = nodesMetaDataMap?.[nodeType]
+      if (!nodeMetaData)
+        return
+      const { defaultValue } = nodeMetaData
       const {
         newNode: newCurrentNode,
         newIterationStartNode,
@@ -1537,7 +1543,9 @@ export const useNodesInteractions = () => {
             return false
           if (node.type === CUSTOM_NOTE_NODE)
             return true
-          const { metaData } = nodesMetaDataMap![node.data.type as BlockEnum]
+          const metaData = nodesMetaDataMap?.[node.data.type as BlockEnum]?.metaData
+          if (!metaData)
+            return false
           if (metaData.isSingleton)
             return false
           return !node.data.isInIteration && !node.data.isInLoop
@@ -1553,7 +1561,9 @@ export const useNodesInteractions = () => {
             return false
           if (node.type === CUSTOM_NOTE_NODE)
             return true
-          const { metaData } = nodesMetaDataMap![node.data.type as BlockEnum]
+          const metaData = nodesMetaDataMap?.[node.data.type as BlockEnum]?.metaData
+          if (!metaData)
+            return false
           return !metaData.isSingleton
         })
 
@@ -1588,12 +1598,15 @@ export const useNodesInteractions = () => {
       const parentChildrenToAppend: { parentId: string, childId: string, childType: BlockEnum }[] = []
       clipboardElements.forEach((nodeToPaste, index) => {
         const nodeType = nodeToPaste.data.type
+        const nodeDefaultValue = nodeToPaste.type !== CUSTOM_NOTE_NODE
+          ? nodesMetaDataMap?.[nodeType]?.defaultValue
+          : undefined
 
         const { newNode, newIterationStartNode, newLoopStartNode }
           = generateNewNode({
             type: nodeToPaste.type,
             data: {
-              ...(nodeToPaste.type !== CUSTOM_NOTE_NODE && nodesMetaDataMap![nodeType].defaultValue),
+              ...(nodeDefaultValue || {}),
               ...nodeToPaste.data,
               selected: false,
               _isBundled: false,
@@ -1898,16 +1911,7 @@ export const useNodesInteractions = () => {
       return
 
     // Use collaborative undo from Loro
-    const undoResult = collaborationManager.undo()
-
-    if (undoResult) {
-      // The undo operation will automatically trigger subscriptions
-      // which will update the nodes and edges through setupSubscriptions
-      console.log('Collaborative undo performed')
-    }
-    else {
-      console.log('Nothing to undo')
-    }
+    collaborationManager.undo()
     const { edges, nodes } = workflowHistoryStore.getState()
     if (edges.length === 0 && nodes.length === 0)
       return
@@ -1928,16 +1932,7 @@ export const useNodesInteractions = () => {
       return
 
     // Use collaborative redo from Loro
-    const redoResult = collaborationManager.redo()
-
-    if (redoResult) {
-      // The redo operation will automatically trigger subscriptions
-      // which will update the nodes and edges through setupSubscriptions
-      console.log('Collaborative redo performed')
-    }
-    else {
-      console.log('Nothing to redo')
-    }
+    collaborationManager.redo()
     const { edges, nodes } = workflowHistoryStore.getState()
     if (edges.length === 0 && nodes.length === 0)
       return

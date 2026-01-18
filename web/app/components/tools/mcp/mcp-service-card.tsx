@@ -1,6 +1,8 @@
 'use client'
+import type { CollaborationUpdate } from '@/app/components/workflow/collaboration/types/collaboration'
+import type { InputVar } from '@/app/components/workflow/types'
 import type { AppDetailResponse } from '@/models/app'
-import type { AppSSO } from '@/types/app'
+import type { AppSSO, ModelConfig, UserInputFormItem } from '@/types/app'
 import { RiEditLine, RiLoopLeftLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
@@ -38,6 +40,16 @@ export type IAppCardProps = {
   triggerModeMessage?: React.ReactNode // display-only message explaining the trigger restriction
 }
 
+type BasicAppConfig = Partial<ModelConfig> & {
+  updated_at?: number
+}
+
+type McpServerParam = {
+  label: string
+  variable: string
+  type: string
+}
+
 function MCPServiceCard({
   appInfo,
   triggerModeDisabled = false,
@@ -56,16 +68,16 @@ function MCPServiceCard({
   const isAdvancedApp = appInfo?.mode === AppModeEnum.ADVANCED_CHAT || appInfo?.mode === AppModeEnum.WORKFLOW
   const isBasicApp = !isAdvancedApp
   const { data: currentWorkflow } = useAppWorkflow(isAdvancedApp ? appId : '')
-  const [basicAppConfig, setBasicAppConfig] = useState<any>({})
-  const basicAppInputForm = useMemo(() => {
-    if (!isBasicApp || !basicAppConfig?.user_input_form)
+  const [basicAppConfig, setBasicAppConfig] = useState<BasicAppConfig>({})
+  const basicAppInputForm = useMemo<McpServerParam[]>(() => {
+    if (!isBasicApp || !basicAppConfig.user_input_form)
       return []
-    return basicAppConfig.user_input_form.map((item: any) => {
-      const type = Object.keys(item)[0]
-      return {
-        ...item[type],
-        type: type || 'text-input',
-      }
+    return basicAppConfig.user_input_form.map((item: UserInputFormItem) => {
+      if ('text-input' in item)
+        return { label: item['text-input'].label, variable: item['text-input'].variable, type: 'text-input' }
+      if ('select' in item)
+        return { label: item.select.label, variable: item.select.variable, type: 'select' }
+      return { label: item.paragraph.label, variable: item.paragraph.variable, type: 'paragraph' }
     })
   }, [basicAppConfig.user_input_form, isBasicApp])
   useEffect(() => {
@@ -92,12 +104,22 @@ function MCPServiceCard({
 
   const [activated, setActivated] = useState(serverActivated)
 
-  const latestParams = useMemo(() => {
+  const latestParams = useMemo<McpServerParam[]>(() => {
     if (isAdvancedApp) {
       if (!currentWorkflow?.graph)
         return []
-      const startNode = currentWorkflow?.graph.nodes.find(node => node.data.type === BlockEnum.Start) as any
-      return startNode?.data.variables as any[] || []
+      const startNode = currentWorkflow?.graph.nodes.find(node => node.data.type === BlockEnum.Start)
+      const variables = (startNode?.data as { variables?: InputVar[] } | undefined)?.variables || []
+      return variables.map((variable) => {
+        const label = typeof variable.label === 'string'
+          ? variable.label
+          : (variable.label.variable || variable.label.nodeName)
+        return {
+          label,
+          variable: variable.variable,
+          type: variable.type,
+        }
+      })
     }
     return basicAppInputForm
   }, [currentWorkflow, basicAppInputForm, isAdvancedApp])
@@ -178,9 +200,8 @@ function MCPServiceCard({
     if (!appId)
       return
 
-    const unsubscribe = collaborationManager.onMcpServerUpdate(async (update: any) => {
+    const unsubscribe = collaborationManager.onMcpServerUpdate(async (_update: CollaborationUpdate) => {
       try {
-        console.log('Received MCP server update from collaboration:', update)
         invalidateMCPServerDetail(appId)
       }
       catch (error) {

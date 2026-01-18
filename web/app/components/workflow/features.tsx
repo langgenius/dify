@@ -62,8 +62,6 @@ const Features = () => {
         file_upload: currentFeatures.file,
       }
 
-      console.log('Sending features to server:', transformedFeatures)
-
       await updateFeatures({
         appId,
         features: transformedFeatures,

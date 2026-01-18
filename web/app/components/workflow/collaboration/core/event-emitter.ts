@@ -1,24 +1,24 @@
-export type EventHandler<T = any> = (data: T) => void
+export type EventHandler<T = unknown> = (data: T) => void
 
 export class EventEmitter {
-  private events: Map<string, Set<EventHandler>> = new Map()
+  private events: Map<string, Set<EventHandler<unknown>>> = new Map()
 
-  on<T = any>(event: string, handler: EventHandler<T>): () => void {
+  on<T = unknown>(event: string, handler: EventHandler<T>): () => void {
     if (!this.events.has(event))
       this.events.set(event, new Set())
 
-    this.events.get(event)!.add(handler)
+    this.events.get(event)!.add(handler as EventHandler<unknown>)
 
     return () => this.off(event, handler)
   }
 
-  off<T = any>(event: string, handler?: EventHandler<T>): void {
+  off<T = unknown>(event: string, handler?: EventHandler<T>): void {
     if (!this.events.has(event))
       return
 
     const handlers = this.events.get(event)!
     if (handler)
-      handlers.delete(handler)
+      handlers.delete(handler as EventHandler<unknown>)
     else
       handlers.clear()
 
@@ -26,7 +26,7 @@ export class EventEmitter {
       this.events.delete(event)
   }
 
-  emit<T = any>(event: string, data: T): void {
+  emit<T = unknown>(event: string, data: T): void {
     if (!this.events.has(event))
       return
 

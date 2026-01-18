@@ -109,7 +109,7 @@ export const useNodeLoopInteractions = () => {
 
     return childrenNodes.map((child, index) => {
       const childNodeType = child.data.type as BlockEnum
-      const { defaultValue } = nodesMetaDataMap![childNodeType]
+      const defaultValue = nodesMetaDataMap?.[childNodeType]?.defaultValue ?? {}
       const nodesWithSameType = nodes.filter(node => node.data.type === childNodeType)
       const { newNode } = generateNewNode({
         type: getNodeCustomTypeByNodeDataType(childNodeType),

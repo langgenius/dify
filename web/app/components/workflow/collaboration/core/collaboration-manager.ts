@@ -1,3 +1,4 @@
+import type { Value } from 'loro-crdt'
 import type { Socket } from 'socket.io-client'
 import type {
   CommonNodeType,
@@ -24,18 +25,46 @@ type NodePanelPresenceEventData = {
   action: 'open' | 'close'
   user: NodePanelPresenceUser
   clientId: string
-  timestamp?: number
+  timestamp: number
 }
+
+type ReactFlowStore = {
+  getState: () => {
+    getNodes: () => Node[]
+    setNodes: (nodes: Node[]) => void
+    getEdges: () => Edge[]
+    setEdges: (edges: Edge[]) => void
+  }
+}
+
+type CollaborationEventPayload = {
+  type: CollaborationUpdate['type']
+  data: Record<string, unknown>
+  timestamp: number
+  userId?: string
+}
+
+type LoroSubscribeEvent = {
+  by?: string
+}
+
+type LoroContainer = {
+  kind?: () => string
+  getAttached?: () => unknown
+}
+
+const toLoroValue = (value: unknown): Value => cloneDeep(value) as Value
+const toLoroRecord = (value: unknown): Record<string, Value> => cloneDeep(value) as Record<string, Value>
 
 export class CollaborationManager {
   private doc: LoroDoc | null = null
   private undoManager: UndoManager | null = null
   private provider: CRDTProvider | null = null
-  private nodesMap: LoroMap | null = null
-  private edgesMap: LoroMap | null = null
+  private nodesMap: LoroMap<Record<string, Value>> | null = null
+  private edgesMap: LoroMap<Record<string, Value>> | null = null
   private eventEmitter = new EventEmitter()
   private currentAppId: string | null = null
-  private reactFlowStore: any = null
+  private reactFlowStore: ReactFlowStore | null = null
   private isLeader = false
   private leaderId: string | null = null
   private cursors: Record<string, CursorPosition> = {}
@@ -80,7 +109,7 @@ export class CollaborationManager {
     )
   }
 
-  private sendCollaborationEvent(payload: any): void {
+  private sendCollaborationEvent(payload: CollaborationEventPayload): void {
     const socket = this.getActiveSocket()
     if (!socket)
       return
@@ -88,7 +117,7 @@ export class CollaborationManager {
     emitWithAuthGuard(socket, 'collaboration_event', payload, { onUnauthorized: this.handleSessionUnauthorized })
   }
 
-  private sendGraphEvent(payload: any): void {
+  private sendGraphEvent(payload: Uint8Array): void {
     const socket = this.getActiveSocket()
     if (!socket)
       return
@@ -96,59 +125,67 @@ export class CollaborationManager {
     emitWithAuthGuard(socket, 'graph_event', payload, { onUnauthorized: this.handleSessionUnauthorized })
   }
 
-  private getNodeContainer(nodeId: string): LoroMap<any> {
+  private getNodeContainer(nodeId: string): LoroMap<Record<string, Value>> {
     if (!this.nodesMap)
       throw new Error('Nodes map not initialized')
 
-    let container = this.nodesMap.get(nodeId) as any
+    let container = this.nodesMap.get(nodeId) as unknown
 
-    if (!container || typeof container.kind !== 'function' || container.kind() !== 'Map') {
+    const isMapContainer = (value: unknown): value is LoroMap<Record<string, Value>> & LoroContainer => {
+      return !!value && typeof (value as LoroContainer).kind === 'function' && (value as LoroContainer).kind?.() === 'Map'
+    }
+
+    if (!container || !isMapContainer(container)) {
       const previousValue = container
       const newContainer = this.nodesMap.setContainer(nodeId, new LoroMap())
-      container = typeof newContainer.getAttached === 'function' ? newContainer.getAttached() ?? newContainer : newContainer
+      const attached = (newContainer as LoroContainer).getAttached?.() ?? newContainer
+      container = attached
       if (previousValue && typeof previousValue === 'object')
-        this.populateNodeContainer(container, previousValue as Node)
+        this.populateNodeContainer(container as LoroMap<Record<string, Value>>, previousValue as Node)
     }
     else {
-      container = typeof container.getAttached === 'function' ? container.getAttached() ?? container : container
+      const attached = (container as LoroContainer).getAttached?.() ?? container
+      container = attached
     }
 
-    return container
+    return container as LoroMap<Record<string, Value>>
   }
 
-  private ensureDataContainer(nodeContainer: LoroMap<any>): LoroMap<any> {
-    let dataContainer = nodeContainer.get('data') as any
+  private ensureDataContainer(nodeContainer: LoroMap<Record<string, Value>>): LoroMap<Record<string, Value>> {
+    let dataContainer = nodeContainer.get('data') as unknown
 
-    if (!dataContainer || typeof dataContainer.kind !== 'function' || dataContainer.kind() !== 'Map')
+    if (!dataContainer || typeof (dataContainer as LoroContainer).kind !== 'function' || (dataContainer as LoroContainer).kind?.() !== 'Map')
       dataContainer = nodeContainer.setContainer('data', new LoroMap())
 
-    return typeof dataContainer.getAttached === 'function' ? dataContainer.getAttached() ?? dataContainer : dataContainer
+    const attached = (dataContainer as LoroContainer).getAttached?.() ?? dataContainer
+    return attached as LoroMap<Record<string, Value>>
   }
 
-  private ensureList(nodeContainer: LoroMap<any>, key: string): LoroList<any> {
+  private ensureList(nodeContainer: LoroMap<Record<string, Value>>, key: string): LoroList<unknown> {
     const dataContainer = this.ensureDataContainer(nodeContainer)
-    let list = dataContainer.get(key) as any
+    let list = dataContainer.get(key) as unknown
 
-    if (!list || typeof list.kind !== 'function' || list.kind() !== 'List')
+    if (!list || typeof (list as LoroContainer).kind !== 'function' || (list as LoroContainer).kind?.() !== 'List')
       list = dataContainer.setContainer(key, new LoroList())
 
-    return typeof list.getAttached === 'function' ? list.getAttached() ?? list : list
+    const attached = (list as LoroContainer).getAttached?.() ?? list
+    return attached as LoroList<unknown>
   }
 
   private exportNode(nodeId: string): Node {
     const container = this.getNodeContainer(nodeId)
-    const json = container.toJSON() as any
+    const json = container.toJSON() as Node
     return {
       ...json,
       data: json.data || {},
     }
   }
 
-  private populateNodeContainer(container: LoroMap<any>, node: Node): void {
+  private populateNodeContainer(container: LoroMap<Record<string, Value>>, node: Node): void {
     const listFields = new Set(['variables', 'prompt_template', 'parameters'])
     container.set('id', node.id)
     container.set('type', node.type)
-    container.set('position', cloneDeep(node.position))
+    container.set('position', toLoroValue(node.position))
     container.set('sourcePosition', node.sourcePosition)
     container.set('targetPosition', node.targetPosition)
 
@@ -189,7 +226,7 @@ export class CollaborationManager {
       if (value === undefined)
         container.delete(prop as string)
       else
-        container.set(prop as string, cloneDeep(value as any))
+        container.set(prop as string, toLoroValue(value))
     })
 
     const dataContainer = this.ensureDataContainer(container)
@@ -203,7 +240,7 @@ export class CollaborationManager {
       if (listFields.has(key))
         this.syncList(container, key, Array.isArray(value) ? value : [])
       else
-        dataContainer.set(key, cloneDeep(value))
+        dataContainer.set(key, toLoroValue(value))
     })
 
     const existingData = dataContainer.toJSON() || {}
@@ -222,9 +259,9 @@ export class CollaborationManager {
     return (syncDataAllowList.has(key) || !key.startsWith('_')) && key !== 'selected'
   }
 
-  private syncList(nodeContainer: LoroMap<any>, key: string, desired: any[]): void {
+  private syncList(nodeContainer: LoroMap<Record<string, Value>>, key: string, desired: Array<unknown>): void {
     const list = this.ensureList(nodeContainer, key)
-    const current = list.toJSON() as any[]
+    const current = list.toJSON() as Array<unknown>
     const target = Array.isArray(desired) ? desired : []
     const minLength = Math.min(current.length, target.length)
 
@@ -309,7 +346,7 @@ export class CollaborationManager {
       this.eventEmitter.emit('nodePanelPresence', this.getNodePanelPresenceSnapshot())
   }
 
-  init = (appId: string, reactFlowStore: any): void => {
+  init = (appId: string, reactFlowStore: ReactFlowStore): void => {
     if (!reactFlowStore) {
       console.warn('CollaborationManager.init called without reactFlowStore, deferring to connect()')
       return
@@ -345,7 +382,7 @@ export class CollaborationManager {
     this.disconnect()
   }
 
-  async connect(appId: string, reactFlowStore?: any): Promise<string> {
+  async connect(appId: string, reactFlowStore?: ReactFlowStore): Promise<string> {
     const connectionId = Math.random().toString(36).substring(2, 11)
 
     this.activeConnections.add(connectionId)
@@ -373,15 +410,15 @@ export class CollaborationManager {
     this.setupSocketEventListeners(socket)
 
     this.doc = new LoroDoc()
-    this.nodesMap = this.doc.getMap('nodes')
-    this.edgesMap = this.doc.getMap('edges')
+    this.nodesMap = this.doc.getMap('nodes') as LoroMap<Record<string, Value>>
+    this.edgesMap = this.doc.getMap('edges') as LoroMap<Record<string, Value>>
 
     // Initialize UndoManager for collaborative undo/redo
     this.undoManager = new UndoManager(this.doc, {
       maxUndoSteps: 100,
       mergeInterval: 500, // Merge operations within 500ms
       excludeOriginPrefixes: [], // Don't exclude anything - let UndoManager track all local operations
-      onPush: (isUndo, range, event) => {
+      onPush: (_isUndo, _range, _event) => {
         // Store current selection state when an operation is pushed
         const selectedNode = this.reactFlowStore?.getState().getNodes().find((n: Node) => n.data?.selected)
 
@@ -401,10 +438,10 @@ export class CollaborationManager {
           cursors: [],
         }
       },
-      onPop: (isUndo, value, counterRange) => {
+      onPop: (_isUndo, value, _counterRange) => {
         // Restore selection state when undoing/redoing
         if (value?.value && typeof value.value === 'object' && 'selectedNodeId' in value.value && this.reactFlowStore) {
-          const selectedNodeId = (value.value as any).selectedNodeId
+          const selectedNodeId = (value.value as { selectedNodeId?: string | null }).selectedNodeId
           if (selectedNodeId) {
             const { setNodes } = this.reactFlowStore.getState()
             const nodes = this.reactFlowStore.getState().getNodes()
@@ -481,7 +518,7 @@ export class CollaborationManager {
   }
 
   getEdges(): Edge[] {
-    return this.edgesMap ? Array.from(this.edgesMap.values()) : []
+    return this.edgesMap ? Array.from(this.edgesMap.values()) as Edge[] : []
   }
 
   emitCursorMove(position: CursorPosition): void {
@@ -567,23 +604,23 @@ export class CollaborationManager {
     return this.eventEmitter.on('workflowUpdate', callback)
   }
 
-  onVarsAndFeaturesUpdate(callback: (update: any) => void): () => void {
+  onVarsAndFeaturesUpdate(callback: (update: CollaborationUpdate) => void): () => void {
     return this.eventEmitter.on('varsAndFeaturesUpdate', callback)
   }
 
-  onAppStateUpdate(callback: (update: any) => void): () => void {
+  onAppStateUpdate(callback: (update: CollaborationUpdate) => void): () => void {
     return this.eventEmitter.on('appStateUpdate', callback)
   }
 
-  onAppPublishUpdate(callback: (update: any) => void): () => void {
+  onAppPublishUpdate(callback: (update: CollaborationUpdate) => void): () => void {
     return this.eventEmitter.on('appPublishUpdate', callback)
   }
 
-  onAppMetaUpdate(callback: (update: any) => void): () => void {
+  onAppMetaUpdate(callback: (update: CollaborationUpdate) => void): () => void {
     return this.eventEmitter.on('appMetaUpdate', callback)
   }
 
-  onMcpServerUpdate(callback: (update: any) => void): () => void {
+  onMcpServerUpdate(callback: (update: CollaborationUpdate) => void): () => void {
     return this.eventEmitter.on('mcpServerUpdate', callback)
   }
 
@@ -635,12 +672,13 @@ export class CollaborationManager {
       const result = this.undoManager.undo()
 
       // After undo, manually update React state from CRDT without triggering collaboration
-      if (result && this.reactFlowStore) {
+      const reactFlowStore = this.reactFlowStore
+      if (result && reactFlowStore) {
         requestAnimationFrame(() => {
           // Get ReactFlow's native setters, not the collaborative ones
-          const state = this.reactFlowStore.getState()
-          const updatedNodes = Array.from(this.nodesMap?.values() || [])
-          const updatedEdges = Array.from(this.edgesMap?.values() || [])
+          const state = reactFlowStore.getState()
+          const updatedNodes = Array.from(this.nodesMap?.values() || []) as Node[]
+          const updatedEdges = Array.from(this.edgesMap?.values() || []) as Edge[]
           // Call ReactFlow's native setters directly to avoid triggering collaboration
           state.setNodes(updatedNodes)
           state.setEdges(updatedEdges)
@@ -674,12 +712,13 @@ export class CollaborationManager {
       const result = this.undoManager.redo()
 
       // After redo, manually update React state from CRDT without triggering collaboration
-      if (result && this.reactFlowStore) {
+      const reactFlowStore = this.reactFlowStore
+      if (result && reactFlowStore) {
         requestAnimationFrame(() => {
           // Get ReactFlow's native setters, not the collaborative ones
-          const state = this.reactFlowStore.getState()
-          const updatedNodes = Array.from(this.nodesMap?.values() || [])
-          const updatedEdges = Array.from(this.edgesMap?.values() || [])
+          const state = reactFlowStore.getState()
+          const updatedNodes = Array.from(this.nodesMap?.values() || []) as Node[]
+          const updatedEdges = Array.from(this.edgesMap?.values() || []) as Edge[]
           // Call ReactFlow's native setters directly to avoid triggering collaboration
           state.setNodes(updatedNodes)
           state.setEdges(updatedEdges)
@@ -753,21 +792,22 @@ export class CollaborationManager {
     newEdges.forEach((newEdge) => {
       const oldEdge = oldEdgesMap.get(newEdge.id)
       if (!oldEdge || !isEqual(oldEdge, newEdge)) {
-        const clonedEdge = cloneDeep(newEdge)
+        const clonedEdge = toLoroRecord(newEdge)
         this.edgesMap?.set(newEdge.id, clonedEdge)
       }
     })
   }
 
   private setupSubscriptions(): void {
-    this.nodesMap?.subscribe((event: any) => {
-      if (event.by === 'import' && this.reactFlowStore) {
+    this.nodesMap?.subscribe((event: LoroSubscribeEvent) => {
+      const reactFlowStore = this.reactFlowStore
+      if (event.by === 'import' && reactFlowStore) {
         // Don't update React nodes during undo/redo to prevent loops
         if (this.isUndoRedoInProgress)
           return
 
         requestAnimationFrame(() => {
-          const state = this.reactFlowStore.getState()
+          const state = reactFlowStore.getState()
           const previousNodes: Node[] = state.getNodes()
           const previousNodeMap = new Map(previousNodes.map(node => [node.id, node]))
           const selectedIds = new Set(
@@ -813,16 +853,17 @@ export class CollaborationManager {
       }
     })
 
-    this.edgesMap?.subscribe((event: any) => {
-      if (event.by === 'import' && this.reactFlowStore) {
+    this.edgesMap?.subscribe((event: LoroSubscribeEvent) => {
+      const reactFlowStore = this.reactFlowStore
+      if (event.by === 'import' && reactFlowStore) {
         // Don't update React edges during undo/redo to prevent loops
         if (this.isUndoRedoInProgress)
           return
 
         requestAnimationFrame(() => {
           // Get ReactFlow's native setters, not the collaborative ones
-          const state = this.reactFlowStore.getState()
-          const updatedEdges = Array.from(this.edgesMap?.values() || [])
+          const state = reactFlowStore.getState()
+          const updatedEdges = Array.from(this.edgesMap?.values() || []) as Edge[]
 
           this.pendingInitialSync = false
 
@@ -926,9 +967,6 @@ export class CollaborationManager {
         const wasLeader = this.isLeader
         this.isLeader = data.isLeader
 
-        if (wasLeader !== this.isLeader)
-          console.log(`Collaboration: I am now the ${this.isLeader ? 'Leader' : 'Follower'}.`)
-
         if (this.isLeader)
           this.pendingInitialSync = false
         else
@@ -943,13 +981,11 @@ export class CollaborationManager {
     })
 
     socket.on('connect', () => {
-      console.log('WebSocket connected successfully')
       this.eventEmitter.emit('stateChange', { isConnected: true })
       this.pendingInitialSync = true
     })
 
-    socket.on('disconnect', (reason: string) => {
-      console.log('WebSocket disconnected:', reason)
+    socket.on('disconnect', () => {
       this.cursors = {}
       this.isLeader = false
       this.leaderId = null
@@ -958,12 +994,12 @@ export class CollaborationManager {
       this.eventEmitter.emit('cursors', {})
     })
 
-    socket.on('connect_error', (error: any) => {
+    socket.on('connect_error', (error: Error) => {
       console.error('WebSocket connection error:', error)
       this.eventEmitter.emit('stateChange', { isConnected: false, error: error.message })
     })
 
-    socket.on('error', (error: any) => {
+    socket.on('error', (error: Error) => {
       console.error('WebSocket error:', error)
     })
   }

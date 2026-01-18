@@ -115,6 +115,7 @@ export const useNodeIterationInteractions = () => {
     const copyChildren = childrenNodes.map((child, index) => {
       const childNodeType = child.data.type as BlockEnum
       const nodesWithSameType = nodes.filter(node => node.data.type === childNodeType)
+      const defaultValue = nodesMetaDataMap?.[childNodeType]?.defaultValue ?? {}
 
       if (!childNodeTypeCount[childNodeType])
         childNodeTypeCount[childNodeType] = nodesWithSameType.length + 1
@@ -124,7 +125,7 @@ export const useNodeIterationInteractions = () => {
       const { newNode } = generateNewNode({
         type: getNodeCustomTypeByNodeDataType(childNodeType),
         data: {
-          ...nodesMetaDataMap![childNodeType].defaultValue,
+          ...defaultValue,
           ...child.data,
           selected: false,
           _isBundled: false,

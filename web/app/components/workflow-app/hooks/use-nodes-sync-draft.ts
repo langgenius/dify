@@ -98,15 +98,12 @@ export const useNodesSyncDraft = () => {
     const currentIsLeader = isCollaborationEnabled ? collaborationManager.getIsLeader() : true
 
     // Only allow leader to sync data
-    if (isCollaborationEnabled && !currentIsLeader) {
-      console.log('Not leader, skipping sync on page close')
+    if (isCollaborationEnabled && !currentIsLeader)
       return
-    }
 
     const postParams = getPostParams()
 
     if (postParams) {
-      console.log('Leader syncing workflow draft on page close')
       navigator.sendBeacon(
         `${API_PREFIX}/apps/${params.appId}/workflows/draft`,
         JSON.stringify(postParams.params),
@@ -131,14 +128,11 @@ export const useNodesSyncDraft = () => {
 
     // If not leader and not forcing upload, request the leader to sync
     if (isCollaborationEnabled && !currentIsLeader && !forceUpload) {
-      console.log('Not leader, requesting leader to sync workflow draft')
       if (isCollaborationEnabled)
         collaborationManager.emitSyncRequest()
       callback?.onSettled?.()
       return
     }
-
-    console.log(forceUpload ? 'Force uploading workflow draft' : 'Leader performing workflow draft sync')
     const postParams = getPostParams()
 
     if (postParams) {

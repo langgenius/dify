@@ -35,7 +35,7 @@ const nextConfig = {
       bundler: 'turbopack',
     }),
   },
-  webpack: (config, { dev, isServer }) => {
+  webpack: (config, { dev: _dev, isServer: _isServer }) => {
     config.plugins.push(codeInspectorPlugin({ bundler: 'webpack' }))
 
     config.experiments = {

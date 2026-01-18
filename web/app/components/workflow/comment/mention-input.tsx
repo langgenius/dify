@@ -253,11 +253,15 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
   }, [value, syncHighlightScroll])
 
   useLayoutEffect(() => {
-    evaluateContentLayout()
+    Promise.resolve().then(() => {
+      evaluateContentLayout()
+    })
   }, [value, evaluateContentLayout])
 
   useLayoutEffect(() => {
-    updateLayoutPadding()
+    Promise.resolve().then(() => {
+      updateLayoutPadding()
+    })
   }, [updateLayoutPadding, isEditing, shouldReserveButtonGap])
 
   useEffect(() => {
@@ -271,9 +275,11 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
   }, [evaluateContentLayout, updateLayoutPadding])
 
   useEffect(() => {
-    baseTextareaHeightRef.current = null
-    evaluateContentLayout()
-    setShouldReserveHorizontalSpace(!isEditing)
+    Promise.resolve().then(() => {
+      baseTextareaHeightRef.current = null
+      evaluateContentLayout()
+      setShouldReserveHorizontalSpace(!isEditing)
+    })
   }, [isEditing, evaluateContentLayout])
 
   const filteredMentionUsers = useMemo(() => {
@@ -481,8 +487,11 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
   }, [])
 
   useEffect(() => {
-    if (!value)
-      resetMentionState()
+    if (!value) {
+      Promise.resolve().then(() => {
+        resetMentionState()
+      })
+    }
   }, [value, resetMentionState])
 
   useEffect(() => {

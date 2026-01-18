@@ -1,13 +1,16 @@
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { WorkflowProps } from '@/app/components/workflow'
+import type { CollaborationUpdate } from '@/app/components/workflow/collaboration/types/collaboration'
+import type { Shape as HooksStoreShape } from '@/app/components/workflow/hooks-store/store'
+import type { Edge, Node } from '@/app/components/workflow/types'
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import {
   useCallback,
   useEffect,
   useMemo,
   useRef,
-  useState,
 } from 'react'
-import { useReactFlow, useStoreApi } from 'reactflow'
+import { useReactFlow } from 'reactflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
@@ -31,6 +34,7 @@ import {
 import WorkflowChildren from './workflow-children'
 
 type WorkflowMainProps = Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport'>
+type WorkflowDataUpdatePayload = Pick<FetchWorkflowDraftResponse, 'features' | 'conversation_variables' | 'environment_variables'>
 const WorkflowMain = ({
   nodes,
   edges,
@@ -42,7 +46,14 @@ const WorkflowMain = ({
   const containerRef = useRef<HTMLDivElement>(null)
   const reactFlow = useReactFlow()
 
-  const store = useStoreApi()
+  const reactFlowStore = useMemo(() => ({
+    getState: () => ({
+      getNodes: () => reactFlow.getNodes(),
+      setNodes: (nodesToSet: Node[]) => reactFlow.setNodes(nodesToSet),
+      getEdges: () => reactFlow.getEdges(),
+      setEdges: (edgesToSet: Edge[]) => reactFlow.setEdges(edgesToSet),
+    }),
+  }), [reactFlow])
   const {
     startCursorTracking,
     stopCursorTracking,
@@ -50,15 +61,11 @@ const WorkflowMain = ({
     cursors,
     isConnected,
     isEnabled: isCollaborationEnabled,
-  } = useCollaboration(appId || '', store)
-  const [myUserId, setMyUserId] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (isCollaborationEnabled && isConnected)
-      setMyUserId('current-user')
-    else
-      setMyUserId(null)
-  }, [isCollaborationEnabled, isConnected])
+  } = useCollaboration(appId || '', reactFlowStore)
+  const myUserId = useMemo(
+    () => (isCollaborationEnabled && isConnected ? 'current-user' : null),
+    [isCollaborationEnabled, isConnected],
+  )
 
   const filteredCursors = Object.fromEntries(
     Object.entries(cursors).filter(([userId]) => userId !== myUserId),
@@ -76,7 +83,7 @@ const WorkflowMain = ({
     }
   }, [startCursorTracking, stopCursorTracking, reactFlow, isCollaborationEnabled])
 
-  const handleWorkflowDataUpdate = useCallback((payload: any) => {
+  const handleWorkflowDataUpdate = useCallback((payload: WorkflowDataUpdatePayload) => {
     const {
       features,
       conversation_variables,
@@ -141,7 +148,7 @@ const WorkflowMain = ({
     if (!appId || !isCollaborationEnabled)
       return
 
-    const unsubscribe = collaborationManager.onVarsAndFeaturesUpdate(async (update: any) => {
+    const unsubscribe = collaborationManager.onVarsAndFeaturesUpdate(async (_update: CollaborationUpdate) => {
       try {
         const response = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
         handleWorkflowDataUpdate(response)
@@ -160,7 +167,6 @@ const WorkflowMain = ({
       return
 
     const unsubscribe = collaborationManager.onWorkflowUpdate(async () => {
-      console.log('Received workflow update from collaborator, fetching latest workflow data')
       try {
         const response = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
 
@@ -190,7 +196,6 @@ const WorkflowMain = ({
       return
 
     const unsubscribe = collaborationManager.onSyncRequest(() => {
-      console.log('Leader received sync request, performing sync')
       doSyncWorkflowDraft()
     })
 
@@ -234,7 +239,7 @@ const WorkflowMain = ({
     invalidateConversationVarValues,
   } = useInspectVarsCrud()
 
-  const hooksStore = useMemo(() => {
+  const hooksStore = useMemo<Partial<HooksStoreShape>>(() => {
     return {
       syncWorkflowDraftWhenPageClose,
       doSyncWorkflowDraft,
@@ -320,7 +325,7 @@ const WorkflowMain = ({
         edges={edges}
         viewport={viewport}
         onWorkflowDataUpdate={handleWorkflowDataUpdate}
-        hooksStore={hooksStore as any}
+        hooksStore={hooksStore}
         cursors={filteredCursors}
         myUserId={myUserId}
         onlineUsers={onlineUsers}

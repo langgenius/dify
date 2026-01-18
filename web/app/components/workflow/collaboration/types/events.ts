@@ -1,38 +1,34 @@
-export type CollaborationEvent = {
+export type CollaborationEvent<TData = unknown> = {
   type: string
-  data: any
+  data: TData
   timestamp: number
 }
 
 export type GraphUpdateEvent = {
   type: 'graph_update'
-  data: Uint8Array
-} & CollaborationEvent
+} & CollaborationEvent<Uint8Array>
 
 export type CursorMoveEvent = {
   type: 'cursor_move'
-  data: {
-    x: number
-    y: number
-    userId: string
-  }
-} & CollaborationEvent
+} & CollaborationEvent<{
+  x: number
+  y: number
+  userId: string
+}>
 
 export type UserConnectEvent = {
   type: 'user_connect'
-  data: {
-    workflow_id: string
-  }
-} & CollaborationEvent
+} & CollaborationEvent<{
+  workflow_id: string
+}>
 
 export type OnlineUsersEvent = {
   type: 'online_users'
-  data: {
-    users: Array<{
-      user_id: string
-      username: string
-      avatar: string
-      sid: string
-    }>
-  }
-} & CollaborationEvent
+} & CollaborationEvent<{
+  users: Array<{
+    user_id: string
+    username: string
+    avatar: string
+    sid: string
+  }>
+}>

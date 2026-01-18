@@ -91,13 +91,15 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
     ? buildTriggerModeMessage(t('mcp.server.title', { ns: 'tools' }))
     : null
 
-  const updateAppDetail = async () => {
+  const updateAppDetail = useCallback(async () => {
     try {
       const res = await fetchAppDetail({ url: '/apps', id: appId })
       setAppDetail({ ...res })
     }
-    catch (error) { console.error(error) }
-  }
+    catch (error) {
+      console.error(error)
+    }
+  }, [appId, setAppDetail])
 
   const handleCallbackResult = (err: Error | null, message?: I18nKeysByPrefix<'common', 'actionMsg.'>) => {
     const type = err ? 'error' : 'success'
@@ -129,9 +131,8 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
     if (!appId)
       return
 
-    const unsubscribe = collaborationManager.onAppStateUpdate(async (update: any) => {
+    const unsubscribe = collaborationManager.onAppStateUpdate(async () => {
       try {
-        console.log('Received app state update from collaboration:', update)
         // Update app detail when other clients modify app state
         await updateAppDetail()
       }
@@ -141,7 +142,7 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
     })
 
     return unsubscribe
-  }, [appId])
+  }, [appId, updateAppDetail])
 
   const onChangeSiteStatus = async (value: boolean) => {
     const [err] = await asyncRunSafe<App>(

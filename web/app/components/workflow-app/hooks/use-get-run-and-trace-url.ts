@@ -3,8 +3,14 @@ import { useWorkflowStore } from '@/app/components/workflow/store'
 
 export const useGetRunAndTraceUrl = () => {
   const workflowStore = useWorkflowStore()
-  const getWorkflowRunAndTraceUrl = useCallback((runId: string) => {
+  const getWorkflowRunAndTraceUrl = useCallback((runId?: string) => {
     const { appId } = workflowStore.getState()
+    if (!appId || !runId) {
+      return {
+        runUrl: '',
+        traceUrl: '',
+      }
+    }
 
     return {
       runUrl: `/apps/${appId}/workflow-runs/${runId}`,

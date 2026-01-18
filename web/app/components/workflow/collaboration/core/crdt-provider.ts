@@ -15,7 +15,7 @@ export class CRDTProvider {
   }
 
   private setupEventListeners(): void {
-    this.doc.subscribe((event: any) => {
+    this.doc.subscribe((event: { by?: string }) => {
       if (event.by === 'local') {
         const update = this.doc.export({ mode: 'update' })
         emitWithAuthGuard(this.socket, 'graph_event', update, { onUnauthorized: this.onUnauthorized })
