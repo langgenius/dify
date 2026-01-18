@@ -13,7 +13,6 @@ import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunDetail } fr
 import type { App, AppIconType, AppModeEnum } from '@/types/app'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { APP_PAGE_LIMIT } from '@/config'
 import { WorkflowRunTriggeredFrom } from '@/models/log'
 import WorkflowAppLogList from './list'
@@ -26,6 +25,9 @@ const mockRouterPush = vi.fn()
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: mockRouterPush,
+  }),
+  useParams: () => ({
+    appId: 'test-app-id',
   }),
 }))
 
@@ -84,6 +86,40 @@ vi.mock('ahooks', () => ({
     }
     return [initial, setters] as const
   },
+}))
+
+// Mock app detail data for useAppDetail hook
+const mockAppDetail: App = {
+  id: 'test-app-id',
+  name: 'Test App',
+  description: 'Test app description',
+  author_name: 'Test Author',
+  icon_type: 'emoji' as AppIconType,
+  icon: '',
+  icon_background: '#FFEAD5',
+  icon_url: null,
+  use_icon_as_answer_icon: false,
+  mode: 'workflow' as AppModeEnum,
+  enable_site: true,
+  enable_api: true,
+  api_rpm: 60,
+  api_rph: 3600,
+  is_demo: false,
+  model_config: {} as App['model_config'],
+  app_model_config: {} as App['app_model_config'],
+  created_at: Date.now(),
+  updated_at: Date.now(),
+  site: {
+    access_token: 'token',
+    app_base_url: 'https://example.com',
+  } as App['site'],
+  api_base_url: 'https://api.example.com',
+  tags: [],
+  access_mode: 'public_access' as App['access_mode'],
+}
+
+vi.mock('@/service/use-apps', () => ({
+  useAppDetail: () => ({ data: mockAppDetail, isPending: false }),
 }))
 
 // ============================================================================
@@ -168,7 +204,6 @@ describe('WorkflowAppLogList', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    useAppStore.setState({ appDetail: createMockApp() })
   })
 
   // --------------------------------------------------------------------------
@@ -426,7 +461,6 @@ describe('WorkflowAppLogList', () => {
   describe('Drawer', () => {
     it('should open drawer when clicking on a log row', async () => {
       const user = userEvent.setup()
-      useAppStore.setState({ appDetail: createMockApp({ id: 'app-123' }) })
       const logs = createMockLogsResponse([
         createMockWorkflowLog({
           id: 'log-1',
@@ -449,7 +483,6 @@ describe('WorkflowAppLogList', () => {
     it('should close drawer and call onRefresh when closing', async () => {
       const user = userEvent.setup()
       const onRefresh = vi.fn()
-      useAppStore.setState({ appDetail: createMockApp() })
       const logs = createMockLogsResponse([createMockWorkflowLog()])
 
       render(
@@ -498,7 +531,6 @@ describe('WorkflowAppLogList', () => {
   describe('Replay Functionality', () => {
     it('should allow replay when triggered from app-run', async () => {
       const user = userEvent.setup()
-      useAppStore.setState({ appDetail: createMockApp({ id: 'app-replay' }) })
       const logs = createMockLogsResponse([
         createMockWorkflowLog({
           workflow_run: createMockWorkflowRun({
@@ -521,12 +553,11 @@ describe('WorkflowAppLogList', () => {
       const replayButton = screen.getByRole('button', { name: 'appLog.runDetail.testWithParams' })
       await user.click(replayButton)
 
-      expect(mockRouterPush).toHaveBeenCalledWith('/app/app-replay/workflow?replayRunId=run-to-replay')
+      expect(mockRouterPush).toHaveBeenCalledWith('/app/test-app-id/workflow?replayRunId=run-to-replay')
     })
 
     it('should allow replay when triggered from debugging', async () => {
       const user = userEvent.setup()
-      useAppStore.setState({ appDetail: createMockApp({ id: 'app-debug' }) })
       const logs = createMockLogsResponse([
         createMockWorkflowLog({
           workflow_run: createMockWorkflowRun({
@@ -552,7 +583,6 @@ describe('WorkflowAppLogList', () => {
 
     it('should not show replay for webhook triggers', async () => {
       const user = userEvent.setup()
-      useAppStore.setState({ appDetail: createMockApp({ id: 'app-webhook' }) })
       const logs = createMockLogsResponse([
         createMockWorkflowLog({
           workflow_run: createMockWorkflowRun({

@@ -15,6 +15,7 @@ import {
   RiVerifiedBadgeLine,
 } from '@remixicon/react'
 import { useKeyPress } from 'ahooks'
+import { useParams } from 'next/navigation'
 import {
   memo,
   useCallback,
@@ -24,7 +25,6 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import EmbeddedModal from '@/app/components/app/overview/embedded'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { trackEvent } from '@/app/components/base/amplitude'
 import Button from '@/app/components/base/button'
 import { CodeBrowser } from '@/app/components/base/icons/src/vender/line/development'
@@ -41,8 +41,8 @@ import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/access-control'
-import { fetchAppDetailDirect } from '@/service/apps'
 import { fetchInstalledAppList } from '@/service/explore'
+import { useAppDetail, useInvalidateAppDetail } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
 import Divider from '../../base/divider'
@@ -139,6 +139,7 @@ const AppPublisher = ({
   startNodeLimitExceeded = false,
 }: AppPublisherProps) => {
   const { t } = useTranslation()
+  const { appId } = useParams()
 
   const [published, setPublished] = useState(false)
   const [open, setOpen] = useState(false)
@@ -146,8 +147,8 @@ const AppPublisher = ({
   const [isAppAccessSet, setIsAppAccessSet] = useState(true)
   const [embeddingModalOpen, setEmbeddingModalOpen] = useState(false)
 
-  const appDetail = useAppStore(state => state.appDetail)
-  const setAppDetail = useAppStore(s => s.setAppDetail)
+  const { data: appDetail } = useAppDetail(appId as string)
+  const invalidateAppDetail = useInvalidateAppDetail()
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { app_base_url: appBaseURL = '', access_token: accessToken = '' } = appDetail?.site ?? {}
@@ -239,16 +240,15 @@ const AppPublisher = ({
   }, [appDetail?.id, openAsyncWindow])
 
   const handleAccessControlUpdate = useCallback(async () => {
-    if (!appDetail)
+    if (!appId)
       return
     try {
-      const res = await fetchAppDetailDirect({ url: '/apps', id: appDetail.id })
-      setAppDetail(res)
+      invalidateAppDetail(appId as string)
     }
     finally {
       setShowAppAccessControl(false)
     }
-  }, [appDetail, setAppDetail])
+  }, [appId, invalidateAppDetail])
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.p`, (e) => {
     e.preventDefault()

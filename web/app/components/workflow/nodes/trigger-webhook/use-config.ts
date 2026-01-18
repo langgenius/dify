@@ -1,10 +1,10 @@
 import type { HttpMethod, WebhookHeader, WebhookParameter, WebhookTriggerNodeType } from './types'
 import type { Variable } from '@/app/components/workflow/types'
 import { produce } from 'immer'
+import { useParams } from 'next/navigation'
 import { useCallback } from 'react'
 
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import Toast from '@/app/components/base/toast'
 import { useNodesReadOnly, useWorkflow } from '@/app/components/workflow/hooks'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
@@ -17,7 +17,7 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
   const { t } = useTranslation()
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const { inputs, setInputs } = useNodeCrud<WebhookTriggerNodeType>(id, payload)
-  const appId = useAppStore.getState().appDetail?.id
+  const { appId } = useParams()
   const { isVarUsedInNodes, removeUsedVarInNodes } = useWorkflow()
 
   const handleMethodChange = useCallback((method: HttpMethod) => {
@@ -217,7 +217,7 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
 
     try {
       // Call backend to generate or fetch webhook url for this node
-      const response = await fetchWebhookUrl({ appId, nodeId: id })
+      const response = await fetchWebhookUrl({ appId: appId as string, nodeId: id })
 
       const newInputs = produce(inputs, (draft) => {
         draft.webhook_url = response.webhook_url

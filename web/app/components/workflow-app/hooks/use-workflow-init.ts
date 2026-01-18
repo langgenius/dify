@@ -1,17 +1,18 @@
 import type { Edge, Node } from '@/app/components/workflow/types'
 import type { FileUploadConfigResponse } from '@/models/common'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
+import { useParams } from 'next/navigation'
 import {
   useCallback,
   useEffect,
   useState,
 } from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import {
   useStore,
   useWorkflowStore,
 } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { useAppDetail } from '@/service/use-apps'
 import { useWorkflowConfig } from '@/service/use-workflow'
 import {
   fetchNodesDefaultConfigs,
@@ -38,13 +39,16 @@ export const useWorkflowInit = () => {
     nodes: nodesTemplate,
     edges: edgesTemplate,
   } = useWorkflowTemplate()
-  const appDetail = useAppStore(state => state.appDetail)!
+  const { appId } = useParams()
+  const { data: appDetail } = useAppDetail(appId as string)
   const setSyncWorkflowDraftHash = useStore(s => s.setSyncWorkflowDraftHash)
   const [data, setData] = useState<FetchWorkflowDraftResponse>()
   const [isLoading, setIsLoading] = useState(true)
   useEffect(() => {
-    workflowStore.setState({ appId: appDetail.id, appName: appDetail.name })
-  }, [appDetail.id, workflowStore])
+    if (appDetail) {
+      workflowStore.setState({ appId: appDetail.id, appName: appDetail.name })
+    }
+  }, [appDetail, workflowStore])
 
   const handleUpdateWorkflowFileUploadConfig = useCallback((config: FileUploadConfigResponse) => {
     const { setFileUploadConfig } = workflowStore.getState()
@@ -56,6 +60,8 @@ export const useWorkflowInit = () => {
   } = useWorkflowConfig('/files/upload', handleUpdateWorkflowFileUploadConfig)
 
   const handleGetInitialWorkflowData = useCallback(async () => {
+    if (!appDetail)
+      return
     try {
       const res = await fetchWorkflowDraft(`/apps/${appDetail.id}/workflows/draft`)
       setData(res)
@@ -109,8 +115,9 @@ export const useWorkflowInit = () => {
   }, [appDetail, nodesTemplate, edgesTemplate, workflowStore, setSyncWorkflowDraftHash])
 
   useEffect(() => {
-    handleGetInitialWorkflowData()
-  }, [])
+    if (appDetail)
+      handleGetInitialWorkflowData()
+  }, [appDetail, handleGetInitialWorkflowData])
 
   const handleFetchPreloadData = useCallback(async () => {
     try {

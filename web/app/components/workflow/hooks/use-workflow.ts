@@ -10,6 +10,7 @@ import type {
   ValueSelector,
 } from '../types'
 import { uniqBy } from 'es-toolkit/compat'
+import { useParams } from 'next/navigation'
 import {
   useCallback,
 } from 'react'
@@ -18,9 +19,9 @@ import {
   getOutgoers,
   useStoreApi,
 } from 'reactflow'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
+import { useAppDetail } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
 import { useNodesMetaData } from '.'
 import {
@@ -43,7 +44,8 @@ import {
 import { useAvailableBlocks } from './use-available-blocks'
 
 export const useIsChatMode = () => {
-  const appDetail = useAppStore(s => s.appDetail)
+  const { appId } = useParams()
+  const { data: appDetail } = useAppDetail(appId as string)
 
   return appDetail?.mode === AppModeEnum.ADVANCED_CHAT
 }

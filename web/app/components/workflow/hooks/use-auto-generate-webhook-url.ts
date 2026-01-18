@@ -1,15 +1,15 @@
 import { produce } from 'immer'
+import { useParams } from 'next/navigation'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { fetchWebhookUrl } from '@/service/apps'
 
 export const useAutoGenerateWebhookUrl = () => {
   const reactFlowStore = useStoreApi()
+  const { appId } = useParams()
 
   return useCallback(async (nodeId: string) => {
-    const appId = useAppStore.getState().appDetail?.id
     if (!appId)
       return
 
@@ -22,7 +22,7 @@ export const useAutoGenerateWebhookUrl = () => {
       return
 
     try {
-      const response = await fetchWebhookUrl({ appId, nodeId })
+      const response = await fetchWebhookUrl({ appId: appId as string, nodeId })
       const { getNodes: getLatestNodes, setNodes } = reactFlowStore.getState()
       let hasUpdated = false
       const updatedNodes = produce(getLatestNodes(), (draft) => {
@@ -44,5 +44,5 @@ export const useAutoGenerateWebhookUrl = () => {
     catch (error: unknown) {
       console.error('Failed to auto-generate webhook URL:', error)
     }
-  }, [reactFlowStore])
+  }, [reactFlowStore, appId])
 }

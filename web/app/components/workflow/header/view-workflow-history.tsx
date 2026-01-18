@@ -44,7 +44,6 @@ const ViewWorkflowHistory = () => {
 
   const { nodesReadOnly } = useNodesReadOnly()
   const { setCurrentLogItem, setShowMessageLogModal } = useAppStore(useShallow(state => ({
-    appDetail: state.appDetail,
     setCurrentLogItem: state.setCurrentLogItem,
     setShowMessageLogModal: state.setShowMessageLogModal,
   })))

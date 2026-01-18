@@ -11,14 +11,14 @@ import {
   RiFileDownloadLine,
   RiFileUploadLine,
 } from '@remixicon/react'
+import { useQueryClient } from '@tanstack/react-query'
 import dynamic from 'next/dynamic'
-import { useRouter } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import CardView from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/card-view'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import Button from '@/app/components/base/button'
 import ContentDialog from '@/app/components/base/content-dialog'
 import { ToastContext } from '@/app/components/base/toast'
@@ -26,7 +26,7 @@ import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { copyApp, deleteApp, exportAppConfig, updateAppInfo } from '@/service/apps'
-import { useInvalidateAppList } from '@/service/use-apps'
+import { useAppDetail, useInvalidateAppList } from '@/service/use-apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
@@ -64,9 +64,10 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const { replace } = useRouter()
+  const { appId } = useParams()
+  const queryClient = useQueryClient()
   const { onPlanInfoChanged } = useProviderContext()
-  const appDetail = useAppStore(state => state.appDetail)
-  const setAppDetail = useAppStore(state => state.setAppDetail)
+  const { data: appDetail } = useAppDetail(appId as string)
   const invalidateAppList = useInvalidateAppList()
   const [open, setOpen] = useState(openState)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -76,6 +77,10 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
   const [showImportDSLModal, setShowImportDSLModal] = useState<boolean>(false)
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
   const [showExportWarning, setShowExportWarning] = useState(false)
+
+  const invalidateAppDetail = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['apps', 'detail', appId] })
+  }, [queryClient, appId])
 
   const onEdit: CreateAppModalProps['onConfirm'] = useCallback(async ({
     name,
@@ -89,7 +94,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
     if (!appDetail)
       return
     try {
-      const app = await updateAppInfo({
+      await updateAppInfo({
         appID: appDetail.id,
         name,
         icon_type,
@@ -104,12 +109,12 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
         type: 'success',
         message: t('editDone', { ns: 'app' }),
       })
-      setAppDetail(app)
+      invalidateAppDetail()
     }
     catch {
       notify({ type: 'error', message: t('editFailed', { ns: 'app' }) })
     }
-  }, [appDetail, notify, setAppDetail, t])
+  }, [appDetail, notify, invalidateAppDetail, t])
 
   const onCopy: DuplicateAppModalProps['onConfirm'] = async ({ name, icon_type, icon, icon_background }) => {
     if (!appDetail)
@@ -195,7 +200,6 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
       notify({ type: 'success', message: t('appDeleted', { ns: 'app' }) })
       invalidateAppList()
       onPlanInfoChanged()
-      setAppDetail()
       replace('/apps')
     }
     catch (e: any) {
@@ -205,7 +209,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
       })
     }
     setShowConfirmDelete(false)
-  }, [appDetail, invalidateAppList, notify, onPlanInfoChanged, replace, setAppDetail, t])
+  }, [appDetail, invalidateAppList, notify, onPlanInfoChanged, replace, t])
 
   const { isCurrentWorkspaceEditor } = useAppContext()
 
@@ -242,7 +246,6 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
   ]
 
   const secondaryOperations: Operation[] = [
-    // Import DSL (conditional)
     ...(appDetail.mode === AppModeEnum.ADVANCED_CHAT || appDetail.mode === AppModeEnum.WORKFLOW)
       ? [{
           id: 'import',
@@ -255,7 +258,6 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
           },
         }]
       : [],
-    // Divider
     {
       id: 'divider-1',
       title: '',
@@ -263,7 +265,6 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
       onClick: () => { /* divider has no action */ },
       type: 'divider' as const,
     },
-    // Delete operation
     {
       id: 'delete',
       title: t('operation.delete', { ns: 'common' }),
@@ -276,7 +277,6 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
     },
   ]
 
-  // Keep the switch operation separate as it's not part of the main operations
   const switchOperation = (appDetail.mode === AppModeEnum.COMPLETION || appDetail.mode === AppModeEnum.CHAT)
     ? {
         id: 'switch',
@@ -370,11 +370,9 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
               <div className="system-2xs-medium-uppercase text-text-tertiary">{appDetail.mode === AppModeEnum.ADVANCED_CHAT ? t('types.advanced', { ns: 'app' }) : appDetail.mode === AppModeEnum.AGENT_CHAT ? t('types.agent', { ns: 'app' }) : appDetail.mode === AppModeEnum.CHAT ? t('types.chatbot', { ns: 'app' }) : appDetail.mode === AppModeEnum.COMPLETION ? t('types.completion', { ns: 'app' }) : t('types.workflow', { ns: 'app' })}</div>
             </div>
           </div>
-          {/* description */}
           {appDetail.description && (
             <div className="system-xs-regular overflow-wrap-anywhere max-h-[105px] w-full max-w-full overflow-y-auto whitespace-normal break-words text-text-tertiary">{appDetail.description}</div>
           )}
-          {/* operations */}
           <AppOperations
             gap={4}
             primaryOperations={primaryOperations}
@@ -386,7 +384,6 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
           isInPanel={true}
           className="flex flex-1 flex-col gap-2 overflow-auto px-2 py-1"
         />
-        {/* Switch operation (if available) */}
         {switchOperation && (
           <div className="flex min-h-fit shrink-0 flex-col items-start justify-center gap-3 self-stretch pb-2">
             <Button

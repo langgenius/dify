@@ -2,8 +2,8 @@ import type { Meta, StoryObj } from '@storybook/nextjs'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { WorkflowRunDetailResponse } from '@/models/log'
 import type { NodeTracing, NodeTracingListResponse } from '@/types/workflow'
-import { useEffect } from 'react'
-import { useStore } from '@/app/components/app/store'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { useEffect, useRef, useState } from 'react'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
 import { BlockEnum } from '@/app/components/workflow/types'
 import MessageLogModal from '.'
@@ -94,12 +94,24 @@ const mockCurrentLogItem: IChatItem = {
   workflow_run_id: 'run-demo-1',
 }
 
-const useMessageLogMocks = () => {
-  useEffect(() => {
-    const store = useStore.getState()
-    store.setAppDetail(SAMPLE_APP_DETAIL)
+const createQueryClient = () => {
+  const client = new QueryClient({
+    defaultOptions: {
+      queries: {
+        refetchOnWindowFocus: false,
+        retry: false,
+      },
+    },
+  })
+  client.setQueryData(['apps', 'detail', 'app-demo-1'], SAMPLE_APP_DETAIL)
+  return client
+}
 
-    const originalFetch = globalThis.fetch?.bind(globalThis) ?? null
+const useMessageLogMocks = () => {
+  const originalFetchRef = useRef<typeof globalThis.fetch>(null)
+
+  useEffect(() => {
+    originalFetchRef.current = globalThis.fetch?.bind(globalThis) ?? null
 
     const handle = async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === 'string'
@@ -122,8 +134,8 @@ const useMessageLogMocks = () => {
         )
       }
 
-      if (originalFetch)
-        return originalFetch(input, init)
+      if (originalFetchRef.current)
+        return originalFetchRef.current(input, init)
 
       throw new Error(`Unmocked fetch call for ${url}`)
     }
@@ -131,8 +143,8 @@ const useMessageLogMocks = () => {
     globalThis.fetch = handle as typeof globalThis.fetch
 
     return () => {
-      globalThis.fetch = originalFetch || globalThis.fetch
-      useStore.getState().setAppDetail(undefined)
+      if (originalFetchRef.current)
+        globalThis.fetch = originalFetchRef.current
     }
   }, [])
 }
@@ -140,17 +152,21 @@ const useMessageLogMocks = () => {
 type MessageLogModalProps = React.ComponentProps<typeof MessageLogModal>
 
 const MessageLogPreview = (props: MessageLogModalProps) => {
+  const [queryClient] = useState(() => createQueryClient())
+
   useMessageLogMocks()
 
   return (
-    <div className="relative min-h-[640px] w-full bg-background-default-subtle p-6">
-      <WorkflowContextProvider>
-        <MessageLogModal
-          {...props}
-          currentLogItem={mockCurrentLogItem}
-        />
-      </WorkflowContextProvider>
-    </div>
+    <QueryClientProvider client={queryClient}>
+      <div className="relative min-h-[640px] w-full bg-background-default-subtle p-6">
+        <WorkflowContextProvider>
+          <MessageLogModal
+            {...props}
+            currentLogItem={mockCurrentLogItem}
+          />
+        </WorkflowContextProvider>
+      </div>
+    </QueryClientProvider>
   )
 }
 

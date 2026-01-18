@@ -94,6 +94,17 @@ export const useAppDetail = (appID: string) => {
   })
 }
 
+export const useInvalidateAppDetail = () => {
+  const queryClient = useQueryClient()
+  return (appId?: string) => {
+    if (!appId)
+      return
+    queryClient.invalidateQueries({
+      queryKey: [NAME_SPACE, 'detail', appId],
+    })
+  }
+}
+
 export const useAppList = (params: AppListParams, options?: { enabled?: boolean }) => {
   const normalizedParams = normalizeAppListParams(params)
   return useQuery<AppListResponse>({

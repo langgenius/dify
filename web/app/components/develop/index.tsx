@@ -1,17 +1,17 @@
 'use client'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
 import ApiServer from '@/app/components/develop/ApiServer'
 import Doc from '@/app/components/develop/doc'
+import { useAppDetail } from '@/service/use-apps'
 
 type IDevelopMainProps = {
   appId: string
 }
 
 const DevelopMain = ({ appId }: IDevelopMainProps) => {
-  const appDetail = useAppStore(state => state.appDetail)
+  const { data: appDetail, isPending } = useAppDetail(appId)
 
-  if (!appDetail) {
+  if (isPending || !appDetail) {
     return (
       <div className="flex h-full items-center justify-center bg-background-default">
         <Loading />

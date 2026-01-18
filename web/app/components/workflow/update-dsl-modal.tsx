@@ -11,6 +11,7 @@ import {
   RiFileDownloadLine,
 } from '@remixicon/react'
 import { load as yamlLoad } from 'js-yaml'
+import { useParams } from 'next/navigation'
 import {
   memo,
   useCallback,
@@ -20,7 +21,6 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
@@ -35,6 +35,7 @@ import {
   importDSL,
   importDSLConfirm,
 } from '@/service/apps'
+import { useAppDetail } from '@/service/use-apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { WORKFLOW_DATA_UPDATE } from './constants'
@@ -60,7 +61,8 @@ const UpdateDSLModal = ({
 }: UpdateDSLModalProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const appDetail = useAppStore(s => s.appDetail)
+  const { appId } = useParams()
+  const { data: appDetail } = useAppDetail(appId as string)
   const [currentFile, setDSLFile] = useState<File>()
   const [fileContent, setFileContent] = useState<string>()
   const [loading, setLoading] = useState(false)

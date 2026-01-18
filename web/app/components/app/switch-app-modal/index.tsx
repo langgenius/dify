@@ -3,11 +3,10 @@
 import type { App } from '@/types/app'
 import { RiCloseLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
-import { useRouter } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import AppIcon from '@/app/components/base/app-icon'
 import Button from '@/app/components/base/button'
 import Checkbox from '@/app/components/base/checkbox'
@@ -21,6 +20,7 @@ import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { deleteApp, switchApp } from '@/service/apps'
+import { useInvalidateAppDetail } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { cn } from '@/utils/classnames'
@@ -38,7 +38,8 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
   const { push, replace } = useRouter()
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const setAppDetail = useAppStore(s => s.setAppDetail)
+  const { appId } = useParams()
+  const invalidateAppDetail = useInvalidateAppDetail()
 
   const { isCurrentWorkspaceEditor } = useAppContext()
   const { plan, enableBilling } = useProviderContext()
@@ -70,7 +71,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
         onClose()
       notify({ type: 'success', message: t('newApp.appCreated', { ns: 'app' }) })
       if (inAppDetail)
-        setAppDetail()
+        invalidateAppDetail(appId as string)
       if (removeOriginal)
         await deleteApp(appDetail.id)
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')

@@ -5,13 +5,13 @@ import type { BlockEnum } from '@/app/components/workflow/types'
 import type { UpdateAppSiteCodeResponse } from '@/models/app'
 import type { App } from '@/types/app'
 import type { I18nKeysByPrefix } from '@/types/i18n'
+import { useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import AppCard from '@/app/components/app/overview/app-card'
 import TriggerCard from '@/app/components/app/overview/trigger-card'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
 import { ToastContext } from '@/app/components/base/toast'
 import MCPServiceCard from '@/app/components/tools/mcp/mcp-service-card'
@@ -19,11 +19,11 @@ import { isTriggerNode } from '@/app/components/workflow/types'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useDocLink } from '@/context/i18n'
 import {
-  fetchAppDetail,
   updateAppSiteAccessToken,
   updateAppSiteConfig,
   updateAppSiteStatus,
 } from '@/service/apps'
+import { useAppDetail } from '@/service/use-apps'
 import { useAppWorkflow } from '@/service/use-workflow'
 import { AppModeEnum } from '@/types/app'
 import { asyncRunSafe } from '@/utils'
@@ -38,8 +38,8 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
   const { notify } = useContext(ToastContext)
-  const appDetail = useAppStore(state => state.appDetail)
-  const setAppDetail = useAppStore(state => state.setAppDetail)
+  const queryClient = useQueryClient()
+  const { data: appDetail } = useAppDetail(appId)
 
   const isWorkflowApp = appDetail?.mode === AppModeEnum.WORKFLOW
   const showMCPCard = isInPanel
@@ -90,11 +90,7 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
     : null
 
   const updateAppDetail = async () => {
-    try {
-      const res = await fetchAppDetail({ url: '/apps', id: appId })
-      setAppDetail({ ...res })
-    }
-    catch (error) { console.error(error) }
+    await queryClient.invalidateQueries({ queryKey: ['apps', 'detail', appId] })
   }
 
   const handleCallbackResult = (err: Error | null, message?: I18nKeysByPrefix<'common', 'actionMsg.'>) => {

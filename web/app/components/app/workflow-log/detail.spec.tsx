@@ -11,17 +11,23 @@
 import type { App, AppIconType, AppModeEnum } from '@/types/app'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { useAppDetail } from '@/service/use-apps'
 import DetailPanel from './detail'
 
 // ============================================================================
 // Mocks
 // ============================================================================
 
+vi.mock('@/service/use-apps')
+const mockUseAppDetail = vi.mocked(useAppDetail)
+
 const mockRouterPush = vi.fn()
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: mockRouterPush,
+  }),
+  useParams: () => ({
+    appId: 'test-app-id',
   }),
 }))
 
@@ -89,6 +95,18 @@ const createMockApp = (overrides: Partial<App> = {}): App => ({
 })
 
 // ============================================================================
+// Helper Functions
+// ============================================================================
+
+function mockAppDetailReturn(app: App | undefined) {
+  mockUseAppDetail.mockReturnValue({
+    data: app,
+    isLoading: false,
+    error: null,
+  } as ReturnType<typeof useAppDetail>)
+}
+
+// ============================================================================
 // Tests
 // ============================================================================
 
@@ -97,7 +115,7 @@ describe('DetailPanel', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    useAppStore.setState({ appDetail: createMockApp() })
+    mockAppDetailReturn(createMockApp())
   })
 
   // --------------------------------------------------------------------------
@@ -125,7 +143,7 @@ describe('DetailPanel', () => {
     })
 
     it('should render Run component with correct URLs', () => {
-      useAppStore.setState({ appDetail: createMockApp({ id: 'app-456' }) })
+      mockAppDetailReturn(createMockApp({ id: 'app-456' }))
 
       render(<DetailPanel runID="run-789" onClose={defaultOnClose} />)
 
@@ -185,7 +203,7 @@ describe('DetailPanel', () => {
 
     it('should navigate to workflow page with replayRunId when replay button is clicked', async () => {
       const user = userEvent.setup()
-      useAppStore.setState({ appDetail: createMockApp({ id: 'app-replay-test' }) })
+      mockAppDetailReturn(createMockApp({ id: 'app-replay-test' }))
 
       render(<DetailPanel runID="run-to-replay" onClose={defaultOnClose} canReplay={true} />)
 
@@ -197,7 +215,7 @@ describe('DetailPanel', () => {
 
     it('should not navigate when replay clicked but appDetail is missing', async () => {
       const user = userEvent.setup()
-      useAppStore.setState({ appDetail: undefined })
+      mockAppDetailReturn(undefined)
 
       render(<DetailPanel runID="run-123" onClose={defaultOnClose} canReplay={true} />)
 
@@ -213,7 +231,7 @@ describe('DetailPanel', () => {
   // --------------------------------------------------------------------------
   describe('URL Generation', () => {
     it('should generate correct run detail URL', () => {
-      useAppStore.setState({ appDetail: createMockApp({ id: 'my-app' }) })
+      mockAppDetailReturn(createMockApp({ id: 'my-app' }))
 
       render(<DetailPanel runID="my-run" onClose={defaultOnClose} />)
 
@@ -221,7 +239,7 @@ describe('DetailPanel', () => {
     })
 
     it('should generate correct tracing list URL', () => {
-      useAppStore.setState({ appDetail: createMockApp({ id: 'my-app' }) })
+      mockAppDetailReturn(createMockApp({ id: 'my-app' }))
 
       render(<DetailPanel runID="my-run" onClose={defaultOnClose} />)
 
@@ -229,7 +247,7 @@ describe('DetailPanel', () => {
     })
 
     it('should handle special characters in runID', () => {
-      useAppStore.setState({ appDetail: createMockApp({ id: 'app-id' }) })
+      mockAppDetailReturn(createMockApp({ id: 'app-id' }))
 
       render(<DetailPanel runID="run-with-special-123" onClose={defaultOnClose} />)
 
@@ -242,7 +260,7 @@ describe('DetailPanel', () => {
   // --------------------------------------------------------------------------
   describe('Store Integration', () => {
     it('should read appDetail from store', () => {
-      useAppStore.setState({ appDetail: createMockApp({ id: 'store-app-id' }) })
+      mockAppDetailReturn(createMockApp({ id: 'store-app-id' }))
 
       render(<DetailPanel runID="run-123" onClose={defaultOnClose} />)
 
@@ -250,7 +268,7 @@ describe('DetailPanel', () => {
     })
 
     it('should handle undefined appDetail from store gracefully', () => {
-      useAppStore.setState({ appDetail: undefined })
+      mockAppDetailReturn(undefined)
 
       render(<DetailPanel runID="run-123" onClose={defaultOnClose} />)
 
@@ -272,7 +290,7 @@ describe('DetailPanel', () => {
 
     it('should handle very long runID', () => {
       const longRunId = 'a'.repeat(100)
-      useAppStore.setState({ appDetail: createMockApp({ id: 'app-id' }) })
+      mockAppDetailReturn(createMockApp({ id: 'app-id' }))
 
       render(<DetailPanel runID={longRunId} onClose={defaultOnClose} />)
 

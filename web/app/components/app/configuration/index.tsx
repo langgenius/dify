@@ -71,9 +71,10 @@ import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { PromptMode } from '@/models/debug'
-import { fetchAppDetailDirect, updateAppModelConfig } from '@/service/apps'
+import { updateAppModelConfig } from '@/service/apps'
 import { fetchDatasets } from '@/service/datasets'
 import { fetchCollectionList } from '@/service/tools'
+import { useAppDetail } from '@/service/use-apps'
 import { useFileUploadConfig } from '@/service/use-common'
 import { AgentStrategy, AppModeEnum, ModelModeType, Resolution, RETRIEVE_TYPE, TransferMethod } from '@/types/app'
 import {
@@ -95,22 +96,22 @@ const Configuration: FC = () => {
   const { notify } = useContext(ToastContext)
   const { isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
 
-  const { appDetail, showAppConfigureFeaturesModal, setAppSidebarExpand, setShowAppConfigureFeaturesModal } = useAppStore(useShallow(state => ({
-    appDetail: state.appDetail,
+  const { showAppConfigureFeaturesModal, setAppSidebarExpand, setShowAppConfigureFeaturesModal } = useAppStore(useShallow(state => ({
     setAppSidebarExpand: state.setAppSidebarExpand,
     showAppConfigureFeaturesModal: state.showAppConfigureFeaturesModal,
     setShowAppConfigureFeaturesModal: state.setShowAppConfigureFeaturesModal,
   })))
   const { data: fileUploadConfigResponse } = useFileUploadConfig()
+  const pathname = usePathname()
+  const matched = pathname.match(/\/app\/([^/]+)/)
+  const appId = (matched?.length && matched[1]) ? matched[1] : ''
+  const { data: appDetail } = useAppDetail(appId)
 
   const latestPublishedAt = useMemo(() => appDetail?.model_config?.updated_at, [appDetail])
   const [formattingChanged, setFormattingChanged] = useState(false)
   const { setShowAccountSettingModal } = useModalContext()
   const [hasFetchedDetail, setHasFetchedDetail] = useState(false)
   const isLoading = !hasFetchedDetail
-  const pathname = usePathname()
-  const matched = pathname.match(/\/app\/([^/]+)/)
-  const appId = (matched?.length && matched[1]) ? matched[1] : ''
   const [mode, setMode] = useState<AppModeEnum>(AppModeEnum.CHAT)
   const [publishedConfig, setPublishedConfig] = useState<PublishConfig | null>(null)
 
@@ -548,7 +549,10 @@ const Configuration: FC = () => {
   }, [modelConfig])
 
   useEffect(() => {
-    (async () => {
+    if (!appDetail)
+      return
+
+    const initConfig = async () => {
       const collectionList = await fetchCollectionList()
       if (basePath) {
         collectionList.forEach((item) => {
@@ -557,9 +561,8 @@ const Configuration: FC = () => {
         })
       }
       setCollectionList(collectionList)
-      const res = await fetchAppDetailDirect({ url: '/apps', id: appId })
-      setMode(res.mode as AppModeEnum)
-      const modelConfig = res.model_config as BackendModelConfig
+      setMode(appDetail.mode as AppModeEnum)
+      const modelConfig = appDetail.model_config as BackendModelConfig
       const promptMode = modelConfig.prompt_type === PromptMode.advanced ? PromptMode.advanced : PromptMode.simple
       doSetPromptMode(promptMode)
       if (promptMode === PromptMode.advanced) {
@@ -669,7 +672,7 @@ const Configuration: FC = () => {
           external_data_tools: modelConfig.external_data_tools ?? [],
           system_parameters: modelConfig.system_parameters,
           dataSets: datasets || [],
-          agentConfig: res.mode === AppModeEnum.AGENT_CHAT ? {
+          agentConfig: appDetail.mode === AppModeEnum.AGENT_CHAT ? {
             max_iteration: DEFAULT_AGENT_SETTING.max_iteration,
             ...modelConfig.agent_mode,
             // remove dataset
@@ -680,7 +683,7 @@ const Configuration: FC = () => {
               const toolInCollectionList = collectionList.find(c => tool.provider_id === c.id)
               return {
                 ...tool,
-                isDeleted: res.deleted_tools?.some((deletedTool: any) => deletedTool.provider_id === tool.provider_id && deletedTool.tool_name === tool.tool_name) ?? false,
+                isDeleted: appDetail.deleted_tools?.some((deletedTool: any) => deletedTool.provider_id === tool.provider_id && deletedTool.tool_name === tool.tool_name) ?? false,
                 notAuthor: toolInCollectionList?.is_team_authorization === false,
                 ...(tool.provider_type === 'builtin'
                   ? {
@@ -726,8 +729,10 @@ const Configuration: FC = () => {
       datasetConfigsToSet.retrieval_model = datasetConfigsToSet.retrieval_model ?? RETRIEVE_TYPE.multiWay
       setDatasetConfigs(datasetConfigsToSet)
       setHasFetchedDetail(true)
-    })()
-  }, [appId])
+    }
+
+    initConfig()
+  }, [appDetail])
 
   const promptEmpty = (() => {
     if (mode !== AppModeEnum.COMPLETION)

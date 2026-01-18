@@ -10,7 +10,6 @@ import { debounce } from 'es-toolkit/compat'
 import { useRouter } from 'next/navigation'
 import { Fragment, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
 import { FileArrow01, FilePlus01, FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
@@ -42,7 +41,6 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
   const { t } = useTranslation()
   const router = useRouter()
   const { isCurrentWorkspaceEditor } = useAppContext()
-  const setAppDetail = useAppStore(state => state.setAppDetail)
 
   const handleScroll = useCallback(debounce((e) => {
     if (typeof onLoadMore === 'function') {
@@ -84,7 +82,6 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
                       onClick={() => {
                         if (curNav?.id === nav.id)
                           return
-                        setAppDetail()
                         router.push(nav.link)
                       }}
                       title={nav.name}
