@@ -281,6 +281,9 @@ const List = () => {
             // No apps - show empty state
             return <Empty />
           })()}
+          {isFetchingNextPage && (
+            <AppCardSkeleton count={3} />
+          )}
         </div>
 
         {isCurrentWorkspaceEditor && (
