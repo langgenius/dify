@@ -1,24 +1,17 @@
 import type { StateCreator } from 'zustand'
-import type { DirtySliceShape } from './dirty-slice'
-import type { FileOperationsMenuSliceShape } from './file-operations-menu-slice'
-import type { FileTreeSliceShape } from './file-tree-slice'
-import type { MetadataSliceShape } from './metadata-slice'
-import type { TabSliceShape } from './tab-slice'
+import type { SkillEditorSliceShape } from './types'
 import { createDirtySlice } from './dirty-slice'
 import { createFileOperationsMenuSlice } from './file-operations-menu-slice'
 import { createFileTreeSlice } from './file-tree-slice'
 import { createMetadataSlice } from './metadata-slice'
 import { createTabSlice } from './tab-slice'
 
-export type SkillEditorSliceShape
-  = TabSliceShape
-    & FileTreeSliceShape
-    & DirtySliceShape
-    & MetadataSliceShape
-    & FileOperationsMenuSliceShape
-    & {
-      resetSkillEditor: () => void
-    }
+export type { DirtySliceShape } from './dirty-slice'
+export type { FileOperationsMenuSliceShape } from './file-operations-menu-slice'
+export type { FileTreeSliceShape } from './file-tree-slice'
+export type { MetadataSliceShape } from './metadata-slice'
+export type { OpenTabOptions, TabSliceShape } from './tab-slice'
+export type { SkillEditorSliceShape } from './types'
 
 export const createSkillEditorSlice: StateCreator<SkillEditorSliceShape> = (...args) => ({
   ...createTabSlice(...args),
@@ -35,7 +28,7 @@ export const createSkillEditorSlice: StateCreator<SkillEditorSliceShape> = (...a
       previewTabId: null,
       expandedFolderIds: new Set<string>(),
       dirtyContents: new Map<string, string>(),
-      fileMetadata: new Map<string, Record<string, any>>(),
+      fileMetadata: new Map<string, Record<string, unknown>>(),
       dirtyMetadataIds: new Set<string>(),
       contextMenu: null,
     })

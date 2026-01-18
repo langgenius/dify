@@ -1,14 +1,14 @@
 import type { StateCreator } from 'zustand'
+import type { DirtySliceShape, SkillEditorSliceShape } from './types'
 
-export type DirtySliceShape = {
-  dirtyContents: Map<string, string>
-  setDraftContent: (fileId: string, content: string) => void
-  clearDraftContent: (fileId: string) => void
-  isDirty: (fileId: string) => boolean
-  getDraftContent: (fileId: string) => string | undefined
-}
+export type { DirtySliceShape } from './types'
 
-export const createDirtySlice: StateCreator<DirtySliceShape> = (set, get) => ({
+export const createDirtySlice: StateCreator<
+  SkillEditorSliceShape,
+  [],
+  [],
+  DirtySliceShape
+> = (set, get) => ({
   dirtyContents: new Map<string, string>(),
 
   setDraftContent: (fileId: string, content: string) => {

@@ -1,15 +1,14 @@
 import type { StateCreator } from 'zustand'
+import type { FileOperationsMenuSliceShape, SkillEditorSliceShape } from './types'
 
-export type FileOperationsMenuSliceShape = {
-  contextMenu: {
-    top: number
-    left: number
-    nodeId: string
-  } | null
-  setContextMenu: (menu: FileOperationsMenuSliceShape['contextMenu']) => void
-}
+export type { FileOperationsMenuSliceShape } from './types'
 
-export const createFileOperationsMenuSlice: StateCreator<FileOperationsMenuSliceShape> = set => ({
+export const createFileOperationsMenuSlice: StateCreator<
+  SkillEditorSliceShape,
+  [],
+  [],
+  FileOperationsMenuSliceShape
+> = set => ({
   contextMenu: null,
 
   setContextMenu: (contextMenu) => {

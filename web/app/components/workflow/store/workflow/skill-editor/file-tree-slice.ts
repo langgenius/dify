@@ -1,17 +1,14 @@
 import type { StateCreator } from 'zustand'
+import type { FileTreeSliceShape, OpensObject, SkillEditorSliceShape } from './types'
 
-export type OpensObject = Record<string, boolean>
+export type { FileTreeSliceShape, OpensObject } from './types'
 
-export type FileTreeSliceShape = {
-  expandedFolderIds: Set<string>
-  setExpandedFolderIds: (ids: Set<string>) => void
-  toggleFolder: (folderId: string) => void
-  revealFile: (ancestorFolderIds: string[]) => void
-  setExpandedFromOpens: (opens: OpensObject) => void
-  getOpensObject: () => OpensObject
-}
-
-export const createFileTreeSlice: StateCreator<FileTreeSliceShape> = (set, get) => ({
+export const createFileTreeSlice: StateCreator<
+  SkillEditorSliceShape,
+  [],
+  [],
+  FileTreeSliceShape
+> = (set, get) => ({
   expandedFolderIds: new Set<string>(),
 
   setExpandedFolderIds: (ids: Set<string>) => {

@@ -1,21 +1,18 @@
 import type { StateCreator } from 'zustand'
+import type { MetadataSliceShape, SkillEditorSliceShape } from './types'
 
-export type MetadataSliceShape = {
-  fileMetadata: Map<string, Record<string, any>>
-  dirtyMetadataIds: Set<string>
-  setFileMetadata: (fileId: string, metadata: Record<string, any>) => void
-  setDraftMetadata: (fileId: string, metadata: Record<string, any>) => void
-  clearDraftMetadata: (fileId: string) => void
-  clearFileMetadata: (fileId: string) => void
-  isMetadataDirty: (fileId: string) => boolean
-  getFileMetadata: (fileId: string) => Record<string, any> | undefined
-}
+export type { MetadataSliceShape } from './types'
 
-export const createMetadataSlice: StateCreator<MetadataSliceShape> = (set, get) => ({
-  fileMetadata: new Map<string, Record<string, any>>(),
+export const createMetadataSlice: StateCreator<
+  SkillEditorSliceShape,
+  [],
+  [],
+  MetadataSliceShape
+> = (set, get) => ({
+  fileMetadata: new Map<string, Record<string, unknown>>(),
   dirtyMetadataIds: new Set<string>(),
 
-  setFileMetadata: (fileId: string, metadata: Record<string, any>) => {
+  setFileMetadata: (fileId: string, metadata: Record<string, unknown>) => {
     const { fileMetadata } = get()
     const nextMap = new Map(fileMetadata)
     if (metadata)
@@ -25,7 +22,7 @@ export const createMetadataSlice: StateCreator<MetadataSliceShape> = (set, get) 
     set({ fileMetadata: nextMap })
   },
 
-  setDraftMetadata: (fileId: string, metadata: Record<string, any>) => {
+  setDraftMetadata: (fileId: string, metadata: Record<string, unknown>) => {
     const { fileMetadata, dirtyMetadataIds } = get()
     const nextMap = new Map(fileMetadata)
     nextMap.set(fileId, metadata || {})

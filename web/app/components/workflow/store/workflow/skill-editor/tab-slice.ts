@@ -1,30 +1,14 @@
 import type { StateCreator } from 'zustand'
+import type { OpenTabOptions, SkillEditorSliceShape, TabSliceShape } from './types'
 
-export type OpenTabOptions = {
-  /** true = Pinned (permanent), false/undefined = Preview (temporary) */
-  pinned?: boolean
-}
+export type { OpenTabOptions, TabSliceShape } from './types'
 
-export type TabSliceShape = {
-  /** Ordered list of open tab file IDs */
-  openTabIds: string[]
-  /** Currently active tab file ID */
-  activeTabId: string | null
-  /** Current preview tab file ID (at most one) */
-  previewTabId: string | null
-  /** Open a file tab with optional pinned mode */
-  openTab: (fileId: string, options?: OpenTabOptions) => void
-  /** Close a tab */
-  closeTab: (fileId: string) => void
-  /** Activate an existing tab */
-  activateTab: (fileId: string) => void
-  /** Convert preview tab to pinned tab */
-  pinTab: (fileId: string) => void
-  /** Check if a tab is in preview mode */
-  isPreviewTab: (fileId: string) => boolean
-}
-
-export const createTabSlice: StateCreator<TabSliceShape> = (set, get) => ({
+export const createTabSlice: StateCreator<
+  SkillEditorSliceShape,
+  [],
+  [],
+  TabSliceShape
+> = (set, get) => ({
   openTabIds: [],
   activeTabId: null,
   previewTabId: null,
@@ -73,9 +57,9 @@ export const createTabSlice: StateCreator<TabSliceShape> = (set, get) => ({
         newActiveTabId = null
     }
 
-    const newPreviewTabId = previewTabId === fileId
-      ? null
-      : (previewTabId && newOpenTabIds.includes(previewTabId) ? previewTabId : null)
+    let newPreviewTabId: string | null = null
+    if (previewTabId !== fileId && previewTabId && newOpenTabIds.includes(previewTabId))
+      newPreviewTabId = previewTabId
 
     set({
       openTabIds: newOpenTabIds,
