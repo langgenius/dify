@@ -301,7 +301,6 @@ class Node(Generic[NodeDataT]):
     def run(self) -> Generator[GraphNodeEventBase, None, None]:
         execution_id = self.ensure_execution_id()
         self._start_at = naive_utc_now()
-        is_resumption = self.graph_runtime_state.is_node_resumption(self._node_id, execution_id)
 
         # Create and push start event with required fields
         start_event = NodeRunStartedEvent(
@@ -311,7 +310,6 @@ class Node(Generic[NodeDataT]):
             node_title=self.title,
             in_iteration_id=None,
             start_at=self._start_at,
-            is_resumption=is_resumption,
         )
 
         # === FIXME(-LAN-): Needs to refactor.

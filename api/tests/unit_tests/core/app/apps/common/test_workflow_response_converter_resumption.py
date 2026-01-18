@@ -1,14 +1,8 @@
-from dataclasses import dataclass
 from types import SimpleNamespace
-
-import pytest
 
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.entities.queue_entities import QueueNodeStartedEvent
-from core.app.entities.task_entities import NodeStartStreamResponse
-from core.workflow.entities import AgentNodeStrategyInit
-from core.workflow.enums import NodeType
+from core.workflow.entities.workflow_start_reason import WorkflowStartReason
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 
@@ -40,116 +34,23 @@ def _build_converter() -> WorkflowResponseConverter:
     )
 
 
-def test_node_start_stream_response_carries_resumption_flag():
-    converter = _build_converter()
-    # Seed workflow run id for converter
-    converter.workflow_start_to_stream_response(
-        task_id="task-1",
-        workflow_run_id="run-1",
-        workflow_id="wf-1",
-        is_resumption=False,
-    )
-
-    queue_event = QueueNodeStartedEvent(
-        node_execution_id="exec-1",
-        node_id="node-1",
-        node_title="Title",
-        node_type=NodeType.CODE,
-        start_at=converter._workflow_started_at,  # type: ignore[attr-defined]
-        agent_strategy=AgentNodeStrategyInit(name="test"),
-        provider_type="",
-        provider_id="",
-        is_resumption=True,
-    )
-
-    resp = converter.workflow_node_start_to_stream_response(event=queue_event, task_id="task-1")
-    assert isinstance(resp, NodeStartStreamResponse)
-    assert resp.data.is_resumption is True
-
-
-def test_node_start_stream_response_defaults_to_false():
-    converter = _build_converter()
-    converter.workflow_start_to_stream_response(
-        task_id="task-1",
-        workflow_run_id="run-1",
-        workflow_id="wf-1",
-        is_resumption=False,
-    )
-
-    queue_event = QueueNodeStartedEvent(
-        node_execution_id="exec-2",
-        node_id="node-2",
-        node_title="Title",
-        node_type=NodeType.CODE,
-        start_at=converter._workflow_started_at,  # type: ignore[attr-defined]
-        agent_strategy=None,
-        provider_type="",
-        provider_id="",
-    )
-
-    resp = converter.workflow_node_start_to_stream_response(event=queue_event, task_id="task-1")
-    assert isinstance(resp, NodeStartStreamResponse)
-    assert resp.data.is_resumption is False
-
-
-def test_workflow_start_stream_response_carries_resumption_flag():
+def test_workflow_start_stream_response_carries_resumption_reason():
     converter = _build_converter()
     resp = converter.workflow_start_to_stream_response(
         task_id="task-1",
         workflow_run_id="run-1",
         workflow_id="wf-1",
-        is_resumption=True,
+        reason=WorkflowStartReason.RESUMPTION,
     )
-    assert resp.data.is_resumption is True
+    assert resp.data.reason is WorkflowStartReason.RESUMPTION
 
 
-def test_workflow_start_stream_response_defaults_to_false():
+def test_workflow_start_stream_response_carries_initial_reason():
     converter = _build_converter()
     resp = converter.workflow_start_to_stream_response(
         task_id="task-1",
         workflow_run_id="run-1",
         workflow_id="wf-1",
-        is_resumption=False,
+        reason=WorkflowStartReason.INITIAL,
     )
-    assert resp.data.is_resumption is False
-
-
-@dataclass(frozen=True)
-class _IgnoreDetailCase:
-    execution_id: str
-    node_id: str
-    is_resumption: bool
-
-
-@pytest.mark.parametrize(
-    "case",
-    [
-        _IgnoreDetailCase(execution_id="exec-1", node_id="node-1", is_resumption=True),
-        _IgnoreDetailCase(execution_id="exec-2", node_id="node-2", is_resumption=False),
-    ],
-)
-def test_node_start_ignore_detail_includes_resumption_flag(case: _IgnoreDetailCase) -> None:
-    converter = _build_converter()
-    converter.workflow_start_to_stream_response(
-        task_id="task-1",
-        workflow_run_id="run-1",
-        workflow_id="wf-1",
-        is_resumption=False,
-    )
-
-    queue_event = QueueNodeStartedEvent(
-        node_execution_id=case.execution_id,
-        node_id=case.node_id,
-        node_title="Title",
-        node_type=NodeType.CODE,
-        start_at=converter._workflow_started_at,  # type: ignore[attr-defined]
-        agent_strategy=None,
-        provider_type="",
-        provider_id="",
-        is_resumption=case.is_resumption,
-    )
-
-    resp = converter.workflow_node_start_to_stream_response(event=queue_event, task_id="task-1")
-    assert isinstance(resp, NodeStartStreamResponse)
-    ignore_detail = resp.to_ignore_detail_dict()
-    assert ignore_detail["data"]["is_resumption"] is case.is_resumption
+    assert resp.data.reason is WorkflowStartReason.INITIAL

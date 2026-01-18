@@ -1,13 +1,16 @@
 from pydantic import Field
 
 from core.workflow.entities.pause_reason import PauseReason
+from core.workflow.entities.workflow_start_reason import WorkflowStartReason
 from core.workflow.graph_events import BaseGraphEvent
 
 
 class GraphRunStartedEvent(BaseGraphEvent):
-    # is_resumption indicating whether this `start` is a
-    # resumption of previously suspended execution.
-    is_resumption: bool = False
+    # Reason is emitted for workflow start events and is always set.
+    reason: WorkflowStartReason = Field(
+        default=WorkflowStartReason.INITIAL,
+        description="reason for workflow start",
+    )
 
 
 class GraphRunSucceededEvent(BaseGraphEvent):

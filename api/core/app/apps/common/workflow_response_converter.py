@@ -47,6 +47,7 @@ from core.tools.tool_manager import ToolManager
 from core.trigger.trigger_manager import TriggerManager
 from core.variables.segments import ArrayFileSegment, FileSegment, Segment
 from core.workflow.entities.pause_reason import HumanInputRequired
+from core.workflow.entities.workflow_start_reason import WorkflowStartReason
 from core.workflow.enums import (
     NodeType,
     SystemVariableKey,
@@ -199,7 +200,7 @@ class WorkflowResponseConverter:
         task_id: str,
         workflow_run_id: str,
         workflow_id: str,
-        is_resumption: bool,
+        reason: WorkflowStartReason,
     ) -> WorkflowStartStreamResponse:
         run_id = self._ensure_workflow_run_id(workflow_run_id)
         started_at = naive_utc_now()
@@ -213,7 +214,7 @@ class WorkflowResponseConverter:
                 workflow_id=workflow_id,
                 inputs=self._workflow_inputs,
                 created_at=int(started_at.timestamp()),
-                is_resumption=is_resumption,
+                reason=reason,
             ),
         )
 
@@ -410,7 +411,6 @@ class WorkflowResponseConverter:
                 iteration_id=event.in_iteration_id,
                 loop_id=event.in_loop_id,
                 agent_strategy=event.agent_strategy,
-                is_resumption=event.is_resumption,
             ),
         )
 

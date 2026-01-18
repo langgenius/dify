@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, cast, final
 
 from flask import Flask, current_app
 
+from core.workflow.entities.workflow_start_reason import WorkflowStartReason
 from core.workflow.enums import NodeExecutionType
 from core.workflow.graph import Graph
 from core.workflow.graph_events import (
@@ -235,7 +236,9 @@ class GraphEngine:
                 self._graph_execution.paused = False
                 self._graph_execution.pause_reasons = []
 
-            start_event = GraphRunStartedEvent(is_resumption=is_resume)
+            start_event = GraphRunStartedEvent(
+                reason=WorkflowStartReason.RESUMPTION if is_resume else WorkflowStartReason.INITIAL,
+            )
             self._event_manager.notify_layers(start_event)
             yield start_event
 

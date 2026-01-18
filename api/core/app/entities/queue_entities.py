@@ -9,6 +9,7 @@ from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.workflow.entities import AgentNodeStrategyInit
 from core.workflow.entities.pause_reason import PauseReason
+from core.workflow.entities.workflow_start_reason import WorkflowStartReason
 from core.workflow.enums import WorkflowNodeExecutionMetadataKey
 from core.workflow.nodes import NodeType
 
@@ -264,10 +265,8 @@ class QueueWorkflowStartedEvent(AppQueueEvent):
     """QueueWorkflowStartedEvent entity."""
 
     event: QueueEvent = QueueEvent.WORKFLOW_STARTED
-
-    # is_resumption indicating whether this `start` is a
-    # resumption of previously suspended execution.
-    is_resumption: bool = False
+    # Always present; mirrors GraphRunStartedEvent.reason for downstream consumers.
+    reason: WorkflowStartReason = WorkflowStartReason.INITIAL
 
 
 class QueueWorkflowSucceededEvent(AppQueueEvent):
@@ -319,10 +318,6 @@ class QueueNodeStartedEvent(AppQueueEvent):
     # FIXME(-LAN-): only for ToolNode, need to refactor
     provider_type: str  # should be a core.tools.entities.tool_entities.ToolProviderType
     provider_id: str
-    is_resumption: bool = Field(
-        default=False,
-        description="True only when this node had already started and execution resumed after a pause.",
-    )
 
 
 class QueueNodeSucceededEvent(AppQueueEvent):

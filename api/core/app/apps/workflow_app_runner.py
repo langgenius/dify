@@ -359,7 +359,7 @@ class WorkflowBasedAppRunner:
         :param event: event
         """
         if isinstance(event, GraphRunStartedEvent):
-            self._publish_event(QueueWorkflowStartedEvent(is_resumption=event.is_resumption))
+            self._publish_event(QueueWorkflowStartedEvent(reason=event.reason))
         elif isinstance(event, GraphRunSucceededEvent):
             self._publish_event(QueueWorkflowSucceededEvent(outputs=event.outputs))
         elif isinstance(event, GraphRunPartialSucceededEvent):
@@ -431,7 +431,6 @@ class WorkflowBasedAppRunner:
                     agent_strategy=event.agent_strategy,
                     provider_type=event.provider_type,
                     provider_id=event.provider_id,
-                    is_resumption=event.is_resumption,
                 )
             )
         elif isinstance(event, NodeRunSucceededEvent):

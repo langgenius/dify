@@ -272,7 +272,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             task_id=self._application_generate_entity.task_id,
             workflow_run_id=run_id,
             workflow_id=self._workflow.id,
-            is_resumption=event.is_resumption,
+            reason=event.reason,
         )
         yield start_resp
 

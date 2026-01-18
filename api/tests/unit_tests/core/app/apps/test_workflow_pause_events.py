@@ -7,6 +7,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import QueueWorkflowPausedEvent
 from core.app.entities.task_entities import HumanInputRequiredResponse, WorkflowPauseStreamResponse
 from core.workflow.entities.pause_reason import HumanInputRequired
+from core.workflow.entities.workflow_start_reason import WorkflowStartReason
 from core.workflow.graph_events.graph import GraphRunPausedEvent
 from core.workflow.nodes.human_input.entities import FormInput, UserAction
 from core.workflow.nodes.human_input.enums import FormInputType
@@ -116,7 +117,7 @@ def test_queue_workflow_paused_event_to_stream_responses():
         task_id="task",
         workflow_run_id="run-id",
         workflow_id="workflow-id",
-        is_resumption=False,
+        reason=WorkflowStartReason.INITIAL,
     )
 
     reason = HumanInputRequired(

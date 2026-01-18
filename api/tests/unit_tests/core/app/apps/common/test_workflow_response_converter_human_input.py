@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import QueueHumanInputFormFilledEvent
+from core.workflow.entities.workflow_start_reason import WorkflowStartReason
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 
@@ -39,7 +40,7 @@ def test_human_input_form_filled_stream_response_contains_rendered_content():
         task_id="task-1",
         workflow_run_id="run-1",
         workflow_id="wf-1",
-        is_resumption=False,
+        reason=WorkflowStartReason.INITIAL,
     )
 
     queue_event = QueueHumanInputFormFilledEvent(

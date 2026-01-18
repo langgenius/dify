@@ -149,10 +149,7 @@ class TestUserAction:
             UserAction(**data)
 
         errors = exc_info.value.errors()
-        assert any(
-            error["loc"] == (field_name,) and error["type"] == "string_too_long"
-            for error in errors
-        )
+        assert any(error["loc"] == (field_name,) and error["type"] == "string_too_long" for error in errors)
 
 
 class TestHumanInputNodeData:

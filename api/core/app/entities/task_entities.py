@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.workflow.entities import AgentNodeStrategyInit
+from core.workflow.entities.workflow_start_reason import WorkflowStartReason
 from core.workflow.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.nodes.human_input.entities import FormInput, UserAction
 
@@ -209,7 +210,8 @@ class WorkflowStartStreamResponse(StreamResponse):
         workflow_id: str
         inputs: Mapping[str, Any]
         created_at: int
-        is_resumption: bool = False
+        # Always present; mirrors QueueWorkflowStartedEvent.reason for SSE clients.
+        reason: WorkflowStartReason = WorkflowStartReason.INITIAL
 
     event: StreamEvent = StreamEvent.WORKFLOW_STARTED
     workflow_run_id: str
@@ -326,7 +328,6 @@ class NodeStartStreamResponse(StreamResponse):
         iteration_id: str | None = None
         loop_id: str | None = None
         agent_strategy: AgentNodeStrategyInit | None = None
-        is_resumption: bool = False
 
     event: StreamEvent = StreamEvent.NODE_STARTED
     workflow_run_id: str
@@ -349,7 +350,6 @@ class NodeStartStreamResponse(StreamResponse):
                 "extras": {},
                 "iteration_id": self.data.iteration_id,
                 "loop_id": self.data.loop_id,
-                "is_resumption": self.data.is_resumption,
             },
         }
 

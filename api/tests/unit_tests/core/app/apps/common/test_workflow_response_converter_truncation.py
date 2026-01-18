@@ -23,6 +23,7 @@ from core.app.entities.queue_entities import (
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
 )
+from core.workflow.entities.workflow_start_reason import WorkflowStartReason
 from core.workflow.enums import NodeType
 from core.workflow.system_variable import SystemVariable
 from libs.datetime_utils import naive_utc_now
@@ -128,7 +129,7 @@ class TestWorkflowResponseConverter:
             task_id="bootstrap",
             workflow_run_id="run-id",
             workflow_id="wf-id",
-            is_resumption=False,
+            reason=WorkflowStartReason.INITIAL,
         )
         start_event = self.create_node_started_event()
         converter.workflow_node_start_to_stream_response(
@@ -169,7 +170,7 @@ class TestWorkflowResponseConverter:
             task_id="bootstrap",
             workflow_run_id="run-id",
             workflow_id="wf-id",
-            is_resumption=False,
+            reason=WorkflowStartReason.INITIAL,
         )
         start_event = self.create_node_started_event()
         converter.workflow_node_start_to_stream_response(
@@ -205,7 +206,7 @@ class TestWorkflowResponseConverter:
             task_id="bootstrap",
             workflow_run_id="run-id",
             workflow_id="wf-id",
-            is_resumption=False,
+            reason=WorkflowStartReason.INITIAL,
         )
         start_event = self.create_node_started_event()
         converter.workflow_node_start_to_stream_response(
@@ -244,7 +245,7 @@ class TestWorkflowResponseConverter:
             task_id="bootstrap",
             workflow_run_id="run-id",
             workflow_id="wf-id",
-            is_resumption=False,
+            reason=WorkflowStartReason.INITIAL,
         )
         start_event = self.create_node_started_event()
         converter.workflow_node_start_to_stream_response(
@@ -285,7 +286,7 @@ class TestWorkflowResponseConverter:
             task_id="bootstrap",
             workflow_run_id="run-id",
             workflow_id="wf-id",
-            is_resumption=False,
+            reason=WorkflowStartReason.INITIAL,
         )
         start_event = self.create_node_started_event()
         converter.workflow_node_start_to_stream_response(
@@ -425,7 +426,7 @@ class TestWorkflowResponseConverterServiceApiTruncation:
             task_id="test-task-id",
             workflow_run_id="test-workflow-run-id",
             workflow_id="test-workflow-id",
-            is_resumption=False,
+            reason=WorkflowStartReason.INITIAL,
         )
         return converter
 

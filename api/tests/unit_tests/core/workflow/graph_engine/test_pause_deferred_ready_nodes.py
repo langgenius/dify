@@ -7,6 +7,7 @@ from typing import Any
 from core.model_runtime.entities.llm_entities import LLMMode
 from core.model_runtime.entities.message_entities import PromptMessageRole
 from core.workflow.entities import GraphInitParams
+from core.workflow.entities.workflow_start_reason import WorkflowStartReason
 from core.workflow.graph import Graph
 from core.workflow.graph_engine.command_channels.in_memory_channel import InMemoryChannel
 from core.workflow.graph_engine.graph_engine import GraphEngine
@@ -294,9 +295,8 @@ def test_pause_defers_ready_nodes_until_resume() -> None:
     resumed_events = list(resumed_engine.run())
 
     start_event = next(e for e in resumed_events if isinstance(e, GraphRunStartedEvent))
-    assert start_event.is_resumption is True
+    assert start_event.reason is WorkflowStartReason.RESUMPTION
 
     llm_b_started = _get_node_started_event(resumed_events, "llm_b")
     assert llm_b_started is not None
-    assert llm_b_started.is_resumption is False
     assert any(isinstance(e, NodeRunSucceededEvent) and e.node_id == "llm_b" for e in resumed_events)

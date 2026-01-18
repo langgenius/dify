@@ -7,6 +7,7 @@ from typing import Any
 from core.model_runtime.entities.llm_entities import LLMMode
 from core.model_runtime.entities.message_entities import PromptMessageRole
 from core.workflow.entities import GraphInitParams
+from core.workflow.entities.workflow_start_reason import WorkflowStartReason
 from core.workflow.graph import Graph
 from core.workflow.graph_engine.command_channels.in_memory_channel import InMemoryChannel
 from core.workflow.graph_engine.graph_engine import GraphEngine
@@ -313,7 +314,7 @@ def test_parallel_human_input_pause_preserves_node_finished_after_snapshot_resum
     events = list(engine.run())
 
     start_event = next(e for e in events if isinstance(e, GraphRunStartedEvent))
-    assert start_event.is_resumption is True
+    assert start_event.reason is WorkflowStartReason.RESUMPTION
 
     llm_started = any(isinstance(e, NodeRunStartedEvent) and e.node_id == "llm_a" for e in events)
     llm_succeeded = any(isinstance(e, NodeRunSucceededEvent) and e.node_id == "llm_a" for e in events)

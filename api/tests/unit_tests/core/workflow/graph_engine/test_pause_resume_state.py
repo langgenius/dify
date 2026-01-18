@@ -4,6 +4,7 @@ from typing import Any
 from unittest.mock import MagicMock
 
 from core.workflow.entities import GraphInitParams
+from core.workflow.entities.workflow_start_reason import WorkflowStartReason
 from core.workflow.graph import Graph
 from core.workflow.graph_engine.command_channels.in_memory_channel import InMemoryChannel
 from core.workflow.graph_engine.graph_engine import GraphEngine
@@ -172,7 +173,7 @@ def test_engine_resume_restores_state_and_completion():
     assert baseline_events
     first_paused_event = baseline_events[0]
     assert isinstance(first_paused_event, GraphRunStartedEvent)
-    assert first_paused_event.is_resumption is False
+    assert first_paused_event.reason is WorkflowStartReason.INITIAL
     assert isinstance(baseline_events[-1], GraphRunSucceededEvent)
     baseline_success_nodes = _node_successes(baseline_events)
 
@@ -184,7 +185,7 @@ def test_engine_resume_restores_state_and_completion():
     assert paused_events
     first_paused_event = paused_events[0]
     assert isinstance(first_paused_event, GraphRunStartedEvent)
-    assert first_paused_event.is_resumption is False
+    assert first_paused_event.reason is WorkflowStartReason.INITIAL
     assert isinstance(paused_events[-1], GraphRunPausedEvent)
     snapshot = paused_state.dumps()
 
@@ -196,7 +197,7 @@ def test_engine_resume_restores_state_and_completion():
     assert resumed_events
     first_resumed_event = resumed_events[0]
     assert isinstance(first_resumed_event, GraphRunStartedEvent)
-    assert first_resumed_event.is_resumption is True
+    assert first_resumed_event.reason is WorkflowStartReason.RESUMPTION
     assert isinstance(resumed_events[-1], GraphRunSucceededEvent)
 
     combined_success_nodes = _node_successes(paused_events) + _node_successes(resumed_events)
@@ -207,8 +208,6 @@ def test_engine_resume_restores_state_and_completion():
     assert paused_human_started is not None
     assert resumed_human_started is not None
     assert paused_human_started.id == resumed_human_started.id
-    assert paused_human_started.is_resumption is False
-    assert resumed_human_started.is_resumption is True
 
     assert baseline_state.outputs == resumed_state.outputs
     assert _segment_value(baseline_state.variable_pool, ("human", "__action_id")) == _segment_value(
