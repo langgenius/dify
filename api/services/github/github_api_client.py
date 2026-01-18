@@ -152,7 +152,8 @@ class GitHubAPIClient:
             "ref": f"refs/heads/{branch_name}",
             "sha": sha,
         }
-        return self._request("POST", endpoint, json_data=data)
+        result = self._request("POST", endpoint, json_data=data)
+        return cast(dict[str, Any], result)
 
     def get_file_content(self, path: str, branch: str | None = None) -> dict[str, Any]:
         """
