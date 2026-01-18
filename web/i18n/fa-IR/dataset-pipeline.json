@@ -65,6 +65,8 @@
   "onlineDrive.notConnectedTip": "برای همگام‌سازی با {{name}}، ابتدا باید اتصال به {{name}} برقرار شود.",
   "onlineDrive.notSupportedFileType": "این نوع فایل پشتیبانی نمی شود",
   "onlineDrive.resetKeywords": "بازنشانی کلمات کلیدی",
+  "onlineDrive.viewMode.flatList": "نمای فهرست مسطح",
+  "onlineDrive.viewMode.treeView": "نمای درختی",
   "operations.backToDataSource": "بازگشت به منبع داده",
   "operations.choose": "انتخاب",
   "operations.convert": "تبدیل",

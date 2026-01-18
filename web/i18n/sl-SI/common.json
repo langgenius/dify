@@ -132,6 +132,7 @@
   "dataSource.notion.pagesAuthorized": "Dovoljene strani",
   "dataSource.notion.remove": "Odstrani",
   "dataSource.notion.selector.addPages": "Dodajanje strani",
+  "dataSource.notion.selector.childPagesIncluded": "+{{count}} otroške strani vključene",
   "dataSource.notion.selector.noSearchResult": "Ni rezultatov iskanja",
   "dataSource.notion.selector.pageSelected": "Izbrane strani",
   "dataSource.notion.selector.preview": "PREDOGLED",

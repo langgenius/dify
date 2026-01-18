@@ -65,6 +65,8 @@
   "onlineDrive.notConnectedTip": "要與 {{name}} 同步，必須先建立與 {{name}} 的連線。",
   "onlineDrive.notSupportedFileType": "不支援此檔案類型",
   "onlineDrive.resetKeywords": "重設關鍵字",
+  "onlineDrive.viewMode.flatList": "平面列表檢視",
+  "onlineDrive.viewMode.treeView": "樹狀檢視",
   "operations.backToDataSource": "返回資料來源",
   "operations.choose": "選擇",
   "operations.convert": "轉換",

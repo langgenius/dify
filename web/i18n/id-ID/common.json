@@ -132,6 +132,7 @@
   "dataSource.notion.pagesAuthorized": "Halaman yang disahkan",
   "dataSource.notion.remove": "Hapus",
   "dataSource.notion.selector.addPages": "Tambahkan halaman",
+  "dataSource.notion.selector.childPagesIncluded": "+{{count}} halaman anak disertakan",
   "dataSource.notion.selector.noSearchResult": "Tidak ada hasil pencarian",
   "dataSource.notion.selector.pageSelected": "Halaman yang Dipilih",
   "dataSource.notion.selector.preview": "PRATAYANG",

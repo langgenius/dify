@@ -132,6 +132,7 @@
   "dataSource.notion.pagesAuthorized": "已授權頁面",
   "dataSource.notion.remove": "刪除",
   "dataSource.notion.selector.addPages": "新增頁面",
+  "dataSource.notion.selector.childPagesIncluded": "+{{count}} 個子頁面已包含",
   "dataSource.notion.selector.noSearchResult": "無搜尋結果",
   "dataSource.notion.selector.pageSelected": "已選頁面",
   "dataSource.notion.selector.preview": "預覽",

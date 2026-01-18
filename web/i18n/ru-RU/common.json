@@ -132,6 +132,7 @@
   "dataSource.notion.pagesAuthorized": "Авторизованные страницы",
   "dataSource.notion.remove": "Удалить",
   "dataSource.notion.selector.addPages": "Добавить страницы",
+  "dataSource.notion.selector.childPagesIncluded": "+{{count}} дочерние страницы включены",
   "dataSource.notion.selector.noSearchResult": "Нет результатов поиска",
   "dataSource.notion.selector.pageSelected": "Выбранные страницы",
   "dataSource.notion.selector.preview": "ПРЕДПРОСМОТР",
