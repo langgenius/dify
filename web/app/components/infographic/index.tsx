@@ -27,39 +27,42 @@ const InfographicViewer: React.FC<InfographicProps> = ({
   const [error, setError] = React.useState<string | null>(null)
 
   React.useEffect(() => {
-    if (!containerRef.current)
-      return
+    // Use requestAnimationFrame to ensure container is mounted
+    const frameId = requestAnimationFrame(() => {
+      if (!containerRef.current)
+        return
 
-    try {
-      // Clear previous instance
-      if (infographicRef.current) {
-        infographicRef.current.destroy()
-        infographicRef.current = null
+      try {
+        // Clear previous instance
+        if (infographicRef.current) {
+          infographicRef.current.destroy()
+          infographicRef.current = null
+        }
+
+        setError(null)
+
+        // Create new infographic instance
+        const infographic = new Infographic({
+          container: containerRef.current,
+          width,
+          height,
+          editable: false,
+        })
+
+        // Render the infographic with the syntax (synchronous)
+        infographic.render(syntax)
+        infographicRef.current = infographic
       }
+      catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to render infographic'
 
-      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect -- Infographic.render() is synchronous, no async state needed
-      setError(null)
-
-      // Create new infographic instance
-      const infographic = new Infographic({
-        container: containerRef.current,
-        width,
-        height,
-        editable: false,
-      })
-
-      // Render the infographic with the syntax (synchronous)
-      infographic.render(syntax)
-      infographicRef.current = infographic
-    }
-    catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to render infographic'
-      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect -- Infographic.render() is synchronous, no async state needed
-      setError(errorMessage)
-      onError?.(err instanceof Error ? err : new Error(errorMessage))
-    }
+        setError(errorMessage)
+        onError?.(err instanceof Error ? err : new Error(errorMessage))
+      }
+    })
 
     return () => {
+      cancelAnimationFrame(frameId)
       if (infographicRef.current) {
         infographicRef.current.destroy()
         infographicRef.current = null
