@@ -181,6 +181,8 @@ class ConsoleDatasetListQuery(BaseModel):
     limit: int = Field(default=20, description="Number of items per page")
     keyword: str | None = Field(default=None, description="Search keyword")
     include_all: bool = Field(default=False, description="Include all datasets")
+    ids: list[str] = Field(default_factory=list, description="Filter by dataset IDs")
+    tag_ids: list[str] = Field(default_factory=list, description="Filter by tag IDs")
 
 
 register_schema_models(
@@ -284,16 +286,13 @@ class DatasetListApi(Resource):
     @enterprise_license_required
     def get(self):
         current_user, current_tenant_id = current_account_with_tenant()
-        query = ConsoleDatasetListQuery.model_validate(request.args.to_dict())
-        ids = request.args.getlist("ids")
+        query = ConsoleDatasetListQuery.model_validate(request.args.to_dict(flat=False))
         # provider = request.args.get("provider", default="vendor")
-        tag_ids = request.args.getlist("tag_ids")
-        include_all = query.include_all
-        if ids:
-            datasets, total = DatasetService.get_datasets_by_ids(ids, current_tenant_id)
+        if query.ids:
+            datasets, total = DatasetService.get_datasets_by_ids(query.ids, current_tenant_id)
         else:
             datasets, total = DatasetService.get_datasets(
-                query.page, query.limit, current_tenant_id, current_user, query.keyword, tag_ids, include_all
+                query.page, query.limit, current_tenant_id, current_user, query.keyword, query.tag_ids, query.include_all
             )
 
         # check embedding setting

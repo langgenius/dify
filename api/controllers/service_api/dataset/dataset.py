@@ -92,6 +92,7 @@ class DatasetListQuery(BaseModel):
     limit: int = Field(default=20, description="Number of items per page")
     keyword: str | None = Field(default=None, description="Search keyword")
     include_all: bool = Field(default=False, description="Include all datasets")
+    tag_ids: list[str] = Field(default_factory=list, description="Filter by tag IDs")
 
 
 register_schema_models(
@@ -121,13 +122,11 @@ class DatasetListApi(DatasetApiResource):
     )
     def get(self, tenant_id):
         """Resource for getting datasets."""
-        query = DatasetListQuery.model_validate(request.args.to_dict())
+        query = DatasetListQuery.model_validate(request.args.to_dict(flat=False))
         # provider = request.args.get("provider", default="vendor")
-        tag_ids = request.args.getlist("tag_ids")
-        include_all = query.include_all
 
         datasets, total = DatasetService.get_datasets(
-            query.page, query.limit, tenant_id, current_user, query.keyword, tag_ids, include_all
+            query.page, query.limit, tenant_id, current_user, query.keyword, query.tag_ids, query.include_all
         )
         # check embedding setting
         provider_manager = ProviderManager()
