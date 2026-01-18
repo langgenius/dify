@@ -1,11 +1,9 @@
 {
   "appCard.addToWorkspace": "إضافة إلى مساحة العمل",
-  "appCard.customize": "تخصيص",
   "appCustomize.nameRequired": "اسم التطبيق مطلوب",
   "appCustomize.subTitle": "أيقونة التطبيق واسمه",
   "appCustomize.title": "إنشاء تطبيق من {{name}}",
   "apps.allCategories": "موصى به",
-  "apps.description": "استخدم تطبيقات القوالب هذه فورًا أو خصص تطبيقاتك الخاصة بناءً على القوالب.",
   "apps.title": "استكشاف التطبيقات",
   "category.Agent": "وكيل",
   "category.Assistant": "مساعد",
@@ -23,7 +21,5 @@
   "sidebar.chat": "دردشة",
   "sidebar.delete.content": "هل أنت متأكد أنك تريد حذف هذا التطبيق؟",
   "sidebar.delete.title": "حذف التطبيق",
-  "sidebar.discovery": "اكتشاف",
-  "sidebar.workspace": "مساحة العمل",
   "title": "استكشاف"
 }

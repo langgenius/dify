@@ -1,12 +1,7 @@
 {
-  "appCard.addToWorkspace": "Çalışma Alanına Ekle",
-  "appCard.customize": "Özelleştir",
   "appCustomize.nameRequired": "Uygulama ismi gereklidir",
   "appCustomize.subTitle": "Uygulama simgesi ve ismi",
   "appCustomize.title": "{{name}} uygulamasından uygulama oluştur",
-  "apps.allCategories": "Önerilen",
-  "apps.description": "Bu şablon uygulamalarını anında kullanın veya şablonlara dayalı kendi uygulamalarınızı özelleştirin.",
-  "apps.title": "Dify Tarafından Keşfet Uygulamaları",
   "category.Agent": "Aracı",
   "category.Assistant": "Asistan",
   "category.Entertainment": "Eğlence",
@@ -23,7 +18,5 @@
   "sidebar.chat": "Sohbet",
   "sidebar.delete.content": "Bu uygulamayı silmek istediğinizden emin misiniz?",
   "sidebar.delete.title": "Uygulamayı sil",
-  "sidebar.discovery": "Keşif",
-  "sidebar.workspace": "Çalışma Alanı",
   "title": "Keşfet"
 }

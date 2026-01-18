@@ -1,0 +1,38 @@
+const translation = {
+  title: 'Explorați',
+  sidebar: {
+    chat: 'Chat',
+    action: {
+      pin: 'Fixați',
+      unpin: 'Deblocați',
+      rename: 'Redenumire',
+      delete: 'Ștergeți',
+    },
+    delete: {
+      title: 'Ștergeți aplicația',
+      content: 'Sunteți sigur că doriți să ștergeți această aplicație?',
+    },
+  },
+  apps: {
+  },
+  appCard: {
+    customize: 'Personalizați',
+  },
+  appCustomize: {
+    title: 'Creați o aplicație din {{name}}',
+    subTitle: 'Pictogramă și nume aplicație',
+    nameRequired: 'Numele aplicației este obligatoriu',
+  },
+  category: {
+    Assistant: 'Asistent',
+    Writing: 'Scriere',
+    Translate: 'Traducere',
+    Programming: 'Programare',
+    HR: 'Resurse Umane',
+    Agent: 'Agent',
+    Workflow: 'Flux de lucru',
+    Entertainment: 'Divertisment',
+  },
+}
+
+export default translation

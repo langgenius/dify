@@ -72,7 +72,7 @@ const renderWithContext = (installedApps: InstalledApp[] = []) => {
         setInstalledApps: vi.fn(),
         isFetchingInstalledApps: false,
         setIsFetchingInstalledApps: vi.fn(),
-      }}
+      } as any}
     >
       <SideBar controlUpdateInstalledApps={0} />
     </ExploreContext.Provider>,

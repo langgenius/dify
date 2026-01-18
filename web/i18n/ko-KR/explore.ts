@@ -1,0 +1,38 @@
+const translation = {
+  title: '탐색',
+  sidebar: {
+    chat: '채팅',
+    action: {
+      pin: '고정',
+      unpin: '고정 해제',
+      rename: '이름 변경',
+      delete: '삭제',
+    },
+    delete: {
+      title: '앱 삭제',
+      content: '이 앱을 삭제해도 괜찮습니까?',
+    },
+  },
+  apps: {
+  },
+  appCard: {
+    customize: '사용자 정의',
+  },
+  appCustomize: {
+    title: '{{name}}으로 앱 만들기',
+    subTitle: '앱 아이콘 및 이름',
+    nameRequired: '앱 이름은 필수입니다',
+  },
+  category: {
+    Assistant: '어시스턴트',
+    Writing: '작성',
+    Translate: '번역',
+    Programming: '프로그래밍',
+    Agent: '에이전트',
+    Workflow: '워크플로우',
+    HR: '인사',
+    Entertainment: '오락',
+  },
+}
+
+export default translation

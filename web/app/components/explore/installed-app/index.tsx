@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import type { AccessMode } from '@/models/access-control'
 import type { AppData } from '@/models/share'
 import * as React from 'react'
 import { useEffect } from 'react'
@@ -62,8 +63,8 @@ const InstalledApp: FC<IInstalledAppProps> = ({
     if (appMeta)
       updateWebAppMeta(appMeta)
     if (webAppAccessMode)
-      updateWebAppAccessMode(webAppAccessMode.accessMode)
-    updateUserCanAccessApp(Boolean(userCanAccessApp && userCanAccessApp?.result))
+      updateWebAppAccessMode((webAppAccessMode as { accessMode: AccessMode }).accessMode)
+    updateUserCanAccessApp(Boolean(userCanAccessApp && (userCanAccessApp as { result: boolean })?.result))
   }, [installedApp, appMeta, appParams, updateAppInfo, updateAppParams, updateUserCanAccessApp, updateWebAppMeta, userCanAccessApp, webAppAccessMode, updateWebAppAccessMode])
 
   if (appParamsError) {

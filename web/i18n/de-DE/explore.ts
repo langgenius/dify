@@ -1,0 +1,38 @@
+const translation = {
+  title: 'Entdecken',
+  sidebar: {
+    chat: 'Chat',
+    action: {
+      pin: 'Anheften',
+      unpin: 'Lösen',
+      rename: 'Umbenennen',
+      delete: 'Löschen',
+    },
+    delete: {
+      title: 'App löschen',
+      content: 'Sind Sie sicher, dass Sie diese App löschen möchten?',
+    },
+  },
+  apps: {
+  },
+  appCard: {
+    customize: 'Anpassen',
+  },
+  appCustomize: {
+    title: 'App aus {{name}} erstellen',
+    subTitle: 'App-Symbol & Name',
+    nameRequired: 'App-Name ist erforderlich',
+  },
+  category: {
+    Assistant: 'Assistent',
+    Writing: 'Schreiben',
+    Translate: 'Übersetzen',
+    Programming: 'Programmieren',
+    HR: 'Personalwesen',
+    Agent: 'Agent',
+    Workflow: 'Arbeitsablauf',
+    Entertainment: 'Unterhaltung',
+  },
+}
+
+export default translation
