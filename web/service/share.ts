@@ -42,7 +42,6 @@ import {
   postPublic as post,
   ssePost,
 } from './base'
-import { getWebAppAccessToken } from './webapp-auth'
 
 function getAction(action: 'get' | 'post' | 'del' | 'patch', isInstalledApp: boolean) {
   switch (action) {
@@ -305,9 +304,6 @@ export const textToAudioStream = (url: string, isPublicAPI: boolean, header: { c
 export const fetchAccessToken = async ({ userId, appCode }: { userId?: string, appCode: string }) => {
   const headers = new Headers()
   headers.append(WEB_APP_SHARE_CODE_HEADER_NAME, appCode)
-  const accessToken = getWebAppAccessToken()
-  if (accessToken)
-    headers.append('Authorization', `Bearer ${accessToken}`)
   const params = new URLSearchParams()
   if (userId)
     params.append('user_id', userId)
