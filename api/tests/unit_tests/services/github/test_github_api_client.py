@@ -25,6 +25,7 @@ class TestGitHubAPIClient:
         connection = MagicMock(spec=GitHubConnection)
         connection.repository_owner = "testowner"
         connection.repository_name = "testrepo"
+        connection.repository_full_name = "testowner/testrepo"  # Set property directly
         connection.branch = "main"
         connection.get_decrypted_access_token.return_value = "test-token-123"
         return connection
