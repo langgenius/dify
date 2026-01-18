@@ -14,7 +14,6 @@ import {
   RiVerifiedBadgeLine,
   RiWindowLine,
 } from '@remixicon/react'
-import { useQueryClient } from '@tanstack/react-query'
 import { usePathname, useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -35,7 +34,7 @@ import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useDocLink } from '@/context/i18n'
 import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects } from '@/service/access-control'
-import { useAppDetail } from '@/service/use-apps'
+import { useAppDetail, useInvalidateAppDetail } from '@/service/use-apps'
 import { useAppWorkflow } from '@/service/use-workflow'
 import { AppModeEnum } from '@/types/app'
 import { asyncRunSafe } from '@/utils'
@@ -73,7 +72,7 @@ function AppCard({
 }: IAppCardProps) {
   const router = useRouter()
   const pathname = usePathname()
-  const queryClient = useQueryClient()
+  const invalidateAppDetail = useInvalidateAppDetail()
   const { isCurrentWorkspaceManager, isCurrentWorkspaceEditor } = useAppContext()
   const { data: currentWorkflow } = useAppWorkflow(appInfo.mode === AppModeEnum.WORKFLOW ? appInfo.id : '')
   const docLink = useDocLink()
@@ -178,10 +177,10 @@ function AppCard({
       return
     setShowAccessControl(true)
   }, [appDetail])
-  const handleAccessControlUpdate = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: ['apps', 'detail', appInfo.id] })
+  const handleAccessControlUpdate = useCallback(() => {
+    invalidateAppDetail(appInfo.id)
     setShowAccessControl(false)
-  }, [queryClient, appInfo.id])
+  }, [invalidateAppDetail, appInfo.id])
 
   return (
     <div
