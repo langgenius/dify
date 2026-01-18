@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { RiArchive2Line, RiCheckboxCircleLine, RiCloseCircleLine, RiDeleteBinLine, RiDraftLine, RiRefreshLine } from '@remixicon/react'
+import { RiArchive2Line, RiCheckboxCircleLine, RiCloseCircleLine, RiDeleteBinLine, RiDownload2Line, RiDraftLine, RiRefreshLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -14,6 +14,7 @@ type IBatchActionProps = {
   selectedIds: string[]
   onBatchEnable: () => void
   onBatchDisable: () => void
+  onBatchDownload?: () => void
   onBatchDelete: () => Promise<void>
   onArchive?: () => void
   onEditMetadata?: () => void
@@ -26,6 +27,7 @@ const BatchAction: FC<IBatchActionProps> = ({
   selectedIds,
   onBatchEnable,
   onBatchDisable,
+  onBatchDownload,
   onArchive,
   onBatchDelete,
   onEditMetadata,
@@ -101,6 +103,16 @@ const BatchAction: FC<IBatchActionProps> = ({
           >
             <RiRefreshLine className="size-4" />
             <span className="px-0.5">{t(`${i18nPrefix}.reIndex`, { ns: 'dataset' })}</span>
+          </Button>
+        )}
+        {onBatchDownload && (
+          <Button
+            variant="ghost"
+            className="gap-x-0.5 px-3"
+            onClick={onBatchDownload}
+          >
+            <RiDownload2Line className="size-4" />
+            <span className="px-0.5">{t(`${i18nPrefix}.download`, { ns: 'dataset' })}</span>
           </Button>
         )}
         <Button
