@@ -1222,7 +1222,7 @@ class WorkflowOnlineUsersApi(Resource):
 
         results = []
         for workflow_id in workflow_ids:
-            users_json = redis_client.hgetall(f"workflow_online_users:{workflow_id}")
+            users_json = redis_client.hgetall(f"{WORKFLOW_ONLINE_USERS_PREFIX}{workflow_id}")
 
             users = []
             for _, user_info_json in users_json.items():
