@@ -2,9 +2,11 @@
 import type { FC } from 'react'
 import type { Node } from 'reactflow'
 import type { TabType } from '../hooks/use-tool-selector-state'
+import type { ReasoningConfigValue } from './reasoning-config-form'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
+import type { ToolVarInputs } from '@/app/components/workflow/nodes/tool/types'
 import type { NodeOutPutVar, ToolWithProvider } from '@/app/components/workflow/types'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
@@ -19,15 +21,15 @@ type ToolSettingsPanelProps = {
   currType: TabType
   settingsFormSchemas: ToolFormSchema[]
   paramsFormSchemas: ToolFormSchema[]
-  settingsValue: Record<string, any>
+  settingsValue: ToolVarInputs
   showTabSlider: boolean
   userSettingsOnly: boolean
   reasoningConfigOnly: boolean
   nodeOutputVars: NodeOutPutVar[]
   availableNodes: Node[]
   onCurrTypeChange: (type: TabType) => void
-  onSettingsFormChange: (v: Record<string, any>) => void
-  onParamsFormChange: (v: Record<string, any>) => void
+  onSettingsFormChange: (v: ToolVarInputs) => void
+  onParamsFormChange: (v: ReasoningConfigValue) => void
 }
 
 /**
@@ -140,7 +142,7 @@ const ToolSettingsPanel: FC<ToolSettingsPanelProps> = ({
       {/* Reasoning config form */}
       {nodeId && (currType === 'params' || reasoningConfigOnly) && (
         <ReasoningConfigForm
-          value={value?.parameters || {}}
+          value={(value?.parameters || {}) as ReasoningConfigValue}
           onChange={onParamsFormChange}
           schemas={paramsFormSchemas}
           nodeOutputVars={nodeOutputVars}

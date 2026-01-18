@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CollectionType } from '@/app/components/tools/types'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 import {
   SchemaModal,
@@ -556,7 +557,7 @@ describe('useToolSelectorState Hook', () => {
       )
 
       act(() => {
-        result.current.handleSettingsFormChange({ key: 'value' })
+        result.current.handleSettingsFormChange({ key: { type: VarKindType.constant, value: 'value' } })
       })
 
       expect(onSelect).toHaveBeenCalledWith(
@@ -575,11 +576,11 @@ describe('useToolSelectorState Hook', () => {
       )
 
       act(() => {
-        result.current.handleParamsFormChange({ param: 'value' })
+        result.current.handleParamsFormChange({ param: { value: { type: VarKindType.constant, value: 'value' } } })
       })
 
       expect(onSelect).toHaveBeenCalledWith(
-        expect.objectContaining({ parameters: { param: 'value' } }),
+        expect.objectContaining({ parameters: { param: { value: { type: VarKindType.constant, value: 'value' } } } }),
       )
     })
 

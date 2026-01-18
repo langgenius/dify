@@ -6,6 +6,7 @@ import type { ToolVarInputs } from '@/app/components/workflow/nodes/tool/types'
 import type {
   NodeOutPutVar,
   ValueSelector,
+  Var,
 } from '@/app/components/workflow/types'
 import {
   RiArrowRightUpLine,
@@ -34,9 +35,21 @@ import { VarType } from '@/app/components/workflow/types'
 import { cn } from '@/utils/classnames'
 import SchemaModal from './schema-modal'
 
+type ReasoningConfigInputValue = {
+  type?: VarKindType
+  value?: unknown
+} | null
+
+type ReasoningConfigInput = {
+  value: ReasoningConfigInputValue
+  auto?: 0 | 1
+}
+
+export type ReasoningConfigValue = Record<string, ReasoningConfigInput>
+
 type Props = {
-  value: Record<string, any>
-  onChange: (val: Record<string, any>) => void
+  value: ReasoningConfigValue
+  onChange: (val: ReasoningConfigValue) => void
   schemas: ToolFormSchema[]
   nodeOutputVars: NodeOutPutVar[]
   availableNodes: Node[]
@@ -62,7 +75,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
       return VarKindType.mixed
   }
 
-  const handleAutomatic = (key: string, val: any, type: string) => {
+  const handleAutomatic = (key: string, val: boolean, type: string) => {
     onChange({
       ...value,
       [key]: {
@@ -71,7 +84,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
       },
     })
   }
-  const handleTypeChange = useCallback((variable: string, defaultValue: any) => {
+  const handleTypeChange = useCallback((variable: string, defaultValue: unknown) => {
     return (newType: VarKindType) => {
       const res = produce(value, (draft: ToolVarInputs) => {
         draft[variable].value = {
@@ -83,7 +96,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
     }
   }, [onChange, value])
   const handleValueChange = useCallback((variable: string, varType: string) => {
-    return (newValue: any) => {
+    return (newValue: unknown) => {
       const res = produce(value, (draft: ToolVarInputs) => {
         draft[variable].value = {
           type: getVarKindType(varType),
@@ -96,22 +109,23 @@ const ReasoningConfigForm: React.FC<Props> = ({
   const handleAppChange = useCallback((variable: string) => {
     return (app: {
       app_id: string
-      inputs: Record<string, any>
-      files?: any[]
+      inputs: Record<string, unknown>
+      files?: unknown[]
     }) => {
       const newValue = produce(value, (draft: ToolVarInputs) => {
-        draft[variable].value = app as any
+        draft[variable].value = app
       })
       onChange(newValue)
     }
   }, [onChange, value])
   const handleModelChange = useCallback((variable: string) => {
-    return (model: any) => {
+    return (model: Record<string, unknown>) => {
       const newValue = produce(value, (draft: ToolVarInputs) => {
+        const currentValue = draft[variable].value as Record<string, unknown> | undefined
         draft[variable].value = {
-          ...draft[variable].value,
+          ...currentValue,
           ...model,
-        } as any
+        }
       })
       onChange(newValue)
     }
@@ -196,17 +210,17 @@ const ReasoningConfigForm: React.FC<Props> = ({
     }
     const getFilterVar = () => {
       if (isNumber)
-        return (varPayload: any) => varPayload.type === VarType.number
+        return (varPayload: Var) => varPayload.type === VarType.number
       else if (isString)
-        return (varPayload: any) => [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
+        return (varPayload: Var) => [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
       else if (isFile)
-        return (varPayload: any) => [VarType.file, VarType.arrayFile].includes(varPayload.type)
+        return (varPayload: Var) => [VarType.file, VarType.arrayFile].includes(varPayload.type)
       else if (isBoolean)
-        return (varPayload: any) => varPayload.type === VarType.boolean
+        return (varPayload: Var) => varPayload.type === VarType.boolean
       else if (isObject)
-        return (varPayload: any) => varPayload.type === VarType.object
+        return (varPayload: Var) => varPayload.type === VarType.object
       else if (isArray)
-        return (varPayload: any) => [VarType.array, VarType.arrayString, VarType.arrayNumber, VarType.arrayObject].includes(varPayload.type)
+        return (varPayload: Var) => [VarType.array, VarType.arrayString, VarType.arrayNumber, VarType.arrayObject].includes(varPayload.type)
       return undefined
     }
 
@@ -266,7 +280,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
               <Input
                 className="h-8 grow"
                 type="number"
-                value={varInput?.value || ''}
+                value={(varInput?.value as string | number) || ''}
                 onChange={e => handleValueChange(variable, type)(e.target.value)}
                 placeholder={placeholder?.[language] || placeholder?.en_US}
               />
@@ -280,10 +294,10 @@ const ReasoningConfigForm: React.FC<Props> = ({
             {isSelect && options && (
               <SimpleSelect
                 wrapperClassName="h-8 grow"
-                defaultValue={varInput?.value}
+                defaultValue={varInput?.value as string | number | undefined}
                 items={options.filter((option) => {
                   if (option.show_on.length)
-                    return option.show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value)
+                    return option.show_on.every(showOnItem => value[showOnItem.variable]?.value?.value === showOnItem.value)
 
                   return true
                 }).map(option => ({ value: option.value, name: option.label[language] || option.label.en_US }))}
@@ -295,7 +309,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
               <div className="mt-1 w-full">
                 <CodeEditor
                   title="JSON"
-                  value={varInput?.value as any}
+                  value={varInput?.value as string}
                   isExpand
                   isInNode
                   height={100}
@@ -310,7 +324,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
               <AppSelector
                 disabled={false}
                 scope={scope || 'all'}
-                value={varInput as any}
+                value={varInput as { app_id: string, inputs: Record<string, unknown>, files?: unknown[] } | undefined}
                 onSelect={handleAppChange(variable)}
               />
             )}
@@ -331,7 +345,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
                 readonly={false}
                 isShowNodeName
                 nodeId={nodeId}
-                value={varInput?.value || []}
+                value={(varInput?.value as string | ValueSelector) || []}
                 onChange={handleVariableSelectorChange(variable)}
                 filterVar={getFilterVar()}
                 schema={schema as Partial<CredentialFormSchema>}

@@ -1,5 +1,8 @@
 'use client'
+import type { ReasoningConfigValue } from '../components/reasoning-config-form'
+import type { ToolParameter } from '@/app/components/tools/types'
 import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/block-selector/types'
+import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
 import { useCallback, useMemo, useState } from 'react'
 import { generateFormValue, getPlainValue, getStructureValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
@@ -107,11 +110,11 @@ export const useToolSelectorState = ({
   const getToolValue = useCallback((tool: ToolDefaultValue): ToolValue => {
     const settingValues = generateFormValue(
       tool.params,
-      toolParametersToFormSchemas(tool.paramSchemas.filter(param => param.form !== 'llm') as any),
+      toolParametersToFormSchemas((tool.paramSchemas as ToolParameter[]).filter(param => param.form !== 'llm')),
     )
     const paramValues = generateFormValue(
       tool.params,
-      toolParametersToFormSchemas(tool.paramSchemas.filter(param => param.form === 'llm') as any),
+      toolParametersToFormSchemas((tool.paramSchemas as ToolParameter[]).filter(param => param.form === 'llm')),
       true,
     )
     return {
@@ -152,7 +155,7 @@ export const useToolSelectorState = ({
     })
   }, [value, onSelect])
 
-  const handleSettingsFormChange = useCallback((v: Record<string, any>) => {
+  const handleSettingsFormChange = useCallback((v: ResourceVarInputs) => {
     if (!value)
       return
     const newValue = getStructureValue(v)
@@ -162,7 +165,7 @@ export const useToolSelectorState = ({
     })
   }, [value, onSelect])
 
-  const handleParamsFormChange = useCallback((v: Record<string, any>) => {
+  const handleParamsFormChange = useCallback((v: ReasoningConfigValue) => {
     if (!value)
       return
     onSelect({
@@ -204,8 +207,8 @@ export const useToolSelectorState = ({
     }
   }, [invalidateAllBuiltinTools, invalidateInstalledPluginList])
 
-  const getSettingsValue = useCallback(() => {
-    return getPlainValue(value?.settings || {})
+  const getSettingsValue = useCallback((): ResourceVarInputs => {
+    return getPlainValue((value?.settings || {}) as Record<string, { value: unknown }>) as ResourceVarInputs
   }, [value?.settings])
 
   return {

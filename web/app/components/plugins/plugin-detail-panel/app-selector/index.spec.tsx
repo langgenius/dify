@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import type { App } from '@/types/app'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { InputVarType } from '@/app/components/workflow/types'
 import { AppModeEnum } from '@/types/app'
@@ -9,6 +10,7 @@ import AppInputsForm from './app-inputs-form'
 import AppInputsPanel from './app-inputs-panel'
 import AppPicker from './app-picker'
 import AppTrigger from './app-trigger'
+
 import AppSelector from './index'
 
 // ==================== Mock Setup ====================
@@ -73,44 +75,59 @@ afterAll(() => {
 })
 
 // Mock portal components for controlled positioning in tests
-let mockPortalOpenState = false
+// Use React context to properly scope open state per portal instance (for nested portals)
+const _PortalOpenContext = React.createContext(false)
 
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({
-    children,
-    open,
-  }: {
-    children: ReactNode
-    open?: boolean
-  }) => {
-    mockPortalOpenState = open || false
-    return (
-      <div data-testid="portal-to-follow-elem" data-open={open}>
+vi.mock('@/app/components/base/portal-to-follow-elem', () => {
+  // Context reference shared across mock components
+  let sharedContext: React.Context<boolean> | null = null
+
+  // Lazily get or create the context
+  const getContext = (): React.Context<boolean> => {
+    if (!sharedContext)
+      sharedContext = React.createContext(false)
+    return sharedContext
+  }
+
+  return {
+    PortalToFollowElem: ({
+      children,
+      open,
+    }: {
+      children: ReactNode
+      open?: boolean
+    }) => {
+      const Context = getContext()
+      return React.createElement(
+        Context.Provider,
+        { value: open || false },
+        React.createElement('div', { 'data-testid': 'portal-to-follow-elem', 'data-open': open }, children),
+      )
+    },
+    PortalToFollowElemTrigger: ({
+      children,
+      onClick,
+      className,
+    }: {
+      children: ReactNode
+      onClick?: () => void
+      className?: string
+    }) => (
+      <div data-testid="portal-trigger" onClick={onClick} className={className}>
         {children}
       </div>
-    )
-  },
-  PortalToFollowElemTrigger: ({
-    children,
-    onClick,
-    className,
-  }: {
-    children: ReactNode
-    onClick?: () => void
-    className?: string
-  }) => (
-    <div data-testid="portal-trigger" onClick={onClick} className={className}>
-      {children}
-    </div>
-  ),
-  PortalToFollowElemContent: ({ children, className }: { children: ReactNode, className?: string }) => {
-    if (!mockPortalOpenState)
-      return null
-    return (
-      <div data-testid="portal-content" className={className}>{children}</div>
-    )
-  },
-}))
+    ),
+    PortalToFollowElemContent: ({ children, className }: { children: ReactNode, className?: string }) => {
+      const Context = getContext()
+      const isOpen = React.useContext(Context)
+      if (!isOpen)
+        return null
+      return (
+        <div data-testid="portal-content" className={className}>{children}</div>
+      )
+    },
+  }
+})
 
 // Mock service hooks
 let mockAppListData: { pages: Array<{ data: App[], has_more: boolean, page: number }> } | undefined
@@ -129,10 +146,12 @@ const getAppDetailData = (appId: string) => {
     return mockAppDetailData
   if (!appId)
     return undefined
+  // Extract number from appId (e.g., 'app-1' -> '1') for consistent naming with createMockApps
+  const appNumber = appId.replace('app-', '')
   // Return a basic mock app structure
   return {
     id: appId,
-    name: `App ${appId}`,
+    name: `App ${appNumber}`,
     mode: 'chat',
     icon_type: 'emoji',
     icon: '🤖',
@@ -345,20 +364,25 @@ const createMockApp = (overrides: Record<string, unknown> = {}): App => ({
   ...overrides,
 } as unknown as App)
 
+// Helper function to get app mode based on index
+const getAppModeByIndex = (index: number): AppModeEnum => {
+  if (index % 5 === 0)
+    return AppModeEnum.ADVANCED_CHAT
+  if (index % 4 === 0)
+    return AppModeEnum.AGENT_CHAT
+  if (index % 3 === 0)
+    return AppModeEnum.WORKFLOW
+  if (index % 2 === 0)
+    return AppModeEnum.COMPLETION
+  return AppModeEnum.CHAT
+}
+
 const createMockApps = (count: number): App[] => {
   return Array.from({ length: count }, (_, i) =>
     createMockApp({
       id: `app-${i + 1}`,
       name: `App ${i + 1}`,
-      mode: i % 5 === 0
-        ? AppModeEnum.ADVANCED_CHAT
-        : i % 4 === 0
-          ? AppModeEnum.AGENT_CHAT
-          : i % 3 === 0
-            ? AppModeEnum.WORKFLOW
-            : i % 2 === 0
-              ? AppModeEnum.COMPLETION
-              : AppModeEnum.CHAT,
+      mode: getAppModeByIndex(i),
     }))
 }
 
@@ -446,7 +470,6 @@ describe('AppPicker', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers()
-    mockPortalOpenState = false
   })
 
   afterEach(() => {
@@ -460,14 +483,12 @@ describe('AppPicker', () => {
     })
 
     it('should render app list when open', () => {
-      mockPortalOpenState = true
       render(<AppPicker {...defaultProps} isShow={true} />)
       expect(screen.getByText('App 1')).toBeInTheDocument()
       expect(screen.getByText('App 2')).toBeInTheDocument()
     })
 
     it('should show loading indicator when isLoading is true', () => {
-      mockPortalOpenState = true
       render(<AppPicker {...defaultProps} isShow={true} isLoading={true} />)
       expect(screen.getByText('common.loading')).toBeInTheDocument()
     })
@@ -480,7 +501,6 @@ describe('AppPicker', () => {
 
   describe('User Interactions', () => {
     it('should call onSelect when app is clicked', () => {
-      mockPortalOpenState = true
       const onSelect = vi.fn()
       render(<AppPicker {...defaultProps} isShow={true} onSelect={onSelect} />)
 
@@ -489,7 +509,6 @@ describe('AppPicker', () => {
     })
 
     it('should call onSearchChange when typing in search input', () => {
-      mockPortalOpenState = true
       const onSearchChange = vi.fn()
       render(<AppPicker {...defaultProps} isShow={true} onSearchChange={onSearchChange} />)
 
@@ -517,35 +536,30 @@ describe('AppPicker', () => {
 
   describe('App Type Display', () => {
     it('should display correct app type for CHAT', () => {
-      mockPortalOpenState = true
       const apps = [createMockApp({ id: 'chat-app', name: 'Chat App', mode: AppModeEnum.CHAT })]
       render(<AppPicker {...defaultProps} isShow={true} apps={apps} />)
       expect(screen.getByText('chat')).toBeInTheDocument()
     })
 
     it('should display correct app type for WORKFLOW', () => {
-      mockPortalOpenState = true
       const apps = [createMockApp({ id: 'workflow-app', name: 'Workflow App', mode: AppModeEnum.WORKFLOW })]
       render(<AppPicker {...defaultProps} isShow={true} apps={apps} />)
       expect(screen.getByText('workflow')).toBeInTheDocument()
     })
 
     it('should display correct app type for ADVANCED_CHAT', () => {
-      mockPortalOpenState = true
       const apps = [createMockApp({ id: 'chatflow-app', name: 'Chatflow App', mode: AppModeEnum.ADVANCED_CHAT })]
       render(<AppPicker {...defaultProps} isShow={true} apps={apps} />)
       expect(screen.getByText('chatflow')).toBeInTheDocument()
     })
 
     it('should display correct app type for AGENT_CHAT', () => {
-      mockPortalOpenState = true
       const apps = [createMockApp({ id: 'agent-app', name: 'Agent App', mode: AppModeEnum.AGENT_CHAT })]
       render(<AppPicker {...defaultProps} isShow={true} apps={apps} />)
       expect(screen.getByText('agent')).toBeInTheDocument()
     })
 
     it('should display correct app type for COMPLETION', () => {
-      mockPortalOpenState = true
       const apps = [createMockApp({ id: 'completion-app', name: 'Completion App', mode: AppModeEnum.COMPLETION })]
       render(<AppPicker {...defaultProps} isShow={true} apps={apps} />)
       expect(screen.getByText('completion')).toBeInTheDocument()
@@ -554,13 +568,11 @@ describe('AppPicker', () => {
 
   describe('Edge Cases', () => {
     it('should handle empty apps array', () => {
-      mockPortalOpenState = true
       render(<AppPicker {...defaultProps} isShow={true} apps={[]} />)
       expect(screen.queryByRole('listitem')).not.toBeInTheDocument()
     })
 
     it('should handle search text with value', () => {
-      mockPortalOpenState = true
       render(<AppPicker {...defaultProps} isShow={true} searchText="test search" />)
       const input = screen.getByTestId('input')
       expect(input).toHaveValue('test search')
@@ -569,7 +581,6 @@ describe('AppPicker', () => {
 
   describe('Search Clear', () => {
     it('should call onSearchChange with empty string when clear button is clicked', () => {
-      mockPortalOpenState = true
       const onSearchChange = vi.fn()
       render(<AppPicker {...defaultProps} isShow={true} searchText="test" onSearchChange={onSearchChange} />)
 
@@ -581,7 +592,6 @@ describe('AppPicker', () => {
 
   describe('Infinite Scroll', () => {
     it('should not call onLoadMore when isLoading is true', () => {
-      mockPortalOpenState = true
       const onLoadMore = vi.fn()
 
       render(<AppPicker {...defaultProps} isShow={true} hasMore={true} isLoading={true} onLoadMore={onLoadMore} />)
@@ -594,7 +604,6 @@ describe('AppPicker', () => {
     })
 
     it('should not call onLoadMore when hasMore is false', () => {
-      mockPortalOpenState = true
       const onLoadMore = vi.fn()
 
       render(<AppPicker {...defaultProps} isShow={true} hasMore={false} onLoadMore={onLoadMore} />)
@@ -607,7 +616,6 @@ describe('AppPicker', () => {
     })
 
     it('should call onLoadMore when intersection observer fires and conditions are met', () => {
-      mockPortalOpenState = true
       const onLoadMore = vi.fn()
 
       render(<AppPicker {...defaultProps} isShow={true} hasMore={true} isLoading={false} onLoadMore={onLoadMore} />)
@@ -619,7 +627,6 @@ describe('AppPicker', () => {
     })
 
     it('should not call onLoadMore when target is not intersecting', () => {
-      mockPortalOpenState = true
       const onLoadMore = vi.fn()
 
       render(<AppPicker {...defaultProps} isShow={true} hasMore={true} isLoading={false} onLoadMore={onLoadMore} />)
@@ -631,7 +638,6 @@ describe('AppPicker', () => {
     })
 
     it('should handle observer target ref', () => {
-      mockPortalOpenState = true
       render(<AppPicker {...defaultProps} isShow={true} hasMore={true} />)
 
       // The component should render without errors
@@ -642,11 +648,9 @@ describe('AppPicker', () => {
       const { rerender } = render(<AppPicker {...defaultProps} isShow={false} />)
 
       // Change isShow to true
-      mockPortalOpenState = true
       rerender(<AppPicker {...defaultProps} isShow={true} />)
 
       // Then back to false
-      mockPortalOpenState = false
       rerender(<AppPicker {...defaultProps} isShow={false} />)
 
       // Should not crash
@@ -654,8 +658,6 @@ describe('AppPicker', () => {
     })
 
     it('should setup intersection observer when isShow is true', () => {
-      mockPortalOpenState = true
-
       render(<AppPicker {...defaultProps} isShow={true} hasMore={true} />)
 
       // IntersectionObserver callback should have been set
@@ -663,14 +665,12 @@ describe('AppPicker', () => {
     })
 
     it('should disconnect observer when isShow changes from true to false', () => {
-      mockPortalOpenState = true
       const { rerender } = render(<AppPicker {...defaultProps} isShow={true} />)
 
       // Verify observer was set up
       expect(intersectionObserverCallback).not.toBeNull()
 
       // Change to not shown - should disconnect observer (lines 74-75)
-      mockPortalOpenState = false
       rerender(<AppPicker {...defaultProps} isShow={false} />)
 
       // Component should render without errors
@@ -678,7 +678,6 @@ describe('AppPicker', () => {
     })
 
     it('should cleanup observer on component unmount', () => {
-      mockPortalOpenState = true
       const { unmount } = render(<AppPicker {...defaultProps} isShow={true} />)
 
       // Unmount should trigger cleanup without throwing
@@ -686,8 +685,6 @@ describe('AppPicker', () => {
     })
 
     it('should handle MutationObserver callback when target becomes available', () => {
-      mockPortalOpenState = true
-
       render(<AppPicker {...defaultProps} isShow={true} hasMore={true} />)
 
       // Trigger MutationObserver callback (simulates DOM change)
@@ -699,8 +696,6 @@ describe('AppPicker', () => {
 
     it('should not setup IntersectionObserver when observerTarget is null', () => {
       // When isShow is false, the observer target won't be in the DOM
-      mockPortalOpenState = false
-
       render(<AppPicker {...defaultProps} isShow={false} />)
 
       // The guard at line 84 should prevent setup
@@ -708,7 +703,6 @@ describe('AppPicker', () => {
     })
 
     it('should debounce onLoadMore calls using loadingRef', () => {
-      mockPortalOpenState = true
       const onLoadMore = vi.fn()
 
       render(<AppPicker {...defaultProps} isShow={true} hasMore={true} isLoading={false} onLoadMore={onLoadMore} />)
@@ -1430,7 +1424,6 @@ describe('AppSelector', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers()
-    mockPortalOpenState = false
     mockAppListData = {
       pages: [{ data: createMockApps(5), has_more: false, page: 1 }],
     }
@@ -2095,7 +2088,6 @@ describe('AppSelector Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers()
-    mockPortalOpenState = false
     mockAppListData = {
       pages: [{ data: createMockApps(5), has_more: false, page: 1 }],
     }
