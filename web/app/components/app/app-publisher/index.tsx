@@ -144,7 +144,6 @@ const AppPublisher = ({
   const [published, setPublished] = useState(false)
   const [open, setOpen] = useState(false)
   const [showAppAccessControl, setShowAppAccessControl] = useState(false)
-  const [isAppAccessSet, setIsAppAccessSet] = useState(true)
   const [embeddingModalOpen, setEmbeddingModalOpen] = useState(false)
 
   const { data: appDetail } = useAppDetail(appId as string)
@@ -178,16 +177,12 @@ const AppPublisher = ({
       refetch()
   }, [open, appDetail, refetch, systemFeatures])
 
-  useEffect(() => {
-    if (appDetail && appAccessSubjects) {
-      if (appDetail.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && appAccessSubjects.groups?.length === 0 && appAccessSubjects.members?.length === 0)
-        setIsAppAccessSet(false)
-      else
-        setIsAppAccessSet(true)
-    }
-    else {
-      setIsAppAccessSet(true)
-    }
+  const isAppAccessSet = useMemo(() => {
+    if (!appDetail || !appAccessSubjects)
+      return true
+    if (appDetail.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && appAccessSubjects.groups?.length === 0 && appAccessSubjects.members?.length === 0)
+      return false
+    return true
   }, [appAccessSubjects, appDetail])
 
   const handlePublish = useCallback(async (params?: ModelAndParameter | PublishWorkflowParams) => {

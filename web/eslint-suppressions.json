@@ -253,9 +253,6 @@
     }
   },
   "app/components/app/app-publisher/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 3
-    },
     "ts/no-explicit-any": {
       "count": 6
     }

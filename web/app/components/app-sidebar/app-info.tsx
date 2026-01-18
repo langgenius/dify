@@ -11,7 +11,6 @@ import {
   RiFileDownloadLine,
   RiFileUploadLine,
 } from '@remixicon/react'
-import { useQueryClient } from '@tanstack/react-query'
 import dynamic from 'next/dynamic'
 import { useParams, useRouter } from 'next/navigation'
 import * as React from 'react'
@@ -26,7 +25,7 @@ import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { copyApp, deleteApp, exportAppConfig, updateAppInfo } from '@/service/apps'
-import { useAppDetail, useInvalidateAppList } from '@/service/use-apps'
+import { useAppDetail, useInvalidateAppDetail, useInvalidateAppList } from '@/service/use-apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
@@ -65,9 +64,9 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
   const { notify } = useContext(ToastContext)
   const { replace } = useRouter()
   const { appId } = useParams()
-  const queryClient = useQueryClient()
   const { onPlanInfoChanged } = useProviderContext()
   const { data: appDetail } = useAppDetail(appId as string)
+  const invalidateAppDetail = useInvalidateAppDetail()
   const invalidateAppList = useInvalidateAppList()
   const [open, setOpen] = useState(openState)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -77,10 +76,6 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
   const [showImportDSLModal, setShowImportDSLModal] = useState<boolean>(false)
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
   const [showExportWarning, setShowExportWarning] = useState(false)
-
-  const invalidateAppDetail = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['apps', 'detail', appId] })
-  }, [queryClient, appId])
 
   const onEdit: CreateAppModalProps['onConfirm'] = useCallback(async ({
     name,
@@ -109,12 +104,12 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
         type: 'success',
         message: t('editDone', { ns: 'app' }),
       })
-      invalidateAppDetail()
+      invalidateAppDetail(appId as string)
     }
     catch {
       notify({ type: 'error', message: t('editFailed', { ns: 'app' }) })
     }
-  }, [appDetail, notify, invalidateAppDetail, t])
+  }, [appDetail, notify, invalidateAppDetail, appId, t])
 
   const onCopy: DuplicateAppModalProps['onConfirm'] = async ({ name, icon_type, icon, icon_background }) => {
     if (!appDetail)
