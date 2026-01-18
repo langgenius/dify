@@ -14,7 +14,7 @@ Access latest values in callbacks without adding them to dependency arrays. Prev
 ```typescript
 function useLatest<T>(value: T) {
   const ref = useRef(value)
-  useEffect(() => {
+  useLayoutEffect(() => {
     ref.current = value
   }, [value])
   return ref
