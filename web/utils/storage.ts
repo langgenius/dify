@@ -73,6 +73,8 @@ function remove(key: string): void {
   }
 }
 
+function getNumber(key: string): number | null
+function getNumber(key: string, defaultValue: number): number
 function getNumber(key: string, defaultValue?: number): number | null {
   const value = get<string | number>(key)
   if (value === null)
@@ -82,6 +84,8 @@ function getNumber(key: string, defaultValue?: number): number | null {
   return Number.isNaN(parsed) ? (defaultValue ?? null) : parsed
 }
 
+function getBoolean(key: string): boolean | null
+function getBoolean(key: string, defaultValue: boolean): boolean
 function getBoolean(key: string, defaultValue?: boolean): boolean | null {
   const value = get<string | boolean>(key)
   if (value === null)
