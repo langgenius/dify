@@ -5,8 +5,6 @@ import type { BlockEnum } from '@/app/components/workflow/types'
 import type { UpdateAppSiteCodeResponse } from '@/models/app'
 import type { App } from '@/types/app'
 import type { I18nKeysByPrefix } from '@/types/i18n'
-import { useQueryClient } from '@tanstack/react-query'
-import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
@@ -23,7 +21,7 @@ import {
   updateAppSiteConfig,
   updateAppSiteStatus,
 } from '@/service/apps'
-import { useAppDetail } from '@/service/use-apps'
+import { useAppDetail, useInvalidateAppDetail } from '@/service/use-apps'
 import { useAppWorkflow } from '@/service/use-workflow'
 import { AppModeEnum } from '@/types/app'
 import { asyncRunSafe } from '@/utils'
@@ -38,8 +36,8 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
   const { notify } = useContext(ToastContext)
-  const queryClient = useQueryClient()
   const { data: appDetail } = useAppDetail(appId)
+  const invalidateAppDetail = useInvalidateAppDetail()
 
   const isWorkflowApp = appDetail?.mode === AppModeEnum.WORKFLOW
   const showMCPCard = isInPanel
@@ -89,17 +87,13 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
     ? buildTriggerModeMessage(t('mcp.server.title', { ns: 'tools' }))
     : null
 
-  const updateAppDetail = async () => {
-    await queryClient.invalidateQueries({ queryKey: ['apps', 'detail', appId] })
-  }
-
   const handleCallbackResult = (err: Error | null, message?: I18nKeysByPrefix<'common', 'actionMsg.'>) => {
     const type = err ? 'error' : 'success'
 
     message ||= (type === 'success' ? 'modifiedSuccessfully' : 'modifiedUnsuccessfully')
 
     if (type === 'success')
-      updateAppDetail()
+      invalidateAppDetail(appId)
 
     notify({
       type,
