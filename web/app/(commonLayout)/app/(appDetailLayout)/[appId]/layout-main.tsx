@@ -99,14 +99,14 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   useEffect(() => {
     if (!appDetail)
       return
-    const localeMode = localStorage.getItem('app-detail-collapse-or-expand') || 'expand'
-    setAppSidebarExpand(localeMode)
-  }, [appDetail, setAppSidebarExpand])
-
-  useEffect(() => {
-    if (isMobile)
+    if (isMobile) {
       setAppSidebarExpand('collapse')
-  }, [isMobile, setAppSidebarExpand])
+    }
+    else {
+      const localeMode = localStorage.getItem('app-detail-collapse-or-expand') || 'expand'
+      setAppSidebarExpand(localeMode)
+    }
+  }, [appDetail, isMobile, setAppSidebarExpand])
 
   useEffect(() => {
     if (!appDetail || isLoadingCurrentWorkspace)
