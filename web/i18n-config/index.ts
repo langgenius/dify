@@ -13,7 +13,7 @@ export const i18n = {
 export { Locale }
 
 export const setLocaleOnClient = async (locale: Locale, reloadPage = true) => {
-  Cookies.set(LOCALE_COOKIE_NAME, locale, { expires: 365 })
+  Cookies.set(LOCALE_COOKIE_NAME, locale, { expires: 365, path: '/' })
   await changeLanguage(locale)
   if (reloadPage)
     location.reload()
