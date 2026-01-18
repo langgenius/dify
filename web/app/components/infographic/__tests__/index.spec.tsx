@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import InfographicViewer from '../index'
@@ -43,9 +43,11 @@ data
     expect(screen.getByTitle('common.operation.download')).toBeInTheDocument()
   })
 
-  it('calls render with the syntax string', () => {
+  it('calls render with the syntax string', async () => {
     render(<InfographicViewer syntax={validSyntax} />)
-    expect(mockRender).toHaveBeenCalledWith(validSyntax)
+    await waitFor(() => {
+      expect(mockRender).toHaveBeenCalledWith(validSyntax)
+    })
   })
 
   it('applies custom className', () => {
@@ -61,15 +63,21 @@ data
     expect(container).toHaveStyle({ height: '800px' })
   })
 
-  it('calls destroy on unmount', () => {
+  it('calls destroy on unmount', async () => {
     const { unmount } = render(<InfographicViewer syntax={validSyntax} />)
+    // Wait for initial render to complete
+    await waitFor(() => {
+      expect(mockRender).toHaveBeenCalled()
+    })
     unmount()
     expect(mockDestroy).toHaveBeenCalled()
   })
 
-  it('re-renders when syntax changes', () => {
+  it('re-renders when syntax changes', async () => {
     const { rerender } = render(<InfographicViewer syntax={validSyntax} />)
-    expect(mockRender).toHaveBeenCalledTimes(1)
+    await waitFor(() => {
+      expect(mockRender).toHaveBeenCalledTimes(1)
+    })
 
     const newSyntax = `infographic list-column-simple-vertical
 data
@@ -78,12 +86,14 @@ data
       desc Description`
 
     rerender(<InfographicViewer syntax={newSyntax} />)
-    expect(mockDestroy).toHaveBeenCalled()
-    expect(mockRender).toHaveBeenCalledTimes(2)
-    expect(mockRender).toHaveBeenLastCalledWith(newSyntax)
+    await waitFor(() => {
+      expect(mockDestroy).toHaveBeenCalled()
+      expect(mockRender).toHaveBeenCalledTimes(2)
+      expect(mockRender).toHaveBeenLastCalledWith(newSyntax)
+    })
   })
 
-  it('calls onError when render fails', () => {
+  it('calls onError when render fails', async () => {
     const onError = vi.fn()
     const errorMessage = 'Render failed'
 
@@ -92,15 +102,19 @@ data
     })
 
     render(<InfographicViewer syntax={validSyntax} onError={onError} />)
-    expect(onError).toHaveBeenCalledWith(expect.any(Error))
+    await waitFor(() => {
+      expect(onError).toHaveBeenCalledWith(expect.any(Error))
+    })
   })
 
-  it('shows error message when render fails', () => {
+  it('shows error message when render fails', async () => {
     mockRender.mockImplementationOnce(() => {
       throw new Error('Test error')
     })
 
     render(<InfographicViewer syntax={validSyntax} />)
-    expect(screen.getByText('Test error')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText('Test error')).toBeInTheDocument()
+    })
   })
 })
