@@ -5,14 +5,12 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Button from '@/app/components/base/button'
-import { useToastContext } from '@/app/components/base/toast'
 import { GitHubBranchModal } from '@/app/components/github/github-branch-modal'
 import { GitHubPushPullModal } from '@/app/components/github/github-push-pull-modal'
-import { fetchGitHubBranchesByApp, fetchGitHubConnections, pullWorkflowFromGitHub, pushWorkflowToGitHub } from '@/service/github'
+import { fetchGitHubBranchesByApp, fetchGitHubConnections } from '@/service/github'
 
 const GitHubWorkflowActions = () => {
   const { t } = useTranslation('github')
-  const { notify } = useToastContext()
   const appDetail = useAppStore(s => s.appDetail)
   const queryClient = useQueryClient()
   const [showBranchModal, setShowBranchModal] = useState(false)
@@ -33,55 +31,18 @@ const GitHubWorkflowActions = () => {
   // Fetch branches only if repository is configured
   const { data: branchesData } = useQuery({
     queryKey: ['github-branches', appDetail?.id],
-    queryFn: () => fetchGitHubBranchesByApp({ appId: appDetail?.id! }),
+    queryFn: () => {
+      if (!appDetail?.id) {
+        throw new Error('App ID is required')
+      }
+      return fetchGitHubBranchesByApp({ appId: appDetail.id })
+    },
     enabled: !!appDetail?.id && hasConnection && hasConfiguredRepository,
     retry: false, // Don't retry if repository is not configured
   })
 
   const currentBranch = connection?.branch || 'main'
   const branches = branchesData?.data || []
-
-  const handlePush = async () => {
-    if (!appDetail?.id)
-      return
-
-    try {
-      const result = await pushWorkflowToGitHub({
-        appId: appDetail.id,
-        branch: currentBranch,
-        commitMessage: `Update workflow - ${new Date().toLocaleString()}`,
-      })
-
-      if (result.success) {
-        notify({ type: 'success', message: t('push.success') })
-        queryClient.invalidateQueries({ queryKey: ['github-workflows-commits', appDetail.id] })
-      }
-    }
-    catch (error: any) {
-      notify({ type: 'error', message: error.message || t('push.error') })
-    }
-  }
-
-  const handlePull = async () => {
-    if (!appDetail?.id)
-      return
-
-    try {
-      const result = await pullWorkflowFromGitHub({
-        appId: appDetail.id,
-        branch: currentBranch,
-      })
-
-      if (result.success) {
-        notify({ type: 'success', message: t('pull.success') })
-        // Invalidate workflow cache to refresh UI
-        queryClient.invalidateQueries({ queryKey: ['workflow', appDetail.id] })
-      }
-    }
-    catch (error: any) {
-      notify({ type: 'error', message: error.message || t('pull.error') })
-    }
-  }
 
   // Don't show actions if no connection or repository is not configured
   if (!hasConnection || !hasConfiguredRepository) {

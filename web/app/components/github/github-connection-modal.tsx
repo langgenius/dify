@@ -1,7 +1,7 @@
 'use client'
 import type { GitHubConnection, GitHubConnectionCreatePayload, GitHubRepository } from '@/types/github'
 import { useQueryClient } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal/modal'
@@ -37,6 +37,61 @@ export const GitHubConnectionModal = ({ appId, connectionId, oauthState: oauthSt
 
   // Check if we have OAuth state from OAuth callback (new flow - no incomplete connection)
   const [oauthState, setOauthState] = useState<string | null>(oauthStateProp || null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [connectionToDelete, setConnectionToDelete] = useState<string | null>(null)
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false)
+  const oauthStateInitialized = useRef(false)
+  const showRepoSelectorInitialized = useRef(false)
+
+  const loadRepositories = async (connId?: string) => {
+    try {
+      setIsLoading(true)
+
+      if (oauthState && !connId) {
+        // Fetch repositories using OAuth token from Redis
+        if (!oauthState) {
+          Toast.notify({
+            type: 'error',
+            message: t('connection.oauthRequired'),
+          })
+          return
+        }
+        try {
+          const response = await fetchGitHubRepositoriesFromOAuth({ oauthState })
+          setRepositories(response.data)
+        }
+        catch (error: unknown) {
+          const errorMessage = error && typeof error === 'object' && 'message' in error
+            ? String(error.message)
+            : t('connection.loadReposError')
+          Toast.notify({
+            type: 'error',
+            message: errorMessage,
+          })
+          // If OAuth token expired or endpoint not found, clear oauthState
+          if (errorMessage.includes('expired') || errorMessage.includes('not found') || errorMessage.includes('Failed to fetch')) {
+            setOauthState(null)
+            setShowRepoSelector(false)
+          }
+          throw error
+        }
+      }
+      else if (connId) {
+        // Fetch repositories using existing connection
+        const response = await fetchGitHubRepositories({ connectionId: connId })
+        setRepositories(response.data)
+      }
+    }
+    catch (error) {
+      Toast.notify({
+        type: 'error',
+        message: error instanceof Error ? error.message : t('connection.loadReposError'),
+      })
+    }
+    finally {
+      setIsLoading(false)
+    }
+  }
 
   const loadConnection = async (id: string) => {
     try {
@@ -96,7 +151,7 @@ export const GitHubConnectionModal = ({ appId, connectionId, oauthState: oauthSt
             try {
               await loadRepositories(existing.id)
             }
-            catch (error) {
+            catch {
               // Ignore repository loading errors for incomplete connections
             }
           }
@@ -114,65 +169,21 @@ export const GitHubConnectionModal = ({ appId, connectionId, oauthState: oauthSt
     }
   }
 
-  const loadRepositories = async (connId?: string) => {
-    try {
-      setIsLoading(true)
-
-      if (oauthState && !connId) {
-        // Fetch repositories using OAuth token from Redis
-        if (!oauthState) {
-          Toast.notify({
-            type: 'error',
-            message: t('connection.oauthRequired'),
-          })
-          return
-        }
-        try {
-          const response = await fetchGitHubRepositoriesFromOAuth({ oauthState })
-          setRepositories(response.data)
-        }
-        catch (error: unknown) {
-          const errorMessage = error && typeof error === 'object' && 'message' in error
-            ? String(error.message)
-            : t('connection.loadReposError')
-          Toast.notify({
-            type: 'error',
-            message: errorMessage,
-          })
-          // If OAuth token expired or endpoint not found, clear oauthState
-          if (errorMessage.includes('expired') || errorMessage.includes('not found') || errorMessage.includes('Failed to fetch')) {
-            setOauthState(null)
-            setShowRepoSelector(false)
-          }
-          throw error
-        }
-      }
-      else if (connId) {
-        // Fetch repositories using existing connection
-        const response = await fetchGitHubRepositories({ connectionId: connId })
-        setRepositories(response.data)
-      }
-    }
-    catch (error) {
-      Toast.notify({
-        type: 'error',
-        message: error instanceof Error ? error.message : t('connection.loadReposError'),
-      })
-    }
-    finally {
-      setIsLoading(false)
-    }
-  }
-
   useEffect(() => {
     // Use prop first, then check URL as fallback
     const urlParams = new URLSearchParams(window.location.search)
     const oauthStateParam = oauthStateProp || urlParams.get('github_oauth_state')
     const oauthConnectionId = urlParams.get('connection_id') || urlParams.get('github_connection_id')
 
-    if (oauthStateParam) {
+    if (oauthStateParam && !oauthStateInitialized.current) {
       // New flow: OAuth token is stored in Redis, show repository selector
+      oauthStateInitialized.current = true
+      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
       setOauthState(oauthStateParam)
+    }
+    if (oauthStateParam && !showRepoSelectorInitialized.current) {
+      showRepoSelectorInitialized.current = true
+      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
       setShowRepoSelector(true)
     }
     else if (oauthConnectionId) {
@@ -184,6 +195,7 @@ export const GitHubConnectionModal = ({ appId, connectionId, oauthState: oauthSt
       newUrl.searchParams.delete('github_connection_id')
       window.history.replaceState({}, '', newUrl.pathname + newUrl.search)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [oauthStateProp, appId])
 
   // Load repositories when oauthState is set and repo selector is shown
@@ -195,6 +207,7 @@ export const GitHubConnectionModal = ({ appId, connectionId, oauthState: oauthSt
       }, 100)
       return () => clearTimeout(timer)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [oauthState, showRepoSelector, connection])
 
   // Load existing connection
@@ -227,7 +240,7 @@ export const GitHubConnectionModal = ({ appId, connectionId, oauthState: oauthSt
         try {
           await loadRepositories(incompleteConnection.id)
         }
-        catch (error) {
+        catch {
           // Ignore errors - repositories might not be loadable for incomplete connections
         }
         return
@@ -365,9 +378,18 @@ export const GitHubConnectionModal = ({ appId, connectionId, oauthState: oauthSt
       return
     }
 
-    if (!confirm(t('connection.deleteConfirm'))) {
+    setConnectionToDelete(connId)
+    setShowDeleteConfirm(true)
+  }
+
+  const confirmDelete = async () => {
+    if (!connectionToDelete) {
       return
     }
+
+    const connId = connectionToDelete
+    setShowDeleteConfirm(false)
+    setConnectionToDelete(null)
 
     try {
       setIsLoading(true)
@@ -399,7 +421,7 @@ export const GitHubConnectionModal = ({ appId, connectionId, oauthState: oauthSt
               try {
                 await loadRepositories(existing.id)
               }
-              catch (error) {
+              catch {
                 // Ignore errors
               }
             }
@@ -455,15 +477,17 @@ export const GitHubConnectionModal = ({ appId, connectionId, oauthState: oauthSt
       return
     }
 
+    setShowDeleteAllConfirm(true)
+  }
+
+  const confirmDeleteAll = async () => {
+    const connectionsToDelete = allConnections.length > 0 ? allConnections : (connection ? [connection] : [])
     const count = connectionsToDelete.length
-    if (!confirm(t('connection.deleteAllConfirm', { count }))) {
-      return
-    }
+    setShowDeleteAllConfirm(false)
 
     try {
       setIsLoading(true)
       let successCount = 0
-      let errorCount = 0
 
       // Delete all connections sequentially
       for (const conn of connectionsToDelete) {
@@ -471,8 +495,8 @@ export const GitHubConnectionModal = ({ appId, connectionId, oauthState: oauthSt
           await deleteGitHubConnection({ connectionId: conn.id })
           successCount++
         }
-        catch (error: unknown) {
-          errorCount++
+        catch {
+          // Ignore individual errors, track success count
         }
       }
 
@@ -527,199 +551,250 @@ export const GitHubConnectionModal = ({ appId, connectionId, oauthState: oauthSt
       ? t('connection.completeTitle')
       : t('connection.connectTitle')
 
-  return (
-    <Modal
-      title={title}
-      onClose={onClose}
-      onCancel={onClose}
-      onConfirm={handleSave}
-      confirmButtonText={connection ? t('connection.save') : t('connection.connect')}
-      cancelButtonText={tCommon('operation.cancel')}
-      disabled={isLoading}
-      size="md"
-    >
-      <div className="space-y-4">
-        {/* Always show delete button at the top if there are any connections */}
-        {(connection || allConnections.length > 0) && (
-          <div className="p-3 bg-components-alert-warning-bg border border-components-alert-warning-border rounded-lg">
-            <div className="text-sm text-text-primary mb-2">
-              {allConnections.length > 1
-                ? t('connection.multipleConnectionsWarning', { count: allConnections.length })
-                : connection && !connection.repository_name
-                  ? t('connection.incompleteConnection')
-                  : t('connection.deleteAllDescription')}
-            </div>
-            <Button
-              variant="secondary"
-              size="small"
-              destructive
-              onClick={() => {
-                const connToDelete = connection || allConnections[0]
-                if (connToDelete?.id) {
-                  handleDelete(connToDelete.id)
-                }
-                else if (allConnections.length > 0) {
-                  handleDeleteAll()
-                }
-              }}
-              disabled={isLoading || (!connection && allConnections.length === 0)}
-              className="w-full"
-            >
-              {allConnections.length > 1
-                ? `${t('connection.deleteAll')} (${allConnections.length})`
-                : t('connection.disconnect')}
-            </Button>
-          </div>
-        )}
+  const showDeleteConfirmModal = showDeleteConfirm && connectionToDelete
+  const showDeleteAllConfirmModal = showDeleteAllConfirm
 
-        {!connection && !oauthState ? (
-          <div className="space-y-4">
-            <p className="text-sm text-text-secondary">
-              {t('connection.connectDescription')}
-            </p>
-                <Button
-                  variant="primary"
-                  onClick={handleConnect}
-                  disabled={isLoading}
-                >
-              {t('connection.connectToGitHub')}
-            </Button>
-          </div>
-        ) : showRepoSelector || oauthState ? (
-          <div className="space-y-4">
-            {/* Repository selector - delete button already shown at top */}
-            {oauthState && !connection && (
-              <div className="p-3 bg-components-alert-info-bg border border-components-alert-info-border rounded-lg">
-                <div className="text-sm text-text-primary">
-                  {t('connection.oauthComplete')}
-                </div>
+  return (
+    <>
+      {showDeleteConfirmModal && (
+        <Modal
+          title={t('connection.deleteConfirm')}
+          onClose={() => {
+            setShowDeleteConfirm(false)
+            setConnectionToDelete(null)
+          }}
+          onCancel={() => {
+            setShowDeleteConfirm(false)
+            setConnectionToDelete(null)
+          }}
+          onConfirm={confirmDelete}
+          confirmButtonText={tCommon('operation.confirm')}
+          cancelButtonText={tCommon('operation.cancel')}
+          disabled={isLoading}
+          size="sm"
+        >
+          <p className="text-sm text-text-secondary">
+            {t('connection.deleteConfirmMessage')}
+          </p>
+        </Modal>
+      )}
+      {showDeleteAllConfirmModal && (
+        <Modal
+          title={t('connection.deleteAllConfirm', { count: allConnections.length })}
+          onClose={() => setShowDeleteAllConfirm(false)}
+          onCancel={() => setShowDeleteAllConfirm(false)}
+          onConfirm={confirmDeleteAll}
+          confirmButtonText={tCommon('operation.confirm')}
+          cancelButtonText={tCommon('operation.cancel')}
+          disabled={isLoading}
+          size="sm"
+        >
+          <p className="text-sm text-text-secondary">
+            {t('connection.deleteAllConfirmMessage', { count: allConnections.length })}
+          </p>
+        </Modal>
+      )}
+      <Modal
+        title={title}
+        onClose={onClose}
+        onCancel={onClose}
+        onConfirm={handleSave}
+        confirmButtonText={connection ? t('connection.save') : t('connection.connect')}
+        cancelButtonText={tCommon('operation.cancel')}
+        disabled={isLoading}
+        size="md"
+      >
+        <div className="space-y-4">
+          {/* Always show delete button at the top if there are any connections */}
+          {(connection || allConnections.length > 0) && (
+            <div className="bg-components-alert-warning-bg border-components-alert-warning-border rounded-lg border p-3">
+              <div className="mb-2 text-sm text-text-primary">
+                {allConnections.length > 1
+                  ? t('connection.multipleConnectionsWarning', { count: allConnections.length })
+                  : connection && !connection.repository_name
+                    ? t('connection.incompleteConnection')
+                    : t('connection.deleteAllDescription')}
               </div>
-            )}
-            <p className="text-sm text-text-secondary">
-              {t('connection.selectRepoDescription')}
-            </p>
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-text-primary">
-                {t('connection.repository')}
-              </label>
-              <div className="max-h-60 overflow-y-auto border border-components-panel-border rounded-lg">
-                {repositories.length === 0
-                  ? (
-                      <div className="p-4 text-center text-sm text-text-tertiary">
-                        {isLoading ? tCommon('loading') : t('connection.noRepositories')}
-                      </div>
-                    )
-                  : (
-                      repositories.map((repo) => {
-                        const isSelected = selectedRepo?.name === repo.name && selectedRepo?.owner === repo.full_name.split('/')[0]
-                        return (
-                          <div
-                            key={repo.id}
-                            className={`p-3 cursor-pointer transition-colors border-b border-components-panel-border last:border-b-0 ${
-                              isSelected
-                                ? 'bg-components-panel-active border-l-4 border-l-components-button-primary-border'
-                                : 'hover:bg-components-panel-hover'
-                            }`}
-                            onClick={() => handleSelectRepository(repo)}
-                          >
-                            <div className="flex items-center gap-2">
-                              <div className={`w-2 h-2 rounded-full ${
-                                isSelected ? 'bg-components-button-primary-border' : 'bg-transparent'
-                              }`}
-                              />
-                              <div className="flex-1">
-                                <div className={`font-medium ${
-                                  isSelected ? 'text-components-button-primary-text' : 'text-text-primary'
-                                }`}
-                                >
-                                  {repo.full_name}
-                                </div>
-                                {repo.description && (
-                                  <div className="text-sm text-text-tertiary mt-1">{repo.description}</div>
-                                )}
-                              </div>
-                              {isSelected && (
-                                <div className="text-components-button-primary-text">
-                                  ✓
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )
-                      })
-                    )}
-              </div>
-              {selectedRepo && (
-                <div className="mt-2 p-2 bg-components-panel-active rounded-lg border border-components-panel-border">
-                  <div className="text-sm text-text-secondary">
-                    {t('connection.selected')}
-                    :
-                    <span className="font-medium text-text-primary">
-                      {selectedRepo.owner}
-                      /
-                      {selectedRepo.name}
-                    </span>
-                  </div>
-                  <div className="text-xs text-text-tertiary mt-1">
-                    {t('connection.branchNote')}
-                  </div>
-                </div>
-              )}
+              <Button
+                variant="secondary"
+                size="small"
+                destructive
+                onClick={() => {
+                  const connToDelete = connection || allConnections[0]
+                  if (connToDelete?.id) {
+                    handleDelete(connToDelete.id)
+                  }
+                  else if (allConnections.length > 0) {
+                    handleDeleteAll()
+                  }
+                }}
+                disabled={isLoading || (!connection && allConnections.length === 0)}
+                className="w-full"
+              >
+                {allConnections.length > 1
+                  ? `${t('connection.deleteAll')} (${allConnections.length})`
+                  : t('connection.disconnect')}
+              </Button>
             </div>
-          </div>
-        ) : connection ? (
-          <div className="space-y-4">
-            {connection.repository_name ? (
-              <>
-                <div className="p-4 bg-components-panel-active rounded-lg">
-                  <div className="text-sm text-text-secondary mb-2">
-                    {t('connection.connectedTo')}
-                  </div>
-                  <div className="font-medium text-text-primary">
-                    {connection.repository_full_name}
-                  </div>
-                  <div className="text-sm text-text-tertiary mt-1">
-                    {t('connection.branch')}
-                    :
-                    {connection.branch}
-                  </div>
-                </div>
-                <div className="flex gap-2">
+          )}
+
+          {!connection && !oauthState
+            ? (
+                <div className="space-y-4">
+                  <p className="text-sm text-text-secondary">
+                    {t('connection.connectDescription')}
+                  </p>
                   <Button
-                    variant="secondary"
-                    onClick={() => {
-                      // Pre-select current repository
-                      setSelectedRepo({
-                        owner: connection.repository_owner,
-                        name: connection.repository_name,
-                      })
-                      setShowRepoSelector(true)
-                      loadRepositories(connection.id)
-                    }}
+                    variant="primary"
+                    onClick={handleConnect}
                     disabled={isLoading}
                   >
-                    {t('connection.changeRepository')}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    destructive
-                    onClick={() => handleDelete(connection.id)}
-                    disabled={isLoading}
-                  >
-                    {t('connection.disconnect')}
+                    {t('connection.connectToGitHub')}
                   </Button>
                 </div>
-              </>
-            ) : (
-              // Incomplete connection - automatically show repository selector
-              // The delete button is already shown at the top
-              <div className="text-sm text-text-secondary">
-                {t('connection.selectRepoDescription')}
-              </div>
-            )}
-          </div>
-        ) : null}
-      </div>
-    </Modal>
+              )
+            : showRepoSelector || oauthState
+              ? (
+                  <div className="space-y-4">
+                    {/* Repository selector - delete button already shown at top */}
+                    {oauthState && !connection && (
+                      <div className="bg-components-alert-info-bg border-components-alert-info-border rounded-lg border p-3">
+                        <div className="text-sm text-text-primary">
+                          {t('connection.oauthComplete')}
+                        </div>
+                      </div>
+                    )}
+                    <p className="text-sm text-text-secondary">
+                      {t('connection.selectRepoDescription')}
+                    </p>
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-text-primary">
+                        {t('connection.repository')}
+                      </label>
+                      <div className="max-h-60 overflow-y-auto rounded-lg border border-components-panel-border">
+                        {repositories.length === 0
+                          ? (
+                              <div className="p-4 text-center text-sm text-text-tertiary">
+                                {isLoading ? tCommon('loading') : t('connection.noRepositories')}
+                              </div>
+                            )
+                          : (
+                              repositories.map((repo) => {
+                                const isSelected = selectedRepo?.name === repo.name && selectedRepo?.owner === repo.full_name.split('/')[0]
+                                return (
+                                  <div
+                                    key={repo.id}
+                                    className={`cursor-pointer border-b border-components-panel-border p-3 transition-colors last:border-b-0 ${
+                                      isSelected
+                                        ? 'bg-components-panel-active border-l-4 border-l-components-button-primary-border'
+                                        : 'hover:bg-components-panel-hover'
+                                    }`}
+                                    onClick={() => handleSelectRepository(repo)}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <div className={`h-2 w-2 rounded-full ${
+                                        isSelected ? 'bg-components-button-primary-border' : 'bg-transparent'
+                                      }`}
+                                      />
+                                      <div className="flex-1">
+                                        <div className={`font-medium ${
+                                          isSelected ? 'text-components-button-primary-text' : 'text-text-primary'
+                                        }`}
+                                        >
+                                          {repo.full_name}
+                                        </div>
+                                        {repo.description && (
+                                          <div className="mt-1 text-sm text-text-tertiary">{repo.description}</div>
+                                        )}
+                                      </div>
+                                      {isSelected && (
+                                        <div className="text-components-button-primary-text">
+                                          ✓
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )
+                              })
+                            )}
+                      </div>
+                      {selectedRepo && (
+                        <div className="bg-components-panel-active mt-2 rounded-lg border border-components-panel-border p-2">
+                          <div className="text-sm text-text-secondary">
+                            {t('connection.selected')}
+                            :
+                            <span className="font-medium text-text-primary">
+                              {selectedRepo.owner}
+                              /
+                              {selectedRepo.name}
+                            </span>
+                          </div>
+                          <div className="mt-1 text-xs text-text-tertiary">
+                            {t('connection.branchNote')}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              : connection
+                ? (
+                    <div className="space-y-4">
+                      {connection.repository_name
+                        ? (
+                            <>
+                              <div className="bg-components-panel-active rounded-lg p-4">
+                                <div className="mb-2 text-sm text-text-secondary">
+                                  {t('connection.connectedTo')}
+                                </div>
+                                <div className="font-medium text-text-primary">
+                                  {connection.repository_full_name}
+                                </div>
+                                <div className="mt-1 text-sm text-text-tertiary">
+                                  {t('connection.branch')}
+                                  :
+                                  {connection.branch}
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button
+                                  variant="secondary"
+                                  onClick={() => {
+                                  // Pre-select current repository
+                                    setSelectedRepo({
+                                      owner: connection.repository_owner,
+                                      name: connection.repository_name,
+                                    })
+                                    setShowRepoSelector(true)
+                                    loadRepositories(connection.id)
+                                  }}
+                                  disabled={isLoading}
+                                >
+                                  {t('connection.changeRepository')}
+                                </Button>
+                                <Button
+                                  variant="secondary"
+                                  destructive
+                                  onClick={() => handleDelete(connection.id)}
+                                  disabled={isLoading}
+                                >
+                                  {t('connection.disconnect')}
+                                </Button>
+                              </div>
+                            </>
+                          )
+                        : (
+                          // Incomplete connection - automatically show repository selector
+                          // The delete button is already shown at the top
+                            <div className="text-sm text-text-secondary">
+                              {t('connection.selectRepoDescription')}
+                            </div>
+                          )}
+                    </div>
+                  )
+                : null}
+        </div>
+      </Modal>
+    </>
   )
 }

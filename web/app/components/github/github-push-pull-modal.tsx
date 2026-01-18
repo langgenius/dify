@@ -1,8 +1,6 @@
 'use client'
-import type { GitHubBranch } from '@/types/github'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal/modal'
 import Toast from '@/app/components/base/toast'
@@ -24,25 +22,12 @@ export const GitHubPushPullModal = ({ appId, action, currentBranch, branches, on
   const [isLoading, setIsLoading] = useState(false)
   const [selectedBranch, setSelectedBranch] = useState(currentBranch)
   const [commitMessage, setCommitMessage] = useState('')
+  const [showPullConfirm, setShowPullConfirm] = useState(false)
   const handleRefreshWorkflowDraft = useHooksStore(s => s.handleRefreshWorkflowDraft)
 
-  const handleSubmit = async () => {
+  const performAction = async () => {
     if (!appId)
       return
-
-    if (action === 'push' && !commitMessage.trim()) {
-      Toast.notify({
-        type: 'error',
-        message: t('push.commitMessagePlaceholder'),
-      })
-      return
-    }
-
-    if (action === 'pull') {
-      const confirmed = window.confirm(t('pull.warning'))
-      if (!confirmed)
-        return
-    }
 
     try {
       setIsLoading(true)
@@ -81,10 +66,13 @@ export const GitHubPushPullModal = ({ appId, action, currentBranch, branches, on
         }
       }
     }
-    catch (error: any) {
+    catch (error: unknown) {
+      const errorMessage = error && typeof error === 'object' && 'message' in error
+        ? String(error.message)
+        : (action === 'push' ? t('push.error') : t('pull.error'))
       Toast.notify({
         type: 'error',
-        message: error.message || (action === 'push' ? t('push.error') : t('pull.error')),
+        message: errorMessage,
       })
     }
     finally {
@@ -92,58 +80,101 @@ export const GitHubPushPullModal = ({ appId, action, currentBranch, branches, on
     }
   }
 
-  return (
-    <Modal
-      title={action === 'push' ? t('push.title') : t('pull.title')}
-      subTitle={action === 'push' ? t('push.description') : t('pull.description')}
-      onClose={onClose}
-      onCancel={onClose}
-      cancelButtonText={tCommon('operation.cancel')}
-      onConfirm={handleSubmit}
-      confirmButtonText={action === 'push' ? t('push.button') : t('pull.button')}
-      disabled={isLoading}
-    >
-      <div className="space-y-4">
-        <div>
-          <label className="system-sm-medium mb-1.5 block text-text-primary">
-            {t('connection.branch')}
-          </label>
-          <select
-            value={selectedBranch}
-            onChange={e => setSelectedBranch(e.target.value)}
-            className="w-full rounded-lg border border-components-input-border bg-components-input-bg px-3 py-2 text-sm text-text-primary focus:border-components-input-border-focus focus:outline-none"
-            disabled={isLoading}
-          >
-            {branches.map(branch => (
-              <option key={branch.name} value={branch.name}>
-                {branch.name}
-              </option>
-            ))}
-          </select>
-        </div>
+  const handleSubmit = async () => {
+    if (!appId)
+      return
 
-        {action === 'push' && (
+    if (action === 'push' && !commitMessage.trim()) {
+      Toast.notify({
+        type: 'error',
+        message: t('push.commitMessagePlaceholder'),
+      })
+      return
+    }
+
+    if (action === 'pull') {
+      setShowPullConfirm(true)
+      return
+    }
+
+    await performAction()
+  }
+
+  const handlePullConfirm = async () => {
+    setShowPullConfirm(false)
+    await performAction()
+  }
+
+  return (
+    <>
+      {showPullConfirm && (
+        <Modal
+          title={t('pull.warning')}
+          onClose={() => setShowPullConfirm(false)}
+          onCancel={() => setShowPullConfirm(false)}
+          onConfirm={handlePullConfirm}
+          confirmButtonText={tCommon('operation.confirm')}
+          cancelButtonText={tCommon('operation.cancel')}
+          disabled={isLoading}
+          size="sm"
+        >
+          <p className="text-sm text-text-secondary">
+            {t('pull.description')}
+          </p>
+        </Modal>
+      )}
+      <Modal
+        title={action === 'push' ? t('push.title') : t('pull.title')}
+        subTitle={action === 'push' ? t('push.description') : t('pull.description')}
+        onClose={onClose}
+        onCancel={onClose}
+        cancelButtonText={tCommon('operation.cancel')}
+        onConfirm={handleSubmit}
+        confirmButtonText={action === 'push' ? t('push.button') : t('pull.button')}
+        disabled={isLoading}
+      >
+        <div className="space-y-4">
           <div>
             <label className="system-sm-medium mb-1.5 block text-text-primary">
-              {t('push.commitMessage')}
+              {t('connection.branch')}
             </label>
-            <Input
-              value={commitMessage}
-              onChange={e => setCommitMessage(e.target.value)}
-              placeholder={t('push.commitMessagePlaceholder')}
+            <select
+              value={selectedBranch}
+              onChange={e => setSelectedBranch(e.target.value)}
+              className="border-components-input-border bg-components-input-bg focus:border-components-input-border-focus w-full rounded-lg border px-3 py-2 text-sm text-text-primary focus:outline-none"
               disabled={isLoading}
-            />
+            >
+              {branches.map(branch => (
+                <option key={branch.name} value={branch.name}>
+                  {branch.name}
+                </option>
+              ))}
+            </select>
           </div>
-        )}
 
-        {action === 'pull' && (
-          <div className="rounded-lg border border-components-alert-warning-border bg-components-alert-warning-bg p-3">
-            <p className="system-sm-regular text-components-alert-warning-text">
-              {t('pull.warning')}
-            </p>
-          </div>
-        )}
-      </div>
-    </Modal>
+          {action === 'push' && (
+            <div>
+              <label className="system-sm-medium mb-1.5 block text-text-primary">
+                {t('push.commitMessage')}
+              </label>
+              <Input
+                value={commitMessage}
+                onChange={e => setCommitMessage(e.target.value)}
+                placeholder={t('push.commitMessagePlaceholder')}
+                disabled={isLoading}
+              />
+            </div>
+          )}
+
+          {action === 'pull' && (
+            <div className="border-components-alert-warning-border bg-components-alert-warning-bg rounded-lg border p-3">
+              <p className="system-sm-regular text-components-alert-warning-text">
+                {t('pull.warning')}
+              </p>
+            </div>
+          )}
+        </div>
+      </Modal>
+    </>
   )
 }

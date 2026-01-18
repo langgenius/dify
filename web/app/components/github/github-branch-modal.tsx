@@ -142,7 +142,7 @@ export const GitHubBranchModal = ({ appId, currentBranch, branches, connection, 
                 <select
                   value={fromBranch}
                   onChange={e => setFromBranch(e.target.value)}
-                  className="w-full rounded-lg border border-components-input-border bg-components-input-bg px-3 py-2 text-sm text-text-primary focus:border-components-input-border-focus focus:outline-none"
+                  className="border-components-input-border bg-components-input-bg focus:border-components-input-border-focus w-full rounded-lg border px-3 py-2 text-sm text-text-primary focus:outline-none"
                   disabled={isLoading}
                 >
                   {branches.map(branch => (
@@ -172,9 +172,9 @@ export const GitHubBranchModal = ({ appId, currentBranch, branches, connection, 
                 disabled={isLoading || branch.name === currentBranch}
                 className={`w-full rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
                   branch.name === currentBranch
-                    ? 'border-components-panel-border bg-components-panel-bg text-text-primary cursor-default'
+                    ? 'cursor-default border-components-panel-border bg-components-panel-bg text-text-primary'
                     : 'border-components-button-secondary-border bg-components-button-secondary-bg text-components-button-secondary-text hover:bg-components-button-secondary-bg-hover'
-                } ${isLoading ? 'opacity-50 cursor-not-allowed' : branch.name !== currentBranch ? 'cursor-pointer' : ''}`}
+                } ${isLoading ? 'cursor-not-allowed opacity-50' : branch.name !== currentBranch ? 'cursor-pointer' : ''}`}
               >
                 <div className="flex items-center justify-between">
                   <span>{branch.name}</span>

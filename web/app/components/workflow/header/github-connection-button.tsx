@@ -1,7 +1,7 @@
 'use client'
 import { RiGitBranchLine } from '@remixicon/react'
 import { useQuery } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Button from '@/app/components/base/button'
@@ -23,6 +23,8 @@ const GitHubConnectionButton = () => {
 
   // Check for OAuth state or connection_id in URL (from OAuth callback) and open modal automatically
   const [oauthStateFromUrl, setOauthStateFromUrl] = useState<string | null>(null)
+  const oauthStateInitialized = useRef(false)
+  const showModalInitialized = useRef(false)
 
   useEffect(() => {
     if (appDetail?.id) {
@@ -32,28 +34,38 @@ const GitHubConnectionButton = () => {
 
       if (oauthState || oauthConnectionId) {
         // Store oauth_state before cleaning URL
-        if (oauthState) {
+        if (oauthState && !oauthStateInitialized.current) {
+          oauthStateInitialized.current = true
+          // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
           setOauthStateFromUrl(oauthState)
         }
         // Open modal - it will handle oauth_state internally
-        setShowModal(true)
+        if (!showModalInitialized.current) {
+          showModalInitialized.current = true
+          // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
+          setShowModal(true)
+        }
         // Clean up URL after a short delay to ensure modal reads it first
-        setTimeout(() => {
+        const timer = setTimeout(() => {
           const newUrl = new URL(window.location.href)
           newUrl.searchParams.delete('github_oauth_state')
           newUrl.searchParams.delete('connection_id')
           newUrl.searchParams.delete('github_connection_id')
           window.history.replaceState({}, '', newUrl.pathname + newUrl.search)
         }, 100)
+        return () => clearTimeout(timer)
       }
     }
   }, [appDetail?.id])
 
+  const connectionIdInitialized = useRef(false)
   // Set connectionId when connection is found
   useEffect(() => {
     if (connectionsData?.data && connectionsData.data.length > 0) {
       // Only set if we don't already have one from URL
-      if (!connectionId) {
+      if (!connectionId && !connectionIdInitialized.current) {
+        connectionIdInitialized.current = true
+        // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
         setConnectionId(connectionsData.data[0].id)
       }
     }
@@ -61,7 +73,9 @@ const GitHubConnectionButton = () => {
       // Only clear if we didn't get it from URL
       const urlParams = new URLSearchParams(window.location.search)
       const oauthConnectionId = urlParams.get('connection_id') || urlParams.get('github_connection_id')
-      if (!oauthConnectionId) {
+      if (!oauthConnectionId && connectionId !== null) {
+        connectionIdInitialized.current = false
+        // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
         setConnectionId(null)
       }
     }
