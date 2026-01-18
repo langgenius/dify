@@ -19,8 +19,9 @@ vi.mock('@/service/use-plugins', () => ({
 }))
 
 // Mock useLanguage hook
+let mockLanguage = 'en-US'
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useLanguage: () => 'en-US',
+  useLanguage: () => mockLanguage,
 }))
 
 // Mock DetailHeader component (complex component with many dependencies)
@@ -693,6 +694,23 @@ describe('ReadmePanel', () => {
         expect(currentPluginDetail).toBeDefined()
       })
     })
+
+    it('should not close panel when content area is clicked in modal mode', async () => {
+      const mockDetail = createMockPluginDetail()
+      const { setCurrentPluginDetail } = useReadmePanelStore.getState()
+      setCurrentPluginDetail(mockDetail, ReadmeShowType.modal)
+
+      renderWithQueryClient(<ReadmePanel />)
+
+      // Click on the content container in modal mode (should stop propagation)
+      const contentContainer = document.querySelector('.pointer-events-auto')
+      fireEvent.click(contentContainer!)
+
+      await waitFor(() => {
+        const { currentPluginDetail } = useReadmePanelStore.getState()
+        expect(currentPluginDetail).toBeDefined()
+      })
+    })
   })
 
   // ================================
@@ -715,20 +733,25 @@ describe('ReadmePanel', () => {
     })
 
     it('should pass undefined language for zh-Hans locale', () => {
-      // Re-mock useLanguage to return zh-Hans
-      vi.doMock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-        useLanguage: () => 'zh-Hans',
-      }))
+      // Set language to zh-Hans
+      mockLanguage = 'zh-Hans'
 
-      const mockDetail = createMockPluginDetail()
+      const mockDetail = createMockPluginDetail({
+        plugin_unique_identifier: 'zh-plugin@1.0.0',
+      })
       const { setCurrentPluginDetail } = useReadmePanelStore.getState()
       setCurrentPluginDetail(mockDetail, ReadmeShowType.drawer)
 
-      // This test verifies the language handling logic exists in the component
       renderWithQueryClient(<ReadmePanel />)
 
-      // The component should have called the hook
-      expect(mockUsePluginReadme).toHaveBeenCalled()
+      // The component should pass undefined for language when zh-Hans
+      expect(mockUsePluginReadme).toHaveBeenCalledWith({
+        plugin_unique_identifier: 'zh-plugin@1.0.0',
+        language: undefined,
+      })
+
+      // Reset language
+      mockLanguage = 'en-US'
     })
 
     it('should handle empty plugin_unique_identifier', () => {

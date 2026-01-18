@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { Collection } from '@/app/components/tools/types'
+import type { ToolCredentialFormSchema } from '@/app/components/tools/utils/to-form-schema'
 import {
   RiArrowRightUpLine,
 } from '@remixicon/react'
@@ -19,7 +20,7 @@ import { cn } from '@/utils/classnames'
 type Props = {
   collection: Collection
   onCancel: () => void
-  onSaved: (value: Record<string, any>) => void
+  onSaved: (value: Record<string, unknown>) => void
 }
 
 const ToolCredentialForm: FC<Props> = ({
@@ -29,9 +30,9 @@ const ToolCredentialForm: FC<Props> = ({
 }) => {
   const getValueFromI18nObject = useRenderI18nObject()
   const { t } = useTranslation()
-  const [credentialSchema, setCredentialSchema] = useState<any>(null)
+  const [credentialSchema, setCredentialSchema] = useState<ToolCredentialFormSchema[] | null>(null)
   const { name: collectionName } = collection
-  const [tempCredential, setTempCredential] = React.useState<any>({})
+  const [tempCredential, setTempCredential] = React.useState<Record<string, unknown>>({})
   useEffect(() => {
     fetchBuiltInToolCredentialSchema(collectionName).then(async (res) => {
       const toolCredentialSchemas = toolCredentialToFormSchemas(res)
@@ -44,6 +45,8 @@ const ToolCredentialForm: FC<Props> = ({
   }, [])
 
   const handleSave = () => {
+    if (!credentialSchema)
+      return
     for (const field of credentialSchema) {
       if (field.required && !tempCredential[field.name]) {
         Toast.notify({ type: 'error', message: t('errorMsg.fieldRequired', { ns: 'common', field: getValueFromI18nObject(field.label) }) })

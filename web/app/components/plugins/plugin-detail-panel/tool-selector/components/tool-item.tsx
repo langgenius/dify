@@ -22,7 +22,7 @@ import { SwitchPluginVersion } from '@/app/components/workflow/nodes/_base/compo
 import { cn } from '@/utils/classnames'
 
 type Props = {
-  icon?: any
+  icon?: string | { content?: string, background?: string }
   providerName?: string
   isMCPTool?: boolean
   providerShowName?: string
@@ -33,7 +33,7 @@ type Props = {
   onDelete?: () => void
   noAuth?: boolean
   isError?: boolean
-  errorTip?: any
+  errorTip?: React.ReactNode
   uninstalled?: boolean
   installInfo?: string
   onInstall?: () => void
