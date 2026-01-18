@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 class GitHubConnection(TypeBase):
     """
     Stores GitHub OAuth connection and repository mapping.
-    
+
     Attributes:
     - id: Connection ID
     - tenant_id: Workspace ID
@@ -153,4 +153,3 @@ class GitHubConnection(TypeBase):
             if self.webhook_secret:
                 result["webhook_secret"] = self.get_decrypted_webhook_secret()
         return result
-

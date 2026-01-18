@@ -245,4 +245,3 @@ class TestGitHubAPIClient:
 
             with pytest.raises(ValueError, match="GitHub API error"):
                 client.get_repository_info()
-

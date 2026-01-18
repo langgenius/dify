@@ -55,11 +55,13 @@ class GitHubOAuthCallback(Resource):
             error_description = request.args.get("error_description", error)
             logger.error("GitHub OAuth error: %s - %s", error, error_description)
             from configs import dify_config
+
             redirect_url = f"{dify_config.CONSOLE_WEB_URL}?github_oauth_error={error_description}"
             return redirect(redirect_url, code=302)
 
         if not code or not state:
             from configs import dify_config
+
             redirect_url = f"{dify_config.CONSOLE_WEB_URL}?github_oauth_error=Missing code or state parameter"
             return redirect(redirect_url, code=302)
 
@@ -76,16 +78,14 @@ class GitHubOAuthCallback(Resource):
                     f"?github_oauth_state={oauth_result.oauth_state}"
                 )
             else:
-                redirect_url = (
-                    f"{dify_config.CONSOLE_WEB_URL}"
-                    f"?github_oauth_state={oauth_result.oauth_state}"
-                )
+                redirect_url = f"{dify_config.CONSOLE_WEB_URL}?github_oauth_state={oauth_result.oauth_state}"
             return redirect(redirect_url, code=302)
         except ValueError as e:
             logger.exception("GitHub OAuth callback failed")
             import urllib.parse
 
             from configs import dify_config
+
             error_msg = urllib.parse.quote(str(e))
             redirect_url = f"{dify_config.CONSOLE_WEB_URL}?github_oauth_error={error_msg}"
             return redirect(redirect_url, code=302)
@@ -94,7 +94,7 @@ class GitHubOAuthCallback(Resource):
             import urllib.parse
 
             from configs import dify_config
+
             error_msg = urllib.parse.quote(f"Failed to complete OAuth flow: {str(e)}")
             redirect_url = f"{dify_config.CONSOLE_WEB_URL}?github_oauth_error={error_msg}"
             return redirect(redirect_url, code=302)
-

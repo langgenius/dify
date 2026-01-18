@@ -30,9 +30,9 @@ class GitHubBranches(Resource):
     def post(self):
         """Create a new branch in the GitHub repository."""
         account, tenant = current_account_with_tenant()
-        
+
         payload = CreateBranchPayload.model_validate(request.json)
-        
+
         # Get GitHub connection for this app
         connection = (
             db.session.query(GitHubConnection)
@@ -42,13 +42,13 @@ class GitHubBranches(Resource):
             )
             .first()
         )
-        
+
         if not connection:
             raise NotFound("GitHub connection not found for this app")
-        
+
         if not connection.repository_name:
             raise BadRequest("Repository not configured")
-        
+
         try:
             client = GitHubAPIClient(connection)
             result = client.create_branch(
@@ -80,11 +80,11 @@ class GitHubBranchesList(Resource):
     def get(self):
         """List branches for a specific app's GitHub connection."""
         account, tenant = current_account_with_tenant()
-        
+
         app_id = request.args.get("app_id")
         if not app_id:
             raise BadRequest("app_id is required")
-        
+
         # Get GitHub connection for this app
         connection = (
             db.session.query(GitHubConnection)
@@ -94,13 +94,13 @@ class GitHubBranchesList(Resource):
             )
             .first()
         )
-        
+
         if not connection:
             raise NotFound("GitHub connection not found for this app")
-        
+
         if not connection.repository_name:
             raise BadRequest("Repository not configured")
-        
+
         try:
             client = GitHubAPIClient(connection)
             branches = client.list_branches()
@@ -117,4 +117,3 @@ class GitHubBranchesList(Resource):
         except Exception as e:
             logger.exception("Failed to list GitHub branches")
             raise BadRequest(f"Failed to list branches: {str(e)}") from e
-

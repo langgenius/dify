@@ -40,14 +40,14 @@ class WorkflowPush(Resource):
     def post(self):
         """Push workflow to GitHub repository."""
         account, tenant = current_account_with_tenant()
-        
+
         payload = WorkflowPushPayload.model_validate(request.json)
-        
+
         # Get app
         app = db.session.get(App, payload.app_id)
         if not app or app.tenant_id != tenant:
             raise NotFound("App not found")
-        
+
         # Get GitHub connection for this app
         connection = (
             db.session.query(GitHubConnection)
@@ -57,20 +57,20 @@ class WorkflowPush(Resource):
             )
             .first()
         )
-        
+
         if not connection:
             raise NotFound("GitHub connection not found for this app")
-        
+
         # Get workflow
         workflow_service = WorkflowService()
         if payload.workflow_id:
             workflow = workflow_service.get_published_workflow_by_id(app, payload.workflow_id)
         else:
             workflow = workflow_service.get_draft_workflow(app)
-        
+
         if not workflow:
             raise NotFound("Workflow not found")
-        
+
         # Push workflow
         git_service = WorkflowGitService(connection)
         try:
@@ -105,14 +105,14 @@ class WorkflowPull(Resource):
     def post(self):
         """Pull workflow from GitHub repository."""
         account, tenant = current_account_with_tenant()
-        
+
         payload = WorkflowPullPayload.model_validate(request.json)
-        
+
         # Get app
         app = db.session.get(App, payload.app_id)
         if not app or app.tenant_id != tenant:
             raise NotFound("App not found")
-        
+
         # Get GitHub connection for this app
         connection = (
             db.session.query(GitHubConnection)
@@ -122,10 +122,10 @@ class WorkflowPull(Resource):
             )
             .first()
         )
-        
+
         if not connection:
             raise NotFound("GitHub connection not found for this app")
-        
+
         # Pull workflow
         git_service = WorkflowGitService(connection)
         try:
@@ -159,19 +159,19 @@ class WorkflowCommits(Resource):
     def get(self):
         """Get commit history for workflow file."""
         account, tenant = current_account_with_tenant()
-        
+
         app_id = request.args.get("app_id")
         branch = request.args.get("branch")
         limit = int(request.args.get("limit", 30))
-        
+
         if not app_id:
             raise BadRequest("app_id is required")
-        
+
         # Get app
         app = db.session.get(App, app_id)
         if not app or app.tenant_id != tenant:
             raise NotFound("App not found")
-        
+
         # Get GitHub connection for this app
         connection = (
             db.session.query(GitHubConnection)
@@ -181,10 +181,10 @@ class WorkflowCommits(Resource):
             )
             .first()
         )
-        
+
         if not connection:
             raise NotFound("GitHub connection not found for this app")
-        
+
         # Get commit history
         git_service = WorkflowGitService(connection)
         try:
@@ -204,4 +204,3 @@ class WorkflowCommits(Resource):
         except Exception as e:
             logger.exception("Failed to get workflow commit history")
             raise BadRequest(f"Failed to get commit history: {str(e)}") from e
-

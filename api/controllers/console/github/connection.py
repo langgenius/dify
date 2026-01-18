@@ -107,29 +107,29 @@ class GitHubConnectionList(Resource):
         refresh_token = None
         token_expires_at = None
         repository_owner_from_oauth = None
-        
+
         if payload.oauth_state:
             import json
             from datetime import datetime
 
             from extensions.ext_redis import redis_client
-            
+
             oauth_token_key = f"github_oauth_token:{payload.oauth_state}"
             token_data_json = redis_client.get(oauth_token_key)
-            
+
             if token_data_json:
                 token_data = json.loads(token_data_json)
                 access_token = token_data.get("access_token")
                 refresh_token = token_data.get("refresh_token")
                 repository_owner_from_oauth = token_data.get("repository_owner")
-                
+
                 if token_data.get("token_expires_at"):
                     token_expires_at = datetime.fromisoformat(token_data["token_expires_at"])
-                
+
                 # Verify tenant_id and user_id match
                 if token_data.get("tenant_id") != tenant or token_data.get("user_id") != account.id:
                     raise BadRequest("OAuth token does not match current user")
-                
+
                 # Delete token from Redis after use
                 redis_client.delete(oauth_token_key)
             else:
@@ -138,7 +138,7 @@ class GitHubConnectionList(Resource):
         # Create new connection with repository info
         # Auto-generate workflow file path: workflows/{app_id}.json if app_id exists, else workflow.json
         workflow_file_path = f"workflows/{payload.app_id}.json" if payload.app_id else "workflow.json"
-        
+
         connection = GitHubConnection(
             tenant_id=tenant,
             user_id=account.id,
@@ -148,7 +148,7 @@ class GitHubConnectionList(Resource):
             branch=payload.branch,
             workflow_file_path=workflow_file_path,
         )
-        
+
         # Set encrypted tokens if we have them from OAuth
         if access_token:
             connection.set_encrypted_access_token(access_token)
@@ -168,10 +168,10 @@ class GitHubConnectionList(Resource):
                 )
                 .first()
             )
-            
+
             if not existing_connection:
                 raise NotFound("No pending OAuth connection found. Please complete OAuth flow first.")
-            
+
             # Update existing connection
             connection = existing_connection
             connection.repository_owner = payload.repository_owner
@@ -328,7 +328,7 @@ class GitHubOAuthRepositories(Resource):
     def get(self):
         """List repositories using OAuth token from Redis (before connection is created)."""
         account, tenant = current_account_with_tenant()
-        
+
         oauth_state = request.args.get("oauth_state")
         if not oauth_state:
             raise BadRequest("oauth_state is required")
@@ -337,19 +337,19 @@ class GitHubOAuthRepositories(Resource):
         import json
 
         from extensions.ext_redis import redis_client
-        
+
         oauth_token_key = f"github_oauth_token:{oauth_state}"
         token_data_json = redis_client.get(oauth_token_key)
-        
+
         if not token_data_json:
             raise BadRequest("OAuth token expired or not found. Please reconnect to GitHub.")
-        
+
         token_data = json.loads(token_data_json)
-        
+
         # Verify tenant_id and user_id match
         if token_data.get("tenant_id") != tenant or token_data.get("user_id") != account.id:
             raise BadRequest("OAuth token does not match current user")
-        
+
         access_token = token_data.get("access_token")
         if not access_token:
             raise BadRequest("Invalid OAuth token data")
@@ -357,15 +357,15 @@ class GitHubOAuthRepositories(Resource):
         try:
             # Create a temporary connection object just for API client
             from dataclasses import dataclass
-            
+
             @dataclass
             class TempConnection:
                 tenant_id: str
                 access_token: str
-                
+
                 def get_decrypted_access_token(self):
                     return self.access_token
-            
+
             temp_conn = TempConnection(tenant_id=tenant, access_token=access_token)
             client = GitHubAPIClient(temp_conn)
             repositories = client.list_repositories()
@@ -373,4 +373,3 @@ class GitHubOAuthRepositories(Resource):
         except Exception as e:
             logger.exception("Failed to list GitHub repositories from OAuth token")
             raise BadRequest(f"Failed to list repositories: {str(e)}") from e
-
