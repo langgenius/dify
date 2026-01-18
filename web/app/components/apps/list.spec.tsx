@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 import { AppModeEnum } from '@/types/app'
@@ -123,6 +124,10 @@ vi.mock('@/service/use-apps', () => ({
   }),
 }))
 
+vi.mock('@/service/apps', () => ({
+  fetchWorkflowOnlineUsers: vi.fn().mockResolvedValue({}),
+}))
+
 // Mock tag store
 vi.mock('@/app/components/base/tag-management/store', () => ({
   useStore: (selector: (state: { tagList: any[], setTagList: any, showTagManagementModal: boolean, setShowTagManagementModal: any }) => any) => {
@@ -244,6 +249,21 @@ beforeAll(() => {
   } as unknown as typeof IntersectionObserver
 })
 
+const renderList = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  })
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <List />
+    </QueryClientProvider>,
+  )
+}
+
 describe('List', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -265,13 +285,13 @@ describe('List', () => {
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
-      render(<List />)
+      renderList()
       // Tab slider renders app type tabs
       expect(screen.getByText('app.types.all')).toBeInTheDocument()
     })
 
     it('should render tab slider with all app types', () => {
-      render(<List />)
+      renderList()
 
       expect(screen.getByText('app.types.all')).toBeInTheDocument()
       expect(screen.getByText('app.types.workflow')).toBeInTheDocument()
@@ -282,48 +302,48 @@ describe('List', () => {
     })
 
     it('should render search input', () => {
-      render(<List />)
+      renderList()
       // Input component renders a searchbox
       expect(screen.getByRole('textbox')).toBeInTheDocument()
     })
 
     it('should render tag filter', () => {
-      render(<List />)
+      renderList()
       // Tag filter renders with placeholder text
       expect(screen.getByText('common.tag.placeholder')).toBeInTheDocument()
     })
 
     it('should render created by me checkbox', () => {
-      render(<List />)
+      renderList()
       expect(screen.getByText('app.showMyCreatedAppsOnly')).toBeInTheDocument()
     })
 
     it('should render app cards when apps exist', () => {
-      render(<List />)
+      renderList()
 
       expect(screen.getByTestId('app-card-app-1')).toBeInTheDocument()
       expect(screen.getByTestId('app-card-app-2')).toBeInTheDocument()
     })
 
     it('should render new app card for editors', () => {
-      render(<List />)
+      renderList()
       expect(screen.getByTestId('new-app-card')).toBeInTheDocument()
     })
 
     it('should render footer when branding is disabled', () => {
-      render(<List />)
+      renderList()
       expect(screen.getByTestId('footer')).toBeInTheDocument()
     })
 
     it('should render drop DSL hint for editors', () => {
-      render(<List />)
+      renderList()
       expect(screen.getByText('app.newApp.dropDSLToCreateApp')).toBeInTheDocument()
     })
   })
 
   describe('Tab Navigation', () => {
     it('should call setActiveTab when tab is clicked', () => {
-      render(<List />)
+      renderList()
 
       fireEvent.click(screen.getByText('app.types.workflow'))
 
@@ -331,7 +351,7 @@ describe('List', () => {
     })
 
     it('should call setActiveTab for all tab', () => {
-      render(<List />)
+      renderList()
 
       fireEvent.click(screen.getByText('app.types.all'))
 
@@ -341,12 +361,12 @@ describe('List', () => {
 
   describe('Search Functionality', () => {
     it('should render search input field', () => {
-      render(<List />)
+      renderList()
       expect(screen.getByRole('textbox')).toBeInTheDocument()
     })
 
     it('should handle search input change', () => {
-      render(<List />)
+      renderList()
 
       const input = screen.getByRole('textbox')
       fireEvent.change(input, { target: { value: 'test search' } })
@@ -355,7 +375,7 @@ describe('List', () => {
     })
 
     it('should handle search input interaction', () => {
-      render(<List />)
+      renderList()
 
       const input = screen.getByRole('textbox')
       expect(input).toBeInTheDocument()
@@ -365,7 +385,7 @@ describe('List', () => {
       // Set initial keywords to make clear button visible
       mockQueryState.keywords = 'existing search'
 
-      render(<List />)
+      renderList()
 
       // Find and click clear button (Input component uses .group class for clear icon container)
       const clearButton = document.querySelector('.group')
@@ -380,12 +400,12 @@ describe('List', () => {
 
   describe('Tag Filter', () => {
     it('should render tag filter component', () => {
-      render(<List />)
+      renderList()
       expect(screen.getByText('common.tag.placeholder')).toBeInTheDocument()
     })
 
     it('should render tag filter with placeholder', () => {
-      render(<List />)
+      renderList()
 
       // Tag filter is rendered
       expect(screen.getByText('common.tag.placeholder')).toBeInTheDocument()
@@ -394,12 +414,12 @@ describe('List', () => {
 
   describe('Created By Me Filter', () => {
     it('should render checkbox with correct label', () => {
-      render(<List />)
+      renderList()
       expect(screen.getByText('app.showMyCreatedAppsOnly')).toBeInTheDocument()
     })
 
     it('should handle checkbox change', () => {
-      render(<List />)
+      renderList()
 
       // Checkbox component uses data-testid="checkbox-{id}"
       // CheckboxWithLabel doesn't pass testId, so id is undefined
@@ -414,7 +434,7 @@ describe('List', () => {
     it('should not render new app card for non-editors', () => {
       mockIsCurrentWorkspaceEditor.mockReturnValue(false)
 
-      render(<List />)
+      renderList()
 
       expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
     })
@@ -422,7 +442,7 @@ describe('List', () => {
     it('should not render drop DSL hint for non-editors', () => {
       mockIsCurrentWorkspaceEditor.mockReturnValue(false)
 
-      render(<List />)
+      renderList()
 
       expect(screen.queryByText(/drop dsl file to create app/i)).not.toBeInTheDocument()
     })
@@ -432,7 +452,7 @@ describe('List', () => {
     it('should redirect dataset operators to datasets page', () => {
       mockIsCurrentWorkspaceDatasetOperator.mockReturnValue(true)
 
-      render(<List />)
+      renderList()
 
       expect(mockReplace).toHaveBeenCalledWith('/datasets')
     })
@@ -442,7 +462,7 @@ describe('List', () => {
     it('should call refetch when refresh key is set in localStorage', () => {
       localStorage.setItem('needRefreshAppList', '1')
 
-      render(<List />)
+      renderList()
 
       expect(mockRefetch).toHaveBeenCalled()
       expect(localStorage.getItem('needRefreshAppList')).toBeNull()
@@ -451,22 +471,23 @@ describe('List', () => {
 
   describe('Edge Cases', () => {
     it('should handle multiple renders without issues', () => {
-      const { rerender } = render(<List />)
+      const { unmount } = renderList()
       expect(screen.getByText('app.types.all')).toBeInTheDocument()
 
-      rerender(<List />)
+      unmount()
+      renderList()
       expect(screen.getByText('app.types.all')).toBeInTheDocument()
     })
 
     it('should render app cards correctly', () => {
-      render(<List />)
+      renderList()
 
       expect(screen.getByText('Test App 1')).toBeInTheDocument()
       expect(screen.getByText('Test App 2')).toBeInTheDocument()
     })
 
     it('should render with all filter options visible', () => {
-      render(<List />)
+      renderList()
 
       expect(screen.getByRole('textbox')).toBeInTheDocument()
       expect(screen.getByText('common.tag.placeholder')).toBeInTheDocument()
@@ -476,14 +497,14 @@ describe('List', () => {
 
   describe('Dragging State', () => {
     it('should show drop hint when DSL feature is enabled for editors', () => {
-      render(<List />)
+      renderList()
       expect(screen.getByText('app.newApp.dropDSLToCreateApp')).toBeInTheDocument()
     })
   })
 
   describe('App Type Tabs', () => {
     it('should render all app type tabs', () => {
-      render(<List />)
+      renderList()
 
       expect(screen.getByText('app.types.all')).toBeInTheDocument()
       expect(screen.getByText('app.types.workflow')).toBeInTheDocument()
@@ -494,7 +515,7 @@ describe('List', () => {
     })
 
     it('should call setActiveTab for each app type', () => {
-      render(<List />)
+      renderList()
 
       const appTypeTexts = [
         { mode: AppModeEnum.WORKFLOW, text: 'app.types.workflow' },
@@ -513,7 +534,7 @@ describe('List', () => {
 
   describe('Search and Filter Integration', () => {
     it('should display search input with correct attributes', () => {
-      render(<List />)
+      renderList()
 
       const input = screen.getByRole('textbox')
       expect(input).toBeInTheDocument()
@@ -521,13 +542,13 @@ describe('List', () => {
     })
 
     it('should have tag filter component', () => {
-      render(<List />)
+      renderList()
 
       expect(screen.getByText('common.tag.placeholder')).toBeInTheDocument()
     })
 
     it('should display created by me label', () => {
-      render(<List />)
+      renderList()
 
       expect(screen.getByText('app.showMyCreatedAppsOnly')).toBeInTheDocument()
     })
@@ -535,14 +556,14 @@ describe('List', () => {
 
   describe('App List Display', () => {
     it('should display all app cards from data', () => {
-      render(<List />)
+      renderList()
 
       expect(screen.getByTestId('app-card-app-1')).toBeInTheDocument()
       expect(screen.getByTestId('app-card-app-2')).toBeInTheDocument()
     })
 
     it('should display app names correctly', () => {
-      render(<List />)
+      renderList()
 
       expect(screen.getByText('Test App 1')).toBeInTheDocument()
       expect(screen.getByText('Test App 2')).toBeInTheDocument()
@@ -551,7 +572,7 @@ describe('List', () => {
 
   describe('Footer Visibility', () => {
     it('should render footer when branding is disabled', () => {
-      render(<List />)
+      renderList()
 
       expect(screen.getByTestId('footer')).toBeInTheDocument()
     })
@@ -563,14 +584,14 @@ describe('List', () => {
   describe('Additional Coverage', () => {
     it('should render dragging state overlay when dragging', () => {
       mockDragging = true
-      const { container } = render(<List />)
+      const { container } = renderList()
 
       // Component should render successfully with dragging state
       expect(container).toBeInTheDocument()
     })
 
     it('should handle app mode filter in query params', () => {
-      render(<List />)
+      renderList()
 
       const workflowTab = screen.getByText('app.types.workflow')
       fireEvent.click(workflowTab)
@@ -579,7 +600,7 @@ describe('List', () => {
     })
 
     it('should render new app card for editors', () => {
-      render(<List />)
+      renderList()
 
       expect(screen.getByTestId('new-app-card')).toBeInTheDocument()
     })
@@ -587,7 +608,7 @@ describe('List', () => {
 
   describe('DSL File Drop', () => {
     it('should handle DSL file drop and show modal', () => {
-      render(<List />)
+      renderList()
 
       // Simulate DSL file drop via the callback
       const mockFile = new File(['test content'], 'test.yml', { type: 'application/yaml' })
@@ -601,7 +622,7 @@ describe('List', () => {
     })
 
     it('should close DSL modal when onClose is called', () => {
-      render(<List />)
+      renderList()
 
       // Open modal via DSL file drop
       const mockFile = new File(['test content'], 'test.yml', { type: 'application/yaml' })
@@ -619,7 +640,7 @@ describe('List', () => {
     })
 
     it('should close DSL modal and refetch when onSuccess is called', () => {
-      render(<List />)
+      renderList()
 
       // Open modal via DSL file drop
       const mockFile = new File(['test content'], 'test.yml', { type: 'application/yaml' })
@@ -642,7 +663,7 @@ describe('List', () => {
   describe('Tag Filter Change', () => {
     it('should handle tag filter value change', () => {
       vi.useFakeTimers()
-      render(<List />)
+      renderList()
 
       // TagFilter component is rendered
       expect(screen.getByTestId('tag-filter')).toBeInTheDocument()
@@ -666,7 +687,7 @@ describe('List', () => {
 
     it('should handle empty tag filter selection', () => {
       vi.useFakeTimers()
-      render(<List />)
+      renderList()
 
       // Trigger tag filter change with empty array
       act(() => {
@@ -688,7 +709,7 @@ describe('List', () => {
   describe('Infinite Scroll', () => {
     it('should call fetchNextPage when intersection observer triggers', () => {
       mockServiceState.hasNextPage = true
-      render(<List />)
+      renderList()
 
       // Simulate intersection
       if (intersectionCallback) {
@@ -705,7 +726,7 @@ describe('List', () => {
 
     it('should not call fetchNextPage when not intersecting', () => {
       mockServiceState.hasNextPage = true
-      render(<List />)
+      renderList()
 
       // Simulate non-intersection
       if (intersectionCallback) {
@@ -723,7 +744,7 @@ describe('List', () => {
     it('should not call fetchNextPage when loading', () => {
       mockServiceState.hasNextPage = true
       mockServiceState.isLoading = true
-      render(<List />)
+      renderList()
 
       if (intersectionCallback) {
         act(() => {
@@ -741,7 +762,7 @@ describe('List', () => {
   describe('Error State', () => {
     it('should handle error state in useEffect', () => {
       mockServiceState.error = new Error('Test error')
-      const { container } = render(<List />)
+      const { container } = renderList()
 
       // Component should still render
       expect(container).toBeInTheDocument()
