@@ -71,6 +71,10 @@ class WorkflowComment(Base):
             return self._created_by_account_cache
         return db.session.get(Account, self.created_by)
 
+    def cache_created_by_account(self, account: Account | None) -> None:
+        """Cache creator account to avoid extra queries."""
+        self._created_by_account_cache = account
+
     @property
     def resolved_by_account(self):
         """Get resolver account."""
@@ -79,6 +83,10 @@ class WorkflowComment(Base):
         if self.resolved_by:
             return db.session.get(Account, self.resolved_by)
         return None
+
+    def cache_resolved_by_account(self, account: Account | None) -> None:
+        """Cache resolver account to avoid extra queries."""
+        self._resolved_by_account_cache = account
 
     @property
     def reply_count(self):
@@ -152,6 +160,10 @@ class WorkflowCommentReply(Base):
             return self._created_by_account_cache
         return db.session.get(Account, self.created_by)
 
+    def cache_created_by_account(self, account: Account | None) -> None:
+        """Cache creator account to avoid extra queries."""
+        self._created_by_account_cache = account
+
 
 class WorkflowCommentMention(Base):
     """Workflow comment mention model.
@@ -192,3 +204,7 @@ class WorkflowCommentMention(Base):
         if hasattr(self, "_mentioned_user_account_cache"):
             return self._mentioned_user_account_cache
         return db.session.get(Account, self.mentioned_user_id)
+
+    def cache_mentioned_user_account(self, account: Account | None) -> None:
+        """Cache mentioned account to avoid extra queries."""
+        self._mentioned_user_account_cache = account

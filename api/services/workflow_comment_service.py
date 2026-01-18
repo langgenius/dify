@@ -1,6 +1,5 @@
 import logging
 from collections.abc import Sequence
-from typing import Protocol, cast
 
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session, selectinload
@@ -13,19 +12,6 @@ from models import WorkflowComment, WorkflowCommentMention, WorkflowCommentReply
 from models.account import Account
 
 logger = logging.getLogger(__name__)
-
-
-class _CommentAccountCache(Protocol):
-    _created_by_account_cache: Account | None
-    _resolved_by_account_cache: Account | None
-
-
-class _ReplyAccountCache(Protocol):
-    _created_by_account_cache: Account | None
-
-
-class _MentionAccountCache(Protocol):
-    _mentioned_user_account_cache: Account | None
 
 
 class WorkflowCommentService:
@@ -79,17 +65,12 @@ class WorkflowCommentService:
 
         # Cache accounts on objects
         for comment in comments:
-            comment_cache = cast(_CommentAccountCache, comment)
-            comment_cache._created_by_account_cache = account_map.get(comment.created_by)
-            comment_cache._resolved_by_account_cache = (
-                account_map.get(comment.resolved_by) if comment.resolved_by else None
-            )
+            comment.cache_created_by_account(account_map.get(comment.created_by))
+            comment.cache_resolved_by_account(account_map.get(comment.resolved_by) if comment.resolved_by else None)
             for reply in comment.replies:
-                reply_cache = cast(_ReplyAccountCache, reply)
-                reply_cache._created_by_account_cache = account_map.get(reply.created_by)
+                reply.cache_created_by_account(account_map.get(reply.created_by))
             for mention in comment.mentions:
-                mention_cache = cast(_MentionAccountCache, mention)
-                mention_cache._mentioned_user_account_cache = account_map.get(mention.mentioned_user_id)
+                mention.cache_mentioned_user_account(account_map.get(mention.mentioned_user_id))
 
     @staticmethod
     def get_comment(tenant_id: str, app_id: str, comment_id: str, session: Session | None = None) -> WorkflowComment:
