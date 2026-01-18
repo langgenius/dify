@@ -138,7 +138,8 @@ class GitHubOAuthService:
         expires_in = token_data.get("expires_in")
         token_expires_at = None
         if expires_in:
-            token_expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
+            from datetime import timezone
+            token_expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
 
         # Get user info to determine repository access
         user_info = GitHubOAuthService._get_user_info(access_token)

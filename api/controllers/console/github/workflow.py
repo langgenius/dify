@@ -39,7 +39,7 @@ class WorkflowPush(Resource):
     @console_ns.doc("push_workflow_to_github")
     def post(self):
         """Push workflow to GitHub repository."""
-        account, tenant = current_account_with_tenant()
+        _account, tenant = current_account_with_tenant()
 
         payload = WorkflowPushPayload.model_validate(request.json)
 
@@ -104,7 +104,7 @@ class WorkflowPull(Resource):
     @console_ns.doc("pull_workflow_from_github")
     def post(self):
         """Pull workflow from GitHub repository."""
-        account, tenant = current_account_with_tenant()
+        _account, tenant = current_account_with_tenant()
 
         payload = WorkflowPullPayload.model_validate(request.json)
 
@@ -158,7 +158,7 @@ class WorkflowCommits(Resource):
     @console_ns.doc("get_workflow_commit_history")
     def get(self):
         """Get commit history for workflow file."""
-        account, tenant = current_account_with_tenant()
+        _account, tenant = current_account_with_tenant()
 
         app_id = request.args.get("app_id")
         branch = request.args.get("branch")

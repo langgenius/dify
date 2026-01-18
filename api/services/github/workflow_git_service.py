@@ -1,6 +1,7 @@
 import base64
 import json
 import logging
+from collections.abc import Mapping
 from typing import Any
 
 from models import App
@@ -40,6 +41,10 @@ class WorkflowGitService:
             JSON string representation of workflow
         """
         workflow_dict = workflow.to_dict(include_secret=include_secret)
+
+        # Convert to dict if it's a Mapping (to allow item assignment)
+        if isinstance(workflow_dict, Mapping) and not isinstance(workflow_dict, dict):
+            workflow_dict = dict(workflow_dict)
 
         # Add metadata
         workflow_dict["metadata"] = {
@@ -189,7 +194,7 @@ class WorkflowGitService:
 
         # Update workflow with pulled data
         workflow.graph = json.dumps(workflow_data.get("graph", {}))
-        workflow._features = json.dumps(workflow_data.get("features", {}))
+        workflow.features = json.dumps(workflow_data.get("features", {}))
 
         # Update environment variables
         if "environment_variables" in workflow_data:
@@ -251,4 +256,4 @@ class WorkflowGitService:
             "per_page": min(limit, 100),
         }
 
-        return self.github_client._request("GET", endpoint, params=params)
+        return self.github_client._request("GET", endpoint, params=params)  # pyright: ignore[reportPrivateUsage]

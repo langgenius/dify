@@ -44,7 +44,12 @@ class TestGitHubAPIClient:
         }
 
         with patch("services.github.github_api_client.make_request") as mock_request:
-            mock_request.return_value = expected_response
+            mock_response = MagicMock()
+            mock_response.json.return_value = expected_response
+            mock_response.status_code = 200
+            mock_response.content = b"{}"
+            mock_response.raise_for_status.return_value = None
+            mock_request.return_value = mock_response
 
             result = client.get_repository_info()
 
@@ -62,7 +67,12 @@ class TestGitHubAPIClient:
         ]
 
         with patch("services.github.github_api_client.make_request") as mock_request:
-            mock_request.return_value = expected_response
+            mock_response = MagicMock()
+            mock_response.json.return_value = expected_response
+            mock_response.status_code = 200
+            mock_response.content = b"[]"
+            mock_response.raise_for_status.return_value = None
+            mock_request.return_value = mock_response
 
             result = client.list_branches()
 
@@ -79,7 +89,12 @@ class TestGitHubAPIClient:
         }
 
         with patch("services.github.github_api_client.make_request") as mock_request:
-            mock_request.return_value = expected_response
+            mock_response = MagicMock()
+            mock_response.json.return_value = expected_response
+            mock_response.status_code = 200
+            mock_response.content = b"{}"
+            mock_response.raise_for_status.return_value = None
+            mock_request.return_value = mock_response
 
             result = client.get_branch(branch_name)
 
@@ -97,7 +112,19 @@ class TestGitHubAPIClient:
         with patch("services.github.github_api_client.make_request") as mock_request:
             # First call: get source branch
             # Second call: create new branch
-            mock_request.side_effect = [branch_info, create_response]
+            mock_response1 = MagicMock()
+            mock_response1.json.return_value = branch_info
+            mock_response1.status_code = 200
+            mock_response1.content = b"{}"
+            mock_response1.raise_for_status.return_value = None
+
+            mock_response2 = MagicMock()
+            mock_response2.json.return_value = create_response
+            mock_response2.status_code = 200
+            mock_response2.content = b"{}"
+            mock_response2.raise_for_status.return_value = None
+
+            mock_request.side_effect = [mock_response1, mock_response2]
 
             result = client.create_branch(branch_name, from_branch)
 
@@ -116,7 +143,12 @@ class TestGitHubAPIClient:
         }
 
         with patch("services.github.github_api_client.make_request") as mock_request:
-            mock_request.return_value = expected_response
+            mock_response = MagicMock()
+            mock_response.json.return_value = expected_response
+            mock_response.status_code = 200
+            mock_response.content = b"{}"
+            mock_response.raise_for_status.return_value = None
+            mock_request.return_value = mock_response
 
             result = client.get_file_content(path, branch)
 
@@ -138,7 +170,12 @@ class TestGitHubAPIClient:
         }
 
         with patch("services.github.github_api_client.make_request") as mock_request:
-            mock_request.return_value = expected_response
+            mock_response = MagicMock()
+            mock_response.json.return_value = expected_response
+            mock_response.status_code = 200
+            mock_response.content = b"{}"
+            mock_response.raise_for_status.return_value = None
+            mock_request.return_value = mock_response
 
             result = client.create_or_update_file(path, content, message, branch)
 
@@ -160,7 +197,12 @@ class TestGitHubAPIClient:
         ]
 
         with patch("services.github.github_api_client.make_request") as mock_request:
-            mock_request.return_value = expected_response
+            mock_response = MagicMock()
+            mock_response.json.return_value = expected_response
+            mock_response.status_code = 200
+            mock_response.content = b"[]"
+            mock_response.raise_for_status.return_value = None
+            mock_request.return_value = mock_response
 
             result = client.get_commit_history(branch, limit)
 
@@ -181,7 +223,12 @@ class TestGitHubAPIClient:
         }
 
         with patch("services.github.github_api_client.make_request") as mock_request:
-            mock_request.return_value = expected_response
+            mock_response = MagicMock()
+            mock_response.json.return_value = expected_response
+            mock_response.status_code = 200
+            mock_response.content = b"{}"
+            mock_response.raise_for_status.return_value = None
+            mock_request.return_value = mock_response
 
             result = client.get_commit(sha)
 
@@ -203,7 +250,12 @@ class TestGitHubAPIClient:
         }
 
         with patch("services.github.github_api_client.make_request") as mock_request:
-            mock_request.return_value = expected_response
+            mock_response = MagicMock()
+            mock_response.json.return_value = expected_response
+            mock_response.status_code = 200
+            mock_response.content = b"{}"
+            mock_response.raise_for_status.return_value = None
+            mock_request.return_value = mock_response
 
             result = client.create_pull_request(title, body, head, base)
 
@@ -222,7 +274,12 @@ class TestGitHubAPIClient:
         ]
 
         with patch("services.github.github_api_client.make_request") as mock_request:
-            mock_request.return_value = expected_response
+            mock_response = MagicMock()
+            mock_response.json.return_value = expected_response
+            mock_response.status_code = 200
+            mock_response.content = b"[]"
+            mock_response.raise_for_status.return_value = None
+            mock_request.return_value = mock_response
 
             result = client.list_repositories()
 

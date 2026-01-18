@@ -43,7 +43,7 @@ class GitHubConnectionList(Resource):
     @console_ns.doc("list_github_connections")
     def get(self):
         """List GitHub connections for the current tenant."""
-        account, tenant = current_account_with_tenant()
+        _account, tenant = current_account_with_tenant()
 
         query_params = GitHubConnectionListQuery.model_validate(request.args.to_dict())
         filters = [GitHubConnection.tenant_id == tenant]
@@ -64,7 +64,7 @@ class GitHubConnectionList(Resource):
     @console_ns.doc("create_github_connection")
     def post(self):
         """Create a new GitHub connection (after OAuth)."""
-        account, tenant = current_account_with_tenant()
+        _account, tenant = current_account_with_tenant()
 
         payload = GitHubConnectionCreatePayload.model_validate(request.json)
 
@@ -106,7 +106,6 @@ class GitHubConnectionList(Resource):
         access_token = None
         refresh_token = None
         token_expires_at = None
-        repository_owner_from_oauth = None
 
         if payload.oauth_state:
             import json
@@ -121,13 +120,12 @@ class GitHubConnectionList(Resource):
                 token_data = json.loads(token_data_json)
                 access_token = token_data.get("access_token")
                 refresh_token = token_data.get("refresh_token")
-                repository_owner_from_oauth = token_data.get("repository_owner")
 
                 if token_data.get("token_expires_at"):
                     token_expires_at = datetime.fromisoformat(token_data["token_expires_at"])
 
                 # Verify tenant_id and user_id match
-                if token_data.get("tenant_id") != tenant or token_data.get("user_id") != account.id:
+                if token_data.get("tenant_id") != tenant or token_data.get("user_id") != _account.id:
                     raise BadRequest("OAuth token does not match current user")
 
                 # Delete token from Redis after use
@@ -141,7 +139,7 @@ class GitHubConnectionList(Resource):
 
         connection = GitHubConnection(
             tenant_id=tenant,
-            user_id=account.id,
+            user_id=_account.id,
             app_id=payload.app_id,
             repository_owner=payload.repository_owner,
             repository_name=payload.repository_name,
@@ -162,7 +160,7 @@ class GitHubConnectionList(Resource):
                 db.session.query(GitHubConnection)
                 .where(
                     GitHubConnection.tenant_id == tenant,
-                    GitHubConnection.user_id == account.id,
+                    GitHubConnection.user_id == _account.id,
                     GitHubConnection.app_id == payload.app_id,
                     GitHubConnection.repository_name == "",
                 )
@@ -200,7 +198,7 @@ class GitHubConnectionDetail(Resource):
     @console_ns.doc("get_github_connection")
     def get(self, connection_id: str):
         """Get GitHub connection details."""
-        account, tenant = current_account_with_tenant()
+        _account, tenant = current_account_with_tenant()
 
         connection = db.session.get(GitHubConnection, connection_id)
         if not connection or connection.tenant_id != tenant:
@@ -214,7 +212,7 @@ class GitHubConnectionDetail(Resource):
     @console_ns.doc("update_github_connection")
     def patch(self, connection_id: str):
         """Update GitHub connection."""
-        account, tenant = current_account_with_tenant()
+        _account, tenant = current_account_with_tenant()
 
         connection = db.session.get(GitHubConnection, connection_id)
         if not connection or connection.tenant_id != tenant:
@@ -256,7 +254,7 @@ class GitHubConnectionDetail(Resource):
     @console_ns.doc("delete_github_connection")
     def delete(self, connection_id: str):
         """Delete GitHub connection."""
-        account, tenant = current_account_with_tenant()
+        _account, tenant = current_account_with_tenant()
 
         from services.github.github_oauth_service import GitHubOAuthService
 
@@ -275,7 +273,7 @@ class GitHubConnectionRepositories(Resource):
     @console_ns.doc("list_github_repositories")
     def get(self, connection_id: str):
         """List repositories accessible to the connection."""
-        account, tenant = current_account_with_tenant()
+        _account, tenant = current_account_with_tenant()
 
         connection = db.session.get(GitHubConnection, connection_id)
         if not connection or connection.tenant_id != tenant:
@@ -301,7 +299,7 @@ class GitHubConnectionBranches(Resource):
     @console_ns.doc("list_github_branches")
     def get(self, connection_id: str):
         """List branches in the repository."""
-        account, tenant = current_account_with_tenant()
+        _account, tenant = current_account_with_tenant()
 
         connection = db.session.get(GitHubConnection, connection_id)
         if not connection or connection.tenant_id != tenant:

@@ -29,7 +29,7 @@ class GitHubBranches(Resource):
     @console_ns.doc("create_github_branch")
     def post(self):
         """Create a new branch in the GitHub repository."""
-        account, tenant = current_account_with_tenant()
+        _account, tenant = current_account_with_tenant()
 
         payload = CreateBranchPayload.model_validate(request.json)
 
@@ -79,7 +79,7 @@ class GitHubBranchesList(Resource):
     @console_ns.doc("list_github_branches_by_app")
     def get(self):
         """List branches for a specific app's GitHub connection."""
-        account, tenant = current_account_with_tenant()
+        _account, tenant = current_account_with_tenant()
 
         app_id = request.args.get("app_id")
         if not app_id:

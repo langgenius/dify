@@ -26,7 +26,7 @@ class GitHubOAuthAuthorize(Resource):
         redirect_uri = request.args.get("redirect_uri")
 
         try:
-            auth_url, state = GitHubOAuthService.get_authorization_url(
+            auth_url, _state = GitHubOAuthService.get_authorization_url(
                 tenant_id=tenant,
                 user_id=account.id,
                 app_id=app_id,
