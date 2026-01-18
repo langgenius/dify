@@ -292,7 +292,13 @@ class DatasetListApi(Resource):
             datasets, total = DatasetService.get_datasets_by_ids(query.ids, current_tenant_id)
         else:
             datasets, total = DatasetService.get_datasets(
-                query.page, query.limit, current_tenant_id, current_user, query.keyword, query.tag_ids, query.include_all
+                query.page,
+                query.limit,
+                current_tenant_id,
+                current_user,
+                query.keyword,
+                query.tag_ids,
+                query.include_all,
             )
 
         # check embedding setting
