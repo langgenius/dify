@@ -2,9 +2,16 @@ import { render, screen } from '@testing-library/react'
 import { ChunkingMode } from '@/models/datasets'
 import ChunkStructure from './index'
 
+type MockOptionCardProps = {
+  id: string
+  title: string
+  isActive?: boolean
+  disabled?: boolean
+}
+
 // Mock dependencies
 vi.mock('../option-card', () => ({
-  default: ({ id, title, isActive, disabled }: any) => (
+  default: ({ id, title, isActive, disabled }: MockOptionCardProps) => (
     <div
       data-testid="option-card"
       data-id={id}

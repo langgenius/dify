@@ -1,9 +1,14 @@
 import { render, screen } from '@testing-library/react'
 import NewDatasetCard from './index'
 
+type MockOptionProps = {
+  text: string
+  href: string
+}
+
 // Mock dependencies
 vi.mock('./option', () => ({
-  default: ({ text, href }: any) => (
+  default: ({ text, href }: MockOptionProps) => (
     <a data-testid="option-link" href={href}>
       {text}
     </a>
@@ -16,7 +21,7 @@ vi.mock('@remixicon/react', () => ({
 }))
 
 vi.mock('@/app/components/base/icons/src/vender/solid/development', () => ({
-  ApiConnectionMod: () => <svg data-testid="icon-api" />,
+  // ApiConnectionMod: () => <svg data-testid="icon-api" />,
 }))
 
 describe('NewDatasetCard', () => {

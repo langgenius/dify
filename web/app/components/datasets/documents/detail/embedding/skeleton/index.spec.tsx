@@ -3,10 +3,10 @@ import EmbeddingSkeleton from './index'
 
 // Mock Skeleton components
 vi.mock('@/app/components/base/skeleton', () => ({
-  SkeletonContainer: ({ children }: any) => <div data-testid="skeleton-container">{children}</div>,
+  SkeletonContainer: ({ children }: { children?: React.ReactNode }) => <div data-testid="skeleton-container">{children}</div>,
   SkeletonPoint: () => <div data-testid="skeleton-point" />,
   SkeletonRectangle: () => <div data-testid="skeleton-rectangle" />,
-  SkeletonRow: ({ children }: any) => <div data-testid="skeleton-row">{children}</div>,
+  SkeletonRow: ({ children }: { children?: React.ReactNode }) => <div data-testid="skeleton-row">{children}</div>,
 }))
 
 // Mock Divider
