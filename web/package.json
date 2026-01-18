@@ -124,6 +124,7 @@
     "react-18-input-autosize": "^3.0.0",
     "react-dom": "19.2.3",
     "react-easy-crop": "^5.5.3",
+    "react-error-boundary": "^6.1.0",
     "react-hotkeys-hook": "^4.6.2",
     "react-i18next": "^16.5.0",
     "react-markdown": "^9.1.0",

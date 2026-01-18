@@ -3,6 +3,7 @@
 import { Infographic } from '@antv/infographic'
 import { ArrowDownTrayIcon, ClipboardDocumentIcon } from '@heroicons/react/24/outline'
 import * as React from 'react'
+import { ErrorBoundary } from 'react-error-boundary'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
 
@@ -11,20 +12,35 @@ export type InfographicProps = {
   className?: string
   height?: number
   width?: number | string
-  onError?: (error: Error) => void
+  onError?: (error: unknown, info: React.ErrorInfo) => void
 }
 
-const InfographicViewer: React.FC<InfographicProps> = ({
+type ErrorFallbackProps = {
+  error: unknown
+}
+
+const ErrorFallback: React.FC<ErrorFallbackProps> = ({ error }) => {
+  const errorMessage = error instanceof Error ? error.message : 'Failed to render infographic'
+  return (
+    <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-red-50">
+      <div className="p-4 text-center">
+        <p className="mb-2 font-medium text-red-600">Error</p>
+        <p className="text-sm text-red-500">{errorMessage}</p>
+      </div>
+    </div>
+  )
+}
+
+type InfographicContentProps = Omit<InfographicProps, 'onError'>
+
+const InfographicContent: React.FC<InfographicContentProps> = ({
   syntax,
-  className = '',
   height = 600,
   width = '100%',
-  onError,
 }) => {
   const { t } = useTranslation()
   const containerRef = React.useRef<HTMLDivElement>(null)
   const infographicRef = React.useRef<Infographic | null>(null)
-  const [error, setError] = React.useState<string | null>(null)
 
   React.useEffect(() => {
     // Use requestAnimationFrame to ensure container is mounted
@@ -32,33 +48,24 @@ const InfographicViewer: React.FC<InfographicProps> = ({
       if (!containerRef.current)
         return
 
-      try {
-        // Clear previous instance
-        if (infographicRef.current) {
-          infographicRef.current.destroy()
-          infographicRef.current = null
-        }
-
-        setError(null)
-
-        // Create new infographic instance
-        const infographic = new Infographic({
-          container: containerRef.current,
-          width,
-          height,
-          editable: false,
-        })
-
-        // Render the infographic with the syntax (synchronous)
-        infographic.render(syntax)
-        infographicRef.current = infographic
+      // Clear previous instance
+      if (infographicRef.current) {
+        infographicRef.current.destroy()
+        infographicRef.current = null
       }
-      catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to render infographic'
 
-        setError(errorMessage)
-        onError?.(err instanceof Error ? err : new Error(errorMessage))
-      }
+      // Create new infographic instance
+      const infographic = new Infographic({
+        container: containerRef.current,
+        width,
+        height,
+        editable: false,
+      })
+
+      // Render the infographic with the syntax (synchronous)
+      // If this throws, ErrorBoundary will catch it
+      infographic.render(syntax)
+      infographicRef.current = infographic
     })
 
     return () => {
@@ -68,7 +75,7 @@ const InfographicViewer: React.FC<InfographicProps> = ({
         infographicRef.current = null
       }
     }
-  }, [syntax, width, height, onError])
+  }, [syntax, width, height])
 
   const handleCopyImage = async () => {
     try {
@@ -89,7 +96,7 @@ const InfographicViewer: React.FC<InfographicProps> = ({
       const canvas = document.createElement('canvas')
       const ctx = canvas.getContext('2d')
 
-      img.onload = () => {
+      const handleImageLoad = () => {
         canvas.width = img.width || svgElement.clientWidth
         canvas.height = img.height || svgElement.clientHeight
         ctx?.drawImage(img, 0, 0)
@@ -107,6 +114,7 @@ const InfographicViewer: React.FC<InfographicProps> = ({
         })
       }
 
+      img.onload = handleImageLoad
       img.src = URL.createObjectURL(blob)
     }
     catch (err) {
@@ -153,36 +161,24 @@ const InfographicViewer: React.FC<InfographicProps> = ({
   }
 
   return (
-    <div className={`relative ${className}`}>
+    <>
       {/* Toolbar */}
       <div className="absolute right-2 top-2 z-10 flex gap-2">
         <button
           onClick={handleCopyImage}
-          disabled={!!error}
-          className="rounded-lg bg-white p-2 shadow-md transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-lg bg-white p-2 shadow-md transition-colors hover:bg-gray-50"
           title={t('operation.copy', { ns: 'common' })}
         >
           <ClipboardDocumentIcon className="h-4 w-4 text-gray-700" />
         </button>
         <button
           onClick={handleDownloadImage}
-          disabled={!!error}
-          className="rounded-lg bg-white p-2 shadow-md transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-lg bg-white p-2 shadow-md transition-colors hover:bg-gray-50"
           title={t('operation.download', { ns: 'common' })}
         >
           <ArrowDownTrayIcon className="h-4 w-4 text-gray-700" />
         </button>
       </div>
-
-      {/* Error State */}
-      {error && (
-        <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-red-50">
-          <div className="p-4 text-center">
-            <p className="mb-2 font-medium text-red-600">Error</p>
-            <p className="text-sm text-red-500">{error}</p>
-          </div>
-        </div>
-      )}
 
       {/* Infographic Container */}
       <div
@@ -190,6 +186,30 @@ const InfographicViewer: React.FC<InfographicProps> = ({
         className="w-full overflow-hidden rounded-lg bg-white"
         style={{ height: typeof height === 'number' ? `${height}px` : height }}
       />
+    </>
+  )
+}
+
+const InfographicViewer: React.FC<InfographicProps> = ({
+  syntax,
+  className = '',
+  height = 600,
+  width = '100%',
+  onError,
+}) => {
+  return (
+    <div className={`relative ${className}`}>
+      <ErrorBoundary
+        FallbackComponent={ErrorFallback}
+        onError={onError}
+        resetKeys={[syntax]}
+      >
+        <InfographicContent
+          syntax={syntax}
+          height={height}
+          width={width}
+        />
+      </ErrorBoundary>
     </div>
   )
 }
