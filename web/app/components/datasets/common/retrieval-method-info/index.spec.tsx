@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { retrievalIcon } from '../../create/icons'
@@ -5,14 +6,14 @@ import RetrievalMethodInfo, { getIcon } from './index'
 
 // Mock next/image
 vi.mock('next/image', () => ({
-  default: ({ src, alt, className }: any) => (
-    <img src={src} alt={alt} className={className} data-testid="method-icon" />
+  default: ({ src, alt, className }: { src: string, alt: string, className?: string }) => (
+    <img src={src} alt={alt || ''} className={className} data-testid="method-icon" />
   ),
 }))
 
 // Mock RadioCard
 vi.mock('@/app/components/base/radio-card', () => ({
-  default: ({ title, description, chosenConfig, icon }: any) => (
+  default: ({ title, description, chosenConfig, icon }: { title: string, description: string, chosenConfig: ReactNode, icon: ReactNode }) => (
     <div data-testid="radio-card">
       <div data-testid="card-title">{title}</div>
       <div data-testid="card-description">{description}</div>
@@ -120,13 +121,13 @@ describe('RetrievalMethodInfo', () => {
     const configWithoutScoreThreshold = {
       ...defaultConfig,
       score_threshold_enabled: false,
-      score_threshold: undefined,
+      score_threshold: 0,
     }
 
-    render(<RetrievalMethodInfo value={configWithoutScoreThreshold as any} />)
+    render(<RetrievalMethodInfo value={configWithoutScoreThreshold} />)
 
     // score_threshold is still rendered but may be undefined
-    expect(screen.getByTestId('radio-card')).toBeInTheDocument()
+    expect(screen.queryByText('0.8')).not.toBeInTheDocument()
   })
 
   it('should render correctly with invertedIndex search method', () => {
