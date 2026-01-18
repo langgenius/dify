@@ -41,6 +41,11 @@ const InfographicContent: React.FC<InfographicContentProps> = ({
   const { t } = useTranslation()
   const containerRef = React.useRef<HTMLDivElement>(null)
   const infographicRef = React.useRef<Infographic | null>(null)
+  const [renderError, setRenderError] = React.useState<Error | null>(null)
+
+  // Throw error during render so ErrorBoundary can catch it
+  if (renderError)
+    throw renderError
 
   React.useEffect(() => {
     // Use requestAnimationFrame to ensure container is mounted
@@ -48,24 +53,30 @@ const InfographicContent: React.FC<InfographicContentProps> = ({
       if (!containerRef.current)
         return
 
-      // Clear previous instance
-      if (infographicRef.current) {
-        infographicRef.current.destroy()
-        infographicRef.current = null
+      try {
+        // Clear previous instance
+        if (infographicRef.current) {
+          infographicRef.current.destroy()
+          infographicRef.current = null
+        }
+
+        // Create new infographic instance
+        const infographic = new Infographic({
+          container: containerRef.current,
+          width,
+          height,
+          editable: false,
+        })
+
+        // Render the infographic with the syntax (synchronous)
+        infographic.render(syntax)
+        infographicRef.current = infographic
+        setRenderError(null) // Clear any previous errors
       }
-
-      // Create new infographic instance
-      const infographic = new Infographic({
-        container: containerRef.current,
-        width,
-        height,
-        editable: false,
-      })
-
-      // Render the infographic with the syntax (synchronous)
-      // If this throws, ErrorBoundary will catch it
-      infographic.render(syntax)
-      infographicRef.current = infographic
+      catch (err) {
+        // Set error state which will be thrown on next render
+        setRenderError(err instanceof Error ? err : new Error('Failed to render infographic'))
+      }
     })
 
     return () => {

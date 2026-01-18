@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import InfographicViewer from '../index'
 
@@ -93,28 +93,105 @@ data
     })
   })
 
-  it('calls onError when render fails', async () => {
-    const onError = vi.fn()
-    const errorMessage = 'Render failed'
-
-    mockRender.mockImplementationOnce(() => {
-      throw new Error(errorMessage)
-    })
-
-    render(<InfographicViewer syntax={validSyntax} onError={onError} />)
-    await waitFor(() => {
-      expect(onError).toHaveBeenCalledWith(expect.any(Error))
-    })
+  it('renders toolbar buttons', () => {
+    render(<InfographicViewer syntax={validSyntax} />)
+    expect(screen.getByTitle('common.operation.copy')).toBeInTheDocument()
+    expect(screen.getByTitle('common.operation.download')).toBeInTheDocument()
   })
 
-  it('shows error message when render fails', async () => {
-    mockRender.mockImplementationOnce(() => {
-      throw new Error('Test error')
+  it('accepts width as string', () => {
+    render(<InfographicViewer syntax={validSyntax} width="50%" />)
+    // Component should render without errors
+    expect(screen.getByTitle('common.operation.download')).toBeInTheDocument()
+  })
+
+  it('accepts width as number', () => {
+    render(<InfographicViewer syntax={validSyntax} width={500} />)
+    // Component should render without errors
+    expect(screen.getByTitle('common.operation.download')).toBeInTheDocument()
+  })
+
+  describe('Error handling', () => {
+    // Suppress console errors for these tests
+    const originalError = console.error
+    beforeEach(() => {
+      console.error = vi.fn()
     })
 
-    render(<InfographicViewer syntax={validSyntax} />)
-    await waitFor(() => {
-      expect(screen.getByText('Test error')).toBeInTheDocument()
+    afterEach(() => {
+      console.error = originalError
+    })
+
+    it('calls onError when render fails', async () => {
+      const onError = vi.fn()
+      const errorMessage = 'Render failed'
+
+      mockRender.mockImplementationOnce(() => {
+        throw new Error(errorMessage)
+      })
+
+      render(<InfographicViewer syntax={validSyntax} onError={onError} />)
+
+      await waitFor(() => {
+        expect(onError).toHaveBeenCalled()
+      })
+
+      const [[error]] = onError.mock.calls
+      expect(error).toBeInstanceOf(Error)
+    })
+
+    it('shows error message when render fails', async () => {
+      const errorMessage = 'Test error message'
+      mockRender.mockImplementationOnce(() => {
+        throw new Error(errorMessage)
+      })
+
+      render(<InfographicViewer syntax={validSyntax} />)
+
+      await waitFor(() => {
+        expect(screen.getByText(errorMessage)).toBeInTheDocument()
+      })
+    })
+
+    it('shows generic error message for non-Error throws', async () => {
+      mockRender.mockImplementationOnce(() => {
+        throw 'String error' // eslint-disable-line no-throw-literal
+      })
+
+      render(<InfographicViewer syntax={validSyntax} />)
+
+      await waitFor(() => {
+        expect(screen.getByText('Failed to render infographic')).toBeInTheDocument()
+      })
+    })
+
+    it('resets error boundary when syntax changes', async () => {
+      const errorMessage = 'Initial error'
+      mockRender.mockImplementationOnce(() => {
+        throw new Error(errorMessage)
+      })
+
+      const { rerender } = render(<InfographicViewer syntax={validSyntax} />)
+
+      await waitFor(() => {
+        expect(screen.getByText(errorMessage)).toBeInTheDocument()
+      })
+
+      // Reset mock to succeed
+      mockRender.mockImplementation(() => {})
+
+      const newSyntax = `infographic list-column-simple-vertical
+data
+  lists
+    - label Item 1`
+
+      // Rerender with new syntax should reset the error boundary
+      rerender(<InfographicViewer syntax={newSyntax} />)
+
+      await waitFor(() => {
+        expect(screen.queryByText(errorMessage)).not.toBeInTheDocument()
+        expect(screen.getByTitle('common.operation.download')).toBeInTheDocument()
+      })
     })
   })
 })
