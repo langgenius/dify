@@ -247,6 +247,7 @@ class AppRunner:
         model: str = ""
         prompt_messages: list[PromptMessage] = []
         text = ""
+        reasoning_content = ""
         usage = None
         for result in invoke_result:
             if not agent:
@@ -266,6 +267,10 @@ class AppRunner:
                     else:
                         text += content  # failback to str
 
+            # Handle reasoning content from delta (e.g., Ollama's thinking field)
+            if result.delta.reasoning_content:
+                reasoning_content += result.delta.reasoning_content
+
             if not model:
                 model = result.model
 
@@ -279,7 +284,11 @@ class AppRunner:
             usage = LLMUsage.empty_usage()
 
         llm_result = LLMResult(
-            model=model, prompt_messages=prompt_messages, message=AssistantPromptMessage(content=text), usage=usage
+            model=model,
+            prompt_messages=prompt_messages,
+            message=AssistantPromptMessage(content=text),
+            usage=usage,
+            reasoning_content=reasoning_content or None,
         )
 
         queue_manager.publish(
