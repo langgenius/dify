@@ -15,11 +15,12 @@ vi.mock('next/navigation', () => ({
     push: mockPush,
     replace: mockReplace,
   }),
+  useParams: () => ({ appId: 'app-123' }),
 }))
 
-const mockSetAppDetail = vi.fn()
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: any) => unknown) => selector({ setAppDetail: mockSetAppDetail }),
+const mockInvalidateAppDetail = vi.fn()
+vi.mock('@/service/use-apps', () => ({
+  useInvalidateAppDetail: () => mockInvalidateAppDetail,
 }))
 
 const mockSwitchApp = vi.fn()
@@ -275,7 +276,7 @@ describe('SwitchAppModal', () => {
       })
       expect(mockReplace).toHaveBeenCalledWith('/app/new-app-002/workflow')
       expect(mockPush).not.toHaveBeenCalled()
-      expect(mockSetAppDetail).toHaveBeenCalledTimes(1)
+      expect(mockInvalidateAppDetail).toHaveBeenCalledTimes(1)
     })
 
     it('should notify error when switch app fails', async () => {

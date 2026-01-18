@@ -4,10 +4,10 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { AppModeEnum } from '@/types/app'
 import WorkflowHeader from './index'
 
-const mockUseAppStoreSelector = vi.fn()
 const mockSetCurrentLogItem = vi.fn()
 const mockSetShowMessageLogModal = vi.fn()
 const mockResetWorkflowVersionHistory = vi.fn()
+const mockUseAppDetail = vi.fn()
 
 const createMockApp = (overrides: Partial<App> = {}): App => ({
   id: 'app-id',
@@ -39,19 +39,24 @@ const createMockApp = (overrides: Partial<App> = {}): App => ({
   ...overrides,
 })
 
-let appDetail: App
-
 const mockAppStore = (overrides: Partial<App> = {}) => {
-  appDetail = createMockApp(overrides)
-  mockUseAppStoreSelector.mockImplementation(selector => selector({
-    appDetail,
-    setCurrentLogItem: mockSetCurrentLogItem,
-    setShowMessageLogModal: mockSetShowMessageLogModal,
-  }))
+  const appDetail = createMockApp(overrides)
+  mockUseAppDetail.mockReturnValue({ data: appDetail })
 }
 
+vi.mock('next/navigation', () => ({
+  useParams: () => ({ appId: 'app-id' }),
+}))
+
+vi.mock('@/service/use-apps', () => ({
+  useAppDetail: (...args: unknown[]) => mockUseAppDetail(...args),
+}))
+
 vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: { appDetail?: App, setCurrentLogItem: typeof mockSetCurrentLogItem, setShowMessageLogModal: typeof mockSetShowMessageLogModal }) => unknown) => mockUseAppStoreSelector(selector),
+  useStore: (selector: (state: { setCurrentLogItem: typeof mockSetCurrentLogItem, setShowMessageLogModal: typeof mockSetShowMessageLogModal }) => unknown) => selector({
+    setCurrentLogItem: mockSetCurrentLogItem,
+    setShowMessageLogModal: mockSetShowMessageLogModal,
+  }),
 }))
 
 vi.mock('@/app/components/workflow/header', () => ({

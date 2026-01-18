@@ -608,11 +608,6 @@
       "count": 1
     }
   },
-  "app/components/app/switch-app-modal/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/app/switch-app-modal/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1

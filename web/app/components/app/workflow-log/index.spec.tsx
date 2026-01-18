@@ -34,6 +34,18 @@ import Logs from './index'
 
 vi.mock('@/service/use-log')
 
+vi.mock('@/service/use-apps', () => ({
+  useAppDetail: () => ({
+    data: {
+      id: 'test-app-id',
+      name: 'Test App',
+      mode: 'workflow',
+    },
+    isLoading: false,
+    error: null,
+  }),
+}))
+
 vi.mock('ahooks', () => ({
   useDebounce: <T,>(value: T) => value,
   useDebounceFn: (fn: (value: string) => void) => ({ run: fn }),
@@ -50,6 +62,9 @@ vi.mock('ahooks', () => ({
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: vi.fn(),
+  }),
+  useParams: () => ({
+    appId: 'test-app-id',
   }),
 }))
 
