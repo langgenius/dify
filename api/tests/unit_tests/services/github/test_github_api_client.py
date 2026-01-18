@@ -56,8 +56,8 @@ class TestGitHubAPIClient:
             assert result == expected_response
             mock_request.assert_called_once()
             call_args = mock_request.call_args
-            assert call_args[0][0] == "GET"
-            assert "/repos/testowner/testrepo" in call_args[0][1]
+            assert call_args.kwargs["method"] == "GET"
+            assert "/repos/testowner/testrepo" in call_args.kwargs["url"]
 
     def test_list_branches(self, client, mock_connection):
         """Test listing branches."""
@@ -154,8 +154,8 @@ class TestGitHubAPIClient:
 
             assert result == expected_response
             call_args = mock_request.call_args
-            assert path in call_args[0][1]
-            assert call_args[1]["params"]["ref"] == branch
+            assert path in call_args.kwargs["url"]
+            assert call_args.kwargs["params"]["ref"] == branch
 
     def test_create_or_update_file(self, client, mock_connection):
         """Test creating or updating a file."""
@@ -181,10 +181,10 @@ class TestGitHubAPIClient:
 
             assert result == expected_response
             call_args = mock_request.call_args
-            assert call_args[0][0] == "PUT"
-            assert path in call_args[0][1]
-            assert call_args[1]["json_data"]["message"] == message
-            assert call_args[1]["json_data"]["content"] == content
+            assert call_args.kwargs["method"] == "PUT"
+            assert path in call_args.kwargs["url"]
+            assert call_args.kwargs["json"]["message"] == message
+            assert call_args.kwargs["json"]["content"] == content
 
     def test_get_commit_history(self, client, mock_connection):
         """Test getting commit history."""
@@ -208,8 +208,8 @@ class TestGitHubAPIClient:
 
             assert result == expected_response
             call_args = mock_request.call_args
-            assert call_args[1]["params"]["sha"] == branch
-            assert call_args[1]["params"]["per_page"] == min(limit, 100)
+            assert call_args.kwargs["params"]["sha"] == branch
+            assert call_args.kwargs["params"]["per_page"] == min(limit, 100)
 
     def test_get_commit(self, client, mock_connection):
         """Test getting specific commit information."""
@@ -261,10 +261,10 @@ class TestGitHubAPIClient:
 
             assert result == expected_response
             call_args = mock_request.call_args
-            assert call_args[0][0] == "POST"
-            assert call_args[1]["json_data"]["title"] == title
-            assert call_args[1]["json_data"]["head"] == head
-            assert call_args[1]["json_data"]["base"] == base
+            assert call_args.kwargs["method"] == "POST"
+            assert call_args.kwargs["json"]["title"] == title
+            assert call_args.kwargs["json"]["head"] == head
+            assert call_args.kwargs["json"]["base"] == base
 
     def test_list_repositories(self, client, mock_connection):
         """Test listing repositories."""
