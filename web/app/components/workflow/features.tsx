@@ -36,6 +36,7 @@ const Features = () => {
       max_length: newVariable.max_length,
       required: newVariable.required || false,
       options: [],
+      var_description: '',
     }
     handleAddVariable(startNodeVariable)
   }
