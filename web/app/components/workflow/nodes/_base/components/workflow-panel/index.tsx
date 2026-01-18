@@ -59,12 +59,14 @@ import {
   hasRetryNode,
   isSupportCustomRunForm,
 } from '@/app/components/workflow/utils'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { useModalContext } from '@/context/modal-context'
 import { useAllBuiltInTools } from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { FlowType } from '@/types/common'
 import { canFindTool } from '@/utils'
 import { cn } from '@/utils/classnames'
+import { storage } from '@/utils/storage'
 import { useResizePanel } from '../../hooks/use-resize-panel'
 import BeforeRunForm from '../before-run-form'
 import PanelWrap from '../before-run-form/panel-wrap'
@@ -137,7 +139,7 @@ const BasePanel: FC<BasePanelProps> = ({
     const newValue = Math.max(400, Math.min(width, maxNodePanelWidth))
 
     if (source === 'user')
-      localStorage.setItem('workflow-node-panel-width', `${newValue}`)
+      storage.set(STORAGE_KEYS.WORKFLOW.NODE_PANEL_WIDTH, newValue)
 
     setNodePanelWidth(newValue)
   }, [maxNodePanelWidth, setNodePanelWidth])

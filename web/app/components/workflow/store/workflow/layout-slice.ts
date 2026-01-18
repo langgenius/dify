@@ -1,11 +1,12 @@
 import type { StateCreator } from 'zustand'
+import { STORAGE_KEYS } from '@/config/storage-keys'
+import { storage } from '@/utils/storage'
 
 export type LayoutSliceShape = {
   workflowCanvasWidth?: number
   workflowCanvasHeight?: number
   setWorkflowCanvasWidth: (width: number) => void
   setWorkflowCanvasHeight: (height: number) => void
-  // rightPanelWidth - otherPanelWidth = nodePanelWidth
   rightPanelWidth?: number
   setRightPanelWidth: (width: number) => void
   nodePanelWidth: number
@@ -14,11 +15,11 @@ export type LayoutSliceShape = {
   setPreviewPanelWidth: (width: number) => void
   otherPanelWidth: number
   setOtherPanelWidth: (width: number) => void
-  bottomPanelWidth: number // min-width = 400px; default-width = auto || 480px;
+  bottomPanelWidth: number
   setBottomPanelWidth: (width: number) => void
   bottomPanelHeight: number
   setBottomPanelHeight: (height: number) => void
-  variableInspectPanelHeight: number // min-height = 120px; default-height = 320px;
+  variableInspectPanelHeight: number
   setVariableInspectPanelHeight: (height: number) => void
   maximizeCanvas: boolean
   setMaximizeCanvas: (maximize: boolean) => void
@@ -31,9 +32,9 @@ export const createLayoutSlice: StateCreator<LayoutSliceShape> = set => ({
   setWorkflowCanvasHeight: height => set(() => ({ workflowCanvasHeight: height })),
   rightPanelWidth: undefined,
   setRightPanelWidth: width => set(() => ({ rightPanelWidth: width })),
-  nodePanelWidth: localStorage.getItem('workflow-node-panel-width') ? Number.parseFloat(localStorage.getItem('workflow-node-panel-width')!) : 400,
+  nodePanelWidth: storage.getNumber(STORAGE_KEYS.WORKFLOW.NODE_PANEL_WIDTH, 400)!,
   setNodePanelWidth: width => set(() => ({ nodePanelWidth: width })),
-  previewPanelWidth: localStorage.getItem('debug-and-preview-panel-width') ? Number.parseFloat(localStorage.getItem('debug-and-preview-panel-width')!) : 400,
+  previewPanelWidth: storage.getNumber(STORAGE_KEYS.WORKFLOW.PREVIEW_PANEL_WIDTH, 400)!,
   setPreviewPanelWidth: width => set(() => ({ previewPanelWidth: width })),
   otherPanelWidth: 400,
   setOtherPanelWidth: width => set(() => ({ otherPanelWidth: width })),
@@ -41,8 +42,8 @@ export const createLayoutSlice: StateCreator<LayoutSliceShape> = set => ({
   setBottomPanelWidth: width => set(() => ({ bottomPanelWidth: width })),
   bottomPanelHeight: 324,
   setBottomPanelHeight: height => set(() => ({ bottomPanelHeight: height })),
-  variableInspectPanelHeight: localStorage.getItem('workflow-variable-inpsect-panel-height') ? Number.parseFloat(localStorage.getItem('workflow-variable-inpsect-panel-height')!) : 320,
+  variableInspectPanelHeight: storage.getNumber(STORAGE_KEYS.WORKFLOW.VARIABLE_INSPECT_PANEL_HEIGHT, 320)!,
   setVariableInspectPanelHeight: height => set(() => ({ variableInspectPanelHeight: height })),
-  maximizeCanvas: localStorage.getItem('workflow-canvas-maximize') === 'true',
+  maximizeCanvas: storage.getBoolean(STORAGE_KEYS.WORKFLOW.CANVAS_MAXIMIZE, false)!,
   setMaximizeCanvas: maximize => set(() => ({ maximizeCanvas: maximize })),
 })

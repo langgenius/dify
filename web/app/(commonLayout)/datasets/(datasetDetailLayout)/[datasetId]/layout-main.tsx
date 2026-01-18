@@ -18,6 +18,7 @@ import { useStore } from '@/app/components/app/store'
 import { PipelineFill, PipelineLine } from '@/app/components/base/icons/src/vender/pipeline'
 import Loading from '@/app/components/base/loading'
 import ExtraInfo from '@/app/components/datasets/extra-info'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { useAppContext } from '@/context/app-context'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -25,6 +26,7 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use-dataset'
 import { cn } from '@/utils/classnames'
+import { storage } from '@/utils/storage'
 
 export type IAppDetailLayoutProps = {
   children: React.ReactNode
@@ -40,7 +42,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const pathname = usePathname()
   const hideSideBar = pathname.endsWith('documents/create') || pathname.endsWith('documents/create-from-pipeline')
   const isPipelineCanvas = pathname.endsWith('/pipeline')
-  const workflowCanvasMaximize = localStorage.getItem('workflow-canvas-maximize') === 'true'
+  const workflowCanvasMaximize = storage.getBoolean(STORAGE_KEYS.WORKFLOW.CANVAS_MAXIMIZE, false) ?? false
   const [hideHeader, setHideHeader] = useState(workflowCanvasMaximize)
   const { eventEmitter } = useEventEmitterContextContext()
 

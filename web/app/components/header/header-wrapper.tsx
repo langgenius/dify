@@ -2,8 +2,10 @@
 import { usePathname } from 'next/navigation'
 import * as React from 'react'
 import { useState } from 'react'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { cn } from '@/utils/classnames'
+import { storage } from '@/utils/storage'
 import s from './index.module.css'
 
 type HeaderWrapperProps = {
@@ -18,7 +20,7 @@ const HeaderWrapper = ({
   // Check if the current path is a workflow canvas & fullscreen
   const inWorkflowCanvas = pathname.endsWith('/workflow')
   const isPipelineCanvas = pathname.endsWith('/pipeline')
-  const workflowCanvasMaximize = localStorage.getItem('workflow-canvas-maximize') === 'true'
+  const workflowCanvasMaximize = storage.getBoolean(STORAGE_KEYS.WORKFLOW.CANVAS_MAXIMIZE, false) ?? false
   const [hideHeader, setHideHeader] = useState(workflowCanvasMaximize)
   const { eventEmitter } = useEventEmitterContextContext()
 

@@ -5,7 +5,9 @@ import {
   useCallback,
 } from 'react'
 import { useReactFlow, useStoreApi } from 'reactflow'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { storage } from '@/utils/storage'
 import {
   CUSTOM_NODE,
   NODE_LAYOUT_HORIZONTAL_PADDING,
@@ -342,7 +344,7 @@ export const useWorkflowCanvasMaximize = () => {
       return
 
     setMaximizeCanvas(!maximizeCanvas)
-    localStorage.setItem('workflow-canvas-maximize', String(!maximizeCanvas))
+    storage.set(STORAGE_KEYS.WORKFLOW.CANVAS_MAXIMIZE, !maximizeCanvas)
     eventEmitter?.emit({
       type: 'workflow-canvas-maximize',
       payload: !maximizeCanvas,

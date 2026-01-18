@@ -18,7 +18,9 @@ import Tooltip from '@/app/components/base/tooltip'
 import { useEdgesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-edges-interactions-without-sync'
 import { useNodesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-nodes-interactions-without-sync'
 import { useStore } from '@/app/components/workflow/store'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { cn } from '@/utils/classnames'
+import { storage } from '@/utils/storage'
 import {
   useWorkflowInteractions,
 } from '../../hooks'
@@ -56,7 +58,7 @@ const DebugAndPreview = () => {
   const setPanelWidth = useStore(s => s.setPreviewPanelWidth)
   const handleResize = useCallback((width: number, source: 'user' | 'system' = 'user') => {
     if (source === 'user')
-      localStorage.setItem('debug-and-preview-panel-width', `${width}`)
+      storage.set(STORAGE_KEYS.WORKFLOW.PREVIEW_PANEL_WIDTH, width)
     setPanelWidth(width)
   }, [setPanelWidth])
   const maxPanelWidth = useMemo(() => {

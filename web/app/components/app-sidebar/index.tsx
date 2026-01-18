@@ -5,9 +5,11 @@ import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { cn } from '@/utils/classnames'
+import { storage } from '@/utils/storage'
 import Divider from '../base/divider'
 import { getKeyboardKeyCodeBySystem } from '../workflow/utils'
 import AppInfo from './app-info'
@@ -53,7 +55,7 @@ const AppDetailNav = ({
   const pathname = usePathname()
   const inWorkflowCanvas = pathname.endsWith('/workflow')
   const isPipelineCanvas = pathname.endsWith('/pipeline')
-  const workflowCanvasMaximize = localStorage.getItem('workflow-canvas-maximize') === 'true'
+  const workflowCanvasMaximize = storage.getBoolean(STORAGE_KEYS.WORKFLOW.CANVAS_MAXIMIZE, false) ?? false
   const [hideHeader, setHideHeader] = useState(workflowCanvasMaximize)
   const { eventEmitter } = useEventEmitterContextContext()
 
@@ -64,7 +66,7 @@ const AppDetailNav = ({
 
   useEffect(() => {
     if (appSidebarExpand) {
-      localStorage.setItem('app-detail-collapse-or-expand', appSidebarExpand)
+      storage.set(STORAGE_KEYS.APP.DETAIL_COLLAPSE, appSidebarExpand)
       setAppSidebarExpand(appSidebarExpand)
     }
   }, [appSidebarExpand, setAppSidebarExpand])

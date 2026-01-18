@@ -1,4 +1,6 @@
 import type { StateCreator } from 'zustand'
+import { STORAGE_KEYS } from '@/config/storage-keys'
+import { storage } from '@/utils/storage'
 
 export type PanelSliceShape = {
   panelWidth: number
@@ -27,7 +29,7 @@ export type PanelSliceShape = {
 }
 
 export const createPanelSlice: StateCreator<PanelSliceShape> = set => ({
-  panelWidth: localStorage.getItem('workflow-node-panel-width') ? Number.parseFloat(localStorage.getItem('workflow-node-panel-width')!) : 420,
+  panelWidth: storage.getNumber(STORAGE_KEYS.WORKFLOW.NODE_PANEL_WIDTH, 420) ?? 420,
   showFeaturesPanel: false,
   setShowFeaturesPanel: showFeaturesPanel => set(() => ({ showFeaturesPanel })),
   showWorkflowVersionHistoryPanel: false,
