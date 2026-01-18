@@ -42,6 +42,40 @@ export default antfu(
   {
     rules: {
       'node/prefer-global/process': 'off',
+      'no-restricted-globals': [
+        'error',
+        {
+          name: 'localStorage',
+          message: 'Use @/utils/storage instead. Direct localStorage access causes SSR issues.',
+        },
+        {
+          name: 'sessionStorage',
+          message: 'Use @/utils/storage instead. Direct sessionStorage access causes SSR issues.',
+        },
+      ],
+      'no-restricted-properties': [
+        'error',
+        {
+          object: 'window',
+          property: 'localStorage',
+          message: 'Use @/utils/storage instead.',
+        },
+        {
+          object: 'window',
+          property: 'sessionStorage',
+          message: 'Use @/utils/storage instead.',
+        },
+        {
+          object: 'globalThis',
+          property: 'localStorage',
+          message: 'Use @/utils/storage instead.',
+        },
+        {
+          object: 'globalThis',
+          property: 'sessionStorage',
+          message: 'Use @/utils/storage instead.',
+        },
+      ],
     },
   },
   {

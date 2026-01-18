@@ -26,12 +26,12 @@ const Wrap = ({
   isExpand,
   children,
 }: Props) => {
-  const panelWidth = useStore(state => state.panelWidth)
+  const nodePanelWidth = useStore(state => state.nodePanelWidth)
   const wrapStyle = (() => {
     if (isExpand) {
       return {
         ...style,
-        width: panelWidth - 1,
+        width: nodePanelWidth - 1,
       }
     }
     return style

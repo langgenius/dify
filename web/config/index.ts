@@ -1,5 +1,6 @@
 import type { ModelParameterRule } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { InputVarType } from '@/app/components/workflow/types'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { PromptRole } from '@/models/debug'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { AgentStrategy } from '@/types/app'
@@ -179,7 +180,7 @@ export const CSRF_COOKIE_NAME = () => {
   return isSecure ? '__Host-csrf_token' : 'csrf_token'
 }
 export const CSRF_HEADER_NAME = 'X-CSRF-Token'
-export const ACCESS_TOKEN_LOCAL_STORAGE_NAME = 'access_token'
+export const ACCESS_TOKEN_LOCAL_STORAGE_NAME = STORAGE_KEYS.AUTH.ACCESS_TOKEN
 export const PASSPORT_LOCAL_STORAGE_NAME = (appCode: string) => `passport-${appCode}`
 export const PASSPORT_HEADER_NAME = 'X-App-Passport'
 
@@ -229,7 +230,7 @@ export const VAR_ITEM_TEMPLATE_IN_PIPELINE = {
 
 export const appDefaultIconBackground = '#D5F5F6'
 
-export const NEED_REFRESH_APP_LIST_KEY = 'needRefreshAppList'
+export const NEED_REFRESH_APP_LIST_KEY = STORAGE_KEYS.APP.NEED_REFRESH_LIST
 
 export const DATASET_DEFAULT = {
   top_k: 4,

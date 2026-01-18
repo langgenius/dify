@@ -56,6 +56,9 @@
     "no-console": {
       "count": 16
     },
+    "no-restricted-properties": {
+      "count": 5
+    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 4
     },
@@ -74,10 +77,18 @@
     }
   },
   "app/(commonLayout)/app/(appDetailLayout)/[appId]/layout-main.tsx": {
+    "no-restricted-globals": {
+      "count": 1
+    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
     },
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/card-view.tsx": {
+    "no-restricted-globals": {
       "count": 1
     }
   },
@@ -103,6 +114,9 @@
     }
   },
   "app/(commonLayout)/datasets/(datasetDetailLayout)/[datasetId]/layout-main.tsx": {
+    "no-restricted-globals": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -117,18 +131,36 @@
       "count": 1
     }
   },
+  "app/(shareLayout)/webapp-reset-password/page.tsx": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "app/(shareLayout)/webapp-signin/components/mail-and-code-auth.tsx": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
   "app/(shareLayout)/webapp-signin/components/mail-and-password-auth.tsx": {
     "ts/no-explicit-any": {
       "count": 2
     }
   },
   "app/account/(commonLayout)/account-page/email-change-modal.tsx": {
+    "no-restricted-globals": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 5
     }
   },
   "app/account/(commonLayout)/account-page/index.tsx": {
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/account/(commonLayout)/avatar.tsx": {
+    "no-restricted-globals": {
       "count": 1
     }
   },
@@ -142,17 +174,33 @@
       "count": 1
     }
   },
+  "app/account/(commonLayout)/delete-account/index.tsx": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
   "app/account/oauth/authorize/layout.tsx": {
     "ts/no-explicit-any": {
       "count": 1
     }
   },
   "app/account/oauth/authorize/page.tsx": {
+    "no-restricted-globals": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
   },
+  "app/components/app-initializer.tsx": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
   "app/components/app-sidebar/app-info.tsx": {
+    "no-restricted-globals": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -353,6 +401,9 @@
     }
   },
   "app/components/app/configuration/config/automatic/get-automatic-res.tsx": {
+    "no-restricted-globals": {
+      "count": 6
+    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 4
     },
@@ -381,6 +432,9 @@
     }
   },
   "app/components/app/configuration/config/code-generator/get-code-generator-res.tsx": {
+    "no-restricted-globals": {
+      "count": 6
+    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 4
     },
@@ -485,6 +539,9 @@
     }
   },
   "app/components/app/configuration/debug/hooks.tsx": {
+    "no-restricted-globals": {
+      "count": 2
+    },
     "react-hooks/refs": {
       "count": 7
     },
@@ -541,12 +598,23 @@
       "count": 1
     }
   },
+  "app/components/app/create-app-dialog/app-list/index.tsx": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
   "app/components/app/create-app-modal/index.spec.tsx": {
+    "no-restricted-properties": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 7
     }
   },
   "app/components/app/create-app-modal/index.tsx": {
+    "no-restricted-globals": {
+      "count": 1
+    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     },
@@ -555,6 +623,9 @@
     }
   },
   "app/components/app/create-from-dsl-modal/index.tsx": {
+    "no-restricted-globals": {
+      "count": 2
+    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
     }
@@ -620,11 +691,17 @@
     }
   },
   "app/components/app/switch-app-modal/index.spec.tsx": {
+    "no-restricted-globals": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
   },
   "app/components/app/switch-app-modal/index.tsx": {
+    "no-restricted-globals": {
+      "count": 1
+    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     }
@@ -663,6 +740,9 @@
     }
   },
   "app/components/apps/app-card.tsx": {
+    "no-restricted-globals": {
+      "count": 1
+    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     },
@@ -674,11 +754,17 @@
     }
   },
   "app/components/apps/list.spec.tsx": {
+    "no-restricted-globals": {
+      "count": 3
+    },
     "ts/no-explicit-any": {
       "count": 9
     }
   },
   "app/components/apps/list.tsx": {
+    "no-restricted-globals": {
+      "count": 2
+    },
     "unused-imports/no-unused-vars": {
       "count": 1
     }
@@ -806,7 +892,15 @@
       "count": 2
     }
   },
+  "app/components/base/chat/chat-with-history/hooks.spec.tsx": {
+    "no-restricted-globals": {
+      "count": 4
+    }
+  },
   "app/components/base/chat/chat-with-history/hooks.tsx": {
+    "no-restricted-globals": {
+      "count": 2
+    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 4
     },
@@ -905,6 +999,11 @@
   "app/components/base/chat/embedded-chatbot/context.tsx": {
     "ts/no-explicit-any": {
       "count": 7
+    }
+  },
+  "app/components/base/chat/embedded-chatbot/hooks.spec.tsx": {
+    "no-restricted-globals": {
+      "count": 3
     }
   },
   "app/components/base/chat/embedded-chatbot/hooks.tsx": {
@@ -1671,7 +1770,15 @@
       "count": 4
     }
   },
+  "app/components/billing/plan/index.spec.tsx": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
   "app/components/billing/plan/index.tsx": {
+    "no-restricted-globals": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -1699,6 +1806,11 @@
   "app/components/billing/usage-info/index.tsx": {
     "ts/no-explicit-any": {
       "count": 1
+    }
+  },
+  "app/components/browser-initializer.tsx": {
+    "no-restricted-properties": {
+      "count": 2
     }
   },
   "app/components/custom/custom-web-app-brand/index.spec.tsx": {
@@ -2112,6 +2224,9 @@
     }
   },
   "app/components/datasets/metadata/hooks/use-edit-dataset-metadata.ts": {
+    "no-restricted-globals": {
+      "count": 2
+    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     }
@@ -2133,6 +2248,11 @@
   },
   "app/components/datasets/metadata/metadata-dataset/dataset-metadata-drawer.tsx": {
     "react-hooks/static-components": {
+      "count": 1
+    }
+  },
+  "app/components/datasets/metadata/metadata-document/info-group.tsx": {
+    "no-restricted-globals": {
       "count": 1
     }
   },
@@ -2242,6 +2362,11 @@
     },
     "react-hooks/preserve-manual-memoization": {
       "count": 9
+    }
+  },
+  "app/components/header/account-dropdown/index.tsx": {
+    "no-restricted-globals": {
+      "count": 4
     }
   },
   "app/components/header/account-setting/data-source-page-new/card.tsx": {
@@ -2457,6 +2582,11 @@
   "app/components/header/header-wrapper.tsx": {
     "ts/no-explicit-any": {
       "count": 1
+    }
+  },
+  "app/components/header/maintenance-notice.tsx": {
+    "no-restricted-globals": {
+      "count": 2
     }
   },
   "app/components/header/nav/nav-selector/index.tsx": {
@@ -2999,6 +3129,11 @@
       "count": 2
     }
   },
+  "app/components/signin/countdown.tsx": {
+    "no-restricted-globals": {
+      "count": 4
+    }
+  },
   "app/components/tools/edit-custom-collection-modal/get-schema.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -3198,6 +3333,9 @@
     }
   },
   "app/components/workflow/block-selector/featured-tools.tsx": {
+    "no-restricted-properties": {
+      "count": 3
+    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
     },
@@ -3206,6 +3344,9 @@
     }
   },
   "app/components/workflow/block-selector/featured-triggers.tsx": {
+    "no-restricted-properties": {
+      "count": 3
+    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
     },
@@ -3224,6 +3365,9 @@
     }
   },
   "app/components/workflow/block-selector/rag-tool-recommendations/index.tsx": {
+    "no-restricted-properties": {
+      "count": 3
+    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     }
@@ -3538,6 +3682,11 @@
   "app/components/workflow/nodes/_base/components/variable/variable-label/hooks.ts": {
     "react-hooks/use-memo": {
       "count": 2
+    }
+  },
+  "app/components/workflow/nodes/_base/components/workflow-panel/index.spec.tsx": {
+    "no-restricted-globals": {
+      "count": 18
     }
   },
   "app/components/workflow/nodes/_base/components/workflow-panel/index.tsx": {
@@ -3938,6 +4087,9 @@
     }
   },
   "app/components/workflow/nodes/llm/components/json-schema-config-modal/json-schema-generator/index.tsx": {
+    "no-restricted-globals": {
+      "count": 6
+    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
     }
@@ -4359,6 +4511,11 @@
       "count": 7
     }
   },
+  "app/components/workflow/panel/debug-and-preview/index.spec.tsx": {
+    "no-restricted-globals": {
+      "count": 15
+    }
+  },
   "app/components/workflow/panel/env-panel/variable-modal.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 4
@@ -4627,13 +4784,26 @@
       "count": 1
     }
   },
+  "app/education-apply/education-apply-page.tsx": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
   "app/education-apply/hooks.ts": {
+    "no-restricted-globals": {
+      "count": 2
+    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 5
     }
   },
   "app/education-apply/search-input.tsx": {
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/education-apply/user-info.tsx": {
+    "no-restricted-globals": {
       "count": 1
     }
   },
@@ -4653,12 +4823,30 @@
     }
   },
   "app/install/installForm.spec.tsx": {
+    "no-restricted-globals": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 7
     }
   },
+  "app/install/installForm.tsx": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
   "app/reset-password/layout.tsx": {
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/reset-password/page.tsx": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "app/signin/components/mail-and-code-auth.tsx": {
+    "no-restricted-globals": {
       "count": 1
     }
   },
@@ -4682,6 +4870,11 @@
       "count": 1
     }
   },
+  "app/signin/utils/post-login-redirect.ts": {
+    "no-restricted-globals": {
+      "count": 3
+    }
+  },
   "app/signup/layout.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -4698,21 +4891,36 @@
     }
   },
   "context/hooks/use-trigger-events-limit-modal.ts": {
+    "no-restricted-globals": {
+      "count": 2
+    },
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 3
     }
   },
   "context/modal-context.test.tsx": {
+    "no-restricted-globals": {
+      "count": 4
+    },
+    "no-restricted-properties": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 3
     }
   },
   "context/modal-context.tsx": {
+    "no-restricted-globals": {
+      "count": 2
+    },
     "ts/no-explicit-any": {
       "count": 5
     }
   },
   "context/provider-context.tsx": {
+    "no-restricted-globals": {
+      "count": 2
+    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -4728,6 +4936,11 @@
     },
     "ts/no-explicit-any": {
       "count": 1
+    }
+  },
+  "hooks/use-import-dsl.ts": {
+    "no-restricted-globals": {
+      "count": 2
     }
   },
   "hooks/use-metadata.ts": {
@@ -4914,6 +5127,11 @@
       "count": 2
     }
   },
+  "service/refresh-token.ts": {
+    "no-restricted-properties": {
+      "count": 7
+    }
+  },
   "service/share.ts": {
     "ts/no-explicit-any": {
       "count": 4
@@ -4976,6 +5194,11 @@
   "service/utils.spec.ts": {
     "ts/no-explicit-any": {
       "count": 2
+    }
+  },
+  "service/webapp-auth.ts": {
+    "no-restricted-globals": {
+      "count": 6
     }
   },
   "service/workflow-payload.ts": {
@@ -5087,6 +5310,16 @@
   "utils/navigation.spec.ts": {
     "ts/no-explicit-any": {
       "count": 4
+    }
+  },
+  "utils/setup-status.spec.ts": {
+    "no-restricted-globals": {
+      "count": 11
+    }
+  },
+  "utils/setup-status.ts": {
+    "no-restricted-globals": {
+      "count": 3
     }
   },
   "utils/tool-call.spec.ts": {
