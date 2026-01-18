@@ -157,6 +157,54 @@ const Panel: FC = () => {
     }
   }, [currentFocusNodeId, currentVarId, nodesWithInspectVars, fetchInspectVarValue, schemaTypeDefinitions, isLoading])
 
+  useEffect(() => {
+    if (!currentFocusNodeId)
+      return
+
+    // Check if we need to auto-select a variable
+    const needsAutoSelect = !currentVarId || (() => {
+      // Check if current variable belongs to the focused node
+      switch (currentFocusNodeId) {
+        case VarInInspectType.environment:
+          return !environmentVariables.find(v => v.id === currentVarId)
+        case VarInInspectType.conversation:
+          return !conversationVars.find(v => v.id === currentVarId)
+        case VarInInspectType.system:
+          return !systemVars.find(v => v.id === currentVarId)
+        default: {
+          const targetNode = nodesWithInspectVars.find(node => node.nodeId === currentFocusNodeId)
+          const currentVar = targetNode?.vars.find(v => v.id === currentVarId)
+          return !currentVar || !currentVar.visible
+        }
+      }
+    })()
+
+    if (!needsAutoSelect)
+      return
+
+    switch (currentFocusNodeId) {
+      case VarInInspectType.environment:
+        if (environmentVariables.length > 0)
+          setCurrentVarId(environmentVariables[0].id)
+        break
+      case VarInInspectType.conversation:
+        if (conversationVars.length > 0)
+          setCurrentVarId(conversationVars[0].id)
+        break
+      case VarInInspectType.system:
+        if (systemVars.length > 0)
+          setCurrentVarId(systemVars[0].id)
+        break
+      default: {
+        const targetNode = nodesWithInspectVars.find(node => node.nodeId === currentFocusNodeId)
+        const visibleVars = targetNode?.vars.filter(v => v.visible)
+        if (visibleVars?.length)
+          setCurrentVarId(visibleVars[0].id)
+        break
+      }
+    }
+  }, [currentFocusNodeId, currentVarId, environmentVariables, conversationVars, systemVars, nodesWithInspectVars, setCurrentVarId])
+
   if (isListening) {
     return (
       <div className={cn('flex h-full flex-col')}>

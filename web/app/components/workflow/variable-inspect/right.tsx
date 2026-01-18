@@ -54,8 +54,8 @@ const Right = ({
   const setShowVariableInspectPanel = useStore(s => s.setShowVariableInspectPanel)
   const setCurrentFocusNodeId = useStore(s => s.setCurrentFocusNodeId)
   const toolIcon = useToolIcon(currentNodeVar?.nodeData)
-  const isTruncated = currentNodeVar?.var.is_truncated
-  const fullContent = currentNodeVar?.var.full_content
+  const isTruncated = currentNodeVar?.var?.is_truncated
+  const fullContent = currentNodeVar?.var?.full_content
 
   const {
     resetConversationVar,
@@ -70,7 +70,7 @@ const Right = ({
   }
 
   const resetValue = () => {
-    if (!currentNodeVar)
+    if (!currentNodeVar || !currentNodeVar.var)
       return
     resetToLastRunVar(currentNodeVar.nodeId, currentNodeVar.var.id)
   }
@@ -81,13 +81,13 @@ const Right = ({
   }
 
   const handleClear = () => {
-    if (!currentNodeVar)
+    if (!currentNodeVar || !currentNodeVar.var)
       return
     resetConversationVar(currentNodeVar.var.id)
   }
 
   const getCopyContent = () => {
-    const value = currentNodeVar?.var.value
+    const value = currentNodeVar?.var?.value
     if (value === null || value === undefined)
       return ''
 
@@ -159,7 +159,7 @@ const Right = ({
     handleHidePromptGenerator()
   }, [setInputs, blockType, nodeId, node?.data, handleHidePromptGenerator])
 
-  const displaySchemaType = currentNodeVar?.var.schemaType ? (`(${currentNodeVar.var.schemaType})`) : ''
+  const displaySchemaType = currentNodeVar?.var?.schemaType ? `(${currentNodeVar.var.schemaType})` : ''
 
   return (
     <div className={cn('flex h-full flex-col')}>
@@ -196,9 +196,9 @@ const Right = ({
                     <div className="system-sm-regular shrink-0 text-text-quaternary">/</div>
                   </>
                 )}
-              <div title={currentNodeVar.var.name} className="system-sm-semibold truncate text-text-secondary">{currentNodeVar.var.name}</div>
+              <div title={currentNodeVar.var?.name} className="system-sm-semibold truncate text-text-secondary">{currentNodeVar.var?.name}</div>
               <div className="system-xs-medium ml-1 shrink-0 space-x-2 text-text-tertiary">
-                <span>{`${currentNodeVar.var.value_type}${displaySchemaType}`}</span>
+                <span>{`${currentNodeVar.var?.value_type}${displaySchemaType}`}</span>
                 {isTruncated && (
                   <>
                     <span>·</span>
@@ -238,27 +238,27 @@ const Right = ({
                   </ActionButton>
                 </Tooltip>
               )}
-              {!isTruncated && currentNodeVar.var.edited && (
+              {!isTruncated && currentNodeVar.var?.edited && (
                 <Badge>
                   <span className="ml-[2.5px] mr-[4.5px] h-[3px] w-[3px] rounded bg-text-accent-secondary"></span>
                   <span className="system-2xs-semibold-uupercase">{t('debug.variableInspect.edited', { ns: 'workflow' })}</span>
                 </Badge>
               )}
-              {!isTruncated && currentNodeVar.var.edited && currentNodeVar.var.type !== VarInInspectType.conversation && (
+              {!isTruncated && currentNodeVar.var?.edited && currentNodeVar.var?.type !== VarInInspectType.conversation && (
                 <Tooltip popupContent={t('debug.variableInspect.reset', { ns: 'workflow' })}>
                   <ActionButton onClick={resetValue}>
                     <RiArrowGoBackLine className="h-4 w-4" />
                   </ActionButton>
                 </Tooltip>
               )}
-              {!isTruncated && currentNodeVar.var.edited && currentNodeVar.var.type === VarInInspectType.conversation && (
+              {!isTruncated && currentNodeVar.var?.edited && currentNodeVar.var?.type === VarInInspectType.conversation && (
                 <Tooltip popupContent={t('debug.variableInspect.resetConversationVar', { ns: 'workflow' })}>
                   <ActionButton onClick={handleClear}>
                     <RiArrowGoBackLine className="h-4 w-4" />
                   </ActionButton>
                 </Tooltip>
               )}
-              {currentNodeVar.var.value_type !== 'secret' && (
+              {currentNodeVar.var?.value_type !== 'secret' && (
                 <CopyFeedback content={getCopyContent()} />
               )}
             </>
