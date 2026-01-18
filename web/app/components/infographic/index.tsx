@@ -24,77 +24,42 @@ const InfographicViewer: React.FC<InfographicProps> = ({
   const { t } = useTranslation()
   const containerRef = React.useRef<HTMLDivElement>(null)
   const infographicRef = React.useRef<Infographic | null>(null)
-  const [isLoading, setIsLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
 
   React.useEffect(() => {
-    let mounted = true
+    if (!containerRef.current)
+      return
 
-    const renderInfographic = async () => {
-      if (!containerRef.current)
-        return
-
-      try {
-        // Clear previous instance
-        if (infographicRef.current) {
-          infographicRef.current.destroy()
-          infographicRef.current = null
-        }
-
-        // Defer state updates to avoid synchronous setState in useEffect
-        await new Promise((resolve) => {
-          const timer = setTimeout(resolve, 0)
-          return timer
-        })
-        if (!mounted)
-          return
-
-        setIsLoading(true)
-        setError(null)
-
-        // Create new infographic instance
-        const infographic = new Infographic({
-          container: containerRef.current,
-          width,
-          height,
-          editable: false,
-        })
-
-        // Render the infographic with the syntax
-        infographic.render(syntax)
-        infographicRef.current = infographic
-
-        // Defer state update after render
-        await new Promise((resolve) => {
-          const timer = setTimeout(resolve, 0)
-          return timer
-        })
-        if (!mounted)
-          return
-
-        setIsLoading(false)
+    try {
+      // Clear previous instance
+      if (infographicRef.current) {
+        infographicRef.current.destroy()
+        infographicRef.current = null
       }
-      catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to render infographic'
 
-        // Defer error state updates
-        await new Promise((resolve) => {
-          const timer = setTimeout(resolve, 0)
-          return timer
-        })
-        if (!mounted)
-          return
+      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect -- Infographic.render() is synchronous, no async state needed
+      setError(null)
 
-        setError(errorMessage)
-        setIsLoading(false)
-        onError?.(err instanceof Error ? err : new Error(errorMessage))
-      }
+      // Create new infographic instance
+      const infographic = new Infographic({
+        container: containerRef.current,
+        width,
+        height,
+        editable: false,
+      })
+
+      // Render the infographic with the syntax (synchronous)
+      infographic.render(syntax)
+      infographicRef.current = infographic
+    }
+    catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to render infographic'
+      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect -- Infographic.render() is synchronous, no async state needed
+      setError(errorMessage)
+      onError?.(err instanceof Error ? err : new Error(errorMessage))
     }
 
-    renderInfographic()
-
     return () => {
-      mounted = false
       if (infographicRef.current) {
         infographicRef.current.destroy()
         infographicRef.current = null
@@ -190,7 +155,7 @@ const InfographicViewer: React.FC<InfographicProps> = ({
       <div className="absolute right-2 top-2 z-10 flex gap-2">
         <button
           onClick={handleCopyImage}
-          disabled={isLoading || !!error}
+          disabled={!!error}
           className="rounded-lg bg-white p-2 shadow-md transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
           title={t('operation.copy', { ns: 'common' })}
         >
@@ -198,23 +163,13 @@ const InfographicViewer: React.FC<InfographicProps> = ({
         </button>
         <button
           onClick={handleDownloadImage}
-          disabled={isLoading || !!error}
+          disabled={!!error}
           className="rounded-lg bg-white p-2 shadow-md transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
           title={t('operation.download', { ns: 'common' })}
         >
           <ArrowDownTrayIcon className="h-4 w-4 text-gray-700" />
         </button>
       </div>
-
-      {/* Loading State */}
-      {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-gray-50">
-          <div className="flex flex-col items-center gap-2">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
-            <span className="text-sm text-gray-600">Rendering infographic...</span>
-          </div>
-        </div>
-      )}
 
       {/* Error State */}
       {error && (
