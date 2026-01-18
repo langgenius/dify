@@ -16,9 +16,9 @@ previews/generators, and deletion.
 
 ## Dataset document download helpers
 
-The dataset document download/ZIP endpoints keep their feature-specific “Document → UploadFile” glue in the controller
-module (`api/controllers/console/datasets/datasets_document.py`). `FileService` stays focused on generic `UploadFile`
-operations (uploading, previews, deletion), plus generic ZIP serving.
+The dataset document download/ZIP endpoints now delegate “Document → UploadFile” validation and permission checks to
+`DocumentService` (`api/services/dataset_service.py`). `FileService` stays focused on generic `UploadFile` operations
+(uploading, previews, deletion), plus generic ZIP serving.
 
 ### ZIP serving
 

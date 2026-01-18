@@ -105,6 +105,7 @@ def _wire_common_success_mocks(
     signed_url: str,
 ) -> None:
     """Patch controller dependencies to create a deterministic test environment."""
+    import services.dataset_service as dataset_service_module
 
     # Make `current_account_with_tenant()` return a known user + tenant id.
     monkeypatch.setattr(module, "current_account_with_tenant", lambda: (_mock_user(), current_tenant_id))
@@ -129,7 +130,7 @@ def _wire_common_success_mocks(
     monkeypatch.setattr(module.FileService, "get_upload_files_by_ids", lambda *_args, **_kwargs: upload_files_by_id)
 
     # Mock signing helper so the returned URL is deterministic.
-    monkeypatch.setattr(module.file_helpers, "get_signed_file_url", lambda **_kwargs: signed_url)
+    monkeypatch.setattr(dataset_service_module.file_helpers, "get_signed_file_url", lambda **_kwargs: signed_url)
 
 
 def _mock_send_file(obj, **kwargs):  # type: ignore[no-untyped-def]
