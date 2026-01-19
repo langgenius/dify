@@ -77,6 +77,8 @@ def create_app() -> tuple[socketio.WSGIApp, DifyApp]:
 
 
 def initialize_extensions(app: DifyApp):
+    # Initialize Flask context capture for workflow execution
+    from context.flask_app_context import init_flask_context
     from extensions import (
         ext_app_metrics,
         ext_blueprints,
@@ -105,6 +107,8 @@ def initialize_extensions(app: DifyApp):
         ext_timezone,
         ext_warnings,
     )
+
+    init_flask_context()
 
     extensions = [
         ext_timezone,

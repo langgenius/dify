@@ -1,4 +1,3 @@
-import re
 import uuid
 from datetime import datetime
 from typing import Any, Literal, TypeAlias
@@ -68,48 +67,6 @@ class AppListQuery(BaseModel):
             raise ValueError("Invalid UUID format in tag_ids.") from exc
 
 
-# XSS prevention: patterns that could lead to XSS attacks
-# Includes: script tags, iframe tags, javascript: protocol, SVG with onload, etc.
-_XSS_PATTERNS = [
-    r"<script[^>]*>.*?</script>",  # Script tags
-    r"<iframe\b[^>]*?(?:/>|>.*?</iframe>)",  # Iframe tags (including self-closing)
-    r"javascript:",  # JavaScript protocol
-    r"<svg[^>]*?\s+onload\s*=[^>]*>",  # SVG with onload handler (attribute-aware, flexible whitespace)
-    r"<.*?on\s*\w+\s*=",  # Event handlers like onclick, onerror, etc.
-    r"<object\b[^>]*(?:\s*/>|>.*?</object\s*>)",  # Object tags (opening tag)
-    r"<embed[^>]*>",  # Embed tags (self-closing)
-    r"<link[^>]*>",  # Link tags with javascript
-]
-
-
-def _validate_xss_safe(value: str | None, field_name: str = "Field") -> str | None:
-    """
-    Validate that a string value doesn't contain potential XSS payloads.
-
-    Args:
-        value: The string value to validate
-        field_name: Name of the field for error messages
-
-    Returns:
-        The original value if safe
-
-    Raises:
-        ValueError: If the value contains XSS patterns
-    """
-    if value is None:
-        return None
-
-    value_lower = value.lower()
-    for pattern in _XSS_PATTERNS:
-        if re.search(pattern, value_lower, re.DOTALL | re.IGNORECASE):
-            raise ValueError(
-                f"{field_name} contains invalid characters or patterns. "
-                "HTML tags, JavaScript, and other potentially dangerous content are not allowed."
-            )
-
-    return value
-
-
 class CreateAppPayload(BaseModel):
     name: str = Field(..., min_length=1, description="App name")
     description: str | None = Field(default=None, description="App description (max 400 chars)", max_length=400)
@@ -117,11 +74,6 @@ class CreateAppPayload(BaseModel):
     icon_type: str | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")
-
-    @field_validator("name", "description", mode="before")
-    @classmethod
-    def validate_xss_safe(cls, value: str | None, info) -> str | None:
-        return _validate_xss_safe(value, info.field_name)
 
 
 class UpdateAppPayload(BaseModel):
@@ -133,11 +85,6 @@ class UpdateAppPayload(BaseModel):
     use_icon_as_answer_icon: bool | None = Field(default=None, description="Use icon as answer icon")
     max_active_requests: int | None = Field(default=None, description="Maximum active requests")
 
-    @field_validator("name", "description", mode="before")
-    @classmethod
-    def validate_xss_safe(cls, value: str | None, info) -> str | None:
-        return _validate_xss_safe(value, info.field_name)
-
 
 class CopyAppPayload(BaseModel):
     name: str | None = Field(default=None, description="Name for the copied app")
@@ -145,11 +92,6 @@ class CopyAppPayload(BaseModel):
     icon_type: str | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")
-
-    @field_validator("name", "description", mode="before")
-    @classmethod
-    def validate_xss_safe(cls, value: str | None, info) -> str | None:
-        return _validate_xss_safe(value, info.field_name)
 
 
 class AppExportQuery(BaseModel):
