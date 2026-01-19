@@ -83,7 +83,6 @@ const FileReferenceBlock: FC<FileReferenceBlockProps> = ({ nodeKey, resourceId }
         <FilePickerPanel
           onSelectNode={handleSelect}
           focusNodeId={resourceId}
-          syncExpandedState={false}
         />
       </PortalToFollowElemContent>
     </PortalToFollowElem>
