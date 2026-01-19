@@ -245,9 +245,6 @@
     }
   },
   "app/components/app/app-publisher/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 3
-    },
     "ts/no-explicit-any": {
       "count": 6
     }
@@ -2566,6 +2563,11 @@
   },
   "app/components/rag-pipeline/hooks/use-DSL.ts": {
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/rag-pipeline/hooks/use-configs-map.ts": {
+    "react-hooks/preserve-manual-memoization": {
       "count": 1
     }
   },
