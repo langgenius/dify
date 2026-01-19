@@ -209,7 +209,7 @@ export const useChat = (
     return getOrCreatePlayer
   }, [params.token, params.appId, pathname])
 
-  const handleResume = useCallback((
+  const handleResume = useCallback(async (
     messageId: string,
     workflowRunId: string,
     isPublicAPI?: boolean,
@@ -501,6 +501,9 @@ export const useChat = (
         })
       },
     }
+
+    if (workflowEventsAbortControllerRef.current)
+      workflowEventsAbortControllerRef.current.abort()
 
     sseGet(
       url,
@@ -1020,6 +1023,10 @@ export const useChat = (
         })
       },
     }
+
+    // Abort the previous workflow events SSE request
+    if (workflowEventsAbortControllerRef.current)
+      workflowEventsAbortControllerRef.current.abort()
 
     ssePost(
       url,

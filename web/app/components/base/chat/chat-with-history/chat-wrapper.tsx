@@ -5,7 +5,7 @@ import type {
   ChatItemInTree,
   OnSend,
 } from '../types'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import AnswerIcon from '@/app/components/base/answer-icon'
 import AppIcon from '@/app/components/base/app-icon'
 import InputsForm from '@/app/components/base/chat/chat-with-history/inputs-form'
@@ -136,33 +136,34 @@ const ChatWrapper = () => {
   }, [respondingState, setIsResponding])
 
   // Resume paused workflows when chat history is loaded
-  const resumedWorkflowsRef = useRef<Set<string>>(new Set())
   useEffect(() => {
     if (!appPrevChatTree || appPrevChatTree.length === 0)
       return
 
-    // Find all answer items with workflow_run_id that need resumption
-    const checkForPausedWorkflows = (nodes: ChatItemInTree[]) => {
+    // Find the last answer item with workflow_run_id that needs resumption (DFS - find deepest first)
+    let lastPausedNode: ChatItemInTree | undefined
+    const findLastPausedWorkflow = (nodes: ChatItemInTree[]) => {
       nodes.forEach((node) => {
-        if (node.isAnswer && node.workflow_run_id && node.humanInputFormDataList && node.humanInputFormDataList.length > 0) {
-          // This is a paused workflow waiting for human input
-          const workflowKey = `${node.workflow_run_id}-${node.id}`
-          if (!resumedWorkflowsRef.current.has(workflowKey)) {
-            resumedWorkflowsRef.current.add(workflowKey)
-            // Re-subscribe to workflow events
-            handleResume(
-              node.id,
-              node.workflow_run_id,
-              !isInstalledApp,
-            )
-          }
-        }
+        // DFS: recurse to children first
         if (node.children && node.children.length > 0)
-          checkForPausedWorkflows(node.children)
+          findLastPausedWorkflow(node.children)
+
+        // Track the last node with humanInputFormDataList
+        if (node.isAnswer && node.workflow_run_id && node.humanInputFormDataList && node.humanInputFormDataList.length > 0)
+          lastPausedNode = node
       })
     }
 
-    checkForPausedWorkflows(appPrevChatTree)
+    findLastPausedWorkflow(appPrevChatTree)
+
+    // Only resume the last paused workflow
+    if (lastPausedNode) {
+      handleResume(
+        lastPausedNode.id,
+        lastPausedNode.workflow_run_id!,
+        !isInstalledApp,
+      )
+    }
   }, [])
 
   const doSend: OnSend = useCallback((message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
