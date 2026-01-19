@@ -2668,7 +2668,7 @@
   },
   "app/components/plugins/plugin-detail-panel/tool-selector/index.tsx": {
     "ts/no-explicit-any": {
-      "count": 15
+      "count": 8
     }
   },
   "app/components/plugins/plugin-detail-panel/tool-selector/reasoning-config-form.tsx": {
@@ -3139,9 +3139,6 @@
     }
   },
   "app/components/workflow-app/hooks/use-workflow-init.ts": {
-    "react-hooks/immutability": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
