@@ -7,6 +7,13 @@ export const PROVIDER_ICONS: Record<string, string> = {
   local: '/sandbox-providers/local.svg',
 }
 
+export const PROVIDER_LABEL_KEYS = {
+  e2b: 'sandboxProvider.e2b.label',
+  daytona: 'sandboxProvider.daytona.label',
+  docker: 'sandboxProvider.docker.label',
+  local: 'sandboxProvider.local.label',
+} as const
+
 export const PROVIDER_DESCRIPTION_KEYS = {
   e2b: 'sandboxProvider.e2b.description',
   daytona: 'sandboxProvider.daytona.description',

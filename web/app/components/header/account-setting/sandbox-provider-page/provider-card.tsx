@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Indicator from '@/app/components/header/indicator'
 import { cn } from '@/utils/classnames'
-import { PROVIDER_DESCRIPTION_KEYS } from './constants'
+import { PROVIDER_DESCRIPTION_KEYS, PROVIDER_LABEL_KEYS } from './constants'
 import ProviderIcon from './provider-icon'
 
 type ProviderCardProps = {
@@ -45,7 +45,7 @@ const ProviderCard = ({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1">
           <span className="system-md-semibold text-text-primary">
-            {provider.label}
+            {t(PROVIDER_LABEL_KEYS[provider.provider_type as keyof typeof PROVIDER_LABEL_KEYS] ?? 'sandboxProvider.e2b.label', { ns: 'common' })}
           </span>
           {provider.is_system_configured && !provider.is_tenant_configured && (
             <span className="system-2xs-medium rounded-[5px] border border-divider-deep px-[5px] py-[3px] text-text-tertiary">

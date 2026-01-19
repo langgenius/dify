@@ -14,7 +14,7 @@ import {
   useDeleteSandboxProviderConfig,
   useSaveSandboxProviderConfig,
 } from '@/service/use-sandbox-provider'
-import { PROVIDER_DOC_LINKS, SANDBOX_FIELD_CONFIGS } from './constants'
+import { PROVIDER_DOC_LINKS, PROVIDER_LABEL_KEYS, SANDBOX_FIELD_CONFIGS } from './constants'
 import ProviderIcon from './provider-icon'
 
 type ConfigModalProps = {
@@ -98,7 +98,9 @@ const ConfigModal = ({
         </h3>
         <div className="flex items-center gap-2">
           <ProviderIcon providerType={provider.provider_type} size="sm" withBorder />
-          <span className="system-md-regular text-text-secondary">{provider.label}</span>
+          <span className="system-md-regular text-text-secondary">
+            {t(PROVIDER_LABEL_KEYS[provider.provider_type as keyof typeof PROVIDER_LABEL_KEYS] ?? 'sandboxProvider.e2b.label', { ns: 'common' })}
+          </span>
         </div>
       </div>
 
@@ -119,7 +121,7 @@ const ConfigModal = ({
               rel="noopener noreferrer"
               className="system-xs-regular inline-flex items-center gap-1 text-text-accent hover:underline"
             >
-              {t('sandboxProvider.configModal.readDocLink', { ns: 'common', provider: provider.label })}
+              {t('sandboxProvider.configModal.readDocLink', { ns: 'common', provider: t(PROVIDER_LABEL_KEYS[provider.provider_type as keyof typeof PROVIDER_LABEL_KEYS] ?? 'sandboxProvider.e2b.label', { ns: 'common' }) })}
               <RiExternalLinkLine className="h-3 w-3" />
             </a>
           )}

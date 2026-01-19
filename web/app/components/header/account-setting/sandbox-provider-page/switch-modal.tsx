@@ -7,6 +7,7 @@ import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
 import { useToastContext } from '@/app/components/base/toast'
 import { useActivateSandboxProvider } from '@/service/use-sandbox-provider'
+import { PROVIDER_LABEL_KEYS } from './constants'
 
 type SwitchModalProps = {
   provider: SandboxProvider
@@ -57,7 +58,7 @@ const SwitchModal = ({
           <Trans
             i18nKey="sandboxProvider.switchModal.confirmText"
             ns="common"
-            values={{ provider: provider.label }}
+            values={{ provider: t(PROVIDER_LABEL_KEYS[provider.provider_type as keyof typeof PROVIDER_LABEL_KEYS] ?? 'sandboxProvider.e2b.label', { ns: 'common' }) }}
             components={{ bold: <span className="system-sm-semibold" /> }}
           />
         </div>
