@@ -151,8 +151,9 @@ function ConfigModal({ provider, onClose }: ConfigModalProps) {
   const providerLabelKey = PROVIDER_LABEL_KEYS[provider.provider_type as keyof typeof PROVIDER_LABEL_KEYS] ?? 'sandboxProvider.e2b.label'
   const providerLabel = t(providerLabelKey, { ns: 'common' })
 
-  // Only show revoke button when in BYOK mode and tenant has custom config
-  const showRevokeButton = provider.is_tenant_configured && (!shouldShowModeSelection || configMode === 'byok')
+  // Only show revoke button when in BYOK mode, tenant has custom config, and provider is not active
+  // (active provider cannot be revoked to prevent "no sandbox provider" error)
+  const showRevokeButton = provider.is_tenant_configured && !provider.is_active && (!shouldShowModeSelection || configMode === 'byok')
   const isActionDisabled = isSaving || isDeleting
   const showByokForm = !shouldShowModeSelection || configMode === 'byok'
 
