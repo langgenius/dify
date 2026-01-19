@@ -315,7 +315,9 @@ const VarReferenceVars: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
-  const normalizedSearchText = externalSearchText === undefined ? searchText : externalSearchText.trim()
+  const normalizedSearchText = externalSearchText === undefined ? searchText : externalSearchText
+  const normalizedSearchTextTrimmed = normalizedSearchText.trim()
+  const normalizedSearchTextLower = normalizedSearchTextTrimmed.toLowerCase()
   const shouldShowSearchInput = !hideSearch && externalSearchText === undefined
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -332,32 +334,39 @@ const VarReferenceVars: FC<Props> = ({
     onClose?.()
   }
 
-  const filteredVars = useMemo(() => {
-    return vars.filter((v) => {
-      const children = v.vars.filter(v => checkKeys([v.variable], false).isValid || isSpecialVar(v.variable.split('.')[0]))
-      return children.length > 0
-    }).filter((node) => {
-      if (!normalizedSearchText)
-        return node
-      const searchTextLower = normalizedSearchText.toLowerCase()
-      const children = node.vars.filter((v) => {
-        return v.variable.toLowerCase().includes(searchTextLower) || node.title.toLowerCase().includes(searchTextLower)
-      })
-      return children.length > 0
-    }).map((node) => {
-      let vars = node.vars.filter(v => checkKeys([v.variable], false).isValid || isSpecialVar(v.variable.split('.')[0]))
-      if (normalizedSearchText) {
-        const searchTextLower = normalizedSearchText.toLowerCase()
-        if (!node.title.toLowerCase().includes(searchTextLower))
-          vars = vars.filter(v => v.variable.toLowerCase().includes(searchTextLower))
-      }
-
-      return {
+  const validatedVars = useMemo(() => {
+    const res: NodeOutPutVar[] = []
+    vars.forEach((node) => {
+      const nodeVars = node.vars.filter(v => checkKeys([v.variable], false).isValid || isSpecialVar(v.variable.split('.')[0]))
+      if (nodeVars.length === 0)
+        return
+      res.push({
         ...node,
-        vars,
-      }
+        vars: nodeVars,
+      })
     })
-  }, [normalizedSearchText, vars])
+    return res
+  }, [vars])
+
+  const filteredVars = useMemo(() => {
+    if (!normalizedSearchTextTrimmed)
+      return validatedVars
+    const res: NodeOutPutVar[] = []
+    validatedVars.forEach((node) => {
+      const titleLower = node.title.toLowerCase()
+      const matchedByTitle = titleLower.includes(normalizedSearchTextLower)
+      const nodeVars = matchedByTitle
+        ? node.vars
+        : node.vars.filter(v => v.variable.toLowerCase().includes(normalizedSearchTextLower))
+      if (nodeVars.length === 0)
+        return
+      res.push({
+        ...node,
+        vars: nodeVars,
+      })
+    })
+    return res
+  }, [normalizedSearchTextLower, normalizedSearchTextTrimmed, validatedVars])
 
   const flatItems = useMemo(() => {
     const items: Array<{ node: NodeOutPutVar, itemData: Var }> = []
@@ -370,30 +379,58 @@ const VarReferenceVars: FC<Props> = ({
   }, [filteredVars])
   const [activeIndex, setActiveIndex] = useState(-1)
   const itemRefs = useRef<Array<HTMLDivElement | null>>([])
+  const lastInteractionRef = useRef<'keyboard' | 'mouse' | 'filter' | null>(null)
+  const flatItemsRef = useRef(flatItems)
+  const activeIndexRef = useRef(activeIndex)
+  const onCloseRef = useRef(onClose)
+  const resolvedActiveIndex = useMemo(() => {
+    if (!enableKeyboardNavigation || flatItems.length === 0)
+      return -1
+    if (activeIndex < 0 || activeIndex >= flatItems.length)
+      return 0
+    return activeIndex
+  }, [activeIndex, enableKeyboardNavigation, flatItems.length])
 
   useEffect(() => {
     itemRefs.current = []
   }, [flatItems.length])
 
   useEffect(() => {
-    if (!enableKeyboardNavigation) {
-      setActiveIndex(-1)
-      return
-    }
-    if (flatItems.length === 0) {
-      setActiveIndex(-1)
-      return
-    }
-    setActiveIndex(0)
-  }, [enableKeyboardNavigation, flatItems.length, normalizedSearchText])
+    flatItemsRef.current = flatItems
+  }, [flatItems])
 
   useEffect(() => {
-    if (!enableKeyboardNavigation || activeIndex < 0)
+    activeIndexRef.current = resolvedActiveIndex
+  }, [resolvedActiveIndex])
+
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
+
+  const handleHighlightIndex = useCallback((index: number, source: 'keyboard' | 'mouse' | 'filter') => {
+    lastInteractionRef.current = source
+    setActiveIndex(index)
+  }, [])
+
+  useEffect(() => {
+    if (!enableKeyboardNavigation || flatItems.length === 0) {
+      lastInteractionRef.current = 'filter'
       return
-    const target = itemRefs.current[activeIndex]
+    }
+    if (activeIndex < 0 || activeIndex >= flatItems.length)
+      lastInteractionRef.current = 'filter'
+  }, [activeIndex, enableKeyboardNavigation, flatItems.length])
+
+  useEffect(() => {
+    if (!enableKeyboardNavigation || resolvedActiveIndex < 0)
+      return
+    if (lastInteractionRef.current !== 'keyboard')
+      return
+    const target = itemRefs.current[resolvedActiveIndex]
     if (target)
       target.scrollIntoView({ block: 'nearest' })
-  }, [activeIndex, enableKeyboardNavigation, flatItems.length])
+    lastInteractionRef.current = null
+  }, [enableKeyboardNavigation, flatItems.length, resolvedActiveIndex])
 
   const handleSelectItem = useCallback((item: { node: NodeOutPutVar, itemData: Var }) => {
     const isStructureOutput = item.itemData.type === VarType.object
@@ -415,34 +452,34 @@ const VarReferenceVars: FC<Props> = ({
     if (!enableKeyboardNavigation)
       return
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (flatItems.length === 0)
+      const items = flatItemsRef.current
+      if (items.length === 0)
         return
       if (!['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(event.key))
         return
       event.preventDefault()
       event.stopPropagation()
       if (event.key === 'Escape') {
-        onClose?.()
+        onCloseRef.current?.()
         return
       }
       if (event.key === 'Enter') {
-        if (activeIndex < 0 || activeIndex >= flatItems.length)
+        const index = activeIndexRef.current
+        if (index < 0 || index >= items.length)
           return
-        handleSelectItem(flatItems[activeIndex])
+        handleSelectItem(items[index])
         return
       }
       const delta = event.key === 'ArrowDown' ? 1 : -1
-      setActiveIndex((prev) => {
-        const baseIndex = prev < 0 ? 0 : prev
-        const nextIndex = Math.min(Math.max(baseIndex + delta, 0), flatItems.length - 1)
-        return nextIndex
-      })
+      const baseIndex = activeIndexRef.current < 0 ? 0 : activeIndexRef.current
+      const nextIndex = Math.min(Math.max(baseIndex + delta, 0), items.length - 1)
+      handleHighlightIndex(nextIndex, 'keyboard')
     }
     document.addEventListener('keydown', handleKeyDown, true)
     return () => {
       document.removeEventListener('keydown', handleKeyDown, true)
     }
-  }, [activeIndex, enableKeyboardNavigation, flatItems, handleSelectItem, onClose])
+  }, [enableKeyboardNavigation, handleHighlightIndex, handleSelectItem])
 
   let runningIndex = -1
 
@@ -529,8 +566,8 @@ const VarReferenceVars: FC<Props> = ({
                           isInCodeGeneratorInstructionEditor={isInCodeGeneratorInstructionEditor}
                           zIndex={zIndex}
                           preferSchemaType={preferSchemaType}
-                          isHighlighted={enableKeyboardNavigation && itemIndex === activeIndex}
-                          onSetHighlight={enableKeyboardNavigation ? () => setActiveIndex(itemIndex) : undefined}
+                          isHighlighted={enableKeyboardNavigation && itemIndex === resolvedActiveIndex}
+                          onSetHighlight={enableKeyboardNavigation ? () => handleHighlightIndex(itemIndex, 'mouse') : undefined}
                           registerRef={enableKeyboardNavigation
                             ? (element) => {
                                 itemRefs.current[itemIndex] = element
