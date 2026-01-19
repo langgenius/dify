@@ -4,7 +4,7 @@ import type { VarInInspect } from '@/types/workflow'
 import {
   RiCloseLine,
 } from '@remixicon/react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
@@ -40,7 +40,16 @@ const Panel: FC = () => {
   const environmentVariables = useStore(s => s.environmentVariables)
   const currentFocusNodeId = useStore(s => s.currentFocusNodeId)
   const setCurrentFocusNodeId = useStore(s => s.setCurrentFocusNodeId)
-  const [currentVarId, setCurrentVarId] = useState('')
+  const [currentVarId, dispatchCurrentVarId] = useReducer(
+    (state: string, action: { type: 'SET', id: string } | { type: 'AUTO_SELECT', autoSelectedId?: string }) => {
+      if (action.type === 'SET')
+        return action.id
+      if (action.type === 'AUTO_SELECT' && action.autoSelectedId !== undefined && action.autoSelectedId !== state)
+        return action.autoSelectedId
+      return state
+    },
+    '',
+  )
 
   const {
     conversationVars,
@@ -139,8 +148,8 @@ const Panel: FC = () => {
 
   const handleNodeVarSelect = useCallback((node: currentVarType) => {
     setCurrentFocusNodeId(node.nodeId)
-    setCurrentVarId(node.var.id)
-  }, [setCurrentFocusNodeId, setCurrentVarId])
+    dispatchCurrentVarId({ type: 'SET', id: node.var.id })
+  }, [setCurrentFocusNodeId])
 
   const { isLoading, schemaTypeDefinitions } = useMatchSchemaType()
   const { eventEmitter } = useEventEmitterContextContext()
@@ -208,12 +217,8 @@ const Panel: FC = () => {
   }, [currentFocusNodeId, currentVarId, environmentVariables, conversationVars, systemVars, nodesWithInspectVars])
 
   useEffect(() => {
-    if (autoSelectedVarId !== undefined && autoSelectedVarId !== currentVarId) {
-      queueMicrotask(() => {
-        setCurrentVarId(autoSelectedVarId)
-      })
-    }
-  }, [autoSelectedVarId, currentVarId])
+    dispatchCurrentVarId({ type: 'AUTO_SELECT', autoSelectedId: autoSelectedVarId })
+  }, [autoSelectedVarId])
 
   if (isListening) {
     return (
