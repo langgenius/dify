@@ -1381,6 +1381,11 @@ class RegisterService:
         normalized_email = email.lower()
 
         """Invite new member"""
+        # Check workspace permission for member invitations
+        from libs.workspace_permission import check_workspace_member_invite_permission
+
+        check_workspace_member_invite_permission(tenant.id)
+
         with Session(db.engine) as session:
             account = AccountService.get_account_by_email_with_case_fallback(email, session=session)
 
