@@ -9,19 +9,19 @@ export type SkillFileDataResult = {
 
 /**
  * Hook to fetch file data for skill documents.
- * Fetches content for editable files and download URL for media files.
+ * Fetches content for editable files and download URL for non-editable files.
  */
 export function useSkillFileData(
   appId: string,
   nodeId: string | null | undefined,
-  isMediaFile: boolean,
+  isEditable: boolean,
 ): SkillFileDataResult {
   const {
     data: fileContent,
     isLoading: isContentLoading,
     error: contentError,
   } = useGetAppAssetFileContent(appId, nodeId || '', {
-    enabled: !isMediaFile,
+    enabled: isEditable,
   })
 
   const {
@@ -29,11 +29,11 @@ export function useSkillFileData(
     isLoading: isDownloadUrlLoading,
     error: downloadUrlError,
   } = useGetAppAssetFileDownloadUrl(appId, nodeId || '', {
-    enabled: isMediaFile && !!nodeId,
+    enabled: !isEditable && !!nodeId,
   })
 
-  const isLoading = isMediaFile ? isDownloadUrlLoading : isContentLoading
-  const error = isMediaFile ? downloadUrlError : contentError
+  const isLoading = isEditable ? isContentLoading : isDownloadUrlLoading
+  const error = isEditable ? contentError : downloadUrlError
 
   return {
     fileContent,

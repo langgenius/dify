@@ -44,9 +44,9 @@ const SkillDocEditor: FC = () => {
 
   const currentFileNode = activeTabId ? nodeMap?.get(activeTabId) : undefined
 
-  const { isMarkdown, isCodeOrText, isImage, isVideo, isOffice, isEditable, isMediaFile } = useFileTypeInfo(currentFileNode)
+  const { isMarkdown, isCodeOrText, isImage, isVideo, isOffice, isEditable } = useFileTypeInfo(currentFileNode)
 
-  const { fileContent, downloadUrlData, isLoading, error } = useSkillFileData(appId, activeTabId, isMediaFile)
+  const { fileContent, downloadUrlData, isLoading, error } = useSkillFileData(appId, activeTabId, isEditable)
 
   const originalContent = fileContent?.content ?? ''
 
@@ -150,8 +150,8 @@ const SkillDocEditor: FC = () => {
     )
   }
 
-  const mediaPreviewUrl = downloadUrlData?.download_url || ''
-  const textPreviewUrl = fileContent?.content || ''
+  // For non-editable files (media, office, unsupported), use download URL
+  const downloadUrl = downloadUrlData?.download_url || ''
   const fileName = currentFileNode?.name || ''
   const fileSize = currentFileNode?.size
   const isUnsupportedFile = !isMarkdown && !isCodeOrText && !isImage && !isVideo && !isOffice
@@ -183,7 +183,7 @@ const SkillDocEditor: FC = () => {
         ? (
             <MediaFilePreview
               type={isImage ? 'image' : 'video'}
-              src={mediaPreviewUrl}
+              src={downloadUrl}
             />
           )
         : null}
@@ -197,7 +197,7 @@ const SkillDocEditor: FC = () => {
             <UnsupportedFileDownload
               name={fileName}
               size={fileSize}
-              downloadUrl={textPreviewUrl}
+              downloadUrl={downloadUrl}
             />
           )
         : null}
