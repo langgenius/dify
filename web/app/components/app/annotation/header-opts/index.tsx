@@ -21,6 +21,7 @@ import { LanguagesSupported } from '@/i18n-config/language'
 import { clearAllAnnotations, fetchExportAnnotationList } from '@/service/annotation'
 
 import { cn } from '@/utils/classnames'
+import { downloadBlob } from '@/utils/download'
 import Button from '../../../base/button'
 import AddAnnotationModal from '../add-annotation-modal'
 import BatchAddModal from '../batch-add-annotation-modal'
@@ -56,14 +57,9 @@ const HeaderOptions: FC<Props> = ({
   )
 
   const JSONLOutput = () => {
-    const a = document.createElement('a')
     const content = listTransformer(list).join('\n')
     const file = new Blob([content], { type: 'application/jsonl' })
-    const url = URL.createObjectURL(file)
-    a.href = url
-    a.download = `annotations-${locale}.jsonl`
-    a.click()
-    URL.revokeObjectURL(url)
+    downloadBlob({ data: file, fileName: `annotations-${locale}.jsonl` })
   }
 
   const fetchList = async () => {

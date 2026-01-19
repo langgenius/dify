@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Tooltip from '@/app/components/base/tooltip'
+import { downloadUrl } from '@/utils/download'
 
 type Props = {
   content: string
@@ -41,10 +42,9 @@ const ShareQRCode = ({ content }: Props) => {
 
   const downloadQR = () => {
     const canvas = document.getElementsByTagName('canvas')[0]
-    const link = document.createElement('a')
-    link.download = 'qrcode.png'
-    link.href = canvas.toDataURL()
-    link.click()
+    if (!canvas)
+      return
+    downloadUrl({ url: canvas.toDataURL(), fileName: 'qrcode.png' })
   }
 
   const handlePanelClick = (event: React.MouseEvent) => {
