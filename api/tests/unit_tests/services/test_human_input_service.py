@@ -211,6 +211,7 @@ def test_submit_form_by_token_skips_enqueue_for_delivery_test(sample_form_record
 
     enqueue_spy.assert_not_called()
 
+
 def test_submit_form_by_token_passes_submission_user_id(sample_form_record, mock_session_factory, mocker):
     session_factory, _ = mock_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
