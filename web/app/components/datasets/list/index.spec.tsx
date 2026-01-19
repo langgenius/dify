@@ -84,6 +84,9 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
     isFetchingNextPage: false,
   })),
   useInvalidDatasetList: () => vi.fn(),
+  useDatasetApiBaseUrl: () => ({
+    data: { api_base_url: 'https://api.example.com' },
+  }),
 }))
 
 // Mock Datasets component
