@@ -8,10 +8,10 @@ type WorkspacePermissions = {
   allow_owner_transfer: boolean
 }
 
-export function useWorkspacePermissions(enabled: boolean) {
+export function useWorkspacePermissions(workspaceId: ICurrentWorkspace['id'], enabled: boolean) {
   return useQuery({
-    queryKey: ['workspace-permissions'],
+    queryKey: ['workspace-permissions', workspaceId],
     queryFn: () => get<WorkspacePermissions>('/workspaces/current/permission'),
-    enabled,
+    enabled: enabled && !!workspaceId,
   })
 }
