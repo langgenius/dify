@@ -2,13 +2,14 @@
 
 import type { NodeApi } from 'react-arborist'
 import type { TreeNodeData } from '../type'
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '@/app/components/workflow/store'
 import { isFileDrag } from '../utils/drag-utils'
 import { useFileDrop } from './use-file-drop'
 
 type UseFolderFileDropReturn = {
   isDragOver: boolean
+  isBlinking: boolean
   dragHandlers: {
     onDragEnter: (e: React.DragEvent) => void
     onDragOver: (e: React.DragEvent) => void
@@ -17,6 +18,8 @@ type UseFolderFileDropReturn = {
   }
 }
 
+// Blink starts at 1s, folder expands at 2s
+const BLINK_START_DELAY_MS = 1000
 const AUTO_EXPAND_DELAY_MS = 2000
 
 export function useFolderFileDrop(node: NodeApi<TreeNodeData>): UseFolderFileDropReturn {
@@ -27,21 +30,42 @@ export function useFolderFileDrop(node: NodeApi<TreeNodeData>): UseFolderFileDro
   const { handleDragOver, handleDrop } = useFileDrop()
 
   const expandTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const blinkTimerRef = useRef<NodeJS.Timeout | null>(null)
   const dragCounterRef = useRef(0)
+  const [isBlinking, setIsBlinking] = useState(false)
+
+  const clearBlinkTimer = useCallback(() => {
+    if (blinkTimerRef.current) {
+      clearTimeout(blinkTimerRef.current)
+      blinkTimerRef.current = null
+    }
+    setIsBlinking(false)
+  }, [])
 
   const clearExpandTimer = useCallback(() => {
     if (expandTimerRef.current) {
       clearTimeout(expandTimerRef.current)
       expandTimerRef.current = null
     }
-  }, [])
+    clearBlinkTimer()
+  }, [clearBlinkTimer])
 
   const scheduleAutoExpand = useCallback(() => {
+    // Skip if not a folder or already open
     if (!isFolder || node.isOpen)
       return
     clearExpandTimer()
+
+    // Start blinking after 1 second
+    blinkTimerRef.current = setTimeout(() => {
+      blinkTimerRef.current = null
+      setIsBlinking(true)
+    }, BLINK_START_DELAY_MS)
+
+    // Expand folder after 2 seconds
     expandTimerRef.current = setTimeout(() => {
       expandTimerRef.current = null
+      setIsBlinking(false)
       if (!node.isOpen)
         node.open()
     }, AUTO_EXPAND_DELAY_MS)
@@ -94,6 +118,7 @@ export function useFolderFileDrop(node: NodeApi<TreeNodeData>): UseFolderFileDro
 
   return {
     isDragOver,
+    isBlinking,
     dragHandlers,
   }
 }

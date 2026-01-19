@@ -42,7 +42,7 @@ const TreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeData>) 
     handleKeyDown,
   } = useTreeNodeHandlers({ node })
 
-  const { isDragOver, dragHandlers } = useFolderFileDrop(node)
+  const { isDragOver, isBlinking, dragHandlers } = useFolderFileDrop(node)
 
   const handleMoreClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
@@ -63,8 +63,10 @@ const TreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeData>) 
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-components-input-border-active',
         isSelected && 'bg-state-base-active',
         hasContextMenu && !isSelected && 'bg-state-base-hover',
-        // Drag over highlight for folders - use ring instead of border to avoid layout shift
+        // Drag over highlight for folders
         isDragOver && 'bg-state-accent-hover ring-1 ring-inset ring-state-accent-solid',
+        // Blink animation when about to auto-expand (VSCode-style)
+        isBlinking && 'animate-drag-blink',
       )}
       onKeyDown={handleKeyDown}
       onContextMenu={handleContextMenu}
