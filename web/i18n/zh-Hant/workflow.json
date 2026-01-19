@@ -980,6 +980,7 @@
   "singleRun.testRun": "測試運行",
   "singleRun.testRunIteration": "測試運行迭代",
   "singleRun.testRunLoop": "測試運行循環",
+  "skillEditor.referenceFiles": "參考檔案",
   "tabs.-": "預設",
   "tabs.addAll": "全部新增",
   "tabs.agent": "代理策略",

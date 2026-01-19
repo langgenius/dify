@@ -21,6 +21,9 @@ import UpdateBlock from '@/app/components/base/prompt-editor/plugins/update-bloc
 import { textToEditorState } from '@/app/components/base/prompt-editor/utils'
 import { cn } from '@/utils/classnames'
 import styles from './line-numbers.module.css'
+import FilePickerBlock from './plugins/file-picker-block'
+import { FileReferenceNode } from './plugins/file-reference-block/node'
+import FileReferenceReplacementBlock from './plugins/file-reference-block/replacement-block'
 import {
   ToolBlock,
   ToolBlockNode,
@@ -71,6 +74,7 @@ const SkillEditor: FC<SkillEditorProps> = ({
         with: (node: TextNode) => new CustomTextNode(node.__text),
       },
       ToolBlockNode,
+      FileReferenceNode,
     ],
     editorState: textToEditorState(value || ''),
     onError: (error: Error) => {
@@ -120,6 +124,8 @@ const SkillEditor: FC<SkillEditorProps> = ({
         <>
           <ToolBlock />
           <ToolBlockReplacementBlock />
+          <FileReferenceReplacementBlock />
+          {editable && <FilePickerBlock />}
           {editable && <ToolPickerBlock scope={toolPickerScope} />}
         </>
         <OnChangePlugin onChange={handleEditorChange} />

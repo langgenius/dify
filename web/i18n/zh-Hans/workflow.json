@@ -991,6 +991,7 @@
   "singleRun.testRunLoop": "测试运行循环",
   "skillEditor.officePlaceholder": "预览功能将在后续版本支持",
   "skillEditor.previewUnavailable": "无法预览",
+  "skillEditor.referenceFiles": "引用文件",
   "skillEditor.unsupportedPreview": "该文件类型不支持预览",
   "skillSidebar.addFile": "上传文件",
   "skillSidebar.addFolder": "新建文件夹",

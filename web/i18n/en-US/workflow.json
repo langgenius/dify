@@ -997,6 +997,7 @@
   "singleRun.testRunLoop": "Test Run Loop",
   "skillEditor.officePlaceholder": "Preview will be supported in a future update",
   "skillEditor.previewUnavailable": "Preview unavailable",
+  "skillEditor.referenceFiles": "Reference files",
   "skillEditor.unsupportedPreview": "This file type is not supported for preview",
   "skillSidebar.addFile": "Upload File",
   "skillSidebar.addFolder": "New Folder",
