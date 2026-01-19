@@ -2,12 +2,10 @@
 
 import type { NodeRendererProps } from 'react-arborist'
 import type { TreeNodeData } from '../type'
-import type { FileAppearanceType } from '@/app/components/base/file-uploader/types'
-import { RiFolderLine, RiFolderOpenLine, RiMoreFill } from '@remixicon/react'
+import { RiMoreFill } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import FileTypeIcon from '@/app/components/base/file-uploader/file-type-icon'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -17,10 +15,10 @@ import { useStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
 import { useFolderFileDrop } from '../hooks/use-folder-file-drop'
 import { useTreeNodeHandlers } from '../hooks/use-tree-node-handlers'
-import { getFileIconType } from '../utils/file-utils'
 import NodeMenu from './node-menu'
 import TreeEditInput from './tree-edit-input'
 import TreeGuideLines from './tree-guide-lines'
+import { TreeNodeIcon } from './tree-node-icon'
 
 const TreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeData>) => {
   const { t } = useTranslation('workflow')
@@ -31,8 +29,6 @@ const TreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeData>) 
   const hasContextMenu = contextMenuNodeId === node.data.id
 
   const [showDropdown, setShowDropdown] = useState(false)
-
-  const fileIconType = !isFolder ? getFileIconType(node.data.name) : null
 
   const {
     handleClick,
@@ -85,31 +81,13 @@ const TreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeData>) 
         onDoubleClick={handleDoubleClick}
       >
         <div className="flex size-5 shrink-0 items-center justify-center">
-          {isFolder
-            ? (
-                <button
-                  type="button"
-                  tabIndex={-1}
-                  onClick={handleToggle}
-                  aria-label={t('skillSidebar.toggleFolder')}
-                  className={cn(
-                    'flex size-full items-center justify-center rounded',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-components-input-border-active',
-                  )}
-                >
-                  {node.isOpen
-                    ? <RiFolderOpenLine className="size-4 text-text-accent" aria-hidden="true" />
-                    : <RiFolderLine className="size-4 text-text-secondary" aria-hidden="true" />}
-                </button>
-              )
-            : (
-                <div className="relative flex size-full items-center justify-center">
-                  <FileTypeIcon type={fileIconType as FileAppearanceType} size="sm" />
-                  {isDirty && (
-                    <span className="absolute -bottom-px -right-px size-[7px] rounded-full border border-white bg-text-warning-secondary" />
-                  )}
-                </div>
-              )}
+          <TreeNodeIcon
+            isFolder={isFolder}
+            isOpen={node.isOpen}
+            fileName={node.data.name}
+            isDirty={isDirty}
+            onToggle={handleToggle}
+          />
         </div>
 
         {node.isEditing

@@ -1,5 +1,7 @@
 'use client'
 
+// Folder node file drop handler with VSCode-style blink animation and auto-expand
+
 import type { NodeApi } from 'react-arborist'
 import type { TreeNodeData } from '../type'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'

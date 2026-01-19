@@ -1,5 +1,7 @@
 'use client'
 
+// Root-level file drop handler with drag counter to handle nested DOM events
+
 import { useCallback, useRef } from 'react'
 import { isFileDrag } from '../utils/drag-utils'
 import { useFileDrop } from './use-file-drop'
