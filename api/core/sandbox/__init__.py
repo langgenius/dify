@@ -11,6 +11,7 @@ from .constants import (
     DIFY_CLI_CONFIG_PATH,
     DIFY_CLI_PATH,
     DIFY_CLI_PATH_PATTERN,
+    DIFY_CLI_ROOT,
 )
 from .initializer import AppAssetsInitializer, DifyCliInitializer, SandboxInitializer
 from .manager import SandboxManager
@@ -26,6 +27,7 @@ __all__ = [
     "DIFY_CLI_CONFIG_PATH",
     "DIFY_CLI_PATH",
     "DIFY_CLI_PATH_PATTERN",
+    "DIFY_CLI_ROOT",
     "AppAssetsInitializer",
     "ArchiveSandboxStorage",
     "DifyCliBinary",

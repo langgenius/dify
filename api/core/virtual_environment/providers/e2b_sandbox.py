@@ -1,4 +1,4 @@
-import os
+import posixpath
 import shlex
 import threading
 from collections.abc import Mapping, Sequence
@@ -171,10 +171,9 @@ class E2BEnvironment(VirtualEnvironment):
             path (str): The path to upload the file to.
             content (BytesIO): The content of the file.
         """
-        path = os.path.join(self._WORKDIR, path.lstrip("/"))
-
+        remote_path = self._workspace_path(path)
         sandbox: Sandbox = self.metadata.store[self.StoreKey.SANDBOX]
-        sandbox.files.write(path, content)  # pyright: ignore[reportUnknownMemberType] #
+        sandbox.files.write(remote_path, content)  # pyright: ignore[reportUnknownMemberType] #
 
     def download_file(self, path: str) -> BytesIO:
         """
@@ -185,10 +184,9 @@ class E2BEnvironment(VirtualEnvironment):
         Returns:
             BytesIO: The content of the file.
         """
-        path = os.path.join(self._WORKDIR, path.lstrip("/"))
-
+        remote_path = self._workspace_path(path)
         sandbox: Sandbox = self.metadata.store[self.StoreKey.SANDBOX]
-        content = sandbox.files.read(path)
+        content = sandbox.files.read(remote_path)
         return BytesIO(content.encode())
 
     def list_files(self, directory_path: str, limit: int) -> Sequence[FileState]:
@@ -196,11 +194,11 @@ class E2BEnvironment(VirtualEnvironment):
         List files in a directory of the E2B virtual environment.
         """
         sandbox: Sandbox = self.metadata.store[self.StoreKey.SANDBOX]
-        directory_path = os.path.join(self._WORKDIR, directory_path.lstrip("/"))
-        files_info = sandbox.files.list(directory_path, depth=self.options.get(self.OptionsKey.E2B_LIST_FILE_DEPTH, 3))
+        remote_dir = self._workspace_path(directory_path)
+        files_info = sandbox.files.list(remote_dir, depth=self.options.get(self.OptionsKey.E2B_LIST_FILE_DEPTH, 3))
         return [
             FileState(
-                path=os.path.relpath(file_info.path, self._WORKDIR),
+                path=posixpath.relpath(file_info.path, self._WORKDIR),
                 size=file_info.size,
                 created_at=int(file_info.modified_time.timestamp()),
                 updated_at=int(file_info.modified_time.timestamp()),
@@ -225,7 +223,7 @@ class E2BEnvironment(VirtualEnvironment):
         stdout_stream = QueueTransportReadCloser()
         stderr_stream = QueueTransportReadCloser()
 
-        working_dir = os.path.join(self._WORKDIR, cwd) if cwd else self._WORKDIR
+        working_dir = self._workspace_path(cwd) if cwd else self._WORKDIR
 
         threading.Thread(
             target=self._cmd_thread,
@@ -281,6 +279,18 @@ class E2BEnvironment(VirtualEnvironment):
         Get the API key for the E2B environment.
         """
         return self.options.get(self.OptionsKey.API_KEY, "")
+
+    def _workspace_path(self, path: str) -> str:
+        """
+        Convert a path to an absolute path in the E2B environment.
+        Absolute paths are returned as-is, relative paths are joined with _WORKDIR.
+        """
+        normalized = posixpath.normpath(path)
+        if normalized in ("", "."):
+            return self._WORKDIR
+        if normalized.startswith("/"):
+            return normalized
+        return posixpath.join(self._WORKDIR, normalized)
 
     def _convert_architecture(self, arch_str: str) -> Arch:
         arch_map = {

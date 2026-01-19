@@ -369,8 +369,33 @@ class DockerDaemonEnvironment(VirtualEnvironment):
             return self._working_dir
         return f"{self._working_dir}/{relative.as_posix()}"
 
+    def _workspace_path(self, path: str) -> str:
+        """
+        Convert a path to an absolute path in the Docker container.
+        Absolute paths are returned as-is, relative paths are joined with _working_dir.
+        """
+        normalized = PurePosixPath(path)
+        if normalized.is_absolute():
+            return str(normalized)
+        return self._container_path(path)
+
     def upload_file(self, path: str, content: BytesIO) -> None:
         container = self._get_container()
+        normalized = PurePosixPath(path)
+
+        if normalized.is_absolute():
+            parent_dir = str(normalized.parent)
+            file_name = normalized.name
+            payload = content.getvalue()
+            tar_stream = BytesIO()
+            with tarfile.open(fileobj=tar_stream, mode="w") as tar:
+                tar_info = tarfile.TarInfo(name=file_name)
+                tar_info.size = len(payload)
+                tar.addfile(tar_info, BytesIO(payload))
+            tar_stream.seek(0)
+            container.put_archive(parent_dir, tar_stream.read())  # pyright: ignore[reportUnknownMemberType] #
+            return
+
         relative_path = self._relative_path(path)
         if not relative_path.parts:
             raise ValueError("Upload path must point to a file within the workspace.")
@@ -386,7 +411,7 @@ class DockerDaemonEnvironment(VirtualEnvironment):
 
     def download_file(self, path: str) -> BytesIO:
         container = self._get_container()
-        container_path = self._container_path(path)
+        container_path = self._workspace_path(path)
         stream, _ = container.get_archive(container_path)
         tar_stream = BytesIO()
         for chunk in stream:
@@ -469,7 +494,7 @@ class DockerDaemonEnvironment(VirtualEnvironment):
             raise RuntimeError("Docker container ID is not available for exec.")
         api_client = self.get_docker_api_client(self.get_docker_sock())
 
-        working_dir = self._container_path(cwd) if cwd else self._working_dir
+        working_dir = self._workspace_path(cwd) if cwd else self._working_dir
 
         exec_info: dict[str, object] = cast(
             dict[str, object],

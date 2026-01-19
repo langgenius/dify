@@ -10,7 +10,7 @@ from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.app_asset import AppAssets
 
-from ..constants import APP_ASSETS_PATH, APP_ASSETS_ZIP_PATH
+from ..constants import APP_ASSETS_PATH, APP_ASSETS_ZIP_PATH, DIFY_CLI_ROOT
 from .base import SandboxInitializer
 
 logger = logging.getLogger(__name__)
@@ -44,7 +44,7 @@ class AppAssetsInitializer(SandboxInitializer):
         with with_connection(env) as conn:
             execute(
                 env,
-                ["mkdir", "-p", ".dify/tmp"],
+                ["mkdir", "-p", f"{DIFY_CLI_ROOT}/tmp"],
                 connection=conn,
                 error_message="Failed to create temp directory",
             )
