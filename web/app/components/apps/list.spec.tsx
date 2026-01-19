@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
+import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
 import { AppModeEnum } from '@/types/app'
 
 // Import after mocks
@@ -123,18 +124,7 @@ vi.mock('@/service/use-apps', () => ({
   }),
 }))
 
-// Mock tag store
-vi.mock('@/app/components/base/tag-management/store', () => ({
-  useStore: (selector: (state: { tagList: any[], setTagList: any, showTagManagementModal: boolean, setShowTagManagementModal: any }) => any) => {
-    const state = {
-      tagList: [{ id: 'tag-1', name: 'Test Tag', type: 'app' }],
-      setTagList: vi.fn(),
-      showTagManagementModal: false,
-      setShowTagManagementModal: vi.fn(),
-    }
-    return selector(state)
-  },
-}))
+// Use real tag store - global zustand mock will auto-reset between tests
 
 // Mock tag service to avoid API calls in TagFilter
 vi.mock('@/service/tag', () => ({
@@ -247,6 +237,11 @@ beforeAll(() => {
 describe('List', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Set up tag store state
+    useTagStore.setState({
+      tagList: [{ id: 'tag-1', name: 'Test Tag', type: 'app', binding_count: 0 }],
+      showTagManagementModal: false,
+    })
     mockIsCurrentWorkspaceEditor.mockReturnValue(true)
     mockIsCurrentWorkspaceDatasetOperator.mockReturnValue(false)
     mockDragging = false

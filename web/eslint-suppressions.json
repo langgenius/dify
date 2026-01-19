@@ -81,11 +81,6 @@
       "count": 1
     }
   },
-  "app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/time-range-picker/range-selector.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 1
-    }
-  },
   "app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/__tests__/svg-attribute-error-reproduction.spec.tsx": {
     "no-console": {
       "count": 19
@@ -95,9 +90,6 @@
     }
   },
   "app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/provider-panel.tsx": {
-    "react-hooks/static-components": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -129,11 +121,6 @@
   },
   "app/account/(commonLayout)/account-page/index.tsx": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/account/(commonLayout)/delete-account/components/feed-back.tsx": {
-    "react-hooks/preserve-manual-memoization": {
       "count": 1
     }
   },
@@ -253,9 +240,6 @@
     }
   },
   "app/components/app/app-publisher/features-wrapper.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 19
-    },
     "ts/no-explicit-any": {
       "count": 4
     }
@@ -280,11 +264,6 @@
   },
   "app/components/app/configuration/config-prompt/index.spec.tsx": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/app/configuration/config-prompt/prompt-editor-height-resize-wrap.tsx": {
-    "react-hooks/use-memo": {
       "count": 1
     }
   },
@@ -322,9 +301,6 @@
     }
   },
   "app/components/app/configuration/config/agent/agent-tools/index.spec.tsx": {
-    "react-hooks/globals": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 5
     }
@@ -375,11 +351,6 @@
       "count": 1
     }
   },
-  "app/components/app/configuration/config/automatic/version-selector.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 1
-    }
-  },
   "app/components/app/configuration/config/code-generator/get-code-generator-res.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 4
@@ -415,11 +386,6 @@
   },
   "app/components/app/configuration/dataset-config/index.tsx": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/app/configuration/dataset-config/params-config/config-content.tsx": {
-    "react-hooks/preserve-manual-memoization": {
       "count": 1
     }
   },
@@ -485,9 +451,6 @@
     }
   },
   "app/components/app/configuration/debug/hooks.tsx": {
-    "react-hooks/refs": {
-      "count": 7
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -518,7 +481,7 @@
   },
   "app/components/app/configuration/prompt-value-panel/index.spec.tsx": {
     "ts/no-explicit-any": {
-      "count": 3
+      "count": 2
     }
   },
   "app/components/app/configuration/prompt-value-panel/utils.ts": {
@@ -568,9 +531,6 @@
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 6
     },
-    "react-hooks/refs": {
-      "count": 2
-    },
     "style/multiline-ternary": {
       "count": 2
     },
@@ -615,11 +575,6 @@
     }
   },
   "app/components/app/overview/trigger-card.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/app/switch-app-modal/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -675,7 +630,7 @@
   },
   "app/components/apps/list.spec.tsx": {
     "ts/no-explicit-any": {
-      "count": 9
+      "count": 5
     }
   },
   "app/components/apps/list.tsx": {
@@ -784,9 +739,6 @@
     }
   },
   "app/components/base/chat/chat-with-history/chat-wrapper.tsx": {
-    "react-hooks/refs": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 6
     }
@@ -869,9 +821,6 @@
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
     },
-    "react-hooks/refs": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 15
     }
@@ -895,9 +844,6 @@
     }
   },
   "app/components/base/chat/embedded-chatbot/chat-wrapper.tsx": {
-    "react-hooks/refs": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 6
     }
@@ -910,9 +856,6 @@
   "app/components/base/chat/embedded-chatbot/hooks.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 6
-    },
-    "react-hooks/refs": {
-      "count": 5
     },
     "ts/no-explicit-any": {
       "count": 16
@@ -962,17 +905,11 @@
   "app/components/base/date-and-time-picker/date-picker/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 4
-    },
-    "react-hooks/refs": {
-      "count": 5
     }
   },
   "app/components/base/date-and-time-picker/time-picker/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
-    },
-    "react-hooks/preserve-manual-memoization": {
-      "count": 3
     }
   },
   "app/components/base/dialog/index.stories.tsx": {
@@ -987,11 +924,6 @@
   },
   "app/components/base/error-boundary/index.tsx": {
     "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "app/components/base/features/context.tsx": {
-    "react-hooks/refs": {
       "count": 2
     }
   },
@@ -1010,11 +942,6 @@
       "count": 2
     }
   },
-  "app/components/base/features/new-feature-panel/conversation-opener/index.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 1
-    }
-  },
   "app/components/base/features/new-feature-panel/conversation-opener/modal.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
@@ -1031,9 +958,6 @@
     }
   },
   "app/components/base/features/new-feature-panel/moderation/index.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -1064,16 +988,8 @@
     }
   },
   "app/components/base/file-uploader/hooks.ts": {
-    "react-hooks/use-memo": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 3
-    }
-  },
-  "app/components/base/file-uploader/store.tsx": {
-    "react-hooks/refs": {
-      "count": 2
     }
   },
   "app/components/base/file-uploader/utils.spec.ts": {
@@ -1090,17 +1006,11 @@
     }
   },
   "app/components/base/form/components/base/base-field.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
   },
   "app/components/base/form/components/base/base-form.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 6
     }
@@ -1164,9 +1074,6 @@
     }
   },
   "app/components/base/form/hooks/use-get-validators.ts": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -1256,9 +1163,6 @@
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 10
     },
-    "react-hooks/refs": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 9
     }
@@ -1341,9 +1245,6 @@
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 7
     },
-    "react-hooks/purity": {
-      "count": 1
-    },
     "regexp/no-super-linear-backtracking": {
       "count": 3
     },
@@ -1411,15 +1312,9 @@
   "app/components/base/notion-page-selector/page-selector/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
-    },
-    "react-hooks/immutability": {
-      "count": 1
     }
   },
   "app/components/base/pagination/index.tsx": {
-    "react-hooks/refs": {
-      "count": 2
-    },
     "unicorn/prefer-number-properties": {
       "count": 1
     }
@@ -1435,12 +1330,6 @@
     }
   },
   "app/components/base/portal-to-follow-elem/index.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 2
-    },
-    "react-hooks/refs": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -1455,11 +1344,6 @@
   },
   "app/components/base/prompt-editor/index.tsx": {
     "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "app/components/base/prompt-editor/plugins/component-picker-block/hooks.tsx": {
-    "react-hooks/preserve-manual-memoization": {
       "count": 2
     }
   },
@@ -1494,9 +1378,6 @@
     }
   },
   "app/components/base/prompt-editor/plugins/workflow-variable-block/workflow-variable-block-replacement-block.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -1539,11 +1420,6 @@
       "count": 1
     }
   },
-  "app/components/base/search-input/index.tsx": {
-    "react-hooks/refs": {
-      "count": 1
-    }
-  },
   "app/components/base/select/index.stories.tsx": {
     "no-console": {
       "count": 4
@@ -1561,11 +1437,6 @@
     },
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/base/select/pure.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 2
     }
   },
   "app/components/base/slider/index.stories.tsx": {
@@ -1634,15 +1505,7 @@
     "no-console": {
       "count": 2
     },
-    "react-hooks/purity": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/base/voice-input/index.tsx": {
-    "react-hooks/immutability": {
       "count": 1
     }
   },
@@ -1721,11 +1584,6 @@
       "count": 1
     }
   },
-  "app/components/datasets/common/document-status-with-action/auto-disabled-document.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 5
-    }
-  },
   "app/components/datasets/common/image-previewer/index.tsx": {
     "no-irregular-whitespace": {
       "count": 1
@@ -1734,11 +1592,6 @@
   "app/components/datasets/common/image-uploader/hooks/use-upload.ts": {
     "ts/no-explicit-any": {
       "count": 3
-    }
-  },
-  "app/components/datasets/common/image-uploader/store.tsx": {
-    "react-hooks/refs": {
-      "count": 2
     }
   },
   "app/components/datasets/common/image-uploader/utils.ts": {
@@ -1751,20 +1604,12 @@
       "count": 1
     }
   },
-  "app/components/datasets/common/retrieval-param-config/index.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 1
-    }
-  },
   "app/components/datasets/create/file-preview/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
     }
   },
   "app/components/datasets/create/file-uploader/index.tsx": {
-    "react-hooks/immutability": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -1878,9 +1723,6 @@
   "app/components/datasets/documents/create-from-pipeline/data-source/online-documents/page-selector/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
-    },
-    "react-hooks/immutability": {
-      "count": 1
     }
   },
   "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/connect/index.spec.tsx": {
@@ -1910,11 +1752,6 @@
   },
   "app/components/datasets/documents/create-from-pipeline/data-source/online-drive/utils.ts": {
     "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "app/components/datasets/documents/create-from-pipeline/data-source/store/provider.tsx": {
-    "react-hooks/refs": {
       "count": 2
     }
   },
@@ -1958,18 +1795,8 @@
       "count": 1
     }
   },
-  "app/components/datasets/documents/detail/completed/child-segment-list.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 2
-    }
-  },
   "app/components/datasets/documents/detail/completed/common/chunk-content.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/documents/detail/completed/common/regeneration-modal.tsx": {
-    "react-hooks/purity": {
       "count": 1
     }
   },
@@ -1982,9 +1809,6 @@
     }
   },
   "app/components/datasets/documents/detail/completed/new-child-segment.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -1992,14 +1816,6 @@
   "app/components/datasets/documents/detail/context.ts": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/datasets/documents/detail/embedding/index.tsx": {
-    "react-hooks/immutability": {
-      "count": 1
-    },
-    "react-hooks/preserve-manual-memoization": {
-      "count": 2
     }
   },
   "app/components/datasets/documents/detail/index.tsx": {
@@ -2016,22 +1832,11 @@
     }
   },
   "app/components/datasets/documents/detail/new-segment.tsx": {
-    "react-hooks/purity": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
   },
-  "app/components/datasets/documents/detail/settings/document-settings.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 1
-    }
-  },
   "app/components/datasets/documents/detail/settings/pipeline-settings/index.tsx": {
-    "react-hooks/refs": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 6
     }
@@ -2066,21 +1871,6 @@
       "count": 1
     }
   },
-  "app/components/datasets/extra-info/service-api/card.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/formatted-text/flavours/edit-slice.tsx": {
-    "react-hooks/refs": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/formatted-text/flavours/preview-slice.tsx": {
-    "react-hooks/refs": {
-      "count": 1
-    }
-  },
   "app/components/datasets/formatted-text/flavours/type.ts": {
     "ts/no-empty-object-type": {
       "count": 1
@@ -2091,18 +1881,8 @@
       "count": 1
     }
   },
-  "app/components/datasets/hit-testing/index.tsx": {
-    "react-hooks/purity": {
-      "count": 1
-    }
-  },
   "app/components/datasets/list/dataset-card/hooks/use-dataset-card-state.ts": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/metadata/base/date-picker.tsx": {
-    "react-hooks/purity": {
       "count": 1
     }
   },
@@ -2128,11 +1908,6 @@
   },
   "app/components/datasets/metadata/metadata-dataset/create-metadata-modal.tsx": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/datasets/metadata/metadata-dataset/dataset-metadata-drawer.tsx": {
-    "react-hooks/static-components": {
       "count": 1
     }
   },
@@ -2239,15 +2014,9 @@
   "app/components/goto-anything/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
-    },
-    "react-hooks/preserve-manual-memoization": {
-      "count": 9
     }
   },
   "app/components/header/account-setting/data-source-page-new/card.tsx": {
-    "react-hooks/immutability": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -2267,20 +2036,12 @@
       "count": 1
     }
   },
-  "app/components/header/account-setting/data-source-page-new/operator.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 1
-    }
-  },
   "app/components/header/account-setting/data-source-page-new/types.ts": {
     "ts/no-explicit-any": {
       "count": 2
     }
   },
   "app/components/header/account-setting/data-source-page/data-source-website/index.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -2302,9 +2063,6 @@
   },
   "app/components/header/account-setting/members-page/invite-modal/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 3
-    },
-    "react-hooks/preserve-manual-memoization": {
       "count": 3
     }
   },
@@ -2372,9 +2130,6 @@
     }
   },
   "app/components/header/account-setting/model-provider-page/model-modal/index.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 5
     }
@@ -2397,18 +2152,9 @@
   "app/components/header/account-setting/model-provider-page/provider-added-card/cooldown-timer.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
-    },
-    "react-hooks/immutability": {
-      "count": 1
-    },
-    "react-hooks/purity": {
-      "count": 1
     }
   },
   "app/components/header/account-setting/model-provider-page/provider-added-card/credential-panel.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -2449,18 +2195,8 @@
       "count": 1
     }
   },
-  "app/components/header/dataset-nav/index.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 6
-    }
-  },
   "app/components/header/header-wrapper.tsx": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/header/nav/nav-selector/index.tsx": {
-    "react-hooks/use-memo": {
       "count": 1
     }
   },
@@ -2480,11 +2216,6 @@
     },
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "app/components/plugins/install-plugin/install-bundle/steps/install.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 1
     }
   },
   "app/components/plugins/install-plugin/install-from-github/index.tsx": {
@@ -2590,11 +2321,6 @@
       "count": 1
     }
   },
-  "app/components/plugins/plugin-detail-panel/detail-header.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 1
-    }
-  },
   "app/components/plugins/plugin-detail-panel/endpoint-card.tsx": {
     "ts/no-explicit-any": {
       "count": 2
@@ -2643,21 +2369,8 @@
       "count": 2
     }
   },
-  "app/components/plugins/plugin-detail-panel/subscription-list/create/common-modal.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 1
-    }
-  },
   "app/components/plugins/plugin-detail-panel/subscription-list/create/index.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/plugins/plugin-detail-panel/subscription-list/create/oauth-client.tsx": {
-    "react-hooks/immutability": {
       "count": 1
     }
   },
@@ -2791,11 +2504,6 @@
       "count": 1
     }
   },
-  "app/components/rag-pipeline/components/panel/input-field/field-list/hooks.ts": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 3
-    }
-  },
   "app/components/rag-pipeline/components/panel/input-field/field-list/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -2803,16 +2511,6 @@
   },
   "app/components/rag-pipeline/components/panel/input-field/hooks.ts": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    }
-  },
-  "app/components/rag-pipeline/components/panel/input-field/index.tsx": {
-    "react-hooks/refs": {
-      "count": 3
-    }
-  },
-  "app/components/rag-pipeline/components/panel/test-run/header.tsx": {
-    "react-hooks/preserve-manual-memoization": {
       "count": 1
     }
   },
@@ -2871,16 +2569,6 @@
       "count": 1
     }
   },
-  "app/components/rag-pipeline/hooks/use-available-nodes-meta-data.ts": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 1
-    }
-  },
-  "app/components/rag-pipeline/hooks/use-configs-map.ts": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 1
-    }
-  },
   "app/components/rag-pipeline/hooks/use-input-fields.ts": {
     "ts/no-explicit-any": {
       "count": 2
@@ -2897,23 +2585,12 @@
     }
   },
   "app/components/rag-pipeline/hooks/use-pipeline-init.ts": {
-    "react-hooks/immutability": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
   },
   "app/components/rag-pipeline/hooks/use-pipeline-run.ts": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/rag-pipeline/hooks/use-pipeline-start-run.tsx": {
-    "react-hooks/preserve-manual-memoization": {
       "count": 1
     }
   },
@@ -2958,11 +2635,6 @@
       "count": 3
     }
   },
-  "app/components/share/text-generation/run-batch/csv-download/index.spec.tsx": {
-    "react-hooks/globals": {
-      "count": 1
-    }
-  },
   "app/components/share/text-generation/run-batch/csv-reader/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 2
@@ -2973,15 +2645,7 @@
       "count": 2
     }
   },
-  "app/components/share/text-generation/run-batch/res-download/index.spec.tsx": {
-    "react-hooks/globals": {
-      "count": 1
-    }
-  },
   "app/components/share/text-generation/run-once/index.spec.tsx": {
-    "react-hooks/globals": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 4
     }
@@ -3027,11 +2691,6 @@
       "count": 3
     }
   },
-  "app/components/tools/mcp/detail/operation-dropdown.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 1
-    }
-  },
   "app/components/tools/mcp/mcp-server-modal.tsx": {
     "ts/no-explicit-any": {
       "count": 5
@@ -3065,11 +2724,6 @@
       "count": 1
     }
   },
-  "app/components/tools/provider/custom-create-card.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 1
-    }
-  },
   "app/components/tools/provider/empty.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -3090,11 +2744,6 @@
       "count": 15
     }
   },
-  "app/components/tools/workflow-tool/configure-button.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 2
-    }
-  },
   "app/components/tools/workflow-tool/index.tsx": {
     "ts/no-explicit-any": {
       "count": 2
@@ -3106,11 +2755,6 @@
     },
     "ts/no-explicit-any": {
       "count": 3
-    }
-  },
-  "app/components/workflow-app/components/workflow-header/features-trigger.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 1
     }
   },
   "app/components/workflow-app/components/workflow-main.tsx": {
@@ -3133,20 +2777,12 @@
       "count": 1
     }
   },
-  "app/components/workflow-app/hooks/use-configs-map.ts": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 1
-    }
-  },
   "app/components/workflow-app/hooks/use-nodes-sync-draft.ts": {
     "ts/no-explicit-any": {
       "count": 2
     }
   },
   "app/components/workflow-app/hooks/use-workflow-init.ts": {
-    "react-hooks/immutability": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -3157,9 +2793,6 @@
     }
   },
   "app/components/workflow-app/hooks/use-workflow-run.ts": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 13
     }
@@ -3180,9 +2813,6 @@
     }
   },
   "app/components/workflow/__tests__/trigger-status-sync.test.tsx": {
-    "react-hooks/use-memo": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -3190,11 +2820,6 @@
   "app/components/workflow/block-selector/all-start-blocks.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
-    }
-  },
-  "app/components/workflow/block-selector/data-sources.tsx": {
-    "react-hooks/refs": {
-      "count": 2
     }
   },
   "app/components/workflow/block-selector/featured-tools.tsx": {
@@ -3236,9 +2861,6 @@
   "app/components/workflow/block-selector/tool/tool.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 2
-    },
-    "react-hooks/preserve-manual-memoization": {
-      "count": 4
     }
   },
   "app/components/workflow/block-selector/trigger-plugin/action-item.tsx": {
@@ -3264,21 +2886,6 @@
       "count": 2
     }
   },
-  "app/components/workflow/context.tsx": {
-    "react-hooks/refs": {
-      "count": 2
-    }
-  },
-  "app/components/workflow/datasets-detail-store/provider.tsx": {
-    "react-hooks/refs": {
-      "count": 2
-    }
-  },
-  "app/components/workflow/header/header-in-normal.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 1
-    }
-  },
   "app/components/workflow/header/run-mode.tsx": {
     "no-console": {
       "count": 1
@@ -3290,11 +2897,6 @@
   "app/components/workflow/header/view-workflow-history.tsx": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/workflow/hooks-store/provider.tsx": {
-    "react-hooks/refs": {
-      "count": 2
     }
   },
   "app/components/workflow/hooks-store/store.ts": {
@@ -3331,9 +2933,6 @@
     }
   },
   "app/components/workflow/hooks/use-nodes-interactions.ts": {
-    "react-hooks/immutability": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 8
     }
@@ -3445,9 +3044,6 @@
     }
   },
   "app/components/workflow/nodes/_base/components/input-var-type-icon.tsx": {
-    "react-hooks/static-components": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -3465,11 +3061,6 @@
   "app/components/workflow/nodes/_base/components/mixed-variable-text-input/placeholder.tsx": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/components/workflow/nodes/_base/components/next-step/add.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 2
     }
   },
   "app/components/workflow/nodes/_base/components/node-handle.tsx": {
@@ -3497,29 +3088,14 @@
       "count": 1
     }
   },
-  "app/components/workflow/nodes/_base/components/toggle-expand-btn.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 1
-    }
-  },
   "app/components/workflow/nodes/_base/components/variable/match-schema-type.ts": {
     "ts/no-explicit-any": {
       "count": 8
     }
   },
-  "app/components/workflow/nodes/_base/components/variable/output-var-list.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 1
-    }
-  },
   "app/components/workflow/nodes/_base/components/variable/utils.ts": {
     "ts/no-explicit-any": {
       "count": 32
-    }
-  },
-  "app/components/workflow/nodes/_base/components/variable/var-list.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 1
     }
   },
   "app/components/workflow/nodes/_base/components/variable/var-reference-picker.tsx": {
@@ -3530,22 +3106,9 @@
       "count": 3
     }
   },
-  "app/components/workflow/nodes/_base/components/variable/variable-label/base/variable-icon.tsx": {
-    "react-hooks/static-components": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/_base/components/variable/variable-label/hooks.ts": {
-    "react-hooks/use-memo": {
-      "count": 2
-    }
-  },
   "app/components/workflow/nodes/_base/components/workflow-panel/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 3
-    },
-    "react-hooks/preserve-manual-memoization": {
-      "count": 1
     },
     "ts/no-explicit-any": {
       "count": 6
@@ -3562,9 +3125,6 @@
   "app/components/workflow/nodes/_base/components/workflow-panel/last-run/use-last-run.ts": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
-    },
-    "react-hooks/preserve-manual-memoization": {
-      "count": 3
     },
     "ts/no-explicit-any": {
       "count": 7
@@ -3591,9 +3151,6 @@
   "app/components/workflow/nodes/_base/hooks/use-toggle-expend.ts": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
-    },
-    "react-hooks/refs": {
-      "count": 2
     }
   },
   "app/components/workflow/nodes/_base/hooks/use-var-list.ts": {
@@ -3703,15 +3260,7 @@
     }
   },
   "app/components/workflow/nodes/data-source-empty/hooks.ts": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 3
-    },
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/data-source-empty/index.tsx": {
-    "react-hooks/preserve-manual-memoization": {
       "count": 1
     }
   },
@@ -3801,11 +3350,6 @@
       "count": 1
     }
   },
-  "app/components/workflow/nodes/if-else/components/condition-list/condition-item.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 1
-    }
-  },
   "app/components/workflow/nodes/if-else/default.ts": {
     "ts/no-explicit-any": {
       "count": 1
@@ -3816,11 +3360,6 @@
       "count": 5
     }
   },
-  "app/components/workflow/nodes/index.tsx": {
-    "react-hooks/static-components": {
-      "count": 1
-    }
-  },
   "app/components/workflow/nodes/iteration/default.ts": {
     "ts/no-explicit-any": {
       "count": 1
@@ -3828,11 +3367,6 @@
   },
   "app/components/workflow/nodes/iteration/node.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/iteration/use-interactions.ts": {
-    "react-hooks/preserve-manual-memoization": {
       "count": 1
     }
   },
@@ -3887,9 +3421,6 @@
     }
   },
   "app/components/workflow/nodes/knowledge-retrieval/use-single-run-form-params.ts": {
-    "react-hooks/refs": {
-      "count": 3
-    },
     "ts/no-explicit-any": {
       "count": 5
     }
@@ -3920,9 +3451,6 @@
     }
   },
   "app/components/workflow/nodes/llm/components/json-schema-config-modal/code-editor.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 4
     }
@@ -3939,11 +3467,6 @@
   },
   "app/components/workflow/nodes/llm/components/json-schema-config-modal/json-schema-generator/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 2
-    }
-  },
-  "app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/context.tsx": {
-    "react-hooks/refs": {
       "count": 2
     }
   },
@@ -3976,9 +3499,6 @@
     }
   },
   "app/components/workflow/nodes/llm/use-single-run-form-params.ts": {
-    "react-hooks/refs": {
-      "count": 3
-    },
     "ts/no-explicit-any": {
       "count": 9
     }
@@ -3999,9 +3519,6 @@
     }
   },
   "app/components/workflow/nodes/loop/components/loop-variables/item.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 3
-    },
     "ts/no-explicit-any": {
       "count": 4
     }
@@ -4045,9 +3562,6 @@
     }
   },
   "app/components/workflow/nodes/parameter-extractor/use-single-run-form-params.ts": {
-    "react-hooks/refs": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 9
     }
@@ -4076,16 +3590,8 @@
     }
   },
   "app/components/workflow/nodes/question-classifier/use-single-run-form-params.ts": {
-    "react-hooks/refs": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 8
-    }
-  },
-  "app/components/workflow/nodes/start/components/var-list.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 1
     }
   },
   "app/components/workflow/nodes/start/panel.tsx": {
@@ -4094,9 +3600,6 @@
     }
   },
   "app/components/workflow/nodes/start/use-config.ts": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -4262,21 +3765,8 @@
       "count": 5
     }
   },
-  "app/components/workflow/note-node/index.tsx": {
-    "react-hooks/refs": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/note-node/note-editor/context.tsx": {
-    "react-hooks/refs": {
-      "count": 2
-    }
-  },
   "app/components/workflow/note-node/note-editor/plugins/link-editor-plugin/component.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    },
-    "react-hooks/refs": {
       "count": 1
     }
   },
@@ -4352,9 +3842,6 @@
     }
   },
   "app/components/workflow/panel/debug-and-preview/hooks.ts": {
-    "react-hooks/purity": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 7
     }
@@ -4367,22 +3854,9 @@
       "count": 1
     }
   },
-  "app/components/workflow/panel/index.tsx": {
-    "react-hooks/use-memo": {
-      "count": 1
-    }
-  },
   "app/components/workflow/panel/inputs-panel.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 4
-    }
-  },
-  "app/components/workflow/panel/version-history-panel/context-menu/use-context-menu.ts": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 1
     }
   },
   "app/components/workflow/panel/version-history-panel/index.spec.tsx": {
@@ -4518,9 +3992,6 @@
     }
   },
   "app/components/workflow/update-dsl-modal.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -4586,9 +4057,6 @@
     }
   },
   "app/components/workflow/variable-inspect/right.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -4619,11 +4087,6 @@
   },
   "app/components/workflow/workflow-preview/components/nodes/constants.ts": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/workflow-preview/components/note-node/index.tsx": {
-    "react-hooks/refs": {
       "count": 1
     }
   },
@@ -4667,11 +4130,6 @@
       "count": 1
     }
   },
-  "app/signin/invite-settings/page.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 1
-    }
-  },
   "app/signin/layout.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -4685,11 +4143,6 @@
   "app/signup/layout.tsx": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "app/signup/set-password/page.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 2
     }
   },
   "context/app-context.tsx": {
@@ -4743,9 +4196,6 @@
   "hooks/use-moderate.ts": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
-    },
-    "react-hooks/refs": {
-      "count": 1
     }
   },
   "hooks/use-oauth.ts": {
@@ -4771,11 +4221,6 @@
   "i18n/en-US/app-debug.json": {
     "no-irregular-whitespace": {
       "count": 1
-    }
-  },
-  "i18n/en-US/common.json": {
-    "no-irregular-whitespace": {
-      "count": 3
     }
   },
   "i18n/fr-FR/app-debug.json": {
@@ -5097,11 +4542,6 @@
   "utils/validators.ts": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "vitest.config.ts": {
-    "ts/no-explicit-any": {
-      "count": 1
     }
   }
 }
