@@ -9,30 +9,15 @@ import difyI18n from './eslint-rules/index.js'
 export default antfu(
   {
     react: {
+      reactCompiler: true,
       overrides: {
         'react/no-context-provider': 'off',
         'react/no-forward-ref': 'off',
         'react/no-use-context': 'off',
-        'react/prefer-namespace-import': 'error',
 
-        // React Compiler rules
-        // Set to warn for gradual adoption
-        'react-hooks/config': 'warn',
-        'react-hooks/error-boundaries': 'warn',
-        'react-hooks/component-hook-factories': 'warn',
-        'react-hooks/gating': 'warn',
-        'react-hooks/globals': 'warn',
-        'react-hooks/immutability': 'warn',
-        'react-hooks/preserve-manual-memoization': 'warn',
-        'react-hooks/purity': 'warn',
-        'react-hooks/refs': 'warn',
         // prefer react-hooks-extra/no-direct-set-state-in-use-effect
         'react-hooks/set-state-in-effect': 'off',
-        'react-hooks/set-state-in-render': 'warn',
-        'react-hooks/static-components': 'warn',
-        'react-hooks/unsupported-syntax': 'warn',
-        'react-hooks/use-memo': 'warn',
-        'react-hooks/incompatible-library': 'warn',
+        'react-hooks-extra/no-direct-set-state-in-use-effect': 'error',
       },
     },
     nextjs: true,
@@ -40,7 +25,7 @@ export default antfu(
     typescript: {
       overrides: {
         'ts/consistent-type-definitions': ['error', 'type'],
-        'ts/no-explicit-any': 'warn',
+        'ts/no-explicit-any': 'error',
       },
     },
     test: {
@@ -55,37 +40,16 @@ export default antfu(
     },
   },
   {
+    rules: {
+      'node/prefer-global/process': 'off',
+    },
+  },
+  {
     files: ['**/*.ts', '**/*.tsx'],
     settings: {
       'react-x': {
         additionalStateHooks: '/^use\\w*State(?:s)?|useAtom$/u',
       },
-    },
-  },
-  // downgrade some rules from error to warn for gradual adoption
-  // we should fix these in following pull requests
-  {
-    // @keep-sorted
-    rules: {
-      'next/inline-script-id': 'warn',
-      'no-console': 'warn',
-      'no-irregular-whitespace': 'warn',
-      'node/prefer-global/buffer': 'warn',
-      'node/prefer-global/process': 'warn',
-      'react/no-create-ref': 'warn',
-      'react/no-missing-key': 'warn',
-      'react/no-nested-component-definitions': 'warn',
-      'regexp/no-dupe-disjunctions': 'warn',
-      'regexp/no-super-linear-backtracking': 'warn',
-      'regexp/no-unused-capturing-group': 'warn',
-      'regexp/no-useless-assertions': 'warn',
-      'regexp/no-useless-quantifier': 'warn',
-      'style/multiline-ternary': 'warn',
-      'test/no-identical-title': 'warn',
-      'test/prefer-hooks-in-order': 'warn',
-      'ts/no-empty-object-type': 'warn',
-      'unicorn/prefer-number-properties': 'warn',
-      'unused-imports/no-unused-vars': 'warn',
     },
   },
   storybook.configs['flat/recommended'],
@@ -178,19 +142,19 @@ export default antfu(
     },
   },
   // dify i18n namespace migration
-  {
-    files: ['**/*.ts', '**/*.tsx'],
-    ignores: ['eslint-rules/**', 'i18n/**', 'i18n-config/**'],
-    plugins: {
-      'dify-i18n': difyI18n,
-    },
-    rules: {
-      // 'dify-i18n/no-as-any-in-t': ['error', { mode: 'all' }],
-      'dify-i18n/no-as-any-in-t': 'error',
-      // 'dify-i18n/no-legacy-namespace-prefix': 'error',
-      // 'dify-i18n/require-ns-option': 'error',
-    },
-  },
+  // {
+  //   files: ['**/*.ts', '**/*.tsx'],
+  //   ignores: ['eslint-rules/**', 'i18n/**', 'i18n-config/**'],
+  //   plugins: {
+  //     'dify-i18n': difyI18n,
+  //   },
+  //   rules: {
+  //     // 'dify-i18n/no-as-any-in-t': ['error', { mode: 'all' }],
+  //     'dify-i18n/no-as-any-in-t': 'error',
+  //     // 'dify-i18n/no-legacy-namespace-prefix': 'error',
+  //     // 'dify-i18n/require-ns-option': 'error',
+  //   },
+  // },
   // i18n JSON validation rules
   {
     files: ['i18n/**/*.json'],
