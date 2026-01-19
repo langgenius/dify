@@ -10,8 +10,8 @@ import logging
 
 from celery import shared_task
 from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import sessionmaker
 
 from core.workflow.entities.workflow_node_execution import (
     WorkflowNodeExecution,
@@ -85,7 +85,7 @@ def save_workflow_node_execution_task(
                 # This case is rare. Let Celery's retry mechanism handle it.
                 logger.warning(
                     "IntegrityError on insert but record with id %s not found after rollback. Task will be retried.",
-                    execution.id
+                    execution.id,
                 )
                 raise
 
