@@ -3280,9 +3280,6 @@
     }
   },
   "app/components/workflow/nodes/data-source/panel.tsx": {
-    "style/multiline-ternary": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -3665,9 +3662,6 @@
     }
   },
   "app/components/workflow/nodes/tool/panel.tsx": {
-    "style/multiline-ternary": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 2
     }

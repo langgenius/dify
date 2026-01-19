@@ -481,7 +481,6 @@ const formatItem = (
       break
     }
 
-    // eslint-disable-next-line sonarjs/no-duplicated-branches
     case BlockEnum.VariableAggregator: {
       const { output_type, advanced_settings }
         = data as VariableAssignerNodeType
@@ -1896,7 +1895,7 @@ export const updateNodeVars = (
         }
         break
       }
-      // eslint-disable-next-line sonarjs/no-duplicated-branches
+
       case BlockEnum.VariableAggregator: {
         const payload = data as VariableAssignerNodeType
         if (payload.variables) {
