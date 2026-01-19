@@ -102,13 +102,10 @@ function ConfigModal({ provider, onClose }: ConfigModalProps) {
   }, [provider.config_schema, provider.config, t])
 
   const handleSave = useCallback(async () => {
-    // For managed mode, save empty config to use system defaults
+    // For managed mode, delete user config to use system defaults
     if (shouldShowModeSelection && configMode === 'managed') {
       try {
-        await saveConfig({
-          providerType: provider.provider_type,
-          config: {},
-        })
+        await deleteConfig(provider.provider_type)
         notify({ type: 'success', message: t('api.saved', { ns: 'common' }) })
         onClose()
       }
@@ -137,7 +134,7 @@ function ConfigModal({ provider, onClose }: ConfigModalProps) {
     catch {
       // Error toast is handled by fetch layer
     }
-  }, [shouldShowModeSelection, configMode, saveConfig, provider.provider_type, notify, t, onClose])
+  }, [shouldShowModeSelection, configMode, saveConfig, deleteConfig, provider.provider_type, notify, t, onClose])
 
   const handleRevoke = useCallback(async () => {
     try {
