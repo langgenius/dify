@@ -27,6 +27,7 @@ class SandboxProviderListApi(Resource):
 
 config_parser = reqparse.RequestParser()
 config_parser.add_argument("config", type=dict, required=True, location="json")
+config_parser.add_argument("activate", type=bool, required=False, default=False, location="json")
 
 
 @console_ns.route("/workspaces/current/sandbox-provider/<string:provider_type>/config")
