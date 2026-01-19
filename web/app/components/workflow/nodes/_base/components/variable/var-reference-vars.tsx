@@ -531,9 +531,11 @@ const VarReferenceVars: FC<Props> = ({
                           preferSchemaType={preferSchemaType}
                           isHighlighted={enableKeyboardNavigation && itemIndex === activeIndex}
                           onSetHighlight={enableKeyboardNavigation ? () => setActiveIndex(itemIndex) : undefined}
-                          registerRef={enableKeyboardNavigation ? (element) => {
-                            itemRefs.current[itemIndex] = element
-                          } : undefined}
+                          registerRef={enableKeyboardNavigation
+                            ? (element) => {
+                                itemRefs.current[itemIndex] = element
+                              }
+                            : undefined}
                         />
                       )
                     })}

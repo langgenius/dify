@@ -26,7 +26,7 @@ import { VarKindType as VarKindTypeEnum } from '@/app/components/workflow/nodes/
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum, EditionType, isPromptMessageContext, PromptRole, VarType } from '@/app/components/workflow/types'
-import { generateNewNode, getNodeCustomTypeByNodeDataType } from '@/app/components/workflow/utils'
+import { generateNewNode, getNodeCustomTypeByNodeDataType, mergeNodeDefaultData } from '@/app/components/workflow/utils'
 import { useGetLanguage } from '@/context/i18n'
 import { useStrategyProviders } from '@/service/use-strategy'
 import { cn } from '@/utils/classnames'
@@ -169,6 +169,7 @@ const MixedVariableTextInput = ({
   const nodes = useNodes<CommonNodeType>()
   const controlPromptEditorRerenderKey = useStore(s => s.controlPromptEditorRerenderKey)
   const setControlPromptEditorRerenderKey = useStore(s => s.setControlPromptEditorRerenderKey)
+  const nodesDefaultConfigs = useStore(s => s.nodesDefaultConfigs)
   const { nodesMap: nodesMetaDataMap } = useNodesMetaData()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const [isSubGraphModalOpen, setIsSubGraphModalOpen] = useState(false)
@@ -219,8 +220,9 @@ const MixedVariableTextInput = ({
   }) => {
     if (!toolNodeId)
       return null
-    const defaultValue = nodesMetaDataMap?.[payload.nodeType]?.defaultValue as Partial<LLMNodeType | CodeNodeType> | undefined
-    if (!defaultValue)
+    const metaDefault = nodesMetaDataMap?.[payload.nodeType]?.defaultValue as Partial<LLMNodeType | CodeNodeType> | undefined
+    const appDefault = nodesDefaultConfigs?.[payload.nodeType] as Partial<LLMNodeType | CodeNodeType> | undefined
+    if (!metaDefault && !appDefault)
       return null
 
     const { getNodes, setNodes } = reactFlowStore.getState()
@@ -231,15 +233,22 @@ const MixedVariableTextInput = ({
       const nextNodes = shouldReplace
         ? currentNodes.filter(node => node.id !== payload.extractorNodeId)
         : currentNodes
+      const mergedData = mergeNodeDefaultData({
+        nodeType: payload.nodeType,
+        metaDefault,
+        appDefault,
+        overrideData: payload.data,
+      })
+      const resolvedTitle = mergedData.title ?? metaDefault?.title ?? appDefault?.title ?? ''
+      const resolvedDesc = mergedData.desc ?? metaDefault?.desc ?? appDefault?.desc ?? ''
       const { newNode } = generateNewNode({
         id: payload.extractorNodeId,
         type: getNodeCustomTypeByNodeDataType(payload.nodeType),
         data: {
-          ...defaultValue,
-          ...payload.data,
+          ...mergedData,
           type: payload.nodeType,
-          title: defaultValue?.title ?? '',
-          desc: defaultValue.desc || '',
+          title: resolvedTitle,
+          desc: resolvedDesc,
           parent_node_id: toolNodeId,
         },
         position: {
@@ -254,7 +263,7 @@ const MixedVariableTextInput = ({
     }
 
     return existingNode
-  }, [handleSyncWorkflowDraft, nodesMetaDataMap, reactFlowStore, toolNodeId])
+  }, [handleSyncWorkflowDraft, nodesDefaultConfigs, nodesMetaDataMap, reactFlowStore, toolNodeId])
 
   const ensureAssembleExtractorNode = useCallback(() => {
     if (!assembleExtractorNodeId)

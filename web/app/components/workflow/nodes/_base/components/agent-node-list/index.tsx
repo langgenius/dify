@@ -199,9 +199,11 @@ const AgentNodeList: FC<Props> = ({
                   onSelect={onSelect}
                   isHighlighted={enableKeyboardNavigation && index === activeIndex}
                   onSetHighlight={enableKeyboardNavigation ? () => setActiveIndex(index) : undefined}
-                  registerRef={enableKeyboardNavigation ? (element) => {
-                    itemRefs.current[index] = element
-                  } : undefined}
+                  registerRef={enableKeyboardNavigation
+                    ? (element) => {
+                        itemRefs.current[index] = element
+                      }
+                    : undefined}
                 />
               ))}
             </div>
