@@ -157,9 +157,9 @@ const Panel: FC = () => {
     }
   }, [currentFocusNodeId, currentVarId, nodesWithInspectVars, fetchInspectVarValue, schemaTypeDefinitions, isLoading])
 
-  useEffect(() => {
+  const autoSelectedVarId = useMemo(() => {
     if (!currentFocusNodeId)
-      return
+      return undefined
 
     // Check if we need to auto-select a variable
     const needsAutoSelect = !currentVarId || (() => {
@@ -180,30 +180,40 @@ const Panel: FC = () => {
     })()
 
     if (!needsAutoSelect)
-      return
+      return undefined
 
     switch (currentFocusNodeId) {
       case VarInInspectType.environment:
         if (environmentVariables.length > 0)
-          setCurrentVarId(environmentVariables[0].id)
+          return environmentVariables[0].id
         break
       case VarInInspectType.conversation:
         if (conversationVars.length > 0)
-          setCurrentVarId(conversationVars[0].id)
+          return conversationVars[0].id
         break
       case VarInInspectType.system:
         if (systemVars.length > 0)
-          setCurrentVarId(systemVars[0].id)
+          return systemVars[0].id
         break
       default: {
         const targetNode = nodesWithInspectVars.find(node => node.nodeId === currentFocusNodeId)
         const visibleVars = targetNode?.vars.filter(v => v.visible)
         if (visibleVars?.length)
-          setCurrentVarId(visibleVars[0].id)
+          return visibleVars[0].id
         break
       }
     }
-  }, [currentFocusNodeId, currentVarId, environmentVariables, conversationVars, systemVars, nodesWithInspectVars, setCurrentVarId])
+
+    return undefined
+  }, [currentFocusNodeId, currentVarId, environmentVariables, conversationVars, systemVars, nodesWithInspectVars])
+
+  useEffect(() => {
+    if (autoSelectedVarId !== undefined && autoSelectedVarId !== currentVarId) {
+      queueMicrotask(() => {
+        setCurrentVarId(autoSelectedVarId)
+      })
+    }
+  }, [autoSelectedVarId, currentVarId])
 
   if (isListening) {
     return (
