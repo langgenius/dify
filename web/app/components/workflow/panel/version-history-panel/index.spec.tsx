@@ -109,6 +109,8 @@ vi.mock('../../store', () => ({
   useWorkflowStore: () => ({
     getState: () => ({
       deleteAllInspectVars: vi.fn(),
+      setShowWorkflowVersionHistoryPanel: vi.fn(),
+      setCurrentVersion: mockSetCurrentVersion,
     }),
     setState: vi.fn(),
   }),

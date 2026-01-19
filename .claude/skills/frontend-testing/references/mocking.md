@@ -37,15 +37,35 @@ Only mock these categories:
 1. **Third-party libraries with side effects** - `next/navigation`, external SDKs
 1. **i18n** - Always mock to return keys
 
+### Zustand Stores - DO NOT Mock Manually
+
+**Zustand is globally mocked** in `web/vitest.setup.ts`. Use real stores with `setState()`:
+
+```typescript
+// ✅ CORRECT: Use real store, set test state
+import { useAppStore } from '@/app/components/app/store'
+
+useAppStore.setState({ appDetail: { id: 'test', name: 'Test' } })
+render(<MyComponent />)
+
+// ❌ WRONG: Don't mock the store module
+vi.mock('@/app/components/app/store', () => ({ ... }))
+```
+
+See [Zustand Store Testing](#zustand-store-testing) section for full details.
+
 ## Mock Placement
 
 | Location | Purpose |
 |----------|---------|
-| `web/vitest.setup.ts` | Global mocks shared by all tests (for example `react-i18next`, `next/image`) |
+| `web/vitest.setup.ts` | Global mocks shared by all tests (`react-i18next`, `next/image`, `zustand`) |
+| `web/__mocks__/zustand.ts` | Zustand mock implementation (auto-resets stores after each test) |
 | `web/__mocks__/` | Reusable mock factories shared across multiple test files |
 | Test file | Test-specific mocks, inline with `vi.mock()` |
 
 Modules are not mocked automatically. Use `vi.mock` in test files, or add global mocks in `web/vitest.setup.ts`.
+
+**Note**: Zustand is special - it's globally mocked but you should NOT mock store modules manually. See [Zustand Store Testing](#zustand-store-testing).
 
 ## Essential Mocks
 
@@ -276,6 +296,7 @@ const renderWithQueryClient = (ui: React.ReactElement) => {
 
 1. **Use real base components** - Import from `@/app/components/base/` directly
 1. **Use real project components** - Prefer importing over mocking
+1. **Use real Zustand stores** - Set test state via `store.setState()`
 1. **Reset mocks in `beforeEach`**, not `afterEach`
 1. **Match actual component behavior** in mocks (when mocking is necessary)
 1. **Use factory functions** for complex mock data
@@ -285,6 +306,7 @@ const renderWithQueryClient = (ui: React.ReactElement) => {
 ### ❌ DON'T
 
 1. **Don't mock base components** (`Loading`, `Button`, `Tooltip`, etc.)
+1. **Don't mock Zustand store modules** - Use real stores with `setState()`
 1. Don't mock components you can import directly
 1. Don't create overly simplified mocks that miss conditional logic
 1. Don't forget to clean up nock after each test
@@ -308,8 +330,149 @@ Need to use a component in test?
 ├─ Is it a third-party lib with side effects?
 │  └─ YES → Mock it (next/navigation, external SDKs)
 │
+├─ Is it a Zustand store?
+│  └─ YES → DO NOT mock the module!
+│           Use real store + setState() to set test state
+│           (Global mock handles auto-reset)
+│
 └─ Is it i18n?
    └─ YES → Uses shared mock (auto-loaded). Override only for custom translations
+```
+
+## Zustand Store Testing
+
+### Global Zustand Mock (Auto-loaded)
+
+Zustand is globally mocked in `web/vitest.setup.ts` following the [official Zustand testing guide](https://zustand.docs.pmnd.rs/guides/testing). The mock in `web/__mocks__/zustand.ts` provides:
+
+- Real store behavior with `getState()`, `setState()`, `subscribe()` methods
+- Automatic store reset after each test via `afterEach`
+- Proper test isolation between tests
+
+### ✅ Recommended: Use Real Stores (Official Best Practice)
+
+**DO NOT mock store modules manually.** Import and use the real store, then use `setState()` to set test state:
+
+```typescript
+// ✅ CORRECT: Use real store with setState
+import { useAppStore } from '@/app/components/app/store'
+
+describe('MyComponent', () => {
+  it('should render app details', () => {
+    // Arrange: Set test state via setState
+    useAppStore.setState({
+      appDetail: {
+        id: 'test-app',
+        name: 'Test App',
+        mode: 'chat',
+      },
+    })
+
+    // Act
+    render(<MyComponent />)
+
+    // Assert
+    expect(screen.getByText('Test App')).toBeInTheDocument()
+    // Can also verify store state directly
+    expect(useAppStore.getState().appDetail?.name).toBe('Test App')
+  })
+
+  // No cleanup needed - global mock auto-resets after each test
+})
+```
+
+### ❌ Avoid: Manual Store Module Mocking
+
+Manual mocking conflicts with the global Zustand mock and loses store functionality:
+
+```typescript
+// ❌ WRONG: Don't mock the store module
+vi.mock('@/app/components/app/store', () => ({
+  useStore: (selector) => mockSelector(selector),  // Missing getState, setState!
+}))
+
+// ❌ WRONG: This conflicts with global zustand mock
+vi.mock('@/app/components/workflow/store', () => ({
+  useWorkflowStore: vi.fn(() => mockState),
+}))
+```
+
+**Problems with manual mocking:**
+
+1. Loses `getState()`, `setState()`, `subscribe()` methods
+1. Conflicts with global Zustand mock behavior
+1. Requires manual maintenance of store API
+1. Tests don't reflect actual store behavior
+
+### When Manual Store Mocking is Necessary
+
+In rare cases where the store has complex initialization or side effects, you can mock it, but ensure you provide the full store API:
+
+```typescript
+// If you MUST mock (rare), include full store API
+const mockStore = {
+  appDetail: { id: 'test', name: 'Test' },
+  setAppDetail: vi.fn(),
+}
+
+vi.mock('@/app/components/app/store', () => ({
+  useStore: Object.assign(
+    (selector: (state: typeof mockStore) => unknown) => selector(mockStore),
+    {
+      getState: () => mockStore,
+      setState: vi.fn(),
+      subscribe: vi.fn(),
+    },
+  ),
+}))
+```
+
+### Store Testing Decision Tree
+
+```
+Need to test a component using Zustand store?
+│
+├─ Can you use the real store?
+│  └─ YES → Use real store + setState (RECOMMENDED)
+│           useAppStore.setState({ ... })
+│
+├─ Does the store have complex initialization/side effects?
+│  └─ YES → Consider mocking, but include full API
+│           (getState, setState, subscribe)
+│
+└─ Are you testing the store itself (not a component)?
+   └─ YES → Test store directly with getState/setState
+            const store = useMyStore
+            store.setState({ count: 0 })
+            store.getState().increment()
+            expect(store.getState().count).toBe(1)
+```
+
+### Example: Testing Store Actions
+
+```typescript
+import { useCounterStore } from '@/stores/counter'
+
+describe('Counter Store', () => {
+  it('should increment count', () => {
+    // Initial state (auto-reset by global mock)
+    expect(useCounterStore.getState().count).toBe(0)
+
+    // Call action
+    useCounterStore.getState().increment()
+
+    // Verify state change
+    expect(useCounterStore.getState().count).toBe(1)
+  })
+
+  it('should reset to initial state', () => {
+    // Set some state
+    useCounterStore.setState({ count: 100 })
+    expect(useCounterStore.getState().count).toBe(100)
+
+    // After this test, global mock will reset to initial state
+  })
+})
 ```
 
 ## Factory Function Pattern
