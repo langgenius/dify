@@ -54,13 +54,12 @@ const FileReferenceBlock: FC<FileReferenceBlockProps> = ({ nodeKey, resourceId }
       placement="bottom-start"
       offset={4}
     >
-      <PortalToFollowElemTrigger asChild>
+      <PortalToFollowElemTrigger asChild ref={ref}>
         <span
           className={cn(
             'inline-flex min-w-[18px] cursor-pointer select-none items-center gap-[2px] overflow-hidden rounded-[5px] border border-state-accent-hover-alt bg-state-accent-hover py-[1px] pl-[1px] pr-[4px] shadow-xs',
             isSelected && 'border-text-accent',
           )}
-          ref={ref}
           title={title}
           onMouseDown={() => setOpen(prev => !prev)}
         >
