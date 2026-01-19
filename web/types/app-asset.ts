@@ -64,14 +64,6 @@ export type AppAssetTreeResponse = {
 }
 
 /**
- * File content response (GET /apps/{app_id}/assets/files/{node_id})
- */
-export type AppAssetFileContentResponse = {
-  content: string
-  metadata?: Record<string, any>
-}
-
-/**
  * File download URL response (GET /apps/{app_id}/assets/files/{node_id}/download-url)
  */
 export type AppAssetFileDownloadUrlResponse = {
@@ -116,23 +108,11 @@ export type CreateFolderPayload = {
 }
 
 /**
- * Request payload for creating a file (form data)
- */
-export type CreateFilePayload = {
-  /** File name (1-255 characters) */
-  name: string
-  /** Parent folder ID, empty or undefined for root */
-  parent_id?: string | null
-}
-
-/**
  * Request payload for updating file content (JSON)
  */
 export type UpdateFileContentPayload = {
   /** New file content (UTF-8) */
   content: string
-  /** Optional metadata associated with the file */
-  metadata?: Record<string, any>
 }
 
 /**
