@@ -1,4 +1,4 @@
-import type { MetadataType, SortType } from '../datasets'
+import type { DocumentDownloadResponse, DocumentDownloadZipRequest, MetadataType, SortType } from '../datasets'
 import type { CommonResponse } from '@/models/common'
 import type { DocumentDetailResponse, DocumentListResponse, UpdateDocumentBatchParams } from '@/models/datasets'
 import {
@@ -8,7 +8,7 @@ import {
 import { normalizeStatusForQuery } from '@/app/components/datasets/documents/status-filter'
 import { DocumentActionType } from '@/models/datasets'
 import { del, get, patch, post } from '../base'
-import { pauseDocIndexing, resumeDocIndexing } from '../datasets'
+import { downloadDocumentsZip, fetchDocumentDownloadUrl, pauseDocIndexing, resumeDocIndexing } from '../datasets'
 import { useInvalid } from '../use-base'
 
 const NAME_SPACE = 'knowledge/document'
@@ -160,6 +160,26 @@ export const useDocumentResume = () => {
       if (!datasetId || !documentId)
         throw new Error('datasetId and documentId are required')
       return resumeDocIndexing({ datasetId, documentId }) as Promise<CommonResponse>
+    },
+  })
+}
+
+export const useDocumentDownload = () => {
+  return useMutation({
+    mutationFn: ({ datasetId, documentId }: UpdateDocumentBatchParams) => {
+      if (!datasetId || !documentId)
+        throw new Error('datasetId and documentId are required')
+      return fetchDocumentDownloadUrl({ datasetId, documentId }) as Promise<DocumentDownloadResponse>
+    },
+  })
+}
+
+export const useDocumentDownloadZip = () => {
+  return useMutation({
+    mutationFn: ({ datasetId, documentIds }: DocumentDownloadZipRequest) => {
+      if (!datasetId || !documentIds?.length)
+        throw new Error('datasetId and documentIds are required')
+      return downloadDocumentsZip({ datasetId, documentIds })
     },
   })
 }
