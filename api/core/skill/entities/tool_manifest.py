@@ -2,7 +2,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from core.app_assets.skill import ToolType
+from core.app_assets.entities import ToolType
 
 
 class ToolManifestEntry(BaseModel):

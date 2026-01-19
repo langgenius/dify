@@ -2,13 +2,13 @@ import json
 import re
 from typing import TYPE_CHECKING, Any
 
-from core.app_assets.paths import AssetPaths
-from core.app_assets.skill import (
+from core.app_assets.entities import (
     FileReference,
     SkillAsset,
     SkillMetadata,
     ToolReference,
 )
+from core.app_assets.paths import AssetPaths
 
 from .base import AssetItemParser
 

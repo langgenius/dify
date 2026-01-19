@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from core.app_assets.assets import AssetItem, FileAsset
+from core.app_assets.entities import AssetItem, FileAsset
 
 
 class AssetItemParser(ABC):

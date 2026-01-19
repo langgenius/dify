@@ -1,7 +1,5 @@
 import hashlib
-import io
 import logging
-import zipfile
 from uuid import uuid4
 
 from sqlalchemy.orm import Session
@@ -14,11 +12,11 @@ from core.app.entities.app_asset_entities import (
     TreeParentNotFoundError,
     TreePathConflictError,
 )
+from core.app_assets.entities import SkillAsset
 from core.app_assets.packager.zip_packager import ZipPackager
 from core.app_assets.parser.asset_parser import AssetParser
 from core.app_assets.parser.skill_parser import SkillAssetParser
 from core.app_assets.paths import AssetPaths
-from core.app_assets.skill import SkillAsset
 from core.skill.skill_manager import SkillManager
 from extensions.ext_database import db
 from extensions.ext_storage import storage
@@ -314,34 +312,6 @@ class AppAssetService:
             session.commit()
 
         return published
-
-    @staticmethod
-    def get_published_file_content(
-        app_model: App,
-        assets_id: str,
-        file_path: str,
-    ) -> bytes:
-        with Session(db.engine) as session:
-            published = (
-                session.query(AppAssets)
-                .filter(
-                    AppAssets.tenant_id == app_model.tenant_id,
-                    AppAssets.app_id == app_model.id,
-                    AppAssets.id == assets_id,
-                )
-                .first()
-            )
-            if not published or published.version == AppAssets.VERSION_DRAFT:
-                raise AppAssetNodeNotFoundError(f"Published version {assets_id} not found")
-
-            zip_key = AssetPaths.published_zip(app_model.tenant_id, app_model.id, assets_id)
-            zip_data = storage.load_once(zip_key)
-
-            archive_path = file_path.lstrip("/")
-            with zipfile.ZipFile(io.BytesIO(zip_data), "r") as zf:
-                if archive_path not in zf.namelist():
-                    raise AppAssetNodeNotFoundError(f"File {file_path} not found in published version")
-                return zf.read(archive_path)
 
     @staticmethod
     def get_file_download_url(

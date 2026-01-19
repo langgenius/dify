@@ -1,5 +1,5 @@
+from core.app_assets.entities import SkillAsset
 from core.app_assets.paths import AssetPaths
-from core.app_assets.skill import SkillAsset
 from extensions.ext_storage import storage
 
 from .entities import ToolManifest, ToolManifestEntry

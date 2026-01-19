@@ -2,7 +2,7 @@ import io
 import zipfile
 from typing import TYPE_CHECKING
 
-from core.app_assets.assets import AssetItem
+from core.app_assets.entities import AssetItem
 
 from .base import AssetPackager
 

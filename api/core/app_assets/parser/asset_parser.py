@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 
 from core.app.entities.app_asset_entities import AppAssetFileTree
-from core.app_assets.assets import AssetItem
+from core.app_assets.entities import AssetItem
 from core.app_assets.paths import AssetPaths
 
 from .base import AssetItemParser, FileAssetParser
