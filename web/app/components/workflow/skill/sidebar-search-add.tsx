@@ -21,6 +21,7 @@ import {
 import SearchInput from '@/app/components/base/search-input'
 import { useStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
+import { ROOT_ID } from './constants'
 import { useFileOperations } from './hooks/use-file-operations'
 import { useSkillAssetTreeData } from './hooks/use-skill-asset-tree'
 import { getTargetFolderIdFromSelection } from './utils/tree-utils'
@@ -70,7 +71,7 @@ const SidebarSearchAdd: FC<SidebarSearchAddProps> = ({ onSearchChange }) => {
 
   const targetFolderId = useMemo(() => {
     if (!treeChildren)
-      return 'root'
+      return ROOT_ID
     return getTargetFolderIdFromSelection(selectedTreeNodeId, treeChildren)
   }, [selectedTreeNodeId, treeChildren])
   const menuOffset = useMemo(() => ({ mainAxis: 4 }), [])

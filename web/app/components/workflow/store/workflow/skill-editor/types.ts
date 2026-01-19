@@ -1,3 +1,5 @@
+import type { ContextMenuType } from '@/app/components/workflow/skill/constants'
+
 export type OpenTabOptions = {
   pinned?: boolean
 }
@@ -55,8 +57,6 @@ export type MetadataSliceShape = {
   isMetadataDirty: (fileId: string) => boolean
   getFileMetadata: (fileId: string) => Record<string, unknown> | undefined
 }
-
-export type ContextMenuType = 'node' | 'blank'
 
 export type ContextMenuState = {
   top: number

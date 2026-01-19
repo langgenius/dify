@@ -7,16 +7,11 @@ import { useClickAway } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useRef } from 'react'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
+import { getMenuNodeId, getNodeMenuType } from '../utils/tree-utils'
 import NodeMenu from './node-menu'
 
 type TreeContextMenuProps = {
   treeRef: React.RefObject<TreeApi<TreeNodeData> | null>
-}
-
-function getMenuType(contextMenu: { type: string, isFolder?: boolean }): 'root' | 'folder' | 'file' {
-  if (contextMenu.type === 'blank')
-    return 'root'
-  return contextMenu.isFolder ? 'folder' : 'file'
 }
 
 const TreeContextMenu: FC<TreeContextMenuProps> = ({ treeRef }) => {
@@ -45,8 +40,8 @@ const TreeContextMenu: FC<TreeContextMenuProps> = ({ treeRef }) => {
       }}
     >
       <NodeMenu
-        type={getMenuType(contextMenu)}
-        nodeId={contextMenu.type === 'blank' ? 'root' : contextMenu.nodeId}
+        type={getNodeMenuType(contextMenu.type, contextMenu.isFolder)}
+        nodeId={getMenuNodeId(contextMenu.type, contextMenu.nodeId)}
         onClose={handleClose}
         treeRef={treeRef}
       />

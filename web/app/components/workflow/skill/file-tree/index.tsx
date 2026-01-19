@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
+import { CONTEXT_MENU_TYPE, ROOT_ID } from '../constants'
 import { useInlineCreateNode } from '../hooks/use-inline-create-node'
 import { useRootFileDrop } from '../hooks/use-root-file-drop'
 import { useSkillAssetTreeData } from '../hooks/use-skill-asset-tree'
@@ -63,7 +64,7 @@ const FileTree: React.FC<FileTreeProps> = ({ className, searchTerm = '' }) => {
   const storeApi = useWorkflowStore()
 
   // Root dropzone highlight (when dragging to root, not to a specific folder)
-  const isRootDropzone = dragOverFolderId === '__root__'
+  const isRootDropzone = dragOverFolderId === ROOT_ID
 
   useEffect(() => {
     if (!dragOverFolderId)
@@ -114,7 +115,7 @@ const FileTree: React.FC<FileTreeProps> = ({ className, searchTerm = '' }) => {
     storeApi.getState().setContextMenu({
       top: e.clientY,
       left: e.clientX,
-      type: 'blank',
+      type: CONTEXT_MENU_TYPE.BLANK,
     })
   }, [storeApi])
 

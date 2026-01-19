@@ -9,6 +9,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import Toast from '@/app/components/base/toast'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useCreateAppAssetFile } from '@/service/use-app-asset'
+import { ROOT_ID } from '../constants'
 
 type FileDropTarget = {
   folderId: string | null
@@ -32,8 +33,8 @@ export function useFileDrop() {
 
     e.dataTransfer.dropEffect = 'copy'
 
-    // Use '__root__' to indicate dragging over root (to distinguish from "not dragging")
-    storeApi.getState().setDragOverFolderId(target.folderId ?? '__root__')
+    // Use ROOT_ID to indicate dragging over root (to distinguish from null = "not dragging")
+    storeApi.getState().setDragOverFolderId(target.folderId ?? ROOT_ID)
   }, [storeApi])
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {

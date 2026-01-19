@@ -2,6 +2,7 @@
 
 import type { FC } from 'react'
 import type { NodeApi, TreeApi } from 'react-arborist'
+import type { NodeMenuType } from '../constants'
 import type { TreeNodeData } from '../type'
 import {
   RiDeleteBinLine,
@@ -15,6 +16,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Confirm from '@/app/components/base/confirm'
 import { cn } from '@/utils/classnames'
+import { NODE_MENU_TYPE } from '../constants'
 import { useFileOperations } from '../hooks/use-file-operations'
 import MenuItem from './menu-item'
 
@@ -24,7 +26,7 @@ export const MENU_CONTAINER_STYLES = [
 ] as const
 
 type NodeMenuProps = {
-  type: 'file' | 'folder' | 'root'
+  type: NodeMenuType
   nodeId?: string
   onClose: () => void
   className?: string
@@ -41,8 +43,8 @@ const NodeMenu: FC<NodeMenuProps> = ({
   node,
 }) => {
   const { t } = useTranslation('workflow')
-  const isRoot = type === 'root'
-  const isFolder = type === 'folder' || isRoot
+  const isRoot = type === NODE_MENU_TYPE.ROOT
+  const isFolder = type === NODE_MENU_TYPE.FOLDER || isRoot
 
   const {
     fileInputRef,
