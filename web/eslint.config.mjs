@@ -9,7 +9,7 @@ import difyI18n from './eslint-rules/index.js'
 export default antfu(
   {
     react: {
-      reactCompiler: true,
+      reactCompiler: false,
       overrides: {
         'react/no-context-provider': 'off',
         'react/no-forward-ref': 'off',
