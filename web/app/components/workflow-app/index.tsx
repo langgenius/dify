@@ -25,11 +25,11 @@ import {
 } from '@/app/components/workflow/utils'
 import { useAppContext } from '@/context/app-context'
 import { fetchRunDetail } from '@/service/log'
-import { useAppDetail } from '@/service/use-apps'
 import { useAppTriggers } from '@/service/use-tools'
 import { AppModeEnum } from '@/types/app'
-import WorkflowAppMain from './components/workflow-main'
+import { appStoreSelectors, useAppStore } from '../app/store'
 
+import WorkflowAppMain from './components/workflow-main'
 import { useGetRunAndTraceUrl } from './hooks/use-get-run-and-trace-url'
 import {
   useWorkflowInit,
@@ -48,7 +48,7 @@ const WorkflowAppWithAdditionalContext = () => {
   // Initialize trigger status at application level
   const { setTriggerStatuses } = useTriggerStatusStore()
   const { appId } = useParams()
-  const { data: appDetail } = useAppDetail(appId as string)
+  const appDetail = useAppStore(appStoreSelectors.appDetails(appId as string))
   const isWorkflowMode = appDetail?.mode === AppModeEnum.WORKFLOW
   const { data: triggersResponse } = useAppTriggers(isWorkflowMode ? appId as string : undefined, {
     staleTime: 5 * 60 * 1000, // 5 minutes cache

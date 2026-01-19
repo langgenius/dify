@@ -20,7 +20,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { appStoreSelectors, useAppStore } from '@/app/components/app/store'
 import { Stop } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import Tooltip from '@/app/components/base/tooltip'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
@@ -61,7 +61,6 @@ import {
   isSupportCustomRunForm,
 } from '@/app/components/workflow/utils'
 import { useModalContext } from '@/context/modal-context'
-import { useAppDetail } from '@/service/use-apps'
 import { useAllBuiltInTools } from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { FlowType } from '@/types/common'
@@ -112,7 +111,7 @@ const BasePanel: FC<BasePanelProps> = ({
   const { t } = useTranslation()
   const language = useLanguage()
   const { appId } = useParams()
-  const { data: appDetail } = useAppDetail(appId as string)
+  const appDetail = useAppStore(appStoreSelectors.appDetails(appId as string))
   const { showMessageLogModal } = useAppStore(useShallow(state => ({
     showMessageLogModal: state.showMessageLogModal,
   })))

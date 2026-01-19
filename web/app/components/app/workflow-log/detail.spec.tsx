@@ -11,7 +11,7 @@
 import type { App, AppIconType, AppModeEnum } from '@/types/app'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useAppDetail } from '@/service/use-apps'
+import { usePrefetchAppDetail } from '@/service/use-apps'
 import DetailPanel from './detail'
 
 // ============================================================================
@@ -19,7 +19,7 @@ import DetailPanel from './detail'
 // ============================================================================
 
 vi.mock('@/service/use-apps')
-const mockUseAppDetail = vi.mocked(useAppDetail)
+const mockUseAppDetail = vi.mocked(usePrefetchAppDetail)
 
 const mockRouterPush = vi.fn()
 vi.mock('next/navigation', () => ({
@@ -103,7 +103,7 @@ function mockAppDetailReturn(app: App | undefined) {
     data: app,
     isLoading: false,
     error: null,
-  } as ReturnType<typeof useAppDetail>)
+  } as ReturnType<typeof usePrefetchAppDetail>)
 }
 
 // ============================================================================

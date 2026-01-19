@@ -1,18 +1,19 @@
 import type { Edge, Node } from '@/app/components/workflow/types'
 import type { FileUploadConfigResponse } from '@/models/common'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
+import { isEqual } from 'es-toolkit/compat'
 import { useParams } from 'next/navigation'
 import {
   useCallback,
   useEffect,
   useState,
 } from 'react'
+import { appStoreSelectors, useAppStore } from '@/app/components/app/store'
 import {
   useStore,
   useWorkflowStore,
 } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useAppDetail } from '@/service/use-apps'
 import { useWorkflowConfig } from '@/service/use-workflow'
 import {
   fetchNodesDefaultConfigs,
@@ -40,7 +41,7 @@ export const useWorkflowInit = () => {
     edges: edgesTemplate,
   } = useWorkflowTemplate()
   const { appId } = useParams()
-  const { data: appDetail } = useAppDetail(appId as string)
+  const appDetail = useAppStore(appStoreSelectors.appDetails(appId as string), isEqual)
   const setSyncWorkflowDraftHash = useStore(s => s.setSyncWorkflowDraftHash)
   const [data, setData] = useState<FetchWorkflowDraftResponse>()
   const [isLoading, setIsLoading] = useState(true)
@@ -115,9 +116,9 @@ export const useWorkflowInit = () => {
   }, [appDetail, nodesTemplate, edgesTemplate, workflowStore, setSyncWorkflowDraftHash])
 
   useEffect(() => {
-    if (appDetail)
+    if (appDetail?.id)
       handleGetInitialWorkflowData()
-  }, [appDetail, handleGetInitialWorkflowData])
+  }, [appDetail?.id])
 
   const handleFetchPreloadData = useCallback(async () => {
     try {

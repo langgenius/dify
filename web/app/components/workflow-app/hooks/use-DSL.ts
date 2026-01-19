@@ -4,13 +4,13 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import { appStoreSelectors, useAppStore } from '@/app/components/app/store'
 import { useToastContext } from '@/app/components/base/toast'
 import {
   DSL_EXPORT_CHECK,
 } from '@/app/components/workflow/constants'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { exportAppConfig } from '@/service/apps'
-import { useAppDetail } from '@/service/use-apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 
@@ -22,7 +22,7 @@ export const useDSL = () => {
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
 
   const { appId } = useParams()
-  const { data: appDetail } = useAppDetail(appId as string)
+  const appDetail = useAppStore(appStoreSelectors.appDetails(appId as string))
 
   const handleExportDSL = useCallback(async (include = false, workflowId?: string) => {
     if (!appDetail)

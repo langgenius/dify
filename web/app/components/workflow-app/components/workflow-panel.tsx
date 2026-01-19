@@ -6,10 +6,9 @@ import {
   useMemo,
 } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { appStoreSelectors, useAppStore } from '@/app/components/app/store'
 import Panel from '@/app/components/workflow/panel'
 import { useStore } from '@/app/components/workflow/store'
-import { useAppDetail } from '@/service/use-apps'
 import {
   useIsChatMode,
 } from '../hooks'
@@ -107,7 +106,7 @@ const WorkflowPanelOnRight = () => {
 }
 const WorkflowPanel = () => {
   const { appId } = useParams()
-  const { data: appDetail } = useAppDetail(appId as string)
+  const appDetail = useAppStore(appStoreSelectors.appDetails(appId as string))
   const versionHistoryPanelProps = useMemo(() => {
     return {
       getVersionListUrl: `/apps/${appId}/workflows`,

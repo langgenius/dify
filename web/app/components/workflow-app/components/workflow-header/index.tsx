@@ -5,9 +5,8 @@ import {
   useCallback,
   useMemo,
 } from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { appStoreSelectors, useAppStore } from '@/app/components/app/store'
 import Header from '@/app/components/workflow/header'
-import { useAppDetail } from '@/service/use-apps'
 import { useResetWorkflowVersionHistory } from '@/service/use-workflow'
 import { useIsChatMode } from '../../hooks'
 import ChatVariableTrigger from './chat-variable-trigger'
@@ -15,7 +14,7 @@ import FeaturesTrigger from './features-trigger'
 
 const WorkflowHeader = () => {
   const { appId } = useParams()
-  const { data: appDetail } = useAppDetail(appId as string)
+  const appDetail = useAppStore(appStoreSelectors.appDetails(appId as string))
   const setCurrentLogItem = useAppStore(state => state.setCurrentLogItem)
   const setShowMessageLogModal = useAppStore(state => state.setShowMessageLogModal)
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()

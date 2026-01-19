@@ -34,12 +34,13 @@ import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useDocLink } from '@/context/i18n'
 import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects } from '@/service/access-control'
-import { useAppDetail, useInvalidateAppDetail } from '@/service/use-apps'
+import { useInvalidateAppDetail } from '@/service/use-apps'
 import { useAppWorkflow } from '@/service/use-workflow'
 import { AppModeEnum } from '@/types/app'
 import { asyncRunSafe } from '@/utils'
 import { basePath } from '@/utils/var'
 import AccessControl from '../app-access-control'
+import { appStoreSelectors, useAppStore } from '../store'
 import CustomizeModal from './customize'
 import EmbeddedModal from './embedded'
 import SettingsModal from './settings'
@@ -76,7 +77,7 @@ function AppCard({
   const { isCurrentWorkspaceManager, isCurrentWorkspaceEditor } = useAppContext()
   const { data: currentWorkflow } = useAppWorkflow(appInfo.mode === AppModeEnum.WORKFLOW ? appInfo.id : '')
   const docLink = useDocLink()
-  const { data: appDetail } = useAppDetail(appInfo.id)
+  const appDetail = useAppStore(appStoreSelectors.appDetails(appInfo.id))
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [showEmbedded, setShowEmbedded] = useState(false)
   const [showCustomizeModal, setShowCustomizeModal] = useState(false)

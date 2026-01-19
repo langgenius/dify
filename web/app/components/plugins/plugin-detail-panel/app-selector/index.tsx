@@ -8,6 +8,7 @@ import type { App } from '@/types/app'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { appStoreSelectors, useAppStore } from '@/app/components/app/store'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -16,7 +17,7 @@ import {
 import AppInputsPanel from '@/app/components/plugins/plugin-detail-panel/app-selector/app-inputs-panel'
 import AppPicker from '@/app/components/plugins/plugin-detail-panel/app-selector/app-picker'
 import AppTrigger from '@/app/components/plugins/plugin-detail-panel/app-selector/app-trigger'
-import { useAppDetail, useInfiniteAppList } from '@/service/use-apps'
+import { useInfiniteAppList } from '@/service/use-apps'
 
 const PAGE_SIZE = 20
 
@@ -71,7 +72,7 @@ const AppSelector: FC<Props> = ({
   }, [pages])
 
   // fetch selected app by id to avoid pagination gaps
-  const { data: selectedAppDetail } = useAppDetail(value?.app_id || '')
+  const selectedAppDetail = useAppStore(appStoreSelectors.appDetails(value?.app_id || ''))
 
   // Ensure the currently selected app is available for display and in the picker options
   const currentAppInfo = useMemo(() => {

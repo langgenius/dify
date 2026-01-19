@@ -7,7 +7,7 @@ import {
   useCallback,
   useMemo,
 } from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { useAppStore } from '@/app/components/app/store'
 import ChatInputArea from '@/app/components/base/chat/chat/chat-input-area'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'

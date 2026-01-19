@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import { useEffect } from 'react'
-import { useStore } from '@/app/components/app/store'
+import { useAppStore } from '@/app/components/app/store'
 import PromptLogModal from '.'
 
 type PromptLogModalProps = React.ComponentProps<typeof PromptLogModal>
@@ -28,9 +28,9 @@ const mockLogItem: IChatItem = {
 
 const usePromptLogMocks = () => {
   useEffect(() => {
-    useStore.getState().setCurrentLogItem(mockLogItem)
+    useAppStore.getState().setCurrentLogItem(mockLogItem)
     return () => {
-      useStore.getState().setCurrentLogItem(undefined)
+      useAppStore.getState().setCurrentLogItem(undefined)
     }
   }, [])
 }

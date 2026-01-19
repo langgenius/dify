@@ -10,7 +10,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { getNodesBounds, useReactFlow } from 'reactflow'
 import { useShallow } from 'zustand/react/shallow'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { useAppStore } from '@/app/components/app/store'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 import {
   PortalToFollowElem,

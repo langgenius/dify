@@ -12,8 +12,9 @@ import { useTranslation } from 'react-i18next'
 import CreateAppTemplateDialog from '@/app/components/app/create-app-dialog'
 import CreateAppModal from '@/app/components/app/create-app-modal'
 import CreateFromDSLModal from '@/app/components/app/create-from-dsl-modal'
+import { appStoreSelectors, useAppStore } from '@/app/components/app/store'
 import { useAppContext } from '@/context/app-context'
-import { useAppDetail, useInfiniteAppList } from '@/service/use-apps'
+import { useInfiniteAppList } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
 import Nav from '../nav'
 
@@ -21,7 +22,7 @@ const AppNav = () => {
   const { t } = useTranslation()
   const { appId } = useParams()
   const { isCurrentWorkspaceEditor } = useAppContext()
-  const { data: appDetail } = useAppDetail(appId as string)
+  const appDetail = useAppStore(appStoreSelectors.appDetails(appId as string))
   const [showNewAppDialog, setShowNewAppDialog] = useState(false)
   const [showNewAppTemplateDialog, setShowNewAppTemplateDialog] = useState(false)
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(false)

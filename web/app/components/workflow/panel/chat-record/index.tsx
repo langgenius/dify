@@ -8,12 +8,12 @@ import {
   useEffect,
   useState,
 } from 'react'
+import { appStoreSelectors, useAppStore } from '@/app/components/app/store'
 import Chat from '@/app/components/base/chat/chat'
 import { buildChatItemTree, getThreadMessages } from '@/app/components/base/chat/utils'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import Loading from '@/app/components/base/loading'
 import { fetchConversationMessages } from '@/service/debug'
-import { useAppDetail } from '@/service/use-apps'
 import { useWorkflowRun } from '../../hooks'
 import {
   useStore,
@@ -53,7 +53,7 @@ const ChatRecord = () => {
   const [chatItemTree, setChatItemTree] = useState<ChatItemInTree[]>([])
   const [threadChatItems, setThreadChatItems] = useState<IChatItem[]>([])
   const { appId } = useParams()
-  const { data: appDetail } = useAppDetail(appId as string)
+  const appDetail = useAppStore(appStoreSelectors.appDetails(appId as string))
   const workflowStore = useWorkflowStore()
   const { handleLoadBackupDraft } = useWorkflowRun()
   const historyWorkflowData = useStore(s => s.historyWorkflowData)

@@ -42,7 +42,7 @@ import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/access-control'
 import { fetchInstalledAppList } from '@/service/explore'
-import { useAppDetail, useInvalidateAppDetail } from '@/service/use-apps'
+import { useInvalidateAppDetail } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
 import Divider from '../../base/divider'
@@ -51,6 +51,7 @@ import Toast from '../../base/toast'
 import Tooltip from '../../base/tooltip'
 import { getKeyboardKeyCodeBySystem, getKeyboardKeyNameBySystem } from '../../workflow/utils'
 import AccessControl from '../app-access-control'
+import { appStoreSelectors, useAppStore } from '../store'
 import PublishWithMultipleModel from './publish-with-multiple-model'
 import SuggestedAction from './suggested-action'
 
@@ -146,7 +147,7 @@ const AppPublisher = ({
   const [showAppAccessControl, setShowAppAccessControl] = useState(false)
   const [embeddingModalOpen, setEmbeddingModalOpen] = useState(false)
 
-  const { data: appDetail } = useAppDetail(appId as string)
+  const appDetail = useAppStore(appStoreSelectors.appDetails(appId as string))
   const invalidateAppDetail = useInvalidateAppDetail()
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const { formatTimeFromNow } = useFormatTimeFromNow()

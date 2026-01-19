@@ -2,7 +2,7 @@ import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { HeaderProps } from '@/app/components/workflow/header'
 import type { App } from '@/types/app'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { useAppStore } from '@/app/components/app/store'
 import { AppModeEnum } from '@/types/app'
 import WorkflowHeader from './index'
 

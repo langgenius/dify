@@ -40,7 +40,7 @@ import {
   useFormattingChangedDispatcher,
 } from '@/app/components/app/configuration/debug/hooks'
 import useAdvancedPromptConfig from '@/app/components/app/configuration/hooks/use-advanced-prompt-config'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { appStoreSelectors, useAppStore } from '@/app/components/app/store'
 import Button from '@/app/components/base/button'
 import Confirm from '@/app/components/base/confirm'
 import Divider from '@/app/components/base/divider'
@@ -74,7 +74,6 @@ import { PromptMode } from '@/models/debug'
 import { updateAppModelConfig } from '@/service/apps'
 import { fetchDatasets } from '@/service/datasets'
 import { fetchCollectionList } from '@/service/tools'
-import { useAppDetail } from '@/service/use-apps'
 import { useFileUploadConfig } from '@/service/use-common'
 import { AgentStrategy, AppModeEnum, ModelModeType, Resolution, RETRIEVE_TYPE, TransferMethod } from '@/types/app'
 import {
@@ -105,7 +104,7 @@ const Configuration: FC = () => {
   const pathname = usePathname()
   const matched = pathname.match(/\/app\/([^/]+)/)
   const appId = (matched?.length && matched[1]) ? matched[1] : ''
-  const { data: appDetail } = useAppDetail(appId)
+  const appDetail = useAppStore(appStoreSelectors.appDetails(appId))
 
   const latestPublishedAt = useMemo(() => appDetail?.model_config?.updated_at, [appDetail])
   const [formattingChanged, setFormattingChanged] = useState(false)

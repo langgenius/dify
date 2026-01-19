@@ -8,8 +8,8 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { TIME_PERIOD_MAPPING as LONG_TIME_PERIOD_MAPPING } from '@/app/components/app/log/filter'
 import { AvgResponseTime, AvgSessionInteractions, AvgUserInteractions, ConversationsChart, CostChart, EndUsersChart, MessagesChart, TokenPerSecond, UserSatisfactionRate, WorkflowCostChart, WorkflowDailyTerminalsChart, WorkflowMessagesChart } from '@/app/components/app/overview/app-chart'
+import { appStoreSelectors, useAppStore } from '@/app/components/app/store'
 import { IS_CLOUD_EDITION } from '@/config'
-import { useAppDetail } from '@/service/use-apps'
 import LongTimeRangePicker from './long-time-range-picker'
 import TimeRangePicker from './time-range-picker'
 
@@ -34,7 +34,7 @@ export type IChartViewProps = {
 
 export default function ChartView({ appId, headerRight }: IChartViewProps) {
   const { t } = useTranslation()
-  const { data: appDetail } = useAppDetail(appId)
+  const appDetail = useAppStore(appStoreSelectors.appDetails(appId))
   const isChatApp = appDetail?.mode !== 'completion' && appDetail?.mode !== 'workflow'
   const isWorkflow = appDetail?.mode === 'workflow'
   const [period, setPeriod] = useState<PeriodParams>(IS_CLOUD_EDITION

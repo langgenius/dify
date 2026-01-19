@@ -2,14 +2,14 @@
 import Loading from '@/app/components/base/loading'
 import ApiServer from '@/app/components/develop/ApiServer'
 import Doc from '@/app/components/develop/doc'
-import { useAppDetail } from '@/service/use-apps'
+import { usePrefetchAppDetail } from '@/service/use-apps'
 
 type IDevelopMainProps = {
   appId: string
 }
 
 const DevelopMain = ({ appId }: IDevelopMainProps) => {
-  const { data: appDetail, isPending } = useAppDetail(appId)
+  const { data: appDetail, isPending } = usePrefetchAppDetail(appId)
 
   if (isPending || !appDetail) {
     return (

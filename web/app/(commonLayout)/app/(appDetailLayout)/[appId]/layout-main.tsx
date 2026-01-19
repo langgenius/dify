@@ -17,13 +17,13 @@ import * as React from 'react'
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppSideBar from '@/app/components/app-sidebar'
-import { useStore } from '@/app/components/app/store'
+import { useAppStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
 import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
 import { useAppContext } from '@/context/app-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { useAppDetail } from '@/service/use-apps'
+import { usePrefetchAppDetail } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
 import { cn } from '@/utils/classnames'
 import s from './style.module.css'
@@ -46,10 +46,10 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const isMobile = media === MediaType.mobile
 
   const { isCurrentWorkspaceEditor, isLoadingCurrentWorkspace } = useAppContext()
-  const setAppSidebarExpand = useStore(s => s.setAppSidebarExpand)
+  const setAppSidebarExpand = useAppStore(s => s.setAppSidebarExpand)
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
 
-  const { data: appDetail, isPending, error } = useAppDetail(appId)
+  const { data: appDetail, isPending, error } = usePrefetchAppDetail(appId)
 
   const navigation = useMemo(() => {
     if (!appDetail)

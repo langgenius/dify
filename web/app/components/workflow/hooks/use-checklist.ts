@@ -22,6 +22,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEdges, useStoreApi } from 'reactflow'
+import { appStoreSelectors, useAppStore } from '@/app/components/app/store'
 import { useToastContext } from '@/app/components/base/toast'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -29,7 +30,6 @@ import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { MAX_TREE_DEPTH } from '@/config'
 import { useGetLanguage } from '@/context/i18n'
 import { fetchDatasets } from '@/service/datasets'
-import { useAppDetail } from '@/service/use-apps'
 import { useStrategyProviders } from '@/service/use-strategy'
 import {
   useAllBuiltInTools,
@@ -98,7 +98,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const datasetsDetail = useDatasetsDetailStore(s => s.datasetsDetail)
   const getToolIcon = useGetToolIcon()
   const { appId } = useParams()
-  const { data: appDetail } = useAppDetail(appId as string)
+  const appDetail = useAppStore(appStoreSelectors.appDetails(appId as string))
   const appMode = appDetail?.mode
   const shouldCheckStartNode = appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT
 
@@ -274,7 +274,7 @@ export const useChecklistBeforePublish = () => {
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
   const { appId } = useParams()
-  const { data: appDetail } = useAppDetail(appId as string)
+  const appDetail = useAppStore(appStoreSelectors.appDetails(appId as string))
   const appMode = appDetail?.mode
   const shouldCheckStartNode = appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT
 
