@@ -49,13 +49,12 @@ export function useTreeNodeHandlers({
 
   const handleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
-    storeApi.getState().setCreateTargetNodeId(node.data.id)
-    node.select()
+    node.select() // This triggers Tree's onSelect → setSelectedTreeNodeId
     if (isFolder)
       throttledToggle()
     else
       handleFileClick()
-  }, [handleFileClick, isFolder, node, storeApi, throttledToggle])
+  }, [handleFileClick, isFolder, node, throttledToggle])
 
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
@@ -74,7 +73,8 @@ export function useTreeNodeHandlers({
     e.preventDefault()
     e.stopPropagation()
 
-    storeApi.getState().setCreateTargetNodeId(node.data.id)
+    // Select the node for highlight + creation target
+    storeApi.getState().setSelectedTreeNodeId(node.data.id)
     storeApi.getState().setContextMenu({
       top: e.clientY,
       left: e.clientX,

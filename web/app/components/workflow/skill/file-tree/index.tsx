@@ -99,17 +99,18 @@ const FileTree: React.FC<FileTreeProps> = ({ className, searchTerm = '' }) => {
   }, [storeApi])
 
   const handleSelect = useCallback((nodes: NodeApi<TreeNodeData>[]) => {
-    if (activeTabId) {
-      storeApi.getState().setSelectedTreeNodeId(activeTabId)
-      return
-    }
     const selectedId = nodes[0]?.id ?? null
     storeApi.getState().setSelectedTreeNodeId(selectedId)
-    storeApi.getState().setCreateTargetNodeId(selectedId)
-  }, [activeTabId, storeApi])
+  }, [storeApi])
+
+  // Clicking blank area clears selection for root-level creation
+  const handleBlankAreaClick = useCallback(() => {
+    storeApi.getState().setSelectedTreeNodeId(null)
+  }, [storeApi])
 
   const handleBlankAreaContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
+    storeApi.getState().setSelectedTreeNodeId(null)
     storeApi.getState().setContextMenu({
       top: e.clientY,
       left: e.clientX,
@@ -169,6 +170,7 @@ const FileTree: React.FC<FileTreeProps> = ({ className, searchTerm = '' }) => {
             // Root dropzone highlight - dashed border without layout shift
             isRootDropzone && 'relative rounded-lg bg-state-accent-hover after:pointer-events-none after:absolute after:inset-0 after:rounded-lg after:border-[1.5px] after:border-dashed after:border-state-accent-solid after:content-[\'\']',
           )}
+          onClick={handleBlankAreaClick}
           onContextMenu={handleBlankAreaContextMenu}
           onDragEnter={handleRootDragEnter}
           onDragOver={handleRootDragOver}
@@ -186,7 +188,7 @@ const FileTree: React.FC<FileTreeProps> = ({ className, searchTerm = '' }) => {
             indent={20}
             overscanCount={5}
             openByDefault={false}
-            selection={activeTabId ?? selectedTreeNodeId ?? undefined}
+            selection={selectedTreeNodeId ?? undefined}
             initialOpenState={initialOpensObject}
             onToggle={handleToggle}
             onSelect={handleSelect}

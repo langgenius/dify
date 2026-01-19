@@ -17,7 +17,6 @@ export const createFileTreeSlice: StateCreator<
 > = (set, get) => ({
   expandedFolderIds: new Set<string>(),
   selectedTreeNodeId: null,
-  createTargetNodeId: null,
   pendingCreateNode: null,
 
   setExpandedFolderIds: (ids: Set<string>) => {
@@ -60,10 +59,6 @@ export const createFileTreeSlice: StateCreator<
 
   setSelectedTreeNodeId: (nodeId) => {
     set({ selectedTreeNodeId: nodeId })
-  },
-
-  setCreateTargetNodeId: (nodeId) => {
-    set({ createTargetNodeId: nodeId })
   },
 
   startCreateNode: (nodeType, parentId) => {
