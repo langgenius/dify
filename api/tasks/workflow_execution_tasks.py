@@ -4,15 +4,16 @@ Celery tasks for asynchronous workflow execution storage operations.
 These tasks provide asynchronous storage capabilities for workflow execution data,
 improving performance by offloading storage operations to background workers.
 """
+
 import json
 import logging
 
 from celery import shared_task
-from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.exc import IntegrityError
-
 from core.security.ctx import set_mode
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import sessionmaker
+
 from core.workflow.entities.workflow_execution import WorkflowExecution
 from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from extensions.ext_database import db
@@ -135,7 +136,9 @@ def _update_workflow_run_from_execution(workflow_run: WorkflowRun, execution: Wo
         if new_status in terminal:
             workflow_run.status = new_status
             workflow_run.outputs = (
-                json.dumps(json_converter.to_json_encodable(execution.outputs)) if execution.outputs else workflow_run.outputs
+                json.dumps(json_converter.to_json_encodable(execution.outputs))
+                if execution.outputs
+                else workflow_run.outputs
             )
             workflow_run.error = execution.error_message
             workflow_run.elapsed_time = execution.elapsed_time

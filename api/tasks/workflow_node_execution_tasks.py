@@ -9,11 +9,11 @@ import json
 import logging
 
 from celery import shared_task
-from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.exc import IntegrityError
-
 from core.security.ctx import set_mode
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import sessionmaker
+
 from core.workflow.entities.workflow_node_execution import (
     WorkflowNodeExecution,
 )
@@ -158,13 +158,19 @@ def _update_node_execution_from_domain(node_execution: WorkflowNodeExecutionMode
         if new_status in terminal:
             node_execution.status = new_status
             node_execution.inputs = (
-                json.dumps(json_converter.to_json_encodable(execution.inputs)) if execution.inputs else node_execution.inputs
+                json.dumps(json_converter.to_json_encodable(execution.inputs))
+                if execution.inputs
+                else node_execution.inputs
             )
             node_execution.process_data = (
-                json.dumps(json_converter.to_json_encodable(execution.process_data)) if execution.process_data else node_execution.process_data
+                json.dumps(json_converter.to_json_encodable(execution.process_data))
+                if execution.process_data
+                else node_execution.process_data
             )
             node_execution.outputs = (
-                json.dumps(json_converter.to_json_encodable(execution.outputs)) if execution.outputs else node_execution.outputs
+                json.dumps(json_converter.to_json_encodable(execution.outputs))
+                if execution.outputs
+                else node_execution.outputs
             )
             if execution.metadata:
                 metadata_for_json = {
