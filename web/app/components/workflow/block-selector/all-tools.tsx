@@ -47,7 +47,6 @@ type AllToolsProps = {
   canNotSelectMultiple?: boolean
   onSelectMultiple?: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   selectedTools?: ToolValue[]
-  canChooseMCPTool?: boolean
   onTagsChange?: Dispatch<SetStateAction<string[]>>
   isInRAGPipeline?: boolean
   featuredPlugins?: Plugin[]
@@ -71,7 +70,6 @@ const AllTools = ({
   customTools,
   mcpTools = [],
   selectedTools,
-  canChooseMCPTool,
   onTagsChange,
   isInRAGPipeline = false,
   featuredPlugins = [],
@@ -249,7 +247,6 @@ const AllTools = ({
                   providerMap={providerMap}
                   onSelect={onSelect}
                   selectedTools={selectedTools}
-                  canChooseMCPTool={canChooseMCPTool}
                   isLoading={featuredLoading}
                   onInstallSuccess={async () => {
                     await onFeaturedInstallSuccess?.()
@@ -275,7 +272,6 @@ const AllTools = ({
                   viewType={isSupportGroupView ? activeView : ViewType.flat}
                   hasSearchText={hasSearchText}
                   selectedTools={selectedTools}
-                  canChooseMCPTool={canChooseMCPTool}
                 />
               </>
             )}
