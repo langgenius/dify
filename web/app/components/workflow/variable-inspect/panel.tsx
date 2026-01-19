@@ -4,7 +4,7 @@ import type { VarInInspect } from '@/types/workflow'
 import {
   RiCloseLine,
 } from '@remixicon/react'
-import { useCallback, useEffect, useMemo, useReducer, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
@@ -40,16 +40,8 @@ const Panel: FC = () => {
   const environmentVariables = useStore(s => s.environmentVariables)
   const currentFocusNodeId = useStore(s => s.currentFocusNodeId)
   const setCurrentFocusNodeId = useStore(s => s.setCurrentFocusNodeId)
-  const [currentVarId, dispatchCurrentVarId] = useReducer(
-    (state: string, action: { type: 'SET', id: string } | { type: 'AUTO_SELECT', autoSelectedId?: string }) => {
-      if (action.type === 'SET')
-        return action.id
-      if (action.type === 'AUTO_SELECT' && action.autoSelectedId !== undefined && action.autoSelectedId !== state)
-        return action.autoSelectedId
-      return state
-    },
-    '',
-  )
+  // Track user's explicit variable selection
+  const [userSelectedVarId, setUserSelectedVarId] = useState<string>('')
 
   const {
     conversationVars,
@@ -62,6 +54,58 @@ const Panel: FC = () => {
     const allVars = [...environmentVariables, ...conversationVars, ...systemVars, ...nodesWithInspectVars]
     return allVars.length === 0
   }, [environmentVariables, conversationVars, systemVars, nodesWithInspectVars])
+
+  // Compute the actual current variable ID from user selection and auto-selection logic
+  const currentVarId = useMemo(() => {
+    if (!currentFocusNodeId)
+      return ''
+
+    // Check if we need to auto-select a variable
+    const needsAutoSelect = !userSelectedVarId || (() => {
+      // Check if current variable belongs to the focused node
+      switch (currentFocusNodeId) {
+        case VarInInspectType.environment:
+          return !environmentVariables.find(v => v.id === userSelectedVarId)
+        case VarInInspectType.conversation:
+          return !conversationVars.find(v => v.id === userSelectedVarId)
+        case VarInInspectType.system:
+          return !systemVars.find(v => v.id === userSelectedVarId)
+        default: {
+          const targetNode = nodesWithInspectVars.find(node => node.nodeId === currentFocusNodeId)
+          const currentVar = targetNode?.vars.find(v => v.id === userSelectedVarId)
+          return !currentVar || !currentVar.visible
+        }
+      }
+    })()
+
+    if (!needsAutoSelect)
+      return userSelectedVarId
+
+    // Auto-select first available variable
+    switch (currentFocusNodeId) {
+      case VarInInspectType.environment:
+        if (environmentVariables.length > 0)
+          return environmentVariables[0].id
+        break
+      case VarInInspectType.conversation:
+        if (conversationVars.length > 0)
+          return conversationVars[0].id
+        break
+      case VarInInspectType.system:
+        if (systemVars.length > 0)
+          return systemVars[0].id
+        break
+      default: {
+        const targetNode = nodesWithInspectVars.find(node => node.nodeId === currentFocusNodeId)
+        const visibleVars = targetNode?.vars.filter(v => v.visible)
+        if (visibleVars?.length)
+          return visibleVars[0].id
+        break
+      }
+    }
+
+    return ''
+  }, [currentFocusNodeId, userSelectedVarId, environmentVariables, conversationVars, systemVars, nodesWithInspectVars])
 
   const currentNodeInfo = useMemo(() => {
     if (!currentFocusNodeId)
@@ -148,7 +192,7 @@ const Panel: FC = () => {
 
   const handleNodeVarSelect = useCallback((node: currentVarType) => {
     setCurrentFocusNodeId(node.nodeId)
-    dispatchCurrentVarId({ type: 'SET', id: node.var.id })
+    setUserSelectedVarId(node.var.id)
   }, [setCurrentFocusNodeId])
 
   const { isLoading, schemaTypeDefinitions } = useMatchSchemaType()
@@ -165,60 +209,6 @@ const Panel: FC = () => {
         fetchInspectVarValue([currentFocusNodeId], schemaTypeDefinitions!)
     }
   }, [currentFocusNodeId, currentVarId, nodesWithInspectVars, fetchInspectVarValue, schemaTypeDefinitions, isLoading])
-
-  const autoSelectedVarId = useMemo(() => {
-    if (!currentFocusNodeId)
-      return undefined
-
-    // Check if we need to auto-select a variable
-    const needsAutoSelect = !currentVarId || (() => {
-      // Check if current variable belongs to the focused node
-      switch (currentFocusNodeId) {
-        case VarInInspectType.environment:
-          return !environmentVariables.find(v => v.id === currentVarId)
-        case VarInInspectType.conversation:
-          return !conversationVars.find(v => v.id === currentVarId)
-        case VarInInspectType.system:
-          return !systemVars.find(v => v.id === currentVarId)
-        default: {
-          const targetNode = nodesWithInspectVars.find(node => node.nodeId === currentFocusNodeId)
-          const currentVar = targetNode?.vars.find(v => v.id === currentVarId)
-          return !currentVar || !currentVar.visible
-        }
-      }
-    })()
-
-    if (!needsAutoSelect)
-      return undefined
-
-    switch (currentFocusNodeId) {
-      case VarInInspectType.environment:
-        if (environmentVariables.length > 0)
-          return environmentVariables[0].id
-        break
-      case VarInInspectType.conversation:
-        if (conversationVars.length > 0)
-          return conversationVars[0].id
-        break
-      case VarInInspectType.system:
-        if (systemVars.length > 0)
-          return systemVars[0].id
-        break
-      default: {
-        const targetNode = nodesWithInspectVars.find(node => node.nodeId === currentFocusNodeId)
-        const visibleVars = targetNode?.vars.filter(v => v.visible)
-        if (visibleVars?.length)
-          return visibleVars[0].id
-        break
-      }
-    }
-
-    return undefined
-  }, [currentFocusNodeId, currentVarId, environmentVariables, conversationVars, systemVars, nodesWithInspectVars])
-
-  useEffect(() => {
-    dispatchCurrentVarId({ type: 'AUTO_SELECT', autoSelectedId: autoSelectedVarId })
-  }, [autoSelectedVarId])
 
   if (isListening) {
     return (

@@ -109,9 +109,9 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
       }
       <OutputVars>
         {
-          COMMON_OUTPUT.map((item, index) => (
+          COMMON_OUTPUT.map(item => (
             <VarItem
-              key={index}
+              key={item.name}
               name={item.name}
               type={item.type}
               description={item.description}
@@ -120,9 +120,9 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
           ))
         }
         {
-          isLocalFile && LOCAL_FILE_OUTPUT.map((item, index) => (
+          isLocalFile && LOCAL_FILE_OUTPUT.map(item => (
             <VarItem
-              key={index}
+              key={item.name}
               name={item.name}
               type={item.type}
               description={item.description}
@@ -139,20 +139,22 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
 
           return (
             <div key={outputItem.name}>
-              {outputItem.value?.type === 'object' ? (
-                <StructureOutputItem
-                  rootClassName="code-sm-semibold text-text-secondary"
-                  payload={wrapStructuredVarItem(outputItem, schemaType)}
-                />
-              ) : (
-                <VarItem
-                  name={outputItem.name}
-                  // eslint-disable-next-line sonarjs/no-nested-template-literals
-                  type={`${outputItem.type.toLocaleLowerCase()}${schemaType ? ` (${schemaType})` : ''}`}
-                  description={outputItem.description}
-                  isIndent={hasObjectOutput}
-                />
-              )}
+              {outputItem.value?.type === 'object'
+                ? (
+                    <StructureOutputItem
+                      rootClassName="code-sm-semibold text-text-secondary"
+                      payload={wrapStructuredVarItem(outputItem, schemaType)}
+                    />
+                  )
+                : (
+                    <VarItem
+                      name={outputItem.name}
+
+                      type={`${outputItem.type.toLocaleLowerCase()}${schemaType ? ` (${schemaType})` : ''}`}
+                      description={outputItem.description}
+                      isIndent={hasObjectOutput}
+                    />
+                  )}
             </div>
           )
         })}
