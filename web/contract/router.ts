@@ -1,5 +1,6 @@
 import type { InferContractRouterInputs } from '@orpc/contract'
-import { billingUrlContract, bindPartnerStackContract, systemFeaturesContract } from './console'
+import { bindPartnerStackContract, invoicesContract } from './console/billing'
+import { systemFeaturesContract } from './console/system'
 import { collectionPluginsContract, collectionsContract, searchAdvancedContract } from './marketplace'
 
 export const marketplaceRouterContract = {
@@ -12,8 +13,10 @@ export type MarketPlaceInputs = InferContractRouterInputs<typeof marketplaceRout
 
 export const consoleRouterContract = {
   systemFeatures: systemFeaturesContract,
-  billingUrl: billingUrlContract,
-  bindPartnerStack: bindPartnerStackContract,
+  billing: {
+    invoices: invoicesContract,
+    bindPartnerStack: bindPartnerStackContract,
+  },
 }
 
 export type ConsoleInputs = InferContractRouterInputs<typeof consoleRouterContract>
