@@ -170,7 +170,7 @@
   "serviceApi.card.endpoint": "Service API Endpoint",
   "serviceApi.card.title": "Backend service api",
   "serviceApi.disabled": "Disabled",
-  "serviceApi.enabled": "In Service",
+  "serviceApi.enabled": "Enabled",
   "serviceApi.title": "Service API",
   "unavailable": "Unavailable",
   "updated": "Updated",
