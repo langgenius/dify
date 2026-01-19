@@ -4,13 +4,14 @@ Celery tasks for asynchronous workflow execution storage operations.
 These tasks provide asynchronous storage capabilities for workflow execution data,
 improving performance by offloading storage operations to background workers.
 """
+
 import json
 import logging
 
 from celery import shared_task
 from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import sessionmaker
 
 from core.workflow.entities.workflow_execution import WorkflowExecution
 from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
@@ -79,7 +80,7 @@ def save_workflow_execution_task(
                 # This case is rare. Let Celery's retry mechanism handle it.
                 logger.warning(
                     "IntegrityError on insert but record with id %s not found after rollback. Task will be retried.",
-                    execution.id_
+                    execution.id_,
                 )
                 raise
 
