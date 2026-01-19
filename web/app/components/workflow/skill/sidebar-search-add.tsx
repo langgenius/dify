@@ -66,13 +66,14 @@ const SidebarSearchAdd: FC<SidebarSearchAddProps> = ({ onSearchChange }) => {
 
   const { data: treeData } = useSkillAssetTreeData()
   const activeTabId = useStore(s => s.activeTabId)
+  const selectedTreeNodeId = useStore(s => s.selectedTreeNodeId)
   const treeChildren = treeData?.children
 
   const targetFolderId = useMemo(() => {
     if (!treeChildren)
       return 'root'
-    return getTargetFolderIdFromSelection(activeTabId, treeChildren)
-  }, [activeTabId, treeChildren])
+    return getTargetFolderIdFromSelection(activeTabId ?? selectedTreeNodeId, treeChildren)
+  }, [activeTabId, selectedTreeNodeId, treeChildren])
   const menuOffset = useMemo(() => ({ mainAxis: 4 }), [])
 
   const {

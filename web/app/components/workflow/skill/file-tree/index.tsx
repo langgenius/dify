@@ -49,6 +49,7 @@ const FileTree: React.FC<FileTreeProps> = ({ className, searchTerm = '' }) => {
 
   const expandedFolderIds = useStore(s => s.expandedFolderIds)
   const activeTabId = useStore(s => s.activeTabId)
+  const selectedTreeNodeId = useStore(s => s.selectedTreeNodeId)
   const storeApi = useWorkflowStore()
 
   const treeChildren = treeData?.children ?? emptyTreeNodes
@@ -78,6 +79,15 @@ const FileTree: React.FC<FileTreeProps> = ({ className, searchTerm = '' }) => {
     else
       node.toggle()
   }, [storeApi])
+
+  const handleSelect = useCallback((nodes: NodeApi<TreeNodeData>[]) => {
+    if (activeTabId) {
+      storeApi.getState().setSelectedTreeNodeId(activeTabId)
+      return
+    }
+    const selectedId = nodes[0]?.id ?? null
+    storeApi.getState().setSelectedTreeNodeId(selectedId)
+  }, [activeTabId, storeApi])
 
   const handleBlankAreaContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
@@ -149,9 +159,10 @@ const FileTree: React.FC<FileTreeProps> = ({ className, searchTerm = '' }) => {
             indent={20}
             overscanCount={5}
             openByDefault={false}
-            selection={activeTabId ?? undefined}
+            selection={activeTabId ?? selectedTreeNodeId ?? undefined}
             initialOpenState={initialOpensObject}
             onToggle={handleToggle}
+            onSelect={handleSelect}
             onActivate={handleActivate}
             onRename={handleRename}
             searchTerm={searchTerm}

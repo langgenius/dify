@@ -27,6 +27,8 @@ export function useSyncTreeWithActiveTab({
     if (!activeTabId)
       return
 
+    storeApi.getState().setSelectedTreeNodeId(activeTabId)
+
     const tree = treeRef.current
     if (!tree)
       return

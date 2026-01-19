@@ -28,6 +28,8 @@ export type FileTreeSliceShape = {
   revealFile: (ancestorFolderIds: string[]) => void
   setExpandedFromOpens: (opens: OpensObject) => void
   getOpensObject: () => OpensObject
+  selectedTreeNodeId: string | null
+  setSelectedTreeNodeId: (nodeId: string | null) => void
   pendingCreateNode: PendingCreateNode | null
   startCreateNode: (nodeType: PendingCreateNode['nodeType'], parentId: PendingCreateNode['parentId']) => void
   clearCreateNode: () => void
