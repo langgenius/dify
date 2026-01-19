@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+from datetime import datetime
 from types import SimpleNamespace
 from unittest import mock
 
 import pytest
 
 from core.app.apps.advanced_chat import generate_task_pipeline as pipeline_module
-from core.app.entities.queue_entities import QueueWorkflowPausedEvent
+from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.queue_entities import QueueTextChunkEvent, QueueWorkflowPausedEvent
 from core.workflow.entities.pause_reason import HumanInputRequired
 from models.enums import MessageStatus
+from models.model import EndUser
 from models.execution_extra_content import HumanInputContent
 
 
@@ -130,3 +133,50 @@ def test_handle_workflow_paused_event_persists_human_input_extra_content() -> No
 
     pipeline._persist_human_input_extra_content.assert_called_once_with(form_id="form-1", node_id="node-1")
     assert message.status == MessageStatus.PAUSED
+
+
+def test_resume_appends_chunks_to_paused_answer() -> None:
+    app_config = SimpleNamespace(app_id="app-1", tenant_id="tenant-1", sensitive_word_avoidance=None)
+    application_generate_entity = SimpleNamespace(
+        app_config=app_config,
+        files=[],
+        workflow_run_id="run-1",
+        query="hello",
+        invoke_from=InvokeFrom.WEB_APP,
+        inputs={},
+        task_id="task-1",
+    )
+    queue_manager = SimpleNamespace(graph_runtime_state=None)
+    conversation = SimpleNamespace(id="conversation-1", mode="advanced-chat")
+    message = SimpleNamespace(
+        id="message-1",
+        created_at=datetime(2024, 1, 1),
+        query="hello",
+        answer="before",
+        status=MessageStatus.PAUSED,
+    )
+    user = EndUser.__new__(EndUser)
+    user.id = "user-1"
+    user.session_id = "session-1"
+    workflow = SimpleNamespace(id="workflow-1", tenant_id="tenant-1", features_dict={})
+
+    pipeline = pipeline_module.AdvancedChatAppGenerateTaskPipeline(
+        application_generate_entity=application_generate_entity,
+        workflow=workflow,
+        queue_manager=queue_manager,
+        conversation=conversation,
+        message=message,
+        user=user,
+        stream=True,
+        dialogue_count=1,
+        draft_var_saver_factory=SimpleNamespace(),
+    )
+
+    pipeline._get_message = mock.Mock(return_value=message)
+    pipeline._recorded_files = []
+
+    list(pipeline._handle_text_chunk_event(QueueTextChunkEvent(text="after")))
+    pipeline._save_message(session=mock.Mock())
+
+    assert message.answer == "beforeafter"
+    assert message.status == MessageStatus.NORMAL

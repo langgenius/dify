@@ -133,6 +133,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         )
 
         self._task_state = WorkflowTaskState()
+        self._seed_task_state_from_message(message)
         self._message_cycle_manager = MessageCycleManager(
             application_generate_entity=application_generate_entity, task_state=self._task_state
         )
@@ -152,6 +153,10 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self._graph_runtime_state: GraphRuntimeState | None = None
         self._message_saved_on_pause = False
         self._seed_graph_runtime_state_from_queue_manager()
+
+    def _seed_task_state_from_message(self, message: Message) -> None:
+        if message.status == MessageStatus.PAUSED and message.answer:
+            self._task_state.answer = message.answer
 
     def process(self) -> Union[ChatbotAppBlockingResponse, Generator[ChatbotAppStreamResponse, None, None]]:
         """
