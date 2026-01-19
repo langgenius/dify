@@ -296,7 +296,9 @@ class PGVector(BaseVector):
                 if dimension <= 2000:
                     cur.execute(SQL_CREATE_INDEX.format(table_name=self.full_table_name, index_hash=self.index_hash))
                 if self.pg_bigm:
-                    cur.execute(SQL_CREATE_INDEX_PG_BIGM.format(table_name=self.full_table_name, index_hash=self.index_hash))
+                    cur.execute(
+                        SQL_CREATE_INDEX_PG_BIGM.format(table_name=self.full_table_name, index_hash=self.index_hash)
+                    )
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
 
