@@ -500,7 +500,8 @@ const MixedVariableTextInput = ({
     if (!onChange)
       return
 
-    const valueWithoutTrigger = value.replace(/@$/, '')
+    // compute words after the latest '@' and delete them
+    const valueWithoutTrigger = value.replace(/@[^@\n]*$/, '')
     const newValue = `{{@${agent.id}.context@}}${valueWithoutTrigger}`
 
     if (toolNodeId && paramKey) {
