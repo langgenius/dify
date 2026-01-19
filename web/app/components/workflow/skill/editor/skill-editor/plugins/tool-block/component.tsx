@@ -64,7 +64,7 @@ type SkillFileMetadata = {
   tools?: Record<string, ToolConfigMetadata>
 }
 
-const getVarKindType = (type: FormTypeEnum) => {
+const getVarKindType = (type: FormTypeEnum | string) => {
   if (type === FormTypeEnum.file || type === FormTypeEnum.files)
     return VarKindType.variable
   if (type === FormTypeEnum.select || type === FormTypeEnum.checkbox || type === FormTypeEnum.textNumber || type === FormTypeEnum.array || type === FormTypeEnum.object)
@@ -73,6 +73,22 @@ const getVarKindType = (type: FormTypeEnum) => {
     return VarKindType.mixed
   return VarKindType.constant
 }
+
+type ToolFormSchema = {
+  variable: string
+  type: string
+  default?: unknown
+}
+
+type ToolConfigValueItem = {
+  auto?: 0 | 1
+  value?: {
+    type: VarKindType
+    value?: unknown
+  } | null
+}
+
+type ToolConfigValueMap = Record<string, ToolConfigValueItem>
 
 const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
   nodeKey,
@@ -147,8 +163,8 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
   const defaultToolValue = useMemo(() => {
     if (!currentProvider || !currentTool)
       return null
-    const settingsSchemas = toolParametersToFormSchemas(currentTool.parameters?.filter(param => param.form !== 'llm') || [])
-    const paramsSchemas = toolParametersToFormSchemas(currentTool.parameters?.filter(param => param.form === 'llm') || [])
+    const settingsSchemas = toolParametersToFormSchemas(currentTool.parameters?.filter(param => param.form !== 'llm') || []) as ToolFormSchema[]
+    const paramsSchemas = toolParametersToFormSchemas(currentTool.parameters?.filter(param => param.form === 'llm') || []) as ToolFormSchema[]
     const toolLabel = currentTool.label?.[language] || tool
     const toolDescription = typeof currentTool.description === 'object'
       ? (currentTool.description?.[language] || '')
@@ -159,8 +175,8 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
       tool_name: currentTool.name,
       tool_label: toolLabel,
       tool_description: toolDescription,
-      settings: generateFormValue({}, settingsSchemas as any),
-      parameters: generateFormValue({}, paramsSchemas as any, true),
+      settings: generateFormValue({}, settingsSchemas),
+      parameters: generateFormValue({}, paramsSchemas, true),
       enabled: true,
       extra: { description: toolDescription },
     } as ToolValue
@@ -174,12 +190,12 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
       return defaultToolValue
 
     const fieldsById = new Map(fields.map(field => [field.id, field]))
-    const settingsSchemas = toolParametersToFormSchemas(currentTool.parameters?.filter(param => param.form !== 'llm') || [])
-    const paramsSchemas = toolParametersToFormSchemas(currentTool.parameters?.filter(param => param.form === 'llm') || [])
+    const settingsSchemas = toolParametersToFormSchemas(currentTool.parameters?.filter(param => param.form !== 'llm') || []) as ToolFormSchema[]
+    const paramsSchemas = toolParametersToFormSchemas(currentTool.parameters?.filter(param => param.form === 'llm') || []) as ToolFormSchema[]
 
-    const applyFields = (schemas: any[]) => {
-      const nextValue: Record<string, any> = {}
-      schemas.forEach((schema: any) => {
+    const applyFields = (schemas: ToolFormSchema[]) => {
+      const nextValue: ToolConfigValueMap = {}
+      schemas.forEach((schema) => {
         const field = fieldsById.get(schema.variable)
         if (!field)
           return
@@ -191,7 +207,7 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
         nextValue[schema.variable] = {
           auto: 0,
           value: {
-            type: getVarKindType(schema.type as FormTypeEnum),
+            type: getVarKindType(schema.type),
             value: field.value ?? null,
           },
         }
@@ -216,12 +232,14 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
     if (!configuredToolValue)
       return
     if (!toolValue || toolValue.tool_name !== configuredToolValue.tool_name || toolValue.provider_name !== configuredToolValue.provider_name)
+      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
       setToolValue(configuredToolValue)
   }, [configuredToolValue, toolValue])
 
   useEffect(() => {
     if (!isSettingOpen || !configuredToolValue)
       return
+    // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
     setToolValue(configuredToolValue)
   }, [configuredToolValue, isSettingOpen])
 
@@ -230,6 +248,7 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
     const fallbackContainer = document.querySelector('[data-skill-editor-root="true"]') as HTMLElement | null
     const container = containerFromRef || fallbackContainer
     if (container)
+      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
       setPortalContainer(container)
   }, [ref])
 
@@ -242,6 +261,8 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
       const triggerEl = ref.current
       const panelEl = portalContainer?.querySelector('[data-tool-setting-panel="true"]')
       if (!target || !panelEl)
+        return
+      if (target instanceof Element && target.closest('[data-modal-root="true"]'))
         return
       if (panelEl.contains(target))
         return
@@ -299,12 +320,13 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
       return
     const metadata = (fileMetadata.get(activeTabId) || {}) as SkillFileMetadata
     const toolType = currentProvider.type === CollectionType.mcp ? 'mcp' : 'builtin'
-    const buildFields = (value: Record<string, any> | undefined) => {
+    const buildFields = (value: Record<string, unknown> | undefined) => {
       if (!value)
         return []
       return Object.entries(value).map(([id, field]) => {
-        const auto = Boolean((field as any)?.auto)
-        const rawValue = auto ? null : (field as any)?.value?.value ?? null
+        const fieldValue = field as ToolConfigValueItem | undefined
+        const auto = Boolean(fieldValue?.auto)
+        const rawValue = auto ? null : fieldValue?.value?.value ?? null
         return { id, value: rawValue, auto }
       })
     }
