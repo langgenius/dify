@@ -14,18 +14,18 @@ import { Theme } from '@/types/app'
 import { basePath } from '@/utils/var'
 import CodeFileEditor from './editor/code-file-editor'
 import MarkdownFileEditor from './editor/markdown-file-editor'
-import MediaFilePreview from './editor/media-file-preview'
-import UnsupportedFileDownload from './editor/unsupported-file-download'
 import { useFileTypeInfo } from './hooks/use-file-type-info'
 import { useSkillAssetNodeMap } from './hooks/use-skill-asset-tree'
 import { useSkillFileData } from './hooks/use-skill-file-data'
 import { useSkillFileSave } from './hooks/use-skill-file-save'
 import { getFileLanguage } from './utils/file-utils'
+import MediaFilePreview from './viewer/media-file-preview'
+import UnsupportedFileDownload from './viewer/unsupported-file-download'
 
 if (typeof window !== 'undefined')
   loader.config({ paths: { vs: `${window.location.origin}${basePath}/vs` } })
 
-const SkillDocEditor: FC = () => {
+const FileContentPanel: FC = () => {
   const { t } = useTranslation('workflow')
   const { theme: appTheme } = useTheme()
   const [isMounted, setIsMounted] = useState(false)
@@ -199,4 +199,4 @@ const SkillDocEditor: FC = () => {
   )
 }
 
-export default React.memo(SkillDocEditor)
+export default React.memo(FileContentPanel)

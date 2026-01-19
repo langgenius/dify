@@ -1,9 +1,9 @@
 import type { FC, PropsWithChildren } from 'react'
 import * as React from 'react'
 
-type EditorBodyProps = PropsWithChildren
+type ContentBodyProps = PropsWithChildren
 
-const EditorBody: FC<EditorBodyProps> = ({ children }) => {
+const ContentBody: FC<ContentBodyProps> = ({ children }) => {
   return (
     <div className="flex min-h-0 flex-1">
       {children}
@@ -11,4 +11,4 @@ const EditorBody: FC<EditorBodyProps> = ({ children }) => {
   )
 }
 
-export default React.memo(EditorBody)
+export default React.memo(ContentBody)

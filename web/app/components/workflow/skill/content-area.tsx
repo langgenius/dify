@@ -1,9 +1,9 @@
 import type { FC, PropsWithChildren } from 'react'
 import * as React from 'react'
 
-type EditorAreaProps = PropsWithChildren
+type ContentAreaProps = PropsWithChildren
 
-const EditorArea: FC<EditorAreaProps> = ({ children }) => {
+const ContentArea: FC<ContentAreaProps> = ({ children }) => {
   return (
     <section className="flex min-h-0 flex-1 flex-col rounded-lg">
       {children}
@@ -11,4 +11,4 @@ const EditorArea: FC<EditorAreaProps> = ({ children }) => {
   )
 }
 
-export default React.memo(EditorArea)
+export default React.memo(ContentArea)

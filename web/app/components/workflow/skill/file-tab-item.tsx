@@ -10,7 +10,7 @@ import FileTypeIcon from '@/app/components/base/file-uploader/file-type-icon'
 import { cn } from '@/utils/classnames'
 import { getFileIconType } from './utils/file-utils'
 
-type EditorTabItemProps = {
+type FileTabItemProps = {
   fileId: string
   name: string
   isActive: boolean
@@ -21,7 +21,7 @@ type EditorTabItemProps = {
   onDoubleClick: (fileId: string) => void
 }
 
-const EditorTabItem: FC<EditorTabItemProps> = ({
+const FileTabItem: FC<FileTabItemProps> = ({
   fileId,
   name,
   isActive,
@@ -100,4 +100,4 @@ const EditorTabItem: FC<EditorTabItemProps> = ({
   )
 }
 
-export default React.memo(EditorTabItem)
+export default React.memo(FileTabItem)

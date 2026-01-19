@@ -7,10 +7,10 @@ import { useTranslation } from 'react-i18next'
 import Confirm from '@/app/components/base/confirm'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
-import EditorTabItem from './editor-tab-item'
+import FileTabItem from './file-tab-item'
 import { useSkillAssetNodeMap } from './hooks/use-skill-asset-tree'
 
-const EditorTabs: FC = () => {
+const FileTabs: FC = () => {
   const { t } = useTranslation('workflow')
   const openTabIds = useStore(s => s.openTabIds)
   const activeTabId = useStore(s => s.activeTabId)
@@ -73,7 +73,7 @@ const EditorTabs: FC = () => {
           const isPreview = previewTabId === fileId
 
           return (
-            <EditorTabItem
+            <FileTabItem
               key={fileId}
               fileId={fileId}
               name={name}
@@ -100,4 +100,4 @@ const EditorTabs: FC = () => {
   )
 }
 
-export default React.memo(EditorTabs)
+export default React.memo(FileTabs)

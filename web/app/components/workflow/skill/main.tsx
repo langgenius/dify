@@ -3,13 +3,13 @@
 import type { FC } from 'react'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
-import EditorArea from './editor-area'
-import EditorBody from './editor-body'
-import EditorTabs from './editor-tabs'
+import ContentArea from './content-area'
+import ContentBody from './content-body'
+import FileContentPanel from './file-content-panel'
+import FileTabs from './file-tabs'
 import FileTree from './file-tree'
 import Sidebar from './sidebar'
 import SidebarSearchAdd from './sidebar-search-add'
-import SkillDocEditor from './skill-doc-editor'
 import SkillPageLayout from './skill-page-layout'
 
 const SkillMain: FC = () => {
@@ -26,12 +26,12 @@ const SkillMain: FC = () => {
           <SidebarSearchAdd onSearchChange={handleSearchChange} />
           <FileTree searchTerm={searchTerm} />
         </Sidebar>
-        <EditorArea>
-          <EditorTabs />
-          <EditorBody>
-            <SkillDocEditor />
-          </EditorBody>
-        </EditorArea>
+        <ContentArea>
+          <FileTabs />
+          <ContentBody>
+            <FileContentPanel />
+          </ContentBody>
+        </ContentArea>
       </SkillPageLayout>
     </div>
   )
