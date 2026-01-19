@@ -27,7 +27,7 @@
     "build": "next build",
     "build:docker": "next build && node scripts/optimize-standalone.js",
     "start": "node ./scripts/copy-and-start.mjs",
-    "lint": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache",
+    "lint": "eslint --cache",
     "lint:ci": "pnpm lint --concurrency 3",
     "lint:fix": "pnpm lint --fix",
     "lint:quiet": "pnpm lint --quiet",
@@ -194,7 +194,7 @@
     "@typescript-eslint/parser": "^8.53.0",
     "@typescript/native-preview": "^7.0.0-dev",
     "@vitejs/plugin-react": "^5.1.2",
-    "@vitest/coverage-v8": "4.0.16",
+    "@vitest/coverage-v8": "^4.0.17",
     "autoprefixer": "^10.4.21",
     "code-inspector-plugin": "1.2.9",
     "cross-env": "^10.1.0",
@@ -220,9 +220,9 @@
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "uglify-js": "^3.19.3",
-    "vite": "^7.3.0",
-    "vite-tsconfig-paths": "^6.0.3",
-    "vitest": "^4.0.16"
+    "vite": "^7.3.1",
+    "vite-tsconfig-paths": "^6.0.4",
+    "vitest": "^4.0.17"
   },
   "pnpm": {
     "overrides": {
@@ -262,7 +262,6 @@
       "string.prototype.repeat": "npm:@nolyfill/string.prototype.repeat@^1",
       "string.prototype.trimend": "npm:@nolyfill/string.prototype.trimend@^1",
       "typed-array-buffer": "npm:@nolyfill/typed-array-buffer@^1",
-      "vite@<6.4.1": "6.4.1",
       "which-typed-array": "npm:@nolyfill/which-typed-array@^1"
     },
     "ignoredBuiltDependencies": [

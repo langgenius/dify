@@ -21,7 +21,6 @@ const mockUseFeatures = vi.fn()
 const mockUseProviderContext = vi.fn()
 const mockUseNodes = vi.fn()
 const mockUseEdges = vi.fn()
-const mockUseAppStoreSelector = vi.fn()
 
 const mockNotify = vi.fn()
 const mockHandleCheckBeforePublish = vi.fn()
@@ -137,10 +136,6 @@ vi.mock('@/hooks/use-theme', () => ({
   default: () => mockUseTheme(),
 }))
 
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: { appDetail?: { id: string } }) => unknown) => mockUseAppStoreSelector(selector),
-}))
-
 const createProviderContext = ({
   type = Plan.sandbox,
   isFetchedPlan = true,
@@ -181,7 +176,6 @@ describe('FeaturesTrigger', () => {
     mockUseProviderContext.mockReturnValue(createProviderContext({}))
     mockUseNodes.mockReturnValue([])
     mockUseEdges.mockReturnValue([])
-    mockUseAppStoreSelector.mockImplementation(selector => selector({ appDetail: { id: 'app-id' } }))
     mockPublishWorkflow.mockResolvedValue({ created_at: '2024-01-01T00:00:00Z' })
   })
 

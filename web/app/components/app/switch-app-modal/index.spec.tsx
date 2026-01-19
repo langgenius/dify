@@ -276,7 +276,7 @@ describe('SwitchAppModal', () => {
       })
       expect(mockReplace).toHaveBeenCalledWith('/app/new-app-002/workflow')
       expect(mockPush).not.toHaveBeenCalled()
-      expect(mockInvalidateAppDetail).toHaveBeenCalledTimes(1)
+      expect(mockInvalidateAppDetail).toHaveBeenCalledWith('app-123')
     })
 
     it('should notify error when switch app fails', async () => {

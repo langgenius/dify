@@ -507,7 +507,7 @@
   },
   "app/components/app/configuration/prompt-value-panel/index.spec.tsx": {
     "ts/no-explicit-any": {
-      "count": 3
+      "count": 2
     }
   },
   "app/components/app/configuration/prompt-value-panel/utils.ts": {
@@ -659,7 +659,7 @@
   },
   "app/components/apps/list.spec.tsx": {
     "ts/no-explicit-any": {
-      "count": 9
+      "count": 5
     }
   },
   "app/components/apps/list.tsx": {
@@ -5070,11 +5070,6 @@
   "utils/validators.ts": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "vitest.config.ts": {
-    "ts/no-explicit-any": {
-      "count": 1
     }
   }
 }
