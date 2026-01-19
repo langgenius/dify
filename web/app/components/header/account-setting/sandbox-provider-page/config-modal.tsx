@@ -3,35 +3,87 @@
 import type { FormRefObject, FormSchema } from '@/app/components/base/form/types'
 import type { SandboxProvider } from '@/types/sandbox-provider'
 import { RiExternalLinkLine, RiLock2Fill } from '@remixicon/react'
-import { memo, useCallback, useMemo, useRef } from 'react'
+import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { BaseForm } from '@/app/components/base/form/components/base'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import Modal from '@/app/components/base/modal'
+import RadioUI from '@/app/components/base/radio/ui'
 import { useToastContext } from '@/app/components/base/toast'
 import {
   useDeleteSandboxProviderConfig,
   useSaveSandboxProviderConfig,
 } from '@/service/use-sandbox-provider'
+import { cn } from '@/utils/classnames'
 import { PROVIDER_DOC_LINKS, PROVIDER_LABEL_KEYS, SANDBOX_FIELD_CONFIGS } from './constants'
 import ProviderIcon from './provider-icon'
+
+type ConfigMode = 'managed' | 'byok'
+
+// Providers that support mode selection (must have system config available)
+const PROVIDERS_WITH_MODE_SELECTION: readonly string[] = ['e2b']
+
+type ModeOptionProps = {
+  isSelected: boolean
+  isDisabled?: boolean
+  title: string
+  description: string
+  onClick: () => void
+}
+
+function ModeOption({ isSelected, isDisabled = false, title, description, onClick }: ModeOptionProps) {
+  return (
+    <div
+      className={cn(
+        'flex items-start gap-2 rounded-xl border p-3',
+        isDisabled && 'cursor-not-allowed opacity-50',
+        !isDisabled && 'cursor-pointer',
+        isSelected
+          ? 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg'
+          : 'border-components-option-card-option-border bg-components-option-card-option-bg',
+        !isDisabled && !isSelected && 'hover:bg-components-option-card-option-bg-hover',
+      )}
+      onClick={() => !isDisabled && onClick()}
+    >
+      <div className="mt-0.5 shrink-0">
+        <RadioUI isChecked={isSelected} disabled={isDisabled} />
+      </div>
+      <div className="flex flex-col gap-0.5">
+        <span className="system-sm-semibold text-text-primary">{title}</span>
+        <span className="system-xs-regular text-text-tertiary">{description}</span>
+      </div>
+    </div>
+  )
+}
 
 type ConfigModalProps = {
   provider: SandboxProvider
   onClose: () => void
 }
 
-const ConfigModal = ({
-  provider,
-  onClose,
-}: ConfigModalProps) => {
+function ConfigModal({ provider, onClose }: ConfigModalProps) {
   const { t } = useTranslation()
   const { notify } = useToastContext()
   const formRef = useRef<FormRefObject>(null)
 
   const { mutateAsync: saveConfig, isPending: isSaving } = useSaveSandboxProviderConfig()
   const { mutateAsync: deleteConfig, isPending: isDeleting } = useDeleteSandboxProviderConfig()
+
+  // Determine if mode selection should be shown (for providers that support it)
+  const shouldShowModeSelection = PROVIDERS_WITH_MODE_SELECTION.includes(provider.provider_type)
+
+  // Managed mode is only available when system has configured this provider
+  const isManagedModeAvailable = provider.is_system_configured
+
+  // Determine default mode based on configuration state
+  const defaultMode: ConfigMode = provider.is_tenant_configured
+    ? 'byok'
+    : provider.is_system_configured
+      ? 'managed'
+      : 'byok'
+
+  const [configMode, setConfigMode] = useState<ConfigMode>(defaultMode)
 
   const formSchemas: FormSchema[] = useMemo(() => {
     return provider.config_schema.map((schema) => {
@@ -50,6 +102,23 @@ const ConfigModal = ({
   }, [provider.config_schema, provider.config, t])
 
   const handleSave = useCallback(async () => {
+    // For managed mode, save empty config to use system defaults
+    if (shouldShowModeSelection && configMode === 'managed') {
+      try {
+        await saveConfig({
+          providerType: provider.provider_type,
+          config: {},
+        })
+        notify({ type: 'success', message: t('api.saved', { ns: 'common' }) })
+        onClose()
+      }
+      catch {
+        // Error toast is handled by fetch layer
+      }
+      return
+    }
+
+    // For BYOK mode, validate and save user-provided config
     const formValues = formRef.current?.getFormValues({
       needTransformWhenSecretFieldIsPristine: true,
     })
@@ -68,7 +137,7 @@ const ConfigModal = ({
     catch {
       // Error toast is handled by fetch layer
     }
-  }, [saveConfig, provider.provider_type, notify, t, onClose])
+  }, [shouldShowModeSelection, configMode, saveConfig, provider.provider_type, notify, t, onClose])
 
   const handleRevoke = useCallback(async () => {
     try {
@@ -81,35 +150,61 @@ const ConfigModal = ({
     }
   }, [deleteConfig, provider.provider_type, notify, t, onClose])
 
-  const isConfigured = provider.is_tenant_configured
   const docLink = PROVIDER_DOC_LINKS[provider.provider_type]
+  const providerLabelKey = PROVIDER_LABEL_KEYS[provider.provider_type as keyof typeof PROVIDER_LABEL_KEYS] ?? 'sandboxProvider.e2b.label'
+  const providerLabel = t(providerLabelKey, { ns: 'common' })
+
+  // Only show revoke button when in BYOK mode and tenant has custom config
+  const showRevokeButton = provider.is_tenant_configured && (!shouldShowModeSelection || configMode === 'byok')
+  const isActionDisabled = isSaving || isDeleting
+  const showByokForm = !shouldShowModeSelection || configMode === 'byok'
 
   return (
-    <Modal
-      isShow
-      onClose={onClose}
-      closable
-      className="w-[480px]"
-    >
-      {/* Custom Header: Title + Subtitle with 8px gap */}
+    <Modal isShow onClose={onClose} closable className="w-[480px]">
+      {/* Header */}
       <div className="mb-4 flex flex-col gap-2">
         <h3 className="title-2xl-semi-bold text-text-primary">
           {t('sandboxProvider.configModal.title', { ns: 'common' })}
         </h3>
         <div className="flex items-center gap-2">
           <ProviderIcon providerType={provider.provider_type} size="sm" withBorder />
-          <span className="system-md-regular text-text-secondary">
-            {t(PROVIDER_LABEL_KEYS[provider.provider_type as keyof typeof PROVIDER_LABEL_KEYS] ?? 'sandboxProvider.e2b.label', { ns: 'common' })}
-          </span>
+          <span className="system-md-regular text-text-secondary">{providerLabel}</span>
         </div>
       </div>
 
-      <BaseForm
-        formSchemas={formSchemas}
-        ref={formRef}
-        labelClassName="system-sm-medium mb-1 flex items-center gap-1 text-text-secondary"
-        formClassName="space-y-4"
-      />
+      {/* Mode Selection */}
+      {shouldShowModeSelection && (
+        <div className="mb-4 flex flex-col gap-1">
+          <label className="system-sm-medium text-text-secondary">
+            {t('sandboxProvider.configModal.connectionMode', { ns: 'common' })}
+          </label>
+          <div className="flex flex-col gap-2">
+            <ModeOption
+              isSelected={configMode === 'managed'}
+              isDisabled={!isManagedModeAvailable}
+              title={t('sandboxProvider.configModal.managedByDify', { ns: 'common' })}
+              description={t('sandboxProvider.configModal.managedByDifyDesc', { ns: 'common' })}
+              onClick={() => setConfigMode('managed')}
+            />
+            <ModeOption
+              isSelected={configMode === 'byok'}
+              title={t('sandboxProvider.configModal.bringYourOwnKey', { ns: 'common' })}
+              description={t('sandboxProvider.configModal.bringYourOwnKeyDesc', { ns: 'common' })}
+              onClick={() => setConfigMode('byok')}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Form fields (hidden when managed mode is selected) */}
+      {showByokForm && (
+        <BaseForm
+          formSchemas={formSchemas}
+          ref={formRef}
+          labelClassName="system-sm-medium mb-1 flex items-center gap-1 text-text-secondary"
+          formClassName="space-y-4"
+        />
+      )}
 
       {/* Footer Actions */}
       <div className="mt-6 flex items-center justify-between">
@@ -121,36 +216,21 @@ const ConfigModal = ({
               rel="noopener noreferrer"
               className="system-xs-regular inline-flex items-center gap-1 text-text-accent hover:underline"
             >
-              {t('sandboxProvider.configModal.readDocLink', { ns: 'common', provider: t(PROVIDER_LABEL_KEYS[provider.provider_type as keyof typeof PROVIDER_LABEL_KEYS] ?? 'sandboxProvider.e2b.label', { ns: 'common' }) })}
+              {t('sandboxProvider.configModal.readDocLink', { ns: 'common', provider: providerLabel })}
               <RiExternalLinkLine className="h-3 w-3" />
             </a>
           )}
         </div>
         <div className="flex items-center gap-2">
-          {isConfigured && (
-            <Button
-              variant="warning"
-              size="medium"
-              onClick={handleRevoke}
-              disabled={isDeleting || isSaving}
-            >
+          {showRevokeButton && (
+            <Button variant="warning" size="medium" onClick={handleRevoke} disabled={isActionDisabled}>
               {t('sandboxProvider.configModal.revoke', { ns: 'common' })}
             </Button>
           )}
-          <Button
-            variant="secondary"
-            size="medium"
-            onClick={onClose}
-            disabled={isSaving || isDeleting}
-          >
+          <Button variant="secondary" size="medium" onClick={onClose} disabled={isActionDisabled}>
             {t('sandboxProvider.configModal.cancel', { ns: 'common' })}
           </Button>
-          <Button
-            variant="primary"
-            size="medium"
-            onClick={handleSave}
-            disabled={isSaving || isDeleting}
-          >
+          <Button variant="primary" size="medium" onClick={handleSave} disabled={isActionDisabled}>
             {t('sandboxProvider.configModal.save', { ns: 'common' })}
           </Button>
         </div>
