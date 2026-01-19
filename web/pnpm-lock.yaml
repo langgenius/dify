@@ -431,14 +431,14 @@ importers:
         specifier: ^14.6.1
         version: 14.6.1(@testing-library/dom@10.4.1)
       '@tsslint/cli':
-        specifier: ^3.0.0
-        version: 3.0.0(@tsslint/compat-eslint@3.0.0(jiti@1.21.7)(typescript@5.9.3))(typescript@5.9.3)
+        specifier: ^3.0.1
+        version: 3.0.1(@tsslint/compat-eslint@3.0.1(jiti@1.21.7)(typescript@5.9.3))(typescript@5.9.3)
       '@tsslint/compat-eslint':
-        specifier: ^3.0.0
-        version: 3.0.0(jiti@1.21.7)(typescript@5.9.3)
+        specifier: ^3.0.1
+        version: 3.0.1(jiti@1.21.7)(typescript@5.9.3)
       '@tsslint/config':
-        specifier: ^3.0.0
-        version: 3.0.0(@tsslint/compat-eslint@3.0.0(jiti@1.21.7)(typescript@5.9.3))(typescript@5.9.3)
+        specifier: ^3.0.1
+        version: 3.0.1(@tsslint/compat-eslint@3.0.1(jiti@1.21.7)(typescript@5.9.3))(typescript@5.9.3)
       '@types/js-cookie':
         specifier: ^3.0.6
         version: 3.0.6
@@ -3503,18 +3503,18 @@ packages:
     peerDependencies:
       '@testing-library/dom': '>=7.21.4'
 
-  '@tsslint/cli@3.0.0':
-    resolution: {integrity: sha512-sBsxChOaykDnchezGXhpE5opFtygteIHAs7De8R3NEL3F7Gn9y6bHVLfvreBrrJIYc0kQQKoi5tZHxRFw0CMRQ==}
+  '@tsslint/cli@3.0.1':
+    resolution: {integrity: sha512-y5yzMFl6sKQNsomuGInmFzMiKW37xxDcJauHnPqYoCWL8LldNLnaUOBqx0illfNZ0FDAiSuV/oshC/NG8/F2Tw==}
     engines: {node: '>=22.6.0'}
     hasBin: true
     peerDependencies:
       typescript: '*'
 
-  '@tsslint/compat-eslint@3.0.0':
-    resolution: {integrity: sha512-AdTLqqo6BQ323GJ1BBaLTNh1T+mmMP7V1BAr+lCezoFol5xWHew/7kpvldg4yNjP3xHthxWWpgvig0ghYYKJyg==}
+  '@tsslint/compat-eslint@3.0.1':
+    resolution: {integrity: sha512-cojBaB1C9RxWjDfCvLBhbffshyizb+Cf1Os9NXHuzyQOPvU1IwYPW5Sxo1RU19pCOE9/TvQcuxgnGfwbkk/Dig==}
 
-  '@tsslint/config@3.0.0':
-    resolution: {integrity: sha512-TITqQ/MGWiX2nLS/+OkNkWBTXYnsiwDK/++puGTwSBszCuvodUK647Opo/LSTRjpt0a/m9F8okfO4C687z1nJQ==}
+  '@tsslint/config@3.0.1':
+    resolution: {integrity: sha512-1S8YYLrZE22xfH3GtDXRO7YzkeQj9+FjoxaWhYQsjWDU82HHeSRWq5d2UzPSN/ac6WFmFq8yApXIGylfvrG6MA==}
     engines: {node: '>=22.6.0'}
     hasBin: true
     peerDependencies:
@@ -3526,12 +3526,12 @@ packages:
       tsl:
         optional: true
 
-  '@tsslint/core@3.0.0':
-    resolution: {integrity: sha512-c6Edg+zevim8SdEQplRGF9Q6aSCDj5vnpQHSjvhKe5Wa6wpxOhzP2CWUOYqV6jwv4S04lLOzcAg+LWmJJbEjVA==}
+  '@tsslint/core@3.0.1':
+    resolution: {integrity: sha512-8FEczJ20hdpmEH5vm272hS3QAycsk5574yZT6VMS8TUK8kNY4qoRKY/gdOY0nYNYWZrRPs+6dr1TmEVPBZjlvw==}
     engines: {node: '>=22.6.0'}
 
-  '@tsslint/types@3.0.0':
-    resolution: {integrity: sha512-7S/SWZ3eJfereZjgYap1nTWeVoBvYIzcaG2VbE6cx9PEDsGW/A7a0tfoqVmaNMz1WGAqhwkTQVHSgePyDn1wbg==}
+  '@tsslint/types@3.0.1':
+    resolution: {integrity: sha512-JPK/+tSJ2hPTwgN173fkenPEnAI2CD0r0FDJ23PfftTc0NM449ZiAFHvs1KuPUOjAvBFIo5BsLr7Kxc1Ekdgtw==}
 
   '@tybys/wasm-util@0.10.1':
     resolution: {integrity: sha512-9tTaPJLSiejZKx+Bmog4uSubteqTvFrVrURwkmHixBo0G4seD0zUxp98E1DzUBJxLQ3NPwXrGKDiVjwx/DpPsg==}
@@ -11890,11 +11890,11 @@ snapshots:
     dependencies:
       '@testing-library/dom': 10.4.1
 
-  '@tsslint/cli@3.0.0(@tsslint/compat-eslint@3.0.0(jiti@1.21.7)(typescript@5.9.3))(typescript@5.9.3)':
+  '@tsslint/cli@3.0.1(@tsslint/compat-eslint@3.0.1(jiti@1.21.7)(typescript@5.9.3))(typescript@5.9.3)':
     dependencies:
       '@clack/prompts': 0.8.2
-      '@tsslint/config': 3.0.0(@tsslint/compat-eslint@3.0.0(jiti@1.21.7)(typescript@5.9.3))(typescript@5.9.3)
-      '@tsslint/core': 3.0.0
+      '@tsslint/config': 3.0.1(@tsslint/compat-eslint@3.0.1(jiti@1.21.7)(typescript@5.9.3))(typescript@5.9.3)
+      '@tsslint/core': 3.0.1
       '@volar/language-core': 2.4.27
       '@volar/language-hub': 0.0.1
       '@volar/typescript': 2.4.27
@@ -11904,9 +11904,9 @@ snapshots:
       - '@tsslint/compat-eslint'
       - tsl
 
-  '@tsslint/compat-eslint@3.0.0(jiti@1.21.7)(typescript@5.9.3)':
+  '@tsslint/compat-eslint@3.0.1(jiti@1.21.7)(typescript@5.9.3)':
     dependencies:
-      '@tsslint/types': 3.0.0
+      '@tsslint/types': 3.0.1
       '@typescript-eslint/parser': 8.53.0(eslint@9.27.0(jiti@1.21.7))(typescript@5.9.3)
       eslint: 9.27.0(jiti@1.21.7)
     transitivePeerDependencies:
@@ -11914,22 +11914,22 @@ snapshots:
       - supports-color
       - typescript
 
-  '@tsslint/config@3.0.0(@tsslint/compat-eslint@3.0.0(jiti@1.21.7)(typescript@5.9.3))(typescript@5.9.3)':
+  '@tsslint/config@3.0.1(@tsslint/compat-eslint@3.0.1(jiti@1.21.7)(typescript@5.9.3))(typescript@5.9.3)':
     dependencies:
-      '@tsslint/types': 3.0.0
+      '@tsslint/types': 3.0.1
       minimatch: 10.1.1
       ts-api-utils: 2.4.0(typescript@5.9.3)
     optionalDependencies:
-      '@tsslint/compat-eslint': 3.0.0(jiti@1.21.7)(typescript@5.9.3)
+      '@tsslint/compat-eslint': 3.0.1(jiti@1.21.7)(typescript@5.9.3)
     transitivePeerDependencies:
       - typescript
 
-  '@tsslint/core@3.0.0':
+  '@tsslint/core@3.0.1':
     dependencies:
-      '@tsslint/types': 3.0.0
+      '@tsslint/types': 3.0.1
       minimatch: 10.1.1
 
-  '@tsslint/types@3.0.0': {}
+  '@tsslint/types@3.0.1': {}
 
   '@tybys/wasm-util@0.10.1':
     dependencies:
