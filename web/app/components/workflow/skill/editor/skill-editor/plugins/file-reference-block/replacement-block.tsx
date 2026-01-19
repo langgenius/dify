@@ -1,11 +1,66 @@
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
-import { $createTextNode } from 'lexical'
+import { $createTextNode, $isTextNode } from 'lexical'
 import { useEffect, useMemo } from 'react'
 import { CustomTextNode } from '@/app/components/base/prompt-editor/plugins/custom-text/node'
-import { decoratorTransform } from '@/app/components/base/prompt-editor/utils'
 import { $createFileReferenceNode, FileReferenceNode } from './node'
 import { getFileReferenceTokenRegexString, parseFileReferenceToken } from './utils'
+
+const decoratorTransformAllowAdjacent = (
+  node: CustomTextNode,
+  getMatch: (text: string) => null | { start: number, end: number },
+  createNode: (textNode: CustomTextNode) => ReturnType<typeof $createTextNode> | FileReferenceNode,
+) => {
+  if (!node.isSimpleText())
+    return
+
+  const prevSibling = node.getPreviousSibling()
+  let text = node.getTextContent()
+  let currentNode = node
+  let match
+
+  while (true) {
+    match = getMatch(text)
+    let nextText = match === null ? '' : text.slice(match.end)
+    text = nextText
+
+    if (nextText === '') {
+      const nextSibling = currentNode.getNextSibling()
+
+      if ($isTextNode(nextSibling)) {
+        nextText = currentNode.getTextContent() + nextSibling.getTextContent()
+        const nextMatch = getMatch(nextText)
+
+        if (nextMatch === null) {
+          nextSibling.markDirty()
+          return
+        }
+        else if (nextMatch.start !== 0) {
+          return
+        }
+      }
+    }
+
+    if (match === null)
+      return
+
+    if (match.start === 0 && $isTextNode(prevSibling) && prevSibling.isTextEntity())
+      continue
+
+    let nodeToReplace
+
+    if (match.start === 0)
+      [nodeToReplace, currentNode] = currentNode.splitText(match.end)
+    else
+      [, nodeToReplace, currentNode] = currentNode.splitText(match.start, match.end)
+
+    const replacementNode = createNode(nodeToReplace as CustomTextNode)
+    nodeToReplace.replace(replacementNode)
+
+    if (currentNode == null)
+      return
+  }
+}
 
 const FileReferenceReplacementBlock = () => {
   const [editor] = useLexicalComposerContext()
@@ -33,7 +88,7 @@ const FileReferenceReplacementBlock = () => {
     }
 
     return mergeRegister(
-      editor.registerNodeTransform(CustomTextNode, textNode => decoratorTransform(textNode, getMatch, createFileReferenceNode)),
+      editor.registerNodeTransform(CustomTextNode, textNode => decoratorTransformAllowAdjacent(textNode, getMatch, createFileReferenceNode)),
     )
   }, [editor, regex])
 
