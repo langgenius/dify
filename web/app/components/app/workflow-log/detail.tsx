@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import TooltipPlus from '@/app/components/base/tooltip'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
 import Run from '@/app/components/workflow/run'
-import { useAppDetail } from '@/service/use-apps'
+import { appStoreSelectors, useAppStore } from '../store'
 
 type ILogDetail = {
   runID: string
@@ -17,7 +17,7 @@ type ILogDetail = {
 const DetailPanel: FC<ILogDetail> = ({ runID, onClose, canReplay = false }) => {
   const { t } = useTranslation()
   const { appId } = useParams()
-  const { data: appDetail } = useAppDetail(appId as string)
+  const appDetail = useAppStore(appStoreSelectors.appDetails(appId as string))
   const router = useRouter()
 
   const handleReplay = () => {

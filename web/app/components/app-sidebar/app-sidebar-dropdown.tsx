@@ -7,13 +7,13 @@ import { useParams } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { appStoreSelectors, useAppStore } from '@/app/components/app/store'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { useAppContext } from '@/context/app-context'
-import { useAppDetail } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
 import { cn } from '@/utils/classnames'
 import AppIcon from '../base/app-icon'
@@ -34,7 +34,7 @@ const AppSidebarDropdown = ({ navigation }: Props) => {
   const { t } = useTranslation()
   const { appId } = useParams()
   const { isCurrentWorkspaceEditor } = useAppContext()
-  const { data: appDetail } = useAppDetail(appId as string)
+  const appDetail = useAppStore(appStoreSelectors.appDetails(appId as string))
   const [detailExpand, setDetailExpand] = useState(false)
 
   const [open, doSetOpen] = useState(false)

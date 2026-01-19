@@ -10,9 +10,9 @@ import WorkflowLog from '@/app/components/app/workflow-log'
 import { PageType } from '@/app/components/base/features/new-feature-panel/annotation-reply/type'
 import Loading from '@/app/components/base/loading'
 import TabSlider from '@/app/components/base/tab-slider-plain'
-import { useAppDetail } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
 import { cn } from '@/utils/classnames'
+import { appStoreSelectors, useAppStore } from '../store'
 
 type Props = {
   pageType: PageType
@@ -24,7 +24,7 @@ const LogAnnotation: FC<Props> = ({
   const { t } = useTranslation()
   const router = useRouter()
   const { appId } = useParams()
-  const { data: appDetail } = useAppDetail(appId as string)
+  const appDetail = useAppStore(appStoreSelectors.appDetails(appId as string))
 
   const options = useMemo(() => {
     if (appDetail?.mode === AppModeEnum.COMPLETION)

@@ -18,6 +18,7 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import CardView from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/card-view'
+import { appStoreSelectors, useAppStore } from '@/app/components/app/store'
 import Button from '@/app/components/base/button'
 import ContentDialog from '@/app/components/base/content-dialog'
 import { ToastContext } from '@/app/components/base/toast'
@@ -25,7 +26,7 @@ import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { copyApp, deleteApp, exportAppConfig, updateAppInfo } from '@/service/apps'
-import { useAppDetail, useInvalidateAppDetail, useInvalidateAppList } from '@/service/use-apps'
+import { useInvalidateAppDetail, useInvalidateAppList } from '@/service/use-apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
@@ -65,7 +66,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
   const { replace } = useRouter()
   const { appId } = useParams()
   const { onPlanInfoChanged } = useProviderContext()
-  const { data: appDetail } = useAppDetail(appId as string)
+  const appDetail = useAppStore(appStoreSelectors.appDetails(appId as string))
   const invalidateAppDetail = useInvalidateAppDetail()
   const invalidateAppList = useInvalidateAppList()
   const [open, setOpen] = useState(openState)

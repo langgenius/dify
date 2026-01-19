@@ -8,7 +8,7 @@ import Loading from '@/app/components/base/loading'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import AppInputsForm from '@/app/components/plugins/plugin-detail-panel/app-selector/app-inputs-form'
 import { BlockEnum, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
-import { useAppDetail } from '@/service/use-apps'
+import { usePrefetchAppDetail } from '@/service/use-apps'
 import { useFileUploadConfig } from '@/service/use-common'
 import { useAppWorkflow } from '@/service/use-workflow'
 import { AppModeEnum, Resolution } from '@/types/app'
@@ -33,7 +33,7 @@ const AppInputsPanel = ({
   const inputsRef = useRef<any>(value?.inputs || {})
   const isBasicApp = appDetail.mode !== AppModeEnum.ADVANCED_CHAT && appDetail.mode !== AppModeEnum.WORKFLOW
   const { data: fileUploadConfig } = useFileUploadConfig()
-  const { data: currentApp, isFetching: isAppLoading } = useAppDetail(appDetail.id)
+  const { data: currentApp, isFetching: isAppLoading } = usePrefetchAppDetail(appDetail.id)
   const { data: currentWorkflow, isFetching: isWorkflowLoading } = useAppWorkflow(isBasicApp ? '' : appDetail.id)
   const isLoading = isAppLoading || isWorkflowLoading
 

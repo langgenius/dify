@@ -17,6 +17,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
+import { appStoreActions } from '@/app/components/app/store'
 import { AppModeEnum } from '@/types/app'
 import { get, post } from './base'
 import { useInvalid } from './use-base'
@@ -86,10 +87,10 @@ export const useGenerateRuleTemplate = (type: GeneratorType, disabled?: boolean)
   })
 }
 
-export const useAppDetail = (appID: string) => {
+export const usePrefetchAppDetail = (appID: string) => {
   return useQuery<App>({
     queryKey: [NAME_SPACE, 'detail', appID],
-    queryFn: () => get<App>(`/apps/${appID}`),
+    queryFn: () => appStoreActions.fetchAppDetail(appID) as Promise<App>,
     enabled: !!appID,
   })
 }

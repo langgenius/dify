@@ -14,7 +14,7 @@ import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppSideBar from '@/app/components/app-sidebar'
-import { useStore } from '@/app/components/app/store'
+import { useAppStore } from '@/app/components/app/store'
 import { PipelineFill, PipelineLine } from '@/app/components/base/icons/src/vender/pipeline'
 import Loading from '@/app/components/base/loading'
 import ExtraInfo from '@/app/components/datasets/extra-info'
@@ -107,7 +107,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
   useDocumentTitle(datasetRes?.name || t('menus.datasets', { ns: 'common' }))
 
-  const setAppSidebarExpand = useStore(state => state.setAppSidebarExpand)
+  const setAppSidebarExpand = useAppStore(state => state.setAppSidebarExpand)
 
   useEffect(() => {
     const localeMode = localStorage.getItem('app-detail-collapse-or-expand') || 'expand'

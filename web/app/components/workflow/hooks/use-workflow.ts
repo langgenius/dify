@@ -19,9 +19,9 @@ import {
   getOutgoers,
   useStoreApi,
 } from 'reactflow'
+import { appStoreSelectors, useAppStore } from '@/app/components/app/store'
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
-import { useAppDetail } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
 import { useNodesMetaData } from '.'
 import {
@@ -45,7 +45,7 @@ import { useAvailableBlocks } from './use-available-blocks'
 
 export const useIsChatMode = () => {
   const { appId } = useParams()
-  const { data: appDetail } = useAppDetail(appId as string)
+  const appDetail = useAppStore(appStoreSelectors.appDetails(appId as string))
 
   return appDetail?.mode === AppModeEnum.ADVANCED_CHAT
 }

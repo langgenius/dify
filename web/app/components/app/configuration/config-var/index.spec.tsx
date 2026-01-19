@@ -8,7 +8,7 @@ import * as React from 'react'
 import { vi } from 'vitest'
 import Toast from '@/app/components/base/toast'
 import DebugConfigurationContext from '@/context/debug-configuration'
-import { useAppDetail } from '@/service/use-apps'
+import { usePrefetchAppDetail } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
 
 import ConfigVar, { ADD_EXTERNAL_DATA_TOOL } from './index'
@@ -47,7 +47,7 @@ vi.mock('next/navigation', () => ({
 }))
 
 vi.mock('@/service/use-apps')
-const mockUseAppDetail = vi.mocked(useAppDetail)
+const mockUseAppDetail = vi.mocked(usePrefetchAppDetail)
 
 type SortableItem = {
   id: string
@@ -105,7 +105,7 @@ function setupUseAppDetailMock() {
     isLoading: false,
     isPending: false,
     error: null,
-  } as ReturnType<typeof useAppDetail>)
+  } as ReturnType<typeof usePrefetchAppDetail>)
 }
 
 const renderConfigVar = (props: Partial<IConfigVarProps> = {}, debugOverrides: Partial<DebugConfigurationState> = {}) => {

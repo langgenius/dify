@@ -11,6 +11,7 @@ import {
   useStoreApi,
 } from 'reactflow'
 import { v4 as uuidV4 } from 'uuid'
+import { appStoreSelectors, useAppStore } from '@/app/components/app/store'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
@@ -22,7 +23,6 @@ import { useWorkflowStore } from '@/app/components/workflow/store'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { handleStream, post, ssePost } from '@/service/base'
 import { ContentType } from '@/service/fetch'
-import { useAppDetail } from '@/service/use-apps'
 import { useInvalidAllLastRun } from '@/service/use-workflow'
 import { stopWorkflowRun } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
@@ -64,7 +64,7 @@ export const useWorkflowRun = () => {
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
   const pathname = usePathname()
   const { appId } = useParams()
-  const { data: appDetail } = useAppDetail(appId as string)
+  const appDetail = useAppStore(appStoreSelectors.appDetails(appId as string))
   const configsMap = useConfigsMap()
   const { flowId, flowType } = configsMap
   const invalidAllLastRun = useInvalidAllLastRun(flowType, flowId)

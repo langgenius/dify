@@ -22,9 +22,9 @@ import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { ChangeType, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import ConfigContext from '@/context/debug-configuration'
-import { useAppDetail } from '@/service/use-apps'
 import { AppModeEnum, TransferMethod } from '@/types/app'
 import { checkKeys, getNewVarInWorkflow, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
+import { appStoreSelectors, useAppStore } from '../../../store'
 import ConfigSelect from '../config-select'
 import ConfigString from '../config-string'
 import ModalFoot from '../modal-foot'
@@ -74,7 +74,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
   const { modelConfig } = useContext(ConfigContext)
   const { t } = useTranslation()
   const { appId } = useParams()
-  const { data: appDetail } = useAppDetail(appId as string)
+  const appDetail = useAppStore(appStoreSelectors.appDetails(appId as string))
   const [tempPayload, setTempPayload] = useState<InputVar>(() => normalizeSelectDefaultValue(payload || getNewVarInWorkflow('') as any))
   const { type, label, variable, options, max_length } = tempPayload
   const modalRef = useRef<HTMLDivElement>(null)
