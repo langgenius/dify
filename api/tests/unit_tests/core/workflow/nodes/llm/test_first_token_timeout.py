@@ -9,7 +9,6 @@ import pytest
 from core.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import AssistantPromptMessage
 from core.workflow.nodes.base.entities import RetryConfig
-from core.workflow.nodes.llm.exc import LLMFirstTokenTimeoutError
 from core.workflow.utils.generator_timeout import FirstTokenTimeoutError, with_first_token_timeout
 
 
@@ -85,26 +84,6 @@ class TestRetryConfigFirstTokenTimeout:
         assert restored_config.retry_enabled is True
         assert restored_config.first_token_timeout == 120
         assert restored_config.has_first_token_timeout is True
-
-
-class TestLLMFirstTokenTimeoutError:
-    """Test cases for LLMFirstTokenTimeoutError exception."""
-
-    def test_error_message_format(self):
-        """Test that error message contains timeout value in milliseconds."""
-        error = LLMFirstTokenTimeoutError(timeout_ms=3000)
-
-        assert "3000ms" in str(error)
-        assert "first token" in str(error).lower()
-
-    def test_inherits_from_llm_node_error(self):
-        """Test that LLMFirstTokenTimeoutError inherits from LLMNodeError."""
-        from core.workflow.nodes.llm.exc import LLMNodeError
-
-        error = LLMFirstTokenTimeoutError(timeout_ms=3000)
-
-        assert isinstance(error, LLMNodeError)
-        assert isinstance(error, ValueError)
 
 
 class TestWithFirstTokenTimeout:

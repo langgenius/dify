@@ -21,6 +21,7 @@ from core.model_runtime.model_providers.__base.speech2text_model import Speech2T
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from core.model_runtime.model_providers.__base.tts_model import TTSModel
 from core.provider_manager import ProviderManager
+from core.workflow.utils.generator_timeout import with_first_token_timeout
 from extensions.ext_redis import redis_client
 from models.provider import ProviderType
 from services.enterprise.plugin_manager_service import PluginCredentialType
@@ -180,8 +181,6 @@ class ModelInstance:
 
         # Apply first token timeout wrapper for streaming responses
         if stream and first_token_timeout and first_token_timeout > 0 and isinstance(result, Generator):
-            from core.workflow.utils.generator_timeout import with_first_token_timeout
-
             result = with_first_token_timeout(result, first_token_timeout)
 
         return cast(Union[LLMResult, Generator], result)

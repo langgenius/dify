@@ -42,13 +42,15 @@ def with_first_token_timeout(
         FirstTokenTimeoutError: If first item doesn't arrive within timeout
     """
     start_time = time.monotonic()
-    first_token_received = False
 
-    for item in generator:
-        if not first_token_received:
-            current_time = time.monotonic()
-            if current_time - start_time > timeout_seconds:
-                raise FirstTokenTimeoutError(int(timeout_seconds * 1000))
-            first_token_received = True
+    # Handle first item separately to check timeout only once
+    try:
+        first_item = next(generator)
+        if time.monotonic() - start_time > timeout_seconds:
+            raise FirstTokenTimeoutError(int(timeout_seconds * 1000))
+        yield first_item
+    except StopIteration:
+        return
 
-        yield item
+    # Yield remaining items without timeout checks
+    yield from generator
