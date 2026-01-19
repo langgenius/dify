@@ -18,15 +18,15 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import CardView from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/card-view'
-import { appStoreSelectors, useAppStore } from '@/app/components/app/store'
+import { appStoreActions, appStoreSelectors, useAppStore } from '@/app/components/app/store'
 import Button from '@/app/components/base/button'
 import ContentDialog from '@/app/components/base/content-dialog'
 import { ToastContext } from '@/app/components/base/toast'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
-import { copyApp, deleteApp, exportAppConfig, updateAppInfo } from '@/service/apps'
-import { useInvalidateAppDetail, useInvalidateAppList } from '@/service/use-apps'
+import { copyApp, deleteApp, exportAppConfig } from '@/service/apps'
+import { useInvalidateAppList } from '@/service/use-apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
@@ -67,7 +67,6 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
   const { appId } = useParams()
   const { onPlanInfoChanged } = useProviderContext()
   const appDetail = useAppStore(appStoreSelectors.appDetails(appId as string))
-  const invalidateAppDetail = useInvalidateAppDetail()
   const invalidateAppList = useInvalidateAppList()
   const [open, setOpen] = useState(openState)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -90,7 +89,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
     if (!appDetail)
       return
     try {
-      await updateAppInfo({
+      await appStoreActions.updateAppDetail({
         appID: appDetail.id,
         name,
         icon_type,
@@ -105,12 +104,12 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
         type: 'success',
         message: t('editDone', { ns: 'app' }),
       })
-      invalidateAppDetail(appId as string)
+      // invalidateAppDetail(appId as string)
     }
     catch {
       notify({ type: 'error', message: t('editFailed', { ns: 'app' }) })
     }
-  }, [appDetail, notify, invalidateAppDetail, appId, t])
+  }, [appDetail, notify, appId, t])
 
   const onCopy: DuplicateAppModalProps['onConfirm'] = async ({ name, icon_type, icon, icon_background }) => {
     if (!appDetail)

@@ -1,7 +1,9 @@
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
-import type { App, AppSSO } from '@/types/app'
+import type { App, AppIconType, AppSSO } from '@/types/app'
+import { cloneDeep } from 'es-toolkit/compat'
 import { shallow } from 'zustand/shallow'
 import { createWithEqualityFn } from 'zustand/traditional'
+import { updateAppInfo } from '@/service/apps'
 import { get as serviceGet } from '@/service/base'
 
 type AppDetail = App & Partial<AppSSO>
@@ -81,6 +83,46 @@ async function fetchAppDetail(appID: string | undefined) {
   return appDetail
 }
 
+async function updateAppDetail(updatedDetail: {
+  appID: string
+  name: string
+  icon_type: AppIconType
+  icon: string
+  icon_background?: string
+  description: string
+  use_icon_as_answer_icon?: boolean
+  max_active_requests?: number | null
+}) {
+  const appID = updatedDetail.appID
+  const currentDetails = useAppStore.getState().appDetails || {}
+  const currentDetail = cloneDeep(currentDetails[appID])
+  if (!currentDetail)
+    return
+
+  set(state => ({
+    appDetails: {
+      ...state.appDetails,
+      [appID]: {
+        ...currentDetail,
+        ...updatedDetail,
+      },
+    },
+  }))
+
+  return updateAppInfo({
+    ...updatedDetail,
+    appID,
+  }).catch(() => {
+    set(state => ({
+      appDetails: {
+        ...state.appDetails,
+        [appID]: currentDetail,
+      },
+    }))
+  })
+}
+
 export const appStoreActions = {
   fetchAppDetail,
+  updateAppDetail,
 }
