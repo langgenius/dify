@@ -3,6 +3,7 @@ from io import BytesIO
 
 from sqlalchemy.orm import Session
 
+from core.app_assets.paths import AssetPaths
 from core.virtual_environment.__base.helpers import execute, with_connection
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 from extensions.ext_database import db
@@ -26,7 +27,7 @@ class AppAssetsInitializer(SandboxInitializer):
             logger.debug("No published assets for app_id=%s, skipping", self._app_id)
             return
 
-        zip_key = AppAssets.get_published_storage_key(self._tenant_id, self._app_id, published.id)
+        zip_key = AssetPaths.published_zip(self._tenant_id, self._app_id, published.id)
         try:
             zip_data = storage.load_once(zip_key)
         except Exception:

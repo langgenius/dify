@@ -46,13 +46,5 @@ class AppAssets(Base):
     def asset_tree(self, value: AppAssetFileTree) -> None:
         self._asset_tree = value.model_dump_json()
 
-    @staticmethod
-    def get_storage_key(tenant_id: str, app_id: str, node_id: str) -> str:
-        return f"app_assets/{tenant_id}/{app_id}/draft/{node_id}"
-
-    @staticmethod
-    def get_published_storage_key(tenant_id: str, app_id: str, assets_id: str) -> str:
-        return f"app_assets/{tenant_id}/{app_id}/published/{assets_id}.zip"
-
     def __repr__(self) -> str:
         return f"<AppAssets(id={self.id}, app_id={self.app_id}, version={self.version})>"

@@ -14,6 +14,12 @@ from core.app.entities.app_asset_entities import (
     TreeParentNotFoundError,
     TreePathConflictError,
 )
+from core.app_assets.packager.zip_packager import ZipPackager
+from core.app_assets.parser.asset_parser import AssetParser
+from core.app_assets.parser.skill_parser import SkillAssetParser
+from core.app_assets.paths import AssetPaths
+from core.app_assets.skill import SkillAsset
+from core.skill.skill_manager import SkillManager
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from extensions.storage.file_presign_storage import FilePresignStorage
@@ -112,7 +118,7 @@ class AppAssetService:
             except TreePathConflictError as e:
                 raise AppAssetPathConflictError(str(e)) from e
 
-            storage_key = AppAssets.get_storage_key(app_model.tenant_id, app_model.id, node_id)
+            storage_key = AssetPaths.draft_file(app_model.tenant_id, app_model.id, node_id)
             storage.save(storage_key, content)
 
             assets.asset_tree = tree
@@ -135,7 +141,7 @@ class AppAssetService:
                 max_size_mb = AppAssetService.MAX_PREVIEW_CONTENT_SIZE / 1024 / 1024
                 raise AppAssetNodeTooLargeError(f"File node {node_id} size exceeded the limit: {max_size_mb} MB")
 
-            storage_key = AppAssets.get_storage_key(app_model.tenant_id, app_model.id, node_id)
+            storage_key = AssetPaths.draft_file(app_model.tenant_id, app_model.id, node_id)
             return storage.load_once(storage_key)
 
     @staticmethod
@@ -156,7 +162,7 @@ class AppAssetService:
             except TreeNodeNotFoundError as e:
                 raise AppAssetNodeNotFoundError(str(e)) from e
 
-            storage_key = AppAssets.get_storage_key(app_model.tenant_id, app_model.id, node_id)
+            storage_key = AssetPaths.draft_file(app_model.tenant_id, app_model.id, node_id)
             storage.save(storage_key, content)
 
             assets.asset_tree = tree
@@ -249,7 +255,7 @@ class AppAssetService:
                 raise AppAssetNodeNotFoundError(str(e)) from e
 
             for nid in removed_ids:
-                storage_key = AppAssets.get_storage_key(app_model.tenant_id, app_model.id, nid)
+                storage_key = AssetPaths.draft_file(app_model.tenant_id, app_model.id, nid)
                 try:
                     storage.delete(storage_key)
                 except Exception:
@@ -261,23 +267,18 @@ class AppAssetService:
 
     @staticmethod
     def publish(app_model: App, account_id: str) -> AppAssets:
+        tenant_id = app_model.tenant_id
+        app_id = app_model.id
         with Session(db.engine, expire_on_commit=False) as session:
             assets = AppAssetService.get_or_create_assets(session, app_model, account_id)
             tree = assets.asset_tree
 
-            # TODO: use sandbox virtual environment to create zip file
-            zip_buffer = io.BytesIO()
-            with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
-                for file_node in tree.walk_files():
-                    storage_key = AppAssets.get_storage_key(app_model.tenant_id, app_model.id, file_node.id)
-                    content = storage.load_once(storage_key)
-                    archive_path = tree.get_path(file_node.id).lstrip("/")
-                    zf.writestr(archive_path, content)
+            publish_id = str(uuid4())
 
             published = AppAssets(
-                id=str(uuid4()),
-                tenant_id=app_model.tenant_id,
-                app_id=app_model.id,
+                id=publish_id,
+                tenant_id=tenant_id,
+                app_id=app_id,
                 version=str(naive_utc_now()),
                 created_by=account_id,
             )
@@ -285,8 +286,30 @@ class AppAssetService:
             session.add(published)
             session.flush()
 
-            zip_key = AppAssets.get_published_storage_key(app_model.tenant_id, app_model.id, published.id)
-            storage.save(zip_key, zip_buffer.getvalue())
+            parser = AssetParser(tree, tenant_id, app_id, storage)
+            parser.register(
+                "md",
+                SkillAssetParser(tenant_id, app_id, publish_id, storage),
+            )
+
+            assets = parser.parse()
+            manifest = SkillManager.generate_tool_manifest(
+                assets=[asset for asset in assets if isinstance(asset, SkillAsset)]
+            )
+
+            SkillManager.save_tool_manifest(
+                tenant_id,
+                app_id,
+                publish_id,
+                manifest,
+            )
+
+            # TODO: use VM zip packager and make this process async
+            packager = ZipPackager(storage)
+
+            zip_bytes = packager.package(assets)
+            zip_key = AssetPaths.published_zip(tenant_id, app_id, publish_id)
+            storage.save(zip_key, zip_bytes)
 
             session.commit()
 
@@ -311,7 +334,7 @@ class AppAssetService:
             if not published or published.version == AppAssets.VERSION_DRAFT:
                 raise AppAssetNodeNotFoundError(f"Published version {assets_id} not found")
 
-            zip_key = AppAssets.get_published_storage_key(app_model.tenant_id, app_model.id, assets_id)
+            zip_key = AssetPaths.published_zip(app_model.tenant_id, app_model.id, assets_id)
             zip_data = storage.load_once(zip_key)
 
             archive_path = file_path.lstrip("/")
@@ -335,6 +358,6 @@ class AppAssetService:
             if not node or node.node_type != AssetNodeType.FILE:
                 raise AppAssetNodeNotFoundError(f"File node {node_id} not found")
 
-            storage_key = AppAssets.get_storage_key(app_model.tenant_id, app_model.id, node_id)
+            storage_key = AssetPaths.draft_file(app_model.tenant_id, app_model.id, node_id)
             presign_storage = FilePresignStorage(storage.storage_runner)
             return presign_storage.get_download_url(storage_key, expires_in)
