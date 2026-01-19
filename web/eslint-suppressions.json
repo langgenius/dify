@@ -5098,10 +5098,5 @@
     "ts/no-explicit-any": {
       "count": 2
     }
-  },
-  "vitest.config.ts": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
   }
 }
