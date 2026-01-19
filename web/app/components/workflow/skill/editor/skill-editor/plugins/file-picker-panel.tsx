@@ -13,7 +13,7 @@ import Loading from '@/app/components/base/loading'
 import TreeGuideLines from '@/app/components/workflow/skill/file-tree/tree-guide-lines'
 import { useSkillAssetTreeData } from '@/app/components/workflow/skill/hooks/use-skill-asset-tree'
 import { getFileIconType } from '@/app/components/workflow/skill/utils/file-utils'
-import { toOpensObject } from '@/app/components/workflow/skill/utils/tree-utils'
+import { findNodeById, getAncestorIds, toOpensObject } from '@/app/components/workflow/skill/utils/tree-utils'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
 
@@ -109,9 +109,15 @@ FilePickerTreeNode.displayName = 'FilePickerTreeNode'
 
 type FilePickerPanelProps = {
   onSelectNode: (node: TreeNodeData) => void
+  focusNodeId?: string
+  syncExpandedState?: boolean
 }
 
-const FilePickerPanel: FC<FilePickerPanelProps> = ({ onSelectNode }) => {
+const FilePickerPanel: FC<FilePickerPanelProps> = ({
+  onSelectNode,
+  focusNodeId,
+  syncExpandedState = true,
+}) => {
   const { t } = useTranslation('workflow')
   const { data: treeData, isLoading, error } = useSkillAssetTreeData()
   const expandedFolderIds = useStore(s => s.expandedFolderIds)
@@ -120,7 +126,19 @@ const FilePickerPanel: FC<FilePickerPanelProps> = ({ onSelectNode }) => {
   const containerSize = useSize(containerRef)
 
   const treeNodes = useMemo(() => treeData?.children || [], [treeData?.children])
-  const initialOpenState = useMemo(() => toOpensObject(expandedFolderIds), [expandedFolderIds])
+  const initialOpenState = useMemo(() => {
+    const nextState = syncExpandedState ? toOpensObject(expandedFolderIds) : {}
+    if (!focusNodeId || treeNodes.length === 0)
+      return nextState
+
+    const focusNode = findNodeById(treeNodes, focusNodeId)
+    const ancestorIds = getAncestorIds(focusNodeId, treeNodes)
+    ancestorIds.forEach(id => (nextState[id] = true))
+    if (focusNode?.node_type === 'folder')
+      nextState[focusNode.id] = true
+
+    return nextState
+  }, [expandedFolderIds, focusNodeId, syncExpandedState, treeNodes])
 
   const renderNode = useCallback((props: NodeRendererProps<TreeNodeData>) => (
     <FilePickerTreeNode {...props} onSelectNode={onSelectNode} />
@@ -171,7 +189,8 @@ const FilePickerPanel: FC<FilePickerPanelProps> = ({ onSelectNode }) => {
             openByDefault={false}
             initialOpenState={initialOpenState}
             onToggle={(id) => {
-              storeApi.getState().toggleFolder(id)
+              if (syncExpandedState)
+                storeApi.getState().toggleFolder(id)
             }}
             disableDrag
             disableDrop

@@ -80,7 +80,11 @@ const FileReferenceBlock: FC<FileReferenceBlockProps> = ({ nodeKey, resourceId }
         </span>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-[1000]">
-        <FilePickerPanel onSelectNode={handleSelect} />
+        <FilePickerPanel
+          onSelectNode={handleSelect}
+          focusNodeId={resourceId}
+          syncExpandedState={false}
+        />
       </PortalToFollowElemContent>
     </PortalToFollowElem>
   )
