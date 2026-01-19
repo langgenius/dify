@@ -250,6 +250,9 @@ importers:
       nuqs:
         specifier: ^2.8.6
         version: 2.8.6(next@15.5.9(@babel/core@7.28.5)(@playwright/test@1.57.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.95.0))(react@19.2.3)
+      papaparse:
+        specifier: ^5.5.3
+        version: 5.5.3
       pinyin-pro:
         specifier: ^3.27.0
         version: 3.27.0
@@ -443,6 +446,9 @@ importers:
       '@types/node':
         specifier: 18.15.0
         version: 18.15.0
+      '@types/papaparse':
+        specifier: ^5.5.2
+        version: 5.5.2
       '@types/qs':
         specifier: ^6.14.0
         version: 6.14.0
@@ -530,9 +536,6 @@ importers:
       nock:
         specifier: ^14.0.10
         version: 14.0.10
-      papaparse:
-        specifier: ^5.5.3
-        version: 5.5.3
       postcss:
         specifier: ^8.5.6
         version: 8.5.6
@@ -3655,8 +3658,8 @@ packages:
   '@types/node@20.19.28':
     resolution: {integrity: sha512-VyKBr25BuFDzBFCK5sUM6ZXiWfqgCTwTAOK8qzGV/m9FCirXYDlmczJ+d5dXBAQALGCdRRdbteKYfJ84NGEusw==}
 
-  '@types/papaparse@5.5.1':
-    resolution: {integrity: sha512-esEO+VISsLIyE+JZBmb89NzsYYbpwV8lmv2rPo6oX5y9KhBaIP7hhHgjuTut54qjdKVMufTEcrh5fUl9+58huw==}
+  '@types/papaparse@5.5.2':
+    resolution: {integrity: sha512-gFnFp/JMzLHCwRf7tQHrNnfhN4eYBVYYI897CGX4MY1tzY9l2aLkVyx2IlKZ/SAqDbB3I1AOZW5gTMGGsqWliA==}
 
   '@types/parse-json@4.0.2':
     resolution: {integrity: sha512-dISoDXWWQwUquiKsyZ4Ng+HX2KsPL7LyHKHQwgGFEA3IaKac4Obd+h2a/a6waisAoepJlBcx9paWqjA8/HVjCw==}
@@ -12087,7 +12090,7 @@ snapshots:
       undici-types: 6.21.0
     optional: true
 
-  '@types/papaparse@5.5.1':
+  '@types/papaparse@5.5.2':
     dependencies:
       '@types/node': 18.15.0
 
@@ -16361,7 +16364,7 @@ snapshots:
 
   react-papaparse@4.4.0:
     dependencies:
-      '@types/papaparse': 5.5.1
+      '@types/papaparse': 5.5.2
       papaparse: 5.5.3
 
   react-pdf-highlighter@8.0.0-rc.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3):
