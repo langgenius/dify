@@ -366,3 +366,48 @@ jobs:
           path: web/coverage
           retention-days: 30
           if-no-files-found: error
+
+  web-build:
+    name: Web Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./web
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Check changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v47
+        with:
+          files: |
+            web/**
+            .github/workflows/web-tests.yml
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
+          run_install: false
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@v6
+        if: steps.changed-files.outputs.any_changed == 'true'
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: ./web/pnpm-lock.yaml
+
+      - name: Web dependencies
+        if: steps.changed-files.outputs.any_changed == 'true'
+        working-directory: ./web
+        run: pnpm install --frozen-lockfile
+
+      - name: Web build check
+        if: steps.changed-files.outputs.any_changed == 'true'
+        working-directory: ./web
+        run: pnpm run build
