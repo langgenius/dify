@@ -1,7 +1,9 @@
 import base64
+import datetime
 import json
 import logging
 import secrets
+import time
 from typing import Any
 
 import click
@@ -34,7 +36,7 @@ from libs.rsa import generate_key_pair
 from models import Tenant
 from models.dataset import Dataset, DatasetCollectionBinding, DatasetMetadata, DatasetMetadataBinding, DocumentSegment
 from models.dataset import Document as DatasetDocument
-from models.model import Account, App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation, UploadFile
+from models.model import App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation, UploadFile
 from models.oauth import DatasourceOauthParamConfig, DatasourceProvider
 from models.provider import Provider, ProviderModel
 from models.provider_ids import DatasourceProviderID, ToolProviderID
@@ -45,6 +47,9 @@ from services.clear_free_plan_tenant_expired_logs import ClearFreePlanTenantExpi
 from services.plugin.data_migration import PluginDataMigration
 from services.plugin.plugin_migration import PluginMigration
 from services.plugin.plugin_service import PluginService
+from services.retention.conversation.messages_clean_policy import create_message_clean_policy
+from services.retention.conversation.messages_clean_service import MessagesCleanService
+from services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs import WorkflowRunCleanup
 from tasks.remove_app_and_related_data_task import delete_draft_variables_batch
 
 logger = logging.getLogger(__name__)
@@ -62,8 +67,10 @@ def reset_password(email, new_password, password_confirm):
     if str(new_password).strip() != str(password_confirm).strip():
         click.echo(click.style("Passwords do not match.", fg="red"))
         return
+    normalized_email = email.strip().lower()
+
     with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
-        account = session.query(Account).where(Account.email == email).one_or_none()
+        account = AccountService.get_account_by_email_with_case_fallback(email.strip(), session=session)
 
         if not account:
             click.echo(click.style(f"Account not found for email: {email}", fg="red"))
@@ -84,7 +91,7 @@ def reset_password(email, new_password, password_confirm):
         base64_password_hashed = base64.b64encode(password_hashed).decode()
         account.password = base64_password_hashed
         account.password_salt = base64_salt
-        AccountService.reset_login_error_rate_limit(email)
+        AccountService.reset_login_error_rate_limit(normalized_email)
         click.echo(click.style("Password reset successfully.", fg="green"))
 
 
@@ -100,20 +107,22 @@ def reset_email(email, new_email, email_confirm):
     if str(new_email).strip() != str(email_confirm).strip():
         click.echo(click.style("New emails do not match.", fg="red"))
         return
+    normalized_new_email = new_email.strip().lower()
+
     with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
-        account = session.query(Account).where(Account.email == email).one_or_none()
+        account = AccountService.get_account_by_email_with_case_fallback(email.strip(), session=session)
 
         if not account:
             click.echo(click.style(f"Account not found for email: {email}", fg="red"))
             return
 
         try:
-            email_validate(new_email)
+            email_validate(normalized_new_email)
         except:
             click.echo(click.style(f"Invalid email: {new_email}", fg="red"))
             return
 
-        account.email = new_email
+        account.email = normalized_new_email
         click.echo(click.style("Email updated successfully.", fg="green"))
 
 
@@ -658,7 +667,7 @@ def create_tenant(email: str, language: str | None = None, name: str | None = No
         return
 
     # Create account
-    email = email.strip()
+    email = email.strip().lower()
 
     if "@" not in email:
         click.echo(click.style("Invalid email address.", fg="red"))
@@ -850,6 +859,95 @@ def clear_free_plan_tenant_expired_logs(days: int, batch: int, tenant_ids: list[
     ClearFreePlanTenantExpiredLogs.process(days, batch, tenant_ids)
 
     click.echo(click.style("Clear free plan tenant expired logs completed.", fg="green"))
+
+
+@click.command("clean-workflow-runs", help="Clean expired workflow runs and related data for free tenants.")
+@click.option(
+    "--before-days",
+    "--days",
+    default=30,
+    show_default=True,
+    type=click.IntRange(min=0),
+    help="Delete workflow runs created before N days ago.",
+)
+@click.option("--batch-size", default=200, show_default=True, help="Batch size for selecting workflow runs.")
+@click.option(
+    "--from-days-ago",
+    default=None,
+    type=click.IntRange(min=0),
+    help="Lower bound in days ago (older). Must be paired with --to-days-ago.",
+)
+@click.option(
+    "--to-days-ago",
+    default=None,
+    type=click.IntRange(min=0),
+    help="Upper bound in days ago (newer). Must be paired with --from-days-ago.",
+)
+@click.option(
+    "--start-from",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    default=None,
+    help="Optional lower bound (inclusive) for created_at; must be paired with --end-before.",
+)
+@click.option(
+    "--end-before",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    default=None,
+    help="Optional upper bound (exclusive) for created_at; must be paired with --start-from.",
+)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Preview cleanup results without deleting any workflow run data.",
+)
+def clean_workflow_runs(
+    before_days: int,
+    batch_size: int,
+    from_days_ago: int | None,
+    to_days_ago: int | None,
+    start_from: datetime.datetime | None,
+    end_before: datetime.datetime | None,
+    dry_run: bool,
+):
+    """
+    Clean workflow runs and related workflow data for free tenants.
+    """
+    if (start_from is None) ^ (end_before is None):
+        raise click.UsageError("--start-from and --end-before must be provided together.")
+
+    if (from_days_ago is None) ^ (to_days_ago is None):
+        raise click.UsageError("--from-days-ago and --to-days-ago must be provided together.")
+
+    if from_days_ago is not None and to_days_ago is not None:
+        if start_from or end_before:
+            raise click.UsageError("Choose either day offsets or explicit dates, not both.")
+        if from_days_ago <= to_days_ago:
+            raise click.UsageError("--from-days-ago must be greater than --to-days-ago.")
+        now = datetime.datetime.now()
+        start_from = now - datetime.timedelta(days=from_days_ago)
+        end_before = now - datetime.timedelta(days=to_days_ago)
+        before_days = 0
+
+    start_time = datetime.datetime.now(datetime.UTC)
+    click.echo(click.style(f"Starting workflow run cleanup at {start_time.isoformat()}.", fg="white"))
+
+    WorkflowRunCleanup(
+        days=before_days,
+        batch_size=batch_size,
+        start_from=start_from,
+        end_before=end_before,
+        dry_run=dry_run,
+    ).run()
+
+    end_time = datetime.datetime.now(datetime.UTC)
+    elapsed = end_time - start_time
+    click.echo(
+        click.style(
+            f"Workflow run cleanup completed. start={start_time.isoformat()} "
+            f"end={end_time.isoformat()} duration={elapsed}",
+            fg="green",
+        )
+    )
 
 
 @click.option("-f", "--force", is_flag=True, help="Skip user confirmation and force the command to execute.")
@@ -2111,3 +2209,79 @@ def migrate_oss(
             except Exception as e:
                 db.session.rollback()
                 click.echo(click.style(f"Failed to update DB storage_type: {str(e)}", fg="red"))
+
+
+@click.command("clean-expired-messages", help="Clean expired messages.")
+@click.option(
+    "--start-from",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    required=True,
+    help="Lower bound (inclusive) for created_at.",
+)
+@click.option(
+    "--end-before",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    required=True,
+    help="Upper bound (exclusive) for created_at.",
+)
+@click.option("--batch-size", default=1000, show_default=True, help="Batch size for selecting messages.")
+@click.option(
+    "--graceful-period",
+    default=21,
+    show_default=True,
+    help="Graceful period in days after subscription expiration, will be ignored when billing is disabled.",
+)
+@click.option("--dry-run", is_flag=True, default=False, help="Show messages logs would be cleaned without deleting")
+def clean_expired_messages(
+    batch_size: int,
+    graceful_period: int,
+    start_from: datetime.datetime,
+    end_before: datetime.datetime,
+    dry_run: bool,
+):
+    """
+    Clean expired messages and related data for tenants based on clean policy.
+    """
+    click.echo(click.style("clean_messages: start clean messages.", fg="green"))
+
+    start_at = time.perf_counter()
+
+    try:
+        # Create policy based on billing configuration
+        # NOTE: graceful_period will be ignored when billing is disabled.
+        policy = create_message_clean_policy(graceful_period_days=graceful_period)
+
+        # Create and run the cleanup service
+        service = MessagesCleanService.from_time_range(
+            policy=policy,
+            start_from=start_from,
+            end_before=end_before,
+            batch_size=batch_size,
+            dry_run=dry_run,
+        )
+        stats = service.run()
+
+        end_at = time.perf_counter()
+        click.echo(
+            click.style(
+                f"clean_messages: completed successfully\n"
+                f"  - Latency: {end_at - start_at:.2f}s\n"
+                f"  - Batches processed: {stats['batches']}\n"
+                f"  - Total messages scanned: {stats['total_messages']}\n"
+                f"  - Messages filtered: {stats['filtered_messages']}\n"
+                f"  - Messages deleted: {stats['total_deleted']}",
+                fg="green",
+            )
+        )
+    except Exception as e:
+        end_at = time.perf_counter()
+        logger.exception("clean_messages failed")
+        click.echo(
+            click.style(
+                f"clean_messages: failed after {end_at - start_at:.2f}s - {str(e)}",
+                fg="red",
+            )
+        )
+        raise
+
+    click.echo(click.style("messages cleanup completed.", fg="green"))

@@ -10,7 +10,7 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { useMarketplaceContext } from '../context'
+import { useMarketplaceSort } from '../atoms'
 
 const SortDropdown = () => {
   const { t } = useTranslation()
@@ -36,8 +36,7 @@ const SortDropdown = () => {
       text: t('marketplace.sortOption.firstReleased', { ns: 'plugin' }),
     },
   ]
-  const sort = useMarketplaceContext(v => v.sort)
-  const handleSortChange = useMarketplaceContext(v => v.handleSortChange)
+  const [sort, handleSortChange] = useMarketplaceSort()
   const [open, setOpen] = useState(false)
   const selectedOption = options.find(option => option.value === sort.sortBy && option.order === sort.sortOrder) ?? options[0]
 

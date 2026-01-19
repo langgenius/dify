@@ -13,7 +13,6 @@ type ListProps = {
   showInstallButton?: boolean
   cardContainerClassName?: string
   cardRender?: (plugin: Plugin) => React.JSX.Element | null
-  onMoreClick?: () => void
   emptyClassName?: string
 }
 const List = ({
@@ -23,7 +22,6 @@ const List = ({
   showInstallButton,
   cardContainerClassName,
   cardRender,
-  onMoreClick,
   emptyClassName,
 }: ListProps) => {
   return (
@@ -36,7 +34,6 @@ const List = ({
             showInstallButton={showInstallButton}
             cardContainerClassName={cardContainerClassName}
             cardRender={cardRender}
-            onMoreClick={onMoreClick}
           />
         )
       }
