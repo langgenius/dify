@@ -14,7 +14,6 @@ import Divider from '@/app/components/base/divider'
 import Loading from '@/app/components/base/loading'
 import List from '@/app/components/plugins/marketplace/list'
 import ProviderCard from '@/app/components/plugins/provider-card'
-import { getLocaleOnClient } from '@/i18n-config'
 import { cn } from '@/utils/classnames'
 import { getMarketplaceUrl } from '@/utils/var'
 import {
@@ -32,7 +31,6 @@ const InstallFromMarketplace = ({
   const { t } = useTranslation()
   const { theme } = useTheme()
   const [collapse, setCollapse] = useState(false)
-  const locale = getLocaleOnClient()
   const {
     plugins: allPlugins,
     isLoading: isAllPluginsLoading,
@@ -69,7 +67,6 @@ const InstallFromMarketplace = ({
             marketplaceCollectionPluginsMap={{}}
             plugins={allPlugins}
             showInstallButton
-            locale={locale}
             cardContainerClassName="grid grid-cols-2 gap-2"
             cardRender={cardRender}
             emptyClassName="h-auto"

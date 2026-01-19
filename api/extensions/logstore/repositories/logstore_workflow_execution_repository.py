@@ -10,6 +10,7 @@ from sqlalchemy.orm import sessionmaker
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.workflow.entities import WorkflowExecution
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
+from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from extensions.logstore.aliyun_logstore import AliyunLogStore
 from libs.helper import extract_tenant_id
 from models import (
@@ -67,7 +68,12 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
 
         # Control flag for dual-write (write to both LogStore and SQL database)
         # Set to True to enable dual-write for safe migration, False to use LogStore only
-        self._enable_dual_write = os.environ.get("LOGSTORE_DUAL_WRITE_ENABLED", "true").lower() == "true"
+        self._enable_dual_write = os.environ.get("LOGSTORE_DUAL_WRITE_ENABLED", "false").lower() == "true"
+
+        # Control flag for whether to write the `graph` field to LogStore.
+        # If LOGSTORE_ENABLE_PUT_GRAPH_FIELD is "true", write the full `graph` field;
+        # otherwise write an empty {} instead. Defaults to writing the `graph` field.
+        self._enable_put_graph_field = os.environ.get("LOGSTORE_ENABLE_PUT_GRAPH_FIELD", "true").lower() == "true"
 
     def _to_logstore_model(self, domain_model: WorkflowExecution) -> list[tuple[str, str]]:
         """
@@ -96,6 +102,9 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
         # Generate log_version as nanosecond timestamp for record versioning
         log_version = str(time.time_ns())
 
+        # Use WorkflowRuntimeTypeConverter to handle complex types (Segment, File, etc.)
+        json_converter = WorkflowRuntimeTypeConverter()
+
         logstore_model = [
             ("id", domain_model.id_),
             ("log_version", log_version),  # Add log_version field for append-only writes
@@ -108,9 +117,24 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
             ),
             ("type", domain_model.workflow_type.value),
             ("version", domain_model.workflow_version),
-            ("graph", json.dumps(domain_model.graph, ensure_ascii=False) if domain_model.graph else "{}"),
-            ("inputs", json.dumps(domain_model.inputs, ensure_ascii=False) if domain_model.inputs else "{}"),
-            ("outputs", json.dumps(domain_model.outputs, ensure_ascii=False) if domain_model.outputs else "{}"),
+            (
+                "graph",
+                json.dumps(json_converter.to_json_encodable(domain_model.graph), ensure_ascii=False)
+                if domain_model.graph and self._enable_put_graph_field
+                else "{}",
+            ),
+            (
+                "inputs",
+                json.dumps(json_converter.to_json_encodable(domain_model.inputs), ensure_ascii=False)
+                if domain_model.inputs
+                else "{}",
+            ),
+            (
+                "outputs",
+                json.dumps(json_converter.to_json_encodable(domain_model.outputs), ensure_ascii=False)
+                if domain_model.outputs
+                else "{}",
+            ),
             ("status", domain_model.status.value),
             ("error_message", domain_model.error_message or ""),
             ("total_tokens", str(domain_model.total_tokens)),

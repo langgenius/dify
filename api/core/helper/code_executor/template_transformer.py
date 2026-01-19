@@ -76,7 +76,7 @@ class TemplateTransformer(ABC):
         Post-process the result to convert scientific notation strings back to numbers
         """
 
-        def convert_scientific_notation(value):
+        def convert_scientific_notation(value: Any) -> Any:
             if isinstance(value, str):
                 # Check if the string looks like scientific notation
                 if re.match(r"^-?\d+\.?\d*e[+-]\d+$", value, re.IGNORECASE):
@@ -90,7 +90,7 @@ class TemplateTransformer(ABC):
                 return [convert_scientific_notation(v) for v in value]
             return value
 
-        return convert_scientific_notation(result)  # type: ignore[no-any-return]
+        return convert_scientific_notation(result)
 
     @classmethod
     @abstractmethod

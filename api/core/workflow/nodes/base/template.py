@@ -4,6 +4,8 @@ This module provides a unified template structure for both Answer and End nodes,
 similar to SegmentGroup but focused on template representation without values.
 """
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -58,7 +60,7 @@ class Template:
     segments: list[TemplateSegmentUnion]
 
     @classmethod
-    def from_answer_template(cls, template_str: str) -> "Template":
+    def from_answer_template(cls, template_str: str) -> Template:
         """Create a Template from an Answer node template string.
 
         Example:
@@ -107,7 +109,7 @@ class Template:
         return cls(segments=segments)
 
     @classmethod
-    def from_end_outputs(cls, outputs_config: list[dict[str, Any]]) -> "Template":
+    def from_end_outputs(cls, outputs_config: list[dict[str, Any]]) -> Template:
         """Create a Template from an End node outputs configuration.
 
         End nodes are treated as templates of concatenated variables with newlines.

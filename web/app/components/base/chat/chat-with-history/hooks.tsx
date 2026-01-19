@@ -25,7 +25,7 @@ import { useToastContext } from '@/app/components/base/toast'
 import { InputVarType } from '@/app/components/workflow/types'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
-import { changeLanguage } from '@/i18n-config/i18next-config'
+import { changeLanguage } from '@/i18n-config/client'
 import {
   delConversation,
   pinConversation,

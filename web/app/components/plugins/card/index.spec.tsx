@@ -503,31 +503,6 @@ describe('Card', () => {
   })
 
   // ================================
-  // Locale Tests
-  // ================================
-  describe('Locale', () => {
-    it('should use locale from props when provided', () => {
-      const plugin = createMockPlugin({
-        label: { 'en-US': 'English Title', 'zh-Hans': '中文标题' },
-      })
-
-      render(<Card payload={plugin} locale="zh-Hans" />)
-
-      expect(screen.getByText('中文标题')).toBeInTheDocument()
-    })
-
-    it('should fallback to default locale when prop locale not found', () => {
-      const plugin = createMockPlugin({
-        label: { 'en-US': 'English Title' },
-      })
-
-      render(<Card payload={plugin} locale="fr-FR" />)
-
-      expect(screen.getByText('English Title')).toBeInTheDocument()
-    })
-  })
-
-  // ================================
   // Memoization Tests
   // ================================
   describe('Memoization', () => {
@@ -921,6 +896,58 @@ describe('Icon', () => {
 
       const iconDiv = container.firstChild as HTMLElement
       expect(iconDiv).toHaveStyle({ backgroundImage: 'url(/icon?name=test&size=large)' })
+    })
+
+    it('should not render status indicators when src is object with installed=true', () => {
+      render(<Icon src={{ content: '🎉', background: '#fff' }} installed={true} />)
+
+      // Status indicators should not render for object src
+      expect(screen.queryByTestId('ri-check-line')).not.toBeInTheDocument()
+    })
+
+    it('should not render status indicators when src is object with installFailed=true', () => {
+      render(<Icon src={{ content: '🎉', background: '#fff' }} installFailed={true} />)
+
+      // Status indicators should not render for object src
+      expect(screen.queryByTestId('ri-close-line')).not.toBeInTheDocument()
+    })
+
+    it('should render object src with all size variants', () => {
+      const sizes: Array<'xs' | 'tiny' | 'small' | 'medium' | 'large'> = ['xs', 'tiny', 'small', 'medium', 'large']
+
+      sizes.forEach((size) => {
+        const { unmount } = render(<Icon src={{ content: '🔗', background: '#fff' }} size={size} />)
+        expect(screen.getByTestId('app-icon')).toHaveAttribute('data-size', size)
+        unmount()
+      })
+    })
+
+    it('should render object src with custom className', () => {
+      const { container } = render(
+        <Icon src={{ content: '🎉', background: '#fff' }} className="custom-object-icon" />,
+      )
+
+      expect(container.querySelector('.custom-object-icon')).toBeInTheDocument()
+    })
+
+    it('should pass correct props to AppIcon for object src', () => {
+      render(<Icon src={{ content: '😀', background: '#123456' }} />)
+
+      const appIcon = screen.getByTestId('app-icon')
+      expect(appIcon).toHaveAttribute('data-icon', '😀')
+      expect(appIcon).toHaveAttribute('data-background', '#123456')
+      expect(appIcon).toHaveAttribute('data-icon-type', 'emoji')
+    })
+
+    it('should render inner icon only when shouldUseMcpIcon returns true', () => {
+      // Test with MCP icon content
+      const { unmount } = render(<Icon src={{ content: '🔗', background: '#fff' }} />)
+      expect(screen.getByTestId('inner-icon')).toBeInTheDocument()
+      unmount()
+
+      // Test without MCP icon content
+      render(<Icon src={{ content: '🎉', background: '#fff' }} />)
+      expect(screen.queryByTestId('inner-icon')).not.toBeInTheDocument()
     })
   })
 })

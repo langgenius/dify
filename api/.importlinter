@@ -3,9 +3,11 @@ root_packages =
     core
     configs
     controllers
+    extensions
     models
     tasks
     services
+include_external_packages = True
 
 [importlinter:contract:workflow]
 name = Workflow
@@ -32,6 +34,28 @@ ignore_imports =
     core.workflow.nodes.loop.loop_node -> core.workflow.graph_engine
     core.workflow.nodes.loop.loop_node -> core.workflow.graph
     core.workflow.nodes.loop.loop_node -> core.workflow.graph_engine.command_channels
+
+[importlinter:contract:workflow-infrastructure-dependencies]
+name = Workflow Infrastructure Dependencies
+type = forbidden
+source_modules =
+    core.workflow
+forbidden_modules =
+    extensions.ext_database
+    extensions.ext_redis
+allow_indirect_imports = True
+ignore_imports =
+    core.workflow.nodes.agent.agent_node -> extensions.ext_database
+    core.workflow.nodes.datasource.datasource_node -> extensions.ext_database
+    core.workflow.nodes.knowledge_index.knowledge_index_node -> extensions.ext_database
+    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> extensions.ext_database
+    core.workflow.nodes.llm.file_saver -> extensions.ext_database
+    core.workflow.nodes.llm.llm_utils -> extensions.ext_database
+    core.workflow.nodes.llm.node -> extensions.ext_database
+    core.workflow.nodes.tool.tool_node -> extensions.ext_database
+    core.workflow.graph_engine.command_channels.redis_channel -> extensions.ext_redis
+    core.workflow.graph_engine.manager -> extensions.ext_redis
+    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> extensions.ext_redis
 
 [importlinter:contract:rsc]
 name = RSC
