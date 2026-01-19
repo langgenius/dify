@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 
 class AppAssetService:
-    MAX_PREVIEW_CONTENT_SIZE = 5 * 1024 * 1024  # 5MB
+    MAX_PREVIEW_CONTENT_SIZE = 1 * 1024 * 1024  # 1MB
 
     @staticmethod
     def get_or_create_assets(session: Session, app_model: App, account_id: str) -> AppAssets:
