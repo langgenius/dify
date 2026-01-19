@@ -153,7 +153,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
       placeholder,
       options,
     } = schema
-    const canUseAuto = type !== FormTypeEnum.modelSelector
+    const canUseAuto = ![FormTypeEnum.modelSelector, FormTypeEnum.appSelector].includes(type)
     const auto = canUseAuto ? value[variable]?.auto : 0
     const tooltipContent = (tooltip && (
       <Tooltip
