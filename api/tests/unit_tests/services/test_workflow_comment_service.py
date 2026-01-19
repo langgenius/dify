@@ -1,4 +1,4 @@
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from werkzeug.exceptions import Forbidden, NotFound
@@ -10,10 +10,13 @@ from services.workflow_comment_service import WorkflowCommentService
 @pytest.fixture
 def mock_session(monkeypatch: pytest.MonkeyPatch) -> Mock:
     session = Mock()
-    context_manager = Mock()
+    context_manager = MagicMock()
     context_manager.__enter__.return_value = session
     context_manager.__exit__.return_value = False
+    mock_db = MagicMock()
+    mock_db.engine = Mock()
     monkeypatch.setattr(service_module, "Session", Mock(return_value=context_manager))
+    monkeypatch.setattr(service_module, "db", mock_db)
     return session
 
 
@@ -92,10 +95,7 @@ class TestWorkflowCommentService:
         existing_mentions = [Mock(), Mock()]
         mock_session.scalars.return_value = _mock_scalars(existing_mentions)
 
-        with (
-            patch.object(service_module, "WorkflowCommentMention", return_value=Mock()),
-            patch.object(service_module, "uuid_value", side_effect=[True, False]),
-        ):
+        with patch.object(service_module, "uuid_value", side_effect=[True, False]):
             result = WorkflowCommentService.update_comment(
                 tenant_id="tenant-1",
                 app_id="app-1",
@@ -211,10 +211,7 @@ class TestWorkflowCommentService:
         mock_session.get.return_value = reply
         mock_session.scalars.return_value = _mock_scalars([Mock()])
 
-        with (
-            patch.object(service_module, "WorkflowCommentMention", return_value=Mock()),
-            patch.object(service_module, "uuid_value", side_effect=[True, False]),
-        ):
+        with patch.object(service_module, "uuid_value", side_effect=[True, False]):
             result = WorkflowCommentService.update_reply(
                 reply_id="reply-1",
                 user_id="owner",
