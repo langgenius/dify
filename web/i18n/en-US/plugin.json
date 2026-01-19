@@ -127,6 +127,7 @@
   "detailPanel.toolSelector.paramsTip1": "Controls LLM inference parameters.",
   "detailPanel.toolSelector.paramsTip2": "When 'Auto' is off, the default value is used.",
   "detailPanel.toolSelector.placeholder": "Select a tool...",
+  "detailPanel.toolSelector.reasoningConfig": "REASONING CONFIG",
   "detailPanel.toolSelector.settings": "USER SETTINGS",
   "detailPanel.toolSelector.title": "Add tool",
   "detailPanel.toolSelector.toolLabel": "Tool",

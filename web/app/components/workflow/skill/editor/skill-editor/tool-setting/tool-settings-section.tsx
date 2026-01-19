@@ -13,6 +13,23 @@ import ReasoningConfigForm from '@/app/components/plugins/plugin-detail-panel/to
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 
+type ToolFormSchema = {
+  variable: string
+  type: string
+  default?: unknown
+  [key: string]: unknown
+}
+
+type ToolConfigValueItem = {
+  auto?: 0 | 1
+  value?: {
+    type: VarKindType
+    value?: unknown
+  }
+}
+
+type ToolConfigValueMap = Record<string, ToolConfigValueItem>
+
 type ToolSettingsSectionProps = {
   currentProvider?: ToolWithProvider
   currentTool?: Tool
@@ -42,10 +59,16 @@ const ToolSettingsSection: FC<ToolSettingsSectionProps> = ({
     return currentTool.parameters?.filter(param => param.form === 'llm') || []
   }, [currentTool])
 
-  const settingsFormSchemas = useMemo(() => toolParametersToFormSchemas(currentToolSettings), [currentToolSettings])
-  const paramsFormSchemas = useMemo(() => toolParametersToFormSchemas(currentToolParams), [currentToolParams])
+  const settingsFormSchemas = useMemo(
+    () => toolParametersToFormSchemas(currentToolSettings) as ToolFormSchema[],
+    [currentToolSettings],
+  )
+  const paramsFormSchemas = useMemo(
+    () => toolParametersToFormSchemas(currentToolParams) as ToolFormSchema[],
+    [currentToolParams],
+  )
 
-  const handleSettingsFormChange = (v: Record<string, any>) => {
+  const handleSettingsFormChange = (v: ToolConfigValueMap) => {
     if (!value || !onChange)
       return
     onChange({
@@ -54,7 +77,7 @@ const ToolSettingsSection: FC<ToolSettingsSectionProps> = ({
     })
   }
 
-  const handleParamsFormChange = (v: Record<string, any>) => {
+  const handleParamsFormChange = (v: ToolConfigValueMap) => {
     if (!value || !onChange)
       return
     onChange({
@@ -71,7 +94,7 @@ const ToolSettingsSection: FC<ToolSettingsSectionProps> = ({
 
   const showSettingsSection = currentToolSettings.length > 0
   const showParamsSection = currentToolParams.length > 0
-  const getVarKindType = (type: FormTypeEnum) => {
+  const getVarKindType = (type: FormTypeEnum | string) => {
     if (type === FormTypeEnum.file || type === FormTypeEnum.files)
       return VarKindType.variable
     if (type === FormTypeEnum.select || type === FormTypeEnum.checkbox || type === FormTypeEnum.textNumber || type === FormTypeEnum.array || type === FormTypeEnum.object)
@@ -80,24 +103,25 @@ const ToolSettingsSection: FC<ToolSettingsSectionProps> = ({
       return VarKindType.mixed
     return VarKindType.constant
   }
-  const getSafeConfigValue = (rawValue: Record<string, any> | undefined, schemas: any[]) => {
-    const nextValue = { ...(rawValue || {}) }
+  const getSafeConfigValue = (rawValue: ToolConfigValueMap | undefined, schemas: ToolFormSchema[]) => {
+    const nextValue: ToolConfigValueMap = { ...(rawValue || {}) }
     schemas.forEach((schema) => {
-      if (!nextValue[schema.variable]) {
+      const currentValue = nextValue[schema.variable]
+      if (!currentValue) {
         nextValue[schema.variable] = {
           auto: 0,
           value: {
-            type: getVarKindType(schema.type as FormTypeEnum),
+            type: getVarKindType(schema.type),
             value: schema.default ?? null,
           },
         }
         return
       }
-      if (nextValue[schema.variable].auto === undefined)
-        nextValue[schema.variable].auto = 0
-      if (nextValue[schema.variable].value === undefined) {
-        nextValue[schema.variable].value = {
-          type: getVarKindType(schema.type as FormTypeEnum),
+      if (currentValue.auto === undefined)
+        currentValue.auto = 0
+      if (currentValue.value === undefined) {
+        currentValue.value = {
+          type: getVarKindType(schema.type),
           value: schema.default ?? null,
         }
       }
@@ -109,22 +133,22 @@ const ToolSettingsSection: FC<ToolSettingsSectionProps> = ({
     <>
       <Divider className="my-1 w-full" />
       <div className="p-4 pb-1">
-        <div className="system-sm-semibold-uppercase text-text-primary">{t('detailPanel.toolSelector.settings', { ns: 'plugin' })}</div>
+        <div className="system-sm-semibold-uppercase text-text-primary">{t('detailPanel.toolSelector.reasoningConfig', { ns: 'plugin' })}</div>
       </div>
       {showSettingsSection && (
         <ReasoningConfigForm
-          value={getSafeConfigValue(value?.settings, settingsFormSchemas)}
+          value={getSafeConfigValue(value?.settings as ToolConfigValueMap, settingsFormSchemas)}
           onChange={handleSettingsFormChange}
-          schemas={settingsFormSchemas as any}
+          schemas={settingsFormSchemas}
           nodeId={safeNodeId}
           disableVariableReference
         />
       )}
       {showParamsSection && (
         <ReasoningConfigForm
-          value={getSafeConfigValue(value?.parameters, paramsFormSchemas)}
+          value={getSafeConfigValue(value?.parameters as ToolConfigValueMap, paramsFormSchemas)}
           onChange={handleParamsFormChange}
-          schemas={paramsFormSchemas as any}
+          schemas={paramsFormSchemas}
           nodeId={safeNodeId}
           disableVariableReference
         />

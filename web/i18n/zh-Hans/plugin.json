@@ -127,6 +127,7 @@
   "detailPanel.toolSelector.paramsTip1": "控制 LLM 推理参数。",
   "detailPanel.toolSelector.paramsTip2": "当“自动”关闭时，使用默认值。",
   "detailPanel.toolSelector.placeholder": "选择工具",
+  "detailPanel.toolSelector.reasoningConfig": "推理配置",
   "detailPanel.toolSelector.settings": "用户设置",
   "detailPanel.toolSelector.title": "添加工具",
   "detailPanel.toolSelector.toolLabel": "工具",
