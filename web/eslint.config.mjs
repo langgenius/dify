@@ -9,7 +9,9 @@ import difyI18n from './eslint-rules/index.js'
 export default antfu(
   {
     react: {
-      reactCompiler: true,
+      // This react compiler rules are pretty slow
+      // We can wait for https://github.com/Rel1cx/eslint-react/issues/1237
+      reactCompiler: false,
       overrides: {
         'react/no-context-provider': 'off',
         'react/no-forward-ref': 'off',
@@ -57,47 +59,8 @@ export default antfu(
   // sonar
   {
     rules: {
-      ...sonar.configs.recommended.rules,
-      // code complexity
-      'sonarjs/cognitive-complexity': 'off',
-      'sonarjs/no-nested-functions': 'warn',
-      'sonarjs/no-nested-conditional': 'warn',
-      'sonarjs/nested-control-flow': 'warn', // 3 levels of nesting
-      'sonarjs/no-small-switch': 'off',
-      'sonarjs/no-nested-template-literals': 'warn',
-      'sonarjs/redundant-type-aliases': 'off',
-      'sonarjs/regex-complexity': 'warn',
-      // maintainability
-      'sonarjs/no-ignored-exceptions': 'off',
-      'sonarjs/no-commented-code': 'warn',
-      'sonarjs/no-unused-vars': 'warn',
-      'sonarjs/prefer-single-boolean-return': 'warn',
-      'sonarjs/duplicates-in-character-class': 'off',
-      'sonarjs/single-char-in-character-classes': 'off',
-      'sonarjs/anchor-precedence': 'warn',
-      'sonarjs/updated-loop-counter': 'off',
-      'sonarjs/no-dead-store': 'error',
-      'sonarjs/no-duplicated-branches': 'warn',
-      'sonarjs/max-lines': 'warn', // max 1000 lines
-      'sonarjs/no-variable-usage-before-declaration': 'error',
-      // security
-
-      'sonarjs/no-hardcoded-passwords': 'off', // detect the wrong code that is not password.
-      'sonarjs/no-hardcoded-secrets': 'off',
-      'sonarjs/pseudo-random': 'off',
-      // performance
-      'sonarjs/slow-regex': 'warn',
-      // others
-      'sonarjs/todo-tag': 'warn',
-      'sonarjs/table-header': 'off',
-
-      // new from this update
-      'sonarjs/unused-import': 'off',
-      'sonarjs/use-type-alias': 'warn',
-      'sonarjs/single-character-alternation': 'warn',
-      'sonarjs/no-os-command-from-path': 'warn',
-      'sonarjs/class-name': 'off',
-      'sonarjs/no-redundant-jump': 'warn',
+      // Manually pick rules that are actually useful and not slow.
+      // Or we can just drop the plugin entirely.
     },
     plugins: {
       sonarjs: sonar,
