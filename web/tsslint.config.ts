@@ -1,6 +1,6 @@
 import { defineConfig, importESLintRules } from '@tsslint/config'
 
-// npx tsslint-docgen
+// Run `npx tsslint-docgen` to generate documentation for the configured rules.
 
 export default defineConfig({
   rules: {
