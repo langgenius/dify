@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="dataset")
-def document_indexing_update_task(dataset_id: str, document_id: str):
+def document_indexing_update_task(dataset_id: str, org_document_id: str, new_document_id: str):
     """
     Async update document
     :param dataset_id:
@@ -37,13 +37,13 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
     document.processing_started_at = naive_utc_now()
     db.session.commit()
 
-    # delete all document segment and index
     try:
         dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
         if not dataset:
             raise Exception("Dataset not found")
 
-        index_type = document.doc_form
+        # delete all stale document segment
+        index_type = org_document.doc_form
         index_processor = IndexProcessorFactory(index_type).init_index_processor()
 
         segments = db.session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document_id)).all()
@@ -56,11 +56,21 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
             for segment in segments:
                 db.session.delete(segment)
             db.session.commit()
+
+        # restore the position and delete the stale document
+        org_position = org_document.position
+        db.session.delete(org_document)
+        db.session.commit()
+
+        new_document.position = org_position
+        db.session.add(new_document)
+        db.session.commit()
+
         end_at = time.perf_counter()
         logger.info(
             click.style(
-                "Cleaned document when document update data source or process rule: {} latency: {}".format(
-                    document_id, end_at - start_at
+                "Cleaned stale document when document update data source or process rule: {} latency: {}".format(
+                    new_document_id, end_at - start_at
                 ),
                 fg="green",
             )

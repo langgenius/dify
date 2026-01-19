@@ -2182,11 +2182,17 @@ class DocumentService:
         assert isinstance(current_user, Account)
 
         DatasetService.check_dataset_model_setting(dataset)
-        document = DocumentService.get_document(dataset.id, document_data.original_document_id)
-        if document is None:
+        org_document = DocumentService.get_document(dataset.id, document_data.original_document_id)
+        if org_document is None:
             raise NotFound("Document not found")
-        if document.display_status != "available":
+        if org_document.display_status != "available":
             raise ValueError("Document is not available")
+
+        # create a duplicate of the orginal document
+        params = {col.name: getattr(org_document, col.name) for col in Document.__table__.columns if col.name != "id"}
+        params["position"] = DocumentService.get_documents_position(dataset.id)
+        new_document = Document(**params)
+
         # save process rule
         if document_data.process_rule:
             process_rule = document_data.process_rule
@@ -2207,7 +2213,7 @@ class DocumentService:
             if dataset_process_rule is not None:
                 db.session.add(dataset_process_rule)
                 db.session.commit()
-                document.dataset_process_rule_id = dataset_process_rule.id
+                new_document.dataset_process_rule_id = dataset_process_rule.id
         # update document data source
         if document_data.data_source:
             file_name = ""
@@ -2271,9 +2277,9 @@ class DocumentService:
                             "only_main_content": website_info.only_main_content,
                             "mode": "crawl",
                         }
-            document.data_source_type = document_data.data_source.info_list.data_source_type
-            document.data_source_info = json.dumps(data_source_info)
-            document.name = file_name
+            new_document.data_source_type = document_data.data_source.info_list.data_source_type
+            new_document.data_source_info = json.dumps(data_source_info)
+            new_document.name = file_name
 
         # update document name
         if document_data.name:
@@ -2297,8 +2303,8 @@ class DocumentService:
         )
         db.session.commit()
         # trigger async task
-        document_indexing_update_task.delay(document.dataset_id, document.id)
-        return document
+        document_indexing_update_task.delay(org_document.dataset_id, org_document.id, new_document.id)
+        return new_document
 
     @staticmethod
     def save_document_without_dataset_id(tenant_id: str, knowledge_config: KnowledgeConfig, account: Account):
