@@ -1,7 +1,7 @@
 {
   "name": "dify-web",
   "type": "module",
-  "version": "1.11.2",
+  "version": "1.11.4",
   "private": true,
   "packageManager": "pnpm@10.27.0+sha512.72d699da16b1179c14ba9e64dc71c9a40988cbdc65c264cb0e489db7de917f20dcf4d64d8723625f2969ba52d4b7e2a1170682d9ac2a5dcaeaab732b7e16f04a",
   "imports": {
@@ -9,9 +9,6 @@
       "react-server": "./i18n-config/lib.server.ts",
       "default": "./i18n-config/lib.client.ts"
     }
-  },
-  "engines": {
-    "node": ">=v22.11.0"
   },
   "browserslist": [
     "last 1 Chrome version",
@@ -30,10 +27,12 @@
     "build": "next build",
     "build:docker": "next build && node scripts/optimize-standalone.js",
     "start": "node ./scripts/copy-and-start.mjs",
-    "lint": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache",
-    "lint:fix": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --fix",
-    "lint:quiet": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --quiet",
-    "lint:complexity": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --rule 'complexity: [error, {max: 15}]' --quiet",
+    "lint": "eslint --cache",
+    "lint:ci": "pnpm lint --concurrency 3",
+    "lint:fix": "pnpm lint --fix",
+    "lint:quiet": "pnpm lint --quiet",
+    "lint:complexity": "pnpm lint --rule 'complexity: [error, {max: 15}]' --quiet",
+    "lint:report": "pnpm lint --output-file eslint_report.json --format json",
     "type-check": "tsc --noEmit",
     "type-check:tsgo": "tsgo --noEmit",
     "prepare": "cd ../ && node -e \"if (process.env.NODE_ENV !== 'production'){process.exit(1)} \" || husky ./web/.husky",
@@ -69,6 +68,10 @@
     "@monaco-editor/react": "^4.7.0",
     "@octokit/core": "^6.1.6",
     "@octokit/request-error": "^6.1.8",
+    "@orpc/client": "^1.13.4",
+    "@orpc/contract": "^1.13.4",
+    "@orpc/openapi-client": "^1.13.4",
+    "@orpc/tanstack-query": "^1.13.4",
     "@remixicon/react": "^4.7.0",
     "@sentry/react": "^8.55.0",
     "@svgdotjs/svg.js": "^3.2.5",
@@ -151,9 +154,9 @@
     "zustand": "^5.0.9"
   },
   "devDependencies": {
-    "@antfu/eslint-config": "^6.7.3",
+    "@antfu/eslint-config": "^7.0.1",
     "@chromatic-com/storybook": "^4.1.1",
-    "@eslint-react/eslint-plugin": "^2.3.13",
+    "@eslint-react/eslint-plugin": "^2.7.0",
     "@mdx-js/loader": "^3.1.1",
     "@mdx-js/react": "^3.1.1",
     "@next/bundle-analyzer": "15.5.9",
@@ -166,7 +169,7 @@
     "@storybook/addon-onboarding": "9.1.13",
     "@storybook/addon-themes": "9.1.13",
     "@storybook/nextjs": "9.1.13",
-    "@storybook/react": "9.1.13",
+    "@storybook/react": "9.1.17",
     "@tanstack/eslint-plugin-query": "^5.91.2",
     "@tanstack/react-devtools": "^0.9.0",
     "@tanstack/react-form-devtools": "^0.2.9",
@@ -188,10 +191,10 @@
     "@types/semver": "^7.7.1",
     "@types/sortablejs": "^1.15.8",
     "@types/uuid": "^10.0.0",
-    "@typescript-eslint/parser": "^8.50.0",
+    "@typescript-eslint/parser": "^8.53.0",
     "@typescript/native-preview": "^7.0.0-dev",
     "@vitejs/plugin-react": "^5.1.2",
-    "@vitest/coverage-v8": "4.0.16",
+    "@vitest/coverage-v8": "^4.0.17",
     "autoprefixer": "^10.4.21",
     "code-inspector-plugin": "1.2.9",
     "cross-env": "^10.1.0",
@@ -200,7 +203,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.26",
     "eslint-plugin-sonarjs": "^3.0.5",
-    "eslint-plugin-storybook": "^10.1.10",
+    "eslint-plugin-storybook": "^10.1.11",
     "eslint-plugin-tailwindcss": "^3.18.2",
     "husky": "^9.1.7",
     "jsdom": "^27.3.0",
@@ -217,13 +220,12 @@
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "uglify-js": "^3.19.3",
-    "vite": "^7.3.0",
-    "vite-tsconfig-paths": "^6.0.3",
-    "vitest": "^4.0.16"
+    "vite": "^7.3.1",
+    "vite-tsconfig-paths": "^6.0.4",
+    "vitest": "^4.0.17"
   },
   "pnpm": {
     "overrides": {
-      "@eslint/plugin-kit@<0.3.4": "0.3.4",
       "@monaco-editor/loader": "1.5.0",
       "@nolyfill/safe-buffer": "npm:safe-buffer@^5.2.1",
       "array-includes": "npm:@nolyfill/array-includes@^1",
@@ -236,7 +238,8 @@
       "brace-expansion@<2.0.2": "2.0.2",
       "devalue@<5.3.2": "5.3.2",
       "es-iterator-helpers": "npm:@nolyfill/es-iterator-helpers@^1",
-      "esbuild@<0.25.0": "0.25.0",
+      "esbuild@<0.27.2": "0.27.2",
+      "glob@>=10.2.0,<10.5.0": "11.1.0",
       "hasown": "npm:@nolyfill/hasown@^1",
       "is-arguments": "npm:@nolyfill/is-arguments@^1",
       "is-core-module": "npm:@nolyfill/is-core-module@^1",
@@ -259,7 +262,6 @@
       "string.prototype.repeat": "npm:@nolyfill/string.prototype.repeat@^1",
       "string.prototype.trimend": "npm:@nolyfill/string.prototype.trimend@^1",
       "typed-array-buffer": "npm:@nolyfill/typed-array-buffer@^1",
-      "vite@<6.4.1": "6.4.1",
       "which-typed-array": "npm:@nolyfill/which-typed-array@^1"
     },
     "ignoredBuiltDependencies": [
@@ -273,12 +275,10 @@
     ]
   },
   "resolutions": {
-    "@eslint/plugin-kit": "~0.3",
     "@types/react": "~19.2.7",
     "@types/react-dom": "~19.2.3",
     "brace-expansion": "~2.0",
     "canvas": "^3.2.0",
-    "esbuild": "~0.25.0",
     "pbkdf2": "~3.1.3",
     "prismjs": "~1.30",
     "string-width": "~4.2.3"

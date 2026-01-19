@@ -53,6 +53,7 @@ vi.mock('@/context/global-public-context', () => {
   )
   return {
     useGlobalPublicStore,
+    useIsSystemFeaturesPending: () => false,
   }
 })
 

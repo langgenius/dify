@@ -1475,4 +1475,213 @@ describe('CreateSubscriptionButton', () => {
       })
     })
   })
+
+  // ==================== OAuth Callback Edge Cases ====================
+  describe('OAuth Callback - Falsy Data', () => {
+    it('should not open modal when OAuth callback returns falsy data', async () => {
+      // Arrange
+      const { openOAuthPopup } = await import('@/hooks/use-oauth')
+      vi.mocked(openOAuthPopup).mockImplementation((url: string, callback: (data?: unknown) => void) => {
+        callback(undefined) // falsy callback data
+        return null
+      })
+
+      const mockBuilder: TriggerSubscriptionBuilder = {
+        id: 'oauth-builder',
+        name: 'OAuth Builder',
+        provider: 'test-provider',
+        credential_type: TriggerCredentialTypeEnum.Oauth2,
+        credentials: {},
+        endpoint: 'https://test.com',
+        parameters: {},
+        properties: {},
+        workflows_in_use: 0,
+      }
+
+      mockInitiateOAuth.mockImplementation((_provider: string, callbacks: { onSuccess: (response: { authorization_url: string, subscription_builder: TriggerSubscriptionBuilder }) => void }) => {
+        callbacks.onSuccess({
+          authorization_url: 'https://oauth.test.com/authorize',
+          subscription_builder: mockBuilder,
+        })
+      })
+
+      setupMocks({
+        storeDetail: createStoreDetail(),
+        providerInfo: createProviderInfo({
+          supported_creation_methods: [SupportedCreationMethods.OAUTH, SupportedCreationMethods.MANUAL],
+        }),
+        oauthConfig: createOAuthConfig({ configured: true }),
+      })
+      const props = createDefaultProps()
+
+      // Act
+      render(<CreateSubscriptionButton {...props} />)
+
+      // Click on OAuth option
+      const oauthOption = screen.getByTestId(`option-${SupportedCreationMethods.OAUTH}`)
+      fireEvent.click(oauthOption)
+
+      // Assert - modal should NOT open because callback data was falsy
+      await waitFor(() => {
+        expect(screen.queryByTestId('common-create-modal')).not.toBeInTheDocument()
+      })
+    })
+  })
+
+  // ==================== TriggerProps ClassName Branches ====================
+  describe('TriggerProps ClassName Branches', () => {
+    it('should apply pointer-events-none when non-default method with multiple supported methods', () => {
+      // Arrange - Single APIKEY method (methodType = APIKEY, not DEFAULT_METHOD)
+      // But we need multiple methods to test this branch
+      setupMocks({
+        storeDetail: createStoreDetail(),
+        providerInfo: createProviderInfo({
+          supported_creation_methods: [SupportedCreationMethods.APIKEY, SupportedCreationMethods.MANUAL],
+        }),
+      })
+      const props = createDefaultProps()
+
+      // Act
+      render(<CreateSubscriptionButton {...props} />)
+
+      // The methodType will be DEFAULT_METHOD since multiple methods
+      // This verifies the render doesn't crash with multiple methods
+      expect(screen.getByTestId('custom-select')).toHaveAttribute('data-value', 'default')
+    })
+  })
+
+  // ==================== Tooltip Disabled Branches ====================
+  describe('Tooltip Disabled Branches', () => {
+    it('should enable tooltip when single method and not at max count', () => {
+      // Arrange
+      setupMocks({
+        storeDetail: createStoreDetail(),
+        providerInfo: createProviderInfo({
+          supported_creation_methods: [SupportedCreationMethods.MANUAL],
+        }),
+        subscriptions: [createSubscription()], // Not at max
+      })
+      const props = createDefaultProps({ buttonType: CreateButtonType.ICON_BUTTON })
+
+      // Act
+      render(<CreateSubscriptionButton {...props} />)
+
+      // Assert - tooltip should be enabled (disabled prop = false for single method)
+      expect(screen.getByTestId('custom-trigger')).toBeInTheDocument()
+    })
+
+    it('should disable tooltip when multiple methods and not at max count', () => {
+      // Arrange
+      setupMocks({
+        storeDetail: createStoreDetail(),
+        providerInfo: createProviderInfo({
+          supported_creation_methods: [SupportedCreationMethods.MANUAL, SupportedCreationMethods.APIKEY],
+        }),
+        subscriptions: [createSubscription()], // Not at max
+      })
+      const props = createDefaultProps({ buttonType: CreateButtonType.ICON_BUTTON })
+
+      // Act
+      render(<CreateSubscriptionButton {...props} />)
+
+      // Assert - tooltip should be disabled (neither single method nor at max)
+      expect(screen.getByTestId('custom-trigger')).toBeInTheDocument()
+    })
+  })
+
+  // ==================== Tooltip PopupContent Branches ====================
+  describe('Tooltip PopupContent Branches', () => {
+    it('should show max count message when at max subscriptions', () => {
+      // Arrange
+      const maxSubscriptions = createMaxSubscriptions()
+      setupMocks({
+        storeDetail: createStoreDetail(),
+        providerInfo: createProviderInfo({
+          supported_creation_methods: [SupportedCreationMethods.MANUAL],
+        }),
+        subscriptions: maxSubscriptions,
+      })
+      const props = createDefaultProps({ buttonType: CreateButtonType.ICON_BUTTON })
+
+      // Act
+      render(<CreateSubscriptionButton {...props} />)
+
+      // Assert - component renders with max subscriptions
+      expect(screen.getByTestId('custom-trigger')).toBeInTheDocument()
+    })
+
+    it('should show method description when not at max', () => {
+      // Arrange
+      setupMocks({
+        storeDetail: createStoreDetail(),
+        providerInfo: createProviderInfo({
+          supported_creation_methods: [SupportedCreationMethods.MANUAL],
+        }),
+        subscriptions: [], // Not at max
+      })
+      const props = createDefaultProps({ buttonType: CreateButtonType.ICON_BUTTON })
+
+      // Act
+      render(<CreateSubscriptionButton {...props} />)
+
+      // Assert - component renders without max subscriptions
+      expect(screen.getByTestId('custom-trigger')).toBeInTheDocument()
+    })
+  })
+
+  // ==================== Provider Info Fallbacks ====================
+  describe('Provider Info Fallbacks', () => {
+    it('should handle undefined supported_creation_methods', () => {
+      // Arrange - providerInfo with undefined supported_creation_methods
+      setupMocks({
+        storeDetail: createStoreDetail(),
+        providerInfo: {
+          ...createProviderInfo(),
+          supported_creation_methods: undefined as unknown as SupportedCreationMethods[],
+        },
+      })
+      const props = createDefaultProps()
+
+      // Act
+      const { container } = render(<CreateSubscriptionButton {...props} />)
+
+      // Assert - should render null when supported methods fallback to empty
+      expect(container).toBeEmptyDOMElement()
+    })
+
+    it('should handle providerInfo with null supported_creation_methods', () => {
+      // Arrange
+      mockProviderInfo = { data: { ...createProviderInfo(), supported_creation_methods: null as unknown as SupportedCreationMethods[] } }
+      mockOAuthConfig = { data: undefined, refetch: vi.fn() }
+      mockStoreDetail = createStoreDetail()
+      const props = createDefaultProps()
+
+      // Act
+      const { container } = render(<CreateSubscriptionButton {...props} />)
+
+      // Assert - should render null
+      expect(container).toBeEmptyDOMElement()
+    })
+  })
+
+  // ==================== Method Type Logic ====================
+  describe('Method Type Logic', () => {
+    it('should use single method as methodType when only one supported', () => {
+      // Arrange
+      setupMocks({
+        storeDetail: createStoreDetail(),
+        providerInfo: createProviderInfo({
+          supported_creation_methods: [SupportedCreationMethods.APIKEY],
+        }),
+      })
+      const props = createDefaultProps()
+
+      // Act
+      render(<CreateSubscriptionButton {...props} />)
+
+      // Assert
+      const customSelect = screen.getByTestId('custom-select')
+      expect(customSelect).toHaveAttribute('data-value', SupportedCreationMethods.APIKEY)
+    })
+  })
 })

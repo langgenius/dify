@@ -30,7 +30,7 @@ export const getNewVar = (key: string, type: string) => {
 }
 
 export const getNewVarInWorkflow = (key: string, type = InputVarType.textInput): InputVar => {
-  const { max_length: _maxLength, ...rest } = VAR_ITEM_TEMPLATE_IN_WORKFLOW
+  const { ...rest } = VAR_ITEM_TEMPLATE_IN_WORKFLOW
   if (type !== InputVarType.textInput) {
     return {
       ...rest,
