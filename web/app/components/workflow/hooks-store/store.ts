@@ -46,6 +46,7 @@ export type CommonHooksFnMap = {
   handleWorkflowTriggerWebhookRunInWorkflow: (params: { nodeId: string }) => void
   handleWorkflowTriggerPluginRunInWorkflow: (nodeId?: string) => void
   handleWorkflowRunAllTriggersInWorkflow: (nodeIds: string[]) => void
+  subGraphSelectableNodeTypes?: BlockEnum[]
   availableNodesMetaData?: AvailableNodesMetaData
   getWorkflowRunAndTraceUrl: (runId?: string) => { runUrl: string, traceUrl: string }
   exportCheck?: () => Promise<void>
@@ -93,6 +94,7 @@ export const createHooksStore = ({
   handleWorkflowTriggerWebhookRunInWorkflow = noop,
   handleWorkflowTriggerPluginRunInWorkflow = noop,
   handleWorkflowRunAllTriggersInWorkflow = noop,
+  subGraphSelectableNodeTypes,
   availableNodesMetaData = {
     nodes: [],
   },
@@ -136,6 +138,7 @@ export const createHooksStore = ({
     handleWorkflowTriggerWebhookRunInWorkflow,
     handleWorkflowTriggerPluginRunInWorkflow,
     handleWorkflowRunAllTriggersInWorkflow,
+    subGraphSelectableNodeTypes,
     availableNodesMetaData,
     getWorkflowRunAndTraceUrl,
     exportCheck,

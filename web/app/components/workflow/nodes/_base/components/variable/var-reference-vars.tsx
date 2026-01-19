@@ -351,6 +351,25 @@ const VarReferenceVars: FC<Props> = ({
         )
       }
 
+      {
+        showAssembleVariables && (
+          <div className="flex items-center border-t border-divider-subtle pt-1">
+            <button
+              type="button"
+              className="flex h-6 w-full items-center rounded-md pl-3 pr-[18px] text-text-secondary hover:bg-state-base-hover"
+              onClick={handleAssembleVariables}
+              onMouseDown={e => e.preventDefault()}
+            >
+              <span className="mr-1 flex h-4 w-4 items-center justify-center rounded bg-util-colors-blue-blue-500">
+                <AssembleVariables className="h-3 w-3 text-text-primary-on-surface" />
+              </span>
+              <span className="system-xs-medium truncate" title={t('nodes.tool.assembleVariables', { ns: 'workflow' })}>
+                {t('nodes.tool.assembleVariables', { ns: 'workflow' })}
+              </span>
+            </button>
+          </div>
+        )
+      }
       {filteredVars.length > 0
         ? (
             <div className={cn('max-h-[85vh] overflow-y-auto', maxHeightClass)}>
@@ -402,25 +421,6 @@ const VarReferenceVars: FC<Props> = ({
           <ManageInputField
             onManage={onManageInputField || noop}
           />
-        )
-      }
-      {
-        showAssembleVariables && (
-          <div className="flex items-center border-t border-divider-subtle pt-1">
-            <button
-              type="button"
-              className="flex h-6 w-full items-center rounded-md pl-3 pr-[18px] text-text-secondary hover:bg-state-base-hover"
-              onClick={handleAssembleVariables}
-              onMouseDown={e => e.preventDefault()}
-            >
-              <span className="mr-1 flex h-4 w-4 items-center justify-center rounded bg-util-colors-blue-blue-500">
-                <AssembleVariables className="h-3 w-3 text-text-primary-on-surface" />
-              </span>
-              <span className="system-xs-medium truncate" title={t('nodes.tool.assembleVariables', { ns: 'workflow' })}>
-                {t('nodes.tool.assembleVariables', { ns: 'workflow' })}
-              </span>
-            </button>
-          </div>
         )
       }
     </>

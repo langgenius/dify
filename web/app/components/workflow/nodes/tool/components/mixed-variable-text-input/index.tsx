@@ -36,9 +36,16 @@ import Placeholder from './placeholder'
 
 /**
  * Matches agent context variable syntax: {{@nodeId.context@}}
- * Example: {{@agent-123.context@}} -> captures "agent-123"
+ * Example: {{@agent-123.context@}}
  */
-const AGENT_CONTEXT_VAR_PATTERN = /\{\{@([^.@#]+)\.context@\}\}/g
+const AGENT_CONTEXT_VAR_PATTERN = /\{\{@[^.@#]+\.context@\}\}/g
+const AGENT_CONTEXT_VAR_PREFIX = '{{@'
+const AGENT_CONTEXT_VAR_SUFFIX = '.context@}}'
+const getAgentNodeIdFromContextVar = (placeholder: string) => {
+  if (!placeholder.startsWith(AGENT_CONTEXT_VAR_PREFIX) || !placeholder.endsWith(AGENT_CONTEXT_VAR_SUFFIX))
+    return ''
+  return placeholder.slice(AGENT_CONTEXT_VAR_PREFIX.length, -AGENT_CONTEXT_VAR_SUFFIX.length)
+}
 
 const buildAssemblePlaceholder = (toolNodeId?: string, paramKey?: string) => {
   if (!toolNodeId || !paramKey)
@@ -309,8 +316,9 @@ const MixedVariableTextInput = ({
 
     const matches = text.matchAll(AGENT_CONTEXT_VAR_PATTERN)
     for (const match of matches) {
-      const variablePath = match[1]
-      const nodeId = variablePath.split('.')[0]
+      const nodeId = getAgentNodeIdFromContextVar(match[0])
+      if (!nodeId)
+        continue
       const node = nodesByIdMap[nodeId]
       if (node && contextNodeIds.has(nodeId)) {
         return {
@@ -461,8 +469,8 @@ const MixedVariableTextInput = ({
     if (!agentNodeId || !onChange)
       return
 
-    const valueWithoutAgentVars = value.replace(AGENT_CONTEXT_VAR_PATTERN, (match, variablePath) => {
-      const nodeId = variablePath.split('.')[0]
+    const valueWithoutAgentVars = value.replace(AGENT_CONTEXT_VAR_PATTERN, (match) => {
+      const nodeId = getAgentNodeIdFromContextVar(match)
       return nodeId === agentNodeId ? '' : match
     })
 
@@ -552,6 +560,7 @@ const MixedVariableTextInput = ({
         <AgentHeaderBar
           agentName={t('nodes.tool.assembleVariables', { ns: 'workflow' })}
           onRemove={handleAssembleRemove}
+          onViewInternals={handleOpenSubGraphModal}
           hasWarning={hasAssembleWarning}
           showAtPrefix={false}
         />
@@ -599,10 +608,21 @@ const MixedVariableTextInput = ({
           }}
         />
       )}
-      {toolNodeId && detectedAgentFromValue && sourceVariable && (
+      {toolNodeId && paramKey && isAssembleValue && (
         <SubGraphModal
           isOpen={isSubGraphModalOpen}
           onClose={handleCloseSubGraphModal}
+          variant="assemble"
+          toolNodeId={toolNodeId}
+          paramKey={paramKey}
+          title={t('nodes.tool.assembleVariables', { ns: 'workflow' })}
+        />
+      )}
+      {toolNodeId && paramKey && !isAssembleValue && detectedAgentFromValue && sourceVariable && (
+        <SubGraphModal
+          isOpen={isSubGraphModalOpen}
+          onClose={handleCloseSubGraphModal}
+          variant="agent"
           toolNodeId={toolNodeId}
           paramKey={paramKey}
           sourceVariable={sourceVariable}

@@ -89,6 +89,8 @@ import CustomIterationStartNode from './nodes/iteration-start'
 import { CUSTOM_ITERATION_START_NODE } from './nodes/iteration-start/constants'
 import CustomLoopStartNode from './nodes/loop-start'
 import { CUSTOM_LOOP_START_NODE } from './nodes/loop-start/constants'
+import CustomSubGraphStartNode from './nodes/sub-graph-start'
+import { CUSTOM_SUB_GRAPH_START_NODE } from './nodes/sub-graph-start/constants'
 import CustomNoteNode from './note-node'
 import { CUSTOM_NOTE_NODE } from './note-node/constants'
 import Operator from './operator'
@@ -119,6 +121,7 @@ const nodeTypes = {
   [CUSTOM_NODE]: CustomNode,
   [CUSTOM_NOTE_NODE]: CustomNoteNode,
   [CUSTOM_SIMPLE_NODE]: CustomSimpleNode,
+  [CUSTOM_SUB_GRAPH_START_NODE]: CustomSubGraphStartNode,
   [CUSTOM_ITERATION_START_NODE]: CustomIterationStartNode,
   [CUSTOM_LOOP_START_NODE]: CustomLoopStartNode,
   [CUSTOM_DATA_SOURCE_EMPTY_NODE]: CustomDataSourceEmptyNode,
@@ -355,6 +358,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const dataSourceList = useStore(s => s.dataSourceList)
   // buildInTools, customTools, workflowTools, mcpTools, dataSourceList
   const configsMap = useHooksStore(s => s.configsMap)
+  const subGraphSelectableNodeTypes = useHooksStore(s => s.subGraphSelectableNodeTypes)
   const [isLoadedVars, setIsLoadedVars] = useState(false)
   const [vars, setVars] = useState<VarInInspect[]>([])
   useEffect(() => {
@@ -393,12 +397,17 @@ export const Workflow: FC<WorkflowProps> = memo(({
 
   const handleNodeClickInMode = useCallback<NodeMouseHandler>(
     (event, node) => {
-      if (isSubGraph && node.data.type !== BlockEnum.LLM)
-        return
+      if (isSubGraph) {
+        const allowTypes = subGraphSelectableNodeTypes?.length
+          ? subGraphSelectableNodeTypes
+          : [BlockEnum.LLM]
+        if (!allowTypes.includes(node.data.type))
+          return
+      }
 
       handleNodeClick(event, node)
     },
-    [handleNodeClick, isSubGraph],
+    [handleNodeClick, isSubGraph, subGraphSelectableNodeTypes],
   )
 
   return (

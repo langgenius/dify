@@ -9,35 +9,46 @@ import { useStoreApi } from 'reactflow'
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
 import { useInspectVarsCrudCommon } from '@/app/components/workflow/hooks/use-inspect-vars-crud-common'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { FlowType } from '@/types/common'
 import { useAvailableNodesMetaData } from '../hooks'
 import SubGraphChildren from './sub-graph-children'
 
-type SubGraphMainProps = {
+type SubGraphMainBaseProps = {
   nodes: Node[]
   edges: Edge[]
   viewport: Viewport
-  agentName: string
+  title: string
   extractorNodeId: string
   configsMap?: HooksStoreShape['configsMap']
-  mentionConfig: MentionConfig
-  onMentionConfigChange: (config: MentionConfig) => void
+  selectableNodeTypes?: BlockEnum[]
   onSave?: (nodes: Node[], edges: Edge[]) => void
   onSyncWorkflowDraft?: SyncWorkflowDraft
 }
 
-const SubGraphMain: FC<SubGraphMainProps> = ({
-  nodes,
-  edges,
-  viewport,
-  agentName,
-  extractorNodeId,
-  configsMap,
-  mentionConfig,
-  onMentionConfigChange,
-  onSave,
-  onSyncWorkflowDraft,
-}) => {
+type SubGraphMainProps
+  = | (SubGraphMainBaseProps & {
+    variant: 'agent'
+    mentionConfig: MentionConfig
+    onMentionConfigChange: (config: MentionConfig) => void
+  })
+  | (SubGraphMainBaseProps & {
+    variant: 'assemble'
+  })
+
+const SubGraphMain: FC<SubGraphMainProps> = (props) => {
+  const {
+    nodes,
+    edges,
+    viewport,
+    variant,
+    title,
+    extractorNodeId,
+    configsMap,
+    selectableNodeTypes,
+    onSave,
+    onSyncWorkflowDraft,
+  } = props
   const reactFlowStore = useStoreApi()
   const availableNodesMetaData = useAvailableNodesMetaData()
   const flowType = configsMap?.flowType ?? FlowType.appFlow
@@ -76,32 +87,53 @@ const SubGraphMain: FC<SubGraphMainProps> = ({
     }
   }, [handleSyncSubGraphDraft, onSyncWorkflowDraft])
 
+  const resolvedSelectableTypes = useMemo(() => {
+    if (selectableNodeTypes && selectableNodeTypes.length > 0)
+      return selectableNodeTypes
+    return variant === 'agent' ? [BlockEnum.LLM] : [BlockEnum.Code]
+  }, [selectableNodeTypes, variant])
+
   const hooksStore = useMemo(() => ({
     interactionMode: 'subgraph',
+    subGraphSelectableNodeTypes: resolvedSelectableTypes,
     availableNodesMetaData,
     configsMap,
     fetchInspectVars,
     ...inspectVarsCrud,
     doSyncWorkflowDraft: handleSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose: handleSyncSubGraphDraft,
-  }), [availableNodesMetaData, configsMap, fetchInspectVars, handleSyncSubGraphDraft, handleSyncWorkflowDraft, inspectVarsCrud])
+  }), [availableNodesMetaData, configsMap, fetchInspectVars, handleSyncSubGraphDraft, handleSyncWorkflowDraft, inspectVarsCrud, resolvedSelectableTypes])
+
+  const subGraphChildren = variant === 'agent'
+    ? (
+        <SubGraphChildren
+          variant="agent"
+          title={title}
+          extractorNodeId={extractorNodeId}
+          mentionConfig={props.mentionConfig}
+          onMentionConfigChange={props.onMentionConfigChange}
+        />
+      )
+    : (
+        <SubGraphChildren
+          variant="assemble"
+          title={title}
+          extractorNodeId={extractorNodeId}
+        />
+      )
 
   return (
     <WorkflowWithInnerContext
       nodes={nodes}
       edges={edges}
       viewport={viewport}
+      // eslint-disable-next-line ts/no-explicit-any -- TODO: remove after typing boundary
       hooksStore={hooksStore as any}
       allowSelectionWhenReadOnly
       canvasReadOnly
       interactionMode="subgraph"
     >
-      <SubGraphChildren
-        agentName={agentName}
-        extractorNodeId={extractorNodeId}
-        mentionConfig={mentionConfig}
-        onMentionConfigChange={onMentionConfigChange}
-      />
+      {subGraphChildren}
     </WorkflowWithInnerContext>
   )
 }

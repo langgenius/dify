@@ -2,6 +2,7 @@ import type { FC } from 'react'
 import { RiCloseLine, RiEqualizer2Line } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { AssembleVariables } from '@/app/components/base/icons/src/vender/line/general'
 import AlertTriangle from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback/AlertTriangle'
 import { Agent } from '@/app/components/base/icons/src/vender/workflow'
 import { cn } from '@/utils/classnames'
@@ -34,8 +35,11 @@ const AgentHeaderBar: FC<AgentHeaderBarProps> = ({
               : 'border-components-panel-border-subtle bg-components-badge-white-to-dark',
           )}
         >
-          <div className="flex h-4 w-4 items-center justify-center rounded bg-util-colors-indigo-indigo-500">
-            <Agent className="h-3 w-3 text-text-primary-on-surface" />
+          <div className={cn('flex h-4 w-4 items-center justify-center rounded', showAtPrefix
+            ? 'bg-util-colors-indigo-indigo-500'
+            : 'bg-util-colors-blue-blue-500')}
+          >
+            {showAtPrefix ? <Agent className="h-3 w-3 text-text-primary-on-surface" /> : <AssembleVariables className="h-3 w-3 text-text-primary-on-surface" />}
           </div>
           <span className="system-xs-medium text-text-secondary">
             {showAtPrefix && '@'}

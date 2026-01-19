@@ -20,7 +20,14 @@ import { useStrategyProviders } from '@/service/use-strategy'
 import { cn } from '@/utils/classnames'
 import { VarType } from './types'
 
-const AGENT_CONTEXT_VAR_PATTERN = /\{\{@([^.@#]+)\.context@\}\}/g
+const AGENT_CONTEXT_VAR_PATTERN = /\{\{@[^.@#]+\.context@\}\}/g
+const AGENT_CONTEXT_VAR_PREFIX = '{{@'
+const AGENT_CONTEXT_VAR_SUFFIX = '.context@}}'
+const getAgentNodeIdFromContextVar = (placeholder: string) => {
+  if (!placeholder.startsWith(AGENT_CONTEXT_VAR_PREFIX) || !placeholder.endsWith(AGENT_CONTEXT_VAR_SUFFIX))
+    return ''
+  return placeholder.slice(AGENT_CONTEXT_VAR_PREFIX.length, -AGENT_CONTEXT_VAR_SUFFIX.length)
+}
 type AgentCheckValidContext = {
   provider?: StrategyPluginDetail
   strategy?: StrategyDetail
@@ -80,7 +87,7 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
         return
       const matches = value.matchAll(AGENT_CONTEXT_VAR_PATTERN)
       for (const match of matches) {
-        const agentNodeId = match[1]
+        const agentNodeId = getAgentNodeIdFromContextVar(match[0])
         if (!agentNodeId)
           continue
         const entryKey = `${paramKey}:${agentNodeId}`

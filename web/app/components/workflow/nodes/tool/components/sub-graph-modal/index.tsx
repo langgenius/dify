@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { SubGraphModalProps } from './types'
 import type { MentionConfig } from '@/app/components/workflow/nodes/_base/types'
+import type { CodeNodeType } from '@/app/components/workflow/nodes/code/types'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type { ToolNodeType } from '@/app/components/workflow/nodes/tool/types'
 import type { Node, PromptItem, PromptTemplateItem } from '@/app/components/workflow/types'
@@ -11,24 +12,29 @@ import { noop } from 'es-toolkit/function'
 import { Fragment, memo, useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useReactFlowStore, useStoreApi } from 'reactflow'
+import { AssembleVariablesAlt } from '@/app/components/base/icons/src/vender/line/general'
 import { Agent } from '@/app/components/base/icons/src/vender/workflow'
 import { useIsChatMode, useNodesSyncDraft, useWorkflow, useWorkflowVariables } from '@/app/components/workflow/hooks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { useStore as useWorkflowStore } from '@/app/components/workflow/store'
-import { BlockEnum, EditionType, isPromptMessageContext, PromptRole } from '@/app/components/workflow/types'
+import { BlockEnum, EditionType, isPromptMessageContext, PromptRole, VarType } from '@/app/components/workflow/types'
 import SubGraphCanvas from './sub-graph-canvas'
 
-const SubGraphModal: FC<SubGraphModalProps> = ({
-  isOpen,
-  onClose,
-  toolNodeId,
-  paramKey,
-  sourceVariable,
-  agentName,
-  agentNodeId,
-}) => {
+const SubGraphModal: FC<SubGraphModalProps> = (props) => {
   const { t } = useTranslation()
+  const { isOpen, onClose, variant, toolNodeId, paramKey } = props
+  const isAgentVariant = variant === 'agent'
+  const resolvedAgentNodeId = isAgentVariant ? props.agentNodeId : ''
+  const agentName = isAgentVariant ? props.agentName : ''
+  const assembleTitle = !isAgentVariant ? props.title : ''
+  const modalTitle = useMemo(() => {
+    const baseTitle = isAgentVariant
+      ? agentName
+      : (assembleTitle || t('nodes.tool.assembleVariables', { ns: 'workflow' }))
+    const prefix = isAgentVariant && baseTitle ? '@' : ''
+    return `${prefix}${baseTitle} ${t('subGraphModal.title', { ns: 'workflow' })}`.trim()
+  }, [agentName, assembleTitle, isAgentVariant, t])
   const reactflowStore = useStoreApi()
   const workflowNodes = useWorkflowStore(state => state.nodes)
   const workflowEdges = useReactFlowStore(state => state.edges)
@@ -41,13 +47,16 @@ const SubGraphModal: FC<SubGraphModalProps> = ({
 
   const extractorNodeId = `${toolNodeId}_ext_${paramKey}`
   const extractorNode = useMemo(() => {
-    return workflowNodes.find(node => node.id === extractorNodeId) as Node<LLMNodeType> | undefined
+    return workflowNodes.find(node => node.id === extractorNodeId) as Node<LLMNodeType | CodeNodeType> | undefined
   }, [extractorNodeId, workflowNodes])
   const toolNode = useMemo(() => {
     return workflowNodes.find(node => node.id === toolNodeId)
   }, [toolNodeId, workflowNodes])
   const toolParam = (toolNode?.data as ToolNodeType | undefined)?.tool_parameters?.[paramKey]
   const toolParamValue = toolParam?.value as string | undefined
+  const assemblePlaceholder = useMemo(() => {
+    return `{{#${toolNodeId}_ext_${paramKey}.result#}}`
+  }, [paramKey, toolNodeId])
 
   const parentBeforeNodes = useMemo(() => {
     if (!isOpen)
@@ -56,25 +65,28 @@ const SubGraphModal: FC<SubGraphModalProps> = ({
   }, [getBeforeNodesInSameBranch, isOpen, toolNodeId, workflowEdges, workflowNodes])
 
   const parentContextNodes = useMemo(() => {
-    if (!parentBeforeNodes.length)
+    if (!parentBeforeNodes.length || !isAgentVariant)
       return []
     return parentBeforeNodes.filter(node => node.data.type === BlockEnum.Agent || node.data.type === BlockEnum.LLM)
-  }, [parentBeforeNodes])
+  }, [isAgentVariant, parentBeforeNodes])
 
-  const parentContextNodeIds = useMemo(() => {
-    return parentContextNodes.map(node => node.id)
-  }, [parentContextNodes])
+  const parentAvailableNodes = useMemo(() => {
+    if (!isOpen)
+      return []
+    return isAgentVariant ? parentContextNodes : parentBeforeNodes
+  }, [isAgentVariant, isOpen, parentBeforeNodes, parentContextNodes])
 
   const parentAvailableVars = useMemo(() => {
-    if (!parentContextNodeIds.length)
+    if (!parentAvailableNodes.length)
       return []
     const vars = getNodeAvailableVars({
-      beforeNodes: parentContextNodes,
+      beforeNodes: parentAvailableNodes,
       isChatMode,
       filterVar: () => true,
     })
-    return vars.filter(nodeVar => parentContextNodeIds.includes(nodeVar.nodeId))
-  }, [getNodeAvailableVars, isChatMode, parentContextNodeIds, parentContextNodes])
+    const availableNodeIds = new Set(parentAvailableNodes.map(node => node.id))
+    return vars.filter(nodeVar => availableNodeIds.has(nodeVar.nodeId))
+  }, [getNodeAvailableVars, isChatMode, parentAvailableNodes])
 
   const mentionConfig = useMemo<MentionConfig>(() => {
     const current = toolParam?.mention_config
@@ -91,6 +103,9 @@ const SubGraphModal: FC<SubGraphModalProps> = ({
   }, [extractorNodeId, paramKey, toolParam?.mention_config])
 
   const handleMentionConfigChange = useCallback((config: MentionConfig) => {
+    if (!isAgentVariant)
+      return
+
     const { getNodes, setNodes } = reactflowStore.getState()
     const nextNodes = getNodes().map((node) => {
       if (node.id !== toolNodeId)
@@ -118,10 +133,10 @@ const SubGraphModal: FC<SubGraphModalProps> = ({
     })
     setNodes(nextNodes)
     handleSyncWorkflowDraft()
-  }, [handleSyncWorkflowDraft, paramKey, reactflowStore, toolNodeId])
+  }, [handleSyncWorkflowDraft, isAgentVariant, paramKey, reactflowStore, toolNodeId])
 
   useEffect(() => {
-    if (!toolParam || (toolParam.type && toolParam.type !== VarKindType.mention))
+    if (!isAgentVariant || !toolParam || (toolParam.type && toolParam.type !== VarKindType.mention))
       return
 
     const current = toolParam.mention_config
@@ -132,7 +147,7 @@ const SubGraphModal: FC<SubGraphModalProps> = ({
 
     if (needsExtractor || needsNullStrategy || needsOutputSelector || needsDefaultValue)
       handleMentionConfigChange(mentionConfig)
-  }, [handleMentionConfigChange, mentionConfig, toolParam])
+  }, [handleMentionConfigChange, isAgentVariant, mentionConfig, toolParam])
 
   const getUserPromptText = useCallback((promptTemplate?: PromptTemplateItem[] | PromptItem) => {
     if (!promptTemplate)
@@ -156,23 +171,46 @@ const SubGraphModal: FC<SubGraphModalProps> = ({
 
   // TODO: handle external workflow updates while sub-graph modal is open.
   const handleSave = useCallback((subGraphNodes: Node[]) => {
-    const extractorNodeData = subGraphNodes.find(node => node.id === extractorNodeId) as Node<LLMNodeType> | undefined
+    const extractorNodeData = subGraphNodes.find(node => node.id === extractorNodeId) as Node<LLMNodeType | CodeNodeType> | undefined
     if (!extractorNodeData)
       return
 
-    const userPromptText = getUserPromptText(extractorNodeData.data?.prompt_template)
-    const placeholder = `{{@${agentNodeId}.context@}}`
-    const nextValue = `${placeholder}${userPromptText}`
+    const ensureAssembleOutputs = (payload: CodeNodeType) => {
+      const outputs = payload.outputs || {}
+      if (outputs.result)
+        return payload
+      return {
+        ...payload,
+        outputs: {
+          ...outputs,
+          result: {
+            type: VarType.string,
+            children: null,
+          },
+        },
+      }
+    }
+
+    const userPromptText = isAgentVariant
+      ? getUserPromptText((extractorNodeData.data as LLMNodeType).prompt_template)
+      : ''
+    const placeholder = isAgentVariant && resolvedAgentNodeId ? `{{@${resolvedAgentNodeId}.context@}}` : ''
+    const nextValue = isAgentVariant
+      ? `${placeholder}${userPromptText}`
+      : assemblePlaceholder
 
     const { getNodes, setNodes } = reactflowStore.getState()
     const nextNodes = getNodes().map((node) => {
       if (node.id === extractorNodeId) {
+        const nextData = isAgentVariant
+          ? extractorNodeData.data
+          : ensureAssembleOutputs(extractorNodeData.data as CodeNodeType)
         return {
           ...node,
           hidden: true,
           data: {
             ...node.data,
-            ...extractorNodeData.data,
+            ...nextData,
             parent_node_id: toolNodeId,
           },
         }
@@ -200,7 +238,7 @@ const SubGraphModal: FC<SubGraphModalProps> = ({
     })
     setNodes(nextNodes)
     setControlPromptEditorRerenderKey(Date.now())
-  }, [agentNodeId, extractorNodeId, getUserPromptText, paramKey, reactflowStore, setControlPromptEditorRerenderKey, toolNodeId])
+  }, [assemblePlaceholder, extractorNodeId, getUserPromptText, isAgentVariant, paramKey, reactflowStore, resolvedAgentNodeId, setControlPromptEditorRerenderKey, toolNodeId])
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
@@ -215,13 +253,12 @@ const SubGraphModal: FC<SubGraphModalProps> = ({
                 <div className="flex h-14 shrink-0 items-center justify-between border-b border-divider-subtle px-4">
                   <div className="flex items-center gap-2">
                     <div className="flex h-6 w-6 items-center justify-center rounded bg-util-colors-indigo-indigo-500">
-                      <Agent className="h-4 w-4 text-text-primary-on-surface" />
+                      {isAgentVariant
+                        ? <Agent className="h-4 w-4 text-text-primary-on-surface" />
+                        : <AssembleVariablesAlt className="h-4 w-4 text-text-primary-on-surface" />}
                     </div>
                     <span className="system-md-semibold text-text-primary">
-                      @
-                      {agentName}
-                      {' '}
-                      {t('subGraphModal.title', { ns: 'workflow' })}
+                      {modalTitle}
                     </span>
                   </div>
                   <button
@@ -234,22 +271,41 @@ const SubGraphModal: FC<SubGraphModalProps> = ({
                 </div>
 
                 <div className="bg-workflow-canvas-wrapper relative flex-1 overflow-hidden">
-                  <SubGraphCanvas
-                    toolNodeId={toolNodeId}
-                    paramKey={paramKey}
-                    sourceVariable={sourceVariable}
-                    agentNodeId={agentNodeId}
-                    agentName={agentName}
-                    configsMap={configsMap}
-                    mentionConfig={mentionConfig}
-                    onMentionConfigChange={handleMentionConfigChange}
-                    extractorNode={extractorNode}
-                    toolParamValue={toolParamValue}
-                    parentAvailableNodes={parentContextNodes}
-                    parentAvailableVars={parentAvailableVars}
-                    onSave={handleSave}
-                    onSyncWorkflowDraft={doSyncWorkflowDraft}
-                  />
+                  {variant === 'agent'
+                    ? (
+                        <SubGraphCanvas
+                          variant="agent"
+                          toolNodeId={toolNodeId}
+                          paramKey={paramKey}
+                          sourceVariable={props.sourceVariable}
+                          agentNodeId={props.agentNodeId}
+                          agentName={props.agentName}
+                          configsMap={configsMap}
+                          mentionConfig={mentionConfig}
+                          onMentionConfigChange={handleMentionConfigChange}
+                          extractorNode={extractorNode as Node<LLMNodeType> | undefined}
+                          toolParamValue={toolParamValue}
+                          parentAvailableNodes={parentAvailableNodes}
+                          parentAvailableVars={parentAvailableVars}
+                          onSave={handleSave}
+                          onSyncWorkflowDraft={doSyncWorkflowDraft}
+                        />
+                      )
+                    : (
+                        <SubGraphCanvas
+                          variant="assemble"
+                          toolNodeId={toolNodeId}
+                          paramKey={paramKey}
+                          title={props.title}
+                          configsMap={configsMap}
+                          extractorNode={extractorNode as Node<CodeNodeType> | undefined}
+                          toolParamValue={toolParamValue}
+                          parentAvailableNodes={parentAvailableNodes}
+                          parentAvailableVars={parentAvailableVars}
+                          onSave={handleSave}
+                          onSyncWorkflowDraft={doSyncWorkflowDraft}
+                        />
+                      )}
                 </div>
               </DialogPanel>
             </TransitionChild>

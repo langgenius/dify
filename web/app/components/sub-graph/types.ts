@@ -1,8 +1,9 @@
 import type { StateCreator } from 'zustand'
 import type { Shape as HooksStoreShape } from '@/app/components/workflow/hooks-store'
 import type { MentionConfig } from '@/app/components/workflow/nodes/_base/types'
+import type { CodeNodeType } from '@/app/components/workflow/nodes/code/types'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
-import type { Edge, Node, NodeOutPutVar, ValueSelector } from '@/app/components/workflow/types'
+import type { BlockEnum, Edge, Node, NodeOutPutVar, ValueSelector } from '@/app/components/workflow/types'
 
 export type SyncWorkflowDraftCallback = {
   onSuccess?: () => void
@@ -15,22 +16,37 @@ export type SyncWorkflowDraft = (
   callback?: SyncWorkflowDraftCallback,
 ) => Promise<void>
 
-export type SubGraphProps = {
+export type SubGraphVariant = 'agent' | 'assemble'
+
+type BaseSubGraphProps = {
   toolNodeId: string
   paramKey: string
-  sourceVariable: ValueSelector
-  agentNodeId: string
-  agentName: string
   configsMap?: HooksStoreShape['configsMap']
-  mentionConfig: MentionConfig
-  onMentionConfigChange: (config: MentionConfig) => void
-  extractorNode?: Node<LLMNodeType>
   toolParamValue?: string
   parentAvailableNodes?: Node[]
   parentAvailableVars?: NodeOutPutVar[]
+  selectableNodeTypes?: BlockEnum[]
   onSave?: (nodes: Node[], edges: Edge[]) => void
   onSyncWorkflowDraft?: SyncWorkflowDraft
 }
+
+export type AgentSubGraphProps = BaseSubGraphProps & {
+  variant: 'agent'
+  sourceVariable: ValueSelector
+  agentNodeId: string
+  agentName: string
+  mentionConfig: MentionConfig
+  onMentionConfigChange: (config: MentionConfig) => void
+  extractorNode?: Node<LLMNodeType>
+}
+
+export type AssembleSubGraphProps = BaseSubGraphProps & {
+  variant: 'assemble'
+  title: string
+  extractorNode?: Node<CodeNodeType>
+}
+
+export type SubGraphProps = AgentSubGraphProps | AssembleSubGraphProps
 
 export type SubGraphSliceShape = {
   parentAvailableVars: NodeOutPutVar[]

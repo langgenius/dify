@@ -7,22 +7,28 @@ import { useShallow } from 'zustand/react/shallow'
 import { useIsChatMode, useWorkflowVariables } from '@/app/components/workflow/hooks'
 import Panel from '@/app/components/workflow/panel'
 import { useStore } from '@/app/components/workflow/store'
-import { BlockEnum } from '@/app/components/workflow/types'
 import ConfigPanel from './config-panel'
 
-type SubGraphChildrenProps = {
-  agentName: string
-  extractorNodeId: string
-  mentionConfig: MentionConfig
-  onMentionConfigChange: (config: MentionConfig) => void
-}
+type SubGraphChildrenProps
+  = | {
+    variant: 'agent'
+    title: string
+    extractorNodeId: string
+    mentionConfig: MentionConfig
+    onMentionConfigChange: (config: MentionConfig) => void
+  }
+  | {
+    variant: 'assemble'
+    title: string
+    extractorNodeId: string
+  }
 
-const SubGraphChildren: FC<SubGraphChildrenProps> = ({
-  agentName,
-  extractorNodeId,
-  mentionConfig,
-  onMentionConfigChange,
-}) => {
+const SubGraphChildren: FC<SubGraphChildrenProps> = (props) => {
+  const {
+    variant,
+    title,
+    extractorNodeId,
+  } = props
   const { getNodeAvailableVars } = useWorkflowVariables()
   const isChatMode = useIsChatMode()
   const nodePanelWidth = useStore(s => s.nodePanelWidth)
@@ -32,7 +38,7 @@ const SubGraphChildren: FC<SubGraphChildrenProps> = ({
   }))
 
   const extractorNode = useReactFlowStore(useShallow((s) => {
-    return s.getNodes().find(node => node.data.type === BlockEnum.LLM)
+    return s.getNodes().find(node => node.id === extractorNodeId)
   }))
 
   const availableNodes = useMemo(() => {
@@ -51,8 +57,10 @@ const SubGraphChildren: FC<SubGraphChildrenProps> = ({
     return vars.filter(item => item.nodeId === extractorNode.id)
   }, [extractorNode, getNodeAvailableVars, isChatMode])
 
+  const agentProps = variant === 'agent' ? props : null
+
   const panelRight = useMemo(() => {
-    if (selectedNode)
+    if (!agentProps || selectedNode)
       return null
 
     return (
@@ -62,17 +70,25 @@ const SubGraphChildren: FC<SubGraphChildrenProps> = ({
           style={{ width: `${nodePanelWidth}px` }}
         >
           <ConfigPanel
-            agentName={agentName}
+            agentName={title}
             extractorNodeId={extractorNodeId}
-            mentionConfig={mentionConfig}
+            mentionConfig={agentProps.mentionConfig}
             availableNodes={availableNodes}
             availableVars={availableVars}
-            onMentionConfigChange={onMentionConfigChange}
+            onMentionConfigChange={agentProps.onMentionConfigChange}
           />
         </div>
       </div>
     )
-  }, [agentName, availableNodes, availableVars, extractorNodeId, mentionConfig, nodePanelWidth, onMentionConfigChange, selectedNode])
+  }, [agentProps, availableNodes, availableVars, extractorNodeId, nodePanelWidth, selectedNode, title])
+
+  if (variant === 'assemble') {
+    return (
+      <Panel
+        withHeader={false}
+      />
+    )
+  }
 
   return (
     <Panel
