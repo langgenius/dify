@@ -24,8 +24,12 @@ export type FetchOptionType = Omit<RequestInit, 'body'> & {
 }
 
 const afterResponse204: AfterResponseHook = async (_request, _options, response) => {
-  if (response.status === 204)
-    return Response.json({ result: 'success' })
+  if (response.status === 204) {
+    return new Response(JSON.stringify({ result: 'success' }), {
+      status: 200,
+      headers: { 'Content-Type': ContentType.json },
+    })
+  }
 }
 
 export type ResponseError = {
