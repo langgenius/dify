@@ -8,7 +8,7 @@ from typing import Any, Literal, Union, overload
 from flask import Flask, current_app
 from pydantic import ValidationError
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 import contexts
 from configs import dify_config
@@ -24,6 +24,7 @@ from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTas
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.task_entities import WorkflowAppBlockingResponse, WorkflowAppStreamResponse
 from core.app.layers.sandbox_layer import SandboxLayer
+from core.db.session_factory import session_factory
 from core.helper.trace_id_helper import extract_external_trace_id_from_args
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
@@ -479,7 +480,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         :return:
         """
         with preserve_flask_contexts(flask_app, context_vars=context):
-            with Session(db.engine, expire_on_commit=False) as session:
+            with session_factory.create_session() as session:
                 workflow = session.scalar(
                     select(Workflow).where(
                         Workflow.tenant_id == application_generate_entity.app_config.tenant_id,
