@@ -1025,9 +1025,7 @@ class WorkflowService:
                 continue
             email = payload.get("email")
             if email:
-                recipients_data.append(
-                    DeliveryTestEmailRecipient(email=email, form_token=recipient.access_token)
-                )
+                recipients_data.append(DeliveryTestEmailRecipient(email=email, form_token=recipient.access_token))
         return recipients_data
 
     def _build_human_input_node(

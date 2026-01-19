@@ -119,7 +119,11 @@ def build_workflow_event_stream(
                     except queue.Empty:
                         current_time = time.time()
                         if current_time - last_msg_time > idle_timeout:
-                            return
+                            logger.debug(
+                                "No workflow events received for %s seconds, keeping stream open",
+                                idle_timeout,
+                            )
+                            last_msg_time = current_time
                         if current_time - last_ping_time >= ping_interval:
                             yield StreamEvent.PING.value
                             last_ping_time = current_time
@@ -416,7 +420,7 @@ def _is_terminal_event(event: Mapping[str, Any] | str) -> bool:
     if not isinstance(event, Mapping):
         return False
     event_type = event.get("event")
-    return event_type in (StreamEvent.WORKFLOW_FINISHED.value, StreamEvent.WORKFLOW_PAUSED.value)
+    return event_type == StreamEvent.WORKFLOW_FINISHED.value
 
 
 def _collect_snapshot_keys(events: Iterable[Mapping[str, Any]]) -> set[tuple[str, str]]:

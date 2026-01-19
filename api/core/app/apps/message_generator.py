@@ -1,14 +1,8 @@
-import json
-import time
 from collections.abc import Callable, Generator, Mapping
-from typing import Any
 
-from core.app.entities.task_entities import (
-    StreamEvent,
-)
+from core.app.apps.streaming_utils import stream_topic_events
 from extensions.ext_redis import get_pubsub_broadcast_channel
 from libs.broadcast_channel.channel import Topic
-from libs.broadcast_channel.exc import SubscriptionClosedError
 from models.model import AppMode
 
 
@@ -34,44 +28,9 @@ class MessageGenerator:
         on_subscribe: Callable[[], None] | None = None,
     ) -> Generator[Mapping | str, None, None]:
         topic = cls.get_response_topic(app_mode, workflow_run_id)
-        return _topic_msg_generator(topic, idle_timeout, ping_interval, on_subscribe)
-
-
-def _topic_msg_generator(
-    topic: Topic,
-    idle_timeout: float,
-    ping_interval: float,
-    on_subscribe: Callable[[], None] | None = None,
-) -> Generator[Mapping[str, Any], None, None]:
-    last_msg_time = time.time()
-    last_ping_time = last_msg_time
-    with topic.subscribe() as sub:
-        # on_subscribe fires only after the Redis subscription is active.
-        # This is used to gate task start and reduce pub/sub race for the first event.
-        if on_subscribe is not None:
-            on_subscribe()
-        while True:
-            try:
-                msg = sub.receive(timeout=0.1)
-            except SubscriptionClosedError:
-                return
-            if msg is None:
-                current_time = time.time()
-                if current_time - last_msg_time > idle_timeout:
-                    return
-                if current_time - last_ping_time >= ping_interval:
-                    yield "ping"
-                    last_ping_time = current_time
-                # skip the `None` message
-                continue
-
-            last_msg_time = time.time()
-            last_ping_time = last_msg_time
-            event = json.loads(msg)
-            yield event
-            if not isinstance(event, dict):
-                continue
-
-            event_type = event.get("event")
-            if event_type in (StreamEvent.WORKFLOW_FINISHED, StreamEvent.WORKFLOW_PAUSED):
-                return
+        return stream_topic_events(
+            topic=topic,
+            idle_timeout=idle_timeout,
+            ping_interval=ping_interval,
+            on_subscribe=on_subscribe,
+        )

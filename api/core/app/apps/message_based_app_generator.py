@@ -1,9 +1,7 @@
-import json
 import logging
-import time
 import uuid
 from collections.abc import Callable, Generator, Mapping
-from typing import Any, Union, cast
+from typing import Union, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -12,6 +10,7 @@ from core.app.app_config.entities import EasyUIBasedAppConfig, EasyUIBasedAppMod
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.exc import GenerateTaskStoppedError
+from core.app.apps.streaming_utils import stream_topic_events
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
     AgentChatAppGenerateEntity,
@@ -25,14 +24,12 @@ from core.app.entities.task_entities import (
     ChatbotAppStreamResponse,
     CompletionAppBlockingResponse,
     CompletionAppStreamResponse,
-    StreamEvent,
 )
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from extensions.ext_database import db
 from extensions.ext_redis import get_pubsub_broadcast_channel
 from libs.broadcast_channel.channel import Topic
-from libs.broadcast_channel.exc import SubscriptionClosedError
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.enums import CreatorUserRole
@@ -315,38 +312,8 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         on_subscribe: Callable[[], None] | None = None,
     ) -> Generator[Mapping | str, None, None]:
         topic = cls.get_response_topic(app_mode, workflow_run_id)
-        return _topic_msg_generator(topic, idle_timeout, on_subscribe)
-
-
-def _topic_msg_generator(
-    topic: Topic,
-    idle_timeout: float,
-    on_subscribe: Callable[[], None] | None = None,
-) -> Generator[Mapping[str, Any], None, None]:
-    last_msg_time = time.time()
-    with topic.subscribe() as sub:
-        # on_subscribe fires only after the Redis subscription is active.
-        # This is used to gate task start and reduce pub/sub race for the first event.
-        if on_subscribe is not None:
-            on_subscribe()
-        while True:
-            try:
-                msg = sub.receive()
-            except SubscriptionClosedError:
-                return
-            if msg is None:
-                current_time = time.time()
-                if current_time - last_msg_time > idle_timeout:
-                    return
-                # skip the `None` message
-                continue
-
-            last_msg_time = time.time()
-            event = json.loads(msg)
-            yield event
-            if not isinstance(event, dict):
-                continue
-
-            event_type = event.get("event")
-            if event_type in (StreamEvent.WORKFLOW_FINISHED, StreamEvent.WORKFLOW_PAUSED):
-                return
+        return stream_topic_events(
+            topic=topic,
+            idle_timeout=idle_timeout,
+            on_subscribe=on_subscribe,
+        )
