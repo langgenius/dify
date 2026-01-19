@@ -12,9 +12,9 @@ import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import ReactDOM from 'react-dom'
 import { v4 as uuid } from 'uuid'
+import { FormTypeEnum } from '@/app/components/base/form/types'
 import { useBasicTypeaheadTriggerMatch } from '@/app/components/base/prompt-editor/hooks'
 import { $splitNodeContainingQuery } from '@/app/components/base/prompt-editor/utils'
-import { CollectionType } from '@/app/components/tools/types'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import ToolPicker from '@/app/components/workflow/block-selector/tool-picker'
 import { useWorkflowStore } from '@/app/components/workflow/store'
@@ -74,17 +74,17 @@ const ToolPickerBlock: FC<ToolPickerBlockProps> = ({ scope = 'all' }) => {
     const { activeTabId, fileMetadata, setDraftMetadata, pinTab } = storeApi.getState()
     if (!activeTabId)
       return
-    const metadata = (fileMetadata.get(activeTabId) || {}) as Record<string, any>
-    const nextTools = { ...(metadata.tools || {}) } as Record<string, any>
+    const metadata = (fileMetadata.get(activeTabId) || {}) as Record<string, unknown>
+    const nextTools = { ...(metadata.tools || {}) } as Record<string, unknown>
     toolEntries.forEach(({ configId, tool }) => {
       const schemas = toolParametersToFormSchemas((tool.paramSchemas || []) as ToolParameter[])
-      const fields = schemas.map((schema: any) => ({
+      const fields = schemas.map(schema => ({
         id: schema.variable,
         value: schema.default ?? null,
-        auto: schema.form === 'llm',
+        auto: ![FormTypeEnum.modelSelector, FormTypeEnum.appSelector].includes(schema.type as FormTypeEnum), // llm can not determine auto for these types
       }))
       nextTools[configId] = {
-        type: tool.provider_type === CollectionType.mcp ? 'mcp' : 'builtin',
+        type: tool.provider_type, //  === CollectionType.mcp ? 'mcp' : 'builtin'
         configuration: { fields },
       }
     })
