@@ -1,78 +1,89 @@
 from __future__ import annotations
 
-import json
 import logging
-from io import BytesIO
 from types import TracebackType
 from typing import TYPE_CHECKING
 
 from core.session.cli_api import CliApiSessionManager
-from core.virtual_environment.__base.helpers import execute
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 
-from .bash.dify_cli import DifyCliConfig
-from .constants import DIFY_CLI_CONFIG_PATH, DIFY_CLI_PATH
+from .constants import (
+    DIFY_CLI_GLOBAL_TOOLS_PATH,
+)
 from .manager import SandboxManager
-from .utils.debug import sandbox_debug
 
 if TYPE_CHECKING:
-    from core.tools.__base.tool import Tool
-
     from .bash.bash_tool import SandboxBashTool
 
 logger = logging.getLogger(__name__)
 
 
 class SandboxSession:
+    _workflow_execution_id: str
+    _tenant_id: str
+    _user_id: str
+    _node_id: str | None
+    _allow_tools: list[str] | None
+
+    _sandbox: VirtualEnvironment | None
+    _bash_tool: SandboxBashTool | None
+    _session_id: str | None
+    _tools_path: str
+
     def __init__(
         self,
         *,
         workflow_execution_id: str,
         tenant_id: str,
         user_id: str,
-        tools: list[Tool],
+        node_id: str | None = None,
+        allow_tools: list[str] | None = None,
     ) -> None:
         self._workflow_execution_id = workflow_execution_id
         self._tenant_id = tenant_id
         self._user_id = user_id
-        self._tools = tools
+        self._node_id = node_id
+        self._allow_tools = allow_tools
 
-        self._sandbox: VirtualEnvironment | None = None
-        self._bash_tool: SandboxBashTool | None = None
-        self._session_id: str | None = None
+        self._sandbox = None
+        self._bash_tool = None
+        self._session_id = None
+        self._tools_path = DIFY_CLI_GLOBAL_TOOLS_PATH
 
     def __enter__(self) -> SandboxSession:
         sandbox = SandboxManager.get(self._workflow_execution_id)
         if sandbox is None:
             raise RuntimeError(f"Sandbox not found for workflow_execution_id={self._workflow_execution_id}")
 
-        session = CliApiSessionManager().create(tenant_id=self._tenant_id, user_id=self._user_id)
-        self._session_id = session.id
+        self._sandbox = sandbox
 
-        try:
-            config = DifyCliConfig.create(session, self._tools)
-            config_json = json.dumps(config.model_dump(mode="json"), ensure_ascii=False)
-
-            sandbox_debug("sandbox", "config_json", config_json)
-            sandbox.upload_file(DIFY_CLI_CONFIG_PATH, BytesIO(config_json.encode("utf-8")))
-
-            execute(
-                sandbox,
-                [DIFY_CLI_PATH, "init"],
-                timeout=30,
-                error_message="Failed to initialize Dify CLI in sandbox",
-            )
-
-        except Exception:
-            CliApiSessionManager().delete(session.id)
-            self._session_id = None
-            raise
+        if self._allow_tools is not None:
+            # TODO: Implement node tools directory setup
+            if self._node_id is None:
+                raise ValueError("node_id is required when allow_tools is specified")
+            # self._tools_path = self._setup_node_tools_directory(sandbox, self._node_id, self._allow_tools)
+        else:
+            self._tools_path = DIFY_CLI_GLOBAL_TOOLS_PATH
 
         from .bash.bash_tool import SandboxBashTool
 
-        self._sandbox = sandbox
-        self._bash_tool = SandboxBashTool(sandbox=sandbox, tenant_id=self._tenant_id)
+        self._bash_tool = SandboxBashTool(sandbox=sandbox, tenant_id=self._tenant_id, tools_path=self._tools_path)
         return self
+
+    def _setup_node_tools_directory(
+        self,
+        sandbox: VirtualEnvironment,
+        node_id: str,
+        allow_tools: list[str],
+    ) -> None:
+        pass
+
+    @staticmethod
+    def _get_tool_name_from_config(tool_config: dict) -> str:
+        identity = tool_config.get("identity", {})
+        provider = identity.get("provider", "")
+        name = identity.get("name", "")
+        return f"{provider}__{name}"
 
     def __exit__(
         self,

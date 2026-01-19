@@ -61,7 +61,6 @@ class SkillMetadata(BaseModel):
 class SkillAsset(AssetItem):
     storage_key: str
     metadata: SkillMetadata
-    content: str
     tool_references: list[ToolReference] = field(default_factory=list)
     file_references: list[FileReference] = field(default_factory=list)
 

@@ -21,8 +21,9 @@ COMMAND_TIMEOUT_SECONDS = 60
 
 
 class SandboxBashTool(Tool):
-    def __init__(self, sandbox: VirtualEnvironment, tenant_id: str):
+    def __init__(self, sandbox: VirtualEnvironment, tenant_id: str, tools_path: str) -> None:
         self._sandbox = sandbox
+        self._tools_path = tools_path
 
         entity = ToolEntity(
             identity=ToolIdentity(
@@ -71,9 +72,10 @@ class SandboxBashTool(Tool):
         try:
             with with_connection(self._sandbox) as conn:
                 cmd_list = ["bash", "-c", command]
+                env_vars = {"PATH": f"{self._tools_path}:/usr/local/bin:/usr/bin:/bin"}
 
                 sandbox_debug("bash_tool", "cmd_list", cmd_list)
-                future = submit_command(self._sandbox, conn, cmd_list)
+                future = submit_command(self._sandbox, conn, cmd_list, environments=env_vars)
                 timeout = COMMAND_TIMEOUT_SECONDS if COMMAND_TIMEOUT_SECONDS > 0 else None
                 result = future.result(timeout=timeout)
 

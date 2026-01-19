@@ -62,6 +62,27 @@ class AppAssetService:
         return assets
 
     @staticmethod
+    def get_assets(tenant_id: str, app_id: str, *, is_draft: bool) -> AppAssets | None:
+        with Session(db.engine) as session:
+            if is_draft:
+                stmt = session.query(AppAssets).filter(
+                    AppAssets.tenant_id == tenant_id,
+                    AppAssets.app_id == app_id,
+                    AppAssets.version == AppAssets.VERSION_DRAFT,
+                )
+            else:
+                stmt = (
+                    session.query(AppAssets)
+                    .filter(
+                        AppAssets.tenant_id == tenant_id,
+                        AppAssets.app_id == app_id,
+                        AppAssets.version != AppAssets.VERSION_DRAFT,
+                    )
+                    .order_by(AppAssets.created_at.desc())
+                )
+            return stmt.first()
+
+    @staticmethod
     def get_asset_tree(app_model: App, account_id: str) -> AppAssetFileTree:
         with Session(db.engine) as session:
             assets = AppAssetService.get_or_create_assets(session, app_model, account_id)
@@ -284,10 +305,10 @@ class AppAssetService:
             session.add(published)
             session.flush()
 
-            parser = AssetParser(tree, tenant_id, app_id, storage)
+            parser = AssetParser(tree, tenant_id, app_id)
             parser.register(
                 "md",
-                SkillAssetParser(tenant_id, app_id, publish_id, storage),
+                SkillAssetParser(tenant_id, app_id, publish_id),
             )
 
             assets = parser.parse()
@@ -306,12 +327,39 @@ class AppAssetService:
             packager = ZipPackager(storage)
 
             zip_bytes = packager.package(assets)
-            zip_key = AssetPaths.published_zip(tenant_id, app_id, publish_id)
+            zip_key = AssetPaths.build_zip(tenant_id, app_id, publish_id)
             storage.save(zip_key, zip_bytes)
 
             session.commit()
 
         return published
+
+    @staticmethod
+    def build_assets(tenant_id: str, app_id: str, assets: AppAssets) -> None:
+        tree = assets.asset_tree
+
+        parser = AssetParser(tree, tenant_id, app_id)
+        parser.register(
+            "md",
+            SkillAssetParser(tenant_id, app_id, assets.id),
+        )
+
+        parsed_assets = parser.parse()
+        manifest = SkillManager.generate_tool_manifest(
+            assets=[asset for asset in parsed_assets if isinstance(asset, SkillAsset)]
+        )
+
+        SkillManager.save_tool_manifest(
+            tenant_id,
+            app_id,
+            assets.id,
+            manifest,
+        )
+
+        packager = ZipPackager(storage)
+        zip_bytes = packager.package(parsed_assets)
+        zip_key = AssetPaths.build_zip(tenant_id, app_id, assets.id)
+        storage.save(zip_key, zip_bytes)
 
     @staticmethod
     def get_file_download_url(

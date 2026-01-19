@@ -22,14 +22,27 @@ class SkillManager:
     def save_tool_manifest(
         tenant_id: str,
         app_id: str,
-        publish_id: str,
+        assets_id: str,
         manifest: ToolManifest,
     ) -> None:
         if not manifest.tools:
             return
 
-        key = AssetPaths.published_tool_manifest(tenant_id, app_id, publish_id)
+        key = AssetPaths.build_tool_manifest(tenant_id, app_id, assets_id)
         storage.save(key, manifest.model_dump_json(indent=2).encode("utf-8"))
+
+    @staticmethod
+    def load_tool_manifest(
+        tenant_id: str,
+        app_id: str,
+        assets_id: str,
+    ) -> ToolManifest | None:
+        key = AssetPaths.build_tool_manifest(tenant_id, app_id, assets_id)
+        try:
+            data = storage.load_once(key)
+            return ToolManifest.model_validate_json(data)
+        except Exception:
+            return None
 
     @staticmethod
     def _collect_asset_manifest(asset: SkillAsset) -> ToolManifest:

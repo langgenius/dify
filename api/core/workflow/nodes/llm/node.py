@@ -13,7 +13,7 @@ from sqlalchemy import select
 
 from core.agent.entities import AgentEntity, AgentLog, AgentResult, AgentToolEntity, ExecutionContext
 from core.agent.patterns import StrategyFactory
-from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity
+from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.file import File, FileTransferMethod, FileType, file_manager
 from core.helper.code_executor import CodeExecutor, CodeLanguage
 from core.llm_generator.output_parser.errors import OutputParserError
@@ -1580,34 +1580,17 @@ class LLMNode(Node[LLMNodeData]):
         result = yield from self._process_tool_outputs(outputs)
         return result
 
-    def _prepare_sandbox_tools(self) -> list[Tool]:
-        """Prepare sandbox tools."""
-        tool_instances = []
+    def _get_allow_tools_list(self) -> list[str] | None:
+        if not self._node_data.tools:
+            return None
 
-        for tool in self._node_data.tools or []:
-            try:
-                # Get tool runtime from ToolManager
-                tool_runtime = ToolManager.get_tool_runtime(
-                    tenant_id=self.tenant_id,
-                    tool_name=tool.tool_name,
-                    provider_id=tool.provider_name,
-                    provider_type=tool.type,
-                    invoke_from=InvokeFrom.AGENT,
-                    credential_id=tool.credential_id,
-                )
+        allow_tools = []
+        for tool in self._node_data.tools:
+            if tool.enabled:
+                tool_name = f"{tool.tool_name}"
+                allow_tools.append(tool_name)
 
-                # Apply custom description from extra field if available
-                if tool.extra.get("description") and tool_runtime.entity.description:
-                    tool_runtime.entity.description.llm = (
-                        tool.extra.get("description") or tool_runtime.entity.description.llm
-                    )
-
-                tool_instances.append(tool_runtime)
-            except Exception as e:
-                logger.warning("Failed to load tool %s: %s", tool, str(e))
-                continue
-
-        return tool_instances
+        return allow_tools or None
 
     def _invoke_llm_with_sandbox(
         self,
@@ -1620,7 +1603,7 @@ class LLMNode(Node[LLMNodeData]):
         if not workflow_execution_id:
             raise LLMNodeError("workflow_execution_id is required for sandbox runtime mode")
 
-        configured_tools = self._prepare_sandbox_tools()
+        allow_tools = self._get_allow_tools_list()
 
         result: LLMGenerationData | None = None
 
@@ -1628,7 +1611,8 @@ class LLMNode(Node[LLMNodeData]):
             workflow_execution_id=workflow_execution_id,
             tenant_id=self.tenant_id,
             user_id=self.user_id,
-            tools=configured_tools,
+            node_id=self.id,
+            allow_tools=allow_tools,
         ) as sandbox_session:
             prompt_files = self._extract_prompt_files(variable_pool)
             model_features = self._get_model_features(model_instance)

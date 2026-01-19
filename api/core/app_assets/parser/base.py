@@ -12,7 +12,6 @@ class AssetItemParser(ABC):
         file_name: str,
         extension: str,
         storage_key: str,
-        raw_bytes: bytes,
     ) -> AssetItem:
         raise NotImplementedError
 
@@ -25,7 +24,6 @@ class FileAssetParser(AssetItemParser):
         file_name: str,
         extension: str,
         storage_key: str,
-        raw_bytes: bytes,
     ) -> FileAsset:
         return FileAsset(
             node_id=node_id,
