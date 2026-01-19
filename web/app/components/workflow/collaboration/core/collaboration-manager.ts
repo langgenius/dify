@@ -890,10 +890,45 @@ export class CollaborationManager {
     this.pendingGraphImportEmit = true
     requestAnimationFrame(() => {
       this.pendingGraphImportEmit = false
+      const mergedNodes = this.mergeLocalNodeState(this.getNodes())
       this.eventEmitter.emit('graphImport', {
-        nodes: this.getNodes(),
+        nodes: mergedNodes,
         edges: this.getEdges(),
       })
+    })
+  }
+
+  private mergeLocalNodeState(nodes: Node[]): Node[] {
+    const reactFlowStore = this.reactFlowStore
+    const state = reactFlowStore?.getState()
+    const localNodes = state?.getNodes() || []
+
+    if (localNodes.length === 0)
+      return nodes
+
+    const localNodesMap = new Map(localNodes.map(node => [node.id, node]))
+    return nodes.map((node) => {
+      const localNode = localNodesMap.get(node.id)
+      if (!localNode)
+        return node
+
+      const nextNode = cloneDeep(node)
+      const nextData = { ...(nextNode.data || {}) } as Node['data']
+      const nextDataRecord = nextData as Record<string, unknown>
+      const localData = localNode.data as Record<string, unknown> | undefined
+
+      if (localData) {
+        Object.entries(localData).forEach(([key, value]) => {
+          if (key === 'selected' || key.startsWith('_'))
+            nextDataRecord[key] = value
+        })
+      }
+
+      if (!Object.prototype.hasOwnProperty.call(nextDataRecord, 'selected') && localNode.selected !== undefined)
+        nextDataRecord.selected = localNode.selected
+
+      nextNode.data = nextData
+      return nextNode
     })
   }
 
