@@ -46,7 +46,7 @@ const TreeContextMenu: FC<TreeContextMenuProps> = ({ treeRef }) => {
     >
       <NodeMenu
         type={getMenuType(contextMenu)}
-        nodeId={contextMenu.nodeId}
+        nodeId={contextMenu.type === 'blank' ? 'root' : contextMenu.nodeId}
         onClose={handleClose}
         treeRef={treeRef}
       />
