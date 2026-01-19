@@ -106,14 +106,17 @@ class MentionGraphService:
         ]
 
         structured_output = {
-            "type": "object",
-            "properties": {
-                parameter_schema.name: {
-                    "type": parameter_schema.type,
-                    "description": parameter_schema.description,
-                }
-            },
-            "required": [parameter_schema.name],
+            "schema": {
+                "type": "object",
+                "properties": {
+                    parameter_schema.name: {
+                        "type": parameter_schema.type,
+                        "description": parameter_schema.description,
+                    }
+                },
+                "required": [parameter_schema.name],
+                "additionalProperties": False,
+            }
         }
 
         return {
