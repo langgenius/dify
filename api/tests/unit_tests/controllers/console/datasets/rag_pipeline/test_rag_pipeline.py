@@ -32,7 +32,6 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline import (
     PublishCustomizedPipelineTemplateApi,
 )
 from models.dataset import PipelineCustomizedTemplate
-from services.rag_pipeline.rag_pipeline import RagPipelineService
 
 
 class TestPipelineTemplateListApi:
@@ -68,7 +67,9 @@ class TestPipelineTemplateListApi:
         with (
             patch("controllers.console.datasets.rag_pipeline.rag_pipeline.setup_required", lambda f: f),
             patch("controllers.console.datasets.rag_pipeline.rag_pipeline.login_required", lambda f: f),
-            patch("controllers.console.datasets.rag_pipeline.rag_pipeline.account_initialization_required", lambda f: f),
+            patch(
+                "controllers.console.datasets.rag_pipeline.rag_pipeline.account_initialization_required", lambda f: f
+            ),
             patch("controllers.console.datasets.rag_pipeline.rag_pipeline.enterprise_license_required", lambda f: f),
         ):
             yield
@@ -253,7 +254,9 @@ class TestPipelineTemplateDetailApi:
         with (
             patch("controllers.console.datasets.rag_pipeline.rag_pipeline.setup_required", lambda f: f),
             patch("controllers.console.datasets.rag_pipeline.rag_pipeline.login_required", lambda f: f),
-            patch("controllers.console.datasets.rag_pipeline.rag_pipeline.account_initialization_required", lambda f: f),
+            patch(
+                "controllers.console.datasets.rag_pipeline.rag_pipeline.account_initialization_required", lambda f: f
+            ),
             patch("controllers.console.datasets.rag_pipeline.rag_pipeline.enterprise_license_required", lambda f: f),
         ):
             yield
@@ -412,7 +415,9 @@ class TestCustomizedPipelineTemplateApi:
         with (
             patch("controllers.console.datasets.rag_pipeline.rag_pipeline.setup_required", lambda f: f),
             patch("controllers.console.datasets.rag_pipeline.rag_pipeline.login_required", lambda f: f),
-            patch("controllers.console.datasets.rag_pipeline.rag_pipeline.account_initialization_required", lambda f: f),
+            patch(
+                "controllers.console.datasets.rag_pipeline.rag_pipeline.account_initialization_required", lambda f: f
+            ),
             patch("controllers.console.datasets.rag_pipeline.rag_pipeline.enterprise_license_required", lambda f: f),
         ):
             yield
@@ -520,9 +525,7 @@ class TestCustomizedPipelineTemplateApi:
         # Arrange: Set up test data
         template_id = "custom-template-789"
 
-        with app.test_request_context(
-            method="DELETE", path=f"/rag/pipeline/customized/templates/{template_id}"
-        ):
+        with app.test_request_context(method="DELETE", path=f"/rag/pipeline/customized/templates/{template_id}"):
             with patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline.RagPipelineService.delete_customized_pipeline_template"
             ) as mock_delete:
@@ -554,9 +557,7 @@ class TestCustomizedPipelineTemplateApi:
         # Arrange: Set up test data
         template_id = "non-existent-template"
 
-        with app.test_request_context(
-            method="DELETE", path=f"/rag/pipeline/customized/templates/{template_id}"
-        ):
+        with app.test_request_context(method="DELETE", path=f"/rag/pipeline/customized/templates/{template_id}"):
             with patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline.RagPipelineService.delete_customized_pipeline_template"
             ) as mock_delete:
@@ -585,9 +586,7 @@ class TestCustomizedPipelineTemplateApi:
         template_id = "custom-template-789"
         yaml_content = "workflow:\n  nodes:\n    - id: node-1\n      type: datasource"
 
-        with app.test_request_context(
-            method="POST", path=f"/rag/pipeline/customized/templates/{template_id}"
-        ):
+        with app.test_request_context(method="POST", path=f"/rag/pipeline/customized/templates/{template_id}"):
             with (
                 patch("controllers.console.datasets.rag_pipeline.rag_pipeline.db") as mock_db,
                 patch("controllers.console.datasets.rag_pipeline.rag_pipeline.Session") as mock_session_class,
@@ -626,9 +625,7 @@ class TestCustomizedPipelineTemplateApi:
         # Arrange: Set up test data
         template_id = "non-existent-template"
 
-        with app.test_request_context(
-            method="POST", path=f"/rag/pipeline/customized/templates/{template_id}"
-        ):
+        with app.test_request_context(method="POST", path=f"/rag/pipeline/customized/templates/{template_id}"):
             with (
                 patch("controllers.console.datasets.rag_pipeline.rag_pipeline.db") as mock_db,
                 patch("controllers.console.datasets.rag_pipeline.rag_pipeline.Session") as mock_session_class,
@@ -680,7 +677,9 @@ class TestPublishCustomizedPipelineTemplateApi:
         with (
             patch("controllers.console.datasets.rag_pipeline.rag_pipeline.setup_required", lambda f: f),
             patch("controllers.console.datasets.rag_pipeline.rag_pipeline.login_required", lambda f: f),
-            patch("controllers.console.datasets.rag_pipeline.rag_pipeline.account_initialization_required", lambda f: f),
+            patch(
+                "controllers.console.datasets.rag_pipeline.rag_pipeline.account_initialization_required", lambda f: f
+            ),
             patch("controllers.console.datasets.rag_pipeline.rag_pipeline.enterprise_license_required", lambda f: f),
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline.knowledge_pipeline_publish_enabled", lambda f: f
@@ -732,9 +731,7 @@ class TestPublishCustomizedPipelineTemplateApi:
                 # Assert: Verify response
                 assert result == {"result": "success"}
                 # Verify service method was called with correct parameters
-                mock_service.publish_customized_pipeline_template.assert_called_once_with(
-                    pipeline_id, publish_payload
-                )
+                mock_service.publish_customized_pipeline_template.assert_called_once_with(pipeline_id, publish_payload)
 
     def test_publish_template_invalid_payload(self, app, mock_decorators):
         """Test template publishing with invalid payload.
@@ -841,4 +838,3 @@ class TestPublishCustomizedPipelineTemplateApi:
                 # Verify icon_info was included in service call
                 call_args = mock_service.publish_customized_pipeline_template.call_args[0]
                 assert call_args[1]["icon_info"] == publish_payload["icon_info"]
-
