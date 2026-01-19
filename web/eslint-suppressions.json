@@ -2066,11 +2066,6 @@
       "count": 1
     }
   },
-  "app/components/datasets/extra-info/service-api/card.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 1
-    }
-  },
   "app/components/datasets/formatted-text/flavours/edit-slice.tsx": {
     "react-hooks/refs": {
       "count": 1
@@ -4771,11 +4766,6 @@
   "i18n/en-US/app-debug.json": {
     "no-irregular-whitespace": {
       "count": 1
-    }
-  },
-  "i18n/en-US/common.json": {
-    "no-irregular-whitespace": {
-      "count": 3
     }
   },
   "i18n/fr-FR/app-debug.json": {
