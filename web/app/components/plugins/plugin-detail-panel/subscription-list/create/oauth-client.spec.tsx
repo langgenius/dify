@@ -1240,4 +1240,60 @@ describe('OAuthClientSettingsModal', () => {
       vi.useRealTimers()
     })
   })
+
+  describe('OAuth Client Schema Params Fallback', () => {
+    it('should handle schema when params is truthy but schema name not in params', () => {
+      const configWithSchemaNotInParams = createMockOAuthConfig({
+        system_configured: false,
+        custom_enabled: true,
+        params: {
+          client_id: 'test-id',
+          client_secret: 'test-secret',
+        },
+        oauth_client_schema: [
+          { name: 'client_id', type: 'text-input' as unknown, required: true, label: { 'en-US': 'Client ID' } as unknown },
+          { name: 'client_secret', type: 'secret-input' as unknown, required: true, label: { 'en-US': 'Client Secret' } as unknown },
+          { name: 'extra_field', type: 'text-input' as unknown, required: false, label: { 'en-US': 'Extra' } as unknown },
+        ] as TriggerOAuthConfig['oauth_client_schema'],
+      })
+
+      render(<OAuthClientSettingsModal {...defaultProps} oauthConfig={configWithSchemaNotInParams} />)
+
+      // extra_field should be rendered but without default value
+      const extraInput = screen.getByTestId('form-field-extra_field') as HTMLInputElement
+      expect(extraInput.defaultValue).toBe('')
+    })
+
+    it('should handle oauth_client_schema with undefined params', () => {
+      const configWithUndefinedParams = createMockOAuthConfig({
+        system_configured: false,
+        custom_enabled: true,
+        params: undefined as unknown as TriggerOAuthConfig['params'],
+        oauth_client_schema: [
+          { name: 'client_id', type: 'text-input' as unknown, required: true, label: { 'en-US': 'Client ID' } as unknown },
+        ] as TriggerOAuthConfig['oauth_client_schema'],
+      })
+
+      render(<OAuthClientSettingsModal {...defaultProps} oauthConfig={configWithUndefinedParams} />)
+
+      // Form should not render because params is undefined (schema condition fails)
+      expect(screen.queryByTestId('base-form')).not.toBeInTheDocument()
+    })
+
+    it('should handle oauth_client_schema with null params', () => {
+      const configWithNullParams = createMockOAuthConfig({
+        system_configured: false,
+        custom_enabled: true,
+        params: null as unknown as TriggerOAuthConfig['params'],
+        oauth_client_schema: [
+          { name: 'client_id', type: 'text-input' as unknown, required: true, label: { 'en-US': 'Client ID' } as unknown },
+        ] as TriggerOAuthConfig['oauth_client_schema'],
+      })
+
+      render(<OAuthClientSettingsModal {...defaultProps} oauthConfig={configWithNullParams} />)
+
+      // Form should not render because params is null
+      expect(screen.queryByTestId('base-form')).not.toBeInTheDocument()
+    })
+  })
 })
