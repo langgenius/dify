@@ -52,6 +52,7 @@ import {
 import { fetchAllInspectVars } from '@/service/workflow'
 import { cn } from '@/utils/classnames'
 import CandidateNode from './candidate-node'
+import { collaborationManager } from './collaboration'
 import UserCursors from './collaboration/components/user-cursors'
 import { CommentCursor, CommentIcon, CommentInput, CommentThread } from './comment'
 import CommentManager from './comment-manager'
@@ -172,6 +173,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const workflowContainerRef = useRef<HTMLDivElement>(null)
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
+  const store = useStoreApi()
   const [isMouseOverCanvas, setIsMouseOverCanvas] = useState(false)
   const [nodes, setNodes] = useNodesState(originalNodes)
   const [edges, setEdges] = useEdgesState(originalEdges)
@@ -227,6 +229,18 @@ export const Workflow: FC<WorkflowProps> = memo(({
   useEffect(() => {
     setNodesOnlyChangeWithData(currentNodes as Node[])
   }, [currentNodes, setNodesOnlyChangeWithData])
+  useEffect(() => {
+    return collaborationManager.onGraphImport(({ nodes: importedNodes, edges: importedEdges }) => {
+      if (!isEqual(nodes, importedNodes)) {
+        setNodes(importedNodes)
+        store.getState().setNodes(importedNodes)
+      }
+      if (!isEqual(edges, importedEdges)) {
+        setEdges(importedEdges)
+        store.getState().setEdges(importedEdges)
+      }
+    })
+  }, [edges, nodes, setEdges, setNodes, store])
   const {
     handleSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose,
@@ -260,7 +274,6 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const isCommentInputActive = Boolean(pendingComment)
   const { t } = useTranslation()
 
-  const store = useStoreApi()
   eventEmitter?.useSubscription((event) => {
     const workflowEvent = event as unknown as WorkflowEvent
     if (workflowEvent.type === WORKFLOW_DATA_UPDATE && isWorkflowDataUpdatePayload(workflowEvent.payload)) {

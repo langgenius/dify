@@ -73,6 +73,7 @@ export class CollaborationManager {
   private isUndoRedoInProgress = false
   private pendingInitialSync = false
   private rejoinInProgress = false
+  private pendingGraphImportEmit = false
 
   private getActiveSocket(): Socket | null {
     if (!this.currentAppId)
@@ -588,6 +589,10 @@ export class CollaborationManager {
     return this.eventEmitter.on('syncRequest', callback)
   }
 
+  onGraphImport(callback: (payload: { nodes: Node[], edges: Edge[] }) => void): () => void {
+    return this.eventEmitter.on('graphImport', callback)
+  }
+
   onStateChange(callback: (state: Partial<CollaborationState>) => void): () => void {
     return this.eventEmitter.on('stateChange', callback)
   }
@@ -849,6 +854,8 @@ export class CollaborationManager {
 
           // Call ReactFlow's native setter directly to avoid triggering collaboration
           state.setNodes(updatedNodes)
+
+          this.scheduleGraphImportEmit()
         })
       }
     })
@@ -869,8 +876,24 @@ export class CollaborationManager {
 
           // Call ReactFlow's native setter directly to avoid triggering collaboration
           state.setEdges(updatedEdges)
+
+          this.scheduleGraphImportEmit()
         })
       }
+    })
+  }
+
+  private scheduleGraphImportEmit(): void {
+    if (this.pendingGraphImportEmit)
+      return
+
+    this.pendingGraphImportEmit = true
+    requestAnimationFrame(() => {
+      this.pendingGraphImportEmit = false
+      this.eventEmitter.emit('graphImport', {
+        nodes: this.getNodes(),
+        edges: this.getEdges(),
+      })
     })
   }
 
