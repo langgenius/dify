@@ -334,6 +334,14 @@ const MixedVariableTextInput = ({
     return detectAgentFromText(value)
   }, [detectAgentFromText, value])
 
+  // Check if value only contains agent context variable without other user input
+  const isOnlyAgentContext = useMemo(() => {
+    if (!detectedAgentFromValue || !value)
+      return false
+    const valueWithoutAgentContext = value.replace(AGENT_CONTEXT_VAR_PATTERN, '').trim()
+    return valueWithoutAgentContext === ''
+  }, [detectedAgentFromValue, value])
+
   const agentNodes = useMemo(() => {
     if (!contextNodeIds.size)
       return []
@@ -574,39 +582,48 @@ const MixedVariableTextInput = ({
         />
       )}
       {!isAssembleValue && (
-        <PromptEditor
-          key={controlPromptEditorRerenderKey}
-          wrapperClassName="min-h-8 px-2 py-1"
-          className="caret:text-text-accent"
-          editable={!readOnly}
-          value={value}
-          workflowVariableBlock={{
-            show: !disableVariableInsertion,
-            variables: nodesOutputVars || [],
-            workflowNodesMap,
-            showManageInputField,
-            onManageInputField,
-            showAssembleVariables: !disableVariableInsertion && !!toolNodeId && !!paramKey,
-            onAssembleVariables: handleAssembleSelect,
-          }}
-          agentBlock={{
-            show: agentNodes.length > 0 && !detectedAgentFromValue,
-            agentNodes,
-            onSelect: handleAgentSelect,
-          }}
-          placeholder={<Placeholder disableVariableInsertion={disableVariableInsertion} hasSelectedAgent={!!detectedAgentFromValue} />}
-          onChange={(text) => {
-            const hasPlaceholder = new RegExp(AGENT_CONTEXT_VAR_PATTERN.source).test(text)
-            if (hasPlaceholder)
-              syncExtractorPromptFromText(text)
-            if (detectedAgentFromValue && !hasPlaceholder) {
-              removeExtractorNode()
-              onChange?.(text, VarKindTypeEnum.mixed, null)
-              return
-            }
-            onChange?.(text)
-          }}
-        />
+        <div className="relative">
+          <PromptEditor
+            key={controlPromptEditorRerenderKey}
+            wrapperClassName="min-h-8 px-2 py-1"
+            className="caret:text-text-accent"
+            editable={!readOnly}
+            value={value}
+            workflowVariableBlock={{
+              show: !disableVariableInsertion,
+              variables: nodesOutputVars || [],
+              workflowNodesMap,
+              showManageInputField,
+              onManageInputField,
+              showAssembleVariables: !disableVariableInsertion && !!toolNodeId && !!paramKey,
+              onAssembleVariables: handleAssembleSelect,
+            }}
+            agentBlock={{
+              show: agentNodes.length > 0 && !detectedAgentFromValue,
+              agentNodes,
+              onSelect: handleAgentSelect,
+            }}
+            placeholder={<Placeholder disableVariableInsertion={disableVariableInsertion} hasSelectedAgent={!!detectedAgentFromValue} />}
+            onChange={(text) => {
+              const hasPlaceholder = new RegExp(AGENT_CONTEXT_VAR_PATTERN.source).test(text)
+              if (hasPlaceholder)
+                syncExtractorPromptFromText(text)
+              if (detectedAgentFromValue && !hasPlaceholder) {
+                removeExtractorNode()
+                onChange?.(text, VarKindTypeEnum.mixed, null)
+                return
+              }
+              onChange?.(text)
+            }}
+          />
+          {isOnlyAgentContext && paramKey && (
+            <div className="pointer-events-none absolute left-0 top-0 flex h-full w-full items-center px-2 py-1">
+              <span className="system-sm-regular text-components-input-text-placeholder">
+                {t('nodes.tool.agentPlaceholder', { ns: 'workflow', paramKey })}
+              </span>
+            </div>
+          )}
+        </div>
       )}
       {toolNodeId && paramKey && isAssembleValue && (
         <SubGraphModal

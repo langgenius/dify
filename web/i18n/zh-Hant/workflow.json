@@ -764,6 +764,7 @@
   "nodes.templateTransform.codeSupportTip": "只支持 Jinja2",
   "nodes.templateTransform.inputVars": "輸入變數",
   "nodes.templateTransform.outputVars.output": "轉換後內容",
+  "nodes.tool.agentPlaceholder": "告訴我 {{paramKey}}...",
   "nodes.tool.assembleVariables": "組裝變數",
   "nodes.tool.authorize": "授權",
   "nodes.tool.inputVars": "輸入變數",

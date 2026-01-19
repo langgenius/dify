@@ -764,6 +764,7 @@
   "nodes.templateTransform.codeSupportTip": "Jinja2 のみをサポートしています",
   "nodes.templateTransform.inputVars": "入力変数",
   "nodes.templateTransform.outputVars.output": "変換されたコンテンツ",
+  "nodes.tool.agentPlaceholder": "{{paramKey}} を教えてください...",
   "nodes.tool.assembleVariables": "変数を組み立てる",
   "nodes.tool.authorize": "認証する",
   "nodes.tool.inputVars": "入力変数",
