@@ -8,9 +8,9 @@ import { AppModeEnum } from '@/types/app'
 // Component Imports (after mocks)
 // ============================================================================
 
+import ApiAccess from './api-access'
+import ApiAccessCard from './api-access/card'
 import ExtraInfo from './index'
-import ServiceApi from './service-api'
-import Card from './service-api/card'
 import Statistics from './statistics'
 
 // ============================================================================
@@ -373,10 +373,10 @@ describe('Statistics', () => {
 })
 
 // ============================================================================
-// ServiceApi Component Tests
+// ApiAccess Component Tests
 // ============================================================================
 
-describe('ServiceApi', () => {
+describe('ApiAccess', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -384,65 +384,61 @@ describe('ServiceApi', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       render(
-        <ServiceApi
+        <ApiAccess
           expand={true}
-          apiBaseUrl="https://api.example.com"
           apiEnabled={true}
         />,
       )
 
-      expect(screen.getByText(/serviceApi\.title/i)).toBeInTheDocument()
+      expect(screen.getByText(/appMenus\.apiAccess/i)).toBeInTheDocument()
     })
 
     it('should render API title when expanded', () => {
       render(
-        <ServiceApi
+        <ApiAccess
           expand={true}
-          apiBaseUrl="https://api.example.com"
           apiEnabled={true}
         />,
       )
 
-      expect(screen.getByText(/serviceApi\.title/i)).toBeInTheDocument()
+      expect(screen.getByText(/appMenus\.apiAccess/i)).toBeInTheDocument()
     })
 
     it('should not render API title when collapsed', () => {
       render(
-        <ServiceApi
+        <ApiAccess
           expand={false}
-          apiBaseUrl="https://api.example.com"
           apiEnabled={true}
         />,
       )
 
-      expect(screen.queryByText(/serviceApi\.title/i)).not.toBeInTheDocument()
+      expect(screen.queryByText(/appMenus\.apiAccess/i)).not.toBeInTheDocument()
     })
 
-    it('should render green indicator when API is enabled', () => {
-      render(
-        <ServiceApi
+    it('should render indicator when API is enabled', () => {
+      const { container } = render(
+        <ApiAccess
           expand={true}
-          apiBaseUrl="https://api.example.com"
           apiEnabled={true}
         />,
       )
 
       // Indicator component should be present
-      const container = screen.getByText(/serviceApi\.title/i).closest('div')
-      expect(container).toBeInTheDocument()
+      const indicatorElement = container.querySelector('.relative.flex.h-8')
+      expect(indicatorElement).toBeInTheDocument()
     })
 
-    it('should render yellow indicator when API is disabled', () => {
-      render(
-        <ServiceApi
+    it('should render indicator when API is disabled', () => {
+      const { container } = render(
+        <ApiAccess
           expand={true}
-          apiBaseUrl="https://api.example.com"
           apiEnabled={false}
         />,
       )
 
-      const container = screen.getByText(/serviceApi\.title/i).closest('div')
-      expect(container).toBeInTheDocument()
+      // Indicator component should be present
+      const indicatorElement = container.querySelector('.relative.flex.h-8')
+      expect(indicatorElement).toBeInTheDocument()
     })
   })
 
@@ -451,14 +447,13 @@ describe('ServiceApi', () => {
       const user = userEvent.setup()
 
       render(
-        <ServiceApi
+        <ApiAccess
           expand={true}
-          apiBaseUrl="https://api.example.com"
           apiEnabled={true}
         />,
       )
 
-      const trigger = screen.getByText(/serviceApi\.title/i).closest('[class*="cursor-pointer"]')
+      const trigger = screen.getByText(/appMenus\.apiAccess/i).closest('[class*="cursor-pointer"]')
       expect(trigger).toBeInTheDocument()
 
       if (trigger) {
@@ -469,14 +464,13 @@ describe('ServiceApi', () => {
 
     it('should apply hover styles on trigger', () => {
       render(
-        <ServiceApi
+        <ApiAccess
           expand={true}
-          apiBaseUrl="https://api.example.com"
           apiEnabled={true}
         />,
       )
 
-      const trigger = screen.getByText(/serviceApi\.title/i).closest('div[class*="cursor-pointer"]')
+      const trigger = screen.getByText(/appMenus\.apiAccess/i).closest('div[class*="cursor-pointer"]')
       expect(trigger).toHaveClass('cursor-pointer')
     })
   })
@@ -484,9 +478,8 @@ describe('ServiceApi', () => {
   describe('Props Variations', () => {
     it('should apply compressed layout when expand is false', () => {
       const { container } = render(
-        <ServiceApi
+        <ApiAccess
           expand={false}
-          apiBaseUrl="https://api.example.com"
           apiEnabled={true}
         />,
       )
@@ -496,83 +489,50 @@ describe('ServiceApi', () => {
       expect(triggerContainer).toBeInTheDocument()
     })
 
-    it('should pass apiBaseUrl to Card component', async () => {
-      const user = userEvent.setup()
-
-      render(
-        <ServiceApi
-          expand={true}
-          apiBaseUrl="https://custom-api.example.com"
-          apiEnabled={true}
-        />,
-      )
-
-      const trigger = screen.getByText(/serviceApi\.title/i).closest('[class*="cursor-pointer"]')
-      if (trigger) {
-        await user.click(trigger)
-        // The apiBaseUrl should be passed to Card and displayed
-      }
-    })
-
     it('should pass apiEnabled to Card component', async () => {
       const user = userEvent.setup()
 
       render(
-        <ServiceApi
+        <ApiAccess
           expand={true}
-          apiBaseUrl="https://api.example.com"
-          apiEnabled={false}
-        />,
-      )
-
-      const trigger = screen.getByText(/serviceApi\.title/i).closest('[class*="cursor-pointer"]')
-      if (trigger)
-        await user.click(trigger)
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle empty apiBaseUrl', () => {
-      render(
-        <ServiceApi
-          expand={true}
-          apiBaseUrl=""
           apiEnabled={true}
         />,
       )
 
-      expect(screen.getByText(/serviceApi\.title/i)).toBeInTheDocument()
+      const trigger = screen.getByText(/appMenus\.apiAccess/i).closest('[class*="cursor-pointer"]')
+      if (trigger) {
+        await user.click(trigger)
+        // The apiEnabled should be passed to Card
+      }
     })
   })
 
   describe('Memoization', () => {
     it('should be memoized with React.memo', () => {
       const { rerender } = render(
-        <ServiceApi
+        <ApiAccess
           expand={true}
-          apiBaseUrl="https://api.example.com"
           apiEnabled={true}
         />,
       )
 
       rerender(
-        <ServiceApi
+        <ApiAccess
           expand={true}
-          apiBaseUrl="https://api.example.com"
           apiEnabled={true}
         />,
       )
 
-      expect(screen.getByText(/serviceApi\.title/i)).toBeInTheDocument()
+      expect(screen.getByText(/appMenus\.apiAccess/i)).toBeInTheDocument()
     })
   })
 })
 
 // ============================================================================
-// Card Component Tests
+// ApiAccessCard Component Tests
 // ============================================================================
 
-describe('Card', () => {
+describe('ApiAccessCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockIsCurrentWorkspaceManager = true
@@ -583,42 +543,18 @@ describe('Card', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       render(
-        <Card
+        <ApiAccessCard
           apiEnabled={true}
-          apiBaseUrl="https://api.example.com"
         />,
       )
 
-      expect(screen.getByText(/serviceApi\.card\.title/i)).toBeInTheDocument()
-    })
-
-    it('should display API base URL', () => {
-      render(
-        <Card
-          apiEnabled={true}
-          apiBaseUrl="https://api.example.com"
-        />,
-      )
-
-      expect(screen.getByText('https://api.example.com')).toBeInTheDocument()
-    })
-
-    it('should display endpoint label', () => {
-      render(
-        <Card
-          apiEnabled={true}
-          apiBaseUrl="https://api.example.com"
-        />,
-      )
-
-      expect(screen.getByText(/serviceApi\.card\.endpoint/i)).toBeInTheDocument()
+      expect(screen.getByText(/serviceApi\.enabled/i)).toBeInTheDocument()
     })
 
     it('should display enabled status when API is enabled', () => {
       render(
-        <Card
+        <ApiAccessCard
           apiEnabled={true}
-          apiBaseUrl="https://api.example.com"
         />,
       )
 
@@ -627,48 +563,32 @@ describe('Card', () => {
 
     it('should display disabled status when API is disabled', () => {
       render(
-        <Card
+        <ApiAccessCard
           apiEnabled={false}
-          apiBaseUrl="https://api.example.com"
         />,
       )
 
       expect(screen.getByText(/serviceApi\.disabled/i)).toBeInTheDocument()
     })
 
-    it('should render API Key button', () => {
-      render(
-        <Card
-          apiEnabled={true}
-          apiBaseUrl="https://api.example.com"
-        />,
-      )
-
-      expect(screen.getByText(/serviceApi\.card\.apiKey/i)).toBeInTheDocument()
-    })
-
     it('should render API Reference link', () => {
       render(
-        <Card
+        <ApiAccessCard
           apiEnabled={true}
-          apiBaseUrl="https://api.example.com"
         />,
       )
 
-      expect(screen.getByText(/serviceApi\.card\.apiReference/i)).toBeInTheDocument()
+      expect(screen.getByText(/overview\.apiInfo\.doc/i)).toBeInTheDocument()
     })
 
-    it('should render CopyFeedback component for URL copying', () => {
+    it('should render switch component', () => {
       render(
-        <Card
+        <ApiAccessCard
           apiEnabled={true}
-          apiBaseUrl="https://api.example.com"
         />,
       )
 
-      // CopyFeedback component should be rendered
-      const urlContainer = screen.getByText('https://api.example.com').closest('div')
-      expect(urlContainer).toBeInTheDocument()
+      expect(screen.getByRole('switch')).toBeInTheDocument()
     })
   })
 
@@ -677,13 +597,11 @@ describe('Card', () => {
       const user = userEvent.setup()
 
       render(
-        <Card
+        <ApiAccessCard
           apiEnabled={false}
-          apiBaseUrl="https://api.example.com"
         />,
       )
 
-      // Find the switch button
       const switchButton = screen.getByRole('switch')
       await user.click(switchButton)
 
@@ -696,9 +614,8 @@ describe('Card', () => {
       const user = userEvent.setup()
 
       render(
-        <Card
+        <ApiAccessCard
           apiEnabled={true}
-          apiBaseUrl="https://api.example.com"
         />,
       )
 
@@ -714,9 +631,8 @@ describe('Card', () => {
       const user = userEvent.setup()
 
       render(
-        <Card
+        <ApiAccessCard
           apiEnabled={false}
-          apiBaseUrl="https://api.example.com"
         />,
       )
 
@@ -733,9 +649,8 @@ describe('Card', () => {
       const user = userEvent.setup()
 
       render(
-        <Card
+        <ApiAccessCard
           apiEnabled={false}
-          apiBaseUrl="https://api.example.com"
         />,
       )
 
@@ -750,64 +665,14 @@ describe('Card', () => {
       expect(mockMutateDatasetRes).not.toHaveBeenCalled()
     })
 
-    it('should open secret key modal when API Key button is clicked', async () => {
-      const user = userEvent.setup()
-
-      render(
-        <Card
-          apiEnabled={true}
-          apiBaseUrl="https://api.example.com"
-        />,
-      )
-
-      const apiKeyButton = screen.getByText(/serviceApi\.card\.apiKey/i).closest('button')
-      expect(apiKeyButton).toBeInTheDocument()
-
-      if (apiKeyButton)
-        await user.click(apiKeyButton)
-
-      await waitFor(() => {
-        expect(screen.getByTestId('secret-key-modal')).toBeInTheDocument()
-      })
-    })
-
-    it('should close secret key modal when close button is clicked', async () => {
-      const user = userEvent.setup()
-
-      render(
-        <Card
-          apiEnabled={true}
-          apiBaseUrl="https://api.example.com"
-        />,
-      )
-
-      // Open modal first
-      const apiKeyButton = screen.getByText(/serviceApi\.card\.apiKey/i).closest('button')
-      if (apiKeyButton)
-        await user.click(apiKeyButton)
-
-      await waitFor(() => {
-        expect(screen.getByTestId('secret-key-modal')).toBeInTheDocument()
-      })
-
-      // Close modal
-      const closeButton = screen.getByTestId('close-modal-btn')
-      await user.click(closeButton)
-
-      await waitFor(() => {
-        expect(screen.queryByTestId('secret-key-modal')).not.toBeInTheDocument()
-      })
-    })
-
     it('should have correct href for API Reference link', () => {
       render(
-        <Card
+        <ApiAccessCard
           apiEnabled={true}
-          apiBaseUrl="https://api.example.com"
         />,
       )
 
-      const apiRefLink = screen.getByText(/serviceApi\.card\.apiReference/i).closest('a')
+      const apiRefLink = screen.getByText(/overview\.apiInfo\.doc/i).closest('a')
       expect(apiRefLink).toHaveAttribute('href', 'https://docs.dify.ai/api-reference/datasets')
     })
   })
@@ -817,14 +682,13 @@ describe('Card', () => {
       mockIsCurrentWorkspaceManager = false
 
       render(
-        <Card
+        <ApiAccessCard
           apiEnabled={true}
-          apiBaseUrl="https://api.example.com"
         />,
       )
 
       const switchButton = screen.getByRole('switch')
-      // Headless UI Switch uses CSS classes for disabled state instead of native disabled attribute
+      // Headless UI Switch uses CSS classes for disabled state
       expect(switchButton).toHaveClass('!cursor-not-allowed')
       expect(switchButton).toHaveClass('!opacity-50')
     })
@@ -833,9 +697,8 @@ describe('Card', () => {
       mockIsCurrentWorkspaceManager = true
 
       render(
-        <Card
+        <ApiAccessCard
           apiEnabled={true}
-          apiBaseUrl="https://api.example.com"
         />,
       )
 
@@ -845,85 +708,39 @@ describe('Card', () => {
     })
   })
 
-  describe('Edge Cases', () => {
-    it('should handle empty apiBaseUrl', () => {
-      render(
-        <Card
-          apiEnabled={true}
-          apiBaseUrl=""
-        />,
-      )
-
-      expect(screen.getByText(/serviceApi\.card\.title/i)).toBeInTheDocument()
-    })
-
-    it('should handle undefined datasetId gracefully', async () => {
-      const { useDatasetDetailContextWithSelector } = await import('@/context/dataset-detail')
-      vi.mocked(useDatasetDetailContextWithSelector).mockImplementation((selector) => {
-        return selector({ dataset: undefined, mutateDatasetRes: mockMutateDatasetRes })
-      })
-
-      const user = userEvent.setup()
-
-      render(
-        <Card
-          apiEnabled={false}
-          apiBaseUrl="https://api.example.com"
-        />,
-      )
-
-      const switchButton = screen.getByRole('switch')
-      await user.click(switchButton)
-
-      await waitFor(() => {
-        // Should be called with empty string when datasetId is undefined
-        expect(mockEnableDatasetServiceApi).toHaveBeenCalledWith('')
-      })
-
-      // Reset the mock
-      vi.mocked(useDatasetDetailContextWithSelector).mockImplementation(selector =>
-        selector({ dataset: mockDataset as DataSet, mutateDatasetRes: mockMutateDatasetRes }),
-      )
-    })
-  })
-
   describe('Memoization', () => {
     it('should be memoized with React.memo', () => {
       const { rerender } = render(
-        <Card
+        <ApiAccessCard
           apiEnabled={true}
-          apiBaseUrl="https://api.example.com"
         />,
       )
 
       rerender(
-        <Card
+        <ApiAccessCard
           apiEnabled={true}
-          apiBaseUrl="https://api.example.com"
         />,
       )
 
-      expect(screen.getByText(/serviceApi\.card\.title/i)).toBeInTheDocument()
+      expect(screen.getByText(/serviceApi\.enabled/i)).toBeInTheDocument()
     })
 
     it('should use useCallback for handlers', () => {
       // Verify handlers are stable by rendering multiple times
       const { rerender } = render(
-        <Card
+        <ApiAccessCard
           apiEnabled={true}
-          apiBaseUrl="https://api.example.com"
         />,
       )
 
       rerender(
-        <Card
+        <ApiAccessCard
           apiEnabled={true}
-          apiBaseUrl="https://api.example.com"
         />,
       )
 
       // Component should render without issues with memoized callbacks
-      expect(screen.getByText(/serviceApi\.card\.apiKey/i)).toBeInTheDocument()
+      expect(screen.getByRole('switch')).toBeInTheDocument()
     })
   })
 })
@@ -935,7 +752,6 @@ describe('Card', () => {
 describe('ExtraInfo', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsCurrentWorkspaceManager = true
   })
 
   describe('Rendering', () => {
@@ -948,8 +764,8 @@ describe('ExtraInfo', () => {
         />,
       )
 
-      // Should render ServiceApi component
-      expect(screen.getByText(/serviceApi\.title/i)).toBeInTheDocument()
+      // Should render ApiAccess component
+      expect(screen.getByText(/appMenus\.apiAccess/i)).toBeInTheDocument()
     })
 
     it('should render Statistics when expand is true', () => {
@@ -978,7 +794,7 @@ describe('ExtraInfo', () => {
       expect(screen.queryByText('10')).not.toBeInTheDocument()
     })
 
-    it('should always render ServiceApi regardless of expand state', () => {
+    it('should always render ApiAccess regardless of expand state', () => {
       const { rerender } = render(
         <ExtraInfo
           expand={true}
@@ -987,8 +803,8 @@ describe('ExtraInfo', () => {
         />,
       )
 
-      // Check expanded state has ServiceApi title
-      expect(screen.getByText(/serviceApi\.title/i)).toBeInTheDocument()
+      // Check expanded state has ApiAccess title
+      expect(screen.getByText(/appMenus\.apiAccess/i)).toBeInTheDocument()
 
       rerender(
         <ExtraInfo
@@ -998,7 +814,7 @@ describe('ExtraInfo', () => {
         />,
       )
 
-      // ServiceApi should still be present (but without title text when collapsed)
+      // ApiAccess should still be present (but without title text when collapsed)
       // The component is still rendered, just with different styling
     })
   })
@@ -1014,7 +830,7 @@ describe('ExtraInfo', () => {
       )
 
       // Since mockDataset has enable_api: true, the indicator should be green
-      expect(screen.getByText(/serviceApi\.title/i)).toBeInTheDocument()
+      expect(screen.getByText(/appMenus\.apiAccess/i)).toBeInTheDocument()
     })
 
     it('should read apiBaseUrl from useDatasetApiBaseUrl hook', () => {
@@ -1027,7 +843,7 @@ describe('ExtraInfo', () => {
       )
 
       // Component should render with the mocked API base URL
-      expect(screen.getByText(/serviceApi\.title/i)).toBeInTheDocument()
+      expect(screen.getByText(/appMenus\.apiAccess/i)).toBeInTheDocument()
     })
 
     it('should handle missing apiBaseInfo with fallback empty string', async () => {
@@ -1045,7 +861,7 @@ describe('ExtraInfo', () => {
         />,
       )
 
-      expect(screen.getByText(/serviceApi\.title/i)).toBeInTheDocument()
+      expect(screen.getByText(/appMenus\.apiAccess/i)).toBeInTheDocument()
 
       // Reset mock
       vi.mocked(useDatasetApiBaseUrl).mockReturnValue({
@@ -1062,7 +878,7 @@ describe('ExtraInfo', () => {
         delete (partialDataset as { enable_api?: boolean }).enable_api
         return selector({
           dataset: partialDataset as DataSet,
-          mutateDatasetRes: mockMutateDatasetRes,
+          mutateDatasetRes: vi.fn(),
         })
       })
 
@@ -1074,11 +890,11 @@ describe('ExtraInfo', () => {
         />,
       )
 
-      expect(screen.getByText(/serviceApi\.title/i)).toBeInTheDocument()
+      expect(screen.getByText(/appMenus\.apiAccess/i)).toBeInTheDocument()
 
       // Reset mock
       vi.mocked(useDatasetDetailContextWithSelector).mockImplementation(selector =>
-        selector({ dataset: mockDataset as DataSet, mutateDatasetRes: mockMutateDatasetRes }),
+        selector({ dataset: mockDataset as DataSet, mutateDatasetRes: vi.fn() }),
       )
     })
   })
@@ -1096,7 +912,7 @@ describe('ExtraInfo', () => {
       expect(screen.getByText('10')).toBeInTheDocument()
     })
 
-    it('should pass expand prop to ServiceApi component', () => {
+    it('should pass expand prop to ApiAccess component', () => {
       render(
         <ExtraInfo
           expand={true}
@@ -1105,7 +921,7 @@ describe('ExtraInfo', () => {
         />,
       )
 
-      expect(screen.getByText(/serviceApi\.title/i)).toBeInTheDocument()
+      expect(screen.getByText(/appMenus\.apiAccess/i)).toBeInTheDocument()
     })
 
     it('should pass documentCount to Statistics component', () => {
@@ -1170,7 +986,7 @@ describe('ExtraInfo', () => {
       )
 
       // Should render without crashing
-      expect(screen.getByText(/serviceApi\.title/i)).toBeInTheDocument()
+      expect(screen.getByText(/appMenus\.apiAccess/i)).toBeInTheDocument()
     })
 
     it('should handle zero values correctly', () => {
@@ -1256,7 +1072,7 @@ describe('ExtraInfo', () => {
   })
 
   describe('Component Composition', () => {
-    it('should render Statistics before ServiceApi when expanded', () => {
+    it('should render Statistics before ApiAccess when expanded', () => {
       const { container } = render(
         <ExtraInfo
           expand={true}
@@ -1265,12 +1081,12 @@ describe('ExtraInfo', () => {
         />,
       )
 
-      // Statistics should appear before ServiceApi in DOM order
+      // Statistics should appear before ApiAccess in DOM order
       const elements = container.querySelectorAll('div')
       expect(elements.length).toBeGreaterThan(0)
     })
 
-    it('should render only ServiceApi when collapsed', () => {
+    it('should render only ApiAccess when collapsed', () => {
       render(
         <ExtraInfo
           expand={false}
@@ -1279,7 +1095,7 @@ describe('ExtraInfo', () => {
         />,
       )
 
-      // Only ServiceApi should be rendered (without its title in collapsed state)
+      // Only ApiAccess should be rendered (without its title in collapsed state)
       expect(screen.queryByText('10')).not.toBeInTheDocument()
     })
   })
@@ -1292,7 +1108,6 @@ describe('ExtraInfo', () => {
 describe('ExtraInfo Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsCurrentWorkspaceManager = true
   })
 
   it('should render complete expanded view with all child components', () => {
@@ -1308,8 +1123,8 @@ describe('ExtraInfo Integration', () => {
     expect(screen.getByText('25')).toBeInTheDocument()
     expect(screen.getByText('5')).toBeInTheDocument()
 
-    // ServiceApi content
-    expect(screen.getByText(/serviceApi\.title/i)).toBeInTheDocument()
+    // ApiAccess content
+    expect(screen.getByText(/appMenus\.apiAccess/i)).toBeInTheDocument()
   })
 
   it('should handle complete user workflow: view stats and toggle API', async () => {
@@ -1327,14 +1142,14 @@ describe('ExtraInfo Integration', () => {
     expect(screen.getByText('10')).toBeInTheDocument()
     expect(screen.getByText('3')).toBeInTheDocument()
 
-    // Click on ServiceApi to open the card
-    const serviceApiTrigger = screen.getByText(/serviceApi\.title/i).closest('[class*="cursor-pointer"]')
-    if (serviceApiTrigger)
-      await user.click(serviceApiTrigger)
+    // Click on ApiAccess to open the card
+    const apiAccessTrigger = screen.getByText(/appMenus\.apiAccess/i).closest('[class*="cursor-pointer"]')
+    if (apiAccessTrigger)
+      await user.click(apiAccessTrigger)
 
-    // The popup should open with Card content
+    // The popup should open with Card content (showing enabled/disabled status)
     await waitFor(() => {
-      expect(screen.getByText(/serviceApi\.card\.title/i)).toBeInTheDocument()
+      expect(screen.getByText(/serviceApi\.enabled/i)).toBeInTheDocument()
     })
   })
 
@@ -1348,8 +1163,7 @@ describe('ExtraInfo Integration', () => {
     )
 
     // The component tree should correctly receive context values
-    // apiEnabled from context affects ServiceApi indicator color
-    // apiBaseUrl from hook affects Card display
-    expect(screen.getByText(/serviceApi\.title/i)).toBeInTheDocument()
+    // apiEnabled from context affects ApiAccess indicator color
+    expect(screen.getByText(/appMenus\.apiAccess/i)).toBeInTheDocument()
   })
 })
