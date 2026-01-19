@@ -233,7 +233,7 @@ export type IndexingEstimateResponse = {
   total_price: number
   currency: string
   total_segments: number
-  preview: Array<{ content: string, child_chunks: string[] }>
+  preview: Array<{ content: string, child_chunks: string[], summary?: string }>
   qa_preview?: QA[]
 }
 

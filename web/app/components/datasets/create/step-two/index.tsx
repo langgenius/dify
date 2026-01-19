@@ -65,6 +65,7 @@ const StepTwo: FC<StepTwoProps> = ({
   // Custom hooks
   const segmentation = useSegmentationState({
     initialSegmentationType: currentDataset?.doc_form === ChunkingMode.parentChild ? ProcessMode.parentChild : ProcessMode.general,
+    initialSummaryIndexSetting: currentDataset?.summary_index_setting,
   })
   const indexing = useIndexingConfig({
     initialIndexType: propsIndexingType,
@@ -72,7 +73,6 @@ const StepTwo: FC<StepTwoProps> = ({
     initialRetrievalConfig: currentDataset?.retrieval_model_dict,
     isAPIKeySet,
     hasSetIndexType,
-    initialSummaryIndexSetting: currentDataset?.summary_index_setting,
   })
   const preview = usePreviewState({ dataSourceType, files, notionPages, websitePages, documentDetail, datasetId })
   const creation = useDocumentCreation({
@@ -157,7 +157,7 @@ const StepTwo: FC<StepTwoProps> = ({
     })
     if (!isValid)
       return
-    const params = creation.buildCreationParams(currentDocForm, docLanguage, segmentation.getProcessRule(currentDocForm), indexing.retrievalConfig, indexing.embeddingModel, indexing.getIndexingTechnique(), indexing.summaryIndexSetting)
+    const params = creation.buildCreationParams(currentDocForm, docLanguage, segmentation.getProcessRule(currentDocForm), indexing.retrievalConfig, indexing.embeddingModel, indexing.getIndexingTechnique(), segmentation.summaryIndexSetting)
     if (!params)
       return
     await creation.executeCreation(params, indexing.indexType, indexing.retrievalConfig)
@@ -218,8 +218,8 @@ const StepTwo: FC<StepTwoProps> = ({
             onPreview={updatePreview}
             onReset={segmentation.resetToDefaults}
             locale={locale}
-            summaryIndexSetting={indexing.summaryIndexSetting}
-            onSummaryIndexSettingChange={indexing.handleSummaryIndexSettingChange}
+            summaryIndexSetting={segmentation.summaryIndexSetting}
+            onSummaryIndexSettingChange={segmentation.handleSummaryIndexSettingChange}
           />
         )}
         {showParentChildOption && (
@@ -239,8 +239,8 @@ const StepTwo: FC<StepTwoProps> = ({
             onRuleToggle={segmentation.toggleRule}
             onPreview={updatePreview}
             onReset={segmentation.resetToDefaults}
-            summaryIndexSetting={indexing.summaryIndexSetting}
-            onSummaryIndexSettingChange={indexing.handleSummaryIndexSettingChange}
+            summaryIndexSetting={segmentation.summaryIndexSetting}
+            onSummaryIndexSettingChange={segmentation.handleSummaryIndexSettingChange}
           />
         )}
         <Divider className="my-5" />
