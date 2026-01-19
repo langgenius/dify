@@ -15,12 +15,13 @@ export const fetchWorkflowDraft = (url: string) => {
   return get(url, {}, { silent: true }) as Promise<FetchWorkflowDraftResponse>
 }
 
-export const syncWorkflowDraft = ({ url, params }: {
+export const syncWorkflowDraft = ({ url, params, canNotSaveEmpty }: {
   url: string
   params: Pick<FetchWorkflowDraftResponse, 'graph' | 'features' | 'environment_variables' | 'conversation_variables'>
+  canNotSaveEmpty?: boolean
 }) => {
   // when graph adn skill type changed, it would pass empty nodes array...Temp prevent sync in this case
-  if (params.graph.nodes.length === 0) {
+  if (params.graph.nodes.length === 0 && canNotSaveEmpty) {
     throw new Error('Cannot sync workflow draft with zero nodes.')
   }
   const sanitized = sanitizeWorkflowDraftPayload(params)
