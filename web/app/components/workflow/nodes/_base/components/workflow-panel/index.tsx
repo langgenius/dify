@@ -625,7 +625,7 @@ const BasePanel: FC<BasePanelProps> = ({
             </div>
             <Split />
             {
-              allowGraphActions && hasRetryNode(data.type) && (
+              hasRetryNode(data.type) && (
                 <RetryOnPanel
                   id={id}
                   data={data}
@@ -633,7 +633,7 @@ const BasePanel: FC<BasePanelProps> = ({
               )
             }
             {
-              allowGraphActions && hasErrorHandleNode(data.type) && (
+              hasErrorHandleNode(data.type) && (
                 <ErrorHandleOnPanel
                   id={id}
                   data={data}
