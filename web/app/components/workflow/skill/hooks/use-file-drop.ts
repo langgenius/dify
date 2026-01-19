@@ -71,14 +71,16 @@ export function useFileDrop() {
       return
 
     try {
-      for (const file of files) {
-        await createFile.mutateAsync({
-          appId,
-          name: file.name,
-          file,
-          parentId: targetFolderId,
-        })
-      }
+      await Promise.all(
+        files.map(file =>
+          createFile.mutateAsync({
+            appId,
+            name: file.name,
+            file,
+            parentId: targetFolderId,
+          }),
+        ),
+      )
 
       Toast.notify({
         type: 'success',

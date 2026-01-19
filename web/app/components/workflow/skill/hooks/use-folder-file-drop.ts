@@ -62,7 +62,7 @@ export function useFolderFileDrop(node: NodeApi<TreeNodeData>): UseFolderFileDro
   }, [isFolder, scheduleAutoExpand])
 
   const handleFolderDragOver = useCallback((e: React.DragEvent) => {
-    if (!isFolder)
+    if (!isFolder || !isFileDrag(e))
       return
     handleDragOver(e, { folderId: node.data.id, isFolder: true })
   }, [handleDragOver, isFolder, node.data.id])
