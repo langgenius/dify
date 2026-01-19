@@ -19,6 +19,7 @@ class PGVectorTest(AbstractVectorTest):
                 database="dify",
                 min_connection=1,
                 max_connection=5,
+                schema_name="public",
             ),
         )
 
