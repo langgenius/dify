@@ -1,6 +1,7 @@
 'use client'
 import type { ParseResult } from 'papaparse'
 import type { FC } from 'react'
+import jschardet from 'jschardet'
 import { parse } from 'papaparse'
 import * as React from 'react'
 import { useState } from 'react'
@@ -24,26 +25,28 @@ const CSVReader: FC<Props> = ({
   return (
     <CSVReader
       onUploadAccepted={async (results: any, file: File) => {
-        const buffer = await file?.arrayBuffer()
-        const head = await file?.slice(0, 1024).arrayBuffer()
+        const buffer = await file.arrayBuffer()
+        // jschardet requires a buffer or a string of bytes
+        const uint8Array = new Uint8Array(buffer)
+        // jschardet.detect accepts string | Buffer, convert to string for browser compatibility
+        const detected = jschardet.detect(uint8Array.reduce((data, byte) => data + String.fromCharCode(byte), ''))
 
-        let encoding = 'UTF-8'
-
-        try {
-          const gbkText = new TextDecoder('GBK', { fatal: true })?.decode(head)
-          const hasChinese = /[\u4E00-\u9FA5]/.test(gbkText)
-
-          if (hasChinese) {
-            encoding = 'GBK'
-          }
+        let encoding = detected.encoding
+        // jschardet can sometimes misidentify GBK as 'windows-1252'.
+        // This is a heuristic to handle such cases.
+        if (encoding === 'windows-1252' || encoding === 'ISO-8859-2') {
+          encoding = 'GBK'
         }
-        catch (e) {
-          console.error(e)
+
+        // Use UTF-8 as a fallback for unsupported or uncertain encodings.
+        const supportedEncodings = ['UTF-8', 'GBK', 'GB18030', 'BIG5']
+        if (!encoding || !supportedEncodings.includes(encoding.toUpperCase())) {
+          encoding = 'UTF-8'
         }
-        const text: string = new TextDecoder(encoding, { fatal: false }).decode(buffer)
+
+        const text = new TextDecoder(encoding, { fatal: false }).decode(buffer)
 
         parse(text, {
-          encoding,
           worker: true,
           complete: (results: ParseResult<string[]>) => {
             onParsed(results.data)
