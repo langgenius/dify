@@ -14,6 +14,7 @@ import type {
 } from '../../types'
 import type { PickerBlockMenuOption } from './menu'
 import type { AgentNode } from '@/app/components/base/prompt-editor/types'
+import type { ValueSelector } from '@/app/components/workflow/types'
 import {
   flip,
   offset,
@@ -163,7 +164,7 @@ const ComponentPicker = ({
     editor.dispatchCommand(KEY_ESCAPE_COMMAND, escapeEvent)
   }, [editor])
 
-  const handleSelectAssembleVariables = useCallback(() => {
+  const handleSelectAssembleVariables = useCallback((): ValueSelector | null => {
     editor.update(() => {
       const match = checkForTriggerMatch(triggerString, editor)
       if (!match)
@@ -172,8 +173,11 @@ const ComponentPicker = ({
       if (needRemove)
         needRemove.remove()
     })
-    workflowVariableBlock?.onAssembleVariables?.()
+    const assembleVariables = workflowVariableBlock?.onAssembleVariables?.()
+    if (assembleVariables && assembleVariables.length)
+      editor.dispatchCommand(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, assembleVariables)
     handleClose()
+    return assembleVariables ?? null
   }, [editor, checkForTriggerMatch, triggerString, workflowVariableBlock, handleClose])
 
   const handleSelectAgent = useCallback((agent: { id: string, title: string }) => {

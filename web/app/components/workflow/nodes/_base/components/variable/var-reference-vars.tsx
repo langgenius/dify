@@ -256,7 +256,7 @@ type Props = {
   showManageInputField?: boolean
   onManageInputField?: () => void
   showAssembleVariables?: boolean
-  onAssembleVariables?: () => void
+  onAssembleVariables?: () => ValueSelector | null
   autoFocus?: boolean
   preferSchemaType?: boolean
 }

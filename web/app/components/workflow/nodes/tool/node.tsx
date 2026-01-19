@@ -20,7 +20,7 @@ import { useStrategyProviders } from '@/service/use-strategy'
 import { cn } from '@/utils/classnames'
 import { VarType } from './types'
 
-const AGENT_CONTEXT_VAR_PATTERN = /\{\{[@#]([^.@#]+)\.context[@#]\}\}/g
+const AGENT_CONTEXT_VAR_PATTERN = /\{\{@([^.@#]+)\.context@\}\}/g
 type AgentCheckValidContext = {
   provider?: StrategyPluginDetail
   strategy?: StrategyDetail

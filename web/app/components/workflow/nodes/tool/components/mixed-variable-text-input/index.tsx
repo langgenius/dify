@@ -38,7 +38,8 @@ import Placeholder from './placeholder'
  * Matches agent context variable syntax: {{@nodeId.context@}}
  * Example: {{@agent-123.context@}} -> captures "agent-123"
  */
-const AGENT_CONTEXT_VAR_PATTERN = /\{\{[@#]([^.@#]+)\.context[@#]\}\}/g
+const AGENT_CONTEXT_VAR_PATTERN = /\{\{@([^.@#]+)\.context@\}\}/g
+
 const buildAssemblePlaceholder = (toolNodeId?: string, paramKey?: string) => {
   if (!toolNodeId || !paramKey)
     return ''
@@ -179,7 +180,7 @@ const MixedVariableTextInput = ({
   const isAssembleValue = useMemo(() => {
     if (!assemblePlaceholder)
       return false
-    return value.trim() === assemblePlaceholder
+    return value.includes(assemblePlaceholder)
   }, [assemblePlaceholder, value])
 
   const contextNodeIds = useMemo(() => {
@@ -203,6 +204,99 @@ const MixedVariableTextInput = ({
       return ''
     return `${toolNodeId}_ext_${paramKey}`
   }, [paramKey, toolNodeId])
+
+  const ensureExtractorNode = useCallback((payload: {
+    extractorNodeId: string
+    nodeType: BlockEnum
+    data: Partial<LLMNodeType | CodeNodeType>
+  }) => {
+    if (!toolNodeId)
+      return null
+    const defaultValue = nodesMetaDataMap?.[payload.nodeType]?.defaultValue as Partial<LLMNodeType | CodeNodeType> | undefined
+    if (!defaultValue)
+      return null
+
+    const { getNodes, setNodes } = reactFlowStore.getState()
+    const currentNodes = getNodes()
+    const existingNode = currentNodes.find(node => node.id === payload.extractorNodeId)
+    const shouldReplace = existingNode && existingNode.data.type !== payload.nodeType
+    if (!existingNode || shouldReplace) {
+      const nextNodes = shouldReplace
+        ? currentNodes.filter(node => node.id !== payload.extractorNodeId)
+        : currentNodes
+      const { newNode } = generateNewNode({
+        id: payload.extractorNodeId,
+        type: getNodeCustomTypeByNodeDataType(payload.nodeType),
+        data: {
+          ...defaultValue,
+          ...payload.data,
+          type: payload.nodeType,
+          title: defaultValue?.title ?? '',
+          desc: defaultValue.desc || '',
+          parent_node_id: toolNodeId,
+        },
+        position: {
+          x: 0,
+          y: 0,
+        },
+        hidden: true,
+      })
+      setNodes([...nextNodes, newNode])
+      handleSyncWorkflowDraft()
+      return newNode
+    }
+
+    return existingNode
+  }, [handleSyncWorkflowDraft, nodesMetaDataMap, reactFlowStore, toolNodeId])
+
+  const ensureAssembleExtractorNode = useCallback(() => {
+    if (!assembleExtractorNodeId)
+      return ''
+    const extractorNode = ensureExtractorNode({
+      extractorNodeId: assembleExtractorNodeId,
+      nodeType: BlockEnum.Code,
+      data: {
+        outputs: {
+          result: {
+            type: VarType.string,
+            children: null,
+          },
+        },
+      },
+    })
+    if (!extractorNode)
+      return ''
+    if (extractorNode.data.type !== BlockEnum.Code)
+      return assembleExtractorNodeId
+
+    const outputs = (extractorNode.data as CodeNodeType).outputs || {}
+    const resultOutput = outputs.result
+    if (!resultOutput || resultOutput.type !== VarType.string) {
+      const { getNodes, setNodes } = reactFlowStore.getState()
+      const currentNodes = getNodes()
+      const nextOutputs = {
+        ...outputs,
+        result: {
+          type: VarType.string,
+          children: null,
+        },
+      }
+      setNodes(currentNodes.map((node) => {
+        if (node.id !== assembleExtractorNodeId)
+          return node
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            outputs: nextOutputs,
+          },
+        }
+      }))
+      handleSyncWorkflowDraft()
+    }
+
+    return assembleExtractorNodeId
+  }, [assembleExtractorNodeId, ensureExtractorNode, handleSyncWorkflowDraft, reactFlowStore])
 
   type DetectedAgent = {
     nodeId: string
@@ -315,7 +409,7 @@ const MixedVariableTextInput = ({
       return
 
     const escapedAgentId = detectedAgent.nodeId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    const leadingPattern = new RegExp(`^\\{\\{[@#]${escapedAgentId}\\.context[@#]\\}\\}`)
+    const leadingPattern = new RegExp(`^\\{\\{@${escapedAgentId}\\.context@\\}\\}`)
     const promptText = text.replace(leadingPattern, '')
 
     const extractorNodeId = `${toolNodeId}_ext_${paramKey}`
@@ -385,45 +479,25 @@ const MixedVariableTextInput = ({
     const newValue = `{{@${agent.id}.context@}}${valueWithoutTrigger}`
 
     if (toolNodeId && paramKey) {
-      const extractorNodeId = `${toolNodeId}_ext_${paramKey}`
-      const defaultValue = nodesMetaDataMap?.[BlockEnum.LLM]?.defaultValue as Partial<LLMNodeType> | undefined
-      const { getNodes, setNodes } = reactFlowStore.getState()
-      const nodes = getNodes()
-      const hasExtractorNode = nodes.some(node => node.id === extractorNodeId)
-
-      if (!hasExtractorNode && defaultValue) {
-        const { newNode } = generateNewNode({
-          id: extractorNodeId,
-          type: getNodeCustomTypeByNodeDataType(BlockEnum.LLM),
-          data: {
-            ...defaultValue,
-            type: BlockEnum.LLM,
-            title: defaultValue?.title ?? '',
-            desc: defaultValue.desc || '',
-            parent_node_id: toolNodeId,
-            structured_output_enabled: true,
-            structured_output: {
-              schema: {
-                type: Type.object,
-                properties: {
-                  [paramKey]: {
-                    type: Type.string,
-                  },
+      ensureExtractorNode({
+        extractorNodeId: `${toolNodeId}_ext_${paramKey}`,
+        nodeType: BlockEnum.LLM,
+        data: {
+          structured_output_enabled: true,
+          structured_output: {
+            schema: {
+              type: Type.object,
+              properties: {
+                [paramKey]: {
+                  type: Type.string,
                 },
-                required: [paramKey],
-                additionalProperties: false,
               },
+              required: [paramKey],
+              additionalProperties: false,
             },
           },
-          position: {
-            x: 0,
-            y: 0,
-          },
-          hidden: true,
-        })
-        setNodes([...nodes, newNode])
-        handleSyncWorkflowDraft()
-      }
+        },
+      })
     }
 
     const mentionConfigWithOutputSelector: MentionConfig = {
@@ -434,71 +508,26 @@ const MixedVariableTextInput = ({
     onChange(newValue, VarKindTypeEnum.mention, mentionConfigWithOutputSelector)
     syncExtractorPromptFromText(newValue)
     setControlPromptEditorRerenderKey(Date.now())
-  }, [handleSyncWorkflowDraft, nodesMetaDataMap, onChange, paramKey, reactFlowStore, setControlPromptEditorRerenderKey, syncExtractorPromptFromText, toolNodeId, value])
+  }, [ensureExtractorNode, onChange, paramKey, setControlPromptEditorRerenderKey, syncExtractorPromptFromText, toolNodeId, value])
 
-  const handleAssembleSelect = useCallback(() => {
-    if (!onChange || !toolNodeId || !paramKey || !assemblePlaceholder)
-      return
-
-    const defaultValue = nodesMetaDataMap?.[BlockEnum.Code]?.defaultValue as Partial<CodeNodeType> | undefined
-    if (!defaultValue)
-      return
-
-    const extractorNodeId = `${toolNodeId}_ext_${paramKey}`
-    const { getNodes, setNodes } = reactFlowStore.getState()
-    const currentNodes = getNodes()
-    const existingNode = currentNodes.find(node => node.id === extractorNodeId)
-    const shouldReplace = existingNode && existingNode.data.type !== BlockEnum.Code
-    const shouldCreate = !existingNode || shouldReplace
-
-    if (shouldCreate) {
-      const nextNodes = shouldReplace
-        ? currentNodes.filter(node => node.id !== extractorNodeId)
-        : currentNodes
-      const { newNode } = generateNewNode({
-        id: extractorNodeId,
-        type: getNodeCustomTypeByNodeDataType(BlockEnum.Code),
-        data: {
-          ...defaultValue,
-          type: BlockEnum.Code,
-          title: defaultValue?.title ?? '',
-          desc: defaultValue?.desc || '',
-          parent_node_id: toolNodeId,
-          outputs: {
-            result: {
-              type: VarType.string,
-              children: null,
-            },
-          },
-        },
-        position: {
-          x: 0,
-          y: 0,
-        },
-        hidden: true,
-      })
-      setNodes([...nextNodes, newNode])
-      handleSyncWorkflowDraft()
-    }
-
-    const mentionConfigWithOutputSelector: MentionConfig = {
-      ...DEFAULT_MENTION_CONFIG,
-      extractor_node_id: extractorNodeId,
-      output_selector: ['result'],
-    }
-    onChange(assemblePlaceholder, VarKindTypeEnum.mention, mentionConfigWithOutputSelector)
+  const handleAssembleSelect = useCallback((): ValueSelector | null => {
+    if (!toolNodeId || !paramKey || !assemblePlaceholder)
+      return null
+    const extractorNodeId = assembleExtractorNodeId || `${toolNodeId}_ext_${paramKey}`
+    ensureAssembleExtractorNode()
+    onChange?.(assemblePlaceholder, VarKindTypeEnum.mixed, null)
     setControlPromptEditorRerenderKey(Date.now())
-  }, [assemblePlaceholder, handleSyncWorkflowDraft, nodesMetaDataMap, onChange, paramKey, reactFlowStore, setControlPromptEditorRerenderKey, toolNodeId])
+    return [extractorNodeId, 'result']
+  }, [assembleExtractorNodeId, assemblePlaceholder, ensureAssembleExtractorNode, onChange, paramKey, setControlPromptEditorRerenderKey, toolNodeId])
 
   const handleAssembleRemove = useCallback(() => {
     if (!onChange || !assemblePlaceholder)
       return
 
-    const nextValue = value.replace(assemblePlaceholder, '')
     removeExtractorNode()
-    onChange(nextValue, VarKindTypeEnum.mixed, null)
+    onChange('', VarKindTypeEnum.mixed, null)
     setControlPromptEditorRerenderKey(Date.now())
-  }, [assemblePlaceholder, onChange, removeExtractorNode, setControlPromptEditorRerenderKey, value])
+  }, [assemblePlaceholder, onChange, removeExtractorNode, setControlPromptEditorRerenderKey])
 
   const handleOpenSubGraphModal = useCallback(() => {
     setIsSubGraphModalOpen(true)

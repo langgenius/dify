@@ -235,7 +235,15 @@ const FormInputItem: FC<Props> = ({
 
   const handleValueChange = (newValue: any, newType?: VarKindType, mentionConfig?: MentionConfig | null) => {
     const normalizedValue = isNumber ? Number.parseFloat(newValue) : newValue
-    const resolvedType = newType ?? (varInput?.type === VarKindType.mention ? VarKindType.mention : getVarKindType())
+    const assemblePlaceholder = nodeId && variable
+      ? `{{#${nodeId}_ext_${variable}.result#}}`
+      : ''
+    const isAssembleValue = typeof normalizedValue === 'string'
+      && assemblePlaceholder
+      && normalizedValue.includes(assemblePlaceholder)
+    const resolvedType = isAssembleValue
+      ? VarKindType.mixed
+      : newType ?? (varInput?.type === VarKindType.mention ? VarKindType.mention : getVarKindType())
     const resolvedMentionConfig = resolvedType === VarKindType.mention
       ? (mentionConfig ?? varInput?.mention_config ?? {
           extractor_node_id: '',

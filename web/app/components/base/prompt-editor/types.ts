@@ -72,7 +72,7 @@ export type WorkflowVariableBlockType = {
   showManageInputField?: boolean
   onManageInputField?: () => void
   showAssembleVariables?: boolean
-  onAssembleVariables?: () => void
+  onAssembleVariables?: () => ValueSelector | null
 }
 
 export type AgentNode = {
