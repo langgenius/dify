@@ -2,14 +2,11 @@ import type { IPromptValuePanelProps } from './index'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { useStore } from '@/app/components/app/store'
 import ConfigContext from '@/context/debug-configuration'
 import { AppModeEnum, ModelModeType, Resolution } from '@/types/app'
 import PromptValuePanel from './index'
 
-vi.mock('@/app/components/app/store', () => ({
-  useStore: vi.fn(),
-}))
+// Use real store - global zustand mock will auto-reset between tests
 vi.mock('@/app/components/base/features/new-feature-panel/feature-bar', () => ({
   default: ({ onFeatureBarClick }: { onFeatureBarClick: () => void }) => (
     <button type="button" onClick={onFeatureBarClick}>
@@ -18,8 +15,6 @@ vi.mock('@/app/components/base/features/new-feature-panel/feature-bar', () => ({
   ),
 }))
 
-const mockSetShowAppConfigureFeaturesModal = vi.fn()
-const mockUseStore = vi.mocked(useStore)
 const mockSetInputs = vi.fn()
 const mockOnSend = vi.fn()
 
@@ -69,20 +64,9 @@ const renderPanel = (options: {
 
 describe('PromptValuePanel', () => {
   beforeEach(() => {
-    mockUseStore.mockImplementation(selector => selector({
-      setShowAppConfigureFeaturesModal: mockSetShowAppConfigureFeaturesModal,
-      appSidebarExpand: '',
-      currentLogModalActiveTab: 'prompt',
-      showPromptLogModal: false,
-      showAgentLogModal: false,
-      setShowPromptLogModal: vi.fn(),
-      setShowAgentLogModal: vi.fn(),
-      showMessageLogModal: false,
-      showAppConfigureFeaturesModal: false,
-    } as any))
+    vi.clearAllMocks()
     mockSetInputs.mockClear()
     mockOnSend.mockClear()
-    mockSetShowAppConfigureFeaturesModal.mockClear()
   })
 
   it('updates inputs, clears values, and triggers run when ready', async () => {

@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // ==================== Imports (after mocks) ====================
 
+import { MCPToolAvailabilityProvider } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
 import MultipleToolSelector from './index'
 
 // ==================== Mock Setup ====================
@@ -190,10 +191,11 @@ type RenderOptions = {
   nodeOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
   nodeId?: string
-  canChooseMCPTool?: boolean
+  versionSupported?: boolean
 }
 
 const renderComponent = (options: RenderOptions = {}) => {
+  const { versionSupported, ...overrides } = options
   const defaultProps = {
     disabled: false,
     value: [],
@@ -206,16 +208,17 @@ const renderComponent = (options: RenderOptions = {}) => {
     nodeOutputVars: [createNodeOutputVar()],
     availableNodes: [createNode()],
     nodeId: 'test-node-id',
-    canChooseMCPTool: false,
   }
 
-  const props = { ...defaultProps, ...options }
+  const props = { ...defaultProps, ...overrides }
   const queryClient = createQueryClient()
 
   return {
     ...render(
       <QueryClientProvider client={queryClient}>
-        <MultipleToolSelector {...props} />
+        <MCPToolAvailabilityProvider versionSupported={versionSupported}>
+          <MultipleToolSelector {...props} />
+        </MCPToolAvailabilityProvider>
       </QueryClientProvider>,
     ),
     props,
@@ -410,7 +413,7 @@ describe('MultipleToolSelector', () => {
       expect(screen.getByText('2/3')).toBeInTheDocument()
     })
 
-    it('should track enabled count with MCP tools when canChooseMCPTool is true', () => {
+    it('should track enabled count with MCP tools when version is supported', () => {
       // Arrange
       const mcpTools = [createMCPTool({ id: 'mcp-provider' })]
       mockMCPToolsData.mockReturnValue(mcpTools)
@@ -421,13 +424,13 @@ describe('MultipleToolSelector', () => {
       ]
 
       // Act
-      renderComponent({ value: tools, canChooseMCPTool: true })
+      renderComponent({ value: tools, versionSupported: true })
 
       // Assert
       expect(screen.getByText('2/2')).toBeInTheDocument()
     })
 
-    it('should not count MCP tools when canChooseMCPTool is false', () => {
+    it('should not count MCP tools when version is unsupported', () => {
       // Arrange
       const mcpTools = [createMCPTool({ id: 'mcp-provider' })]
       mockMCPToolsData.mockReturnValue(mcpTools)
@@ -438,7 +441,7 @@ describe('MultipleToolSelector', () => {
       ]
 
       // Act
-      renderComponent({ value: tools, canChooseMCPTool: false })
+      renderComponent({ value: tools, versionSupported: false })
 
       // Assert
       expect(screen.getByText('1/2')).toBeInTheDocument()
@@ -721,14 +724,6 @@ describe('MultipleToolSelector', () => {
       expect(screen.getByTestId('tool-selector-add')).toBeInTheDocument()
     })
 
-    it('should pass canChooseMCPTool prop correctly', () => {
-      // Arrange & Act
-      renderComponent({ canChooseMCPTool: true })
-
-      // Assert
-      expect(screen.getByTestId('tool-selector-add')).toBeInTheDocument()
-    })
-
     it('should render with supportEnableSwitch for edit selectors', () => {
       // Arrange
       const tools = [createToolValue()]
@@ -771,13 +766,13 @@ describe('MultipleToolSelector', () => {
       ]
 
       // Act
-      renderComponent({ value: tools, canChooseMCPTool: true })
+      renderComponent({ value: tools, versionSupported: true })
 
       // Assert
       expect(screen.getByText('2/2')).toBeInTheDocument()
     })
 
-    it('should exclude MCP tools from enabled count when canChooseMCPTool is false', () => {
+    it('should exclude MCP tools from enabled count when strategy version is unsupported', () => {
       // Arrange
       const mcpTools = [createMCPTool({ id: 'mcp-provider' })]
       mockMCPToolsData.mockReturnValue(mcpTools)
@@ -788,7 +783,7 @@ describe('MultipleToolSelector', () => {
       ]
 
       // Act
-      renderComponent({ value: tools, canChooseMCPTool: false })
+      renderComponent({ value: tools, versionSupported: false })
 
       // Assert - Only regular tool should be counted
       expect(screen.getByText('1/2')).toBeInTheDocument()
