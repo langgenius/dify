@@ -5,6 +5,7 @@ from .bash.dify_cli import (
     DifyCliLocator,
     DifyCliToolConfig,
 )
+from .bash.session import SandboxBashSession
 from .constants import (
     APP_ASSETS_PATH,
     APP_ASSETS_ZIP_PATH,
@@ -17,7 +18,6 @@ from .constants import (
 )
 from .initializer import AppAssetsInitializer, DifyCliInitializer, SandboxInitializer
 from .manager import SandboxManager
-from .session import SandboxSession
 from .storage import ArchiveSandboxStorage, SandboxStorage
 from .utils.debug import sandbox_debug
 from .utils.encryption import create_sandbox_config_encrypter, masked_config
@@ -40,10 +40,10 @@ __all__ = [
     "DifyCliInitializer",
     "DifyCliLocator",
     "DifyCliToolConfig",
+    "SandboxBashSession",
     "SandboxBuilder",
     "SandboxInitializer",
     "SandboxManager",
-    "SandboxSession",
     "SandboxStorage",
     "SandboxType",
     "VMConfig",

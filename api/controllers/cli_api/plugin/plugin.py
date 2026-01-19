@@ -1,7 +1,7 @@
 from flask_restx import Resource
 
 from controllers.cli_api import cli_api_ns
-from controllers.cli_api.plugin.wraps import get_user_tenant, plugin_data
+from controllers.cli_api.plugin.wraps import get_cli_user_tenant, plugin_data
 from controllers.cli_api.wraps import cli_api_only
 from controllers.console.wraps import setup_required
 from core.file.helpers import get_signed_file_url_for_plugin
@@ -23,7 +23,7 @@ from models.model import EndUser
 
 @cli_api_ns.route("/invoke/llm")
 class CliInvokeLLMApi(Resource):
-    @get_user_tenant
+    @get_cli_user_tenant
     @setup_required
     @cli_api_only
     @plugin_data(payload_type=RequestInvokeLLM)
@@ -37,7 +37,7 @@ class CliInvokeLLMApi(Resource):
 
 @cli_api_ns.route("/invoke/tool")
 class CliInvokeToolApi(Resource):
-    @get_user_tenant
+    @get_cli_user_tenant
     @setup_required
     @cli_api_only
     @plugin_data(payload_type=RequestInvokeTool)
@@ -60,7 +60,7 @@ class CliInvokeToolApi(Resource):
 
 @cli_api_ns.route("/invoke/app")
 class CliInvokeAppApi(Resource):
-    @get_user_tenant
+    @get_cli_user_tenant
     @setup_required
     @cli_api_only
     @plugin_data(payload_type=RequestInvokeApp)
@@ -81,7 +81,7 @@ class CliInvokeAppApi(Resource):
 
 @cli_api_ns.route("/upload/file/request")
 class CliUploadFileRequestApi(Resource):
-    @get_user_tenant
+    @get_cli_user_tenant
     @setup_required
     @cli_api_only
     @plugin_data(payload_type=RequestRequestUploadFile)
@@ -98,7 +98,7 @@ class CliUploadFileRequestApi(Resource):
 
 @cli_api_ns.route("/fetch/tools/list")
 class CliFetchToolsListApi(Resource):
-    @get_user_tenant
+    @get_cli_user_tenant
     @setup_required
     @cli_api_only
     def post(self, user_model: Account | EndUser, tenant_model: Tenant):

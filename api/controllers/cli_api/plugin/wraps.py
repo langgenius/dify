@@ -72,7 +72,7 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
     return user_model
 
 
-def get_user_tenant(view_func: Callable[P, R]):
+def get_cli_user_tenant(view_func: Callable[P, R]):
     @wraps(view_func)
     def decorated_view(*args: P.args, **kwargs: P.kwargs):
         session_id = request.headers.get("X-Cli-Api-Session-Id")
@@ -83,6 +83,7 @@ def get_user_tenant(view_func: Callable[P, R]):
                 raise ValueError("session not found")
             user_id = session.user_id
             tenant_id = session.tenant_id
+
         else:
             payload = TenantUserPayload.model_validate(request.get_json(silent=True) or {})
             user_id = payload.user_id

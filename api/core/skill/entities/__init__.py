@@ -1,6 +1,6 @@
-from .tool_manifest import ToolManifest, ToolManifestEntry
+from .tool_artifact import ToolArtifact, ToolDependency
 
 __all__ = [
-    "ToolManifest",
-    "ToolManifestEntry",
+    "ToolArtifact",
+    "ToolDependency",
 ]

@@ -5,10 +5,8 @@ from .entities import (
     SkillAsset,
     SkillMetadata,
     ToolConfiguration,
-    ToolDefinition,
     ToolFieldConfig,
     ToolReference,
-    ToolType,
 )
 from .packager import AssetPackager, ZipPackager
 from .parser import AssetItemParser, AssetParser, FileAssetParser, SkillAssetParser
@@ -27,9 +25,7 @@ __all__ = [
     "SkillAssetParser",
     "SkillMetadata",
     "ToolConfiguration",
-    "ToolDefinition",
     "ToolFieldConfig",
     "ToolReference",
-    "ToolType",
     "ZipPackager",
 ]

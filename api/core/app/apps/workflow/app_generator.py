@@ -497,6 +497,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                         SandboxLayer(
                             tenant_id=application_generate_entity.app_config.tenant_id,
                             app_id=application_generate_entity.app_config.app_id,
+                            user_id=application_generate_entity.user_id,
                             workflow_version=workflow.version,
                             sandbox_id=application_generate_entity.workflow_execution_id,
                             sandbox_storage=ArchiveSandboxStorage(

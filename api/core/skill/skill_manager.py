@@ -1,64 +1,57 @@
 from core.app_assets.entities import SkillAsset
+from core.app_assets.entities.skill import ToolReference
 from core.app_assets.paths import AssetPaths
+from core.skill.entities.tool_artifact import ToolDependency
 from extensions.ext_storage import storage
 
-from .entities import ToolManifest, ToolManifestEntry
+from .entities import ToolArtifact
 
 
 class SkillManager:
     @staticmethod
-    def generate_tool_manifest(assets: list[SkillAsset]) -> ToolManifest:
-        tools: dict[str, ToolManifestEntry] = {}
-        references: list[str] = []
+    def generate_tool_artifact(assets: list[SkillAsset]) -> ToolArtifact:
+        # provider + tool_name -> ToolDependency
+        dependencies: dict[str, ToolDependency] = {}
+        references: list[ToolReference] = []
 
         for asset in assets:
-            manifest = SkillManager._collect_asset_manifest(asset)
-            tools.update(manifest.tools)
-            references.extend(manifest.references)
+            for id, tool in asset.metadata.tools.items():
+                dependencies[f"{tool.provider}.{tool.tool_name}"] = ToolDependency(
+                    type=tool.type,
+                    provider=tool.provider,
+                    tool_name=tool.tool_name,
+                )
 
-        return ToolManifest(tools=tools, references=references)
+                references.append(
+                    ToolReference(
+                        uuid=id,
+                        type=tool.type,
+                        provider=tool.provider,
+                        tool_name=tool.tool_name,
+                    )
+                )
+
+        return ToolArtifact(dependencies=list(dependencies.values()), references=references)
 
     @staticmethod
-    def save_tool_manifest(
+    def save_tool_artifact(
         tenant_id: str,
         app_id: str,
         assets_id: str,
-        manifest: ToolManifest,
+        artifact: ToolArtifact,
     ) -> None:
-        if not manifest.tools:
-            return
-
-        key = AssetPaths.build_tool_manifest(tenant_id, app_id, assets_id)
-        storage.save(key, manifest.model_dump_json(indent=2).encode("utf-8"))
+        key = AssetPaths.build_tool_artifact(tenant_id, app_id, assets_id)
+        storage.save(key, artifact.model_dump_json(indent=2).encode("utf-8"))
 
     @staticmethod
-    def load_tool_manifest(
+    def load_tool_artifact(
         tenant_id: str,
         app_id: str,
         assets_id: str,
-    ) -> ToolManifest | None:
-        key = AssetPaths.build_tool_manifest(tenant_id, app_id, assets_id)
+    ) -> ToolArtifact | None:
+        key = AssetPaths.build_tool_artifact(tenant_id, app_id, assets_id)
         try:
             data = storage.load_once(key)
-            return ToolManifest.model_validate_json(data)
+            return ToolArtifact.model_validate_json(data)
         except Exception:
             return None
-
-    @staticmethod
-    def _collect_asset_manifest(asset: SkillAsset) -> ToolManifest:
-        tools: dict[str, ToolManifestEntry] = {}
-
-        for uuid, tool_def in asset.metadata.tools.items():
-            ref = next((r for r in asset.tool_references if r.uuid == uuid), None)
-
-            tools[uuid] = ToolManifestEntry(
-                uuid=uuid,
-                type=tool_def.type,
-                provider=ref.provider if ref else None,
-                tool_name=ref.tool_name if ref else None,
-                credential_id=tool_def.credential_id,
-                configuration=tool_def.configuration.model_dump() if tool_def.configuration.fields else None,
-            )
-
-        references = [ref.raw for ref in asset.tool_references]
-        return ToolManifest(tools=tools, references=references)

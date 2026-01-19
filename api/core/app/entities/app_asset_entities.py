@@ -109,6 +109,64 @@ class AppAssetFileTree(BaseModel):
             current = self.get(current.parent_id) if current.parent_id else None
         return "/" + "/".join(reversed(parts))
 
+    def relative_path(self, a: AppAssetNode, b: AppAssetNode) -> str:
+        """
+        Calculate relative path from node a to node b for Markdown references.
+        Path is computed from a's parent directory (where the file resides).
+
+        Examples:
+            /foo/a.md -> /foo/b.md         => ./b.md
+            /foo/a.md -> /foo/sub/b.md     => ./sub/b.md
+            /foo/sub/a.md -> /foo/b.md     => ../b.md
+            /foo/sub/deep/a.md -> /foo/b.md => ../../b.md
+        """
+
+        def get_ancestor_ids(node_id: str | None) -> list[str]:
+            chain: list[str] = []
+            current_id = node_id
+            while current_id:
+                chain.append(current_id)
+                node = self.get(current_id)
+                current_id = node.parent_id if node else None
+            return chain
+
+        a_dir_ancestors = get_ancestor_ids(a.parent_id)
+        b_ancestors = [b.id] + get_ancestor_ids(b.parent_id)
+        a_dir_set = set(a_dir_ancestors)
+
+        lca_id: str | None = None
+        lca_index_in_b = -1
+        for idx, ancestor_id in enumerate(b_ancestors):
+            if ancestor_id in a_dir_set or (a.parent_id is None and b_ancestors[idx:] == []):
+                lca_id = ancestor_id
+                lca_index_in_b = idx
+                break
+
+        if a.parent_id is None:
+            steps_up = 0
+            lca_index_in_b = len(b_ancestors)
+        elif lca_id is None:
+            steps_up = len(a_dir_ancestors)
+            lca_index_in_b = len(b_ancestors)
+        else:
+            steps_up = 0
+            for ancestor_id in a_dir_ancestors:
+                if ancestor_id == lca_id:
+                    break
+                steps_up += 1
+
+        path_down: list[str] = []
+        for i in range(lca_index_in_b - 1, -1, -1):
+            node = self.get(b_ancestors[i])
+            if node:
+                path_down.append(node.name)
+
+        if steps_up == 0:
+            return "./" + "/".join(path_down)
+
+        parts: list[str] = [".."] * steps_up + path_down
+        return "/".join(parts)
+
     def get_descendant_ids(self, node_id: str) -> list[str]:
         result: list[str] = []
         stack = [node_id]

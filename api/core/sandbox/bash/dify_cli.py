@@ -5,9 +5,13 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
+from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app_assets.entities import ToolReference
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.session.cli_api import CliApiSession
+from core.skill.entities import ToolArtifact
 from core.tools.entities.tool_entities import ToolParameter, ToolProviderType
+from core.tools.tool_manager import ToolManager
 from core.virtual_environment.__base.entities import Arch, OperatingSystem
 
 from ..constants import DIFY_CLI_PATH_PATTERN
@@ -100,15 +104,50 @@ class DifyCliToolConfig(BaseModel):
                 return transformed_parameter
 
 
+class DifyCliToolReference(BaseModel):
+    id: str
+    tool_name: str
+    tool_provider: str
+    credential_id: str | None = None
+    default_value: dict[str, Any] | None = None
+
+    @classmethod
+    def create_from_tool_reference(cls, reference: ToolReference) -> DifyCliToolReference:
+        return cls(
+            id=reference.uuid,
+            tool_name=reference.tool_name,
+            tool_provider=reference.provider,
+            credential_id=reference.credential_id,
+            default_value=reference.configuration.default_values() if reference.configuration else None,
+        )
+
+
 class DifyCliConfig(BaseModel):
     env: DifyCliEnvConfig
+    tool_references: list[DifyCliToolReference]
     tools: list[DifyCliToolConfig]
 
     @classmethod
-    def create(cls, session: CliApiSession, tools: list[Tool]) -> DifyCliConfig:
+    def create(
+        cls,
+        session: CliApiSession,
+        tenant_id: str,
+        artifact: ToolArtifact,
+    ) -> DifyCliConfig:
         from configs import dify_config
 
         cli_api_url = dify_config.CLI_API_URL
+
+        tools: list[Tool] = []
+        for dependency in artifact.dependencies:
+            tool = ToolManager.get_tool_runtime(
+                tenant_id=tenant_id,
+                provider_type=dependency.type,
+                provider_id=dependency.provider,
+                tool_name=dependency.tool_name,
+                invoke_from=InvokeFrom.AGENT,
+            )
+            tools.append(tool)
 
         return cls(
             env=DifyCliEnvConfig(
@@ -117,6 +156,7 @@ class DifyCliConfig(BaseModel):
                 cli_api_session_id=session.id,
                 cli_api_secret=session.secret,
             ),
+            tool_references=[DifyCliToolReference.create_from_tool_reference(ref) for ref in artifact.references],
             tools=[DifyCliToolConfig.create_from_tool(tool) for tool in tools],
         )
 
@@ -131,4 +171,5 @@ __all__ = [
     "DifyCliEnvConfig",
     "DifyCliLocator",
     "DifyCliToolConfig",
+    "DifyCliToolReference",
 ]

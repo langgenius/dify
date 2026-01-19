@@ -6,6 +6,7 @@ from core.virtual_environment.__base.virtual_environment import VirtualEnvironme
 from core.workflow.graph_engine.layers.base import GraphEngineLayer
 from core.workflow.graph_events.base import GraphEngineEvent
 from core.workflow.graph_events.graph import GraphRunPausedEvent
+from core.workflow.nodes.base.node import Node
 from models.workflow import Workflow
 from services.app_asset_service import AppAssetService
 from services.sandbox.sandbox_provider_service import SandboxProviderService
@@ -22,6 +23,7 @@ class SandboxLayer(GraphEngineLayer):
         self,
         tenant_id: str,
         app_id: str,
+        user_id: str,
         workflow_version: str,
         sandbox_id: str,
         sandbox_storage: SandboxStorage,
@@ -29,6 +31,7 @@ class SandboxLayer(GraphEngineLayer):
         super().__init__()
         self._tenant_id = tenant_id
         self._app_id = app_id
+        self._user_id = user_id
         self._workflow_version = workflow_version
         self._sandbox_id = sandbox_id
         self._sandbox_storage = sandbox_storage
@@ -48,6 +51,8 @@ class SandboxLayer(GraphEngineLayer):
                 raise ValueError(
                     f"No assets found for tid={self._tenant_id}, app_id={self._app_id}, wf={self._workflow_version}"
                 )
+            self._assets_id = assets.id
+
             if is_draft:
                 logger.info(
                     "Building draft assets for tenant_id=%s, app_id=%s, workflow_version=%s, assets_id=%s",
@@ -69,7 +74,7 @@ class SandboxLayer(GraphEngineLayer):
             builder = (
                 SandboxProviderService.create_sandbox_builder(self._tenant_id)
                 .initializer(AppAssetsInitializer(self._tenant_id, self._app_id, assets.id))
-                .initializer(DifyCliInitializer(self._tenant_id, self._app_id, assets.id))
+                .initializer(DifyCliInitializer(self._tenant_id, self._user_id, self._app_id, assets.id))
             )
             sandbox = builder.build()
 
@@ -87,6 +92,10 @@ class SandboxLayer(GraphEngineLayer):
         except Exception as e:
             logger.exception("Failed to initialize sandbox")
             raise SandboxInitializationError(f"Failed to initialize sandbox: {e}") from e
+
+    def on_node_run_start(self, node: Node) -> None:
+        # FIXME(Mairuis): should read from workflow run context...
+        node.assets_id = self._assets_id
 
     def on_event(self, event: GraphEngineEvent) -> None:
         # TODO: handle graph run paused event

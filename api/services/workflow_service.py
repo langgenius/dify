@@ -702,11 +702,19 @@ class WorkflowService:
         single_step_execution_id: str | None = None
         if draft_workflow.get_feature(WorkflowFeatures.SANDBOX).enabled:
             from core.sandbox import AppAssetsInitializer, DifyCliInitializer
+            from services.app_asset_service import AppAssetService
+
+            assets = AppAssetService.get_assets(draft_workflow.tenant_id, app_model.id, is_draft=True)
+            if not assets:
+                raise ValueError(f"No assets found for tid={draft_workflow.tenant_id}, app_id={app_model.id}")
+
+            # FIXME(Mairuis): single step execution
+            AppAssetService.build_assets(draft_workflow.tenant_id, app_model.id, assets)
 
             sandbox = (
                 SandboxProviderService.create_sandbox_builder(draft_workflow.tenant_id)
-                .initializer(DifyCliInitializer())
-                .initializer(AppAssetsInitializer(draft_workflow.tenant_id, app_model.id))
+                .initializer(DifyCliInitializer(draft_workflow.tenant_id, account.id, app_model.id, assets.id))
+                .initializer(AppAssetsInitializer(draft_workflow.tenant_id, app_model.id, assets.id))
                 .build()
             )
             single_step_execution_id = f"single-step-{uuid.uuid4()}"

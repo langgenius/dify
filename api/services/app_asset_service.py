@@ -312,15 +312,15 @@ class AppAssetService:
             )
 
             assets = parser.parse()
-            manifest = SkillManager.generate_tool_manifest(
+            artifact = SkillManager.generate_tool_artifact(
                 assets=[asset for asset in assets if isinstance(asset, SkillAsset)]
             )
 
-            SkillManager.save_tool_manifest(
+            SkillManager.save_tool_artifact(
                 tenant_id,
                 app_id,
                 publish_id,
-                manifest,
+                artifact,
             )
 
             # TODO: use VM zip packager and make this process async
@@ -341,19 +341,19 @@ class AppAssetService:
         parser = AssetParser(tree, tenant_id, app_id)
         parser.register(
             "md",
-            SkillAssetParser(tenant_id, app_id, assets.id),
+            SkillAssetParser(tenant_id, app_id, assets.id, tree),
         )
 
         parsed_assets = parser.parse()
-        manifest = SkillManager.generate_tool_manifest(
+        artifact = SkillManager.generate_tool_artifact(
             assets=[asset for asset in parsed_assets if isinstance(asset, SkillAsset)]
         )
 
-        SkillManager.save_tool_manifest(
+        SkillManager.save_tool_artifact(
             tenant_id,
             app_id,
             assets.id,
-            manifest,
+            artifact,
         )
 
         packager = ZipPackager(storage)

@@ -4,10 +4,8 @@ from .skill import (
     SkillAsset,
     SkillMetadata,
     ToolConfiguration,
-    ToolDefinition,
     ToolFieldConfig,
     ToolReference,
-    ToolType,
 )
 
 __all__ = [
@@ -17,8 +15,6 @@ __all__ = [
     "SkillAsset",
     "SkillMetadata",
     "ToolConfiguration",
-    "ToolDefinition",
     "ToolFieldConfig",
     "ToolReference",
-    "ToolType",
 ]

@@ -523,6 +523,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                         SandboxLayer(
                             tenant_id=application_generate_entity.app_config.tenant_id,
                             app_id=application_generate_entity.app_config.app_id,
+                            user_id=application_generate_entity.user_id,
                             workflow_version=workflow.version,
                             sandbox_id=application_generate_entity.workflow_run_id,
                             sandbox_storage=ArchiveSandboxStorage(

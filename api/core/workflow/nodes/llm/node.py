@@ -50,7 +50,7 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
-from core.sandbox import SandboxManager, SandboxSession
+from core.sandbox import SandboxBashSession, SandboxManager
 from core.tools.__base.tool import Tool
 from core.tools.signature import sign_upload_file
 from core.tools.tool_manager import ToolManager
@@ -1580,16 +1580,15 @@ class LLMNode(Node[LLMNodeData]):
         result = yield from self._process_tool_outputs(outputs)
         return result
 
-    def _get_allow_tools_list(self) -> list[str] | None:
+    def _get_allow_tools_list(self) -> list[tuple[str, str]] | None:
         if not self._node_data.tools:
             return None
 
         allow_tools = []
         for tool in self._node_data.tools:
-            if tool.enabled:
-                tool_name = f"{tool.tool_name}"
-                allow_tools.append(tool_name)
-
+            if not tool.enabled:
+                continue
+            allow_tools.append((tool.provider_name, tool.tool_name))
         return allow_tools or None
 
     def _invoke_llm_with_sandbox(
@@ -1607,11 +1606,14 @@ class LLMNode(Node[LLMNodeData]):
 
         result: LLMGenerationData | None = None
 
-        with SandboxSession(
+        with SandboxBashSession(
             workflow_execution_id=workflow_execution_id,
             tenant_id=self.tenant_id,
             user_id=self.user_id,
             node_id=self.id,
+            app_id=self.app_id,
+            # FIXME(Mairuis): should read from workflow run context...
+            assets_id=getattr(self, "assets_id", ""),
             allow_tools=allow_tools,
         ) as sandbox_session:
             prompt_files = self._extract_prompt_files(variable_pool)
