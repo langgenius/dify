@@ -9,6 +9,7 @@ import { useCallback, useMemo, useRef } from 'react'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { useSkillAssetTreeData } from '../hooks/use-skill-asset-tree'
 import { findNodeById } from '../utils/tree-utils'
+import BlankAreaMenu from './blank-area-menu'
 import NodeMenu from './node-menu'
 
 type TreeContextMenuProps = {
@@ -29,13 +30,17 @@ const TreeContextMenu: FC<TreeContextMenuProps> = ({ treeRef }) => {
     handleClose()
   }, ref)
 
+  const nodeId = contextMenu?.nodeId
+  const treeChildren = treeData?.children
+
   const targetNode = useMemo(() => {
-    if (!contextMenu?.nodeId || !treeData?.children)
+    if (!nodeId || !treeChildren)
       return null
-    return findNodeById(treeData.children, contextMenu.nodeId)
-  }, [contextMenu?.nodeId, treeData?.children])
+    return findNodeById(treeChildren, nodeId)
+  }, [nodeId, treeChildren])
 
   const isFolder = targetNode?.node_type === 'folder'
+  const isBlankArea = contextMenu?.type === 'blank'
 
   if (!contextMenu)
     return null
@@ -49,12 +54,18 @@ const TreeContextMenu: FC<TreeContextMenuProps> = ({ treeRef }) => {
         left: contextMenu.left,
       }}
     >
-      <NodeMenu
-        type={isFolder ? 'folder' : 'file'}
-        nodeId={contextMenu.nodeId}
-        onClose={handleClose}
-        treeRef={treeRef}
-      />
+      {isBlankArea
+        ? (
+            <BlankAreaMenu onClose={handleClose} />
+          )
+        : (
+            <NodeMenu
+              type={isFolder ? 'folder' : 'file'}
+              nodeId={contextMenu.nodeId}
+              onClose={handleClose}
+              treeRef={treeRef}
+            />
+          )}
     </div>
   )
 }

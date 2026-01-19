@@ -91,6 +91,15 @@ const FileTree: React.FC<FileTreeProps> = ({ className, searchTerm = '' }) => {
     })
   }, [appId, renameNode, t])
 
+  const handleBlankAreaContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    storeApi.getState().setContextMenu({
+      top: e.clientY,
+      left: e.clientX,
+      type: 'blank',
+    })
+  }, [storeApi])
+
   const searchMatch = useCallback(
     (node: NodeApi<TreeNodeData>, term: string) => {
       return node.data.name.toLowerCase().includes(term.toLowerCase())
@@ -146,6 +155,7 @@ const FileTree: React.FC<FileTreeProps> = ({ className, searchTerm = '' }) => {
         <div
           ref={containerRef}
           className="flex min-h-0 flex-1 flex-col overflow-hidden px-1 pt-1"
+          onContextMenu={handleBlankAreaContextMenu}
         >
           <Tree<TreeNodeData>
             ref={treeRef}

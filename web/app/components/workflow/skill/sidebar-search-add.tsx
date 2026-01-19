@@ -66,12 +66,13 @@ const SidebarSearchAdd: FC<SidebarSearchAddProps> = ({ onSearchChange }) => {
 
   const { data: treeData } = useSkillAssetTreeData()
   const activeTabId = useStore(s => s.activeTabId)
+  const treeChildren = treeData?.children
 
   const targetFolderId = useMemo(() => {
-    if (!treeData?.children)
+    if (!treeChildren)
       return 'root'
-    return getTargetFolderIdFromSelection(activeTabId, treeData.children)
-  }, [activeTabId, treeData?.children])
+    return getTargetFolderIdFromSelection(activeTabId, treeChildren)
+  }, [activeTabId, treeChildren])
   const menuOffset = useMemo(() => ({ mainAxis: 4 }), [])
 
   const {
@@ -88,11 +89,11 @@ const SidebarSearchAdd: FC<SidebarSearchAddProps> = ({ onSearchChange }) => {
   })
 
   return (
-    <div className="flex items-center gap-1 bg-components-panel-bg p-2">
+    <div className="flex items-center gap-1 p-2">
       <SearchInput
         value={searchValue}
         onChange={setSearchValue}
-        className="h-8 flex-1"
+        className="!h-6 flex-1 !rounded-md"
         placeholder={t('skillSidebar.searchPlaceholder')}
       />
       <PortalToFollowElem
@@ -104,11 +105,11 @@ const SidebarSearchAdd: FC<SidebarSearchAddProps> = ({ onSearchChange }) => {
         <PortalToFollowElemTrigger onClick={() => setShowMenu(!showMenu)}>
           <Button
             variant="primary"
-            size="medium"
-            className={cn('!h-8 !w-8 !px-0')}
+            size="small"
+            className="!size-6 shrink-0 !p-1"
             aria-label={t('operation.add', { ns: 'common' })}
           >
-            <RiAddLine className="h-4 w-4" aria-hidden="true" />
+            <RiAddLine className="size-4" aria-hidden="true" />
           </Button>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className="z-[30]">

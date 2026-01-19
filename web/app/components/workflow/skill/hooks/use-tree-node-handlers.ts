@@ -76,6 +76,7 @@ export function useTreeNodeHandlers({
     storeApi.getState().setContextMenu({
       top: e.clientY,
       left: e.clientX,
+      type: 'node',
       nodeId: node.data.id,
     })
   }, [node.data.id, storeApi])

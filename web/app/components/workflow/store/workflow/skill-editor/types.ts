@@ -43,13 +43,18 @@ export type MetadataSliceShape = {
   getFileMetadata: (fileId: string) => Record<string, unknown> | undefined
 }
 
+export type ContextMenuType = 'node' | 'blank'
+
+export type ContextMenuState = {
+  top: number
+  left: number
+  type: ContextMenuType
+  nodeId?: string
+}
+
 export type FileOperationsMenuSliceShape = {
-  contextMenu: {
-    top: number
-    left: number
-    nodeId: string
-  } | null
-  setContextMenu: (menu: FileOperationsMenuSliceShape['contextMenu']) => void
+  contextMenu: ContextMenuState | null
+  setContextMenu: (menu: ContextMenuState | null) => void
 }
 
 export type SkillEditorSliceShape
