@@ -15,6 +15,7 @@ The `tenant_default_models` table is missing a unique constraint on `(tenant_id,
 **Root cause:**
 
 1. **Race condition on concurrent saves**: The code uses a "check-then-insert" pattern without proper locking in `provider_manager.py`:
+
    ```python
    default_model = db.session.scalar(stmt)  # Check
    if default_model:
@@ -23,15 +24,16 @@ The `tenant_default_models` table is missing a unique constraint on `(tenant_id,
        # Create new  <-- Race condition here!
    ```
 
-2. **Duplicate records**: When multiple requests happen concurrently, duplicate records with the same `tenant_id` and `model_type` are inserted.
+1. **Duplicate records**: When multiple requests happen concurrently, duplicate records with the same `tenant_id` and `model_type` are inserted.
 
-3. **Non-deterministic query results**: When duplicates exist, `db.session.scalar()` returns an arbitrary record, causing inconsistent display.
+1. **Non-deterministic query results**: When duplicates exist, `db.session.scalar()` returns an arbitrary record, causing inconsistent display.
 
 ### Solution
 
 1. Add `UniqueConstraint("tenant_id", "model_type")` to `TenantDefaultModel` model definition in `api/models/provider.py`
 
-2. Create a database migration that:
+1. Create a database migration that:
+
    - Cleans up existing duplicate records (keeps the most recent one per `tenant_id + model_type`)
    - Adds the unique constraint
 
