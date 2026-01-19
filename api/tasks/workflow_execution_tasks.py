@@ -30,7 +30,6 @@ def save_workflow_execution_task(
     triggered_from: str,
     creator_user_id: str,
     creator_user_role: str,
-    security_store_mode: str | None = None,
 ) -> bool:
     """
     Asynchronously save or update a workflow execution to the database.
