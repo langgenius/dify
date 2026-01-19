@@ -91,9 +91,10 @@ const ComponentPicker = ({
     ],
   })
   const [editor] = useLexicalComposerContext()
+  const useExternalSearch = triggerString === '/' || triggerString === '@'
   const checkForTriggerMatch = useBasicTypeaheadTriggerMatch(triggerString, {
     minLength: 0,
-    maxLength: 0,
+    maxLength: useExternalSearch ? 75 : 0,
   })
 
   const [queryString, setQueryString] = useState<string | null>(null)
@@ -116,6 +117,7 @@ const ComponentPicker = ({
     currentBlock,
     errorMessageBlock,
     lastRunBlock,
+    useExternalSearch ? (queryString ?? undefined) : undefined,
   )
 
   const onSelectOption = useCallback(
@@ -247,6 +249,9 @@ const ComponentPicker = ({
                         onBlur={handleClose}
                         maxHeightClass="max-h-[34vh]"
                         autoFocus={false}
+                        hideSearch={useExternalSearch}
+                        externalSearchText={useExternalSearch ? (queryString ?? '') : undefined}
+                        enableKeyboardNavigation={useExternalSearch}
                       />
                     )
                   : (
@@ -270,6 +275,9 @@ const ComponentPicker = ({
                                 onAssembleVariables={showAssembleVariables ? handleSelectAssembleVariables : undefined}
                                 autoFocus={false}
                                 isInCodeGeneratorInstructionEditor={currentBlock?.generatorType === GeneratorType.code}
+                                hideSearch={useExternalSearch}
+                                externalSearchText={useExternalSearch ? (queryString ?? '') : undefined}
+                                enableKeyboardNavigation={useExternalSearch}
                               />
                             </div>
                           )
@@ -311,7 +319,7 @@ const ComponentPicker = ({
         }
       </>
     )
-  }, [isAgentTrigger, agentNodes, allFlattenOptions.length, workflowVariableBlock?.show, floatingStyles, isPositioned, refs, handleSelectAgent, handleClose, workflowVariableOptions, isSupportFileVar, currentBlock?.generatorType, handleSelectWorkflowVariable, queryString, workflowVariableBlock?.showManageInputField, workflowVariableBlock?.onManageInputField, showAssembleVariables, handleSelectAssembleVariables])
+  }, [isAgentTrigger, agentNodes, allFlattenOptions.length, workflowVariableBlock?.show, floatingStyles, isPositioned, refs, handleSelectAgent, handleClose, workflowVariableOptions, isSupportFileVar, currentBlock?.generatorType, handleSelectWorkflowVariable, queryString, workflowVariableBlock?.showManageInputField, workflowVariableBlock?.onManageInputField, showAssembleVariables, handleSelectAssembleVariables, useExternalSearch])
 
   return (
     <LexicalTypeaheadMenuPlugin
