@@ -25,6 +25,12 @@ const CSVReader: FC<Props> = ({
   return (
     <CSVReader
       onUploadAccepted={async (results: any, file: File) => {
+        if (!file) {
+          onParsed(results.data)
+          setZoneHover(false)
+          return
+        }
+
         const buffer = await file.arrayBuffer()
         // jschardet requires a buffer or a string of bytes
         const uint8Array = new Uint8Array(buffer)
