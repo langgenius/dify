@@ -84,7 +84,9 @@ const AgentNodeList: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
-  const normalizedSearchText = externalSearchText === undefined ? searchText : externalSearchText.trim()
+  const normalizedSearchText = externalSearchText === undefined ? searchText : externalSearchText
+  const normalizedSearchTextTrimmed = normalizedSearchText.trim()
+  const normalizedSearchTextLower = normalizedSearchTextTrimmed.toLowerCase()
   const shouldShowSearchInput = !hideSearch && externalSearchText === undefined
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -95,36 +97,63 @@ const AgentNodeList: FC<Props> = ({
   }
 
   const filteredNodes = useMemo(() => nodes.filter((node) => {
-    if (!normalizedSearchText)
+    if (!normalizedSearchTextTrimmed)
       return true
-    return node.title.toLowerCase().includes(normalizedSearchText.toLowerCase())
-  }), [nodes, normalizedSearchText])
+    return node.title.toLowerCase().includes(normalizedSearchTextLower)
+  }), [nodes, normalizedSearchTextLower, normalizedSearchTextTrimmed])
 
   const [activeIndex, setActiveIndex] = useState(-1)
   const itemRefs = useRef<Array<HTMLButtonElement | null>>([])
+  const lastInteractionRef = useRef<'keyboard' | 'mouse' | 'filter' | null>(null)
+  const filteredNodesRef = useRef(filteredNodes)
+  const activeIndexRef = useRef(activeIndex)
+  const onCloseRef = useRef(onClose)
 
   useEffect(() => {
     itemRefs.current = []
   }, [filteredNodes.length])
 
   useEffect(() => {
+    filteredNodesRef.current = filteredNodes
+  }, [filteredNodes])
+
+  useEffect(() => {
+    activeIndexRef.current = activeIndex
+  }, [activeIndex])
+
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
+
+  const handleHighlightIndex = useCallback((index: number, source: 'keyboard' | 'mouse' | 'filter') => {
+    lastInteractionRef.current = source
+    setActiveIndex(index)
+  }, [])
+
+  useEffect(() => {
     if (!enableKeyboardNavigation) {
-      setActiveIndex(-1)
+      if (activeIndex !== -1)
+        setActiveIndex(-1)
       return
     }
     if (filteredNodes.length === 0) {
-      setActiveIndex(-1)
+      if (activeIndex !== -1)
+        setActiveIndex(-1)
       return
     }
-    setActiveIndex(0)
-  }, [enableKeyboardNavigation, filteredNodes.length, normalizedSearchText])
+    if (activeIndex < 0 || activeIndex >= filteredNodes.length)
+      handleHighlightIndex(0, 'filter')
+  }, [enableKeyboardNavigation, filteredNodes.length, activeIndex, handleHighlightIndex])
 
   useEffect(() => {
     if (!enableKeyboardNavigation || activeIndex < 0)
       return
+    if (lastInteractionRef.current !== 'keyboard')
+      return
     const target = itemRefs.current[activeIndex]
     if (target)
       target.scrollIntoView({ block: 'nearest' })
+    lastInteractionRef.current = null
   }, [activeIndex, enableKeyboardNavigation, filteredNodes.length])
 
   const handleSelectItem = useCallback((node: AgentNode) => {
@@ -135,34 +164,34 @@ const AgentNodeList: FC<Props> = ({
     if (!enableKeyboardNavigation)
       return
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (filteredNodes.length === 0)
+      const nodes = filteredNodesRef.current
+      if (nodes.length === 0)
         return
       if (!['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(event.key))
         return
       event.preventDefault()
       event.stopPropagation()
       if (event.key === 'Escape') {
-        onClose?.()
+        onCloseRef.current?.()
         return
       }
       if (event.key === 'Enter') {
-        if (activeIndex < 0 || activeIndex >= filteredNodes.length)
+        const index = activeIndexRef.current
+        if (index < 0 || index >= nodes.length)
           return
-        handleSelectItem(filteredNodes[activeIndex])
+        handleSelectItem(nodes[index])
         return
       }
       const delta = event.key === 'ArrowDown' ? 1 : -1
-      setActiveIndex((prev) => {
-        const baseIndex = prev < 0 ? 0 : prev
-        const nextIndex = Math.min(Math.max(baseIndex + delta, 0), filteredNodes.length - 1)
-        return nextIndex
-      })
+      const baseIndex = activeIndexRef.current < 0 ? 0 : activeIndexRef.current
+      const nextIndex = Math.min(Math.max(baseIndex + delta, 0), nodes.length - 1)
+      handleHighlightIndex(nextIndex, 'keyboard')
     }
     document.addEventListener('keydown', handleKeyDown, true)
     return () => {
       document.removeEventListener('keydown', handleKeyDown, true)
     }
-  }, [activeIndex, enableKeyboardNavigation, filteredNodes, handleSelectItem, onClose])
+  }, [enableKeyboardNavigation, handleHighlightIndex, handleSelectItem])
 
   return (
     <>
@@ -198,7 +227,7 @@ const AgentNodeList: FC<Props> = ({
                   node={node}
                   onSelect={onSelect}
                   isHighlighted={enableKeyboardNavigation && index === activeIndex}
-                  onSetHighlight={enableKeyboardNavigation ? () => setActiveIndex(index) : undefined}
+                  onSetHighlight={enableKeyboardNavigation ? () => handleHighlightIndex(index, 'mouse') : undefined}
                   registerRef={enableKeyboardNavigation ? (element) => {
                     itemRefs.current[index] = element
                   } : undefined}
