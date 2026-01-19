@@ -87,6 +87,7 @@ const FileTree: React.FC<FileTreeProps> = ({ className, searchTerm = '' }) => {
     }
     const selectedId = nodes[0]?.id ?? null
     storeApi.getState().setSelectedTreeNodeId(selectedId)
+    storeApi.getState().setCreateTargetNodeId(selectedId)
   }, [activeTabId, storeApi])
 
   const handleBlankAreaContextMenu = useCallback((e: React.MouseEvent) => {

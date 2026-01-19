@@ -28,6 +28,7 @@ export const createSkillEditorSlice: StateCreator<SkillEditorSliceShape> = (...a
       previewTabId: null,
       expandedFolderIds: new Set<string>(),
       selectedTreeNodeId: null,
+      createTargetNodeId: null,
       pendingCreateNode: null,
       dirtyContents: new Map<string, string>(),
       fileMetadata: new Map<string, Record<string, unknown>>(),

@@ -30,6 +30,8 @@ export type FileTreeSliceShape = {
   getOpensObject: () => OpensObject
   selectedTreeNodeId: string | null
   setSelectedTreeNodeId: (nodeId: string | null) => void
+  createTargetNodeId: string | null
+  setCreateTargetNodeId: (nodeId: string | null) => void
   pendingCreateNode: PendingCreateNode | null
   startCreateNode: (nodeType: PendingCreateNode['nodeType'], parentId: PendingCreateNode['parentId']) => void
   clearCreateNode: () => void
