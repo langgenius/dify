@@ -80,8 +80,9 @@ export function useTreeNodeHandlers({
       left: e.clientX,
       type: 'node',
       nodeId: node.data.id,
+      isFolder,
     })
-  }, [node.data.id, storeApi])
+  }, [isFolder, node.data.id, storeApi])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {

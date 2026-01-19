@@ -5,22 +5,24 @@ import type { TreeApi } from 'react-arborist'
 import type { TreeNodeData } from '../type'
 import { useClickAway } from 'ahooks'
 import * as React from 'react'
-import { useCallback, useMemo, useRef } from 'react'
+import { useCallback, useRef } from 'react'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
-import { useSkillAssetTreeData } from '../hooks/use-skill-asset-tree'
-import { findNodeById } from '../utils/tree-utils'
-import BlankAreaMenu from './blank-area-menu'
 import NodeMenu from './node-menu'
 
 type TreeContextMenuProps = {
   treeRef: React.RefObject<TreeApi<TreeNodeData> | null>
 }
 
+function getMenuType(contextMenu: { type: string, isFolder?: boolean }): 'root' | 'folder' | 'file' {
+  if (contextMenu.type === 'blank')
+    return 'root'
+  return contextMenu.isFolder ? 'folder' : 'file'
+}
+
 const TreeContextMenu: FC<TreeContextMenuProps> = ({ treeRef }) => {
   const ref = useRef<HTMLDivElement>(null)
   const contextMenu = useStore(s => s.contextMenu)
   const storeApi = useWorkflowStore()
-  const { data: treeData } = useSkillAssetTreeData()
 
   const handleClose = useCallback(() => {
     storeApi.getState().setContextMenu(null)
@@ -29,18 +31,6 @@ const TreeContextMenu: FC<TreeContextMenuProps> = ({ treeRef }) => {
   useClickAway(() => {
     handleClose()
   }, ref)
-
-  const nodeId = contextMenu?.nodeId
-  const treeChildren = treeData?.children
-
-  const targetNode = useMemo(() => {
-    if (!nodeId || !treeChildren)
-      return null
-    return findNodeById(treeChildren, nodeId)
-  }, [nodeId, treeChildren])
-
-  const isFolder = targetNode?.node_type === 'folder'
-  const isBlankArea = contextMenu?.type === 'blank'
 
   if (!contextMenu)
     return null
@@ -54,18 +44,12 @@ const TreeContextMenu: FC<TreeContextMenuProps> = ({ treeRef }) => {
         left: contextMenu.left,
       }}
     >
-      {isBlankArea
-        ? (
-            <BlankAreaMenu onClose={handleClose} />
-          )
-        : (
-            <NodeMenu
-              type={isFolder ? 'folder' : 'file'}
-              nodeId={contextMenu.nodeId}
-              onClose={handleClose}
-              treeRef={treeRef}
-            />
-          )}
+      <NodeMenu
+        type={getMenuType(contextMenu)}
+        nodeId={contextMenu.nodeId}
+        onClose={handleClose}
+        treeRef={treeRef}
+      />
     </div>
   )
 }

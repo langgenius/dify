@@ -63,6 +63,7 @@ export type ContextMenuState = {
   left: number
   type: ContextMenuType
   nodeId?: string
+  isFolder?: boolean
 }
 
 export type FileOperationsMenuSliceShape = {

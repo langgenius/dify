@@ -18,8 +18,13 @@ import { cn } from '@/utils/classnames'
 import { useFileOperations } from '../hooks/use-file-operations'
 import MenuItem from './menu-item'
 
+export const MENU_CONTAINER_STYLES = [
+  'min-w-[180px] rounded-xl border-[0.5px] border-components-panel-border',
+  'bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]',
+] as const
+
 type NodeMenuProps = {
-  type: 'file' | 'folder'
+  type: 'file' | 'folder' | 'root'
   nodeId?: string
   onClose: () => void
   className?: string
@@ -36,9 +41,8 @@ const NodeMenu: FC<NodeMenuProps> = ({
   node,
 }) => {
   const { t } = useTranslation('workflow')
-  const isFolder = type === 'folder'
-  const derivedNodeId = node?.data.id ?? nodeId ?? ''
-  const isRoot = derivedNodeId === 'root'
+  const isRoot = type === 'root'
+  const isFolder = type === 'folder' || isRoot
 
   const {
     fileInputRef,
@@ -65,12 +69,7 @@ const NodeMenu: FC<NodeMenuProps> = ({
     : t('skillSidebar.menu.fileDeleteConfirmContent')
 
   return (
-    <div className={cn(
-      'min-w-[180px] rounded-xl border-[0.5px] border-components-panel-border',
-      'bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]',
-      className,
-    )}
-    >
+    <div className={cn(MENU_CONTAINER_STYLES, className)}>
       {isFolder && (
         <>
           <input
@@ -80,14 +79,16 @@ const NodeMenu: FC<NodeMenuProps> = ({
             className="hidden"
             onChange={handleFileChange}
           />
-          <input
-            ref={folderInputRef}
-            type="file"
-            // @ts-expect-error webkitdirectory is a non-standard attribute
-            webkitdirectory=""
-            className="hidden"
-            onChange={handleFolderChange}
-          />
+          {!isRoot && (
+            <input
+              ref={folderInputRef}
+              type="file"
+              // @ts-expect-error webkitdirectory is a non-standard attribute
+              webkitdirectory=""
+              className="hidden"
+              onChange={handleFolderChange}
+            />
+          )}
 
           <MenuItem
             icon={RiFileAddLine}
@@ -110,12 +111,14 @@ const NodeMenu: FC<NodeMenuProps> = ({
             onClick={() => fileInputRef.current?.click()}
             disabled={isLoading}
           />
-          <MenuItem
-            icon={RiFolderUploadLine}
-            label={t('skillSidebar.menu.uploadFolder')}
-            onClick={() => folderInputRef.current?.click()}
-            disabled={isLoading}
-          />
+          {!isRoot && (
+            <MenuItem
+              icon={RiFolderUploadLine}
+              label={t('skillSidebar.menu.uploadFolder')}
+              onClick={() => folderInputRef.current?.click()}
+              disabled={isLoading}
+            />
+          )}
 
           {showRenameDelete && <div className="my-1 h-px bg-divider-subtle" />}
         </>
