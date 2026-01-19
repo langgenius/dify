@@ -8,9 +8,10 @@ DynamicScaler, and WorkerFactory into a single class.
 import logging
 import queue
 import threading
-from typing import TYPE_CHECKING, final
+from typing import final
 
 from configs import dify_config
+from core.workflow.context import IExecutionContext
 from core.workflow.graph import Graph
 from core.workflow.graph_events import GraphNodeEventBase
 
@@ -19,11 +20,6 @@ from ..ready_queue import ReadyQueue
 from ..worker import Worker
 
 logger = logging.getLogger(__name__)
-
-if TYPE_CHECKING:
-    from contextvars import Context
-
-    from flask import Flask
 
 
 @final
@@ -42,8 +38,7 @@ class WorkerPool:
         graph: Graph,
         layers: list[GraphEngineLayer],
         stop_event: threading.Event,
-        flask_app: "Flask | None" = None,
-        context_vars: "Context | None" = None,
+        execution_context: IExecutionContext | None = None,
         min_workers: int | None = None,
         max_workers: int | None = None,
         scale_up_threshold: int | None = None,
@@ -57,8 +52,7 @@ class WorkerPool:
             event_queue: Queue for worker events
             graph: The workflow graph
             layers: Graph engine layers for node execution hooks
-            flask_app: Optional Flask app for context preservation
-            context_vars: Optional context variables
+            execution_context: Optional execution context for context preservation
             min_workers: Minimum number of workers
             max_workers: Maximum number of workers
             scale_up_threshold: Queue depth to trigger scale up
@@ -67,8 +61,7 @@ class WorkerPool:
         self._ready_queue = ready_queue
         self._event_queue = event_queue
         self._graph = graph
-        self._flask_app = flask_app
-        self._context_vars = context_vars
+        self._execution_context = execution_context
         self._layers = layers
 
         # Scaling parameters with defaults
@@ -152,8 +145,7 @@ class WorkerPool:
             graph=self._graph,
             layers=self._layers,
             worker_id=worker_id,
-            flask_app=self._flask_app,
-            context_vars=self._context_vars,
+            execution_context=self._execution_context,
             stop_event=self._stop_event,
         )
 

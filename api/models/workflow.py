@@ -785,11 +785,7 @@ class WorkflowNodeExecutionModel(TypeBase):  # This model is expected to have `o
         return (
             PrimaryKeyConstraint("id", name="workflow_node_execution_pkey"),
             Index(
-                "workflow_node_execution_workflow_run_idx",
-                "tenant_id",
-                "app_id",
-                "workflow_id",
-                "triggered_from",
+                "workflow_node_execution_workflow_run_id_idx",
                 "workflow_run_id",
             ),
             Index(
