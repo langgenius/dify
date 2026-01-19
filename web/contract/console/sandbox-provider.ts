@@ -21,6 +21,7 @@ export const saveSandboxProviderConfigContract = base
     }
     body: {
       config: Record<string, string>
+      activate?: boolean
     }
   }>())
   .output(type<{ result: string }>())
@@ -45,6 +46,9 @@ export const activateSandboxProviderContract = base
   .input(type<{
     params: {
       providerType: string
+    }
+    body: {
+      type: 'system' | 'user'
     }
   }>())
   .output(type<{ result: string }>())

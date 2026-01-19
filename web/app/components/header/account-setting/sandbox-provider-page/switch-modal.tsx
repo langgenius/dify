@@ -23,16 +23,20 @@ const SwitchModal = ({
 
   const { mutateAsync: activateProvider, isPending } = useActivateSandboxProvider()
 
+  // Determine the type based on provider configuration
+  // If tenant has custom config, activate as 'user', otherwise as 'system'
+  const activationType: 'system' | 'user' = provider.is_tenant_configured ? 'user' : 'system'
+
   const handleConfirm = useCallback(async () => {
     try {
-      await activateProvider(provider.provider_type)
+      await activateProvider({ providerType: provider.provider_type, type: activationType })
       notify({ type: 'success', message: t('api.success', { ns: 'common' }) })
       onClose()
     }
     catch {
       // Error toast is handled by fetch layer
     }
-  }, [activateProvider, provider.provider_type, notify, t, onClose])
+  }, [activateProvider, provider.provider_type, activationType, notify, t, onClose])
 
   return (
     <Modal

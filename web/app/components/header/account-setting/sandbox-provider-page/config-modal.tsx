@@ -12,6 +12,7 @@ import Modal from '@/app/components/base/modal'
 import RadioUI from '@/app/components/base/radio/ui'
 import { useToastContext } from '@/app/components/base/toast'
 import {
+  useActivateSandboxProvider,
   useDeleteSandboxProviderConfig,
   useSaveSandboxProviderConfig,
 } from '@/service/use-sandbox-provider'
@@ -69,6 +70,7 @@ function ConfigModal({ provider, onClose }: ConfigModalProps) {
 
   const { mutateAsync: saveConfig, isPending: isSaving } = useSaveSandboxProviderConfig()
   const { mutateAsync: deleteConfig, isPending: isDeleting } = useDeleteSandboxProviderConfig()
+  const { mutateAsync: activateProvider, isPending: isActivating } = useActivateSandboxProvider()
 
   // Determine if mode selection should be shown (for providers that support it)
   const shouldShowModeSelection = PROVIDERS_WITH_MODE_SELECTION.includes(provider.provider_type)
@@ -102,10 +104,10 @@ function ConfigModal({ provider, onClose }: ConfigModalProps) {
   }, [provider.config_schema, provider.config, t])
 
   const handleSave = useCallback(async () => {
-    // For managed mode, delete user config to use system defaults
+    // For managed mode, activate system config (preserves user config for future use)
     if (shouldShowModeSelection && configMode === 'managed') {
       try {
-        await deleteConfig(provider.provider_type)
+        await activateProvider({ providerType: provider.provider_type, type: 'system' })
         notify({ type: 'success', message: t('api.saved', { ns: 'common' }) })
         onClose()
       }
@@ -127,6 +129,7 @@ function ConfigModal({ provider, onClose }: ConfigModalProps) {
       await saveConfig({
         providerType: provider.provider_type,
         config: formValues.values,
+        activate: true,
       })
       notify({ type: 'success', message: t('api.saved', { ns: 'common' }) })
       onClose()
@@ -134,7 +137,7 @@ function ConfigModal({ provider, onClose }: ConfigModalProps) {
     catch {
       // Error toast is handled by fetch layer
     }
-  }, [shouldShowModeSelection, configMode, saveConfig, deleteConfig, provider.provider_type, notify, t, onClose])
+  }, [shouldShowModeSelection, configMode, saveConfig, activateProvider, provider.provider_type, notify, t, onClose])
 
   const handleRevoke = useCallback(async () => {
     try {
@@ -154,7 +157,7 @@ function ConfigModal({ provider, onClose }: ConfigModalProps) {
   // Only show revoke button when in BYOK mode, tenant has custom config, and provider is not active
   // (active provider cannot be revoked to prevent "no sandbox provider" error)
   const showRevokeButton = provider.is_tenant_configured && !provider.is_active && (!shouldShowModeSelection || configMode === 'byok')
-  const isActionDisabled = isSaving || isDeleting
+  const isActionDisabled = isSaving || isDeleting || isActivating
   const showByokForm = !shouldShowModeSelection || configMode === 'byok'
 
   return (

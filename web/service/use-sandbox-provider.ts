@@ -16,10 +16,10 @@ export const useSaveSandboxProviderConfig = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationKey: consoleQuery.sandboxProvider.saveSandboxProviderConfig.mutationKey(),
-    mutationFn: ({ providerType, config }: { providerType: string, config: Record<string, string> }) => {
+    mutationFn: ({ providerType, config, activate }: { providerType: string, config: Record<string, string>, activate?: boolean }) => {
       return consoleClient.sandboxProvider.saveSandboxProviderConfig({
         params: { providerType },
-        body: { config },
+        body: { config, activate },
       })
     },
     onSuccess: () => {
@@ -47,9 +47,10 @@ export const useActivateSandboxProvider = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationKey: consoleQuery.sandboxProvider.activateSandboxProvider.mutationKey(),
-    mutationFn: (providerType: string) => {
+    mutationFn: ({ providerType, type }: { providerType: string, type: 'system' | 'user' }) => {
       return consoleClient.sandboxProvider.activateSandboxProvider({
         params: { providerType },
+        body: { type },
       })
     },
     onSuccess: () => {
