@@ -58,7 +58,6 @@ from .app import (
     mcp_server,
     message,
     model_config,
-    online_user,
     ops_trace,
     site,
     statistic,
@@ -114,6 +113,7 @@ from .explore import (
     recommended_app,
     saved_message,
 )
+from .socketio import workflow as socketio_workflow
 
 # Import tag controllers
 from .tag import tags
@@ -183,7 +183,6 @@ __all__ = [
     "models",
     "oauth",
     "oauth_server",
-    "online_user",
     "ops_trace",
     "parameter",
     "ping",
