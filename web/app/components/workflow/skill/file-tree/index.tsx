@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
+import { useFileDrop } from '../hooks/use-file-drop'
 import { useInlineCreateNode } from '../hooks/use-inline-create-node'
 import { useSkillAssetTreeData } from '../hooks/use-skill-asset-tree'
 import { useSyncTreeWithActiveTab } from '../hooks/use-sync-tree-with-active-tab'
@@ -46,6 +47,22 @@ const FileTree: React.FC<FileTreeProps> = ({ className, searchTerm = '' }) => {
 
   const { data: treeData, isLoading, error } = useSkillAssetTreeData()
   const isMutating = useIsMutating() > 0
+
+  // External file drop handling
+  const {
+    handleDragOver,
+    handleDragLeave,
+    handleDrop,
+  } = useFileDrop()
+
+  // Handle drag events on the container (drop to root)
+  const handleContainerDragOver = useCallback((e: React.DragEvent) => {
+    handleDragOver(e, { folderId: null, isFolder: false })
+  }, [handleDragOver])
+
+  const handleContainerDrop = useCallback((e: React.DragEvent) => {
+    handleDrop(e, null)
+  }, [handleDrop])
 
   const expandedFolderIds = useStore(s => s.expandedFolderIds)
   const activeTabId = useStore(s => s.activeTabId)
@@ -148,6 +165,9 @@ const FileTree: React.FC<FileTreeProps> = ({ className, searchTerm = '' }) => {
           ref={containerRef}
           className="flex min-h-0 flex-1 flex-col overflow-hidden px-1 pt-1"
           onContextMenu={handleBlankAreaContextMenu}
+          onDragOver={handleContainerDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleContainerDrop}
         >
           <Tree<TreeNodeData>
             ref={treeRef}

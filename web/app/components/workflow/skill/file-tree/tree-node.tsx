@@ -15,6 +15,7 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import { useStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
+import { useFileDrop } from '../hooks/use-file-drop'
 import { useTreeNodeHandlers } from '../hooks/use-tree-node-handlers'
 import { getFileIconType } from '../utils/file-utils'
 import NodeMenu from './node-menu'
@@ -29,6 +30,10 @@ const TreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeData>) 
   const contextMenuNodeId = useStore(s => s.contextMenu?.nodeId)
   const hasContextMenu = contextMenuNodeId === node.data.id
 
+  // Drag over state from Zustand store (only subscribe for folders)
+  const dragOverFolderId = useStore(s => s.dragOverFolderId)
+  const isDragOver = isFolder && dragOverFolderId === node.data.id
+
   const [showDropdown, setShowDropdown] = useState(false)
 
   const fileIconType = !isFolder ? getFileIconType(node.data.name) : null
@@ -40,6 +45,26 @@ const TreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeData>) 
     handleContextMenu,
     handleKeyDown,
   } = useTreeNodeHandlers({ node })
+
+  // External file drop handlers
+  const {
+    handleDragOver,
+    handleDragLeave,
+    handleDrop,
+  } = useFileDrop()
+
+  // Folder-specific drag handlers
+  const handleFolderDragOver = useCallback((e: React.DragEvent) => {
+    if (!isFolder)
+      return
+    handleDragOver(e, { folderId: node.data.id, isFolder: true })
+  }, [isFolder, node.data.id, handleDragOver])
+
+  const handleFolderDrop = useCallback((e: React.DragEvent) => {
+    if (!isFolder)
+      return
+    handleDrop(e, node.data.id)
+  }, [isFolder, node.data.id, handleDrop])
 
   const handleMoreClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
@@ -60,9 +85,16 @@ const TreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeData>) 
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-components-input-border-active',
         isSelected && 'bg-state-base-active',
         hasContextMenu && !isSelected && 'bg-state-base-hover',
+        // Drag over highlight for folders (matching Figma design)
+        isDragOver && 'border border-state-accent-solid bg-state-accent-hover',
       )}
       onKeyDown={handleKeyDown}
       onContextMenu={handleContextMenu}
+      {...(isFolder && {
+        onDragOver: handleFolderDragOver,
+        onDragLeave: handleDragLeave,
+        onDrop: handleFolderDrop,
+      })}
     >
       <TreeGuideLines level={node.level} />
       {/* Main content area - isolated click/double-click handling */}

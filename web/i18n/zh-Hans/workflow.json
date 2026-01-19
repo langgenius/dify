@@ -1012,6 +1012,7 @@
   "skillSidebar.menu.fileDeleted": "文件删除成功",
   "skillSidebar.menu.filesUploaded": "成功上传 {{count}} 个文件",
   "skillSidebar.menu.folderCreated": "文件夹创建成功",
+  "skillSidebar.menu.folderDropNotSupported": "暂不支持拖拽上传文件夹，请使用上传文件夹选项。",
   "skillSidebar.menu.folderUploaded": "文件夹上传成功",
   "skillSidebar.menu.newFile": "新建文件",
   "skillSidebar.menu.newFilePrompt": "请输入文件名（包含扩展名，如 script.py）：",

@@ -79,4 +79,10 @@ export const createFileTreeSlice: StateCreator<
   clearCreateNode: () => {
     set({ pendingCreateNode: null })
   },
+
+  dragOverFolderId: null,
+
+  setDragOverFolderId: (folderId) => {
+    set({ dragOverFolderId: folderId })
+  },
 })

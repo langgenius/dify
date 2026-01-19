@@ -1018,6 +1018,7 @@
   "skillSidebar.menu.fileDeleted": "File deleted successfully",
   "skillSidebar.menu.filesUploaded": "{{count}} file(s) uploaded successfully",
   "skillSidebar.menu.folderCreated": "Folder created successfully",
+  "skillSidebar.menu.folderDropNotSupported": "Folder upload via drag-drop is not supported yet. Please use the upload folder option.",
   "skillSidebar.menu.folderUploaded": "Folder uploaded successfully",
   "skillSidebar.menu.moreActions": "More actions",
   "skillSidebar.menu.newFile": "New File",

@@ -35,6 +35,8 @@ export type FileTreeSliceShape = {
   pendingCreateNode: PendingCreateNode | null
   startCreateNode: (nodeType: PendingCreateNode['nodeType'], parentId: PendingCreateNode['parentId']) => void
   clearCreateNode: () => void
+  dragOverFolderId: string | null
+  setDragOverFolderId: (folderId: string | null) => void
 }
 
 export type DirtySliceShape = {
