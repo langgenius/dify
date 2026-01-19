@@ -4,13 +4,19 @@ import type { NodeApi } from 'react-arborist'
 import type { TreeNodeData } from '../type'
 import * as React from 'react'
 import { useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 
 type TreeEditInputProps = {
   node: NodeApi<TreeNodeData>
 }
 
 const TreeEditInput: React.FC<TreeEditInputProps> = ({ node }) => {
+  const { t } = useTranslation('workflow')
   const inputRef = useRef<HTMLInputElement>(null)
+  const isFolder = node.data.node_type === 'folder'
+  const placeholder = isFolder
+    ? t('skillSidebar.folderNamePlaceholder')
+    : t('skillSidebar.fileNamePlaceholder')
 
   useEffect(() => {
     inputRef.current?.focus()
@@ -37,10 +43,11 @@ const TreeEditInput: React.FC<TreeEditInputProps> = ({ node }) => {
       ref={inputRef}
       type="text"
       defaultValue={node.data.name}
+      placeholder={placeholder}
       onKeyDown={handleKeyDown}
       onBlur={handleBlur}
       onClick={e => e.stopPropagation()}
-      className="min-w-0 flex-1 rounded border border-components-input-border-active bg-transparent px-1 text-[13px] font-normal leading-4 text-text-primary outline-none"
+      className="min-w-0 flex-1 rounded border border-components-input-border-active bg-transparent px-1 text-[13px] font-normal leading-4 text-text-primary outline-none placeholder:text-text-placeholder"
     />
   )
 }
