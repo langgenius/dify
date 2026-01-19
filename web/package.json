@@ -211,6 +211,7 @@
     "knip": "^5.78.0",
     "lint-staged": "^15.5.2",
     "nock": "^14.0.10",
+    "papaparse": "^5.5.3",
     "postcss": "^8.5.6",
     "react-scan": "^0.4.3",
     "sass": "^1.93.2",
