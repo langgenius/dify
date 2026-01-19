@@ -113,7 +113,7 @@ from .explore import (
     recommended_app,
     saved_message,
 )
-from .socketio import workflow as socketio_workflow
+from .socketio import workflow as socketio_workflow  # pyright: ignore[reportUnusedImport]
 
 # Import tag controllers
 from .tag import tags

@@ -93,7 +93,12 @@ class WorkflowCollaborationRepository:
 
     def get_session_sids(self, workflow_id: str) -> list[str]:
         raw_sids = self._redis.hkeys(self.workflow_key(workflow_id))
-        return [self._decode(sid) for sid in raw_sids if self._decode(sid)]
+        decoded_sids: list[str] = []
+        for sid in raw_sids:
+            decoded = self._decode(sid)
+            if decoded:
+                decoded_sids.append(decoded)
+        return decoded_sids
 
     def list_sessions(self, workflow_id: str) -> list[WorkflowSessionInfo]:
         sessions_json = self._redis.hgetall(self.workflow_key(workflow_id))
