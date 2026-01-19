@@ -78,9 +78,12 @@ def save_workflow_execution_task(
                     _update_workflow_run_from_execution(existing_run, execution)
                     session.commit()
                     return True
-                session.add(workflow_run)
-                session.commit()
-                return True
+                # This case is rare. Let Celery's retry mechanism handle it.
+                logger.warning(
+                    "IntegrityError on insert but record with id %s not found after rollback. Task will be retried.",
+                    execution.id_
+                )
+                raise
 
     except Exception as e:
         logger.exception("Failed to save workflow execution %s", execution_data.get("id_", "unknown"))
@@ -131,18 +134,13 @@ def _update_workflow_run_from_execution(workflow_run: WorkflowRun, execution: Wo
     terminal = {"succeeded", "failed", "stopped", "partial-succeeded"}
     current_status = workflow_run.status
     new_status = execution.status.value
-    if current_status in terminal:
-        if new_status in terminal:
-            workflow_run.status = new_status
-            workflow_run.outputs = (
-                json.dumps(json_converter.to_json_encodable(execution.outputs)) if execution.outputs else workflow_run.outputs
-            )
-            workflow_run.error = execution.error_message
-            workflow_run.elapsed_time = execution.elapsed_time
-            workflow_run.total_tokens = execution.total_tokens
-            workflow_run.total_steps = execution.total_steps
+
+    if current_status in terminal and new_status not in terminal:
+        # If current status is terminal, do not update to a non-terminal status.
+        # Only update finished_at if it's not set.
         workflow_run.finished_at = workflow_run.finished_at or execution.finished_at
         return
+
     workflow_run.status = new_status
     workflow_run.outputs = (
         json.dumps(json_converter.to_json_encodable(execution.outputs)) if execution.outputs else "{}"

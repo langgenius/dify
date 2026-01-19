@@ -85,9 +85,12 @@ def save_workflow_node_execution_task(
                     _update_node_execution_from_domain(existing_execution, execution)
                     session.commit()
                     return True
-                session.add(node_execution)
-                session.commit()
-                return True
+                # This case is rare. Let Celery's retry mechanism handle it.
+                logger.warning(
+                    "IntegrityError on insert but record with id %s not found after rollback. Task will be retried.",
+                    execution.id
+                )
+                raise
 
     except Exception as e:
         logger.exception("Failed to save workflow node execution %s", execution_data.get("id", "unknown"))
@@ -154,34 +157,26 @@ def _update_node_execution_from_domain(node_execution: WorkflowNodeExecutionMode
     terminal = {"succeeded", "failed", "exception"}
     current_status = node_execution.status
     new_status = execution.status.value
-    if current_status in terminal:
-        if new_status in terminal:
-            node_execution.status = new_status
-            node_execution.inputs = (
-                json.dumps(json_converter.to_json_encodable(execution.inputs)) if execution.inputs else node_execution.inputs
-            )
-            node_execution.process_data = (
-                json.dumps(json_converter.to_json_encodable(execution.process_data)) if execution.process_data else node_execution.process_data
-            )
-            node_execution.outputs = (
-                json.dumps(json_converter.to_json_encodable(execution.outputs)) if execution.outputs else node_execution.outputs
-            )
-            if execution.metadata:
-                metadata_for_json = {
-                    key.value if hasattr(key, "value") else str(key): value for key, value in execution.metadata.items()
-                }
-                node_execution.execution_metadata = json.dumps(json_converter.to_json_encodable(metadata_for_json))
-            node_execution.error = execution.error
-            node_execution.elapsed_time = execution.elapsed_time
+
+    if current_status in terminal and new_status not in terminal:
+        # If current status is terminal, do not update to a non-terminal status.
+        # Only update finished_at if it's not set.
         node_execution.finished_at = node_execution.finished_at or execution.finished_at
         return
-    node_execution.inputs = json.dumps(json_converter.to_json_encodable(execution.inputs)) if execution.inputs else "{}"
+
+    node_execution.status = new_status
+    node_execution.inputs = (
+        json.dumps(json_converter.to_json_encodable(execution.inputs)) if execution.inputs else node_execution.inputs
+    )
     node_execution.process_data = (
-        json.dumps(json_converter.to_json_encodable(execution.process_data)) if execution.process_data else "{}"
+        json.dumps(json_converter.to_json_encodable(execution.process_data))
+        if execution.process_data
+        else node_execution.process_data
     )
     node_execution.outputs = (
         json.dumps(json_converter.to_json_encodable(execution.outputs)) if execution.outputs else "{}"
     )
+
     if execution.metadata:
         metadata_for_json = {
             key.value if hasattr(key, "value") else str(key): value for key, value in execution.metadata.items()
@@ -189,7 +184,7 @@ def _update_node_execution_from_domain(node_execution: WorkflowNodeExecutionMode
         node_execution.execution_metadata = json.dumps(json_converter.to_json_encodable(metadata_for_json))
     else:
         node_execution.execution_metadata = "{}"
-    node_execution.status = new_status
+
     node_execution.error = execution.error
     node_execution.elapsed_time = execution.elapsed_time
     node_execution.finished_at = node_execution.finished_at or execution.finished_at
