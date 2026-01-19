@@ -17,7 +17,11 @@ from core.workflow.nodes.human_input.entities import (
     MemberRecipient,
     WebAppDeliveryMethod,
 )
-from core.workflow.nodes.human_input.enums import DeliveryMethodType, HumanInputFormStatus
+from core.workflow.nodes.human_input.enums import (
+    DeliveryMethodType,
+    HumanInputFormKind,
+    HumanInputFormStatus,
+)
 from core.workflow.repositories.human_input_form_repository import (
     FormCreateParams,
     FormNotFoundError,
@@ -132,10 +136,11 @@ class _HumanInputFormEntityImpl(HumanInputFormEntity):
 @dataclasses.dataclass(frozen=True)
 class HumanInputFormRecord:
     form_id: str
-    workflow_run_id: str
+    workflow_run_id: str | None
     node_id: str
     tenant_id: str
     app_id: str
+    form_kind: HumanInputFormKind
     definition: FormDefinition
     rendered_content: str
     expiration_time: datetime
@@ -164,6 +169,7 @@ class HumanInputFormRecord:
             node_id=form_model.node_id,
             tenant_id=form_model.tenant_id,
             app_id=form_model.app_id,
+            form_kind=form_model.form_kind,
             definition=FormDefinition.model_validate_json(form_model.form_definition),
             rendered_content=form_model.rendered_content,
             expiration_time=form_model.expiration_time,
@@ -340,6 +346,7 @@ class HumanInputFormRepositoryImpl:
                 tenant_id=self._tenant_id,
                 app_id=params.app_id,
                 workflow_run_id=params.workflow_execution_id,
+                form_kind=params.form_kind,
                 node_id=params.node_id,
                 form_definition=form_definition.model_dump_json(),
                 rendered_content=params.rendered_content,

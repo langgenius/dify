@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Any, Protocol
 
 from core.workflow.nodes.human_input.entities import DeliveryChannelConfig, HumanInputNodeData
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
+from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 
 
 class HumanInputError(Exception):
@@ -19,7 +19,8 @@ class FormNotFoundError(HumanInputError):
 @dataclasses.dataclass
 class FormCreateParams:
     app_id: str
-    workflow_execution_id: str
+    # None when creating a delivery test form; set for runtime forms.
+    workflow_execution_id: str | None
 
     # node_id is the identifier for a specific
     # node in the graph.
@@ -40,6 +41,7 @@ class FormCreateParams:
     #
     # For type = CONSTANT, the value is not stored inside `resolved_placeholder_values`
     resolved_placeholder_values: Mapping[str, Any]
+    form_kind: HumanInputFormKind = HumanInputFormKind.RUNTIME
 
     # Force creating a console-only recipient for submission in Console.
     console_recipient_required: bool = False

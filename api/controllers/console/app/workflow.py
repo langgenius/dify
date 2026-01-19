@@ -546,6 +546,10 @@ class HumanInputFormSubmitPayload(BaseModel):
 
 class HumanInputDeliveryTestPayload(BaseModel):
     delivery_method_id: str = Field(..., description="Delivery method ID")
+    inputs: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Values used to fill missing upstream variables referenced in form_content",
+    )
 
 
 reg(HumanInputFormPreviewPayload)
@@ -693,6 +697,7 @@ class WorkflowDraftHumanInputDeliveryTestApi(Resource):
                 account=current_user,
                 node_id=node_id,
                 delivery_method_id=args.delivery_method_id,
+                inputs=args.inputs,
             )
         except ValueError as exc:
             raise InvalidArgumentError(str(exc))

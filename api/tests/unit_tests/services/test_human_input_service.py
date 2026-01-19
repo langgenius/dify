@@ -15,6 +15,7 @@ from core.workflow.nodes.human_input.entities import (
 )
 from core.workflow.nodes.human_input.enums import (
     FormInputType,
+    HumanInputFormKind,
     HumanInputFormStatus,
     TimeoutUnit,
 )
@@ -42,6 +43,7 @@ def sample_form_record():
         node_id="node-id",
         tenant_id="tenant-id",
         app_id="app-id",
+        form_kind=HumanInputFormKind.RUNTIME,
         definition=FormDefinition(
             form_content="hello",
             inputs=[],
@@ -186,6 +188,28 @@ def test_submit_form_by_token_calls_repository_and_enqueue(sample_form_record, m
     assert call_kwargs["submission_end_user_id"] == "end-user-id"
     enqueue_spy.assert_called_once_with(sample_form_record.workflow_run_id)
 
+
+def test_submit_form_by_token_skips_enqueue_for_delivery_test(sample_form_record, mock_session_factory, mocker):
+    session_factory, _ = mock_session_factory
+    repo = MagicMock(spec=HumanInputFormSubmissionRepository)
+    test_record = dataclasses.replace(
+        sample_form_record,
+        form_kind=HumanInputFormKind.DELIVERY_TEST,
+        workflow_run_id=None,
+    )
+    repo.get_by_token.return_value = test_record
+    repo.mark_submitted.return_value = test_record
+    service = HumanInputService(session_factory, form_repository=repo)
+    enqueue_spy = mocker.patch.object(service, "_enqueue_resume")
+
+    service.submit_form_by_token(
+        recipient_type=RecipientType.STANDALONE_WEB_APP,
+        form_token="token",
+        selected_action_id="submit",
+        form_data={"field": "value"},
+    )
+
+    enqueue_spy.assert_not_called()
 
 def test_submit_form_by_token_passes_submission_user_id(sample_form_record, mock_session_factory, mocker):
     session_factory, _ = mock_session_factory

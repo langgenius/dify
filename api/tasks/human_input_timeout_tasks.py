@@ -9,7 +9,7 @@ from configs import dify_config
 from core.repositories.human_input_reposotiry import HumanInputFormSubmissionRepository
 from core.workflow.enums import WorkflowExecutionStatus
 from core.workflow.nodes.human_input.entities import FormDefinition
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus, TimeoutUnit
+from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, TimeoutUnit
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
@@ -89,6 +89,9 @@ def check_and_handle_human_input_timeouts(limit: int = 100) -> None:
 
     for form_model in expired_forms:
         try:
+            if form_model.form_kind == HumanInputFormKind.DELIVERY_TEST:
+                form_repo.mark_timeout(form_id=form_model.id, reason="delivery_test_timeout")
+                continue
             is_global = _is_global_timeout(form_model, global_timeout_seconds)
             record = form_repo.mark_timeout(
                 form_id=form_model.id,

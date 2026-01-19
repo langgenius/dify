@@ -14,6 +14,7 @@ from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file import File
 from core.repositories import DifyCoreRepositoryFactory
+from core.repositories.human_input_reposotiry import HumanInputFormRepositoryImpl
 from core.variables import Variable
 from core.variables.variables import VariableUnion
 from core.workflow.entities import GraphInitParams, WorkflowNodeExecution
@@ -30,9 +31,11 @@ from core.workflow.nodes.human_input.entities import (
     apply_debug_email_recipient,
     validate_human_input_submission,
 )
+from core.workflow.nodes.human_input.enums import HumanInputFormKind
 from core.workflow.nodes.human_input.human_input_node import HumanInputNode
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from core.workflow.nodes.start.entities import StartNodeData
+from core.workflow.repositories.human_input_form_repository import FormCreateParams
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import load_into_variable_pool
@@ -45,6 +48,7 @@ from factories.file_factory import build_from_mapping, build_from_mappings
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.enums import UserFrom
+from models.human_input import HumanInputFormRecipient, RecipientType
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
@@ -58,6 +62,7 @@ from .errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseEr
 from .human_input_delivery_test_service import (
     DeliveryTestContext,
     DeliveryTestError,
+    DeliveryTestEmailRecipient,
     DeliveryTestUnsupportedError,
     HumanInputDeliveryTestService,
 )
@@ -900,6 +905,7 @@ class WorkflowService:
         account: Account,
         node_id: str,
         delivery_method_id: str,
+        inputs: Mapping[str, Any] | None = None,
     ) -> None:
         draft_workflow = self.get_draft_workflow(app_model=app_model)
         if not draft_workflow:
@@ -925,11 +931,27 @@ class WorkflowService:
             user_id=account.id or "",
         )
 
-        rendered_content = self._render_human_input_content_for_test(
+        variable_pool = self._build_human_input_variable_pool(
             app_model=app_model,
+            workflow=draft_workflow,
+            node_config=node_config,
+            manual_inputs=inputs or {},
+        )
+        node = self._build_human_input_node(
             workflow=draft_workflow,
             account=account,
             node_config=node_config,
+            variable_pool=variable_pool,
+        )
+        rendered_content = node._render_form_content_before_submission()
+        resolved_placeholder_values = node._resolve_inputs()
+        form_id, recipients = self._create_human_input_delivery_test_form(
+            app_model=app_model,
+            node_id=node_id,
+            node_data=node_data,
+            delivery_method=delivery_method,
+            rendered_content=rendered_content,
+            resolved_placeholder_values=resolved_placeholder_values,
         )
         test_service = HumanInputDeliveryTestService()
         context = DeliveryTestContext(
@@ -938,6 +960,8 @@ class WorkflowService:
             node_id=node_id,
             node_title=node_data.title,
             rendered_content=rendered_content,
+            template_vars={"form_id": form_id},
+            recipients=recipients,
         )
         try:
             test_service.send_test(context=context, method=delivery_method)
@@ -957,27 +981,54 @@ class WorkflowService:
                 return method
         return None
 
-    def _render_human_input_content_for_test(
+    def _create_human_input_delivery_test_form(
         self,
         *,
         app_model: App,
-        workflow: Workflow,
-        account: Account,
-        node_config: Mapping[str, Any],
-    ) -> str:
-        variable_pool = self._build_human_input_variable_pool(
-            app_model=app_model,
-            workflow=workflow,
-            node_config=node_config,
-            manual_inputs={},
+        node_id: str,
+        node_data: HumanInputNodeData,
+        delivery_method: DeliveryChannelConfig,
+        rendered_content: str,
+        resolved_placeholder_values: Mapping[str, Any],
+    ) -> tuple[str, list[DeliveryTestEmailRecipient]]:
+        repo = HumanInputFormRepositoryImpl(session_factory=db.engine, tenant_id=app_model.tenant_id)
+        params = FormCreateParams(
+            app_id=app_model.id,
+            workflow_execution_id=None,
+            node_id=node_id,
+            form_config=node_data,
+            rendered_content=rendered_content,
+            delivery_methods=[delivery_method],
+            display_in_ui=False,
+            resolved_placeholder_values=resolved_placeholder_values,
+            form_kind=HumanInputFormKind.DELIVERY_TEST,
         )
-        node = self._build_human_input_node(
-            workflow=workflow,
-            account=account,
-            node_config=node_config,
-            variable_pool=variable_pool,
-        )
-        return node._render_form_content_before_submission()
+        form_entity = repo.create_form(params)
+        return form_entity.id, self._load_email_recipients(form_entity.id)
+
+    @staticmethod
+    def _load_email_recipients(form_id: str) -> list[DeliveryTestEmailRecipient]:
+        with Session(bind=db.engine) as session:
+            recipients = session.scalars(
+                select(HumanInputFormRecipient).where(HumanInputFormRecipient.form_id == form_id)
+            ).all()
+        recipients_data: list[DeliveryTestEmailRecipient] = []
+        for recipient in recipients:
+            if recipient.recipient_type not in {RecipientType.EMAIL_MEMBER, RecipientType.EMAIL_EXTERNAL}:
+                continue
+            if not recipient.access_token:
+                continue
+            try:
+                payload = json.loads(recipient.recipient_payload)
+            except Exception:
+                logger.exception("Failed to parse human input recipient payload for delivery test.")
+                continue
+            email = payload.get("email")
+            if email:
+                recipients_data.append(
+                    DeliveryTestEmailRecipient(email=email, form_token=recipient.access_token)
+                )
+        return recipients_data
 
     def _build_human_input_node(
         self,

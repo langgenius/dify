@@ -7,6 +7,7 @@ from typing import Protocol
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import sessionmaker
 
+from configs import dify_config
 from core.workflow.nodes.human_input.entities import (
     DeliveryChannelConfig,
     EmailDeliveryConfig,
@@ -27,6 +28,12 @@ class DeliveryTestStatus(StrEnum):
 
 
 @dataclass(frozen=True)
+class DeliveryTestEmailRecipient:
+    email: str
+    form_token: str
+
+
+@dataclass(frozen=True)
 class DeliveryTestContext:
     tenant_id: str
     app_id: str
@@ -34,6 +41,7 @@ class DeliveryTestContext:
     node_title: str | None
     rendered_content: str
     template_vars: dict[str, str] = field(default_factory=dict)
+    recipients: list[DeliveryTestEmailRecipient] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -49,6 +57,15 @@ class DeliveryTestError(Exception):
 
 class DeliveryTestUnsupportedError(DeliveryTestError):
     pass
+
+
+def _build_form_link(token: str | None) -> str | None:
+    if not token:
+        return None
+    base_url = dify_config.APP_WEB_URL
+    if not base_url:
+        return None
+    return f"{base_url.rstrip('/')}/form/{token}"
 
 
 class DeliveryTestHandler(Protocol):
@@ -219,4 +236,11 @@ class EmailDeliveryTestHandler:
         substitutions = {key: value or "" for key, value in raw_values.items()}
         if context.template_vars:
             substitutions.update({key: value for key, value in context.template_vars.items() if value is not None})
+        token = next(
+            (recipient.form_token for recipient in context.recipients if recipient.email == recipient_email),
+            None,
+        )
+        if token:
+            substitutions["form_token"] = token
+            substitutions["form_link"] = _build_form_link(token) or ""
         return substitutions

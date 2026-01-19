@@ -194,6 +194,7 @@ def test_human_input_delivery_test_calls_service(
         account=account,
         node_id="node-7",
         delivery_method_id="delivery-123",
+        inputs={},
     )
 
 

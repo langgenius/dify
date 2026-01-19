@@ -10,6 +10,13 @@ class HumanInputFormStatus(enum.StrEnum):
     TIMEOUT = enum.auto()
 
 
+class HumanInputFormKind(enum.StrEnum):
+    """Kind of a human input form."""
+
+    RUNTIME = enum.auto()  # Form created during workflow execution.
+    DELIVERY_TEST = enum.auto()  # Form created for delivery tests.
+
+
 class DeliveryMethodType(enum.StrEnum):
     """Delivery method types for human input forms."""
 

@@ -14,7 +14,7 @@ from core.workflow.nodes.human_input.entities import (
     HumanInputSubmissionValidationError,
     validate_human_input_submission,
 )
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
+from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
 from libs.exception import BaseHTTPException
 from models.human_input import RecipientType
@@ -39,7 +39,8 @@ class Form:
         return self._record.form_id
 
     @property
-    def workflow_run_id(self) -> str:
+    def workflow_run_id(self) -> str | None:
+        """Workflow run id for runtime forms; None for delivery tests."""
         return self._record.workflow_run_id
 
     @property
@@ -61,6 +62,10 @@ class Form:
     @property
     def status(self) -> HumanInputFormStatus:
         return self._record.status
+
+    @property
+    def form_kind(self) -> HumanInputFormKind:
+        return self._record.form_kind
 
     @property
     def expiration_time(self):
@@ -166,6 +171,10 @@ class HumanInputService:
             submission_end_user_id=submission_end_user_id,
         )
 
+        if result.form_kind != HumanInputFormKind.RUNTIME:
+            return
+        if result.workflow_run_id is None:
+            return
         self._enqueue_resume(result.workflow_run_id)
 
     def _ensure_form_active(self, form: Form) -> None:

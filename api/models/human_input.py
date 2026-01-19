@@ -8,6 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.workflow.nodes.human_input.enums import (
     DeliveryMethodType,
+    HumanInputFormKind,
     HumanInputFormStatus,
 )
 from libs.helper import generate_string
@@ -32,7 +33,12 @@ class HumanInputForm(DefaultFieldsMixin, Base):
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    workflow_run_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    workflow_run_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    form_kind: Mapped[HumanInputFormKind] = mapped_column(
+        EnumText(HumanInputFormKind),
+        nullable=False,
+        default=HumanInputFormKind.RUNTIME,
+    )
 
     # The human input node the current form corresponds to.
     node_id: Mapped[str] = mapped_column(sa.String(60), nullable=False)
