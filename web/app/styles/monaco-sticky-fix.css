@@ -14,3 +14,7 @@ html[data-theme="dark"] .sticky, html[data-theme="dark"] .is-sticky {
   background-color: var(--color-components-sticky-header-bg) !important;
   border-bottom: 1px solid var(--color-components-sticky-header-border) !important;
 }
+html[data-theme="dark"] .no-sticky,
+html[data-theme="dark"] .is-no-sticky {
+  border-bottom: none !important;
+}
