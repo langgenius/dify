@@ -13,7 +13,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import IntegrityError
 
-from core.security.ctx import set_mode
 from core.workflow.entities.workflow_node_execution import (
     WorkflowNodeExecution,
 )
@@ -55,7 +54,6 @@ def save_workflow_node_execution_task(
         session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
 
         with session_factory() as session:
-            set_mode(security_store_mode or None)
             execution = WorkflowNodeExecution.model_validate(execution_data)
             existing_execution = session.scalar(
                 select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id == execution.id)
