@@ -1,7 +1,7 @@
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, model_serializer, model_validator
 
 from core.model_runtime.entities.message_entities import ImagePromptMessageContent
 from core.tools.signature import sign_tool_file
@@ -41,6 +41,7 @@ class File(BaseModel):
     id: str | None = None  # message file id
     tenant_id: str
     type: FileType
+    original_type: FileType | None = None  # Original type from mapping before auto-detection
     transfer_method: FileTransferMethod
     # If `transfer_method` is `FileTransferMethod.remote_url`, the
     # `remote_url` attribute must not be `None`.
@@ -74,6 +75,7 @@ class File(BaseModel):
         storage_key: str | None = None,
         dify_model_identity: str | None = FILE_MODEL_IDENTITY,
         url: str | None = None,
+        original_type: FileType | None = None,
         # Legacy compatibility fields - explicitly handle known extra fields
         tool_file_id: str | None = None,
         upload_file_id: str | None = None,
@@ -92,6 +94,7 @@ class File(BaseModel):
             size=size,
             dify_model_identity=dify_model_identity,
             url=url,
+            original_type=original_type,
         )
         self._storage_key = str(storage_key)
 
@@ -101,6 +104,13 @@ class File(BaseModel):
             **data,
             "url": self.generate_url(),
         }
+
+    @model_serializer(mode="wrap")
+    def _serialize_model(self, serializer: Any) -> Any:
+        data = serializer(self)
+        if self.original_type is not None:
+            data["type"] = self.original_type.value
+        return data
 
     @property
     def markdown(self) -> str:
