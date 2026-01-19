@@ -23,6 +23,7 @@ const DatasetNav = () => {
     data: datasetList,
     fetchNextPage,
     hasNextPage,
+    isFetchingNextPage,
   } = useDatasetList({
     initialPage: 1,
     limit: 30,
@@ -93,6 +94,7 @@ const DatasetNav = () => {
       createText={t('menus.newDataset', { ns: 'common' })}
       onCreate={() => router.push(createRoute)}
       onLoadMore={handleLoadMore}
+      isLoadingMore={isFetchingNextPage}
     />
   )
 }
