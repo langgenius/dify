@@ -65,16 +65,11 @@ export const appStoreSelectors = {
   appDetails,
 }
 
-const get = useAppStore.getState
 const set = useAppStore.setState
 
 async function fetchAppDetail(appID: string | undefined) {
   if (!appID)
     return null
-
-  const cur = get().appDetails?.[appID]
-  if (cur)
-    return cur
 
   const appDetail = await serviceGet<App>(`/apps/${appID}`)
   set(state => ({
