@@ -25,7 +25,9 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { LexicalTypeaheadMenuPlugin } from '@lexical/react/LexicalTypeaheadMenuPlugin'
 import {
   $getRoot,
+  $getSelection,
   $insertNodes,
+  $isRangeSelection,
   KEY_ESCAPE_COMMAND,
 } from 'lexical'
 import {
@@ -97,6 +99,20 @@ const ComponentPicker = ({
     maxLength: useExternalSearch ? 75 : 0,
   })
 
+  const getMatchFromSelection = useCallback(() => {
+    const selection = $getSelection()
+    if (!$isRangeSelection(selection) || !selection.isCollapsed())
+      return null
+    const anchor = selection.anchor
+    if (anchor.type !== 'text')
+      return null
+    const anchorNode = anchor.getNode()
+    if (!anchorNode.isSimpleText())
+      return null
+    const text = anchorNode.getTextContent().slice(0, anchor.offset)
+    return checkForTriggerMatch(text, editor)
+  }, [checkForTriggerMatch, editor])
+
   const [queryString, setQueryString] = useState<string | null>(null)
 
   eventEmitter?.useSubscription((v: any) => {
@@ -139,7 +155,10 @@ const ComponentPicker = ({
 
   const handleSelectWorkflowVariable = useCallback((variables: string[]) => {
     editor.update(() => {
-      const needRemove = $splitNodeContainingQuery(checkForTriggerMatch(triggerString, editor)!)
+      const match = getMatchFromSelection()
+      if (!match)
+        return
+      const needRemove = $splitNodeContainingQuery(match)
       if (needRemove)
         needRemove.remove()
     })
@@ -159,7 +178,7 @@ const ComponentPicker = ({
     else {
       editor.dispatchCommand(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, variables)
     }
-  }, [editor, currentBlock?.generatorType, checkForTriggerMatch, triggerString])
+  }, [editor, currentBlock?.generatorType, getMatchFromSelection])
 
   const handleClose = useCallback(() => {
     const escapeEvent = new KeyboardEvent('keydown', { key: 'Escape' })
@@ -168,7 +187,7 @@ const ComponentPicker = ({
 
   const handleSelectAssembleVariables = useCallback((): ValueSelector | null => {
     editor.update(() => {
-      const match = checkForTriggerMatch(triggerString, editor)
+      const match = getMatchFromSelection()
       if (!match)
         return
       const needRemove = $splitNodeContainingQuery(match)
@@ -180,11 +199,14 @@ const ComponentPicker = ({
       editor.dispatchCommand(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, assembleVariables)
     handleClose()
     return assembleVariables ?? null
-  }, [editor, checkForTriggerMatch, triggerString, workflowVariableBlock, handleClose])
+  }, [editor, getMatchFromSelection, workflowVariableBlock, handleClose])
 
   const handleSelectAgent = useCallback((agent: { id: string, title: string }) => {
     editor.update(() => {
-      const needRemove = $splitNodeContainingQuery(checkForTriggerMatch(triggerString, editor)!)
+      const match = getMatchFromSelection()
+      if (!match)
+        return
+      const needRemove = $splitNodeContainingQuery(match)
       if (needRemove)
         needRemove.remove()
 
@@ -200,7 +222,7 @@ const ComponentPicker = ({
     })
     agentBlock?.onSelect?.(agent)
     handleClose()
-  }, [editor, checkForTriggerMatch, triggerString, agentBlock, handleClose])
+  }, [editor, getMatchFromSelection, agentBlock, handleClose])
 
   const isAgentTrigger = triggerString === '@' && agentBlock?.show
   const showAssembleVariables = triggerString === '/'
