@@ -61,7 +61,7 @@ const FilePickerTreeNode: FC<FilePickerTreeNodeProps> = ({ node, style, dragHand
       onClick={handleClick}
       onKeyDown={handleKeyDown}
     >
-      <TreeGuideLines level={node.level} />
+      <TreeGuideLines level={node.level} lineOffset={0} />
       <div className="flex min-w-0 flex-1 items-center gap-2 px-3">
         <div className="flex size-4 shrink-0 items-center justify-center">
           {isFolder

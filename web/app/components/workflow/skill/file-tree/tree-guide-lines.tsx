@@ -2,13 +2,20 @@
 
 import * as React from 'react'
 
-const INDENT_SIZE = 20
-
 type TreeGuideLinesProps = {
   level: number
+  indentSize?: number
+  lineOffset?: number
 }
 
-const TreeGuideLines: React.FC<TreeGuideLinesProps> = ({ level }) => {
+const INDENT_SIZE = 20
+const DEFAULT_LINE_OFFSET = 10
+
+const TreeGuideLines: React.FC<TreeGuideLinesProps> = ({
+  level,
+  indentSize = INDENT_SIZE,
+  lineOffset = DEFAULT_LINE_OFFSET,
+}) => {
   if (level === 0)
     return null
 
@@ -18,7 +25,7 @@ const TreeGuideLines: React.FC<TreeGuideLinesProps> = ({ level }) => {
         <div
           key={`guide-${i}`}
           className="absolute bottom-0 top-0 border-l border-divider-subtle"
-          style={{ left: `${(i + 1) * INDENT_SIZE - 10}px` }}
+          style={{ left: `${(i + 1) * indentSize - lineOffset}px` }}
         />
       ))}
     </>
