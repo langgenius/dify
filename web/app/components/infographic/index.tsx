@@ -3,7 +3,7 @@
 import { Infographic } from '@antv/infographic'
 import { ArrowDownTrayIcon, ClipboardDocumentIcon } from '@heroicons/react/24/outline'
 import * as React from 'react'
-import { ErrorBoundary } from 'react-error-boundary'
+import { ErrorBoundary, useErrorHandler } from 'react-error-boundary'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
 
@@ -41,52 +41,43 @@ const InfographicContent: React.FC<InfographicContentProps> = ({
   const { t } = useTranslation()
   const containerRef = React.useRef<HTMLDivElement>(null)
   const infographicRef = React.useRef<Infographic | null>(null)
-  const [renderError, setRenderError] = React.useState<Error | null>(null)
-
-  // Throw error during render so ErrorBoundary can catch it
-  if (renderError)
-    throw renderError
+  const handleError = useErrorHandler()
 
   React.useEffect(() => {
-    // Use requestAnimationFrame to ensure container is mounted
-    const frameId = requestAnimationFrame(() => {
-      if (!containerRef.current)
-        return
+    if (!containerRef.current)
+      return
 
-      try {
-        // Clear previous instance
-        if (infographicRef.current) {
-          infographicRef.current.destroy()
-          infographicRef.current = null
-        }
-
-        // Create new infographic instance
-        const infographic = new Infographic({
-          container: containerRef.current,
-          width,
-          height,
-          editable: false,
-        })
-
-        // Render the infographic with the syntax (synchronous)
-        infographic.render(syntax)
-        infographicRef.current = infographic
-        setRenderError(null) // Clear any previous errors
+    try {
+      // Clear previous instance
+      if (infographicRef.current) {
+        infographicRef.current.destroy()
+        infographicRef.current = null
       }
-      catch (err) {
-        // Set error state which will be thrown on next render
-        setRenderError(err instanceof Error ? err : new Error('Failed to render infographic'))
-      }
-    })
+
+      // Create new infographic instance
+      const infographic = new Infographic({
+        container: containerRef.current,
+        width,
+        height,
+        editable: false,
+      })
+
+      // Render the infographic with the syntax (synchronous)
+      infographic.render(syntax)
+      infographicRef.current = infographic
+    }
+    catch (err) {
+      // Use react-error-boundary's hook to propagate error to ErrorBoundary
+      handleError(err)
+    }
 
     return () => {
-      cancelAnimationFrame(frameId)
       if (infographicRef.current) {
         infographicRef.current.destroy()
         infographicRef.current = null
       }
     }
-  }, [syntax, width, height])
+  }, [syntax, width, height, handleError])
 
   const handleCopyImage = async () => {
     try {
