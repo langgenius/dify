@@ -633,9 +633,7 @@ class TestWorkflowService:
     # ==================== Draft Workflow Variable Update Tests ====================
     # These tests verify updating draft workflow environment/conversation variables
 
-    def test_update_draft_workflow_environment_variables_updates_workflow(
-        self, workflow_service, mock_db_session
-    ):
+    def test_update_draft_workflow_environment_variables_updates_workflow(self, workflow_service, mock_db_session):
         """Test update_draft_workflow_environment_variables updates draft fields."""
         app = TestWorkflowAssociatedDataFactory.create_app_mock()
         account = TestWorkflowAssociatedDataFactory.create_account_mock()
@@ -670,9 +668,7 @@ class TestWorkflowService:
                     account=account,
                 )
 
-    def test_update_draft_workflow_conversation_variables_updates_workflow(
-        self, workflow_service, mock_db_session
-    ):
+    def test_update_draft_workflow_conversation_variables_updates_workflow(self, workflow_service, mock_db_session):
         """Test update_draft_workflow_conversation_variables updates draft fields."""
         app = TestWorkflowAssociatedDataFactory.create_app_mock()
         account = TestWorkflowAssociatedDataFactory.create_account_mock()

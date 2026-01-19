@@ -63,9 +63,7 @@ class WorkflowCollaborationService:
         self.handle_leader_disconnect(workflow_id, sid)
         self.broadcast_online_users(workflow_id)
 
-    def relay_collaboration_event(
-        self, sid: str, data: Mapping[str, object]
-    ) -> tuple[dict[str, str], int]:
+    def relay_collaboration_event(self, sid: str, data: Mapping[str, object]) -> tuple[dict[str, str], int]:
         mapping = self._repository.get_sid_mapping(sid)
         if not mapping:
             return {"msg": "unauthorized"}, 401

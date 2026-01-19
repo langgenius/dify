@@ -130,9 +130,7 @@ class WorkflowCollaborationRepository:
         return self._decode(raw)
 
     def set_leader_if_absent(self, workflow_id: str, sid: str) -> bool:
-        return bool(
-            self._redis.set(self.leader_key(workflow_id), sid, nx=True, ex=SESSION_STATE_TTL_SECONDS)
-        )
+        return bool(self._redis.set(self.leader_key(workflow_id), sid, nx=True, ex=SESSION_STATE_TTL_SECONDS))
 
     def set_leader(self, workflow_id: str, sid: str) -> None:
         self._redis.set(self.leader_key(workflow_id), sid, ex=SESSION_STATE_TTL_SECONDS)
