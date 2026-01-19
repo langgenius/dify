@@ -18,7 +18,7 @@ const i18nPrefix = 'nodes.humanInput'
 type EmailConfigureModalProps = {
   isShow: boolean
   onClose: () => void
-  onConfirm: (data: any) => void
+  onConfirm: (data: EmailConfig) => void
   config?: EmailConfig
 }
 

@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
 import MethodItem from './method-item'
 import MethodSelector from './method-selector'
+import UpgradeModal from './upgrade-modal'
 
 const i18nPrefix = 'nodes.humanInput'
 
@@ -52,6 +53,14 @@ const DeliveryMethodForm: React.FC<Props> = ({
     onChange(newMethods)
   }
 
+  const [showUpgradeModal, setShowUpgradeModal] = React.useState(false)
+  const handleShowUpgradeModal = () => {
+    setShowUpgradeModal(true)
+  }
+  const handleCloseUpgradeModal = () => {
+    setShowUpgradeModal(false)
+  }
+
   return (
     <div className="px-4 py-2">
       <div className="mb-1 flex items-center justify-between">
@@ -66,6 +75,7 @@ const DeliveryMethodForm: React.FC<Props> = ({
             <MethodSelector
               data={value}
               onAdd={handleMethodAdd}
+              onShowUpgradeTip={handleShowUpgradeModal}
             />
           </div>
         )}
@@ -75,11 +85,11 @@ const DeliveryMethodForm: React.FC<Props> = ({
       )}
       {value.length > 0 && (
         <div className="space-y-1">
-          {value.map((method, index) => (
+          {value.map(method => (
             <MethodItem
               nodeId={nodeId}
               method={method}
-              key={index}
+              key={method.id}
               onChange={handleMethodChange}
               onDelete={handleMethodDelete}
               nodesOutputVars={nodesOutputVars}
@@ -89,6 +99,12 @@ const DeliveryMethodForm: React.FC<Props> = ({
             />
           ))}
         </div>
+      )}
+      {showUpgradeModal && (
+        <UpgradeModal
+          isShow={showUpgradeModal}
+          onClose={handleCloseUpgradeModal}
+        />
       )}
     </div>
   )

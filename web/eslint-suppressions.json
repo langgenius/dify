@@ -2566,11 +2566,6 @@
       "count": 1
     }
   },
-  "app/components/rag-pipeline/hooks/use-configs-map.ts": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 1
-    }
-  },
   "app/components/rag-pipeline/hooks/use-input-fields.ts": {
     "ts/no-explicit-any": {
       "count": 2
