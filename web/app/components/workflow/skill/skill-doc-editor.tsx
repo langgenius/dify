@@ -8,10 +8,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
-import Toast from '@/app/components/base/toast'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import useTheme from '@/hooks/use-theme'
-import { useGetAppAssetFileContent, useGetAppAssetFileDownloadUrl, useUpdateAppAssetFileContent } from '@/service/use-app-asset'
 import { Theme } from '@/types/app'
 import { basePath } from '@/utils/var'
 import CodeFileEditor from './editor/code-file-editor'
@@ -19,8 +17,11 @@ import MarkdownFileEditor from './editor/markdown-file-editor'
 import MediaFilePreview from './editor/media-file-preview'
 import OfficeFilePlaceholder from './editor/office-file-placeholder'
 import UnsupportedFileDownload from './editor/unsupported-file-download'
+import { useFileTypeInfo } from './hooks/use-file-type-info'
 import { useSkillAssetNodeMap } from './hooks/use-skill-asset-tree'
-import { getFileExtension, getFileLanguage, isCodeOrTextFile, isImageFile, isMarkdownFile, isOfficeFile, isVideoFile } from './utils/file-utils'
+import { useSkillFileData } from './hooks/use-skill-file-data'
+import { useSkillFileSave } from './hooks/use-skill-file-save'
+import { getFileLanguage } from './utils/file-utils'
 
 if (typeof window !== 'undefined')
   loader.config({ paths: { vs: `${window.location.origin}${basePath}/vs` } })
@@ -43,42 +44,9 @@ const SkillDocEditor: FC = () => {
 
   const currentFileNode = activeTabId ? nodeMap?.get(activeTabId) : undefined
 
-  const { isMarkdown, isCodeOrText, isImage, isVideo, isOffice, isEditable } = useMemo(() => {
-    const ext = getFileExtension(currentFileNode?.name, currentFileNode?.extension)
-    const markdown = isMarkdownFile(ext)
-    const codeOrText = isCodeOrTextFile(ext)
-    return {
-      isMarkdown: markdown,
-      isCodeOrText: codeOrText,
-      isImage: isImageFile(ext),
-      isVideo: isVideoFile(ext),
-      isOffice: isOfficeFile(ext),
-      isEditable: markdown || codeOrText,
-    }
-  }, [currentFileNode?.name, currentFileNode?.extension])
+  const { isMarkdown, isCodeOrText, isImage, isVideo, isOffice, isEditable, isMediaFile } = useFileTypeInfo(currentFileNode)
 
-  const isMediaFile = isImage || isVideo
-
-  const {
-    data: fileContent,
-    isLoading: isContentLoading,
-    error: contentError,
-  } = useGetAppAssetFileContent(appId, activeTabId || '', {
-    enabled: !isMediaFile,
-  })
-
-  const {
-    data: downloadUrlData,
-    isLoading: isDownloadUrlLoading,
-    error: downloadUrlError,
-  } = useGetAppAssetFileDownloadUrl(appId, activeTabId || '', {
-    enabled: isMediaFile && !!activeTabId,
-  })
-
-  const isLoading = isMediaFile ? isDownloadUrlLoading : isContentLoading
-  const error = isMediaFile ? downloadUrlError : contentError
-
-  const updateContent = useUpdateAppAssetFileContent()
+  const { fileContent, downloadUrlData, isLoading, error } = useSkillFileData(appId, activeTabId, isMediaFile)
 
   const originalContent = fileContent?.content ?? ''
 
@@ -133,50 +101,17 @@ const SkillDocEditor: FC = () => {
     storeApi.getState().pinTab(activeTabId)
   }, [activeTabId, isEditable, originalContent, storeApi])
 
-  const handleSave = useCallback(async () => {
-    if (!activeTabId || !appId || !isEditable)
-      return
-
-    const content = dirtyContents.get(activeTabId)
-    const hasDirtyMetadata = dirtyMetadataIds.has(activeTabId)
-    if (content === undefined && !hasDirtyMetadata)
-      return
-
-    try {
-      await updateContent.mutateAsync({
-        appId,
-        nodeId: activeTabId,
-        payload: {
-          content: content ?? originalContent,
-          ...(currentMetadata ? { metadata: currentMetadata } : {}),
-        },
-      })
-      storeApi.getState().clearDraftContent(activeTabId)
-      storeApi.getState().clearDraftMetadata(activeTabId)
-      Toast.notify({
-        type: 'success',
-        message: t('api.saved', { ns: 'common' }),
-      })
-    }
-    catch (error) {
-      Toast.notify({
-        type: 'error',
-        message: String(error),
-      })
-    }
-  }, [activeTabId, appId, currentMetadata, dirtyContents, dirtyMetadataIds, isEditable, originalContent, storeApi, t, updateContent])
-
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent): void {
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault()
-        handleSave()
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleSave])
+  useSkillFileSave({
+    appId,
+    activeTabId,
+    isEditable,
+    dirtyContents,
+    dirtyMetadataIds,
+    originalContent,
+    currentMetadata,
+    storeApi,
+    t,
+  })
 
   const handleEditorDidMount: OnMount = useCallback((editor, monaco) => {
     editorRef.current = editor
@@ -219,42 +154,53 @@ const SkillDocEditor: FC = () => {
   const textPreviewUrl = fileContent?.content || ''
   const fileName = currentFileNode?.name || ''
   const fileSize = currentFileNode?.size
+  const isUnsupportedFile = !isMarkdown && !isCodeOrText && !isImage && !isVideo && !isOffice
 
   return (
     <div className="h-full w-full overflow-auto bg-components-panel-bg">
-      {isMarkdown && (
-        <MarkdownFileEditor
-          key={activeTabId}
-          value={currentContent}
-          onChange={handleEditorChange}
-        />
-      )}
-      {isCodeOrText && (
-        <CodeFileEditor
-          key={activeTabId}
-          language={language}
-          theme={isMounted ? theme : 'default-theme'}
-          value={currentContent}
-          onChange={handleEditorChange}
-          onMount={handleEditorDidMount}
-        />
-      )}
-      {(isImage || isVideo) && (
-        <MediaFilePreview
-          type={isImage ? 'image' : 'video'}
-          src={mediaPreviewUrl}
-        />
-      )}
-      {isOffice && (
-        <OfficeFilePlaceholder />
-      )}
-      {!isMarkdown && !isCodeOrText && !isImage && !isVideo && !isOffice && (
-        <UnsupportedFileDownload
-          name={fileName}
-          size={fileSize}
-          downloadUrl={textPreviewUrl}
-        />
-      )}
+      {isMarkdown
+        ? (
+            <MarkdownFileEditor
+              key={activeTabId}
+              value={currentContent}
+              onChange={handleEditorChange}
+            />
+          )
+        : null}
+      {isCodeOrText
+        ? (
+            <CodeFileEditor
+              key={activeTabId}
+              language={language}
+              theme={isMounted ? theme : 'default-theme'}
+              value={currentContent}
+              onChange={handleEditorChange}
+              onMount={handleEditorDidMount}
+            />
+          )
+        : null}
+      {isImage || isVideo
+        ? (
+            <MediaFilePreview
+              type={isImage ? 'image' : 'video'}
+              src={mediaPreviewUrl}
+            />
+          )
+        : null}
+      {isOffice
+        ? (
+            <OfficeFilePlaceholder />
+          )
+        : null}
+      {isUnsupportedFile
+        ? (
+            <UnsupportedFileDownload
+              name={fileName}
+              size={fileSize}
+              downloadUrl={textPreviewUrl}
+            />
+          )
+        : null}
     </div>
   )
 }
