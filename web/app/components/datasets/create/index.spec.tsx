@@ -622,7 +622,7 @@ describe('DatasetUpdateForm', () => {
       fireEvent.click(screen.getByTestId('step-two-setting'))
 
       // Assert
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'provider' })
+      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'model-provider' })
     })
 
     it('should update crawl options when onCrawlOptionsChange is called', () => {
