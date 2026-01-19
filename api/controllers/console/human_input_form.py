@@ -6,7 +6,7 @@ import json
 import logging
 from collections.abc import Generator
 
-from flask import Response, jsonify
+from flask import Response, jsonify, request
 from flask_restx import Resource, reqparse
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -28,6 +28,7 @@ from models.model import AppMode
 from models.workflow import WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 from services.human_input_service import Form, HumanInputService
+from services.workflow_event_snapshot_service import build_workflow_event_stream
 
 logger = logging.getLogger(__name__)
 
@@ -168,7 +169,19 @@ class ConsoleWorkflowEventsApi(Resource):
             else:
                 raise InvalidArgumentError(f"cannot subscribe to workflow run, workflow_run_id={workflow_run.id}")
 
+            include_state_snapshot = request.args.get("include_state_snapshot", "false").lower() == "true"
+
             def _generate_stream_events():
+                if include_state_snapshot:
+                    return generator.convert_to_event_stream(
+                        build_workflow_event_stream(
+                            app_mode=AppMode(app.mode),
+                            workflow_run=workflow_run,
+                            tenant_id=workflow_run.tenant_id,
+                            app_id=workflow_run.app_id,
+                            session_maker=session_maker,
+                        )
+                    )
                 return generator.convert_to_event_stream(
                     msg_generator.retrieve_events(AppMode(app.mode), workflow_run.id),
                 )

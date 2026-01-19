@@ -5,7 +5,7 @@ Web App Workflow Resume APIs.
 import json
 from collections.abc import Generator
 
-from flask import Response
+from flask import Response, request
 from sqlalchemy.orm import sessionmaker
 
 from controllers.web import api
@@ -19,6 +19,7 @@ from extensions.ext_database import db
 from models.enums import CreatorUserRole
 from models.model import App, AppMode, EndUser
 from repositories.factory import DifyAPIRepositoryFactory
+from services.workflow_event_snapshot_service import build_workflow_event_stream
 
 
 class WorkflowEventsApi(WebApiResource):
@@ -76,7 +77,19 @@ class WorkflowEventsApi(WebApiResource):
             else:
                 raise InvalidArgumentError(f"cannot subscribe to workflow run, workflow_run_id={workflow_run.id}")
 
+            include_state_snapshot = request.args.get("include_state_snapshot", "false").lower() == "true"
+
             def _generate_stream_events():
+                if include_state_snapshot:
+                    return generator.convert_to_event_stream(
+                        build_workflow_event_stream(
+                            app_mode=app_mode,
+                            workflow_run=workflow_run,
+                            tenant_id=app_model.tenant_id,
+                            app_id=app_model.id,
+                            session_maker=session_maker,
+                        )
+                    )
                 return generator.convert_to_event_stream(
                     msg_generator.retrieve_events(app_mode, workflow_run.id),
                 )
