@@ -4,10 +4,8 @@ import { defineConfig, importESLintRules } from '@tsslint/config'
 
 export default defineConfig({
   rules: {
-    rules: {
-      ...await importESLintRules({
-        'react-x/no-leaked-conditional-rendering': 'warn',
-      }),
-    },
+    ...await importESLintRules({
+      'react-x/no-leaked-conditional-rendering': 'warn',
+    }),
   },
 })
