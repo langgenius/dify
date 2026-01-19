@@ -63,7 +63,7 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         env:
           RUST_BACKTRACE: 1
-        run: uv --directory api add zuban && uv --directory api run zmypy --exclude '.venv/' --exclude 'tests/' --exclude 'migrations/' --check-untyped-defs --disable-error-code=import-untyped .
+        run: uv --directory api add zuban && uv --directory api run zuban check --exclude '.venv/' --exclude 'tests/' --exclude 'migrations/' --check-untyped-defs --disable-error-code=import-untyped .
 
       - name: Run Basedpyright Checks
         if: steps.changed-files.outputs.any_changed == 'true'
