@@ -45,73 +45,15 @@ export function useFileOperations({
 
   const parentId = nodeId === 'root' ? null : nodeId
 
-  const handleNewFile = useCallback(async () => {
-    // eslint-disable-next-line no-alert -- MVP: Using prompt for simplicity
-    const fileName = window.prompt(t('skillSidebar.menu.newFilePrompt'))
-    if (!fileName || !fileName.trim()) {
-      onClose()
-      return
-    }
+  const handleNewFile = useCallback(() => {
+    storeApi.getState().startCreateNode('file', parentId)
+    onClose()
+  }, [onClose, parentId, storeApi])
 
-    try {
-      const emptyBlob = new Blob([''], { type: 'text/plain' })
-      const file = new File([emptyBlob], fileName.trim())
-
-      await createFile.mutateAsync({
-        appId,
-        name: fileName.trim(),
-        file,
-        parentId,
-      })
-
-      Toast.notify({
-        type: 'success',
-        message: t('skillSidebar.menu.fileCreated'),
-      })
-    }
-    catch {
-      Toast.notify({
-        type: 'error',
-        message: t('skillSidebar.menu.createError'),
-      })
-    }
-    finally {
-      onClose()
-    }
-  }, [appId, createFile, onClose, parentId, t])
-
-  const handleNewFolder = useCallback(async () => {
-    // eslint-disable-next-line no-alert -- MVP: Using prompt for simplicity
-    const folderName = window.prompt(t('skillSidebar.menu.newFolderPrompt'))
-    if (!folderName || !folderName.trim()) {
-      onClose()
-      return
-    }
-
-    try {
-      await createFolder.mutateAsync({
-        appId,
-        payload: {
-          name: folderName.trim(),
-          parent_id: parentId,
-        },
-      })
-
-      Toast.notify({
-        type: 'success',
-        message: t('skillSidebar.menu.folderCreated'),
-      })
-    }
-    catch {
-      Toast.notify({
-        type: 'error',
-        message: t('skillSidebar.menu.createError'),
-      })
-    }
-    finally {
-      onClose()
-    }
-  }, [appId, createFolder, onClose, parentId, t])
+  const handleNewFolder = useCallback(() => {
+    storeApi.getState().startCreateNode('folder', parentId)
+    onClose()
+  }, [onClose, parentId, storeApi])
 
   const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])

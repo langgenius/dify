@@ -15,6 +15,12 @@ export type TabSliceShape = {
 
 export type OpensObject = Record<string, boolean>
 
+export type PendingCreateNode = {
+  id: string
+  parentId: string | null
+  nodeType: 'file' | 'folder'
+}
+
 export type FileTreeSliceShape = {
   expandedFolderIds: Set<string>
   setExpandedFolderIds: (ids: Set<string>) => void
@@ -22,6 +28,9 @@ export type FileTreeSliceShape = {
   revealFile: (ancestorFolderIds: string[]) => void
   setExpandedFromOpens: (opens: OpensObject) => void
   getOpensObject: () => OpensObject
+  pendingCreateNode: PendingCreateNode | null
+  startCreateNode: (nodeType: PendingCreateNode['nodeType'], parentId: PendingCreateNode['parentId']) => void
+  clearCreateNode: () => void
 }
 
 export type DirtySliceShape = {

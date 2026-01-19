@@ -3,6 +3,12 @@ import type { FileTreeSliceShape, OpensObject, SkillEditorSliceShape } from './t
 
 export type { FileTreeSliceShape, OpensObject } from './types'
 
+const createDraftId = (): string => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+    return `draft-${crypto.randomUUID()}`
+  return `draft-${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
 export const createFileTreeSlice: StateCreator<
   SkillEditorSliceShape,
   [],
@@ -10,6 +16,7 @@ export const createFileTreeSlice: StateCreator<
   FileTreeSliceShape
 > = (set, get) => ({
   expandedFolderIds: new Set<string>(),
+  pendingCreateNode: null,
 
   setExpandedFolderIds: (ids: Set<string>) => {
     set({ expandedFolderIds: ids })
@@ -47,5 +54,19 @@ export const createFileTreeSlice: StateCreator<
     return Object.fromEntries(
       [...expandedFolderIds].map(id => [id, true]),
     )
+  },
+
+  startCreateNode: (nodeType, parentId) => {
+    set({
+      pendingCreateNode: {
+        id: createDraftId(),
+        parentId,
+        nodeType,
+      },
+    })
+  },
+
+  clearCreateNode: () => {
+    set({ pendingCreateNode: null })
   },
 })

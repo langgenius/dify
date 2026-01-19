@@ -10,12 +10,10 @@ import * as React from 'react'
 import { useCallback, useMemo, useRef } from 'react'
 import { Tree } from 'react-arborist'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
-import Toast from '@/app/components/base/toast'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
-import { useRenameAppAssetNode } from '@/service/use-app-asset'
 import { cn } from '@/utils/classnames'
+import { useInlineCreateNode } from '../hooks/use-inline-create-node'
 import { useSkillAssetTreeData } from '../hooks/use-skill-asset-tree'
 import { useSyncTreeWithActiveTab } from '../hooks/use-sync-tree-with-active-tab'
 import TreeContextMenu from './tree-context-menu'
@@ -25,6 +23,8 @@ type FileTreeProps = {
   className?: string
   searchTerm?: string
 }
+
+const emptyTreeNodes: TreeNodeData[] = []
 
 const DropTip = () => {
   const { t } = useTranslation('workflow')
@@ -44,9 +44,6 @@ const FileTree: React.FC<FileTreeProps> = ({ className, searchTerm = '' }) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const containerSize = useSize(containerRef)
 
-  const appDetail = useAppStore(s => s.appDetail)
-  const appId = appDetail?.id || ''
-
   const { data: treeData, isLoading, error } = useSkillAssetTreeData()
   const isMutating = useIsMutating() > 0
 
@@ -54,7 +51,16 @@ const FileTree: React.FC<FileTreeProps> = ({ className, searchTerm = '' }) => {
   const activeTabId = useStore(s => s.activeTabId)
   const storeApi = useWorkflowStore()
 
-  const renameNode = useRenameAppAssetNode()
+  const treeChildren = treeData?.children ?? emptyTreeNodes
+  const {
+    treeNodes,
+    handleRename,
+    searchMatch,
+    hasPendingCreate,
+  } = useInlineCreateNode({
+    treeRef,
+    treeChildren,
+  })
 
   const initialOpensObject = useMemo<OpensObject>(() => {
     return Object.fromEntries(
@@ -73,24 +79,6 @@ const FileTree: React.FC<FileTreeProps> = ({ className, searchTerm = '' }) => {
       node.toggle()
   }, [storeApi])
 
-  const handleRename = useCallback(({ id, name }: { id: string, name: string }) => {
-    renameNode.mutateAsync({
-      appId,
-      nodeId: id,
-      payload: { name },
-    }).then(() => {
-      Toast.notify({
-        type: 'success',
-        message: t('skillSidebar.menu.renamed'),
-      })
-    }).catch(() => {
-      Toast.notify({
-        type: 'error',
-        message: t('skillSidebar.menu.renameError'),
-      })
-    })
-  }, [appId, renameNode, t])
-
   const handleBlankAreaContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
     storeApi.getState().setContextMenu({
@@ -99,13 +87,6 @@ const FileTree: React.FC<FileTreeProps> = ({ className, searchTerm = '' }) => {
       type: 'blank',
     })
   }, [storeApi])
-
-  const searchMatch = useCallback(
-    (node: NodeApi<TreeNodeData>, term: string) => {
-      return node.data.name.toLowerCase().includes(term.toLowerCase())
-    },
-    [],
-  )
 
   useSyncTreeWithActiveTab({
     treeRef,
@@ -130,7 +111,7 @@ const FileTree: React.FC<FileTreeProps> = ({ className, searchTerm = '' }) => {
     )
   }
 
-  if (!treeData?.children || treeData.children.length === 0) {
+  if (treeChildren.length === 0 && !hasPendingCreate) {
     return (
       <div className={cn('flex min-h-0 flex-1 flex-col', className)}>
         <div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 text-center">
@@ -159,7 +140,7 @@ const FileTree: React.FC<FileTreeProps> = ({ className, searchTerm = '' }) => {
         >
           <Tree<TreeNodeData>
             ref={treeRef}
-            data={treeData.children}
+            data={treeNodes}
             idAccessor="id"
             childrenAccessor="children"
             width="100%"

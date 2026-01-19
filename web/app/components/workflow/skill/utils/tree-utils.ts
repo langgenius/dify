@@ -102,3 +102,70 @@ export function getTargetFolderIdFromSelection(
   const ancestors = getAncestorIds(selectedId, nodes)
   return ancestors.length > 0 ? ancestors[ancestors.length - 1] : 'root'
 }
+
+export type DraftTreeNodeOptions = {
+  id: string
+  nodeType: AppAssetTreeView['node_type']
+}
+
+export function createDraftTreeNode(options: DraftTreeNodeOptions): AppAssetTreeView {
+  return {
+    id: options.id,
+    node_type: options.nodeType,
+    name: '',
+    path: '',
+    extension: '',
+    size: 0,
+    checksum: '',
+    children: [],
+  }
+}
+
+type InsertDraftNodeResult = {
+  nodes: AppAssetTreeView[]
+  inserted: boolean
+}
+
+function insertDraftNodeAtParent(
+  nodes: AppAssetTreeView[],
+  parentId: string,
+  draftNode: AppAssetTreeView,
+): InsertDraftNodeResult {
+  let inserted = false
+  const nextNodes = nodes.map((node) => {
+    if (node.id === parentId) {
+      inserted = true
+      return {
+        ...node,
+        children: [draftNode, ...node.children],
+      }
+    }
+    if (node.children.length > 0) {
+      const result = insertDraftNodeAtParent(node.children, parentId, draftNode)
+      if (result.inserted) {
+        inserted = true
+        return {
+          ...node,
+          children: result.nodes,
+        }
+      }
+    }
+    return node
+  })
+  return { nodes: inserted ? nextNodes : nodes, inserted }
+}
+
+export function insertDraftTreeNode(
+  nodes: AppAssetTreeView[],
+  parentId: string | null,
+  draftNode: AppAssetTreeView,
+): AppAssetTreeView[] {
+  if (!parentId)
+    return [draftNode, ...nodes]
+
+  const result = insertDraftNodeAtParent(nodes, parentId, draftNode)
+  if (!result.inserted)
+    return [draftNode, ...nodes]
+
+  return result.nodes
+}
