@@ -4,14 +4,15 @@ Celery tasks for asynchronous workflow execution storage operations.
 These tasks provide asynchronous storage capabilities for workflow execution data,
 improving performance by offloading storage operations to background workers.
 """
-
 import json
 import logging
 
 from celery import shared_task
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.exc import IntegrityError
 
+from core.security.ctx import set_mode
 from core.workflow.entities.workflow_execution import WorkflowExecution
 from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from extensions.ext_database import db
@@ -30,6 +31,7 @@ def save_workflow_execution_task(
     triggered_from: str,
     creator_user_id: str,
     creator_user_role: str,
+    security_store_mode: str | None = None,
 ) -> bool:
     """
     Asynchronously save or update a workflow execution to the database.
@@ -50,31 +52,35 @@ def save_workflow_execution_task(
         session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
 
         with session_factory() as session:
-            # Deserialize execution data
+            set_mode(security_store_mode or None)
             execution = WorkflowExecution.model_validate(execution_data)
-
-            # Check if workflow run already exists
             existing_run = session.scalar(select(WorkflowRun).where(WorkflowRun.id == execution.id_))
-
             if existing_run:
-                # Update existing workflow run
                 _update_workflow_run_from_execution(existing_run, execution)
-                logger.debug("Updated existing workflow run: %s", execution.id_)
-            else:
-                # Create new workflow run
-                workflow_run = _create_workflow_run_from_execution(
-                    execution=execution,
-                    tenant_id=tenant_id,
-                    app_id=app_id,
-                    triggered_from=WorkflowRunTriggeredFrom(triggered_from),
-                    creator_user_id=creator_user_id,
-                    creator_user_role=CreatorUserRole(creator_user_role),
-                )
+                session.commit()
+                return True
+            workflow_run = _create_workflow_run_from_execution(
+                execution=execution,
+                tenant_id=tenant_id,
+                app_id=app_id,
+                triggered_from=WorkflowRunTriggeredFrom(triggered_from),
+                creator_user_id=creator_user_id,
+                creator_user_role=CreatorUserRole(creator_user_role),
+            )
+            try:
                 session.add(workflow_run)
-                logger.debug("Created new workflow run: %s", execution.id_)
-
-            session.commit()
-            return True
+                session.commit()
+                return True
+            except IntegrityError:
+                session.rollback()
+                existing_run = session.scalar(select(WorkflowRun).where(WorkflowRun.id == execution.id_))
+                if existing_run:
+                    _update_workflow_run_from_execution(existing_run, execution)
+                    session.commit()
+                    return True
+                session.add(workflow_run)
+                session.commit()
+                return True
 
     except Exception as e:
         logger.exception("Failed to save workflow execution %s", execution_data.get("id_", "unknown"))
@@ -120,12 +126,24 @@ def _create_workflow_run_from_execution(
     return workflow_run
 
 
-def _update_workflow_run_from_execution(workflow_run: WorkflowRun, execution: WorkflowExecution):
-    """
-    Update a WorkflowRun database model from a WorkflowExecution domain entity.
-    """
+def _update_workflow_run_from_execution(workflow_run: WorkflowRun, execution: WorkflowExecution) -> None:
     json_converter = WorkflowRuntimeTypeConverter()
-    workflow_run.status = execution.status.value
+    terminal = {"succeeded", "failed", "stopped", "partial-succeeded"}
+    current_status = workflow_run.status
+    new_status = execution.status.value
+    if current_status in terminal:
+        if new_status in terminal:
+            workflow_run.status = new_status
+            workflow_run.outputs = (
+                json.dumps(json_converter.to_json_encodable(execution.outputs)) if execution.outputs else workflow_run.outputs
+            )
+            workflow_run.error = execution.error_message
+            workflow_run.elapsed_time = execution.elapsed_time
+            workflow_run.total_tokens = execution.total_tokens
+            workflow_run.total_steps = execution.total_steps
+        workflow_run.finished_at = workflow_run.finished_at or execution.finished_at
+        return
+    workflow_run.status = new_status
     workflow_run.outputs = (
         json.dumps(json_converter.to_json_encodable(execution.outputs)) if execution.outputs else "{}"
     )
@@ -133,4 +151,4 @@ def _update_workflow_run_from_execution(workflow_run: WorkflowRun, execution: Wo
     workflow_run.elapsed_time = execution.elapsed_time
     workflow_run.total_tokens = execution.total_tokens
     workflow_run.total_steps = execution.total_steps
-    workflow_run.finished_at = execution.finished_at
+    workflow_run.finished_at = workflow_run.finished_at or execution.finished_at
