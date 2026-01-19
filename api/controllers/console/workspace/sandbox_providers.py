@@ -47,6 +47,7 @@ class SandboxProviderConfigApi(Resource):
                 tenant_id=current_tenant_id,
                 provider_type=provider_type,
                 config=args["config"],
+                activate=args["activate"],
             )
             return result
         except ValueError as e:
@@ -71,6 +72,10 @@ class SandboxProviderConfigApi(Resource):
             return {"message": str(e)}, 400
 
 
+activate_parser = reqparse.RequestParser()
+activate_parser.add_argument("type", type=str, required=True, location="json")
+
+
 @console_ns.route("/workspaces/current/sandbox-provider/<string:provider_type>/activate")
 class SandboxProviderActivateApi(Resource):
     """Activate a sandbox provider."""
@@ -86,9 +91,11 @@ class SandboxProviderActivateApi(Resource):
         _, current_tenant_id = current_account_with_tenant()
 
         try:
+            args = activate_parser.parse_args()
             result = SandboxProviderService.activate_provider(
                 tenant_id=current_tenant_id,
                 provider_type=provider_type,
+                type=args["type"],
             )
             return result
         except ValueError as e:

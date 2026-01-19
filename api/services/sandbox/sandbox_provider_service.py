@@ -83,7 +83,9 @@ class SandboxProviderService:
         SandboxBuilder.validate(SandboxType(provider_type), config)
 
     @classmethod
-    def save_config(cls, tenant_id: str, provider_type: str, config: Mapping[str, Any]) -> dict[str, Any]:
+    def save_config(
+        cls, tenant_id: str, provider_type: str, config: Mapping[str, Any], activate: bool
+    ) -> dict[str, Any]:
         if provider_type not in SandboxType.get_all():
             raise ValueError(f"Invalid provider type: {provider_type}")
 
@@ -107,7 +109,7 @@ class SandboxProviderService:
             cls.validate_config(provider_type, new_config)
 
             provider.encrypted_config = json.dumps(encrypter.encrypt(new_config))
-            provider.is_active = provider.is_active or cls.is_system_default_config(session, tenant_id)
+            provider.is_active = activate or provider.is_active or cls.is_system_default_config(session, tenant_id)
             provider.configure_type = "user"
             session.commit()
         return {"result": "success"}
@@ -129,7 +131,7 @@ class SandboxProviderService:
         return active_config.id == system_configed.id
 
     @classmethod
-    def activate_provider(cls, tenant_id: str, provider_type: str) -> dict[str, Any]:
+    def activate_provider(cls, tenant_id: str, provider_type: str, type: str | None = None) -> dict[str, Any]:
         if provider_type not in SandboxType.get_all():
             raise ValueError(f"Invalid provider type: {provider_type}")
 
@@ -142,6 +144,7 @@ class SandboxProviderService:
             # using tenant config
             if tenant_config:
                 tenant_config.is_active = True
+                tenant_config.configure_type = type or tenant_config.configure_type
                 session.commit()
                 return {"result": "success"}
 
