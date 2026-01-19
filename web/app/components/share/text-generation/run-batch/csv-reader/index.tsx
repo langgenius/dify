@@ -1,5 +1,7 @@
 'use client'
+import type { ParseResult } from 'papaparse'
 import type { FC } from 'react'
+import { parse } from 'papaparse'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -21,9 +23,33 @@ const CSVReader: FC<Props> = ({
   const [zoneHover, setZoneHover] = useState(false)
   return (
     <CSVReader
-      onUploadAccepted={(results: any) => {
-        onParsed(results.data)
-        setZoneHover(false)
+      onUploadAccepted={async (results: any, file: File) => {
+        const buffer = await file?.arrayBuffer()
+        const head = await file?.slice(0, 1024).arrayBuffer()
+
+        let encoding = 'UTF-8'
+
+        try {
+          const gbkText = new TextDecoder('GBK', { fatal: true })?.decode(head)
+          const hasChinese = /[\u4E00-\u9FA5]/.test(gbkText)
+
+          if (hasChinese) {
+            encoding = 'GBK'
+          }
+        }
+        catch (e) {
+          console.error(e)
+        }
+        const text: string = new TextDecoder(encoding, { fatal: false }).decode(buffer)
+
+        parse(text, {
+          encoding,
+          worker: true,
+          complete: (results: ParseResult<string[]>) => {
+            onParsed(results.data)
+            setZoneHover(false)
+          },
+        })
       }}
       onDragOver={(event: DragEvent) => {
         event.preventDefault()
