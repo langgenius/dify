@@ -106,9 +106,7 @@ export const useGetAppAssetFileContent = (appId: string, nodeId: string) => {
         return result
       }
       catch {
-        return {
-          content: '',
-        }
+        return { content: data.content }
       }
     },
     enabled: !!appId && !!nodeId,
