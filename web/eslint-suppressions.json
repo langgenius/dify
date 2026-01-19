@@ -2714,16 +2714,6 @@
       "count": 4
     }
   },
-  "app/components/tools/workflow-tool/configure-button.tsx": {
-    "react-hooks/preserve-manual-memoization": {
-      "count": 2
-    }
-  },
-  "app/components/tools/utils/to-form-schema.ts": {
-    "ts/no-explicit-any": {
-      "count": 15
-    }
-  },
   "app/components/tools/workflow-tool/index.tsx": {
     "ts/no-explicit-any": {
       "count": 2
@@ -3260,9 +3250,6 @@
     }
   },
   "app/components/workflow/nodes/data-source/panel.tsx": {
-    "style/multiline-ternary": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -3645,9 +3632,6 @@
     }
   },
   "app/components/workflow/nodes/tool/panel.tsx": {
-    "style/multiline-ternary": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 2
     }

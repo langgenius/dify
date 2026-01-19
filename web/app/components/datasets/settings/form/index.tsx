@@ -403,7 +403,7 @@ const Form = () => {
               </div>
             </>
           )
-        // eslint-disable-next-line sonarjs/no-nested-conditional
+
         : indexMethod
           ? (
               <>
