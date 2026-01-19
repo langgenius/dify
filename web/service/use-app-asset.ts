@@ -100,6 +100,17 @@ export const useGetAppAssetFileContent = (appId: string, nodeId: string) => {
   return useQuery({
     queryKey: consoleQuery.appAsset.getFileContent.queryKey({ input: { params: { appId, nodeId } } }),
     queryFn: () => consoleClient.appAsset.getFileContent({ params: { appId, nodeId } }),
+    select: (data) => {
+      try {
+        const result = JSON.parse(data.content)
+        return result
+      }
+      catch {
+        return {
+          content: '',
+        }
+      }
+    },
     enabled: !!appId && !!nodeId,
   })
 }
@@ -127,7 +138,7 @@ export const useUpdateAppAssetFileContent = () => {
     }) => {
       return consoleClient.appAsset.updateFileContent({
         params: { appId, nodeId },
-        body: payload,
+        body: { content: JSON.stringify(payload) },
       })
     },
     onSuccess: (_, variables) => {

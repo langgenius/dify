@@ -1,6 +1,5 @@
 import type {
   AppAssetDeleteResponse,
-  AppAssetFileContentResponse,
   AppAssetFileDownloadUrlResponse,
   AppAssetNode,
   AppAssetPublishResponse,
@@ -9,7 +8,6 @@ import type {
   MoveNodePayload,
   RenameNodePayload,
   ReorderNodePayload,
-  UpdateFileContentPayload,
 } from '@/types/app-asset'
 import { type } from '@orpc/contract'
 import { base } from '../base'
@@ -53,7 +51,7 @@ export const getFileContentContract = base
   .input(type<{
     params: { appId: string, nodeId: string }
   }>())
-  .output(type<AppAssetFileContentResponse>())
+  .output(type<{ content: string }>())
 
 export const getFileDownloadUrlContract = base
   .route({
@@ -72,7 +70,7 @@ export const updateFileContentContract = base
   })
   .input(type<{
     params: { appId: string, nodeId: string }
-    body: UpdateFileContentPayload
+    body: { content: string }
   }>())
   .output(type<AppAssetNode>())
 
