@@ -11,7 +11,7 @@ import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import useTheme from '@/hooks/use-theme'
-import { useGetAppAssetFileContent, useUpdateAppAssetFileContent } from '@/service/use-app-asset'
+import { useGetAppAssetFileContent, useGetAppAssetFileDownloadUrl, useUpdateAppAssetFileContent } from '@/service/use-app-asset'
 import { Theme } from '@/types/app'
 import { basePath } from '@/utils/var'
 import CodeFileEditor from './editor/code-file-editor'
@@ -57,11 +57,26 @@ const SkillDocEditor: FC = () => {
     }
   }, [currentFileNode?.name, currentFileNode?.extension])
 
+  const isMediaFile = isImage || isVideo
+
   const {
     data: fileContent,
-    isLoading,
-    error,
-  } = useGetAppAssetFileContent(appId, activeTabId || '')
+    isLoading: isContentLoading,
+    error: contentError,
+  } = useGetAppAssetFileContent(appId, activeTabId || '', {
+    enabled: !isMediaFile,
+  })
+
+  const {
+    data: downloadUrlData,
+    isLoading: isDownloadUrlLoading,
+    error: downloadUrlError,
+  } = useGetAppAssetFileDownloadUrl(appId, activeTabId || '', {
+    enabled: isMediaFile && !!activeTabId,
+  })
+
+  const isLoading = isMediaFile ? isDownloadUrlLoading : isContentLoading
+  const error = isMediaFile ? downloadUrlError : contentError
 
   const updateContent = useUpdateAppAssetFileContent()
 
@@ -200,7 +215,8 @@ const SkillDocEditor: FC = () => {
     )
   }
 
-  const previewUrl = fileContent?.content || ''
+  const mediaPreviewUrl = downloadUrlData?.download_url || ''
+  const textPreviewUrl = fileContent?.content || ''
   const fileName = currentFileNode?.name || ''
   const fileSize = currentFileNode?.size
 
@@ -226,7 +242,7 @@ const SkillDocEditor: FC = () => {
       {(isImage || isVideo) && (
         <MediaFilePreview
           type={isImage ? 'image' : 'video'}
-          src={previewUrl}
+          src={mediaPreviewUrl}
         />
       )}
       {isOffice && (
@@ -236,7 +252,7 @@ const SkillDocEditor: FC = () => {
         <UnsupportedFileDownload
           name={fileName}
           size={fileSize}
-          downloadUrl={previewUrl}
+          downloadUrl={textPreviewUrl}
         />
       )}
     </div>

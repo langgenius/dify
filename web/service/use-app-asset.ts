@@ -96,7 +96,7 @@ export const useCreateAppAssetFile = () => {
   })
 }
 
-export const useGetAppAssetFileContent = (appId: string, nodeId: string) => {
+export const useGetAppAssetFileContent = (appId: string, nodeId: string, options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: consoleQuery.appAsset.getFileContent.queryKey({ input: { params: { appId, nodeId } } }),
     queryFn: () => consoleClient.appAsset.getFileContent({ params: { appId, nodeId } }),
@@ -109,7 +109,7 @@ export const useGetAppAssetFileContent = (appId: string, nodeId: string) => {
         return { content: data.content }
       }
     },
-    enabled: !!appId && !!nodeId,
+    enabled: (options?.enabled ?? true) && !!appId && !!nodeId,
   })
 }
 
