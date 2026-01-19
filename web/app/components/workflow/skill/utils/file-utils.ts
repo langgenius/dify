@@ -5,7 +5,6 @@ const CODE_EXTENSIONS = ['json', 'yaml', 'yml', 'toml', 'js', 'jsx', 'ts', 'tsx'
 const TEXT_EXTENSIONS = ['txt', 'log', 'ini', 'env']
 const IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico']
 const VIDEO_EXTENSIONS = ['mp4', 'mov', 'webm', 'mpeg', 'mpg', 'm4v', 'avi']
-const OFFICE_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx']
 
 export function getFileExtension(name?: string, extension?: string): string {
   if (extension)
@@ -41,10 +40,6 @@ export function isImageFile(extension: string): boolean {
 
 export function isVideoFile(extension: string): boolean {
   return VIDEO_EXTENSIONS.includes(extension)
-}
-
-export function isOfficeFile(extension: string): boolean {
-  return OFFICE_EXTENSIONS.includes(extension)
 }
 
 export function getFileLanguage(name: string): string {

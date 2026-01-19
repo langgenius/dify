@@ -15,7 +15,6 @@ import { basePath } from '@/utils/var'
 import CodeFileEditor from './editor/code-file-editor'
 import MarkdownFileEditor from './editor/markdown-file-editor'
 import MediaFilePreview from './editor/media-file-preview'
-import OfficeFilePlaceholder from './editor/office-file-placeholder'
 import UnsupportedFileDownload from './editor/unsupported-file-download'
 import { useFileTypeInfo } from './hooks/use-file-type-info'
 import { useSkillAssetNodeMap } from './hooks/use-skill-asset-tree'
@@ -44,7 +43,7 @@ const SkillDocEditor: FC = () => {
 
   const currentFileNode = activeTabId ? nodeMap?.get(activeTabId) : undefined
 
-  const { isMarkdown, isCodeOrText, isImage, isVideo, isOffice, isEditable } = useFileTypeInfo(currentFileNode)
+  const { isMarkdown, isCodeOrText, isImage, isVideo, isEditable } = useFileTypeInfo(currentFileNode)
 
   const { fileContent, downloadUrlData, isLoading, error } = useSkillFileData(appId, activeTabId, isEditable)
 
@@ -150,11 +149,11 @@ const SkillDocEditor: FC = () => {
     )
   }
 
-  // For non-editable files (media, office, unsupported), use download URL
+  // For non-editable files (media, unsupported), use download URL
   const downloadUrl = downloadUrlData?.download_url || ''
   const fileName = currentFileNode?.name || ''
   const fileSize = currentFileNode?.size
-  const isUnsupportedFile = !isMarkdown && !isCodeOrText && !isImage && !isVideo && !isOffice
+  const isUnsupportedFile = !isMarkdown && !isCodeOrText && !isImage && !isVideo
 
   return (
     <div className="h-full w-full overflow-auto bg-components-panel-bg">
@@ -185,11 +184,6 @@ const SkillDocEditor: FC = () => {
               type={isImage ? 'image' : 'video'}
               src={downloadUrl}
             />
-          )
-        : null}
-      {isOffice
-        ? (
-            <OfficeFilePlaceholder />
           )
         : null}
       {isUnsupportedFile

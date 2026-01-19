@@ -5,7 +5,6 @@ import {
   isCodeOrTextFile,
   isImageFile,
   isMarkdownFile,
-  isOfficeFile,
   isVideoFile,
 } from '../utils/file-utils'
 
@@ -14,14 +13,13 @@ export type FileTypeInfo = {
   isCodeOrText: boolean
   isImage: boolean
   isVideo: boolean
-  isOffice: boolean
   isEditable: boolean
   isMediaFile: boolean
 }
 
 /**
  * Hook to determine file type information based on file node.
- * Returns flags for markdown, code/text, image, video, office files.
+ * Returns flags for markdown, code/text, image, video files.
  */
 export function useFileTypeInfo(fileNode: AppAssetTreeView | undefined): FileTypeInfo {
   return useMemo(() => {
@@ -36,7 +34,6 @@ export function useFileTypeInfo(fileNode: AppAssetTreeView | undefined): FileTyp
       isCodeOrText: codeOrText,
       isImage: image,
       isVideo: video,
-      isOffice: isOfficeFile(ext),
       isEditable: markdown || codeOrText,
       isMediaFile: image || video,
     }
