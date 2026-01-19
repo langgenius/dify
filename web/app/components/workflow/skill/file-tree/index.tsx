@@ -7,14 +7,14 @@ import { RiDragDropLine } from '@remixicon/react'
 import { useIsMutating } from '@tanstack/react-query'
 import { useSize } from 'ahooks'
 import * as React from 'react'
-import { useCallback, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { Tree } from 'react-arborist'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
-import { useFileDrop } from '../hooks/use-file-drop'
 import { useInlineCreateNode } from '../hooks/use-inline-create-node'
+import { useRootFileDrop } from '../hooks/use-root-file-drop'
 import { useSkillAssetTreeData } from '../hooks/use-skill-asset-tree'
 import { useSyncTreeWithActiveTab } from '../hooks/use-sync-tree-with-active-tab'
 import TreeContextMenu from './tree-context-menu'
@@ -48,26 +48,27 @@ const FileTree: React.FC<FileTreeProps> = ({ className, searchTerm = '' }) => {
   const { data: treeData, isLoading, error } = useSkillAssetTreeData()
   const isMutating = useIsMutating() > 0
 
-  // External file drop handling
   const {
-    handleDragOver,
-    handleDragLeave,
-    handleDrop,
-  } = useFileDrop()
-
-  // Handle drag events on the container (drop to root)
-  const handleContainerDragOver = useCallback((e: React.DragEvent) => {
-    handleDragOver(e, { folderId: null, isFolder: false })
-  }, [handleDragOver])
-
-  const handleContainerDrop = useCallback((e: React.DragEvent) => {
-    handleDrop(e, null)
-  }, [handleDrop])
+    handleRootDragEnter,
+    handleRootDragLeave,
+    handleRootDragOver,
+    handleRootDrop,
+    resetRootDragCounter,
+  } = useRootFileDrop()
 
   const expandedFolderIds = useStore(s => s.expandedFolderIds)
   const activeTabId = useStore(s => s.activeTabId)
   const selectedTreeNodeId = useStore(s => s.selectedTreeNodeId)
+  const dragOverFolderId = useStore(s => s.dragOverFolderId)
   const storeApi = useWorkflowStore()
+
+  // Root dropzone highlight (when dragging to root, not to a specific folder)
+  const isRootDropzone = dragOverFolderId === '__root__'
+
+  useEffect(() => {
+    if (!dragOverFolderId)
+      resetRootDragCounter()
+  }, [dragOverFolderId, resetRootDragCounter])
 
   const treeChildren = treeData?.children ?? emptyTreeNodes
   const {
@@ -163,11 +164,16 @@ const FileTree: React.FC<FileTreeProps> = ({ className, searchTerm = '' }) => {
       >
         <div
           ref={containerRef}
-          className="flex min-h-0 flex-1 flex-col overflow-hidden px-1 pt-1"
+          className={cn(
+            'flex min-h-0 flex-1 flex-col overflow-hidden px-1 pt-1',
+            // Root dropzone highlight - dashed border without layout shift
+            isRootDropzone && 'relative rounded-lg bg-state-accent-hover after:pointer-events-none after:absolute after:inset-0 after:rounded-lg after:border-[1.5px] after:border-dashed after:border-state-accent-solid after:content-[\'\']',
+          )}
           onContextMenu={handleBlankAreaContextMenu}
-          onDragOver={handleContainerDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleContainerDrop}
+          onDragEnter={handleRootDragEnter}
+          onDragOver={handleRootDragOver}
+          onDragLeave={handleRootDragLeave}
+          onDrop={handleRootDrop}
         >
           <Tree<TreeNodeData>
             ref={treeRef}

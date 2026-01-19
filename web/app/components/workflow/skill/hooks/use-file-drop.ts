@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef } from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Toast from '@/app/components/base/toast'
@@ -19,15 +19,6 @@ export function useFileDrop() {
   const storeApi = useWorkflowStore()
   const createFile = useCreateAppAssetFile()
 
-  const expandTimerRef = useRef<NodeJS.Timeout | null>(null)
-
-  const clearExpandTimer = useCallback(() => {
-    if (expandTimerRef.current) {
-      clearTimeout(expandTimerRef.current)
-      expandTimerRef.current = null
-    }
-  }, [])
-
   const handleDragOver = useCallback((e: React.DragEvent, target: FileDropTarget) => {
     e.preventDefault()
     e.stopPropagation()
@@ -38,32 +29,21 @@ export function useFileDrop() {
 
     e.dataTransfer.dropEffect = 'copy'
 
-    storeApi.getState().setDragOverFolderId(target.folderId)
-
-    // Auto-expand closed folder after 2 seconds of hovering
-    if (target.isFolder && target.folderId) {
-      clearExpandTimer()
-      expandTimerRef.current = setTimeout(() => {
-        const expandedFolders = storeApi.getState().expandedFolderIds
-        if (!expandedFolders.has(target.folderId!))
-          storeApi.getState().toggleFolder(target.folderId!)
-      }, 2000)
-    }
-  }, [storeApi, clearExpandTimer])
+    // Use '__root__' to indicate dragging over root (to distinguish from "not dragging")
+    storeApi.getState().setDragOverFolderId(target.folderId ?? '__root__')
+  }, [storeApi])
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
 
-    clearExpandTimer()
     storeApi.getState().setDragOverFolderId(null)
-  }, [clearExpandTimer, storeApi])
+  }, [storeApi])
 
   const handleDrop = useCallback(async (e: React.DragEvent, targetFolderId: string | null) => {
     e.preventDefault()
     e.stopPropagation()
 
-    clearExpandTimer()
     storeApi.getState().setDragOverFolderId(null)
 
     // Get files from dataTransfer, filter out directories (which have no type)
@@ -111,7 +91,7 @@ export function useFileDrop() {
         message: t('skillSidebar.menu.uploadError'),
       })
     }
-  }, [appId, createFile, t, clearExpandTimer, storeApi])
+  }, [appId, createFile, t, storeApi])
 
   return {
     handleDragOver,
