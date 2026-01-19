@@ -3,7 +3,7 @@
 import { Infographic } from '@antv/infographic'
 import { ArrowDownTrayIcon, ClipboardDocumentIcon } from '@heroicons/react/24/outline'
 import * as React from 'react'
-import { ErrorBoundary, useErrorHandler } from 'react-error-boundary'
+import { ErrorBoundary, useErrorBoundary } from 'react-error-boundary'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
 
@@ -41,7 +41,7 @@ const InfographicContent: React.FC<InfographicContentProps> = ({
   const { t } = useTranslation()
   const containerRef = React.useRef<HTMLDivElement>(null)
   const infographicRef = React.useRef<Infographic | null>(null)
-  const handleError = useErrorHandler()
+  const { showBoundary } = useErrorBoundary()
 
   React.useEffect(() => {
     if (!containerRef.current)
@@ -68,7 +68,7 @@ const InfographicContent: React.FC<InfographicContentProps> = ({
     }
     catch (err) {
       // Use react-error-boundary's hook to propagate error to ErrorBoundary
-      handleError(err)
+      showBoundary(err)
     }
 
     return () => {
@@ -77,7 +77,7 @@ const InfographicContent: React.FC<InfographicContentProps> = ({
         infographicRef.current = null
       }
     }
-  }, [syntax, width, height, handleError])
+  }, [syntax, width, height, showBoundary])
 
   const handleCopyImage = async () => {
     try {
