@@ -79,10 +79,6 @@ class GraphExecutionProtocol(Protocol):
         """Record an unrecoverable error and end execution."""
         ...
 
-    def is_node_resumption(self, node_id: str, execution_id: str) -> bool:
-        """Return True if the node is resuming a previously started execution."""
-        ...
-
     def dumps(self) -> str:
         """Serialize execution state into a JSON payload."""
         ...
@@ -183,12 +179,6 @@ class GraphRuntimeState:
         self._pending_graph_execution_workflow_id: str | None = None
         self._paused_nodes: set[str] = set()
         self._deferred_nodes: set[str] = set()
-        # Semantic meaning:
-        # A node id in this set represents "the same node execution is continuing after a pause".
-        # It means the node has already started in a previous cycle, was paused, and is now resuming,
-        # so its next node_started event should be marked as a resumption.
-        # It does NOT mean "any node that runs after resume", and excludes never-run nodes.
-        self._resuming_nodes: set[str] = set()
 
         if graph is not None:
             self.attach_graph(graph)
@@ -376,8 +366,6 @@ class GraphRuntimeState:
 
         nodes = list(self._paused_nodes)
         self._paused_nodes.clear()
-        # Mark these nodes as resuming so downstream handlers can annotate events.
-        self._resuming_nodes.update(nodes)
         return nodes
 
     def register_deferred_node(self, node_id: str) -> None:
@@ -396,23 +384,6 @@ class GraphRuntimeState:
         nodes = list(self._deferred_nodes)
         self._deferred_nodes.clear()
         return nodes
-
-    def consume_resuming_node(self, node_id: str) -> bool:
-        """
-        Return True iff `node_id` is in the resuming set and remove it.
-        """
-        if node_id in self._resuming_nodes:
-            self._resuming_nodes.remove(node_id)
-            return True
-        return False
-
-    def is_node_resumption(self, node_id: str, execution_id: str) -> bool:
-        """
-        Return True if the node is resuming a previously started execution.
-        """
-        if self.consume_resuming_node(node_id):
-            return True
-        return self.graph_execution.is_node_resumption(node_id, execution_id)
 
     # ------------------------------------------------------------------
     # Builders
