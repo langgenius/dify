@@ -3280,9 +3280,6 @@
     }
   },
   "app/components/workflow/nodes/data-source/panel.tsx": {
-    "style/multiline-ternary": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -3634,11 +3631,6 @@
       "count": 7
     }
   },
-  "app/components/workflow/nodes/tool/components/mixed-variable-text-input/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/workflow/nodes/tool/components/mixed-variable-text-input/placeholder.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -3665,9 +3657,6 @@
     }
   },
   "app/components/workflow/nodes/tool/panel.tsx": {
-    "style/multiline-ternary": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
