@@ -58,6 +58,7 @@ const Modal = ({
     <PortalToFollowElem open>
       <PortalToFollowElemContent
         className={cn('z-[9998] flex h-full w-full items-center justify-center bg-background-overlay', wrapperClassName)}
+        data-modal-root="true"
         onClick={clickOutsideNotClose ? noop : onClose}
       >
         <div
