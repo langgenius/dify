@@ -33,7 +33,6 @@ def save_workflow_node_execution_task(
     triggered_from: str,
     creator_user_id: str,
     creator_user_role: str,
-    security_store_mode: str | None = None,
 ) -> bool:
     """
     Asynchronously save or update a workflow node execution to the database.
@@ -150,13 +149,15 @@ def _create_node_execution_from_domain(
     return node_execution
 
 
+NODE_TERMINAL_STATES = {"succeeded", "failed", "exception"}
+
+
 def _update_node_execution_from_domain(node_execution: WorkflowNodeExecutionModel, execution: WorkflowNodeExecution):
     json_converter = WorkflowRuntimeTypeConverter()
-    terminal = {"succeeded", "failed", "exception"}
     current_status = node_execution.status
     new_status = execution.status.value
 
-    if current_status in terminal and new_status not in terminal:
+    if current_status in NODE_TERMINAL_STATES and new_status not in NODE_TERMINAL_STATES:
         # If current status is terminal, do not update to a non-terminal status.
         # Only update finished_at if it's not set.
         node_execution.finished_at = node_execution.finished_at or execution.finished_at
@@ -164,11 +165,13 @@ def _update_node_execution_from_domain(node_execution: WorkflowNodeExecutionMode
 
     node_execution.status = new_status
     node_execution.inputs = (
-        json.dumps(json_converter.to_json_encodable(execution.inputs)) if execution.inputs else node_execution.inputs
+        json.dumps(json_converter.to_json_encodable(execution.inputs))
+        if execution.inputs is not None
+        else node_execution.inputs
     )
     node_execution.process_data = (
         json.dumps(json_converter.to_json_encodable(execution.process_data))
-        if execution.process_data
+        if execution.process_data is not None
         else node_execution.process_data
     )
     node_execution.outputs = (

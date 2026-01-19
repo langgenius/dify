@@ -126,13 +126,15 @@ def _create_workflow_run_from_execution(
     return workflow_run
 
 
+WORKFLOW_TERMINAL_STATES = {"succeeded", "failed", "stopped", "partial-succeeded"}
+
+
 def _update_workflow_run_from_execution(workflow_run: WorkflowRun, execution: WorkflowExecution) -> None:
     json_converter = WorkflowRuntimeTypeConverter()
-    terminal = {"succeeded", "failed", "stopped", "partial-succeeded"}
     current_status = workflow_run.status
     new_status = execution.status.value
 
-    if current_status in terminal and new_status not in terminal:
+    if current_status in WORKFLOW_TERMINAL_STATES and new_status not in WORKFLOW_TERMINAL_STATES:
         # If current status is terminal, do not update to a non-terminal status.
         # Only update finished_at if it's not set.
         workflow_run.finished_at = workflow_run.finished_at or execution.finished_at
