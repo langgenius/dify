@@ -2,7 +2,7 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { InputVarType } from '@/app/components/workflow/types'
 import type { Annotation, MessageRating } from '@/models/log'
-import type { FileResponse, ToolCallItem } from '@/types/workflow'
+import type { FileResponse, IconObject, ToolCallItem } from '@/types/workflow'
 
 export type MessageMore = {
   time: string
@@ -147,4 +147,40 @@ export type InputForm = {
   required: boolean
   hide: boolean
   [key: string]: any
+}
+
+export type ToolCallDetail = {
+  id: string
+  name: string
+  arguments: string
+  result: string
+  elapsed_time?: number
+  icon?: string | IconObject
+  icon_dark?: string | IconObject
+}
+export type SequenceSegment = | { type: 'content', start: number, end: number }
+  | { type: 'reasoning', index: number }
+  | { type: 'tool_call', index: number }
+
+export type GenerationDetail = {
+  reasoning_content?: string[]
+  tool_calls?: ToolCallDetail[]
+  sequence?: SequenceSegment[]
+}
+
+export type ChatMessageRes = {
+  id: string
+  parent_message_id?: string | null
+  workflow_run_id?: string
+  answer?: string
+  query: string
+  message_files: {
+    id: string
+    type: string
+    url: string
+    belongs_to: string
+  }[]
+  feedback?: FeedbackType
+  metadata?: Metadata
+  generation_detail?: GenerationDetail
 }

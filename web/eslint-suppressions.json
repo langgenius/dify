@@ -3801,7 +3801,7 @@
   },
   "app/components/workflow/panel/chat-record/index.tsx": {
     "ts/no-explicit-any": {
-      "count": 8
+      "count": 5
     }
   },
   "app/components/workflow/panel/chat-record/user-input.tsx": {

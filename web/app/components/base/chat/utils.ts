@@ -1,5 +1,7 @@
-import type { IChatItem } from './chat/type'
+import type { ChatMessageRes, IChatItem } from './chat/type'
 import type { ChatItem, ChatItemInTree } from './types'
+import type { ToolCallItem } from '@/types/workflow'
+import { v4 as uuidV4 } from 'uuid'
 import { UUID_NIL } from './constants'
 
 async function decodeBase64AndDecompress(base64String: string) {
@@ -232,8 +234,66 @@ function getThreadMessages(tree: ChatItemInTree[], targetMessageId?: string): Ch
   return ret
 }
 
+const buildToolCallsFromHistorySequence = (message: ChatMessageRes): {
+  toolCalls: ToolCallItem[]
+  message: string
+} => {
+  const { answer, generation_detail } = message
+
+  if (!generation_detail) {
+    return { toolCalls: [], message: answer || '' }
+  }
+
+  const { reasoning_content = [], tool_calls = [], sequence = [] } = generation_detail
+  const toolCalls: ToolCallItem[] = []
+  let answerMessage = ''
+
+  sequence.forEach((segment) => {
+    switch (segment.type) {
+      case 'content': {
+        const text = answer?.substring(segment.start, segment.end)
+        if (text?.trim()) {
+          answerMessage += text
+        }
+        break
+      }
+      case 'reasoning': {
+        const reasoning = reasoning_content[segment.index]
+        if (reasoning) {
+          toolCalls.push({
+            id: uuidV4(),
+            type: 'thought',
+            thoughtOutput: reasoning,
+            thoughtCompleted: true,
+          })
+        }
+        break
+      }
+      case 'tool_call': {
+        const toolCall = tool_calls[segment.index]
+        if (toolCall) {
+          toolCalls.push({
+            id: uuidV4(),
+            type: 'tool',
+            toolName: toolCall.name,
+            toolArguments: toolCall.arguments,
+            toolOutput: toolCall.result,
+            toolDuration: toolCall.elapsed_time,
+            toolIcon: toolCall.icon,
+            toolIconDark: toolCall.icon_dark,
+          })
+        }
+        break
+      }
+    }
+  })
+
+  return { toolCalls, message: answerMessage || '' }
+}
+
 export {
   buildChatItemTree,
+  buildToolCallsFromHistorySequence,
   getLastAnswer,
   getProcessedInputsFromUrlParams,
   getProcessedSystemVariablesFromUrlParams,
