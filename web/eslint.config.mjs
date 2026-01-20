@@ -134,4 +134,14 @@ export default antfu(
       'dify-i18n/consistent-placeholders': 'error',
     },
   },
+  // package.json version prefix validation
+  {
+    files: ['**/package.json'],
+    plugins: {
+      'dify-i18n': difyI18n,
+    },
+    rules: {
+      'dify-i18n/no-version-prefix': 'error',
+    },
+  },
 )
