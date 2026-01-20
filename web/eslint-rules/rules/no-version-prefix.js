@@ -43,7 +43,7 @@ export default {
               context.report({
                 node,
                 message: `Dependency "${name}" in "${depType}" should not use version prefix. Use "${cleanVersion}" instead of "${version}"`,
-                fix(fixer) {
+                fix(_fixer) {
                   // Store fix for later
                   if (!fixes[depType])
                     fixes[depType] = {}
