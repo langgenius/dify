@@ -35,7 +35,7 @@
   "stepOne.uploader.cancel": "Anulează",
   "stepOne.uploader.change": "Schimbă",
   "stepOne.uploader.failed": "Încărcarea a eșuat",
-  "stepOne.uploader.tip": "Acceptă {{supportTypes}}. Maxim {{size}}MB fiecare.",
+  "stepOne.uploader.tip": "Acceptă {{supportTypes}}. Maxim {{batchCount}} fișiere pe lot și {{size}} MB fiecare. Total maxim {{totalCount}} fișiere.",
   "stepOne.uploader.title": "Încărcați fișier text",
   "stepOne.uploader.validation.count": "Nu se acceptă mai multe fișiere",
   "stepOne.uploader.validation.filesNumber": "Ați atins limita de încărcare în lot de {{filesNumber}} fișiere.",

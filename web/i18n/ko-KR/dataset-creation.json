@@ -35,7 +35,7 @@
   "stepOne.uploader.cancel": "취소",
   "stepOne.uploader.change": "변경",
   "stepOne.uploader.failed": "업로드에 실패했습니다",
-  "stepOne.uploader.tip": "{{supportTypes}}을 (를) 지원합니다. 파일당 최대 크기는 {{size}}MB 입니다.",
+  "stepOne.uploader.tip": "{{supportTypes}}을(를) 지원합니다. 배치당 최대 {{batchCount}}개 파일, 각 파일당 {{size}}MB까지. 총 최대 {{totalCount}}개 파일.",
   "stepOne.uploader.title": "텍스트 파일 업로드",
   "stepOne.uploader.validation.count": "여러 파일은 지원되지 않습니다",
   "stepOne.uploader.validation.filesNumber": "일괄 업로드 제한 ({{filesNumber}}개) 에 도달했습니다.",

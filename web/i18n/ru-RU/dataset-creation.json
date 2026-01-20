@@ -35,7 +35,7 @@
   "stepOne.uploader.cancel": "Отмена",
   "stepOne.uploader.change": "Изменить",
   "stepOne.uploader.failed": "Ошибка загрузки",
-  "stepOne.uploader.tip": "Поддерживаются {{supportTypes}}. Максимум {{size}} МБ каждый.",
+  "stepOne.uploader.tip": "Поддерживаются {{supportTypes}}. Максимум {{batchCount}} файлов за раз, каждый до {{size}} МБ. Всего максимум {{totalCount}} файлов.",
   "stepOne.uploader.title": "Загрузить файл",
   "stepOne.uploader.validation.count": "Несколько файлов не поддерживаются",
   "stepOne.uploader.validation.filesNumber": "Вы достигли лимита пакетной загрузки {{filesNumber}} файлов.",
