@@ -33,12 +33,6 @@ function formatTagMarker(marker) {
   return marker.slice('open:'.length)
 }
 
-/**
- * Compare two arrays and return if they're equal
- * @param {string[]} arr1
- * @param {string[]} arr2
- * @returns {boolean} True if arrays contain the same elements in the same order
- */
 function arraysEqual(arr1, arr2) {
   if (arr1.length !== arr2.length)
     return false
@@ -118,7 +112,6 @@ export default {
         const jsonFile = parts.at(-1)
         const lang = parts.at(-2)
 
-        // Skip English files - they are the source of truth
         if (lang === 'en-US')
           return
 
@@ -155,7 +148,6 @@ export default {
         const currentValue = getJsonLiteralValue(currentNode)
         const englishValue = state.englishJson[key]
 
-        // Skip non-string values
         if (typeof currentValue !== 'string' || typeof englishValue !== 'string')
           return
 
