@@ -177,10 +177,11 @@ describe('RetryButton (IndexFailed)', () => {
       const retryButton = screen.getByText(/retry/i)
       fireEvent.click(retryButton)
 
-      // Button should be disabled during retry
+      // Button should show disabled styling during retry
       await waitFor(() => {
-        const button = screen.getByText(/retry/i).closest('div')
-        expect(button).toBeInTheDocument()
+        const button = screen.getByText(/retry/i)
+        expect(button).toHaveClass('cursor-not-allowed')
+        expect(button).toHaveClass('text-text-disabled')
       })
     })
   })

@@ -64,7 +64,7 @@ const createDefaultRerankModel = (): DefaultModelResponse => ({
 
 describe('check-rerank-model', () => {
   describe('isReRankModelSelected', () => {
-    describe('Rendering', () => {
+    describe('Core Functionality', () => {
       it('should return true when reranking is disabled', () => {
         const config = createRetrievalConfig({
           reranking_enable: false,
@@ -263,7 +263,7 @@ describe('check-rerank-model', () => {
   })
 
   describe('ensureRerankModelSelected', () => {
-    describe('Rendering', () => {
+    describe('Core Functionality', () => {
       it('should return original config when reranking model already selected', () => {
         const config = createRetrievalConfig({
           reranking_enable: true,

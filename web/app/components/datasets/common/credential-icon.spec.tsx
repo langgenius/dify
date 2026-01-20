@@ -105,20 +105,19 @@ describe('CredentialIcon', () => {
     })
 
     it('should apply different background colors for different letters', () => {
-      const { container: container1, unmount: unmount1 } = render(<CredentialIcon name="Alice" />)
-      const wrapper1 = container1.firstChild as HTMLElement
-      const classes1 = wrapper1.className
-
-      unmount1()
-
+      // 'A' (65) % 4 = 1 → pink, 'B' (66) % 4 = 2 → indigo
+      const { container: container1 } = render(<CredentialIcon name="Alice" />)
       const { container: container2 } = render(<CredentialIcon name="Bob" />)
-      const wrapper2 = container2.firstChild as HTMLElement
-      const classes2 = wrapper2.className
 
-      // They may or may not be different depending on the modulo calculation
-      // but both should have a bg class
-      expect(classes1).toMatch(/bg-components-icon-bg/)
-      expect(classes2).toMatch(/bg-components-icon-bg/)
+      const wrapper1 = container1.firstChild as HTMLElement
+      const wrapper2 = container2.firstChild as HTMLElement
+
+      const bgClass1 = wrapper1.className.match(/bg-components-icon-bg-\S+/)?.[0]
+      const bgClass2 = wrapper2.className.match(/bg-components-icon-bg-\S+/)?.[0]
+
+      expect(bgClass1).toBeDefined()
+      expect(bgClass2).toBeDefined()
+      expect(bgClass1).not.toBe(bgClass2)
     })
 
     it('should handle empty avatarUrl string', () => {

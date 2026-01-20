@@ -1,6 +1,7 @@
 import type { PropsWithChildren } from 'react'
 import type { FileEntity } from '../types'
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
+import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Toast from '@/app/components/base/toast'
 import { FileContextProvider } from '../store'
@@ -622,131 +623,300 @@ describe('useUpload hook', () => {
   })
 
   describe('Drag and Drop Functionality', () => {
-    it('should set dragging to false on dragLeave when target matches dragRef', async () => {
-      const { result } = renderHook(() => useUpload(), {
-        wrapper: createWrapper(),
-      })
+    // Test component that renders the hook with actual DOM elements
+    const TestComponent = ({ onStateChange }: { onStateChange?: (dragging: boolean) => void }) => {
+      const { dragging, dragRef, dropRef } = useUpload()
 
-      // Create a mock div element for the dragRef
-      const mockDiv = document.createElement('div')
+      // Report dragging state changes to parent
+      React.useEffect(() => {
+        onStateChange?.(dragging)
+      }, [dragging, onStateChange])
 
-      // Manually set the dragRef
-      Object.defineProperty(result.current.dragRef, 'current', {
-        value: mockDiv,
-        writable: true,
-      })
+      return (
+        <div ref={dropRef} data-testid="drop-zone">
+          <div ref={dragRef} data-testid="drag-boundary">
+            <span data-testid="dragging-state">{dragging ? 'dragging' : 'not-dragging'}</span>
+          </div>
+        </div>
+      )
+    }
 
-      // Initially dragging should be false
-      expect(result.current.dragging).toBe(false)
-    })
-
-    it('should handle drop event with files', async () => {
-      const onChange = vi.fn()
-      const wrapper = ({ children }: PropsWithChildren) => (
-        <FileContextProvider onChange={onChange}>
-          {children}
-        </FileContextProvider>
+    it('should set dragging to true on dragEnter when target is not dragRef', async () => {
+      const onStateChange = vi.fn()
+      render(
+        <FileContextProvider>
+          <TestComponent onStateChange={onStateChange} />
+        </FileContextProvider>,
       )
 
-      const { result } = renderHook(() => useUpload(), { wrapper })
+      const dropZone = screen.getByTestId('drop-zone')
 
-      // Create mock drop element
-      const mockDropDiv = document.createElement('div')
-      Object.defineProperty(result.current.dropRef, 'current', {
-        value: mockDropDiv,
-        writable: true,
+      // Fire dragenter event on dropZone (not dragRef)
+      await act(async () => {
+        fireEvent.dragEnter(dropZone, {
+          dataTransfer: { items: [] },
+        })
       })
 
-      // Create mock file
-      const mockFile = new File(['test'], 'test.png', { type: 'image/png' })
+      // Verify dragging state changed to true
+      expect(screen.getByTestId('dragging-state')).toHaveTextContent('dragging')
+    })
 
-      // Create mock DataTransfer
-      const mockDataTransfer = {
-        items: [
-          {
-            webkitGetAsEntry: () => null, // No entry, will use getAsFile
-            getAsFile: () => mockFile,
+    it('should set dragging to false on dragLeave when target matches dragRef', async () => {
+      render(
+        <FileContextProvider>
+          <TestComponent />
+        </FileContextProvider>,
+      )
+
+      const dropZone = screen.getByTestId('drop-zone')
+      const dragBoundary = screen.getByTestId('drag-boundary')
+
+      // First trigger dragenter to set dragging to true
+      await act(async () => {
+        fireEvent.dragEnter(dropZone, {
+          dataTransfer: { items: [] },
+        })
+      })
+
+      expect(screen.getByTestId('dragging-state')).toHaveTextContent('dragging')
+
+      // Then trigger dragleave on dragBoundary to set dragging to false
+      await act(async () => {
+        fireEvent.dragLeave(dragBoundary, {
+          dataTransfer: { items: [] },
+        })
+      })
+
+      expect(screen.getByTestId('dragging-state')).toHaveTextContent('not-dragging')
+    })
+
+    it('should handle drop event with files and reset dragging state', async () => {
+      const onChange = vi.fn()
+
+      render(
+        <FileContextProvider onChange={onChange}>
+          <TestComponent />
+        </FileContextProvider>,
+      )
+
+      const dropZone = screen.getByTestId('drop-zone')
+      const mockFile = new File(['test content'], 'test.png', { type: 'image/png' })
+
+      // First trigger dragenter
+      await act(async () => {
+        fireEvent.dragEnter(dropZone, {
+          dataTransfer: { items: [] },
+        })
+      })
+
+      expect(screen.getByTestId('dragging-state')).toHaveTextContent('dragging')
+
+      // Then trigger drop with files
+      await act(async () => {
+        fireEvent.drop(dropZone, {
+          dataTransfer: {
+            items: [{
+              webkitGetAsEntry: () => null,
+              getAsFile: () => mockFile,
+            }],
           },
-        ],
-      }
+        })
+      })
 
-      // The drop handler is attached via useEffect
-      // For now, verify the refs are properly exposed
-      expect(result.current.dropRef).toBeDefined()
-      // Verify mock data structures are valid
-      expect(mockDataTransfer.items).toHaveLength(1)
+      // Dragging should be reset to false after drop
+      expect(screen.getByTestId('dragging-state')).toHaveTextContent('not-dragging')
     })
 
     it('should return early when dataTransfer is null on drop', async () => {
-      const { result } = renderHook(() => useUpload(), {
-        wrapper: createWrapper(),
-      })
-
-      // The handleDrop function checks for e.dataTransfer and returns early if null
-      // This is handled internally, we verify the dropRef is available
-      expect(result.current.dropRef.current).toBeNull()
-    })
-
-    it('should handle drop with webkitGetAsEntry for directory traversal', async () => {
-      const onChange = vi.fn()
-      const wrapper = ({ children }: PropsWithChildren) => (
-        <FileContextProvider onChange={onChange}>
-          {children}
-        </FileContextProvider>
+      render(
+        <FileContextProvider>
+          <TestComponent />
+        </FileContextProvider>,
       )
 
-      const { result } = renderHook(() => useUpload(), { wrapper })
+      const dropZone = screen.getByTestId('drop-zone')
 
-      // Create mock file entry (like from drag and drop)
-      const mockFile = { name: 'test.png', type: 'image/png' }
-      type FileCallback = (file: typeof mockFile) => void
+      // Fire dragenter first
+      await act(async () => {
+        fireEvent.dragEnter(dropZone)
+      })
+
+      // Fire drop without dataTransfer
+      await act(async () => {
+        fireEvent.drop(dropZone)
+      })
+
+      // Should still reset dragging state
+      expect(screen.getByTestId('dragging-state')).toHaveTextContent('not-dragging')
+    })
+
+    it('should not trigger file upload for invalid file types on drop', async () => {
+      render(
+        <FileContextProvider>
+          <TestComponent />
+        </FileContextProvider>,
+      )
+
+      const dropZone = screen.getByTestId('drop-zone')
+      const invalidFile = new File(['test'], 'test.exe', { type: 'application/x-msdownload' })
+
+      await act(async () => {
+        fireEvent.drop(dropZone, {
+          dataTransfer: {
+            items: [{
+              webkitGetAsEntry: () => null,
+              getAsFile: () => invalidFile,
+            }],
+          },
+        })
+      })
+
+      // Should show error toast for invalid file type
+      await waitFor(() => {
+        expect(Toast.notify).toHaveBeenCalledWith({
+          type: 'error',
+          message: expect.any(String),
+        })
+      })
+    })
+
+    it('should handle drop with webkitGetAsEntry for file entries', async () => {
+      const onChange = vi.fn()
+      const mockFile = new File(['test'], 'test.png', { type: 'image/png' })
+
+      render(
+        <FileContextProvider onChange={onChange}>
+          <TestComponent />
+        </FileContextProvider>,
+      )
+
+      const dropZone = screen.getByTestId('drop-zone')
+
+      // Create a mock file entry that simulates webkitGetAsEntry behavior
       const mockFileEntry = {
         isFile: true,
         isDirectory: false,
-        file: (callback: FileCallback) => callback(mockFile),
+        file: (callback: (file: File) => void) => callback(mockFile),
       }
 
-      // Verify dropRef is exposed for attaching event listeners
-      expect(result.current.dropRef).toBeDefined()
-      // Verify mock entry is correctly shaped
-      expect(mockFileEntry.isFile).toBe(true)
-    })
-
-    it('should handle item without webkitGetAsEntry or getAsFile', async () => {
-      const { result } = renderHook(() => useUpload(), {
-        wrapper: createWrapper(),
+      await act(async () => {
+        fireEvent.drop(dropZone, {
+          dataTransfer: {
+            items: [{
+              webkitGetAsEntry: () => mockFileEntry,
+              getAsFile: () => mockFile,
+            }],
+          },
+        })
       })
 
-      // The handleDrop will resolve to empty array for such items
-      // This is internal behavior, we verify the hook doesn't crash
-      expect(result.current.dropRef).toBeDefined()
+      // Dragging should be reset
+      expect(screen.getByTestId('dragging-state')).toHaveTextContent('not-dragging')
     })
   })
 
   describe('Drag Events', () => {
-    it('should handle dragEnter event', () => {
-      const { result } = renderHook(() => useUpload(), {
-        wrapper: createWrapper(),
+    const TestComponent = () => {
+      const { dragging, dragRef, dropRef } = useUpload()
+      return (
+        <div ref={dropRef} data-testid="drop-zone">
+          <div ref={dragRef} data-testid="drag-boundary">
+            <span data-testid="dragging-state">{dragging ? 'dragging' : 'not-dragging'}</span>
+          </div>
+        </div>
+      )
+    }
+
+    it('should handle dragEnter event and update dragging state', async () => {
+      render(
+        <FileContextProvider>
+          <TestComponent />
+        </FileContextProvider>,
+      )
+
+      const dropZone = screen.getByTestId('drop-zone')
+
+      // Initially not dragging
+      expect(screen.getByTestId('dragging-state')).toHaveTextContent('not-dragging')
+
+      // Fire dragEnter
+      await act(async () => {
+        fireEvent.dragEnter(dropZone, {
+          dataTransfer: { items: [] },
+        })
       })
 
-      const mockDiv = document.createElement('div')
-      Object.defineProperty(result.current.dragRef, 'current', {
-        value: mockDiv,
-        writable: true,
-      })
-
-      // Verify dragRef is set up correctly
-      expect(result.current.dragRef.current).toBe(mockDiv)
+      // Should be dragging now
+      expect(screen.getByTestId('dragging-state')).toHaveTextContent('dragging')
     })
 
-    it('should handle dragOver event', () => {
-      const { result } = renderHook(() => useUpload(), {
-        wrapper: createWrapper(),
+    it('should handle dragOver event without changing state', async () => {
+      render(
+        <FileContextProvider>
+          <TestComponent />
+        </FileContextProvider>,
+      )
+
+      const dropZone = screen.getByTestId('drop-zone')
+
+      // First trigger dragenter to set dragging
+      await act(async () => {
+        fireEvent.dragEnter(dropZone)
       })
 
-      // dragOver just prevents default and stops propagation
-      // No state changes to verify
-      expect(result.current.dragging).toBe(false)
+      expect(screen.getByTestId('dragging-state')).toHaveTextContent('dragging')
+
+      // dragOver should not change the dragging state
+      await act(async () => {
+        fireEvent.dragOver(dropZone)
+      })
+
+      // Should still be dragging
+      expect(screen.getByTestId('dragging-state')).toHaveTextContent('dragging')
+    })
+
+    it('should not set dragging to true when dragEnter target is dragRef', async () => {
+      render(
+        <FileContextProvider>
+          <TestComponent />
+        </FileContextProvider>,
+      )
+
+      const dragBoundary = screen.getByTestId('drag-boundary')
+
+      // Fire dragEnter directly on dragRef
+      await act(async () => {
+        fireEvent.dragEnter(dragBoundary)
+      })
+
+      // Should not be dragging when target is dragRef itself
+      expect(screen.getByTestId('dragging-state')).toHaveTextContent('not-dragging')
+    })
+
+    it('should not set dragging to false when dragLeave target is not dragRef', async () => {
+      render(
+        <FileContextProvider>
+          <TestComponent />
+        </FileContextProvider>,
+      )
+
+      const dropZone = screen.getByTestId('drop-zone')
+
+      // First trigger dragenter on dropZone to set dragging
+      await act(async () => {
+        fireEvent.dragEnter(dropZone)
+      })
+
+      expect(screen.getByTestId('dragging-state')).toHaveTextContent('dragging')
+
+      // dragLeave on dropZone (not dragRef) should not change dragging state
+      await act(async () => {
+        fireEvent.dragLeave(dropZone)
+      })
+
+      // Should still be dragging (only dragLeave on dragRef resets)
+      expect(screen.getByTestId('dragging-state')).toHaveTextContent('dragging')
     })
   })
 })

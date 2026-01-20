@@ -427,7 +427,7 @@ describe('ImagePreviewer', () => {
   })
 
   describe('Image Cache', () => {
-    it('should skip fetch for already cached images', async () => {
+    it('should clean up blob URLs on unmount', async () => {
       const onClose = vi.fn()
       const images = createMockImages()
 
