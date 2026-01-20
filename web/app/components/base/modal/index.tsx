@@ -52,7 +52,7 @@ export default function Modal({
           <div className={cn('flex min-h-full items-center justify-center p-4 text-center', containerClassName)}>
             <TransitionChild>
               <DialogPanel className={cn('relative w-full max-w-[480px] rounded-2xl bg-components-panel-bg p-6 text-left align-middle shadow-xl transition-all', overflowVisible ? 'overflow-visible' : 'overflow-hidden', 'duration-100 ease-in data-[closed]:scale-95 data-[closed]:opacity-0', 'data-[enter]:scale-100 data-[enter]:opacity-100', 'data-[enter]:scale-95 data-[leave]:opacity-0', className)}>
-                {title && (
+                {!!title && (
                   <DialogTitle
                     as="h3"
                     className="title-2xl-semi-bold text-text-primary"
@@ -60,7 +60,7 @@ export default function Modal({
                     {title}
                   </DialogTitle>
                 )}
-                {description && (
+                {!!description && (
                   <div className="body-md-regular mt-2 text-text-secondary">
                     {description}
                   </div>
