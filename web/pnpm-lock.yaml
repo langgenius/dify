@@ -241,7 +241,7 @@ importers:
         specifier: ^1.0.0
         version: 1.0.0
       next:
-        specifier: ~16.1.1
+        specifier: ~16.1.4
         version: 16.1.4(@babel/core@7.28.5)(@playwright/test@1.57.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.95.0)
       next-themes:
         specifier: ^0.4.6
@@ -374,13 +374,13 @@ importers:
         specifier: ^3.1.1
         version: 3.1.1(@types/react@19.2.7)(react@19.2.3)
       '@next/bundle-analyzer':
-        specifier: ~16.1.1
+        specifier: ~16.1.4
         version: 16.1.4
       '@next/eslint-plugin-next':
-        specifier: ~16.1.1
+        specifier: ~16.1.4
         version: 16.1.4
       '@next/mdx':
-        specifier: ~16.1.1
+        specifier: ~16.1.4
         version: 16.1.4(@mdx-js/loader@3.1.1(webpack@5.103.0(esbuild@0.27.2)(uglify-js@3.19.3)))(@mdx-js/react@3.1.1(@types/react@19.2.7)(react@19.2.3))
       '@rgrove/parse-xml':
         specifier: ^4.2.0
