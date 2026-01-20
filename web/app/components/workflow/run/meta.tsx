@@ -92,7 +92,7 @@ const MetaData: FC<Props> = ({
           <div className="system-xs-regular w-[104px] shrink-0 truncate px-2 py-1.5 text-text-tertiary">{t('meta.tokens', { ns: 'runLog' })}</div>
           <div className="system-xs-regular grow px-2 py-1.5 text-text-secondary">
             {['running', 'paused'].includes(status) && (
-              <div className="my-1 h-2 w-[48px] rounded-sm bg-text-quaternary" />
+              <div className="my-1 h-2 w-[48px] animate-pulse rounded-sm bg-text-quaternary" />
             )}
             {!['running', 'paused'].includes(status) && (
               <span>{`${tokens || 0} Tokens`}</span>

@@ -84,7 +84,7 @@ const ChatWrapper = (
     suggestedQuestions,
     handleSend,
     handleRestart,
-    setTargetMessageId,
+    handleSwitchSibling,
     handleSubmitHumanInputForm,
     getHumanInputNodeData,
   } = useChat(
@@ -122,6 +122,12 @@ const ChatWrapper = (
     const parentAnswer = chatList.find(item => item.id === question.parentMessageId)
     doSend(editedQuestion ? editedQuestion.message : question.content, editedQuestion ? editedQuestion.files : question.message_files, true, isValidGeneratedAnswer(parentAnswer) ? parentAnswer : null)
   }, [chatList, doSend])
+
+  const doSwitchSibling = useCallback((siblingMessageId: string) => {
+    handleSwitchSibling(siblingMessageId, {
+      onGetSuggestedQuestions: (messageId, getAbortController) => fetchSuggestedQuestions(appDetail!.id, messageId, getAbortController),
+    })
+  }, [handleSwitchSibling, appDetail])
 
   const doHumanInputFormSubmit = useCallback(async (formToken: string, formData: any) => {
     // Handle human input form submission
@@ -196,7 +202,7 @@ const ChatWrapper = (
         suggestedQuestions={suggestedQuestions}
         showPromptLog
         chatAnswerContainerInner="!pr-2"
-        switchSibling={setTargetMessageId}
+        switchSibling={doSwitchSibling}
         inputDisabled={inputDisabled}
         hideAvatar
       />

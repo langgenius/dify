@@ -32,6 +32,13 @@ export const useWorkflowNodeHumanInputRequired = () => {
           draft.humanInputFormDataList.push(data)
         }
       }
+      const currentIndex = draft.tracing!.findIndex(item => item.node_id === data.node_id)
+      if (currentIndex > -1) {
+        draft.tracing![currentIndex] = {
+          ...draft.tracing![currentIndex],
+          status: NodeRunningStatus.Paused,
+        }
+      }
     })
     setWorkflowRunningData(newWorkflowRunningData)
 

@@ -9,6 +9,7 @@ import type AudioPlayer from '@/app/components/base/audio-btn/audio'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { Annotation } from '@/models/log'
 import type {
+  IOnDataMoreInfo,
   IOtherOptions,
 } from '@/service/base'
 import { uniqBy } from 'es-toolkit/compat'
@@ -209,10 +210,14 @@ export const useChat = (
     return getOrCreatePlayer
   }, [params.token, params.appId, pathname])
 
-  const handleResume = useCallback((
+  const handleResume = useCallback(async (
     messageId: string,
     workflowRunId: string,
-    isPublicAPI?: boolean,
+    {
+      onGetSuggestedQuestions,
+      onConversationComplete,
+      isPublicAPI,
+    }: SendCallback,
   ) => {
     const getOrCreatePlayer = createAudioPlayerManager()
     // Re-subscribe to workflow events for the specific message
@@ -223,7 +228,7 @@ export const useChat = (
       getAbortController: (abortController) => {
         workflowEventsAbortControllerRef.current = abortController
       },
-      onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, taskId }: any) => {
+      onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: IOnDataMoreInfo) => {
         updateChatTreeNode(messageId, (responseItem) => {
           const isAgentMode = responseItem.agent_thoughts && responseItem.agent_thoughts.length > 0
           if (!isAgentMode) {
@@ -234,6 +239,8 @@ export const useChat = (
             if (lastThought)
               lastThought.thought = lastThought.thought + message
           }
+          if (messageId)
+            responseItem.id = messageId
         })
 
         if (isFirstMessage && newConversationId)
@@ -242,8 +249,28 @@ export const useChat = (
         if (taskId)
           taskIdRef.current = taskId
       },
-      async onCompleted() {
+      async onCompleted(hasError?: boolean) {
         handleResponding(false)
+
+        if (hasError)
+          return
+
+        if (onConversationComplete)
+          onConversationComplete(conversationId.current)
+
+        if (config?.suggested_questions_after_answer?.enabled && !hasStopResponded.current && onGetSuggestedQuestions) {
+          try {
+            const { data }: any = await onGetSuggestedQuestions(
+              messageId,
+              newAbortController => suggestedQuestionsAbortControllerRef.current = newAbortController,
+            )
+            setSuggestQuestions(data)
+          }
+          // eslint-disable-next-line unused-imports/no-unused-vars
+          catch (e) {
+            setSuggestQuestions([])
+          }
+        }
       },
       onFile(file) {
         updateChatTreeNode(messageId, (responseItem) => {
@@ -300,20 +327,12 @@ export const useChat = (
       onError() {
         handleResponding(false)
       },
-      onWorkflowStarted: ({ workflow_run_id, task_id, data: { is_resumption } }) => {
+      onWorkflowStarted: ({ workflow_run_id, task_id }) => {
         handleResponding(true)
         hasStopResponded.current = false
         updateChatTreeNode(messageId, (responseItem) => {
-          if (is_resumption) {
-            if (responseItem.workflowProcess) {
-              responseItem.workflowProcess.status = WorkflowRunningStatus.Running
-            }
-            else {
-              responseItem.workflowProcess = {
-                status: WorkflowRunningStatus.Running,
-                tracing: [],
-              }
-            }
+          if (responseItem.workflowProcess && responseItem.workflowProcess.tracing.length > 0) {
+            responseItem.workflowProcess.status = WorkflowRunningStatus.Running
           }
           else {
             taskIdRef.current = task_id
@@ -366,20 +385,12 @@ export const useChat = (
           if (!responseItem.workflowProcess.tracing)
             responseItem.workflowProcess.tracing = []
 
-          const { is_resumption } = nodeStartedData
-          if (is_resumption) {
-            const currentIndex = responseItem.workflowProcess.tracing.findIndex(item => item.node_id === nodeStartedData.node_id)
-            if (currentIndex > -1) {
-              responseItem.workflowProcess.tracing[currentIndex] = {
-                ...nodeStartedData,
-                status: NodeRunningStatus.Running,
-              }
-            }
-            else {
-              responseItem.workflowProcess.tracing.push({
-                ...nodeStartedData,
-                status: NodeRunningStatus.Running,
-              })
+          const currentIndex = responseItem.workflowProcess.tracing.findIndex(item => item.node_id === nodeStartedData.node_id)
+          // if the node is already started, update the node
+          if (currentIndex > -1) {
+            responseItem.workflowProcess.tracing[currentIndex] = {
+              ...nodeStartedData,
+              status: NodeRunningStatus.Running,
             }
           }
           else {
@@ -502,12 +513,15 @@ export const useChat = (
       },
     }
 
+    if (workflowEventsAbortControllerRef.current)
+      workflowEventsAbortControllerRef.current.abort()
+
     sseGet(
       url,
       {},
       otherOptions,
     )
-  }, [updateChatTreeNode, handleResponding, createAudioPlayerManager])
+  }, [updateChatTreeNode, handleResponding, createAudioPlayerManager, config?.suggested_questions_after_answer])
 
   const updateCurrentQAOnTree = useCallback(({
     parentId,
@@ -810,9 +824,20 @@ export const useChat = (
           parentId: data.parent_message_id,
         })
       },
-      onWorkflowStarted: ({ workflow_run_id, task_id, data: { is_resumption } }) => {
-        if (is_resumption) {
-          responseItem.workflowProcess!.status = WorkflowRunningStatus.Running
+      onWorkflowStarted: ({ workflow_run_id, task_id, conversation_id, message_id }) => {
+        // If there are no streaming messages, we still need to set the conversation_id to avoid create a new conversation when regeneration in chat-flow.
+        if (conversation_id) {
+          conversationId.current = conversation_id
+        }
+        if (message_id && !hasSetResponseId) {
+          questionItem.id = `question-${message_id}`
+          responseItem.id = message_id
+          responseItem.parentMessageId = questionItem.id
+          hasSetResponseId = true
+        }
+
+        if (responseItem.workflowProcess && responseItem.workflowProcess.tracing.length > 0) {
+          responseItem.workflowProcess.status = WorkflowRunningStatus.Running
         }
         else {
           taskIdRef.current = task_id
@@ -868,14 +893,16 @@ export const useChat = (
         })
       },
       onNodeStarted: ({ data: nodeStartedData }) => {
-        const { is_resumption } = nodeStartedData
-        if (is_resumption) {
-          const currentIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.node_id === data.node_id)
-          if (currentIndex > -1) {
-            responseItem.workflowProcess!.tracing![currentIndex] = {
-              ...nodeStartedData,
-              status: NodeRunningStatus.Running,
-            }
+        if (!responseItem.workflowProcess)
+          return
+        if (!responseItem.workflowProcess.tracing)
+          responseItem.workflowProcess.tracing = []
+
+        const currentIndex = responseItem.workflowProcess.tracing.findIndex(item => item.node_id === nodeStartedData.node_id)
+        if (currentIndex > -1) {
+          responseItem.workflowProcess.tracing[currentIndex] = {
+            ...nodeStartedData,
+            status: NodeRunningStatus.Running,
           }
         }
         else {
@@ -885,7 +912,7 @@ export const useChat = (
           if (data.loop_id)
             return
 
-          responseItem.workflowProcess!.tracing!.push({
+          responseItem.workflowProcess.tracing.push({
             ...nodeStartedData,
             status: WorkflowRunningStatus.Running,
           })
@@ -1021,6 +1048,10 @@ export const useChat = (
       },
     }
 
+    // Abort the previous workflow events SSE request
+    if (workflowEventsAbortControllerRef.current)
+      workflowEventsAbortControllerRef.current.abort()
+
     ssePost(
       url,
       {
@@ -1096,6 +1127,36 @@ export const useChat = (
     })
   }, [chatList, updateChatTreeNode])
 
+  const handleSwitchSibling = useCallback((
+    siblingMessageId: string,
+    callbacks: SendCallback,
+  ) => {
+    setTargetMessageId(siblingMessageId)
+
+    // Helper to find message in tree
+    const findMessageInTree = (nodes: ChatItemInTree[], targetId: string): ChatItemInTree | undefined => {
+      for (const node of nodes) {
+        if (node.id === targetId)
+          return node
+        if (node.children) {
+          const found = findMessageInTree(node.children, targetId)
+          if (found)
+            return found
+        }
+      }
+      return undefined
+    }
+
+    const targetMessage = findMessageInTree(chatTreeRef.current, siblingMessageId)
+    if (targetMessage?.workflow_run_id && targetMessage.humanInputFormDataList && targetMessage.humanInputFormDataList.length > 0) {
+      handleResume(
+        targetMessage.id,
+        targetMessage.workflow_run_id,
+        callbacks,
+      )
+    }
+  }, [setTargetMessageId, handleResume])
+
   useEffect(() => {
     if (clearChatList)
       handleRestart(() => clearChatListCallback?.(false))
@@ -1108,6 +1169,7 @@ export const useChat = (
     setIsResponding,
     handleSend,
     handleResume,
+    handleSwitchSibling,
     suggestedQuestions,
     handleRestart,
     handleStop,

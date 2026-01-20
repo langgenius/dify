@@ -76,8 +76,10 @@ const Answer: FC<AnswerProps> = ({
 
   const [containerWidth, setContainerWidth] = useState(0)
   const [contentWidth, setContentWidth] = useState(0)
+  const [humanInputFormContainerWidth, setHumanInputFormContainerWidth] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
+  const humanInputFormContainerRef = useRef<HTMLDivElement>(null)
 
   const {
     getHumanInputNodeData,
@@ -101,12 +103,23 @@ const Answer: FC<AnswerProps> = ({
       getContentWidth()
   }, [responding])
 
+  const getHumanInputFormContainerWidth = () => {
+    if (humanInputFormContainerRef.current)
+      setHumanInputFormContainerWidth(humanInputFormContainerRef.current?.clientWidth)
+  }
+
+  useEffect(() => {
+    if (hasHumanInputs)
+      getHumanInputFormContainerWidth()
+  }, [hasHumanInputs])
+
   // Recalculate contentWidth when content changes (e.g., SVG preview/source toggle)
   useEffect(() => {
     if (!containerRef.current)
       return
     const resizeObserver = new ResizeObserver(() => {
       getContentWidth()
+      getHumanInputFormContainerWidth()
     })
     resizeObserver.observe(containerRef.current)
     return () => {
@@ -144,8 +157,23 @@ const Answer: FC<AnswerProps> = ({
         {hasHumanInputs && (
           <div className={cn('group relative pr-10', chatAnswerContainerInner)}>
             <div
+              ref={humanInputFormContainerRef}
               className={cn('body-lg-regular relative inline-block max-w-full rounded-2xl bg-chat-bubble-bg px-4 py-3 text-text-primary', (workflowProcess || hasHumanInputs) && 'w-full')}
             >
+              {
+                !responding && contentIsEmpty && !hasAgentThoughts && (
+                  <Operation
+                    hasWorkflowProcess={!!workflowProcess}
+                    maxSize={containerWidth - humanInputFormContainerWidth - 4}
+                    contentWidth={humanInputFormContainerWidth}
+                    item={item}
+                    question={question}
+                    index={index}
+                    showPromptLog={showPromptLog}
+                    noChatInput={noChatInput}
+                  />
+                )
+              }
               {/** Render workflow process */}
               {
                 workflowProcess && (
@@ -170,6 +198,23 @@ const Answer: FC<AnswerProps> = ({
                 humanInputFilledFormDataList && humanInputFilledFormDataList.length > 0 && (
                   <HumanInputFilledFormList
                     humanInputFilledFormDataList={humanInputFilledFormDataList}
+                  />
+                )
+              }
+              {
+                item.siblingCount
+                && item.siblingCount > 1
+                && item.siblingIndex !== undefined
+                && !responding
+                && contentIsEmpty
+                && !hasAgentThoughts
+                && (
+                  <ContentSwitch
+                    count={item.siblingCount}
+                    currentIndex={item.siblingIndex}
+                    prevDisabled={!item.prevSibling}
+                    nextDisabled={!item.nextSibling}
+                    switchSibling={handleSwitchSibling}
                   />
                 )
               }

@@ -187,7 +187,7 @@ const Operation: FC<OperationProps> = ({
         )}
         style={(!hasWorkflowProcess && positionRight) ? { left: contentWidth + 8 } : {}}
       >
-        {shouldShowUserFeedbackBar && (
+        {shouldShowUserFeedbackBar && !humanInputFormDataList?.length && (
           <div className={cn(
             'ml-1 items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm',
             hasUserFeedback ? 'flex' : 'hidden group-hover:flex',
@@ -227,7 +227,7 @@ const Operation: FC<OperationProps> = ({
                 )}
           </div>
         )}
-        {shouldShowAdminFeedbackBar && (
+        {shouldShowAdminFeedbackBar && !humanInputFormDataList?.length && (
           <div className={cn(
             'ml-1 items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm',
             (hasAdminFeedback || hasUserFeedback) ? 'flex' : 'hidden group-hover:flex',
@@ -304,28 +304,30 @@ const Operation: FC<OperationProps> = ({
             <Log logItem={item} />
           </div>
         )}
-        {!isOpeningStatement && !humanInputFormDataList?.length && (
+        {!isOpeningStatement && (
           <div className="ml-1 hidden items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm group-hover:flex">
-            {(config?.text_to_speech?.enabled) && (
+            {(config?.text_to_speech?.enabled && !humanInputFormDataList?.length) && (
               <NewAudioButton
                 id={id}
                 value={content}
                 voice={config?.text_to_speech?.voice}
               />
             )}
-            <ActionButton onClick={() => {
-              copy(content)
-              Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
-            }}
-            >
-              <RiClipboardLine className="h-4 w-4" />
-            </ActionButton>
+            {!humanInputFormDataList?.length && (
+              <ActionButton onClick={() => {
+                copy(content)
+                Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
+              }}
+              >
+                <RiClipboardLine className="h-4 w-4" />
+              </ActionButton>
+            )}
             {!noChatInput && (
               <ActionButton onClick={() => onRegenerate?.(item)}>
                 <RiResetLeftLine className="h-4 w-4" />
               </ActionButton>
             )}
-            {(config?.supportAnnotation && config.annotation_reply?.enabled) && (
+            {config?.supportAnnotation && config.annotation_reply?.enabled && !humanInputFormDataList?.length && (
               <AnnotationCtrlButton
                 appId={config?.appId || ''}
                 messageId={id}
