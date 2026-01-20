@@ -197,7 +197,7 @@ const List = () => {
           </div>
         )}
 
-        <div className="no-sticky sticky top-0 z-10 flex flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pb-5 pt-7">
+        <div className="sticky-no-border sticky top-0 z-10 flex flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pb-5 pt-7">
           <TabSliderNew
             value={activeTab}
             onChange={setActiveTab}
