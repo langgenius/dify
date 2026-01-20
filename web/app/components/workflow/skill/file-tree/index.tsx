@@ -54,19 +54,22 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
   const { data: treeData, isLoading, error } = useSkillAssetTreeData()
   const isMutating = useIsMutating() > 0
 
+  const expandedFolderIds = useStore(s => s.expandedFolderIds)
+  const activeTabId = useStore(s => s.activeTabId)
+  const dragOverFolderId = useStore(s => s.dragOverFolderId)
+  const currentDragType = useStore(s => s.currentDragType)
+  const searchTerm = useStore(s => s.fileTreeSearchTerm)
+  const storeApi = useWorkflowStore()
+
+  const treeChildren = treeData?.children ?? emptyTreeNodes
+
   const {
     handleRootDragEnter,
     handleRootDragLeave,
     handleRootDragOver,
     handleRootDrop,
     resetRootDragCounter,
-  } = useRootFileDrop()
-
-  const expandedFolderIds = useStore(s => s.expandedFolderIds)
-  const activeTabId = useStore(s => s.activeTabId)
-  const dragOverFolderId = useStore(s => s.dragOverFolderId)
-  const searchTerm = useStore(s => s.fileTreeSearchTerm)
-  const storeApi = useWorkflowStore()
+  } = useRootFileDrop({ treeChildren })
 
   // Root dropzone highlight (when dragging to root, not to a specific folder)
   const isRootDropzone = dragOverFolderId === ROOT_ID
@@ -76,7 +79,6 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
       resetRootDragCounter()
   }, [dragOverFolderId, resetRootDragCounter])
 
-  const treeChildren = treeData?.children ?? emptyTreeNodes
   const {
     treeNodes,
     handleRename,
@@ -263,7 +265,7 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
         </div>
       </div>
       {dragOverFolderId
-        ? <DragActionTooltip action="upload" />
+        ? <DragActionTooltip action={currentDragType ?? 'upload'} />
         : <DropTip />}
       <ArtifactsSection />
       <TreeContextMenu treeRef={treeRef} />

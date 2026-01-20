@@ -117,6 +117,19 @@ export function getAllDescendantFileIds(
   return fileIds
 }
 
+export function isDescendantOf(
+  potentialDescendantId: string | null | undefined,
+  ancestorId: string | null | undefined,
+  nodes: AppAssetTreeView[],
+): boolean {
+  if (!potentialDescendantId || !ancestorId)
+    return false
+  if (potentialDescendantId === ancestorId)
+    return true
+  const ancestors = getAncestorIds(potentialDescendantId, nodes)
+  return ancestors.includes(ancestorId)
+}
+
 export function getTargetFolderIdFromSelection(
   selectedId: string | null,
   nodes: AppAssetTreeView[],

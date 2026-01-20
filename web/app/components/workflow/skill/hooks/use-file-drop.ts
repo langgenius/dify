@@ -34,6 +34,7 @@ export function useFileDrop() {
     e.dataTransfer.dropEffect = 'copy'
 
     // Use ROOT_ID to indicate dragging over root (to distinguish from null = "not dragging")
+    storeApi.getState().setCurrentDragType('upload')
     storeApi.getState().setDragOverFolderId(target.folderId ?? ROOT_ID)
   }, [storeApi])
 
@@ -41,6 +42,7 @@ export function useFileDrop() {
     e.preventDefault()
     e.stopPropagation()
 
+    storeApi.getState().setCurrentDragType(null)
     storeApi.getState().setDragOverFolderId(null)
   }, [storeApi])
 
@@ -48,6 +50,7 @@ export function useFileDrop() {
     e.preventDefault()
     e.stopPropagation()
 
+    storeApi.getState().setCurrentDragType(null)
     storeApi.getState().setDragOverFolderId(null)
 
     // Get files from dataTransfer, filter out directories (which have no type)

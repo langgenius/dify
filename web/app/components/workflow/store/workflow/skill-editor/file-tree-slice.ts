@@ -97,6 +97,12 @@ export const createFileTreeSlice: StateCreator<
     set({ dragOverFolderId: folderId })
   },
 
+  currentDragType: null,
+
+  setCurrentDragType: (type) => {
+    set({ currentDragType: type })
+  },
+
   fileTreeSearchTerm: '',
 
   setFileTreeSearchTerm: (term) => {
