@@ -218,7 +218,7 @@ export default function AccountSetting({
             <div className="system-2xs-medium-uppercase mt-1 text-text-tertiary">ESC</div>
           </div>
           <div ref={scrollRef} className="w-full overflow-y-auto bg-components-panel-bg pb-4">
-            <div className={cn('no-sticky sticky top-0 z-20 mx-8 mb-[18px] flex items-center bg-components-panel-bg pb-2 pt-[27px]', scrolled && 'border-b border-divider-regular')}>
+            <div className={cn('sticky-no-border sticky top-0 z-20 mx-8 mb-[18px] flex items-center bg-components-panel-bg pb-2 pt-[27px]', scrolled && 'border-b border-divider-regular')}>
               <div className="title-2xl-semi-bold shrink-0 text-text-primary">
                 {activeItem?.name}
                 {activeItem?.description && (
