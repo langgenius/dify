@@ -96,6 +96,14 @@ const PopupItem: FC<PopupItemProps> = ({
                   <div className='text-text-tertiary system-xs-regular'>{currentProvider?.description?.[language] || currentProvider?.description?.en_US}</div>
                 )} */}
                 <div className="flex flex-wrap gap-1">
+                  {
+                    modelItem.features?.includes(ModelFeatureEnum.toolCall) && (
+                      <FeatureIcon
+                        feature={ModelFeatureEnum.toolCall}
+                        showFeaturesLabel
+                      />
+                    )
+                  }
                   {modelItem.model_type && (
                     <ModelBadge>
                       {modelTypeFormat(modelItem.model_type)}
@@ -118,7 +126,7 @@ const PopupItem: FC<PopupItemProps> = ({
                     <div className="pt-2">
                       <div className="system-2xs-medium-uppercase mb-1 text-text-tertiary">{t('model.capabilities', { ns: 'common' })}</div>
                       <div className="flex flex-wrap gap-1">
-                        {modelItem.features?.map(feature => (
+                        {modelItem.features?.filter(feature => feature !== ModelFeatureEnum.toolCall).map(feature => (
                           <FeatureIcon
                             key={feature}
                             feature={feature}

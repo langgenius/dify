@@ -153,7 +153,7 @@ const RunPanel: FC<RunProps> = ({
         </div>
       </div>
       {/* panel detail */}
-      <div ref={ref} className={cn('relative h-0 grow overflow-y-auto rounded-b-xl bg-components-panel-bg')}>
+      <div ref={ref} className={cn('relative h-0 grow overflow-y-auto rounded-b-xl bg-background-section')}>
         {loading && (
           <div className="flex h-full items-center justify-center bg-components-panel-bg">
             <Loading />
@@ -192,7 +192,7 @@ const RunPanel: FC<RunProps> = ({
         )}
         {!loading && currentTab === 'TRACING' && (
           <TracingPanel
-            className="bg-background-section-burn"
+            className="bg-background-section"
             list={list}
           />
         )}
