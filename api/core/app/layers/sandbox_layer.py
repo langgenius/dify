@@ -1,6 +1,8 @@
 import logging
 
 from core.sandbox import AppAssetsInitializer, DifyCliInitializer, SandboxManager
+from core.sandbox.constants import APP_ASSETS_PATH
+from core.sandbox.initializer.app_assets_initializer import DraftAppAssetsInitializer
 from core.sandbox.storage.archive_storage import ArchiveSandboxStorage
 from core.sandbox.vm import SandboxBuilder
 from core.workflow.graph_engine.layers.base import GraphEngineLayer
@@ -33,12 +35,11 @@ class SandboxLayer(GraphEngineLayer):
         self._user_id = user_id
         self._workflow_version = workflow_version
         self._workflow_execution_id = workflow_execution_id
-        self._sandbox_id = (
-            self._workflow_execution_id
-            if self._workflow_version == Workflow.VERSION_DRAFT
-            else SandboxBuilder.draft_id(self._user_id)
+        is_draft = self._workflow_version == Workflow.VERSION_DRAFT
+        self._sandbox_id = SandboxBuilder.draft_id(self._user_id) if is_draft else self._workflow_execution_id
+        self._sandbox_storage = ArchiveSandboxStorage(
+            self._tenant_id, self._sandbox_id, exclude_patterns=[APP_ASSETS_PATH] if is_draft else None
         )
-        self._sandbox_storage = ArchiveSandboxStorage(self._tenant_id, self._sandbox_id)
 
     def on_graph_start(self) -> None:
         try:
@@ -61,9 +62,15 @@ class SandboxLayer(GraphEngineLayer):
                 )
                 AppAssetService.build_assets(self._tenant_id, self._app_id, assets)
 
+            assets_initializer = (
+                DraftAppAssetsInitializer(self._tenant_id, self._app_id, assets.id)
+                if is_draft
+                else AppAssetsInitializer(self._tenant_id, self._app_id, assets.id)
+            )
+
             builder = (
                 SandboxProviderService.create_sandbox_builder(self._tenant_id)
-                .initializer(AppAssetsInitializer(self._tenant_id, self._app_id, assets.id))
+                .initializer(assets_initializer)
                 .initializer(DifyCliInitializer(self._tenant_id, self._user_id, self._app_id, assets.id))
             )
             try:
@@ -78,12 +85,6 @@ class SandboxLayer(GraphEngineLayer):
                 raise SandboxInitializationError(f"Failed to build sandbox: {e}") from e
 
             SandboxManager.register(self._sandbox_id, sandbox)
-            logger.info(
-                "Sandbox initialized, workflow_execution_id=%s, sandbox_id=%s, sandbox_arch=%s",
-                self._sandbox_id,
-                sandbox.metadata.id,
-                sandbox.metadata.arch,
-            )
 
             # mount sandbox files from storage
             mounted = self._sandbox_storage.mount(sandbox)

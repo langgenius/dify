@@ -4,6 +4,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from core.sandbox import SandboxManager, sandbox_debug
+from core.sandbox.vm import SandboxBuilder
 from core.virtual_environment.__base.command_future import CommandCancelledError, CommandTimeoutError
 from core.virtual_environment.__base.helpers import submit_command, with_connection
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
@@ -24,11 +25,18 @@ COMMAND_NODE_TIMEOUT_SECONDS = 60
 class CommandNode(Node[CommandNodeData]):
     node_type = NodeType.COMMAND
 
+    # FIXME(Mairuis): should read sandbox from workflow run context...
     def _get_sandbox(self) -> VirtualEnvironment | None:
         workflow_execution_id = self.graph_runtime_state.variable_pool.system_variables.workflow_execution_id
         if not workflow_execution_id:
             return None
-        return SandboxManager.get(workflow_execution_id)
+        sandbox_by_workflow_run_id = SandboxManager.get(workflow_execution_id)
+        if sandbox_by_workflow_run_id is not None:
+            return sandbox_by_workflow_run_id
+        sandbox_by_draft_id = SandboxManager.get(SandboxBuilder.draft_id(self.user_id))
+        if sandbox_by_draft_id is not None:
+            return sandbox_by_draft_id
+        return None
 
     def _render_template(self, template: str) -> str:
         parser = VariableTemplateParser(template=template)

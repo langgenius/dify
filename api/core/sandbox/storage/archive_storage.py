@@ -18,10 +18,19 @@ ARCHIVE_DOWNLOAD_TIMEOUT = 60 * 5
 ARCHIVE_UPLOAD_TIMEOUT = 60 * 5
 
 
+def build_tar_exclude_args(patterns: list[str]) -> list[str]:
+    return [f"--exclude={p}" for p in patterns]
+
+
 class ArchiveSandboxStorage(SandboxStorage):
-    def __init__(self, tenant_id: str, sandbox_id: str):
+    _tenant_id: str
+    _sandbox_id: str
+    _exclude_patterns: list[str]
+
+    def __init__(self, tenant_id: str, sandbox_id: str, exclude_patterns: list[str] | None = None):
         self._tenant_id = tenant_id
         self._sandbox_id = sandbox_id
+        self._exclude_patterns = exclude_patterns or []
 
     @property
     def _storage_key(self) -> str:
@@ -36,7 +45,7 @@ class ArchiveSandboxStorage(SandboxStorage):
         try:
             (
                 pipeline(sandbox)
-                .add(["wget", download_url, "-O", ARCHIVE_NAME], error_message="Failed to download archive")
+                .add(["wget", "-q", download_url, "-O", ARCHIVE_NAME], error_message="Failed to download archive")
                 .add(["tar", "-xzf", ARCHIVE_NAME], error_message="Failed to extract archive")
                 .add(["rm", ARCHIVE_NAME], error_message="Failed to cleanup archive")
                 .execute(timeout=ARCHIVE_DOWNLOAD_TIMEOUT, raise_on_error=True)
@@ -53,10 +62,22 @@ class ArchiveSandboxStorage(SandboxStorage):
         (
             pipeline(sandbox)
             .add(
-                ["tar", "-czf", ARCHIVE_PATH, "--warning=no-file-changed", "-C", WORKSPACE_DIR, "."],
+                [
+                    "tar",
+                    "-czf",
+                    ARCHIVE_PATH,
+                    "--warning=no-file-changed",
+                    *build_tar_exclude_args(self._exclude_patterns),
+                    "-C",
+                    WORKSPACE_DIR,
+                    ".",
+                ],
                 error_message="Failed to create archive",
             )
-            .add(["wget", upload_url, "-O", ARCHIVE_PATH], error_message="Failed to upload archive")
+            .add(
+                ["curl", "-s", "-f", "-X", "PUT", "-T", ARCHIVE_PATH, upload_url],
+                error_message="Failed to upload archive",
+            )
             .execute(timeout=ARCHIVE_UPLOAD_TIMEOUT, raise_on_error=True)
         )
         logger.info("Unmounted archive for sandbox %s", self._sandbox_id)

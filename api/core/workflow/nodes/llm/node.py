@@ -51,6 +51,7 @@ from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptT
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.sandbox import SandboxBashSession, SandboxManager
+from core.sandbox.vm import SandboxBuilder
 from core.tools.__base.tool import Tool
 from core.tools.signature import sign_upload_file
 from core.tools.tool_manager import ToolManager
@@ -63,6 +64,7 @@ from core.variables import (
     ObjectSegment,
     StringSegment,
 )
+from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.entities import GraphInitParams, ToolCall, ToolResult, ToolResultStatus
 from core.workflow.entities.tool_entities import ToolCallResult
@@ -171,6 +173,19 @@ class LLMNode(Node[LLMNodeData]):
     @classmethod
     def version(cls) -> str:
         return "1"
+
+    # FIXME(Mairuis): should read sandbox from workflow run context...
+    def _get_sandbox(self) -> VirtualEnvironment | None:
+        workflow_execution_id = self.graph_runtime_state.variable_pool.system_variables.workflow_execution_id
+        if not workflow_execution_id:
+            return None
+        sandbox_by_workflow_run_id = SandboxManager.get(workflow_execution_id)
+        if sandbox_by_workflow_run_id is not None:
+            return sandbox_by_workflow_run_id
+        sandbox_by_draft_id = SandboxManager.get(SandboxBuilder.draft_id(self.user_id))
+        if sandbox_by_draft_id is not None:
+            return sandbox_by_draft_id
+        return None
 
     def _run(self) -> Generator:
         node_inputs: dict[str, Any] = {}
@@ -287,13 +302,11 @@ class LLMNode(Node[LLMNodeData]):
             structured_output: LLMStructuredOutput | None = None
 
             if self.tool_call_enabled:
-                workflow_execution_id = variable_pool.system_variables.workflow_execution_id
-                is_sandbox_runtime = workflow_execution_id is not None and SandboxManager.is_sandbox_runtime(
-                    workflow_execution_id
-                )
-
-                if is_sandbox_runtime:
+                # FIXME(Mairuis): should read sandbox from workflow run context...
+                sandbox = self._get_sandbox()
+                if sandbox:
                     generator = self._invoke_llm_with_sandbox(
+                        sandbox=sandbox,
                         model_instance=model_instance,
                         prompt_messages=prompt_messages,
                         stop=stop,
@@ -1827,21 +1840,18 @@ class LLMNode(Node[LLMNodeData]):
 
     def _invoke_llm_with_sandbox(
         self,
+        sandbox: VirtualEnvironment,
         model_instance: ModelInstance,
         prompt_messages: Sequence[PromptMessage],
         stop: Sequence[str] | None,
         variable_pool: VariablePool,
     ) -> Generator[NodeEventBase, None, LLMGenerationData]:
-        workflow_execution_id = variable_pool.system_variables.workflow_execution_id
-        if not workflow_execution_id:
-            raise LLMNodeError("workflow_execution_id is required for sandbox runtime mode")
-
         allow_tools = self._get_allow_tools_list()
 
         result: LLMGenerationData | None = None
 
         with SandboxBashSession(
-            workflow_execution_id=workflow_execution_id,
+            sandbox=sandbox,
             tenant_id=self.tenant_id,
             user_id=self.user_id,
             node_id=self.id,

@@ -18,7 +18,6 @@ from ..constants import (
     DIFY_CLI_PATH,
     DIFY_CLI_TOOLS_ROOT,
 )
-from ..manager import SandboxManager
 from .bash_tool import SandboxBashTool
 
 logger = logging.getLogger(__name__)
@@ -28,7 +27,7 @@ class SandboxBashSession:
     def __init__(
         self,
         *,
-        workflow_execution_id: str,
+        sandbox: VirtualEnvironment,
         tenant_id: str,
         user_id: str,
         node_id: str,
@@ -36,7 +35,7 @@ class SandboxBashSession:
         assets_id: str,
         allow_tools: list[tuple[str, str]] | None,
     ) -> None:
-        self._workflow_execution_id = workflow_execution_id
+        self._sandbox = sandbox
         self._tenant_id = tenant_id
         self._user_id = user_id
         self._node_id = node_id
@@ -46,25 +45,18 @@ class SandboxBashSession:
         self._assets_id = assets_id
         self._allow_tools = allow_tools
 
-        self._sandbox = None
         self._bash_tool = None
         self._session_id = None
 
     def __enter__(self) -> SandboxBashSession:
-        sandbox = SandboxManager.get(self._workflow_execution_id)
-        if sandbox is None:
-            raise RuntimeError(f"Sandbox not found for workflow_execution_id={self._workflow_execution_id}")
-
-        self._sandbox = sandbox
-
         if self._allow_tools is not None:
             if self._node_id is None:
                 raise ValueError("node_id is required when allow_tools is specified")
-            tools_path = self._setup_node_tools_directory(sandbox, self._node_id, self._allow_tools)
+            tools_path = self._setup_node_tools_directory(self._sandbox, self._node_id, self._allow_tools)
         else:
             tools_path = DIFY_CLI_GLOBAL_TOOLS_PATH
 
-        self._bash_tool = SandboxBashTool(sandbox=sandbox, tenant_id=self._tenant_id, tools_path=tools_path)
+        self._bash_tool = SandboxBashTool(sandbox=self._sandbox, tenant_id=self._tenant_id, tools_path=tools_path)
         return self
 
     def _setup_node_tools_directory(
