@@ -1,6 +1,8 @@
 'use client'
 
-// Folder node file drop handler with VSCode-style blink animation and auto-expand
+// Folder node drop handler with VSCode-style blink animation and auto-expand
+// Works for both external file uploads and internal node drag-and-drop
+// Auto-expand is triggered by Zustand isDragOver state (single source of truth)
 
 import type { NodeApi } from 'react-arborist'
 import type { TreeNodeData } from '../type'
@@ -37,61 +39,40 @@ export function useFolderFileDrop({ node, treeChildren: _treeChildren }: UseFold
 
   const { handleDragOver, handleDrop } = useUnifiedDrag()
 
-  const expandTimerRef = useRef<NodeJS.Timeout | null>(null)
-  const blinkTimerRef = useRef<NodeJS.Timeout | null>(null)
   const dragCounterRef = useRef(0)
   const [isBlinking, setIsBlinking] = useState(false)
 
-  const clearBlinkTimer = useCallback(() => {
-    if (blinkTimerRef.current) {
-      clearTimeout(blinkTimerRef.current)
-      blinkTimerRef.current = null
-    }
-    setIsBlinking(false)
-  }, [])
-
-  const clearExpandTimer = useCallback(() => {
-    if (expandTimerRef.current) {
-      clearTimeout(expandTimerRef.current)
-      expandTimerRef.current = null
-    }
-    clearBlinkTimer()
-  }, [clearBlinkTimer])
-
-  const scheduleAutoExpand = useCallback(() => {
-    // Skip if not a folder or already open
-    if (!isFolder || node.isOpen)
+  // Auto-expand logic triggered by isDragOver state change (single source of truth)
+  // Works for both external file drag and internal node drag
+  useEffect(() => {
+    if (!isDragOver || node.isOpen)
       return
-    clearExpandTimer()
 
     // Start blinking after 1 second
-    blinkTimerRef.current = setTimeout(() => {
-      blinkTimerRef.current = null
+    const blinkTimer = setTimeout(() => {
       setIsBlinking(true)
     }, BLINK_START_DELAY_MS)
 
     // Expand folder after 2 seconds
-    expandTimerRef.current = setTimeout(() => {
-      expandTimerRef.current = null
+    const expandTimer = setTimeout(() => {
       setIsBlinking(false)
       if (!node.isOpen)
         node.open()
     }, AUTO_EXPAND_DELAY_MS)
-  }, [clearExpandTimer, isFolder, node])
 
-  useEffect(() => {
     return () => {
-      clearExpandTimer()
+      clearTimeout(blinkTimer)
+      clearTimeout(expandTimer)
+      setIsBlinking(false)
     }
-  }, [clearExpandTimer])
+  }, [isDragOver, node.isOpen, node])
 
+  // dragEnter only used for drag counter (handles nested DOM events)
   const handleFolderDragEnter = useCallback((e: React.DragEvent) => {
     if (!isFolder || !isDragEvent(e))
       return
     dragCounterRef.current += 1
-    if (dragCounterRef.current === 1)
-      scheduleAutoExpand()
-  }, [isFolder, scheduleAutoExpand])
+  }, [isFolder])
 
   const handleFolderDragOver = useCallback((e: React.DragEvent) => {
     if (!isFolder || !isDragEvent(e))
@@ -103,17 +84,14 @@ export function useFolderFileDrop({ node, treeChildren: _treeChildren }: UseFold
     if (!isFolder || !isDragEvent(e))
       return
     dragCounterRef.current = Math.max(dragCounterRef.current - 1, 0)
-    if (dragCounterRef.current === 0)
-      clearExpandTimer()
-  }, [clearExpandTimer, isFolder])
+  }, [isFolder])
 
   const handleFolderDrop = useCallback((e: React.DragEvent) => {
     if (!isFolder)
       return
     dragCounterRef.current = 0
-    clearExpandTimer()
     handleDrop(e, node.data.id)
-  }, [clearExpandTimer, handleDrop, isFolder, node.data.id])
+  }, [handleDrop, isFolder, node.data.id])
 
   const dragHandlers = useMemo(() => {
     return {
