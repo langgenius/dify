@@ -3049,9 +3049,6 @@
     }
   },
   "app/components/workflow/nodes/_base/components/form-input-item.tsx": {
-    "style/indent": {
-      "count": 19
-    },
     "ts/no-explicit-any": {
       "count": 34
     }
@@ -3507,11 +3504,6 @@
   },
   "app/components/workflow/nodes/llm/default.ts": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/llm/panel.tsx": {
-    "unused-imports/no-unused-imports": {
       "count": 1
     }
   },
@@ -4197,11 +4189,6 @@
   },
   "context/provider-context.tsx": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "eslint-suppressions.json": {
-    "style/eol-last": {
       "count": 1
     }
   },

@@ -359,79 +359,79 @@ const ComponentPicker = ({
               >
                 {isAgentTrigger
                   ? (
-                    <AgentNodeList
-                      nodes={agentNodes.map(node => ({
-                        ...node,
-                        type: BlockEnum.Agent || BlockEnum.LLM,
-                      }))}
-                      onSelect={handleSelectAgent}
-                      onClose={handleClose}
-                      onBlur={handleClose}
-                      maxHeightClass="max-h-[34vh]"
-                      autoFocus={false}
-                      hideSearch={useExternalSearch}
-                      externalSearchText={useExternalSearch ? (queryString ?? '') : undefined}
-                      enableKeyboardNavigation={useExternalSearch}
-                    />
-                  )
+                      <AgentNodeList
+                        nodes={agentNodes.map(node => ({
+                          ...node,
+                          type: BlockEnum.Agent || BlockEnum.LLM,
+                        }))}
+                        onSelect={handleSelectAgent}
+                        onClose={handleClose}
+                        onBlur={handleClose}
+                        maxHeightClass="max-h-[34vh]"
+                        autoFocus={false}
+                        hideSearch={useExternalSearch}
+                        externalSearchText={useExternalSearch ? (queryString ?? '') : undefined}
+                        enableKeyboardNavigation={useExternalSearch}
+                      />
+                    )
                   : (
-                    <>
-                      {
-                        workflowVariableBlock?.show && (
-                          <div className="p-1">
-                            <VarReferenceVars
-                              searchBoxClassName="mt-1"
-                              vars={workflowVariableOptions}
-                              onChange={(variables: string[]) => {
-                                handleSelectWorkflowVariable(variables)
-                              }}
-                              maxHeightClass="max-h-[34vh]"
-                              isSupportFileVar={isSupportFileVar}
-                              onClose={handleClose}
-                              onBlur={handleClose}
-                              showManageInputField={workflowVariableBlock.showManageInputField}
-                              onManageInputField={workflowVariableBlock.onManageInputField}
-                              showAssembleVariables={showAssembleVariables}
-                              onAssembleVariables={showAssembleVariables ? handleSelectAssembleVariables : undefined}
-                              autoFocus={false}
-                              isInCodeGeneratorInstructionEditor={currentBlock?.generatorType === GeneratorType.code}
-                              hideSearch={useExternalSearch}
-                              externalSearchText={useExternalSearch ? (queryString ?? '') : undefined}
-                              enableKeyboardNavigation={useExternalSearch}
-                            />
-                          </div>
-                        )
-                      }
-                      {
-                        workflowVariableBlock?.show && !!options.length && (
-                          <div className="my-1 h-px w-full -translate-x-1 bg-divider-subtle"></div>
-                        )
-                      }
-                      <div>
+                      <>
                         {
-                          options.map((option, index) => (
-                            <Fragment key={option.key}>
-                              {
-                                index !== 0 && options.at(index - 1)?.group !== option.group && (
-                                  <div className="my-1 h-px w-full -translate-x-1 bg-divider-subtle"></div>
-                                )
-                              }
-                              {option.renderMenuOption({
-                                queryString,
-                                isSelected: selectedIndex === index,
-                                onSelect: () => {
-                                  selectOptionAndCleanUp(option)
-                                },
-                                onSetHighlight: () => {
-                                  setHighlightedIndex(index)
-                                },
-                              })}
-                            </Fragment>
-                          ))
+                          workflowVariableBlock?.show && (
+                            <div className="p-1">
+                              <VarReferenceVars
+                                searchBoxClassName="mt-1"
+                                vars={workflowVariableOptions}
+                                onChange={(variables: string[]) => {
+                                  handleSelectWorkflowVariable(variables)
+                                }}
+                                maxHeightClass="max-h-[34vh]"
+                                isSupportFileVar={isSupportFileVar}
+                                onClose={handleClose}
+                                onBlur={handleClose}
+                                showManageInputField={workflowVariableBlock.showManageInputField}
+                                onManageInputField={workflowVariableBlock.onManageInputField}
+                                showAssembleVariables={showAssembleVariables}
+                                onAssembleVariables={showAssembleVariables ? handleSelectAssembleVariables : undefined}
+                                autoFocus={false}
+                                isInCodeGeneratorInstructionEditor={currentBlock?.generatorType === GeneratorType.code}
+                                hideSearch={useExternalSearch}
+                                externalSearchText={useExternalSearch ? (queryString ?? '') : undefined}
+                                enableKeyboardNavigation={useExternalSearch}
+                              />
+                            </div>
+                          )
                         }
-                      </div>
-                    </>
-                  )}
+                        {
+                          workflowVariableBlock?.show && !!options.length && (
+                            <div className="my-1 h-px w-full -translate-x-1 bg-divider-subtle"></div>
+                          )
+                        }
+                        <div>
+                          {
+                            options.map((option, index) => (
+                              <Fragment key={option.key}>
+                                {
+                                  index !== 0 && options.at(index - 1)?.group !== option.group && (
+                                    <div className="my-1 h-px w-full -translate-x-1 bg-divider-subtle"></div>
+                                  )
+                                }
+                                {option.renderMenuOption({
+                                  queryString,
+                                  isSelected: selectedIndex === index,
+                                  onSelect: () => {
+                                    selectOptionAndCleanUp(option)
+                                  },
+                                  onSetHighlight: () => {
+                                    setHighlightedIndex(index)
+                                  },
+                                })}
+                              </Fragment>
+                            ))
+                          }
+                        </div>
+                      </>
+                    )}
               </div>
             </div>,
             anchorElementRef.current,
