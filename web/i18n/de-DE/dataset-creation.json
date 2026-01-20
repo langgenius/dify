@@ -35,7 +35,7 @@
   "stepOne.uploader.cancel": "Abbrechen",
   "stepOne.uploader.change": "Ändern",
   "stepOne.uploader.failed": "Hochladen fehlgeschlagen",
-  "stepOne.uploader.tip": "Unterstützt {{supportTypes}}. Maximal {{size}}MB pro Datei.",
+  "stepOne.uploader.tip": "Unterstützt {{supportTypes}}. Maximal {{batchCount}} Dateien pro Batch und {{size}} MB pro Datei. Insgesamt maximal {{totalCount}} Dateien.",
   "stepOne.uploader.title": "Textdatei hochladen",
   "stepOne.uploader.validation.count": "Mehrere Dateien nicht unterstützt",
   "stepOne.uploader.validation.filesNumber": "Sie haben das Limit für die Stapelverarbeitung von {{filesNumber}} erreicht.",
