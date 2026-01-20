@@ -72,7 +72,6 @@ const ChatWrapper = () => {
     chatList,
     handleSend,
     handleStop,
-    handleResume,
     handleSwitchSibling,
     isResponding: respondingState,
     suggestedQuestions,
@@ -158,9 +157,8 @@ const ChatWrapper = () => {
 
     // Only resume the last paused workflow
     if (lastPausedNode) {
-      handleResume(
+      handleSwitchSibling(
         lastPausedNode.id,
-        lastPausedNode.workflow_run_id!,
         {
           onGetSuggestedQuestions: responseItemId => fetchSuggestedQuestions(responseItemId, isInstalledApp, appId),
           onConversationComplete: currentConversationId ? undefined : handleNewConversationCompleted,

@@ -2,6 +2,7 @@ import type { FileEntity } from '../../file-uploader/types'
 import type {
   ChatConfig,
   ChatItem,
+  ChatItemInTree,
   OnSend,
 } from '../types'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -128,6 +129,40 @@ const ChatWrapper = () => {
     setIsResponding(respondingState)
   }, [respondingState, setIsResponding])
 
+  // Resume paused workflows when chat history is loaded
+  useEffect(() => {
+    if (!appPrevChatList || appPrevChatList.length === 0)
+      return
+
+    // Find the last answer item with workflow_run_id that needs resumption (DFS - find deepest first)
+    let lastPausedNode: ChatItemInTree | undefined
+    const findLastPausedWorkflow = (nodes: ChatItemInTree[]) => {
+      nodes.forEach((node) => {
+        // DFS: recurse to children first
+        if (node.children && node.children.length > 0)
+          findLastPausedWorkflow(node.children)
+
+        // Track the last node with humanInputFormDataList
+        if (node.isAnswer && node.workflow_run_id && node.humanInputFormDataList && node.humanInputFormDataList.length > 0)
+          lastPausedNode = node
+      })
+    }
+
+    findLastPausedWorkflow(appPrevChatList)
+
+    // Only resume the last paused workflow
+    if (lastPausedNode) {
+      handleSwitchSibling(
+        lastPausedNode.id,
+        {
+          onGetSuggestedQuestions: responseItemId => fetchSuggestedQuestions(responseItemId, isInstalledApp, appId),
+          onConversationComplete: currentConversationId ? undefined : handleNewConversationCompleted,
+          isPublicAPI: !isInstalledApp,
+        },
+      )
+    }
+  }, [])
+
   const doSend: OnSend = useCallback((message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
     const data: any = {
       query: message,
@@ -157,8 +192,10 @@ const ChatWrapper = () => {
   const doSwitchSibling = useCallback((siblingMessageId: string) => {
     handleSwitchSibling(siblingMessageId, {
       onGetSuggestedQuestions: responseItemId => fetchSuggestedQuestions(responseItemId, isInstalledApp, appId),
+      onConversationComplete: currentConversationId ? undefined : handleNewConversationCompleted,
+      isPublicAPI: !isInstalledApp,
     })
-  }, [handleSwitchSibling, isInstalledApp, appId])
+  }, [handleSwitchSibling, isInstalledApp, appId, currentConversationId, handleNewConversationCompleted])
 
   const messageList = useMemo(() => {
     if (currentConversationId || chatList.length > 1)
