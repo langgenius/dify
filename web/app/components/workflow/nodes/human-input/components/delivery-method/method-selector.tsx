@@ -29,11 +29,13 @@ const i18nPrefix = 'nodes.humanInput'
 type MethodSelectorProps = {
   data: DeliveryMethod[]
   onAdd: (method: DeliveryMethod) => void
+  onShowUpgradeTip: () => void
 }
 
 const MethodSelector: FC<MethodSelectorProps> = ({
   data,
   onAdd,
+  onShowUpgradeTip,
 }) => {
   const { t } = useTranslation()
   const [open, doSetOpen] = useState(false)
@@ -102,10 +104,14 @@ const MethodSelector: FC<MethodSelectorProps> = ({
             <div
               className={cn(
                 'relative flex cursor-pointer items-center gap-1 rounded-lg p-1 pl-3 hover:bg-state-base-hover',
-                (emailDeliveryInfo.noPermission || emailDeliveryInfo.added) && 'cursor-not-allowed bg-transparent hover:bg-transparent',
+                emailDeliveryInfo.added && 'cursor-not-allowed bg-transparent hover:bg-transparent',
               )}
               onClick={() => {
-                if (emailDeliveryInfo.noPermission || emailDeliveryInfo.added)
+                if (emailDeliveryInfo.noPermission) {
+                  onShowUpgradeTip()
+                  return
+                }
+                if (emailDeliveryInfo.added)
                   return
                 onAdd({
                   id: uuid4(),
@@ -117,20 +123,17 @@ const MethodSelector: FC<MethodSelectorProps> = ({
               <div
                 className={cn(
                   'rounded-[4px] border border-divider-regular bg-components-icon-bg-blue-solid p-1',
-                  (emailDeliveryInfo.noPermission || emailDeliveryInfo.added) && 'opacity-50',
+                  emailDeliveryInfo.added && 'opacity-50',
                 )}
               >
                 <RiMailSendFill className="h-4 w-4 text-text-primary-on-surface" />
               </div>
-              <div className={cn('p-1', (emailDeliveryInfo.noPermission || emailDeliveryInfo.added) && 'opacity-50')}>
+              <div className={cn('p-1', emailDeliveryInfo.added && 'opacity-50')}>
                 <div className="system-sm-medium mb-0.5 truncate text-text-primary">{t(`${i18nPrefix}.deliveryMethod.types.email.title`, { ns: 'workflow' })}</div>
                 <div className="system-xs-regular truncate text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.types.email.description`, { ns: 'workflow' })}</div>
               </div>
               {emailDeliveryInfo.added && (
                 <div className="system-xs-regular absolute right-[12px] top-[13px] text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.added`, { ns: 'workflow' })}</div>
-              )}
-              {emailDeliveryInfo.noPermission && (
-                <div className="system-xs-regular absolute right-[12px] top-[13px] text-text-tertiary">Upgrade</div>
               )}
             </div>
             {/* Slack */}

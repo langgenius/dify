@@ -61,7 +61,7 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
     })
   }
 
-  const handleConfigChange = (config: any) => {
+  const handleConfigChange = (config: EmailConfig) => {
     onChange({
       ...method,
       config,

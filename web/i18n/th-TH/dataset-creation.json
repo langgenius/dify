@@ -35,7 +35,7 @@
   "stepOne.uploader.cancel": "ยกเลิก",
   "stepOne.uploader.change": "เปลี่ยน",
   "stepOne.uploader.failed": "อัปโหลดล้มเหลว",
-  "stepOne.uploader.tip": "รองรับ {{supportTypes}} สูงสุด {{size}}MB แต่ละตัว",
+  "stepOne.uploader.tip": "รองรับ {{supportTypes}} สูงสุด {{batchCount}} ไฟล์ต่อชุดและ {{size}} MB แต่ละไฟล์ รวมสูงสุด {{totalCount}} ไฟล์",
   "stepOne.uploader.title": "อัปโหลดไฟล์",
   "stepOne.uploader.validation.count": "ไม่รองรับหลายไฟล์",
   "stepOne.uploader.validation.filesNumber": "คุณถึงขีดจํากัดการอัปโหลดเป็นชุดของ {{filesNumber}} แล้ว",

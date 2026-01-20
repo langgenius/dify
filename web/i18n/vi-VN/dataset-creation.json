@@ -35,7 +35,7 @@
   "stepOne.uploader.cancel": "Hủy",
   "stepOne.uploader.change": "Thay đổi",
   "stepOne.uploader.failed": "Tải lên thất bại",
-  "stepOne.uploader.tip": "Hỗ trợ {{supportTypes}}. Tối đa {{size}}MB mỗi tệp.",
+  "stepOne.uploader.tip": "Hỗ trợ {{supportTypes}}. Tối đa {{batchCount}} tệp trong một lô và {{size}} MB mỗi tệp. Tổng tối đa {{totalCount}} tệp.",
   "stepOne.uploader.title": "Tải lên tệp văn bản",
   "stepOne.uploader.validation.count": "Không hỗ trợ tải lên nhiều tệp",
   "stepOne.uploader.validation.filesNumber": "Bạn đã đạt đến giới hạn tải lên lô của {{filesNumber}} tệp.",
