@@ -2,7 +2,7 @@ import re
 from collections.abc import Mapping, Sequence
 from typing import Annotated, Any, Literal, TypeAlias
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
 from core.agent.entities import AgentLog, AgentResult
 from core.file import File
@@ -96,6 +96,12 @@ class ModelTraceSegment(BaseModel):
     reasoning: str | None = Field(None, description="Reasoning/thought content from model")
     tool_calls: list[ToolCall] = Field(default_factory=list, description="Tool calls made by the model")
 
+    @field_serializer("tool_calls")
+    @classmethod
+    def serialize_tool_calls(cls, tool_calls: list[ToolCall]) -> list[dict[str, Any]]:
+        """Serialize tool_calls excluding icon fields."""
+        return [tc.model_dump(exclude={"icon", "icon_dark"}) for tc in tool_calls]
+
 
 class ToolTraceSegment(BaseModel):
     """Tool invocation trace segment with call details and result."""
@@ -124,8 +130,8 @@ class LLMTraceSegment(BaseModel):
     # Common metadata for both model and tool segments
     provider: str | None = Field(default=None, description="Model or tool provider identifier")
     name: str | None = Field(default=None, description="Name of the model or tool")
-    icon: str | None = Field(default=None, description="Icon for the provider")
-    icon_dark: str | None = Field(default=None, description="Dark theme icon for the provider")
+    icon: str | dict[str, Any] | None = Field(default=None, description="Icon for the provider")
+    icon_dark: str | dict[str, Any] | None = Field(default=None, description="Dark theme icon for the provider")
     error: str | None = Field(default=None, description="Error message if segment failed")
     status: Literal["success", "error"] | None = Field(default=None, description="Tool execution status")
 

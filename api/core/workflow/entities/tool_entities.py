@@ -1,4 +1,5 @@
 from enum import StrEnum
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -25,8 +26,8 @@ class ToolResult(BaseModel):
     files: list[str] = Field(default_factory=list, description="File produced by tool")
     status: ToolResultStatus | None = Field(default=ToolResultStatus.SUCCESS, description="Tool execution status")
     elapsed_time: float | None = Field(default=None, description="Elapsed seconds spent executing the tool")
-    icon: str | dict | None = Field(default=None, description="Icon of the tool")
-    icon_dark: str | dict | None = Field(default=None, description="Dark theme icon of the tool")
+    icon: str | dict[str, Any] | None = Field(default=None, description="Icon of the tool")
+    icon_dark: str | dict[str, Any] | None = Field(default=None, description="Dark theme icon of the tool")
 
 
 class ToolCallResult(BaseModel):
