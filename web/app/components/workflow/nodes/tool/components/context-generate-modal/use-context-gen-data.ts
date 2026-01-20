@@ -26,9 +26,15 @@ const useContextGenData = ({ storageKey }: Params) => {
     })
   }, [setCurrentVersionIndex, setVersions, versions?.length])
 
+  const clearVersions = useCallback(() => {
+    setVersions([])
+    setCurrentVersionIndex(0)
+  }, [setCurrentVersionIndex, setVersions])
+
   return {
     versions,
     addVersion,
+    clearVersions,
     currentVersionIndex,
     setCurrentVersionIndex,
     current,

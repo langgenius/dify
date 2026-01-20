@@ -51,15 +51,19 @@ const VersionSelector: React.FC<VersionSelectorProps> = ({ versionLen, value, on
         onClick={handleToggle}
         asChild
       >
-
-        <div className={cn('system-xs-medium flex items-center text-text-tertiary', isOpen && 'text-text-secondary', moreThanOneVersion && 'cursor-pointer')}>
+        <div className={cn(
+          'system-xs-medium flex items-center text-text-tertiary',
+          isOpen && 'text-text-secondary',
+          moreThanOneVersion && 'cursor-pointer',
+        )}
+        >
           <div>
             {t('generate.version', { ns: 'appDebug' })}
             {' '}
             {value + 1}
             {isLatest && ` · ${t('generate.latest', { ns: 'appDebug' })}`}
           </div>
-          {moreThanOneVersion && <RiArrowDownSLine className="size-3 " />}
+          {moreThanOneVersion && <RiArrowDownSLine className="size-3" />}
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className={cn(

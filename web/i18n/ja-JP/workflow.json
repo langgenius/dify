@@ -775,6 +775,7 @@
   "nodes.tool.contextGenerate.inputPlaceholder": "変更を依頼...",
   "nodes.tool.contextGenerate.output": "出力",
   "nodes.tool.contextGenerate.resizeHandle": "サイズ調整ハンドル",
+  "nodes.tool.contextGenerate.rightSidePlaceholder": "左側に指示を入力してください。生成されたコードがここに表示されます。",
   "nodes.tool.contextGenerate.run": "実行",
   "nodes.tool.contextGenerate.title": "変数を組み立てる",
   "nodes.tool.inputVars": "入力変数",
