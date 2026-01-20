@@ -51,6 +51,9 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: [
       '@heroicons/react',
+      '@remixicon/react',
+      '@lexical/react',
+      'lexical',
     ],
   },
   // fix all before production. Now it slow the develop speed.
