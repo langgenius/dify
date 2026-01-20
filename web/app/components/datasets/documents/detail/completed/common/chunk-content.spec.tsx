@@ -1,15 +1,23 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ChunkingMode } from '@/models/datasets'
 import ChunkContent from './chunk-content'
 
 // Mock ResizeObserver
+const OriginalResizeObserver = globalThis.ResizeObserver
 class MockResizeObserver {
   observe = vi.fn()
   disconnect = vi.fn()
   unobserve = vi.fn()
 }
-globalThis.ResizeObserver = MockResizeObserver as typeof ResizeObserver
+
+beforeAll(() => {
+  globalThis.ResizeObserver = MockResizeObserver as typeof ResizeObserver
+})
+
+afterAll(() => {
+  globalThis.ResizeObserver = OriginalResizeObserver
+})
 
 describe('ChunkContent', () => {
   beforeEach(() => {

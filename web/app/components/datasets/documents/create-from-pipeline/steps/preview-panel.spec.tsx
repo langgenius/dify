@@ -4,6 +4,7 @@ import type { NotionPage } from '@/models/common'
 import type { CrawlResultItem, CustomFile, FileIndexingEstimateResponse, FileItem } from '@/models/datasets'
 import type { OnlineDriveFile } from '@/models/pipeline'
 import { render, screen } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DatasourceType } from '@/models/pipeline'
 import { StepOnePreview, StepTwoPreview } from './preview-panel'
 

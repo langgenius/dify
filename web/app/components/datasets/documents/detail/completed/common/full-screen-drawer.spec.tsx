@@ -1,10 +1,11 @@
+import type { ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import FullScreenDrawer from './full-screen-drawer'
 
 // Mock the Drawer component since it has high complexity
 vi.mock('./drawer', () => ({
-  default: ({ children, open, panelClassName, panelContentClassName, showOverlay, needCheckChunks, modal }: { children: React.ReactNode, open: boolean, panelClassName: string, panelContentClassName: string, showOverlay: boolean, needCheckChunks: boolean, modal: boolean }) => {
+  default: ({ children, open, panelClassName, panelContentClassName, showOverlay, needCheckChunks, modal }: { children: ReactNode, open: boolean, panelClassName: string, panelContentClassName: string, showOverlay: boolean, needCheckChunks: boolean, modal: boolean }) => {
     if (!open)
       return null
     return (

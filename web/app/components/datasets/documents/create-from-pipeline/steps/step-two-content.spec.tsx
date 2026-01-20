@@ -1,5 +1,6 @@
 import type { RefObject } from 'react'
 import { render, screen } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import StepTwoContent from './step-two-content'
 
 // Mock ProcessDocuments component as it has complex hook dependencies

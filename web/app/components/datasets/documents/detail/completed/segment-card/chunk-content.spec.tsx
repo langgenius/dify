@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
 import { noop } from 'es-toolkit/function'
 import { createContext, useContextSelector } from 'use-context-selector'
@@ -31,7 +32,7 @@ vi.mock('..', () => ({
 
 // Helper to create wrapper with context
 const createWrapper = (isCollapsed: boolean = true) => {
-  return ({ children }: { children: React.ReactNode }) => (
+  return ({ children }: { children: ReactNode }) => (
     <MockSegmentListContext.Provider
       value={{
         isCollapsed,

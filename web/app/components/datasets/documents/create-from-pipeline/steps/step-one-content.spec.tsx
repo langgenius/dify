@@ -2,6 +2,7 @@ import type { Datasource } from '@/app/components/rag-pipeline/components/panel/
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { Node } from '@/app/components/workflow/types'
 import { render, screen } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DatasourceType } from '@/models/pipeline'
 import StepOneContent from './step-one-content'
 

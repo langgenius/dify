@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Plan } from '@/app/components/billing/type'
@@ -31,7 +32,7 @@ vi.mock('@/app/components/billing/plan-upgrade-modal', () => ({
 
 // Mock Popover
 vi.mock('@/app/components/base/popover', () => ({
-  default: ({ htmlContent, btnElement, disabled }: { htmlContent: React.ReactNode, btnElement: React.ReactNode, disabled?: boolean }) => (
+  default: ({ htmlContent, btnElement, disabled }: { htmlContent: ReactNode, btnElement: ReactNode, disabled?: boolean }) => (
     <div data-testid="popover">
       <button data-testid="popover-btn" disabled={disabled}>
         {btnElement}

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { LanguagesSupported } from '@/i18n-config/language'
@@ -12,7 +13,7 @@ vi.mock('@/context/i18n', () => ({
 }))
 
 // Mock react-papaparse
-const MockCSVDownloader = ({ children, data, filename, type }: { children: React.ReactNode, data: unknown, filename: string, type: string }) => (
+const MockCSVDownloader = ({ children, data, filename, type }: { children: ReactNode, data: unknown, filename: string, type: string }) => (
   <div
     data-testid="csv-downloader-link"
     data-filename={filename}

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { EventEmitterContextProvider } from '@/context/event-emitter'
@@ -5,7 +6,7 @@ import RegenerationModal from './regeneration-modal'
 
 // Create a wrapper component with event emitter context
 const createWrapper = () => {
-  return ({ children }: { children: React.ReactNode }) => (
+  return ({ children }: { children: ReactNode }) => (
     <EventEmitterContextProvider>
       {children}
     </EventEmitterContextProvider>

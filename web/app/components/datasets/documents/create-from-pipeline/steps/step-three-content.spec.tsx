@@ -1,5 +1,6 @@
 import type { InitialDocumentDetail } from '@/models/pipeline'
 import { render, screen } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import StepThreeContent from './step-three-content'
 
 // Mock context hooks used by Processing component

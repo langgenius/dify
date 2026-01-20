@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { CustomFile, FileItem } from '@/models/datasets'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -27,8 +28,8 @@ vi.mock('@/hooks/use-theme', () => ({
 const mockNotify = vi.fn()
 vi.mock('@/app/components/base/toast', () => ({
   ToastContext: {
-    Provider: ({ children }: { children: React.ReactNode }) => children,
-    Consumer: ({ children }: { children: (ctx: { notify: typeof mockNotify }) => React.ReactNode }) => children({ notify: mockNotify }),
+    Provider: ({ children }: { children: ReactNode }) => children,
+    Consumer: ({ children }: { children: (ctx: { notify: typeof mockNotify }) => ReactNode }) => children({ notify: mockNotify }),
   },
 }))
 
