@@ -361,8 +361,8 @@ class DatasetDocumentListApi(Resource):
             for doc_id in document_ids_need_summary:
                 segment_ids = document_segments_map.get(doc_id, [])
                 if not segment_ids:
-                    # No segments, status is "GENERATING" (waiting to generate)
-                    summary_status_map[doc_id] = "GENERATING"
+                    # No segments, status is None (not started)
+                    summary_status_map[doc_id] = None
                     continue
 
                 # Count summary statuses for this document's segments
@@ -374,28 +374,23 @@ class DatasetDocumentListApi(Resource):
                     else:
                         status_counts["not_started"] += 1
 
-                total_segments = len(segment_ids)
-                completed_count = status_counts["completed"]
                 generating_count = status_counts["generating"]
-                error_count = status_counts["error"]
 
-                # Determine overall status (only three states: GENERATING, COMPLETED, ERROR)
-                if completed_count == total_segments:
-                    summary_status_map[doc_id] = "COMPLETED"
-                elif error_count > 0:
-                    # Has errors (even if some are completed or generating)
-                    summary_status_map[doc_id] = "ERROR"
-                elif generating_count > 0 or status_counts["not_started"] > 0:
-                    # Still generating or not started
-                    summary_status_map[doc_id] = "GENERATING"
+                # Determine overall status:
+                # - "SUMMARIZING" only when task is queued and at least one summary is generating
+                # - None (empty) for all other cases (not queued, all completed/error)
+                if generating_count > 0:
+                    # Task is queued and at least one summary is still generating
+                    summary_status_map[doc_id] = "SUMMARIZING"
                 else:
-                    # Default to generating
-                    summary_status_map[doc_id] = "GENERATING"
+                    # Task not queued yet, or all summaries are completed/error (task finished)
+                    summary_status_map[doc_id] = None
 
         # Add summary_index_status to each document
         for document in documents:
             if has_summary_index and document.need_summary is True:
-                document.summary_index_status = summary_status_map.get(str(document.id), "GENERATING")
+                # Get status from map, default to None (not queued yet)
+                document.summary_index_status = summary_status_map.get(str(document.id))
             else:
                 # Return null if summary index is not enabled or document doesn't need summary
                 document.summary_index_status = None

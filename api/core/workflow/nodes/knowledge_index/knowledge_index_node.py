@@ -356,19 +356,9 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
             def generate_summary_for_chunk(preview_item: dict) -> None:
                 """Generate summary for a single chunk."""
                 if "content" in preview_item:
-                    try:
-                        # Set Flask application context in worker thread
-                        if flask_app:
-                            with flask_app.app_context():
-                                summary = ParagraphIndexProcessor.generate_summary(
-                                    tenant_id=dataset.tenant_id,
-                                    text=preview_item["content"],
-                                    summary_index_setting=summary_index_setting,
-                                )
-                                if summary:
-                                    preview_item["summary"] = summary
-                        else:
-                            # Fallback: try without app context (may fail)
+                    # Set Flask application context in worker thread
+                    if flask_app:
+                        with flask_app.app_context():
                             summary = ParagraphIndexProcessor.generate_summary(
                                 tenant_id=dataset.tenant_id,
                                 text=preview_item["content"],
@@ -376,13 +366,21 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
                             )
                             if summary:
                                 preview_item["summary"] = summary
-                    except Exception:
-                        logger.exception("Failed to generate summary for chunk")
-                        # Don't fail the entire preview if summary generation fails
+                    else:
+                        # Fallback: try without app context (may fail)
+                        summary = ParagraphIndexProcessor.generate_summary(
+                            tenant_id=dataset.tenant_id,
+                            text=preview_item["content"],
+                            summary_index_setting=summary_index_setting,
+                        )
+                        if summary:
+                            preview_item["summary"] = summary
 
             # Generate summaries concurrently using ThreadPoolExecutor
             # Set a reasonable timeout to prevent hanging (60 seconds per chunk, max 5 minutes total)
             timeout_seconds = min(300, 60 * len(preview_output["preview"]))
+            errors: list[Exception] = []
+            
             with concurrent.futures.ThreadPoolExecutor(max_workers=min(10, len(preview_output["preview"]))) as executor:
                 futures = [
                     executor.submit(generate_summary_for_chunk, preview_item)
@@ -393,16 +391,36 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
 
                 # Cancel tasks that didn't complete in time
                 if not_done:
-                    logger.warning(
-                        "Summary generation timeout: %s chunks did not complete within %ss. "
-                        "Cancelling remaining tasks...",
-                        len(not_done),
-                        timeout_seconds,
+                    timeout_error_msg = (
+                        f"Summary generation timeout: {len(not_done)} chunks did not complete within {timeout_seconds}s"
                     )
+                    logger.warning("%s. Cancelling remaining tasks...", timeout_error_msg)
+                    # In preview mode, timeout is also an error
+                    errors.append(TimeoutError(timeout_error_msg))
                     for future in not_done:
                         future.cancel()
                     # Wait a bit for cancellation to take effect
                     concurrent.futures.wait(not_done, timeout=5)
+
+                # Collect exceptions from completed futures
+                for future in done:
+                    try:
+                        future.result()  # This will raise any exception that occurred
+                    except Exception as e:
+                        logger.exception("Error in summary generation future")
+                        errors.append(e)
+
+            # In preview mode, if there are any errors, fail the request
+            if errors:
+                error_messages = [str(e) for e in errors]
+                error_summary = (
+                    f"Failed to generate summaries for {len(errors)} chunk(s). "
+                    f"Errors: {'; '.join(error_messages[:3])}"  # Show first 3 errors
+                )
+                if len(errors) > 3:
+                    error_summary += f" (and {len(errors) - 3} more)"
+                logger.error("Summary generation failed in preview mode: %s", error_summary)
+                raise KnowledgeIndexNodeError(error_summary)
 
             completed_count = sum(1 for item in preview_output["preview"] if item.get("summary") is not None)
             logger.info(

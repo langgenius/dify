@@ -437,17 +437,17 @@ class SummaryIndexService:
         """
         Enable summary records and re-add vectors to vector database for segments.
 
+        Note: This method enables summaries based on chunk status, not summary_index_setting.enable.
+        The summary_index_setting.enable flag only controls automatic generation,
+        not whether existing summaries can be used.
+        Summary.enabled should always be kept in sync with chunk.enabled.
+
         Args:
             dataset: Dataset containing the segments
             segment_ids: List of segment IDs to enable summaries for. If None, enable all.
         """
         # Only enable summary index for high_quality indexing technique
         if dataset.indexing_technique != "high_quality":
-            return
-
-        # Check if summary index is enabled
-        summary_index_setting = dataset.summary_index_setting
-        if not summary_index_setting or not summary_index_setting.get("enable"):
             return
 
         query = db.session.query(DocumentSegmentSummary).filter_by(
@@ -483,6 +483,7 @@ class SummaryIndexService:
                 .first()
             )
 
+            # Summary.enabled stays in sync with chunk.enabled, only enable summary if the associated chunk is enabled.
             if not segment or not segment.enabled or segment.status != "completed":
                 continue
 
