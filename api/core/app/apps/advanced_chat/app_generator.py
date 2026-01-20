@@ -30,7 +30,6 @@ from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.prompt.utils.get_thread_messages_length import get_thread_messages_length
 from core.repositories import DifyCoreRepositoryFactory
-from core.sandbox.storage.archive_storage import ArchiveSandboxStorage
 from core.workflow.repositories.draft_variable_repository import (
     DraftVariableSaverFactory,
 )
@@ -525,11 +524,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                             app_id=application_generate_entity.app_config.app_id,
                             user_id=application_generate_entity.user_id,
                             workflow_version=workflow.version,
-                            sandbox_id=application_generate_entity.workflow_run_id,
-                            sandbox_storage=ArchiveSandboxStorage(
-                                tenant_id=application_generate_entity.app_config.tenant_id,
-                                sandbox_id=application_generate_entity.workflow_run_id,
-                            ),
+                            workflow_execution_id=application_generate_entity.workflow_run_id,
                         ),
                     )
 

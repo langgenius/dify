@@ -23,6 +23,7 @@ from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.models.document import Document
+from core.sandbox.vm import SandboxBuilder, SandboxType
 from core.tools.utils.system_encryption import encrypt_system_params
 from events.app_event import app_was_created
 from extensions.ext_database import db
@@ -1508,7 +1509,6 @@ def setup_sandbox_system_config(provider_type: str, config: str):
         flask setup-sandbox-system-config --provider-type local --config '{}'
     """
     from models.sandbox import SandboxProviderSystemConfig
-    from services.sandbox.sandbox_provider_service import PROVIDER_CONFIG_MODELS
 
     try:
         click.echo(click.style(f"Validating config: {config}", fg="yellow"))
@@ -1516,9 +1516,7 @@ def setup_sandbox_system_config(provider_type: str, config: str):
         click.echo(click.style("Config validated successfully.", fg="green"))
 
         click.echo(click.style(f"Validating config schema for provider type: {provider_type}", fg="yellow"))
-        model_class = PROVIDER_CONFIG_MODELS.get(provider_type)
-        if model_class:
-            model_class.model_validate(config_dict)
+        SandboxBuilder.validate(SandboxType(provider_type), config_dict)
         click.echo(click.style("Config schema validated successfully.", fg="green"))
 
         click.echo(click.style("Encrypting config...", fg="yellow"))

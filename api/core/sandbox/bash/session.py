@@ -8,7 +8,7 @@ from types import TracebackType
 from core.session.cli_api import CliApiSessionManager
 from core.skill.entities.tool_artifact import ToolArtifact
 from core.skill.skill_manager import SkillManager
-from core.virtual_environment.__base.helpers import execute, with_connection
+from core.virtual_environment.__base.helpers import pipeline
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 
 from ..bash.dify_cli import DifyCliConfig
@@ -73,63 +73,47 @@ class SandboxBashSession:
         node_id: str,
         allow_tools: list[tuple[str, str]],
     ) -> str | None:
-        with with_connection(sandbox) as conn:
-            artifact: ToolArtifact | None = SkillManager.load_tool_artifact(
-                self._tenant_id,
-                self._app_id,
-                self._assets_id,
-            )
+        artifact: ToolArtifact | None = SkillManager.load_tool_artifact(
+            self._tenant_id,
+            self._app_id,
+            self._assets_id,
+        )
 
-            if artifact is None or artifact.is_empty():
-                logger.info("No tools found in artifact for assets_id=%s", self._assets_id)
-                return None
+        if artifact is None or artifact.is_empty():
+            logger.info("No tools found in artifact for assets_id=%s", self._assets_id)
+            return None
 
-            artifact = artifact.filter(allow_tools)
-            if artifact.is_empty():
-                logger.info("No tools found in artifact for assets_id=%s", self._assets_id)
-                return None
+        artifact = artifact.filter(allow_tools)
+        if artifact.is_empty():
+            logger.info("No tools found in artifact for assets_id=%s", self._assets_id)
+            return None
 
-            self._cli_api_session = CliApiSessionManager().create(tenant_id=self._tenant_id, user_id=self._user_id)
+        self._cli_api_session = CliApiSessionManager().create(tenant_id=self._tenant_id, user_id=self._user_id)
+        node_tools_path = f"{DIFY_CLI_TOOLS_ROOT}/{node_id}"
 
-            execute(
-                sandbox,
-                ["mkdir", "-p", DIFY_CLI_GLOBAL_TOOLS_PATH],
-                connection=conn,
-                error_message="Failed to create Dify CLI global tools directory",
-            )
+        (
+            pipeline(sandbox)
+            .add(["mkdir", "-p", DIFY_CLI_GLOBAL_TOOLS_PATH], error_message="Failed to create global tools dir")
+            .add(["mkdir", "-p", node_tools_path], error_message="Failed to create node tools dir")
+            .execute(raise_on_error=True)
+        )
 
-            execute(
-                sandbox,
-                ["mkdir", "-p", f"{DIFY_CLI_TOOLS_ROOT}/{node_id}"],
-                connection=conn,
-                error_message="Failed to create Dify CLI node tools directory",
-            )
+        config_json = json.dumps(
+            DifyCliConfig.create(
+                session=self._cli_api_session, tenant_id=self._tenant_id, artifact=artifact
+            ).model_dump(mode="json"),
+            ensure_ascii=False,
+        )
+        sandbox.upload_file(f"{node_tools_path}/{DIFY_CLI_CONFIG_FILENAME}", BytesIO(config_json.encode("utf-8")))
 
-            config_json = json.dumps(
-                DifyCliConfig.create(
-                    session=self._cli_api_session, tenant_id=self._tenant_id, artifact=artifact
-                ).model_dump(mode="json"),
-                ensure_ascii=False,
-            )
-            sandbox.upload_file(
-                f"{DIFY_CLI_TOOLS_ROOT}/{node_id}/{DIFY_CLI_CONFIG_FILENAME}", BytesIO(config_json.encode("utf-8"))
-            )
+        pipeline(sandbox, cwd=node_tools_path).add(
+            [DIFY_CLI_PATH, "init"], error_message="Failed to initialize Dify CLI"
+        ).execute(raise_on_error=True)
 
-            execute(
-                sandbox,
-                [DIFY_CLI_PATH, "init"],
-                connection=conn,
-                cwd=f"{DIFY_CLI_TOOLS_ROOT}/{node_id}",
-                error_message="Failed to initialize Dify CLI",
-            )
-
-            logger.info(
-                "Node %s tools initialized, path=%s, tool_count=%d",
-                node_id,
-                f"{DIFY_CLI_TOOLS_ROOT}/{node_id}",
-                len(artifact.references),
-            )
-            return f"{DIFY_CLI_TOOLS_ROOT}/{node_id}"
+        logger.info(
+            "Node %s tools initialized, path=%s, tool_count=%d", node_id, node_tools_path, len(artifact.references)
+        )
+        return node_tools_path
 
     def __exit__(
         self,

@@ -44,6 +44,16 @@ class FilePresignStorage(BaseStorage):
         except NotImplementedError:
             return self._generate_signed_proxy_url(filename)
 
+    def get_upload_url(self, filename: str, expires_in: int = 3600) -> str:
+        try:
+            return self._storage.get_upload_url(filename, expires_in)
+        except NotImplementedError:
+            return self._generate_signed_upload_url(filename)
+
+    def _generate_signed_upload_url(self, filename: str) -> str:
+        # TODO: Implement this
+        raise NotImplementedError("This storage backend doesn't support pre-signed URLs")
+
     def _generate_signed_proxy_url(self, filename: str) -> str:
         base_url = dify_config.FILES_URL
         encoded_filename = urllib.parse.quote(filename, safe="")

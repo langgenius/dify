@@ -57,3 +57,12 @@ class BaseStorage(ABC):
             NotImplementedError: If this storage backend doesn't support pre-signed URLs
         """
         raise NotImplementedError("This storage backend doesn't support pre-signed URLs")
+
+    def get_upload_url(self, filename: str, expires_in: int = 3600) -> str:
+        """
+        Generate a pre-signed URL for uploading a file.
+
+        Storage backends that support pre-signed URLs (e.g., S3, Azure Blob, GCS)
+        should override this method to return a direct upload URL.
+        """
+        raise NotImplementedError("This storage backend doesn't support pre-signed URLs")

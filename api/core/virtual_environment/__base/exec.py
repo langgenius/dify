@@ -33,6 +33,8 @@ class SandboxConfigValidationError(ValueError):
 class CommandExecutionError(Exception):
     """Raised when a command execution fails."""
 
+    result: CommandResult
+
     def __init__(self, message: str, result: CommandResult):
         super().__init__(message)
         self.result = result
@@ -44,3 +46,19 @@ class CommandExecutionError(Exception):
     @property
     def stderr(self) -> bytes:
         return self.result.stderr
+
+
+class PipelineExecutionError(CommandExecutionError):
+    """Raised when a pipeline command fails in strict mode."""
+
+    index: int
+    command: list[str]
+    results: list[CommandResult]
+
+    def __init__(
+        self, message: str, result: CommandResult, *, index: int, command: list[str], results: list[CommandResult]
+    ):
+        super().__init__(message, result)
+        self.index = index
+        self.command = command
+        self.results = results

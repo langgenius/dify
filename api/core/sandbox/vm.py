@@ -102,6 +102,10 @@ class SandboxBuilder:
         vm_class = _get_sandbox_class(vm_type)
         vm_class.validate(options)
 
+    @classmethod
+    def draft_id(cls, user_id: str) -> str:
+        return f"sandbox_draft_{user_id}"
+
 
 class VMConfig:
     @staticmethod

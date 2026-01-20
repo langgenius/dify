@@ -15,6 +15,8 @@ from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.file import File
 from core.repositories import DifyCoreRepositoryFactory
 from core.sandbox import SandboxManager
+from core.sandbox.storage.archive_storage import ArchiveSandboxStorage
+from core.sandbox.storage.sandbox_storage import SandboxStorage
 from core.variables import Variable, VariableBase
 from core.workflow.entities import WorkflowNodeExecution
 from core.workflow.enums import ErrorStrategy, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
@@ -704,7 +706,7 @@ class WorkflowService:
             from core.sandbox import AppAssetsInitializer, DifyCliInitializer
             from services.app_asset_service import AppAssetService
 
-            assets = AppAssetService.get_assets(draft_workflow.tenant_id, app_model.id, is_draft=True)
+            assets = AppAssetService.get_or_create_assets(draft_workflow.tenant_id, app_model.id, is_draft=True)
             if not assets:
                 raise ValueError(f"No assets found for tid={draft_workflow.tenant_id}, app_id={app_model.id}")
 
@@ -715,6 +717,7 @@ class WorkflowService:
                 SandboxProviderService.create_sandbox_builder(draft_workflow.tenant_id)
                 .initializer(DifyCliInitializer(draft_workflow.tenant_id, account.id, app_model.id, assets.id))
                 .initializer(AppAssetsInitializer(draft_workflow.tenant_id, app_model.id, assets.id))
+                .storage(ArchiveSandboxStorage(draft_workflow.tenant_id, SandboxStorage.draft_id(account.id)))
                 .build()
             )
             single_step_execution_id = f"single-step-{uuid.uuid4()}"

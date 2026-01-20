@@ -62,14 +62,24 @@ class AppAssetService:
         return assets
 
     @staticmethod
-    def get_assets(tenant_id: str, app_id: str, *, is_draft: bool) -> AppAssets | None:
-        with Session(db.engine) as session:
+    def get_assets(tenant_id: str, app_id: str, user_id: str, *, is_draft: bool) -> AppAssets | None:
+        with Session(db.engine, expire_on_commit=False) as session:
             if is_draft:
                 stmt = session.query(AppAssets).filter(
                     AppAssets.tenant_id == tenant_id,
                     AppAssets.app_id == app_id,
                     AppAssets.version == AppAssets.VERSION_DRAFT,
                 )
+                if not stmt.first():
+                    assets = AppAssets(
+                        id=str(uuid4()),
+                        tenant_id=tenant_id,
+                        app_id=app_id,
+                        version=AppAssets.VERSION_DRAFT,
+                        created_by=user_id,
+                    )
+                    session.add(assets)
+                    session.commit()
             else:
                 stmt = (
                     session.query(AppAssets)
@@ -308,7 +318,7 @@ class AppAssetService:
             parser = AssetParser(tree, tenant_id, app_id)
             parser.register(
                 "md",
-                SkillAssetParser(tenant_id, app_id, publish_id),
+                SkillAssetParser(tenant_id, app_id, publish_id, tree),
             )
 
             assets = parser.parse()

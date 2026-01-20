@@ -19,6 +19,7 @@ class AppAssets(Base):
     )
 
     VERSION_DRAFT = "draft"
+    VERSION_PUBLISHED = "published"
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
