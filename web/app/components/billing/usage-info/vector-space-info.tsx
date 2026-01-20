@@ -57,7 +57,6 @@ const VectorSpaceInfo: FC<Props> = ({
       storageMode
       storageThreshold={STORAGE_THRESHOLD_MB}
       storageTooltip={t('usagePage.storageThresholdTooltip', { ns: 'billing' }) as string}
-      storageTotalDisplay={`${totalInMB}MB`}
       isSandboxPlan={isSandbox}
     />
   )

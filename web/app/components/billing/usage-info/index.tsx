@@ -23,7 +23,6 @@ type Props = {
   storageMode?: boolean
   storageThreshold?: number
   storageTooltip?: string
-  storageTotalDisplay?: string // e.g., "5GB" or "50MB" for formatted display
   isSandboxPlan?: boolean
 }
 
@@ -44,7 +43,6 @@ const UsageInfo: FC<Props> = ({
   storageMode = false,
   storageThreshold = 50,
   storageTooltip,
-  storageTotalDisplay,
   isSandboxPlan = false,
 }) => {
   const { t } = useTranslation()
@@ -110,7 +108,6 @@ const UsageInfo: FC<Props> = ({
       }
       // Usage below threshold - show "< 50 MB" or "< 50 / 5GB"
       if (isBelowThreshold) {
-        const totalText = storageTotalDisplay || totalDisplay
         return (
           <div className="flex items-center gap-1">
             <span>
@@ -121,7 +118,7 @@ const UsageInfo: FC<Props> = ({
             {!isSandboxPlan && (
               <>
                 <span className="system-md-regular text-text-quaternary">/</span>
-                <span>{totalText}</span>
+                <span>{totalDisplay}</span>
               </>
             )}
             {isSandboxPlan && <span>{unit}</span>}
@@ -129,12 +126,11 @@ const UsageInfo: FC<Props> = ({
         )
       }
       // Pro/Team users with usage >= threshold - show actual usage
-      const totalText = storageTotalDisplay || totalDisplay
       return (
         <div className="flex items-center gap-1">
           <span>{usage}</span>
           <span className="system-md-regular text-text-quaternary">/</span>
-          <span>{totalText}</span>
+          <span>{totalDisplay}</span>
         </div>
       )
     }
@@ -149,6 +145,20 @@ const UsageInfo: FC<Props> = ({
     )
   }
 
+  const renderWithTooltip = (children: React.ReactNode) => {
+    if (storageMode && storageTooltip) {
+      return (
+        <Tooltip
+          popupContent={<div className="w-[200px]">{storageTooltip}</div>}
+          asChild={false}
+        >
+          <div className="cursor-default">{children}</div>
+        </Tooltip>
+      )
+    }
+    return children
+  }
+
   // Render progress bar with optional tooltip wrapper
   const renderProgressBar = () => {
     const progressBar = (
@@ -159,46 +169,14 @@ const UsageInfo: FC<Props> = ({
         indeterminateFull={isBelowThreshold && isSandboxPlan}
       />
     )
+    return renderWithTooltip(progressBar)
+  }
 
-    if (storageMode && storageTooltip) {
-      return (
-        <Tooltip
-          popupContent={(
-            <div className="w-[200px]">
-              {storageTooltip}
-            </div>
-          )}
-          asChild={false}
-        >
-          <div className="cursor-default">{progressBar}</div>
-        </Tooltip>
-      )
-    }
-
-    return progressBar
+  const renderUsageWithTooltip = () => {
+    return renderWithTooltip(renderUsageDisplay())
   }
 
   // Render usage text with optional tooltip wrapper
-  const renderUsageWithTooltip = () => {
-    const usageDisplay = renderUsageDisplay()
-
-    if (storageMode && storageTooltip) {
-      return (
-        <Tooltip
-          popupContent={(
-            <div className="w-[200px]">
-              {storageTooltip}
-            </div>
-          )}
-          asChild={false}
-        >
-          <div className="cursor-default">{usageDisplay}</div>
-        </Tooltip>
-      )
-    }
-
-    return usageDisplay
-  }
 
   return (
     <div className={cn('flex flex-col gap-2 rounded-xl bg-components-panel-bg p-4', className)}>

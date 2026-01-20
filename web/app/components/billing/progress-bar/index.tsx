@@ -18,10 +18,7 @@ const ProgressBar = ({
       <div className="overflow-hidden rounded-[6px] bg-components-progress-bar-bg">
         <div
           data-testid="billing-progress-bar-indeterminate"
-          className={cn('h-1 rounded-[6px]', indeterminateFull ? 'w-full' : 'w-[30px]')}
-          style={{
-            background: 'repeating-linear-gradient(-55deg, #D0D5DD, #D0D5DD 2px, transparent 2px, transparent 5px)',
-          }}
+          className={cn('h-1 rounded-[6px] bg-progress-bar-indeterminate-stripe', indeterminateFull ? 'w-full' : 'w-[30px]')}
         />
       </div>
     )
