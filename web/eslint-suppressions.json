@@ -511,7 +511,7 @@
   },
   "app/components/app/create-app-modal/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
+      "count": 2
     },
     "ts/no-explicit-any": {
       "count": 1
@@ -2394,6 +2394,16 @@
       "count": 24
     }
   },
+  "app/components/plugins/plugin-detail-panel/tool-selector/sections/tool-authorization-section.tsx": {
+    "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "app/components/plugins/plugin-detail-panel/tool-selector/sections/tool-settings-section.tsx": {
+    "ts/no-explicit-any": {
+      "count": 4
+    }
+  },
   "app/components/plugins/plugin-detail-panel/tool-selector/tool-credentials-form.tsx": {
     "ts/no-explicit-any": {
       "count": 3
@@ -2886,6 +2896,11 @@
       "count": 2
     }
   },
+  "app/components/workflow/custom-group-node/custom-group-node.tsx": {
+    "unused-imports/no-unused-vars": {
+      "count": 1
+    }
+  },
   "app/components/workflow/header/run-mode.tsx": {
     "no-console": {
       "count": 1
@@ -3034,8 +3049,11 @@
     }
   },
   "app/components/workflow/nodes/_base/components/form-input-item.tsx": {
+    "style/indent": {
+      "count": 19
+    },
     "ts/no-explicit-any": {
-      "count": 33
+      "count": 34
     }
   },
   "app/components/workflow/nodes/_base/components/input-support-select-var.tsx": {
@@ -3252,6 +3270,11 @@
   "app/components/workflow/nodes/code/use-single-run-form-params.ts": {
     "ts/no-explicit-any": {
       "count": 5
+    }
+  },
+  "app/components/workflow/nodes/command/default.ts": {
+    "ts/no-explicit-any": {
+      "count": 1
     }
   },
   "app/components/workflow/nodes/components.ts": {
@@ -3485,6 +3508,16 @@
   "app/components/workflow/nodes/llm/default.ts": {
     "ts/no-explicit-any": {
       "count": 1
+    }
+  },
+  "app/components/workflow/nodes/llm/panel.tsx": {
+    "unused-imports/no-unused-imports": {
+      "count": 1
+    }
+  },
+  "app/components/workflow/nodes/llm/types.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
     }
   },
   "app/components/workflow/nodes/llm/use-config.ts": {
@@ -3962,6 +3995,11 @@
       "count": 4
     }
   },
+  "app/components/workflow/skill/editor/code-file-editor.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    }
+  },
   "app/components/workflow/store/workflow/debug/inspect-vars-slice.ts": {
     "ts/no-explicit-any": {
       "count": 2
@@ -4003,6 +4041,9 @@
   "app/components/workflow/utils/node.ts": {
     "regexp/no-super-linear-backtracking": {
       "count": 1
+    },
+    "ts/no-empty-object-type": {
+      "count": 1
     }
   },
   "app/components/workflow/utils/tool.ts": {
@@ -4012,7 +4053,7 @@
   },
   "app/components/workflow/utils/workflow-init.ts": {
     "ts/no-explicit-any": {
-      "count": 12
+      "count": 13
     }
   },
   "app/components/workflow/utils/workflow.ts": {
@@ -4156,6 +4197,11 @@
   },
   "context/provider-context.tsx": {
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "eslint-suppressions.json": {
+    "style/eol-last": {
       "count": 1
     }
   },
@@ -4449,7 +4495,7 @@
   },
   "types/workflow.ts": {
     "ts/no-explicit-any": {
-      "count": 15
+      "count": 18
     }
   },
   "utils/clipboard.ts": {

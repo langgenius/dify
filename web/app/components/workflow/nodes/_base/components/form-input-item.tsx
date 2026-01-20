@@ -67,6 +67,7 @@ type VariableReferenceFieldsProps = {
   currentTool?: Tool | Event
   currentProvider?: ToolWithProvider | TriggerWithProvider
   isFilterFileVar?: boolean
+  toolNodeId?: string
 }
 
 const VariableReferenceFields: FC<VariableReferenceFieldsProps> = ({

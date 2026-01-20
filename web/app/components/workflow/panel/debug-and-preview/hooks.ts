@@ -286,7 +286,8 @@ export const useChat = (
           tool_error,
           tool_elapsed_time,
         }: any) => {
-          responseItem.content = responseItem.content + message
+          if (chunk_type === 'text')
+            responseItem.content = responseItem.content + message
 
           if (chunk_type === 'tool_call') {
             if (!responseItem.toolCalls)
