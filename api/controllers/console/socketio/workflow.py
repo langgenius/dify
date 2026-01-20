@@ -49,6 +49,8 @@ def socket_connect(sid, environ, auth):
             user = AccountService.load_logged_in_account(account_id=user_id)
             if not user:
                 return False
+            if not user.has_edit_permission:
+                return False
 
             collaboration_service.save_session(sid, user)
             return True
