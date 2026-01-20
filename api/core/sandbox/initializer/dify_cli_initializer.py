@@ -49,10 +49,6 @@ class DifyCliInitializer(SandboxInitializer):
 
         env.upload_file(DIFY_CLI_PATH, BytesIO(binary.path.read_bytes()))
 
-        pipeline(env).add(
-            ["chmod", "+x", DIFY_CLI_PATH], error_message="Failed to mark dify CLI as executable"
-        ).execute(raise_on_error=True)
-
         logger.info("Dify CLI uploaded to sandbox, path=%s", DIFY_CLI_PATH)
 
         artifact = SkillManager.load_tool_artifact(self._tenant_id, self._app_id, self._assets_id)

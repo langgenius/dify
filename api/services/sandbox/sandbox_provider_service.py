@@ -91,7 +91,9 @@ class SandboxProviderService:
 
         with Session(db.engine) as session:
             provider = _query_tenant_config(session, tenant_id, provider_type)
-            encrypter = _get_encrypter(tenant_id, provider_type)
+            encrypter, cache = create_sandbox_config_encrypter(
+                tenant_id, VMConfig.get_schema(SandboxType(provider_type)), provider_type
+            )
             if not provider:
                 provider = SandboxProvider(
                     tenant_id=tenant_id,
@@ -112,6 +114,8 @@ class SandboxProviderService:
             provider.is_active = activate or provider.is_active or cls.is_system_default_config(session, tenant_id)
             provider.configure_type = "user"
             session.commit()
+
+            cache.delete()
         return {"result": "success"}
 
     @classmethod
