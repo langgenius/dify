@@ -8,6 +8,8 @@ This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next
 
 Before starting the web frontend service, please make sure the following environment is ready.
 
+1111
+
 - [Node.js](https://nodejs.org)
 - [pnpm](https://pnpm.io)
 
