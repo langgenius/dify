@@ -71,6 +71,17 @@ function parseInfographicSyntax(content: string): string | null {
   }
 }
 
+export function useHasInfographic(content: unknown): boolean {
+  const infographicSyntax = useMemo(() => {
+    if (typeof content !== 'string')
+      return null
+
+    return parseInfographicSyntax(content)
+  }, [content])
+
+  return !!infographicSyntax
+}
+
 const InfographicContent: FC<InfographicContentProps> = ({ item }) => {
   const { content } = item
 

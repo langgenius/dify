@@ -7,7 +7,7 @@ import Thought from '@/app/components/base/chat/chat/thought'
 import { FileList } from '@/app/components/base/file-uploader'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import { Markdown } from '@/app/components/base/markdown'
-import InfographicContent from './infographic-content'
+import InfographicContent, { useHasInfographic } from './infographic-content'
 
 type AgentContentProps = {
   item: ChatItem
@@ -24,13 +24,15 @@ const AgentContent: FC<AgentContentProps> = ({
     agent_thoughts,
   } = item
 
+  const hasInfographic = useHasInfographic(item.content)
+
   if (annotation?.logAnnotation)
     return <Markdown content={annotation?.logAnnotation.content || ''} />
 
   return (
     <div>
       <InfographicContent item={item} />
-      {content ? <Markdown content={content} /> : agent_thoughts?.map((thought, index) => (
+      {!hasInfographic && (content ? <Markdown content={content} /> : agent_thoughts?.map((thought, index) => (
         <div key={index} className="px-2 py-1">
           {thought.thought && (
             <Markdown content={thought.thought} />
@@ -55,7 +57,7 @@ const AgentContent: FC<AgentContentProps> = ({
             )
           }
         </div>
-      ))}
+      )))}
     </div>
   )
 }
