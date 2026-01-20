@@ -30,7 +30,7 @@ class SandboxConfigValidationError(ValueError):
     pass
 
 
-class CommandExecutionError(Exception):
+class CommandExecutionError(ValueError):
     """Raised when a command execution fails."""
 
     result: CommandResult

@@ -1,5 +1,4 @@
 import logging
-import shlex
 from collections.abc import Mapping, Sequence
 from typing import Any
 
@@ -90,7 +89,7 @@ class CommandNode(Node[CommandNodeData]):
 
         try:
             with with_connection(sandbox) as conn:
-                command = shlex.split(raw_command)
+                command = ["bash", "-c", raw_command]
 
                 sandbox_debug("command_node", "command", command)
 
@@ -104,6 +103,8 @@ class CommandNode(Node[CommandNodeData]):
                     "pid": result.pid,
                 }
                 process_data = {"command": command, "working_directory": working_directory}
+
+                sandbox_debug("command_node", "outputs", result.debug_message)
 
                 if result.exit_code not in (None, 0):
                     stderr_text = result.stderr.decode("utf-8", errors="replace")

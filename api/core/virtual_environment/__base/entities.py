@@ -89,3 +89,12 @@ class CommandResult(BaseModel):
     @property
     def info_message(self) -> str:
         return self.stdout.decode("utf-8", errors="replace") if self.stdout else ""
+
+    @property
+    def debug_message(self) -> str:
+        return (
+            f"stdout: {self.stdout.decode('utf-8', errors='replace')}\n"
+            f"stderr: {self.stderr.decode('utf-8', errors='replace')}\n"
+            f"exit_code: {self.exit_code}\n"
+            f"pid: {self.pid}"
+        )
