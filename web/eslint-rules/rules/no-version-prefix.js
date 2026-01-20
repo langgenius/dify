@@ -5,7 +5,6 @@ export default {
     docs: {
       description: 'Ensure package.json dependencies and devDependencies do not use version prefixes (^ or ~)',
     },
-    fixable: 'code',
   },
   create(context) {
     return {
@@ -29,8 +28,7 @@ export default {
         }
 
         const dependencyTypes = ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies']
-        const fixes = {}
-        let hasErrors = false
+        const errors = []
 
         for (const depType of dependencyTypes) {
           if (!packageJson[depType])
@@ -40,36 +38,17 @@ export default {
           for (const [name, version] of Object.entries(dependencies)) {
             // Check if version starts with ^ or ~
             if (typeof version === 'string' && (version.startsWith('^') || version.startsWith('~'))) {
-              hasErrors = true
-              const cleanVersion = version.substring(1)
-
-              // Store fix
-              if (!fixes[depType])
-                fixes[depType] = {}
-
-              fixes[depType][name] = cleanVersion
+              errors.push({ depType, name, version })
             }
           }
         }
 
-        // Report all fixes at once
-        if (hasErrors) {
+        // Report all errors
+        if (errors.length > 0) {
+          const errorList = errors.map(({ depType, name, version }) => `  - ${depType}.${name}: ${version}`).join('\n')
           context.report({
             node,
-            message: 'Some dependencies have version prefixes (^ or ~) that should be removed. Run ESLint with --fix to automatically remove them.',
-            fix(fixer) {
-              const newPackageJson = { ...packageJson }
-
-              for (const [depType, deps] of Object.entries(fixes)) {
-                newPackageJson[depType] = { ...newPackageJson[depType] }
-                for (const [name, version] of Object.entries(deps)) {
-                  newPackageJson[depType][name] = version
-                }
-              }
-
-              const newText = `${JSON.stringify(newPackageJson, null, 2)}\n`
-              return fixer.replaceText(node, newText)
-            },
+            message: `Dependencies have version prefixes (^ or ~) that should be removed:\n${errorList}`,
           })
         }
       },
