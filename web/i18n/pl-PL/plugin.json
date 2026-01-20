@@ -236,7 +236,7 @@
   "task.installSuccess": "{{successLength}} plugins installed successfully",
   "task.installed": "Installed",
   "task.installedError": "Nie udało się zainstalować wtyczek {{errorLength}}",
-  "task.installing": "Instalowanie wtyczek , 0 gotowe.",
+  "task.installing": "Instalowanie wtyczek, 0 gotowe.",
   "task.installingWithError": "Instalacja wtyczek {{installingLength}}, {{successLength}} powodzenie, {{errorLength}} niepowodzenie",
   "task.installingWithSuccess": "Instalacja wtyczek {{installingLength}}, {{successLength}} powodzenie.",
   "task.runningPlugins": "Installing Plugins",

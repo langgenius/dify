@@ -16,7 +16,7 @@
   "form.indexMethod": "Metoda indeksiranja",
   "form.indexMethodChangeToEconomyDisabledTip": "Ni na voljo za pregradnjo iz HQ v ECO",
   "form.indexMethodEconomy": "Varčna",
-  "form.indexMethodEconomyTip": "Using {{count}} keywords per chunk for retrieval, no tokens are consumed at the expense of reduced retrieval accuracy.",
+  "form.indexMethodEconomyTip": "{{count}} Uporabite offline vektorske motorje, indeksiranje ključnih besed itd., da zmanjšate natančnost brez porabe žetonov",
   "form.indexMethodHighQuality": "Visoka kakovost",
   "form.indexMethodHighQualityTip": "Za obdelavo pokličite vdelani model za zagotovitev večje natančnosti pri poizvedbah uporabnikov.",
   "form.me": "(Vi)",

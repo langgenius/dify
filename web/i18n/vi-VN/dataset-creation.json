@@ -68,7 +68,7 @@
   "stepOne.website.resetAll": "Đặt lại tất cả",
   "stepOne.website.run": "Chạy",
   "stepOne.website.running": "Chạy",
-  "stepOne.website.scrapTimeInfo": "Scraped {{total}} pages in total within {{time}}s",
+  "stepOne.website.scrapTimeInfo": "{{time}} {{total}} Tổng cộng {{tổng}} trang được thu thập trong vòng {{thời gian}}",
   "stepOne.website.selectAll": "Chọn tất cả",
   "stepOne.website.totalPageScraped": "Tổng số trang được cạo:",
   "stepOne.website.unknownError": "Lỗi không xác định",

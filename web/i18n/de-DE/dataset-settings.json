@@ -16,7 +16,7 @@
   "form.indexMethod": "Indexierungsmethode",
   "form.indexMethodChangeToEconomyDisabledTip": "Nicht verfügbar für ein Downgrade von HQ auf ECO",
   "form.indexMethodEconomy": "Ökonomisch",
-  "form.indexMethodEconomyTip": "Using {{count}} keywords per chunk for retrieval, no tokens are consumed at the expense of reduced retrieval accuracy.",
+  "form.indexMethodEconomyTip": "{{count}} Verwendet Offline-Vektor-Engines, Schlagwortindizes usw., um die Genauigkeit ohne Tokenverbrauch zu reduzieren",
   "form.indexMethodHighQuality": "Hohe Qualität",
   "form.indexMethodHighQualityTip": "Den Embedding-Modell zur Verarbeitung aufrufen, um bei Benutzeranfragen eine höhere Genauigkeit zu bieten.",
   "form.me": "(Sie)",

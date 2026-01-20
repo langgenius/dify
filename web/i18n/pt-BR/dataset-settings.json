@@ -16,7 +16,7 @@
   "form.indexMethod": "Método de indexação",
   "form.indexMethodChangeToEconomyDisabledTip": "Não disponível para rebaixamento de HQ para ECO",
   "form.indexMethodEconomy": "Econômico",
-  "form.indexMethodEconomyTip": "Using {{count}} keywords per chunk for retrieval, no tokens are consumed at the expense of reduced retrieval accuracy.",
+  "form.indexMethodEconomyTip": "{{count}} Use motores de vetor offline, índices de palavras-chave, etc. para reduzir a precisão sem gastar tokens.",
   "form.indexMethodHighQuality": "Alta qualidade",
   "form.indexMethodHighQualityTip": "Invocar o modelo de Embedding para processamento para fornecer maior precisão nas consultas dos usuários.",
   "form.me": "(Você)",

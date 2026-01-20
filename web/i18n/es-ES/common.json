@@ -172,7 +172,7 @@
   "fileUploader.pasteFileLinkInvalid": "Enlace de archivo no válido",
   "fileUploader.uploadDisabled": "La carga de archivos está deshabilitada",
   "fileUploader.uploadFromComputer": "Carga local",
-  "fileUploader.uploadFromComputerLimit": "Upload {{type}} cannot exceed {{size}}",
+  "fileUploader.uploadFromComputerLimit": "{{type}} El archivo de carga no puede exceder {{size}}",
   "fileUploader.uploadFromComputerReadError": "Error en la lectura del archivo, inténtelo de nuevo.",
   "fileUploader.uploadFromComputerUploadError": "Error en la carga del archivo, vuelva a cargarlo.",
   "imageInput.browse": "navegar",

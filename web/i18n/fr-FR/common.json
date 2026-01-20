@@ -172,7 +172,7 @@
   "fileUploader.pasteFileLinkInvalid": "Lien de fichier non valide",
   "fileUploader.uploadDisabled": "Le téléchargement de fichiers est désactivé",
   "fileUploader.uploadFromComputer": "Téléchargement local",
-  "fileUploader.uploadFromComputerLimit": "Upload {{type}} cannot exceed {{size}}",
+  "fileUploader.uploadFromComputerLimit": "{{type}} Le fichier de téléchargement ne peut pas dépasser {{size}}",
   "fileUploader.uploadFromComputerReadError": "Échec de la lecture du fichier, veuillez réessayer.",
   "fileUploader.uploadFromComputerUploadError": "Le téléchargement du fichier a échoué, veuillez le télécharger à nouveau.",
   "imageInput.browse": "naviguer",

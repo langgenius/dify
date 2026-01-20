@@ -81,7 +81,7 @@
   "debugInfo.title": "調試",
   "debugInfo.viewDocs": "查看文件",
   "deprecated": "不推薦使用的",
-  "detailPanel.actionNum": "{{action}}{{num}}包括",
+  "detailPanel.actionNum": "{{num}}{{action}}包括",
   "detailPanel.categoryTip.debugging": "調試插件",
   "detailPanel.categoryTip.github": "從 Github 安裝",
   "detailPanel.categoryTip.local": "本地插件",

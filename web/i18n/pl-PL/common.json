@@ -172,7 +172,7 @@
   "fileUploader.pasteFileLinkInvalid": "Nieprawidłowy link do pliku",
   "fileUploader.uploadDisabled": "Przesyłanie plików jest wyłączone",
   "fileUploader.uploadFromComputer": "Przesyłanie lokalne",
-  "fileUploader.uploadFromComputerLimit": "Upload {{type}} cannot exceed {{size}}",
+  "fileUploader.uploadFromComputerLimit": "{{type}} Prześlij plik nie może przekraczać {{size}}",
   "fileUploader.uploadFromComputerReadError": "Odczyt pliku nie powiódł się, spróbuj ponownie.",
   "fileUploader.uploadFromComputerUploadError": "Przesyłanie pliku nie powiodło się, prześlij ponownie.",
   "imageInput.browse": "przeglądaj",

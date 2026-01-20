@@ -116,7 +116,7 @@
   "detailPanel.operation.update": "روز رسانی",
   "detailPanel.operation.viewDetail": "نمایش جزئیات",
   "detailPanel.serviceOk": "خدمات خوب",
-  "detailPanel.strategyNum": "{{strategy}} {{num}} شامل",
+  "detailPanel.strategyNum": "{{num}} {{strategy}} شامل",
   "detailPanel.switchVersion": "نسخه سوئیچ",
   "detailPanel.toolSelector.auto": "خودکار",
   "detailPanel.toolSelector.descriptionLabel": "توضیحات ابزار",

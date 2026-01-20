@@ -172,7 +172,7 @@
   "fileUploader.pasteFileLinkInvalid": "Liên kết tệp không hợp lệ",
   "fileUploader.uploadDisabled": "Tải tệp bị vô hiệu hóa",
   "fileUploader.uploadFromComputer": "Tải lên cục bộ",
-  "fileUploader.uploadFromComputerLimit": "Upload {{type}} cannot exceed {{size}}",
+  "fileUploader.uploadFromComputerLimit": "{{type}} Tải lên tệp không được vượt quá {{size}}",
   "fileUploader.uploadFromComputerReadError": "Đọc tệp không thành công, vui lòng thử lại.",
   "fileUploader.uploadFromComputerUploadError": "Tải lên tệp không thành công, vui lòng tải lên lại.",
   "imageInput.browse": "duyệt",

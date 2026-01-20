@@ -81,7 +81,7 @@
   "debugInfo.title": "디버깅",
   "debugInfo.viewDocs": "문서 보기",
   "deprecated": "사용 중단됨",
-  "detailPanel.actionNum": "{{action}} {{num}} 포함",
+  "detailPanel.actionNum": "{{num}} {{action}} 포함",
   "detailPanel.categoryTip.debugging": "디버깅 플러그인",
   "detailPanel.categoryTip.github": "Github 에서 설치됨",
   "detailPanel.categoryTip.local": "로컬 플러그인",

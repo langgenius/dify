@@ -363,7 +363,7 @@
   "nodes.agent.strategyNotFoundDescAndSwitchVersion": "Phiên bản plugin đã cài đặt không cung cấp chiến lược này. Nhấp để chuyển đổi phiên bản.",
   "nodes.agent.strategyNotInstallTooltip": "{{strategy}} không được cài đặt",
   "nodes.agent.strategyNotSet": "Chiến lược tác nhân không được thiết lập",
-  "nodes.agent.toolNotAuthorizedTooltip": "{{tool}} Not Authorized",
+  "nodes.agent.toolNotAuthorizedTooltip": "{{công cụ}} Không được ủy quyền {{tool}}",
   "nodes.agent.toolNotInstallTooltip": "{{tool}} không được cài đặt",
   "nodes.agent.toolbox": "hộp công cụ",
   "nodes.agent.tools": "Công cụ",

@@ -236,7 +236,7 @@
   "task.installSuccess": "{{successLength}} plugins installed successfully",
   "task.installed": "Installed",
   "task.installedError": "{{errorLength}} plugin-urile nu s-au instalat",
-  "task.installing": "Instalarea pluginurilor , 0 terminat.",
+  "task.installing": "Instalarea pluginurilor, 0 terminat.",
   "task.installingWithError": "Instalarea pluginurilor {{installingLength}}, {{successLength}} succes, {{errorLength}} eșuat",
   "task.installingWithSuccess": "Instalarea pluginurilor {{installingLength}}, {{successLength}} succes.",
   "task.runningPlugins": "Installing Plugins",

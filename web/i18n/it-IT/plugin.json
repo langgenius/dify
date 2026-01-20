@@ -236,7 +236,7 @@
   "task.installSuccess": "{{successLength}} plugins installed successfully",
   "task.installed": "Installed",
   "task.installedError": "Impossibile installare i plugin di {{errorLength}}",
-  "task.installing": "Installazione dei plugin , 0 fatto.",
+  "task.installing": "Installazione dei plugin, 0 fatto.",
   "task.installingWithError": "Installazione dei plugin {{installingLength}}, {{successLength}} successo, {{errorLength}} fallito",
   "task.installingWithSuccess": "Installazione dei plugin {{installingLength}}, {{successLength}} successo.",
   "task.runningPlugins": "Installing Plugins",

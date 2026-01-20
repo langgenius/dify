@@ -16,7 +16,7 @@
   "form.indexMethod": "Dizin Yöntemi",
   "form.indexMethodChangeToEconomyDisabledTip": "Genel Merkezden ECO'ya düşürme için mevcut değil",
   "form.indexMethodEconomy": "Ekonomik",
-  "form.indexMethodEconomyTip": "Using {{count}} keywords per chunk for retrieval, no tokens are consumed at the expense of reduced retrieval accuracy.",
+  "form.indexMethodEconomyTip": "{{count}} Doğruluğu azaltmak için çevrimdışı vektör motorları, anahtar kelime dizinleri vb. kullanın, token harcamadan",
   "form.indexMethodHighQuality": "Yüksek Kalite",
   "form.indexMethodHighQualityTip": "Kullanıcılar sorguladığında daha yüksek doğruluk sağlamak için Yerleştirme modelini çağırır.",
   "form.me": "(Siz)",

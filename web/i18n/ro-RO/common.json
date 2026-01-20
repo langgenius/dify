@@ -172,7 +172,7 @@
   "fileUploader.pasteFileLinkInvalid": "Link fișier nevalid",
   "fileUploader.uploadDisabled": "Încărcarea fișierelor este dezactivată",
   "fileUploader.uploadFromComputer": "Încărcare locală",
-  "fileUploader.uploadFromComputerLimit": "Upload {{type}} cannot exceed {{size}}",
+  "fileUploader.uploadFromComputerLimit": "{{type}} Încărcarea fișierului nu poate depăși {{size}}",
   "fileUploader.uploadFromComputerReadError": "Citirea fișierului a eșuat, vă rugăm să încercați din nou.",
   "fileUploader.uploadFromComputerUploadError": "Încărcarea fișierului a eșuat, vă rugăm să încărcați din nou.",
   "imageInput.browse": "naviga",

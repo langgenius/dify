@@ -68,7 +68,7 @@
   "stepOne.website.resetAll": "Tout réinitialiser",
   "stepOne.website.run": "Courir",
   "stepOne.website.running": "Course",
-  "stepOne.website.scrapTimeInfo": "Scraped {{total}} pages in total within {{time}}s",
+  "stepOne.website.scrapTimeInfo": "{{total}} Pages récupérées au total dans un délai de {{time}}s",
   "stepOne.website.selectAll": "Tout sélectionner",
   "stepOne.website.totalPageScraped": "Nombre total de pages extraites :",
   "stepOne.website.unknownError": "Erreur inconnue",
