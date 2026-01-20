@@ -65,7 +65,7 @@
   "plansCommon.annotatedResponse.title": "{{count,number}}の注釈クォータ制限",
   "plansCommon.annotatedResponse.tooltip": "手動での回答の編集と注釈により、カスタマイズ可能な高品質の質問応答機能をアプリに提供します。（チャットアプリのみに適用）",
   "plansCommon.annotationQuota": "アノテーション・クォータ",
-  "plansCommon.annualBilling": "年次請求",
+  "plansCommon.annualBilling": "年次請求、{{percent}}%節約",
   "plansCommon.apiRateLimit": "API リクエスト制限",
   "plansCommon.apiRateLimitTooltip": "API レート制限は、テキスト生成、チャットボット、ワークフロー、ドキュメント処理など、Dify API 経由のすべてのリクエストに適用されます。",
   "plansCommon.apiRateLimitUnit": "{{count,number}} の",

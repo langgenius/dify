@@ -26,6 +26,7 @@
   "list.action.archive": "Arquivar",
   "list.action.batchAdd": "Adicionar em lote",
   "list.action.delete": "Excluir",
+  "list.action.download": "Baixar",
   "list.action.enableWarning": "O arquivo arquivado não pode ser habilitado",
   "list.action.pause": "Pausa",
   "list.action.resume": "Retomar",

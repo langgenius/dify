@@ -140,7 +140,7 @@
   "stepTwo.preview": "Conferma & Anteprima",
   "stepTwo.previewButton": "Passaggio al formato Domanda & Risposta",
   "stepTwo.previewChunk": "Blocco di anteprima",
-  "stepTwo.previewChunkCount": "{{conteggio}} Blocchi stimati",
+  "stepTwo.previewChunkCount": "{{count}} Blocchi stimati",
   "stepTwo.previewChunkTip": "Fai clic sul pulsante \"Anteprima blocco\" a sinistra per caricare l'anteprima",
   "stepTwo.previewSwitchTipEnd": " consumerà token aggiuntivi",
   "stepTwo.previewSwitchTipStart": "L'anteprima del blocco corrente è in formato testo, il passaggio a un'anteprima in formato domanda e risposta",
