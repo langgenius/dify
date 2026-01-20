@@ -761,7 +761,7 @@ class Conversation(Base):
 
                 if "model" in override_model_configs:
                     # where is app_id?
-                    app_model_config = AppModelConfig().from_model_config_dict(override_model_configs)  # type: ignore
+                    app_model_config = AppModelConfig(app_id=self.app_id).from_model_config_dict(override_model_configs)
                     model_config = app_model_config.to_dict()
                 else:
                     model_config["configs"] = override_model_configs
