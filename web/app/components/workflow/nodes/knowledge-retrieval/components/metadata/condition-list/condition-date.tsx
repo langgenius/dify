@@ -46,7 +46,7 @@ const ConditionDate = ({
           }
         </div>
         {
-          value && (
+          !!value && (
             <RiCloseCircleFill
               className={cn(
                 'hidden h-4 w-4 shrink-0 cursor-pointer hover:text-components-input-text-filled group-hover:block',
