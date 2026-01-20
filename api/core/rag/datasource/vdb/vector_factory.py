@@ -38,7 +38,7 @@ class AbstractVectorFactory(ABC):
 class Vector:
     def __init__(self, dataset: Dataset, attributes: list | None = None):
         if attributes is None:
-            attributes = ["doc_id", "dataset_id", "document_id", "doc_hash"]
+            attributes = ["doc_id", "dataset_id", "document_id", "doc_hash", "doc_type"]
         self._dataset = dataset
         self._embeddings = self._get_embeddings()
         self._attributes = attributes
