@@ -52,20 +52,27 @@ const labelVariants = cva('system-sm-regular text-text-secondary', {
 export type MenuItemProps = {
   icon: React.ElementType
   label: string
-  onClick: () => void
+  onClick: React.MouseEventHandler<HTMLButtonElement>
   disabled?: boolean
 } & VariantProps<typeof menuItemVariants>
 
-const MenuItem: FC<MenuItemProps> = ({ icon: Icon, label, onClick, disabled, variant }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    disabled={disabled}
-    className={cn(menuItemVariants({ variant }))}
-  >
-    <Icon className={cn(iconVariants({ variant }))} aria-hidden="true" />
-    <span className={cn(labelVariants({ variant }))}>{label}</span>
-  </button>
-)
+const MenuItem: FC<MenuItemProps> = ({ icon: Icon, label, onClick, disabled, variant }) => {
+  const handleClick = React.useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation()
+    onClick(event)
+  }, [onClick])
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={disabled}
+      className={cn(menuItemVariants({ variant }))}
+    >
+      <Icon className={cn(iconVariants({ variant }))} aria-hidden="true" />
+      <span className={cn(labelVariants({ variant }))}>{label}</span>
+    </button>
+  )
+}
 
 export default React.memo(MenuItem)
