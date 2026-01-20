@@ -134,6 +134,9 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          # Allow github-actions bot to trigger this workflow via repository_dispatch
+          # See: https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
+          allowed_bots: 'github-actions[bot]'
           prompt: |
             You are a professional i18n synchronization engineer for the Dify project.
             Your task is to keep all language translations in sync with the English source (en-US).
