@@ -39,10 +39,10 @@ function extractTagMarkers(str) {
 
 function formatTagMarker(marker) {
   if (marker.startsWith('close:'))
-    return `</${marker.slice('close:'.length)}>`
+    return marker.slice('close:'.length)
   if (marker.startsWith('self:'))
-    return `<${marker.slice('self:'.length)} />`
-  return `<${marker.slice('open:'.length)}>`
+    return marker.slice('self:'.length)
+  return marker.slice('open:'.length)
 }
 
 /**
@@ -55,6 +55,10 @@ function arraysEqual(arr1, arr2) {
   if (arr1.length !== arr2.length)
     return false
   return arr1.every((val, i) => val === arr2[i])
+}
+
+function uniqueSorted(items) {
+  return Array.from(new Set(items)).sort()
 }
 
 /** @type {import('eslint').Rule.RuleModule} */
@@ -145,7 +149,7 @@ export default {
           const missing = englishPlaceholders.filter(p => !currentPlaceholders.includes(p))
           const extra = currentPlaceholders.filter(p => !englishPlaceholders.includes(p))
 
-          let message = `Placeholder mismatch in "${key}": `
+          let message = `Placeholder mismatch with en-US in "${key}": `
           const details = []
 
           if (missing.length > 0)
@@ -167,17 +171,17 @@ export default {
           const missing = englishTagMarkers.filter(p => !currentTagMarkers.includes(p))
           const extra = currentTagMarkers.filter(p => !englishTagMarkers.includes(p))
 
-          let message = `Trans tag mismatch in "${key}": `
+          let message = `Trans tag mismatch with en-US in "${key}": `
           const details = []
 
           if (missing.length > 0)
-            details.push(`missing ${missing.map(formatTagMarker).join(', ')}`)
+            details.push(`missing ${uniqueSorted(missing.map(formatTagMarker)).join(', ')}`)
 
           if (extra.length > 0)
-            details.push(`extra ${extra.map(formatTagMarker).join(', ')}`)
+            details.push(`extra ${uniqueSorted(extra.map(formatTagMarker)).join(', ')}`)
 
           message += details.join('; ')
-          message += `. Expected: ${englishTagMarkers.map(formatTagMarker).join(', ') || 'none'}`
+          message += `. Expected: ${uniqueSorted(englishTagMarkers.map(formatTagMarker)).join(', ') || 'none'}`
 
           context.report({
             node: currentNode,
