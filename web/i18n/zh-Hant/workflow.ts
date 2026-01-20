@@ -747,6 +747,7 @@ const translation = {
       'varNotSet': '未設置變數',
     },
     tool: {
+      assembleVariables: '組合變數',
       authorize: '授權',
       inputVars: '輸入變數',
       outputVars: {
@@ -763,6 +764,17 @@ const translation = {
       insertPlaceholder2: '插入變數',
       insertPlaceholder1: '輸入或按壓',
       settings: '設定',
+      contextGenerate: {
+        title: '組合變數',
+        codeBlock: '程式碼區塊',
+        code: '程式碼',
+        output: '輸出',
+        run: '執行',
+        apply: '套用',
+        generating: '生成中...',
+        inputPlaceholder: '輸入修改需求...',
+        defaultAssistantMessage: '已完成，請檢查。',
+      },
     },
     questionClassifiers: {
       model: '模型',

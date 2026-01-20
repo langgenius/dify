@@ -769,11 +769,23 @@ const translation = {
       'assignedVarsDescription': '赋值变量必须是可写入的变量，例如会话变量。',
     },
     tool: {
+      assembleVariables: '组合变量',
       authorize: '授权',
       inputVars: '输入变量',
       settings: '设置',
       insertPlaceholder1: '键入',
       insertPlaceholder2: '插入变量',
+      contextGenerate: {
+        title: '组合变量',
+        codeBlock: '代码块',
+        code: '代码',
+        output: '输出',
+        run: '运行',
+        apply: '应用',
+        generating: '生成中...',
+        inputPlaceholder: '输入修改需求...',
+        defaultAssistantMessage: '已完成，请检查。',
+      },
       outputVars: {
         text: '工具生成的内容',
         files: {

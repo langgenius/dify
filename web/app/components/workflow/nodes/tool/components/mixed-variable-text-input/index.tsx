@@ -33,6 +33,7 @@ import { cn } from '@/utils/classnames'
 import SubGraphModal from '../sub-graph-modal'
 import AgentHeaderBar from './agent-header-bar'
 import Placeholder from './placeholder'
+import ContextGenerateModal from '../context-generate-modal'
 
 /**
  * Matches agent context variable syntax: {{@nodeId.context@}}
@@ -173,6 +174,7 @@ const MixedVariableTextInput = ({
   const { nodesMap: nodesMetaDataMap } = useNodesMetaData()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const [isSubGraphModalOpen, setIsSubGraphModalOpen] = useState(false)
+  const [isContextGenerateModalOpen, setIsContextGenerateModalOpen] = useState(false)
 
   const nodesByIdMap = useMemo(() => {
     return availableNodes.reduce((acc, node) => {
@@ -543,6 +545,7 @@ const MixedVariableTextInput = ({
     ensureAssembleExtractorNode()
     onChange?.(assemblePlaceholder, VarKindTypeEnum.mixed, null)
     setControlPromptEditorRerenderKey(Date.now())
+    setIsContextGenerateModalOpen(true)
     return [extractorNodeId, 'result']
   }, [assembleExtractorNodeId, assemblePlaceholder, ensureAssembleExtractorNode, onChange, paramKey, setControlPromptEditorRerenderKey, toolNodeId])
 
@@ -561,6 +564,10 @@ const MixedVariableTextInput = ({
 
   const handleCloseSubGraphModal = useCallback(() => {
     setIsSubGraphModalOpen(false)
+  }, [])
+
+  const handleCloseContextGenerateModal = useCallback(() => {
+    setIsContextGenerateModalOpen(false)
   }, [])
 
   const sourceVariable: ValueSelector | undefined = detectedAgentFromValue
@@ -655,6 +662,15 @@ const MixedVariableTextInput = ({
           sourceVariable={sourceVariable}
           agentName={detectedAgentFromValue.name}
           agentNodeId={detectedAgentFromValue.nodeId}
+        />
+      )}
+      {toolNodeId && paramKey && (
+        <ContextGenerateModal
+          isShow={isContextGenerateModalOpen}
+          onClose={handleCloseContextGenerateModal}
+          toolNodeId={toolNodeId}
+          paramKey={paramKey}
+          codeNodeId={assembleExtractorNodeId || `${toolNodeId}_ext_${paramKey}`}
         />
       )}
     </div>
