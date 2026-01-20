@@ -20,6 +20,7 @@ import { useInlineCreateNode } from '../hooks/use-inline-create-node'
 import { useRootFileDrop } from '../hooks/use-root-file-drop'
 import { useSkillAssetTreeData } from '../hooks/use-skill-asset-tree'
 import { useSyncTreeWithActiveTab } from '../hooks/use-sync-tree-with-active-tab'
+import DragActionTooltip from './drag-action-tooltip'
 import TreeContextMenu from './tree-context-menu'
 import TreeNode from './tree-node'
 
@@ -246,7 +247,9 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
           </Tree>
         </div>
       </div>
-      <DropTip />
+      {dragOverFolderId
+        ? <DragActionTooltip action="upload" />
+        : <DropTip />}
       <TreeContextMenu treeRef={treeRef} />
     </>
   )
