@@ -24,32 +24,35 @@ def socket_connect(sid, environ, auth):
     """
     WebSocket connect event, do authentication here.
     """
-    token = None
-    if auth and isinstance(auth, dict):
-        token = auth.get("token")
+    try:
+        request_environ = FlaskRequest(environ)
+        token = extract_access_token(request_environ)
+    except Exception:
+        logging.exception("Failed to extract token")
+        token = None
 
     if not token:
-        try:
-            request_environ = FlaskRequest(environ)
-            token = extract_access_token(request_environ)
-        except Exception:
-            logging.exception("Failed to extract token")
-            token = None
-
-    if not token:
+        logging.warning("Socket connect rejected: missing token (sid=%s)", sid)
         return False
 
     try:
         decoded = PassportService().verify(token)
         user_id = decoded.get("user_id")
         if not user_id:
+            logging.warning("Socket connect rejected: missing user_id (sid=%s)", sid)
             return False
 
         with sio.app.app_context():
             user = AccountService.load_logged_in_account(account_id=user_id)
             if not user:
+                logging.warning(
+                    "Socket connect rejected: user not found (user_id=%s, sid=%s)", user_id, sid
+                )
                 return False
             if not user.has_edit_permission:
+                logging.warning(
+                    "Socket connect rejected: no edit permission (user_id=%s, sid=%s)", user_id, sid
+                )
                 return False
 
             collaboration_service.save_session(sid, user)

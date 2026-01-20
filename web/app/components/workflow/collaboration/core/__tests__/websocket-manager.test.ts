@@ -7,7 +7,7 @@ type MockSocket = {
 }
 
 type IoOptions = {
-  auth?: { token?: string }
+  auth?: unknown
   path?: string
   transports?: string[]
   withCredentials?: boolean
@@ -104,18 +104,15 @@ describe('WebSocketClient', () => {
     expect(second).toBe(first)
   })
 
-  it('attaches auth token from localStorage and emits user_connect on connect', async () => {
+  it('emits user_connect on connect without auth payload', async () => {
     const mockSocket = createMockSocket('socket-auth')
     ioMock.mockImplementation((url: string, options: IoOptions) => {
-      expect(options.auth).toEqual({ token: 'secret-token' })
+      expect(options.auth).toBeUndefined()
       return mockSocket
     })
 
     setGlobalWindow({
       location: { protocol: 'https:', host: 'example.com' },
-      localStorage: {
-        getItem: vi.fn(() => 'secret-token'),
-      },
     } as unknown as typeof window)
 
     const { WebSocketClient } = await import('../websocket-manager')

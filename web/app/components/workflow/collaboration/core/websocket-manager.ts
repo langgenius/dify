@@ -1,7 +1,6 @@
 import type { Socket } from 'socket.io-client'
 import type { DebugInfo, WebSocketConfig } from '../types/websocket'
 import { io } from 'socket.io-client'
-import { ACCESS_TOKEN_LOCAL_STORAGE_NAME } from '@/config'
 
 type AckArgs = unknown[]
 
@@ -82,23 +81,15 @@ export class WebSocketClient {
 
     this.connecting.add(appId)
 
-    const authToken = typeof window === 'undefined'
-      ? undefined
-      : window.localStorage.getItem(ACCESS_TOKEN_LOCAL_STORAGE_NAME) ?? undefined
-
     const socketOptions: {
       path: string
       transports: WebSocketConfig['transports']
       withCredentials?: boolean
-      auth?: { token: string }
     } = {
       path: '/socket.io',
       transports: this.config.transports,
       withCredentials: this.config.withCredentials,
     }
-
-    if (authToken)
-      socketOptions.auth = { token: authToken }
 
     const socket = io(this.config.url!, socketOptions)
 
