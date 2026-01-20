@@ -15,6 +15,7 @@ import {
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Confirm from '@/app/components/base/confirm'
+import { Download02 } from '@/app/components/base/icons/src/vender/solid/general'
 import { cn } from '@/utils/classnames'
 import { NODE_MENU_TYPE } from '../constants'
 import { useFileOperations } from '../hooks/use-file-operations'
@@ -52,6 +53,7 @@ const NodeMenu: FC<NodeMenuProps> = ({
     showDeleteConfirm,
     isLoading,
     isDeleting,
+    handleDownload,
     handleNewFile,
     handleNewFolder,
     handleFileChange,
@@ -123,6 +125,18 @@ const NodeMenu: FC<NodeMenuProps> = ({
           )}
 
           {showRenameDelete && <div className="my-1 h-px bg-divider-subtle" />}
+        </>
+      )}
+
+      {!isFolder && (
+        <>
+          <MenuItem
+            icon={Download02}
+            label={t('skillSidebar.menu.download')}
+            onClick={handleDownload}
+            disabled={isLoading}
+          />
+          <div className="my-1 h-px bg-divider-subtle" />
         </>
       )}
 

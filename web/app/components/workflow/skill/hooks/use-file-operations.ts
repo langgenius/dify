@@ -9,6 +9,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { toApiParentId } from '../utils/tree-utils'
 import { useCreateOperations } from './use-create-operations'
+import { useDownloadOperation } from './use-download-operation'
 import { useModifyOperations } from './use-modify-operations'
 import { useSkillAssetTreeData } from './use-skill-asset-tree'
 
@@ -51,6 +52,12 @@ export function useFileOperations({
     onClose,
   })
 
+  const downloadOps = useDownloadOperation({
+    appId,
+    nodeId,
+    onClose,
+  })
+
   return {
     // Create operations
     fileInputRef: createOps.fileInputRef,
@@ -67,8 +74,12 @@ export function useFileOperations({
     handleDeleteConfirm: modifyOps.handleDeleteConfirm,
     handleDeleteCancel: modifyOps.handleDeleteCancel,
 
+    // Download operation
+    handleDownload: downloadOps.handleDownload,
+
     // Combined loading states
-    isLoading: createOps.isCreating || modifyOps.isDeleting,
+    isLoading: createOps.isCreating || modifyOps.isDeleting || downloadOps.isDownloading,
     isDeleting: modifyOps.isDeleting,
+    isDownloading: downloadOps.isDownloading,
   }
 }
