@@ -1,4 +1,3 @@
-// Constants for dependency field names and version prefixes
 const DEPENDENCY_KEYS = ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies']
 const VERSION_PREFIXES = ['^', '~']
 
@@ -9,20 +8,18 @@ export default {
     docs: {
       description: `Ensure package.json dependencies do not use version prefixes (${VERSION_PREFIXES.join(' or ')})`,
     },
+    fixable: 'code',
   },
   create(context) {
     const { filename } = context
 
-    // Only check package.json files
     if (!filename.endsWith('package.json'))
       return {}
 
     return {
-      // Check each property that could be a dependency section
-      'Property > ObjectExpression > Property'(node) {
-        // Check if the parent property is one of the dependency keys
+      'JSONProperty > JSONObjectExpression > JSONProperty': function (node) {
         const parentProperty = node.parent?.parent
-        if (!parentProperty || parentProperty.type !== 'Property')
+        if (!parentProperty || parentProperty.type !== 'JSONProperty')
           return
 
         const parentKey = parentProperty.key?.value || parentProperty.key?.name
@@ -31,17 +28,20 @@ export default {
 
         const versionNode = node.value
 
-        // Check if the version value starts with any forbidden prefix
-        if (versionNode && versionNode.type === 'Literal' && typeof versionNode.value === 'string') {
+        if (versionNode && versionNode.type === 'JSONLiteral' && typeof versionNode.value === 'string') {
           const version = versionNode.value
           const foundPrefix = VERSION_PREFIXES.find(prefix => version.startsWith(prefix))
 
           if (foundPrefix) {
             const packageName = node.key.value || node.key.name
             const cleanVersion = version.substring(1)
+            const canAutoFix = /^\d+\.\d+\.\d+$/.test(cleanVersion)
             context.report({
               node: versionNode,
               message: `Dependency "${packageName}" has version prefix "${foundPrefix}" that should be removed (found: "${version}", expected: "${cleanVersion}")`,
+              fix: canAutoFix
+                ? fixer => fixer.replaceText(versionNode, `"${cleanVersion}"`)
+                : undefined,
             })
           }
         }
