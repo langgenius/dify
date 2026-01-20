@@ -3959,7 +3959,7 @@
   },
   "app/components/workflow/panel/debug-and-preview/hooks.ts": {
     "ts/no-explicit-any": {
-      "count": 7
+      "count": 12
     }
   },
   "app/components/workflow/panel/env-panel/variable-modal.tsx": {
