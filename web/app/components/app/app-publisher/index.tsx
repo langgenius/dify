@@ -20,6 +20,7 @@ import { useKeyPress } from 'ahooks'
 import {
   memo,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useState,
@@ -39,6 +40,7 @@ import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import WorkflowToolConfigureButton from '@/app/components/tools/workflow-tool/configure-button'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
+import { WorkflowContext } from '@/app/components/workflow/context'
 import { appDefaultIconBackground } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
@@ -48,6 +50,7 @@ import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/acces
 import { fetchAppDetailDirect } from '@/service/apps'
 import { fetchInstalledAppList } from '@/service/explore'
 import { useInvalidateAppWorkflow } from '@/service/use-workflow'
+import { fetchPublishedWorkflow } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
 import Divider from '../../base/divider'
@@ -155,6 +158,7 @@ const AppPublisher = ({
   const [isAppAccessSet, setIsAppAccessSet] = useState(true)
   const [embeddingModalOpen, setEmbeddingModalOpen] = useState(false)
 
+  const workflowStore = useContext(WorkflowContext)
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(s => s.setAppDetail)
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
@@ -206,8 +210,14 @@ const AppPublisher = ({
 
       const appId = appDetail?.id
       const socket = appId ? webSocketClient.getSocket(appId) : null
+      console.warn('[app-publisher] publish success', {
+        appId,
+        hasSocket: Boolean(socket),
+      })
       if (appId)
         invalidateAppWorkflow(appId)
+      else
+        console.warn('[app-publisher] missing appId, skip workflow invalidate and socket emit')
       if (socket) {
         const timestamp = Date.now()
         socket.emit('collaboration_event', {
@@ -219,10 +229,14 @@ const AppPublisher = ({
           timestamp,
         })
       }
+      else if (appId) {
+        console.warn('[app-publisher] socket not ready, skip collaboration_event emit', { appId })
+      }
 
       trackEvent('app_published_time', { action_mode: 'app', app_id: appDetail?.id, app_name: appDetail?.name })
     }
-    catch {
+    catch (error) {
+      console.warn('[app-publisher] publish failed', error)
       setPublished(false)
     }
   }, [appDetail, onPublish, invalidateAppWorkflow])
@@ -292,12 +306,21 @@ const AppPublisher = ({
 
     const unsubscribe = collaborationManager.onAppPublishUpdate((update: CollaborationUpdate) => {
       const action = typeof update.data.action === 'string' ? update.data.action : undefined
-      if (action === 'published')
+      if (action === 'published') {
         invalidateAppWorkflow(appId)
+        fetchPublishedWorkflow(`/apps/${appId}/workflows/publish`)
+          .then((publishedWorkflow) => {
+            if (publishedWorkflow?.created_at)
+              workflowStore?.getState().setPublishedAt(publishedWorkflow.created_at)
+          })
+          .catch((error) => {
+            console.warn('[app-publisher] refresh published workflow failed', error)
+          })
+      }
     })
 
     return unsubscribe
-  }, [appDetail?.id, invalidateAppWorkflow])
+  }, [appDetail?.id, invalidateAppWorkflow, workflowStore])
 
   const hasPublishedVersion = !!publishedAt
   const workflowToolDisabled = !hasPublishedVersion || !workflowToolAvailable

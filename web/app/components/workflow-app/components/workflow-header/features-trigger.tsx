@@ -148,18 +148,31 @@ const FeaturesTrigger = () => {
     //   throw new Error('Checklist has unresolved items')
 
     if (needWarningNodes.length > 0) {
+      console.warn('[workflow-header] publish blocked by checklist', {
+        appId: appID,
+        warningCount: needWarningNodes.length,
+      })
       notify({ type: 'error', message: t('panel.checklistTip', { ns: 'workflow' }) })
       throw new Error('Checklist has unresolved items')
     }
 
     // Then perform the detailed validation
     if (await handleCheckBeforePublish()) {
+      console.warn('[workflow-header] publish start', {
+        appId: appID,
+        title: publishParams?.title ?? '',
+      })
       const res = await publishWorkflow({
         url: `/apps/${appID}/workflows/publish`,
         title: publishParams?.title || '',
         releaseNotes: publishParams?.releaseNotes || '',
       })
 
+      console.warn('[workflow-header] publish response', {
+        appId: appID,
+        hasResponse: Boolean(res),
+        createdAt: res?.created_at,
+      })
       if (res) {
         notify({ type: 'success', message: t('api.actionSuccess', { ns: 'common' }) })
         updatePublishedWorkflow(appID!)
