@@ -20,6 +20,7 @@ type Props = {
   resetInDays?: number
   hideIcon?: boolean
   // Props for the 50MB threshold display logic
+  storageMode?: boolean
   storageThreshold?: number
   storageTooltip?: string
   storageTotalDisplay?: string // e.g., "5GB" or "50MB" for formatted display
@@ -40,6 +41,7 @@ const UsageInfo: FC<Props> = ({
   resetHint,
   resetInDays,
   hideIcon = false,
+  storageMode = false,
   storageThreshold = 50,
   storageTooltip,
   storageTotalDisplay,
@@ -47,10 +49,10 @@ const UsageInfo: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
 
-  // Special display logic for usage below threshold
-  const isBelowThreshold = usage < storageThreshold
+  // Special display logic for usage below threshold (only in storage mode)
+  const isBelowThreshold = storageMode && usage < storageThreshold
   // Sandbox at full capacity (usage >= threshold and it's sandbox plan)
-  const isSandboxFull = isSandboxPlan && usage >= storageThreshold
+  const isSandboxFull = storageMode && isSandboxPlan && usage >= storageThreshold
 
   const percent = usage / total * 100
   const getProgressColor = () => {
@@ -88,49 +90,61 @@ const UsageInfo: FC<Props> = ({
 
   // Render usage display
   const renderUsageDisplay = () => {
-    // Sandbox user at full capacity
-    if (isSandboxFull) {
-      return (
-        <div className="flex items-center gap-1">
-          <span>
-            {storageThreshold}
-          </span>
-          <span className="system-md-regular text-text-quaternary">/</span>
-          <span>
-            {storageThreshold}
-            {' '}
-            {unit}
-          </span>
-        </div>
-      )
-    }
-    // Usage below threshold - show "< 50 MB" or "< 50 / 5GB"
-    if (isBelowThreshold) {
+    // Storage mode: special display logic
+    if (storageMode) {
+      // Sandbox user at full capacity
+      if (isSandboxFull) {
+        return (
+          <div className="flex items-center gap-1">
+            <span>
+              {storageThreshold}
+            </span>
+            <span className="system-md-regular text-text-quaternary">/</span>
+            <span>
+              {storageThreshold}
+              {' '}
+              {unit}
+            </span>
+          </div>
+        )
+      }
+      // Usage below threshold - show "< 50 MB" or "< 50 / 5GB"
+      if (isBelowThreshold) {
+        const totalText = storageTotalDisplay || totalDisplay
+        return (
+          <div className="flex items-center gap-1">
+            <span>
+              &lt;
+              {' '}
+              {storageThreshold}
+            </span>
+            {!isSandboxPlan && (
+              <>
+                <span className="system-md-regular text-text-quaternary">/</span>
+                <span>{totalText}</span>
+              </>
+            )}
+            {isSandboxPlan && <span>{unit}</span>}
+          </div>
+        )
+      }
+      // Pro/Team users with usage >= threshold - show actual usage
       const totalText = storageTotalDisplay || totalDisplay
       return (
         <div className="flex items-center gap-1">
-          <span>
-            &lt;
-            {' '}
-            {storageThreshold}
-          </span>
-          {!isSandboxPlan && (
-            <>
-              <span className="system-md-regular text-text-quaternary">/</span>
-              <span>{totalText}</span>
-            </>
-          )}
-          {isSandboxPlan && <span>{unit}</span>}
+          <span>{usage}</span>
+          <span className="system-md-regular text-text-quaternary">/</span>
+          <span>{totalText}</span>
         </div>
       )
     }
-    // Pro/Team users with usage >= threshold - show actual usage
-    const totalText = storageTotalDisplay || totalDisplay
+
+    // Default display (storageMode = false)
     return (
       <div className="flex items-center gap-1">
         <span>{usage}</span>
         <span className="system-md-regular text-text-quaternary">/</span>
-        <span>{totalText}</span>
+        <span>{totalDisplay}</span>
       </div>
     )
   }
@@ -142,10 +156,11 @@ const UsageInfo: FC<Props> = ({
         percent={isBelowThreshold ? 0 : percent}
         color={isSandboxFull ? 'bg-components-progress-error-progress' : color}
         indeterminate={isBelowThreshold}
+        indeterminateFull={isBelowThreshold && isSandboxPlan}
       />
     )
 
-    if (storageTooltip) {
+    if (storageMode && storageTooltip) {
       return (
         <Tooltip
           popupContent={(
@@ -167,7 +182,7 @@ const UsageInfo: FC<Props> = ({
   const renderUsageWithTooltip = () => {
     const usageDisplay = renderUsageDisplay()
 
-    if (storageTooltip) {
+    if (storageMode && storageTooltip) {
       return (
         <Tooltip
           popupContent={(

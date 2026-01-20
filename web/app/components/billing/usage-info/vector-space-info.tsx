@@ -54,6 +54,7 @@ const VectorSpaceInfo: FC<Props> = ({
       total={totalInMB}
       unit="MB"
       unitPosition="inline"
+      storageMode
       storageThreshold={STORAGE_THRESHOLD_MB}
       storageTooltip={t('usagePage.storageThresholdTooltip', { ns: 'billing' }) as string}
       storageTotalDisplay={`${totalInMB}MB`}
