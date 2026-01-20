@@ -17,6 +17,7 @@ import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
 import { CONTEXT_MENU_TYPE, ROOT_ID } from '../constants'
 import { useInlineCreateNode } from '../hooks/use-inline-create-node'
+import { usePasteOperation } from '../hooks/use-paste-operation'
 import { useRootFileDrop } from '../hooks/use-root-file-drop'
 import { useSkillAssetTreeData } from '../hooks/use-skill-asset-tree'
 import { useSkillShortcuts } from '../hooks/use-skill-shortcuts'
@@ -127,18 +128,20 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
   }, [storeApi])
 
   const handleBlankAreaClick = useCallback(() => {
+    treeRef.current?.deselectAll()
     storeApi.getState().clearSelection()
-  }, [storeApi])
+  }, [storeApi, treeRef])
 
   const handleBlankAreaContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
+    treeRef.current?.deselectAll()
     storeApi.getState().clearSelection()
     storeApi.getState().setContextMenu({
       top: e.clientY,
       left: e.clientX,
       type: CONTEXT_MENU_TYPE.BLANK,
     })
-  }, [storeApi])
+  }, [storeApi, treeRef])
 
   useSyncTreeWithActiveTab({
     treeRef,
@@ -146,6 +149,11 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
   })
 
   useSkillShortcuts({ treeRef })
+
+  usePasteOperation({
+    treeRef,
+    treeData: treeData ?? undefined,
+  })
 
   if (isLoading) {
     return (
@@ -208,6 +216,7 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
   return (
     <>
       <div
+        data-skill-tree-container
         className={cn(
           'flex min-h-0 flex-1 flex-col',
           isMutating && 'pointer-events-none opacity-50',

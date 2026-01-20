@@ -31,6 +31,10 @@ export const MENU_CONTAINER_STYLES = [
   'bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]',
 ] as const
 
+const KBD_COPY = ['ctrl', 'c'] as const
+const KBD_CUT = ['ctrl', 'x'] as const
+const KBD_PASTE = ['ctrl', 'v'] as const
+
 type NodeMenuProps = {
   type: NodeMenuType
   nodeId?: string
@@ -176,14 +180,14 @@ const NodeMenu: FC<NodeMenuProps> = ({
           <MenuItem
             icon={RiFileCopyLine}
             label={t('skillSidebar.menu.copy')}
-            kbd={['ctrl', 'c']}
+            kbd={KBD_COPY}
             onClick={handleCopy}
             disabled={isLoading}
           />
           <MenuItem
             icon={RiScissorsLine}
             label={t('skillSidebar.menu.cut')}
-            kbd={['ctrl', 'x']}
+            kbd={KBD_CUT}
             onClick={handleCut}
             disabled={isLoading}
           />
@@ -194,7 +198,7 @@ const NodeMenu: FC<NodeMenuProps> = ({
         <MenuItem
           icon={RiClipboardLine}
           label={t('skillSidebar.menu.paste')}
-          kbd={['ctrl', 'v']}
+          kbd={KBD_PASTE}
           onClick={handlePaste}
           disabled={isLoading || !hasClipboard}
         />

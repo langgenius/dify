@@ -53,7 +53,7 @@ const labelVariants = cva('system-sm-regular text-text-secondary', {
 export type MenuItemProps = {
   icon: React.ElementType
   label: string
-  kbd?: string[]
+  kbd?: readonly string[]
   onClick: React.MouseEventHandler<HTMLButtonElement>
   disabled?: boolean
 } & VariantProps<typeof menuItemVariants>

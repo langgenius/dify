@@ -16,19 +16,28 @@ type UseSkillShortcutsOptions = {
   enabled?: boolean
 }
 
+const TREE_CONTAINER_SELECTOR = '[data-skill-tree-container]'
+
 export function useSkillShortcuts({
   treeRef,
   enabled = true,
 }: UseSkillShortcutsOptions): void {
   const storeApi = useWorkflowStore()
   const enabledRef = useRef(enabled)
-  useEffect(() => { enabledRef.current = enabled }, [enabled])
+  useEffect(() => {
+    enabledRef.current = enabled
+  }, [enabled])
 
   const shouldHandle = useCallback((e: KeyboardEvent) => {
     if (!enabledRef.current)
       return false
-    return !isEventTargetInputArea(e.target as HTMLElement)
-  }, [])
+    if (isEventTargetInputArea(e.target as HTMLElement))
+      return false
+    const target = e.target as HTMLElement
+    const isInTreeContainer = target.closest(TREE_CONTAINER_SELECTOR) !== null
+    const hasSelection = (treeRef.current?.selectedNodes.length ?? 0) > 0
+    return isInTreeContainer || hasSelection
+  }, [treeRef])
 
   const getSelectedNodeIds = useCallback(() => {
     const tree = treeRef.current
