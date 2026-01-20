@@ -1,0 +1,33 @@
+identity:
+  name: usuarios_inativos
+  author: MozHost Team
+  label:
+    en_US: Inactive Users
+    pt_BR: Usuários Inativos
+description:
+  human:
+    en_US: Get count of inactive users
+    pt_BR: Obtém contagem de usuários inativos
+  llm: Returns the number of users who have been inactive for a specified number of days on MozHost platform.
+parameters:
+  - name: dias
+    type: number
+    required: false
+    form: llm
+    default: 30
+    label:
+      en_US: Inactivity Days
+      pt_BR: Dias de Inatividade
+    human_description:
+      en_US: Number of days to consider a user inactive
+      pt_BR: Número de dias para considerar usuário inativo
+  - name: user_id
+    type: string
+    required: true
+    form: llm
+    label:
+      en_US: Admin User ID
+      pt_BR: ID do Usuário Admin
+    human_description:
+      en_US: ID of the admin user making the query
+      pt_BR: ID do usuário administrador fazendo a consulta

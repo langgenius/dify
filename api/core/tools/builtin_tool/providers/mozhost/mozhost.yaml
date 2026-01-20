@@ -1,0 +1,23 @@
+identity:
+  author: MozHost Team
+  name: mozhost
+  label:
+    en_US: MozHost TINA
+    pt_BR: MozHost TINA
+  description:
+    en_US: Manage MozHost platform - users, containers, and coins balance
+    pt_BR: Gerencie a plataforma MozHost - usuários, containers e saldo de coins
+  icon: icon.svg
+  tags:
+    - hosting
+    - management
+credentials_for_provider:
+  api_token:
+    type: secret-input
+    required: true
+    label:
+      en_US: API Bearer Token
+      pt_BR: Token Bearer da API
+    placeholder:
+      en_US: Enter your MozHost API token
+      pt_BR: Insira seu token da API MozHost

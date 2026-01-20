@@ -1,0 +1,22 @@
+identity:
+  name: saldo_coins
+  author: MozHost Team
+  label:
+    en_US: Coins Balance
+    pt_BR: Saldo de Coins
+description:
+  human:
+    en_US: Get user's coins balance
+    pt_BR: Obtém saldo de coins do usuário
+  llm: Returns the current coins balance for a specific user on MozHost platform.
+parameters:
+  - name: user_id
+    type: string
+    required: true
+    form: llm
+    label:
+      en_US: User ID
+      pt_BR: ID do Usuário
+    human_description:
+      en_US: User ID to check balance
+      pt_BR: ID do usuário para verificar saldo

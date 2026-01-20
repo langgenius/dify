@@ -1,0 +1,22 @@
+identity:
+  name: containers_rodando
+  author: MozHost Team
+  label:
+    en_US: Running Containers
+    pt_BR: Containers Rodando
+description:
+  human:
+    en_US: Get count of running containers
+    pt_BR: Obtém contagem de containers ativos
+  llm: Returns the total number of Docker containers currently running on MozHost platform.
+parameters:
+  - name: user_id
+    type: string
+    required: true
+    form: llm
+    label:
+      en_US: User ID
+      pt_BR: ID do Usuário
+    human_description:
+      en_US: User ID to check containers
+      pt_BR: ID do usuário para verificar containers

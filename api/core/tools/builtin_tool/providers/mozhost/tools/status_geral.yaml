@@ -1,0 +1,12 @@
+identity:
+  name: status_geral
+  author: MozHost Team
+  label:
+    en_US: Platform Status
+    pt_BR: Status da Plataforma
+description:
+  human:
+    en_US: Get general MozHost platform statistics
+    pt_BR: Obtém estatísticas gerais da plataforma MozHost
+  llm: Retrieves general statistics from MozHost platform including total users, total containers, running containers and inactive users count.
+parameters: []
