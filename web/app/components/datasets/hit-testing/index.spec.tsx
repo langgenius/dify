@@ -2039,8 +2039,13 @@ describe('Integration: Hit Testing Flow', () => {
 
     renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
 
+    // Wait for textbox with timeout for CI
+    const textarea = await waitFor(
+      () => screen.getByRole('textbox'),
+      { timeout: 3000 },
+    )
+
     // Type query
-    const textarea = screen.getByRole('textbox')
     fireEvent.change(textarea, { target: { value: 'Test query' } })
 
     // Find submit button by class
@@ -2054,8 +2059,13 @@ describe('Integration: Hit Testing Flow', () => {
 
     const { container } = renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
 
+    // Wait for textbox with timeout for CI
+    const textarea = await waitFor(
+      () => screen.getByRole('textbox'),
+      { timeout: 3000 },
+    )
+
     // Type query
-    const textarea = screen.getByRole('textbox')
     fireEvent.change(textarea, { target: { value: 'Test query' } })
 
     // Component should still be functional - check for the main container
@@ -2089,10 +2099,15 @@ describe('Integration: Hit Testing Flow', () => {
       isLoading: false,
     } as unknown as ReturnType<typeof useDatasetTestingRecords>)
 
-    const { container } = renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
+    const { container: _container } = renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
+
+    // Wait for textbox to be rendered with timeout for CI environment
+    const textarea = await waitFor(
+      () => screen.getByRole('textbox'),
+      { timeout: 3000 },
+    )
 
     // Type query
-    const textarea = screen.getByRole('textbox')
     fireEvent.change(textarea, { target: { value: 'Test query' } })
 
     // Submit
@@ -2101,8 +2116,13 @@ describe('Integration: Hit Testing Flow', () => {
     if (submitButton)
       fireEvent.click(submitButton)
 
-    // Verify the component is still rendered after submission
-    expect(container.firstChild).toBeInTheDocument()
+    // Wait for the mutation to complete
+    await waitFor(
+      () => {
+        expect(mockHitTestingMutateAsync).toHaveBeenCalled()
+      },
+      { timeout: 3000 },
+    )
   })
 
   it('should render ResultItem components for non-external results', async () => {
@@ -2127,10 +2147,15 @@ describe('Integration: Hit Testing Flow', () => {
       isLoading: false,
     } as unknown as ReturnType<typeof useDatasetTestingRecords>)
 
-    const { container } = renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
+    const { container: _container } = renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
+
+    // Wait for component to be fully rendered with longer timeout
+    const textarea = await waitFor(
+      () => screen.getByRole('textbox'),
+      { timeout: 3000 },
+    )
 
     // Submit a query
-    const textarea = screen.getByRole('textbox')
     fireEvent.change(textarea, { target: { value: 'Test query' } })
 
     const buttons = screen.getAllByRole('button')
@@ -2138,8 +2163,13 @@ describe('Integration: Hit Testing Flow', () => {
     if (submitButton)
       fireEvent.click(submitButton)
 
-    // Verify component is rendered after submission
-    expect(container.firstChild).toBeInTheDocument()
+    // Wait for mutation to complete with longer timeout
+    await waitFor(
+      () => {
+        expect(mockHitTestingMutateAsync).toHaveBeenCalled()
+      },
+      { timeout: 3000 },
+    )
   })
 
   it('should render external results when dataset is external', async () => {
@@ -2165,8 +2195,14 @@ describe('Integration: Hit Testing Flow', () => {
 
     // Component should render
     expect(container.firstChild).toBeInTheDocument()
+
+    // Wait for textbox with timeout for CI
+    const textarea = await waitFor(
+      () => screen.getByRole('textbox'),
+      { timeout: 3000 },
+    )
+
     // Type in textarea to verify component is functional
-    const textarea = screen.getByRole('textbox')
     fireEvent.change(textarea, { target: { value: 'Test query' } })
 
     const buttons = screen.getAllByRole('button')
@@ -2174,9 +2210,13 @@ describe('Integration: Hit Testing Flow', () => {
     if (submitButton)
       fireEvent.click(submitButton)
 
-    await waitFor(() => {
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
-    })
+    // Verify component is still functional after submission
+    await waitFor(
+      () => {
+        expect(screen.getByRole('textbox')).toBeInTheDocument()
+      },
+      { timeout: 3000 },
+    )
   })
 })
 
@@ -2260,8 +2300,13 @@ describe('renderHitResults Coverage', () => {
 
     const { container } = renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
 
+    // Wait for textbox with timeout for CI
+    const textarea = await waitFor(
+      () => screen.getByRole('textbox'),
+      { timeout: 3000 },
+    )
+
     // Enter query
-    const textarea = screen.getByRole('textbox')
     fireEvent.change(textarea, { target: { value: 'test query' } })
 
     // Submit
@@ -2386,8 +2431,13 @@ describe('HitTestingPage Internal Functions Coverage', () => {
 
     const { container } = renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
 
+    // Wait for textbox with timeout for CI
+    const textarea = await waitFor(
+      () => screen.getByRole('textbox'),
+      { timeout: 3000 },
+    )
+
     // Enter query and submit
-    const textarea = screen.getByRole('textbox')
     fireEvent.change(textarea, { target: { value: 'test query' } })
 
     const buttons = screen.getAllByRole('button')
@@ -2400,7 +2450,7 @@ describe('HitTestingPage Internal Functions Coverage', () => {
     // Wait for state updates
     await waitFor(() => {
       expect(container.firstChild).toBeInTheDocument()
-    }, { timeout: 2000 })
+    }, { timeout: 3000 })
 
     // Verify mutation was called
     expect(mockHitTestingMutateAsync).toHaveBeenCalled()
@@ -2445,8 +2495,13 @@ describe('HitTestingPage Internal Functions Coverage', () => {
 
     const { container } = renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
 
+    // Wait for textbox with timeout for CI
+    const textarea = await waitFor(
+      () => screen.getByRole('textbox'),
+      { timeout: 3000 },
+    )
+
     // Submit a query
-    const textarea = screen.getByRole('textbox')
     fireEvent.change(textarea, { target: { value: 'test' } })
 
     const buttons = screen.getAllByRole('button')
@@ -2458,7 +2513,7 @@ describe('HitTestingPage Internal Functions Coverage', () => {
     // Verify the component renders
     await waitFor(() => {
       expect(container.firstChild).toBeInTheDocument()
-    })
+    }, { timeout: 3000 })
   })
 })
 

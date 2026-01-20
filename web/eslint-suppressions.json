@@ -822,7 +822,7 @@
       "count": 2
     },
     "ts/no-explicit-any": {
-      "count": 15
+      "count": 14
     }
   },
   "app/components/base/chat/chat/index.tsx": {
