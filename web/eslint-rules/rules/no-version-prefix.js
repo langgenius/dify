@@ -1,9 +1,16 @@
+// Constants for dependency field names and version prefixes
+const DEPENDENCY_KEYS = ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies']
+const VERSION_PREFIXES = ['^', '~']
+
+// Generate regex pattern for dependency keys
+const DEPENDENCY_KEYS_PATTERN = `^(${DEPENDENCY_KEYS.join('|')})$`
+
 /** @type {import('eslint').Rule.RuleModule} */
 export default {
   meta: {
     type: 'problem',
     docs: {
-      description: 'Ensure package.json dependencies do not use version prefixes (^ or ~)',
+      description: `Ensure package.json dependencies do not use version prefixes (${VERSION_PREFIXES.join(' or ')})`,
     },
   },
   create(context) {
@@ -13,31 +20,22 @@ export default {
     if (!filename.endsWith('package.json'))
       return {}
 
-    const dependencyTypes = new Set(['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies'])
-    let currentDependencyType = null
-
     return {
-      // Track when we enter a dependency section
-      'Property[key.value=/^(dependencies|devDependencies|peerDependencies|optionalDependencies)$/] > ObjectExpression'(node) {
-        const parent = node.parent
-        if (parent && parent.key && parent.key.value) {
-          currentDependencyType = parent.key.value
-        }
-      },
-
       // Check each property in dependency sections
-      'Property[key.value=/^(dependencies|devDependencies|peerDependencies|optionalDependencies)$/] > ObjectExpression > Property'(node) {
+      [`Property[key.value=/${DEPENDENCY_KEYS_PATTERN}/] > ObjectExpression > Property`](node) {
         const versionNode = node.value
 
-        // Check if the version value starts with ^ or ~
+        // Check if the version value starts with any forbidden prefix
         if (versionNode && versionNode.type === 'Literal' && typeof versionNode.value === 'string') {
           const version = versionNode.value
-          if (version.startsWith('^') || version.startsWith('~')) {
+          const foundPrefix = VERSION_PREFIXES.find(prefix => version.startsWith(prefix))
+
+          if (foundPrefix) {
             const packageName = node.key.value || node.key.name
-            const prefix = version[0]
+            const cleanVersion = version.substring(1)
             context.report({
               node: versionNode,
-              message: `Dependency "${packageName}" has version prefix "${prefix}" that should be removed (found: "${version}", expected: "${version.substring(1)}")`,
+              message: `Dependency "${packageName}" has version prefix "${foundPrefix}" that should be removed (found: "${version}", expected: "${cleanVersion}")`,
             })
           }
         }
