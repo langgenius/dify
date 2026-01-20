@@ -140,7 +140,7 @@
   "stepTwo.preview": "Bestätigen & Vorschau",
   "stepTwo.previewButton": "Umschalten zum Frage-und-Antwort-Format",
   "stepTwo.previewChunk": "Vorschau Chunk",
-  "stepTwo.previewChunkCount": "{{Anzahl}} Geschätzte Chunks",
+  "stepTwo.previewChunkCount": "{{count}} Geschätzte Chunks",
   "stepTwo.previewChunkTip": "Klicken Sie auf die Schaltfläche \"Preview Chunk\" auf der linken Seite, um die Vorschau zu laden",
   "stepTwo.previewSwitchTipEnd": " zusätzliche Tokens verbrauchen",
   "stepTwo.previewSwitchTipStart": "Die aktuelle Chunk-Vorschau ist im Textformat, ein Wechsel zur Vorschau im Frage-und-Antwort-Format wird",

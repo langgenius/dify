@@ -140,7 +140,7 @@
   "stepTwo.preview": "Confirmar y vista previa",
   "stepTwo.previewButton": "Cambiar a formato de pregunta y respuesta",
   "stepTwo.previewChunk": "Fragmento de vista previa",
-  "stepTwo.previewChunkCount": "{{conteo}} Fragmentos estimados",
+  "stepTwo.previewChunkCount": "{{count}} Fragmentos estimados",
   "stepTwo.previewChunkTip": "Haga clic en el botón 'Vista previa de fragmento' a la izquierda para cargar la vista previa",
   "stepTwo.previewSwitchTipEnd": " consumirá tokens adicionales",
   "stepTwo.previewSwitchTipStart": "La vista previa actual del fragmento está en formato de texto, cambiar a una vista previa en formato de pregunta y respuesta",
