@@ -35,7 +35,7 @@
   "stepOne.uploader.cancel": "Annulla",
   "stepOne.uploader.change": "Cambia",
   "stepOne.uploader.failed": "Caricamento fallito",
-  "stepOne.uploader.tip": "Supporta {{supportTypes}}. Max {{size}}MB ciascuno.",
+  "stepOne.uploader.tip": "Supporta {{supportTypes}}. Massimo {{batchCount}} file per batch e {{size}} MB ciascuno. Totale massimo {{totalCount}} file.",
   "stepOne.uploader.title": "Carica file",
   "stepOne.uploader.validation.count": "Più file non supportati",
   "stepOne.uploader.validation.filesNumber": "Hai raggiunto il limite di caricamento batch di {{filesNumber}}.",

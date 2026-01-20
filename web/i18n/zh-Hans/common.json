@@ -91,6 +91,7 @@
   "apiBasedExtension.title": "API 扩展提供了一个集中式的 API 管理，在此统一添加 API 配置后，方便在 Dify 上的各类应用中直接使用。",
   "apiBasedExtension.type": "类型",
   "appMenus.apiAccess": "访问 API",
+  "appMenus.apiAccessTip": "此知识库可通过服务 API 访问",
   "appMenus.logAndAnn": "日志与标注",
   "appMenus.logs": "日志",
   "appMenus.overview": "监测",

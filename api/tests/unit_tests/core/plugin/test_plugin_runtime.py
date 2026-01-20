@@ -346,6 +346,7 @@ class TestPluginRuntimeErrorHandling:
         mock_response.status_code = 200
         invoke_error = {
             "error_type": "InvokeRateLimitError",
+            "message": "Rate limit exceeded",
             "args": {"description": "Rate limit exceeded"},
         }
         error_message = json.dumps({"error_type": "PluginInvokeError", "message": json.dumps(invoke_error)})
@@ -364,6 +365,7 @@ class TestPluginRuntimeErrorHandling:
         mock_response.status_code = 200
         invoke_error = {
             "error_type": "InvokeAuthorizationError",
+            "message": "Invalid credentials",
             "args": {"description": "Invalid credentials"},
         }
         error_message = json.dumps({"error_type": "PluginInvokeError", "message": json.dumps(invoke_error)})
@@ -382,6 +384,7 @@ class TestPluginRuntimeErrorHandling:
         mock_response.status_code = 200
         invoke_error = {
             "error_type": "InvokeBadRequestError",
+            "message": "Invalid parameters",
             "args": {"description": "Invalid parameters"},
         }
         error_message = json.dumps({"error_type": "PluginInvokeError", "message": json.dumps(invoke_error)})
@@ -400,6 +403,7 @@ class TestPluginRuntimeErrorHandling:
         mock_response.status_code = 200
         invoke_error = {
             "error_type": "InvokeConnectionError",
+            "message": "Connection to external service failed",
             "args": {"description": "Connection to external service failed"},
         }
         error_message = json.dumps({"error_type": "PluginInvokeError", "message": json.dumps(invoke_error)})
@@ -418,6 +422,7 @@ class TestPluginRuntimeErrorHandling:
         mock_response.status_code = 200
         invoke_error = {
             "error_type": "InvokeServerUnavailableError",
+            "message": "Service temporarily unavailable",
             "args": {"description": "Service temporarily unavailable"},
         }
         error_message = json.dumps({"error_type": "PluginInvokeError", "message": json.dumps(invoke_error)})
