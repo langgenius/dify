@@ -58,10 +58,10 @@ importers:
         specifier: 2.33.1
         version: 2.33.1
       '@amplitude/plugin-session-replay-browser':
-        specifier: ^1.23.6
-        version: 1.24.1(@amplitude/rrweb@2.0.0-alpha.33)(rollup@4.53.5)
+        specifier: 1.23.6
+        version: 1.23.6(@amplitude/rrweb@2.0.0-alpha.33)(rollup@4.53.5)
       '@antv/infographic':
-        specifier: ^0.2.10
+        specifier: 0.2.10
         version: 0.2.10(canvas@3.2.0)
       '@emoji-mart/data':
         specifier: 1.2.1
@@ -271,10 +271,10 @@ importers:
         specifier: 19.2.3
         version: 19.2.3(react@19.2.3)
       react-easy-crop:
-        specifier: ^5.5.3
-        version: 5.5.6(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+        specifier: 5.5.3
+        version: 5.5.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react-error-boundary:
-        specifier: ^6.1.0
+        specifier: 6.1.0
         version: 6.1.0(react@19.2.3)
       react-hotkeys-hook:
         specifier: 4.6.2
@@ -4226,8 +4226,8 @@ packages:
     engines: {node: '>= 4.5.0'}
     hasBin: true
 
-  autoprefixer@10.4.22:
-    resolution: {integrity: sha512-ARe0v/t9gO28Bznv6GgqARmVqcWOV3mfgUPn9becPHMiD3o9BwlRgaeccZnwTpZ7Zwqrm+c1sUSsMxIzQzc8Xg==}
+  autoprefixer@10.4.21:
+    resolution: {integrity: sha512-O+A6LWV5LDHSJD3LjHYoNi4VLsj/Whi7k6zG12xTYaU4cQ8oxQGckXNX8cRHK5yOZ/ppVHe0ZBXGzSV9jXdVbQ==}
     engines: {node: ^10 || ^12 || >=14}
     hasBin: true
     peerDependencies:
@@ -12907,7 +12907,7 @@ snapshots:
 
   atob@2.1.2: {}
 
-  autoprefixer@10.4.22(postcss@8.5.6):
+  autoprefixer@10.4.21(postcss@8.5.6):
     dependencies:
       browserslist: 4.28.1
       caniuse-lite: 1.0.30001760
