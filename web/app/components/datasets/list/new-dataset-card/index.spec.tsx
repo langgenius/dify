@@ -1,49 +1,76 @@
 import { render, screen } from '@testing-library/react'
-import NewDatasetCard from './index'
+import { describe, expect, it } from 'vitest'
+import CreateAppCard from './index'
 
-type MockOptionProps = {
-  text: string
-  href: string
-}
+describe('CreateAppCard', () => {
+  describe('Rendering', () => {
+    it('should render without crashing', () => {
+      render(<CreateAppCard />)
+      expect(screen.getAllByRole('link')).toHaveLength(3)
+    })
 
-// Mock dependencies
-vi.mock('./option', () => ({
-  default: ({ text, href }: MockOptionProps) => (
-    <a data-testid="option-link" href={href}>
-      {text}
-    </a>
-  ),
-}))
+    it('should render create dataset option', () => {
+      render(<CreateAppCard />)
+      expect(screen.getByText(/createDataset/)).toBeInTheDocument()
+    })
 
-vi.mock('@remixicon/react', () => ({
-  RiAddLine: () => <svg data-testid="icon-add" />,
-  RiFunctionAddLine: () => <svg data-testid="icon-function" />,
-}))
+    it('should render create from pipeline option', () => {
+      render(<CreateAppCard />)
+      expect(screen.getByText(/createFromPipeline/)).toBeInTheDocument()
+    })
 
-vi.mock('@/app/components/base/icons/src/vender/solid/development', () => ({
-  ApiConnectionMod: () => <svg data-testid="icon-api" />,
-}))
+    it('should render connect dataset option', () => {
+      render(<CreateAppCard />)
+      expect(screen.getByText(/connectDataset/)).toBeInTheDocument()
+    })
+  })
 
-describe('NewDatasetCard', () => {
-  it('should render all options', () => {
-    render(<NewDatasetCard />)
+  describe('Props', () => {
+    it('should have correct displayName', () => {
+      expect(CreateAppCard.displayName).toBe('CreateAppCard')
+    })
+  })
 
-    const options = screen.getAllByTestId('option-link')
-    expect(options).toHaveLength(3)
+  describe('Links', () => {
+    it('should have correct href for create dataset', () => {
+      render(<CreateAppCard />)
+      const links = screen.getAllByRole('link')
+      expect(links[0]).toHaveAttribute('href', '/datasets/create')
+    })
 
-    // Check first option (Create Dataset)
-    const createDataset = options[0]
-    expect(createDataset).toHaveAttribute('href', '/datasets/create')
-    expect(createDataset).toHaveTextContent('dataset.createDataset')
+    it('should have correct href for create from pipeline', () => {
+      render(<CreateAppCard />)
+      const links = screen.getAllByRole('link')
+      expect(links[1]).toHaveAttribute('href', '/datasets/create-from-pipeline')
+    })
 
-    // Check second option (Create from Pipeline)
-    const createFromPipeline = options[1]
-    expect(createFromPipeline).toHaveAttribute('href', '/datasets/create-from-pipeline')
-    expect(createFromPipeline).toHaveTextContent('dataset.createFromPipeline')
+    it('should have correct href for connect dataset', () => {
+      render(<CreateAppCard />)
+      const links = screen.getAllByRole('link')
+      expect(links[2]).toHaveAttribute('href', '/datasets/connect')
+    })
+  })
 
-    // Check third option (Connect Dataset)
-    const connectDataset = options[2]
-    expect(connectDataset).toHaveAttribute('href', '/datasets/connect')
-    expect(connectDataset).toHaveTextContent('dataset.connectDataset')
+  describe('Styles', () => {
+    it('should have correct card styling', () => {
+      const { container } = render(<CreateAppCard />)
+      const card = container.firstChild as HTMLElement
+      expect(card).toHaveClass('h-[190px]', 'flex', 'flex-col', 'rounded-xl')
+    })
+
+    it('should have border separator for connect option', () => {
+      const { container } = render(<CreateAppCard />)
+      const borderDiv = container.querySelector('.border-t-\\[0\\.5px\\]')
+      expect(borderDiv).toBeInTheDocument()
+    })
+  })
+
+  describe('Icons', () => {
+    it('should render three icons for three options', () => {
+      const { container } = render(<CreateAppCard />)
+      // Each option has an icon
+      const icons = container.querySelectorAll('svg')
+      expect(icons.length).toBeGreaterThanOrEqual(3)
+    })
   })
 })
