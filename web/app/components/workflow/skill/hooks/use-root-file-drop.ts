@@ -2,10 +2,9 @@
 
 // Root-level file drop handler with drag counter to handle nested DOM events
 
-import type { AppAssetTreeView } from '@/types/app-asset'
 import { useCallback, useRef } from 'react'
-import { isDragEvent } from '../utils/drag-utils'
-import { useUnifiedDrag } from './use-unified-drag'
+import { isFileDrag } from '../utils/drag-utils'
+import { useFileDrop } from './use-file-drop'
 
 type UseRootFileDropReturn = {
   handleRootDragEnter: (e: React.DragEvent) => void
@@ -15,16 +14,12 @@ type UseRootFileDropReturn = {
   resetRootDragCounter: () => void
 }
 
-type UseRootFileDropOptions = {
-  treeChildren: AppAssetTreeView[]
-}
-
-export function useRootFileDrop({ treeChildren: _treeChildren }: UseRootFileDropOptions): UseRootFileDropReturn {
-  const { handleDragOver, handleDragLeave, handleDrop } = useUnifiedDrag()
+export function useRootFileDrop(): UseRootFileDropReturn {
+  const { handleDragOver, handleDragLeave, handleDrop } = useFileDrop()
   const dragCounterRef = useRef(0)
 
   const handleRootDragEnter = useCallback((e: React.DragEvent) => {
-    if (!isDragEvent(e))
+    if (!isFileDrag(e))
       return
     dragCounterRef.current += 1
   }, [])
@@ -34,7 +29,7 @@ export function useRootFileDrop({ treeChildren: _treeChildren }: UseRootFileDrop
   }, [handleDragOver])
 
   const handleRootDragLeave = useCallback((e: React.DragEvent) => {
-    if (!isDragEvent(e))
+    if (!isFileDrag(e))
       return
     dragCounterRef.current = Math.max(dragCounterRef.current - 1, 0)
     if (dragCounterRef.current === 0)

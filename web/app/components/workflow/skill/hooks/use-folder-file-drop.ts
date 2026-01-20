@@ -4,11 +4,10 @@
 
 import type { NodeApi } from 'react-arborist'
 import type { TreeNodeData } from '../type'
-import type { AppAssetTreeView } from '@/types/app-asset'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '@/app/components/workflow/store'
-import { isDragEvent } from '../utils/drag-utils'
-import { useUnifiedDrag } from './use-unified-drag'
+import { isFileDrag } from '../utils/drag-utils'
+import { useFileDrop } from './use-file-drop'
 
 type UseFolderFileDropReturn = {
   isDragOver: boolean
@@ -27,15 +26,14 @@ const AUTO_EXPAND_DELAY_MS = 2000
 
 type UseFolderFileDropOptions = {
   node: NodeApi<TreeNodeData>
-  treeChildren: AppAssetTreeView[]
 }
 
-export function useFolderFileDrop({ node, treeChildren: _treeChildren }: UseFolderFileDropOptions): UseFolderFileDropReturn {
+export function useFolderFileDrop({ node }: UseFolderFileDropOptions): UseFolderFileDropReturn {
   const isFolder = node.data.node_type === 'folder'
   const dragOverFolderId = useStore(s => s.dragOverFolderId)
   const isDragOver = isFolder && dragOverFolderId === node.data.id
 
-  const { handleDragOver, handleDrop } = useUnifiedDrag()
+  const { handleDragOver, handleDrop } = useFileDrop()
 
   const expandTimerRef = useRef<NodeJS.Timeout | null>(null)
   const blinkTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -86,7 +84,7 @@ export function useFolderFileDrop({ node, treeChildren: _treeChildren }: UseFold
   }, [clearExpandTimer])
 
   const handleFolderDragEnter = useCallback((e: React.DragEvent) => {
-    if (!isFolder || !isDragEvent(e))
+    if (!isFolder || !isFileDrag(e))
       return
     dragCounterRef.current += 1
     if (dragCounterRef.current === 1)
@@ -94,13 +92,13 @@ export function useFolderFileDrop({ node, treeChildren: _treeChildren }: UseFold
   }, [isFolder, scheduleAutoExpand])
 
   const handleFolderDragOver = useCallback((e: React.DragEvent) => {
-    if (!isFolder || !isDragEvent(e))
+    if (!isFolder || !isFileDrag(e))
       return
     handleDragOver(e, { folderId: node.data.id, isFolder: true })
   }, [handleDragOver, isFolder, node.data.id])
 
   const handleFolderDragLeave = useCallback((e: React.DragEvent) => {
-    if (!isFolder || !isDragEvent(e))
+    if (!isFolder || !isFileDrag(e))
       return
     dragCounterRef.current = Math.max(dragCounterRef.current - 1, 0)
     if (dragCounterRef.current === 0)

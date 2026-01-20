@@ -20,11 +20,9 @@ import TreeEditInput from './tree-edit-input'
 import TreeGuideLines from './tree-guide-lines'
 import { TreeNodeIcon } from './tree-node-icon'
 
-type TreeNodeProps = NodeRendererProps<TreeNodeData> & {
-  treeChildren: TreeNodeData[]
-}
+type TreeNodeProps = NodeRendererProps<TreeNodeData>
 
-const TreeNode = ({ node, style, dragHandle, treeChildren }: TreeNodeProps) => {
+const TreeNode = ({ node, style, dragHandle }: TreeNodeProps) => {
   const { t } = useTranslation('workflow')
   const isFolder = node.data.node_type === 'folder'
   const isSelected = node.isSelected
@@ -77,7 +75,7 @@ const TreeNode = ({ node, style, dragHandle, treeChildren }: TreeNodeProps) => {
   } = useTreeNodeHandlers({ node })
 
   // Get file drop visual state (for external file uploads)
-  const { isDragOver: isFileDragOver, isBlinking, dragHandlers } = useFolderFileDrop({ node, treeChildren })
+  const { isDragOver: isFileDragOver, isBlinking, dragHandlers } = useFolderFileDrop({ node })
 
   // Combine internal drag target (willReceiveDrop) with external file drag (isFileDragOver)
   const isDragOver = isFileDragOver || (isFolder && node.willReceiveDrop)

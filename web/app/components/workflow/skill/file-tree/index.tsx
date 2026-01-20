@@ -72,7 +72,7 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
     handleRootDragOver,
     handleRootDrop,
     resetRootDragCounter,
-  } = useRootFileDrop({ treeChildren })
+  } = useRootFileDrop()
 
   // Root dropzone highlight (when dragging to root, not to a specific folder)
   const isRootDropzone = dragOverFolderId === ROOT_ID
@@ -200,8 +200,8 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
   }, [treeChildren])
 
   const renderTreeNode = useCallback((props: NodeRendererProps<TreeNodeData>) => {
-    return <TreeNode {...props} treeChildren={treeChildren} />
-  }, [treeChildren])
+    return <TreeNode {...props} />
+  }, [])
 
   useSyncTreeWithActiveTab({
     treeRef,
