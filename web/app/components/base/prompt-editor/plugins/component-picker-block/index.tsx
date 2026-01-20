@@ -286,25 +286,33 @@ const ComponentPicker = ({
                 }}
                 ref={refs.setFloating}
               >
-                <SegmentedControl
-                  size="small"
-                  padding="with"
-                  activeState="accent"
+                <div
                   className="w-full"
-                  btnClassName="flex-1"
-                  options={[
-                    {
-                      value: 'variables',
-                      text: t('promptEditor.variable.outputToolDisabledItem.title', { ns: 'common' }),
-                    },
-                    {
-                      value: 'files',
-                      text: t('nodes.llm.files', { ns: 'workflow' }),
-                    },
-                  ]}
-                  value={activeTab}
-                  onChange={setActiveTab}
-                />
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                  }}
+                >
+                  <SegmentedControl
+                    size="small"
+                    padding="with"
+                    activeState="accent"
+                    className="w-full"
+                    btnClassName="flex-1"
+                    options={[
+                      {
+                        value: 'variables',
+                        text: t('promptEditor.variable.outputToolDisabledItem.title', { ns: 'common' }),
+                      },
+                      {
+                        value: 'files',
+                        text: t('nodes.llm.files', { ns: 'workflow' }),
+                      },
+                    ]}
+                    value={activeTab}
+                    onChange={setActiveTab}
+                  />
+                </div>
                 <div className="mt-2">
                   {activeTab === 'variables' && (
                     <VarReferenceVars
@@ -439,7 +447,7 @@ const ComponentPicker = ({
         }
       </>
     )
-  }, [isAgentTrigger, isSupportSandbox, triggerString, allFlattenOptions.length, workflowVariableBlock?.show, workflowVariableBlock.showManageInputField, workflowVariableBlock.onManageInputField, floatingStyles, isPositioned, refs, agentNodes, handleSelectAgent, handleClose, useExternalSearch, queryString, workflowVariableOptions, isSupportFileVar, showAssembleVariables, handleSelectAssembleVariables, currentBlock?.generatorType, t, activeTab, handleSelectWorkflowVariable, handleSelectFileReference])
+  }, [isAgentTrigger, isSupportSandbox, triggerString, allFlattenOptions.length, workflowVariableBlock?.show, workflowVariableBlock?.showManageInputField, workflowVariableBlock?.onManageInputField, floatingStyles, isPositioned, refs, agentNodes, handleSelectAgent, handleClose, useExternalSearch, queryString, workflowVariableOptions, isSupportFileVar, showAssembleVariables, handleSelectAssembleVariables, currentBlock?.generatorType, t, activeTab, handleSelectWorkflowVariable, handleSelectFileReference])
 
   return (
     <LexicalTypeaheadMenuPlugin

@@ -457,7 +457,7 @@ const FormInputItem: FC<Props> = ({
           currentProvider={currentProvider}
           isFilterFileVar={isBoolean}
           toolNodeId={nodeId}
-          paramKey={variable}
+        // paramKey={variable}
         />
       )}
       {isNumber && isConstant && (
