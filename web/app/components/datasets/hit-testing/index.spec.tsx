@@ -2142,8 +2142,8 @@ describe('Integration: Hit Testing Flow', () => {
       fireEvent.click(submitButton)
 
     await waitFor(() => {
-      // Verify component is rendered
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      // Verify component is rendered (use hidden: true in case dialog opened)
+      expect(screen.getByRole('textbox', { hidden: true })).toBeInTheDocument()
     })
   })
 
