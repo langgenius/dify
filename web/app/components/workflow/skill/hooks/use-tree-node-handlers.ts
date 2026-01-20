@@ -3,7 +3,7 @@
 import type { NodeApi } from 'react-arborist'
 import type { TreeNodeData } from '../type'
 import { throttle } from 'es-toolkit/function'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useDelayedClick } from './use-delayed-click'
 
@@ -19,19 +19,17 @@ type UseTreeNodeHandlersReturn = {
   handleKeyDown: (e: React.KeyboardEvent) => void
 }
 
-/**
- * Hook that encapsulates all tree node interaction handlers.
- * Handles click, double-click, toggle, context menu, and keyboard events.
- */
 export function useTreeNodeHandlers({
   node,
 }: UseTreeNodeHandlersOptions): UseTreeNodeHandlersReturn {
   const storeApi = useWorkflowStore()
   const isFolder = node.data.node_type === 'folder'
+  const nodeRef = useRef(node)
+  nodeRef.current = node
 
   const throttledToggle = useMemo(
-    () => throttle(() => node.toggle(), 300, { edges: ['leading'] }),
-    [node],
+    () => throttle(() => nodeRef.current.toggle(), 300, { edges: ['leading'] }),
+    [],
   )
 
   const openFilePreview = useCallback(() => {
@@ -49,10 +47,16 @@ export function useTreeNodeHandlers({
 
   const handleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
-    node.select() // This triggers Tree's onSelect → setSelectedTreeNodeId
+    if (e.shiftKey)
+      node.selectContiguous()
+    else if (e.metaKey || e.ctrlKey)
+      node.selectMulti()
+    else
+      node.select()
+
     if (isFolder)
       throttledToggle()
-    else
+    else if (!e.metaKey && !e.ctrlKey && !e.shiftKey)
       handleFileClick()
   }, [handleFileClick, isFolder, node, throttledToggle])
 
@@ -72,9 +76,7 @@ export function useTreeNodeHandlers({
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-
-    // Select the node for highlight + creation target
-    storeApi.getState().setSelectedTreeNodeId(node.data.id)
+    node.select()
     storeApi.getState().setContextMenu({
       top: e.clientY,
       left: e.clientX,
@@ -82,7 +84,7 @@ export function useTreeNodeHandlers({
       nodeId: node.data.id,
       isFolder,
     })
-  }, [isFolder, node.data.id, storeApi])
+  }, [isFolder, node, storeApi])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {

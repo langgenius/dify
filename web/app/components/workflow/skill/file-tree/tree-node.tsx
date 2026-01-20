@@ -25,6 +25,7 @@ const TreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeData>) 
   const isFolder = node.data.node_type === 'folder'
   const isSelected = node.isSelected
   const isDirty = useStore(s => s.dirtyContents.has(node.data.id))
+  const isCut = useStore(s => s.isCutNode(node.data.id))
   const contextMenuNodeId = useStore(s => s.contextMenu?.nodeId)
   const hasContextMenu = contextMenuNodeId === node.data.id
 
@@ -59,10 +60,9 @@ const TreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeNodeData>) 
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-components-input-border-active',
         isSelected && 'bg-state-base-active',
         hasContextMenu && !isSelected && 'bg-state-base-hover',
-        // Drag over highlight for folders
         isDragOver && 'bg-state-accent-hover ring-1 ring-inset ring-state-accent-solid',
-        // Blink animation when about to auto-expand (VSCode-style)
         isBlinking && 'animate-drag-blink',
+        isCut && 'opacity-50',
       )}
       onKeyDown={handleKeyDown}
       onContextMenu={handleContextMenu}

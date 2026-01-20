@@ -549,7 +549,6 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                     result=delta_text,
                     tool_elapsed_time=tool_elapsed_time,
                 )
-                self._task_state.answer += delta_text
             case _:
                 pass
         yield self._message_cycle_manager.message_to_stream_response(

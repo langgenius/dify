@@ -32,6 +32,9 @@ export type FileTreeSliceShape = {
   getOpensObject: () => OpensObject
   selectedTreeNodeId: string | null
   setSelectedTreeNodeId: (nodeId: string | null) => void
+  selectedNodeIds: Set<string>
+  setSelectedNodeIds: (nodeIds: string[]) => void
+  clearSelection: () => void
   pendingCreateNode: PendingCreateNode | null
   startCreateNode: (nodeType: PendingCreateNode['nodeType'], parentId: PendingCreateNode['parentId']) => void
   clearCreateNode: () => void
@@ -39,6 +42,22 @@ export type FileTreeSliceShape = {
   setDragOverFolderId: (folderId: string | null) => void
   fileTreeSearchTerm: string
   setFileTreeSearchTerm: (term: string) => void
+}
+
+export type ClipboardOperation = 'copy' | 'cut'
+
+export type ClipboardItem = {
+  operation: ClipboardOperation
+  nodeIds: Set<string>
+}
+
+export type ClipboardSliceShape = {
+  clipboard: ClipboardItem | null
+  copyNodes: (nodeIds: string[]) => void
+  cutNodes: (nodeIds: string[]) => void
+  clearClipboard: () => void
+  isCutNode: (nodeId: string) => boolean
+  hasClipboard: () => boolean
 }
 
 export type DirtySliceShape = {
@@ -76,6 +95,7 @@ export type FileOperationsMenuSliceShape = {
 export type SkillEditorSliceShape
   = TabSliceShape
     & FileTreeSliceShape
+    & ClipboardSliceShape
     & DirtySliceShape
     & MetadataSliceShape
     & FileOperationsMenuSliceShape

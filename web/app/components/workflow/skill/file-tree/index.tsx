@@ -17,8 +17,10 @@ import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
 import { CONTEXT_MENU_TYPE, ROOT_ID } from '../constants'
 import { useInlineCreateNode } from '../hooks/use-inline-create-node'
+import { usePasteOperation } from '../hooks/use-paste-operation'
 import { useRootFileDrop } from '../hooks/use-root-file-drop'
 import { useSkillAssetTreeData } from '../hooks/use-skill-asset-tree'
+import { useSkillShortcuts } from '../hooks/use-skill-shortcuts'
 import { useSyncTreeWithActiveTab } from '../hooks/use-sync-tree-with-active-tab'
 import ArtifactsSection from './artifacts-section'
 import DragActionTooltip from './drag-action-tooltip'
@@ -62,7 +64,6 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
 
   const expandedFolderIds = useStore(s => s.expandedFolderIds)
   const activeTabId = useStore(s => s.activeTabId)
-  const selectedTreeNodeId = useStore(s => s.selectedTreeNodeId)
   const dragOverFolderId = useStore(s => s.dragOverFolderId)
   const searchTerm = useStore(s => s.fileTreeSearchTerm)
   const storeApi = useWorkflowStore()
@@ -123,28 +124,35 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
   }, [storeApi])
 
   const handleSelect = useCallback((nodes: NodeApi<TreeNodeData>[]) => {
-    const selectedId = nodes[0]?.id ?? null
-    storeApi.getState().setSelectedTreeNodeId(selectedId)
+    storeApi.getState().setSelectedNodeIds(nodes.map(n => n.id))
   }, [storeApi])
 
-  // Clicking blank area clears selection for root-level creation
   const handleBlankAreaClick = useCallback(() => {
-    storeApi.getState().setSelectedTreeNodeId(null)
-  }, [storeApi])
+    treeRef.current?.deselectAll()
+    storeApi.getState().clearSelection()
+  }, [storeApi, treeRef])
 
   const handleBlankAreaContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
-    storeApi.getState().setSelectedTreeNodeId(null)
+    treeRef.current?.deselectAll()
+    storeApi.getState().clearSelection()
     storeApi.getState().setContextMenu({
       top: e.clientY,
       left: e.clientX,
       type: CONTEXT_MENU_TYPE.BLANK,
     })
-  }, [storeApi])
+  }, [storeApi, treeRef])
 
   useSyncTreeWithActiveTab({
     treeRef,
     activeTabId,
+  })
+
+  useSkillShortcuts({ treeRef })
+
+  usePasteOperation({
+    treeRef,
+    treeData: treeData ?? undefined,
   })
 
   if (isLoading) {
@@ -208,6 +216,7 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
   return (
     <>
       <div
+        data-skill-tree-container
         className={cn(
           'flex min-h-0 flex-1 flex-col',
           isMutating && 'pointer-events-none opacity-50',
@@ -239,7 +248,6 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
             indent={20}
             overscanCount={5}
             openByDefault={false}
-            selection={selectedTreeNodeId ?? undefined}
             initialOpenState={initialOpensObject}
             onToggle={handleToggle}
             onSelect={handleSelect}

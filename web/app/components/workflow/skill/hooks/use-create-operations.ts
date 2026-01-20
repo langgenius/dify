@@ -50,14 +50,16 @@ export function useCreateOperations({
     }
 
     try {
-      for (const file of files) {
-        await createFile.mutateAsync({
-          appId,
-          name: file.name,
-          file,
-          parentId,
-        })
-      }
+      await Promise.all(
+        files.map(file =>
+          createFile.mutateAsync({
+            appId,
+            name: file.name,
+            file,
+            parentId,
+          }),
+        ),
+      )
 
       Toast.notify({
         type: 'success',
