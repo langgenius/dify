@@ -1,93 +1,23 @@
 'use client'
 
-// Internal tree node move handler (drag-and-drop within tree)
+// Internal tree node move handler - API execution logic only
+// Drag state syncing is handled by react-arborist + TreeNode useEffect
 
-import type { AppAssetTreeView } from '@/types/app-asset'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Toast from '@/app/components/base/toast'
-import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useMoveAppAssetNode } from '@/service/use-app-asset'
-import { INTERNAL_NODE_DRAG_TYPE, ROOT_ID } from '../constants'
-import { findNodeById, isDescendantOf, toApiParentId } from '../utils/tree-utils'
+import { toApiParentId } from '../utils/tree-utils'
 
-type NodeMoveTarget = {
-  folderId: string | null
-  isFolder: boolean
-}
-
-type UseNodeMoveOptions = {
-  treeChildren: AppAssetTreeView[]
-}
-
-export function useNodeMove({ treeChildren }: UseNodeMoveOptions) {
+export function useNodeMove() {
   const { t } = useTranslation('workflow')
   const appDetail = useAppStore(s => s.appDetail)
   const appId = appDetail?.id || ''
-  const storeApi = useWorkflowStore()
   const moveNode = useMoveAppAssetNode()
 
-  const handleDragStart = useCallback((e: React.DragEvent, nodeId: string) => {
-    e.dataTransfer.effectAllowed = 'move'
-    e.dataTransfer.setData(INTERNAL_NODE_DRAG_TYPE, nodeId)
-    storeApi.getState().setCurrentDragType('move')
-  }, [storeApi])
-
-  const handleDragEnd = useCallback(() => {
-    storeApi.getState().setCurrentDragType(null)
-    storeApi.getState().setDragOverFolderId(null)
-  }, [storeApi])
-
-  const handleDragOver = useCallback((e: React.DragEvent, target: NodeMoveTarget) => {
-    e.preventDefault()
-    e.stopPropagation()
-
-    if (!e.dataTransfer.types.includes(INTERNAL_NODE_DRAG_TYPE))
-      return
-
-    e.dataTransfer.dropEffect = 'move'
-    storeApi.getState().setDragOverFolderId(target.folderId ?? ROOT_ID)
-  }, [storeApi])
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    storeApi.getState().setDragOverFolderId(null)
-  }, [storeApi])
-
-  const handleDrop = useCallback(async (e: React.DragEvent, targetFolderId: string | null) => {
-    e.preventDefault()
-    e.stopPropagation()
-
-    storeApi.getState().setDragOverFolderId(null)
-    storeApi.getState().setCurrentDragType(null)
-
-    const nodeId = e.dataTransfer.getData(INTERNAL_NODE_DRAG_TYPE)
-    if (!nodeId)
-      return
-
-    // Prevent dropping node into itself
-    if (nodeId === targetFolderId) {
-      Toast.notify({
-        type: 'error',
-        message: t('skillSidebar.menu.cannotMoveToSelf'),
-      })
-      return
-    }
-
-    // Prevent circular move (dropping folder into its descendant)
-    const draggedNode = findNodeById(treeChildren, nodeId)
-    if (draggedNode?.node_type === 'folder' && targetFolderId) {
-      if (isDescendantOf(targetFolderId, nodeId, treeChildren)) {
-        Toast.notify({
-          type: 'error',
-          message: t('skillSidebar.menu.cannotMoveToDescendant'),
-        })
-        return
-      }
-    }
-
+  // Execute move API call - validation is handled by react-arborist's disableDrop callback
+  const executeMoveNode = useCallback(async (nodeId: string, targetFolderId: string | null) => {
     try {
       await moveNode.mutateAsync({
         appId,
@@ -106,14 +36,10 @@ export function useNodeMove({ treeChildren }: UseNodeMoveOptions) {
         message: t('skillSidebar.menu.moveError'),
       })
     }
-  }, [appId, moveNode, t, storeApi, treeChildren])
+  }, [appId, moveNode, t])
 
   return {
-    handleDragStart,
-    handleDragEnd,
-    handleDragOver,
-    handleDragLeave,
-    handleDrop,
+    executeMoveNode,
     isMoving: moveNode.isPending,
   }
 }

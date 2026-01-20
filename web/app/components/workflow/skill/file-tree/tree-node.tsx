@@ -4,18 +4,17 @@ import type { NodeRendererProps } from 'react-arborist'
 import type { TreeNodeData } from '../type'
 import { RiMoreFill } from '@remixicon/react'
 import * as React from 'react'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { useStore } from '@/app/components/workflow/store'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
 import { useFolderFileDrop } from '../hooks/use-folder-file-drop'
 import { useTreeNodeHandlers } from '../hooks/use-tree-node-handlers'
-import { useUnifiedDrag } from '../hooks/use-unified-drag'
 import NodeMenu from './node-menu'
 import TreeEditInput from './tree-edit-input'
 import TreeGuideLines from './tree-guide-lines'
@@ -25,7 +24,7 @@ type TreeNodeProps = NodeRendererProps<TreeNodeData> & {
   treeChildren: TreeNodeData[]
 }
 
-const TreeNode = ({ node, style, treeChildren }: TreeNodeProps) => {
+const TreeNode = ({ node, style, dragHandle, treeChildren }: TreeNodeProps) => {
   const { t } = useTranslation('workflow')
   const isFolder = node.data.node_type === 'folder'
   const isSelected = node.isSelected
@@ -33,8 +32,41 @@ const TreeNode = ({ node, style, treeChildren }: TreeNodeProps) => {
   const isCut = useStore(s => s.isCutNode(node.data.id))
   const contextMenuNodeId = useStore(s => s.contextMenu?.nodeId)
   const hasContextMenu = contextMenuNodeId === node.data.id
+  const storeApi = useWorkflowStore()
 
   const [showDropdown, setShowDropdown] = useState(false)
+
+  // Sync react-arborist drag state to Zustand for DragActionTooltip
+  const prevIsDragging = useRef(node.isDragging)
+  useEffect(() => {
+    // When drag starts
+    if (node.isDragging && !prevIsDragging.current)
+      storeApi.getState().setCurrentDragType('move')
+
+    // When drag ends
+    if (!node.isDragging && prevIsDragging.current) {
+      storeApi.getState().setCurrentDragType(null)
+      storeApi.getState().setDragOverFolderId(null)
+    }
+    prevIsDragging.current = node.isDragging
+  }, [node.isDragging, storeApi])
+
+  // Sync react-arborist willReceiveDrop to Zustand for DragActionTooltip
+  const prevWillReceiveDrop = useRef(node.willReceiveDrop)
+  useEffect(() => {
+    // When willReceiveDrop becomes true, set dragOverFolderId
+    if (isFolder && node.willReceiveDrop && !prevWillReceiveDrop.current)
+      storeApi.getState().setDragOverFolderId(node.data.id)
+
+    // When willReceiveDrop becomes false, clear if this node was the target
+    if (isFolder && !node.willReceiveDrop && prevWillReceiveDrop.current) {
+      const currentDragOverId = storeApi.getState().dragOverFolderId
+      if (currentDragOverId === node.data.id)
+        storeApi.getState().setDragOverFolderId(null)
+    }
+
+    prevWillReceiveDrop.current = node.willReceiveDrop
+  }, [isFolder, node.willReceiveDrop, node.data.id, storeApi])
 
   const {
     handleClick,
@@ -44,13 +76,11 @@ const TreeNode = ({ node, style, treeChildren }: TreeNodeProps) => {
     handleKeyDown,
   } = useTreeNodeHandlers({ node })
 
-  const { isDragOver, isBlinking, dragHandlers } = useFolderFileDrop({ node, treeChildren })
-  const { handleNodeDragStart, handleNodeDragEnd } = useUnifiedDrag({ treeChildren })
+  // Get file drop visual state (for external file uploads)
+  const { isDragOver: isFileDragOver, isBlinking, dragHandlers } = useFolderFileDrop({ node, treeChildren })
 
-  // Currently only supports single node drag
-  const handleDragStart = useCallback((e: React.DragEvent) => {
-    handleNodeDragStart(e, node.data.id)
-  }, [handleNodeDragStart, node.data.id])
+  // Combine internal drag target (willReceiveDrop) with external file drag (isFileDragOver)
+  const isDragOver = isFileDragOver || (isFolder && node.willReceiveDrop)
 
   const handleMoreClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
@@ -59,14 +89,12 @@ const TreeNode = ({ node, style, treeChildren }: TreeNodeProps) => {
 
   return (
     <div
+      ref={dragHandle}
       style={style}
       role="treeitem"
       tabIndex={0}
       aria-selected={isSelected}
       aria-expanded={isFolder ? node.isOpen : undefined}
-      draggable={true}
-      onDragStart={handleDragStart}
-      onDragEnd={handleNodeDragEnd}
       className={cn(
         'group relative flex h-6 cursor-pointer items-center rounded-md px-2',
         'hover:bg-state-base-hover',

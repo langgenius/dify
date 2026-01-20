@@ -1,8 +1,9 @@
 'use client'
 
-import type { NodeApi, NodeRendererProps, TreeApi } from 'react-arborist'
+import type { MoveHandler, NodeApi, NodeRendererProps, TreeApi } from 'react-arborist'
 import type { TreeNodeData } from '../type'
 import type { OpensObject } from '@/app/components/workflow/store/workflow/skill-editor/file-tree-slice'
+import type { AppAssetTreeView } from '@/types/app-asset'
 import { RiDragDropLine } from '@remixicon/react'
 import { useIsMutating } from '@tanstack/react-query'
 import { useSize } from 'ahooks'
@@ -17,11 +18,13 @@ import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
 import { CONTEXT_MENU_TYPE, ROOT_ID } from '../constants'
 import { useInlineCreateNode } from '../hooks/use-inline-create-node'
+import { useNodeMove } from '../hooks/use-node-move'
 import { usePasteOperation } from '../hooks/use-paste-operation'
 import { useRootFileDrop } from '../hooks/use-root-file-drop'
 import { useSkillAssetTreeData } from '../hooks/use-skill-asset-tree'
 import { useSkillShortcuts } from '../hooks/use-skill-shortcuts'
 import { useSyncTreeWithActiveTab } from '../hooks/use-sync-tree-with-active-tab'
+import { isDescendantOf } from '../utils/tree-utils'
 import ArtifactsSection from './artifacts-section'
 import DragActionTooltip from './drag-action-tooltip'
 import TreeContextMenu from './tree-context-menu'
@@ -145,6 +148,57 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
     })
   }, [storeApi, treeRef])
 
+  // Node move API (for internal drag-drop)
+  const { executeMoveNode } = useNodeMove()
+
+  // react-arborist onMove callback - called when internal drag completes
+  const handleMove = useCallback<MoveHandler<TreeNodeData>>(({ dragIds, parentId }) => {
+    // Only support single node drag for now
+    const nodeId = dragIds[0]
+    if (!nodeId)
+      return
+    // parentId from react-arborist is null for root, otherwise folder ID
+    executeMoveNode(nodeId, parentId)
+  }, [executeMoveNode])
+
+  // react-arborist disableDrop callback - returns true to prevent drop
+  const handleDisableDrop = useCallback((args: {
+    parentNode: NodeApi<TreeNodeData>
+    dragNodes: NodeApi<TreeNodeData>[]
+    index: number
+  }) => {
+    const { dragNodes, parentNode, index } = args
+
+    // 1. Only allow dropping INTO folders (index = 0), not between items
+    // When index is not 0, it means dropping between items (reordering)
+    // We only want to allow dropping over the folder (willReceiveDrop)
+    if (index !== 0)
+      return true
+
+    // 2. Files cannot be drop targets - only folders can receive drops
+    if (parentNode.data.node_type === 'file')
+      return true
+
+    // 3. Cannot drop node into itself
+    const draggedNode = dragNodes[0]
+    if (!draggedNode)
+      return true
+    if (draggedNode.id === parentNode.id)
+      return true
+
+    // 4. Prevent circular move (folder into its descendant)
+    if (draggedNode.data.node_type === 'folder') {
+      const treeChildrenTyped = treeChildren as AppAssetTreeView[]
+      if (isDescendantOf(parentNode.id, draggedNode.id, treeChildrenTyped))
+        return true
+    }
+
+    // Note: We don't prevent dropping to same parent (no-op move)
+    // The API handles this gracefully
+
+    return false
+  }, [treeChildren])
+
   const renderTreeNode = useCallback((props: NodeRendererProps<TreeNodeData>) => {
     return <TreeNode {...props} treeChildren={treeChildren} />
   }, [treeChildren])
@@ -259,10 +313,10 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
             onSelect={handleSelect}
             onActivate={handleActivate}
             onRename={handleRename}
+            onMove={handleMove}
             searchTerm={searchTerm}
             searchMatch={searchMatch}
-            disableDrag
-            disableDrop
+            disableDrop={handleDisableDrop}
           >
             {renderTreeNode}
           </Tree>

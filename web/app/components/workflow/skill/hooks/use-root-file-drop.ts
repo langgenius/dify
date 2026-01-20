@@ -19,8 +19,8 @@ type UseRootFileDropOptions = {
   treeChildren: AppAssetTreeView[]
 }
 
-export function useRootFileDrop({ treeChildren }: UseRootFileDropOptions): UseRootFileDropReturn {
-  const { handleDragOver, handleDragLeave, handleDrop } = useUnifiedDrag({ treeChildren })
+export function useRootFileDrop({ treeChildren: _treeChildren }: UseRootFileDropOptions): UseRootFileDropReturn {
+  const { handleDragOver, handleDragLeave, handleDrop } = useUnifiedDrag()
   const dragCounterRef = useRef(0)
 
   const handleRootDragEnter = useCallback((e: React.DragEvent) => {

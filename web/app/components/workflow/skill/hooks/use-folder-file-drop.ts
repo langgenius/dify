@@ -30,12 +30,12 @@ type UseFolderFileDropOptions = {
   treeChildren: AppAssetTreeView[]
 }
 
-export function useFolderFileDrop({ node, treeChildren }: UseFolderFileDropOptions): UseFolderFileDropReturn {
+export function useFolderFileDrop({ node, treeChildren: _treeChildren }: UseFolderFileDropOptions): UseFolderFileDropReturn {
   const isFolder = node.data.node_type === 'folder'
   const dragOverFolderId = useStore(s => s.dragOverFolderId)
   const isDragOver = isFolder && dragOverFolderId === node.data.id
 
-  const { handleDragOver, handleDrop } = useUnifiedDrag({ treeChildren })
+  const { handleDragOver, handleDrop } = useUnifiedDrag()
 
   const expandTimerRef = useRef<NodeJS.Timeout | null>(null)
   const blinkTimerRef = useRef<NodeJS.Timeout | null>(null)

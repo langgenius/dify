@@ -1,62 +1,40 @@
 'use client'
 
-// Unified drag handler that routes to file upload or node move based on drag type
+// Unified drag handler for external file uploads
+// Internal node drag-move is now handled by react-arborist's built-in drag system
 
-import type { AppAssetTreeView } from '@/types/app-asset'
 import { useCallback } from 'react'
-import { getDragActionType, isFileDrag, isNodeDrag } from '../utils/drag-utils'
+import { isFileDrag } from '../utils/drag-utils'
 import { useFileDrop } from './use-file-drop'
-import { useNodeMove } from './use-node-move'
 
 type DragTarget = {
   folderId: string | null
   isFolder: boolean
 }
 
-type UseUnifiedDragOptions = {
-  treeChildren: AppAssetTreeView[]
-}
-
-export function useUnifiedDrag({ treeChildren }: UseUnifiedDragOptions) {
+export function useUnifiedDrag() {
   const fileDrop = useFileDrop()
-  const nodeMove = useNodeMove({ treeChildren })
 
+  // Only handle external file drags - internal node drags are handled by react-arborist
   const handleDragOver = useCallback((e: React.DragEvent, target: DragTarget) => {
-    const actionType = getDragActionType(e)
-    if (actionType === 'upload') {
+    if (isFileDrag(e))
       fileDrop.handleDragOver(e, target)
-    }
-    else if (actionType === 'move') {
-      nodeMove.handleDragOver(e, target)
-    }
-  }, [fileDrop, nodeMove])
+  }, [fileDrop])
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
-    if (isFileDrag(e)) {
+    if (isFileDrag(e))
       fileDrop.handleDragLeave(e)
-    }
-    else if (isNodeDrag(e)) {
-      nodeMove.handleDragLeave(e)
-    }
-  }, [fileDrop, nodeMove])
+  }, [fileDrop])
 
   const handleDrop = useCallback((e: React.DragEvent, targetFolderId: string | null) => {
-    if (isFileDrag(e)) {
+    if (isFileDrag(e))
       return fileDrop.handleDrop(e, targetFolderId)
-    }
-    else if (isNodeDrag(e)) {
-      return nodeMove.handleDrop(e, targetFolderId)
-    }
-  }, [fileDrop, nodeMove])
+  }, [fileDrop])
 
   return {
     handleDragOver,
     handleDragLeave,
     handleDrop,
-    // Expose individual handlers for specific needs
-    handleNodeDragStart: nodeMove.handleDragStart,
-    handleNodeDragEnd: nodeMove.handleDragEnd,
     isUploading: fileDrop.isUploading,
-    isMoving: nodeMove.isMoving,
   }
 }
