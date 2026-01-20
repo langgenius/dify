@@ -4,7 +4,7 @@ import type { NodeRendererProps } from 'react-arborist'
 import type { TreeNodeData } from '../type'
 import { RiMoreFill } from '@remixicon/react'
 import * as React from 'react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   PortalToFollowElem,
@@ -14,7 +14,6 @@ import {
 import { useStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
 import { useFolderFileDrop } from '../hooks/use-folder-file-drop'
-import { useSkillAssetTreeData } from '../hooks/use-skill-asset-tree'
 import { useTreeNodeHandlers } from '../hooks/use-tree-node-handlers'
 import { useUnifiedDrag } from '../hooks/use-unified-drag'
 import NodeMenu from './node-menu'
@@ -22,9 +21,11 @@ import TreeEditInput from './tree-edit-input'
 import TreeGuideLines from './tree-guide-lines'
 import { TreeNodeIcon } from './tree-node-icon'
 
-const emptyTreeChildren: TreeNodeData[] = []
+type TreeNodeProps = NodeRendererProps<TreeNodeData> & {
+  treeChildren: TreeNodeData[]
+}
 
-const TreeNode = ({ node, style }: NodeRendererProps<TreeNodeData>) => {
+const TreeNode = ({ node, style, treeChildren }: TreeNodeProps) => {
   const { t } = useTranslation('workflow')
   const isFolder = node.data.node_type === 'folder'
   const isSelected = node.isSelected
@@ -34,10 +35,6 @@ const TreeNode = ({ node, style }: NodeRendererProps<TreeNodeData>) => {
   const hasContextMenu = contextMenuNodeId === node.data.id
 
   const [showDropdown, setShowDropdown] = useState(false)
-
-  // Get tree data from TanStack Query cache (no extra request)
-  const { data: treeData } = useSkillAssetTreeData()
-  const treeChildren = useMemo(() => treeData?.children ?? emptyTreeChildren, [treeData?.children])
 
   const {
     handleClick,

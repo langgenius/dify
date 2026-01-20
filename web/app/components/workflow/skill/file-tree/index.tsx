@@ -1,6 +1,6 @@
 'use client'
 
-import type { NodeApi, TreeApi } from 'react-arborist'
+import type { NodeApi, NodeRendererProps, TreeApi } from 'react-arborist'
 import type { TreeNodeData } from '../type'
 import type { OpensObject } from '@/app/components/workflow/store/workflow/skill-editor/file-tree-slice'
 import { RiDragDropLine } from '@remixicon/react'
@@ -145,6 +145,10 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
     })
   }, [storeApi, treeRef])
 
+  const renderTreeNode = useCallback((props: NodeRendererProps<TreeNodeData>) => {
+    return <TreeNode {...props} treeChildren={treeChildren} />
+  }, [treeChildren])
+
   useSyncTreeWithActiveTab({
     treeRef,
     activeTabId,
@@ -260,7 +264,7 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
             disableDrag
             disableDrop
           >
-            {TreeNode}
+            {renderTreeNode}
           </Tree>
         </div>
       </div>
