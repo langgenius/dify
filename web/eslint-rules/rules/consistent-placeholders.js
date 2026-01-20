@@ -14,6 +14,38 @@ function extractPlaceholders(str) {
 }
 
 /**
+ * Extract Trans component tag markers from a string.
+ * Keeps opening/closing/self-closing tags distinct.
+ * @param {string} str
+ * @returns {string[]} Sorted array of tag markers
+ */
+function extractTagMarkers(str) {
+  const matches = Array.from(str.matchAll(/<\/?([A-Z][\w-]*)\b[^>]*>/gi))
+  const markers = matches.map((match) => {
+    const fullMatch = match[0]
+    const name = match[1]
+    const isClosing = fullMatch.startsWith('</')
+    const isSelfClosing = !isClosing && fullMatch.endsWith('/>')
+
+    if (isClosing)
+      return `close:${name}`
+    if (isSelfClosing)
+      return `self:${name}`
+    return `open:${name}`
+  })
+
+  return markers.sort()
+}
+
+function formatTagMarker(marker) {
+  if (marker.startsWith('close:'))
+    return `</${marker.slice('close:'.length)}>`
+  if (marker.startsWith('self:'))
+    return `<${marker.slice('self:'.length)} />`
+  return `<${marker.slice('open:'.length)}>`
+}
+
+/**
  * Compare two arrays and return if they're equal
  * @param {string[]} arr1
  * @param {string[]} arr2
@@ -30,13 +62,30 @@ export default {
   meta: {
     type: 'problem',
     docs: {
-      description: 'Ensure placeholders in translations match the en-US source',
+      description: 'Ensure placeholders and Trans tags in translations match the en-US source',
     },
   },
   create(context) {
+    const state = {
+      enabled: false,
+      englishJson: null,
+      englishError: null,
+    }
+
+    function isTopLevelProperty(node) {
+      const objectNode = node.parent
+      if (!objectNode || objectNode.type !== 'JSONObjectExpression')
+        return false
+      const expressionNode = objectNode.parent
+      return !!expressionNode
+        && (expressionNode.type === 'JSONExpressionStatement'
+          || expressionNode.type === 'Program'
+          || expressionNode.type === 'JSONProgram')
+    }
+
     return {
       Program(node) {
-        const { filename, sourceCode } = context
+        const { filename } = context
 
         if (!filename.endsWith('.json'))
           return
@@ -49,59 +98,91 @@ export default {
         if (lang === 'en-US')
           return
 
-        let currentJson = {}
-        let englishJson = {}
+        state.enabled = true
 
         try {
-          currentJson = JSON.parse(cleanJsonText(sourceCode.text))
           const englishFilePath = path.join(path.dirname(filename), '..', 'en-US', jsonFile ?? '')
-          englishJson = JSON.parse(fs.readFileSync(englishFilePath, 'utf8'))
+          const englishText = fs.readFileSync(englishFilePath, 'utf8')
+          state.englishJson = JSON.parse(cleanJsonText(englishText))
         }
         catch (error) {
+          state.englishError = error
+          state.enabled = false
           context.report({
             node,
             message: `Error parsing JSON: ${error instanceof Error ? error.message : String(error)}`,
           })
+        }
+      },
+      JSONProperty(node) {
+        if (!state.enabled)
           return
+
+        if (!state.englishJson || !isTopLevelProperty(node))
+          return
+
+        const key = node.key.value ?? node.key.name
+        if (!key)
+          return
+
+        if (!Object.prototype.hasOwnProperty.call(state.englishJson, key))
+          return
+
+        const currentNode = node.value ?? node
+        const currentValue = currentNode && currentNode.type === 'JSONLiteral' ? currentNode.value : undefined
+        const englishValue = state.englishJson[key]
+
+        // Skip non-string values
+        if (typeof currentValue !== 'string' || typeof englishValue !== 'string')
+          return
+
+        const currentPlaceholders = extractPlaceholders(currentValue)
+        const englishPlaceholders = extractPlaceholders(englishValue)
+        const currentTagMarkers = extractTagMarkers(currentValue)
+        const englishTagMarkers = extractTagMarkers(englishValue)
+
+        if (!arraysEqual(currentPlaceholders, englishPlaceholders)) {
+          const missing = englishPlaceholders.filter(p => !currentPlaceholders.includes(p))
+          const extra = currentPlaceholders.filter(p => !englishPlaceholders.includes(p))
+
+          let message = `Placeholder mismatch in "${key}": `
+          const details = []
+
+          if (missing.length > 0)
+            details.push(`missing {{${missing.join('}}, {{')}}}`)
+
+          if (extra.length > 0)
+            details.push(`extra {{${extra.join('}}, {{')}}}`)
+
+          message += details.join('; ')
+          message += `. Expected: {{${englishPlaceholders.join('}}, {{') || 'none'}}}`
+
+          context.report({
+            node: currentNode,
+            message,
+          })
         }
 
-        // Check each key in the current translation
-        for (const key of Object.keys(currentJson)) {
-          // Skip if the key doesn't exist in English (handled by no-extra-keys rule)
-          if (!Object.prototype.hasOwnProperty.call(englishJson, key))
-            continue
+        if (!arraysEqual(currentTagMarkers, englishTagMarkers)) {
+          const missing = englishTagMarkers.filter(p => !currentTagMarkers.includes(p))
+          const extra = currentTagMarkers.filter(p => !englishTagMarkers.includes(p))
 
-          const currentValue = currentJson[key]
-          const englishValue = englishJson[key]
+          let message = `Trans tag mismatch in "${key}": `
+          const details = []
 
-          // Skip non-string values
-          if (typeof currentValue !== 'string' || typeof englishValue !== 'string')
-            continue
+          if (missing.length > 0)
+            details.push(`missing ${missing.map(formatTagMarker).join(', ')}`)
 
-          const currentPlaceholders = extractPlaceholders(currentValue)
-          const englishPlaceholders = extractPlaceholders(englishValue)
+          if (extra.length > 0)
+            details.push(`extra ${extra.map(formatTagMarker).join(', ')}`)
 
-          if (!arraysEqual(currentPlaceholders, englishPlaceholders)) {
-            const missing = englishPlaceholders.filter(p => !currentPlaceholders.includes(p))
-            const extra = currentPlaceholders.filter(p => !englishPlaceholders.includes(p))
+          message += details.join('; ')
+          message += `. Expected: ${englishTagMarkers.map(formatTagMarker).join(', ') || 'none'}`
 
-            let message = `Placeholder mismatch in "${key}": `
-            const details = []
-
-            if (missing.length > 0)
-              details.push(`missing {{${missing.join('}}, {{')}}}`)
-
-            if (extra.length > 0)
-              details.push(`extra {{${extra.join('}}, {{')}}}`)
-
-            message += details.join('; ')
-            message += `. Expected: {{${englishPlaceholders.join('}}, {{') || 'none'}}}`
-
-            context.report({
-              node,
-              message,
-            })
-          }
+          context.report({
+            node: currentNode,
+            message,
+          })
         }
       },
     }
