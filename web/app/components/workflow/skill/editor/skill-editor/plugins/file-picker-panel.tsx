@@ -109,11 +109,17 @@ FilePickerTreeNode.displayName = 'FilePickerTreeNode'
 type FilePickerPanelProps = {
   onSelectNode: (node: TreeNodeData) => void
   focusNodeId?: string
+  className?: string
+  contentClassName?: string
+  showHeader?: boolean
 }
 
 const FilePickerPanel: FC<FilePickerPanelProps> = ({
   onSelectNode,
   focusNodeId,
+  className,
+  contentClassName,
+  showHeader = true,
 }) => {
   const { t } = useTranslation('workflow')
   const { data: treeData, isLoading, error } = useSkillAssetTreeData()
@@ -141,7 +147,10 @@ const FilePickerPanel: FC<FilePickerPanelProps> = ({
 
   return (
     <div
-      className="w-[280px] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm"
+      className={cn(
+        'w-[280px] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm',
+        className,
+      )}
       onMouseDown={(e) => {
         const target = e.target as HTMLElement
         if (target.closest('input, textarea, select'))
@@ -149,13 +158,22 @@ const FilePickerPanel: FC<FilePickerPanelProps> = ({
         e.preventDefault()
       }}
     >
-      <div className="flex items-center gap-1 px-4 pb-1 pt-1.5">
-        <span className="flex-1 text-[12px] font-medium uppercase leading-4 text-text-tertiary">
-          {t('skillEditor.referenceFiles')}
-        </span>
-        <RiQuestionLine className="size-4 text-text-tertiary" aria-hidden="true" />
-      </div>
-      <div ref={containerRef} className="max-h-[320px] min-h-[120px] px-2 pb-2">
+      {showHeader && (
+        <div className="flex items-center gap-1 px-4 pb-1 pt-1.5">
+          <span className="flex-1 text-[12px] font-medium uppercase leading-4 text-text-tertiary">
+            {t('skillEditor.referenceFiles')}
+          </span>
+          <RiQuestionLine className="size-4 text-text-tertiary" aria-hidden="true" />
+        </div>
+      )}
+      <div
+        ref={containerRef}
+        className={cn(
+          'max-h-[320px] min-h-[120px] px-2 pb-2',
+          !showHeader && 'pt-2',
+          contentClassName,
+        )}
+      >
         {isLoading && (
           <div className="flex h-full items-center justify-center py-6">
             <Loading type="area" />

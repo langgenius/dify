@@ -7,6 +7,7 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
 import { v4 as uuid4 } from 'uuid'
+import { useFeatures } from '@/app/components/base/features/hooks'
 import { DragHandle } from '@/app/components/base/icons/src/vender/line/others'
 import {
   PortalToFollowElem,
@@ -59,6 +60,8 @@ const ConfigPrompt: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
+  const features = useFeatures(s => s.features)
+  const isSupportSandbox = !!features.sandbox?.enabled
   const {
     setControlPromptEditorRerenderKey,
   } = workflowStore.getState()
@@ -337,6 +340,7 @@ const ConfigPrompt: FC<Props> = ({
                             varList={varList}
                             handleAddVariable={handleAddVariable}
                             modelConfig={modelConfig}
+                            isSupportSandbox={isSupportSandbox}
                           />
                         </div>
                       )
@@ -410,6 +414,7 @@ const ConfigPrompt: FC<Props> = ({
                 handleAddVariable={handleAddVariable}
                 onGenerated={handleGenerated}
                 modelConfig={modelConfig}
+                isSupportSandbox={isSupportSandbox}
               />
             </div>
           )}

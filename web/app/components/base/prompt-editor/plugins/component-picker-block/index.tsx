@@ -38,9 +38,13 @@ import {
   useState,
 } from 'react'
 import ReactDOM from 'react-dom'
+import { useTranslation } from 'react-i18next'
 import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
+import { SegmentedControl } from '@/app/components/base/segmented-control'
 import AgentNodeList from '@/app/components/workflow/nodes/_base/components/agent-node-list'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
+import { FilePickerPanel } from '@/app/components/workflow/skill/editor/skill-editor/plugins/file-picker-panel'
+import { $createFileReferenceNode } from '@/app/components/workflow/skill/editor/skill-editor/plugins/file-reference-block/node'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useBasicTypeaheadTriggerMatch } from '../../hooks'
@@ -66,6 +70,7 @@ type ComponentPickerProps = {
   lastRunBlock?: LastRunBlockType
   agentBlock?: AgentBlockType
   isSupportFileVar?: boolean
+  isSupportSandbox?: boolean
 }
 const ComponentPicker = ({
   triggerString,
@@ -80,7 +85,9 @@ const ComponentPicker = ({
   lastRunBlock,
   agentBlock,
   isSupportFileVar,
+  isSupportSandbox,
 }: ComponentPickerProps) => {
+  const { t } = useTranslation()
   const { eventEmitter } = useEventEmitterContextContext()
   const { refs, floatingStyles, isPositioned } = useFloating({
     placement: 'bottom-start',
@@ -114,6 +121,7 @@ const ComponentPicker = ({
   }, [checkForTriggerMatch, editor])
 
   const [queryString, setQueryString] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<'variables' | 'files'>('variables')
 
   eventEmitter?.useSubscription((v: any) => {
     if (v.type === INSERT_VARIABLE_VALUE_BLOCK_COMMAND)
@@ -152,6 +160,17 @@ const ComponentPicker = ({
     },
     [editor],
   )
+
+  const handleSelectFileReference = useCallback((resourceId: string) => {
+    editor.update(() => {
+      const match = checkForTriggerMatch(triggerString, editor)
+      const nodeToRemove = match ? $splitNodeContainingQuery(match) : null
+      if (nodeToRemove)
+        nodeToRemove.remove()
+
+      $insertNodes([$createFileReferenceNode({ resourceId })])
+    })
+  }, [checkForTriggerMatch, editor, triggerString])
 
   const handleSelectWorkflowVariable = useCallback((variables: string[]) => {
     editor.update(() => {
@@ -227,6 +246,10 @@ const ComponentPicker = ({
   const isAgentTrigger = triggerString === '@' && agentBlock?.show
   const showAssembleVariables = triggerString === '/'
   const agentNodes: AgentNode[] = useMemo(() => agentBlock?.agentNodes || [], [agentBlock?.agentNodes])
+  const handleOpen = useCallback(() => {
+    if (isSupportSandbox && triggerString === '/')
+      setActiveTab('variables')
+  }, [isSupportSandbox, triggerString])
 
   const renderMenu = useCallback<MenuRenderFn<PickerBlockMenuOption>>((
     anchorElementRef,
@@ -240,11 +263,86 @@ const ComponentPicker = ({
       if (!(anchorElementRef.current && (allFlattenOptions.length || workflowVariableBlock?.show)))
         return null
     }
+    const isSandboxMenu = isSupportSandbox && triggerString === '/'
+
+    if (!(anchorElementRef.current && (isSandboxMenu || allFlattenOptions.length || workflowVariableBlock?.show)))
+      return null
 
     setTimeout(() => {
       if (anchorElementRef.current)
         refs.setReference(anchorElementRef.current)
     }, 0)
+
+    if (isSandboxMenu) {
+      return (
+        <>
+          {ReactDOM.createPortal(
+            <div className="h-0 w-0">
+              <div
+                className="w-[300px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-lg"
+                style={{
+                  ...floatingStyles,
+                  visibility: isPositioned ? 'visible' : 'hidden',
+                }}
+                ref={refs.setFloating}
+              >
+                <SegmentedControl
+                  size="small"
+                  padding="with"
+                  activeState="accent"
+                  className="w-full"
+                  btnClassName="flex-1"
+                  options={[
+                    {
+                      value: 'variables',
+                      text: t('promptEditor.variable.outputToolDisabledItem.title', { ns: 'common' }),
+                    },
+                    {
+                      value: 'files',
+                      text: t('nodes.llm.files', { ns: 'workflow' }),
+                    },
+                  ]}
+                  value={activeTab}
+                  onChange={setActiveTab}
+                />
+                <div className="mt-2">
+                  {activeTab === 'variables' && (
+                    <VarReferenceVars
+                      searchBoxClassName="mt-1"
+                      vars={workflowVariableOptions}
+                      onChange={(variables: string[]) => {
+                        handleSelectWorkflowVariable(variables)
+                        handleClose()
+                      }}
+                      maxHeightClass="max-h-[34vh]"
+                      isSupportFileVar={isSupportFileVar}
+                      onClose={handleClose}
+                      onBlur={handleClose}
+                      showManageInputField={workflowVariableBlock?.showManageInputField}
+                      onManageInputField={workflowVariableBlock?.onManageInputField}
+                      autoFocus={false}
+                      isInCodeGeneratorInstructionEditor={currentBlock?.generatorType === GeneratorType.code}
+                    />
+                  )}
+                  {activeTab === 'files' && (
+                    <FilePickerPanel
+                      onSelectNode={(node) => {
+                        handleSelectFileReference(node.id)
+                        handleClose()
+                      }}
+                      className="w-full border-0 bg-transparent p-0 shadow-none"
+                      contentClassName="px-0"
+                      showHeader={false}
+                    />
+                  )}
+                </div>
+              </div>
+            </div>,
+            anchorElementRef.current,
+          )}
+        </>
+      )
+    }
 
     return (
       <>
@@ -261,79 +359,79 @@ const ComponentPicker = ({
               >
                 {isAgentTrigger
                   ? (
-                      <AgentNodeList
-                        nodes={agentNodes.map(node => ({
-                          ...node,
-                          type: BlockEnum.Agent || BlockEnum.LLM,
-                        }))}
-                        onSelect={handleSelectAgent}
-                        onClose={handleClose}
-                        onBlur={handleClose}
-                        maxHeightClass="max-h-[34vh]"
-                        autoFocus={false}
-                        hideSearch={useExternalSearch}
-                        externalSearchText={useExternalSearch ? (queryString ?? '') : undefined}
-                        enableKeyboardNavigation={useExternalSearch}
-                      />
-                    )
+                    <AgentNodeList
+                      nodes={agentNodes.map(node => ({
+                        ...node,
+                        type: BlockEnum.Agent || BlockEnum.LLM,
+                      }))}
+                      onSelect={handleSelectAgent}
+                      onClose={handleClose}
+                      onBlur={handleClose}
+                      maxHeightClass="max-h-[34vh]"
+                      autoFocus={false}
+                      hideSearch={useExternalSearch}
+                      externalSearchText={useExternalSearch ? (queryString ?? '') : undefined}
+                      enableKeyboardNavigation={useExternalSearch}
+                    />
+                  )
                   : (
-                      <>
+                    <>
+                      {
+                        workflowVariableBlock?.show && (
+                          <div className="p-1">
+                            <VarReferenceVars
+                              searchBoxClassName="mt-1"
+                              vars={workflowVariableOptions}
+                              onChange={(variables: string[]) => {
+                                handleSelectWorkflowVariable(variables)
+                              }}
+                              maxHeightClass="max-h-[34vh]"
+                              isSupportFileVar={isSupportFileVar}
+                              onClose={handleClose}
+                              onBlur={handleClose}
+                              showManageInputField={workflowVariableBlock.showManageInputField}
+                              onManageInputField={workflowVariableBlock.onManageInputField}
+                              showAssembleVariables={showAssembleVariables}
+                              onAssembleVariables={showAssembleVariables ? handleSelectAssembleVariables : undefined}
+                              autoFocus={false}
+                              isInCodeGeneratorInstructionEditor={currentBlock?.generatorType === GeneratorType.code}
+                              hideSearch={useExternalSearch}
+                              externalSearchText={useExternalSearch ? (queryString ?? '') : undefined}
+                              enableKeyboardNavigation={useExternalSearch}
+                            />
+                          </div>
+                        )
+                      }
+                      {
+                        workflowVariableBlock?.show && !!options.length && (
+                          <div className="my-1 h-px w-full -translate-x-1 bg-divider-subtle"></div>
+                        )
+                      }
+                      <div>
                         {
-                          workflowVariableBlock?.show && (
-                            <div className="p-1">
-                              <VarReferenceVars
-                                searchBoxClassName="mt-1"
-                                vars={workflowVariableOptions}
-                                onChange={(variables: string[]) => {
-                                  handleSelectWorkflowVariable(variables)
-                                }}
-                                maxHeightClass="max-h-[34vh]"
-                                isSupportFileVar={isSupportFileVar}
-                                onClose={handleClose}
-                                onBlur={handleClose}
-                                showManageInputField={workflowVariableBlock.showManageInputField}
-                                onManageInputField={workflowVariableBlock.onManageInputField}
-                                showAssembleVariables={showAssembleVariables}
-                                onAssembleVariables={showAssembleVariables ? handleSelectAssembleVariables : undefined}
-                                autoFocus={false}
-                                isInCodeGeneratorInstructionEditor={currentBlock?.generatorType === GeneratorType.code}
-                                hideSearch={useExternalSearch}
-                                externalSearchText={useExternalSearch ? (queryString ?? '') : undefined}
-                                enableKeyboardNavigation={useExternalSearch}
-                              />
-                            </div>
-                          )
+                          options.map((option, index) => (
+                            <Fragment key={option.key}>
+                              {
+                                index !== 0 && options.at(index - 1)?.group !== option.group && (
+                                  <div className="my-1 h-px w-full -translate-x-1 bg-divider-subtle"></div>
+                                )
+                              }
+                              {option.renderMenuOption({
+                                queryString,
+                                isSelected: selectedIndex === index,
+                                onSelect: () => {
+                                  selectOptionAndCleanUp(option)
+                                },
+                                onSetHighlight: () => {
+                                  setHighlightedIndex(index)
+                                },
+                              })}
+                            </Fragment>
+                          ))
                         }
-                        {
-                          workflowVariableBlock?.show && !!options.length && (
-                            <div className="my-1 h-px w-full -translate-x-1 bg-divider-subtle"></div>
-                          )
-                        }
-                        <div>
-                          {
-                            options.map((option, index) => (
-                              <Fragment key={option.key}>
-                                {
-                                  index !== 0 && options.at(index - 1)?.group !== option.group && (
-                                    <div className="my-1 h-px w-full -translate-x-1 bg-divider-subtle"></div>
-                                  )
-                                }
-                                {option.renderMenuOption({
-                                  queryString,
-                                  isSelected: selectedIndex === index,
-                                  onSelect: () => {
-                                    selectOptionAndCleanUp(option)
-                                  },
-                                  onSetHighlight: () => {
-                                    setHighlightedIndex(index)
-                                  },
-                                })}
-                              </Fragment>
-                            ))
-                          }
-                        </div>
-                      </>
-                    )}
+                      </div>
+                    </>
+                  )}
               </div>
             </div>,
             anchorElementRef.current,
@@ -341,13 +439,14 @@ const ComponentPicker = ({
         }
       </>
     )
-  }, [isAgentTrigger, agentNodes, allFlattenOptions.length, workflowVariableBlock?.show, floatingStyles, isPositioned, refs, handleSelectAgent, handleClose, workflowVariableOptions, isSupportFileVar, currentBlock?.generatorType, handleSelectWorkflowVariable, queryString, workflowVariableBlock?.showManageInputField, workflowVariableBlock?.onManageInputField, showAssembleVariables, handleSelectAssembleVariables, useExternalSearch])
+  }, [isAgentTrigger, isSupportSandbox, triggerString, allFlattenOptions.length, workflowVariableBlock?.show, workflowVariableBlock.showManageInputField, workflowVariableBlock.onManageInputField, floatingStyles, isPositioned, refs, agentNodes, handleSelectAgent, handleClose, useExternalSearch, queryString, workflowVariableOptions, isSupportFileVar, showAssembleVariables, handleSelectAssembleVariables, currentBlock?.generatorType, t, activeTab, handleSelectWorkflowVariable, handleSelectFileReference])
 
   return (
     <LexicalTypeaheadMenuPlugin
-      options={allFlattenOptions}
+      options={(isSupportSandbox && triggerString === '/') ? [] : allFlattenOptions}
       onQueryChange={setQueryString}
       onSelectOption={onSelectOption}
+      onOpen={handleOpen}
       // The `translate` class is used to workaround the issue that the `typeahead-menu` menu is not positioned as expected.
       // See also https://github.com/facebook/lexical/blob/772520509308e8ba7e4a82b6cd1996a78b3298d0/packages/lexical-react/src/shared/LexicalMenu.ts#L498
       //

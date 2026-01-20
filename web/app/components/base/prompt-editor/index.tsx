@@ -29,6 +29,8 @@ import {
 } from 'lexical'
 import * as React from 'react'
 import { useEffect } from 'react'
+import { FileReferenceNode } from '@/app/components/workflow/skill/editor/skill-editor/plugins/file-reference-block/node'
+import FileReferenceReplacementBlock from '@/app/components/workflow/skill/editor/skill-editor/plugins/file-reference-block/replacement-block'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { cn } from '@/utils/classnames'
 import {
@@ -41,13 +43,13 @@ import {
   ContextBlockNode,
   ContextBlockReplacementBlock,
 } from './plugins/context-block'
+
 import {
   CurrentBlock,
   CurrentBlockNode,
   CurrentBlockReplacementBlock,
 } from './plugins/current-block'
 import { CustomTextNode } from './plugins/custom-text/node'
-
 import {
   ErrorMessageBlock,
   ErrorMessageBlockNode,
@@ -106,6 +108,7 @@ export type PromptEditorProps = {
   lastRunBlock?: LastRunBlockType
   agentBlock?: AgentBlockType
   isSupportFileVar?: boolean
+  isSupportSandbox?: boolean
 }
 
 const PromptEditor: FC<PromptEditorProps> = ({
@@ -132,6 +135,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
   lastRunBlock,
   agentBlock,
   isSupportFileVar,
+  isSupportSandbox,
 }) => {
   const { eventEmitter } = useEventEmitterContextContext()
   const initialConfig = {
@@ -152,6 +156,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
       CurrentBlockNode,
       ErrorMessageBlockNode,
       LastRunBlockNode, // LastRunBlockNode is used for error message block replacement
+      ...(isSupportSandbox ? [FileReferenceNode] : []),
     ],
     editorState: textToEditorState(value || ''),
     onError: (error: Error) => {
@@ -215,6 +220,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           errorMessageBlock={errorMessageBlock}
           lastRunBlock={lastRunBlock}
           isSupportFileVar={isSupportFileVar}
+          isSupportSandbox={isSupportSandbox}
         />
         {(!agentBlock || agentBlock.show) && (
           <ComponentPickerBlock
@@ -244,6 +250,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           errorMessageBlock={errorMessageBlock}
           lastRunBlock={lastRunBlock}
           isSupportFileVar={isSupportFileVar}
+          isSupportSandbox={isSupportSandbox}
         />
         {
           contextBlock?.show && (
@@ -285,6 +292,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
             </>
           )
         }
+        {isSupportSandbox && <FileReferenceReplacementBlock />}
         {
           currentBlock?.show && (
             <>

@@ -40,6 +40,7 @@ type Props = {
   varList: Variable[]
   handleAddVariable: (payload: any) => void
   modelConfig?: ModelConfig
+  isSupportSandbox?: boolean
 }
 
 const roleOptions = [
@@ -82,6 +83,7 @@ const ConfigPromptItem: FC<Props> = ({
   varList,
   handleAddVariable,
   modelConfig,
+  isSupportSandbox,
 }) => {
   const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
@@ -149,6 +151,7 @@ const ConfigPromptItem: FC<Props> = ({
       varList={varList}
       handleAddVariable={handleAddVariable}
       isSupportFileVar
+      isSupportSandbox={isSupportSandbox}
     />
   )
 }
