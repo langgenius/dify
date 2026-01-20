@@ -196,7 +196,7 @@
     "@types/sortablejs": "1.15.8",
     "@types/uuid": "10.0.0",
     "@typescript-eslint/parser": "8.53.0",
-    "@typescript/native-preview": "7.0.0-dev",
+    "@typescript/native-preview": "7.0.0-dev.20251209.1",
     "@vitejs/plugin-react": "5.1.2",
     "@vitest/coverage-v8": "4.0.17",
     "autoprefixer": "10.4.21",
