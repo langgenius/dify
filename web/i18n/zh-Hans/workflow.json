@@ -1017,6 +1017,7 @@
   "skillSidebar.loadError": "加载文件失败",
   "skillSidebar.menu.cannotMoveToDescendant": "无法将文件夹移动到其子文件夹中",
   "skillSidebar.menu.cannotMoveToSelf": "无法将文件夹移动到自身内部",
+  "skillSidebar.menu.cannotMoveToSelf": "无法将文件夹移动到自身内部",
   "skillSidebar.menu.copy": "复制",
   "skillSidebar.menu.copyNotSupported": "暂不支持复制功能",
   "skillSidebar.menu.createError": "创建失败",

@@ -1,36 +1,34 @@
 'use client'
 import type { FC } from 'react'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { CodeNodeType } from '@/app/components/workflow/nodes/code/types'
-import type { OutputVar } from '@/app/components/workflow/nodes/code/types'
+import type { CodeNodeType, OutputVar } from '@/app/components/workflow/nodes/code/types'
 import type { ContextGenerateMessage, ContextGenerateResponse } from '@/service/debug'
-import type { AppModeEnum, CompletionParams, Model, ModelModeType } from '@/types/app'
-import {
-  RiSendPlaneLine,
-} from '@remixicon/react'
+import type { CompletionParams, Model, ModelModeType } from '@/types/app'
+import { RiSendPlaneLine } from '@remixicon/react'
 import { useSessionStorageState } from 'ahooks'
 import useBoolean from 'ahooks/lib/useBoolean'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import ResPlaceholder from '@/app/components/app/configuration/config/automatic/res-placeholder'
+import VersionSelector from '@/app/components/app/configuration/config/automatic/version-selector'
 import Button from '@/app/components/base/button'
+import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
 import Input from '@/app/components/base/input'
 import Loading from '@/app/components/base/loading'
 import Modal from '@/app/components/base/modal'
 import Toast from '@/app/components/base/toast'
-import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
-import VersionSelector from '@/app/components/app/configuration/config/automatic/version-selector'
-import ResPlaceholder from '@/app/components/app/configuration/config/automatic/res-placeholder'
-import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
-import { useNodeDataUpdate } from '@/app/components/workflow/hooks/use-node-data-update'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
-import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
+import { useNodeDataUpdate } from '@/app/components/workflow/hooks/use-node-data-update'
+import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { NodeRunningStatus, VarType } from '@/app/components/workflow/types'
 import { generateContext } from '@/service/debug'
+import { AppModeEnum } from '@/types/app'
 import { cn } from '@/utils/classnames'
 import useContextGenData from './use-context-gen-data'
 
@@ -45,6 +43,15 @@ type Props = {
 const minCodeHeight = 220
 const minOutputHeight = 160
 const splitHandleHeight = 6
+const defaultCompletionParams: CompletionParams = {
+  temperature: 0.7,
+  max_tokens: 0,
+  top_p: 0,
+  echo: false,
+  stop: [],
+  presence_penalty: 0,
+  frequency_penalty: 0,
+}
 
 const normalizeCodeLanguage = (value?: string) => {
   if (value === CodeLanguage.javascript)
@@ -133,53 +140,42 @@ const ContextGenerateModal: FC<Props> = ({
 
   const [inputValue, setInputValue] = useState('')
   const [isGenerating, { setTrue: setGeneratingTrue, setFalse: setGeneratingFalse }] = useBoolean(false)
-
-  const defaultCompletionParams = {
-    temperature: 0.7,
-    max_tokens: 0,
-    top_p: 0,
-    echo: false,
-    stop: [],
-    presence_penalty: 0,
-    frequency_penalty: 0,
-  }
-  const localModel = localStorage.getItem('auto-gen-model')
-    ? JSON.parse(localStorage.getItem('auto-gen-model') as string) as Model
-    : null
-  const [model, setModel] = React.useState<Model>(localModel || {
-    name: '',
-    provider: '',
-    mode: AppModeEnum.CHAT as unknown as ModelModeType.chat,
-    completion_params: defaultCompletionParams,
+  const [modelOverride, setModelOverride] = useState<Model | null>(() => {
+    const stored = localStorage.getItem('auto-gen-model')
+    if (!stored)
+      return null
+    const parsed = JSON.parse(stored) as Model
+    return {
+      ...parsed,
+      completion_params: {
+        ...defaultCompletionParams,
+        ...parsed.completion_params,
+      },
+    }
   })
 
   const {
     defaultModel,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textGeneration)
 
-  useEffect(() => {
-    if (defaultModel) {
-      const localModel = localStorage.getItem('auto-gen-model')
-        ? JSON.parse(localStorage.getItem('auto-gen-model') || '')
-        : null
-      if (localModel) {
-        setModel({
-          ...localModel,
-          completion_params: {
-            ...defaultCompletionParams,
-            ...localModel.completion_params,
-          },
-        })
-      }
-      else {
-        setModel(prev => ({
-          ...prev,
-          name: defaultModel.model,
-          provider: defaultModel.provider.provider,
-        }))
+  const model = useMemo<Model>(() => {
+    if (modelOverride)
+      return modelOverride
+    if (!defaultModel) {
+      return {
+        name: '',
+        provider: '',
+        mode: AppModeEnum.CHAT as unknown as ModelModeType.chat,
+        completion_params: defaultCompletionParams,
       }
     }
-  }, [defaultModel])
+    return {
+      name: defaultModel.model,
+      provider: defaultModel.provider.provider,
+      mode: AppModeEnum.CHAT as unknown as ModelModeType.chat,
+      completion_params: defaultCompletionParams,
+    }
+  }, [defaultModel, modelOverride])
 
   const handleModelChange = useCallback((newValue: { modelId: string, provider: string, mode?: string, features?: string[] }) => {
     const newModel = {
@@ -188,7 +184,7 @@ const ContextGenerateModal: FC<Props> = ({
       name: newValue.modelId,
       mode: newValue.mode as ModelModeType,
     }
-    setModel(newModel)
+    setModelOverride(newModel)
     localStorage.setItem('auto-gen-model', JSON.stringify(newModel))
   }, [model])
 
@@ -197,16 +193,19 @@ const ContextGenerateModal: FC<Props> = ({
       ...model,
       completion_params: newParams as CompletionParams,
     }
-    setModel(newModel)
+    setModelOverride(newModel)
     localStorage.setItem('auto-gen-model', JSON.stringify(newModel))
   }, [model])
 
   const chatListRef = useRef<HTMLDivElement>(null)
+  const promptMessageCount = promptMessages?.length ?? 0
   useEffect(() => {
     if (!chatListRef.current)
       return
+    if (promptMessageCount === 0 && !isGenerating)
+      return
     chatListRef.current.scrollTop = chatListRef.current.scrollHeight
-  }, [promptMessages, isGenerating])
+  }, [promptMessageCount, isGenerating])
 
   const handleGenerate = useCallback(async () => {
     const trimmed = inputValue.trim()
@@ -215,7 +214,8 @@ const ContextGenerateModal: FC<Props> = ({
     if (!flowId || !toolNodeId || !paramKey)
       return
 
-    const nextMessages = [...(promptMessages || []), { role: 'user', content: trimmed }]
+    const userMessage: ContextGenerateMessage = { role: 'user', content: trimmed }
+    const nextMessages: ContextGenerateMessage[] = [...(promptMessages ?? []), userMessage]
     setPromptMessages(nextMessages)
     setInputValue('')
     setGeneratingTrue()
@@ -242,7 +242,8 @@ const ContextGenerateModal: FC<Props> = ({
       }
 
       const assistantMessage = response.message || t('nodes.tool.contextGenerate.defaultAssistantMessage', { ns: 'workflow' })
-      setPromptMessages([...nextMessages, { role: 'assistant', content: assistantMessage }])
+      const assistantEntry: ContextGenerateMessage = { role: 'assistant', content: assistantMessage }
+      setPromptMessages([...nextMessages, assistantEntry])
       addVersion(response)
     }
     finally {
@@ -326,7 +327,7 @@ const ContextGenerateModal: FC<Props> = ({
   const draggingRef = useRef(false)
   const dragStartRef = useRef({ startY: 0, startHeight: 0 })
 
-  const handleResizeStart = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+  const handleResizeStart = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
     draggingRef.current = true
     dragStartRef.current = {
       startY: event.clientY,
@@ -504,12 +505,14 @@ const ContextGenerateModal: FC<Props> = ({
                     />
                   </div>
                 </div>
-                <div
-                  className="flex h-[6px] cursor-row-resize items-center justify-center"
-                  onMouseDown={handleResizeStart}
+                <button
+                  type="button"
+                  className="flex h-[6px] w-full cursor-row-resize items-center justify-center bg-transparent p-0"
+                  aria-label={t('nodes.tool.contextGenerate.resizeHandle', { ns: 'workflow' })}
+                  onPointerDown={handleResizeStart}
                 >
                   <div className="h-1 w-8 rounded-full bg-divider-subtle" />
-                </div>
+                </button>
                 <div className="flex min-h-[160px] flex-1 flex-col overflow-hidden rounded-lg border border-components-panel-border bg-components-panel-bg">
                   <div className="px-3 pb-1 pt-2 text-xs font-semibold uppercase text-text-tertiary">
                     {t('nodes.tool.contextGenerate.output', { ns: 'workflow' })}

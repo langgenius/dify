@@ -589,7 +589,7 @@
       "count": 3
     },
     "ts/no-explicit-any": {
-      "count": 4
+      "count": 3
     }
   },
   "app/components/app/text-generate/item/result-tab.tsx": {
@@ -4361,11 +4361,6 @@
   "service/datasets.ts": {
     "ts/no-explicit-any": {
       "count": 8
-    }
-  },
-  "service/debug.ts": {
-    "ts/no-explicit-any": {
-      "count": 7
     }
   },
   "service/explore.ts": {
