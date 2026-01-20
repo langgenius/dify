@@ -301,27 +301,26 @@ class LLMNode(Node[LLMNodeData]):
             generation_data: LLMGenerationData | None = None
             structured_output: LLMStructuredOutput | None = None
 
-            if self.tool_call_enabled:
-                # FIXME(Mairuis): should read sandbox from workflow run context...
-                sandbox = self._get_sandbox()
-                if sandbox:
-                    generator = self._invoke_llm_with_sandbox(
-                        sandbox=sandbox,
-                        model_instance=model_instance,
-                        prompt_messages=prompt_messages,
-                        stop=stop,
-                        variable_pool=variable_pool,
-                    )
-                else:
-                    generator = self._invoke_llm_with_tools(
-                        model_instance=model_instance,
-                        prompt_messages=prompt_messages,
-                        stop=stop,
-                        files=files,
-                        variable_pool=variable_pool,
-                        node_inputs=node_inputs,
-                        process_data=process_data,
-                    )
+            # FIXME(Mairuis): should read sandbox from workflow run context...
+            sandbox = self._get_sandbox()
+            if sandbox:
+                generator = self._invoke_llm_with_sandbox(
+                    sandbox=sandbox,
+                    model_instance=model_instance,
+                    prompt_messages=prompt_messages,
+                    stop=stop,
+                    variable_pool=variable_pool,
+                )
+            elif self.tool_call_enabled:
+                generator = self._invoke_llm_with_tools(
+                    model_instance=model_instance,
+                    prompt_messages=prompt_messages,
+                    stop=stop,
+                    files=files,
+                    variable_pool=variable_pool,
+                    node_inputs=node_inputs,
+                    process_data=process_data,
+                )
             else:
                 # Use traditional LLM invocation
                 generator = LLMNode.invoke_llm(
