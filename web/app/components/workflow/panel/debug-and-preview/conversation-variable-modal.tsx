@@ -115,7 +115,7 @@ const ConversationVariableModal = ({
                 }}
               >
               </div>
-              {latestValueTimestampMap[currentVar.id] && (
+              {!!latestValueTimestampMap[currentVar.id] && (
                 <div className="system-xs-regular shrink-0 text-text-tertiary">
                   {t('chatVariable.updatedAt', { ns: 'workflow' })}
                   {formatTime(latestValueTimestampMap[currentVar.id], t('dateTimeFormat', { ns: 'appLog' }) as string)}

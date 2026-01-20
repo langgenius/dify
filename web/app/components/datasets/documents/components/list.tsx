@@ -508,7 +508,7 @@ const DocumentList: FC<IDocumentListProps> = ({
         />
       )}
       {/* Show Pagination only if the total is more than the limit */}
-      {pagination.total && (
+      {!!pagination.total && (
         <Pagination
           {...pagination}
           className="w-full shrink-0"
