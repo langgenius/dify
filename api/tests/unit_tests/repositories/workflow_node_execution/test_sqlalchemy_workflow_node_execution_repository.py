@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Any
 from unittest.mock import MagicMock, Mock
 
+import pytest
 from sqlalchemy.orm import sessionmaker
 
 from core.repositories.sqlalchemy_workflow_node_execution_repository import (
@@ -13,7 +14,15 @@ from core.repositories.sqlalchemy_workflow_node_execution_repository import (
 )
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecution
 from core.workflow.enums import NodeType
-from models import Account, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
+from models import (
+    Account,
+    WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionTriggeredFrom,
+    WorkflowRunTriggeredFrom,
+)
+from repositories.sqlalchemy_api_workflow_node_execution_repository import (
+    DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
+)
 
 
 class TestSQLAlchemyWorkflowNodeExecutionRepositoryProcessData:
@@ -104,3 +113,43 @@ class TestSQLAlchemyWorkflowNodeExecutionRepositoryProcessData:
         # Should not be truncated
         assert domain_model.process_data_truncated is False
         assert domain_model.get_truncated_process_data() is None
+
+
+class TestDifyAPISQLAlchemyWorkflowNodeExecutionRepositoryTriggeredFromMapping:
+    @pytest.mark.parametrize(
+        "run_triggered_from",
+        [
+            WorkflowRunTriggeredFrom.APP_RUN.value,
+            WorkflowRunTriggeredFrom.DEBUGGING.value,
+            WorkflowRunTriggeredFrom.SCHEDULE.value,
+            WorkflowRunTriggeredFrom.PLUGIN.value,
+            WorkflowRunTriggeredFrom.WEBHOOK.value,
+        ],
+    )
+    def test_maps_workflow_run_group(self, run_triggered_from: str) -> None:
+        result = DifyAPISQLAlchemyWorkflowNodeExecutionRepository._map_run_triggered_from_to_node_triggered_from(
+            run_triggered_from
+        )
+
+        assert result == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value
+
+    @pytest.mark.parametrize(
+        "run_triggered_from",
+        [
+            WorkflowRunTriggeredFrom.RAG_PIPELINE_RUN.value,
+            WorkflowRunTriggeredFrom.RAG_PIPELINE_DEBUGGING.value,
+        ],
+    )
+    def test_maps_rag_pipeline_group(self, run_triggered_from: str) -> None:
+        result = DifyAPISQLAlchemyWorkflowNodeExecutionRepository._map_run_triggered_from_to_node_triggered_from(
+            run_triggered_from
+        )
+
+        assert result == WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN.value
+
+    def test_maps_unknown_value_to_empty_string(self) -> None:
+        result = DifyAPISQLAlchemyWorkflowNodeExecutionRepository._map_run_triggered_from_to_node_triggered_from(
+            "unknown-source"
+        )
+
+        assert result == ""
