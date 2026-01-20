@@ -35,7 +35,7 @@
   "stepOne.uploader.cancel": "Anuluj",
   "stepOne.uploader.change": "Zmień",
   "stepOne.uploader.failed": "Przesyłanie nie powiodło się",
-  "stepOne.uploader.tip": "Obsługuje {{supportTypes}}. Maksymalnie {{size}}MB każdy.",
+  "stepOne.uploader.tip": "Obsługuje {{supportTypes}}. Maksymalnie {{batchCount}} plików w partii, każdy do {{size}} MB. Łącznie maksymalnie {{totalCount}} plików.",
   "stepOne.uploader.title": "Prześlij plik tekstowy",
   "stepOne.uploader.validation.count": "Nieobsługiwane przesyłanie wielu plików",
   "stepOne.uploader.validation.filesNumber": "Osiągnąłeś limit przesłania partii {{filesNumber}}.",
