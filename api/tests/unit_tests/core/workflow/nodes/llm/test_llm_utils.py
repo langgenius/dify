@@ -123,6 +123,195 @@ class TestBuildContext:
         assert len(context) == 2
         assert context[1].content == "The answer is 4."
 
+    def test_builds_context_with_tool_calls_from_generation_data(self):
+        """Should reconstruct full conversation including tool calls when generation_data is provided."""
+        from core.model_runtime.entities.llm_entities import LLMUsage
+        from core.model_runtime.entities.message_entities import (
+            AssistantPromptMessage,
+            ToolPromptMessage,
+        )
+        from core.workflow.nodes.llm.entities import (
+            LLMGenerationData,
+            LLMTraceSegment,
+            ModelTraceSegment,
+            ToolCall,
+            ToolTraceSegment,
+        )
+
+        messages = [UserPromptMessage(content="What's the weather in Beijing?")]
+
+        # Create trace with tool call and result
+        generation_data = LLMGenerationData(
+            text="The weather in Beijing is sunny, 25°C.",
+            reasoning_contents=[],
+            tool_calls=[],
+            sequence=[],
+            usage=LLMUsage.empty_usage(),
+            finish_reason="stop",
+            files=[],
+            trace=[
+                LLMTraceSegment(
+                    type="model",
+                    duration=0.5,
+                    usage=None,
+                    output=ModelTraceSegment(
+                        text="Let me check the weather.",
+                        reasoning=None,
+                        tool_calls=[
+                            ToolCall(
+                                id="call_123",
+                                name="get_weather",
+                                arguments='{"city": "Beijing"}',
+                            )
+                        ],
+                    ),
+                ),
+                LLMTraceSegment(
+                    type="tool",
+                    duration=0.3,
+                    usage=None,
+                    output=ToolTraceSegment(
+                        id="call_123",
+                        name="get_weather",
+                        arguments='{"city": "Beijing"}',
+                        output="Sunny, 25°C",
+                    ),
+                ),
+            ],
+        )
+
+        context = build_context(messages, "The weather in Beijing is sunny, 25°C.", generation_data)
+
+        # Should have: user message + assistant with tool_call + tool result + final assistant
+        assert len(context) == 4
+        assert context[0].content == "What's the weather in Beijing?"
+        assert isinstance(context[1], AssistantPromptMessage)
+        assert context[1].content == "Let me check the weather."
+        assert len(context[1].tool_calls) == 1
+        assert context[1].tool_calls[0].id == "call_123"
+        assert context[1].tool_calls[0].function.name == "get_weather"
+        assert isinstance(context[2], ToolPromptMessage)
+        assert context[2].content == "Sunny, 25°C"
+        assert context[2].tool_call_id == "call_123"
+        assert isinstance(context[3], AssistantPromptMessage)
+        assert context[3].content == "The weather in Beijing is sunny, 25°C."
+
+    def test_builds_context_with_multiple_tool_calls(self):
+        """Should handle multiple tool calls in a single conversation."""
+        from core.model_runtime.entities.llm_entities import LLMUsage
+        from core.model_runtime.entities.message_entities import (
+            AssistantPromptMessage,
+            ToolPromptMessage,
+        )
+        from core.workflow.nodes.llm.entities import (
+            LLMGenerationData,
+            LLMTraceSegment,
+            ModelTraceSegment,
+            ToolCall,
+            ToolTraceSegment,
+        )
+
+        messages = [UserPromptMessage(content="Compare weather in Beijing and Shanghai")]
+
+        generation_data = LLMGenerationData(
+            text="Beijing is sunny at 25°C, Shanghai is cloudy at 22°C.",
+            reasoning_contents=[],
+            tool_calls=[],
+            sequence=[],
+            usage=LLMUsage.empty_usage(),
+            finish_reason="stop",
+            files=[],
+            trace=[
+                # First model call with two tool calls
+                LLMTraceSegment(
+                    type="model",
+                    duration=0.5,
+                    usage=None,
+                    output=ModelTraceSegment(
+                        text="I'll check both cities.",
+                        reasoning=None,
+                        tool_calls=[
+                            ToolCall(id="call_1", name="get_weather", arguments='{"city": "Beijing"}'),
+                            ToolCall(id="call_2", name="get_weather", arguments='{"city": "Shanghai"}'),
+                        ],
+                    ),
+                ),
+                # First tool result
+                LLMTraceSegment(
+                    type="tool",
+                    duration=0.2,
+                    usage=None,
+                    output=ToolTraceSegment(
+                        id="call_1",
+                        name="get_weather",
+                        arguments='{"city": "Beijing"}',
+                        output="Sunny, 25°C",
+                    ),
+                ),
+                # Second tool result
+                LLMTraceSegment(
+                    type="tool",
+                    duration=0.2,
+                    usage=None,
+                    output=ToolTraceSegment(
+                        id="call_2",
+                        name="get_weather",
+                        arguments='{"city": "Shanghai"}',
+                        output="Cloudy, 22°C",
+                    ),
+                ),
+            ],
+        )
+
+        context = build_context(messages, "Beijing is sunny at 25°C, Shanghai is cloudy at 22°C.", generation_data)
+
+        # Should have: user + assistant with 2 tool_calls + 2 tool results + final assistant
+        assert len(context) == 5
+        assert context[0].content == "Compare weather in Beijing and Shanghai"
+        assert isinstance(context[1], AssistantPromptMessage)
+        assert len(context[1].tool_calls) == 2
+        assert isinstance(context[2], ToolPromptMessage)
+        assert context[2].content == "Sunny, 25°C"
+        assert isinstance(context[3], ToolPromptMessage)
+        assert context[3].content == "Cloudy, 22°C"
+        assert isinstance(context[4], AssistantPromptMessage)
+        assert context[4].content == "Beijing is sunny at 25°C, Shanghai is cloudy at 22°C."
+
+    def test_builds_context_without_generation_data(self):
+        """Should fallback to simple context when no generation_data is provided."""
+        messages = [UserPromptMessage(content="Hello!")]
+
+        context = build_context(messages, "Hi there!", generation_data=None)
+
+        assert len(context) == 2
+        assert context[0].content == "Hello!"
+        assert context[1].content == "Hi there!"
+
+    def test_builds_context_with_empty_trace(self):
+        """Should fallback to simple context when trace is empty."""
+        from core.model_runtime.entities.llm_entities import LLMUsage
+        from core.workflow.nodes.llm.entities import LLMGenerationData
+
+        messages = [UserPromptMessage(content="Hello!")]
+
+        generation_data = LLMGenerationData(
+            text="Hi there!",
+            reasoning_contents=[],
+            tool_calls=[],
+            sequence=[],
+            usage=LLMUsage.empty_usage(),
+            finish_reason="stop",
+            files=[],
+            trace=[],  # Empty trace
+        )
+
+        context = build_context(messages, "Hi there!", generation_data)
+
+        # Should fallback to simple context
+        assert len(context) == 2
+        assert context[0].content == "Hello!"
+        assert context[1].content == "Hi there!"
+
 
 class TestRestoreMultimodalContentInMessages:
     """Tests for restore_multimodal_content_in_messages function."""

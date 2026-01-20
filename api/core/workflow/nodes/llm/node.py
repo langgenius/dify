@@ -373,7 +373,7 @@ class LLMNode(Node[LLMNodeData]):
                 "reasoning_content": reasoning_content,
                 "usage": jsonable_encoder(usage),
                 "finish_reason": finish_reason,
-                "context": llm_utils.build_context(prompt_messages, clean_text),
+                "context": llm_utils.build_context(prompt_messages, clean_text, generation_data),
             }
 
             # Build generation field

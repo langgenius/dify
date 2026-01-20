@@ -18,13 +18,14 @@ from core.model_runtime.entities.message_entities import (
     PromptMessage,
     PromptMessageContentUnionTypes,
     PromptMessageRole,
+    ToolPromptMessage,
 )
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig, MemoryMode
 from core.variables.segments import ArrayAnySegment, ArrayFileSegment, FileSegment, NoneSegment, StringSegment
 from core.workflow.enums import SystemVariableKey
-from core.workflow.nodes.llm.entities import ModelConfig
+from core.workflow.nodes.llm.entities import LLMGenerationData, ModelConfig
 from core.workflow.runtime import VariablePool
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
@@ -214,19 +215,85 @@ def deduct_llm_quota(tenant_id: str, model_instance: ModelInstance, usage: LLMUs
 def build_context(
     prompt_messages: Sequence[PromptMessage],
     assistant_response: str,
+    generation_data: LLMGenerationData | None = None,
 ) -> list[PromptMessage]:
     """
     Build context from prompt messages and assistant response.
     Excludes system messages and includes the current LLM response.
     Returns list[PromptMessage] for use with ArrayPromptMessageSegment.
 
+    For tool-enabled runs, reconstructs the full conversation including tool calls and results.
     Note: Multi-modal content base64 data is truncated to avoid storing large data in context.
+
+    Args:
+        prompt_messages: Initial prompt messages (user query, etc.)
+        assistant_response: Final assistant response text
+        generation_data: Optional generation data containing trace for tool-enabled runs
     """
+
     context_messages: list[PromptMessage] = [
         _truncate_multimodal_content(m) for m in prompt_messages if m.role != PromptMessageRole.SYSTEM
     ]
-    context_messages.append(AssistantPromptMessage(content=assistant_response))
+
+    # For tool-enabled runs, reconstruct messages from trace
+    if generation_data and generation_data.trace:
+        context_messages.extend(_build_messages_from_trace(generation_data, assistant_response))
+    else:
+        context_messages.append(AssistantPromptMessage(content=assistant_response))
+
     return context_messages
+
+
+def _build_messages_from_trace(
+    generation_data: LLMGenerationData,
+    assistant_response: str,
+) -> list[PromptMessage]:
+    """
+    Build assistant and tool messages from trace segments.
+
+    Processes trace in order to reconstruct the conversation flow:
+    - Model segments with tool_calls -> AssistantPromptMessage with tool_calls
+    - Tool segments -> ToolPromptMessage with result
+    - Final response -> AssistantPromptMessage with assistant_response
+    """
+    from core.workflow.nodes.llm.entities import ModelTraceSegment, ToolTraceSegment
+
+    messages: list[PromptMessage] = []
+
+    for segment in generation_data.trace:
+        if segment.type == "model" and isinstance(segment.output, ModelTraceSegment):
+            model_output = segment.output
+            segment_content = model_output.text or ""
+
+            if model_output.tool_calls:
+                # Build tool_calls for AssistantPromptMessage
+                tool_calls = [
+                    AssistantPromptMessage.ToolCall(
+                        id=tc.id or "",
+                        type="function",
+                        function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                            name=tc.name or "",
+                            arguments=tc.arguments or "",
+                        ),
+                    )
+                    for tc in model_output.tool_calls
+                ]
+                messages.append(AssistantPromptMessage(content=segment_content, tool_calls=tool_calls))
+
+        elif segment.type == "tool" and isinstance(segment.output, ToolTraceSegment):
+            tool_output = segment.output
+            messages.append(
+                ToolPromptMessage(
+                    content=tool_output.output or "",
+                    tool_call_id=tool_output.id or "",
+                    name=tool_output.name or "",
+                )
+            )
+
+    # Add final assistant response as the authoritative text
+    messages.append(AssistantPromptMessage(content=assistant_response))
+
+    return messages
 
 
 def _truncate_multimodal_content(message: PromptMessage) -> PromptMessage:

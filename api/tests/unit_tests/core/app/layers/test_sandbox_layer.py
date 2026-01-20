@@ -171,9 +171,7 @@ class TestSandboxLayer:
         layer.on_event(GraphRunSucceededEvent(outputs={}))
         layer.on_event(GraphRunFailedEvent(error="test error", exceptions_count=1))
 
-    def test_on_graph_end_releases_sandbox_and_unregisters_from_manager(
-        self, mock_sandbox_storage: MagicMock
-    ) -> None:
+    def test_on_graph_end_releases_sandbox_and_unregisters_from_manager(self, mock_sandbox_storage: MagicMock) -> None:
         sandbox_id = "test-exec-456"
         layer = create_layer(sandbox_id=sandbox_id, sandbox_storage=mock_sandbox_storage)
         mock_sandbox = MagicMock(spec=VirtualEnvironment)
