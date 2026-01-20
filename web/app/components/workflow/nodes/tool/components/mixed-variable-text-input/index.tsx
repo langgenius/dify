@@ -30,10 +30,10 @@ import { generateNewNode, getNodeCustomTypeByNodeDataType, mergeNodeDefaultData 
 import { useGetLanguage } from '@/context/i18n'
 import { useStrategyProviders } from '@/service/use-strategy'
 import { cn } from '@/utils/classnames'
+import ContextGenerateModal from '../context-generate-modal'
 import SubGraphModal from '../sub-graph-modal'
 import AgentHeaderBar from './agent-header-bar'
 import Placeholder from './placeholder'
-import ContextGenerateModal from '../context-generate-modal'
 
 /**
  * Matches agent context variable syntax: {{@nodeId.context@}}
@@ -535,8 +535,7 @@ const MixedVariableTextInput = ({
     }
     onChange(newValue, VarKindTypeEnum.mention, mentionConfigWithOutputSelector)
     syncExtractorPromptFromText(newValue)
-    setControlPromptEditorRerenderKey(Date.now())
-  }, [ensureExtractorNode, onChange, paramKey, setControlPromptEditorRerenderKey, syncExtractorPromptFromText, toolNodeId, value])
+  }, [ensureExtractorNode, onChange, paramKey, syncExtractorPromptFromText, toolNodeId, value])
 
   const handleAssembleSelect = useCallback((): ValueSelector | null => {
     if (!toolNodeId || !paramKey || !assemblePlaceholder)

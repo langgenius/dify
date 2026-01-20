@@ -54,7 +54,6 @@ import { INSERT_ERROR_MESSAGE_BLOCK_COMMAND } from '../error-message-block'
 import { INSERT_LAST_RUN_BLOCK_COMMAND } from '../last-run-block'
 import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '../variable-block'
 import { INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND } from '../workflow-variable-block'
-import { $createWorkflowVariableBlockNode } from '../workflow-variable-block/node'
 import { useOptions } from './hooks'
 
 type ComponentPickerProps = {
@@ -230,16 +229,14 @@ const ComponentPicker = ({
         needRemove.remove()
 
       const root = $getRoot()
-      const firstChild = root.getFirstChild()
-      if (firstChild) {
-        const selection = firstChild.selectStart()
-        if (selection) {
-          const workflowVariableBlockNode = $createWorkflowVariableBlockNode([agent.id, 'text'], {}, undefined)
-          $insertNodes([workflowVariableBlockNode])
-        }
-      }
+      root.selectStart()
     })
+    editor.dispatchCommand(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, [agent.id, 'context'])
     agentBlock?.onSelect?.(agent)
+    editor.update(() => {
+      const root = $getRoot()
+      root.selectEnd()
+    })
     handleClose()
   }, [editor, getMatchFromSelection, agentBlock, handleClose])
 
@@ -288,10 +285,7 @@ const ComponentPicker = ({
               >
                 <div
                   className="w-full"
-                  onMouseDown={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                  }}
+                  role="presentation"
                 >
                   <SegmentedControl
                     size="small"
