@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import type { StructuredOutput } from '../../../llm/types'
 import type { Field } from '@/app/components/workflow/nodes/llm/types'
 import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
-import { useHover } from 'ahooks'
+import { useHover, useLatest } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -380,9 +380,6 @@ const VarReferenceVars: FC<Props> = ({
   const [activeIndex, setActiveIndex] = useState(-1)
   const itemRefs = useRef<Array<HTMLDivElement | null>>([])
   const lastInteractionRef = useRef<'keyboard' | 'mouse' | 'filter' | null>(null)
-  const flatItemsRef = useRef(flatItems)
-  const activeIndexRef = useRef(activeIndex)
-  const onCloseRef = useRef(onClose)
   const resolvedActiveIndex = useMemo(() => {
     if (!enableKeyboardNavigation || flatItems.length === 0)
       return -1
@@ -390,22 +387,13 @@ const VarReferenceVars: FC<Props> = ({
       return 0
     return activeIndex
   }, [activeIndex, enableKeyboardNavigation, flatItems.length])
+  const flatItemsRef = useLatest(flatItems)
+  const activeIndexRef = useLatest(resolvedActiveIndex)
+  const onCloseRef = useLatest(onClose)
 
   useEffect(() => {
     itemRefs.current = []
   }, [flatItems.length])
-
-  useEffect(() => {
-    flatItemsRef.current = flatItems
-  }, [flatItems])
-
-  useEffect(() => {
-    activeIndexRef.current = resolvedActiveIndex
-  }, [resolvedActiveIndex])
-
-  useEffect(() => {
-    onCloseRef.current = onClose
-  }, [onClose])
 
   const handleHighlightIndex = useCallback((index: number, source: 'keyboard' | 'mouse' | 'filter') => {
     lastInteractionRef.current = source
