@@ -172,7 +172,7 @@
   "fileUploader.pasteFileLinkInvalid": "Ungültiger Dateilink",
   "fileUploader.uploadDisabled": "Datei-Upload ist deaktiviert",
   "fileUploader.uploadFromComputer": "Lokaler Upload",
-  "fileUploader.uploadFromComputerLimit": "Datei hochladen darf {{size}} nicht überschreiten",
+  "fileUploader.uploadFromComputerLimit": "Der Upload von {{type}} darf {{size}} nicht überschreiten",
   "fileUploader.uploadFromComputerReadError": "Lesen der Datei fehlgeschlagen, bitte versuchen Sie es erneut.",
   "fileUploader.uploadFromComputerUploadError": "Datei-Upload fehlgeschlagen, bitte erneut hochladen.",
   "imageInput.browse": "blättern",

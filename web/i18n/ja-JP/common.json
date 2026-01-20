@@ -172,7 +172,7 @@
   "fileUploader.pasteFileLinkInvalid": "無効なファイルリンク",
   "fileUploader.uploadDisabled": "ファイルアップロードは無効です",
   "fileUploader.uploadFromComputer": "ローカルアップロード",
-  "fileUploader.uploadFromComputerLimit": "アップロードファイルは{{size}}を超えてはなりません",
+  "fileUploader.uploadFromComputerLimit": "{{type}}のアップロードは{{size}}を超えてはなりません",
   "fileUploader.uploadFromComputerReadError": "ファイルの読み取りに失敗しました。もう一度やり直してください。",
   "fileUploader.uploadFromComputerUploadError": "ファイルのアップロードに失敗しました。再度アップロードしてください。",
   "imageInput.browse": "ブラウズする",

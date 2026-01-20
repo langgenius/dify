@@ -131,6 +131,7 @@ export default antfu(
 
       'dify-i18n/valid-i18n-keys': 'error',
       'dify-i18n/no-extra-keys': 'error',
+      'dify-i18n/consistent-placeholders': 'error',
     },
   },
 )

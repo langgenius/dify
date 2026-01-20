@@ -140,7 +140,7 @@
   "stepTwo.preview": "Confirmar e visualizar",
   "stepTwo.previewButton": "Alternar para visualização no formato de Perguntas e Respostas",
   "stepTwo.previewChunk": "Visualizar parte",
-  "stepTwo.previewChunkCount": "{{contagem}} Partes estimadas",
+  "stepTwo.previewChunkCount": "{{count}} Partes estimadas",
   "stepTwo.previewChunkTip": "Clique no botão 'Preview Chunk' à esquerda para carregar a visualização",
   "stepTwo.previewSwitchTipEnd": " consumir tokens adicionais",
   "stepTwo.previewSwitchTipStart": "A visualização atual do fragmento está no formato de texto, alternar para uma visualização no formato de Perguntas e Respostas irá",

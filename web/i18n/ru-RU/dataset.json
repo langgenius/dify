@@ -147,7 +147,7 @@
   "parentMode.paragraph": "Параграф",
   "partialEnabled_one": "Всего {{count}} документов, доступно {{num}}",
   "partialEnabled_other": "Всего {{count}} документов, доступно {{num}}",
-  "preprocessDocument": "{{число}} Предварительная обработка документов",
+  "preprocessDocument": "{{num}} Предварительная обработка документов",
   "rerankSettings": "Настройки переранжирования",
   "retrieval.change": "Изменить",
   "retrieval.changeRetrievalMethod": "Изменить метод поиска",
