@@ -261,7 +261,6 @@ export const Workflow: FC<WorkflowProps> = memo(({
     handleActiveCommentClose,
     handleCommentResolve,
     handleCommentDelete,
-    handleCommentNavigate,
     handleCommentReply,
     handleCommentReplyUpdate,
     handleCommentReplyDelete,
@@ -269,10 +268,26 @@ export const Workflow: FC<WorkflowProps> = memo(({
   } = useWorkflowComment()
   const showUserComments = useStore(s => s.showUserComments)
   const showUserCursors = useStore(s => s.showUserCursors)
+  const showResolvedComments = useStore(s => s.showResolvedComments)
   const isCommentPreviewHovering = useStore(s => s.isCommentPreviewHovering)
   const setPendingCommentState = useStore(s => s.setPendingComment)
   const isCommentInputActive = Boolean(pendingComment)
   const { t } = useTranslation()
+  const visibleComments = useMemo(() => {
+    if (showResolvedComments)
+      return comments
+    return comments.filter(comment => !comment.resolved)
+  }, [comments, showResolvedComments])
+  const handleVisibleCommentNavigate = useCallback((direction: 'prev' | 'next') => {
+    if (!activeComment)
+      return
+    const idx = visibleComments.findIndex(comment => comment.id === activeComment.id)
+    if (idx === -1)
+      return
+    const target = direction === 'prev' ? visibleComments[idx - 1] : visibleComments[idx + 1]
+    if (target)
+      handleCommentIconClick(target)
+  }, [activeComment, handleCommentIconClick, visibleComments])
 
   eventEmitter?.useSubscription((event) => {
     const workflowEvent = event as unknown as WorkflowEvent
@@ -560,12 +575,12 @@ export const Workflow: FC<WorkflowProps> = memo(({
           onPositionChange={handlePendingCommentPositionChange}
         />
       )}
-      {comments.map((comment, index) => {
+      {visibleComments.map((comment, index) => {
         const isActive = activeComment?.id === comment.id
 
         if (isActive && activeComment) {
           const canGoPrev = index > 0
-          const canGoNext = index < comments.length - 1
+          const canGoNext = index < visibleComments.length - 1
           return (
             <Fragment key={comment.id}>
               <CommentIcon
@@ -584,8 +599,8 @@ export const Workflow: FC<WorkflowProps> = memo(({
                 onClose={handleActiveCommentClose}
                 onResolve={() => handleCommentResolve(comment.id)}
                 onDelete={() => handleCommentDeleteClick(comment.id)}
-                onPrev={canGoPrev ? () => handleCommentNavigate('prev') : undefined}
-                onNext={canGoNext ? () => handleCommentNavigate('next') : undefined}
+                onPrev={canGoPrev ? () => handleVisibleCommentNavigate('prev') : undefined}
+                onNext={canGoNext ? () => handleVisibleCommentNavigate('next') : undefined}
                 onReply={(content, ids) => handleCommentReply(comment.id, content, ids ?? [])}
                 onReplyEdit={(replyId, content, ids) => handleCommentReplyUpdate(comment.id, replyId, content, ids ?? [])}
                 onReplyDelete={replyId => handleCommentReplyDeleteClick(comment.id, replyId)}

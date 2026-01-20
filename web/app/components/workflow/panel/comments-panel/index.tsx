@@ -20,13 +20,14 @@ const CommentsPanel = () => {
   const activeCommentId = useStore(s => s.activeCommentId)
   const setActiveCommentId = useStore(s => s.setActiveCommentId)
   const setControlMode = useStore(s => s.setControlMode)
+  const showResolvedComments = useStore(s => s.showResolvedComments)
+  const setShowResolvedComments = useStore(s => s.setShowResolvedComments)
   const { comments, loading, loadComments, handleCommentIconClick } = useWorkflowComment()
   const params = useParams()
   const appId = params.appId as string
   const { formatTimeFromNow } = useFormatTimeFromNow()
 
   const [showOnlyMine, setShowOnlyMine] = useState(false)
-  const [showOnlyUnresolved, setShowOnlyUnresolved] = useState(false)
   const [showFilter, setShowFilter] = useState(false)
 
   const handleSelect = useCallback((comment: WorkflowCommentList) => {
@@ -37,12 +38,12 @@ const CommentsPanel = () => {
 
   const filteredSorted = useMemo(() => {
     let data = comments
-    if (showOnlyUnresolved)
+    if (!showResolvedComments)
       data = data.filter(c => !c.resolved)
     if (showOnlyMine)
       data = data.filter(c => c.created_by === userProfile?.id)
     return data
-  }, [comments, showOnlyMine, showOnlyUnresolved, userProfile?.id])
+  }, [comments, showOnlyMine, showResolvedComments, userProfile?.id])
 
   const handleResolve = useCallback(async (comment: WorkflowCommentList) => {
     if (comment.resolved)
@@ -62,7 +63,7 @@ const CommentsPanel = () => {
     }
   }, [appId, loadComments, setActiveCommentId])
 
-  const hasActiveFilter = showOnlyMine || !showOnlyUnresolved
+  const hasActiveFilter = showOnlyMine || !showResolvedComments
 
   return (
     <div className={cn('relative flex h-full w-[420px] flex-col rounded-l-2xl border border-components-panel-border bg-components-panel-bg')}>
@@ -115,9 +116,9 @@ const CommentsPanel = () => {
                 <span className="text-sm text-text-secondary">Show resolved</span>
                 <Switch
                   size="md"
-                  defaultValue={!showOnlyUnresolved}
+                  defaultValue={showResolvedComments}
                   onChange={(checked) => {
-                    setShowOnlyUnresolved(!checked)
+                    setShowResolvedComments(checked)
                   }}
                 />
               </div>
