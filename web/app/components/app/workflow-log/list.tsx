@@ -1,13 +1,16 @@
 'use client'
 import type { FC } from 'react'
-import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunTriggeredFrom } from '@/models/log'
+import type { WorkflowLogListItem, WorkflowLogListResponse, WorkflowRunTriggeredFrom } from '@/models/log'
 import type { App } from '@/types/app'
 import { ArrowDownIcon } from '@heroicons/react/24/outline'
+import { RiDownloadLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import Drawer from '@/app/components/base/drawer'
 import Loading from '@/app/components/base/loading'
+import Spinner from '@/app/components/base/spinner'
 import Indicator from '@/app/components/header/indicator'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
@@ -17,14 +20,26 @@ import DetailPanel from './detail'
 import TriggerByDisplay from './trigger-by-display'
 
 type ILogs = {
-  logs?: WorkflowLogsResponse
+  logs?: WorkflowLogListResponse
   appDetail?: App
   onRefresh: () => void
+  disableInteraction?: boolean
+  showExportColumn?: boolean
+  onExport?: (log: WorkflowLogListItem) => void
+  exportLoadingRunId?: string
 }
 
 const defaultValue = 'N/A'
 
-const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
+const WorkflowAppLogList: FC<ILogs> = ({
+  logs,
+  appDetail,
+  onRefresh,
+  disableInteraction,
+  showExportColumn,
+  onExport,
+  exportLoadingRunId,
+}) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
 
@@ -32,9 +47,9 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
   const isMobile = media === MediaType.mobile
 
   const [showDrawer, setShowDrawer] = useState<boolean>(false)
-  const [currentLog, setCurrentLog] = useState<WorkflowAppLogDetail | undefined>()
+  const [currentLog, setCurrentLog] = useState<WorkflowLogListItem | undefined>()
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
-  const [localLogs, setLocalLogs] = useState<WorkflowAppLogDetail[]>(logs?.data || [])
+  const [localLogs, setLocalLogs] = useState<WorkflowLogListItem[]>(logs?.data || [])
 
   useEffect(() => {
     if (!logs?.data) {
@@ -125,18 +140,26 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
             <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('table.header.status', { ns: 'appLog' })}</td>
             <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('table.header.runtime', { ns: 'appLog' })}</td>
             <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('table.header.tokens', { ns: 'appLog' })}</td>
-            <td className={cn('whitespace-nowrap bg-background-section-burn py-1.5 pl-3', !isWorkflow ? 'rounded-r-lg' : '')}>{t('table.header.user', { ns: 'appLog' })}</td>
-            {isWorkflow && <td className="whitespace-nowrap rounded-r-lg bg-background-section-burn py-1.5 pl-3">{t('table.header.triggered_from', { ns: 'appLog' })}</td>}
+            <td className={cn('whitespace-nowrap bg-background-section-burn py-1.5 pl-3', !isWorkflow && !showExportColumn ? 'rounded-r-lg' : '')}>{t('table.header.user', { ns: 'appLog' })}</td>
+            {isWorkflow && <td className={cn('whitespace-nowrap bg-background-section-burn py-1.5 pl-3', showExportColumn ? '' : 'rounded-r-lg')}>{t('table.header.triggered_from', { ns: 'appLog' })}</td>}
+            {showExportColumn && <td className="whitespace-nowrap rounded-r-lg bg-background-section-burn py-1.5 pl-3"></td>}
           </tr>
         </thead>
         <tbody className="system-sm-regular text-text-secondary">
-          {localLogs.map((log: WorkflowAppLogDetail) => {
+          {localLogs.map((log: WorkflowLogListItem) => {
             const endUser = log.created_by_end_user ? log.created_by_end_user.session_id : log.created_by_account ? log.created_by_account.name : defaultValue
+            const triggerMetadata = log.details?.trigger_metadata || log.trigger_metadata
             return (
               <tr
                 key={log.id}
-                className={cn('cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover', currentLog?.id !== log.id ? '' : 'bg-background-default-hover')}
+                className={cn(
+                  'border-b border-divider-subtle',
+                  disableInteraction ? '' : 'cursor-pointer hover:bg-background-default-hover',
+                  currentLog?.id !== log.id ? '' : 'bg-background-default-hover',
+                )}
                 onClick={() => {
+                  if (disableInteraction)
+                    return
                   setCurrentLog(log)
                   setShowDrawer(true)
                 }}
@@ -166,7 +189,25 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
                 </td>
                 {isWorkflow && (
                   <td className="p-3 pr-2">
-                    <TriggerByDisplay triggeredFrom={log.workflow_run.triggered_from as WorkflowRunTriggeredFrom} triggerMetadata={log.details?.trigger_metadata} />
+                    <TriggerByDisplay triggeredFrom={log.workflow_run.triggered_from as WorkflowRunTriggeredFrom} triggerMetadata={triggerMetadata} />
+                  </td>
+                )}
+                {showExportColumn && (
+                  <td className="p-3 pr-2 text-right">
+                    <ActionButton
+                      size="m"
+                      state={exportLoadingRunId === log.workflow_run.id ? ActionButtonState.Disabled : undefined}
+                      disabled={exportLoadingRunId === log.workflow_run.id}
+                      aria-label={t('filter.archived.export', { ns: 'appLog' })}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        onExport?.(log)
+                      }}
+                    >
+                      {exportLoadingRunId === log.workflow_run.id
+                        ? <Spinner loading className="h-3.5 w-3.5 !border-2 text-text-disabled" />
+                        : <RiDownloadLine className="h-4 w-4" />}
+                    </ActionButton>
                   </td>
                 )}
               </tr>
@@ -174,19 +215,21 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
           })}
         </tbody>
       </table>
-      <Drawer
-        isOpen={showDrawer}
-        onClose={onCloseDrawer}
-        mask={isMobile}
-        footer={null}
-        panelClassName="mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[600px] rounded-xl border border-components-panel-border"
-      >
-        <DetailPanel
+      {!disableInteraction && (
+        <Drawer
+          isOpen={showDrawer}
           onClose={onCloseDrawer}
-          runID={currentLog?.workflow_run.id || ''}
-          canReplay={currentLog?.workflow_run.triggered_from === 'app-run' || currentLog?.workflow_run.triggered_from === 'debugging'}
-        />
-      </Drawer>
+          mask={isMobile}
+          footer={null}
+          panelClassName="mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[600px] rounded-xl border border-components-panel-border"
+        >
+          <DetailPanel
+            onClose={onCloseDrawer}
+            runID={currentLog?.workflow_run.id || ''}
+            canReplay={currentLog?.workflow_run.triggered_from === 'app-run' || currentLog?.workflow_run.triggered_from === 'debugging'}
+          />
+        </Drawer>
+      )}
     </div>
   )
 }
