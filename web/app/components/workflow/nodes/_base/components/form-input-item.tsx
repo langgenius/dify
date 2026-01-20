@@ -68,6 +68,7 @@ type VariableReferenceFieldsProps = {
   currentProvider?: ToolWithProvider | TriggerWithProvider
   isFilterFileVar?: boolean
   toolNodeId?: string
+  paramKey?: string
 }
 
 const VariableReferenceFields: FC<VariableReferenceFieldsProps> = ({
@@ -88,6 +89,8 @@ const VariableReferenceFields: FC<VariableReferenceFieldsProps> = ({
   currentTool,
   currentProvider,
   isFilterFileVar,
+  toolNodeId,
+  paramKey,
 }) => {
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
@@ -106,6 +109,8 @@ const VariableReferenceFields: FC<VariableReferenceFieldsProps> = ({
           showManageInputField={showManageInputField}
           onManageInputField={onManageInputField}
           disableVariableInsertion={disableVariableInsertion}
+          toolNodeId={toolNodeId}
+          paramKey={paramKey}
         />
       )}
       {showVariableSelector && (
@@ -457,7 +462,7 @@ const FormInputItem: FC<Props> = ({
           currentProvider={currentProvider}
           isFilterFileVar={isBoolean}
           toolNodeId={nodeId}
-        // paramKey={variable}
+          paramKey={variable}
         />
       )}
       {isNumber && isConstant && (
