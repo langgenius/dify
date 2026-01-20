@@ -305,7 +305,7 @@
   "modelProvider.addModel": "Ajouter un modèle",
   "modelProvider.addMoreModelProvider": "AJOUTER PLUS DE FOURNISSEUR DE MODÈLE",
   "modelProvider.apiKey": "API-KEY",
-  "modelProvider.apiKeyRateLimit": "La limite de débit a été atteinte, disponible après {{secondes}}s",
+  "modelProvider.apiKeyRateLimit": "La limite de débit a été atteinte, disponible après {{seconds}}s",
   "modelProvider.apiKeyStatusNormal": "L’état de l’APIKey est normal",
   "modelProvider.auth.addApiKey": "Ajouter une clé API",
   "modelProvider.auth.addCredential": "Ajouter un identifiant",
