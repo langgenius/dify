@@ -167,6 +167,7 @@ export type WorkflowStartedResponse = {
     created_at: number
   }
   conversation_id?: string // only in chatflow
+  message_id?: string // only in chatflow
 }
 
 export type WorkflowPausedResponse = {

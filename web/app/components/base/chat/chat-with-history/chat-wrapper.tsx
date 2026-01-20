@@ -70,10 +70,10 @@ const ChatWrapper = () => {
   }, [appParams, currentConversationItem?.introduction])
   const {
     chatList,
-    setTargetMessageId,
     handleSend,
     handleStop,
     handleResume,
+    handleSwitchSibling,
     isResponding: respondingState,
     suggestedQuestions,
   } = useChat(
@@ -161,7 +161,11 @@ const ChatWrapper = () => {
       handleResume(
         lastPausedNode.id,
         lastPausedNode.workflow_run_id!,
-        !isInstalledApp,
+        {
+          onGetSuggestedQuestions: responseItemId => fetchSuggestedQuestions(responseItemId, isInstalledApp, appId),
+          onConversationComplete: currentConversationId ? undefined : handleNewConversationCompleted,
+          isPublicAPI: !isInstalledApp,
+        },
       )
     }
   }, [])
@@ -191,6 +195,14 @@ const ChatWrapper = () => {
     const parentAnswer = chatList.find(item => item.id === question.parentMessageId)
     doSend(editedQuestion ? editedQuestion.message : question.content, editedQuestion ? editedQuestion.files : question.message_files, true, isValidGeneratedAnswer(parentAnswer) ? parentAnswer : null)
   }, [chatList, doSend])
+
+  const doSwitchSibling = useCallback((siblingMessageId: string) => {
+    handleSwitchSibling(siblingMessageId, {
+      onGetSuggestedQuestions: responseItemId => fetchSuggestedQuestions(responseItemId, isInstalledApp, appId),
+      onConversationComplete: currentConversationId ? undefined : handleNewConversationCompleted,
+      isPublicAPI: !isInstalledApp,
+    })
+  }, [handleSwitchSibling, isInstalledApp, appId, currentConversationId, handleNewConversationCompleted])
 
   const messageList = useMemo(() => {
     if (currentConversationId || chatList.length > 1)
@@ -326,7 +338,7 @@ const ChatWrapper = () => {
         answerIcon={answerIcon}
         hideProcessDetail
         themeBuilder={themeBuilder}
-        switchSibling={siblingMessageId => setTargetMessageId(siblingMessageId)}
+        switchSibling={doSwitchSibling}
         inputDisabled={inputDisabled}
         sidebarCollapseState={sidebarCollapseState}
         questionIcon={
