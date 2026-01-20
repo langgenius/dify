@@ -8,9 +8,8 @@ import {
   RiFolderUploadLine,
   RiUploadLine,
 } from '@remixicon/react'
-import { useDebounce } from 'ahooks'
 import * as React from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import {
@@ -19,16 +18,12 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import SearchInput from '@/app/components/base/search-input'
-import { useStore } from '@/app/components/workflow/store'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
 import { ROOT_ID } from './constants'
 import { useFileOperations } from './hooks/use-file-operations'
 import { useSkillAssetTreeData } from './hooks/use-skill-asset-tree'
 import { getTargetFolderIdFromSelection } from './utils/tree-utils'
-
-type SidebarSearchAddProps = {
-  onSearchChange?: (searchTerm: string) => void
-}
 
 type MenuItemProps = {
   icon: React.ElementType
@@ -55,15 +50,11 @@ const MenuItem: React.FC<MenuItemProps> = ({ icon: Icon, label, onClick, disable
   </button>
 )
 
-const SidebarSearchAdd: FC<SidebarSearchAddProps> = ({ onSearchChange }) => {
+const SidebarSearchAdd: FC = () => {
   const { t } = useTranslation('workflow')
-  const [searchValue, setSearchValue] = useState('')
-  const debouncedSearchValue = useDebounce(searchValue, { wait: 300 })
+  const searchValue = useStore(s => s.fileTreeSearchTerm)
+  const storeApi = useWorkflowStore()
   const [showMenu, setShowMenu] = useState(false)
-
-  useEffect(() => {
-    onSearchChange?.(debouncedSearchValue)
-  }, [debouncedSearchValue, onSearchChange])
 
   const { data: treeData } = useSkillAssetTreeData()
   const selectedTreeNodeId = useStore(s => s.selectedTreeNodeId)
@@ -93,7 +84,7 @@ const SidebarSearchAdd: FC<SidebarSearchAddProps> = ({ onSearchChange }) => {
     <div className="flex items-center gap-1 p-2">
       <SearchInput
         value={searchValue}
-        onChange={setSearchValue}
+        onChange={v => storeApi.getState().setFileTreeSearchTerm(v)}
         className="!h-6 flex-1 !rounded-md"
         placeholder={t('skillSidebar.searchPlaceholder')}
       />

@@ -80,4 +80,10 @@ export const createFileTreeSlice: StateCreator<
   setDragOverFolderId: (folderId) => {
     set({ dragOverFolderId: folderId })
   },
+
+  fileTreeSearchTerm: '',
+
+  setFileTreeSearchTerm: (term) => {
+    set({ fileTreeSearchTerm: term })
+  },
 })

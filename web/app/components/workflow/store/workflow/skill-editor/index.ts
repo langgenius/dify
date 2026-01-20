@@ -33,6 +33,7 @@ export const createSkillEditorSlice: StateCreator<SkillEditorSliceShape> = (...a
       fileMetadata: new Map<string, Record<string, unknown>>(),
       dirtyMetadataIds: new Set<string>(),
       contextMenu: null,
+      fileTreeSearchTerm: '',
     })
   },
 })

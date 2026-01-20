@@ -10,6 +10,8 @@ import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { Tree } from 'react-arborist'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import SearchMenu from '@/app/components/base/icons/src/vender/knowledge/SearchMenu'
 import Loading from '@/app/components/base/loading'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
@@ -23,7 +25,6 @@ import TreeNode from './tree-node'
 
 type FileTreeProps = {
   className?: string
-  searchTerm?: string
 }
 
 const emptyTreeNodes: TreeNodeData[] = []
@@ -40,7 +41,7 @@ const DropTip = () => {
   )
 }
 
-const FileTree: React.FC<FileTreeProps> = ({ className, searchTerm = '' }) => {
+const FileTree: React.FC<FileTreeProps> = ({ className }) => {
   const { t } = useTranslation('workflow')
   const treeRef = useRef<TreeApi<TreeNodeData>>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -61,6 +62,7 @@ const FileTree: React.FC<FileTreeProps> = ({ className, searchTerm = '' }) => {
   const activeTabId = useStore(s => s.activeTabId)
   const selectedTreeNodeId = useStore(s => s.selectedTreeNodeId)
   const dragOverFolderId = useStore(s => s.dragOverFolderId)
+  const searchTerm = useStore(s => s.fileTreeSearchTerm)
   const storeApi = useWorkflowStore()
 
   // Root dropzone highlight (when dragging to root, not to a specific folder)
@@ -87,6 +89,25 @@ const FileTree: React.FC<FileTreeProps> = ({ className, searchTerm = '' }) => {
       [...expandedFolderIds].map(id => [id, true]),
     )
   }, [expandedFolderIds])
+
+  // Check if search has no results (has search term but no matches)
+  const hasSearchNoResults = useMemo(() => {
+    if (!searchTerm || treeChildren.length === 0)
+      return false
+
+    const lowerSearchTerm = searchTerm.toLowerCase()
+
+    const checkMatch = (nodes: TreeNodeData[]): boolean => {
+      for (const node of nodes) {
+        if (node.name.toLowerCase().includes(lowerSearchTerm))
+          return true
+        if (node.children && checkMatch(node.children))
+          return true
+      }
+      return false
+    }
+    return !checkMatch(treeChildren)
+  }, [searchTerm, treeChildren])
 
   const handleToggle = useCallback((id: string) => {
     storeApi.getState().toggleFolder(id)
@@ -151,6 +172,27 @@ const FileTree: React.FC<FileTreeProps> = ({ className, searchTerm = '' }) => {
           </span>
         </div>
         <DropTip />
+      </div>
+    )
+  }
+
+  // Search has no matching results
+  if (hasSearchNoResults) {
+    return (
+      <div className={cn('flex min-h-0 flex-1 flex-col', className)}>
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 pb-20">
+          <SearchMenu className="size-8 text-text-tertiary" />
+          <span className="system-xs-regular text-text-secondary">
+            {t('skillSidebar.searchNoResults')}
+          </span>
+          <Button
+            variant="secondary-accent"
+            size="small"
+            onClick={() => storeApi.getState().setFileTreeSearchTerm('')}
+          >
+            {t('skillSidebar.resetFilter')}
+          </Button>
+        </div>
       </div>
     )
   }

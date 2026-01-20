@@ -37,6 +37,8 @@ export type FileTreeSliceShape = {
   clearCreateNode: () => void
   dragOverFolderId: string | null
   setDragOverFolderId: (folderId: string | null) => void
+  fileTreeSearchTerm: string
+  setFileTreeSearchTerm: (term: string) => void
 }
 
 export type DirtySliceShape = {
