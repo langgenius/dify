@@ -105,7 +105,8 @@ class Article:
 
 
 def extract_using_readabilipy(html: str):
-    json_article: dict[str, Any] = simple_json_from_html_string(html, use_readability=True)
+    json_article: dict[str, Any] = simple_json_from_html_string(
+        html, use_readability=True)
     article = Article(
         title=json_article.get("title") or "",
         author=json_article.get("byline") or "",

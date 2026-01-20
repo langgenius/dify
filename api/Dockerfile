@@ -90,6 +90,11 @@ RUN \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
+# Install Mozilla Readability for JavaScript-based web content extraction
+# Used by readabilipy when WEB_READER_USE_READABILITY_JS=True
+# See: api/core/tools/utils/web_reader_tool.py
+RUN npm install -g @mozilla/readability
+
 # Copy Python environment and packages
 ENV VIRTUAL_ENV=/app/api/.venv
 COPY --from=packages --chown=dify:dify ${VIRTUAL_ENV} ${VIRTUAL_ENV}
