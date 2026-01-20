@@ -67,7 +67,7 @@ export const getMarketplacePluginsByCollectionId = async (
     }, {
       signal: options?.signal,
     })
-    plugins = (marketplaceCollectionPluginsDataJson.data?.plugins || []).map((plugin: Plugin) => getFormattedPlugin(plugin))
+    plugins = (marketplaceCollectionPluginsDataJson.data?.plugins || []).map(plugin => getFormattedPlugin(plugin))
   }
   // eslint-disable-next-line unused-imports/no-unused-vars
   catch (e) {
@@ -154,7 +154,7 @@ export const getMarketplacePlugins = async (
     const resPlugins = res.data.bundles || res.data.plugins || []
 
     return {
-      plugins: resPlugins.map((plugin: Plugin) => getFormattedPlugin(plugin)),
+      plugins: resPlugins.map(plugin => getFormattedPlugin(plugin)),
       total: res.data.total,
       page: pageParam,
       page_size,
