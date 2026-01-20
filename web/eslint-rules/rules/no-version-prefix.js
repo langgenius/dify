@@ -30,6 +30,7 @@ export default {
 
         const dependencyTypes = ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies']
         const fixes = {}
+        let hasErrors = false
 
         for (const depType of dependencyTypes) {
           if (!packageJson[depType])
@@ -39,28 +40,23 @@ export default {
           for (const [name, version] of Object.entries(dependencies)) {
             // Check if version starts with ^ or ~
             if (typeof version === 'string' && (version.startsWith('^') || version.startsWith('~'))) {
+              hasErrors = true
               const cleanVersion = version.substring(1)
-              context.report({
-                node,
-                message: `Dependency "${name}" in "${depType}" should not use version prefix. Use "${cleanVersion}" instead of "${version}"`,
-                fix(_fixer) {
-                  // Store fix for later
-                  if (!fixes[depType])
-                    fixes[depType] = {}
 
-                  fixes[depType][name] = cleanVersion
-                  return null
-                },
-              })
+              // Store fix
+              if (!fixes[depType])
+                fixes[depType] = {}
+
+              fixes[depType][name] = cleanVersion
             }
           }
         }
 
-        // Apply all fixes at once if there are any
-        if (Object.keys(fixes).length > 0) {
+        // Report all fixes at once
+        if (hasErrors) {
           context.report({
             node,
-            message: 'Some dependencies have version prefixes that should be removed',
+            message: 'Some dependencies have version prefixes (^ or ~) that should be removed. Run ESLint with --fix to automatically remove them.',
             fix(fixer) {
               const newPackageJson = { ...packageJson }
 
