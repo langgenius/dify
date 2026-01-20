@@ -42,33 +42,13 @@ const createMockSocket = (id: string): MockSocket => {
   return socket
 }
 
-const setGlobalWindow = (value?: typeof window): void => {
-  const globalWithWindow = globalThis as Partial<typeof globalThis> & { window?: typeof window }
-  if (value)
-    globalWithWindow.window = value
-  else
-    delete globalWithWindow.window
-}
-
 describe('WebSocketClient', () => {
-  let originalWindow: typeof window | undefined
-
   beforeEach(() => {
     vi.resetModules()
     ioMock.mockReset()
-    originalWindow = globalThis.window
   })
 
-  afterEach(() => {
-    if (originalWindow)
-      setGlobalWindow(originalWindow)
-    else
-      setGlobalWindow(undefined)
-  })
-
-  it('connects with fallback url and registers base listeners when window is undefined', async () => {
-    setGlobalWindow(undefined)
-
+  it('connects with default url and registers base listeners', async () => {
     const mockSocket = createMockSocket('socket-fallback')
     ioMock.mockImplementation(() => mockSocket)
 
@@ -110,10 +90,6 @@ describe('WebSocketClient', () => {
       expect(options.auth).toBeUndefined()
       return mockSocket
     })
-
-    setGlobalWindow({
-      location: { protocol: 'https:', host: 'example.com' },
-    } as unknown as typeof window)
 
     const { WebSocketClient } = await import('../websocket-manager')
     const client = new WebSocketClient()

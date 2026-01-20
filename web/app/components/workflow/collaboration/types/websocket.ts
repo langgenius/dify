@@ -1,5 +1,4 @@
 export type WebSocketConfig = {
-  url?: string
   token?: string
   transports?: string[]
   withCredentials?: boolean

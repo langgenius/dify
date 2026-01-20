@@ -1,6 +1,7 @@
 import type { Socket } from 'socket.io-client'
 import type { DebugInfo, WebSocketConfig } from '../types/websocket'
 import { io } from 'socket.io-client'
+import { SOCKET_URL } from '@/config'
 
 type AckArgs = unknown[]
 
@@ -46,21 +47,14 @@ export const emitWithAuthGuard = (
 export class WebSocketClient {
   private connections: Map<string, Socket> = new Map()
   private connecting: Set<string> = new Set()
-  private config: WebSocketConfig
+  private readonly url: string
+  private readonly transports: WebSocketConfig['transports']
+  private readonly withCredentials?: boolean
 
   constructor(config: WebSocketConfig = {}) {
-    const inferUrl = () => {
-      if (typeof window === 'undefined')
-        return 'ws://localhost:5001'
-      const scheme = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-      return `${scheme}//${window.location.host}`
-    }
-    this.config = {
-      url: config.url || process.env.NEXT_PUBLIC_SOCKET_URL || inferUrl(),
-      transports: config.transports || ['websocket'],
-      withCredentials: config.withCredentials !== false,
-      ...config,
-    }
+    this.url = SOCKET_URL
+    this.transports = config.transports || ['websocket']
+    this.withCredentials = config.withCredentials !== false
   }
 
   connect(appId: string): Socket {
@@ -87,11 +81,11 @@ export class WebSocketClient {
       withCredentials?: boolean
     } = {
       path: '/socket.io',
-      transports: this.config.transports,
-      withCredentials: this.config.withCredentials,
+      transports: this.transports,
+      withCredentials: this.withCredentials,
     }
 
-    const socket = io(this.config.url!, socketOptions)
+    const socket = io(this.url, socketOptions)
 
     this.connections.set(appId, socket)
     this.setupBaseEventListeners(socket, appId)
