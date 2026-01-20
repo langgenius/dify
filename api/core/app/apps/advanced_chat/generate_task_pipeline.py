@@ -138,7 +138,14 @@ class StreamEventBuffer:
         self._current_reasoning += text
         self._last_event_type = "thought"
 
-    def record_tool_call(self, tool_call_id: str, tool_name: str, tool_arguments: str) -> None:
+    def record_tool_call(
+        self,
+        tool_call_id: str,
+        tool_name: str,
+        tool_arguments: str,
+        tool_icon: str | dict | None = None,
+        tool_icon_dark: str | dict | None = None,
+    ) -> None:
         """Record a tool call event."""
         if not tool_call_id:
             return
@@ -161,6 +168,8 @@ class StreamEventBuffer:
                 "arguments": tool_arguments or "",
                 "result": "",
                 "elapsed_time": None,
+                "icon": tool_icon,
+                "icon_dark": tool_icon_dark,
             }
             self.tool_calls.append(tool_call)
             idx = len(self.tool_calls) - 1
@@ -542,6 +551,8 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                     tool_call_id=tool_call_id,
                     tool_name=tool_name,
                     tool_arguments=tool_arguments,
+                    tool_icon=tool_icon,
+                    tool_icon_dark=tool_icon_dark,
                 )
             case ChunkType.TOOL_RESULT:
                 self._stream_buffer.record_tool_result(

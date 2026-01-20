@@ -43,6 +43,8 @@ class ToolCallDetail(BaseModel):
     arguments: str = Field(default="", description="JSON string of tool arguments")
     result: str = Field(default="", description="Result from the tool execution")
     elapsed_time: float | None = Field(default=None, description="Elapsed time in seconds")
+    icon: str | dict | None = Field(default=None, description="Icon of the tool")
+    icon_dark: str | dict | None = Field(default=None, description="Dark theme icon of the tool")
 
 
 class LLMGenerationDetailData(BaseModel):
