@@ -3,53 +3,43 @@ export default {
   meta: {
     type: 'problem',
     docs: {
-      description: 'Ensure package.json dependencies and devDependencies do not use version prefixes (^ or ~)',
+      description: 'Ensure package.json dependencies do not use version prefixes (^ or ~)',
     },
   },
   create(context) {
+    const { filename } = context
+
+    // Only check package.json files
+    if (!filename.endsWith('package.json'))
+      return {}
+
+    const dependencyTypes = new Set(['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies'])
+    let currentDependencyType = null
+
     return {
-      Program(node) {
-        const { filename, sourceCode } = context
-
-        // Only check package.json files
-        if (!filename.endsWith('package.json'))
-          return
-
-        let packageJson = {}
-        try {
-          packageJson = JSON.parse(sourceCode.text)
+      // Track when we enter a dependency section
+      'Property[key.value=/^(dependencies|devDependencies|peerDependencies|optionalDependencies)$/] > ObjectExpression'(node) {
+        const parent = node.parent
+        if (parent && parent.key && parent.key.value) {
+          currentDependencyType = parent.key.value
         }
-        catch (error) {
-          context.report({
-            node,
-            message: `Error parsing package.json: ${error instanceof Error ? error.message : String(error)}`,
-          })
-          return
-        }
+      },
 
-        const dependencyTypes = ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies']
-        const errors = []
+      // Check each property in dependency sections
+      'Property[key.value=/^(dependencies|devDependencies|peerDependencies|optionalDependencies)$/] > ObjectExpression > Property'(node) {
+        const versionNode = node.value
 
-        for (const depType of dependencyTypes) {
-          if (!packageJson[depType])
-            continue
-
-          const dependencies = packageJson[depType]
-          for (const [name, version] of Object.entries(dependencies)) {
-            // Check if version starts with ^ or ~
-            if (typeof version === 'string' && (version.startsWith('^') || version.startsWith('~'))) {
-              errors.push({ depType, name, version })
-            }
+        // Check if the version value starts with ^ or ~
+        if (versionNode && versionNode.type === 'Literal' && typeof versionNode.value === 'string') {
+          const version = versionNode.value
+          if (version.startsWith('^') || version.startsWith('~')) {
+            const packageName = node.key.value || node.key.name
+            const prefix = version[0]
+            context.report({
+              node: versionNode,
+              message: `Dependency "${packageName}" has version prefix "${prefix}" that should be removed (found: "${version}", expected: "${version.substring(1)}")`,
+            })
           }
-        }
-
-        // Report all errors
-        if (errors.length > 0) {
-          const errorList = errors.map(({ depType, name, version }) => `  - ${depType}.${name}: ${version}`).join('\n')
-          context.report({
-            node,
-            message: `Dependencies have version prefixes (^ or ~) that should be removed:\n${errorList}`,
-          })
         }
       },
     }
