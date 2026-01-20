@@ -2,23 +2,11 @@ import fs from 'node:fs'
 import path, { normalize, sep } from 'node:path'
 import { cleanJsonText } from '../utils.js'
 
-/**
- * Extract placeholders from a string
- * Matches patterns like {{name}}, {{count}}, etc.
- * @param {string} str
- * @returns {string[]} Sorted array of placeholder names
- */
 function extractPlaceholders(str) {
   const matches = str.match(/\{\{\w+\}\}/g) || []
   return matches.map(m => m.slice(2, -2)).sort()
 }
 
-/**
- * Extract Trans component tag markers from a string.
- * Keeps opening/closing/self-closing tags distinct.
- * @param {string} str
- * @returns {string[]} Sorted array of tag markers
- */
 function extractTagMarkers(str) {
   const matches = Array.from(str.matchAll(/<\/?([A-Z][\w-]*)\b[^>]*>/gi))
   const markers = matches.map((match) => {
@@ -61,7 +49,40 @@ function uniqueSorted(items) {
   return Array.from(new Set(items)).sort()
 }
 
-/** @type {import('eslint').Rule.RuleModule} */
+function getJsonLiteralValue(node) {
+  if (!node)
+    return undefined
+  return node.type === 'JSONLiteral' ? node.value : undefined
+}
+
+function buildPlaceholderMessage(key, englishPlaceholders, currentPlaceholders) {
+  const missing = englishPlaceholders.filter(p => !currentPlaceholders.includes(p))
+  const extra = currentPlaceholders.filter(p => !englishPlaceholders.includes(p))
+
+  const details = []
+  if (missing.length > 0)
+    details.push(`missing {{${missing.join('}}, {{')}}}`)
+  if (extra.length > 0)
+    details.push(`extra {{${extra.join('}}, {{')}}}`)
+
+  return `Placeholder mismatch with en-US in "${key}": ${details.join('; ')}. `
+    + `Expected: {{${englishPlaceholders.join('}}, {{') || 'none'}}}`
+}
+
+function buildTagMessage(key, englishTagMarkers, currentTagMarkers) {
+  const missing = englishTagMarkers.filter(p => !currentTagMarkers.includes(p))
+  const extra = currentTagMarkers.filter(p => !englishTagMarkers.includes(p))
+
+  const details = []
+  if (missing.length > 0)
+    details.push(`missing ${uniqueSorted(missing.map(formatTagMarker)).join(', ')}`)
+  if (extra.length > 0)
+    details.push(`extra ${uniqueSorted(extra.map(formatTagMarker)).join(', ')}`)
+
+  return `Trans tag mismatch with en-US in "${key}": ${details.join('; ')}. `
+    + `Expected: ${uniqueSorted(englishTagMarkers.map(formatTagMarker)).join(', ') || 'none'}`
+}
+
 export default {
   meta: {
     type: 'problem',
@@ -73,7 +94,6 @@ export default {
     const state = {
       enabled: false,
       englishJson: null,
-      englishError: null,
     }
 
     function isTopLevelProperty(node) {
@@ -110,7 +130,6 @@ export default {
           state.englishJson = JSON.parse(cleanJsonText(englishText))
         }
         catch (error) {
-          state.englishError = error
           state.enabled = false
           context.report({
             node,
@@ -133,7 +152,7 @@ export default {
           return
 
         const currentNode = node.value ?? node
-        const currentValue = currentNode && currentNode.type === 'JSONLiteral' ? currentNode.value : undefined
+        const currentValue = getJsonLiteralValue(currentNode)
         const englishValue = state.englishJson[key]
 
         // Skip non-string values
@@ -146,46 +165,16 @@ export default {
         const englishTagMarkers = extractTagMarkers(englishValue)
 
         if (!arraysEqual(currentPlaceholders, englishPlaceholders)) {
-          const missing = englishPlaceholders.filter(p => !currentPlaceholders.includes(p))
-          const extra = currentPlaceholders.filter(p => !englishPlaceholders.includes(p))
-
-          let message = `Placeholder mismatch with en-US in "${key}": `
-          const details = []
-
-          if (missing.length > 0)
-            details.push(`missing {{${missing.join('}}, {{')}}}`)
-
-          if (extra.length > 0)
-            details.push(`extra {{${extra.join('}}, {{')}}}`)
-
-          message += details.join('; ')
-          message += `. Expected: {{${englishPlaceholders.join('}}, {{') || 'none'}}}`
-
           context.report({
             node: currentNode,
-            message,
+            message: buildPlaceholderMessage(key, englishPlaceholders, currentPlaceholders),
           })
         }
 
         if (!arraysEqual(currentTagMarkers, englishTagMarkers)) {
-          const missing = englishTagMarkers.filter(p => !currentTagMarkers.includes(p))
-          const extra = currentTagMarkers.filter(p => !englishTagMarkers.includes(p))
-
-          let message = `Trans tag mismatch with en-US in "${key}": `
-          const details = []
-
-          if (missing.length > 0)
-            details.push(`missing ${uniqueSorted(missing.map(formatTagMarker)).join(', ')}`)
-
-          if (extra.length > 0)
-            details.push(`extra ${uniqueSorted(extra.map(formatTagMarker)).join(', ')}`)
-
-          message += details.join('; ')
-          message += `. Expected: ${uniqueSorted(englishTagMarkers.map(formatTagMarker)).join(', ') || 'none'}`
-
           context.report({
             node: currentNode,
-            message,
+            message: buildTagMessage(key, englishTagMarkers, currentTagMarkers),
           })
         }
       },
