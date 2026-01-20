@@ -300,20 +300,12 @@ export const useChat = (
       onError() {
         handleResponding(false)
       },
-      onWorkflowStarted: ({ workflow_run_id, task_id, data: { is_resumption } }) => {
+      onWorkflowStarted: ({ workflow_run_id, task_id }) => {
         handleResponding(true)
         hasStopResponded.current = false
         updateChatTreeNode(messageId, (responseItem) => {
-          if (is_resumption) {
-            if (responseItem.workflowProcess) {
-              responseItem.workflowProcess.status = WorkflowRunningStatus.Running
-            }
-            else {
-              responseItem.workflowProcess = {
-                status: WorkflowRunningStatus.Running,
-                tracing: [],
-              }
-            }
+          if (responseItem.workflowProcess && responseItem.workflowProcess.tracing.length > 0) {
+            responseItem.workflowProcess.status = WorkflowRunningStatus.Running
           }
           else {
             taskIdRef.current = task_id
@@ -366,20 +358,12 @@ export const useChat = (
           if (!responseItem.workflowProcess.tracing)
             responseItem.workflowProcess.tracing = []
 
-          const { is_resumption } = nodeStartedData
-          if (is_resumption) {
-            const currentIndex = responseItem.workflowProcess.tracing.findIndex(item => item.node_id === nodeStartedData.node_id)
-            if (currentIndex > -1) {
-              responseItem.workflowProcess.tracing[currentIndex] = {
-                ...nodeStartedData,
-                status: NodeRunningStatus.Running,
-              }
-            }
-            else {
-              responseItem.workflowProcess.tracing.push({
-                ...nodeStartedData,
-                status: NodeRunningStatus.Running,
-              })
+          const currentIndex = responseItem.workflowProcess.tracing.findIndex(item => item.node_id === nodeStartedData.node_id)
+          // if the node is already started, update the node
+          if (currentIndex > -1) {
+            responseItem.workflowProcess.tracing[currentIndex] = {
+              ...nodeStartedData,
+              status: NodeRunningStatus.Running,
             }
           }
           else {
@@ -813,9 +797,14 @@ export const useChat = (
           parentId: data.parent_message_id,
         })
       },
-      onWorkflowStarted: ({ workflow_run_id, task_id, data: { is_resumption } }) => {
-        if (is_resumption) {
-          responseItem.workflowProcess!.status = WorkflowRunningStatus.Running
+      onWorkflowStarted: ({ workflow_run_id, task_id, conversation_id }) => {
+        // If there are no streaming messages, we still need to set the conversation_id to avoid create a new conversation when regeneration in chat-flow.
+        if (conversation_id) {
+          conversationId.current = conversation_id
+        }
+
+        if (responseItem.workflowProcess && responseItem.workflowProcess.tracing.length > 0) {
+          responseItem.workflowProcess.status = WorkflowRunningStatus.Running
         }
         else {
           taskIdRef.current = task_id
@@ -871,14 +860,16 @@ export const useChat = (
         })
       },
       onNodeStarted: ({ data: nodeStartedData }) => {
-        const { is_resumption } = nodeStartedData
-        if (is_resumption) {
-          const currentIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.node_id === data.node_id)
-          if (currentIndex > -1) {
-            responseItem.workflowProcess!.tracing![currentIndex] = {
-              ...nodeStartedData,
-              status: NodeRunningStatus.Running,
-            }
+        if (!responseItem.workflowProcess)
+          return
+        if (!responseItem.workflowProcess.tracing)
+          responseItem.workflowProcess.tracing = []
+
+        const currentIndex = responseItem.workflowProcess.tracing.findIndex(item => item.node_id === nodeStartedData.node_id)
+        if (currentIndex > -1) {
+          responseItem.workflowProcess.tracing[currentIndex] = {
+            ...nodeStartedData,
+            status: NodeRunningStatus.Running,
           }
         }
         else {
@@ -888,7 +879,7 @@ export const useChat = (
           if (data.loop_id)
             return
 
-          responseItem.workflowProcess!.tracing!.push({
+          responseItem.workflowProcess.tracing.push({
             ...nodeStartedData,
             status: WorkflowRunningStatus.Running,
           })

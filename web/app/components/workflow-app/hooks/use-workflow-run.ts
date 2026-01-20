@@ -92,7 +92,6 @@ export const useWorkflowRun = () => {
     handleWorkflowTextChunk,
     handleWorkflowTextReplace,
     handleWorkflowPaused,
-    handleWorkflowResume,
   } = useWorkflowRunEvent()
 
   const handleBackupDraft = useCallback(() => {
@@ -379,13 +378,7 @@ export const useWorkflowRun = () => {
     const baseSseOptions: IOtherOptions = {
       ...restCallback,
       onWorkflowStarted: (params) => {
-        const { is_resumption } = params.data
-        if (is_resumption) {
-          handleWorkflowResume()
-        }
-        else {
-          handleWorkflowStarted(params)
-        }
+        handleWorkflowStarted(params)
 
         if (onWorkflowStarted)
           onWorkflowStarted(params)
@@ -831,7 +824,7 @@ export const useWorkflowRun = () => {
       },
       finalCallbacks,
     )
-  }, [store, doSyncWorkflowDraft, workflowStore, pathname, handleWorkflowFailed, flowId, handleWorkflowResume, handleWorkflowStarted, handleWorkflowFinished, fetchInspectVars, invalidAllLastRun, handleWorkflowNodeStarted, handleWorkflowNodeFinished, handleWorkflowNodeIterationStarted, handleWorkflowNodeIterationNext, handleWorkflowNodeIterationFinished, handleWorkflowNodeLoopStarted, handleWorkflowNodeLoopNext, handleWorkflowNodeLoopFinished, handleWorkflowNodeRetry, handleWorkflowAgentLog, handleWorkflowTextChunk, handleWorkflowTextReplace, handleWorkflowPaused, handleWorkflowNodeHumanInputRequired, handleWorkflowNodeHumanInputFormFilled])
+  }, [store, doSyncWorkflowDraft, workflowStore, pathname, handleWorkflowFailed, flowId, handleWorkflowStarted, handleWorkflowFinished, fetchInspectVars, invalidAllLastRun, handleWorkflowNodeStarted, handleWorkflowNodeFinished, handleWorkflowNodeIterationStarted, handleWorkflowNodeIterationNext, handleWorkflowNodeIterationFinished, handleWorkflowNodeLoopStarted, handleWorkflowNodeLoopNext, handleWorkflowNodeLoopFinished, handleWorkflowNodeRetry, handleWorkflowAgentLog, handleWorkflowTextChunk, handleWorkflowTextReplace, handleWorkflowPaused, handleWorkflowNodeHumanInputRequired, handleWorkflowNodeHumanInputFormFilled])
 
   const handleStopRun = useCallback((taskId: string) => {
     const setStoppedState = () => {

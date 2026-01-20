@@ -291,9 +291,10 @@ const Result: FC<IResultProps> = ({
     if (isWorkflow) {
       const otherOptions: IOtherOptions = {
         isPublicAPI: !isInstalledApp,
-        onWorkflowStarted: ({ workflow_run_id, task_id, data }) => {
-          if (data.is_resumption) {
-            setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+        onWorkflowStarted: ({ workflow_run_id, task_id }) => {
+          const workflowProcessData = getWorkflowProcessData()
+          if (workflowProcessData && workflowProcessData.tracing.length > 0) {
+            setWorkflowProcessData(produce(workflowProcessData, (draft) => {
               draft.expand = true
               draft.status = WorkflowRunningStatus.Running
             }))
@@ -369,8 +370,9 @@ const Result: FC<IResultProps> = ({
           }))
         },
         onNodeStarted: ({ data }) => {
-          if (data.is_resumption) {
-            setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+          const workflowProcessData = getWorkflowProcessData()
+          if (workflowProcessData && workflowProcessData.tracing.length > 0) {
+            setWorkflowProcessData(produce(workflowProcessData, (draft) => {
               const currentIndex = draft.tracing!.findIndex(item => item.node_id === data.node_id)
               if (currentIndex > -1) {
                 draft.expand = true

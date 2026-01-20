@@ -21,7 +21,6 @@ export const useWorkflowNodeStarted = () => {
     },
   ) => {
     const { data } = params
-    const { is_resumption } = data
     const {
       workflowRunningData,
       setWorkflowRunningData,
@@ -34,16 +33,14 @@ export const useWorkflowNodeStarted = () => {
       transform,
     } = store.getState()
     const nodes = getNodes()
-    if (is_resumption) {
-      const currentIndex = workflowRunningData?.tracing?.findIndex(item => item.node_id === data.node_id)
-      if (currentIndex && currentIndex > -1) {
-        setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
-          draft.tracing![currentIndex] = {
-            ...data,
-            status: NodeRunningStatus.Running,
-          }
-        }))
-      }
+    const currentIndex = workflowRunningData?.tracing?.findIndex(item => item.node_id === data.node_id)
+    if (currentIndex && currentIndex > -1) {
+      setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
+        draft.tracing![currentIndex] = {
+          ...data,
+          status: NodeRunningStatus.Running,
+        }
+      }))
     }
     else {
       setWorkflowRunningData(produce(workflowRunningData!, (draft) => {

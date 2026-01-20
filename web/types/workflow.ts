@@ -105,7 +105,6 @@ export type NodeTracing = {
   parent_parallel_id?: string
   parent_parallel_start_node_id?: string
   agentLog?: AgentLogItemWithChildren[] // agent log
-  is_resumption?: boolean // for human input node
 }
 
 export type FetchWorkflowDraftResponse = {
@@ -166,8 +165,8 @@ export type WorkflowStartedResponse = {
     id: string
     workflow_id: string
     created_at: number
-    is_resumption: boolean
   }
+  conversation_id?: string // only in chatflow
 }
 
 export type WorkflowPausedResponse = {

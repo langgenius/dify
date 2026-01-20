@@ -356,10 +356,10 @@ export const useChat = (
         onError() {
           handleResponding(false)
         },
-        onWorkflowStarted: ({ workflow_run_id, task_id, data: { is_resumption } }) => {
-          if (is_resumption) {
+        onWorkflowStarted: ({ workflow_run_id, task_id }) => {
+          if (responseItem.workflowProcess && responseItem.workflowProcess.tracing.length > 0) {
             handleResponding(true)
-            responseItem.workflowProcess!.status = WorkflowRunningStatus.Running
+            responseItem.workflowProcess.status = WorkflowRunningStatus.Running
           }
           else {
             taskIdRef.current = task_id
@@ -440,14 +440,11 @@ export const useChat = (
           }
         },
         onNodeStarted: ({ data }) => {
-          const { is_resumption } = data
-          if (is_resumption) {
-            const currentIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.node_id === data.node_id)
-            if (currentIndex > -1) {
-              responseItem.workflowProcess!.tracing![currentIndex] = {
-                ...data,
-                status: NodeRunningStatus.Running,
-              }
+          const currentIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.node_id === data.node_id)
+          if (currentIndex > -1) {
+            responseItem.workflowProcess!.tracing![currentIndex] = {
+              ...data,
+              status: NodeRunningStatus.Running,
             }
           }
           else {
