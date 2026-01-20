@@ -172,7 +172,7 @@
   "fileUploader.pasteFileLinkInvalid": "無效的文件連結",
   "fileUploader.uploadDisabled": "檔案上傳已被禁用",
   "fileUploader.uploadFromComputer": "本地上傳",
-  "fileUploader.uploadFromComputerLimit": "上傳文件不能超過 {{size}}",
+  "fileUploader.uploadFromComputerLimit": "Upload {{type}} cannot exceed {{size}}",
   "fileUploader.uploadFromComputerReadError": "檔案讀取失敗，請重試。",
   "fileUploader.uploadFromComputerUploadError": "檔案上傳失敗，請重新上傳。",
   "imageInput.browse": "瀏覽",

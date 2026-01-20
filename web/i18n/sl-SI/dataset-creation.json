@@ -140,7 +140,7 @@
   "stepTwo.preview": "Potrdi in predogled",
   "stepTwo.previewButton": "Preklop v obliko Vprašanje & Odgovor",
   "stepTwo.previewChunk": "Predogled kosa",
-  "stepTwo.previewChunkCount": "{{štetje}} Ocenjeni kosi",
+  "stepTwo.previewChunkCount": "{{count}} Ocenjeni kosi",
   "stepTwo.previewChunkTip": "Kliknite gumb »Predogled kosa« na levi, da naložite predogled",
   "stepTwo.previewSwitchTipEnd": " porabil dodatne žetone",
   "stepTwo.previewSwitchTipStart": "Trenutni predogled delcev je v obliki besedila, preklop na predogled v obliki vprašanj in odgovorov bo",

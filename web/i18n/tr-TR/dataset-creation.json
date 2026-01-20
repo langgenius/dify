@@ -140,7 +140,7 @@
   "stepTwo.preview": "Onayla ve Önizleme",
   "stepTwo.previewButton": "Q&A formatına geçiş",
   "stepTwo.previewChunk": "Önizleme Parçası",
-  "stepTwo.previewChunkCount": "{{sayı}} Tahmini parçalar",
+  "stepTwo.previewChunkCount": "{{count}} Tahmini parçalar",
   "stepTwo.previewChunkTip": "Önizlemeyi yüklemek için soldaki 'Önizleme Parçası' düğmesini tıklayın",
   "stepTwo.previewSwitchTipEnd": "token",
   "stepTwo.previewSwitchTipStart": "Geçerli parça önizlemesi metin formatındadır, soru ve yanıt formatına geçiş ek tüketir",

@@ -140,7 +140,7 @@
   "stepTwo.preview": "تأیید و پیشنمایش",
   "stepTwo.previewButton": "تغییر به قالب پرسش و پاسخ",
   "stepTwo.previewChunk": "پیش نمایش تکه",
-  "stepTwo.previewChunkCount": "{{تعداد}} تکه های تخمینی",
+  "stepTwo.previewChunkCount": "{{count}} تکه های تخمینی",
   "stepTwo.previewChunkTip": "روی دکمه \"پیش نمایش قطعه\" در سمت چپ کلیک کنید تا پیش نمایش بارگیری شود",
   "stepTwo.previewSwitchTipEnd": " توکنهای اضافی مصرف خواهد کرد",
   "stepTwo.previewSwitchTipStart": "پیشنمایش بخش فعلی در قالب متن است، تغییر به پیشنمایش قالب پرسش و پاسخ",

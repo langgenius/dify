@@ -147,7 +147,7 @@
   "parentMode.paragraph": "Akapit",
   "partialEnabled_one": "Łącznie {{count}} dokumentów, {{num}} dostępnych",
   "partialEnabled_other": "Łącznie {{count}} dokumentów, {{num}} dostępnych",
-  "preprocessDocument": "{{liczba}} Przetwarzanie wstępne dokumentów",
+  "preprocessDocument": "{{num}} Przetwarzanie wstępne dokumentów",
   "rerankSettings": "Ustawienia ponownego rankingu",
   "retrieval.change": "Zmień",
   "retrieval.changeRetrievalMethod": "Zmień metodę odzyskiwania",
