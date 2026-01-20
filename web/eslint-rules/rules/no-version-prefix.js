@@ -16,16 +16,10 @@ export default {
     if (!filename.endsWith('package.json'))
       return {}
 
+    const selector = `JSONProperty:matches(${DEPENDENCY_KEYS.map(k => `[key.value="${k}"]`).join(', ')}) > JSONObjectExpression > JSONProperty`
+
     return {
-      'JSONProperty > JSONObjectExpression > JSONProperty': function (node) {
-        const parentProperty = node.parent?.parent
-        if (!parentProperty || parentProperty.type !== 'JSONProperty')
-          return
-
-        const parentKey = parentProperty.key?.value || parentProperty.key?.name
-        if (!DEPENDENCY_KEYS.includes(parentKey))
-          return
-
+      [selector](node) {
         const versionNode = node.value
 
         if (versionNode && versionNode.type === 'JSONLiteral' && typeof versionNode.value === 'string') {
