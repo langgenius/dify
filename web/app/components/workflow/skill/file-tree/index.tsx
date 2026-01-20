@@ -20,6 +20,7 @@ import { useInlineCreateNode } from '../hooks/use-inline-create-node'
 import { useRootFileDrop } from '../hooks/use-root-file-drop'
 import { useSkillAssetTreeData } from '../hooks/use-skill-asset-tree'
 import { useSyncTreeWithActiveTab } from '../hooks/use-sync-tree-with-active-tab'
+import ArtifactsSection from './artifacts-section'
 import DragActionTooltip from './drag-action-tooltip'
 import TreeContextMenu from './tree-context-menu'
 import TreeNode from './tree-node'
@@ -166,35 +167,41 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
 
   if (treeChildren.length === 0 && !hasPendingCreate) {
     return (
-      <div className={cn('flex min-h-0 flex-1 flex-col', className)}>
-        <div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 text-center">
-          <span className="system-xs-regular text-text-tertiary">
-            {t('skillSidebar.empty')}
-          </span>
+      <>
+        <div className={cn('flex min-h-0 flex-1 flex-col', className)}>
+          <div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 text-center">
+            <span className="system-xs-regular text-text-tertiary">
+              {t('skillSidebar.empty')}
+            </span>
+          </div>
+          <DropTip />
         </div>
-        <DropTip />
-      </div>
+        <ArtifactsSection />
+      </>
     )
   }
 
   // Search has no matching results
   if (hasSearchNoResults) {
     return (
-      <div className={cn('flex min-h-0 flex-1 flex-col', className)}>
-        <div className="flex flex-1 flex-col items-center justify-center gap-2 pb-20">
-          <SearchMenu className="size-8 text-text-tertiary" />
-          <span className="system-xs-regular text-text-secondary">
-            {t('skillSidebar.searchNoResults')}
-          </span>
-          <Button
-            variant="secondary-accent"
-            size="small"
-            onClick={() => storeApi.getState().setFileTreeSearchTerm('')}
-          >
-            {t('skillSidebar.resetFilter')}
-          </Button>
+      <>
+        <div className={cn('flex min-h-0 flex-1 flex-col', className)}>
+          <div className="flex flex-1 flex-col items-center justify-center gap-2 pb-20">
+            <SearchMenu className="size-8 text-text-tertiary" />
+            <span className="system-xs-regular text-text-secondary">
+              {t('skillSidebar.searchNoResults')}
+            </span>
+            <Button
+              variant="secondary-accent"
+              size="small"
+              onClick={() => storeApi.getState().setFileTreeSearchTerm('')}
+            >
+              {t('skillSidebar.resetFilter')}
+            </Button>
+          </div>
         </div>
-      </div>
+        <ArtifactsSection />
+      </>
     )
   }
 
@@ -250,6 +257,7 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
       {dragOverFolderId
         ? <DragActionTooltip action="upload" />
         : <DropTip />}
+      <ArtifactsSection />
       <TreeContextMenu treeRef={treeRef} />
     </>
   )
