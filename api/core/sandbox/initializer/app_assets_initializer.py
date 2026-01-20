@@ -30,7 +30,7 @@ class AppAssetsInitializer(SandboxInitializer):
             # unzip with silent error and return 1 if the zip is empty
             # FIXME(Mairuis): should use a more robust way to check if the zip is empty
             .add(
-                ["sh", "-c", f"unzip {APP_ASSETS_ZIP_PATH} 2>/dev/null || [ $? -eq 1 ]"],
+                ["sh", "-c", f"unzip {APP_ASSETS_ZIP_PATH} -d {APP_ASSETS_PATH} 2>/dev/null || [ $? -eq 1 ]"],
                 error_message="Failed to unzip assets",
             )
             .execute(timeout=APP_ASSETS_DOWNLOAD_TIMEOUT, raise_on_error=True)
@@ -60,7 +60,7 @@ class DraftAppAssetsInitializer(SandboxInitializer):
             # unzip with silent error and return 1 if the zip is empty
             # FIXME(Mairuis): should use a more robust way to check if the zip is empty
             .add(
-                ["sh", "-c", f"unzip {APP_ASSETS_ZIP_PATH} 2>/dev/null || [ $? -eq 1 ]"],
+                ["sh", "-c", f"unzip {APP_ASSETS_ZIP_PATH} -d {APP_ASSETS_PATH} 2>/dev/null || [ $? -eq 1 ]"],
                 error_message="Failed to unzip assets",
             )
             .execute(timeout=APP_ASSETS_DOWNLOAD_TIMEOUT, raise_on_error=True)
