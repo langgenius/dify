@@ -35,7 +35,7 @@
   "stepOne.uploader.cancel": "لغو",
   "stepOne.uploader.change": "تغییر",
   "stepOne.uploader.failed": "بارگذاری ناموفق بود",
-  "stepOne.uploader.tip": "پشتیبانی از {{supportTypes}}. حداکثر {{size}}MB هر کدام.",
+  "stepOne.uploader.tip": "پشتیبانی از {{supportTypes}}. حداکثر {{batchCount}} فایل در هر دسته و {{size}} مگابایت برای هر فایل. حداکثر کل {{totalCount}} فایل.",
   "stepOne.uploader.title": "بارگذاری فایل",
   "stepOne.uploader.validation.count": "چندین فایل پشتیبانی نمیشود",
   "stepOne.uploader.validation.filesNumber": "شما به حد مجاز بارگذاری دستهای {{filesNumber}} رسیدهاید.",
