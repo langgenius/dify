@@ -3392,11 +3392,6 @@
       "count": 5
     }
   },
-  "app/components/workflow/nodes/human-input/components/delivery-method/recipient/email-input.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "app/components/workflow/nodes/human-input/components/delivery-method/recipient/member-list.tsx": {
     "ts/no-explicit-any": {
       "count": 2

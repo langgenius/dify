@@ -19,7 +19,7 @@ type Props = {
   value: RecipientItem[]
   list: Member[]
   onDelete: (recipient: RecipientItem) => void
-  onSelect: (value: any) => void
+  onSelect: (value: string) => void
   onAdd: (email: string) => void
   disabled?: boolean
 }
@@ -69,7 +69,7 @@ const EmailInput = ({
     setOpen(true)
   }
 
-  const handleSelect = (value: any) => {
+  const handleSelect = (value: string) => {
     setSearchKey('')
     setOpen(false)
     onSelect(value)
@@ -89,10 +89,13 @@ const EmailInput = ({
         return
       if (value.some(item => item.email === emailAddress))
         return
-      if (list.some(item => item.email === emailAddress))
-        onSelect(emailAddress)
-      else
+      if (list.some(item => item.email === emailAddress)) {
+        const item = list.find(item => item.email === emailAddress)!
+        onSelect(item.id)
+      }
+      else {
         onAdd(emailAddress)
+      }
       setSearchKey('')
       setOpen(false)
     }

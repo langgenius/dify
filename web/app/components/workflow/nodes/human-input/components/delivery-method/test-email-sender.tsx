@@ -122,7 +122,7 @@ const EmailSenderModal = ({
     return varInputs
   }, [availableNodes, config?.body, formContent, nodesOutputVars])
 
-  const [inputs, setInputs] = useState<Record<string, any>>({})
+  const [inputs, setInputs] = useState<Record<string, unknown>>({})
   const [collapsed, setCollapsed] = useState(true)
   const [sendingEmail, setSendingEmail] = useState(false)
   const [done, setDone] = useState(false)
@@ -193,7 +193,7 @@ const EmailSenderModal = ({
             </div>
           )}
         </div>
-        {(onlySpecificUsers || combinedRecipients) && (
+        {(onlySpecificUsers || combinedRecipients) && !debugEnabled && (
           <div className="px-5">
             <EmailInput
               disabled
@@ -267,7 +267,7 @@ const EmailSenderModal = ({
           </div>
         )}
       </div>
-      {(onlySpecificUsers || combinedRecipients) && (
+      {(onlySpecificUsers || combinedRecipients) && !debugEnabled && (
         <>
           <div className="px-5">
             <EmailInput
