@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import type { BasicPlan } from '../type'
 import {
   RiHardDrive3Line,
 } from '@remixicon/react'
@@ -8,13 +9,14 @@ import { useTranslation } from 'react-i18next'
 import { useProviderContext } from '@/context/provider-context'
 import { Plan } from '../type'
 import UsageInfo from '../usage-info'
+import { getPlanVectorSpaceLimitMB } from '../utils'
 
 type Props = {
   className?: string
 }
 
 // Storage threshold in MB - usage below this shows as "< 50 MB"
-const STORAGE_THRESHOLD_MB = 50
+const STORAGE_THRESHOLD_MB = getPlanVectorSpaceLimitMB(Plan.sandbox)
 
 const VectorSpaceInfo: FC<Props> = ({
   className,
@@ -27,18 +29,11 @@ const VectorSpaceInfo: FC<Props> = ({
     total,
   } = plan
 
-  // Determine total based on plan type (in MB)
+  // Determine total based on plan type (in MB), derived from ALL_PLANS config
   const getTotalInMB = () => {
-    switch (type) {
-      case Plan.sandbox:
-        return STORAGE_THRESHOLD_MB // 50 MB
-      case Plan.professional:
-        return 5 * 1024 // 5 GB = 5120 MB
-      case Plan.team:
-        return 20 * 1024 // 20 GB = 20480 MB
-      default:
-        return total.vectorSpace
-    }
+    const planLimit = getPlanVectorSpaceLimitMB(type as BasicPlan)
+    // For known plans, use the config value; otherwise fall back to API response
+    return planLimit > 0 ? planLimit : total.vectorSpace
   }
 
   const totalInMB = getTotalInMB()

@@ -176,8 +176,6 @@ const UsageInfo: FC<Props> = ({
     return renderWithTooltip(renderUsageDisplay())
   }
 
-  // Render usage text with optional tooltip wrapper
-
   return (
     <div className={cn('flex flex-col gap-2 rounded-xl bg-components-panel-bg p-4', className)}>
       {!hideIcon && Icon && (

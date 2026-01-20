@@ -21,7 +21,9 @@ describe('ProgressBar', () => {
     it('uses the default color when no color prop is provided', () => {
       render(<ProgressBar percent={20} color={undefined as unknown as string} />)
 
-      expect(screen.getByTestId('billing-progress-bar')).toHaveClass('#2970FF')
+      const bar = screen.getByTestId('billing-progress-bar')
+      expect(bar).toHaveClass('bg-components-progress-bar-progress-solid')
+      expect(bar.getAttribute('style')).toContain('width: 20%')
     })
   })
 

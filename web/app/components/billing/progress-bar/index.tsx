@@ -9,7 +9,7 @@ type ProgressBarProps = {
 
 const ProgressBar = ({
   percent = 0,
-  color = '#2970FF',
+  color = 'bg-components-progress-bar-progress-solid',
   indeterminate = false,
   indeterminateFull = false,
 }: ProgressBarProps) => {
