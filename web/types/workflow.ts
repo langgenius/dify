@@ -200,6 +200,27 @@ export type FetchWorkflowDraftResponse = {
   marked_comment: string
 }
 
+export type MentionParameterSchema = {
+  name: string
+  type: string
+  description?: string
+}
+
+export type MentionGraphPayload = {
+  parent_node_id: string
+  parameter_key: string
+  context_source: ValueSelector
+  parameter_schema: MentionParameterSchema
+}
+
+export type MentionGraphResponse = {
+  graph: {
+    nodes: Node[]
+    edges: Edge[]
+    viewport?: Viewport
+  }
+}
+
 export type VersionHistory = FetchWorkflowDraftResponse
 
 export type FetchWorkflowDraftPageParams = {

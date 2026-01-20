@@ -1,5 +1,6 @@
 import type { AgentNode, WorkflowVariableBlockType } from '@/app/components/base/prompt-editor/types'
 import type { StrategyDetail, StrategyPluginDetail } from '@/app/components/plugins/types'
+import type { ToolParameter } from '@/app/components/tools/types'
 import type { MentionConfig, VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import type { AgentNodeType } from '@/app/components/workflow/nodes/agent/types'
 import type { CodeNodeType } from '@/app/components/workflow/nodes/code/types'
@@ -22,6 +23,7 @@ import { useTranslation } from 'react-i18next'
 import { useNodes, useStoreApi } from 'reactflow'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { useNodesMetaData, useNodesSyncDraft } from '@/app/components/workflow/hooks'
+import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { VarKindType as VarKindTypeEnum } from '@/app/components/workflow/nodes/_base/types'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { useStore } from '@/app/components/workflow/store'
@@ -29,6 +31,8 @@ import { BlockEnum, EditionType, isPromptMessageContext, PromptRole, VarType } f
 import { generateNewNode, getNodeCustomTypeByNodeDataType, mergeNodeDefaultData } from '@/app/components/workflow/utils'
 import { useGetLanguage } from '@/context/i18n'
 import { useStrategyProviders } from '@/service/use-strategy'
+import { fetchMentionGraph } from '@/service/workflow'
+import { FlowType } from '@/types/common'
 import { cn } from '@/utils/classnames'
 import ContextGenerateModal from '../context-generate-modal'
 import SubGraphModal from '../sub-graph-modal'
@@ -168,6 +172,7 @@ const MixedVariableTextInput = ({
   const { data: strategyProviders } = useStrategyProviders()
   const reactFlowStore = useStoreApi()
   const nodes = useNodes<CommonNodeType>()
+  const configsMap = useHooksStore(s => s.configsMap)
   const controlPromptEditorRerenderKey = useStore(s => s.controlPromptEditorRerenderKey)
   const setControlPromptEditorRerenderKey = useStore(s => s.setControlPromptEditorRerenderKey)
   const nodesDefaultConfigs = useStore(s => s.nodesDefaultConfigs)
@@ -208,6 +213,27 @@ const MixedVariableTextInput = ({
       return acc
     }, {} as Record<string, WorkflowNode>)
   }, [nodes])
+
+  const resolveMentionParameterSchema = useCallback((key: string) => {
+    if (!toolNodeId) {
+      return {
+        name: key,
+        type: Type.string,
+        description: '',
+      }
+    }
+    const toolNodeData = nodesById[toolNodeId]?.data as { paramSchemas?: ToolParameter[] } | undefined
+    const paramSchema = toolNodeData?.paramSchemas?.find(param => param.name === key)
+    const description = paramSchema?.llm_description
+      || paramSchema?.human_description?.[language]
+      || paramSchema?.human_description?.en_US
+      || ''
+    return {
+      name: paramSchema?.name || key,
+      type: paramSchema?.type || Type.string,
+      description,
+    }
+  }, [language, nodesById, toolNodeId])
 
   const assembleExtractorNodeId = useMemo(() => {
     if (!toolNodeId || !paramKey)
@@ -468,6 +494,96 @@ const MixedVariableTextInput = ({
     handleSyncWorkflowDraft()
   }, [detectAgentFromText, handleSyncWorkflowDraft, paramKey, reactFlowStore, toolNodeId])
 
+  const applyMentionGraphNodeData = useCallback((payload: {
+    extractorNodeId: string
+    mentionNodeData: Partial<LLMNodeType>
+    valueText: string
+  }) => {
+    const { extractorNodeId, mentionNodeData, valueText } = payload
+    if (!toolNodeId)
+      return
+    const hasPromptTemplate = Array.isArray(mentionNodeData.prompt_template)
+      ? mentionNodeData.prompt_template.length > 0
+      : Boolean(mentionNodeData.prompt_template)
+    const nextData: Partial<LLMNodeType> = {}
+    if (mentionNodeData.title)
+      nextData.title = mentionNodeData.title
+    if (mentionNodeData.desc)
+      nextData.desc = mentionNodeData.desc
+    if (mentionNodeData.model && (mentionNodeData.model.provider || mentionNodeData.model.name))
+      nextData.model = mentionNodeData.model
+    if (hasPromptTemplate)
+      nextData.prompt_template = mentionNodeData.prompt_template
+    if (typeof mentionNodeData.structured_output_enabled === 'boolean')
+      nextData.structured_output_enabled = mentionNodeData.structured_output_enabled
+    if (mentionNodeData.structured_output?.schema)
+      nextData.structured_output = mentionNodeData.structured_output
+    if (mentionNodeData.context)
+      nextData.context = mentionNodeData.context
+    if (mentionNodeData.vision)
+      nextData.vision = mentionNodeData.vision
+    if (Object.prototype.hasOwnProperty.call(mentionNodeData, 'memory'))
+      nextData.memory = mentionNodeData.memory
+
+    if (Object.keys(nextData).length === 0)
+      return
+
+    const { getNodes, setNodes } = reactFlowStore.getState()
+    const currentNodes = getNodes()
+    const hasExtractorNode = currentNodes.some(node => node.id === extractorNodeId)
+    if (!hasExtractorNode)
+      return
+
+    const nextNodes = currentNodes.map((node) => {
+      if (node.id !== extractorNodeId)
+        return node
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          ...nextData,
+          type: BlockEnum.LLM,
+          parent_node_id: toolNodeId,
+        },
+      }
+    })
+    setNodes(nextNodes)
+    handleSyncWorkflowDraft()
+    syncExtractorPromptFromText(valueText)
+  }, [handleSyncWorkflowDraft, reactFlowStore, syncExtractorPromptFromText, toolNodeId])
+
+  const requestMentionGraph = useCallback(async (payload: {
+    agentId: string
+    extractorNodeId: string
+    valueText: string
+  }) => {
+    if (!toolNodeId || !paramKey)
+      return
+    if (!configsMap?.flowId || configsMap.flowType !== FlowType.appFlow)
+      return
+    const parameterSchema = resolveMentionParameterSchema(paramKey)
+    try {
+      const response = await fetchMentionGraph(configsMap.flowType, configsMap.flowId, {
+        parent_node_id: toolNodeId,
+        parameter_key: paramKey,
+        context_source: [payload.agentId, 'context'],
+        parameter_schema: parameterSchema,
+      })
+      const mentionNode = response?.graph?.nodes?.find(node => node.id === payload.extractorNodeId)
+      const mentionNodeData = mentionNode?.data as Partial<LLMNodeType> | undefined
+      if (!mentionNodeData)
+        return
+      applyMentionGraphNodeData({
+        extractorNodeId: payload.extractorNodeId,
+        mentionNodeData,
+        valueText: payload.valueText,
+      })
+    }
+    catch {
+
+    }
+  }, [applyMentionGraphNodeData, configsMap?.flowId, configsMap?.flowType, paramKey, resolveMentionParameterSchema, toolNodeId])
+
   const removeExtractorNode = useCallback(() => {
     if (!toolNodeId || !paramKey)
       return
@@ -506,9 +622,10 @@ const MixedVariableTextInput = ({
     const valueWithoutTrigger = value.replace(/@[^@\n]*$/, '')
     const newValue = `{{@${agent.id}.context@}}${valueWithoutTrigger}`
 
-    if (toolNodeId && paramKey) {
+    const extractorNodeId = toolNodeId && paramKey ? `${toolNodeId}_ext_${paramKey}` : ''
+    if (extractorNodeId) {
       ensureExtractorNode({
-        extractorNodeId: `${toolNodeId}_ext_${paramKey}`,
+        extractorNodeId,
         nodeType: BlockEnum.LLM,
         data: {
           structured_output_enabled: true,
@@ -530,12 +647,19 @@ const MixedVariableTextInput = ({
 
     const mentionConfigWithOutputSelector: MentionConfig = {
       ...DEFAULT_MENTION_CONFIG,
-      extractor_node_id: toolNodeId && paramKey ? `${toolNodeId}_ext_${paramKey}` : '',
+      extractor_node_id: extractorNodeId,
       output_selector: paramKey ? ['structured_output', paramKey] : [],
     }
     onChange(newValue, VarKindTypeEnum.mention, mentionConfigWithOutputSelector)
     syncExtractorPromptFromText(newValue)
-  }, [ensureExtractorNode, onChange, paramKey, syncExtractorPromptFromText, toolNodeId, value])
+    if (extractorNodeId) {
+      void requestMentionGraph({
+        agentId: agent.id,
+        extractorNodeId,
+        valueText: newValue,
+      })
+    }
+  }, [ensureExtractorNode, onChange, paramKey, requestMentionGraph, syncExtractorPromptFromText, toolNodeId, value])
 
   const handleAssembleSelect = useCallback((): ValueSelector | null => {
     if (!toolNodeId || !paramKey || !assemblePlaceholder)
