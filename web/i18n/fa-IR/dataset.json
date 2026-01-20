@@ -147,7 +147,7 @@
   "parentMode.paragraph": "پاراگراف",
   "partialEnabled_one": "مجموعاً {{count}} سند، {{num}} موجود",
   "partialEnabled_other": "مجموع {{count}} سند، {{num}} موجود",
-  "preprocessDocument": "{{num}} اسناد پیش پردازش",
+  "preprocessDocument": "{{عدد}} اسناد پیش پردازش",
   "rerankSettings": "تنظیمات دوباره رتبه‌بندی",
   "retrieval.change": "تغییر",
   "retrieval.changeRetrievalMethod": "تغییر روش بازیابی",

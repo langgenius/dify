@@ -147,7 +147,7 @@
   "parentMode.paragraph": "Paragraf",
   "partialEnabled_one": "Toplam {{count}} belge, {{num}} mevcut",
   "partialEnabled_other": "Toplam {{count}} belge, {{num}} mevcut",
-  "preprocessDocument": "{{num}} Belgeleri Ön İşleme",
+  "preprocessDocument": "{{sayı}} Belgeleri Ön İşleme",
   "rerankSettings": "Yeniden Sıralama Ayarı",
   "retrieval.change": "Değiştir",
   "retrieval.changeRetrievalMethod": "Geri alma yöntemini değiştir",
