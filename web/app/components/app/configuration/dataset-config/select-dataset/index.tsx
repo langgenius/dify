@@ -189,6 +189,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
                 }
               </div>
             ))}
+            {isFetchingNextPage && <Loading />}
           </div>
         </>
       )}

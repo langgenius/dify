@@ -144,17 +144,6 @@ describe('constant.ts - Type Definitions', () => {
 
 // ==================== store.ts Tests ====================
 describe('store.ts - Zustand Store', () => {
-  beforeEach(() => {
-    // Reset store to initial state
-    const { setState } = useStore
-    setState({
-      tagList: [],
-      categoryList: [],
-      showTagManagementModal: false,
-      showCategoryManagementModal: false,
-    })
-  })
-
   describe('Initial State', () => {
     it('should have empty tagList initially', () => {
       const { result } = renderHook(() => useStore(state => state.tagList))
