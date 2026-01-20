@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
     "incremental": true,
-    "jsx": "react-jsx",
     "target": "es2022",
+    "jsx": "react-jsx",
     "lib": [
       "dom",
       "dom.iterable",
