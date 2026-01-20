@@ -7,7 +7,6 @@ import { useToastContext } from '@/app/components/base/toast'
 import { ConfigProvider } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 import { useCredentialStatus } from '@/app/components/header/account-setting/model-provider-page/model-auth/hooks'
 import Indicator from '@/app/components/header/indicator'
-import { IS_CLOUD_EDITION } from '@/config'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { changeModelProviderPriority } from '@/service/common'
 import { cn } from '@/utils/classnames'
@@ -27,7 +26,6 @@ import PriorityUseTip from './priority-use-tip'
 type CredentialPanelProps = {
   provider: ModelProvider
 }
-
 const CredentialPanel = ({
   provider,
 }: CredentialPanelProps) => {
@@ -48,8 +46,6 @@ const CredentialPanel = ({
     current_credential_name,
     notAllowedToUse,
   } = useCredentialStatus(provider)
-
-  const showPrioritySelector = systemConfig.enabled && isCustomConfigured && IS_CLOUD_EDITION
 
   const handleChangePriority = async (key: PreferredProviderTypeEnum) => {
     const res = await changeModelProviderPriority({
@@ -118,7 +114,7 @@ const CredentialPanel = ({
                 provider={provider}
               />
               {
-                showPrioritySelector && (
+                systemConfig.enabled && isCustomConfigured && (
                   <PrioritySelector
                     value={priorityUseType}
                     onSelect={handleChangePriority}
@@ -135,7 +131,7 @@ const CredentialPanel = ({
         )
       }
       {
-        showPrioritySelector && !provider.provider_credential_schema && (
+        systemConfig.enabled && isCustomConfigured && !provider.provider_credential_schema && (
           <div className="ml-1">
             <PrioritySelector
               value={priorityUseType}
