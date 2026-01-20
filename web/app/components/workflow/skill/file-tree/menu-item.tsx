@@ -4,6 +4,7 @@ import type { VariantProps } from 'class-variance-authority'
 import type { FC } from 'react'
 import { cva } from 'class-variance-authority'
 import * as React from 'react'
+import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 import { cn } from '@/utils/classnames'
 
 const menuItemVariants = cva(
@@ -52,11 +53,12 @@ const labelVariants = cva('system-sm-regular text-text-secondary', {
 export type MenuItemProps = {
   icon: React.ElementType
   label: string
+  kbd?: string[]
   onClick: React.MouseEventHandler<HTMLButtonElement>
   disabled?: boolean
 } & VariantProps<typeof menuItemVariants>
 
-const MenuItem: FC<MenuItemProps> = ({ icon: Icon, label, onClick, disabled, variant }) => {
+const MenuItem: FC<MenuItemProps> = ({ icon: Icon, label, kbd, onClick, disabled, variant }) => {
   const handleClick = React.useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation()
     onClick(event)
@@ -70,7 +72,8 @@ const MenuItem: FC<MenuItemProps> = ({ icon: Icon, label, onClick, disabled, var
       className={cn(menuItemVariants({ variant }))}
     >
       <Icon className={cn(iconVariants({ variant }))} aria-hidden="true" />
-      <span className={cn(labelVariants({ variant }))}>{label}</span>
+      <span className={cn(labelVariants({ variant }), 'flex-1 text-left')}>{label}</span>
+      {kbd && kbd.length > 0 && <ShortcutsName keys={kbd} textColor="secondary" />}
     </button>
   )
 }

@@ -1,11 +1,13 @@
 import type { StateCreator } from 'zustand'
 import type { SkillEditorSliceShape } from './types'
+import { createClipboardSlice } from './clipboard-slice'
 import { createDirtySlice } from './dirty-slice'
 import { createFileOperationsMenuSlice } from './file-operations-menu-slice'
 import { createFileTreeSlice } from './file-tree-slice'
 import { createMetadataSlice } from './metadata-slice'
 import { createTabSlice } from './tab-slice'
 
+export type { ClipboardSliceShape } from './clipboard-slice'
 export type { DirtySliceShape } from './dirty-slice'
 export type { FileOperationsMenuSliceShape } from './file-operations-menu-slice'
 export type { FileTreeSliceShape } from './file-tree-slice'
@@ -16,6 +18,7 @@ export type { SkillEditorSliceShape } from './types'
 export const createSkillEditorSlice: StateCreator<SkillEditorSliceShape> = (...args) => ({
   ...createTabSlice(...args),
   ...createFileTreeSlice(...args),
+  ...createClipboardSlice(...args),
   ...createDirtySlice(...args),
   ...createMetadataSlice(...args),
   ...createFileOperationsMenuSlice(...args),
@@ -28,7 +31,9 @@ export const createSkillEditorSlice: StateCreator<SkillEditorSliceShape> = (...a
       previewTabId: null,
       expandedFolderIds: new Set<string>(),
       selectedTreeNodeId: null,
+      selectedNodeIds: new Set<string>(),
       pendingCreateNode: null,
+      clipboard: null,
       dirtyContents: new Map<string, string>(),
       fileMetadata: new Map<string, Record<string, unknown>>(),
       dirtyMetadataIds: new Set<string>(),

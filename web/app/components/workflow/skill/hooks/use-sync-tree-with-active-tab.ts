@@ -27,8 +27,6 @@ export function useSyncTreeWithActiveTab({
     if (!activeTabId)
       return
 
-    storeApi.getState().setSelectedTreeNodeId(activeTabId)
-
     const tree = treeRef.current
     if (!tree)
       return
@@ -38,7 +36,6 @@ export function useSyncTreeWithActiveTab({
       if (!node)
         return
 
-      // Traverse parent chain to collect ancestor folder IDs
       const ancestors: string[] = []
       let current = node.parent
       while (current && !current.isRoot) {
@@ -50,6 +47,7 @@ export function useSyncTreeWithActiveTab({
         storeApi.getState().revealFile(ancestors)
 
       tree.openParents(node)
+      tree.select(activeTabId)
       tree.scrollTo(activeTabId)
     })
   }, [activeTabId, treeRef, storeApi])

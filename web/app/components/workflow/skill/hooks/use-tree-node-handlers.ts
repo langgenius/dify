@@ -19,10 +19,6 @@ type UseTreeNodeHandlersReturn = {
   handleKeyDown: (e: React.KeyboardEvent) => void
 }
 
-/**
- * Hook that encapsulates all tree node interaction handlers.
- * Handles click, double-click, toggle, context menu, and keyboard events.
- */
 export function useTreeNodeHandlers({
   node,
 }: UseTreeNodeHandlersOptions): UseTreeNodeHandlersReturn {
@@ -49,10 +45,16 @@ export function useTreeNodeHandlers({
 
   const handleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
-    node.select() // This triggers Tree's onSelect → setSelectedTreeNodeId
+    if (e.shiftKey)
+      node.selectContiguous()
+    else if (e.metaKey || e.ctrlKey)
+      node.selectMulti()
+    else
+      node.select()
+
     if (isFolder)
       throttledToggle()
-    else
+    else if (!e.metaKey && !e.ctrlKey && !e.shiftKey)
       handleFileClick()
   }, [handleFileClick, isFolder, node, throttledToggle])
 
@@ -72,9 +74,7 @@ export function useTreeNodeHandlers({
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-
-    // Select the node for highlight + creation target
-    storeApi.getState().setSelectedTreeNodeId(node.data.id)
+    node.select()
     storeApi.getState().setContextMenu({
       top: e.clientY,
       left: e.clientX,
@@ -82,7 +82,7 @@ export function useTreeNodeHandlers({
       nodeId: node.data.id,
       isFolder,
     })
-  }, [isFolder, node.data.id, storeApi])
+  }, [isFolder, node, storeApi])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
