@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 ARCHIVE_NAME = "workspace.tar.gz"
 WORKSPACE_DIR = "."
+ARCHIVE_PATH = f"/tmp/{ARCHIVE_NAME}"
 
 
 class ArchiveSandboxStorage(SandboxStorage):
@@ -44,14 +45,14 @@ class ArchiveSandboxStorage(SandboxStorage):
     def unmount(self, sandbox: VirtualEnvironment) -> bool:
         result = try_execute(
             sandbox,
-            ["tar", "-czf", ARCHIVE_NAME, "-C", WORKSPACE_DIR, "."],
+            ["tar", "-czf", ARCHIVE_PATH, "--warning=no-file-changed", "-C", WORKSPACE_DIR, "."],
             timeout=120,
         )
         if result.is_error:
             logger.error("Failed to create archive: %s", result.error_message)
             return False
 
-        archive_content = sandbox.download_file(ARCHIVE_NAME)
+        archive_content = sandbox.download_file(ARCHIVE_PATH)
         self._storage.save(self._storage_key, archive_content.getvalue())
 
         logger.info("Unmounted archive for sandbox %s", self._sandbox_id)
