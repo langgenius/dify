@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 
 type UseDelayedClickOptions = {
   delay?: number
@@ -17,6 +17,14 @@ export function useDelayedClick({
   onDoubleClick,
 }: UseDelayedClickOptions) {
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Cleanup timeout on unmount to prevent state updates on unmounted components
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current)
+        clearTimeout(timeoutRef.current)
+    }
+  }, [])
 
   const handleClick = useCallback(() => {
     if (timeoutRef.current)

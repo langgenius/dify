@@ -3,7 +3,7 @@
 import type { NodeApi } from 'react-arborist'
 import type { TreeNodeData } from '../type'
 import { throttle } from 'es-toolkit/function'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useDelayedClick } from './use-delayed-click'
 
@@ -24,10 +24,12 @@ export function useTreeNodeHandlers({
 }: UseTreeNodeHandlersOptions): UseTreeNodeHandlersReturn {
   const storeApi = useWorkflowStore()
   const isFolder = node.data.node_type === 'folder'
+  const nodeRef = useRef(node)
+  nodeRef.current = node
 
   const throttledToggle = useMemo(
-    () => throttle(() => node.toggle(), 300, { edges: ['leading'] }),
-    [node],
+    () => throttle(() => nodeRef.current.toggle(), 300, { edges: ['leading'] }),
+    [],
   )
 
   const openFilePreview = useCallback(() => {

@@ -73,13 +73,15 @@ export function usePasteOperation({
       isPastingRef.current = true
 
       try {
-        for (const nodeId of nodeIdsArray) {
-          await moveNode.mutateAsync({
-            appId,
-            nodeId,
-            payload: { parent_id: targetParentId },
-          })
-        }
+        await Promise.all(
+          nodeIdsArray.map(nodeId =>
+            moveNode.mutateAsync({
+              appId,
+              nodeId,
+              payload: { parent_id: targetParentId },
+            }),
+          ),
+        )
 
         storeApi.getState().clearClipboard()
 
