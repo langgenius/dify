@@ -25,6 +25,38 @@ export type CodeGenRes = {
   error?: string
 }
 
+export type ContextGenerateMessage = {
+  role: 'user' | 'assistant' | 'system'
+  content: string
+}
+
+export type ContextGenerateRequest = {
+  workflow_id: string
+  node_id: string
+  parameter_name: string
+  language?: 'python3' | 'javascript'
+  prompt_messages: ContextGenerateMessage[]
+  model_config: {
+    provider: string
+    name: string
+    completion_params?: Record<string, any>
+  }
+}
+
+export type ContextGenerateVariable = {
+  variable: string
+  value_selector: string[]
+}
+
+export type ContextGenerateResponse = {
+  variables: ContextGenerateVariable[]
+  code_language: string
+  code: string
+  outputs: Record<string, { type: string }>
+  message: string
+  error: string
+}
+
 export const sendChatMessage = async (appId: string, body: Record<string, any>, { onData, onCompleted, onThought, onFile, onError, getAbortController, onMessageEnd, onMessageReplace }: {
   onData: IOnData
   onCompleted: IOnCompleted
@@ -89,6 +121,12 @@ export const generateBasicAppFirstTimeRule = (body: Record<string, any>) => {
 
 export const generateRule = (body: Record<string, any>) => {
   return post<GenRes>('/instruction-generate', {
+    body,
+  })
+}
+
+export const generateContext = (body: ContextGenerateRequest) => {
+  return post<ContextGenerateResponse>('/context-generate', {
     body,
   })
 }

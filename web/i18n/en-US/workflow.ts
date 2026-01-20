@@ -769,11 +769,23 @@ const translation = {
       'assignedVarsDescription': 'Assigned variables must be writable variables, such as conversation variables.',
     },
     tool: {
+      assembleVariables: 'Assemble Variables',
       authorize: 'Authorize',
       inputVars: 'Input Variables',
       settings: 'Settings',
       insertPlaceholder1: 'Type or press',
       insertPlaceholder2: 'insert variable',
+      contextGenerate: {
+        title: 'Assemble Variables',
+        codeBlock: 'Code Block',
+        code: 'Code',
+        output: 'Output',
+        run: 'Run',
+        apply: 'Apply',
+        generating: 'Generating...',
+        inputPlaceholder: 'Ask for change...',
+        defaultAssistantMessage: 'I\'ve finished, please have a check on it.',
+      },
       outputVars: {
         text: 'tool generated content',
         files: {
