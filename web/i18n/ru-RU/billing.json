@@ -35,7 +35,7 @@
     "Профессиональная техническая поддержка"
   ],
   "plans.enterprise.for": "Для команд большого размера",
-  "plans.enterprise.includesTitle": "Все в командном плане, плюс:",
+  "plans.enterprise.includesTitle": "Все в <highlight>командном плане</highlight>, плюс:",
   "plans.enterprise.name": "Корпоративный",
   "plans.enterprise.price": "Пользовательский",
   "plans.enterprise.priceTip": "Только годовая подписка",
