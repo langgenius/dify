@@ -2,9 +2,6 @@
 const DEPENDENCY_KEYS = ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies']
 const VERSION_PREFIXES = ['^', '~']
 
-// Generate regex pattern for dependency keys
-const DEPENDENCY_KEYS_PATTERN = `^(${DEPENDENCY_KEYS.join('|')})$`
-
 /** @type {import('eslint').Rule.RuleModule} */
 export default {
   meta: {
@@ -21,8 +18,17 @@ export default {
       return {}
 
     return {
-      // Check each property in dependency sections
-      [`Property[key.value=/${DEPENDENCY_KEYS_PATTERN}/] > ObjectExpression > Property`](node) {
+      // Check each property that could be a dependency section
+      'Property > ObjectExpression > Property'(node) {
+        // Check if the parent property is one of the dependency keys
+        const parentProperty = node.parent?.parent
+        if (!parentProperty || parentProperty.type !== 'Property')
+          return
+
+        const parentKey = parentProperty.key?.value || parentProperty.key?.name
+        if (!DEPENDENCY_KEYS.includes(parentKey))
+          return
+
         const versionNode = node.value
 
         // Check if the version value starts with any forbidden prefix
