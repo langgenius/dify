@@ -35,7 +35,7 @@
   "stepOne.uploader.cancel": "Cancelar",
   "stepOne.uploader.change": "Cambiar",
   "stepOne.uploader.failed": "Error al cargar",
-  "stepOne.uploader.tip": "Soporta {{supportTypes}}. Máximo {{size}}MB cada uno.",
+  "stepOne.uploader.tip": "Soporta {{supportTypes}}. Máximo {{batchCount}} archivos por lote y {{size}} MB cada uno. Total máximo de {{totalCount}} archivos.",
   "stepOne.uploader.title": "Cargar archivo",
   "stepOne.uploader.validation.count": "No se admiten varios archivos",
   "stepOne.uploader.validation.filesNumber": "Has alcanzado el límite de carga por lotes de {{filesNumber}}.",

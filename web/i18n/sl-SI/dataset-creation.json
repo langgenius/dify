@@ -35,7 +35,7 @@
   "stepOne.uploader.cancel": "Prekliči",
   "stepOne.uploader.change": "Zamenjaj",
   "stepOne.uploader.failed": "Nalaganje ni uspelo",
-  "stepOne.uploader.tip": "Podprti tipi datotek: {{supportTypes}}. Največ {{size}}MB na datoteko.",
+  "stepOne.uploader.tip": "Podpira {{supportTypes}}. Največje število datotek v seriji: {{batchCount}}, vsaka do {{size}} MB. Skupaj največ {{totalCount}} datotek.",
   "stepOne.uploader.title": "Naloži datoteko",
   "stepOne.uploader.validation.count": "Podprta je le ena datoteka",
   "stepOne.uploader.validation.filesNumber": "Dosegli ste omejitev za pošiljanje {{filesNumber}} datotek.",
