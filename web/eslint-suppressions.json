@@ -3404,7 +3404,7 @@
   },
   "app/components/workflow/nodes/human-input/components/delivery-method/test-email-sender.tsx": {
     "ts/no-explicit-any": {
-      "count": 3
+      "count": 2
     }
   },
   "app/components/workflow/nodes/human-input/components/form-content-preview.tsx": {
