@@ -212,7 +212,7 @@
     "eslint-plugin-storybook": "10.1.11",
     "eslint-plugin-tailwindcss": "3.18.2",
     "husky": "9.1.7",
-    "jsdom": "27.3.0",
+    "jsdom": "27.4.0",
     "jsdom-testing-mocks": "1.16.0",
     "knip": "5.78.0",
     "lint-staged": "15.5.2",
