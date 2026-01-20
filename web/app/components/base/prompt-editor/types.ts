@@ -71,6 +71,19 @@ export type WorkflowVariableBlockType = {
   getVarType?: GetVarType
   showManageInputField?: boolean
   onManageInputField?: () => void
+  showAssembleVariables?: boolean
+  onAssembleVariables?: () => ValueSelector | null
+}
+
+export type AgentNode = {
+  id: string
+  title: string
+}
+
+export type AgentBlockType = {
+  show?: boolean
+  agentNodes?: AgentNode[]
+  onSelect?: (agent: AgentNode) => void
 }
 
 export type MenuTextMatch = {

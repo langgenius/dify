@@ -81,7 +81,7 @@ class AgentChatAppGenerateResponseConverter(AppGenerateResponseConverter):
                 data = cls._error_to_stream_response(sub_stream_response.err)
                 response_chunk.update(data)
             else:
-                response_chunk.update(sub_stream_response.model_dump(mode="json"))
+                response_chunk.update(sub_stream_response.model_dump(mode="json", exclude_none=True))
             yield response_chunk
 
     @classmethod
@@ -109,7 +109,7 @@ class AgentChatAppGenerateResponseConverter(AppGenerateResponseConverter):
             }
 
             if isinstance(sub_stream_response, MessageEndStreamResponse):
-                sub_stream_response_dict = sub_stream_response.model_dump(mode="json")
+                sub_stream_response_dict = sub_stream_response.model_dump(mode="json", exclude_none=True)
                 metadata = sub_stream_response_dict.get("metadata", {})
                 sub_stream_response_dict["metadata"] = cls._get_simple_metadata(metadata)
                 response_chunk.update(sub_stream_response_dict)
@@ -117,6 +117,6 @@ class AgentChatAppGenerateResponseConverter(AppGenerateResponseConverter):
                 data = cls._error_to_stream_response(sub_stream_response.err)
                 response_chunk.update(data)
             else:
-                response_chunk.update(sub_stream_response.model_dump(mode="json"))
+                response_chunk.update(sub_stream_response.model_dump(mode="json", exclude_none=True))
 
             yield response_chunk

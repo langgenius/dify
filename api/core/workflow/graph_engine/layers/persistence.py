@@ -68,6 +68,7 @@ class _NodeRuntimeSnapshot:
     predecessor_node_id: str | None
     iteration_id: str | None
     loop_id: str | None
+    mention_parent_id: str | None
     created_at: datetime
 
 
@@ -230,6 +231,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         metadata = {
             WorkflowNodeExecutionMetadataKey.ITERATION_ID: event.in_iteration_id,
             WorkflowNodeExecutionMetadataKey.LOOP_ID: event.in_loop_id,
+            WorkflowNodeExecutionMetadataKey.MENTION_PARENT_ID: event.in_mention_parent_id,
         }
 
         domain_execution = WorkflowNodeExecution(
@@ -256,6 +258,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             predecessor_node_id=event.predecessor_node_id,
             iteration_id=event.in_iteration_id,
             loop_id=event.in_loop_id,
+            mention_parent_id=event.in_mention_parent_id,
             created_at=event.start_at,
         )
         self._node_snapshots[event.id] = snapshot

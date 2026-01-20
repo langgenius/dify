@@ -13,6 +13,7 @@ import {
 } from '@/app/components/workflow/constants'
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
+import { CUSTOM_SUB_GRAPH_START_NODE } from '@/app/components/workflow/nodes/sub-graph-start/constants'
 import {
   BlockEnum,
 } from '@/app/components/workflow/types'
@@ -442,6 +443,7 @@ const normaliseChildLayout = (
   const startNode = nodes.find(node =>
     node.type === CUSTOM_ITERATION_START_NODE
     || node.type === CUSTOM_LOOP_START_NODE
+    || node.type === CUSTOM_SUB_GRAPH_START_NODE
     || node.data?.type === BlockEnum.LoopStart
     || node.data?.type === BlockEnum.IterationStart,
   )

@@ -56,17 +56,21 @@ const useConfig = (id: string, payload: CodeNodeType) => {
     setInputs,
   })
 
-  const [outputKeyOrders, setOutputKeyOrders] = useState<string[]>([])
+  const [outputKeyOrders, setOutputKeyOrders] = useState<string[]>(() => Object.keys(payload.outputs || {}))
   const syncOutputKeyOrders = useCallback((outputs: OutputVar) => {
     setOutputKeyOrders(Object.keys(outputs))
   }, [])
   useEffect(() => {
-    if (inputs.code) {
-      if (inputs.outputs && Object.keys(inputs.outputs).length > 0)
-        syncOutputKeyOrders(inputs.outputs)
+    const outputKeys = inputs.outputs ? Object.keys(inputs.outputs) : []
+    if (outputKeys.length > 0 && outputKeyOrders.length === 0)
+      syncOutputKeyOrders(inputs.outputs)
 
+    const hasExistingConfig = Boolean(inputs.code)
+      || (inputs.variables?.length ?? 0) > 0
+      || outputKeys.length > 0
+
+    if (hasExistingConfig)
       return
-    }
 
     const isReady = defaultConfig && Object.keys(defaultConfig).length > 0
     if (isReady) {
@@ -76,7 +80,7 @@ const useConfig = (id: string, payload: CodeNodeType) => {
       })
       syncOutputKeyOrders(defaultConfig.outputs)
     }
-  }, [defaultConfig])
+  }, [defaultConfig, inputs.code, inputs.outputs, inputs.variables, outputKeyOrders.length, setInputs, syncOutputKeyOrders])
 
   const handleCodeChange = useCallback((code: string) => {
     const newInputs = produce(inputs, (draft) => {

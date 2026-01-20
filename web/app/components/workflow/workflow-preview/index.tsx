@@ -29,6 +29,7 @@ import {
 import CustomConnectionLine from '@/app/components/workflow/custom-connection-line'
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
+import { CUSTOM_SUB_GRAPH_START_NODE } from '@/app/components/workflow/nodes/sub-graph-start/constants'
 import { CUSTOM_NOTE_NODE } from '@/app/components/workflow/note-node/constants'
 import { CUSTOM_SIMPLE_NODE } from '@/app/components/workflow/simple-node/constants'
 import {
@@ -40,6 +41,7 @@ import CustomEdge from './components/custom-edge'
 import CustomNode from './components/nodes'
 import IterationStartNode from './components/nodes/iteration-start'
 import LoopStartNode from './components/nodes/loop-start'
+import SubGraphStartNode from './components/nodes/sub-graph-start'
 import CustomNoteNode from './components/note-node'
 import ZoomInOut from './components/zoom-in-out'
 import 'reactflow/dist/style.css'
@@ -49,6 +51,7 @@ const nodeTypes = {
   [CUSTOM_NODE]: CustomNode,
   [CUSTOM_NOTE_NODE]: CustomNoteNode,
   [CUSTOM_SIMPLE_NODE]: CustomNode,
+  [CUSTOM_SUB_GRAPH_START_NODE]: SubGraphStartNode,
   [CUSTOM_ITERATION_START_NODE]: IterationStartNode,
   [CUSTOM_LOOP_START_NODE]: LoopStartNode,
 }

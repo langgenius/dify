@@ -294,6 +294,7 @@ class NodeStartStreamResponse(StreamResponse):
         extras: dict[str, object] = Field(default_factory=dict)
         iteration_id: str | None = None
         loop_id: str | None = None
+        mention_parent_id: str | None = None
         agent_strategy: AgentNodeStrategyInit | None = None
 
     event: StreamEvent = StreamEvent.NODE_STARTED
@@ -317,6 +318,7 @@ class NodeStartStreamResponse(StreamResponse):
                 "extras": {},
                 "iteration_id": self.data.iteration_id,
                 "loop_id": self.data.loop_id,
+                "mention_parent_id": self.data.mention_parent_id,
             },
         }
 
@@ -352,6 +354,7 @@ class NodeFinishStreamResponse(StreamResponse):
         files: Sequence[Mapping[str, Any]] | None = []
         iteration_id: str | None = None
         loop_id: str | None = None
+        mention_parent_id: str | None = None
 
     event: StreamEvent = StreamEvent.NODE_FINISHED
     workflow_run_id: str
@@ -381,6 +384,7 @@ class NodeFinishStreamResponse(StreamResponse):
                 "files": [],
                 "iteration_id": self.data.iteration_id,
                 "loop_id": self.data.loop_id,
+                "mention_parent_id": self.data.mention_parent_id,
             },
         }
 
@@ -416,6 +420,7 @@ class NodeRetryStreamResponse(StreamResponse):
         files: Sequence[Mapping[str, Any]] | None = []
         iteration_id: str | None = None
         loop_id: str | None = None
+        mention_parent_id: str | None = None
         retry_index: int = 0
 
     event: StreamEvent = StreamEvent.NODE_RETRY
@@ -446,6 +451,7 @@ class NodeRetryStreamResponse(StreamResponse):
                 "files": [],
                 "iteration_id": self.data.iteration_id,
                 "loop_id": self.data.loop_id,
+                "mention_parent_id": self.data.mention_parent_id,
                 "retry_index": self.data.retry_index,
             },
         }

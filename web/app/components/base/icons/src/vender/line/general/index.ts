@@ -1,3 +1,5 @@
+export { default as AssembleVariables } from './AssembleVariables'
+export { default as AssembleVariablesAlt } from './AssembleVariablesAlt'
 export { default as AtSign } from './AtSign'
 export { default as Bookmark } from './Bookmark'
 export { default as Check } from './Check'

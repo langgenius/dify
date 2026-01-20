@@ -70,6 +70,8 @@ describe('config test', () => {
       // rag variables
       '{{#rag.1748945155129.a#}}',
       '{{#rag.shared.bbb#}}',
+      '{{@1749783300519.llm.a@}}',
+      '{{@sys.query@}}',
     ]
     vars.forEach((variable) => {
       expect(VAR_REGEX.test(variable)).toBe(true)

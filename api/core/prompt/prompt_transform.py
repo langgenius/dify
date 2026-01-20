@@ -1,7 +1,7 @@
 from typing import Any
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
-from core.memory.token_buffer_memory import TokenBufferMemory
+from core.memory.base import BaseMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.message_entities import PromptMessage
 from core.model_runtime.entities.model_entities import ModelPropertyKey
@@ -11,7 +11,7 @@ from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 class PromptTransform:
     def _append_chat_histories(
         self,
-        memory: TokenBufferMemory,
+        memory: BaseMemory,
         memory_config: MemoryConfig,
         prompt_messages: list[PromptMessage],
         model_config: ModelConfigWithCredentialsEntity,
@@ -52,7 +52,7 @@ class PromptTransform:
 
     def _get_history_messages_from_memory(
         self,
-        memory: TokenBufferMemory,
+        memory: BaseMemory,
         memory_config: MemoryConfig,
         max_token_limit: int,
         human_prefix: str | None = None,
@@ -73,7 +73,7 @@ class PromptTransform:
         return memory.get_history_prompt_text(**kwargs)
 
     def _get_history_messages_list_from_memory(
-        self, memory: TokenBufferMemory, memory_config: MemoryConfig, max_token_limit: int
+        self, memory: BaseMemory, memory_config: MemoryConfig, max_token_limit: int
     ) -> list[PromptMessage]:
         """Get memory messages."""
         return list(

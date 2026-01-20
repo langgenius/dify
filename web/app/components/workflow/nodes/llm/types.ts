@@ -1,5 +1,5 @@
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
-import type { CommonNodeType, Memory, ModelConfig, PromptItem, ValueSelector, Variable, VisionSetting } from '@/app/components/workflow/types'
+import type { CommonNodeType, Memory, ModelConfig, PromptItem, PromptTemplateItem, ValueSelector, Variable, VisionSetting } from '@/app/components/workflow/types'
 
 export type Tool = {
   enabled: boolean
@@ -15,7 +15,7 @@ export type Tool = {
 
 export type LLMNodeType = CommonNodeType & {
   model: ModelConfig
-  prompt_template: PromptItem[] | PromptItem
+  prompt_template: PromptTemplateItem[] | PromptItem
   prompt_config?: {
     jinja2_variables?: Variable[]
   }

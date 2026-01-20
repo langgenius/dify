@@ -91,6 +91,9 @@ class MultiModalPromptMessageContent(PromptMessageContent):
     mime_type: str = Field(default=..., description="the mime type of multi-modal file")
     filename: str = Field(default="", description="the filename of multi-modal file")
 
+    # File reference for context restoration, format: "transfer_method:related_id" or "remote:url"
+    file_ref: str | None = Field(default=None, description="Encoded file reference for restoration")
+
     @property
     def data(self):
         return self.url or f"data:{self.mime_type};base64,{self.base64_data}"
@@ -276,7 +279,5 @@ class ToolPromptMessage(PromptMessage):
 
         :return: True if prompt message is empty, False otherwise
         """
-        if not super().is_empty() and not self.tool_call_id:
-            return False
-
-        return True
+        # ToolPromptMessage is not empty if it has content OR has a tool_call_id
+        return super().is_empty() and not self.tool_call_id

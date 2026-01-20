@@ -93,8 +93,8 @@ class EventHandler:
         Args:
             event: The event to handle
         """
-        # Events in loops or iterations are always collected
-        if event.in_loop_id or event.in_iteration_id:
+        # Events in loops, iterations, or extractor groups are always collected
+        if event.in_loop_id or event.in_iteration_id or event.in_mention_parent_id:
             self._event_collector.collect(event)
             return
         return self._dispatch(event)
@@ -125,6 +125,11 @@ class EventHandler:
         Args:
             event: The node started event
         """
+        # Check if this is an extractor node (has parent_node_id)
+        if self._is_extractor_node(event.node_id):
+            self._handle_extractor_node_started(event)
+            return
+
         # Track execution in domain model
         node_execution = self._graph_execution.get_or_create_node_execution(event.node_id)
         is_initial_attempt = node_execution.retry_count == 0
@@ -164,6 +169,11 @@ class EventHandler:
         Args:
             event: The node succeeded event
         """
+        # Check if this is an extractor node (has parent_node_id)
+        if self._is_extractor_node(event.node_id):
+            self._handle_extractor_node_success(event)
+            return
+
         # Update domain model
         node_execution = self._graph_execution.get_or_create_node_execution(event.node_id)
         node_execution.mark_taken()
@@ -226,6 +236,11 @@ class EventHandler:
         Args:
             event: The node failed event
         """
+        # Check if this is an extractor node (has parent_node_id)
+        if self._is_extractor_node(event.node_id):
+            self._handle_extractor_node_failed(event)
+            return
+
         # Update domain model
         node_execution = self._graph_execution.get_or_create_node_execution(event.node_id)
         node_execution.mark_failed(event.error)
@@ -345,3 +360,57 @@ class EventHandler:
                     self._graph_runtime_state.set_output("answer", value)
             else:
                 self._graph_runtime_state.set_output(key, value)
+
+    def _is_extractor_node(self, node_id: str) -> bool:
+        """
+        Check if node_id represents an extractor node (has parent_node_id).
+
+        Extractor nodes extract values from list[PromptMessage] for their parent node.
+        They have a parent_node_id field pointing to their parent node.
+        """
+        node = self._graph.nodes.get(node_id)
+        if node is None:
+            return False
+        return node.node_data.is_extractor_node
+
+    def _handle_extractor_node_started(self, event: NodeRunStartedEvent) -> None:
+        """
+        Handle extractor node started event.
+
+        Extractor nodes don't need full execution tracking, just collect the event.
+        """
+        # Track in response coordinator for stream ordering
+        self._response_coordinator.track_node_execution(event.node_id, event.id)
+
+        # Collect the event
+        self._event_collector.collect(event)
+
+    def _handle_extractor_node_success(self, event: NodeRunSucceededEvent) -> None:
+        """
+        Handle extractor node success event.
+
+        Extractor nodes need special handling:
+        - Store outputs in variable pool (for reference by other nodes)
+        - Accumulate token usage
+        - Collect the event for logging
+        - Do NOT process edges or enqueue next nodes (parent node handles that)
+        """
+        self._accumulate_node_usage(event.node_run_result.llm_usage)
+
+        # Store outputs in variable pool
+        self._store_node_outputs(event.node_id, event.node_run_result.outputs)
+
+        # Collect the event
+        self._event_collector.collect(event)
+
+    def _handle_extractor_node_failed(self, event: NodeRunFailedEvent) -> None:
+        """
+        Handle extractor node failed event.
+
+        Extractor node failures are collected for logging,
+        but the parent node is responsible for handling the error.
+        """
+        self._accumulate_node_usage(event.node_run_result.llm_usage)
+
+        # Collect the event for logging
+        self._event_collector.collect(event)

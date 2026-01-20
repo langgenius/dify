@@ -5,12 +5,12 @@ from sqlalchemy.orm import sessionmaker
 
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.file import file_manager
+from core.memory.base import BaseMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities import (
     AssistantPromptMessage,
     ImagePromptMessageContent,
     PromptMessage,
-    PromptMessageRole,
     TextPromptMessageContent,
     UserPromptMessage,
 )
@@ -24,7 +24,7 @@ from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.factory import DifyAPIRepositoryFactory
 
 
-class TokenBufferMemory:
+class TokenBufferMemory(BaseMemory):
     def __init__(
         self,
         conversation: Conversation,
@@ -115,10 +115,14 @@ class TokenBufferMemory:
                 return AssistantPromptMessage(content=prompt_message_contents)
 
     def get_history_prompt_messages(
-        self, max_token_limit: int = 2000, message_limit: int | None = None
+        self,
+        *,
+        max_token_limit: int = 2000,
+        message_limit: int | None = None,
     ) -> Sequence[PromptMessage]:
         """
         Get history prompt messages.
+
         :param max_token_limit: max token limit
         :param message_limit: message limit
         """
@@ -200,44 +204,3 @@ class TokenBufferMemory:
                 curr_message_tokens = self.model_instance.get_llm_num_tokens(prompt_messages)
 
         return prompt_messages
-
-    def get_history_prompt_text(
-        self,
-        human_prefix: str = "Human",
-        ai_prefix: str = "Assistant",
-        max_token_limit: int = 2000,
-        message_limit: int | None = None,
-    ) -> str:
-        """
-        Get history prompt text.
-        :param human_prefix: human prefix
-        :param ai_prefix: ai prefix
-        :param max_token_limit: max token limit
-        :param message_limit: message limit
-        :return:
-        """
-        prompt_messages = self.get_history_prompt_messages(max_token_limit=max_token_limit, message_limit=message_limit)
-
-        string_messages = []
-        for m in prompt_messages:
-            if m.role == PromptMessageRole.USER:
-                role = human_prefix
-            elif m.role == PromptMessageRole.ASSISTANT:
-                role = ai_prefix
-            else:
-                continue
-
-            if isinstance(m.content, list):
-                inner_msg = ""
-                for content in m.content:
-                    if isinstance(content, TextPromptMessageContent):
-                        inner_msg += f"{content.data}\n"
-                    elif isinstance(content, ImagePromptMessageContent):
-                        inner_msg += "[image]\n"
-
-                string_messages.append(f"{role}: {inner_msg.strip()}")
-            else:
-                message = f"{role}: {m.content}"
-                string_messages.append(message)
-
-        return "\n".join(string_messages)

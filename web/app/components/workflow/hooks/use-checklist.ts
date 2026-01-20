@@ -197,7 +197,8 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
         // Start nodes and Trigger nodes should not show unConnected error if they have validation errors
         // or if they are valid start nodes (even without incoming connections)
         const isStartNodeMeta = nodesExtraData?.[node.data.type as BlockEnum]?.metaData.isStart ?? false
-        const canSkipConnectionCheck = shouldCheckStartNode ? isStartNodeMeta : true
+        const isSubGraphNode = Boolean((node.data as { parent_node_id?: string }).parent_node_id)
+        const canSkipConnectionCheck = isSubGraphNode || (shouldCheckStartNode ? isStartNodeMeta : true)
 
         const isUnconnected = !validNodes.find(n => n.id === node.id)
         const shouldShowError = errorMessage || (isUnconnected && !canSkipConnectionCheck)
@@ -390,7 +391,8 @@ export const useChecklistBeforePublish = () => {
       }
 
       const isStartNodeMeta = nodesExtraData?.[node.data.type as BlockEnum]?.metaData.isStart ?? false
-      const canSkipConnectionCheck = shouldCheckStartNode ? isStartNodeMeta : true
+      const isSubGraphNode = Boolean((node.data as { parent_node_id?: string }).parent_node_id)
+      const canSkipConnectionCheck = isSubGraphNode || (shouldCheckStartNode ? isStartNodeMeta : true)
       const isUnconnected = !validNodes.find(n => n.id === node.id)
 
       if (isUnconnected && !canSkipConnectionCheck) {

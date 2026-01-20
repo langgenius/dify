@@ -70,6 +70,8 @@ class _NodeSnapshot:
     """Empty string means the node is not executing inside an iteration."""
     loop_id: str = ""
     """Empty string means the node is not executing inside a loop."""
+    mention_parent_id: str = ""
+    """Empty string means the node is not an extractor node."""
 
 
 class WorkflowResponseConverter:
@@ -131,6 +133,7 @@ class WorkflowResponseConverter:
             start_at=event.start_at,
             iteration_id=event.in_iteration_id or "",
             loop_id=event.in_loop_id or "",
+            mention_parent_id=event.in_mention_parent_id or "",
         )
         node_execution_id = NodeExecutionId(event.node_execution_id)
         self._node_snapshots[node_execution_id] = snapshot
@@ -287,6 +290,7 @@ class WorkflowResponseConverter:
                 created_at=int(snapshot.start_at.timestamp()),
                 iteration_id=event.in_iteration_id,
                 loop_id=event.in_loop_id,
+                mention_parent_id=event.in_mention_parent_id,
                 agent_strategy=event.agent_strategy,
             ),
         )
@@ -373,6 +377,7 @@ class WorkflowResponseConverter:
                 files=self.fetch_files_from_node_outputs(event.outputs or {}),
                 iteration_id=event.in_iteration_id,
                 loop_id=event.in_loop_id,
+                mention_parent_id=event.in_mention_parent_id,
             ),
         )
 
@@ -422,6 +427,7 @@ class WorkflowResponseConverter:
                 files=self.fetch_files_from_node_outputs(event.outputs or {}),
                 iteration_id=event.in_iteration_id,
                 loop_id=event.in_loop_id,
+                mention_parent_id=event.in_mention_parent_id,
                 retry_index=event.retry_index,
             ),
         )

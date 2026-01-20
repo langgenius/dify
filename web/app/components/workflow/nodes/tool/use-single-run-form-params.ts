@@ -32,7 +32,7 @@ const useSingleRunFormParams = ({
   const { inputs } = useNodeCrud<ToolNodeType>(id, payload)
 
   const hadVarParams = Object.keys(inputs.tool_parameters)
-    .filter(key => inputs.tool_parameters[key].type !== VarType.constant)
+    .filter(key => ![VarType.constant, VarType.mention].includes(inputs.tool_parameters[key].type))
     .map(k => inputs.tool_parameters[k])
 
   const hadVarSettings = Object.keys(inputs.tool_configurations)

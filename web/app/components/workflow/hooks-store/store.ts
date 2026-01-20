@@ -23,6 +23,7 @@ export type AvailableNodesMetaData = {
   nodesMap?: Record<BlockEnum, NodeDefault<any>>
 }
 export type CommonHooksFnMap = {
+  interactionMode?: 'default' | 'subgraph'
   doSyncWorkflowDraft: (
     notRefreshWhenSyncError?: boolean,
     callback?: {
@@ -45,6 +46,7 @@ export type CommonHooksFnMap = {
   handleWorkflowTriggerWebhookRunInWorkflow: (params: { nodeId: string }) => void
   handleWorkflowTriggerPluginRunInWorkflow: (nodeId?: string) => void
   handleWorkflowRunAllTriggersInWorkflow: (nodeIds: string[]) => void
+  subGraphSelectableNodeTypes?: BlockEnum[]
   availableNodesMetaData?: AvailableNodesMetaData
   getWorkflowRunAndTraceUrl: (runId?: string) => { runUrl: string, traceUrl: string }
   exportCheck?: () => Promise<void>
@@ -76,6 +78,7 @@ export type Shape = {
 } & CommonHooksFnMap
 
 export const createHooksStore = ({
+  interactionMode = 'default',
   doSyncWorkflowDraft = async () => noop(),
   syncWorkflowDraftWhenPageClose = noop,
   handleRefreshWorkflowDraft = noop,
@@ -91,6 +94,7 @@ export const createHooksStore = ({
   handleWorkflowTriggerWebhookRunInWorkflow = noop,
   handleWorkflowTriggerPluginRunInWorkflow = noop,
   handleWorkflowRunAllTriggersInWorkflow = noop,
+  subGraphSelectableNodeTypes,
   availableNodesMetaData = {
     nodes: [],
   },
@@ -118,6 +122,7 @@ export const createHooksStore = ({
 }: Partial<Shape>) => {
   return createStore<Shape>(set => ({
     refreshAll: props => set(state => ({ ...state, ...props })),
+    interactionMode,
     doSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose,
     handleRefreshWorkflowDraft,
@@ -133,6 +138,7 @@ export const createHooksStore = ({
     handleWorkflowTriggerWebhookRunInWorkflow,
     handleWorkflowTriggerPluginRunInWorkflow,
     handleWorkflowRunAllTriggersInWorkflow,
+    subGraphSelectableNodeTypes,
     availableNodesMetaData,
     getWorkflowRunAndTraceUrl,
     exportCheck,

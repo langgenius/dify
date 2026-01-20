@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { ResourceVarInputs } from '../types'
+import type { MentionConfig, ResourceVarInputs } from '../types'
 import type { CredentialFormSchema, FormOption } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Event, Tool } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
@@ -313,13 +313,33 @@ const FormInputItem: FC<Props> = ({
     }
   }
 
-  const handleValueChange = (newValue: any) => {
+  const handleValueChange = (newValue: any, newType?: VarKindType, mentionConfig?: MentionConfig | null) => {
+    const normalizedValue = isNumber ? Number.parseFloat(newValue) : newValue
+    const assemblePlaceholder = nodeId && variable
+      ? `{{#${nodeId}_ext_${variable}.result#}}`
+      : ''
+    const isAssembleValue = typeof normalizedValue === 'string'
+      && assemblePlaceholder
+      && normalizedValue.includes(assemblePlaceholder)
+    const resolvedType = isAssembleValue
+      ? VarKindType.mixed
+      : newType ?? (varInput?.type === VarKindType.mention ? VarKindType.mention : getVarKindType())
+    const resolvedMentionConfig = resolvedType === VarKindType.mention
+      ? (mentionConfig ?? varInput?.mention_config ?? {
+        extractor_node_id: '',
+        output_selector: [],
+        null_strategy: 'use_default',
+        default_value: '',
+      })
+      : undefined
+
     onChange({
       ...value,
       [variable]: {
         ...varInput,
-        type: getVarKindType(),
-        value: isNumber ? Number.parseFloat(newValue) : newValue,
+        type: resolvedType,
+        value: normalizedValue,
+        mention_config: resolvedMentionConfig,
       },
     })
   }
@@ -435,6 +455,8 @@ const FormInputItem: FC<Props> = ({
           currentTool={currentTool}
           currentProvider={currentProvider}
           isFilterFileVar={isBoolean}
+          toolNodeId={nodeId}
+          paramKey={variable}
         />
       )}
       {isNumber && isConstant && (
@@ -481,13 +503,13 @@ const FormInputItem: FC<Props> = ({
           placeholder={placeholder?.[language] || placeholder?.en_US}
           renderOption={options.some((opt: any) => opt.icon)
             ? ({ item }) => (
-                <div className="flex items-center">
-                  {item.icon && (
-                    <img src={item.icon} alt="" className="mr-2 h-4 w-4" />
-                  )}
-                  <span>{item.name}</span>
-                </div>
-              )
+              <div className="flex items-center">
+                {item.icon && (
+                  <img src={item.icon} alt="" className="mr-2 h-4 w-4" />
+                )}
+                <span>{item.name}</span>
+              </div>
+            )
             : undefined}
         />
       )}
@@ -592,14 +614,14 @@ const FormInputItem: FC<Props> = ({
               <span className="absolute inset-y-0 right-0 flex items-center pr-2">
                 {isLoadingOptions
                   ? (
-                      <RiLoader4Line className="h-3.5 w-3.5 animate-spin text-text-secondary" />
-                    )
+                    <RiLoader4Line className="h-3.5 w-3.5 animate-spin text-text-secondary" />
+                  )
                   : (
-                      <ChevronDownIcon
-                        className="h-4 w-4 text-text-quaternary group-hover/simple-select:text-text-secondary"
-                        aria-hidden="true"
-                      />
-                    )}
+                    <ChevronDownIcon
+                      className="h-4 w-4 text-text-quaternary group-hover/simple-select:text-text-secondary"
+                      aria-hidden="true"
+                    />
+                  )}
               </span>
             </ListboxButton>
             <ListboxOptions className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-1 py-1 text-base shadow-lg backdrop-blur-sm focus:outline-none sm:text-sm">

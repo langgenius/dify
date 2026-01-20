@@ -7,6 +7,7 @@ from typing import Any, Generic, TypeAlias, TypeVar, overload
 
 from configs import dify_config
 from core.file.models import File
+from core.model_runtime.entities import PromptMessage
 from core.variables.segments import (
     ArrayFileSegment,
     ArraySegment,
@@ -285,6 +286,10 @@ class VariableTruncator(BaseTruncator):
             #
             # This check ensures that `list[File]` are handled separately
             if isinstance(item, File):
+                truncated_value.append(item)
+                continue
+            # Handle PromptMessage types - convert to dict for truncation
+            if isinstance(item, PromptMessage):
                 truncated_value.append(item)
                 continue
             if i >= target_length:

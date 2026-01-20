@@ -1,7 +1,10 @@
+import logging
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import select
+
+logger = logging.getLogger(__name__)
 from sqlalchemy.orm import Session
 
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
@@ -184,6 +187,7 @@ class ToolNode(Node[ToolNodeData]):
             tool_parameters (Sequence[ToolParameter]): The list of tool parameters.
             variable_pool (VariablePool): The variable pool containing the variables.
             node_data (ToolNodeData): The data associated with the tool node.
+            for_log (bool): Whether to generate parameters for logging.
 
         Returns:
             Mapping[str, Any]: A dictionary containing the generated parameters.
@@ -199,14 +203,37 @@ class ToolNode(Node[ToolNodeData]):
                 continue
             tool_input = node_data.tool_parameters[parameter_name]
             if tool_input.type == "variable":
-                variable = variable_pool.get(tool_input.value)
+                if not isinstance(tool_input.value, list):
+                    raise ToolParameterError(f"Invalid variable selector for parameter '{parameter_name}'")
+                selector = tool_input.value
+                variable = variable_pool.get(selector)
                 if variable is None:
                     if parameter.required:
-                        raise ToolParameterError(f"Variable {tool_input.value} does not exist")
+                        raise ToolParameterError(f"Variable {selector} does not exist")
                     continue
                 parameter_value = variable.value
+            elif tool_input.type == "mention":
+                # Mention type: get value from extractor node's output
+                if tool_input.mention_config is None:
+                    raise ToolParameterError(
+                        f"mention_config is required for mention type parameter '{parameter_name}'"
+                    )
+                mention_config = tool_input.mention_config.model_dump()
+                try:
+                    parameter_value, found = variable_pool.resolve_mention(
+                        mention_config, parameter_name=parameter_name
+                    )
+                    if not found and parameter.required:
+                        raise ToolParameterError(
+                            f"Extractor output not found for required parameter '{parameter_name}'"
+                        )
+                    if not found:
+                        continue
+                except ValueError as e:
+                    raise ToolParameterError(str(e)) from e
             elif tool_input.type in {"mixed", "constant"}:
-                segment_group = variable_pool.convert_template(str(tool_input.value))
+                template = str(tool_input.value)
+                segment_group = variable_pool.convert_template(template)
                 parameter_value = segment_group.log if for_log else segment_group.text
             else:
                 raise ToolParameterError(f"Unknown tool input type '{tool_input.type}'")
@@ -488,8 +515,12 @@ class ToolNode(Node[ToolNodeData]):
                 for selector in selectors:
                     result[selector.variable] = selector.value_selector
             elif input.type == "variable":
-                selector_key = ".".join(input.value)
-                result[f"#{selector_key}#"] = input.value
+                if isinstance(input.value, list):
+                    selector_key = ".".join(input.value)
+                    result[f"#{selector_key}#"] = input.value
+            elif input.type == "mention":
+                # Mention type: value is handled by extractor node, no direct variable reference
+                pass
             elif input.type == "constant":
                 pass
 

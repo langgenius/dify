@@ -8,12 +8,20 @@ from configs import dify_config
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
 from core.file.models import File
-from core.memory.token_buffer_memory import TokenBufferMemory
+from core.memory import NodeTokenBufferMemory, TokenBufferMemory
+from core.memory.base import BaseMemory
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.llm_entities import LLMUsage
+from core.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    MultiModalPromptMessageContent,
+    PromptMessage,
+    PromptMessageContentUnionTypes,
+    PromptMessageRole,
+)
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.prompt.entities.advanced_prompt_entities import MemoryConfig
+from core.prompt.entities.advanced_prompt_entities import MemoryConfig, MemoryMode
 from core.variables.segments import ArrayAnySegment, ArrayFileSegment, FileSegment, NoneSegment, StringSegment
 from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.llm.entities import ModelConfig
@@ -86,25 +94,56 @@ def fetch_files(variable_pool: VariablePool, selector: Sequence[str]) -> Sequenc
 
 
 def fetch_memory(
-    variable_pool: VariablePool, app_id: str, node_data_memory: MemoryConfig | None, model_instance: ModelInstance
-) -> TokenBufferMemory | None:
+    variable_pool: VariablePool,
+    app_id: str,
+    tenant_id: str,
+    node_data_memory: MemoryConfig | None,
+    model_instance: ModelInstance,
+    node_id: str = "",
+) -> BaseMemory | None:
+    """
+    Fetch memory based on configuration mode.
+
+    Returns TokenBufferMemory for conversation mode (default),
+    or NodeTokenBufferMemory for node mode (Chatflow only).
+
+    :param variable_pool: Variable pool containing system variables
+    :param app_id: Application ID
+    :param tenant_id: Tenant ID
+    :param node_data_memory: Memory configuration
+    :param model_instance: Model instance for token counting
+    :param node_id: Node ID in the workflow (required for node mode)
+    :return: Memory instance or None if not applicable
+    """
     if not node_data_memory:
         return None
 
-    # get conversation id
+    # Get conversation_id from variable pool (required for both modes in Chatflow)
     conversation_id_variable = variable_pool.get(["sys", SystemVariableKey.CONVERSATION_ID])
     if not isinstance(conversation_id_variable, StringSegment):
         return None
     conversation_id = conversation_id_variable.value
 
-    with Session(db.engine, expire_on_commit=False) as session:
-        stmt = select(Conversation).where(Conversation.app_id == app_id, Conversation.id == conversation_id)
-        conversation = session.scalar(stmt)
-        if not conversation:
+    # Return appropriate memory type based on mode
+    if node_data_memory.mode == MemoryMode.NODE:
+        # Node-level memory (Chatflow only)
+        if not node_id:
             return None
-
-    memory = TokenBufferMemory(conversation=conversation, model_instance=model_instance)
-    return memory
+        return NodeTokenBufferMemory(
+            app_id=app_id,
+            conversation_id=conversation_id,
+            node_id=node_id,
+            tenant_id=tenant_id,
+            model_instance=model_instance,
+        )
+    else:
+        # Conversation-level memory (default)
+        with Session(db.engine, expire_on_commit=False) as session:
+            stmt = select(Conversation).where(Conversation.app_id == app_id, Conversation.id == conversation_id)
+            conversation = session.scalar(stmt)
+            if not conversation:
+                return None
+        return TokenBufferMemory(conversation=conversation, model_instance=model_instance)
 
 
 def deduct_llm_quota(tenant_id: str, model_instance: ModelInstance, usage: LLMUsage):
@@ -170,3 +209,87 @@ def deduct_llm_quota(tenant_id: str, model_instance: ModelInstance, usage: LLMUs
                 )
                 session.execute(stmt)
                 session.commit()
+
+
+def build_context(
+    prompt_messages: Sequence[PromptMessage],
+    assistant_response: str,
+) -> list[PromptMessage]:
+    """
+    Build context from prompt messages and assistant response.
+    Excludes system messages and includes the current LLM response.
+    Returns list[PromptMessage] for use with ArrayPromptMessageSegment.
+
+    Note: Multi-modal content base64 data is truncated to avoid storing large data in context.
+    """
+    context_messages: list[PromptMessage] = [
+        _truncate_multimodal_content(m) for m in prompt_messages if m.role != PromptMessageRole.SYSTEM
+    ]
+    context_messages.append(AssistantPromptMessage(content=assistant_response))
+    return context_messages
+
+
+def _truncate_multimodal_content(message: PromptMessage) -> PromptMessage:
+    """
+    Truncate multi-modal content base64 data in a message to avoid storing large data.
+    Preserves the PromptMessage structure for ArrayPromptMessageSegment compatibility.
+
+    If file_ref is present, clears base64_data and url (they can be restored later).
+    Otherwise, truncates base64_data as fallback for legacy data.
+    """
+    content = message.content
+    if content is None or isinstance(content, str):
+        return message
+
+    # Process list content, handling multi-modal data based on file_ref availability
+    new_content: list[PromptMessageContentUnionTypes] = []
+    for item in content:
+        if isinstance(item, MultiModalPromptMessageContent):
+            if item.file_ref:
+                # Clear base64 and url, keep file_ref for later restoration
+                new_content.append(item.model_copy(update={"base64_data": "", "url": ""}))
+            else:
+                # Fallback: truncate base64_data if no file_ref (legacy data)
+                truncated_base64 = ""
+                if item.base64_data:
+                    truncated_base64 = item.base64_data[:10] + "...[TRUNCATED]..." + item.base64_data[-10:]
+                new_content.append(item.model_copy(update={"base64_data": truncated_base64}))
+        else:
+            new_content.append(item)
+
+    return message.model_copy(update={"content": new_content})
+
+
+def restore_multimodal_content_in_messages(messages: Sequence[PromptMessage]) -> list[PromptMessage]:
+    """
+    Restore multimodal content (base64 or url) in a list of PromptMessages.
+
+    When context is saved, base64_data is cleared to save storage space.
+    This function restores the content by parsing file_ref in each MultiModalPromptMessageContent.
+
+    Args:
+        messages: List of PromptMessages that may contain truncated multimodal content
+
+    Returns:
+        List of PromptMessages with restored multimodal content
+    """
+    from core.file import file_manager
+
+    return [_restore_message_content(msg, file_manager) for msg in messages]
+
+
+def _restore_message_content(message: PromptMessage, file_manager) -> PromptMessage:
+    """Restore multimodal content in a single PromptMessage."""
+    content = message.content
+    if content is None or isinstance(content, str):
+        return message
+
+    restored_content: list[PromptMessageContentUnionTypes] = []
+    for item in content:
+        if isinstance(item, MultiModalPromptMessageContent):
+            restored_item = file_manager.restore_multimodal_content(item)
+            restored_content.append(cast(PromptMessageContentUnionTypes, restored_item))
+        else:
+            restored_content.append(item)
+
+    return message.model_copy(update={"content": restored_content})

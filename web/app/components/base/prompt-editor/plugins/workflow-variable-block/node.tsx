@@ -2,6 +2,7 @@ import type { LexicalNode, NodeKey, SerializedLexicalNode } from 'lexical'
 import type { GetVarType, WorkflowVariableBlockType } from '../../types'
 import type { Var } from '@/app/components/workflow/types'
 import { DecoratorNode } from 'lexical'
+import { BlockEnum } from '@/app/components/workflow/types'
 import WorkflowVariableBlockComponent from './component'
 
 export type WorkflowNodesMap = WorkflowVariableBlockType['workflowNodesMap']
@@ -120,7 +121,12 @@ export class WorkflowVariableBlockNode extends DecoratorNode<React.JSX.Element> 
   }
 
   getTextContent(): string {
-    return `{{#${this.getVariables().join('.')}#}}`
+    const variables = this.getVariables()
+    const node = this.getWorkflowNodesMap()?.[variables[0]]
+    const isContextVariable = (node?.type === BlockEnum.Agent || node?.type === BlockEnum.LLM)
+      && variables[variables.length - 1] === 'context'
+    const marker = isContextVariable ? '@' : '#'
+    return `{{${marker}${variables.join('.')}${marker}}}`
   }
 }
 export function $createWorkflowVariableBlockNode(variables: string[], workflowNodesMap: WorkflowNodesMap, getVarType?: GetVarType, environmentVariables?: Var[], conversationVariables?: Var[], ragVariables?: Var[]): WorkflowVariableBlockNode {

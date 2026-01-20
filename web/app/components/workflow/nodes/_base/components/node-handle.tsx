@@ -12,6 +12,7 @@ import {
   Handle,
   Position,
 } from 'reactflow'
+import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { cn } from '@/utils/classnames'
 import BlockSelector from '../../../block-selector'
 import {
@@ -46,6 +47,8 @@ export const NodeTargetHandle = memo(({
   const [open, setOpen] = useState(false)
   const { handleNodeAdd } = useNodesInteractions()
   const { getNodesReadOnly } = useNodesReadOnly()
+  const interactionMode = useHooksStore(s => s.interactionMode)
+  const allowGraphActions = interactionMode !== 'subgraph'
   const connected = data._connectedTargetHandleIds?.includes(handleId)
   const { availablePrevBlocks } = useAvailableBlocks(data.type, data.isInIteration || data.isInLoop)
   const isConnectable = !!availablePrevBlocks.length
@@ -55,9 +58,9 @@ export const NodeTargetHandle = memo(({
   }, [])
   const handleHandleClick = useCallback((e: MouseEvent) => {
     e.stopPropagation()
-    if (!connected)
+    if (!connected && allowGraphActions)
       setOpen(v => !v)
-  }, [connected])
+  }, [allowGraphActions, connected])
   const handleSelect = useCallback((type: BlockEnum, pluginDefaultValue?: PluginDefaultValue) => {
     handleNodeAdd(
       {
@@ -91,11 +94,11 @@ export const NodeTargetHandle = memo(({
             || data.type === BlockEnum.TriggerPlugin) && 'opacity-0',
           handleClassName,
         )}
-        isConnectable={isConnectable}
-        onClick={handleHandleClick}
+        isConnectable={allowGraphActions && isConnectable}
+        onClick={allowGraphActions ? handleHandleClick : undefined}
       >
         {
-          !connected && isConnectable && !getNodesReadOnly() && (
+          allowGraphActions && !connected && isConnectable && !getNodesReadOnly() && (
             <BlockSelector
               open={open}
               onOpenChange={handleOpenChange}
@@ -135,6 +138,8 @@ export const NodeSourceHandle = memo(({
   const [open, setOpen] = useState(false)
   const { handleNodeAdd } = useNodesInteractions()
   const { getNodesReadOnly } = useNodesReadOnly()
+  const interactionMode = useHooksStore(s => s.interactionMode)
+  const allowGraphActions = interactionMode !== 'subgraph'
   const { availableNextBlocks } = useAvailableBlocks(data.type, data.isInIteration || data.isInLoop)
   const isConnectable = !!availableNextBlocks.length
   const isChatMode = useIsChatMode()
@@ -145,8 +150,9 @@ export const NodeSourceHandle = memo(({
   }, [])
   const handleHandleClick = useCallback((e: MouseEvent) => {
     e.stopPropagation()
-    setOpen(v => !v)
-  }, [])
+    if (allowGraphActions)
+      setOpen(v => !v)
+  }, [allowGraphActions])
   const handleSelect = useCallback((type: BlockEnum, pluginDefaultValue?: PluginDefaultValue) => {
     handleNodeAdd(
       {
@@ -161,7 +167,7 @@ export const NodeSourceHandle = memo(({
   }, [handleNodeAdd, id, handleId])
 
   useEffect(() => {
-    if (!shouldAutoOpenStartNodeSelector)
+    if (!shouldAutoOpenStartNodeSelector || !allowGraphActions)
       return
 
     if (isChatMode) {
@@ -198,8 +204,8 @@ export const NodeSourceHandle = memo(({
         !connected && 'after:opacity-0',
         handleClassName,
       )}
-      isConnectable={isConnectable}
-      onClick={handleHandleClick}
+      isConnectable={allowGraphActions && isConnectable}
+      onClick={allowGraphActions ? handleHandleClick : undefined}
     >
       <div className="absolute -top-1 left-1/2 hidden -translate-x-1/2 -translate-y-full rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg p-1.5 shadow-lg group-hover/handle:block">
         <div className="system-xs-regular text-text-tertiary">
@@ -214,7 +220,7 @@ export const NodeSourceHandle = memo(({
         </div>
       </div>
       {
-        isConnectable && !getNodesReadOnly() && (
+        allowGraphActions && isConnectable && !getNodesReadOnly() && (
           <BlockSelector
             open={open}
             onOpenChange={handleOpenChange}
