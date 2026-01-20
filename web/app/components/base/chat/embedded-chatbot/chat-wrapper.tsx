@@ -68,9 +68,9 @@ const ChatWrapper = () => {
   }, [appParams, currentConversationItem?.introduction])
   const {
     chatList,
-    setTargetMessageId,
     handleSend,
     handleStop,
+    handleSwitchSibling,
     isResponding: respondingState,
     suggestedQuestions,
   } = useChat(
@@ -153,6 +153,12 @@ const ChatWrapper = () => {
     const parentAnswer = chatList.find(item => item.id === question.parentMessageId)
     doSend(editedQuestion ? editedQuestion.message : question.content, editedQuestion ? editedQuestion.files : question.message_files, true, isValidGeneratedAnswer(parentAnswer) ? parentAnswer : null)
   }, [chatList, doSend])
+
+  const doSwitchSibling = useCallback((siblingMessageId: string) => {
+    handleSwitchSibling(siblingMessageId, {
+      onGetSuggestedQuestions: responseItemId => fetchSuggestedQuestions(responseItemId, isInstalledApp, appId),
+    })
+  }, [handleSwitchSibling, isInstalledApp, appId])
 
   const messageList = useMemo(() => {
     if (currentConversationId || chatList.length > 1)
@@ -268,7 +274,7 @@ const ChatWrapper = () => {
       answerIcon={answerIcon}
       hideProcessDetail
       themeBuilder={themeBuilder}
-      switchSibling={siblingMessageId => setTargetMessageId(siblingMessageId)}
+      switchSibling={doSwitchSibling}
       inputDisabled={inputDisabled}
       questionIcon={
         initUserVariables?.avatar_url
