@@ -343,7 +343,8 @@ export const useChat = (
           tool_elapsed_time,
         }: any) => {
           if (!isAgentMode) {
-            responseItem.content = responseItem.content + message
+            if (chunk_type === 'text')
+              responseItem.content = responseItem.content + message
           }
           else {
             const lastThought = responseItem.agent_thoughts?.[responseItem.agent_thoughts?.length - 1]
