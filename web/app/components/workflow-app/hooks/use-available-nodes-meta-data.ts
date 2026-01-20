@@ -21,9 +21,9 @@ export const useAvailableNodesMetaData = () => {
     ...StartDefault,
     metaData: {
       ...StartDefault.metaData,
-      isUndeletable: isChatMode, // start node is undeletable in chat mode, @use-nodes-interactions: handleNodeDelete function
+      isUndeletable: true, // start node is always undeletable - it's the workflow entry point
     },
-  }), [isChatMode])
+  }), [])
 
   const mergedNodesMetaData = useMemo(() => [
     ...WORKFLOW_COMMON_NODES,
