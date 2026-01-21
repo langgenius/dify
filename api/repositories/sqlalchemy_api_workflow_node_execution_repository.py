@@ -355,31 +355,13 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
     @staticmethod
     def get_by_run(
         session: Session,
-        run: RunContext,
+        run_id: str,
     ) -> Sequence[WorkflowNodeExecutionModel]:
         """
-        Fetch node executions for a run using the composite index on
-        (tenant_id, app_id, workflow_id, triggered_from, workflow_run_id).
+        Fetch node executions for a run using workflow_run_id.
         """
-        tuple_values = [
-            (
-                run["tenant_id"],
-                run["app_id"],
-                run["workflow_id"],
-                DifyAPISQLAlchemyWorkflowNodeExecutionRepository._map_run_triggered_from_to_node_triggered_from(
-                    run["triggered_from"]
-                ),
-                run["run_id"],
-            )
-        ]
         stmt = select(WorkflowNodeExecutionModel).where(
-            tuple_(
-                WorkflowNodeExecutionModel.tenant_id,
-                WorkflowNodeExecutionModel.app_id,
-                WorkflowNodeExecutionModel.workflow_id,
-                WorkflowNodeExecutionModel.triggered_from,
-                WorkflowNodeExecutionModel.workflow_run_id,
-            ).in_(tuple_values)
+            WorkflowNodeExecutionModel.workflow_run_id == run_id
         )
         return list(session.scalars(stmt))
 

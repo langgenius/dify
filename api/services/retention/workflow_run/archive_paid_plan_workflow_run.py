@@ -431,14 +431,7 @@ class WorkflowRunArchiver:
         repo = self._get_workflow_run_repo()
         app_logs = repo.get_app_logs_by_run_id(session, run.id)
         table_data["workflow_app_logs"] = [self._row_to_dict(row) for row in app_logs]
-        run_context: DifyAPISQLAlchemyWorkflowNodeExecutionRepository.RunContext = {
-            "run_id": run.id,
-            "tenant_id": run.tenant_id,
-            "app_id": run.app_id,
-            "workflow_id": run.workflow_id,
-            "triggered_from": run.triggered_from,
-        }
-        node_exec_records = DifyAPISQLAlchemyWorkflowNodeExecutionRepository.get_by_run(session, run_context)
+        node_exec_records = DifyAPISQLAlchemyWorkflowNodeExecutionRepository.get_by_run(session, run.id)
         node_exec_ids = [record.id for record in node_exec_records]
         offload_records = DifyAPISQLAlchemyWorkflowNodeExecutionRepository.get_offloads_by_execution_ids(
             session,
