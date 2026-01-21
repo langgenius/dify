@@ -2,7 +2,6 @@ import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { PromptVariable } from '@/models/debug'
 import { RiCloseLine, RiInformation2Fill } from '@remixicon/react'
-import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import AnnotationReply from '@/app/components/base/features/new-feature-panel/annotation-reply'
 
@@ -18,7 +17,6 @@ import SpeechToText from '@/app/components/base/features/new-feature-panel/speec
 import TextToSpeech from '@/app/components/base/features/new-feature-panel/text-to-speech'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { useDocLink } from '@/context/i18n'
 
 type Props = {
   show: boolean
@@ -46,7 +44,6 @@ const NewFeaturePanel = ({
   onAutoAddPromptVariable,
 }: Props) => {
   const { t } = useTranslation()
-  const docLink = useDocLink()
   const { data: speech2textDefaultModel } = useDefaultModel(ModelTypeEnum.speech2text)
   const { data: text2speechDefaultModel } = useDefaultModel(ModelTypeEnum.tts)
 
@@ -76,14 +73,6 @@ const NewFeaturePanel = ({
                 </div>
                 <div className="system-xs-medium p-1 text-text-primary">
                   <span>{isChatMode ? t('common.fileUploadTip', { ns: 'workflow' }) : t('common.ImageUploadLegacyTip', { ns: 'workflow' })}</span>
-                  <a
-                    className="text-text-accent"
-                    href={docLink('/guides/workflow/bulletin')}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    {t('common.featuresDocLink', { ns: 'workflow' })}
-                  </a>
                 </div>
               </div>
             </div>
