@@ -4,13 +4,15 @@ import json
 import logging
 import secrets
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import Any
 
 import click
 import sqlalchemy as sa
 from flask import current_app
 from pydantic import TypeAdapter
-from sqlalchemy import select
+from sqlalchemy import event, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 
@@ -53,6 +55,28 @@ from services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs i
 from tasks.remove_app_and_related_data_task import delete_draft_variables_batch
 
 logger = logging.getLogger(__name__)
+
+
+@contextmanager
+def _log_slow_queries(engine: sa.engine.Engine, threshold_ms: float) -> Iterator[None]:
+    def _before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+        context._query_start_time = time.perf_counter()
+
+    def _after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+        start_time = getattr(context, "_query_start_time", None)
+        if start_time is None:
+            return
+        elapsed_ms = (time.perf_counter() - start_time) * 1000
+        if elapsed_ms >= threshold_ms:
+            logger.warning("Slow SQL query (%.2fms): %s", elapsed_ms, statement)
+
+    event.listen(engine, "before_cursor_execute", _before_cursor_execute)
+    event.listen(engine, "after_cursor_execute", _after_cursor_execute)
+    try:
+        yield
+    finally:
+        event.remove(engine, "before_cursor_execute", _before_cursor_execute)
+        event.remove(engine, "after_cursor_execute", _after_cursor_execute)
 
 
 @click.command("reset-password", help="Reset the account password.")
@@ -985,6 +1009,13 @@ def clean_workflow_runs(
 @click.option("--limit", default=None, type=int, help="Maximum number of runs to archive.")
 @click.option("--dry-run", is_flag=True, help="Preview without archiving.")
 @click.option("--delete-after-archive", is_flag=True, help="Delete runs and related data after archiving.")
+@click.option(
+    "--slow-ms",
+    default=1000,
+    show_default=True,
+    type=int,
+    help="Log SQL queries slower than this threshold (ms).",
+)
 def archive_workflow_runs(
     tenant_ids: str | None,
     before_days: int,
@@ -997,6 +1028,7 @@ def archive_workflow_runs(
     limit: int | None,
     dry_run: bool,
     delete_after_archive: bool,
+    slow_ms: int,
 ):
     """
     Archive workflow runs for paid plan tenants older than the specified days.
@@ -1058,7 +1090,9 @@ def archive_workflow_runs(
         dry_run=dry_run,
         delete_after_archive=delete_after_archive,
     )
-    summary = archiver.run()
+    logger.info("Enable slow query logging for archive-workflow-runs (>=%sms).", slow_ms)
+    with _log_slow_queries(db.engine, slow_ms):
+        summary = archiver.run()
     click.echo(
         click.style(
             f"Summary: processed={summary.total_runs_processed}, archived={summary.runs_archived}, "
