@@ -67,6 +67,7 @@ const StepTwo: FC<StepTwoProps> = ({
     initialSegmentationType: currentDataset?.doc_form === ChunkingMode.parentChild ? ProcessMode.parentChild : ProcessMode.general,
     initialSummaryIndexSetting: currentDataset?.summary_index_setting,
   })
+  const showSummaryIndexSetting = !currentDataset
   const indexing = useIndexingConfig({
     initialIndexType: propsIndexingType,
     initialEmbeddingModel: currentDataset?.embedding_model ? { provider: currentDataset.embedding_model_provider, model: currentDataset.embedding_model } : undefined,
@@ -218,6 +219,7 @@ const StepTwo: FC<StepTwoProps> = ({
             onPreview={updatePreview}
             onReset={segmentation.resetToDefaults}
             locale={locale}
+            showSummaryIndexSetting={showSummaryIndexSetting}
             summaryIndexSetting={segmentation.summaryIndexSetting}
             onSummaryIndexSettingChange={segmentation.handleSummaryIndexSettingChange}
           />
@@ -239,6 +241,7 @@ const StepTwo: FC<StepTwoProps> = ({
             onRuleToggle={segmentation.toggleRule}
             onPreview={updatePreview}
             onReset={segmentation.resetToDefaults}
+            showSummaryIndexSetting={showSummaryIndexSetting}
             summaryIndexSetting={segmentation.summaryIndexSetting}
             onSummaryIndexSettingChange={segmentation.handleSummaryIndexSettingChange}
           />

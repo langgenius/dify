@@ -43,7 +43,7 @@ export type UseSegmentationStateOptions = {
 }
 
 export const useSegmentationState = (options: UseSegmentationStateOptions = {}) => {
-  const { initialSegmentationType } = options
+  const { initialSegmentationType, initialSummaryIndexSetting } = options
 
   // Segmentation type (general or parent-child)
   const [segmentationType, setSegmentationType] = useState<ProcessMode>(
@@ -59,8 +59,8 @@ export const useSegmentationState = (options: UseSegmentationStateOptions = {}) 
   // Pre-processing rules
   const [rules, setRules] = useState<PreProcessingRule[]>([])
   const [defaultConfig, setDefaultConfig] = useState<Rules>()
-  const [summaryIndexSetting, setSummaryIndexSetting] = useState<SummaryIndexSettingType | undefined>()
-  const summaryIndexSettingRef = useRef<SummaryIndexSettingType | undefined>(summaryIndexSetting)
+  const [summaryIndexSetting, setSummaryIndexSetting] = useState<SummaryIndexSettingType | undefined>(initialSummaryIndexSetting)
+  const summaryIndexSettingRef = useRef<SummaryIndexSettingType | undefined>(initialSummaryIndexSetting)
   const handleSummaryIndexSettingChange = useCallback((payload: SummaryIndexSettingType) => {
     setSummaryIndexSetting({ ...summaryIndexSettingRef.current, ...payload })
     summaryIndexSettingRef.current = { ...summaryIndexSettingRef.current, ...payload }

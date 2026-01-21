@@ -49,6 +49,7 @@ type ParentChildOptionsProps = {
   onRuleToggle: (id: string) => void
   onPreview: () => void
   onReset: () => void
+  showSummaryIndexSetting?: boolean
 }
 
 export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
@@ -69,6 +70,7 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
   onSummaryIndexSettingChange,
   onPreview,
   onReset,
+  showSummaryIndexSetting,
 }) => {
   const { t } = useTranslation()
 
@@ -188,13 +190,17 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
                 </label>
               </div>
             ))}
-            <div className="mt-3">
-              <SummaryIndexSetting
-                entry="create-document"
-                summaryIndexSetting={summaryIndexSetting}
-                onSummaryIndexSettingChange={onSummaryIndexSettingChange}
-              />
-            </div>
+            {
+              showSummaryIndexSetting && (
+                <div className="mt-3">
+                  <SummaryIndexSetting
+                    entry="create-document"
+                    summaryIndexSetting={summaryIndexSetting}
+                    onSummaryIndexSettingChange={onSummaryIndexSettingChange}
+                  />
+                </div>
+              )
+            }
           </div>
         </div>
       </div>

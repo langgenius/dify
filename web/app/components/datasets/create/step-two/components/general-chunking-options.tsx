@@ -53,6 +53,7 @@ type GeneralChunkingOptionsProps = {
   onReset: () => void
   // Locale
   locale: string
+  showSummaryIndexSetting?: boolean
   summaryIndexSetting?: SummaryIndexSettingType
   onSummaryIndexSettingChange?: (payload: SummaryIndexSettingType) => void
 }
@@ -77,6 +78,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
   onPreview,
   onReset,
   locale,
+  showSummaryIndexSetting,
   summaryIndexSetting,
   onSummaryIndexSettingChange,
 }) => {
@@ -151,13 +153,17 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
                 </label>
               </div>
             ))}
-            <div className="mt-3">
-              <SummaryIndexSetting
-                entry="create-document"
-                summaryIndexSetting={summaryIndexSetting}
-                onSummaryIndexSettingChange={onSummaryIndexSettingChange}
-              />
-            </div>
+            {
+              showSummaryIndexSetting && (
+                <div className="mt-3">
+                  <SummaryIndexSetting
+                    entry="create-document"
+                    summaryIndexSetting={summaryIndexSetting}
+                    onSummaryIndexSettingChange={onSummaryIndexSettingChange}
+                  />
+                </div>
+              )
+            }
             {IS_CE_EDITION && (
               <>
                 <Divider type="horizontal" className="my-4 bg-divider-subtle" />
