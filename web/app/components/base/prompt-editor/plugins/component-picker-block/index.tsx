@@ -286,6 +286,10 @@ const ComponentPicker = ({
                 <div
                   className="w-full"
                   role="presentation"
+                  onMouseDown={(event) => {
+                    event.preventDefault()
+                    event.stopPropagation()
+                  }}
                 >
                   <SegmentedControl
                     size="small"
