@@ -26,6 +26,7 @@
   "list.action.archive": "Archivar",
   "list.action.batchAdd": "Agregar en lotes",
   "list.action.delete": "Eliminar",
+  "list.action.download": "Descargar",
   "list.action.enableWarning": "El archivo archivado no puede habilitarse",
   "list.action.pause": "Pausa",
   "list.action.resume": "Reanudar",
