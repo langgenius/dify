@@ -19,7 +19,7 @@ const Placeholder = ({ disableVariableInsertion = false, hasSelectedAgent = fals
       const textNode = new CustomTextNode(text)
       $insertNodes([textNode])
     })
-    editor.dispatchCommand(FOCUS_COMMAND, undefined as any)
+    editor.dispatchCommand(FOCUS_COMMAND, new FocusEvent('focus'))
   }, [editor])
 
   return (
