@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
 import dynamic from 'next/dynamic'
@@ -9,6 +10,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
 } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { FeaturesProvider } from '@/app/components/base/features'
@@ -35,9 +37,11 @@ import { AppModeEnum } from '@/types/app'
 import ViewPicker from '../workflow/view-picker'
 import WorkflowAppMain from './components/workflow-main'
 import { useGetRunAndTraceUrl } from './hooks/use-get-run-and-trace-url'
+import { useNodesSyncDraft } from './hooks/use-nodes-sync-draft'
 import {
   useWorkflowInit,
 } from './hooks/use-workflow-init'
+import { useWorkflowRefreshDraft } from './hooks/use-workflow-refresh-draft'
 import { parseAsViewType, WORKFLOW_VIEW_PARAM_KEY } from './search-params'
 import { createWorkflowSlice } from './store/workflow/workflow-slice'
 
@@ -45,22 +49,60 @@ const SkillMain = dynamic(() => import('@/app/components/workflow/skill/main'), 
   ssr: false,
 })
 
+type WorkflowViewContentProps = {
+  graphContent: ReactNode
+}
+
+const WorkflowViewContent = ({
+  graphContent,
+}: WorkflowViewContentProps) => {
+  const [viewType, doSetViewType] = useQueryState(WORKFLOW_VIEW_PARAM_KEY, parseAsViewType)
+  const { syncWorkflowDraftImmediately } = useNodesSyncDraft()
+  const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
+  const pendingSyncRef = useRef<Promise<void> | null>(null)
+
+  const handleViewTypeChange = useCallback((type: ViewType) => {
+    if (viewType === ViewType.graph && type !== viewType)
+      pendingSyncRef.current = syncWorkflowDraftImmediately(true).catch(() => {})
+
+    doSetViewType(type)
+    if (type === ViewType.graph) {
+      const pending = pendingSyncRef.current
+      if (pending) {
+        pending.finally(() => {
+          handleRefreshWorkflowDraft()
+        })
+        pendingSyncRef.current = null
+      }
+      else {
+        handleRefreshWorkflowDraft()
+      }
+    }
+  }, [doSetViewType, handleRefreshWorkflowDraft, syncWorkflowDraftImmediately, viewType])
+
+  return (
+    <div className="relative h-full w-full">
+      <ViewPicker
+        value={viewType}
+        onChange={handleViewTypeChange}
+      />
+      {viewType === ViewType.graph
+        ? graphContent
+        : (
+            <SkillMain />
+          )}
+    </div>
+  )
+}
+
 const WorkflowAppWithAdditionalContext = () => {
   const {
     data,
     isLoading,
     fileUploadConfigResponse,
-    reload,
   } = useWorkflowInit()
   const workflowStore = useWorkflowStore()
   const { isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
-
-  const [viewType, doSetViewType] = useQueryState(WORKFLOW_VIEW_PARAM_KEY, parseAsViewType)
-  const setViewType = useCallback((type: ViewType) => {
-    doSetViewType(type)
-    if (type === ViewType.graph)
-      reload()
-  }, [doSetViewType, reload])
 
   // Initialize trigger status at application level
   const { setTriggerStatuses } = useTriggerStatusStore()
@@ -231,21 +273,11 @@ const WorkflowAppWithAdditionalContext = () => {
       edges={edgesData}
       nodes={nodesData}
     >
-      <div className="relative h-full w-full">
-        <ViewPicker
-          value={viewType}
-          onChange={setViewType}
+      <FeaturesProvider features={initialFeatures}>
+        <WorkflowViewContent
+          graphContent={GraphMain}
         />
-        {viewType === ViewType.graph
-          ? (
-              <FeaturesProvider features={initialFeatures}>
-                {GraphMain}
-              </FeaturesProvider>
-            )
-          : (
-              <SkillMain />
-            )}
-      </div>
+      </FeaturesProvider>
     </WorkflowWithDefaultContext>
   )
 }

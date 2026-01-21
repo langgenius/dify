@@ -131,9 +131,20 @@ export const useNodesSyncDraft = () => {
   }, [workflowStore, getPostParams, getNodesReadOnly, handleRefreshWorkflowDraft])
 
   const doSyncWorkflowDraft = useSerialAsyncCallback(performSync, getNodesReadOnly)
+  const syncWorkflowDraftImmediately = useCallback((
+    notRefreshWhenSyncError?: boolean,
+    callback?: {
+      onSuccess?: () => void
+      onError?: () => void
+      onSettled?: () => void
+    },
+  ) => {
+    return performSync(notRefreshWhenSyncError, callback)
+  }, [performSync])
 
   return {
     doSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose,
+    syncWorkflowDraftImmediately,
   }
 }
