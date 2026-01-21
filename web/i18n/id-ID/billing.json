@@ -172,6 +172,7 @@
   "usagePage.documentsUploadQuota": "Kuota Unggah Dokumen",
   "usagePage.perMonth": "per bulan",
   "usagePage.resetsIn": "Diatur ulang dalam {{count,number}} hari",
+  "usagePage.storageThresholdTooltip": "Penggunaan terperinci ditampilkan setelah penyimpanan melebihi 50 MB.",
   "usagePage.teamMembers": "Anggota Tim",
   "usagePage.triggerEvents": "Pemicu Acara",
   "usagePage.vectorSpace": "Penyimpanan Data Pengetahuan",

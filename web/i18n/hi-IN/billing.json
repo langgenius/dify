@@ -172,6 +172,7 @@
   "usagePage.documentsUploadQuota": "दस्तावेज़ अपलोड कोटा",
   "usagePage.perMonth": "प्रति माह",
   "usagePage.resetsIn": "{{count,number}} दिनों में रीसेट होता है",
+  "usagePage.storageThresholdTooltip": "स्टोरेज 50 MB से अधिक होने पर विस्तृत उपयोग दिखाया जाता है।",
   "usagePage.teamMembers": "टीम के सदस्य",
   "usagePage.triggerEvents": "उत्तेजक घटनाएँ",
   "usagePage.vectorSpace": "ज्ञान डेटा भंडारण",
