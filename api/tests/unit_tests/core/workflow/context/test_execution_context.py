@@ -5,6 +5,7 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+from pydantic import BaseModel
 
 from core.workflow.context.execution_context import (
     AppContext,
@@ -12,6 +13,8 @@ from core.workflow.context.execution_context import (
     ExecutionContextBuilder,
     IExecutionContext,
     NullAppContext,
+    read_context,
+    register_context,
 )
 
 
@@ -256,3 +259,31 @@ class TestCaptureCurrentContext:
 
         # Context variables should be captured
         assert result.context_vars is not None
+
+
+class TestTenantScopedContextRegistry:
+    def setup_method(self):
+        from core.workflow.context import reset_context_provider
+
+        reset_context_provider()
+
+    def teardown_method(self):
+        from core.workflow.context import reset_context_provider
+
+        reset_context_provider()
+
+    def test_tenant_provider_read_ok(self):
+        class SandboxContext(BaseModel):
+            base_url: str | None = None
+
+        register_context("workflow.sandbox", "t1", lambda: SandboxContext(base_url="http://t1"))
+        register_context("workflow.sandbox", "t2", lambda: SandboxContext(base_url="http://t2"))
+
+        assert read_context("workflow.sandbox", tenant_id="t1").base_url == "http://t1"
+        assert read_context("workflow.sandbox", tenant_id="t2").base_url == "http://t2"
+
+    def test_missing_provider_raises_keyerror(self):
+        from core.workflow.context import ContextProviderNotFoundError
+
+        with pytest.raises(ContextProviderNotFoundError):
+            read_context("missing", tenant_id="unknown")

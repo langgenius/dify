@@ -1,10 +1,8 @@
 'use client'
 import type { InputProps } from '../input'
 import { RiClipboardFill, RiClipboardLine } from '@remixicon/react'
-import copy from 'copy-to-clipboard'
-import { debounce } from 'es-toolkit/compat'
+import { useClipboard } from 'foxact/use-clipboard'
 import * as React from 'react'
-import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
 import ActionButton from '../action-button'
@@ -30,31 +28,16 @@ const InputWithCopy = React.forwardRef<HTMLInputElement, InputWithCopyProps>((
   ref,
 ) => {
   const { t } = useTranslation()
-  const [isCopied, setIsCopied] = useState<boolean>(false)
   // Determine what value to copy
   const valueToString = typeof value === 'string' ? value : String(value || '')
   const finalCopyValue = copyValue || valueToString
 
-  const onClickCopy = debounce(() => {
+  const { copied, copy, reset } = useClipboard()
+
+  const handleCopy = () => {
     copy(finalCopyValue)
-    setIsCopied(true)
     onCopy?.(finalCopyValue)
-  }, 100)
-
-  const onMouseLeave = debounce(() => {
-    setIsCopied(false)
-  }, 100)
-
-  useEffect(() => {
-    if (isCopied) {
-      const timeout = setTimeout(() => {
-        setIsCopied(false)
-      }, 2000)
-      return () => {
-        clearTimeout(timeout)
-      }
-    }
-  }, [isCopied])
+  }
 
   return (
     <div className={cn('relative w-full', wrapperClassName)}>
@@ -73,21 +56,21 @@ const InputWithCopy = React.forwardRef<HTMLInputElement, InputWithCopyProps>((
       {showCopyButton && (
         <div
           className="absolute right-2 top-1/2 -translate-y-1/2"
-          onMouseLeave={onMouseLeave}
+          onMouseLeave={reset}
         >
           <Tooltip
             popupContent={
-              (isCopied
+              (copied
                 ? t(`${prefixEmbedded}.copied`, { ns: 'appOverview' })
                 : t(`${prefixEmbedded}.copy`, { ns: 'appOverview' })) || ''
             }
           >
             <ActionButton
               size="xs"
-              onClick={onClickCopy}
+              onClick={handleCopy}
               className="hover:bg-components-button-ghost-bg-hover"
             >
-              {isCopied
+              {copied
                 ? (
                     <RiClipboardFill className="h-3.5 w-3.5 text-text-tertiary" />
                   )

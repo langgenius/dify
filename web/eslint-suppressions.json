@@ -1131,11 +1131,6 @@
       "count": 1
     }
   },
-  "app/components/base/input-with-copy/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/base/input/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -1557,11 +1552,6 @@
   "app/components/billing/upgrade-btn/index.tsx": {
     "ts/no-explicit-any": {
       "count": 3
-    }
-  },
-  "app/components/billing/usage-info/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "app/components/custom/custom-web-app-brand/index.spec.tsx": {
@@ -3280,9 +3270,6 @@
     }
   },
   "app/components/workflow/nodes/data-source/panel.tsx": {
-    "style/multiline-ternary": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -3665,9 +3652,6 @@
     }
   },
   "app/components/workflow/nodes/tool/panel.tsx": {
-    "style/multiline-ternary": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
