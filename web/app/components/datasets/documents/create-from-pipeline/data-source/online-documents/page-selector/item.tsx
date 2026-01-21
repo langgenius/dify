@@ -22,16 +22,15 @@ type NotionPageItem = {
 } & DataSourceNotionPage
 
 type ItemProps = {
-  index: number
   virtualStart: number
   virtualSize: number
   current: NotionPageItem
-  handleToggle: (index: number) => void
+  onToggle: (pageId: string) => void
   checkedIds: Set<string>
   disabledCheckedIds: Set<string>
-  handleCheck: (index: number) => void
+  onCheck: (pageId: string) => void
   canPreview?: boolean
-  handlePreview: (index: number) => void
+  onPreview: (pageId: string) => void
   listMapWithChildrenAndDescendants: NotionPageTreeMap
   searchValue: string
   previewPageId: string
@@ -40,16 +39,15 @@ type ItemProps = {
 }
 
 const Item = ({
-  index,
   virtualStart,
   virtualSize,
   current,
-  handleToggle,
+  onToggle,
   checkedIds,
   disabledCheckedIds,
-  handleCheck,
+  onCheck,
   canPreview,
-  handlePreview,
+  onPreview,
   listMapWithChildrenAndDescendants,
   searchValue,
   previewPageId,
@@ -69,7 +67,7 @@ const Item = ({
         <div
           className="mr-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-md hover:bg-components-button-ghost-bg-hover"
           style={{ marginLeft: current.depth * 8 }}
-          onClick={() => handleToggle(index)}
+          onClick={() => onToggle(current.page_id)}
         >
           {
             current.expand
@@ -108,9 +106,7 @@ const Item = ({
               className="mr-2 shrink-0"
               checked={checkedIds.has(current.page_id)}
               disabled={disabled}
-              onCheck={() => {
-                handleCheck(index)
-              }}
+              onCheck={() => onCheck(current.page_id)}
             />
           )
         : (
@@ -118,9 +114,7 @@ const Item = ({
               className="mr-2 shrink-0"
               isChecked={checkedIds.has(current.page_id)}
               disabled={disabled}
-              onCheck={() => {
-                handleCheck(index)
-              }}
+              onCheck={() => onCheck(current.page_id)}
             />
           )}
       {!searchValue && renderArrow()}
@@ -141,7 +135,7 @@ const Item = ({
             className="ml-1 hidden h-6 shrink-0 cursor-pointer items-center rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 text-xs
             font-medium leading-4 text-components-button-secondary-text shadow-xs shadow-shadow-shadow-3 backdrop-blur-[10px]
             hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover group-hover:flex"
-            onClick={() => handlePreview(index)}
+            onClick={() => onPreview(current.page_id)}
           >
             {t('dataSource.notion.selector.preview', { ns: 'common' })}
           </div>

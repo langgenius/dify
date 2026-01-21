@@ -67,14 +67,25 @@ const PageSelector = ({
     }, {})
   }, [list, pagesMap])
 
+  // Pre-build children index for O(1) lookup instead of O(n) filter
+  const childrenByParent = useMemo(() => {
+    const map = new Map<string | null, DataSourceNotionPage[]>()
+    for (const item of list) {
+      const isRoot = item.parent_id === 'root' || !pagesMap[item.parent_id]
+      const parentKey = isRoot ? null : item.parent_id
+      const children = map.get(parentKey) || []
+      children.push(item)
+      map.set(parentKey, children)
+    }
+    return map
+  }, [list, pagesMap])
+
   // Compute visible data list based on expanded state
   const dataList = useMemo(() => {
     const result: NotionPageItem[] = []
 
     const buildVisibleList = (parentId: string | null, depth: number) => {
-      const items = parentId === null
-        ? list.filter(item => item.parent_id === 'root' || !pagesMap[item.parent_id])
-        : list.filter(item => item.parent_id === parentId)
+      const items = childrenByParent.get(parentId) || []
 
       for (const item of items) {
         const isExpanded = expandedIds.has(item.page_id)
@@ -91,7 +102,7 @@ const PageSelector = ({
 
     buildVisibleList(null, 0)
     return result
-  }, [list, pagesMap, expandedIds])
+  }, [childrenByParent, expandedIds])
 
   const searchDataList = useMemo(() => list.filter((item) => {
     return item.page_name.includes(searchValue)
@@ -113,31 +124,29 @@ const PageSelector = ({
     getItemKey: index => currentDataList[index].page_id,
   })
 
-  const handleToggle = useCallback((index: number) => {
-    const current = dataList[index]
-    const pageId = current.page_id
-    const currentWithChildrenAndDescendants = listMapWithChildrenAndDescendants[pageId]
-
+  // Stable callback - no dependencies on dataList
+  const handleToggle = useCallback((pageId: string) => {
     setExpandedIds((prev) => {
       const next = new Set(prev)
       if (prev.has(pageId)) {
         // Collapse: remove current and all descendants
         next.delete(pageId)
-        for (const descendantId of currentWithChildrenAndDescendants.descendants)
-          next.delete(descendantId)
+        const descendants = listMapWithChildrenAndDescendants[pageId]?.descendants
+        if (descendants) {
+          for (const descendantId of descendants)
+            next.delete(descendantId)
+        }
       }
       else {
-        // Expand: add current
         next.add(pageId)
       }
       return next
     })
-  }, [dataList, listMapWithChildrenAndDescendants])
+  }, [listMapWithChildrenAndDescendants])
 
-  const handleCheck = useCallback((index: number) => {
+  // Stable callback - uses pageId parameter instead of index
+  const handleCheck = useCallback((pageId: string) => {
     const copyValue = new Set(checkedIds)
-    const current = currentDataList[index]
-    const pageId = current.page_id
     const currentWithChildrenAndDescendants = listMapWithChildrenAndDescendants[pageId]
 
     if (copyValue.has(pageId)) {
@@ -145,7 +154,6 @@ const PageSelector = ({
         for (const item of currentWithChildrenAndDescendants.descendants)
           copyValue.delete(item)
       }
-
       copyValue.delete(pageId)
     }
     else {
@@ -164,17 +172,14 @@ const PageSelector = ({
     }
 
     onSelect(new Set(copyValue))
-  }, [currentDataList, isMultipleChoice, listMapWithChildrenAndDescendants, onSelect, searchValue, checkedIds])
+  }, [checkedIds, isMultipleChoice, listMapWithChildrenAndDescendants, onSelect, searchValue])
 
-  const handlePreview = useCallback((index: number) => {
-    const current = currentDataList[index]
-    const pageId = current.page_id
-
+  // Stable callback
+  const handlePreview = useCallback((pageId: string) => {
     setCurrentPreviewPageId(pageId)
-
     if (onPreview)
       onPreview(pageId)
-  }, [currentDataList, onPreview])
+  }, [onPreview])
 
   if (!currentDataList.length) {
     return (
@@ -202,16 +207,15 @@ const PageSelector = ({
           return (
             <Item
               key={virtualRow.key}
-              index={virtualRow.index}
               virtualStart={virtualRow.start}
               virtualSize={virtualRow.size}
               current={current}
-              handleToggle={handleToggle}
+              onToggle={handleToggle}
               checkedIds={checkedIds}
               disabledCheckedIds={disabledValue}
-              handleCheck={handleCheck}
+              onCheck={handleCheck}
               canPreview={canPreview}
-              handlePreview={handlePreview}
+              onPreview={handlePreview}
               listMapWithChildrenAndDescendants={listMapWithChildrenAndDescendants}
               searchValue={searchValue}
               previewPageId={currentPreviewPageId}

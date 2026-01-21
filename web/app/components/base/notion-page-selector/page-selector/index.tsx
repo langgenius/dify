@@ -1,7 +1,7 @@
 import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { memo, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
 import Checkbox from '../../checkbox'
@@ -32,16 +32,15 @@ type NotionPageItem = {
 } & DataSourceNotionPage
 
 type ItemProps = {
-  index: number
   virtualStart: number
   virtualSize: number
   current: NotionPageItem
-  handleToggle: (index: number) => void
+  onToggle: (pageId: string) => void
   checkedIds: Set<string>
   disabledCheckedIds: Set<string>
-  handleCheck: (index: number) => void
+  onCheck: (pageId: string) => void
   canPreview?: boolean
-  handlePreview: (index: number) => void
+  onPreview: (pageId: string) => void
   listMapWithChildrenAndDescendants: NotionPageTreeMap
   searchValue: string
   previewPageId: string
@@ -86,16 +85,15 @@ const recursivePushInParentDescendants = (
 }
 
 const ItemComponent = ({
-  index,
   virtualStart,
   virtualSize,
   current,
-  handleToggle,
+  onToggle,
   checkedIds,
   disabledCheckedIds,
-  handleCheck,
+  onCheck,
   canPreview,
-  handlePreview,
+  onPreview,
   listMapWithChildrenAndDescendants,
   searchValue,
   previewPageId,
@@ -114,7 +112,7 @@ const ItemComponent = ({
         <div
           className="mr-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-md hover:bg-components-button-ghost-bg-hover"
           style={{ marginLeft: current.depth * 8 }}
-          onClick={() => handleToggle(index)}
+          onClick={() => onToggle(current.page_id)}
         >
           {
             current.expand
@@ -151,9 +149,7 @@ const ItemComponent = ({
         className="mr-2 shrink-0"
         checked={checkedIds.has(current.page_id)}
         disabled={disabled}
-        onCheck={() => {
-          handleCheck(index)
-        }}
+        onCheck={() => onCheck(current.page_id)}
       />
       {!searchValue && renderArrow()}
       <NotionIcon
@@ -173,7 +169,7 @@ const ItemComponent = ({
             className="ml-1 hidden h-6 shrink-0 cursor-pointer items-center rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 text-xs
             font-medium leading-4 text-components-button-secondary-text shadow-xs shadow-shadow-shadow-3 backdrop-blur-[10px]
             hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover group-hover:flex"
-            onClick={() => handlePreview(index)}
+            onClick={() => onPreview(current.page_id)}
           >
             {t('dataSource.notion.selector.preview', { ns: 'common' })}
           </div>
@@ -221,14 +217,25 @@ const PageSelector = ({
     }, {})
   }, [list, pagesMap])
 
+  // Pre-build children index for O(1) lookup instead of O(n) filter
+  const childrenByParent = useMemo(() => {
+    const map = new Map<string | null, DataSourceNotionPage[]>()
+    for (const item of list) {
+      const isRoot = item.parent_id === 'root' || !pagesMap[item.parent_id]
+      const parentKey = isRoot ? null : item.parent_id
+      const children = map.get(parentKey) || []
+      children.push(item)
+      map.set(parentKey, children)
+    }
+    return map
+  }, [list, pagesMap])
+
   // Compute visible data list based on expanded state
   const dataList = useMemo(() => {
     const result: NotionPageItem[] = []
 
     const buildVisibleList = (parentId: string | null, depth: number) => {
-      const items = parentId === null
-        ? list.filter(item => item.parent_id === 'root' || !pagesMap[item.parent_id])
-        : list.filter(item => item.parent_id === parentId)
+      const items = childrenByParent.get(parentId) || []
 
       for (const item of items) {
         const isExpanded = expandedIds.has(item.page_id)
@@ -245,7 +252,7 @@ const PageSelector = ({
 
     buildVisibleList(null, 0)
     return result
-  }, [list, pagesMap, expandedIds])
+  }, [childrenByParent, expandedIds])
 
   const searchDataList = useMemo(() => list.filter((item) => {
     return item.page_name.includes(searchValue)
@@ -268,39 +275,37 @@ const PageSelector = ({
     getItemKey: index => currentDataList[index].page_id,
   })
 
-  const handleToggle = (index: number) => {
-    const current = dataList[index]
-    const pageId = current.page_id
-    const currentWithChildrenAndDescendants = listMapWithChildrenAndDescendants[pageId]
-
+  // Stable callback - no dependencies on dataList
+  const handleToggle = useCallback((pageId: string) => {
     setExpandedIds((prev) => {
       const next = new Set(prev)
       if (prev.has(pageId)) {
         // Collapse: remove current and all descendants
         next.delete(pageId)
-        for (const descendantId of currentWithChildrenAndDescendants.descendants)
-          next.delete(descendantId)
+        // Note: We access listMapWithChildrenAndDescendants via closure, but it's stable (memoized)
+        const descendants = listMapWithChildrenAndDescendants[pageId]?.descendants
+        if (descendants) {
+          for (const descendantId of descendants)
+            next.delete(descendantId)
+        }
       }
       else {
-        // Expand: add current
         next.add(pageId)
       }
       return next
     })
-  }
+  }, [listMapWithChildrenAndDescendants])
 
-  const copyValue = new Set(value)
-  const handleCheck = (index: number) => {
-    const current = currentDataList[index]
-    const pageId = current.page_id
+  // Stable callback - uses pageId parameter instead of index
+  const handleCheck = useCallback((pageId: string) => {
     const currentWithChildrenAndDescendants = listMapWithChildrenAndDescendants[pageId]
+    const copyValue = new Set(value)
 
     if (copyValue.has(pageId)) {
       if (!searchValue) {
         for (const item of currentWithChildrenAndDescendants.descendants)
           copyValue.delete(item)
       }
-
       copyValue.delete(pageId)
     }
     else {
@@ -308,22 +313,18 @@ const PageSelector = ({
         for (const item of currentWithChildrenAndDescendants.descendants)
           copyValue.add(item)
       }
-
       copyValue.add(pageId)
     }
 
     onSelect(new Set(copyValue))
-  }
+  }, [listMapWithChildrenAndDescendants, onSelect, searchValue, value])
 
-  const handlePreview = (index: number) => {
-    const current = currentDataList[index]
-    const pageId = current.page_id
-
+  // Stable callback
+  const handlePreview = useCallback((pageId: string) => {
     setLocalPreviewPageId(pageId)
-
     if (onPreview)
       onPreview(pageId)
-  }
+  }, [onPreview])
 
   if (!currentDataList.length) {
     return (
@@ -351,16 +352,15 @@ const PageSelector = ({
           return (
             <Item
               key={virtualRow.key}
-              index={virtualRow.index}
               virtualStart={virtualRow.start}
               virtualSize={virtualRow.size}
               current={current}
-              handleToggle={handleToggle}
+              onToggle={handleToggle}
               checkedIds={value}
               disabledCheckedIds={disabledValue}
-              handleCheck={handleCheck}
+              onCheck={handleCheck}
               canPreview={canPreview}
-              handlePreview={handlePreview}
+              onPreview={handlePreview}
               listMapWithChildrenAndDescendants={listMapWithChildrenAndDescendants}
               searchValue={searchValue}
               previewPageId={currentPreviewPageId}
