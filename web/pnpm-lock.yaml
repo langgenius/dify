@@ -183,6 +183,9 @@ importers:
       fast-deep-equal:
         specifier: 3.1.3
         version: 3.1.3
+      foxact:
+        specifier: 0.2.52
+        version: 0.2.52(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       html-entities:
         specifier: 2.6.0
         version: 2.6.0
@@ -5560,6 +5563,17 @@ packages:
     engines: {node: '>=18.3.0'}
     hasBin: true
 
+  foxact@0.2.52:
+    resolution: {integrity: sha512-cc3ydJkM/mYkof1/ofI4VlVAiRyfsSDsHRC4UIAXQcnUXCuo0rXM66Zy1ggdxAXL03ikHnh3bPnQ7AYuI/Yzow==}
+    peerDependencies:
+      react: '*'
+      react-dom: '*'
+    peerDependenciesMeta:
+      react:
+        optional: true
+      react-dom:
+        optional: true
+
   fraction.js@4.3.7:
     resolution: {integrity: sha512-ZsDfxO51wGAXREY55a7la9LScWpwv9RxIrYABrlvOFBlH/ShPnrtsXeuUIfXKKOVicNxQ+o8JTbJvjS4M89yew==}
 
@@ -7636,6 +7650,9 @@ packages:
   seroval@1.3.2:
     resolution: {integrity: sha512-RbcPH1n5cfwKrru7v7+zrZvjLurgHhGyso3HTyGtRivGWgYjbOmGuivCQaORNELjNONoK35nj28EoWul9sb1zQ==}
     engines: {node: '>=10'}
+
+  server-only@0.0.1:
+    resolution: {integrity: sha512-qepMx2JxAa5jjfzxG79yPPq+8BuFToHd1hm7kI+Z4zAq1ftQiP7HcxMhDDItrbtwVeLg/cY2JnKnrcFkmiswNA==}
 
   serwist@9.5.0:
     resolution: {integrity: sha512-wjrsPWHI5ZM20jIsVKZGN/uAdS2aKOgmIOE4dqUaFhK6SVIzgoJZjTnZ3v29T+NmneuD753jlhGui9eYypsj0A==}
@@ -14358,6 +14375,14 @@ snapshots:
     dependencies:
       fd-package-json: 2.0.0
 
+  foxact@0.2.52(react-dom@19.2.3(react@19.2.3))(react@19.2.3):
+    dependencies:
+      client-only: 0.0.1
+      server-only: 0.0.1
+    optionalDependencies:
+      react: 19.2.3
+      react-dom: 19.2.3(react@19.2.3)
+
   fraction.js@4.3.7: {}
 
   fs-constants@1.0.0:
@@ -16935,6 +16960,8 @@ snapshots:
       seroval: 1.3.2
 
   seroval@1.3.2: {}
+
+  server-only@0.0.1: {}
 
   serwist@9.5.0(typescript@5.9.3):
     dependencies:
