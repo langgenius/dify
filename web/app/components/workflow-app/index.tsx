@@ -11,6 +11,7 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
 } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { FeaturesProvider } from '@/app/components/base/features'
@@ -41,7 +42,6 @@ import { useNodesSyncDraft } from './hooks/use-nodes-sync-draft'
 import {
   useWorkflowInit,
 } from './hooks/use-workflow-init'
-import { useWorkflowRefreshDraft } from './hooks/use-workflow-refresh-draft'
 import { parseAsViewType, WORKFLOW_VIEW_PARAM_KEY } from './search-params'
 import { createWorkflowSlice } from './store/workflow/workflow-slice'
 
@@ -51,15 +51,24 @@ const SkillMain = dynamic(() => import('@/app/components/workflow/skill/main'), 
 
 type WorkflowViewContentProps = {
   graphContent: ReactNode
+  reload: () => Promise<void>
 }
 
 const WorkflowViewContent = ({
   graphContent,
+  reload,
 }: WorkflowViewContentProps) => {
   const [viewType, doSetViewType] = useQueryState(WORKFLOW_VIEW_PARAM_KEY, parseAsViewType)
   const { syncWorkflowDraftImmediately } = useNodesSyncDraft()
-  const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
   const pendingSyncRef = useRef<Promise<void> | null>(null)
+  const [isGraphRefreshing, setIsGraphRefreshing] = useState(false)
+
+  const refreshGraph = useCallback(() => {
+    setIsGraphRefreshing(true)
+    return reload().finally(() => {
+      setIsGraphRefreshing(false)
+    })
+  }, [reload])
 
   const handleViewTypeChange = useCallback((type: ViewType) => {
     if (viewType === ViewType.graph && type !== viewType)
@@ -70,15 +79,15 @@ const WorkflowViewContent = ({
       const pending = pendingSyncRef.current
       if (pending) {
         pending.finally(() => {
-          handleRefreshWorkflowDraft()
+          void refreshGraph()
         })
         pendingSyncRef.current = null
       }
       else {
-        handleRefreshWorkflowDraft()
+        void refreshGraph()
       }
     }
-  }, [doSetViewType, handleRefreshWorkflowDraft, syncWorkflowDraftImmediately, viewType])
+  }, [doSetViewType, refreshGraph, syncWorkflowDraftImmediately, viewType])
 
   return (
     <div className="relative h-full w-full">
@@ -87,7 +96,15 @@ const WorkflowViewContent = ({
         onChange={handleViewTypeChange}
       />
       {viewType === ViewType.graph
-        ? graphContent
+        ? (
+            isGraphRefreshing
+              ? (
+                  <div className="relative flex h-full w-full items-center justify-center">
+                    <Loading />
+                  </div>
+                )
+              : graphContent
+          )
         : (
             <SkillMain />
           )}
@@ -100,6 +117,7 @@ const WorkflowAppWithAdditionalContext = () => {
     data,
     isLoading,
     fileUploadConfigResponse,
+    reload,
   } = useWorkflowInit()
   const workflowStore = useWorkflowStore()
   const { isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
@@ -276,6 +294,7 @@ const WorkflowAppWithAdditionalContext = () => {
       <FeaturesProvider features={initialFeatures}>
         <WorkflowViewContent
           graphContent={GraphMain}
+          reload={reload}
         />
       </FeaturesProvider>
     </WorkflowWithDefaultContext>
