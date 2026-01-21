@@ -3,7 +3,7 @@
   "dateTimeFormat": "MM/DD/YYYY hh:mm A",
   "desc": "Testen Sie die Treffereffektivität des Wissens anhand des gegebenen Abfragetextes.",
   "hit.emptyTip": "Ergebnisse des Abruf-Tests werden hier angezeigt",
-  "hit.title": "ABRUFPARAGRAFEN",
+  "hit.title": "{{num}} Abgerufene Chunks",
   "hitChunks": "Klicken Sie auf {{num}} untergeordnete Chunks",
   "imageUploader.dropZoneTip": "Datei hierher ziehen, um sie hochzuladen",
   "imageUploader.singleChunkAttachmentLimitTooltip": "Die Anzahl der Einzelblock-Anhänge darf {{limit}} nicht überschreiten",

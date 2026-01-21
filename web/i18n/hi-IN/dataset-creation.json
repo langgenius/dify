@@ -140,7 +140,7 @@
   "stepTwo.preview": "पुष्टि करें और पूर्वावलोकन करें",
   "stepTwo.previewButton": "प्रश्न-उत्तर प्रारूप में स्विच करना",
   "stepTwo.previewChunk": "पूर्वावलोकन चंक",
-  "stepTwo.previewChunkCount": "{{गिनती}} अनुमानित खंड",
+  "stepTwo.previewChunkCount": "{{count}} अनुमानित खंड",
   "stepTwo.previewChunkTip": "पूर्वावलोकन लोड करने के लिए बाईं ओर 'पूर्वावलोकन चंक' बटन पर क्लिक करें",
   "stepTwo.previewSwitchTipEnd": " अतिरिक्त टोकन खर्च होंगे",
   "stepTwo.previewSwitchTipStart": "वर्तमान खंड पूर्वावलोकन पाठ प्रारूप में है, प्रश्न-उत्तर प्रारूप में स्विच करने से",
