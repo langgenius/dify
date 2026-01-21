@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.message_generator import MessageGenerator
 from core.app.entities.task_entities import (
+    MessageReplaceStreamResponse,
     NodeFinishStreamResponse,
     NodeStartStreamResponse,
     StreamEvent,
@@ -39,6 +40,7 @@ class MessageContext:
     conversation_id: str
     message_id: str
     created_at: int
+    answer: str | None = None
 
 
 @dataclass
@@ -157,6 +159,7 @@ def _get_message_context(session_maker: sessionmaker[Session], workflow_run_id: 
             conversation_id=message.conversation_id,
             message_id=message.id,
             created_at=created_at,
+            answer=message.answer,
         )
 
 
@@ -208,6 +211,11 @@ def _build_snapshot_events(
     _apply_message_context(workflow_started, message_context)
     events.append(workflow_started)
 
+    if message_context is not None and message_context.answer is not None:
+        message_replace = _build_message_replace_event(task_id=task_id, answer=message_context.answer)
+        _apply_message_context(message_replace, message_context)
+        events.append(message_replace)
+
     for snapshot in node_snapshots:
         node_started = _build_node_started_event(
             workflow_run_id=workflow_run.id,
@@ -255,6 +263,17 @@ def _build_workflow_started_event(
             created_at=int(workflow_run.created_at.timestamp()),
             reason=WorkflowStartReason.INITIAL,
         ),
+    )
+    payload = response.model_dump(mode="json")
+    payload["event"] = response.event.value
+    return payload
+
+
+def _build_message_replace_event(*, task_id: str, answer: str) -> dict[str, Any]:
+    response = MessageReplaceStreamResponse(
+        task_id=task_id,
+        answer=answer,
+        reason="",
     )
     payload = response.model_dump(mode="json")
     payload["event"] = response.event.value

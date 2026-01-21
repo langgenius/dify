@@ -175,6 +175,7 @@ def test_build_snapshot_events_applies_message_context() -> None:
         conversation_id="conv-1",
         message_id="msg-1",
         created_at=1700000000,
+        answer="snapshot message",
     )
 
     events = _build_snapshot_events(
@@ -186,6 +187,13 @@ def test_build_snapshot_events_applies_message_context() -> None:
         resumption_context=None,
     )
 
+    assert [event["event"] for event in events] == [
+        "workflow_started",
+        "message_replace",
+        "node_started",
+        "node_finished",
+    ]
+    assert events[1]["answer"] == "snapshot message"
     for event in events:
         assert event["conversation_id"] == "conv-1"
         assert event["message_id"] == "msg-1"
