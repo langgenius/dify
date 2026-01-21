@@ -72,19 +72,19 @@ const WorkflowViewContent = ({
 
   const handleViewTypeChange = useCallback((type: ViewType) => {
     if (viewType === ViewType.graph && type !== viewType)
-      pendingSyncRef.current = syncWorkflowDraftImmediately(true).catch(() => {})
+      pendingSyncRef.current = syncWorkflowDraftImmediately(true).catch(() => { })
 
     doSetViewType(type)
     if (type === ViewType.graph) {
       const pending = pendingSyncRef.current
       if (pending) {
         pending.finally(() => {
-          void refreshGraph()
+          refreshGraph()
         })
         pendingSyncRef.current = null
       }
       else {
-        void refreshGraph()
+        refreshGraph()
       }
     }
   }, [doSetViewType, refreshGraph, syncWorkflowDraftImmediately, viewType])
