@@ -265,7 +265,7 @@ importers:
         specifier: 3.0.0
         version: 3.0.0(react@19.2.3)
       react-arborist:
-        specifier: ^3.4.3
+        specifier: 3.4.3
         version: 3.4.3(@types/node@18.15.0)(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react-dom:
         specifier: 19.2.3
