@@ -20,6 +20,7 @@ import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
 import ConfigVision from '../_base/components/config-vision'
 import MemoryConfig from '../_base/components/memory-config'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
+import ComputerUseConfig from './components/computer-use-config'
 import ConfigPrompt from './components/config-prompt'
 import ReasoningFormatConfig from './components/reasoning-format-config'
 import StructureOutput from './components/structure-output'
@@ -68,6 +69,8 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     handleStructureOutputChange,
     filterJinja2InputVar,
     handleReasoningFormatChange,
+    isSupportSandbox,
+    handleComputerUseChange,
   } = useConfig(id, data)
 
   const {
@@ -221,6 +224,16 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
           </>
         )}
 
+        {/* Sandbox Config */}
+        {isSupportSandbox && (
+          <>
+            <ComputerUseConfig
+              readonly={readOnly}
+              enabled={!!inputs.computer_use}
+              onChange={handleComputerUseChange}
+            />
+          </>
+        )}
         <Tools
           nodeId={id}
           tools={inputs.tools}
