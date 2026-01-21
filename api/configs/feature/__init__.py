@@ -1298,6 +1298,10 @@ class SandboxExpiredRecordsCleanConfig(BaseSettings):
         description="Retention days for sandbox expired workflow_run records and message records",
         default=30,
     )
+    SANDBOX_EXPIRED_RECORDS_CLEAN_TASK_LOCK_TTL: PositiveInt = Field(
+        description="Lock TTL for sandbox expired records clean task in seconds",
+        default=90000,
+    )
 
 
 class FeatureConfig(
