@@ -310,7 +310,7 @@ const PageSelector = ({
       copyValue.add(pageId)
     }
 
-    onSelect(new Set(copyValue))
+    onSelect(copyValue)
   }, [listMapWithChildrenAndDescendants, onSelect, searchValue, value])
 
   const handlePreview = useCallback((pageId: string) => {

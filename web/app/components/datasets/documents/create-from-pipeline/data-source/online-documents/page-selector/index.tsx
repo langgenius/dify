@@ -171,7 +171,7 @@ const PageSelector = ({
       }
     }
 
-    onSelect(new Set(copyValue))
+    onSelect(copyValue)
   }, [checkedIds, isMultipleChoice, listMapWithChildrenAndDescendants, onSelect, searchValue])
 
   // Stable callback
