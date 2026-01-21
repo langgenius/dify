@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from core.variables.consts import SELECTORS_LENGTH
 from core.workflow.nodes.base import BaseNodeData
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
+from core.workflow.runtime import VariablePool
 
 from .enums import ButtonStyle, DeliveryMethodType, EmailRecipientType, FormInputType, PlaceholderType, TimeoutUnit
 
@@ -81,7 +82,21 @@ class EmailDeliveryConfig(BaseModel):
 
     def body_with_url(self, url: str | None) -> str:
         """Return body content with url placeholder replaced."""
-        return self.replace_url_placeholder(self.body, url)
+        return self.render_body_template(body=self.body, url=url)
+
+    @classmethod
+    def render_body_template(
+        cls,
+        *,
+        body: str,
+        url: str | None,
+        variable_pool: VariablePool | None = None,
+    ) -> str:
+        """Render email body by replacing placeholders with runtime values."""
+        templated_body = cls.replace_url_placeholder(body, url)
+        if variable_pool is None:
+            return templated_body
+        return variable_pool.convert_template(templated_body).text
 
 
 class _DeliveryMethodBase(BaseModel):
@@ -89,6 +104,9 @@ class _DeliveryMethodBase(BaseModel):
 
     enabled: bool = True
     id: uuid.UUID = Field(default_factory=uuid.uuid4)
+
+    def extract_variable_selectors(self) -> Sequence[Sequence[str]]:
+        return ()
 
 
 class WebAppDeliveryMethod(_DeliveryMethodBase):
@@ -104,6 +122,16 @@ class EmailDeliveryMethod(_DeliveryMethodBase):
 
     type: Literal[DeliveryMethodType.EMAIL] = DeliveryMethodType.EMAIL
     config: EmailDeliveryConfig
+
+    def extract_variable_selectors(self) -> Sequence[Sequence[str]]:
+        variable_template_parser = VariableTemplateParser(template=self.config.body)
+        selectors: list[Sequence[str]] = []
+        for variable_selector in variable_template_parser.extract_variable_selectors():
+            value_selector = list(variable_selector.value_selector)
+            if len(value_selector) < SELECTORS_LENGTH:
+                continue
+            selectors.append(value_selector[:SELECTORS_LENGTH])
+        return selectors
 
 
 DeliveryChannelConfig = Annotated[WebAppDeliveryMethod | EmailDeliveryMethod, Field(discriminator="type")]
@@ -239,13 +267,23 @@ class HumanInputNodeData(BaseNodeData):
         return field_names
 
     def extract_variable_selector_to_variable_mapping(self, node_id: str) -> Mapping[str, Sequence[str]]:
-        variable_selectors = []
-        variable_template_parser = VariableTemplateParser(template=self.form_content)
-        variable_selectors.extend(variable_template_parser.extract_variable_selectors())
-        variable_mappings = {}
-        for variable_selector in variable_selectors:
-            qualified_variable_mapping_key = f"{node_id}.{variable_selector.variable}"
-            variable_mappings[qualified_variable_mapping_key] = variable_selector.value_selector
+        variable_mappings: dict[str, Sequence[str]] = {}
+
+        def _add_variable_selectors(selectors: Sequence[Sequence[str]]) -> None:
+            for selector in selectors:
+                if len(selector) < SELECTORS_LENGTH:
+                    continue
+                qualified_variable_mapping_key = f"{node_id}.#{'.'.join(selector[:SELECTORS_LENGTH])}#"
+                variable_mappings[qualified_variable_mapping_key] = list(selector[:SELECTORS_LENGTH])
+
+        form_template_parser = VariableTemplateParser(template=self.form_content)
+        _add_variable_selectors(
+            [selector.value_selector for selector in form_template_parser.extract_variable_selectors()]
+        )
+        for delivery_method in self.delivery_methods:
+            if not delivery_method.enabled:
+                continue
+            _add_variable_selectors(delivery_method.extract_variable_selectors())
 
         for input in self.inputs:
             placeholder = input.placeholder

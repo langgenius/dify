@@ -962,6 +962,7 @@ class WorkflowService:
             rendered_content=rendered_content,
             template_vars={"form_id": form_id},
             recipients=recipients,
+            variable_pool=variable_pool,
         )
         try:
             test_service.send_test(context=context, method=delivery_method)
@@ -1087,8 +1088,6 @@ class WorkflowService:
             config=node_config,
         )
         normalized_user_inputs: dict[str, Any] = dict(manual_inputs)
-        for raw_key, value in manual_inputs.items():
-            normalized_user_inputs[f"#{raw_key}#"] = value
 
         load_into_variable_pool(
             variable_loader=variable_loader,

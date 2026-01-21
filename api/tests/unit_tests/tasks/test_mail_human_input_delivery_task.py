@@ -49,7 +49,7 @@ def _build_job(recipient_count: int = 1) -> task_module._EmailDeliveryJob:
 
 def test_dispatch_human_input_email_task_sends_to_each_recipient(monkeypatch: pytest.MonkeyPatch):
     mail = _DummyMail()
-    form = SimpleNamespace(id="form-1", tenant_id="tenant-1")
+    form = SimpleNamespace(id="form-1", tenant_id="tenant-1", workflow_run_id=None)
 
     def fake_render(template: str, substitutions: dict[str, str]) -> str:
         return template.replace("{{ form_token }}", substitutions["form_token"]).replace(
@@ -79,7 +79,7 @@ def test_dispatch_human_input_email_task_sends_to_each_recipient(monkeypatch: py
 
 def test_dispatch_human_input_email_task_skips_when_feature_disabled(monkeypatch: pytest.MonkeyPatch):
     mail = _DummyMail()
-    form = SimpleNamespace(id="form-1", tenant_id="tenant-1")
+    form = SimpleNamespace(id="form-1", tenant_id="tenant-1", workflow_run_id=None)
 
     monkeypatch.setattr(task_module, "mail", mail)
     monkeypatch.setattr(
@@ -96,3 +96,37 @@ def test_dispatch_human_input_email_task_skips_when_feature_disabled(monkeypatch
     )
 
     assert mail.sent == []
+
+
+def test_dispatch_human_input_email_task_replaces_body_variables(monkeypatch: pytest.MonkeyPatch):
+    mail = _DummyMail()
+    form = SimpleNamespace(id="form-1", tenant_id="tenant-1", workflow_run_id="run-1")
+    job = task_module._EmailDeliveryJob(
+        form_id="form-1",
+        workflow_run_id="run-1",
+        subject="Subject",
+        body="Body {{#node1.value#}}",
+        form_content="content",
+        recipients=[task_module._EmailRecipient(email="user@example.com", token="token-1")],
+    )
+
+    variable_pool = task_module.VariablePool()
+    variable_pool.add(["node1", "value"], "OK")
+
+    monkeypatch.setattr(task_module, "mail", mail)
+    monkeypatch.setattr(task_module, "render_email_template", lambda template, _substitutions: template)
+    monkeypatch.setattr(
+        task_module.FeatureService,
+        "get_features",
+        lambda _tenant_id: SimpleNamespace(human_input_email_delivery_enabled=True),
+    )
+    monkeypatch.setattr(task_module, "_load_email_jobs", lambda _session, _form: [job])
+    monkeypatch.setattr(task_module, "_load_variable_pool", lambda _workflow_run_id: variable_pool)
+
+    task_module.dispatch_human_input_email_task(
+        form_id="form-1",
+        node_title="Approve",
+        session_factory=lambda: _DummySession(form),
+    )
+
+    assert mail.sent[0]["html"] == "Body OK"

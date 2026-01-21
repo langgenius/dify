@@ -15,6 +15,7 @@ from core.workflow.nodes.human_input.entities import (
     ExternalRecipient,
     MemberRecipient,
 )
+from core.workflow.runtime import VariablePool
 from extensions.ext_database import db
 from extensions.ext_mail import mail
 from libs.email_template_renderer import render_email_template
@@ -42,6 +43,7 @@ class DeliveryTestContext:
     rendered_content: str
     template_vars: dict[str, str] = field(default_factory=dict)
     recipients: list[DeliveryTestEmailRecipient] = field(default_factory=list)
+    variable_pool: VariablePool | None = None
 
 
 @dataclass(frozen=True)
@@ -154,9 +156,10 @@ class EmailDeliveryTestHandler:
                 recipient_email=recipient_email,
             )
             subject = render_email_template(method.config.subject, substitutions)
-            templated_body = EmailDeliveryConfig.replace_url_placeholder(
-                method.config.body,
-                substitutions.get("form_link"),
+            templated_body = EmailDeliveryConfig.render_body_template(
+                body=method.config.body,
+                url=substitutions.get("form_link"),
+                variable_pool=context.variable_pool,
             )
             body = render_email_template(templated_body, substitutions)
 
