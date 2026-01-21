@@ -30,7 +30,7 @@ const useSingleRunFormParams = ({
   const { inputs } = useNodeCrud<HumanInputNodeType>(id, payload)
   const [showGeneratedForm, setShowGeneratedForm] = useState(false)
   const [formData, setFormData] = useState<HumanInputFormData | null>(null)
-  const [requiredInputs, setRequiredInputs] = useState<Record<string, any>>()
+  const [requiredInputs, setRequiredInputs] = useState<Record<string, any>>({})
   const generatedInputs = useMemo(() => {
     const placeholderInputs = inputs.inputs.reduce((acc, input) => {
       if (input.placeholder.type === 'variable') {
@@ -80,16 +80,13 @@ const useSingleRunFormParams = ({
   const handleFetchFormContent = useCallback(async (inputs: Record<string, any>) => {
     if (!fetchURL)
       return null
-    let requestParamsObj
+    let requestParamsObj: Record<string, any> = {}
     Object.keys(inputs).forEach((key) => {
       if (inputs[key] === undefined) {
         delete inputs[key]
       }
     })
     requestParamsObj = { ...inputs }
-    if (Object.keys(requestParamsObj).length === 0) {
-      requestParamsObj = undefined
-    }
     const data = await fetchHumanInputNodeStepRunForm(fetchURL, { inputs: requestParamsObj! })
     setFormData(data)
     setRequiredInputs(requestParamsObj)
