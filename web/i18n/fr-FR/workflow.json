@@ -363,7 +363,7 @@
   "nodes.agent.strategyNotFoundDescAndSwitchVersion": "La version du plugin installée ne fournit pas cette stratégie. Cliquez pour changer de version.",
   "nodes.agent.strategyNotInstallTooltip": "{{strategy}} n’est pas installé",
   "nodes.agent.strategyNotSet": "Stratégie agentique non définie",
-  "nodes.agent.toolNotAuthorizedTooltip": "{{outil}} Non autorisé",
+  "nodes.agent.toolNotAuthorizedTooltip": "{{tool}} Non autorisé",
   "nodes.agent.toolNotInstallTooltip": "{{tool}} n’est pas installé",
   "nodes.agent.toolbox": "boîte à outils",
   "nodes.agent.tools": "Outils",
