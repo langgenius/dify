@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { FormInputItem, UserAction } from '../types'
+import type { ButtonProps } from '@/app/components/base/button'
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -46,10 +47,10 @@ const FormContentPreview: FC<FormContentPreviewProps> = ({
           content={content}
           rehypePlugins={[rehypeVariable, rehypeNotes]}
           customComponents={{
-            variable: ({ node }: any) => (
+            variable: ({ node }: { node: { properties?: { [key: string]: string } } }) => (
               <Variable path={node.properties?.['data-path'] as string} />
             ),
-            section: ({ node }: any) => (() => {
+            section: ({ node }: { node: { properties?: { [key: string]: string } } }) => (() => {
               const name = node.properties?.['data-name'] as string
               const input = formInputs.find(i => i.output_variable_name === name)
               if (!input) {
@@ -68,10 +69,10 @@ const FormContentPreview: FC<FormContentPreviewProps> = ({
           }}
         />
         <div className="mt-3 flex flex-wrap gap-1 py-1">
-          {userActions.map((action: any) => (
+          {userActions.map((action: UserAction) => (
             <Button
               key={action.id}
-              variant={getButtonStyle(action.button_style) as any}
+              variant={getButtonStyle(action.button_style) as ButtonProps['variant']}
             >
               {action.title}
             </Button>

@@ -3407,11 +3407,6 @@
       "count": 2
     }
   },
-  "app/components/workflow/nodes/human-input/components/form-content-preview.tsx": {
-    "ts/no-explicit-any": {
-      "count": 4
-    }
-  },
   "app/components/workflow/nodes/human-input/components/form-content.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
