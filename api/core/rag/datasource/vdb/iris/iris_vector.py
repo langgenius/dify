@@ -177,6 +177,9 @@ class IrisConnectionPool:
 class IrisVector(BaseVector):
     """IRIS vector database implementation using native VECTOR type and HNSW indexing."""
 
+    # Fallback score for full-text search when Rank function unavailable or TEXT_INDEX disabled
+    _FULL_TEXT_FALLBACK_SCORE = 0.5
+
     def __init__(self, collection_name: str, config: IrisVectorConfig) -> None:
         super().__init__(collection_name)
         self.config = config
@@ -207,25 +210,16 @@ class IrisVector(BaseVector):
         self._create_collection(dimension)
         return self.add_texts(texts, embeddings)
 
-    def add_texts(
-        self, documents: list[Document], embeddings: list[list[float]], **_kwargs
-    ) -> list[str]:
+    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **_kwargs) -> list[str]:
         """Add documents with embeddings to the collection."""
         added_ids = []
         with self._get_cursor() as cursor:
             for i, doc in enumerate(documents):
-                doc_id = (
-                    doc.metadata.get("doc_id", str(uuid.uuid4()))
-                    if doc.metadata
-                    else str(uuid.uuid4())
-                )
+                doc_id = doc.metadata.get("doc_id", str(uuid.uuid4())) if doc.metadata else str(uuid.uuid4())
                 metadata = json.dumps(doc.metadata) if doc.metadata else "{}"
                 embedding_str = json.dumps(embeddings[i])
 
-                sql = (
-                    f"INSERT INTO {self.schema}.{self.table_name} "
-                    "(id, text, meta, embedding) VALUES (?, ?, ?, ?)"
-                )
+                sql = f"INSERT INTO {self.schema}.{self.table_name} (id, text, meta, embedding) VALUES (?, ?, ?, ?)"
                 cursor.execute(sql, (doc_id, doc.page_content, metadata, embedding_str))
                 added_ids.append(doc_id)
 
@@ -314,9 +308,7 @@ class IrisVector(BaseVector):
                 if document_ids_filter:
                     # Add document ID filter
                     placeholders = ",".join("?" * len(document_ids_filter))
-                    where_clause += (
-                        f" AND JSON_VALUE(meta, '$.document_id') IN ({placeholders})"
-                    )
+                    where_clause += f" AND JSON_VALUE(meta, '$.document_id') IN ({placeholders})"
                     params.extend(document_ids_filter)
 
                 sql = f"""
@@ -347,7 +339,7 @@ class IrisVector(BaseVector):
                         exc_info=True,
                     )
                     sql_fallback = f"""
-                        SELECT TOP {top_k} id, text, meta, 0.5 AS score
+                        SELECT TOP {top_k} id, text, meta, {self._FULL_TEXT_FALLBACK_SCORE} AS score
                         FROM {self.schema}.{self.table_name}
                         {where_clause}
                     """
@@ -368,13 +360,11 @@ class IrisVector(BaseVector):
 
                 if document_ids_filter:
                     placeholders = ",".join("?" * len(document_ids_filter))
-                    where_clause += (
-                        f" AND JSON_VALUE(meta, '$.document_id') IN ({placeholders})"
-                    )
+                    where_clause += f" AND JSON_VALUE(meta, '$.document_id') IN ({placeholders})"
                     params.extend(document_ids_filter)
 
                 sql = f"""
-                    SELECT TOP {top_k} id, text, meta, 0.5 AS score
+                    SELECT TOP {top_k} id, text, meta, {self._FULL_TEXT_FALLBACK_SCORE} AS score
                     FROM {self.schema}.{self.table_name}
                     {where_clause}
                     ORDER BY LENGTH(text) ASC
