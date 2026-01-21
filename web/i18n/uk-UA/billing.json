@@ -172,6 +172,7 @@
   "usagePage.documentsUploadQuota": "Квота на завантаження документів",
   "usagePage.perMonth": "на місяць",
   "usagePage.resetsIn": "Скидання через {{count,number}} днів",
+  "usagePage.storageThresholdTooltip": "Детальне використання відображається після перевищення 50 МБ сховища.",
   "usagePage.teamMembers": "Члени команди",
   "usagePage.triggerEvents": "Тригерні події",
   "usagePage.vectorSpace": "Сховище даних знань",

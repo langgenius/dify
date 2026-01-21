@@ -172,6 +172,7 @@
   "usagePage.documentsUploadQuota": "Hạn ngạch tải lên tài liệu",
   "usagePage.perMonth": "mỗi tháng",
   "usagePage.resetsIn": "Đặt lại sau {{count,number}} ngày",
+  "usagePage.storageThresholdTooltip": "Thông tin sử dụng chi tiết sẽ được hiển thị khi dung lượng lưu trữ vượt quá 50 MB.",
   "usagePage.teamMembers": "Các thành viên trong nhóm",
   "usagePage.triggerEvents": "Các sự kiện kích hoạt",
   "usagePage.vectorSpace": "Lưu trữ dữ liệu kiến thức",

@@ -139,6 +139,7 @@ const config = {
         'billing-plan-card-premium-bg': 'var(--color-billing-plan-card-premium-bg)',
         'billing-plan-card-enterprise-bg': 'var(--color-billing-plan-card-enterprise-bg)',
         'knowledge-pipeline-creation-footer-bg': 'var(--color-knowledge-pipeline-creation-footer-bg)',
+        'progress-bar-indeterminate-stripe': 'var(--color-progress-bar-indeterminate-stripe)',
       },
       animation: {
         'spin-slow': 'spin 2s linear infinite',

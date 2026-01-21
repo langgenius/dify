@@ -172,6 +172,7 @@
   "usagePage.documentsUploadQuota": "Kvota za nalaganje dokumentov",
   "usagePage.perMonth": "na mesec",
   "usagePage.resetsIn": "Ponastavitve čez {{count,number}} dni",
+  "usagePage.storageThresholdTooltip": "Podrobna uporaba se prikaže, ko shramba preseže 50 MB.",
   "usagePage.teamMembers": "Člani ekipe",
   "usagePage.triggerEvents": "Sprožilni dogodki",
   "usagePage.vectorSpace": "Shranjevanje podatkov znanja",

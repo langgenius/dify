@@ -172,6 +172,7 @@
   "usagePage.documentsUploadQuota": "Quota de téléchargement de documents",
   "usagePage.perMonth": "par mois",
   "usagePage.resetsIn": "Réinitialisations dans {{count,number}} jours",
+  "usagePage.storageThresholdTooltip": "L'utilisation détaillée est affichée lorsque le stockage dépasse 50 Mo.",
   "usagePage.teamMembers": "Membres de l'équipe",
   "usagePage.triggerEvents": "Événements déclencheurs",
   "usagePage.vectorSpace": "Stockage de données de connaissance",
