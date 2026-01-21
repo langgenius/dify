@@ -23,7 +23,8 @@
     "and_qq >= 14.9"
   ],
   "scripts": {
-    "dev": "next dev --inspect",
+    "dev": "next dev",
+    "dev:inspect": "next dev --inspect",
     "build": "next build",
     "build:docker": "next build && node scripts/optimize-standalone.js",
     "start": "node ./scripts/copy-and-start.mjs",
@@ -200,7 +201,7 @@
     "@vitejs/plugin-react": "5.1.2",
     "@vitest/coverage-v8": "4.0.17",
     "autoprefixer": "10.4.21",
-    "code-inspector-plugin": "1.2.9",
+    "code-inspector-plugin": "1.3.6",
     "cross-env": "10.1.0",
     "esbuild-wasm": "0.27.2",
     "eslint": "9.39.2",
