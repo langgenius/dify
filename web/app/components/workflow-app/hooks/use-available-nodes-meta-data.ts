@@ -45,7 +45,7 @@ export const useAvailableNodesMetaData = () => {
     const { metaData } = node
     const title = t(`blocks.${metaData.type}`, { ns: 'workflow' })
     const description = t(`blocksAbout.${metaData.type}`, { ns: 'workflow' })
-    const helpLinkPath = `/use-dify/nodes/user-input/${metaData.helpLinkUri}` as DocPathWithoutLang
+    const helpLinkPath = `/use-dify/nodes/${metaData.helpLinkUri}` as DocPathWithoutLang
     return {
       ...node,
       metaData: {
