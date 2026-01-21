@@ -11,6 +11,7 @@ import Button from '@/app/components/base/button'
 import { getButtonStyle } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
 import { Markdown } from '@/app/components/base/markdown'
 import { useStore } from '@/app/components/workflow/store'
+import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { Note, rehypeNotes, rehypeVariable, Variable } from './variable-in-markdown'
 
 const i18nPrefix = 'nodes.humanInput'
@@ -30,6 +31,12 @@ const FormContentPreview: FC<FormContentPreviewProps> = ({
 }) => {
   const { t } = useTranslation()
   const panelWidth = useStore(state => state.panelWidth)
+  const nodes = useNodes()
+
+  const nodeName = React.useCallback((nodeId: string) => {
+    const node = nodes.find(n => n.id === nodeId)
+    return node?.data.title || nodeId
+  }, [nodes])
 
   return (
     <div
@@ -47,9 +54,16 @@ const FormContentPreview: FC<FormContentPreviewProps> = ({
           content={content}
           rehypePlugins={[rehypeVariable, rehypeNotes]}
           customComponents={{
-            variable: ({ node }: { node: { properties?: { [key: string]: string } } }) => (
-              <Variable path={node.properties?.['data-path'] as string} />
-            ),
+            variable: ({ node }: { node: { properties?: { [key: string]: string } } }) => {
+              const path = node.properties?.['data-path'] as string
+              let newPath = path
+              if (path) {
+                newPath = path.replace(/#([^#.]+)([.#])/g, (match, nodeId, sep) => {
+                  return `#${nodeName(nodeId)}${sep}`
+                })
+              }
+              return <Variable path={newPath} />
+            },
             section: ({ node }: { node: { properties?: { [key: string]: string } } }) => (() => {
               const name = node.properties?.['data-name'] as string
               const input = formInputs.find(i => i.output_variable_name === name)
