@@ -109,9 +109,9 @@ class AnnotationReplyActionApi(Resource):
         args = AnnotationReplyPayload.model_validate(console_ns.payload)
         match action:
             case "enable":
-               result = AppAnnotationService.enable_app_annotation(args.model_dump(), app_id)
+                result = AppAnnotationService.enable_app_annotation(args.model_dump(), app_id)
             case "disable":
-               result = AppAnnotationService.disable_app_annotation(app_id)
+                result = AppAnnotationService.disable_app_annotation(app_id)
         return result, 200
 
 
