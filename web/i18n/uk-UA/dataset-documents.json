@@ -26,6 +26,7 @@
   "list.action.archive": "Архів",
   "list.action.batchAdd": "Пакетне додавання",
   "list.action.delete": "Видалити",
+  "list.action.download": "Завантажити",
   "list.action.enableWarning": "Архівований файл неможливо активувати",
   "list.action.pause": "Пауза",
   "list.action.resume": "Продовжити",
