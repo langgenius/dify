@@ -12,4 +12,3 @@ class HostedTrialProvider(StrEnum):
     GEMINI = "gemini"
     XAI = "xai"
     TONGYI = "tongyi"
-
