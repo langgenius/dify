@@ -202,9 +202,8 @@ const Answer: FC<AnswerProps> = ({
                 )
               }
               {
-                item.siblingCount
+                typeof item.siblingCount === 'number'
                 && item.siblingCount > 1
-                && item.siblingIndex !== undefined
                 && !responding
                 && contentIsEmpty
                 && !hasAgentThoughts
@@ -302,7 +301,9 @@ const Answer: FC<AnswerProps> = ({
                 )
               }
               {
-                item.siblingCount && item.siblingCount > 1 && item.siblingIndex !== undefined && (
+                typeof item.siblingCount === 'number'
+                && item.siblingCount > 1
+                && (
                   <ContentSwitch
                     count={item.siblingCount}
                     currentIndex={item.siblingIndex}
@@ -406,7 +407,8 @@ const Answer: FC<AnswerProps> = ({
                 )
               }
               {
-                item.siblingCount && item.siblingCount > 1 && item.siblingIndex !== undefined && (
+                typeof item.siblingCount === 'number'
+                && item.siblingCount > 1 && (
                   <ContentSwitch
                     count={item.siblingCount}
                     currentIndex={item.siblingIndex}

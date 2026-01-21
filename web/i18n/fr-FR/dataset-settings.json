@@ -16,7 +16,7 @@
   "form.indexMethod": "Méthode d'Indexation",
   "form.indexMethodChangeToEconomyDisabledTip": "Non disponible pour le déclassement de HQ à ECO",
   "form.indexMethodEconomy": "Économique",
-  "form.indexMethodEconomyTip": "Utilisez des moteurs vectoriels hors ligne, des index de mots-clés, etc. pour réduire la précision sans dépenser de jetons",
+  "form.indexMethodEconomyTip": "Utilisez {{count}} mots-clés par chunk pour la récupération, sans consommer de jetons, au prix d'une précision réduite.",
   "form.indexMethodHighQuality": "Haute Qualité",
   "form.indexMethodHighQualityTip": "Appeler le modèle d'Embedding pour le traitement afin de fournir une plus grande précision lors des requêtes des utilisateurs.",
   "form.me": "(Vous)",

@@ -49,7 +49,7 @@ const DocModeInfo = ({
 
   return (
     <div className="system-2xs-medium-uppercase flex items-center gap-x-3 text-text-tertiary">
-      {dataset.doc_form && (
+      {!!dataset.doc_form && (
         <span
           className="min-w-0 max-w-full truncate"
           title={t(`chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`, { ns: 'dataset' })}
