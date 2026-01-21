@@ -46,7 +46,7 @@ export const useWorkflowTemplate = () => {
       id: 'answer',
       data: {
         ...answerDefault.defaultValue,
-        answer: `{{#${llmNode.id}.text#}}`,
+        answer: `{{#${llmNode.id}.generation#}}`,
         type: answerDefault.metaData.type,
         title: t(`blocks.${answerDefault.metaData.type}`, { ns: 'workflow' }),
       },

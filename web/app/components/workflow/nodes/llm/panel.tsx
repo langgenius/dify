@@ -321,6 +321,28 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
       >
         <>
           <VarItem
+            name="generation"
+            type="object"
+            description={t(`${i18nPrefix}.outputVars.generation`, { ns: 'workflow' })}
+            subItems={[
+              {
+                name: 'content',
+                type: 'string',
+                description: '',
+              },
+              {
+                name: 'reasoning_content',
+                type: 'array[string]',
+                description: '',
+              },
+              {
+                name: 'tool_calls',
+                type: 'array[object]',
+                description: '',
+              },
+            ]}
+          />
+          <VarItem
             name="text"
             type="string"
             description={t(`${i18nPrefix}.outputVars.output`, { ns: 'workflow' })}
@@ -334,11 +356,6 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             name="usage"
             type="object"
             description={t(`${i18nPrefix}.outputVars.usage`, { ns: 'workflow' })}
-          />
-          <VarItem
-            name="generation"
-            type="object"
-            description={t(`${i18nPrefix}.outputVars.generation`, { ns: 'workflow' })}
           />
           {inputs.structured_output_enabled && (
             <>

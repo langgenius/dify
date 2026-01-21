@@ -145,6 +145,24 @@ export const AGENT_OUTPUT_STRUCT: Var[] = [
 
 export const LLM_OUTPUT_STRUCT: Var[] = [
   {
+    variable: 'generation',
+    type: VarType.object,
+    children: [
+      {
+        variable: 'content',
+        type: VarType.string,
+      },
+      {
+        variable: 'reasoning_content',
+        type: VarType.arrayString,
+      },
+      {
+        variable: 'tool_calls',
+        type: VarType.arrayObject,
+      },
+    ],
+  },
+  {
     variable: 'text',
     type: VarType.string,
   },
@@ -159,10 +177,6 @@ export const LLM_OUTPUT_STRUCT: Var[] = [
   },
   {
     variable: 'usage',
-    type: VarType.object,
-  },
-  {
-    variable: 'generation',
     type: VarType.object,
   },
 ]
