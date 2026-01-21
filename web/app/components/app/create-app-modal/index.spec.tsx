@@ -41,7 +41,7 @@ vi.mock('@/context/app-context', () => ({
   useAppContext: vi.fn(),
 }))
 vi.mock('@/context/i18n', () => ({
-  useDocLink: () => () => '/guides',
+  useDocLink: () => () => 'https://docs.dify.ai/en',
 }))
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: 'light' }),
