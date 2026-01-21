@@ -35,6 +35,7 @@ import type {
 } from '@/models/common'
 import type { RETRIEVE_METHOD } from '@/types/app'
 import { del, get, patch, post, put } from './base'
+import { consoleClient } from './client'
 
 type LoginSuccess = {
   result: 'success'
@@ -385,4 +386,4 @@ export const checkEmailExisted = (body: { email: string }): Promise<CommonRespon
   post<CommonResponse>('/account/change-email/check-email-unique', { body }, { silent: true })
 
 export const getAvatar = ({ avatar }: { avatar: string }): Promise<{ avatar_url: string }> =>
-  get<{ avatar_url: string }>('/account/avatar', { params: { avatar } })
+  consoleClient.account.avatar({ query: { avatar } })
