@@ -6,6 +6,11 @@ from typing import Any, Protocol, cast
 
 import json_repair
 
+from core.llm_generator.output_models import (
+    CodeNodeStructuredOutput,
+    InstructionModifyOutput,
+    SuggestedQuestionsOutput,
+)
 from core.llm_generator.output_parser.rule_config_generator import RuleConfigGeneratorOutputParser
 from core.llm_generator.output_parser.suggested_questions_after_answer import SuggestedQuestionsAfterAnswerOutputParser
 from core.llm_generator.prompts import (
@@ -470,7 +475,7 @@ class LLMGenerator:
             *prompt_messages,
         ]
 
-        from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
+        from core.llm_generator.output_parser.structured_output import invoke_llm_with_pydantic_model
 
         # Get model instance and schema
         provider = model_config.get("provider", "")
@@ -487,15 +492,13 @@ class LLMGenerator:
             return cls._error_response(f"Model schema not found for {model_name}")
 
         model_parameters = model_config.get("completion_params", {})
-        json_schema = cls._get_code_node_json_schema()
-
         try:
-            response = invoke_llm_with_structured_output(
+            response = invoke_llm_with_pydantic_model(
                 provider=provider,
                 model_schema=model_schema,
                 model_instance=model_instance,
                 prompt_messages=complete_messages,
-                json_schema=json_schema,
+                output_model=CodeNodeStructuredOutput,
                 model_parameters=model_parameters,
                 stream=False,
                 tenant_id=tenant_id,
@@ -541,7 +544,7 @@ class LLMGenerator:
         from sqlalchemy import select
         from sqlalchemy.orm import Session
 
-        from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
+        from core.llm_generator.output_parser.structured_output import invoke_llm_with_pydantic_model
         from services.workflow_service import WorkflowService
 
         # Get workflow context (reuse existing logic)
@@ -602,15 +605,13 @@ class LLMGenerator:
 
         completion_params = model_config.get("completion_params", {}) if model_config else {}
         model_parameters = {**completion_params, "max_tokens": 256}
-        json_schema = cls._get_suggested_questions_json_schema()
-
         try:
-            response = invoke_llm_with_structured_output(
+            response = invoke_llm_with_pydantic_model(
                 provider=model_instance.provider,
                 model_schema=model_schema,
                 model_instance=model_instance,
                 prompt_messages=prompt_messages,
-                json_schema=json_schema,
+                output_model=SuggestedQuestionsOutput,
                 model_parameters=model_parameters,
                 stream=False,
                 tenant_id=tenant_id,
@@ -643,58 +644,6 @@ class LLMGenerator:
 Sources: {", ".join(sources)}
 Target: {parameter_info.get("name")}({param_type}) - {param_desc}
 Output 3 short, practical questions in {language}."""
-
-    @classmethod
-    def _get_suggested_questions_json_schema(cls) -> dict:
-        """Return JSON Schema for suggested questions."""
-        return {
-            "type": "object",
-            "properties": {
-                "questions": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "minItems": 3,
-                    "maxItems": 3,
-                    "description": "3 suggested questions",
-                },
-            },
-            "required": ["questions"],
-        }
-
-    @classmethod
-    def _get_code_node_json_schema(cls) -> dict:
-        """Return JSON Schema for structured output."""
-        return {
-            "type": "object",
-            "properties": {
-                "variables": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "variable": {"type": "string", "description": "Variable name in code"},
-                            "value_selector": {
-                                "type": "array",
-                                "items": {"type": "string"},
-                                "description": "Path like [node_id, output_name]",
-                            },
-                        },
-                        "required": ["variable", "value_selector"],
-                    },
-                },
-                "code": {"type": "string", "description": "Generated code with main function"},
-                "outputs": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "object",
-                        "properties": {"type": {"type": "string"}},
-                    },
-                    "description": "Output definitions, key is output name",
-                },
-                "explanation": {"type": "string", "description": "Brief explanation of the code"},
-            },
-            "required": ["variables", "code", "outputs", "explanation"],
-        }
 
     @classmethod
     def _get_upstream_nodes(cls, graph_dict: Mapping[str, Any], node_id: str) -> list[dict]:
@@ -1011,6 +960,10 @@ Parameter: {parameter_info.get("name")} ({param_type}) - {parameter_info.get("de
             provider=model_config.get("provider", ""),
             model=model_config.get("name", ""),
         )
+        model_name = model_config.get("name", "")
+        model_schema = model_instance.model_type_instance.get_model_schema(model_name, model_instance.credentials)
+        if not model_schema:
+            return {"error": f"Model schema not found for {model_name}"}
         match node_type:
             case "llm" | "agent":
                 system_prompt = LLM_MODIFY_PROMPT_SYSTEM
@@ -1034,20 +987,18 @@ Parameter: {parameter_info.get("name")} ({param_type}) - {parameter_info.get("de
         model_parameters = {"temperature": 0.4}
 
         try:
-            response: LLMResult = model_instance.invoke_llm(
-                prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
-            )
+            from core.llm_generator.output_parser.structured_output import invoke_llm_with_pydantic_model
 
-            generated_raw = response.message.get_text_content()
-            first_brace = generated_raw.find("{")
-            last_brace = generated_raw.rfind("}")
-            if first_brace == -1 or last_brace == -1 or last_brace < first_brace:
-                raise ValueError(f"Could not find a valid JSON object in response: {generated_raw}")
-            json_str = generated_raw[first_brace : last_brace + 1]
-            data = json_repair.loads(json_str)
-            if not isinstance(data, dict):
-                raise TypeError(f"Expected a JSON object, but got {type(data).__name__}")
-            return data
+            response = invoke_llm_with_pydantic_model(
+                provider=model_instance.provider,
+                model_schema=model_schema,
+                model_instance=model_instance,
+                prompt_messages=list(prompt_messages),
+                output_model=InstructionModifyOutput,
+                model_parameters=model_parameters,
+                stream=False,
+            )
+            return response.structured_output or {}
         except InvokeError as e:
             error = str(e)
             return {"error": f"Failed to generate code. Error: {error}"}
