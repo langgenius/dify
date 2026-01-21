@@ -245,8 +245,8 @@ describe('RetrievalSection', () => {
     // Assert
     expect(screen.getByText('dataset.retrieval.semantic_search.title')).toBeInTheDocument()
     const learnMoreLink = screen.getByRole('link', { name: 'datasetSettings.form.retrievalSetting.learnMore' })
-    expect(learnMoreLink).toHaveAttribute('href', 'https://docs.example/guides/knowledge-base/create-knowledge-and-upload-documents/setting-indexing-methods#setting-the-retrieval-setting')
-    expect(docLink).toHaveBeenCalledWith('/guides/knowledge-base/create-knowledge-and-upload-documents/setting-indexing-methods#setting-the-retrieval-setting')
+    expect(learnMoreLink).toHaveAttribute('href', 'https://docs.example/use-dify/knowledge/create-knowledge/setting-indexing-methods')
+    expect(docLink).toHaveBeenCalledWith('/use-dify/knowledge/create-knowledge/setting-indexing-methods')
   })
 
   it('propagates retrieval config changes for economical indexing', async () => {
