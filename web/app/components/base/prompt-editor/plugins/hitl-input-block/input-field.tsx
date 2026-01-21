@@ -38,6 +38,8 @@ const InputField: React.FC<Props> = ({
     const name = tempPayload.output_variable_name.trim()
     if (!name)
       return false
+    if (name.includes(' '))
+      return false
     return /(?:[a-z_]\w{0,29}){1,10}/.test(name)
   }, [tempPayload.output_variable_name])
   const handleSave = useCallback(() => {
