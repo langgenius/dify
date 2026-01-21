@@ -87,10 +87,10 @@ export const OptionCard: FC<OptionCardProps> = (
         disabled={disabled}
       />
       {/** Body */}
-      {isActive && (children || actions) && (
+      {!!(isActive && (children || actions)) && (
         <div className="rounded-b-xl bg-components-panel-bg px-4 py-3">
           {children}
-          {actions && (
+          {!!actions && (
             <div className="mt-4 flex gap-2">
               {actions}
             </div>

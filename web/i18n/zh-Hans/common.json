@@ -61,6 +61,7 @@
   "account.workspaceName": "工作空间名称",
   "account.workspaceNamePlaceholder": "输入工作空间名称",
   "actionMsg.copySuccessfully": "复制成功",
+  "actionMsg.downloadUnsuccessfully": "下载失败,请稍后再试。",
   "actionMsg.generatedSuccessfully": "已重新生成",
   "actionMsg.generatedUnsuccessfully": "生成失败",
   "actionMsg.modifiedSuccessfully": "修改成功",
