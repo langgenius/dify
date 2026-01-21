@@ -7,9 +7,9 @@ from celery import shared_task
 from sqlalchemy.orm import Session
 
 from configs import dify_config
+from core.db.session_factory import session_factory
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.trigger.utils.locks import build_trigger_refresh_lock_key
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.trigger import TriggerSubscription
 from services.trigger.trigger_provider_service import TriggerProviderService
@@ -92,7 +92,7 @@ def trigger_subscription_refresh(tenant_id: str, subscription_id: str) -> None:
     logger.info("Begin subscription refresh: tenant=%s id=%s", tenant_id, subscription_id)
     try:
         now: int = _now_ts()
-        with Session(db.engine) as session:
+        with session_factory.create_session() as session:
             subscription: TriggerSubscription | None = _load_subscription(session, tenant_id, subscription_id)
 
             if not subscription:
