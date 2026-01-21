@@ -18,6 +18,12 @@ def stream_topic_events(
     on_subscribe: Callable[[], None] | None = None,
     terminal_events: Iterable[str | StreamEvent] | None = None,
 ) -> Generator[Mapping[str, Any] | str, None, None]:
+    # send a PING event immediately to prevent the connection staying in pending state for a long time.
+    #
+    # This simplify the debugging process as the DevTools in Chrome does not
+    # provide complete curl command for pending connections.
+    yield StreamEvent.PING.value
+
     terminal_values = _normalize_terminal_events(terminal_events)
     last_msg_time = time.time()
     last_ping_time = last_msg_time

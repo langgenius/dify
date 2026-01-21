@@ -94,6 +94,12 @@ def build_workflow_event_stream(
     )
 
     def _generate() -> Generator[Mapping[str, Any] | str, None, None]:
+        # send a PING event immediately to prevent the connection staying in pending state for a long time.
+        #
+        # This simplify the debugging process as the DevTools in Chrome does not
+        # provide complete curl command for pending connections.
+        yield StreamEvent.PING.value
+
         last_msg_time = time.time()
         last_ping_time = last_msg_time
 
