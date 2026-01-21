@@ -181,6 +181,13 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     setInputs(newInputs)
   }, [setInputs])
 
+  const handleComputerUseChange = useCallback((enabled: boolean) => {
+    const newInputs = produce(inputRef.current, (draft) => {
+      draft.computer_use = enabled
+    })
+    setInputs(newInputs)
+  }, [setInputs])
+
   // change to vision model to set vision enabled, else disabled
   useEffect(() => {
     if (!modelChanged)
@@ -393,6 +400,8 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     handleStructureOutputEnableChange,
     filterJinja2InputVar,
     handleReasoningFormatChange,
+    isSupportSandbox,
+    handleComputerUseChange,
   }
 }
 

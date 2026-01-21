@@ -20,6 +20,7 @@ export type LLMNodeType = CommonNodeType & {
     jinja2_variables?: Variable[]
   }
   memory?: Memory
+  computer_use?: boolean
   context: {
     enabled: boolean
     variable_selector: ValueSelector
