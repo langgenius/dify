@@ -3395,16 +3395,6 @@
       "count": 5
     }
   },
-  "app/components/workflow/nodes/human-input/components/delivery-method/email-configure-modal.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/nodes/human-input/components/delivery-method/method-item.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/workflow/nodes/human-input/components/delivery-method/recipient/email-input.tsx": {
     "ts/no-explicit-any": {
       "count": 2

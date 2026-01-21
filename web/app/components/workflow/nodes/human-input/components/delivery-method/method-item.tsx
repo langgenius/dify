@@ -110,6 +110,7 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
                   <Tooltip
                     popupContent={emailSenderTooltipContent}
                     asChild={false}
+                    needsDelay={false}
                   >
                     <ActionButton onClick={() => setShowTestEmailModal(true)}>
                       <RiSendPlane2Line className="h-4 w-4" />
@@ -118,6 +119,7 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
                   <Tooltip
                     popupContent={t('common.configure', { ns: 'workflow' })}
                     asChild={false}
+                    needsDelay={false}
                   >
                     <ActionButton onClick={() => setShowEmailModal(true)}>
                       <RiEqualizer2Line className="h-4 w-4" />
@@ -129,6 +131,7 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
               <Tooltip
                 popupContent={t('operation.remove', { ns: 'common' })}
                 asChild={false}
+                needsDelay={false}
               >
                 <div
                   onMouseEnter={() => setIsHovering(true)}
@@ -168,6 +171,8 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
         <EmailConfigureModal
           isShow={showEmailModal}
           config={method.config as EmailConfig}
+          nodesOutputVars={nodesOutputVars}
+          availableNodes={availableNodes}
           onClose={() => setShowEmailModal(false)}
           onConfirm={(data) => {
             handleConfigChange(data)

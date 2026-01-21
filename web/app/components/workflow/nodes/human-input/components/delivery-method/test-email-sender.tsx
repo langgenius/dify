@@ -86,7 +86,7 @@ const EmailSenderModal = ({
   const accounts = members?.accounts || []
 
   const generatedInputs = useMemo(() => {
-    const valueSelectors = doGetInputVars(formContent || '')
+    const valueSelectors = doGetInputVars((formContent || '') + (config?.body || ''))
     const variables = unionBy(valueSelectors, item => item.join('.')).map((item) => {
       const varInfo = getNodeInfoById(availableNodes, item[0])?.data
 
@@ -120,7 +120,7 @@ const EmailSenderModal = ({
       }
     })
     return varInputs
-  }, [availableNodes, formContent, nodesOutputVars])
+  }, [availableNodes, config?.body, formContent, nodesOutputVars])
 
   const [inputs, setInputs] = useState<Record<string, any>>({})
   const [collapsed, setCollapsed] = useState(true)

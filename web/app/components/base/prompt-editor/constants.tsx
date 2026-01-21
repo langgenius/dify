@@ -1,4 +1,5 @@
 import type { ValueSelector } from '../../workflow/types'
+import { uniqBy } from 'es-toolkit/compat'
 import { SupportUploadFileTypes } from '../../workflow/types'
 
 export const CONTEXT_PLACEHOLDER_TEXT = '{{#context#}}'
@@ -57,7 +58,8 @@ export const getInputVars = (text: string): ValueSelector[] => {
 
         return valueSelector
       })
-    return inputVars
+    const uniqueInputVars = uniqBy(inputVars, item => item.join('.'))
+    return uniqueInputVars
   }
   return []
 }

@@ -1,4 +1,8 @@
 import type { EmailConfig } from '../../types'
+import type {
+  Node,
+  NodeOutPutVar,
+} from '@/app/components/workflow/types'
 import { RiBugLine, RiCloseLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/compat'
 import { memo, useCallback, useState } from 'react'
@@ -20,6 +24,8 @@ type EmailConfigureModalProps = {
   onClose: () => void
   onConfirm: (data: EmailConfig) => void
   config?: EmailConfig
+  nodesOutputVars?: NodeOutPutVar[]
+  availableNodes?: Node[]
 }
 
 const EmailConfigureModal = ({
@@ -27,6 +33,8 @@ const EmailConfigureModal = ({
   onClose,
   onConfirm,
   config,
+  nodesOutputVars = [],
+  availableNodes = [],
 }: EmailConfigureModalProps) => {
   const { t } = useTranslation()
   const email = useAppContextWithSelector(s => s.userProfile.email)
@@ -110,6 +118,8 @@ const EmailConfigureModal = ({
           <MailBodyInput
             value={body}
             onChange={setBody}
+            nodesOutputVars={nodesOutputVars}
+            availableNodes={availableNodes}
           />
         </div>
         <div>
