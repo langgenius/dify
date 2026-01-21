@@ -421,10 +421,7 @@ const Form = () => {
                         <a
                           target="_blank"
                           rel="noopener noreferrer"
-                          href={docLink('/use-dify/knowledge/create-knowledge/setting-indexing-methods#setting-the-retrieval-setting', {
-                            'zh-Hans': '/use-dify/knowledge/create-knowledge/setting-indexing-methods#指定检索方式',
-                            'ja-JP': '/use-dify/knowledge/create-knowledge/setting-indexing-methods#検索方法の指定',
-                          })}
+                          href={docLink('/use-dify/knowledge/create-knowledge/setting-indexing-methods')}
                           className="text-text-accent"
                         >
                           {t('form.retrievalSetting.learnMore', { ns: 'datasetSettings' })}

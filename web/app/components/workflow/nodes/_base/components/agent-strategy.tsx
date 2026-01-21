@@ -251,10 +251,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
                     {' '}
                     <br />
                     <Link
-                      href={docLink('/use-dify/nodes/agent#select-an-agent-strategy', {
-                        'zh-Hans': '/use-dify/nodes/agent#选择-agent-策略',
-                        'ja-JP': '/use-dify/nodes/agent#エージェント戦略の選択',
-                      })}
+                      href={docLink('/use-dify/nodes/agent')}
                       className="text-text-accent-secondary"
                       target="_blank"
                     >

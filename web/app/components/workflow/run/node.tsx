@@ -211,7 +211,7 @@ const NodePanel: FC<Props> = ({
                 <StatusContainer status="stopped">
                   {nodeInfo.error}
                   <a
-                    href={docLink('/use-dify/build/predefined-error-handling-logic')}
+                    href={docLink('/use-dify/debug/error-type')}
                     target="_blank"
                     className="text-text-accent"
                   >

@@ -2,7 +2,7 @@
 // DON NOT EDIT IT MANUALLY
 //
 // Generated from: https://raw.githubusercontent.com/langgenius/dify-docs/refs/heads/main/docs.json
-// Generated at: 2026-01-12T09:11:29.762Z
+// Generated at: 2026-01-21T07:24:02.413Z
 
 // Language prefixes
 export type DocLanguage = 'en' | 'zh' | 'ja'
@@ -92,6 +92,10 @@ export type UseDifyPath =
   | '/use-dify/tutorials/customer-service-bot'
   | '/use-dify/tutorials/simple-chatbot'
   | '/use-dify/tutorials/twitter-chatflow'
+  | '/use-dify/workspace/api-extension/api-extension'
+  | '/use-dify/workspace/api-extension/cloudflare-worker'
+  | '/use-dify/workspace/api-extension/external-data-tool-api-extension'
+  | '/use-dify/workspace/api-extension/moderation-api-extension'
   | '/use-dify/workspace/app-management'
   | '/use-dify/workspace/model-providers'
   | '/use-dify/workspace/personal-account-management'

@@ -174,7 +174,7 @@ const PluginPage = ({
                     </Button>
                   </Link>
                   <Link
-                    href={docLink('/use-dify/getting-started/introduction')}
+                    href={docLink('/develop-plugin/publishing/marketplace-listing/release-to-dify-marketplace')}
                     target="_blank"
                   >
                     <Button

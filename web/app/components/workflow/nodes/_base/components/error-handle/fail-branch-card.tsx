@@ -19,7 +19,7 @@ const FailBranchCard = () => {
           {t('nodes.common.errorHandle.failBranch.customizeTip', { ns: 'workflow' })}
           &nbsp;
           <a
-            href={docLink('/use-dify/build/predefined-error-handling-logic')}
+            href={docLink('/use-dify/debug/error-type')}
             target="_blank"
             className="text-text-accent"
           >

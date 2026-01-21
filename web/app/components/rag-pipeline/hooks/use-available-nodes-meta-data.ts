@@ -26,7 +26,7 @@ export const useAvailableNodesMetaData = () => {
   ], [])
 
   const helpLinkUri = useMemo(() => docLink(
-    '/use-dify/getting-started/introduction',
+    '/use-dify/knowledge/knowledge-pipeline/knowledge-pipeline-orchestration',
   ), [docLink])
 
   const availableNodesMetaData = useMemo(() => mergedNodesMetaData.map((node) => {
