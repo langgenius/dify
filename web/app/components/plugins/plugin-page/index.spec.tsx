@@ -24,6 +24,7 @@ vi.mock('@/hooks/use-document-title', () => ({
 
 vi.mock('@/context/i18n', () => ({
   useLocale: () => 'en-US',
+  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
 }))
 
 vi.mock('@/context/global-public-context', () => ({
