@@ -4,9 +4,11 @@ Execution Context - Abstracted context management for workflow execution.
 
 import contextvars
 from abc import ABC, abstractmethod
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from contextlib import AbstractContextManager, contextmanager
-from typing import Any, Protocol, final, runtime_checkable
+from typing import Any, Protocol, TypeVar, final, runtime_checkable
+
+from pydantic import BaseModel
 
 
 class AppContext(ABC):
@@ -204,13 +206,75 @@ class ExecutionContextBuilder:
         )
 
 
+_capturer: Callable[[], IExecutionContext] | None = None
+
+# Tenant-scoped providers using tuple keys for clarity and constant-time lookup.
+# Key mapping:
+#   (name, tenant_id) -> provider
+# - name: namespaced identifier (recommend prefixing, e.g. "workflow.sandbox")
+# - tenant_id: tenant identifier string
+# Value:
+#   provider: Callable[[], BaseModel] returning the typed context value
+# Type-safety note:
+#   - This registry cannot enforce that all providers for a given name return the same BaseModel type.
+#   - Implementors SHOULD provide typed wrappers around register/read (like Go's context best practice),
+#     e.g. def register_sandbox_ctx(tenant_id: str, p: Callable[[], SandboxContext]) and
+#          def read_sandbox_ctx(tenant_id: str) -> SandboxContext.
+_tenant_context_providers: dict[tuple[str, str], Callable[[], BaseModel]] = {}
+
+T = TypeVar("T", bound=BaseModel)
+
+
+class ContextProviderNotFoundError(KeyError):
+    """Raised when a tenant-scoped context provider is missing for a given (name, tenant_id)."""
+
+    pass
+
+
+def register_context_capturer(capturer: Callable[[], IExecutionContext]) -> None:
+    """Register a single enterable execution context capturer (e.g., Flask)."""
+    global _capturer
+    _capturer = capturer
+
+
+def register_context(name: str, tenant_id: str, provider: Callable[[], BaseModel]) -> None:
+    """Register a tenant-specific provider for a named context.
+
+    Tip: use a namespaced "name" (e.g., "workflow.sandbox") to avoid key collisions.
+    Consider adding a typed wrapper for this registration in your feature module.
+    """
+    _tenant_context_providers[(name, tenant_id)] = provider
+
+
+def read_context(name: str, *, tenant_id: str) -> BaseModel:
+    """
+    Read a context value for a specific tenant.
+
+    Raises KeyError if the provider for (name, tenant_id) is not registered.
+    """
+    prov = _tenant_context_providers.get((name, tenant_id))
+    if prov is None:
+        raise ContextProviderNotFoundError(f"Context provider '{name}' not registered for tenant '{tenant_id}'")
+    return prov()
+
+
 def capture_current_context() -> IExecutionContext:
     """
     Capture current execution context from the calling environment.
 
-    Returns:
-        IExecutionContext with captured context
+    If a capturer is registered (e.g., Flask), use it. Otherwise, return a minimal
+    context with NullAppContext + copy of current contextvars.
     """
-    from context import capture_current_context
+    if _capturer is None:
+        return ExecutionContext(
+            app_context=NullAppContext(),
+            context_vars=contextvars.copy_context(),
+        )
+    return _capturer()
 
-    return capture_current_context()
+
+def reset_context_provider() -> None:
+    """Reset the capturer and all tenant-scoped context providers (primarily for tests)."""
+    global _capturer
+    _capturer = None
+    _tenant_context_providers.clear()

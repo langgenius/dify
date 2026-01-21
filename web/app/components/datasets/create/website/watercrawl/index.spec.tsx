@@ -24,6 +24,11 @@ vi.mock('@/context/modal-context', () => ({
   }),
 }))
 
+// Mock i18n context
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => (path?: string) => path ? `https://docs.dify.ai/en${path}` : 'https://docs.dify.ai/en/',
+}))
+
 // ============================================================================
 // Test Data Factories
 // ============================================================================

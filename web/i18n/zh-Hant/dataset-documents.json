@@ -26,6 +26,7 @@
   "list.action.archive": "歸檔",
   "list.action.batchAdd": "批次新增",
   "list.action.delete": "刪除",
+  "list.action.download": "下載",
   "list.action.enableWarning": "歸檔的檔案無法啟用",
   "list.action.pause": "暫停",
   "list.action.resume": "恢復",

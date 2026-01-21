@@ -140,7 +140,7 @@
   "stepTwo.preview": "미리보기",
   "stepTwo.previewButton": "질문 - 답변 형식으로 전환",
   "stepTwo.previewChunk": "프리뷰 청크 (Preview Chunk)",
-  "stepTwo.previewChunkCount": "{{개수}} 추정된 청크",
+  "stepTwo.previewChunkCount": "{{count}} 추정된 청크",
   "stepTwo.previewChunkTip": "왼쪽의 'Preview Chunk' 버튼을 클릭하여 프리뷰를 로드합니다",
   "stepTwo.previewSwitchTipEnd": " 추가 토큰이 소비됩니다",
   "stepTwo.previewSwitchTipStart": "현재 청크 미리보기는 텍스트 형식입니다. 질문과 답변 형식 미리보기로 전환하면",

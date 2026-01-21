@@ -10,13 +10,13 @@ from typing import Any
 
 from celery import shared_task
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.app.apps.workflow.app_generator import SKIP_PREPARE_USER_INPUTS_KEY, WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.layers.trigger_post_layer import TriggerPostLayer
-from extensions.ext_database import db
+from core.db.session_factory import session_factory
 from models.account import Account
 from models.enums import CreatorUserRole, WorkflowTriggerStatus
 from models.model import App, EndUser, Tenant
@@ -98,10 +98,7 @@ def _execute_workflow_common(
 ):
     """Execute workflow with common logic and trigger log updates."""
 
-    # Create a new session for this task
-    session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
-
-    with session_factory() as session:
+    with session_factory.create_session() as session:
         trigger_log_repo = SQLAlchemyWorkflowTriggerLogRepository(session)
 
         # Get trigger log
@@ -157,7 +154,7 @@ def _execute_workflow_common(
                 root_node_id=trigger_data.root_node_id,
                 graph_engine_layers=[
                     # TODO: Re-enable TimeSliceLayer after the HITL release.
-                    TriggerPostLayer(cfs_plan_scheduler_entity, start_time, trigger_log.id, session_factory),
+                    TriggerPostLayer(cfs_plan_scheduler_entity, start_time, trigger_log.id),
                 ],
             )
 
