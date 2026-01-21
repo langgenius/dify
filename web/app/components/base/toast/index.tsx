@@ -80,7 +80,7 @@ const Toast = ({
             <div className="system-sm-semibold text-text-primary [word-break:break-word]">{message}</div>
             {customComponent}
           </div>
-          {children && (
+          {!!children && (
             <div className="system-xs-regular text-text-secondary">
               {children}
             </div>

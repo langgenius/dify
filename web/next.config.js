@@ -48,11 +48,6 @@ const nextConfig = {
       search: '',
     })),
   },
-  experimental: {
-    optimizePackageImports: [
-      '@heroicons/react',
-    ],
-  },
   // fix all before production. Now it slow the develop speed.
   eslint: {
     // Warning: This allows production builds to successfully complete even if
