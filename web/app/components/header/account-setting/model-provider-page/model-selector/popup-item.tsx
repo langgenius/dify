@@ -104,17 +104,17 @@ const PopupItem: FC<PopupItemProps> = ({
                       />
                     )
                   }
-                  {modelItem.model_type && (
+                  {!!modelItem.model_type && (
                     <ModelBadge>
                       {modelTypeFormat(modelItem.model_type)}
                     </ModelBadge>
                   )}
-                  {modelItem.model_properties.mode && (
+                  {!!modelItem.model_properties.mode && (
                     <ModelBadge>
                       {(modelItem.model_properties.mode as string).toLocaleUpperCase()}
                     </ModelBadge>
                   )}
-                  {modelItem.model_properties.context_size && (
+                  {!!modelItem.model_properties.context_size && (
                     <ModelBadge>
                       {sizeFormat(modelItem.model_properties.context_size as number)}
                     </ModelBadge>

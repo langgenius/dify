@@ -322,7 +322,7 @@ const BaseNode: FC<BaseNodeProps> = ({
             }
           </div>
           {
-            data._iterationLength && data._iterationIndex && data._runningStatus === NodeRunningStatus.Running && (
+            !!(data._iterationLength && data._iterationIndex && data._runningStatus === NodeRunningStatus.Running) && (
               <div className="mr-1.5 text-xs font-medium text-text-accent">
                 {data._iterationIndex > data._iterationLength ? data._iterationLength : data._iterationIndex}
                 /
@@ -331,7 +331,7 @@ const BaseNode: FC<BaseNodeProps> = ({
             )
           }
           {
-            data.type === BlockEnum.Loop && data._loopIndex && LoopIndex
+            !!(data.type === BlockEnum.Loop && data._loopIndex) && LoopIndex
           }
           {
             isLoading
@@ -374,7 +374,7 @@ const BaseNode: FC<BaseNodeProps> = ({
           )
         }
         {
-          data.desc && data.type !== BlockEnum.Iteration && data.type !== BlockEnum.Loop && (
+          !!(data.desc && data.type !== BlockEnum.Iteration && data.type !== BlockEnum.Loop) && (
             <div className="system-xs-regular whitespace-pre-line break-words px-3 pb-2 pt-1 text-text-tertiary">
               {data.desc}
             </div>

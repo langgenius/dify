@@ -219,7 +219,7 @@ const Answer: FC<AnswerProps> = ({
               )
             }
             {
-              item.siblingCount && item.siblingCount > 1 && item.siblingIndex !== undefined && (
+              !!(item.siblingCount && item.siblingCount > 1 && item.siblingIndex !== undefined) && (
                 <ContentSwitch
                   count={item.siblingCount}
                   currentIndex={item.siblingIndex}

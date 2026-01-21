@@ -16,7 +16,7 @@
   "form.indexMethod": "सूचीकरण प्रक्रिया",
   "form.indexMethodChangeToEconomyDisabledTip": "मुख्यालय से ईसीओ में डाउनग्रेड करने के लिए उपलब्ध नहीं है",
   "form.indexMethodEconomy": "आर्थिक",
-  "form.indexMethodEconomyTip": "ऑफ़लाइन वेक्टर इंजन, कीवर्ड इंडेक्स आदि का उपयोग करें ताकि टोकनों की बचत हो।",
+  "form.indexMethodEconomyTip": "प्रत्येक खंड के लिए {{count}} कीवर्ड का उपयोग करके पुनर्प्राप्ति करें, टोकन खर्च किए बिना कम सटीकता की कीमत पर।",
   "form.indexMethodHighQuality": " उच्च गुणवत्ता",
   "form.indexMethodHighQualityTip": "उपयोगकर्ता के प्रश्नों के समय उच्च सटीकता प्रदान करने के लिए Embedding मॉडल को प्रोसेसिंग के लिए कॉल करें।",
   "form.me": "(आप)",
