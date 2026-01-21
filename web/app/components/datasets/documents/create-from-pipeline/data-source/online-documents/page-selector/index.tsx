@@ -1,7 +1,7 @@
 import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { FixedSizeList as List } from 'react-window'
 import Item from './item'
 import { recursivePushInParentDescendants } from './utils'
 
@@ -45,29 +45,16 @@ const PageSelector = ({
   currentCredentialId,
 }: PageSelectorProps) => {
   const { t } = useTranslation()
-  const [dataList, setDataList] = useState<NotionPageItem[]>([])
+  const parentRef = useRef<HTMLDivElement>(null)
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set())
   const [currentPreviewPageId, setCurrentPreviewPageId] = useState('')
+  const prevCredentialIdRef = useRef(currentCredentialId)
 
-  useEffect(() => {
-    setDataList(list.filter(item => item.parent_id === 'root' || !pagesMap[item.parent_id]).map((item) => {
-      return {
-        ...item,
-        expand: false,
-        depth: 0,
-      }
-    }))
-  }, [currentCredentialId])
-
-  const searchDataList = list.filter((item) => {
-    return item.page_name.includes(searchValue)
-  }).map((item) => {
-    return {
-      ...item,
-      expand: false,
-      depth: 0,
-    }
-  })
-  const currentDataList = searchValue ? searchDataList : dataList
+  // Reset expanded state when credential changes (render-time detection)
+  if (prevCredentialIdRef.current !== currentCredentialId) {
+    prevCredentialIdRef.current = currentCredentialId
+    setExpandedIds(new Set())
+  }
 
   const listMapWithChildrenAndDescendants = useMemo(() => {
     return list.reduce((prev: NotionPageTreeMap, next: DataSourceNotionPage) => {
@@ -80,34 +67,72 @@ const PageSelector = ({
     }, {})
   }, [list, pagesMap])
 
+  // Compute visible data list based on expanded state
+  const dataList = useMemo(() => {
+    const result: NotionPageItem[] = []
+
+    const buildVisibleList = (parentId: string | null, depth: number) => {
+      const items = parentId === null
+        ? list.filter(item => item.parent_id === 'root' || !pagesMap[item.parent_id])
+        : list.filter(item => item.parent_id === parentId)
+
+      for (const item of items) {
+        const isExpanded = expandedIds.has(item.page_id)
+        result.push({
+          ...item,
+          expand: isExpanded,
+          depth,
+        })
+        if (isExpanded) {
+          buildVisibleList(item.page_id, depth + 1)
+        }
+      }
+    }
+
+    buildVisibleList(null, 0)
+    return result
+  }, [list, pagesMap, expandedIds])
+
+  const searchDataList = useMemo(() => list.filter((item) => {
+    return item.page_name.includes(searchValue)
+  }).map((item) => {
+    return {
+      ...item,
+      expand: false,
+      depth: 0,
+    }
+  }), [list, searchValue])
+
+  const currentDataList = searchValue ? searchDataList : dataList
+
+  const virtualizer = useVirtualizer({
+    count: currentDataList.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 28,
+    overscan: 5,
+    getItemKey: index => currentDataList[index].page_id,
+  })
+
   const handleToggle = useCallback((index: number) => {
     const current = dataList[index]
     const pageId = current.page_id
     const currentWithChildrenAndDescendants = listMapWithChildrenAndDescendants[pageId]
-    const descendantsIds = Array.from(currentWithChildrenAndDescendants.descendants)
-    const childrenIds = Array.from(currentWithChildrenAndDescendants.children)
-    let newDataList = []
 
-    if (current.expand) {
-      current.expand = false
-
-      newDataList = dataList.filter(item => !descendantsIds.includes(item.page_id))
-    }
-    else {
-      current.expand = true
-
-      newDataList = [
-        ...dataList.slice(0, index + 1),
-        ...childrenIds.map(item => ({
-          ...pagesMap[item],
-          expand: false,
-          depth: listMapWithChildrenAndDescendants[item].depth,
-        })),
-        ...dataList.slice(index + 1),
-      ]
-    }
-    setDataList(newDataList)
-  }, [dataList, listMapWithChildrenAndDescendants, pagesMap])
+    setExpandedIds((prev) => {
+      const next = new Set(prev)
+      if (prev.has(pageId)) {
+        // Collapse: remove current and all descendants
+        next.delete(pageId)
+        for (const descendantId of currentWithChildrenAndDescendants.descendants)
+          next.delete(descendantId)
+      }
+      else {
+        // Expand: add current
+        next.add(pageId)
+      }
+      return next
+    })
+  }, [dataList, listMapWithChildrenAndDescendants])
 
   const handleCheck = useCallback((index: number) => {
     const copyValue = new Set(checkedIds)
@@ -160,30 +185,43 @@ const PageSelector = ({
   }
 
   return (
-    <List
+    <div
+      ref={parentRef}
       className="py-2"
-      height={296}
-      itemCount={currentDataList.length}
-      itemSize={28}
-      width="100%"
-      itemKey={(index, data) => data.dataList[index].page_id}
-      itemData={{
-        dataList: currentDataList,
-        handleToggle,
-        checkedIds,
-        disabledCheckedIds: disabledValue,
-        handleCheck,
-        canPreview,
-        handlePreview,
-        listMapWithChildrenAndDescendants,
-        searchValue,
-        previewPageId: currentPreviewPageId,
-        pagesMap,
-        isMultipleChoice,
-      }}
+      style={{ height: 296, width: '100%', overflow: 'auto' }}
     >
-      {Item}
-    </List>
+      <div
+        style={{
+          height: virtualizer.getTotalSize(),
+          width: '100%',
+          position: 'relative',
+        }}
+      >
+        {virtualizer.getVirtualItems().map((virtualRow) => {
+          const current = currentDataList[virtualRow.index]
+          return (
+            <Item
+              key={virtualRow.key}
+              index={virtualRow.index}
+              virtualStart={virtualRow.start}
+              virtualSize={virtualRow.size}
+              current={current}
+              handleToggle={handleToggle}
+              checkedIds={checkedIds}
+              disabledCheckedIds={disabledValue}
+              handleCheck={handleCheck}
+              canPreview={canPreview}
+              handlePreview={handlePreview}
+              listMapWithChildrenAndDescendants={listMapWithChildrenAndDescendants}
+              searchValue={searchValue}
+              previewPageId={currentPreviewPageId}
+              pagesMap={pagesMap}
+              isMultipleChoice={isMultipleChoice}
+            />
+          )
+        })}
+      </div>
+    </div>
   )
 }
 

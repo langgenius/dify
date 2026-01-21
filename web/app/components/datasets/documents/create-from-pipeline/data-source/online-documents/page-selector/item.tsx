@@ -1,9 +1,7 @@
-import type { ListChildComponentProps } from 'react-window'
 import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
-import * as React from 'react'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { areEqual } from 'react-window'
 import Checkbox from '@/app/components/base/checkbox'
 import NotionIcon from '@/app/components/base/notion-icon'
 import Radio from '@/app/components/base/radio/ui'
@@ -23,8 +21,11 @@ type NotionPageItem = {
   depth: number
 } & DataSourceNotionPage
 
-const Item = ({ index, style, data }: ListChildComponentProps<{
-  dataList: NotionPageItem[]
+type ItemProps = {
+  index: number
+  virtualStart: number
+  virtualSize: number
+  current: NotionPageItem
   handleToggle: (index: number) => void
   checkedIds: Set<string>
   disabledCheckedIds: Set<string>
@@ -36,23 +37,26 @@ const Item = ({ index, style, data }: ListChildComponentProps<{
   previewPageId: string
   pagesMap: DataSourceNotionPageMap
   isMultipleChoice?: boolean
-}>) => {
+}
+
+const Item = ({
+  index,
+  virtualStart,
+  virtualSize,
+  current,
+  handleToggle,
+  checkedIds,
+  disabledCheckedIds,
+  handleCheck,
+  canPreview,
+  handlePreview,
+  listMapWithChildrenAndDescendants,
+  searchValue,
+  previewPageId,
+  pagesMap,
+  isMultipleChoice,
+}: ItemProps) => {
   const { t } = useTranslation()
-  const {
-    dataList,
-    handleToggle,
-    checkedIds,
-    disabledCheckedIds,
-    handleCheck,
-    canPreview,
-    handlePreview,
-    listMapWithChildrenAndDescendants,
-    searchValue,
-    previewPageId,
-    pagesMap,
-    isMultipleChoice,
-  } = data
-  const current = dataList[index]
   const currentWithChildrenAndDescendants = listMapWithChildrenAndDescendants[current.page_id]
   const hasChild = currentWithChildrenAndDescendants.descendants.size > 0
   const ancestors = currentWithChildrenAndDescendants.ancestors
@@ -88,7 +92,15 @@ const Item = ({ index, style, data }: ListChildComponentProps<{
   return (
     <div
       className={cn('group flex cursor-pointer items-center rounded-md pl-2 pr-[2px] hover:bg-state-base-hover', previewPageId === current.page_id && 'bg-state-base-hover')}
-      style={{ ...style, top: style.top as number + 8, left: 8, right: 8, width: 'calc(100% - 16px)' }}
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 8,
+        right: 8,
+        width: 'calc(100% - 16px)',
+        height: virtualSize,
+        transform: `translateY(${virtualStart + 8}px)`,
+      }}
     >
       {isMultipleChoice
         ? (
@@ -149,4 +161,4 @@ const Item = ({ index, style, data }: ListChildComponentProps<{
   )
 }
 
-export default React.memo(Item, areEqual)
+export default memo(Item)
