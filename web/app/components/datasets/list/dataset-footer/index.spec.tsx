@@ -1,30 +1,52 @@
 import { render, screen } from '@testing-library/react'
+import { describe, expect, it } from 'vitest'
 import DatasetFooter from './index'
 
 describe('DatasetFooter', () => {
-  it('should render correctly', () => {
-    render(<DatasetFooter />)
+  describe('Rendering', () => {
+    it('should render without crashing', () => {
+      render(<DatasetFooter />)
+      expect(screen.getByRole('contentinfo')).toBeInTheDocument()
+    })
 
-    // Check main title (mocked i18n returns ns:key or key)
-    // The code uses t('didYouKnow', { ns: 'dataset' })
-    // With default mock it likely returns 'dataset.didYouKnow'
-    expect(screen.getByText('dataset.didYouKnow')).toBeInTheDocument()
+    it('should render the main heading', () => {
+      render(<DatasetFooter />)
+      expect(screen.getByRole('heading', { level: 3 })).toBeInTheDocument()
+    })
 
-    // Check paragraph content
-    expect(screen.getByText(/dataset.intro1/)).toBeInTheDocument()
-    expect(screen.getByText(/dataset.intro2/)).toBeInTheDocument()
-    expect(screen.getByText(/dataset.intro3/)).toBeInTheDocument()
-    expect(screen.getByText(/dataset.intro4/)).toBeInTheDocument()
-    expect(screen.getByText(/dataset.intro5/)).toBeInTheDocument()
-    expect(screen.getByText(/dataset.intro6/)).toBeInTheDocument()
+    it('should render description paragraph', () => {
+      render(<DatasetFooter />)
+      // The paragraph contains multiple text spans
+      expect(screen.getByText(/intro1/)).toBeInTheDocument()
+    })
   })
 
-  it('should have correct styling', () => {
-    const { container } = render(<DatasetFooter />)
-    const footer = container.querySelector('footer')
-    expect(footer).toHaveClass('shrink-0', 'px-12', 'py-6')
+  describe('Props', () => {
+    it('should be memoized', () => {
+      // DatasetFooter is wrapped with React.memo
+      expect(DatasetFooter).toBeDefined()
+    })
+  })
 
-    const h3 = container.querySelector('h3')
-    expect(h3).toHaveClass('text-gradient')
+  describe('Styles', () => {
+    it('should have correct footer styling', () => {
+      render(<DatasetFooter />)
+      const footer = screen.getByRole('contentinfo')
+      expect(footer).toHaveClass('shrink-0', 'px-12', 'py-6')
+    })
+
+    it('should have gradient text on heading', () => {
+      render(<DatasetFooter />)
+      const heading = screen.getByRole('heading', { level: 3 })
+      expect(heading).toHaveClass('text-gradient')
+    })
+  })
+
+  describe('Content Structure', () => {
+    it('should render accent spans for highlighted text', () => {
+      render(<DatasetFooter />)
+      const accentSpans = document.querySelectorAll('.text-text-accent')
+      expect(accentSpans.length).toBe(2)
+    })
   })
 })

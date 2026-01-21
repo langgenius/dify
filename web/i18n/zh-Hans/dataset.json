@@ -7,6 +7,7 @@
   "batchAction.cancel": "取消",
   "batchAction.delete": "删除",
   "batchAction.disable": "禁用",
+  "batchAction.download": "下载",
   "batchAction.enable": "启用",
   "batchAction.reIndex": "重新索引",
   "batchAction.selected": "已选择",

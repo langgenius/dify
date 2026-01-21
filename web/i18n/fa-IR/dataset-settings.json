@@ -16,7 +16,7 @@
   "form.indexMethod": "روش نمایه‌سازی",
   "form.indexMethodChangeToEconomyDisabledTip": "برای تنزل رتبه از HQ به ECO در دسترس نیست",
   "form.indexMethodEconomy": "اقتصادی",
-  "form.indexMethodEconomyTip": "استفاده از موتورهای برداری آفلاین، شاخص‌های کلمات کلیدی و غیره برای کاهش دقت بدون صرف توکن‌ها",
+  "form.indexMethodEconomyTip": "استفاده از {{count}} کلمه کلیدی برای هر تکه در بازیابی، بدون مصرف توکن‌ها با کاهش دقت.",
   "form.indexMethodHighQuality": "کیفیت بالا",
   "form.indexMethodHighQualityTip": "مدل تعبیه را برای پردازش فراخوانی کنید تا دقت بالاتری هنگام جستجوی کاربران فراهم شود.",
   "form.me": "(شما)",
