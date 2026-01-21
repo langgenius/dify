@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
+import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { RiCloseLine } from '@remixicon/react'
 import Divider from '@/app/components/base/divider'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
@@ -84,7 +85,7 @@ type InternalRetrievalSectionProps = CommonSectionProps & {
   retrievalConfig: RetrievalConfig
   showMultiModalTip: boolean
   onRetrievalConfigChange: (value: RetrievalConfig) => void
-  docLink: (path: string) => string
+  docLink: (path?: DocPathWithoutLang) => string
 }
 
 const InternalRetrievalSection: FC<InternalRetrievalSectionProps> = ({
@@ -102,7 +103,7 @@ const InternalRetrievalSection: FC<InternalRetrievalSectionProps> = ({
       <div>
         <div className="system-sm-semibold text-text-secondary">{t('form.retrievalSetting.title', { ns: 'datasetSettings' })}</div>
         <div className="text-xs font-normal leading-[18px] text-text-tertiary">
-          <a target="_blank" rel="noopener noreferrer" href={docLink('/guides/knowledge-base/create-knowledge-and-upload-documents/setting-indexing-methods#setting-the-retrieval-setting')} className="text-text-accent">{t('form.retrievalSetting.learnMore', { ns: 'datasetSettings' })}</a>
+          <a target="_blank" rel="noopener noreferrer" href={docLink('/use-dify/knowledge/create-knowledge/setting-indexing-methods')} className="text-text-accent">{t('form.retrievalSetting.learnMore', { ns: 'datasetSettings' })}</a>
           {t('form.retrievalSetting.description', { ns: 'datasetSettings' })}
         </div>
       </div>
