@@ -47,7 +47,7 @@ const UserActionItem: FC<UserActionItemProps> = ({
       .join('')
 
     if (sanitized !== withUnderscores)
-      Toast.notify({ type: 'error', message: t(`${i18nPrefix}.userActions.invalidActionIdFormat`, { ns: 'workflow' }) })
+      Toast.notify({ type: 'error', message: t(`${i18nPrefix}.userActions.actionIdFormatTip`, { ns: 'workflow' }) })
 
     // Limit to 20 characters
     if (sanitized.length > ACTION_ID_MAX_LENGTH) {

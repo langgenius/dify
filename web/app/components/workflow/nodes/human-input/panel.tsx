@@ -11,6 +11,7 @@ import {
 import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Button from '@/app/components/base/button'
@@ -30,7 +31,6 @@ import TimeoutInput from './components/timeout'
 import UserActionItem from './components/user-action'
 import useConfig from './hooks/use-config'
 import { UserActionButtonType } from './types'
-import { genActionId } from './utils'
 
 const i18nPrefix = 'nodes.humanInput'
 
@@ -72,6 +72,15 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
     toggle: togglePreview,
     setFalse: hidePreview,
   }] = useBoolean(false)
+
+  const onAddUseAction = useCallback(() => {
+    const index = inputs.user_actions.length + 1
+    handleUserActionAdd({
+      id: `action_${index}`,
+      title: `Button Text ${index}`,
+      button_style: UserActionButtonType.Default,
+    })
+  }, [handleUserActionAdd, inputs.user_actions.length])
 
   return (
     <div className="py-2">
@@ -161,13 +170,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
           {!readOnly && (
             <div className="flex items-center px-1">
               <ActionButton
-                onClick={() => {
-                  handleUserActionAdd({
-                    id: genActionId(),
-                    title: 'Button Text',
-                    button_style: UserActionButtonType.Default,
-                  })
-                }}
+                onClick={onAddUseAction}
               >
                 <RiAddLine className="h-4 w-4" />
               </ActionButton>
