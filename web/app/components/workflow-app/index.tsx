@@ -35,6 +35,7 @@ import { useAppContext } from '@/context/app-context'
 import { fetchRunDetail } from '@/service/log'
 import { useAppTriggers } from '@/service/use-tools'
 import { AppModeEnum } from '@/types/app'
+import { useFeatures } from '../base/features/hooks'
 import ViewPicker from '../workflow/view-picker'
 import WorkflowAppMain from './components/workflow-main'
 import { useGetRunAndTraceUrl } from './hooks/use-get-run-and-trace-url'
@@ -58,6 +59,8 @@ const WorkflowViewContent = ({
   graphContent,
   reload,
 }: WorkflowViewContentProps) => {
+  const features = useFeatures(s => s.features)
+  const isSupportSandbox = !!features.sandbox?.enabled
   const [viewType, doSetViewType] = useQueryState(WORKFLOW_VIEW_PARAM_KEY, parseAsViewType)
   const { syncWorkflowDraftImmediately } = useNodesSyncDraft()
   const pendingSyncRef = useRef<Promise<void> | null>(null)
@@ -89,6 +92,9 @@ const WorkflowViewContent = ({
     }
   }, [doSetViewType, refreshGraph, syncWorkflowDraftImmediately, viewType])
 
+  if (!isSupportSandbox) {
+    return graphContent
+  }
   return (
     <div className="relative h-full w-full">
       <ViewPicker
