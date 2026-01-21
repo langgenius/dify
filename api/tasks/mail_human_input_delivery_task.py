@@ -10,9 +10,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
 from core.workflow.nodes.human_input.entities import EmailDeliveryConfig, EmailDeliveryMethod
 from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
 from extensions.ext_database import db
 from extensions.ext_mail import mail
 from libs.email_template_renderer import render_email_template

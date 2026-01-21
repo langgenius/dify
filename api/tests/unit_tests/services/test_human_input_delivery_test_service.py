@@ -8,13 +8,13 @@ from core.workflow.nodes.human_input.entities import (
     EmailRecipients,
     ExternalRecipient,
 )
+from core.workflow.runtime import VariablePool
 from services import human_input_delivery_test_service as service_module
 from services.human_input_delivery_test_service import (
     DeliveryTestContext,
     DeliveryTestError,
     EmailDeliveryTestHandler,
 )
-from core.workflow.runtime import VariablePool
 
 
 def _make_email_method() -> EmailDeliveryMethod:
