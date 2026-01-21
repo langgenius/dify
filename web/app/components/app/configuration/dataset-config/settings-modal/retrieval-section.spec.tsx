@@ -1,5 +1,6 @@
 import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
+import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
@@ -237,7 +238,7 @@ describe('RetrievalSection', () => {
         retrievalConfig={retrievalConfig}
         showMultiModalTip
         onRetrievalConfigChange={vi.fn()}
-        docLink={docLink as any}
+        docLink={docLink as unknown as (path?: DocPathWithoutLang) => string}
       />,
     )
 

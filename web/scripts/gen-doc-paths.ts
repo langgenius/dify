@@ -338,52 +338,7 @@ function generateTypeDefinitions(
   return lines.join('\n')
 }
 
-/**
- * Generate redirects map for ESLint rule
- * Strips language prefix from paths for use with useDocLink
- */
-function generateRedirectsModule(redirects: Redirect[]): string {
-  const lines: string[] = [
-    '// GENERATE BY script',
-    '// DON NOT EDIT IT MANUALLY',
-    '//',
-    '// Generated from: https://raw.githubusercontent.com/langgenius/dify-docs/refs/heads/main/docs.json',
-    `// Generated at: ${new Date().toISOString()}`,
-    '',
-    '/** @type {Map<string, string>} */',
-    'export const docRedirects = new Map([',
-  ]
-
-  // Use a map to deduplicate paths (same path in different languages)
-  const pathMap = new Map<string, string>()
-  const langPrefixRegex = /^\/(en|zh|ja|zh-hans|ja-jp)\//
-
-  for (const redirect of redirects) {
-    // Skip wildcard redirects
-    if (redirect.source.includes(':slug'))
-      continue
-
-    // Strip language prefix from source and destination
-    const sourceWithoutLang = redirect.source.replace(langPrefixRegex, '')
-    const destWithoutLang = redirect.destination.replace(langPrefixRegex, '')
-
-    // Only add if we haven't seen this path yet
-    if (!pathMap.has(sourceWithoutLang))
-      pathMap.set(sourceWithoutLang, destWithoutLang)
-  }
-
-  for (const [source, dest] of pathMap) {
-    lines.push(`  ['${source}', '${dest}'],`)
-  }
-
-  lines.push('])')
-  lines.push('')
-
-  return lines.join('\n')
-}
-
 async function main(): Promise<void> {
-  // eslint-disable-next-line no-console
   console.log('Fetching docs.json from GitHub...')
 
   const response = await fetch(DOCS_JSON_URL)
@@ -391,18 +346,16 @@ async function main(): Promise<void> {
     throw new Error(`Failed to fetch docs.json: ${response.status} ${response.statusText}`)
 
   const docsJson = await response.json() as DocsJson
-  // eslint-disable-next-line no-console
   console.log('Successfully fetched docs.json')
 
   // Extract paths from navigation
   const allPaths = extractPaths(docsJson.navigation)
 
-  // eslint-disable-next-line no-console
   console.log(`Found ${allPaths.size} total paths`)
 
   // Extract OpenAPI file paths from navigation for all languages
   const openApiPaths = extractOpenAPIPaths(docsJson.navigation)
-  // eslint-disable-next-line no-console
+
   console.log(`Found ${openApiPaths.size} OpenAPI specs to process`)
 
   // Fetch OpenAPI specs and extract API reference paths with endpoint keys
@@ -423,7 +376,6 @@ async function main(): Promise<void> {
     // Get file name without language prefix (e.g., "api-reference/openapi_knowledge.json")
     const fileKey = openapiPath.replace(/^(en|zh|ja)\//, '')
 
-    // eslint-disable-next-line no-console
     console.log(`Fetching OpenAPI spec: ${openapiPath}`)
     const pathMap = await fetchOpenAPIAndExtractPaths(openapiPath)
     endpointMapsByLang[lang].set(fileKey, pathMap)
@@ -456,14 +408,14 @@ async function main(): Promise<void> {
 
   // Deduplicate English API paths
   const uniqueEnApiPaths = [...new Set(enApiPaths)]
-  // eslint-disable-next-line no-console
+
   console.log(`Extracted ${uniqueEnApiPaths.length} unique English API reference paths`)
-  // eslint-disable-next-line no-console
+
   console.log(`Generated ${Object.keys(apiPathTranslations).length} API path translations`)
 
   // Group by section
   const groups = groupPathsBySection(allPaths)
-  // eslint-disable-next-line no-console
+
   console.log(`Grouped into ${Object.keys(groups).length} sections:`, Object.keys(groups))
 
   // Generate TypeScript
@@ -471,7 +423,7 @@ async function main(): Promise<void> {
 
   // Write to file
   await writeFile(OUTPUT_PATH, tsContent, 'utf-8')
-  // eslint-disable-next-line no-console
+
   console.log(`Generated TypeScript types at: ${OUTPUT_PATH}`)
 }
 
