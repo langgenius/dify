@@ -149,6 +149,16 @@ vi.mock('@/service/base', () => ({
   }),
 }))
 
+const mockMarketplaceClient = vi.hoisted(() => ({
+  collectionPlugins: vi.fn().mockResolvedValue({ data: { plugins: [] } }),
+  collections: vi.fn().mockResolvedValue({ data: { collections: [] } }),
+  searchAdvanced: vi.fn().mockResolvedValue({ data: { plugins: [], bundles: [], total: 0 } }),
+}))
+
+vi.mock('@/service/client', () => ({
+  marketplaceClient: mockMarketplaceClient,
+}))
+
 // Mock config
 vi.mock('@/config', () => ({
   API_PREFIX: '/api',
@@ -1490,12 +1500,9 @@ describe('Async Utils', () => {
         { type: 'plugin', org: 'test', name: 'plugin2' },
       ]
 
-      globalThis.fetch = vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ data: { plugins: mockPlugins } }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }),
-      )
+      mockMarketplaceClient.collectionPlugins.mockResolvedValueOnce({
+        data: { plugins: mockPlugins },
+      })
 
       const { getMarketplacePluginsByCollectionId } = await import('./utils')
       const result = await getMarketplacePluginsByCollectionId('test-collection', {
@@ -1504,12 +1511,12 @@ describe('Async Utils', () => {
         type: 'plugin',
       })
 
-      expect(globalThis.fetch).toHaveBeenCalled()
+      expect(mockMarketplaceClient.collectionPlugins).toHaveBeenCalled()
       expect(result).toHaveLength(2)
     })
 
     it('should handle fetch error and return empty array', async () => {
-      globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network error'))
+      mockMarketplaceClient.collectionPlugins.mockRejectedValueOnce(new Error('Network error'))
 
       const { getMarketplacePluginsByCollectionId } = await import('./utils')
       const result = await getMarketplacePluginsByCollectionId('test-collection')
@@ -1519,25 +1526,23 @@ describe('Async Utils', () => {
 
     it('should pass abort signal when provided', async () => {
       const mockPlugins = [{ type: 'plugins', org: 'test', name: 'plugin1' }]
-      globalThis.fetch = vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ data: { plugins: mockPlugins } }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }),
-      )
+      mockMarketplaceClient.collectionPlugins.mockResolvedValueOnce({
+        data: { plugins: mockPlugins },
+      })
 
       const controller = new AbortController()
       const { getMarketplacePluginsByCollectionId } = await import('./utils')
       await getMarketplacePluginsByCollectionId('test-collection', {}, { signal: controller.signal })
 
-      // oRPC uses Request objects, so check that fetch was called with a Request containing the right URL
-      expect(globalThis.fetch).toHaveBeenCalledWith(
-        expect.any(Request),
-        expect.any(Object),
+      expect(mockMarketplaceClient.collectionPlugins).toHaveBeenCalledWith(
+        expect.objectContaining({
+          params: { collectionId: 'test-collection' },
+          body: {},
+        }),
+        expect.objectContaining({
+          signal: controller.signal,
+        }),
       )
-      const call = vi.mocked(globalThis.fetch).mock.calls[0]
-      const request = call[0] as Request
-      expect(request.url).toContain('test-collection')
     })
   })
 
@@ -1548,23 +1553,11 @@ describe('Async Utils', () => {
       ]
       const mockPlugins = [{ type: 'plugins', org: 'test', name: 'plugin1' }]
 
-      let callCount = 0
-      globalThis.fetch = vi.fn().mockImplementation(() => {
-        callCount++
-        if (callCount === 1) {
-          return Promise.resolve(
-            new Response(JSON.stringify({ data: { collections: mockCollections } }), {
-              status: 200,
-              headers: { 'Content-Type': 'application/json' },
-            }),
-          )
-        }
-        return Promise.resolve(
-          new Response(JSON.stringify({ data: { plugins: mockPlugins } }), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-          }),
-        )
+      mockMarketplaceClient.collections.mockResolvedValueOnce({
+        data: { collections: mockCollections },
+      })
+      mockMarketplaceClient.collectionPlugins.mockResolvedValueOnce({
+        data: { plugins: mockPlugins },
       })
 
       const { getMarketplaceCollectionsAndPlugins } = await import('./utils')
@@ -1578,7 +1571,7 @@ describe('Async Utils', () => {
     })
 
     it('should handle fetch error and return empty data', async () => {
-      globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network error'))
+      mockMarketplaceClient.collections.mockRejectedValueOnce(new Error('Network error'))
 
       const { getMarketplaceCollectionsAndPlugins } = await import('./utils')
       const result = await getMarketplaceCollectionsAndPlugins()
@@ -1588,12 +1581,9 @@ describe('Async Utils', () => {
     })
 
     it('should append condition and type to URL when provided', async () => {
-      globalThis.fetch = vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ data: { collections: [] } }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }),
-      )
+      mockMarketplaceClient.collections.mockResolvedValueOnce({
+        data: { collections: [] },
+      })
 
       const { getMarketplaceCollectionsAndPlugins } = await import('./utils')
       await getMarketplaceCollectionsAndPlugins({
@@ -1601,11 +1591,17 @@ describe('Async Utils', () => {
         type: 'bundle',
       })
 
-      // oRPC uses Request objects, so check that fetch was called with a Request containing the right URL
-      expect(globalThis.fetch).toHaveBeenCalled()
-      const call = vi.mocked(globalThis.fetch).mock.calls[0]
-      const request = call[0] as Request
-      expect(request.url).toContain('condition=category%3Dtool')
+      expect(mockMarketplaceClient.collections).toHaveBeenCalledWith(
+        expect.objectContaining({
+          query: expect.objectContaining({
+            condition: 'category=tool',
+            type: 'bundle',
+            page: 1,
+            page_size: 100,
+          }),
+        }),
+        expect.any(Object),
+      )
     })
   })
 })

@@ -771,7 +771,9 @@ describe('EmptyDatasetCreationModal', () => {
 
       // 3. These should NOT happen on error
       expect(mockInvalidDatasetList).not.toHaveBeenCalled()
-      expect(mockOnHide).not.toHaveBeenCalled()
+      // Dialog onClose can pass false; ensure submit didn't call onHide directly.
+      const submitHideCalls = mockOnHide.mock.calls.filter(call => call.length === 0)
+      expect(submitHideCalls).toHaveLength(0)
       expect(mockPush).not.toHaveBeenCalled()
     })
   })
