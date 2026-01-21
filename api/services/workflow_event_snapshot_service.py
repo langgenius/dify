@@ -26,7 +26,7 @@ from core.workflow.enums import WorkflowExecutionStatus, WorkflowNodeExecutionSt
 from core.workflow.runtime import GraphRuntimeState
 from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models.model import AppMode, Message
-from models.workflow import WorkflowRun
+from models.workflow import WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from repositories.api_workflow_node_execution_repository import WorkflowNodeExecutionSnapshot
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.factory import DifyAPIRepositoryFactory
@@ -66,12 +66,19 @@ def build_workflow_event_stream(
             logger.exception("Failed to load workflow pause for run %s", workflow_run.id)
             pause_entity = None
 
-    resumption_context = _load_resumption_context(pause_entity)
+    resumption_context = _load_resumption_context(pause_entity=pause_entity)
     node_snapshots = node_execution_repo.get_execution_snapshots_by_workflow_run(
         tenant_id=tenant_id,
         app_id=app_id,
         workflow_id=workflow_run.workflow_id,
-        triggered_from=workflow_run.triggered_from,
+        # NOTE(QuantumGhost): for events resumption, we only care about
+        # the execution records from `WORKFLOW_RUN`.
+        #
+        # Ideally filtering with `workflow_run_id` is enough. However,
+        # due to the index of `WorkflowNodeExecution` table, we have to
+        # add a filter condition of `triggered_from` to
+        # ensure that we can utilize the index.
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         workflow_run_id=workflow_run.id,
     )
 

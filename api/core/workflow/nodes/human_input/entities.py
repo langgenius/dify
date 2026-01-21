@@ -59,8 +59,11 @@ class EmailDeliveryConfig(BaseModel):
     # the subject of email
     subject: str
 
-    # Body is the content of email, it may contain the speical placeholder `{{#url#}}`, which
+    # Body is the content of email.It may contain the speical placeholder `{{#url#}}`, which
     # represent the url to submit the form.
+    #
+    # It may also reference the output variable of the previous node with the syntax
+    # `{{#<node_id>.<field_name>#}}`.
     body: str
     debug_mode: bool = False
 

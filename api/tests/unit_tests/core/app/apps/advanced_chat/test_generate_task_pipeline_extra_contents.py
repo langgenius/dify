@@ -12,8 +12,8 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import QueueTextChunkEvent, QueueWorkflowPausedEvent
 from core.workflow.entities.pause_reason import HumanInputRequired
 from models.enums import MessageStatus
-from models.model import EndUser
 from models.execution_extra_content import HumanInputContent
+from models.model import EndUser
 
 
 def _build_pipeline() -> pipeline_module.AdvancedChatAppGenerateTaskPipeline:
