@@ -217,7 +217,6 @@ const PageSelector = ({
     }, {})
   }, [list, pagesMap])
 
-  // Pre-build children index for O(1) lookup instead of O(n) filter
   const childrenByParent = useMemo(() => {
     const map = new Map<string | null, DataSourceNotionPage[]>()
     for (const item of list) {
@@ -230,7 +229,6 @@ const PageSelector = ({
     return map
   }, [list, pagesMap])
 
-  // Compute visible data list based on expanded state
   const dataList = useMemo(() => {
     const result: NotionPageItem[] = []
 
@@ -275,14 +273,11 @@ const PageSelector = ({
     getItemKey: index => currentDataList[index].page_id,
   })
 
-  // Stable callback - no dependencies on dataList
   const handleToggle = useCallback((pageId: string) => {
     setExpandedIds((prev) => {
       const next = new Set(prev)
       if (prev.has(pageId)) {
-        // Collapse: remove current and all descendants
         next.delete(pageId)
-        // Note: We access listMapWithChildrenAndDescendants via closure, but it's stable (memoized)
         const descendants = listMapWithChildrenAndDescendants[pageId]?.descendants
         if (descendants) {
           for (const descendantId of descendants)
@@ -296,7 +291,6 @@ const PageSelector = ({
     })
   }, [listMapWithChildrenAndDescendants])
 
-  // Stable callback - uses pageId parameter instead of index
   const handleCheck = useCallback((pageId: string) => {
     const currentWithChildrenAndDescendants = listMapWithChildrenAndDescendants[pageId]
     const copyValue = new Set(value)
@@ -319,7 +313,6 @@ const PageSelector = ({
     onSelect(new Set(copyValue))
   }, [listMapWithChildrenAndDescendants, onSelect, searchValue, value])
 
-  // Stable callback
   const handlePreview = useCallback((pageId: string) => {
     setLocalPreviewPageId(pageId)
     if (onPreview)
