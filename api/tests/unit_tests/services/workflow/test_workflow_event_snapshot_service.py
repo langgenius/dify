@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import json
+import queue
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from threading import Event
 
 import pytest
 
@@ -19,6 +21,7 @@ from models.workflow import WorkflowRun
 from repositories.api_workflow_node_execution_repository import WorkflowNodeExecutionSnapshot
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from services.workflow_event_snapshot_service import (
+    BufferState,
     MessageContext,
     _build_snapshot_events,
     _collect_snapshot_keys,
@@ -199,8 +202,16 @@ def test_build_snapshot_events_applies_message_context() -> None:
 )
 def test_resolve_task_id_priority(context_task_id, buffered_task_id, expected) -> None:
     resumption_context = _build_resumption_context(context_task_id) if context_task_id else None
-    buffered_events = [{"task_id": buffered_task_id}] if buffered_task_id else []
-    task_id = _resolve_task_id(resumption_context, buffered_events, "run-1")
+    buffer_state = BufferState(
+        queue=queue.Queue(),
+        stop_event=Event(),
+        done_event=Event(),
+        task_id_ready=Event(),
+        task_id_hint=buffered_task_id,
+    )
+    if buffered_task_id:
+        buffer_state.task_id_ready.set()
+    task_id = _resolve_task_id(resumption_context, buffer_state, "run-1", wait_timeout=0.0)
     assert task_id == expected
 
 
