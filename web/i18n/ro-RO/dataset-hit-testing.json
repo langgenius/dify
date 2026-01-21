@@ -3,7 +3,7 @@
   "dateTimeFormat": "DD/MM/YYYY hh:mm A",
   "desc": "Testați efectul de atingere al Cunoștințelor pe baza textului interogat dat.",
   "hit.emptyTip": "Rezultatele testării de recuperare vor apărea aici",
-  "hit.title": "PARAGRAFE DE RECUPERARE",
+  "hit.title": "{{num}} paragrafe de recuperare",
   "hitChunks": "Accesează {{num}} bucăți copil",
   "imageUploader.dropZoneTip": "Trage fișierul aici pentru a încărca",
   "imageUploader.singleChunkAttachmentLimitTooltip": "Numărul de atașamente într-un singur pachet nu poate depăși {{limit}}",

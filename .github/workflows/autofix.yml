@@ -16,14 +16,14 @@ jobs:
 
       - name: Check Docker Compose inputs
         id: docker-compose-changes
-        uses: tj-actions/changed-files@v46
+        uses: tj-actions/changed-files@v47
         with:
           files: |
             docker/generate_docker_compose
             docker/.env.example
             docker/docker-compose-template.yaml
             docker/docker-compose.yaml
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -82,6 +82,6 @@ jobs:
       # mdformat breaks YAML front matter in markdown files. Add --exclude for directories containing YAML front matter.
       - name: mdformat
         run: |
-          uvx --python 3.13 mdformat . --exclude ".claude/skills/**/SKILL.md"
+          uvx --python 3.13 mdformat . --exclude ".claude/skills/**"
 
       - uses: autofix-ci/action@635ffb0c9798bd160680f18fd73371e355b85f27

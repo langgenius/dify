@@ -442,6 +442,10 @@ const Completed: FC<ICompletedProps> = ({
     setFullScreen(!fullScreen)
   }, [fullScreen])
 
+  const toggleCollapsed = useCallback(() => {
+    setIsCollapsed(prev => !prev)
+  }, [])
+
   const viewNewlyAddedChunk = useCallback(async () => {
     const totalPages = segmentListData?.total_pages || 0
     const total = segmentListData?.total || 0
@@ -578,15 +582,16 @@ const Completed: FC<ICompletedProps> = ({
     return selectedStatus ? 1 : 0
   }, [selectedStatus])
 
+  const contextValue = useMemo<SegmentListContextValue>(() => ({
+    isCollapsed,
+    fullScreen,
+    toggleFullScreen,
+    currSegment,
+    currChildChunk,
+  }), [isCollapsed, fullScreen, toggleFullScreen, currSegment, currChildChunk])
+
   return (
-    <SegmentListContext.Provider value={{
-      isCollapsed,
-      fullScreen,
-      toggleFullScreen,
-      currSegment,
-      currChildChunk,
-    }}
-    >
+    <SegmentListContext.Provider value={contextValue}>
       {/* Menu Bar */}
       {!isFullDocMode && (
         <div className={s.docSearchWrapper}>
@@ -618,7 +623,7 @@ const Completed: FC<ICompletedProps> = ({
             onClear={() => handleInputChange('')}
           />
           <Divider type="vertical" className="mx-3 h-3.5" />
-          <DisplayToggle isCollapsed={isCollapsed} toggleCollapsed={() => setIsCollapsed(!isCollapsed)} />
+          <DisplayToggle isCollapsed={isCollapsed} toggleCollapsed={toggleCollapsed} />
         </div>
       )}
       {/* Segment list */}

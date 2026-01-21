@@ -107,6 +107,12 @@ class MemberInviteEmailApi(Resource):
         inviter = current_user
         if not inviter.current_tenant:
             raise ValueError("No current tenant")
+
+        # Check workspace permission for member invitations
+        from libs.workspace_permission import check_workspace_member_invite_permission
+
+        check_workspace_member_invite_permission(inviter.current_tenant.id)
+
         invitation_results = []
         console_web_url = dify_config.CONSOLE_WEB_URL
 
