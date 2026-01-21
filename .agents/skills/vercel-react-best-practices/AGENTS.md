@@ -33,11 +33,13 @@ Comprehensive performance optimization guide for React and Next.js applications,
    - 2.4 [Dynamic Imports for Heavy Components](#24-dynamic-imports-for-heavy-components)
    - 2.5 [Preload Based on User Intent](#25-preload-based-on-user-intent)
 3. [Server-Side Performance](#3-server-side-performance) — **HIGH**
-   - 3.1 [Cross-Request LRU Caching](#31-cross-request-lru-caching)
-   - 3.2 [Minimize Serialization at RSC Boundaries](#32-minimize-serialization-at-rsc-boundaries)
-   - 3.3 [Parallel Data Fetching with Component Composition](#33-parallel-data-fetching-with-component-composition)
-   - 3.4 [Per-Request Deduplication with React.cache()](#34-per-request-deduplication-with-reactcache)
-   - 3.5 [Use after() for Non-Blocking Operations](#35-use-after-for-non-blocking-operations)
+   - 3.1 [Authenticate Server Actions Like API Routes](#31-authenticate-server-actions-like-api-routes)
+   - 3.2 [Avoid Duplicate Serialization in RSC Props](#32-avoid-duplicate-serialization-in-rsc-props)
+   - 3.3 [Cross-Request LRU Caching](#33-cross-request-lru-caching)
+   - 3.4 [Minimize Serialization at RSC Boundaries](#34-minimize-serialization-at-rsc-boundaries)
+   - 3.5 [Parallel Data Fetching with Component Composition](#35-parallel-data-fetching-with-component-composition)
+   - 3.6 [Per-Request Deduplication with React.cache()](#36-per-request-deduplication-with-reactcache)
+   - 3.7 [Use after() for Non-Blocking Operations](#37-use-after-for-non-blocking-operations)
 4. [Client-Side Data Fetching](#4-client-side-data-fetching) — **MEDIUM-HIGH**
    - 4.1 [Deduplicate Global Event Listeners](#41-deduplicate-global-event-listeners)
    - 4.2 [Use Passive Event Listeners for Scrolling Performance](#42-use-passive-event-listeners-for-scrolling-performance)
@@ -568,7 +570,158 @@ The `typeof window !== 'undefined'` check prevents bundling preloaded modules fo
 
 Optimizing server-side rendering and data fetching eliminates server-side waterfalls and reduces response times.
 
-### 3.1 Cross-Request LRU Caching
+### 3.1 Authenticate Server Actions Like API Routes
+
+**Impact: CRITICAL (prevents unauthorized access to server mutations)**
+
+Server Actions (functions with `"use server"`) are exposed as public endpoints, just like API routes. Always verify authentication and authorization **inside** each Server Action—do not rely solely on middleware, layout guards, or page-level checks, as Server Actions can be invoked directly.
+
+Next.js documentation explicitly states: "Treat Server Actions with the same security considerations as public-facing API endpoints, and verify if the user is allowed to perform a mutation."
+
+**Incorrect: no authentication check**
+
+```typescript
+'use server'
+
+export async function deleteUser(userId: string) {
+  // Anyone can call this! No auth check
+  await db.user.delete({ where: { id: userId } })
+  return { success: true }
+}
+```
+
+**Correct: authentication inside the action**
+
+```typescript
+'use server'
+
+import { verifySession } from '@/lib/auth'
+import { unauthorized } from '@/lib/errors'
+
+export async function deleteUser(userId: string) {
+  // Always check auth inside the action
+  const session = await verifySession()
+  
+  if (!session) {
+    throw unauthorized('Must be logged in')
+  }
+  
+  // Check authorization too
+  if (session.user.role !== 'admin' && session.user.id !== userId) {
+    throw unauthorized('Cannot delete other users')
+  }
+  
+  await db.user.delete({ where: { id: userId } })
+  return { success: true }
+}
+```
+
+**With input validation:**
+
+```typescript
+'use server'
+
+import { verifySession } from '@/lib/auth'
+import { z } from 'zod'
+
+const updateProfileSchema = z.object({
+  userId: z.string().uuid(),
+  name: z.string().min(1).max(100),
+  email: z.string().email()
+})
+
+export async function updateProfile(data: unknown) {
+  // Validate input first
+  const validated = updateProfileSchema.parse(data)
+  
+  // Then authenticate
+  const session = await verifySession()
+  if (!session) {
+    throw new Error('Unauthorized')
+  }
+  
+  // Then authorize
+  if (session.user.id !== validated.userId) {
+    throw new Error('Can only update own profile')
+  }
+  
+  // Finally perform the mutation
+  await db.user.update({
+    where: { id: validated.userId },
+    data: {
+      name: validated.name,
+      email: validated.email
+    }
+  })
+  
+  return { success: true }
+}
+```
+
+Reference: [https://nextjs.org/docs/app/guides/authentication](https://nextjs.org/docs/app/guides/authentication)
+
+### 3.2 Avoid Duplicate Serialization in RSC Props
+
+**Impact: LOW (reduces network payload by avoiding duplicate serialization)**
+
+RSC→client serialization deduplicates by object reference, not value. Same reference = serialized once; new reference = serialized again. Do transformations (`.toSorted()`, `.filter()`, `.map()`) in client, not server.
+
+**Incorrect: duplicates array**
+
+```tsx
+// RSC: sends 6 strings (2 arrays × 3 items)
+<ClientList usernames={usernames} usernamesOrdered={usernames.toSorted()} />
+```
+
+**Correct: sends 3 strings**
+
+```tsx
+// RSC: send once
+<ClientList usernames={usernames} />
+
+// Client: transform there
+'use client'
+const sorted = useMemo(() => [...usernames].sort(), [usernames])
+```
+
+**Nested deduplication behavior:**
+
+```tsx
+// string[] - duplicates everything
+usernames={['a','b']} sorted={usernames.toSorted()} // sends 4 strings
+
+// object[] - duplicates array structure only
+users={[{id:1},{id:2}]} sorted={users.toSorted()} // sends 2 arrays + 2 unique objects (not 4)
+```
+
+Deduplication works recursively. Impact varies by data type:
+
+- `string[]`, `number[]`, `boolean[]`: **HIGH impact** - array + all primitives fully duplicated
+
+- `object[]`: **LOW impact** - array duplicated, but nested objects deduplicated by reference
+
+**Operations breaking deduplication: create new references**
+
+- Arrays: `.toSorted()`, `.filter()`, `.map()`, `.slice()`, `[...arr]`
+
+- Objects: `{...obj}`, `Object.assign()`, `structuredClone()`, `JSON.parse(JSON.stringify())`
+
+**More examples:**
+
+```tsx
+// ❌ Bad
+<C users={users} active={users.filter(u => u.active)} />
+<C product={product} productName={product.name} />
+
+// ✅ Good
+<C users={users} />
+<C product={product} />
+// Do filtering/destructuring in client
+```
+
+**Exception:** Pass derived data when transformation is expensive or client doesn't need original.
+
+### 3.3 Cross-Request LRU Caching
 
 **Impact: HIGH (caches across requests)**
 
@@ -605,7 +758,7 @@ Use when sequential user actions hit multiple endpoints needing the same data wi
 
 Reference: [https://github.com/isaacs/node-lru-cache](https://github.com/isaacs/node-lru-cache)
 
-### 3.2 Minimize Serialization at RSC Boundaries
+### 3.4 Minimize Serialization at RSC Boundaries
 
 **Impact: HIGH (reduces data transfer size)**
 
@@ -639,7 +792,7 @@ function Profile({ name }: { name: string }) {
 }
 ```
 
-### 3.3 Parallel Data Fetching with Component Composition
+### 3.5 Parallel Data Fetching with Component Composition
 
 **Impact: CRITICAL (eliminates server-side waterfalls)**
 
@@ -718,7 +871,7 @@ export default function Page() {
 }
 ```
 
-### 3.4 Per-Request Deduplication with React.cache()
+### 3.6 Per-Request Deduplication with React.cache()
 
 **Impact: MEDIUM (deduplicates within request)**
 
@@ -784,7 +937,7 @@ Use `React.cache()` to deduplicate these operations across your component tree.
 
 Reference: [https://react.dev/reference/react/cache](https://react.dev/reference/react/cache)
 
-### 3.5 Use after() for Non-Blocking Operations
+### 3.7 Use after() for Non-Blocking Operations
 
 **Impact: MEDIUM (faster response times)**
 
@@ -1715,79 +1868,32 @@ Micro-optimizations for hot paths can add up to meaningful improvements.
 
 **Impact: MEDIUM (reduces reflows/repaints)**
 
-Avoid changing styles one property at a time. Group multiple CSS changes together via classes or `cssText` to minimize browser reflows.
+Avoid interleaving style writes with layout reads. When you read a layout property (like `offsetWidth`, `getBoundingClientRect()`, or `getComputedStyle()`) between style changes, the browser is forced to trigger a synchronous reflow.
 
-**Incorrect: multiple reflows**
+**Incorrect: interleaved reads and writes force reflows**
 
 ```typescript
 function updateElementStyles(element: HTMLElement) {
-  // Each line triggers a reflow
   element.style.width = '100px'
+  const width = element.offsetWidth  // Forces reflow
   element.style.height = '200px'
-  element.style.backgroundColor = 'blue'
-  element.style.border = '1px solid black'
+  const height = element.offsetHeight  // Forces another reflow
 }
 ```
 
-**Correct: add class - single reflow**
+**Correct: batch writes, then read once**
 
 ```typescript
-// CSS file
-.highlighted-box {
-  width: 100px;
-  height: 200px;
-  background-color: blue;
-  border: 1px solid black;
-}
-
-// JavaScript
 function updateElementStyles(element: HTMLElement) {
   element.classList.add('highlighted-box')
+
+  const { width, height } = element.getBoundingClientRect()
 }
 ```
 
-**Correct: change cssText - single reflow**
+**Better: use CSS classes**
 
-```typescript
-function updateElementStyles(element: HTMLElement) {
-  element.style.cssText = `
-    width: 100px;
-    height: 200px;
-    background-color: blue;
-    border: 1px solid black;
-  `
-}
-```
-
-**React example:**
-
-```tsx
-// Incorrect: changing styles one by one
-function Box({ isHighlighted }: { isHighlighted: boolean }) {
-  const ref = useRef<HTMLDivElement>(null)
-  
-  useEffect(() => {
-    if (ref.current && isHighlighted) {
-      ref.current.style.width = '100px'
-      ref.current.style.height = '200px'
-      ref.current.style.backgroundColor = 'blue'
-    }
-  }, [isHighlighted])
-  
-  return <div ref={ref}>Content</div>
-}
-
-// Correct: toggle class
-function Box({ isHighlighted }: { isHighlighted: boolean }) {
-  return (
-    <div className={isHighlighted ? 'highlighted-box' : ''}>
-      Content
-    </div>
-  )
-}
-```
-
-Prefer CSS classes over inline styles when possible. Classes are cached by the browser and provide better separation of concerns.
+Prefer CSS classes over inline styles when possible. CSS files are cached by the browser, and classes provide better separation of concerns and are easier to maintain.
 
 ### 7.2 Build Index Maps for Repeated Lookups
 
@@ -2044,7 +2150,7 @@ function hasChanges(current: string[], original: string[]) {
   if (current.length !== original.length) {
     return true
   }
-  // Only sort/join when lengths match
+  // Only sort when lengths match
   const currentSorted = current.toSorted()
   const originalSorted = original.toSorted()
   for (let i = 0; i < currentSorted.length; i++) {
@@ -2229,7 +2335,7 @@ const min = Math.min(...numbers)
 const max = Math.max(...numbers)
 ```
 
-This works for small arrays but can be slower for very large arrays due to spread operator limitations. Use the loop approach for reliability.
+This works for small arrays, but can be slower or just throw an error for very large arrays due to spread operator limitations. Maximal array length is approximately 124000 in Chrome 143 and 638000 in Safari 18; exact numbers may vary - see [the fiddle](https://jsfiddle.net/qw1jabsx/4/). Use the loop approach for reliability.
 
 ### 7.11 Use Set/Map for O(1) Lookups
 
@@ -2325,7 +2431,7 @@ Store callbacks in refs when used in effects that shouldn't re-subscribe on call
 **Incorrect: re-subscribes on every render**
 
 ```tsx
-function useWindowEvent(event: string, handler: () => void) {
+function useWindowEvent(event: string, handler: (e) => void) {
   useEffect(() => {
     window.addEventListener(event, handler)
     return () => window.removeEventListener(event, handler)
@@ -2338,7 +2444,7 @@ function useWindowEvent(event: string, handler: () => void) {
 ```tsx
 import { useEffectEvent } from 'react'
 
-function useWindowEvent(event: string, handler: () => void) {
+function useWindowEvent(event: string, handler: (e) => void) {
   const onEvent = useEffectEvent(handler)
 
   useEffect(() => {
@@ -2363,7 +2469,7 @@ Access latest values in callbacks without adding them to dependency arrays. Prev
 ```typescript
 function useLatest<T>(value: T) {
   const ref = useRef(value)
-  useEffect(() => {
+  useLayoutEffect(() => {
     ref.current = value
   }, [value])
   return ref
