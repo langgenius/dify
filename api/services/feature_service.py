@@ -4,6 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from configs import dify_config
 from enums.cloud_plan import CloudPlan
+from enums.hosted_provider import HostedTrialProvider
 from services.billing_service import BillingService
 from services.enterprise.enterprise_service import EnterpriseService
 
@@ -170,6 +171,7 @@ class SystemFeatureModel(BaseModel):
     plugin_installation_permission: PluginInstallationPermissionModel = PluginInstallationPermissionModel()
     enable_change_email: bool = True
     plugin_manager: PluginManagerModel = PluginManagerModel()
+    trial_models: list[str] = []
 
 
 class FeatureService:
@@ -225,6 +227,24 @@ class FeatureService:
         system_features.is_allow_register = dify_config.ALLOW_REGISTER
         system_features.is_allow_create_workspace = dify_config.ALLOW_CREATE_WORKSPACE
         system_features.is_email_setup = dify_config.MAIL_TYPE is not None and dify_config.MAIL_TYPE != ""
+        system_features.trial_models = cls._fulfill_trial_models_from_env()
+
+    @classmethod
+    def _fulfill_trial_models_from_env(cls) -> list[str]:
+        trial_models: list[str] = []
+        if dify_config.HOSTED_OPENAI_PAID_ENABLED and dify_config.HOSTED_OPENAI_TRIAL_ENABLED:
+            trial_models.append(HostedTrialProvider.OPENAI)
+        if dify_config.HOSTED_DEEPSEEK_PAID_ENABLED and dify_config.HOSTED_DEEPSEEK_TRIAL_ENABLED:
+            trial_models.append(HostedTrialProvider.DEEPSEEK)
+        if dify_config.HOSTED_ANTHROPIC_PAID_ENABLED and dify_config.HOSTED_ANTHROPIC_TRIAL_ENABLED:
+            trial_models.append(HostedTrialProvider.ANTHROPIC)
+        if dify_config.HOSTED_GEMINI_PAID_ENABLED and dify_config.HOSTED_GEMINI_TRIAL_ENABLED:
+            trial_models.append(HostedTrialProvider.GEMINI)
+        if dify_config.HOSTED_XAI_PAID_ENABLED and dify_config.HOSTED_XAI_TRIAL_ENABLED:
+            trial_models.append(HostedTrialProvider.XAI)
+        if dify_config.HOSTED_TONGYI_PAID_ENABLED and dify_config.HOSTED_TONGYI_TRIAL_ENABLED:
+            trial_models.append(HostedTrialProvider.TONGYI)
+        return trial_models
 
     @classmethod
     def _fulfill_params_from_env(cls, features: FeatureModel):
