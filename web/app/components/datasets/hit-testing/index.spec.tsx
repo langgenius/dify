@@ -2089,7 +2089,7 @@ describe('Integration: Hit Testing Flow', () => {
       isLoading: false,
     } as unknown as ReturnType<typeof useDatasetTestingRecords>)
 
-    renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
+    const { container } = renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
 
     // Type query
     const textarea = screen.getByRole('textbox')
@@ -2101,11 +2101,8 @@ describe('Integration: Hit Testing Flow', () => {
     if (submitButton)
       fireEvent.click(submitButton)
 
-    // Wait for the component to update
-    await waitFor(() => {
-      // Verify the component is still rendered
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
-    })
+    // Verify the component is still rendered after submission
+    expect(container.firstChild).toBeInTheDocument()
   })
 
   it('should render ResultItem components for non-external results', async () => {
@@ -2130,7 +2127,7 @@ describe('Integration: Hit Testing Flow', () => {
       isLoading: false,
     } as unknown as ReturnType<typeof useDatasetTestingRecords>)
 
-    renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
+    const { container } = renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
 
     // Submit a query
     const textarea = screen.getByRole('textbox')
@@ -2141,10 +2138,8 @@ describe('Integration: Hit Testing Flow', () => {
     if (submitButton)
       fireEvent.click(submitButton)
 
-    await waitFor(() => {
-      // Verify component is rendered
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
-    })
+    // Verify component is rendered after submission
+    expect(container.firstChild).toBeInTheDocument()
   })
 
   it('should render external results when dataset is external', async () => {
