@@ -221,7 +221,7 @@ export const useChat = (
   ) => {
     const getOrCreatePlayer = createAudioPlayerManager()
     // Re-subscribe to workflow events for the specific message
-    const url = `/workflow/${workflowRunId}/events`
+    const url = `/workflow/${workflowRunId}/events?include_state_snapshot=true`
 
     const otherOptions: IOtherOptions = {
       isPublicAPI,
