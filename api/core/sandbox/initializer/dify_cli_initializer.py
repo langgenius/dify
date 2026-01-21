@@ -11,12 +11,7 @@ from core.virtual_environment.__base.helpers import pipeline
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 
 from ..bash.dify_cli import DifyCliConfig, DifyCliLocator
-from ..constants import (
-    DIFY_CLI_CONFIG_FILENAME,
-    DIFY_CLI_GLOBAL_TOOLS_PATH,
-    DIFY_CLI_PATH,
-    DIFY_CLI_ROOT,
-)
+from ..entities import DifyCli
 from .base import SandboxInitializer
 
 logger = logging.getLogger(__name__)
@@ -44,10 +39,10 @@ class DifyCliInitializer(SandboxInitializer):
         binary = self._locator.resolve(env.metadata.os, env.metadata.arch)
 
         pipeline(env).add(
-            ["mkdir", "-p", f"{DIFY_CLI_ROOT}/bin"], error_message="Failed to create dify CLI directory"
+            ["mkdir", "-p", f"{DifyCli.ROOT}/bin"], error_message="Failed to create dify CLI directory"
         ).execute(raise_on_error=True)
 
-        env.upload_file(DIFY_CLI_PATH, BytesIO(binary.path.read_bytes()))
+        env.upload_file(DifyCli.PATH, BytesIO(binary.path.read_bytes()))
 
         # Use 'cp' with mode preservation workaround: copy file to itself to claim ownership,
         # then use 'install' to set executable permission
@@ -55,14 +50,14 @@ class DifyCliInitializer(SandboxInitializer):
             [
                 "sh",
                 "-c",
-                f"cat '{DIFY_CLI_PATH}' > '{DIFY_CLI_PATH}.tmp' && "
-                f"mv '{DIFY_CLI_PATH}.tmp' '{DIFY_CLI_PATH}' && "
-                f"chmod +x '{DIFY_CLI_PATH}'",
+                f"cat '{DifyCli.PATH}' > '{DifyCli.PATH}.tmp' && "
+                f"mv '{DifyCli.PATH}.tmp' '{DifyCli.PATH}' && "
+                f"chmod +x '{DifyCli.PATH}'",
             ],
             error_message="Failed to mark dify CLI as executable",
         ).execute(raise_on_error=True)
 
-        logger.info("Dify CLI uploaded to sandbox, path=%s", DIFY_CLI_PATH)
+        logger.info("Dify CLI uploaded to sandbox, path=%s", DifyCli.PATH)
 
         artifact = SkillManager.load_tool_artifact(self._tenant_id, self._app_id, self._assets_id)
         if artifact is None or not artifact.references:
@@ -73,16 +68,16 @@ class DifyCliInitializer(SandboxInitializer):
         self._cli_api_session = CliApiSessionManager().create(tenant_id=self._tenant_id, user_id=self._user_id)
 
         pipeline(env).add(
-            ["mkdir", "-p", DIFY_CLI_GLOBAL_TOOLS_PATH], error_message="Failed to create global tools dir"
+            ["mkdir", "-p", DifyCli.GLOBAL_TOOLS_PATH], error_message="Failed to create global tools dir"
         ).execute(raise_on_error=True)
 
         config = DifyCliConfig.create(self._cli_api_session, self._tenant_id, artifact)
         config_json = json.dumps(config.model_dump(mode="json"), ensure_ascii=False)
-        config_path = f"{DIFY_CLI_GLOBAL_TOOLS_PATH}/{DIFY_CLI_CONFIG_FILENAME}"
+        config_path = f"{DifyCli.GLOBAL_TOOLS_PATH}/{DifyCli.CONFIG_FILENAME}"
         env.upload_file(config_path, BytesIO(config_json.encode("utf-8")))
 
-        pipeline(env, cwd=DIFY_CLI_GLOBAL_TOOLS_PATH).add(
-            [DIFY_CLI_PATH, "init"], error_message="Failed to initialize Dify CLI"
+        pipeline(env, cwd=DifyCli.GLOBAL_TOOLS_PATH).add(
+            [DifyCli.PATH, "init"], error_message="Failed to initialize Dify CLI"
         ).execute(raise_on_error=True)
 
-        logger.info("Global tools initialized, path=%s, tool_count=%d", DIFY_CLI_GLOBAL_TOOLS_PATH, len(self._tools))
+        logger.info("Global tools initialized, path=%s, tool_count=%d", DifyCli.GLOBAL_TOOLS_PATH, len(self._tools))

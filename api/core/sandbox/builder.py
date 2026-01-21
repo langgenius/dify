@@ -1,41 +1,17 @@
-"""
-Facade module for virtual machine providers.
-
-Provides unified interfaces to access different VM provider implementations
-(E2B, Docker, Local) through VMType, VMBuilder, and VMConfig.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from enum import StrEnum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from configs import dify_config
 from core.entities.provider_entities import BasicProviderConfig
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 
+from .entities.sandbox_type import SandboxType
 from .initializer import SandboxInitializer
+from .sandbox import Sandbox
 
-
-class SandboxType(StrEnum):
-    """
-    Sandbox types.
-    """
-
-    DOCKER = "docker"
-    E2B = "e2b"
-    LOCAL = "local"
-
-    @classmethod
-    def get_all(cls) -> list[str]:
-        """
-        Get all available sandbox types.
-        """
-        if dify_config.EDITION == "SELF_HOSTED":
-            return [p.value for p in cls]
-        else:
-            return [p.value for p in cls if p != SandboxType.LOCAL]
+if TYPE_CHECKING:
+    from .storage.sandbox_storage import SandboxStorage
 
 
 def _get_sandbox_class(sandbox_type: SandboxType) -> type[VirtualEnvironment]:
@@ -57,16 +33,33 @@ def _get_sandbox_class(sandbox_type: SandboxType) -> type[VirtualEnvironment]:
 
 
 class SandboxBuilder:
+    _tenant_id: str
+    _sandbox_type: SandboxType
+    _user_id: str | None
+    _app_id: str | None
+    _options: dict[str, Any]
+    _environments: dict[str, str]
+    _initializers: list[SandboxInitializer]
+    _storage: SandboxStorage | None
+    _assets_id: str | None
+
     def __init__(self, tenant_id: str, sandbox_type: SandboxType) -> None:
         self._tenant_id = tenant_id
         self._sandbox_type = sandbox_type
-        self._user_id: str | None = None
-        self._options: dict[str, Any] = {}
-        self._environments: dict[str, str] = {}
-        self._initializers: list[SandboxInitializer] = []
+        self._user_id = None
+        self._app_id = None
+        self._options = {}
+        self._environments = {}
+        self._initializers = []
+        self._storage = None
+        self._assets_id = None
 
     def user(self, user_id: str) -> SandboxBuilder:
         self._user_id = user_id
+        return self
+
+    def app(self, app_id: str) -> SandboxBuilder:
+        self._app_id = app_id
         return self
 
     def options(self, options: Mapping[str, Any]) -> SandboxBuilder:
@@ -85,7 +78,21 @@ class SandboxBuilder:
         self._initializers.extend(initializers)
         return self
 
-    def build(self) -> VirtualEnvironment:
+    def storage(self, storage: SandboxStorage, assets_id: str) -> SandboxBuilder:
+        self._storage = storage
+        self._assets_id = assets_id
+        return self
+
+    def build(self) -> Sandbox:
+        if self._storage is None:
+            raise ValueError("storage is required, call .storage() before .build()")
+        if self._assets_id is None:
+            raise ValueError("assets_id is required, call .storage() before .build()")
+        if self._user_id is None:
+            raise ValueError("user_id is required, call .user() before .build()")
+        if self._app_id is None:
+            raise ValueError("app_id is required, call .app() before .build()")
+
         vm_class = _get_sandbox_class(self._sandbox_type)
         vm = vm_class(
             tenant_id=self._tenant_id,
@@ -95,7 +102,17 @@ class SandboxBuilder:
         )
         for init in self._initializers:
             init.initialize(vm)
-        return vm
+
+        sandbox = Sandbox(
+            vm=vm,
+            storage=self._storage,
+            tenant_id=self._tenant_id,
+            user_id=self._user_id,
+            app_id=self._app_id,
+            assets_id=self._assets_id,
+        )
+        sandbox.mount()
+        return sandbox
 
     @staticmethod
     def validate(vm_type: SandboxType, options: Mapping[str, Any]) -> None:

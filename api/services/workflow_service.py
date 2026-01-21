@@ -14,10 +14,7 @@ from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfig
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.file import File
 from core.repositories import DifyCoreRepositoryFactory
-from core.sandbox import SandboxManager
-from core.sandbox.constants import APP_ASSETS_PATH
-from core.sandbox.storage.archive_storage import ArchiveSandboxStorage
-from core.sandbox.vm import SandboxBuilder
+from core.sandbox.manager import SandboxManager
 from core.variables import Variable, VariableBase
 from core.workflow.entities import WorkflowNodeExecution
 from core.workflow.enums import ErrorStrategy, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
@@ -702,33 +699,14 @@ class WorkflowService:
             enclosing_node_id = None
 
         sandbox = None
-        single_step_execution_id: str | None = None
         if draft_workflow.get_feature(WorkflowFeatures.SANDBOX).enabled:
-            from core.sandbox import AppAssetsInitializer, DifyCliInitializer
-            from services.app_asset_service import AppAssetService
-
-            assets = AppAssetService.get_or_create_assets(session, app_model, account.id)
-            if not assets:
-                raise ValueError(f"No assets found for tid={draft_workflow.tenant_id}, app_id={app_model.id}")
-
-            # FIXME(Mairuis): single step execution
-            AppAssetService.build_assets(draft_workflow.tenant_id, app_model.id, assets)
-            sandbox_id = SandboxBuilder.draft_id(account.id)
-            sandbox_storage = ArchiveSandboxStorage(
-                draft_workflow.tenant_id, sandbox_id, exclude_patterns=[APP_ASSETS_PATH]
+            sandbox_provider = SandboxProviderService.get_sandbox_provider(draft_workflow.tenant_id)
+            sandbox = SandboxManager.create_for_single_step(
+                tenant_id=draft_workflow.tenant_id,
+                app_id=app_model.id,
+                user_id=account.id,
+                sandbox_provider=sandbox_provider,
             )
-
-            sandbox = (
-                SandboxProviderService.create_sandbox_builder(draft_workflow.tenant_id)
-                .initializer(DifyCliInitializer(draft_workflow.tenant_id, account.id, app_model.id, assets.id))
-                .initializer(AppAssetsInitializer(draft_workflow.tenant_id, app_model.id, assets.id))
-                .build()
-            )
-            sandbox_storage.mount(sandbox)
-            single_step_execution_id = f"single-step-{uuid.uuid4()}"
-
-            SandboxManager.register(single_step_execution_id, sandbox)
-            variable_pool.system_variables.workflow_execution_id = single_step_execution_id
 
         try:
             node, generator = WorkflowEntry.single_step_run(
@@ -738,6 +716,7 @@ class WorkflowService:
                 user_id=account.id,
                 variable_pool=variable_pool,
                 variable_loader=variable_loader,
+                sandbox=sandbox,
             )
 
             # Run draft workflow node
@@ -747,17 +726,9 @@ class WorkflowService:
                 start_at=start_at,
                 node_id=node_id,
             )
-            # FIXME(Mairuis): fidn a better way to handle this
-            if sandbox is not None:
-                sandbox_storage.unmount(sandbox)
         finally:
-            if single_step_execution_id:
-                sandbox = SandboxManager.unregister(single_step_execution_id)
-                if sandbox:
-                    try:
-                        sandbox.release_environment()
-                    except Exception:
-                        logger.exception("Failed to release sandbox")
+            if sandbox is not None:
+                sandbox.release()
 
         # Set workflow_id on the NodeExecution
         node_execution.workflow_id = draft_workflow.id

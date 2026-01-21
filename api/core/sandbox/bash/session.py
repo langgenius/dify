@@ -5,19 +5,14 @@ import logging
 from io import BytesIO
 from types import TracebackType
 
-from core.session.cli_api import CliApiSessionManager
+from core.sandbox.sandbox import Sandbox
+from core.session.cli_api import CliApiSession, CliApiSessionManager
 from core.skill.entities.tool_artifact import ToolArtifact
 from core.skill.skill_manager import SkillManager
 from core.virtual_environment.__base.helpers import pipeline
-from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 
 from ..bash.dify_cli import DifyCliConfig
-from ..constants import (
-    DIFY_CLI_CONFIG_FILENAME,
-    DIFY_CLI_GLOBAL_TOOLS_PATH,
-    DIFY_CLI_PATH,
-    DIFY_CLI_TOOLS_ROOT,
-)
+from ..entities import DifyCli
 from .bash_tool import SandboxBashTool
 
 logger = logging.getLogger(__name__)
@@ -27,46 +22,46 @@ class SandboxBashSession:
     def __init__(
         self,
         *,
-        sandbox: VirtualEnvironment,
-        tenant_id: str,
-        user_id: str,
+        sandbox: Sandbox,
         node_id: str,
-        app_id: str,
-        assets_id: str,
         allow_tools: list[tuple[str, str]] | None,
     ) -> None:
         self._sandbox = sandbox
-        self._tenant_id = tenant_id
-        self._user_id = user_id
         self._node_id = node_id
-        self._app_id = app_id
-
-        # FIXME(Mairuis): should read from workflow run context...
-        self._assets_id = assets_id
         self._allow_tools = allow_tools
 
-        self._bash_tool = None
-        self._session_id = None
+        self._bash_tool: SandboxBashTool | None = None
+        self._cli_api_session: CliApiSession | None = None
+        self._tenant_id = sandbox.tenant_id
+        self._user_id = sandbox.user_id
+        self._app_id = sandbox.app_id
+        self._assets_id = sandbox.assets_id
 
     def __enter__(self) -> SandboxBashSession:
+        self._cli_api_session = CliApiSessionManager().create(
+            tenant_id=self._tenant_id,
+            user_id=self._user_id,
+        )
         if self._allow_tools is not None:
-            if self._node_id is None:
-                raise ValueError("node_id is required when allow_tools is specified")
-            tools_path = self._setup_node_tools_directory(self._sandbox, self._node_id, self._allow_tools)
+            tools_path = self._setup_node_tools_directory(self._node_id, self._allow_tools, self._cli_api_session)
         else:
-            tools_path = DIFY_CLI_GLOBAL_TOOLS_PATH
+            tools_path = DifyCli.GLOBAL_TOOLS_PATH
 
-        self._bash_tool = SandboxBashTool(sandbox=self._sandbox, tenant_id=self._tenant_id, tools_path=tools_path)
+        self._bash_tool = SandboxBashTool(
+            sandbox=self._sandbox.vm,
+            tenant_id=self._tenant_id,
+            tools_path=tools_path,
+        )
         return self
 
     def _setup_node_tools_directory(
         self,
-        sandbox: VirtualEnvironment,
         node_id: str,
         allow_tools: list[tuple[str, str]],
+        cli_api_session: CliApiSession,
     ) -> str | None:
         artifact: ToolArtifact | None = SkillManager.load_tool_artifact(
-            self._tenant_id,
+            self._sandbox.tenant_id,
             self._app_id,
             self._assets_id,
         )
@@ -80,26 +75,26 @@ class SandboxBashSession:
             logger.info("No tools found in artifact for assets_id=%s", self._assets_id)
             return None
 
-        self._cli_api_session = CliApiSessionManager().create(tenant_id=self._tenant_id, user_id=self._user_id)
-        node_tools_path = f"{DIFY_CLI_TOOLS_ROOT}/{node_id}"
+        node_tools_path = f"{DifyCli.TOOLS_ROOT}/{node_id}"
 
+        vm = self._sandbox.vm
         (
-            pipeline(sandbox)
-            .add(["mkdir", "-p", DIFY_CLI_GLOBAL_TOOLS_PATH], error_message="Failed to create global tools dir")
+            pipeline(vm)
+            .add(["mkdir", "-p", DifyCli.GLOBAL_TOOLS_PATH], error_message="Failed to create global tools dir")
             .add(["mkdir", "-p", node_tools_path], error_message="Failed to create node tools dir")
             .execute(raise_on_error=True)
         )
 
         config_json = json.dumps(
-            DifyCliConfig.create(
-                session=self._cli_api_session, tenant_id=self._tenant_id, artifact=artifact
-            ).model_dump(mode="json"),
+            DifyCliConfig.create(session=cli_api_session, tenant_id=self._tenant_id, artifact=artifact).model_dump(
+                mode="json"
+            ),
             ensure_ascii=False,
         )
-        sandbox.upload_file(f"{node_tools_path}/{DIFY_CLI_CONFIG_FILENAME}", BytesIO(config_json.encode("utf-8")))
+        vm.upload_file(f"{node_tools_path}/{DifyCli.CONFIG_FILENAME}", BytesIO(config_json.encode("utf-8")))
 
-        pipeline(sandbox, cwd=node_tools_path).add(
-            [DIFY_CLI_PATH, "init"], error_message="Failed to initialize Dify CLI"
+        pipeline(vm, cwd=node_tools_path).add(
+            [DifyCli.PATH, "init"], error_message="Failed to initialize Dify CLI"
         ).execute(raise_on_error=True)
 
         logger.info(
@@ -114,7 +109,10 @@ class SandboxBashSession:
         tb: TracebackType | None,
     ) -> bool:
         try:
-            self.cleanup()
+            if self._session_id is not None:
+                CliApiSessionManager().delete(self._session_id)
+                logger.debug("Cleaned up SandboxSession session_id=%s", self._session_id)
+                self._session_id = None
         except Exception:
             logger.exception("Failed to cleanup SandboxSession")
         return False
@@ -124,11 +122,3 @@ class SandboxBashSession:
         if self._bash_tool is None:
             raise RuntimeError("SandboxSession is not initialized")
         return self._bash_tool
-
-    def cleanup(self) -> None:
-        if self._session_id is None:
-            return
-
-        CliApiSessionManager().delete(self._session_id)
-        logger.debug("Cleaned up SandboxSession session_id=%s", self._session_id)
-        self._session_id = None

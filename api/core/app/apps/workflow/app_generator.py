@@ -29,6 +29,7 @@ from core.helper.trace_id_helper import extract_external_trace_id_from_args
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories import DifyCoreRepositoryFactory
+from core.sandbox import Sandbox, SandboxManager
 from core.workflow.graph_engine.layers.base import GraphEngineLayer
 from core.workflow.repositories.draft_variable_repository import DraftVariableSaverFactory
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
@@ -40,6 +41,7 @@ from libs.flask_utils import preserve_flask_contexts
 from models import Account, App, EndUser, Workflow, WorkflowNodeExecutionTriggeredFrom
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow_features import WorkflowFeatures
+from services.sandbox.sandbox_provider_service import SandboxProviderService
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
 
 SKIP_PREPARE_USER_INPUTS_KEY = "_skip_prepare_user_inputs"
@@ -490,16 +492,29 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 if workflow is None:
                     raise ValueError("Workflow not found")
 
+                sandbox: Sandbox | None = None
                 if workflow.get_feature(WorkflowFeatures.SANDBOX).enabled:
-                    graph_engine_layers = (
-                        *graph_engine_layers,
-                        SandboxLayer(
+                    sandbox_provider = SandboxProviderService.get_sandbox_provider(
+                        application_generate_entity.app_config.tenant_id
+                    )
+                    if workflow.version == Workflow.VERSION_DRAFT:
+                        sandbox = SandboxManager.create_draft(
                             tenant_id=application_generate_entity.app_config.tenant_id,
                             app_id=application_generate_entity.app_config.app_id,
                             user_id=application_generate_entity.user_id,
-                            workflow_version=workflow.version,
+                            sandbox_provider=sandbox_provider,
+                        )
+                    else:
+                        sandbox = SandboxManager.create(
+                            tenant_id=application_generate_entity.app_config.tenant_id,
+                            app_id=application_generate_entity.app_config.app_id,
+                            user_id=application_generate_entity.user_id,
                             workflow_execution_id=application_generate_entity.workflow_execution_id,
-                        ),
+                            sandbox_provider=sandbox_provider,
+                        )
+                    graph_engine_layers = (
+                        *graph_engine_layers,
+                        SandboxLayer(sandbox=sandbox),
                     )
 
                 # Determine system_user_id based on invocation source
@@ -526,6 +541,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 workflow_node_execution_repository=workflow_node_execution_repository,
                 root_node_id=root_node_id,
                 graph_engine_layers=graph_engine_layers,
+                sandbox=sandbox,
             )
 
             try:

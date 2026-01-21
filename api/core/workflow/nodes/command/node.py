@@ -2,11 +2,9 @@ import logging
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from core.sandbox import SandboxManager, sandbox_debug
-from core.sandbox.vm import SandboxBuilder
+from core.sandbox import sandbox_debug
 from core.virtual_environment.__base.command_future import CommandCancelledError, CommandTimeoutError
 from core.virtual_environment.__base.helpers import submit_command, with_connection
-from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base import variable_template_parser
@@ -23,19 +21,6 @@ COMMAND_NODE_TIMEOUT_SECONDS = 60
 
 class CommandNode(Node[CommandNodeData]):
     node_type = NodeType.COMMAND
-
-    # FIXME(Mairuis): should read sandbox from workflow run context...
-    def _get_sandbox(self) -> VirtualEnvironment | None:
-        workflow_execution_id = self.graph_runtime_state.variable_pool.system_variables.workflow_execution_id
-        if not workflow_execution_id:
-            return None
-        sandbox_by_workflow_run_id = SandboxManager.get(workflow_execution_id)
-        if sandbox_by_workflow_run_id is not None:
-            return sandbox_by_workflow_run_id
-        sandbox_by_draft_id = SandboxManager.get(SandboxBuilder.draft_id(self.user_id))
-        if sandbox_by_draft_id is not None:
-            return sandbox_by_draft_id
-        return None
 
     def _render_template(self, template: str) -> str:
         parser = VariableTemplateParser(template=template)
@@ -65,7 +50,7 @@ class CommandNode(Node[CommandNodeData]):
         return "1"
 
     def _run(self) -> NodeRunResult:
-        sandbox = self._get_sandbox()
+        sandbox = self.graph_runtime_state.sandbox
         if sandbox is None:
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
@@ -88,12 +73,12 @@ class CommandNode(Node[CommandNodeData]):
         timeout = COMMAND_NODE_TIMEOUT_SECONDS if COMMAND_NODE_TIMEOUT_SECONDS > 0 else None
 
         try:
-            with with_connection(sandbox) as conn:
+            with with_connection(sandbox.vm) as conn:
                 command = ["bash", "-c", raw_command]
 
                 sandbox_debug("command_node", "command", command)
 
-                future = submit_command(sandbox, conn, command, cwd=working_directory)
+                future = submit_command(sandbox.vm, conn, command, cwd=working_directory)
                 result = future.result(timeout=timeout)
 
                 outputs: dict[str, Any] = {

@@ -82,6 +82,10 @@ class ReadOnlyGraphRuntimeStateWrapper:
     def get_output(self, key: str, default: Any = None) -> Any:
         return self._state.get_output(key, default)
 
+    @property
+    def sandbox(self) -> Any:
+        return self._state.sandbox
+
     def dumps(self) -> str:
         """Serialize the underlying runtime state for external persistence."""
         return self._state.dumps()
