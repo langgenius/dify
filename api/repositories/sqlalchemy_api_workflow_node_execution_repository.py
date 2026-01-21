@@ -360,9 +360,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         """
         Fetch node executions for a run using workflow_run_id.
         """
-        stmt = select(WorkflowNodeExecutionModel).where(
-            WorkflowNodeExecutionModel.workflow_run_id == run_id
-        )
+        stmt = select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.workflow_run_id == run_id)
         return list(session.scalars(stmt))
 
     @staticmethod
