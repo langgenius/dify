@@ -231,21 +231,14 @@ class FeatureService:
 
     @classmethod
     def _fulfill_trial_models_from_env(cls) -> list[str]:
-        trial_models: list[str] = []
-        if dify_config.HOSTED_OPENAI_PAID_ENABLED and dify_config.HOSTED_OPENAI_TRIAL_ENABLED:
-            trial_models.append(HostedTrialProvider.OPENAI)
-        if dify_config.HOSTED_DEEPSEEK_PAID_ENABLED and dify_config.HOSTED_DEEPSEEK_TRIAL_ENABLED:
-            trial_models.append(HostedTrialProvider.DEEPSEEK)
-        if dify_config.HOSTED_ANTHROPIC_PAID_ENABLED and dify_config.HOSTED_ANTHROPIC_TRIAL_ENABLED:
-            trial_models.append(HostedTrialProvider.ANTHROPIC)
-        if dify_config.HOSTED_GEMINI_PAID_ENABLED and dify_config.HOSTED_GEMINI_TRIAL_ENABLED:
-            trial_models.append(HostedTrialProvider.GEMINI)
-        if dify_config.HOSTED_XAI_PAID_ENABLED and dify_config.HOSTED_XAI_TRIAL_ENABLED:
-            trial_models.append(HostedTrialProvider.XAI)
-        if dify_config.HOSTED_TONGYI_PAID_ENABLED and dify_config.HOSTED_TONGYI_TRIAL_ENABLED:
-            trial_models.append(HostedTrialProvider.TONGYI)
-        return trial_models
-
+        return [
+            provider
+            for provider in HostedTrialProvider
+            if (
+                getattr(dify_config, f"HOSTED_{provider.upper()}_PAID_ENABLED", False)
+                and getattr(dify_config, f"HOSTED_{provider.upper()}_TRIAL_ENABLED", False)
+            )
+        ]
     @classmethod
     def _fulfill_params_from_env(cls, features: FeatureModel):
         features.can_replace_logo = dify_config.CAN_REPLACE_LOGO
