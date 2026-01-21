@@ -38,12 +38,17 @@ const TreeEditInput: React.FC<TreeEditInputProps> = ({ node }) => {
     node.reset()
   }
 
+  const ariaLabel = isFolder
+    ? t('skillSidebar.renameFolderInput')
+    : t('skillSidebar.renameFileInput')
+
   return (
     <input
       ref={inputRef}
       type="text"
       defaultValue={node.data.name}
       placeholder={placeholder}
+      aria-label={ariaLabel}
       onKeyDown={handleKeyDown}
       onBlur={handleBlur}
       onClick={e => e.stopPropagation()}

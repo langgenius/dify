@@ -40,7 +40,7 @@ const DropTip = () => {
   const { t } = useTranslation('workflow')
   return (
     <div className="flex shrink-0 items-center justify-center gap-2 py-4 text-text-quaternary">
-      <RiDragDropLine className="size-4" />
+      <RiDragDropLine className="size-4" aria-hidden="true" />
       <span className="system-xs-regular">
         {t('skillSidebar.dropTip')}
       </span>
@@ -255,7 +255,7 @@ const FileTree: React.FC<FileTreeProps> = ({ className }) => {
       <>
         <div className={cn('flex min-h-0 flex-1 flex-col', className)}>
           <div className="flex flex-1 flex-col items-center justify-center gap-2 pb-20">
-            <SearchMenu className="size-8 text-text-tertiary" />
+            <SearchMenu className="size-8 text-text-tertiary" aria-hidden="true" />
             <span className="system-xs-regular text-text-secondary">
               {t('skillSidebar.searchNoResults')}
             </span>

@@ -116,6 +116,7 @@ const NodeMenu: FC<NodeMenuProps> = ({
             type="file"
             multiple
             className="hidden"
+            aria-label={t('skillSidebar.menu.uploadFile')}
             onChange={handleFileChange}
           />
           {!isRoot && (
@@ -125,6 +126,7 @@ const NodeMenu: FC<NodeMenuProps> = ({
               // @ts-expect-error webkitdirectory is a non-standard attribute
               webkitdirectory=""
               className="hidden"
+              aria-label={t('skillSidebar.menu.uploadFolder')}
               onChange={handleFolderChange}
             />
           )}
