@@ -3,6 +3,7 @@ import { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/type
 const MARKDOWN_EXTENSIONS = ['md', 'markdown', 'mdx']
 const CODE_EXTENSIONS = ['json', 'yaml', 'yml', 'toml', 'js', 'jsx', 'ts', 'tsx', 'py', 'schema']
 const TEXT_EXTENSIONS = ['txt', 'log', 'ini', 'env']
+const IGNORE_EXTENSIONS = ['gitignore', 'dockerignore', 'prettierignore', 'eslintignore', 'npmignore', 'hgignore']
 const IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico']
 const VIDEO_EXTENSIONS = ['mp4', 'mov', 'webm', 'mpeg', 'mpg', 'm4v', 'avi']
 
@@ -31,7 +32,7 @@ export function isMarkdownFile(extension: string): boolean {
 }
 
 export function isCodeOrTextFile(extension: string): boolean {
-  return CODE_EXTENSIONS.includes(extension) || TEXT_EXTENSIONS.includes(extension)
+  return CODE_EXTENSIONS.includes(extension) || TEXT_EXTENSIONS.includes(extension) || IGNORE_EXTENSIONS.includes(extension)
 }
 
 export function isImageFile(extension: string): boolean {
