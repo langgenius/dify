@@ -20,7 +20,7 @@ const ExecutedAction = ({
           i18nKey="nodes.humanInput.userActions.triggered"
           ns="workflow"
           components={{ strong: <span className="system-xs-medium text-text-secondary"></span> }}
-          values={{ actionName: executedAction.title }}
+          values={{ actionName: executedAction.id }}
         />
       </div>
     </div>
