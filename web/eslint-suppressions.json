@@ -1309,11 +1309,6 @@
       "count": 2
     }
   },
-  "app/components/base/notion-page-selector/page-selector/index.tsx": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 1
-    }
-  },
   "app/components/base/pagination/index.tsx": {
     "unicorn/prefer-number-properties": {
       "count": 1
@@ -4249,11 +4244,6 @@
   },
   "i18n/uk-UA/app-debug.json": {
     "no-irregular-whitespace": {
-      "count": 1
-    }
-  },
-  "middleware.ts": {
-    "node/prefer-global/buffer": {
       "count": 1
     }
   },
