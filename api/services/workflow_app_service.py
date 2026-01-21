@@ -14,6 +14,7 @@ from services.plugin.plugin_service import PluginService
 from services.workflow.entities import TriggerMetadata
 
 
+# Since the workflow_app_log table has exceeded 100 million records, we use an additional details field to extend it
 class LogView:
     """Lightweight wrapper for WorkflowAppLog with computed details.
 
