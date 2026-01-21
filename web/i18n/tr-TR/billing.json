@@ -172,6 +172,7 @@
   "usagePage.documentsUploadQuota": "Belgeler Yükleme Kotası",
   "usagePage.perMonth": "ayda",
   "usagePage.resetsIn": "{{count,number}} gün içinde sıfırlanır",
+  "usagePage.storageThresholdTooltip": "Depolama alanı 50 MB'yi aştığında ayrıntılı kullanım gösterilir.",
   "usagePage.teamMembers": "Ekip Üyeleri",
   "usagePage.triggerEvents": "Tetikleyici Olaylar",
   "usagePage.vectorSpace": "Bilgi Veri Depolama",
