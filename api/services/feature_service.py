@@ -239,6 +239,7 @@ class FeatureService:
                 and getattr(dify_config, f"HOSTED_{provider.upper()}_TRIAL_ENABLED", False)
             )
         ]
+
     @classmethod
     def _fulfill_params_from_env(cls, features: FeatureModel):
         features.can_replace_logo = dify_config.CAN_REPLACE_LOGO
