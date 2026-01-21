@@ -25,10 +25,10 @@ __all__ = [
     "ExecutionContext",
     "IExecutionContext",
     "NullAppContext",
+    "SandboxContext",
     "capture_current_context",
     "read_context",
     "register_context",
     "register_context_capturer",
     "reset_context_provider",
-    "SandboxContext",
 ]

@@ -264,10 +264,12 @@ class TestCaptureCurrentContext:
 class TestTenantScopedContextRegistry:
     def setup_method(self):
         from core.workflow.context import reset_context_provider
+
         reset_context_provider()
 
     def teardown_method(self):
         from core.workflow.context import reset_context_provider
+
         reset_context_provider()
 
     def test_tenant_provider_read_ok(self):
@@ -282,5 +284,6 @@ class TestTenantScopedContextRegistry:
 
     def test_missing_provider_raises_keyerror(self):
         from core.workflow.context import ContextProviderNotFoundError
+
         with pytest.raises(ContextProviderNotFoundError):
             read_context("missing", tenant_id="unknown")

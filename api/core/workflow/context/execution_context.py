@@ -227,6 +227,7 @@ T = TypeVar("T", bound=BaseModel)
 
 class ContextProviderNotFoundError(KeyError):
     """Raised when a tenant-scoped context provider is missing for a given (name, tenant_id)."""
+
     pass
 
 
@@ -253,9 +254,7 @@ def read_context(name: str, *, tenant_id: str) -> BaseModel:
     """
     prov = _tenant_context_providers.get((name, tenant_id))
     if prov is None:
-        raise ContextProviderNotFoundError(
-            f"Context provider '{name}' not registered for tenant '{tenant_id}'"
-        )
+        raise ContextProviderNotFoundError(f"Context provider '{name}' not registered for tenant '{tenant_id}'")
     return prov()
 
 
