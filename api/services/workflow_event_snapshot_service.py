@@ -121,7 +121,7 @@ def build_workflow_event_stream(
                     last_msg_time = time.time()
                     last_ping_time = last_msg_time
                     yield event
-                    if _is_terminal_event(event):
+                    if _is_terminal_event(event, include_paused=True):
                         return
 
                 while True:
