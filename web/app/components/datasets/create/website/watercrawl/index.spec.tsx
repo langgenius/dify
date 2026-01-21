@@ -41,6 +41,14 @@ const createDefaultCrawlOptions = (overrides: Partial<CrawlOptions> = {}): Crawl
   ...overrides,
 })
 
+const createDeferred = <T,>() => {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((res) => {
+    resolve = res
+  })
+  return { promise, resolve }
+}
+
 const createCrawlResultItem = (overrides: Partial<CrawlResultItem> = {}): CrawlResultItem => ({
   title: 'Test Page Title',
   markdown: '# Test Content\n\nThis is test markdown content.',
@@ -393,7 +401,15 @@ describe('WaterCrawl', () => {
     it('should update controlFoldOptions when step changes', async () => {
       // Arrange
       const mockCreateTask = createWatercrawlTask as Mock
-      mockCreateTask.mockImplementation(() => new Promise(() => { /* pending */ }))
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
+      const deferredCreateTask = createDeferred<{ job_id: string }>()
+      mockCreateTask.mockImplementation(() => deferredCreateTask.promise)
+      mockCheckStatus.mockResolvedValueOnce({
+        status: 'completed',
+        current: 0,
+        total: 0,
+        data: [],
+      })
 
       const props = createDefaultProps()
 
@@ -410,6 +426,11 @@ describe('WaterCrawl', () => {
       // Assert - the crawling indicator should appear
       await waitFor(() => {
         expect(screen.getByText(/totalPageScraped/i)).toBeInTheDocument()
+      })
+
+      deferredCreateTask.resolve({ job_id: 'test-job' })
+      await waitFor(() => {
+        expect(mockCheckStatus).toHaveBeenCalled()
       })
     })
   })
@@ -1091,8 +1112,14 @@ describe('WaterCrawl', () => {
       const mockCreateTask = createWatercrawlTask as Mock
       const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
-      mockCreateTask.mockResolvedValueOnce({ job_id: 'zero-current-job' })
-      mockCheckStatus.mockImplementation(() => new Promise(() => { /* never resolves */ }))
+      const deferredCreateTask = createDeferred<{ job_id: string }>()
+      mockCreateTask.mockImplementation(() => deferredCreateTask.promise)
+      mockCheckStatus.mockResolvedValueOnce({
+        status: 'completed',
+        current: 0,
+        total: 0,
+        data: [],
+      })
 
       const props = createDefaultProps({
         crawlOptions: createDefaultCrawlOptions({ limit: 10 }),
@@ -1108,6 +1135,11 @@ describe('WaterCrawl', () => {
       await waitFor(() => {
         expect(screen.getByText(/totalPageScraped.*0\/10/)).toBeInTheDocument()
       })
+
+      deferredCreateTask.resolve({ job_id: 'zero-current-job' })
+      await waitFor(() => {
+        expect(mockCheckStatus).toHaveBeenCalled()
+      })
     })
 
     it('should handle crawlResult with zero total and empty limit', async () => {
@@ -1115,8 +1147,14 @@ describe('WaterCrawl', () => {
       const mockCreateTask = createWatercrawlTask as Mock
       const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
-      mockCreateTask.mockResolvedValueOnce({ job_id: 'zero-total-job' })
-      mockCheckStatus.mockImplementation(() => new Promise(() => { /* never resolves */ }))
+      const deferredCreateTask = createDeferred<{ job_id: string }>()
+      mockCreateTask.mockImplementation(() => deferredCreateTask.promise)
+      mockCheckStatus.mockResolvedValueOnce({
+        status: 'completed',
+        current: 0,
+        total: 0,
+        data: [],
+      })
 
       const props = createDefaultProps({
         crawlOptions: createDefaultCrawlOptions({ limit: '0' }),
@@ -1131,6 +1169,11 @@ describe('WaterCrawl', () => {
       // Assert - should show 0/0
       await waitFor(() => {
         expect(screen.getByText(/totalPageScraped.*0\/0/)).toBeInTheDocument()
+      })
+
+      deferredCreateTask.resolve({ job_id: 'zero-total-job' })
+      await waitFor(() => {
+        expect(mockCheckStatus).toHaveBeenCalled()
       })
     })
 
@@ -1168,8 +1211,14 @@ describe('WaterCrawl', () => {
       const mockCreateTask = createWatercrawlTask as Mock
       const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
-      mockCreateTask.mockResolvedValueOnce({ job_id: 'no-total-job' })
-      mockCheckStatus.mockImplementation(() => new Promise(() => { /* never resolves */ }))
+      const deferredCreateTask = createDeferred<{ job_id: string }>()
+      mockCreateTask.mockImplementation(() => deferredCreateTask.promise)
+      mockCheckStatus.mockResolvedValueOnce({
+        status: 'completed',
+        current: 0,
+        total: 15,
+        data: [],
+      })
 
       const props = createDefaultProps({
         crawlOptions: createDefaultCrawlOptions({ limit: 15 }),
@@ -1185,6 +1234,11 @@ describe('WaterCrawl', () => {
       await waitFor(() => {
         expect(screen.getByText(/totalPageScraped.*0\/15/)).toBeInTheDocument()
       })
+
+      deferredCreateTask.resolve({ job_id: 'no-total-job' })
+      await waitFor(() => {
+        expect(mockCheckStatus).toHaveBeenCalled()
+      })
     })
 
     it('should handle crawlResult with current=0 and total=0 during running', async () => {
@@ -1193,6 +1247,12 @@ describe('WaterCrawl', () => {
       const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'both-zero-job' })
+      const deferredStatus = createDeferred<{
+        status: string
+        current: number
+        total: number
+        data: CrawlResultItem[]
+      }>()
       mockCheckStatus
         .mockResolvedValueOnce({
           status: 'running',
@@ -1200,7 +1260,7 @@ describe('WaterCrawl', () => {
           total: 0,
           data: [],
         })
-        .mockImplementationOnce(() => new Promise(() => { /* never resolves */ }))
+        .mockImplementationOnce(() => deferredStatus.promise)
 
       const props = createDefaultProps({
         crawlOptions: createDefaultCrawlOptions({ limit: 5 }),
@@ -1215,6 +1275,16 @@ describe('WaterCrawl', () => {
       // Assert
       await waitFor(() => {
         expect(screen.getByText(/totalPageScraped/)).toBeInTheDocument()
+      })
+
+      deferredStatus.resolve({
+        status: 'completed',
+        current: 0,
+        total: 0,
+        data: [],
+      })
+      await waitFor(() => {
+        expect(mockCheckStatus).toHaveBeenCalledTimes(2)
       })
     })
   })
@@ -1496,8 +1566,14 @@ describe('WaterCrawl', () => {
       const mockCreateTask = createWatercrawlTask as Mock
       const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
-      mockCreateTask.mockResolvedValueOnce({ job_id: 'progress-job' })
-      mockCheckStatus.mockImplementation(() => new Promise(() => { /* pending */ }))
+      const deferredCreateTask = createDeferred<{ job_id: string }>()
+      mockCreateTask.mockImplementation(() => deferredCreateTask.promise)
+      mockCheckStatus.mockResolvedValueOnce({
+        status: 'completed',
+        current: 0,
+        total: 10,
+        data: [],
+      })
 
       const props = createDefaultProps({
         crawlOptions: createDefaultCrawlOptions({ limit: 10 }),
@@ -1512,6 +1588,11 @@ describe('WaterCrawl', () => {
       // Assert
       await waitFor(() => {
         expect(screen.getByText(/totalPageScraped.*0\/10/)).toBeInTheDocument()
+      })
+
+      deferredCreateTask.resolve({ job_id: 'progress-job' })
+      await waitFor(() => {
+        expect(mockCheckStatus).toHaveBeenCalled()
       })
     })
 
