@@ -110,6 +110,75 @@ git pull origin dev
 git branch -d feature/your-feature-name
 ```
 
+## Git Worktree 高级工作流（可选）
+
+### 什么是 Worktree
+
+Git Worktree 允许你在同一个仓库中创建多个工作目录，每个目录对应不同的分支。这对于需要频繁切换分支或并行处理多个任务的场景非常有用。
+
+**适合使用 Worktree 的情况：**
+- 需要同时开发多个功能
+- Code Review 时测试 PR
+- 紧急修复不想中断当前工作
+- 对比不同版本的代码
+
+**详细文档：**
+- 📖 [Git Worktree 完整指南](./GIT_WORKTREE_GUIDE.md)
+- 📋 [Worktree 速查表](./WORKTREE_CHEATSHEET.md)
+
+### 快速开始
+
+```bash
+# 使用辅助脚本
+./scripts/worktree-helpers.sh setup       # 创建常用 worktree
+./scripts/worktree-helpers.sh list        # 列出所有 worktree
+./scripts/worktree-helpers.sh help        # 查看所有命令
+
+# 常用操作
+./scripts/worktree-helpers.sh feature authentication   # 创建功能开发 worktree
+./scripts/worktree-helpers.sh review 123               # Review PR #123
+./scripts/worktree-helpers.sh hotfix security-patch    # 紧急修复
+```
+
+### 使用场景示例
+
+#### 开发中需要紧急修复
+
+```bash
+# 你正在 ~/projects/dify 中开发新功能
+npm run dev  # 开发服务器运行中
+
+# 突然需要紧急修复
+./scripts/worktree-helpers.sh hotfix critical-bug
+
+# 在新目录中修复（不影响原来的工作）
+cd ../dify-hotfix-critical-bug
+npm install
+npm run dev  # 在不同端口运行
+# 修复、提交、创建 PR
+
+# 回到原来的工作
+cd ~/projects/dify
+# 开发服务器还在运行！
+```
+
+#### Code Review
+
+```bash
+# 团队成员提交了 PR #456
+./scripts/worktree-helpers.sh review 456
+
+cd ../dify-review-pr-456
+npm install
+npm run dev  # 测试功能
+# 审查代码...
+
+# 完成后删除
+./scripts/worktree-helpers.sh remove review-pr-456
+```
+
+更多用法请参考 [Git Worktree 完整指南](./GIT_WORKTREE_GUIDE.md)。
+
 ## 特殊场景
 
 ### 紧急修复（Hotfix）
