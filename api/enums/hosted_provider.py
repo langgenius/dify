@@ -6,12 +6,12 @@ class HostedTrialProvider(StrEnum):
     Enum representing hosted model provider names for trial access.
     """
 
-    OPENAI = "langgenius/openai"
-    ANTHROPIC = "langgenius/anthropic"
-    GEMINI = "langgenius/gemini"
-    X = "langgenius/x"
-    DEEPSEEK = "langgenius/deepseek"
-    TONGYI = "langgenius/tongyi"
+    ANTHROPIC = "langgenius/anthropic/anthropic"
+    OPENAI = "langgenius/openai/openai"
+    GEMINI = "langgenius/gemini/google"
+    X = "langgenius/x/x"
+    DEEPSEEK = "langgenius/deepseek/deepseek"
+    TONGYI = "langgenius/tongyi/tongyi"
 
     @property
     def config_key(self) -> str:
