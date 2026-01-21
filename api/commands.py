@@ -957,6 +957,18 @@ def clean_workflow_runs(
 @click.option("--tenant-ids", default=None, help="Optional comma-separated tenant IDs for grayscale rollout.")
 @click.option("--before-days", default=90, show_default=True, help="Archive runs older than N days.")
 @click.option(
+    "--from-days-ago",
+    default=None,
+    type=click.IntRange(min=0),
+    help="Lower bound in days ago (older). Must be paired with --to-days-ago.",
+)
+@click.option(
+    "--to-days-ago",
+    default=None,
+    type=click.IntRange(min=0),
+    help="Upper bound in days ago (newer). Must be paired with --from-days-ago.",
+)
+@click.option(
     "--start-from",
     type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
     default=None,
@@ -976,6 +988,8 @@ def clean_workflow_runs(
 def archive_workflow_runs(
     tenant_ids: str | None,
     before_days: int,
+    from_days_ago: int | None,
+    to_days_ago: int | None,
     start_from: datetime.datetime | None,
     end_before: datetime.datetime | None,
     batch_size: int,
@@ -1006,13 +1020,29 @@ def archive_workflow_runs(
         )
     )
 
-    if start_from or end_before:
-        if not start_from or not end_before:
-            click.echo(click.style("start-from and end-before must be provided together.", fg="red"))
+    if (start_from is None) ^ (end_before is None):
+        click.echo(click.style("start-from and end-before must be provided together.", fg="red"))
+        return
+
+    if (from_days_ago is None) ^ (to_days_ago is None):
+        click.echo(click.style("from-days-ago and to-days-ago must be provided together.", fg="red"))
+        return
+
+    if from_days_ago is not None and to_days_ago is not None:
+        if start_from or end_before:
+            click.echo(click.style("Choose either day offsets or explicit dates, not both.", fg="red"))
             return
-        if start_from >= end_before:
-            click.echo(click.style("start-from must be earlier than end-before.", fg="red"))
+        if from_days_ago <= to_days_ago:
+            click.echo(click.style("from-days-ago must be greater than to-days-ago.", fg="red"))
             return
+        now = datetime.datetime.now()
+        start_from = now - datetime.timedelta(days=from_days_ago)
+        end_before = now - datetime.timedelta(days=to_days_ago)
+        before_days = 0
+
+    if start_from and end_before and start_from >= end_before:
+        click.echo(click.style("start-from must be earlier than end-before.", fg="red"))
+        return
     if workers < 1:
         click.echo(click.style("workers must be at least 1.", fg="red"))
         return
