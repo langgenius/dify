@@ -1554,11 +1554,6 @@
       "count": 3
     }
   },
-  "app/components/billing/usage-info/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/custom/custom-web-app-brand/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 7
