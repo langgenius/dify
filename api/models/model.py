@@ -968,6 +968,7 @@ class Message(Base):
         Index("message_workflow_run_id_idx", "conversation_id", "workflow_run_id"),
         Index("message_created_at_idx", "created_at"),
         Index("message_app_mode_idx", "app_mode"),
+        Index("message_created_at_id_idx", "created_at", "id"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))

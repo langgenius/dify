@@ -265,7 +265,7 @@ const Form = () => {
         </div>
       </div>
       {
-        currentDataset?.doc_form && (
+        !!currentDataset?.doc_form && (
           <>
             <Divider
               type="horizontal"
@@ -298,13 +298,13 @@ const Form = () => {
           </>
         )
       }
-      {(isShowIndexMethod || indexMethod === 'high_quality') && (
+      {!!(isShowIndexMethod || indexMethod === 'high_quality') && (
         <Divider
           type="horizontal"
           className="my-1 h-px bg-divider-subtle"
         />
       )}
-      {isShowIndexMethod && (
+      {!!isShowIndexMethod && (
         <div className={rowClass}>
           <div className={labelClass}>
             <div className="system-sm-semibold text-text-secondary">{t('form.indexMethod', { ns: 'datasetSettings' })}</div>
@@ -403,7 +403,7 @@ const Form = () => {
               </div>
             </>
           )
-        // eslint-disable-next-line sonarjs/no-nested-conditional
+
         : indexMethod
           ? (
               <>
