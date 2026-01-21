@@ -350,7 +350,7 @@
   "modelProvider.card.quota": "額度",
   "modelProvider.card.quotaExhausted": "配額已用完",
   "modelProvider.card.removeKey": "刪除 API 金鑰",
-  "modelProvider.card.tip": "已付費額度將優先考慮。試用額度將在付費額度用完後使用。",
+  "modelProvider.card.tip": "消息額度支持使用 OpenAI 的模型；免費額度會在付費額度用盡後才會消耗。",
   "modelProvider.card.tokens": "Tokens",
   "modelProvider.collapse": "收起",
   "modelProvider.config": "配置",
