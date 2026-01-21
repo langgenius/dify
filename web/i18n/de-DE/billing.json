@@ -172,6 +172,7 @@
   "usagePage.documentsUploadQuota": "Dokumenten-Upload-Quota",
   "usagePage.perMonth": "pro Monat",
   "usagePage.resetsIn": "Setzt in {{count,number}} Tagen zurück",
+  "usagePage.storageThresholdTooltip": "Die detaillierte Nutzung wird angezeigt, sobald der Speicher 50 MB überschreitet.",
   "usagePage.teamMembers": "Teammitglieder",
   "usagePage.triggerEvents": "Auslöser-Ereignisse",
   "usagePage.vectorSpace": "Wissensdatenbank",
