@@ -290,7 +290,7 @@ export default function ShortcutsPopupPlugin({
       }}
       className={cn(
         useContainer ? '' : 'z-[999999]',
-        'absolute rounded-md bg-slate-50 shadow-lg',
+        'absolute rounded-xl bg-components-panel-bg-blur shadow-lg',
         className,
       )}
       style={{

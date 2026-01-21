@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import * as React from 'react'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import { VarType } from '@/app/components/workflow/types'
@@ -24,7 +24,15 @@ type Props = {
 const i18nPrefix = 'nodes.humanInput.insertInputField'
 
 type PlaceholderProps = {
-  varPickerProps: any
+  varPickerProps: {
+    nodeId: string
+    value: ValueSelector
+    onChange: (valueSelector: ValueSelector | string) => void
+    readonly: boolean
+    zIndex: number
+    filterVar: (varPayload: Var) => boolean
+    isJustShowValue?: boolean
+  }
   onTypeClick: (isVariable: boolean) => void
 }
 const Placeholder = ({
@@ -84,6 +92,20 @@ const PrePopulate: FC<Props> = ({
   }
 
   const isShowPlaceholder = !onPlaceholderClicked && (isVariable ? (!valueSelector || valueSelector.length === 0) : !value)
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Tab' && !onPlaceholderClicked) {
+        e.preventDefault()
+        setOnPlaceholderClicked(true)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [onPlaceholderClicked, setOnPlaceholderClicked])
+
   if (isShowPlaceholder)
     return <Placeholder varPickerProps={varPickerProps} onTypeClick={handleTypeChange} />
 
@@ -113,6 +135,7 @@ const PrePopulate: FC<Props> = ({
           setIsFocus(true)
         }}
         onBlur={() => setIsFocus(false)}
+        autoFocus
       />
       <TypeSwitch
         className="absolute bottom-1 left-1.5"
