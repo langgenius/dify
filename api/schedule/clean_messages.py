@@ -2,6 +2,7 @@ import logging
 import time
 
 import click
+from redis.exceptions import LockError
 
 import app
 from configs import dify_config
@@ -57,6 +58,16 @@ def clean_messages():
                 fg="green",
             )
         )
+    except LockError:
+        end_at = time.perf_counter()
+        logger.exception("clean_messages: acquire task lock failed, skip current execution")
+        click.echo(
+            click.style(
+                f"clean_messages: skipped (lock already held) - latency: {end_at - start_at:.2f}s",
+                fg="yellow",
+            )
+        )
+        raise
     except Exception as e:
         end_at = time.perf_counter()
         logger.exception("clean_messages failed")
