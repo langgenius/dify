@@ -4005,9 +4005,6 @@
   "app/components/workflow/types.ts": {
     "ts/no-empty-object-type": {
       "count": 3
-    },
-    "ts/no-explicit-any": {
-      "count": 8
     }
   },
   "app/components/workflow/update-dsl-modal.tsx": {

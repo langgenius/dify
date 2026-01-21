@@ -1,3 +1,4 @@
+/* eslint-disable ts/no-explicit-any */
 import type {
   Edge as ReactFlowEdge,
   Node as ReactFlowNode,
@@ -255,11 +256,15 @@ export type PromptItem = {
   text: string
   edition_type?: EditionType
   jinja2_text?: string
+  skill?: boolean
+  metadata?: Record<string, any>
 }
 
 export type PromptMessageContext = {
   id?: string
   $context: ValueSelector
+  skill?: boolean
+  metadata?: Record<string, any>
 }
 
 export type PromptTemplateItem = PromptItem | PromptMessageContext
