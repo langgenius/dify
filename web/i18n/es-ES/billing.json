@@ -172,6 +172,7 @@
   "usagePage.documentsUploadQuota": "Cuota de carga de documentos",
   "usagePage.perMonth": "por mes",
   "usagePage.resetsIn": "Se reinicia en {{count,number}} días",
+  "usagePage.storageThresholdTooltip": "El uso detallado se muestra una vez que el almacenamiento supera los 50 MB.",
   "usagePage.teamMembers": "Miembros del equipo",
   "usagePage.triggerEvents": "Eventos desencadenantes",
   "usagePage.vectorSpace": "Almacenamiento de Datos de Conocimiento",
