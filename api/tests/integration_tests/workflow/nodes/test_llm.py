@@ -302,3 +302,161 @@ def test_extract_json():
     ]
     result = {"name": "test", "age": 123}
     assert all(_parse_structured_output(item) == result for item in llm_texts)
+
+
+def test_execute_llm_with_fallback_model():
+    """
+    Test LLM node with fallback model - primary model fails, fallback model succeeds.
+    This tests the complete fallback model flow.
+    """
+    node = init_llm_node(
+        config={
+            "id": "llm",
+            "data": {
+                "title": "LLM with Fallback",
+                "type": "llm",
+                "model": {
+                    "provider": "openai",
+                    "name": "gpt-3.5-turbo",
+                    "mode": "chat",
+                    "completion_params": {},
+                },
+                "fallback_models": [
+                    {
+                        "provider": "openai",
+                        "name": "gpt-4",
+                        "mode": "chat",
+                        "completion_params": {},
+                    },
+                    {
+                        "provider": "anthropic",
+                        "name": "claude-3",
+                        "mode": "chat",
+                        "completion_params": {},
+                    },
+                ],
+                "prompt_template": [
+                    {
+                        "role": "system",
+                        "text": "you are a helpful assistant.",
+                    },
+                    {"role": "user", "text": "{{#sys.query#}}"},
+                ],
+                "memory": None,
+                "context": {"enabled": False},
+                "vision": {"enabled": False},
+            },
+        },
+    )
+
+    db.session.close = MagicMock()
+
+    # Track which models were called
+    called_models = []
+
+    def mock_fetch_model_config(*, node_data_model, tenant_id):
+        called_models.append((node_data_model.provider, node_data_model.name))
+        from decimal import Decimal
+        from unittest.mock import MagicMock
+
+        from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+        from core.model_runtime.entities.message_entities import AssistantPromptMessage
+
+        # Create mock model instance
+        mock_model_instance = MagicMock()
+        mock_usage = LLMUsage(
+            prompt_tokens=30,
+            prompt_unit_price=Decimal("0.001"),
+            prompt_price_unit=Decimal(1000),
+            prompt_price=Decimal("0.00003"),
+            completion_tokens=20,
+            completion_unit_price=Decimal("0.002"),
+            completion_price_unit=Decimal(1000),
+            completion_price=Decimal("0.00004"),
+            total_tokens=50,
+            total_price=Decimal("0.00007"),
+            currency="USD",
+            latency=0.5,
+        )
+        mock_message = AssistantPromptMessage(content=f"Response from {node_data_model.name}")
+        mock_llm_result = LLMResult(
+            model=node_data_model.name,
+            prompt_messages=[],
+            message=mock_message,
+            usage=mock_usage,
+        )
+        mock_model_instance.invoke_llm.return_value = mock_llm_result
+
+        # Create mock model config
+        mock_model_config = MagicMock()
+        mock_model_config.mode = "chat"
+        mock_model_config.provider = node_data_model.provider
+        mock_model_config.model = node_data_model.name
+        mock_model_config.parameters = {}
+
+        return mock_model_instance, mock_model_config
+
+    # Mock fetch_prompt_messages to avoid database calls
+    def mock_fetch_prompt_messages(**_kwargs):
+        from core.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
+
+        return [
+            SystemPromptMessage(content="you are a helpful assistant."),
+            UserPromptMessage(content="what's the weather today?"),
+        ], []
+
+    with (
+        patch.object(LLMNode, "_fetch_model_config", mock_fetch_model_config),
+        patch.object(LLMNode, "fetch_prompt_messages", mock_fetch_prompt_messages),
+    ):
+        # First execution: primary model (no fallback index set)
+        result = node._run()
+        assert isinstance(result, Generator)
+
+        for item in result:
+            if isinstance(item, StreamCompletedEvent):
+                assert item.node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+                assert item.node_run_result.process_data is not None
+                assert item.node_run_result.outputs is not None
+                assert item.node_run_result.outputs.get("text") is not None
+                # Verify primary model was used
+                assert len(called_models) == 1
+                assert called_models[0] == ("openai", "gpt-3.5-turbo")
+
+        # Reset for second test: simulate fallback model usage
+        called_models.clear()
+        # Set variable to simulate model failed and retry with fallback model
+        node.graph_runtime_state.variable_pool.add(("llm", "_fallback_model_index"), "0")
+
+        # Second execution: first fallback model
+        result2 = node._run()
+        assert isinstance(result2, Generator)
+
+        for item in result2:
+            if isinstance(item, StreamCompletedEvent):
+                assert item.node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+                assert item.node_run_result.process_data is not None
+                # Verify fallback model was used
+                assert len(called_models) == 1
+                assert called_models[0] == ("openai", "gpt-4")
+                # Verify response mentions fallback model
+                assert "gpt-4" in item.node_run_result.outputs.get("text", "")
+
+        # Reset for third test: simulate second fallback model usage
+        called_models.clear()
+        node.graph_runtime_state.variable_pool.remove(("llm", "_fallback_model_index"))
+        node.graph_runtime_state.variable_pool.add(("llm", "_fallback_model_index"), "1")
+
+        # Third execution: second fallback model
+        result3 = node._run()
+        assert isinstance(result3, Generator)
+
+        for item in result3:
+            if isinstance(item, StreamCompletedEvent):
+                assert item.node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+                assert item.node_run_result.process_data is not None
+                # Verify second fallback model was used
+                assert len(called_models) == 1
+                assert called_models[0] == ("anthropic", "claude-3")
+                # Verify response mentions fallback model
+                assert "claude-3" in item.node_run_result.outputs.get("text", "")
