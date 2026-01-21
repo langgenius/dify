@@ -163,7 +163,7 @@
   "installModal.cancel": "キャンセル",
   "installModal.close": "閉じる",
   "installModal.dropPluginToInstall": "プラグインパッケージをここにドロップしてインストールします",
-  "installModal.fromTrustSource": "信頼できるソースからのみプラグインをインストールするようにしてください。",
+  "installModal.fromTrustSource": "<trustSource>信頼できるソース</trustSource>からのみプラグインをインストールするようにしてください。",
   "installModal.install": "インストール",
   "installModal.installComplete": "インストール完了",
   "installModal.installFailed": "インストールに失敗しました",
