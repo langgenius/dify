@@ -1,3 +1,5 @@
+import pytest
+
 from core.workflow.nodes.http_request import (
     BodyData,
     HttpRequestNodeAuthorization,
@@ -5,6 +7,7 @@ from core.workflow.nodes.http_request import (
     HttpRequestNodeData,
 )
 from core.workflow.nodes.http_request.entities import HttpRequestNodeTimeout
+from core.workflow.nodes.http_request.exc import AuthorizationConfigError
 from core.workflow.nodes.http_request.executor import Executor
 from core.workflow.runtime import VariablePool
 from core.workflow.system_variable import SystemVariable
@@ -348,3 +351,127 @@ def test_init_params():
     executor = create_executor("key1:value1\n\nkey2:value2\n\n")
     executor._init_params()
     assert executor.params == [("key1", "value1"), ("key2", "value2")]
+
+
+def test_empty_api_key_raises_error_bearer():
+    """Test that empty API key raises AuthorizationConfigError for bearer auth."""
+    variable_pool = VariablePool(system_variables=SystemVariable.empty())
+    node_data = HttpRequestNodeData(
+        title="test",
+        method="get",
+        url="http://example.com",
+        headers="",
+        params="",
+        authorization=HttpRequestNodeAuthorization(
+            type="api-key",
+            config={"type": "bearer", "api_key": ""},
+        ),
+    )
+    timeout = HttpRequestNodeTimeout(connect=10, read=30, write=30)
+
+    with pytest.raises(AuthorizationConfigError, match="API key is required"):
+        Executor(
+            node_data=node_data,
+            timeout=timeout,
+            variable_pool=variable_pool,
+        )
+
+
+def test_empty_api_key_raises_error_basic():
+    """Test that empty API key raises AuthorizationConfigError for basic auth."""
+    variable_pool = VariablePool(system_variables=SystemVariable.empty())
+    node_data = HttpRequestNodeData(
+        title="test",
+        method="get",
+        url="http://example.com",
+        headers="",
+        params="",
+        authorization=HttpRequestNodeAuthorization(
+            type="api-key",
+            config={"type": "basic", "api_key": ""},
+        ),
+    )
+    timeout = HttpRequestNodeTimeout(connect=10, read=30, write=30)
+
+    with pytest.raises(AuthorizationConfigError, match="API key is required"):
+        Executor(
+            node_data=node_data,
+            timeout=timeout,
+            variable_pool=variable_pool,
+        )
+
+
+def test_empty_api_key_raises_error_custom():
+    """Test that empty API key raises AuthorizationConfigError for custom auth."""
+    variable_pool = VariablePool(system_variables=SystemVariable.empty())
+    node_data = HttpRequestNodeData(
+        title="test",
+        method="get",
+        url="http://example.com",
+        headers="",
+        params="",
+        authorization=HttpRequestNodeAuthorization(
+            type="api-key",
+            config={"type": "custom", "api_key": "", "header": "X-Custom-Auth"},
+        ),
+    )
+    timeout = HttpRequestNodeTimeout(connect=10, read=30, write=30)
+
+    with pytest.raises(AuthorizationConfigError, match="API key is required"):
+        Executor(
+            node_data=node_data,
+            timeout=timeout,
+            variable_pool=variable_pool,
+        )
+
+
+def test_whitespace_only_api_key_raises_error():
+    """Test that whitespace-only API key raises AuthorizationConfigError."""
+    variable_pool = VariablePool(system_variables=SystemVariable.empty())
+    node_data = HttpRequestNodeData(
+        title="test",
+        method="get",
+        url="http://example.com",
+        headers="",
+        params="",
+        authorization=HttpRequestNodeAuthorization(
+            type="api-key",
+            config={"type": "bearer", "api_key": "   "},
+        ),
+    )
+    timeout = HttpRequestNodeTimeout(connect=10, read=30, write=30)
+
+    with pytest.raises(AuthorizationConfigError, match="API key is required"):
+        Executor(
+            node_data=node_data,
+            timeout=timeout,
+            variable_pool=variable_pool,
+        )
+
+
+def test_valid_api_key_works():
+    """Test that valid API key works correctly for bearer auth."""
+    variable_pool = VariablePool(system_variables=SystemVariable.empty())
+    node_data = HttpRequestNodeData(
+        title="test",
+        method="get",
+        url="http://example.com",
+        headers="",
+        params="",
+        authorization=HttpRequestNodeAuthorization(
+            type="api-key",
+            config={"type": "bearer", "api_key": "valid-api-key-123"},
+        ),
+    )
+    timeout = HttpRequestNodeTimeout(connect=10, read=30, write=30)
+
+    executor = Executor(
+        node_data=node_data,
+        timeout=timeout,
+        variable_pool=variable_pool,
+    )
+
+    # Should not raise an error
+    headers = executor._assembling_headers()
+    assert "Authorization" in headers
+    assert headers["Authorization"] == "Bearer valid-api-key-123"

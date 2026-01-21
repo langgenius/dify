@@ -13,6 +13,8 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Protocol
 
+from sqlalchemy.orm import Session
+
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from models.workflow import WorkflowNodeExecutionModel
 
@@ -127,6 +129,18 @@ class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Pr
 
         Returns:
             The number of executions deleted
+        """
+        ...
+
+    def count_by_runs(self, session: Session, run_ids: Sequence[str]) -> tuple[int, int]:
+        """
+        Count node executions and offloads for the given workflow run ids.
+        """
+        ...
+
+    def delete_by_runs(self, session: Session, run_ids: Sequence[str]) -> tuple[int, int]:
+        """
+        Delete node executions and offloads for the given workflow run ids.
         """
         ...
 

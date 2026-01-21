@@ -1,16 +1,17 @@
 import type { Meta, StoryObj } from '@storybook/nextjs'
-import { useMemo, useState } from 'react'
+import type { FormStoryRender } from '../../../../.storybook/utils/form-story-wrapper'
+import type { FormSchema } from './types'
 import { useStore } from '@tanstack/react-form'
+import { useMemo, useState } from 'react'
+import { PreviewMode } from '@/app/components/base/features/types'
+import { TransferMethod } from '@/types/app'
+import { FormStoryWrapper } from '../../../../.storybook/utils/form-story-wrapper'
+import Button from '../button'
+import BaseForm from './components/base/base-form'
 import ContactFields from './form-scenarios/demo/contact-fields'
 import { demoFormOpts } from './form-scenarios/demo/shared-options'
 import { ContactMethods, UserSchema } from './form-scenarios/demo/types'
-import BaseForm from './components/base/base-form'
-import type { FormSchema } from './types'
 import { FormTypeEnum } from './types'
-import { type FormStoryRender, FormStoryWrapper } from '../../../../.storybook/utils/form-story-wrapper'
-import Button from '../button'
-import { TransferMethod } from '@/types/app'
-import { PreviewMode } from '@/app/components/base/features/types'
 
 const FormStoryHost = () => null
 
@@ -102,14 +103,14 @@ const FormPlayground = () => {
       options={{
         ...demoFormOpts,
         validators: {
-          onSubmit: ({ value }) => {
-            const result = UserSchema.safeParse(value as typeof demoFormOpts.defaultValues)
+          onSubmit: ({ value: formValue }) => {
+            const result = UserSchema.safeParse(formValue as typeof demoFormOpts.defaultValues)
             if (!result.success)
               return result.error.issues[0].message
             return undefined
           },
         },
-        onSubmit: ({ value }) => {
+        onSubmit: () => {
           setStatus('Successfully saved profile.')
         },
       }}

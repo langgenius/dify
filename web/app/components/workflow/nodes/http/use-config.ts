@@ -1,17 +1,18 @@
-import { useCallback, useEffect, useState } from 'react'
-import { produce } from 'immer'
-import { useBoolean } from 'ahooks'
-import useVarList from '../_base/hooks/use-var-list'
-import { VarType } from '../../types'
 import type { Var } from '../../types'
-import { useStore } from '../../store'
-import { type Authorization, type Body, BodyType, type HttpNodeType, type Method, type Timeout } from './types'
-import useKeyValueList from './hooks/use-key-value-list'
-import { transformToBodyPayload } from './utils'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import type { Authorization, Body, HttpNodeType, Method, Timeout } from './types'
+import { useBoolean } from 'ahooks'
+import { produce } from 'immer'
+import { useCallback, useEffect, useState } from 'react'
 import {
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks'
+import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { useStore } from '../../store'
+import { VarType } from '../../types'
+import useVarList from '../_base/hooks/use-var-list'
+import useKeyValueList from './hooks/use-key-value-list'
+import { BodyType } from './types'
+import { transformToBodyPayload } from './utils'
 
 const useConfig = (id: string, payload: HttpNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()

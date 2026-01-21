@@ -1,5 +1,5 @@
-import { create } from 'zustand'
 import type { Tag } from './constant'
+import { create } from 'zustand'
 
 type State = {
   tagList: Tag[]

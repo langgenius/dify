@@ -35,7 +35,6 @@ from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.model import App, AppModelConfig, Conversation, Message, MessageFile, TraceAppConfig
 from models.workflow import WorkflowAppLog
-from repositories.factory import DifyAPIRepositoryFactory
 from tasks.ops_trace_task import process_trace_tasks
 
 if TYPE_CHECKING:
@@ -119,6 +118,26 @@ class OpsTraceProviderConfigMap(collections.UserDict[str, dict[str, Any]]):
                     "secret_keys": ["license_key"],
                     "other_keys": ["endpoint", "app_name"],
                     "trace_instance": AliyunDataTrace,
+                }
+            case TracingProviderEnum.MLFLOW:
+                from core.ops.entities.config_entity import MLflowConfig
+                from core.ops.mlflow_trace.mlflow_trace import MLflowDataTrace
+
+                return {
+                    "config_class": MLflowConfig,
+                    "secret_keys": ["password"],
+                    "other_keys": ["tracking_uri", "experiment_id", "username"],
+                    "trace_instance": MLflowDataTrace,
+                }
+            case TracingProviderEnum.DATABRICKS:
+                from core.ops.entities.config_entity import DatabricksConfig
+                from core.ops.mlflow_trace.mlflow_trace import MLflowDataTrace
+
+                return {
+                    "config_class": DatabricksConfig,
+                    "secret_keys": ["personal_access_token", "client_secret"],
+                    "other_keys": ["host", "client_id", "experiment_id"],
+                    "trace_instance": MLflowDataTrace,
                 }
 
             case TracingProviderEnum.TENCENT:
@@ -274,6 +293,8 @@ class OpsTraceManager:
             raise ValueError("App not found")
 
         tenant_id = app.tenant_id
+        if trace_config_data.tracing_config is None:
+            raise ValueError("Tracing config cannot be None.")
         decrypt_tracing_config = cls.decrypt_tracing_config(
             tenant_id, tracing_provider, trace_config_data.tracing_config
         )
@@ -355,20 +376,20 @@ class OpsTraceManager:
         return app_model_config
 
     @classmethod
-    def update_app_tracing_config(cls, app_id: str, enabled: bool, tracing_provider: str):
+    def update_app_tracing_config(cls, app_id: str, enabled: bool, tracing_provider: str | None):
         """
         Update app tracing config
         :param app_id: app id
         :param enabled: enabled
-        :param tracing_provider: tracing provider
+        :param tracing_provider: tracing provider (None when disabling)
         :return:
         """
         # auth check
-        try:
-            if enabled or tracing_provider is not None:
+        if tracing_provider is not None:
+            try:
                 provider_config_map[tracing_provider]
-        except KeyError:
-            raise ValueError(f"Invalid tracing provider: {tracing_provider}")
+            except KeyError:
+                raise ValueError(f"Invalid tracing provider: {tracing_provider}")
 
         app_config: App | None = db.session.query(App).where(App.id == app_id).first()
         if not app_config:
@@ -451,6 +472,9 @@ class TraceTask:
         if cls._workflow_run_repo is None:
             with cls._repo_lock:
                 if cls._workflow_run_repo is None:
+                    # Lazy import to avoid circular import during module initialization
+                    from repositories.factory import DifyAPIRepositoryFactory
+
                     session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
                     cls._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
         return cls._workflow_run_repo

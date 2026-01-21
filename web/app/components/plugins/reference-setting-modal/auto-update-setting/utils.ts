@@ -1,7 +1,7 @@
 import type { Dayjs } from 'dayjs'
 import dayjs from 'dayjs'
-import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone'
+import utc from 'dayjs/plugin/utc'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -23,7 +23,8 @@ export const convertLocalSecondsToUTCDaySeconds = (secondsInDay: number, localTi
 }
 
 export const dayjsToTimeOfDay = (date?: Dayjs): number => {
-  if (!date) return 0
+  if (!date)
+    return 0
   return date.hour() * 3600 + date.minute() * 60
 }
 

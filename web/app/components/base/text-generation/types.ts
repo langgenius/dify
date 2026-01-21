@@ -1,9 +1,10 @@
+import type { ExternalDataTool } from '@/models/common'
 import type {
   ModelConfig,
   VisionFile,
   VisionSettings,
 } from '@/types/app'
-import type { ExternalDataTool } from '@/models/common'
+
 export type { VisionFile } from '@/types/app'
 export { TransferMethod } from '@/types/app'
 

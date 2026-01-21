@@ -1,9 +1,11 @@
 from typing import Literal
 
 from flask_login import current_user
-from flask_restx import marshal, reqparse
+from flask_restx import marshal
+from pydantic import BaseModel
 from werkzeug.exceptions import NotFound
 
+from controllers.common.schema import register_schema_model, register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.wraps import DatasetApiResource, cloud_edition_billing_rate_limit_check
 from fields.dataset_fields import dataset_metadata_fields
@@ -14,25 +16,18 @@ from services.entities.knowledge_entities.knowledge_entities import (
 )
 from services.metadata_service import MetadataService
 
-# Define parsers for metadata APIs
-metadata_create_parser = (
-    reqparse.RequestParser()
-    .add_argument("type", type=str, required=True, nullable=False, location="json", help="Metadata type")
-    .add_argument("name", type=str, required=True, nullable=False, location="json", help="Metadata name")
-)
 
-metadata_update_parser = reqparse.RequestParser().add_argument(
-    "name", type=str, required=True, nullable=False, location="json", help="New metadata name"
-)
+class MetadataUpdatePayload(BaseModel):
+    name: str
 
-document_metadata_parser = reqparse.RequestParser().add_argument(
-    "operation_data", type=list, required=True, nullable=False, location="json", help="Metadata operation data"
-)
+
+register_schema_model(service_api_ns, MetadataUpdatePayload)
+register_schema_models(service_api_ns, MetadataArgs, MetadataOperationData)
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/metadata")
 class DatasetMetadataCreateServiceApi(DatasetApiResource):
-    @service_api_ns.expect(metadata_create_parser)
+    @service_api_ns.expect(service_api_ns.models[MetadataArgs.__name__])
     @service_api_ns.doc("create_dataset_metadata")
     @service_api_ns.doc(description="Create metadata for a dataset")
     @service_api_ns.doc(params={"dataset_id": "Dataset ID"})
@@ -46,8 +41,7 @@ class DatasetMetadataCreateServiceApi(DatasetApiResource):
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id, dataset_id):
         """Create metadata for a dataset."""
-        args = metadata_create_parser.parse_args()
-        metadata_args = MetadataArgs.model_validate(args)
+        metadata_args = MetadataArgs.model_validate(service_api_ns.payload or {})
 
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -79,7 +73,7 @@ class DatasetMetadataCreateServiceApi(DatasetApiResource):
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/metadata/<uuid:metadata_id>")
 class DatasetMetadataServiceApi(DatasetApiResource):
-    @service_api_ns.expect(metadata_update_parser)
+    @service_api_ns.expect(service_api_ns.models[MetadataUpdatePayload.__name__])
     @service_api_ns.doc("update_dataset_metadata")
     @service_api_ns.doc(description="Update metadata name")
     @service_api_ns.doc(params={"dataset_id": "Dataset ID", "metadata_id": "Metadata ID"})
@@ -93,7 +87,7 @@ class DatasetMetadataServiceApi(DatasetApiResource):
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def patch(self, tenant_id, dataset_id, metadata_id):
         """Update metadata name."""
-        args = metadata_update_parser.parse_args()
+        payload = MetadataUpdatePayload.model_validate(service_api_ns.payload or {})
 
         dataset_id_str = str(dataset_id)
         metadata_id_str = str(metadata_id)
@@ -102,7 +96,7 @@ class DatasetMetadataServiceApi(DatasetApiResource):
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user)
 
-        metadata = MetadataService.update_metadata_name(dataset_id_str, metadata_id_str, args["name"])
+        metadata = MetadataService.update_metadata_name(dataset_id_str, metadata_id_str, payload.name)
         return marshal(metadata, dataset_metadata_fields), 200
 
     @service_api_ns.doc("delete_dataset_metadata")
@@ -175,7 +169,7 @@ class DatasetMetadataBuiltInFieldActionServiceApi(DatasetApiResource):
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/documents/metadata")
 class DocumentMetadataEditServiceApi(DatasetApiResource):
-    @service_api_ns.expect(document_metadata_parser)
+    @service_api_ns.expect(service_api_ns.models[MetadataOperationData.__name__])
     @service_api_ns.doc("update_documents_metadata")
     @service_api_ns.doc(description="Update metadata for multiple documents")
     @service_api_ns.doc(params={"dataset_id": "Dataset ID"})
@@ -195,8 +189,7 @@ class DocumentMetadataEditServiceApi(DatasetApiResource):
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user)
 
-        args = document_metadata_parser.parse_args()
-        metadata_args = MetadataOperationData.model_validate(args)
+        metadata_args = MetadataOperationData.model_validate(service_api_ns.payload or {})
 
         MetadataService.update_documents_metadata(dataset, metadata_args)
 

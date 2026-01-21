@@ -1,30 +1,31 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { produce } from 'immer'
-import { EditionType, VarType } from '../../types'
 import type { Memory, PromptItem, ValueSelector, Var, Variable } from '../../types'
-import { useStore } from '../../store'
-import {
-  useIsChatMode,
-  useNodesReadOnly,
-} from '../../hooks'
-import useAvailableVarList from '../_base/hooks/use-available-var-list'
-import useConfigVision from '../../hooks/use-config-vision'
 import type { LLMNodeType, StructuredOutput } from './types'
-import { useModelList, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { produce } from 'immer'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { checkHasContextBlock, checkHasHistoryBlock, checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
 import {
   ModelFeatureEnum,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import { checkHasContextBlock, checkHasHistoryBlock, checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
+import { useModelList, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
+import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { AppModeEnum } from '@/types/app'
+import {
+  useIsChatMode,
+  useNodesReadOnly,
+} from '../../hooks'
+import useConfigVision from '../../hooks/use-config-vision'
+import { useStore } from '../../store'
+import { EditionType, VarType } from '../../types'
+import useAvailableVarList from '../_base/hooks/use-available-var-list'
 
 const useConfig = (id: string, payload: LLMNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const isChatMode = useIsChatMode()
 
   const defaultConfig = useStore(s => s.nodesDefaultConfigs)?.[payload.type]
-  const [defaultRolePrefix, setDefaultRolePrefix] = useState<{ user: string; assistant: string }>({ user: '', assistant: '' })
+  const [defaultRolePrefix, setDefaultRolePrefix] = useState<{ user: string, assistant: string }>({ user: '', assistant: '' })
   const { inputs, setInputs: doSetInputs } = useNodeCrud<LLMNodeType>(id, payload)
   const inputRef = useRef(inputs)
   useEffect(() => {
@@ -49,7 +50,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   // model
   const model = inputs.model
   const modelMode = inputs.model?.mode
-  const isChatModel = modelMode === 'chat'
+  const isChatModel = modelMode === AppModeEnum.CHAT
 
   const isCompletionModel = !isChatModel
 
@@ -127,14 +128,14 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     },
   })
 
-  const handleModelChanged = useCallback((model: { provider: string; modelId: string; mode?: string }) => {
+  const handleModelChanged = useCallback((model: { provider: string, modelId: string, mode?: string }) => {
     const newInputs = produce(inputRef.current, (draft) => {
       draft.model.provider = model.provider
       draft.model.name = model.modelId
       draft.model.mode = model.mode!
       const isModeChange = model.mode !== inputRef.current.model.mode
       if (isModeChange && defaultConfig && Object.keys(defaultConfig).length > 0)
-        appendDefaultPromptConfig(draft, defaultConfig, model.mode === 'chat')
+        appendDefaultPromptConfig(draft, defaultConfig, model.mode === AppModeEnum.CHAT)
     })
     setInputs(newInputs)
     setModelChanged(true)
@@ -284,8 +285,10 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   const { data: modelList } = useModelList(ModelTypeEnum.textGeneration)
   const isModelSupportStructuredOutput = modelList
     ?.find(provideItem => provideItem.provider === model?.provider)
-    ?.models.find(modelItem => modelItem.model === model?.name)
-    ?.features?.includes(ModelFeatureEnum.StructuredOutput)
+    ?.models
+    .find(modelItem => modelItem.model === model?.name)
+    ?.features
+    ?.includes(ModelFeatureEnum.StructuredOutput)
 
   const [structuredOutputCollapsed, setStructuredOutputCollapsed] = useState(true)
   const handleStructureOutputEnableChange = useCallback((enabled: boolean) => {

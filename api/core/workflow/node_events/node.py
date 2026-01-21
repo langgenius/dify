@@ -3,6 +3,7 @@ from datetime import datetime
 
 from pydantic import Field
 
+from core.file import File
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.workflow.entities.pause_reason import PauseReason
@@ -14,6 +15,7 @@ from .base import NodeEventBase
 class RunRetrieverResourceEvent(NodeEventBase):
     retriever_resources: Sequence[RetrievalSourceMetadata] = Field(..., description="retriever resources")
     context: str = Field(..., description="context")
+    context_files: list[File] | None = Field(default=None, description="context files")
 
 
 class ModelInvokeCompletedEvent(NodeEventBase):

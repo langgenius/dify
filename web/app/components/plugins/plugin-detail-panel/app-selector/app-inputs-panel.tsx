@@ -1,18 +1,19 @@
 'use client'
-import React, { useMemo, useRef } from 'react'
+import type { FileUpload } from '@/app/components/base/features/types'
+import type { App } from '@/types/app'
+import * as React from 'react'
+import { useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import AppInputsForm from '@/app/components/plugins/plugin-detail-panel/app-selector/app-inputs-form'
-import { useAppDetail } from '@/service/use-apps'
-import { useAppWorkflow } from '@/service/use-workflow'
-import { useFileUploadConfig } from '@/service/use-common'
-import { Resolution } from '@/types/app'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
-import type { App } from '@/types/app'
-import type { FileUpload } from '@/app/components/base/features/types'
+import AppInputsForm from '@/app/components/plugins/plugin-detail-panel/app-selector/app-inputs-form'
 import { BlockEnum, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { useAppDetail } from '@/service/use-apps'
+import { useFileUploadConfig } from '@/service/use-common'
+import { useAppWorkflow } from '@/service/use-workflow'
+import { AppModeEnum, Resolution } from '@/types/app'
 
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   value?: {
@@ -30,7 +31,7 @@ const AppInputsPanel = ({
 }: Props) => {
   const { t } = useTranslation()
   const inputsRef = useRef<any>(value?.inputs || {})
-  const isBasicApp = appDetail.mode !== 'advanced-chat' && appDetail.mode !== 'workflow'
+  const isBasicApp = appDetail.mode !== AppModeEnum.ADVANCED_CHAT && appDetail.mode !== AppModeEnum.WORKFLOW
   const { data: fileUploadConfig } = useFileUploadConfig()
   const { data: currentApp, isFetching: isAppLoading } = useAppDetail(appDetail.id)
   const { data: currentWorkflow, isFetching: isWorkflowLoading } = useAppWorkflow(isBasicApp ? '' : appDetail.id)
@@ -77,7 +78,7 @@ const AppInputsPanel = ({
             required: false,
           }
         }
-        if(item.checkbox) {
+        if (item.checkbox) {
           return {
             ...item.checkbox,
             type: 'checkbox',
@@ -148,7 +149,7 @@ const AppInputsPanel = ({
         }
       }) || []
     }
-    if ((currentApp.mode === 'completion' || currentApp.mode === 'workflow') && basicAppFileConfig.enabled) {
+    if ((currentApp.mode === AppModeEnum.COMPLETION || currentApp.mode === AppModeEnum.WORKFLOW) && basicAppFileConfig.enabled) {
       inputFormSchema.push({
         label: 'Image Upload',
         variable: '#image#',
@@ -168,17 +169,17 @@ const AppInputsPanel = ({
 
   return (
     <div className={cn('flex max-h-[240px] flex-col rounded-b-2xl border-t border-divider-subtle pb-4')}>
-      {isLoading && <div className='pt-3'><Loading type='app' /></div>}
+      {isLoading && <div className="pt-3"><Loading type="app" /></div>}
       {!isLoading && (
-        <div className='system-sm-semibold mb-2 mt-3 flex h-6 shrink-0 items-center px-4 text-text-secondary'>{t('app.appSelector.params')}</div>
+        <div className="system-sm-semibold mb-2 mt-3 flex h-6 shrink-0 items-center px-4 text-text-secondary">{t('appSelector.params', { ns: 'app' })}</div>
       )}
       {!isLoading && !inputFormSchema.length && (
-        <div className='flex h-16 flex-col items-center justify-center'>
-          <div className='system-sm-regular text-text-tertiary'>{t('app.appSelector.noParams')}</div>
+        <div className="flex h-16 flex-col items-center justify-center">
+          <div className="system-sm-regular text-text-tertiary">{t('appSelector.noParams', { ns: 'app' })}</div>
         </div>
       )}
       {!isLoading && !!inputFormSchema.length && (
-        <div className='grow overflow-y-auto'>
+        <div className="grow overflow-y-auto">
           <AppInputsForm
             inputs={value?.inputs || {}}
             inputsRef={inputsRef}

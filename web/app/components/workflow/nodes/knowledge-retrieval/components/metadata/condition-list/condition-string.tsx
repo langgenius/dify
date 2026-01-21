@@ -1,16 +1,16 @@
-import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
-import ConditionValueMethod from './condition-value-method'
 import type { ConditionValueMethodProps } from './condition-value-method'
-import ConditionVariableSelector from './condition-variable-selector'
-import ConditionCommonVariableSelector from './condition-common-variable-selector'
 import type {
   Node,
   NodeOutPutVar,
   ValueSelector,
 } from '@/app/components/workflow/types'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import { VarType } from '@/app/components/workflow/types'
+import ConditionCommonVariableSelector from './condition-common-variable-selector'
+import ConditionValueMethod from './condition-value-method'
+import ConditionVariableSelector from './condition-variable-selector'
 
 type ConditionStringProps = {
   value?: string
@@ -18,7 +18,7 @@ type ConditionStringProps = {
   nodesOutputVars: NodeOutPutVar[]
   availableNodes: Node[]
   isCommonVariable?: boolean
-  commonVariables: { name: string; type: string; value: string }[]
+  commonVariables: { name: string, type: string, value: string }[]
 } & ConditionValueMethodProps
 const ConditionString = ({
   value,
@@ -40,12 +40,12 @@ const ConditionString = ({
   }, [onChange])
 
   return (
-    <div className='flex h-8 items-center pl-1 pr-2'>
+    <div className="flex h-8 items-center pl-1 pr-2">
       <ConditionValueMethod
         valueMethod={valueMethod}
         onValueMethodChange={onValueMethodChange}
       />
-      <div className='ml-1 mr-1.5 h-4 w-[1px] bg-divider-regular'></div>
+      <div className="ml-1 mr-1.5 h-4 w-[1px] bg-divider-regular"></div>
       {
         valueMethod === 'variable' && !isCommonVariable && (
           <ConditionVariableSelector
@@ -70,10 +70,10 @@ const ConditionString = ({
       {
         valueMethod === 'constant' && (
           <Input
-            className='border-none bg-transparent outline-none hover:bg-transparent focus:bg-transparent focus:shadow-none'
+            className="border-none bg-transparent outline-none hover:bg-transparent focus:bg-transparent focus:shadow-none"
             value={value}
             onChange={e => onChange(e.target.value)}
-            placeholder={t('workflow.nodes.knowledgeRetrieval.metadata.panel.placeholder')}
+            placeholder={t('nodes.knowledgeRetrieval.metadata.panel.placeholder', { ns: 'workflow' })}
           />
         )
       }

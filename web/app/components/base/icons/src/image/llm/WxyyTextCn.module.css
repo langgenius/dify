@@ -1,0 +1,5 @@
+.wrapper {
+  display: inline-flex;
+  background: url(~@/app/components/base/icons/assets/image/llm/wxyy-text-cn.png) center center no-repeat;
+  background-size: contain;
+}

@@ -1,15 +1,15 @@
-import { useCallback, useEffect, useRef } from 'react'
-import { produce } from 'immer'
-import useVarList from '../_base/hooks/use-var-list'
 import type { Var, Variable } from '../../types'
-import { VarType } from '../../types'
-import { useStore } from '../../store'
 import type { TemplateTransformNodeType } from './types'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { produce } from 'immer'
+import { useCallback, useEffect, useRef } from 'react'
 import {
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
+import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { useStore } from '../../store'
+import { VarType } from '../../types'
+import useVarList from '../_base/hooks/use-var-list'
 
 const useConfig = (id: string, payload: TemplateTransformNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()

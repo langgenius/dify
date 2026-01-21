@@ -15,6 +15,7 @@ class DynamicSelectClient(BasePluginClient):
         provider: str,
         action: str,
         credentials: Mapping[str, Any],
+        credential_type: str,
         parameter: str,
     ) -> PluginDynamicSelectOptionsResponse:
         """
@@ -29,6 +30,7 @@ class DynamicSelectClient(BasePluginClient):
                 "data": {
                     "provider": GenericProviderID(provider).provider_name,
                     "credentials": credentials,
+                    "credential_type": credential_type,
                     "provider_action": action,
                     "parameter": parameter,
                 },

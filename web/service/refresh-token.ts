@@ -72,12 +72,12 @@ async function getNewAccessToken(timeout: number): Promise<void> {
 }
 
 function releaseRefreshLock() {
-  if (isRefreshing) {
-    isRefreshing = false
-    globalThis.localStorage.removeItem(LOCAL_STORAGE_KEY)
-    globalThis.localStorage.removeItem('last_refresh_time')
-    globalThis.removeEventListener('beforeunload', releaseRefreshLock)
-  }
+  // Always clear the refresh lock to avoid cross-tab deadlocks.
+  // This is safe to call multiple times and from tabs that were only waiting.
+  isRefreshing = false
+  globalThis.localStorage.removeItem(LOCAL_STORAGE_KEY)
+  globalThis.localStorage.removeItem('last_refresh_time')
+  globalThis.removeEventListener('beforeunload', releaseRefreshLock)
 }
 
 export async function refreshAccessTokenOrRelogin(timeout: number) {

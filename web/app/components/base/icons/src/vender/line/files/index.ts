@@ -1,5 +1,5 @@
-export { default as CopyCheck } from './CopyCheck'
 export { default as Copy } from './Copy'
+export { default as CopyCheck } from './CopyCheck'
 export { default as File02 } from './File02'
 export { default as FileArrow01 } from './FileArrow01'
 export { default as FileCheck02 } from './FileCheck02'

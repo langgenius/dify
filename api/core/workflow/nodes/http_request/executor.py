@@ -17,6 +17,7 @@ from core.helper import ssrf_proxy
 from core.variables.segments import ArrayFileSegment, FileSegment
 from core.workflow.runtime import VariablePool
 
+from ..protocols import FileManagerProtocol, HttpClientProtocol
 from .entities import (
     HttpRequestNodeAuthorization,
     HttpRequestNodeData,
@@ -78,6 +79,8 @@ class Executor:
         timeout: HttpRequestNodeTimeout,
         variable_pool: VariablePool,
         max_retries: int = dify_config.SSRF_DEFAULT_MAX_RETRIES,
+        http_client: HttpClientProtocol = ssrf_proxy,
+        file_manager: FileManagerProtocol = file_manager,
     ):
         # If authorization API key is present, convert the API key using the variable pool
         if node_data.authorization.type == "api-key":
@@ -86,6 +89,11 @@ class Executor:
             node_data.authorization.config.api_key = variable_pool.convert_template(
                 node_data.authorization.config.api_key
             ).text
+            # Validate that API key is not empty after template conversion
+            if not node_data.authorization.config.api_key or not node_data.authorization.config.api_key.strip():
+                raise AuthorizationConfigError(
+                    "API key is required for authorization but was empty. Please provide a valid API key."
+                )
 
         self.url = node_data.url
         self.method = node_data.method
@@ -99,6 +107,8 @@ class Executor:
         self.data = None
         self.json = None
         self.max_retries = max_retries
+        self._http_client = http_client
+        self._file_manager = file_manager
 
         # init template
         self.variable_pool = variable_pool
@@ -195,7 +205,7 @@ class Executor:
                     if file_variable is None:
                         raise FileFetchError(f"cannot fetch file with selector {file_selector}")
                     file = file_variable.value
-                    self.content = file_manager.download(file)
+                    self.content = self._file_manager.download(file)
                 case "x-www-form-urlencoded":
                     form_data = {
                         self.variable_pool.convert_template(item.key).text: self.variable_pool.convert_template(
@@ -234,7 +244,7 @@ class Executor:
                             ):
                                 file_tuple = (
                                     file.filename,
-                                    file_manager.download(file),
+                                    self._file_manager.download(file),
                                     file.mime_type or "application/octet-stream",
                                 )
                                 if key not in files:
@@ -327,19 +337,18 @@ class Executor:
         do http request depending on api bundle
         """
         _METHOD_MAP = {
-            "get": ssrf_proxy.get,
-            "head": ssrf_proxy.head,
-            "post": ssrf_proxy.post,
-            "put": ssrf_proxy.put,
-            "delete": ssrf_proxy.delete,
-            "patch": ssrf_proxy.patch,
+            "get": self._http_client.get,
+            "head": self._http_client.head,
+            "post": self._http_client.post,
+            "put": self._http_client.put,
+            "delete": self._http_client.delete,
+            "patch": self._http_client.patch,
         }
         method_lc = self.method.lower()
         if method_lc not in _METHOD_MAP:
             raise InvalidHttpMethodError(f"Invalid http method {self.method}")
 
         request_args = {
-            "url": self.url,
             "data": self.data,
             "files": self.files,
             "json": self.json,
@@ -352,8 +361,12 @@ class Executor:
         }
         # request_args = {k: v for k, v in request_args.items() if v is not None}
         try:
-            response: httpx.Response = _METHOD_MAP[method_lc](**request_args, max_retries=self.max_retries)
-        except (ssrf_proxy.MaxRetriesExceededError, httpx.RequestError) as e:
+            response: httpx.Response = _METHOD_MAP[method_lc](
+                url=self.url,
+                **request_args,
+                max_retries=self.max_retries,
+            )
+        except (self._http_client.max_retries_exceeded_error, self._http_client.request_error) as e:
             raise HttpRequestNodeError(str(e)) from e
         # FIXME: fix type ignore, this maybe httpx type issue
         return response
@@ -412,16 +425,20 @@ class Executor:
                 body_string += f"--{boundary}\r\n"
                 body_string += f'Content-Disposition: form-data; name="{key}"\r\n\r\n'
                 # decode content safely
-                try:
-                    body_string += content.decode("utf-8")
-                except UnicodeDecodeError:
-                    body_string += content.decode("utf-8", errors="replace")
-                body_string += "\r\n"
+                # Do not decode binary content; use a placeholder with file metadata instead.
+                # Includes filename, size, and MIME type for better logging context.
+                body_string += (
+                    f"<file_content_binary: '{file_entry[1][0] or 'unknown'}', "
+                    f"type='{file_entry[1][2] if len(file_entry[1]) > 2 else 'unknown'}', "
+                    f"size={len(content)} bytes>\r\n"
+                )
             body_string += f"--{boundary}--\r\n"
         elif self.node_data.body:
             if self.content:
+                # If content is bytes, do not decode it; show a placeholder with size.
+                # Provides content size information for binary data without exposing the raw bytes.
                 if isinstance(self.content, bytes):
-                    body_string = self.content.decode("utf-8", errors="replace")
+                    body_string = f"<binary_content: size={len(self.content)} bytes>"
                 else:
                     body_string = self.content
             elif self.data and self.node_data.body.type == "x-www-form-urlencoded":

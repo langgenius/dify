@@ -1,4 +1,4 @@
-import { escape } from 'lodash-es'
+import { escape } from 'es-toolkit/string'
 
 export const sleep = (ms: number) => {
   return new Promise(resolve => setTimeout(resolve, ms))
@@ -89,13 +89,4 @@ export const canFindTool = (providerId: string, oldToolId?: string) => {
   return providerId === oldToolId
     || providerId === `langgenius/${oldToolId}/${oldToolId}`
     || providerId === `langgenius/${oldToolId}_tool/${oldToolId}`
-}
-
-export const removeSpecificQueryParam = (key: string | string[]) => {
-  const url = new URL(window.location.href)
-  if (Array.isArray(key))
-    key.forEach(k => url.searchParams.delete(k))
-  else
-    url.searchParams.delete(key)
-  window.history.replaceState(null, '', url.toString())
 }

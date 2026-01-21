@@ -1,10 +1,12 @@
 import logging
 
 from flask import request
-from flask_restx import Resource, reqparse
+from flask_restx import Resource
+from pydantic import BaseModel, Field
 from werkzeug.exceptions import InternalServerError
 
 import services
+from controllers.common.schema import register_schema_model
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
     AppUnavailableError,
@@ -84,19 +86,19 @@ class AudioApi(Resource):
             raise InternalServerError()
 
 
-# Define parser for text-to-audio API
-text_to_audio_parser = (
-    reqparse.RequestParser()
-    .add_argument("message_id", type=str, required=False, location="json", help="Message ID")
-    .add_argument("voice", type=str, location="json", help="Voice to use for TTS")
-    .add_argument("text", type=str, location="json", help="Text to convert to audio")
-    .add_argument("streaming", type=bool, location="json", help="Enable streaming response")
-)
+class TextToAudioPayload(BaseModel):
+    message_id: str | None = Field(default=None, description="Message ID")
+    voice: str | None = Field(default=None, description="Voice to use for TTS")
+    text: str | None = Field(default=None, description="Text to convert to audio")
+    streaming: bool | None = Field(default=None, description="Enable streaming response")
+
+
+register_schema_model(service_api_ns, TextToAudioPayload)
 
 
 @service_api_ns.route("/text-to-audio")
 class TextApi(Resource):
-    @service_api_ns.expect(text_to_audio_parser)
+    @service_api_ns.expect(service_api_ns.models[TextToAudioPayload.__name__])
     @service_api_ns.doc("text_to_audio")
     @service_api_ns.doc(description="Convert text to audio using text-to-speech")
     @service_api_ns.doc(
@@ -114,11 +116,11 @@ class TextApi(Resource):
         Converts the provided text to audio using the specified voice.
         """
         try:
-            args = text_to_audio_parser.parse_args()
+            payload = TextToAudioPayload.model_validate(service_api_ns.payload or {})
 
-            message_id = args.get("message_id", None)
-            text = args.get("text", None)
-            voice = args.get("voice", None)
+            message_id = payload.message_id
+            text = payload.text
+            voice = payload.voice
             response = AudioService.transcript_tts(
                 app_model=app_model, text=text, voice=voice, end_user=end_user.external_user_id, message_id=message_id
             )

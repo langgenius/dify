@@ -77,13 +77,22 @@ class WorkflowBasedAppRunner:
         self._app_id = app_id
         self._graph_engine_layers = graph_engine_layers
 
+    @staticmethod
+    def _resolve_user_from(invoke_from: InvokeFrom) -> UserFrom:
+        if invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER}:
+            return UserFrom.ACCOUNT
+        return UserFrom.END_USER
+
     def _init_graph(
         self,
         graph_config: Mapping[str, Any],
         graph_runtime_state: GraphRuntimeState,
+        user_from: UserFrom,
+        invoke_from: InvokeFrom,
         workflow_id: str = "",
         tenant_id: str = "",
         user_id: str = "",
+        root_node_id: str | None = None,
     ) -> Graph:
         """
         Init graph
@@ -104,8 +113,8 @@ class WorkflowBasedAppRunner:
             workflow_id=workflow_id,
             graph_config=graph_config,
             user_id=user_id,
-            user_from=UserFrom.ACCOUNT,
-            invoke_from=InvokeFrom.SERVICE_API,
+            user_from=user_from,
+            invoke_from=invoke_from,
             call_depth=0,
         )
 
@@ -117,7 +126,7 @@ class WorkflowBasedAppRunner:
         )
 
         # init graph
-        graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+        graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id=root_node_id)
 
         if not graph:
             raise ValueError("graph not found in workflow")
@@ -249,7 +258,7 @@ class WorkflowBasedAppRunner:
             graph_config=graph_config,
             user_id="",
             user_from=UserFrom.ACCOUNT,
-            invoke_from=InvokeFrom.SERVICE_API,
+            invoke_from=InvokeFrom.DEBUGGER,
             call_depth=0,
         )
 

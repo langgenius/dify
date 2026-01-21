@@ -1,3 +1,4 @@
+export { default as AiText } from './AiText'
 export { default as BubbleTextMod } from './BubbleTextMod'
 export { default as ChatBot } from './ChatBot'
 export { default as CuteRobot } from './CuteRobot'

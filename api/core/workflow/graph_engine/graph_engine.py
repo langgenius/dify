@@ -5,14 +5,15 @@ This engine uses a modular architecture with separated packages following
 Domain-Driven Design principles for improved maintainability and testability.
 """
 
-import contextvars
+from __future__ import annotations
+
 import logging
 import queue
+import threading
 from collections.abc import Generator
 from typing import TYPE_CHECKING, cast, final
 
-from flask import Flask, current_app
-
+from core.workflow.context import capture_current_context
 from core.workflow.enums import NodeExecutionType
 from core.workflow.graph import Graph
 from core.workflow.graph_events import (
@@ -30,8 +31,13 @@ from core.workflow.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWr
 if TYPE_CHECKING:  # pragma: no cover - used only for static analysis
     from core.workflow.runtime.graph_runtime_state import GraphProtocol
 
-from .command_processing import AbortCommandHandler, CommandProcessor, PauseCommandHandler
-from .entities.commands import AbortCommand, PauseCommand
+from .command_processing import (
+    AbortCommandHandler,
+    CommandProcessor,
+    PauseCommandHandler,
+    UpdateVariablesCommandHandler,
+)
+from .entities.commands import AbortCommand, PauseCommand, UpdateVariablesCommand
 from .error_handler import ErrorHandler
 from .event_management import EventHandler, EventManager
 from .graph_state_manager import GraphStateManager
@@ -70,10 +76,13 @@ class GraphEngine:
         scale_down_idle_time: float | None = None,
     ) -> None:
         """Initialize the graph engine with all subsystems and dependencies."""
+        # stop event
+        self._stop_event = threading.Event()
 
         # Bind runtime state to current workflow context
         self._graph = graph
         self._graph_runtime_state = graph_runtime_state
+        self._graph_runtime_state.stop_event = self._stop_event
         self._graph_runtime_state.configure(graph=cast("GraphProtocol", graph))
         self._command_channel = command_channel
 
@@ -140,30 +149,29 @@ class GraphEngine:
         pause_handler = PauseCommandHandler()
         self._command_processor.register_handler(PauseCommand, pause_handler)
 
-        # === Worker Pool Setup ===
-        # Capture Flask app context for worker threads
-        flask_app: Flask | None = None
-        try:
-            app = current_app._get_current_object()  # type: ignore
-            if isinstance(app, Flask):
-                flask_app = app
-        except RuntimeError:
-            pass
+        update_variables_handler = UpdateVariablesCommandHandler(self._graph_runtime_state.variable_pool)
+        self._command_processor.register_handler(UpdateVariablesCommand, update_variables_handler)
 
-        # Capture context variables for worker threads
-        context_vars = contextvars.copy_context()
+        # === Extensibility ===
+        # Layers allow plugins to extend engine functionality
+        self._layers: list[GraphEngineLayer] = []
+
+        # === Worker Pool Setup ===
+        # Capture execution context for worker threads
+        execution_context = capture_current_context()
 
         # Create worker pool for parallel node execution
         self._worker_pool = WorkerPool(
             ready_queue=self._ready_queue,
             event_queue=self._event_queue,
             graph=self._graph,
-            flask_app=flask_app,
-            context_vars=context_vars,
+            layers=self._layers,
+            execution_context=execution_context,
             min_workers=self._min_workers,
             max_workers=self._max_workers,
             scale_up_threshold=self._scale_up_threshold,
             scale_down_idle_time=self._scale_down_idle_time,
+            stop_event=self._stop_event,
         )
 
         # === Orchestration ===
@@ -192,14 +200,10 @@ class GraphEngine:
         self._dispatcher = Dispatcher(
             event_queue=self._event_queue,
             event_handler=self._event_handler_registry,
-            event_collector=self._event_manager,
             execution_coordinator=self._execution_coordinator,
             event_emitter=self._event_manager,
+            stop_event=self._stop_event,
         )
-
-        # === Extensibility ===
-        # Layers allow plugins to extend engine functionality
-        self._layers: list[GraphEngineLayer] = []
 
         # === Validation ===
         # Ensure all nodes share the same GraphRuntimeState instance
@@ -212,9 +216,16 @@ class GraphEngine:
             if id(node.graph_runtime_state) != expected_state_id:
                 raise ValueError(f"GraphRuntimeState consistency violation: Node '{node.id}' has a different instance")
 
-    def layer(self, layer: GraphEngineLayer) -> "GraphEngine":
+    def _bind_layer_context(
+        self,
+        layer: GraphEngineLayer,
+    ) -> None:
+        layer.initialize(ReadOnlyGraphRuntimeStateWrapper(self._graph_runtime_state), self._command_channel)
+
+    def layer(self, layer: GraphEngineLayer) -> GraphEngine:
         """Add a layer for extending functionality."""
         self._layers.append(layer)
+        self._bind_layer_context(layer)
         return self
 
     def run(self) -> Generator[GraphEngineEvent, None, None]:
@@ -233,7 +244,7 @@ class GraphEngine:
                 self._graph_execution.start()
             else:
                 self._graph_execution.paused = False
-                self._graph_execution.pause_reason = None
+                self._graph_execution.pause_reasons = []
 
             start_event = GraphRunStartedEvent()
             self._event_manager.notify_layers(start_event)
@@ -247,11 +258,11 @@ class GraphEngine:
 
             # Handle completion
             if self._graph_execution.is_paused:
-                pause_reason = self._graph_execution.pause_reason
-                assert pause_reason is not None, "pause_reason should not be None when execution is paused."
+                pause_reasons = self._graph_execution.pause_reasons
+                assert pause_reasons, "pause_reasons should not be empty when execution is paused."
                 # Ensure we have a valid PauseReason for the event
                 paused_event = GraphRunPausedEvent(
-                    reason=pause_reason,
+                    reasons=pause_reasons,
                     outputs=self._graph_runtime_state.outputs,
                 )
                 self._event_manager.notify_layers(paused_event)
@@ -301,14 +312,7 @@ class GraphEngine:
     def _initialize_layers(self) -> None:
         """Initialize layers with context."""
         self._event_manager.set_layers(self._layers)
-        # Create a read-only wrapper for the runtime state
-        read_only_state = ReadOnlyGraphRuntimeStateWrapper(self._graph_runtime_state)
         for layer in self._layers:
-            try:
-                layer.initialize(read_only_state, self._command_channel)
-            except Exception as e:
-                logger.warning("Failed to initialize layer %s: %s", layer.__class__.__name__, e)
-
             try:
                 layer.on_graph_start()
             except Exception as e:
@@ -316,6 +320,7 @@ class GraphEngine:
 
     def _start_execution(self, *, resume: bool = False) -> None:
         """Start execution subsystems."""
+        self._stop_event.clear()
         paused_nodes: list[str] = []
         if resume:
             paused_nodes = self._graph_runtime_state.consume_paused_nodes()
@@ -343,13 +348,12 @@ class GraphEngine:
 
     def _stop_execution(self) -> None:
         """Stop execution subsystems."""
+        self._stop_event.set()
         self._dispatcher.stop()
         self._worker_pool.stop()
         # Don't mark complete here as the dispatcher already does it
 
         # Notify layers
-        logger = logging.getLogger(__name__)
-
         for layer in self._layers:
             try:
                 layer.on_graph_end(self._graph_execution.error)

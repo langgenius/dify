@@ -1,6 +1,6 @@
-import { createContext } from 'use-context-selector'
 import type { InstalledApp } from '@/models/explore'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
+import { createContext } from 'use-context-selector'
 
 type IExplore = {
   controlUpdateInstalledApps: number

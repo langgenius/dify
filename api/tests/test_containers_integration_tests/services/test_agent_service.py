@@ -230,7 +230,6 @@ class TestAgentService:
 
         # Create first agent thought
         thought1 = MessageAgentThought(
-            id=fake.uuid4(),
             message_id=message.id,
             position=1,
             thought="I need to analyze the user's request",
@@ -257,7 +256,6 @@ class TestAgentService:
 
         # Create second agent thought
         thought2 = MessageAgentThought(
-            id=fake.uuid4(),
             message_id=message.id,
             position=2,
             thought="Based on the analysis, I can provide a response",
@@ -545,7 +543,6 @@ class TestAgentService:
 
         # Create agent thought with tool error
         thought_with_error = MessageAgentThought(
-            id=fake.uuid4(),
             message_id=message.id,
             position=1,
             thought="I need to analyze the user's request",
@@ -759,7 +756,6 @@ class TestAgentService:
 
         # Create agent thought with multiple tools
         complex_thought = MessageAgentThought(
-            id=fake.uuid4(),
             message_id=message.id,
             position=1,
             thought="I need to use multiple tools to complete this task",
@@ -852,6 +848,7 @@ class TestAgentService:
         # Add files to message
         from models.model import MessageFile
 
+        assert message.from_account_id is not None
         message_file1 = MessageFile(
             message_id=message.id,
             type=FileType.IMAGE,
@@ -876,7 +873,6 @@ class TestAgentService:
 
         # Create agent thought with files
         thought_with_files = MessageAgentThought(
-            id=fake.uuid4(),
             message_id=message.id,
             position=1,
             thought="I need to process some files",
@@ -956,7 +952,6 @@ class TestAgentService:
 
         # Create agent thought with empty tool data
         empty_thought = MessageAgentThought(
-            id=fake.uuid4(),
             message_id=message.id,
             position=1,
             thought="I need to analyze the user's request",
@@ -998,7 +993,6 @@ class TestAgentService:
 
         # Create agent thought with malformed JSON
         malformed_thought = MessageAgentThought(
-            id=fake.uuid4(),
             message_id=message.id,
             position=1,
             thought="I need to analyze the user's request",

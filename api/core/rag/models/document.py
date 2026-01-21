@@ -4,6 +4,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from core.file import File
+
 
 class ChildDocument(BaseModel):
     """Class for storing a piece of text and associated metadata."""
@@ -15,7 +17,19 @@ class ChildDocument(BaseModel):
     """Arbitrary metadata about the page content (e.g., source, relationships to other
         documents, etc.).
     """
-    metadata: dict = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class AttachmentDocument(BaseModel):
+    """Class for storing a piece of text and associated metadata."""
+
+    page_content: str
+
+    provider: str | None = "dify"
+
+    vector: list[float] | None = None
+
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class Document(BaseModel):
@@ -28,11 +42,30 @@ class Document(BaseModel):
     """Arbitrary metadata about the page content (e.g., source, relationships to other
         documents, etc.).
     """
-    metadata: dict = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
     provider: str | None = "dify"
 
     children: list[ChildDocument] | None = None
+
+    attachments: list[AttachmentDocument] | None = None
+
+
+class GeneralChunk(BaseModel):
+    """
+    General Chunk.
+    """
+
+    content: str
+    files: list[File] | None = None
+
+
+class MultimodalGeneralStructureChunk(BaseModel):
+    """
+    Multimodal General Structure Chunk.
+    """
+
+    general_chunks: list[GeneralChunk]
 
 
 class GeneralStructureChunk(BaseModel):
@@ -50,6 +83,7 @@ class ParentChildChunk(BaseModel):
 
     parent_content: str
     child_contents: list[str]
+    files: list[File] | None = None
 
 
 class ParentChildStructureChunk(BaseModel):

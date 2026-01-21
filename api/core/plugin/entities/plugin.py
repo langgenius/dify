@@ -13,6 +13,7 @@ from core.plugin.entities.base import BasePluginEntity
 from core.plugin.entities.endpoint import EndpointProviderDeclaration
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderEntity
+from core.trigger.entities.entities import TriggerProviderEntity
 
 
 class PluginInstallationSource(StrEnum):
@@ -63,6 +64,7 @@ class PluginCategory(StrEnum):
     Extension = auto()
     AgentStrategy = "agent-strategy"
     Datasource = "datasource"
+    Trigger = "trigger"
 
 
 class PluginDeclaration(BaseModel):
@@ -71,6 +73,7 @@ class PluginDeclaration(BaseModel):
         models: list[str] | None = Field(default_factory=list[str])
         endpoints: list[str] | None = Field(default_factory=list[str])
         datasources: list[str] | None = Field(default_factory=list[str])
+        triggers: list[str] | None = Field(default_factory=list[str])
 
     class Meta(BaseModel):
         minimum_dify_version: str | None = Field(default=None)
@@ -106,6 +109,7 @@ class PluginDeclaration(BaseModel):
     endpoint: EndpointProviderDeclaration | None = None
     agent_strategy: AgentStrategyProviderEntity | None = None
     datasource: DatasourceProviderEntity | None = None
+    trigger: TriggerProviderEntity | None = None
     meta: Meta
 
     @field_validator("version")
@@ -129,6 +133,8 @@ class PluginDeclaration(BaseModel):
             values["category"] = PluginCategory.Datasource
         elif values.get("agent_strategy"):
             values["category"] = PluginCategory.AgentStrategy
+        elif values.get("trigger"):
+            values["category"] = PluginCategory.Trigger
         else:
             values["category"] = PluginCategory.Extension
         return values

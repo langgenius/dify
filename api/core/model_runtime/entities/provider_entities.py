@@ -99,7 +99,7 @@ class SimpleProviderEntity(BaseModel):
     provider: str
     label: I18nObject
     icon_small: I18nObject | None = None
-    icon_large: I18nObject | None = None
+    icon_small_dark: I18nObject | None = None
     supported_model_types: Sequence[ModelType]
     models: list[AIModelEntity] = []
 
@@ -122,9 +122,7 @@ class ProviderEntity(BaseModel):
     label: I18nObject
     description: I18nObject | None = None
     icon_small: I18nObject | None = None
-    icon_large: I18nObject | None = None
     icon_small_dark: I18nObject | None = None
-    icon_large_dark: I18nObject | None = None
     background: str | None = None
     help: ProviderHelpEntity | None = None
     supported_model_types: Sequence[ModelType]
@@ -157,7 +155,6 @@ class ProviderEntity(BaseModel):
             provider=self.provider,
             label=self.label,
             icon_small=self.icon_small,
-            icon_large=self.icon_large,
             supported_model_types=self.supported_model_types,
             models=self.models,
         )

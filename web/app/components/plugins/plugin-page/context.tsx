@@ -1,6 +1,9 @@
 'use client'
 
 import type { ReactNode, RefObject } from 'react'
+import type { FilterState } from './filter-management'
+import { noop } from 'es-toolkit/function'
+import { useQueryState } from 'nuqs'
 import {
   useMemo,
   useRef,
@@ -10,11 +13,8 @@ import {
   createContext,
   useContextSelector,
 } from 'use-context-selector'
-import type { FilterState } from './filter-management'
-import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
-import { noop } from 'lodash-es'
-import { PLUGIN_PAGE_TABS_MAP, usePluginPageTabs } from '../hooks'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { PLUGIN_PAGE_TABS_MAP, usePluginPageTabs } from '../hooks'
 
 export type PluginPageContextValue = {
   containerRef: RefObject<HTMLDivElement | null>
@@ -68,8 +68,8 @@ export const PluginPageContextProvider = ({
   const options = useMemo(() => {
     return enable_marketplace ? tabs : tabs.filter(tab => tab.value !== PLUGIN_PAGE_TABS_MAP.marketplace)
   }, [tabs, enable_marketplace])
-  const [activeTab, setActiveTab] = useTabSearchParams({
-    defaultTab: options[0].value,
+  const [activeTab, setActiveTab] = useQueryState('tab', {
+    defaultValue: options[0].value,
   })
 
   return (

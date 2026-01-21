@@ -1,19 +1,20 @@
+import type { StartNodeType } from './nodes/start/types'
+import type { CommonNodeType, InputVar, Node } from './types'
+import type { PromptVariable } from '@/models/debug'
 import {
   memo,
   useCallback,
 } from 'react'
 import { useNodes } from 'reactflow'
-import { useStore } from './store'
+import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
 import {
   useIsChatMode,
   useNodesReadOnly,
   useNodesSyncDraft,
 } from './hooks'
-import { type CommonNodeType, type InputVar, InputVarType, type Node } from './types'
 import useConfig from './nodes/start/use-config'
-import type { StartNodeType } from './nodes/start/types'
-import type { PromptVariable } from '@/models/debug'
-import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
+import { useStore } from './store'
+import { InputVarType } from './types'
 
 const Features = () => {
   const setShowFeaturesPanel = useStore(s => s.setShowFeaturesPanel)

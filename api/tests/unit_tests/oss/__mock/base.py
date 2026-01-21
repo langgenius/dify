@@ -14,7 +14,9 @@ def get_example_bucket() -> str:
 
 
 def get_opendal_bucket() -> str:
-    return "./dify"
+    import os
+
+    return os.environ.get("OPENDAL_FS_ROOT", "/tmp/dify-storage")
 
 
 def get_example_filename() -> str:

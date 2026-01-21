@@ -1,18 +1,18 @@
 'use client'
 
-import { useCallback, useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useParams, useRouter } from 'next/navigation'
+import type { NavItem } from '../nav/nav-selector'
+import type { DataSet } from '@/models/datasets'
 import {
   RiBook2Fill,
   RiBook2Line,
 } from '@remixicon/react'
-import { flatten } from 'lodash-es'
-import Nav from '../nav'
-import type { NavItem } from '../nav/nav-selector'
-import { basePath } from '@/utils/var'
+import { flatten } from 'es-toolkit/compat'
+import { useParams, useRouter } from 'next/navigation'
+import { useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useDatasetDetail, useDatasetList } from '@/service/knowledge/use-dataset'
-import type { DataSet } from '@/models/datasets'
+import { basePath } from '@/utils/var'
+import Nav from '../nav'
 
 const DatasetNav = () => {
   const { t } = useTranslation()
@@ -23,6 +23,7 @@ const DatasetNav = () => {
     data: datasetList,
     fetchNextPage,
     hasNextPage,
+    isFetchingNextPage,
   } = useDatasetList({
     initialPage: 1,
     limit: 30,
@@ -30,7 +31,8 @@ const DatasetNav = () => {
   const datasetItems = flatten(datasetList?.pages.map(datasetData => datasetData.data))
 
   const curNav = useMemo(() => {
-    if (!currentDataset) return
+    if (!currentDataset)
+      return
     return {
       id: currentDataset.id,
       name: currentDataset.name,
@@ -82,16 +84,17 @@ const DatasetNav = () => {
   return (
     <Nav
       isApp={false}
-      icon={<RiBook2Line className='h-4 w-4' />}
-      activeIcon={<RiBook2Fill className='h-4 w-4' />}
-      text={t('common.menus.datasets')}
-      activeSegment='datasets'
-      link='/datasets'
+      icon={<RiBook2Line className="h-4 w-4" />}
+      activeIcon={<RiBook2Fill className="h-4 w-4" />}
+      text={t('menus.datasets', { ns: 'common' })}
+      activeSegment="datasets"
+      link="/datasets"
       curNav={curNav}
       navigationItems={navigationItems}
-      createText={t('common.menus.newDataset')}
+      createText={t('menus.newDataset', { ns: 'common' })}
       onCreate={() => router.push(createRoute)}
       onLoadMore={handleLoadMore}
+      isLoadingMore={isFetchingNextPage}
     />
   )
 }

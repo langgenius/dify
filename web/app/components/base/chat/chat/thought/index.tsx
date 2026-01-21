@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
 import type { ThoughtItem, ToolInfoInThought } from '../type'
+import * as React from 'react'
 import ToolDetail from '@/app/components/base/chat/chat/answer/tool-detail'
 
 export type IThoughtProps = {
@@ -45,7 +45,7 @@ const Thought: FC<IThoughtProps> = ({
   })
 
   return (
-    <div className='my-2 space-y-2'>
+    <div className="my-2 space-y-2">
       {toolThoughtList.map((item: ToolInfoInThought, index) => (
         <ToolDetail
           key={index}

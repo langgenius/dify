@@ -30,6 +30,7 @@ export enum Type {
   arrayNumber = 'array[number]',
   arrayObject = 'array[object]',
   file = 'file',
+  enumType = 'enum',
 }
 
 export enum ArrayType {

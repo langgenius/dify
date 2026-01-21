@@ -50,8 +50,6 @@ def document_extractor_node(graph_init_params):
         graph_init_params=graph_init_params,
         graph_runtime_state=Mock(),
     )
-    # Initialize node data
-    node.init_node_data(node_config["data"])
     return node
 
 

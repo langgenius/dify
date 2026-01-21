@@ -40,7 +40,7 @@ class ExecutionCoordinator:
         self._command_processor = command_processor
         self._worker_pool = worker_pool
 
-    def check_commands(self) -> None:
+    def process_commands(self) -> None:
         """Process any pending commands."""
         self._command_processor.process_commands()
 
@@ -48,24 +48,16 @@ class ExecutionCoordinator:
         """Check and perform worker scaling if needed."""
         self._worker_pool.check_and_scale()
 
-    def is_execution_complete(self) -> bool:
-        """
-        Check if execution is complete.
-
-        Returns:
-            True if execution is complete
-        """
-        # Treat paused, aborted, or failed executions as terminal states
-        if self._graph_execution.is_paused:
-            return True
-
-        if self._graph_execution.aborted or self._graph_execution.has_error:
-            return True
-
+    @property
+    def execution_complete(self):
         return self._state_manager.is_execution_complete()
 
     @property
-    def is_paused(self) -> bool:
+    def aborted(self):
+        return self._graph_execution.aborted or self._graph_execution.has_error
+
+    @property
+    def paused(self) -> bool:
         """Expose whether the underlying graph execution is paused."""
         return self._graph_execution.is_paused
 

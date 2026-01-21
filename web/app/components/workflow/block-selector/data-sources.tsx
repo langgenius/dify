@@ -1,24 +1,25 @@
+import type {
+  OnSelectBlock,
+  ToolWithProvider,
+} from '../types'
+import type { DataSourceDefaultValue, ToolDefaultValue } from './types'
+import type { ListRef } from '@/app/components/workflow/block-selector/market-place-plugin/list'
 import {
   useCallback,
   useEffect,
   useMemo,
   useRef,
 } from 'react'
+import PluginList from '@/app/components/workflow/block-selector/market-place-plugin/list'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useGetLanguage } from '@/context/i18n'
+import { cn } from '@/utils/classnames'
+import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
+import { PluginCategoryEnum } from '../../plugins/types'
 import { BlockEnum } from '../types'
-import type {
-  OnSelectBlock,
-  ToolWithProvider,
-} from '../types'
-import type { DataSourceDefaultValue, ToolDefaultValue } from './types'
+import { DEFAULT_FILE_EXTENSIONS_IN_LOCAL_FILE_DATA_SOURCE } from './constants'
 import Tools from './tools'
 import { ViewType } from './view-type-select'
-import cn from '@/utils/classnames'
-import PluginList, { type ListRef } from '@/app/components/workflow/block-selector/market-place-plugin/list'
-import { useGlobalPublicStore } from '@/context/global-public-context'
-import { DEFAULT_FILE_EXTENSIONS_IN_LOCAL_FILE_DATA_SOURCE } from './constants'
-import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
-import { PluginType } from '../../plugins/types'
-import { useGetLanguage } from '@/context/i18n'
 
 type AllToolsProps = {
   className?: string
@@ -55,7 +56,7 @@ const DataSources = ({
     })
   }, [searchText, dataSources, language])
 
-  const handleSelect = useCallback((_: any, toolDefaultValue: ToolDefaultValue) => {
+  const handleSelect = useCallback((_: BlockEnum, toolDefaultValue: ToolDefaultValue) => {
     let defaultValue: DataSourceDefaultValue = {
       plugin_id: toolDefaultValue?.provider_id,
       provider_type: toolDefaultValue?.provider_type,
@@ -63,6 +64,7 @@ const DataSources = ({
       datasource_name: toolDefaultValue?.tool_name,
       datasource_label: toolDefaultValue?.tool_label,
       title: toolDefaultValue?.title,
+      plugin_unique_identifier: toolDefaultValue?.plugin_unique_identifier,
     }
     // Update defaultValue with fileExtensions if this is the local file data source
     if (toolDefaultValue?.provider_id === 'langgenius/file' && toolDefaultValue?.provider_name === 'file') {
@@ -82,20 +84,21 @@ const DataSources = ({
   } = useMarketplacePlugins()
 
   useEffect(() => {
-    if (!enable_marketplace) return
+    if (!enable_marketplace)
+      return
     if (searchText) {
       fetchPlugins({
         query: searchText,
-        category: PluginType.datasource,
+        category: PluginCategoryEnum.datasource,
       })
     }
   }, [searchText, enable_marketplace])
 
   return (
-    <div className={cn(className)}>
+    <div className={cn('w-[400px] min-w-0 max-w-full', className)}>
       <div
         ref={wrapElemRef}
-        className='max-h-[464px] overflow-y-auto'
+        className="max-h-[464px] overflow-y-auto overflow-x-hidden"
         onScroll={pluginRef.current?.handleScroll}
       >
         <Tools
@@ -114,6 +117,7 @@ const DataSources = ({
             list={notInstalledPlugins}
             tags={[]}
             searchText={searchText}
+            category={PluginCategoryEnum.datasource}
             toolContentClassName={toolContentClassName}
           />
         )}

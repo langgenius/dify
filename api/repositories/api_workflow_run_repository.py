@@ -34,15 +34,19 @@ Example:
     ```
 """
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import datetime
 from typing import Protocol
 
-from core.workflow.entities.workflow_pause import WorkflowPauseEntity
+from sqlalchemy.orm import Session
+
+from core.workflow.entities.pause_reason import PauseReason
+from core.workflow.enums import WorkflowType
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowRun
+from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.types import (
     AverageInteractionStats,
     DailyRunsStats,
@@ -252,11 +256,50 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         """
         ...
 
+    def get_runs_batch_by_time_range(
+        self,
+        start_from: datetime | None,
+        end_before: datetime,
+        last_seen: tuple[datetime, str] | None,
+        batch_size: int,
+        run_types: Sequence[WorkflowType] | None = None,
+        tenant_ids: Sequence[str] | None = None,
+    ) -> Sequence[WorkflowRun]:
+        """
+        Fetch ended workflow runs in a time window for archival and clean batching.
+        """
+        ...
+
+    def delete_runs_with_related(
+        self,
+        runs: Sequence[WorkflowRun],
+        delete_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
+        delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+    ) -> dict[str, int]:
+        """
+        Delete workflow runs and their related records (node executions, offloads, app logs,
+        trigger logs, pauses, pause reasons).
+        """
+        ...
+
+    def count_runs_with_related(
+        self,
+        runs: Sequence[WorkflowRun],
+        count_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
+        count_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+    ) -> dict[str, int]:
+        """
+        Count workflow runs and their related records (node executions, offloads, app logs,
+        trigger logs, pauses, pause reasons) without deleting data.
+        """
+        ...
+
     def create_workflow_pause(
         self,
         workflow_run_id: str,
         state_owner_user_id: str,
         state: str,
+        pause_reasons: Sequence[PauseReason],
     ) -> WorkflowPauseEntity:
         """
         Create a new workflow pause state.

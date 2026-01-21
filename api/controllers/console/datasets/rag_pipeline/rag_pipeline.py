@@ -1,9 +1,11 @@
 import logging
 
 from flask import request
-from flask_restx import Resource, reqparse
+from flask_restx import Resource
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import (
     account_initialization_required,
@@ -18,18 +20,6 @@ from services.entities.knowledge_entities.rag_pipeline_entities import PipelineT
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 
 logger = logging.getLogger(__name__)
-
-
-def _validate_name(name: str) -> str:
-    if not name or len(name) < 1 or len(name) > 40:
-        raise ValueError("Name must be between 1 to 40 characters.")
-    return name
-
-
-def _validate_description_length(description: str) -> str:
-    if len(description) > 400:
-        raise ValueError("Description cannot exceed 400 characters.")
-    return description
 
 
 @console_ns.route("/rag/pipeline/templates")
@@ -59,6 +49,15 @@ class PipelineTemplateDetailApi(Resource):
         return pipeline_template, 200
 
 
+class Payload(BaseModel):
+    name: str = Field(..., min_length=1, max_length=40)
+    description: str = Field(default="", max_length=400)
+    icon_info: dict[str, object] | None = None
+
+
+register_schema_models(console_ns, Payload)
+
+
 @console_ns.route("/rag/pipeline/customized/templates/<string:template_id>")
 class CustomizedPipelineTemplateApi(Resource):
     @setup_required
@@ -66,31 +65,8 @@ class CustomizedPipelineTemplateApi(Resource):
     @account_initialization_required
     @enterprise_license_required
     def patch(self, template_id: str):
-        parser = (
-            reqparse.RequestParser()
-            .add_argument(
-                "name",
-                nullable=False,
-                required=True,
-                help="Name must be between 1 to 40 characters.",
-                type=_validate_name,
-            )
-            .add_argument(
-                "description",
-                type=_validate_description_length,
-                nullable=True,
-                required=False,
-                default="",
-            )
-            .add_argument(
-                "icon_info",
-                type=dict,
-                location="json",
-                nullable=True,
-            )
-        )
-        args = parser.parse_args()
-        pipeline_template_info = PipelineTemplateInfoEntity.model_validate(args)
+        payload = Payload.model_validate(console_ns.payload or {})
+        pipeline_template_info = PipelineTemplateInfoEntity.model_validate(payload.model_dump())
         RagPipelineService.update_customized_pipeline_template(template_id, pipeline_template_info)
         return 200
 
@@ -119,36 +95,14 @@ class CustomizedPipelineTemplateApi(Resource):
 
 @console_ns.route("/rag/pipelines/<string:pipeline_id>/customized/publish")
 class PublishCustomizedPipelineTemplateApi(Resource):
+    @console_ns.expect(console_ns.models[Payload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @enterprise_license_required
     @knowledge_pipeline_publish_enabled
     def post(self, pipeline_id: str):
-        parser = (
-            reqparse.RequestParser()
-            .add_argument(
-                "name",
-                nullable=False,
-                required=True,
-                help="Name must be between 1 to 40 characters.",
-                type=_validate_name,
-            )
-            .add_argument(
-                "description",
-                type=_validate_description_length,
-                nullable=True,
-                required=False,
-                default="",
-            )
-            .add_argument(
-                "icon_info",
-                type=dict,
-                location="json",
-                nullable=True,
-            )
-        )
-        args = parser.parse_args()
+        payload = Payload.model_validate(console_ns.payload or {})
         rag_pipeline_service = RagPipelineService()
-        rag_pipeline_service.publish_customized_pipeline_template(pipeline_id, args)
+        rag_pipeline_service.publish_customized_pipeline_template(pipeline_id, payload.model_dump())
         return {"result": "success"}

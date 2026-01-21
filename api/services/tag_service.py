@@ -19,7 +19,10 @@ class TagService:
             .where(Tag.type == tag_type, Tag.tenant_id == current_tenant_id)
         )
         if keyword:
-            query = query.where(sa.and_(Tag.name.ilike(f"%{keyword}%")))
+            from libs.helper import escape_like_pattern
+
+            escaped_keyword = escape_like_pattern(keyword)
+            query = query.where(sa.and_(Tag.name.ilike(f"%{escaped_keyword}%", escape="\\")))
         query = query.group_by(Tag.id, Tag.type, Tag.name, Tag.created_at)
         results: list = query.order_by(Tag.created_at.desc()).all()
         return results
@@ -79,12 +82,12 @@ class TagService:
         if TagService.get_tag_by_tag_name(args["type"], current_user.current_tenant_id, args["name"]):
             raise ValueError("Tag name already exists")
         tag = Tag(
-            id=str(uuid.uuid4()),
             name=args["name"],
             type=args["type"],
             created_by=current_user.id,
             tenant_id=current_user.current_tenant_id,
         )
+        tag.id = str(uuid.uuid4())
         db.session.add(tag)
         db.session.commit()
         return tag

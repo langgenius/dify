@@ -1,8 +1,10 @@
-from flask_restx import Resource, marshal, reqparse
+from flask_restx import Resource, marshal
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 import services
+from controllers.common.schema import register_schema_model
 from controllers.console import console_ns
 from controllers.console.datasets.error import DatasetNameDuplicateError
 from controllers.console.wraps import (
@@ -19,22 +21,22 @@ from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo,
 from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
 
 
+class RagPipelineDatasetImportPayload(BaseModel):
+    yaml_content: str
+
+
+register_schema_model(console_ns, RagPipelineDatasetImportPayload)
+
+
 @console_ns.route("/rag/pipeline/dataset")
 class CreateRagPipelineDatasetApi(Resource):
+    @console_ns.expect(console_ns.models[RagPipelineDatasetImportPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
     def post(self):
-        parser = reqparse.RequestParser().add_argument(
-            "yaml_content",
-            type=str,
-            nullable=False,
-            required=True,
-            help="yaml_content is required.",
-        )
-
-        args = parser.parse_args()
+        payload = RagPipelineDatasetImportPayload.model_validate(console_ns.payload or {})
         current_user, current_tenant_id = current_account_with_tenant()
         # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
         if not current_user.is_dataset_editor:
@@ -49,7 +51,7 @@ class CreateRagPipelineDatasetApi(Resource):
             ),
             permission=DatasetPermissionEnum.ONLY_ME,
             partial_member_list=None,
-            yaml_content=args["yaml_content"],
+            yaml_content=payload.yaml_content,
         )
         try:
             with Session(db.engine) as session:

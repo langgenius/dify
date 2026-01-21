@@ -24,7 +24,9 @@ const SortPlayground = () => {
       <div className="flex items-center justify-between text-xs uppercase tracking-[0.18em] text-text-tertiary">
         <span>Sort control</span>
         <code className="rounded-md bg-background-default px-2 py-1 text-[11px] text-text-tertiary">
-          sort_by="{sortBy}"
+          sort_by="
+          {sortBy}
+          "
         </code>
       </div>
       <Sort

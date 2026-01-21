@@ -15,6 +15,8 @@ from core.llm_generator.prompts import (
     LLM_MODIFY_CODE_SYSTEM,
     LLM_MODIFY_PROMPT_SYSTEM,
     PYTHON_CODE_GENERATOR_PROMPT_TEMPLATE,
+    SUGGESTED_QUESTIONS_MAX_TOKENS,
+    SUGGESTED_QUESTIONS_TEMPERATURE,
     SYSTEM_STRUCTURED_OUTPUT_GENERATE,
     WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE,
 )
@@ -69,16 +71,23 @@ class LLMGenerator:
             response: LLMResult = model_instance.invoke_llm(
                 prompt_messages=list(prompts), model_parameters={"max_tokens": 500, "temperature": 1}, stream=False
             )
-        answer = cast(str, response.message.content)
-        cleaned_answer = re.sub(r"^.*(\{.*\}).*$", r"\1", answer, flags=re.DOTALL)
-        if cleaned_answer is None:
+        answer = response.message.get_text_content()
+        if answer == "":
             return ""
         try:
-            result_dict = json.loads(cleaned_answer)
-            answer = result_dict["Your Output"]
+            result_dict = json.loads(answer)
         except json.JSONDecodeError:
-            logger.exception("Failed to generate name after answer, use query instead")
+            result_dict = json_repair.loads(answer)
+
+        if not isinstance(result_dict, dict):
             answer = query
+        else:
+            output = result_dict.get("Your Output")
+            if isinstance(output, str) and output.strip():
+                answer = output.strip()
+            else:
+                answer = query
+
         name = answer.strip()
 
         if len(name) > 75:
@@ -124,7 +133,10 @@ class LLMGenerator:
         try:
             response: LLMResult = model_instance.invoke_llm(
                 prompt_messages=list(prompt_messages),
-                model_parameters={"max_tokens": 256, "temperature": 0},
+                model_parameters={
+                    "max_tokens": SUGGESTED_QUESTIONS_MAX_TOKENS,
+                    "temperature": SUGGESTED_QUESTIONS_TEMPERATURE,
+                },
                 stream=False,
             )
 
@@ -172,7 +184,7 @@ class LLMGenerator:
                     prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
                 )
 
-                rule_config["prompt"] = cast(str, response.message.content)
+                rule_config["prompt"] = response.message.get_text_content()
 
             except InvokeError as e:
                 error = str(e)
@@ -225,13 +237,11 @@ class LLMGenerator:
 
                 return rule_config
 
-            rule_config["prompt"] = cast(str, prompt_content.message.content)
+            rule_config["prompt"] = prompt_content.message.get_text_content()
 
-            if not isinstance(prompt_content.message.content, str):
-                raise NotImplementedError("prompt content is not a string")
             parameter_generate_prompt = parameter_template.format(
                 inputs={
-                    "INPUT_TEXT": prompt_content.message.content,
+                    "INPUT_TEXT": prompt_content.message.get_text_content(),
                 },
                 remove_template_variables=False,
             )
@@ -241,7 +251,7 @@ class LLMGenerator:
             statement_generate_prompt = statement_template.format(
                 inputs={
                     "TASK_DESCRIPTION": instruction,
-                    "INPUT_TEXT": prompt_content.message.content,
+                    "INPUT_TEXT": prompt_content.message.get_text_content(),
                 },
                 remove_template_variables=False,
             )
@@ -251,7 +261,7 @@ class LLMGenerator:
                 parameter_content: LLMResult = model_instance.invoke_llm(
                     prompt_messages=list(parameter_messages), model_parameters=model_parameters, stream=False
                 )
-                rule_config["variables"] = re.findall(r'"\s*([^"]+)\s*"', cast(str, parameter_content.message.content))
+                rule_config["variables"] = re.findall(r'"\s*([^"]+)\s*"', parameter_content.message.get_text_content())
             except InvokeError as e:
                 error = str(e)
                 error_step = "generate variables"
@@ -260,7 +270,7 @@ class LLMGenerator:
                 statement_content: LLMResult = model_instance.invoke_llm(
                     prompt_messages=list(statement_messages), model_parameters=model_parameters, stream=False
                 )
-                rule_config["opening_statement"] = cast(str, statement_content.message.content)
+                rule_config["opening_statement"] = statement_content.message.get_text_content()
             except InvokeError as e:
                 error = str(e)
                 error_step = "generate conversation opener"
@@ -303,7 +313,7 @@ class LLMGenerator:
                 prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
             )
 
-            generated_code = cast(str, response.message.content)
+            generated_code = response.message.get_text_content()
             return {"code": generated_code, "language": code_language, "error": ""}
 
         except InvokeError as e:
@@ -339,7 +349,7 @@ class LLMGenerator:
             raise TypeError("Expected LLMResult when stream=False")
         response = result
 
-        answer = cast(str, response.message.content)
+        answer = response.message.get_text_content()
         return answer.strip()
 
     @classmethod
@@ -363,10 +373,7 @@ class LLMGenerator:
                 prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
             )
 
-            raw_content = response.message.content
-
-            if not isinstance(raw_content, str):
-                raise ValueError(f"LLM response content must be a string, got: {type(raw_content)}")
+            raw_content = response.message.get_text_content()
 
             try:
                 parsed_content = json.loads(raw_content)
@@ -549,11 +556,16 @@ class LLMGenerator:
                 prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
             )
 
-            generated_raw = cast(str, response.message.content)
+            generated_raw = response.message.get_text_content()
             first_brace = generated_raw.find("{")
             last_brace = generated_raw.rfind("}")
-            return {**json.loads(generated_raw[first_brace : last_brace + 1])}
-
+            if first_brace == -1 or last_brace == -1 or last_brace < first_brace:
+                raise ValueError(f"Could not find a valid JSON object in response: {generated_raw}")
+            json_str = generated_raw[first_brace : last_brace + 1]
+            data = json_repair.loads(json_str)
+            if not isinstance(data, dict):
+                raise TypeError(f"Expected a JSON object, but got {type(data).__name__}")
+            return data
         except InvokeError as e:
             error = str(e)
             return {"error": f"Failed to generate code. Error: {error}"}

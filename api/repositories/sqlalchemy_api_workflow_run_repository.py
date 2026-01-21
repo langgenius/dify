@@ -21,7 +21,7 @@ Implementation Notes:
 
 import logging
 import uuid
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import datetime
 from decimal import Decimal
 from typing import Any, cast
@@ -31,17 +31,25 @@ from sqlalchemy import and_, delete, func, null, or_, select
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
-from core.workflow.entities.workflow_pause import WorkflowPauseEntity
-from core.workflow.enums import WorkflowExecutionStatus
+from core.workflow.entities.pause_reason import HumanInputRequired, PauseReason, SchedulingPause
+from core.workflow.enums import WorkflowExecutionStatus, WorkflowType
 from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
+from libs.helper import convert_datetime_to_date
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.time_parser import get_time_threshold
 from libs.uuid_utils import uuidv7
 from models.enums import WorkflowRunTriggeredFrom
-from models.workflow import WorkflowPause as WorkflowPauseModel
-from models.workflow import WorkflowRun
+from models.workflow import (
+    WorkflowAppLog,
+    WorkflowPauseReason,
+    WorkflowRun,
+)
+from models.workflow import (
+    WorkflowPause as WorkflowPauseModel,
+)
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
+from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.types import (
     AverageInteractionStats,
     DailyRunsStats,
@@ -312,11 +320,177 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         logger.info("Total deleted %s workflow runs for app %s", total_deleted, app_id)
         return total_deleted
 
+    def get_runs_batch_by_time_range(
+        self,
+        start_from: datetime | None,
+        end_before: datetime,
+        last_seen: tuple[datetime, str] | None,
+        batch_size: int,
+        run_types: Sequence[WorkflowType] | None = None,
+        tenant_ids: Sequence[str] | None = None,
+    ) -> Sequence[WorkflowRun]:
+        """
+        Fetch ended workflow runs in a time window for archival and clean batching.
+
+        Query scope:
+        - created_at in [start_from, end_before)
+        - type in run_types (when provided)
+        - status is an ended state
+        - optional tenant_id filter and cursor (last_seen) for pagination
+        """
+        with self._session_maker() as session:
+            stmt = (
+                select(WorkflowRun)
+                .where(
+                    WorkflowRun.created_at < end_before,
+                    WorkflowRun.status.in_(WorkflowExecutionStatus.ended_values()),
+                )
+                .order_by(WorkflowRun.created_at.asc(), WorkflowRun.id.asc())
+                .limit(batch_size)
+            )
+            if run_types is not None:
+                if not run_types:
+                    return []
+                stmt = stmt.where(WorkflowRun.type.in_(run_types))
+
+            if start_from:
+                stmt = stmt.where(WorkflowRun.created_at >= start_from)
+
+            if tenant_ids:
+                stmt = stmt.where(WorkflowRun.tenant_id.in_(tenant_ids))
+
+            if last_seen:
+                stmt = stmt.where(
+                    or_(
+                        WorkflowRun.created_at > last_seen[0],
+                        and_(WorkflowRun.created_at == last_seen[0], WorkflowRun.id > last_seen[1]),
+                    )
+                )
+
+            return session.scalars(stmt).all()
+
+    def delete_runs_with_related(
+        self,
+        runs: Sequence[WorkflowRun],
+        delete_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
+        delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+    ) -> dict[str, int]:
+        if not runs:
+            return {
+                "runs": 0,
+                "node_executions": 0,
+                "offloads": 0,
+                "app_logs": 0,
+                "trigger_logs": 0,
+                "pauses": 0,
+                "pause_reasons": 0,
+            }
+
+        with self._session_maker() as session:
+            run_ids = [run.id for run in runs]
+            if delete_node_executions:
+                node_executions_deleted, offloads_deleted = delete_node_executions(session, runs)
+            else:
+                node_executions_deleted, offloads_deleted = 0, 0
+
+            app_logs_result = session.execute(delete(WorkflowAppLog).where(WorkflowAppLog.workflow_run_id.in_(run_ids)))
+            app_logs_deleted = cast(CursorResult, app_logs_result).rowcount or 0
+
+            pause_ids = session.scalars(
+                select(WorkflowPauseModel.id).where(WorkflowPauseModel.workflow_run_id.in_(run_ids))
+            ).all()
+            pause_reasons_deleted = 0
+            pauses_deleted = 0
+
+            if pause_ids:
+                pause_reasons_result = session.execute(
+                    delete(WorkflowPauseReason).where(WorkflowPauseReason.pause_id.in_(pause_ids))
+                )
+                pause_reasons_deleted = cast(CursorResult, pause_reasons_result).rowcount or 0
+                pauses_result = session.execute(delete(WorkflowPauseModel).where(WorkflowPauseModel.id.in_(pause_ids)))
+                pauses_deleted = cast(CursorResult, pauses_result).rowcount or 0
+
+            trigger_logs_deleted = delete_trigger_logs(session, run_ids) if delete_trigger_logs else 0
+
+            runs_result = session.execute(delete(WorkflowRun).where(WorkflowRun.id.in_(run_ids)))
+            runs_deleted = cast(CursorResult, runs_result).rowcount or 0
+
+            session.commit()
+
+            return {
+                "runs": runs_deleted,
+                "node_executions": node_executions_deleted,
+                "offloads": offloads_deleted,
+                "app_logs": app_logs_deleted,
+                "trigger_logs": trigger_logs_deleted,
+                "pauses": pauses_deleted,
+                "pause_reasons": pause_reasons_deleted,
+            }
+
+    def count_runs_with_related(
+        self,
+        runs: Sequence[WorkflowRun],
+        count_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
+        count_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+    ) -> dict[str, int]:
+        if not runs:
+            return {
+                "runs": 0,
+                "node_executions": 0,
+                "offloads": 0,
+                "app_logs": 0,
+                "trigger_logs": 0,
+                "pauses": 0,
+                "pause_reasons": 0,
+            }
+
+        with self._session_maker() as session:
+            run_ids = [run.id for run in runs]
+            if count_node_executions:
+                node_executions_count, offloads_count = count_node_executions(session, runs)
+            else:
+                node_executions_count, offloads_count = 0, 0
+
+            app_logs_count = (
+                session.scalar(
+                    select(func.count()).select_from(WorkflowAppLog).where(WorkflowAppLog.workflow_run_id.in_(run_ids))
+                )
+                or 0
+            )
+
+            pause_ids = session.scalars(
+                select(WorkflowPauseModel.id).where(WorkflowPauseModel.workflow_run_id.in_(run_ids))
+            ).all()
+            pauses_count = len(pause_ids)
+            pause_reasons_count = 0
+            if pause_ids:
+                pause_reasons_count = (
+                    session.scalar(
+                        select(func.count())
+                        .select_from(WorkflowPauseReason)
+                        .where(WorkflowPauseReason.pause_id.in_(pause_ids))
+                    )
+                    or 0
+                )
+
+            trigger_logs_count = count_trigger_logs(session, run_ids) if count_trigger_logs else 0
+
+            return {
+                "runs": len(runs),
+                "node_executions": node_executions_count,
+                "offloads": offloads_count,
+                "app_logs": int(app_logs_count),
+                "trigger_logs": trigger_logs_count,
+                "pauses": pauses_count,
+                "pause_reasons": int(pause_reasons_count),
+            }
+
     def create_workflow_pause(
         self,
         workflow_run_id: str,
         state_owner_user_id: str,
         state: str,
+        pause_reasons: Sequence[PauseReason],
     ) -> WorkflowPauseEntity:
         """
         Create a new workflow pause state.
@@ -370,6 +544,25 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             pause_model.workflow_run_id = workflow_run.id
             pause_model.state_object_key = state_obj_key
             pause_model.created_at = naive_utc_now()
+            pause_reason_models = []
+            for reason in pause_reasons:
+                if isinstance(reason, HumanInputRequired):
+                    # TODO(QuantumGhost): record node_id for `WorkflowPauseReason`
+                    pause_reason_model = WorkflowPauseReason(
+                        pause_id=pause_model.id,
+                        type_=reason.TYPE,
+                        form_id=reason.form_id,
+                    )
+                elif isinstance(reason, SchedulingPause):
+                    pause_reason_model = WorkflowPauseReason(
+                        pause_id=pause_model.id,
+                        type_=reason.TYPE,
+                        message=reason.message,
+                    )
+                else:
+                    raise AssertionError(f"unkown reason type: {type(reason)}")
+
+                pause_reason_models.append(pause_reason_model)
 
             # Update workflow run status
             workflow_run.status = WorkflowExecutionStatus.PAUSED
@@ -377,10 +570,16 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             # Save everything in a transaction
             session.add(pause_model)
             session.add(workflow_run)
+            session.add_all(pause_reason_models)
 
             logger.info("Created workflow pause %s for workflow run %s", pause_model.id, workflow_run_id)
 
-            return _PrivateWorkflowPauseEntity.from_models(pause_model)
+            return _PrivateWorkflowPauseEntity(pause_model=pause_model, reason_models=pause_reason_models)
+
+    def _get_reasons_by_pause_id(self, session: Session, pause_id: str):
+        reason_stmt = select(WorkflowPauseReason).where(WorkflowPauseReason.pause_id == pause_id)
+        pause_reason_models = session.scalars(reason_stmt).all()
+        return pause_reason_models
 
     def get_workflow_pause(
         self,
@@ -412,8 +611,16 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             pause_model = workflow_run.pause
             if pause_model is None:
                 return None
+            pause_reason_models = self._get_reasons_by_pause_id(session, pause_model.id)
 
-            return _PrivateWorkflowPauseEntity.from_models(pause_model)
+            human_input_form: list[Any] = []
+            # TODO(QuantumGhost): query human_input_forms model and rebuild PauseReason
+
+        return _PrivateWorkflowPauseEntity(
+            pause_model=pause_model,
+            reason_models=pause_reason_models,
+            human_input_form=human_input_form,
+        )
 
     def resume_workflow_pause(
         self,
@@ -465,6 +672,8 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             if pause_model.resumed_at is not None:
                 raise _WorkflowRunError(f"Cannot resume an already resumed pause, pause_id={pause_model.id}")
 
+            pause_reasons = self._get_reasons_by_pause_id(session, pause_model.id)
+
             # Mark as resumed
             pause_model.resumed_at = naive_utc_now()
             workflow_run.pause_id = None  # type: ignore
@@ -475,7 +684,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
 
             logger.info("Resumed workflow pause %s for workflow run %s", pause_model.id, workflow_run_id)
 
-            return _PrivateWorkflowPauseEntity.from_models(pause_model)
+            return _PrivateWorkflowPauseEntity(pause_model=pause_model, reason_models=pause_reasons)
 
     def delete_workflow_pause(
         self,
@@ -599,8 +808,9 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         """
         Get daily runs statistics using raw SQL for optimal performance.
         """
-        sql_query = """SELECT
-    DATE(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
+        converted_created_at = convert_datetime_to_date("created_at")
+        sql_query = f"""SELECT
+    {converted_created_at} AS date,
     COUNT(id) AS runs
 FROM
     workflow_runs
@@ -646,8 +856,9 @@ WHERE
         """
         Get daily terminals statistics using raw SQL for optimal performance.
         """
-        sql_query = """SELECT
-    DATE(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
+        converted_created_at = convert_datetime_to_date("created_at")
+        sql_query = f"""SELECT
+    {converted_created_at} AS date,
     COUNT(DISTINCT created_by) AS terminal_count
 FROM
     workflow_runs
@@ -693,8 +904,9 @@ WHERE
         """
         Get daily token cost statistics using raw SQL for optimal performance.
         """
-        sql_query = """SELECT
-    DATE(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
+        converted_created_at = convert_datetime_to_date("created_at")
+        sql_query = f"""SELECT
+    {converted_created_at} AS date,
     SUM(total_tokens) AS token_count
 FROM
     workflow_runs
@@ -745,13 +957,14 @@ WHERE
         """
         Get average app interaction statistics using raw SQL for optimal performance.
         """
-        sql_query = """SELECT
+        converted_created_at = convert_datetime_to_date("c.created_at")
+        sql_query = f"""SELECT
     AVG(sub.interactions) AS interactions,
     sub.date
 FROM
     (
         SELECT
-            DATE(DATE_TRUNC('day', c.created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
+            {converted_created_at} AS date,
             c.created_by,
             COUNT(c.id) AS interactions
         FROM
@@ -760,8 +973,8 @@ FROM
             c.tenant_id = :tenant_id
             AND c.app_id = :app_id
             AND c.triggered_from = :triggered_from
-            {{start}}
-            {{end}}
+            {{{{start}}}}
+            {{{{end}}}}
         GROUP BY
             date, c.created_by
     ) sub
@@ -810,26 +1023,13 @@ class _PrivateWorkflowPauseEntity(WorkflowPauseEntity):
         self,
         *,
         pause_model: WorkflowPauseModel,
+        reason_models: Sequence[WorkflowPauseReason],
+        human_input_form: Sequence = (),
     ) -> None:
         self._pause_model = pause_model
+        self._reason_models = reason_models
         self._cached_state: bytes | None = None
-
-    @classmethod
-    def from_models(cls, workflow_pause_model) -> "_PrivateWorkflowPauseEntity":
-        """
-        Create a _PrivateWorkflowPauseEntity from database models.
-
-        Args:
-            workflow_pause_model: The WorkflowPause database model
-            upload_file_model: The UploadFile database model
-
-        Returns:
-            _PrivateWorkflowPauseEntity: The constructed entity
-
-        Raises:
-            ValueError: If required model attributes are missing
-        """
-        return cls(pause_model=workflow_pause_model)
+        self._human_input_form = human_input_form
 
     @property
     def id(self) -> str:
@@ -862,3 +1062,6 @@ class _PrivateWorkflowPauseEntity(WorkflowPauseEntity):
     @property
     def resumed_at(self) -> datetime | None:
         return self._pause_model.resumed_at
+
+    def get_pause_reasons(self) -> Sequence[PauseReason]:
+        return [reason.to_entity() for reason in self._reason_models]

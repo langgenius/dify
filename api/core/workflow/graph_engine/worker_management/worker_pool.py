@@ -8,21 +8,18 @@ DynamicScaler, and WorkerFactory into a single class.
 import logging
 import queue
 import threading
-from typing import TYPE_CHECKING, final
+from typing import final
 
 from configs import dify_config
+from core.workflow.context import IExecutionContext
 from core.workflow.graph import Graph
 from core.workflow.graph_events import GraphNodeEventBase
 
+from ..layers.base import GraphEngineLayer
 from ..ready_queue import ReadyQueue
 from ..worker import Worker
 
 logger = logging.getLogger(__name__)
-
-if TYPE_CHECKING:
-    from contextvars import Context
-
-    from flask import Flask
 
 
 @final
@@ -39,8 +36,9 @@ class WorkerPool:
         ready_queue: ReadyQueue,
         event_queue: queue.Queue[GraphNodeEventBase],
         graph: Graph,
-        flask_app: "Flask | None" = None,
-        context_vars: "Context | None" = None,
+        layers: list[GraphEngineLayer],
+        stop_event: threading.Event,
+        execution_context: IExecutionContext | None = None,
         min_workers: int | None = None,
         max_workers: int | None = None,
         scale_up_threshold: int | None = None,
@@ -53,8 +51,8 @@ class WorkerPool:
             ready_queue: Ready queue for nodes ready for execution
             event_queue: Queue for worker events
             graph: The workflow graph
-            flask_app: Optional Flask app for context preservation
-            context_vars: Optional context variables
+            layers: Graph engine layers for node execution hooks
+            execution_context: Optional execution context for context preservation
             min_workers: Minimum number of workers
             max_workers: Maximum number of workers
             scale_up_threshold: Queue depth to trigger scale up
@@ -63,8 +61,8 @@ class WorkerPool:
         self._ready_queue = ready_queue
         self._event_queue = event_queue
         self._graph = graph
-        self._flask_app = flask_app
-        self._context_vars = context_vars
+        self._execution_context = execution_context
+        self._layers = layers
 
         # Scaling parameters with defaults
         self._min_workers = min_workers or dify_config.GRAPH_ENGINE_MIN_WORKERS
@@ -77,6 +75,7 @@ class WorkerPool:
         self._worker_counter = 0
         self._lock = threading.RLock()
         self._running = False
+        self._stop_event = stop_event
 
         # No longer tracking worker states with callbacks to avoid lock contention
 
@@ -131,7 +130,7 @@ class WorkerPool:
             # Wait for workers to finish
             for worker in self._workers:
                 if worker.is_alive():
-                    worker.join(timeout=10.0)
+                    worker.join(timeout=2.0)
 
             self._workers.clear()
 
@@ -144,9 +143,10 @@ class WorkerPool:
             ready_queue=self._ready_queue,
             event_queue=self._event_queue,
             graph=self._graph,
+            layers=self._layers,
             worker_id=worker_id,
-            flask_app=self._flask_app,
-            context_vars=self._context_vars,
+            execution_context=self._execution_context,
+            stop_event=self._stop_event,
         )
 
         worker.start()

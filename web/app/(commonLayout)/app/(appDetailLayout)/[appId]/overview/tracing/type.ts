@@ -6,6 +6,8 @@ export enum TracingProvider {
   opik = 'opik',
   weave = 'weave',
   aliyun = 'aliyun',
+  mlflow = 'mlflow',
+  databricks = 'databricks',
   tencent = 'tencent',
 }
 
@@ -53,6 +55,21 @@ export type AliyunConfig = {
   app_name: string
   license_key: string
   endpoint: string
+}
+
+export type MLflowConfig = {
+  tracking_uri: string
+  experiment_id: string
+  username: string
+  password: string
+}
+
+export type DatabricksConfig = {
+  experiment_id: string
+  host: string
+  client_id: string
+  client_secret: string
+  personal_access_token: string
 }
 
 export type TencentConfig = {

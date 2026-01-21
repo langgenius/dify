@@ -1,15 +1,15 @@
+import type {
+  BlockEnum,
+  OnSelectBlock,
+} from '../../types'
 import {
   memo,
   useCallback,
   useState,
 } from 'react'
-import cn from 'classnames'
-import { useNodesInteractions } from '../../hooks'
-import type {
-  BlockEnum,
-  OnSelectBlock,
-} from '../../types'
+import { cn } from '@/utils/classnames'
 import BlockSelector from '../../block-selector'
+import { useNodesInteractions } from '../../hooks'
 
 type InsertBlockProps = {
   startNodeId: string
@@ -25,11 +25,11 @@ const InsertBlock = ({
   const handleOpenChange = useCallback((v: boolean) => {
     setOpen(v)
   }, [])
-  const handleInsert = useCallback<OnSelectBlock>((nodeType, toolDefaultValue) => {
+  const handleInsert = useCallback<OnSelectBlock>((nodeType, pluginDefaultValue) => {
     handleNodeAdd(
       {
         nodeType,
-        toolDefaultValue,
+        pluginDefaultValue,
       },
       {
         nextNodeId: startNodeId,

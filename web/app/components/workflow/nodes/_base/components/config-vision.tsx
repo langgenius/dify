@@ -1,16 +1,19 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { ValueSelector, Var, VisionSetting } from '@/app/components/workflow/types'
 import { produce } from 'immer'
-import VarReferencePicker from './variable/var-reference-picker'
-import ResolutionPicker from '@/app/components/workflow/nodes/llm/components/resolution-picker'
-import Field from '@/app/components/workflow/nodes/_base/components/field'
+import * as React from 'react'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import Switch from '@/app/components/base/switch'
-import { type ValueSelector, type Var, VarType, type VisionSetting } from '@/app/components/workflow/types'
-import { Resolution } from '@/types/app'
 import Tooltip from '@/app/components/base/tooltip'
-const i18nPrefix = 'workflow.nodes.llm'
+import Field from '@/app/components/workflow/nodes/_base/components/field'
+import ResolutionPicker from '@/app/components/workflow/nodes/llm/components/resolution-picker'
+import { VarType } from '@/app/components/workflow/types'
+import { Resolution } from '@/types/app'
+import VarReferencePicker from './variable/var-reference-picker'
+
+const i18nPrefix = 'nodes.llm'
 
 type Props = {
   isVisionModel: boolean
@@ -55,34 +58,34 @@ const ConfigVision: FC<Props> = ({
 
   return (
     <Field
-      title={t(`${i18nPrefix}.vision`)}
-      tooltip={t('appDebug.vision.description')!}
-      operations={
+      title={t(`${i18nPrefix}.vision`, { ns: 'workflow' })}
+      tooltip={t('vision.description', { ns: 'appDebug' })!}
+      operations={(
         <Tooltip
-          popupContent={t('appDebug.vision.onlySupportVisionModelTip')!}
+          popupContent={t('vision.onlySupportVisionModelTip', { ns: 'appDebug' })!}
           disabled={isVisionModel}
         >
-          <Switch disabled={readOnly || !isVisionModel} size='md' defaultValue={!isVisionModel ? false : enabled} onChange={onEnabledChange} />
+          <Switch disabled={readOnly || !isVisionModel} size="md" defaultValue={!isVisionModel ? false : enabled} onChange={onEnabledChange} />
         </Tooltip>
-      }
+      )}
     >
       {(enabled && isVisionModel)
         ? (
-          <div>
-            <VarReferencePicker
-              className='mb-4'
-              filterVar={filterVar}
-              nodeId={nodeId}
-              value={config.variable_selector || []}
-              onChange={handleVarSelectorChange}
-              readonly={readOnly}
-            />
-            <ResolutionPicker
-              value={config.detail}
-              onChange={handleVisionResolutionChange}
-            />
-          </div>
-        )
+            <div>
+              <VarReferencePicker
+                className="mb-4"
+                filterVar={filterVar}
+                nodeId={nodeId}
+                value={config.variable_selector || []}
+                onChange={handleVarSelectorChange}
+                readonly={readOnly}
+              />
+              <ResolutionPicker
+                value={config.detail}
+                onChange={handleVisionResolutionChange}
+              />
+            </div>
+          )
         : null}
 
     </Field>

@@ -85,7 +85,9 @@ class ApiToolManageService:
             raise ValueError(f"invalid schema: {str(e)}")
 
     @staticmethod
-    def convert_schema_to_tool_bundles(schema: str, extra_info: dict | None = None) -> tuple[list[ApiToolBundle], str]:
+    def convert_schema_to_tool_bundles(
+        schema: str, extra_info: dict | None = None
+    ) -> tuple[list[ApiToolBundle], ApiProviderSchemaType]:
         """
         convert schema to tool bundles
 
@@ -103,7 +105,7 @@ class ApiToolManageService:
         provider_name: str,
         icon: dict,
         credentials: dict,
-        schema_type: str,
+        schema_type: ApiProviderSchemaType,
         schema: str,
         privacy_policy: str,
         custom_disclaimer: str,
@@ -112,9 +114,6 @@ class ApiToolManageService:
         """
         create api tool provider
         """
-        if schema_type not in [member.value for member in ApiProviderSchemaType]:
-            raise ValueError(f"invalid schema type {schema}")
-
         provider_name = provider_name.strip()
 
         # check if the provider exists
@@ -241,18 +240,15 @@ class ApiToolManageService:
         original_provider: str,
         icon: dict,
         credentials: dict,
-        schema_type: str,
+        _schema_type: ApiProviderSchemaType,
         schema: str,
-        privacy_policy: str,
+        privacy_policy: str | None,
         custom_disclaimer: str,
         labels: list[str],
     ):
         """
         update api tool provider
         """
-        if schema_type not in [member.value for member in ApiProviderSchemaType]:
-            raise ValueError(f"invalid schema type {schema}")
-
         provider_name = provider_name.strip()
 
         # check if the provider exists
@@ -277,7 +273,7 @@ class ApiToolManageService:
         provider.icon = json.dumps(icon)
         provider.schema = schema
         provider.description = extra_info.get("description", "")
-        provider.schema_type_str = ApiProviderSchemaType.OPENAPI
+        provider.schema_type_str = schema_type
         provider.tools_str = json.dumps(jsonable_encoder(tool_bundles))
         provider.privacy_policy = privacy_policy
         provider.custom_disclaimer = custom_disclaimer
@@ -300,13 +296,13 @@ class ApiToolManageService:
         )
 
         original_credentials = encrypter.decrypt(provider.credentials)
-        masked_credentials = encrypter.mask_tool_credentials(original_credentials)
+        masked_credentials = encrypter.mask_plugin_credentials(original_credentials)
         # check if the credential has changed, save the original credential
         for name, value in credentials.items():
             if name in masked_credentials and value == masked_credentials[name]:
                 credentials[name] = original_credentials[name]
 
-        credentials = encrypter.encrypt(credentials)
+        credentials = dict(encrypter.encrypt(credentials))
         provider.credentials_str = json.dumps(credentials)
 
         db.session.add(provider)
@@ -356,7 +352,7 @@ class ApiToolManageService:
         tool_name: str,
         credentials: dict,
         parameters: dict,
-        schema_type: str,
+        schema_type: ApiProviderSchemaType,
         schema: str,
     ):
         """
@@ -417,7 +413,7 @@ class ApiToolManageService:
             )
             decrypted_credentials = encrypter.decrypt(credentials)
             # check if the credential has changed, save the original credential
-            masked_credentials = encrypter.mask_tool_credentials(decrypted_credentials)
+            masked_credentials = encrypter.mask_plugin_credentials(decrypted_credentials)
             for name, value in credentials.items():
                 if name in masked_credentials and value == masked_credentials[name]:
                     credentials[name] = decrypted_credentials[name]

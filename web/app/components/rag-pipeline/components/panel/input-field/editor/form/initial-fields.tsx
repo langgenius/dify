@@ -1,4 +1,5 @@
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { withForm } from '@/app/components/base/form'
 import InputField from '@/app/components/base/form/form-scenarios/input-field/field'
 import { useConfigurations } from './hooks'

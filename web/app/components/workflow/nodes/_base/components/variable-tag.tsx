@@ -1,18 +1,18 @@
-import { useCallback, useMemo } from 'react'
-import { useNodes, useReactFlow, useStoreApi } from 'reactflow'
-import { useTranslation } from 'react-i18next'
 import type {
   CommonNodeType,
   Node,
   ValueSelector,
   VarType,
 } from '@/app/components/workflow/types'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { getNodeInfoById, isConversationVar, isENV, isRagVariableVar, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import { isExceptionVariable } from '@/app/components/workflow/utils'
+import { useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useNodes, useReactFlow, useStoreApi } from 'reactflow'
+import { getNodeInfoById, isConversationVar, isENV, isGlobalVar, isRagVariableVar, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import {
   VariableLabelInSelect,
 } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { isExceptionVariable } from '@/app/components/workflow/utils'
 
 type VariableTagProps = {
   valueSelector: ValueSelector
@@ -39,7 +39,8 @@ const VariableTag = ({
 
   const isEnv = isENV(valueSelector)
   const isChatVar = isConversationVar(valueSelector)
-  const isValid = Boolean(node) || isEnv || isChatVar || isRagVar
+  const isGlobal = isGlobalVar(valueSelector)
+  const isValid = Boolean(node) || isEnv || isChatVar || isRagVar || isGlobal
 
   const variableName = isSystemVar(valueSelector) ? valueSelector.slice(0).join('.') : valueSelector.slice(1).join('.')
   const isException = isExceptionVariable(variableName, node?.data.type)
@@ -80,7 +81,7 @@ const VariableTag = ({
           handleVariableJump()
         }
       }}
-      errorMsg={!isValid ? t('workflow.errorMsg.invalidVariable') : undefined}
+      errorMsg={!isValid ? t('errorMsg.invalidVariable', { ns: 'workflow' }) : undefined}
       isExceptionVariable={isException}
     />
   )

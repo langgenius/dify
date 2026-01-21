@@ -1,11 +1,11 @@
+import type { PanelProps } from '@/app/components/workflow/panel'
+import dynamic from 'next/dynamic'
 import {
   memo,
   useMemo,
 } from 'react'
-import type { PanelProps } from '@/app/components/workflow/panel'
 import Panel from '@/app/components/workflow/panel'
 import { useStore } from '@/app/components/workflow/store'
-import dynamic from 'next/dynamic'
 
 const Record = dynamic(() => import('@/app/components/workflow/panel/record'), {
   ssr: false,
@@ -22,14 +22,19 @@ const InputFieldEditorPanel = dynamic(() => import('./input-field/editor'), {
 const PreviewPanel = dynamic(() => import('./input-field/preview'), {
   ssr: false,
 })
-
+const GlobalVariablePanel = dynamic(() => import('@/app/components/workflow/panel/global-variable-panel'), {
+  ssr: false,
+})
 const RagPipelinePanelOnRight = () => {
   const historyWorkflowData = useStore(s => s.historyWorkflowData)
   const showDebugAndPreviewPanel = useStore(s => s.showDebugAndPreviewPanel)
+  const showGlobalVariablePanel = useStore(s => s.showGlobalVariablePanel)
+
   return (
     <>
       {historyWorkflowData && <Record />}
       {showDebugAndPreviewPanel && <TestRunPanel />}
+      {showGlobalVariablePanel && <GlobalVariablePanel />}
     </>
   )
 }
