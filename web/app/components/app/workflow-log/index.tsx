@@ -65,7 +65,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
       <h1 className="system-xl-semibold text-text-primary">{t('workflowTitle', { ns: 'appLog' })}</h1>
       <p className="system-sm-regular text-text-tertiary">{t('workflowSubtitle', { ns: 'appLog' })}</p>
       <div className="flex max-h-[calc(100%-16px)] flex-1 flex-col py-4">
-        <Filter queryParams={queryParams} setQueryParams={setQueryParams} />
+        <Filter queryParams={queryParams} setQueryParams={setQueryParams} appId={appDetail.id} timezone={timezone} />
         {/* workflow log */}
         {total === undefined
           ? <Loading type="app" />

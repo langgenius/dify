@@ -50,6 +50,7 @@ describe('Filter', () => {
     it('should render without crashing', () => {
       render(
         <Filter
+          appId="test-app-id"
           queryParams={createDefaultQueryParams()}
           setQueryParams={defaultSetQueryParams}
         />,
@@ -63,6 +64,7 @@ describe('Filter', () => {
     it('should render all filter components', () => {
       render(
         <Filter
+          appId="test-app-id"
           queryParams={createDefaultQueryParams()}
           setQueryParams={defaultSetQueryParams}
         />,
@@ -84,6 +86,7 @@ describe('Filter', () => {
     it('should display current status value', () => {
       render(
         <Filter
+          appId="test-app-id"
           queryParams={createDefaultQueryParams({ status: 'succeeded' })}
           setQueryParams={defaultSetQueryParams}
         />,
@@ -98,6 +101,7 @@ describe('Filter', () => {
 
       render(
         <Filter
+          appId="test-app-id"
           queryParams={createDefaultQueryParams()}
           setQueryParams={defaultSetQueryParams}
         />,
@@ -120,6 +124,7 @@ describe('Filter', () => {
 
       render(
         <Filter
+          appId="test-app-id"
           queryParams={createDefaultQueryParams()}
           setQueryParams={setQueryParams}
         />,
@@ -139,6 +144,7 @@ describe('Filter', () => {
 
       render(
         <Filter
+          appId="test-app-id"
           queryParams={createDefaultQueryParams()}
           setQueryParams={defaultSetQueryParams}
         />,
@@ -159,6 +165,7 @@ describe('Filter', () => {
 
       const { container } = render(
         <Filter
+          appId="test-app-id"
           queryParams={createDefaultQueryParams({ status: 'succeeded' })}
           setQueryParams={setQueryParams}
         />,
@@ -185,6 +192,7 @@ describe('Filter', () => {
     ])('should display correct label for %s status', (statusValue, expectedLabel) => {
       render(
         <Filter
+          appId="test-app-id"
           queryParams={createDefaultQueryParams({ status: statusValue })}
           setQueryParams={defaultSetQueryParams}
         />,
@@ -201,6 +209,7 @@ describe('Filter', () => {
     it('should display current period value', () => {
       render(
         <Filter
+          appId="test-app-id"
           queryParams={createDefaultQueryParams({ period: '1' })}
           setQueryParams={defaultSetQueryParams}
         />,
@@ -214,6 +223,7 @@ describe('Filter', () => {
 
       render(
         <Filter
+          appId="test-app-id"
           queryParams={createDefaultQueryParams()}
           setQueryParams={defaultSetQueryParams}
         />,
@@ -236,6 +246,7 @@ describe('Filter', () => {
 
       render(
         <Filter
+          appId="test-app-id"
           queryParams={createDefaultQueryParams()}
           setQueryParams={setQueryParams}
         />,
@@ -256,6 +267,7 @@ describe('Filter', () => {
 
       render(
         <Filter
+          appId="test-app-id"
           queryParams={createDefaultQueryParams({ period: '2' })}
           setQueryParams={setQueryParams}
         />,
@@ -282,6 +294,7 @@ describe('Filter', () => {
     it('should display current keyword value', () => {
       render(
         <Filter
+          appId="test-app-id"
           queryParams={createDefaultQueryParams({ keyword: 'test search' })}
           setQueryParams={defaultSetQueryParams}
         />,
@@ -302,6 +315,7 @@ describe('Filter', () => {
         }
         return (
           <Filter
+            appId="test-app-id"
             queryParams={queryParams}
             setQueryParams={handleSetQueryParams}
           />
@@ -325,6 +339,7 @@ describe('Filter', () => {
 
       const { container } = render(
         <Filter
+          appId="test-app-id"
           queryParams={createDefaultQueryParams({ keyword: 'test' })}
           setQueryParams={setQueryParams}
         />,
@@ -352,6 +367,7 @@ describe('Filter', () => {
 
       render(
         <Filter
+          appId="test-app-id"
           queryParams={createDefaultQueryParams()}
           setQueryParams={setQueryParams}
         />,
@@ -414,6 +430,7 @@ describe('Filter', () => {
     it('should handle undefined keyword gracefully', () => {
       render(
         <Filter
+          appId="test-app-id"
           queryParams={createDefaultQueryParams({ keyword: undefined })}
           setQueryParams={defaultSetQueryParams}
         />,
@@ -426,6 +443,7 @@ describe('Filter', () => {
     it('should handle empty string keyword', () => {
       render(
         <Filter
+          appId="test-app-id"
           queryParams={createDefaultQueryParams({ keyword: '' })}
           setQueryParams={defaultSetQueryParams}
         />,
@@ -441,6 +459,7 @@ describe('Filter', () => {
 
       render(
         <Filter
+          appId="test-app-id"
           queryParams={createDefaultQueryParams({ keyword: 'test', period: '3' })}
           setQueryParams={setQueryParams}
         />,
@@ -462,6 +481,7 @@ describe('Filter', () => {
 
       render(
         <Filter
+          appId="test-app-id"
           queryParams={createDefaultQueryParams({ keyword: 'test', status: 'failed' })}
           setQueryParams={setQueryParams}
         />,
@@ -483,6 +503,7 @@ describe('Filter', () => {
 
       render(
         <Filter
+          appId="test-app-id"
           queryParams={createDefaultQueryParams({ status: 'failed', period: '3' })}
           setQueryParams={setQueryParams}
         />,
@@ -506,6 +527,7 @@ describe('Filter', () => {
     it('should render with all filters visible simultaneously', () => {
       render(
         <Filter
+          appId="test-app-id"
           queryParams={createDefaultQueryParams({
             status: 'succeeded',
             period: '1',
@@ -523,6 +545,7 @@ describe('Filter', () => {
     it('should have proper layout with flex and gap', () => {
       const { container } = render(
         <Filter
+          appId="test-app-id"
           queryParams={createDefaultQueryParams()}
           setQueryParams={defaultSetQueryParams}
         />,
