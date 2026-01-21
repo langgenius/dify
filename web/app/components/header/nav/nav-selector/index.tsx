@@ -14,6 +14,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
 import { FileArrow01, FilePlus01, FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
+import Loading from '@/app/components/base/loading'
 import { useAppContext } from '@/context/app-context'
 import { cn } from '@/utils/classnames'
 
@@ -34,9 +35,10 @@ export type INavSelectorProps = {
   isApp?: boolean
   onCreate: (state: string) => void
   onLoadMore?: () => void
+  isLoadingMore?: boolean
 }
 
-const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onLoadMore }: INavSelectorProps) => {
+const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onLoadMore, isLoadingMore }: INavSelectorProps) => {
   const { t } = useTranslation()
   const router = useRouter()
   const { isCurrentWorkspaceEditor } = useAppContext()
@@ -106,6 +108,11 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
                   </MenuItem>
                 ))
               }
+              {isLoadingMore && (
+                <div className="flex justify-center py-2">
+                  <Loading />
+                </div>
+              )}
             </div>
             {!isApp && isCurrentWorkspaceEditor && (
               <MenuItem as="div" className="w-full p-1">

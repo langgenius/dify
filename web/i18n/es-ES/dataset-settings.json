@@ -16,7 +16,7 @@
   "form.indexMethod": "Método de indexación",
   "form.indexMethodChangeToEconomyDisabledTip": "No disponible para degradar de HQ a ECO",
   "form.indexMethodEconomy": "Económico",
-  "form.indexMethodEconomyTip": "Utiliza motores de vectores sin conexión, índices de palabras clave, etc. para reducir la precisión sin gastar tokens.",
+  "form.indexMethodEconomyTip": "Utiliza {{count}} palabras clave por fragmento para la recuperación, sin consumir tokens a costa de una menor precisión.",
   "form.indexMethodHighQuality": "Alta calidad",
   "form.indexMethodHighQualityTip": "Llama al modelo de incrustación para procesar y proporcionar una mayor precisión cuando los usuarios realizan consultas.",
   "form.me": "(Tú)",

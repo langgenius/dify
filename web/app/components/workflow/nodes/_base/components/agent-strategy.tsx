@@ -43,7 +43,6 @@ export type AgentStrategyProps = {
   nodeOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
   nodeId?: string
-  canChooseMCPTool: boolean
 }
 
 type CustomSchema<Type, Field = {}> = Omit<CredentialFormSchema, 'type'> & { type: Type } & Field
@@ -54,7 +53,7 @@ type MultipleToolSelectorSchema = CustomSchema<'array[tools]'>
 type CustomField = ToolSelectorSchema | MultipleToolSelectorSchema
 
 export const AgentStrategy = memo((props: AgentStrategyProps) => {
-  const { strategy, onStrategyChange, formSchema, formValue, onFormValueChange, nodeOutputVars, availableNodes, nodeId, canChooseMCPTool } = props
+  const { strategy, onStrategyChange, formSchema, formValue, onFormValueChange, nodeOutputVars, availableNodes, nodeId } = props
   const { t } = useTranslation()
   const docLink = useDocLink()
   const defaultModel = useDefaultModel(ModelTypeEnum.textGeneration)
@@ -189,7 +188,6 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
               value={value}
               onSelect={item => onChange(item)}
               onDelete={() => onChange(null)}
-              canChooseMCPTool={canChooseMCPTool}
               onSelectMultiple={noop}
             />
           </Field>
@@ -212,7 +210,6 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
             onChange={onChange}
             supportCollapse
             required={schema.required}
-            canChooseMCPTool={canChooseMCPTool}
           />
         )
       }
@@ -220,7 +217,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
   }
   return (
     <div className="space-y-2">
-      <AgentStrategySelector value={strategy} onChange={onStrategyChange} canChooseMCPTool={canChooseMCPTool} />
+      <AgentStrategySelector value={strategy} onChange={onStrategyChange} />
       {
         strategy
           ? (
@@ -241,7 +238,6 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
                   nodeId={nodeId}
                   nodeOutputVars={nodeOutputVars || []}
                   availableNodes={availableNodes || []}
-                  canChooseMCPTool={canChooseMCPTool}
                 />
               </div>
             )

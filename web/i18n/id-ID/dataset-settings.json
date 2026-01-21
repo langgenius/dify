@@ -16,7 +16,7 @@
   "form.indexMethod": "Metode Indeks",
   "form.indexMethodChangeToEconomyDisabledTip": "Tidak tersedia untuk downgrade dari HQ ke ECO",
   "form.indexMethodEconomy": "Ekonomis",
-  "form.indexMethodEconomyTip": "Menggunakan 10 kata kunci per potongan untuk pengambilan, tidak ada token yang dikonsumsi dengan mengorbankan penurunan akurasi pengambilan.",
+  "form.indexMethodEconomyTip": "Menggunakan {{count}} kata kunci per potongan untuk pengambilan, tidak ada token yang dikonsumsi dengan mengorbankan penurunan akurasi pengambilan.",
   "form.indexMethodHighQuality": "Kualitas Tinggi",
   "form.indexMethodHighQualityTip": "Memanggil model penyematan untuk memproses dokumen untuk pengambilan yang lebih tepat membantu LLM menghasilkan jawaban berkualitas tinggi.",
   "form.me": "(Anda)",

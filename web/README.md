@@ -8,8 +8,8 @@ This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next
 
 Before starting the web frontend service, please make sure the following environment is ready.
 
-- [Node.js](https://nodejs.org) >= v22.11.x
-- [pnpm](https://pnpm.io) v10.x
+- [Node.js](https://nodejs.org)
+- [pnpm](https://pnpm.io)
 
 > [!TIP]
 > It is recommended to install and enable Corepack to manage package manager versions automatically:
