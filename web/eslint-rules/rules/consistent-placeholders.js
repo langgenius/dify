@@ -13,6 +13,67 @@ function extractPlaceholders(str) {
   return matches.map(m => m.slice(2, -2)).sort()
 }
 
+function extractTags(str) {
+  const matches = str.matchAll(/<\/?([A-Z0-9]+)(?:\s[^<>]*)?>/gi)
+  const tags = []
+  for (const match of matches)
+    tags.push(match[1])
+  return Array.from(new Set(tags)).sort()
+}
+
+function getTagBalanceIssues(str) {
+  const matches = str.matchAll(/<\/?([A-Z0-9]+)(?:\s[^<>]*)?>/gi)
+  const stack = []
+  const mismatches = []
+  const unexpectedClosings = []
+
+  for (const match of matches) {
+    const tagName = match[1]
+    const token = match[0]
+    const isClosing = token.startsWith('</')
+    const isSelfClosing = token.endsWith('/>')
+
+    if (isSelfClosing)
+      continue
+
+    if (!isClosing) {
+      stack.push(tagName)
+      continue
+    }
+
+    if (stack.length === 0) {
+      unexpectedClosings.push(tagName)
+      continue
+    }
+
+    const expected = stack[stack.length - 1]
+    if (expected !== tagName) {
+      mismatches.push({ expected, got: tagName })
+      continue
+    }
+
+    stack.pop()
+  }
+
+  return {
+    missingClosings: stack.slice(),
+    unexpectedClosings,
+    mismatches,
+  }
+}
+
+function formatTags(tags) {
+  if (tags.length === 0)
+    return 'none'
+  return `<${tags.join('>, <')}>`
+}
+
+function formatClosingTags(tags) {
+  if (tags.length === 0)
+    return 'none'
+  return tags.map(tag => `</${tag}>`).join(', ')
+}
+
 /**
  * Compare two arrays and return if they're equal
  * @param {string[]} arr1
@@ -85,7 +146,7 @@ export default {
             const missing = englishPlaceholders.filter(p => !currentPlaceholders.includes(p))
             const extra = currentPlaceholders.filter(p => !englishPlaceholders.includes(p))
 
-            let message = `Placeholder mismatch in "${key}": `
+            let message = `Placeholder mismatch in "${key}" (${lang}): `
             const details = []
 
             if (missing.length > 0)
@@ -96,6 +157,66 @@ export default {
 
             message += details.join('; ')
             message += `. Expected: {{${englishPlaceholders.join('}}, {{') || 'none'}}}`
+            message += `. Got: {{${currentPlaceholders.join('}}, {{') || 'none'}}}`
+
+            context.report({
+              node,
+              message,
+            })
+          }
+
+          const currentTags = extractTags(currentValue)
+          const englishTags = extractTags(englishValue)
+
+          if (!arraysEqual(currentTags, englishTags)) {
+            const missing = englishTags.filter(tag => !currentTags.includes(tag))
+            const extra = currentTags.filter(tag => !englishTags.includes(tag))
+
+            let message = `Tag mismatch in "${key}" (${lang}): `
+            const details = []
+
+            if (missing.length > 0)
+              details.push(`missing ${formatTags(missing)}`)
+
+            if (extra.length > 0)
+              details.push(`extra ${formatTags(extra)}`)
+
+            message += details.join('; ')
+            message += `. Expected: ${formatTags(englishTags)}`
+            message += `. Got: ${formatTags(currentTags)}`
+
+            context.report({
+              node,
+              message,
+            })
+          }
+
+          const { missingClosings, unexpectedClosings, mismatches } = getTagBalanceIssues(currentValue)
+          if (missingClosings.length > 0 || unexpectedClosings.length > 0 || mismatches.length > 0) {
+            const expectedClosings = Array.from(new Set([
+              ...missingClosings,
+              ...mismatches.map(mismatch => mismatch.expected),
+            ])).sort()
+            const gotClosings = Array.from(new Set([
+              ...unexpectedClosings,
+              ...mismatches.map(mismatch => mismatch.got),
+            ])).sort()
+
+            const details = []
+            if (missingClosings.length > 0)
+              details.push(`missing ${formatClosingTags(Array.from(new Set(missingClosings)).sort())}`)
+            if (unexpectedClosings.length > 0)
+              details.push(`unexpected ${formatClosingTags(Array.from(new Set(unexpectedClosings)).sort())}`)
+            if (mismatches.length > 0) {
+              const mismatchDetails = mismatches
+                .map(mismatch => `</${mismatch.expected}> vs </${mismatch.got}>`)
+                .join(', ')
+              details.push(`mismatched ${mismatchDetails}`)
+            }
+
+            let message = `Unbalanced tags in "${key}" (${lang}): ${details.join('; ')}`
+            message += `. Expected: ${formatClosingTags(expectedClosings)}`
+            message += `. Got: ${formatClosingTags(gotClosings)}`
 
             context.report({
               node,
