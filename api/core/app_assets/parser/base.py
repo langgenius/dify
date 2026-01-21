@@ -7,7 +7,7 @@ class AssetItemParser(ABC):
     @abstractmethod
     def parse(
         self,
-        node_id: str,
+        asset_id: str,
         path: str,
         file_name: str,
         extension: str,
@@ -19,14 +19,14 @@ class AssetItemParser(ABC):
 class FileAssetParser(AssetItemParser):
     def parse(
         self,
-        node_id: str,
+        asset_id: str,
         path: str,
         file_name: str,
         extension: str,
         storage_key: str,
     ) -> FileAsset:
         return FileAsset(
-            node_id=node_id,
+            asset_id=asset_id,
             path=path,
             file_name=file_name,
             extension=extension,

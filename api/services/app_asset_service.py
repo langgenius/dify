@@ -12,12 +12,9 @@ from core.app.entities.app_asset_entities import (
     TreeParentNotFoundError,
     TreePathConflictError,
 )
-from core.app_assets.entities import SkillAsset
+from core.app_assets.builder import AssetBuildPipeline, BuildContext
 from core.app_assets.packager.zip_packager import ZipPackager
-from core.app_assets.parser.asset_parser import AssetParser
-from core.app_assets.parser.skill_parser import SkillAssetParser
 from core.app_assets.paths import AssetPaths
-from core.skill.skill_manager import SkillManager
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from extensions.storage.file_presign_storage import FilePresignStorage
@@ -315,28 +312,11 @@ class AppAssetService:
             session.add(published)
             session.flush()
 
-            parser = AssetParser(tree, tenant_id, app_id)
-            parser.register(
-                "md",
-                SkillAssetParser(tenant_id, app_id, publish_id, tree),
-            )
+            ctx = BuildContext(tenant_id=tenant_id, app_id=app_id, build_id=publish_id)
+            built_assets = AssetBuildPipeline().build_all(tree, ctx)
 
-            assets = parser.parse()
-            artifact = SkillManager.generate_tool_artifact(
-                assets=[asset for asset in assets if isinstance(asset, SkillAsset)]
-            )
-
-            SkillManager.save_tool_artifact(
-                tenant_id,
-                app_id,
-                publish_id,
-                artifact,
-            )
-
-            # TODO: use VM zip packager and make this process async
             packager = ZipPackager(storage)
-
-            zip_bytes = packager.package(assets)
+            zip_bytes = packager.package(built_assets)
             zip_key = AssetPaths.build_zip(tenant_id, app_id, publish_id)
             storage.save(zip_key, zip_bytes)
 
@@ -348,26 +328,11 @@ class AppAssetService:
     def build_assets(tenant_id: str, app_id: str, assets: AppAssets) -> None:
         tree = assets.asset_tree
 
-        parser = AssetParser(tree, tenant_id, app_id)
-        parser.register(
-            "md",
-            SkillAssetParser(tenant_id, app_id, assets.id, tree),
-        )
-
-        parsed_assets = parser.parse()
-        artifact = SkillManager.generate_tool_artifact(
-            assets=[asset for asset in parsed_assets if isinstance(asset, SkillAsset)]
-        )
-
-        SkillManager.save_tool_artifact(
-            tenant_id,
-            app_id,
-            assets.id,
-            artifact,
-        )
+        ctx = BuildContext(tenant_id=tenant_id, app_id=app_id, build_id=assets.id)
+        built_assets = AssetBuildPipeline().build_all(tree, ctx)
 
         packager = ZipPackager(storage)
-        zip_bytes = packager.package(parsed_assets)
+        zip_bytes = packager.package(built_assets)
         zip_key = AssetPaths.build_zip(tenant_id, app_id, assets.id)
         storage.save(zip_key, zip_bytes)
 

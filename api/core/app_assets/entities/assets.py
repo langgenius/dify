@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 @dataclass
 class AssetItem(ABC):
-    node_id: str
+    asset_id: str
     path: str
     file_name: str
     extension: str

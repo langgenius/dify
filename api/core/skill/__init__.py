@@ -1,6 +1,4 @@
-from core.app_assets.entities import ToolReference
-
-from .entities import ToolArtifact, ToolDependency
+from .entities import ToolArtifact, ToolDependency, ToolReference
 from .skill_manager import SkillManager
 
 __all__ = [

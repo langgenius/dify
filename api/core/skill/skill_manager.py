@@ -1,7 +1,9 @@
+from core.app.entities.app_asset_entities import AppAssetFileTree
 from core.app_assets.entities import SkillAsset
-from core.app_assets.entities.skill import ToolReference
 from core.app_assets.paths import AssetPaths
-from core.skill.entities.tool_artifact import ToolDependency
+from core.skill.entities.skill_artifact_set import SkillArtifactSet
+from core.skill.entities.skill_document import SkillDocument
+from core.skill.skill_compiler import SkillCompiler
 from extensions.ext_storage import storage
 
 from .entities import ToolArtifact
@@ -9,29 +11,14 @@ from .entities import ToolArtifact
 
 class SkillManager:
     @staticmethod
-    def generate_tool_artifact(assets: list[SkillAsset]) -> ToolArtifact:
-        # provider + tool_name -> ToolDependency
-        dependencies: dict[str, ToolDependency] = {}
-        references: list[ToolReference] = []
+    def _load_content(storage_key: str) -> str:
+        import json
 
-        for asset in assets:
-            for id, tool in asset.metadata.tools.items():
-                dependencies[f"{tool.provider}.{tool.tool_name}"] = ToolDependency(
-                    type=tool.type,
-                    provider=tool.provider,
-                    tool_name=tool.tool_name,
-                )
-
-                references.append(
-                    ToolReference(
-                        uuid=id,
-                        type=tool.type,
-                        provider=tool.provider,
-                        tool_name=tool.tool_name,
-                    )
-                )
-
-        return ToolArtifact(dependencies=list(dependencies.values()), references=references)
+        try:
+            data = json.loads(storage.load_once(storage_key))
+            return data.get("content", "") if isinstance(data, dict) else ""
+        except Exception:
+            return ""
 
     @staticmethod
     def save_tool_artifact(
@@ -55,3 +42,49 @@ class SkillManager:
             return ToolArtifact.model_validate_json(data)
         except Exception:
             return None
+
+    @staticmethod
+    def compile_all(
+        documents: list[SkillDocument],
+        file_tree: AppAssetFileTree,
+        assets_id: str,
+    ) -> SkillArtifactSet:
+        compiler = SkillCompiler()
+        return compiler.compile_all(documents, file_tree, assets_id)
+
+    @staticmethod
+    def assets_to_documents(assets: list[SkillAsset]) -> list[SkillDocument]:
+        documents: list[SkillDocument] = []
+        for asset in assets:
+            content = SkillManager._load_content(asset.storage_key)
+            documents.append(
+                SkillDocument(
+                    skill_id=asset.asset_id,
+                    content=content,
+                    metadata=asset.metadata,
+                )
+            )
+        return documents
+
+    @staticmethod
+    def load_artifact(
+        tenant_id: str,
+        app_id: str,
+        assets_id: str,
+    ) -> SkillArtifactSet | None:
+        key = AssetPaths.build_skill_artifact_set(tenant_id, app_id, assets_id)
+        try:
+            data = storage.load_once(key)
+            return SkillArtifactSet.model_validate_json(data)
+        except Exception:
+            return None
+
+    @staticmethod
+    def save_artifact(
+        tenant_id: str,
+        app_id: str,
+        assets_id: str,
+        artifact_set: SkillArtifactSet,
+    ) -> None:
+        key = AssetPaths.build_skill_artifact_set(tenant_id, app_id, assets_id)
+        storage.save(key, artifact_set.model_dump_json(indent=2).encode("utf-8"))

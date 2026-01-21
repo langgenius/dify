@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field
 
-from core.app_assets.entities import ToolReference
+from core.skill.entities.skill_metadata import ToolReference
 from core.tools.entities.tool_entities import ToolProviderType
 
 
@@ -15,16 +15,8 @@ class ToolDependency(BaseModel):
 class ToolArtifact(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    dependencies: list[ToolDependency] = Field(default_factory=list, description="List of tool dependencies")
-
-    references: list[ToolReference] = Field(default_factory=list, description="List of tool references")
-
-    """
-    Filter the tool artifact to only include the given tools
-
-    :param tools: Tuple of (provider, tool_name)
-    :return: Filtered tool artifact
-    """
+    dependencies: list[ToolDependency] = Field(default_factory=list)
+    references: list[ToolReference] = Field(default_factory=list)
 
     def is_empty(self) -> bool:
         return not self.dependencies and not self.references

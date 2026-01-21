@@ -6,10 +6,9 @@ from typing import TYPE_CHECKING, Any
 from pydantic import BaseModel, Field
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app_assets.entities import ToolReference
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.session.cli_api import CliApiSession
-from core.skill.entities import ToolArtifact
+from core.skill.entities import ToolArtifact, ToolReference
 from core.tools.entities.tool_entities import ToolParameter, ToolProviderType
 from core.tools.tool_manager import ToolManager
 from core.virtual_environment.__base.entities import Arch, OperatingSystem
