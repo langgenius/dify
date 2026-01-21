@@ -16,7 +16,7 @@ from core.helper.code_executor import CodeExecutor, CodeLanguage
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
 from core.memory.token_buffer_memory import TokenBufferMemory
-from core.model_manager import ModelInstance, ModelManager
+from core.model_manager import ModelInstance
 from core.model_runtime.entities import (
     ImagePromptMessageContent,
     PromptMessage,
@@ -38,11 +38,7 @@ from core.model_runtime.entities.message_entities import (
     SystemPromptMessage,
     UserPromptMessage,
 )
-from core.model_runtime.entities.model_entities import (
-    ModelFeature,
-    ModelPropertyKey,
-    ModelType,
-)
+from core.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
@@ -76,6 +72,7 @@ from core.workflow.node_events import (
 from core.workflow.nodes.base.entities import VariableSelector
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
+from core.workflow.nodes.llm.protocols import CredentialsProvider, ModelFactory
 from core.workflow.runtime import VariablePool
 from extensions.ext_database import db
 from models.dataset import SegmentAttachmentBinding
@@ -93,7 +90,6 @@ from .exc import (
     InvalidVariableTypeError,
     LLMNodeError,
     MemoryRolePrefixRequiredError,
-    ModelNotExistError,
     NoPromptFoundError,
     TemplateTypeNotSupportError,
     VariableNotFoundError,
@@ -118,6 +114,8 @@ class LLMNode(Node[LLMNodeData]):
     _file_outputs: list[File]
 
     _llm_file_saver: LLMFileSaver
+    _credentials_provider: CredentialsProvider
+    _model_factory: ModelFactory
 
     def __init__(
         self,
@@ -126,6 +124,8 @@ class LLMNode(Node[LLMNodeData]):
         graph_init_params: GraphInitParams,
         graph_runtime_state: GraphRuntimeState,
         *,
+        credentials_provider: CredentialsProvider,
+        model_factory: ModelFactory,
         llm_file_saver: LLMFileSaver | None = None,
     ):
         super().__init__(
@@ -136,6 +136,9 @@ class LLMNode(Node[LLMNodeData]):
         )
         # LLM file outputs, used for MultiModal outputs.
         self._file_outputs = []
+
+        self._credentials_provider = credentials_provider
+        self._model_factory = model_factory
 
         if llm_file_saver is None:
             llm_file_saver = FileSaverImpl(
@@ -199,9 +202,8 @@ class LLMNode(Node[LLMNodeData]):
                 node_inputs["#context_files#"] = [file.model_dump() for file in context_files]
 
             # fetch model config
-            model_instance, model_config = LLMNode._fetch_model_config(
+            model_instance, model_config = self._fetch_model_config(
                 node_data_model=self.node_data.model,
-                tenant_id=self.tenant_id,
             )
 
             # fetch memory
@@ -232,7 +234,6 @@ class LLMNode(Node[LLMNodeData]):
                 vision_detail=self.node_data.vision.configs.detail,
                 variable_pool=variable_pool,
                 jinja2_variables=self.node_data.prompt_config.jinja2_variables,
-                tenant_id=self.tenant_id,
                 context_files=context_files,
             )
 
@@ -755,20 +756,17 @@ class LLMNode(Node[LLMNodeData]):
 
         return None
 
-    @staticmethod
     def _fetch_model_config(
+        self,
         *,
         node_data_model: ModelConfig,
-        tenant_id: str,
     ) -> tuple[ModelInstance, ModelConfigWithCredentialsEntity]:
         model, model_config_with_cred = llm_utils.fetch_model_config(
-            tenant_id=tenant_id, node_data_model=node_data_model
+            node_data_model=node_data_model,
+            credentials_provider=self._credentials_provider,
+            model_factory=self._model_factory,
         )
         completion_params = model_config_with_cred.parameters
-
-        model_schema = model.model_type_instance.get_model_schema(node_data_model.name, model.credentials)
-        if not model_schema:
-            raise ModelNotExistError(f"Model {node_data_model.name} not exist.")
 
         model_config_with_cred.parameters = completion_params
         # NOTE(-LAN-): This line modify the `self.node_data.model`, which is used in `_invoke_llm()`.
@@ -789,7 +787,6 @@ class LLMNode(Node[LLMNodeData]):
         vision_detail: ImagePromptMessageContent.DETAIL,
         variable_pool: VariablePool,
         jinja2_variables: Sequence[VariableSelector],
-        tenant_id: str,
         context_files: list[File] | None = None,
     ) -> tuple[Sequence[PromptMessage], Sequence[str] | None]:
         prompt_messages: list[PromptMessage] = []
@@ -965,18 +962,6 @@ class LLMNode(Node[LLMNodeData]):
                 "Please ensure a prompt is properly configured before proceeding."
             )
 
-        model = ModelManager().get_model_instance(
-            tenant_id=tenant_id,
-            model_type=ModelType.LLM,
-            provider=model_config.provider,
-            model=model_config.model,
-        )
-        model_schema = model.model_type_instance.get_model_schema(
-            model=model_config.model,
-            credentials=model.credentials,
-        )
-        if not model_schema:
-            raise ModelNotExistError(f"Model {model_config.model} not exist.")
         return filtered_prompt_messages, model_config.stop
 
     @classmethod

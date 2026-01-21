@@ -24,6 +24,7 @@ from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
 from core.workflow.nodes.llm import LLMNode, LLMNodeChatModelMessage, LLMNodeCompletionModelPromptTemplate, llm_utils
 from core.workflow.nodes.llm.file_saver import FileSaverImpl, LLMFileSaver
+from core.workflow.nodes.llm.protocols import CredentialsProvider, ModelFactory
 from libs.json_in_md_parser import parse_and_check_json_markdown
 
 from .entities import QuestionClassifierNodeData
@@ -49,6 +50,8 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
 
     _file_outputs: list["File"]
     _llm_file_saver: LLMFileSaver
+    _credentials_provider: "CredentialsProvider"
+    _model_factory: "ModelFactory"
 
     def __init__(
         self,
@@ -57,6 +60,8 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
         *,
+        credentials_provider: "CredentialsProvider",
+        model_factory: "ModelFactory",
         llm_file_saver: LLMFileSaver | None = None,
     ):
         super().__init__(
@@ -67,6 +72,9 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
         )
         # LLM file outputs, used for MultiModal outputs.
         self._file_outputs = []
+
+        self._credentials_provider = credentials_provider
+        self._model_factory = model_factory
 
         if llm_file_saver is None:
             llm_file_saver = FileSaverImpl(
@@ -89,8 +97,9 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
         variables = {"query": query}
         # fetch model config
         model_instance, model_config = llm_utils.fetch_model_config(
-            tenant_id=self.tenant_id,
             node_data_model=node_data.model,
+            credentials_provider=self._credentials_provider,
+            model_factory=self._model_factory,
         )
         # fetch memory
         memory = llm_utils.fetch_memory(
@@ -139,7 +148,6 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
             vision_detail=node_data.vision.configs.detail,
             variable_pool=variable_pool,
             jinja2_variables=[],
-            tenant_id=self.tenant_id,
         )
 
         result_text = ""

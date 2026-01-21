@@ -62,9 +62,16 @@ class _RedisSubscription(RedisSubscriptionBase):
         assert self._pubsub is not None
         self._pubsub.unsubscribe(self._topic)
 
-    def _get_message(self) -> dict | None:
+    def _get_message(self) -> dict[str, object] | None:
         assert self._pubsub is not None
         return self._pubsub.get_message(ignore_subscribe_messages=True, timeout=1)
 
+    def _get_subscribe_message(self, timeout: float) -> dict[str, object] | None:
+        assert self._pubsub is not None
+        return self._pubsub.get_message(ignore_subscribe_messages=False, timeout=timeout)
+
     def _get_message_type(self) -> str:
         return "message"
+
+    def _get_subscribe_message_types(self) -> set[str]:
+        return {"subscribe"}

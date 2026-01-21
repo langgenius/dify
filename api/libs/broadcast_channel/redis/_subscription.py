@@ -51,6 +51,7 @@ class RedisSubscriptionBase(Subscription):
                 )
 
             self._subscribe()
+            self._wait_for_subscription()
             _logger.debug("Subscribed to %s channel %s", self._get_subscription_type(), self._topic)
 
             self._listener_thread = threading.Thread(
@@ -127,6 +128,50 @@ class RedisSubscriptionBase(Subscription):
             )
         finally:
             self._pubsub = None
+
+    def _wait_for_subscription(self) -> None:
+        """Wait for the initial subscription message to reduce publish race windows."""
+        pubsub = self._pubsub
+        assert pubsub is not None
+
+        max_attempts = 3
+        for _ in range(max_attempts):
+            if self._closed.is_set():
+                return
+            try:
+                raw_message = self._get_subscribe_message(timeout=0.1)
+            except Exception as e:
+                _logger.error(
+                    "Error while waiting for Redis %s subscription, topic=%s: %s",
+                    self._get_subscription_type(),
+                    self._topic,
+                    e,
+                    exc_info=True,
+                )
+                return
+
+            if raw_message is None:
+                continue
+            channel_field = raw_message.get("channel")
+            if isinstance(channel_field, bytes):
+                channel_name = channel_field.decode("utf-8")
+            elif isinstance(channel_field, str):
+                channel_name = channel_field
+            else:
+                channel_name = str(channel_field)
+
+            if channel_name != self._topic:
+                continue
+
+            message_type = raw_message.get("type")
+            if message_type in self._get_subscribe_message_types():
+                return
+
+            if message_type == self._get_message_type():
+                payload_bytes = raw_message.get("data")
+                if isinstance(payload_bytes, bytes):
+                    self._enqueue_message(payload_bytes)
+                return
 
     def _enqueue_message(self, payload: bytes) -> None:
         """Enqueue a message to the internal queue with dropping behavior."""
@@ -221,10 +266,19 @@ class RedisSubscriptionBase(Subscription):
         """Unsubscribe from the Redis topic using the appropriate command."""
         raise NotImplementedError
 
-    def _get_message(self) -> dict | None:
+    def _get_message(self) -> dict[str, object] | None:
         """Get a message from Redis using the appropriate method."""
+        raise NotImplementedError
+
+    def _get_subscribe_message(self, timeout: float) -> dict[str, object] | None:
+        """Get a subscription-related message from Redis for readiness checks."""
+        del timeout
         raise NotImplementedError
 
     def _get_message_type(self) -> str:
         """Return the expected message type (e.g., 'message' or 'smessage')."""
+        raise NotImplementedError
+
+    def _get_subscribe_message_types(self) -> set[str]:
+        """Return the expected subscribe message types (e.g., 'subscribe' or 'ssubscribe')."""
         raise NotImplementedError
