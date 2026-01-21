@@ -3280,9 +3280,6 @@
     }
   },
   "app/components/workflow/nodes/data-source/panel.tsx": {
-    "style/multiline-ternary": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
@@ -3665,9 +3662,6 @@
     }
   },
   "app/components/workflow/nodes/tool/panel.tsx": {
-    "style/multiline-ternary": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -4221,11 +4215,6 @@
   "i18n/en-US/app-debug.json": {
     "no-irregular-whitespace": {
       "count": 1
-    }
-  },
-  "i18n/en-US/common.json": {
-    "no-irregular-whitespace": {
-      "count": 3
     }
   },
   "i18n/fr-FR/app-debug.json": {

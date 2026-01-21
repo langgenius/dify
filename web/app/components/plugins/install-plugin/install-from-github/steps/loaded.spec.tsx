@@ -32,7 +32,7 @@ vi.mock('../../../card', () => ({
   default: ({ payload, titleLeft }: { payload: Plugin, titleLeft?: React.ReactNode }) => (
     <div data-testid="plugin-card">
       <span data-testid="card-name">{payload.name}</span>
-      {titleLeft && <span data-testid="title-left">{titleLeft}</span>}
+      {!!titleLeft && <span data-testid="title-left">{titleLeft}</span>}
     </div>
   ),
 }))
