@@ -172,6 +172,7 @@
   "usagePage.documentsUploadQuota": "文件上傳配額",
   "usagePage.perMonth": "每月",
   "usagePage.resetsIn": "{{count,number}} 天後重置",
+  "usagePage.storageThresholdTooltip": "儲存空間超過 50 MB 後，將顯示詳細使用情況。",
   "usagePage.teamMembers": "團隊成員",
   "usagePage.triggerEvents": "觸發事件",
   "usagePage.vectorSpace": "知識數據儲存",
