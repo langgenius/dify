@@ -109,10 +109,10 @@ class SandboxBashSession:
         tb: TracebackType | None,
     ) -> bool:
         try:
-            if self._session_id is not None:
-                CliApiSessionManager().delete(self._session_id)
-                logger.debug("Cleaned up SandboxSession session_id=%s", self._session_id)
-                self._session_id = None
+            if self._cli_api_session is not None:
+                CliApiSessionManager().delete(self._cli_api_session.id)
+                logger.debug("Cleaned up SandboxSession session_id=%s", self._cli_api_session.id)
+                self._cli_api_session = None
         except Exception:
             logger.exception("Failed to cleanup SandboxSession")
         return False

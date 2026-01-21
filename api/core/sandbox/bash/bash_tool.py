@@ -18,7 +18,7 @@ from core.virtual_environment.__base.virtual_environment import VirtualEnvironme
 
 from ..utils.debug import sandbox_debug
 
-COMMAND_TIMEOUT_SECONDS = 60
+COMMAND_TIMEOUT_SECONDS = 60 * 60
 
 
 class SandboxBashTool(Tool):
