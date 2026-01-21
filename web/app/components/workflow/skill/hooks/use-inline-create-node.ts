@@ -12,7 +12,7 @@ import {
   useCreateAppAssetFolder,
   useRenameAppAssetNode,
 } from '@/service/use-app-asset'
-import { getFileExtension, isCodeOrTextFile, isMarkdownFile } from '../utils/file-utils'
+import { getFileExtension, isTextLikeFile } from '../utils/file-utils'
 import { createDraftTreeNode, insertDraftTreeNode } from '../utils/tree-utils'
 
 type UseInlineCreateNodeOptions = {
@@ -86,7 +86,7 @@ export function useInlineCreateNode({
             parentId: pendingCreateParentId,
           })
           const extension = getFileExtension(trimmedName, createdFile.extension)
-          if (isMarkdownFile(extension) || isCodeOrTextFile(extension))
+          if (isTextLikeFile(extension))
             storeApi.getState().openTab(createdFile.id, { pinned: true })
           Toast.notify({
             type: 'success',
