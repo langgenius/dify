@@ -61,6 +61,7 @@
   "account.workspaceName": "Workspace Name",
   "account.workspaceNamePlaceholder": "Enter workspace name",
   "actionMsg.copySuccessfully": "Copied successfully",
+  "actionMsg.downloadUnsuccessfully": "Download failed. Please try again later.",
   "actionMsg.generatedSuccessfully": "Generated successfully",
   "actionMsg.generatedUnsuccessfully": "Generated unsuccessfully",
   "actionMsg.modifiedSuccessfully": "Modified successfully",

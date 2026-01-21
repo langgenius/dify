@@ -229,7 +229,7 @@ const DetailHeader = ({
           <div className="flex h-5 items-center">
             <Title title={label[locale]} />
             {verified && !isReadmeView && <Verified className="ml-0.5 h-4 w-4" text={t('marketplace.verifiedTip', { ns: 'plugin' })} />}
-            {version && (
+            {!!version && (
               <PluginVersionPicker
                 disabled={!isFromMarketplace || isReadmeView}
                 isShow={isShow}
@@ -297,7 +297,7 @@ const DetailHeader = ({
                 orgName={author}
                 packageName={name?.includes('/') ? (name.split('/').pop() || '') : name}
               />
-              {source && (
+              {!!source && (
                 <>
                   <div className="system-xs-regular ml-1 mr-0.5 text-text-quaternary">·</div>
                   {source === PluginSource.marketplace && (
