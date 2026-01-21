@@ -63,6 +63,8 @@ type Props = {
   availableNodes?: Node[]
   isSupportFileVar?: boolean
   isSupportSandbox?: boolean
+  promptMetadata?: Record<string, unknown>
+  onPromptMetadataChange?: (metadata: Record<string, unknown>) => void
   isSupportPromptGenerator?: boolean
   onGenerated?: (prompt: string) => void
   modelConfig?: ModelConfig
@@ -104,6 +106,8 @@ const Editor: FC<Props> = ({
   availableNodes = [],
   isSupportFileVar,
   isSupportSandbox,
+  promptMetadata,
+  onPromptMetadataChange,
   isSupportPromptGenerator,
   isSupportJinja,
   editionType,
@@ -298,6 +302,8 @@ const Editor: FC<Props> = ({
                       editable={!readOnly}
                       isSupportFileVar={isSupportFileVar}
                       isSupportSandbox={isSupportSandbox}
+                      toolMetadata={promptMetadata}
+                      onToolMetadataChange={onPromptMetadataChange}
                     />
                     {/* to patch Editor not support dynamic change editable status */}
                     {readOnly && <div className="absolute inset-0 z-10"></div>}

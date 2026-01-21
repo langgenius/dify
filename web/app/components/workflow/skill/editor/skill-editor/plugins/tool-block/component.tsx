@@ -6,6 +6,7 @@ import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import AppIcon from '@/app/components/base/app-icon'
+import Modal from '@/app/components/base/modal'
 import { useSelectOrDelete } from '@/app/components/base/prompt-editor/hooks'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import ToolAuthorizationSection from '@/app/components/plugins/plugin-detail-panel/tool-selector/sections/tool-authorization-section'
@@ -27,6 +28,7 @@ import { canFindTool } from '@/utils'
 import { cn } from '@/utils/classnames'
 import { basePath } from '@/utils/var'
 import { DELETE_TOOL_BLOCK_COMMAND } from './index'
+import { useToolBlockContext } from './tool-block-context'
 import ToolHeader from './tool-header'
 
 type ToolBlockComponentProps = {
@@ -102,6 +104,9 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_TOOL_BLOCK_COMMAND)
   const language = useGetLanguage()
   const { theme } = useTheme()
+  const toolBlockContext = useToolBlockContext()
+  const isUsingExternalMetadata = Boolean(toolBlockContext?.onMetadataChange)
+  const useModal = Boolean(toolBlockContext?.useModal)
   const [isSettingOpen, setIsSettingOpen] = useState(false)
   const [toolValue, setToolValue] = useState<ToolValue | null>(null)
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null)
@@ -154,11 +159,15 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
   }, [currentTool?.description, language, toolValue?.tool_description])
 
   const toolConfigFromMetadata = useMemo(() => {
+    if (isUsingExternalMetadata) {
+      const metadata = toolBlockContext?.metadata as SkillFileMetadata | undefined
+      return metadata?.tools?.[configId]
+    }
     if (!activeTabId)
       return undefined
     const metadata = fileMetadata.get(activeTabId) as SkillFileMetadata | undefined
     return metadata?.tools?.[configId]
-  }, [activeTabId, configId, fileMetadata])
+  }, [activeTabId, configId, fileMetadata, isUsingExternalMetadata, toolBlockContext?.metadata])
 
   const defaultToolValue = useMemo(() => {
     if (!currentProvider || !currentTool)
@@ -244,16 +253,18 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
   }, [configuredToolValue, isSettingOpen])
 
   useEffect(() => {
+    if (useModal)
+      return
     const containerFromRef = ref.current?.closest('[data-skill-editor-root="true"]') as HTMLElement | null
     const fallbackContainer = document.querySelector('[data-skill-editor-root="true"]') as HTMLElement | null
     const container = containerFromRef || fallbackContainer
     if (container)
       // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
       setPortalContainer(container)
-  }, [ref])
+  }, [ref, useModal])
 
   useEffect(() => {
-    if (!isSettingOpen)
+    if (!isSettingOpen || useModal)
       return
 
     const handleClickOutside = (event: MouseEvent) => {
@@ -273,7 +284,7 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
 
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [isSettingOpen, portalContainer, ref])
+  }, [isSettingOpen, portalContainer, ref, useModal])
 
   const displayLabel = label || toolMeta?.label || tool
   const resolvedIcon = (() => {
@@ -316,7 +327,39 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
 
   const handleToolValueChange = (nextValue: ToolValue) => {
     setToolValue(nextValue)
-    if (!activeTabId || !currentProvider || !currentTool)
+    if (!currentProvider || !currentTool)
+      return
+    if (isUsingExternalMetadata) {
+      const metadata = (toolBlockContext?.metadata || {}) as SkillFileMetadata
+      const toolType = currentProvider.type === CollectionType.mcp ? 'mcp' : 'builtin'
+      const buildFields = (value: Record<string, unknown> | undefined) => {
+        if (!value)
+          return []
+        return Object.entries(value).map(([id, field]) => {
+          const fieldValue = field as ToolConfigValueItem | undefined
+          const auto = Boolean(fieldValue?.auto)
+          const rawValue = auto ? null : fieldValue?.value?.value ?? null
+          return { id, value: rawValue, auto }
+        })
+      }
+      const fields = [
+        ...buildFields(nextValue.settings),
+        ...buildFields(nextValue.parameters),
+      ]
+      const nextMetadata: SkillFileMetadata = {
+        ...metadata,
+        tools: {
+          ...(metadata.tools || {}),
+          [configId]: {
+            type: toolType,
+            configuration: { fields },
+          },
+        },
+      }
+      toolBlockContext?.onMetadataChange?.(nextMetadata)
+      return
+    }
+    if (!activeTabId)
       return
     const metadata = (fileMetadata.get(activeTabId) || {}) as SkillFileMetadata
     const toolType = currentProvider.type === CollectionType.mcp ? 'mcp' : 'builtin'
@@ -352,6 +395,30 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
     setToolValue(prev => (prev ? { ...prev, credential_id: id } : prev))
   }
 
+  const toolSettingsContent = currentProvider && currentTool && toolValue && (
+    <>
+      <ToolHeader
+        icon={resolvedIcon}
+        providerLabel={currentProvider.label?.[language] || currentProvider.name || provider}
+        toolLabel={toolValue.tool_label || displayLabel}
+        description={toolDescriptionText}
+        onClose={() => setIsSettingOpen(false)}
+      />
+      <ToolAuthorizationSection
+        currentProvider={currentProvider}
+        credentialId={toolValue.credential_id}
+        onAuthorizationItemClick={handleAuthorizationItemClick}
+      />
+      <ToolSettingsSection
+        currentProvider={currentProvider}
+        currentTool={currentTool}
+        value={toolValue}
+        onChange={handleToolValueChange}
+        nodeId={undefined}
+      />
+    </>
+  )
+
   return (
     <>
       <span
@@ -375,35 +442,25 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
           {displayLabel}
         </span>
       </span>
-      {portalContainer && isSettingOpen && createPortal(
+      {useModal && (
+        <Modal
+          isShow={isSettingOpen}
+          onClose={() => setIsSettingOpen(false)}
+          className="!max-w-[420px] !bg-transparent !p-0"
+          overflowVisible
+        >
+          <div className={cn('relative min-h-20 w-[361px] overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pb-4 shadow-lg backdrop-blur-sm', 'overflow-y-auto pb-2')}>
+            {toolSettingsContent}
+          </div>
+        </Modal>
+      )}
+      {!useModal && portalContainer && isSettingOpen && createPortal(
         <div
           className="absolute bottom-4 right-4 top-4 z-[999]"
           data-tool-setting-panel="true"
         >
           <div className={cn('relative h-full min-h-20 w-[361px] overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pb-4 shadow-lg backdrop-blur-sm', 'overflow-y-auto pb-2')}>
-            {currentProvider && currentTool && toolValue && (
-              <>
-                <ToolHeader
-                  icon={resolvedIcon}
-                  providerLabel={currentProvider.label?.[language] || currentProvider.name || provider}
-                  toolLabel={toolValue.tool_label || displayLabel}
-                  description={toolDescriptionText}
-                  onClose={() => setIsSettingOpen(false)}
-                />
-                <ToolAuthorizationSection
-                  currentProvider={currentProvider}
-                  credentialId={toolValue.credential_id}
-                  onAuthorizationItemClick={handleAuthorizationItemClick}
-                />
-                <ToolSettingsSection
-                  currentProvider={currentProvider}
-                  currentTool={currentTool}
-                  value={toolValue}
-                  onChange={handleToolValueChange}
-                  nodeId={undefined}
-                />
-              </>
-            )}
+            {toolSettingsContent}
           </div>
         </div>,
         portalContainer,

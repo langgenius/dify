@@ -146,6 +146,17 @@ const ConfigPrompt: FC<Props> = ({
     }
   }, [onChange, payload])
 
+  const handleChatModeMetadataChange = useCallback((index: number) => {
+    return (metadata: Record<string, unknown>) => {
+      const newPrompt = produce(payload as PromptTemplateItem[], (draft) => {
+        const item = draft[index]
+        if (!isPromptMessageContext(item))
+          (item as PromptItem).metadata = metadata
+      })
+      onChange(newPrompt)
+    }
+  }, [onChange, payload])
+
   const handleChatModeEditionTypeChange = useCallback((index: number) => {
     return (editionType: EditionType) => {
       const newPrompt = produce(payload as PromptTemplateItem[], (draft) => {
@@ -246,6 +257,13 @@ const ConfigPrompt: FC<Props> = ({
     onChange(newPrompt)
   }, [onChange, payload])
 
+  const handleCompletionMetadataChange = useCallback((metadata: Record<string, unknown>) => {
+    const newPrompt = produce(payload as PromptItem, (draft) => {
+      draft.metadata = metadata
+    })
+    onChange(newPrompt)
+  }, [onChange, payload])
+
   const handleGenerated = useCallback((prompt: string) => {
     handleCompletionPromptChange(prompt)
     setTimeout(() => setControlPromptEditorRerenderKey(Date.now()))
@@ -331,6 +349,7 @@ const ConfigPrompt: FC<Props> = ({
                             isChatApp={isChatApp}
                             payload={item}
                             onPromptChange={handleChatModePromptChange(index)}
+                            onMetadataChange={handleChatModeMetadataChange(index)}
                             onEditionTypeChange={handleChatModeEditionTypeChange(index)}
                             onRemove={handleRemove(index)}
                             isShowContext={isShowContext}
@@ -399,6 +418,8 @@ const ConfigPrompt: FC<Props> = ({
                 title={<span className="capitalize">{t(`${i18nPrefix}.prompt`, { ns: 'workflow' })}</span>}
                 value={((payload as PromptItem).edition_type === EditionType.basic || !(payload as PromptItem).edition_type) ? (payload as PromptItem).text : ((payload as PromptItem).jinja2_text || '')}
                 onChange={handleCompletionPromptChange}
+                promptMetadata={(payload as PromptItem).metadata}
+                onPromptMetadataChange={handleCompletionMetadataChange}
                 readOnly={readOnly}
                 isChatModel={isChatModel}
                 isChatApp={isChatApp}

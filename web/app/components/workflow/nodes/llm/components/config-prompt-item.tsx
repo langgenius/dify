@@ -27,6 +27,7 @@ type Props = {
   payload: PromptItem
   handleChatModeMessageRoleChange: (role: PromptRole) => void
   onPromptChange: (p: string) => void
+  onMetadataChange: (metadata: Record<string, unknown>) => void
   onEditionTypeChange: (editionType: EditionType) => void
   onRemove: () => void
   isShowContext: boolean
@@ -74,6 +75,7 @@ const ConfigPromptItem: FC<Props> = ({
   isChatApp,
   payload,
   onPromptChange,
+  onMetadataChange,
   onEditionTypeChange,
   onRemove,
   isShowContext,
@@ -131,6 +133,8 @@ const ConfigPromptItem: FC<Props> = ({
       )}
       value={payload.edition_type === EditionType.jinja2 ? (payload.jinja2_text || '') : payload.text}
       onChange={onPromptChange}
+      promptMetadata={payload.metadata}
+      onPromptMetadataChange={onMetadataChange}
       readOnly={readOnly}
       showRemove={canRemove}
       onRemove={onRemove}

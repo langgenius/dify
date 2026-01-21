@@ -18,6 +18,7 @@ import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-for
 import ToolPicker from '@/app/components/workflow/block-selector/tool-picker'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { $createToolBlockNode } from './node'
+import { useToolBlockContext } from './tool-block-context'
 
 class ToolPickerMenuOption extends MenuOption {
   constructor() {
@@ -36,6 +37,8 @@ const ToolPickerBlock: FC<ToolPickerBlockProps> = ({ scope = 'all' }) => {
     maxLength: 0,
   })
   const storeApi = useWorkflowStore()
+  const toolBlockContext = useToolBlockContext()
+  const isUsingExternalMetadata = Boolean(toolBlockContext?.onMetadataChange)
 
   const options = useMemo(() => [new ToolPickerMenuOption()], [])
 
@@ -70,6 +73,27 @@ const ToolPickerBlock: FC<ToolPickerBlockProps> = ({ scope = 'all' }) => {
         $insertNodes(nodes)
     })
 
+    if (isUsingExternalMetadata) {
+      const metadata = (toolBlockContext?.metadata || {}) as Record<string, unknown>
+      const nextTools = { ...(metadata.tools || {}) } as Record<string, unknown>
+      toolEntries.forEach(({ configId, tool }) => {
+        const schemas = toolParametersToFormSchemas((tool.paramSchemas || []) as ToolParameter[])
+        const fields = schemas.map(schema => ({
+          id: schema.variable,
+          value: schema.default ?? null,
+          auto: schema.form === 'llm',
+        }))
+        nextTools[configId] = {
+          type: tool.provider_type,
+          configuration: { fields },
+        }
+      })
+      toolBlockContext?.onMetadataChange?.({
+        ...metadata,
+        tools: nextTools,
+      })
+      return
+    }
     const { activeTabId, fileMetadata, setDraftMetadata, pinTab } = storeApi.getState()
     if (!activeTabId)
       return
@@ -92,7 +116,7 @@ const ToolPickerBlock: FC<ToolPickerBlockProps> = ({ scope = 'all' }) => {
       tools: nextTools,
     })
     pinTab(activeTabId)
-  }, [checkForTriggerMatch, editor, storeApi])
+  }, [checkForTriggerMatch, editor, isUsingExternalMetadata, storeApi, toolBlockContext])
 
   const renderMenu = useCallback((
     anchorElementRef: React.RefObject<HTMLElement | null>,
