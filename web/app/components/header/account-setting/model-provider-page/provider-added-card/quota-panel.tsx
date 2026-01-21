@@ -5,7 +5,7 @@ import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AnthropicShortLight, Deepseek, Gemini, Grok, OpenaiSmall, Tongyi } from '@/app/components/base/icons/src/public/llm'
+import { OpenaiSmall } from '@/app/components/base/icons/src/public/llm'
 import Loading from '@/app/components/base/loading'
 import Tooltip from '@/app/components/base/tooltip'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
@@ -19,11 +19,11 @@ import { modelNameMap, ModelProviderQuotaGetPaid } from '../utils'
 
 const allProviders = [
   { key: ModelProviderQuotaGetPaid.OPENAI, Icon: OpenaiSmall },
-  { key: ModelProviderQuotaGetPaid.ANTHROPIC, Icon: AnthropicShortLight },
-  { key: ModelProviderQuotaGetPaid.GEMINI, Icon: Gemini },
-  { key: ModelProviderQuotaGetPaid.X, Icon: Grok },
-  { key: ModelProviderQuotaGetPaid.DEEPSEEK, Icon: Deepseek },
-  { key: ModelProviderQuotaGetPaid.TONGYI, Icon: Tongyi },
+  // { key: ModelProviderQuotaGetPaid.ANTHROPIC, Icon: AnthropicShortLight },
+  // { key: ModelProviderQuotaGetPaid.GEMINI, Icon: Gemini },
+  // { key: ModelProviderQuotaGetPaid.X, Icon: Grok },
+  // { key: ModelProviderQuotaGetPaid.DEEPSEEK, Icon: Deepseek },
+  // { key: ModelProviderQuotaGetPaid.TONGYI, Icon: Tongyi },
 ] as const
 
 // Map provider key to plugin ID
