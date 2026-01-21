@@ -3,7 +3,6 @@ import type { InputProps } from '../input'
 import { RiClipboardFill, RiClipboardLine } from '@remixicon/react'
 import { useClipboard } from 'foxact/use-clipboard'
 import * as React from 'react'
-import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
 import ActionButton from '../action-button'
@@ -35,10 +34,10 @@ const InputWithCopy = React.forwardRef<HTMLInputElement, InputWithCopyProps>((
 
   const { copied, copy, reset } = useClipboard()
 
-  const handleCopy = useCallback(() => {
+  const handleCopy = () => {
     copy(finalCopyValue)
     onCopy?.(finalCopyValue)
-  }, [copy, finalCopyValue, onCopy])
+  }
 
   return (
     <div className={cn('relative w-full', wrapperClassName)}>
