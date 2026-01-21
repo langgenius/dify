@@ -65,7 +65,7 @@
   "plansCommon.annotatedResponse.title": "Batas Kuota Anotasi {{count,number}}",
   "plansCommon.annotatedResponse.tooltip": "Pengeditan manual dan anotasi respons memberikan kemampuan menjawab pertanyaan berkualitas tinggi yang dapat disesuaikan untuk aplikasi. (Hanya berlaku di aplikasi Chat)",
   "plansCommon.annotationQuota": "Kuota Anotasi",
-  "plansCommon.annualBilling": "Penagihan Tahunan",
+  "plansCommon.annualBilling": "Penagihan tahunan, hemat {{percent}}%",
   "plansCommon.apiRateLimit": "Batas Tarif API",
   "plansCommon.apiRateLimitTooltip": "Batas Tarif API berlaku untuk semua permintaan yang dibuat melalui Dify API, termasuk pembuatan teks, percakapan obrolan, eksekusi alur kerja, dan pemrosesan dokumen.",
   "plansCommon.apiRateLimitUnit": "{{count,number}}",
