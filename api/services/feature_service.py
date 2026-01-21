@@ -232,11 +232,11 @@ class FeatureService:
     @classmethod
     def _fulfill_trial_models_from_env(cls) -> list[str]:
         return [
-            provider
+            provider.value
             for provider in HostedTrialProvider
             if (
-                getattr(dify_config, f"HOSTED_{provider.upper()}_PAID_ENABLED", False)
-                and getattr(dify_config, f"HOSTED_{provider.upper()}_TRIAL_ENABLED", False)
+                getattr(dify_config, f"HOSTED_{provider.config_key}_PAID_ENABLED", False)
+                and getattr(dify_config, f"HOSTED_{provider.config_key}_TRIAL_ENABLED", False)
             )
         ]
 
