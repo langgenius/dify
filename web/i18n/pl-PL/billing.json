@@ -172,6 +172,7 @@
   "usagePage.documentsUploadQuota": "Limit przesyłania dokumentów",
   "usagePage.perMonth": "miesięcznie",
   "usagePage.resetsIn": "Resetuje się za {{count,number}} dni",
+  "usagePage.storageThresholdTooltip": "Szczegółowe użycie jest wyświetlane, gdy przestrzeń dyskowa przekracza 50 MB.",
   "usagePage.teamMembers": "Członkowie zespołu",
   "usagePage.triggerEvents": "Wydarzenia wyzwalające",
   "usagePage.vectorSpace": "Magazynowanie danych wiedzy",

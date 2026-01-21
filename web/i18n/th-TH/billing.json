@@ -172,6 +172,7 @@
   "usagePage.documentsUploadQuota": "โควต้าการอัปโหลดเอกสาร",
   "usagePage.perMonth": "ต่อเดือน",
   "usagePage.resetsIn": "รีเซ็ตในอีก {{count,number}} วัน",
+  "usagePage.storageThresholdTooltip": "รายละเอียดการใช้งานจะแสดงเมื่อพื้นที่จัดเก็บเกิน 50 MB",
   "usagePage.teamMembers": "สมาชิกในทีม",
   "usagePage.triggerEvents": "เหตุการณ์กระตุ้น",
   "usagePage.vectorSpace": "การจัดเก็บข้อมูลความรู้",

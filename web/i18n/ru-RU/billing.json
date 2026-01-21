@@ -172,6 +172,7 @@
   "usagePage.documentsUploadQuota": "Квота на загрузку документов",
   "usagePage.perMonth": "в месяц",
   "usagePage.resetsIn": "Сброс через {{count,number}} дней",
+  "usagePage.storageThresholdTooltip": "Подробные данные об использовании отображаются после превышения 50 МБ хранилища.",
   "usagePage.teamMembers": "Члены команды",
   "usagePage.triggerEvents": "Триггерные события",
   "usagePage.vectorSpace": "Хранилище данных знаний",
