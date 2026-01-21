@@ -805,6 +805,7 @@
   "nodes.tool.contextGenerate.run": "Run",
   "nodes.tool.contextGenerate.running": "Running",
   "nodes.tool.contextGenerate.subtitle": "Assemble multiple variables into one from previous nodes",
+  "nodes.tool.contextGenerate.suggestedQuestionsTitle": "Suggested Questions",
   "nodes.tool.contextGenerate.title": "Assemble Variables",
   "nodes.tool.inputVars": "Input Variables",
   "nodes.tool.insertPlaceholder1": "Type or press",

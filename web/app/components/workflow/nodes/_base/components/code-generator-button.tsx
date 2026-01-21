@@ -1,10 +1,11 @@
 'use client'
 import type { FC } from 'react'
 import type { CodeLanguage } from '../../code/types'
+import type { ContextGenerateModalHandle } from '../../tool/components/context-generate-modal'
 import type { GenRes } from '@/service/debug'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import { GetCodeGeneratorResModal } from '@/app/components/app/configuration/config/code-generator/get-code-generator-res'
 import { ActionButton } from '@/app/components/base/action-button'
 import { Generator } from '@/app/components/base/icons/src/vender/other'
@@ -32,6 +33,7 @@ const CodeGenerateBtn: FC<Props> = ({
 }) => {
   const [showAutomatic, { setTrue: showAutomaticTrue, setFalse: showAutomaticFalse }] = useBoolean(false)
   const nodes = useStore(s => s.nodes)
+  const contextGenerateModalRef = useRef<ContextGenerateModalHandle>(null)
   const handleAutomaticRes = useCallback((res: GenRes) => {
     onGenerated?.(res.modified)
     showAutomaticFalse()
@@ -64,11 +66,20 @@ const CodeGenerateBtn: FC<Props> = ({
     }
   }, [nodeId, nodes, parseExtractorNodeId])
 
+  const handleOpenAutomatic = useCallback(() => {
+    showAutomaticTrue()
+    if (!contextGenerateConfig)
+      return
+    setTimeout(() => {
+      contextGenerateModalRef.current?.onOpen()
+    }, 0)
+  }, [contextGenerateConfig, showAutomaticTrue])
+
   return (
     <div className={cn(className)}>
       <ActionButton
         className="hover:bg-[#155EFF]/8"
-        onClick={showAutomaticTrue}
+        onClick={handleOpenAutomatic}
       >
         <Generator className="h-4 w-4 text-primary-600" />
       </ActionButton>
@@ -76,6 +87,7 @@ const CodeGenerateBtn: FC<Props> = ({
         contextGenerateConfig
           ? (
               <ContextGenerateModal
+                ref={contextGenerateModalRef}
                 isShow={showAutomatic}
                 onClose={showAutomaticFalse}
                 toolNodeId={contextGenerateConfig.toolNodeId}

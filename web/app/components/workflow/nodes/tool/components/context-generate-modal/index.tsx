@@ -1,5 +1,4 @@
 'use client'
-import type { FC } from 'react'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { TriggerProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/trigger'
 import type { CodeNodeType, OutputVar } from '@/app/components/workflow/nodes/code/types'
@@ -9,7 +8,7 @@ import { RiArrowDownSLine, RiArrowRightLine, RiCheckLine, RiCloseLine, RiRefresh
 import { useEventListener, useSessionStorageState, useSize } from 'ahooks'
 import useBoolean from 'ahooks/lib/useBoolean'
 import * as React from 'react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Button from '@/app/components/base/button'
@@ -32,7 +31,8 @@ import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { NodeRunningStatus, VarType } from '@/app/components/workflow/types'
 import { renderI18nObject } from '@/i18n-config'
-import { generateContext } from '@/service/debug'
+import { languages } from '@/i18n-config/language'
+import { fetchContextGenerateSuggestedQuestions, generateContext } from '@/service/debug'
 import { AppModeEnum } from '@/types/app'
 import { cn } from '@/utils/classnames'
 import useContextGenData from './use-context-gen-data'
@@ -47,6 +47,10 @@ type Props = {
 
 type ContextGenerateChatMessage = ContextGenerateMessage & {
   durationMs?: number
+}
+
+export type ContextGenerateModalHandle = {
+  onOpen: () => void
 }
 
 const minCodeHeight = 80
@@ -93,13 +97,13 @@ const mapOutputsToResponse = (outputs?: OutputVar) => {
   return next
 }
 
-const ContextGenerateModal: FC<Props> = ({
+const ContextGenerateModal = forwardRef<ContextGenerateModalHandle, Props>(({
   isShow,
   onClose,
   toolNodeId,
   paramKey,
   codeNodeId,
-}) => {
+}, ref) => {
   const { t, i18n } = useTranslation()
   const configsMap = useHooksStore(s => s.configsMap)
   const nodes = useStore(s => s.nodes)
@@ -149,7 +153,22 @@ const ContextGenerateModal: FC<Props> = ({
     { defaultValue: [] },
   )
 
+  const [suggestedQuestions, setSuggestedQuestions] = useSessionStorageState<string[]>(
+    `${storageKey}-suggested-questions`,
+    { defaultValue: [] },
+  )
+  const [hasFetchedSuggestions, setHasFetchedSuggestions] = useSessionStorageState<boolean>(
+    `${storageKey}-suggested-questions-fetched`,
+    { defaultValue: false },
+  )
+  const [isFetchingSuggestions, { setTrue: setFetchingSuggestionsTrue, setFalse: setFetchingSuggestionsFalse }] = useBoolean(false)
+  const suggestedQuestionsAbortControllerRef = useRef<AbortController | null>(null)
+
   const language = useMemo(() => (i18n.language || 'en-US').replace('-', '_'), [i18n.language])
+  const promptLanguage = useMemo(() => {
+    const matched = languages.find(item => item.value === i18n.language)
+    return matched?.prompt_name || 'English'
+  }, [i18n.language])
   const [inputValue, setInputValue] = useState('')
   const [isGenerating, { setTrue: setGeneratingTrue, setFalse: setGeneratingFalse }] = useBoolean(false)
   const [modelOverride, setModelOverride] = useState<Model | null>(() => {
@@ -213,6 +232,8 @@ const ContextGenerateModal: FC<Props> = ({
   const hasHistory = (versions?.length ?? 0) > 0 || promptMessageCount > 0
   const isInitView = !isGenerating && !hasHistory
   const defaultAssistantMessage = t('nodes.tool.contextGenerate.defaultAssistantMessage', { ns: 'workflow' })
+  const shouldShowSuggestedSkeleton = isInitView && !hasFetchedSuggestions
+  const suggestedQuestionsSafe = suggestedQuestions ?? []
   const suggestedSkeletonItems = useMemo(() => ([
     0,
     1,
@@ -254,6 +275,95 @@ const ContextGenerateModal: FC<Props> = ({
     setInputValue('')
     clearVersions()
   }, [clearVersions, isGenerating, setPromptMessages])
+
+  const handleSuggestedQuestionClick = useCallback((question: string) => {
+    setInputValue(question)
+  }, [])
+
+  const handleFetchSuggestedQuestions = useCallback(async () => {
+    if (!flowId || !toolNodeId || !paramKey)
+      return
+    if (!model.name || !model.provider)
+      return
+    if (hasFetchedSuggestions || isFetchingSuggestions || !isInitView)
+      return
+
+    setFetchingSuggestionsTrue()
+    let shouldMarkFetched = true
+    suggestedQuestionsAbortControllerRef.current?.abort()
+    try {
+      const response = await fetchContextGenerateSuggestedQuestions({
+        workflow_id: flowId,
+        node_id: toolNodeId,
+        parameter_name: paramKey,
+        language: promptLanguage,
+        model_config: {
+          provider: model.provider,
+          name: model.name,
+          completion_params: model.completion_params,
+        },
+      }, (abortController) => {
+        suggestedQuestionsAbortControllerRef.current = abortController
+      })
+
+      if (response.error) {
+        shouldMarkFetched = false
+        Toast.notify({
+          type: 'error',
+          message: t('modal.errors.networkError', { ns: 'pluginTrigger' }),
+        })
+        setSuggestedQuestions([])
+        return
+      }
+
+      const nextQuestions = (response.questions || []).filter(question => question && question.trim())
+      setSuggestedQuestions(nextQuestions)
+    }
+    catch (error) {
+      if (String(error).includes('AbortError')) {
+        shouldMarkFetched = false
+        return
+      }
+      shouldMarkFetched = false
+      Toast.notify({
+        type: 'error',
+        message: t('modal.errors.networkError', { ns: 'pluginTrigger' }),
+      })
+      setSuggestedQuestions([])
+    }
+    finally {
+      if (shouldMarkFetched)
+        setHasFetchedSuggestions(true)
+      setFetchingSuggestionsFalse()
+    }
+  }, [
+    flowId,
+    hasFetchedSuggestions,
+    isFetchingSuggestions,
+    isInitView,
+    model.completion_params,
+    model.name,
+    model.provider,
+    paramKey,
+    promptLanguage,
+    setFetchingSuggestionsFalse,
+    setFetchingSuggestionsTrue,
+    setHasFetchedSuggestions,
+    setSuggestedQuestions,
+    t,
+    toolNodeId,
+  ])
+
+  const handleCloseModal = useCallback(() => {
+    suggestedQuestionsAbortControllerRef.current?.abort()
+    onClose()
+  }, [onClose])
+
+  useImperativeHandle(ref, () => ({
+    onOpen: () => {
+      void handleFetchSuggestedQuestions()
+    },
+  }), [handleFetchSuggestedQuestions])
 
   const renderModelTrigger = useCallback((params: TriggerProps) => {
     const label = params.currentModel?.label
@@ -396,8 +506,8 @@ const ContextGenerateModal: FC<Props> = ({
     })
 
     if (closeOnApply)
-      onClose()
-  }, [codeNodeData, codeNodeId, current, handleNodeDataUpdateWithSyncDraft, onClose])
+      handleCloseModal()
+  }, [codeNodeData, codeNodeId, current, handleCloseModal, handleNodeDataUpdateWithSyncDraft])
 
   const handleRun = useCallback(() => {
     if (!codeNodeId)
@@ -475,7 +585,7 @@ const ContextGenerateModal: FC<Props> = ({
   return (
     <Modal
       isShow={isShow}
-      onClose={onClose}
+      onClose={handleCloseModal}
       className={cn(
         'max-w-[calc(100vw-32px)] border-[0.5px] border-components-panel-border bg-background-body !p-0 shadow-xl shadow-shadow-shadow-5',
         isInitView ? 'w-[1280px]' : 'w-[1200px]',
@@ -565,14 +675,27 @@ const ContextGenerateModal: FC<Props> = ({
                   </div>
                   <div className="flex flex-col gap-px px-2">
                     <div className="flex items-center px-3 pb-2 pt-4">
-                      <SkeletonRectangle className="h-3 w-20" />
+                      <span className="text-xs font-semibold uppercase text-text-tertiary">
+                        {t('nodes.tool.contextGenerate.suggestedQuestionsTitle', { ns: 'workflow' })}
+                      </span>
                     </div>
                     <div className="flex flex-col gap-1 px-3">
-                      {suggestedSkeletonItems.map(item => (
+                      {shouldShowSuggestedSkeleton && suggestedSkeletonItems.map(item => (
                         <SkeletonRow key={item} className="py-1">
                           <div className="h-4 w-4 rounded-sm bg-divider-subtle opacity-60" />
                           <SkeletonRectangle className="h-3 w-[260px]" />
                         </SkeletonRow>
+                      ))}
+                      {!shouldShowSuggestedSkeleton && suggestedQuestionsSafe.map((question, index) => (
+                        <button
+                          key={`${question}-${index}`}
+                          type="button"
+                          className="flex items-start gap-2 rounded-lg px-2 py-1 text-left text-sm text-text-secondary transition hover:bg-state-base-hover"
+                          onClick={() => handleSuggestedQuestionClick(question)}
+                        >
+                          <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-divider-regular" />
+                          <span className="flex-1 whitespace-pre-wrap">{question}</span>
+                        </button>
                       ))}
                     </div>
                   </div>
@@ -716,7 +839,7 @@ const ContextGenerateModal: FC<Props> = ({
         >
           {isInitView && (
             <div className="flex h-10 items-center justify-end px-3 py-1">
-              <ActionButton size="m" className="!h-8 !w-8" onClick={onClose}>
+              <ActionButton size="m" className="!h-8 !w-8" onClick={handleCloseModal}>
                 <RiCloseLine className="h-4 w-4 text-text-tertiary" />
               </ActionButton>
             </div>
@@ -804,7 +927,7 @@ const ContextGenerateModal: FC<Props> = ({
                   {t('nodes.tool.contextGenerate.apply', { ns: 'workflow' })}
                 </Button>
                 <div className="mx-1 h-4 w-px bg-divider-regular" />
-                <ActionButton size="m" className="!h-8 !w-8" onClick={onClose}>
+                <ActionButton size="m" className="!h-8 !w-8" onClick={handleCloseModal}>
                   <RiCloseLine className="h-4 w-4 text-text-tertiary" />
                 </ActionButton>
               </div>
@@ -897,6 +1020,8 @@ const ContextGenerateModal: FC<Props> = ({
       </div>
     </Modal>
   )
-}
+})
+
+ContextGenerateModal.displayName = 'ContextGenerateModal'
 
 export default React.memo(ContextGenerateModal)

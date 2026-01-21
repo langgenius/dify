@@ -58,6 +58,23 @@ export type ContextGenerateResponse = {
   error: string
 }
 
+export type ContextGenerateSuggestedQuestionsRequest = {
+  workflow_id: string
+  node_id: string
+  parameter_name: string
+  language: string
+  model_config: {
+    provider: string
+    name: string
+    completion_params?: CompletionParams
+  }
+}
+
+export type ContextGenerateSuggestedQuestionsResponse = {
+  questions: string[]
+  error: string
+}
+
 export type TextGenerationMessageFile = FileEntity & {
   belongs_to?: 'assistant' | 'user' | string
 }
@@ -146,6 +163,18 @@ export const generateRule = (body: Record<string, unknown>) => {
 export const generateContext = (body: ContextGenerateRequest) => {
   return post<ContextGenerateResponse>('/context-generate', {
     body,
+  })
+}
+
+export const fetchContextGenerateSuggestedQuestions = (
+  body: ContextGenerateSuggestedQuestionsRequest,
+  getAbortController?: (abortController: AbortController) => void,
+) => {
+  return post<ContextGenerateSuggestedQuestionsResponse>('/context-generate/suggested-questions', {
+    body,
+  }, {
+    getAbortController,
+    silent: true,
   })
 }
 

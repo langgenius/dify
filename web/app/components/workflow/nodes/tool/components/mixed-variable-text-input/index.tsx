@@ -1,3 +1,4 @@
+import type { ContextGenerateModalHandle } from '../context-generate-modal'
 import type { DetectedAgent } from './hooks'
 import type { AgentNode, WorkflowVariableBlockType } from '@/app/components/base/prompt-editor/types'
 import type { StrategyDetail, StrategyPluginDetail } from '@/app/components/plugins/types'
@@ -13,6 +14,7 @@ import {
   memo,
   useCallback,
   useMemo,
+  useRef,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -91,6 +93,7 @@ const MixedVariableTextInput = ({
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const [isSubGraphModalOpen, setIsSubGraphModalOpen] = useState(false)
   const [isContextGenerateModalOpen, setIsContextGenerateModalOpen] = useState(false)
+  const contextGenerateModalRef = useRef<ContextGenerateModalHandle>(null)
 
   const nodesByIdMap = useMemo(() => {
     return availableNodes.reduce((acc, node) => {
@@ -319,6 +322,9 @@ const MixedVariableTextInput = ({
     onChange?.(assemblePlaceholder, VarKindTypeEnum.mixed, null)
     setControlPromptEditorRerenderKey(Date.now())
     setIsContextGenerateModalOpen(true)
+    setTimeout(() => {
+      contextGenerateModalRef.current?.onOpen()
+    }, 0)
     return [extractorNodeId, 'result']
   }, [assembleExtractorNodeId, assemblePlaceholder, ensureAssembleExtractorNode, onChange, paramKey, setControlPromptEditorRerenderKey, toolNodeId])
 
@@ -439,6 +445,7 @@ const MixedVariableTextInput = ({
       )}
       {toolNodeId && paramKey && (
         <ContextGenerateModal
+          ref={contextGenerateModalRef}
           isShow={isContextGenerateModalOpen}
           onClose={handleCloseContextGenerateModal}
           toolNodeId={toolNodeId}
