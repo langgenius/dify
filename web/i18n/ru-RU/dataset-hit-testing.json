@@ -3,7 +3,7 @@
   "dateTimeFormat": "DD.MM.YYYY HH:mm",
   "desc": "Проверьте эффективность поиска в базе знаний на основе заданного текста запроса.",
   "hit.emptyTip": "Результаты тестирования поиска будут отображаться здесь",
-  "hit.title": "НАЙДЕННЫЕ АБЗАЦЫ",
+  "hit.title": "{{num}} найденные абзацы",
   "hitChunks": "Попадание {{num}} дочерних чанков",
   "imageUploader.dropZoneTip": "Перетащите файл сюда для загрузки",
   "imageUploader.singleChunkAttachmentLimitTooltip": "Количество одноэлементных вложений не может превышать {{limit}}",

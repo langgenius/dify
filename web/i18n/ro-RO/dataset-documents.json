@@ -26,6 +26,7 @@
   "list.action.archive": "Arhivează",
   "list.action.batchAdd": "Adăugare în lot",
   "list.action.delete": "Șterge",
+  "list.action.download": "Descarcă",
   "list.action.enableWarning": "Fișierul arhivat nu poate fi activat",
   "list.action.pause": "Pauză",
   "list.action.resume": "Reia",
