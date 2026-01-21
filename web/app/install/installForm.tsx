@@ -14,6 +14,7 @@ import { zodSubmitValidator } from '@/app/components/base/form/utils/zod-submit-
 import Input from '@/app/components/base/input'
 import { validPassword } from '@/config'
 
+import { LICENSE_LINK } from '@/constants/link'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { fetchInitValidateStatus, fetchSetupStatus, login, setup } from '@/service/common'
 import { cn } from '@/utils/classnames'
@@ -217,7 +218,7 @@ const InstallForm = () => {
                     className="text-text-accent"
                     target="_blank"
                     rel="noopener noreferrer"
-                    href="https://github.com/langgenius/dify?tab=License-1-ov-file#readme"
+                    href={LICENSE_LINK}
                   >
                     {t('license.link', { ns: 'login' })}
                   </Link>

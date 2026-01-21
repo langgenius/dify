@@ -8,6 +8,7 @@ import Button from '@/app/components/base/button'
 import { SimpleSelect } from '@/app/components/base/select'
 import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
+import { LICENSE_LINK } from '@/constants/link'
 import { languages, LanguagesSupported } from '@/i18n-config/language'
 import { useOneMoreStep } from '@/service/use-common'
 import { timezones } from '@/utils/timezone'
@@ -156,7 +157,7 @@ const OneMoreStep = () => {
               className="system-xs-medium text-text-accent-secondary"
               target="_blank"
               rel="noopener noreferrer"
-              href="https://github.com/langgenius/dify?tab=License-1-ov-file#readme"
+              href={LICENSE_LINK}
             >
               {t('license.link', { ns: 'login' })}
             </Link>

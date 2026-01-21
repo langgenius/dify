@@ -11,6 +11,7 @@ import Input from '@/app/components/base/input'
 import Loading from '@/app/components/base/loading'
 import { SimpleSelect } from '@/app/components/base/select'
 import Toast from '@/app/components/base/toast'
+import { LICENSE_LINK } from '@/constants/link'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { setLocaleOnClient } from '@/i18n-config'
 import { languages, LanguagesSupported } from '@/i18n-config/language'
@@ -159,7 +160,7 @@ export default function InviteSettingsPage() {
             className="system-xs-medium text-text-accent-secondary"
             target="_blank"
             rel="noopener noreferrer"
-            href="https://github.com/langgenius/dify?tab=License-1-ov-file#readme"
+            href={LICENSE_LINK}
           >
             {t('license.link', { ns: 'login' })}
           </Link>
