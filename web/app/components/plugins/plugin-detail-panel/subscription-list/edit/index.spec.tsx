@@ -196,7 +196,7 @@ vi.mock('@/app/components/base/modal/modal', () => ({
           {extraButtonText}
         </button>
       )}
-      {bottomSlot && <div data-testid="modal-bottom-slot">{bottomSlot}</div>}
+      {!!bottomSlot && <div data-testid="modal-bottom-slot">{bottomSlot}</div>}
     </div>
   ),
 }))

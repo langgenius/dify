@@ -26,6 +26,7 @@
   "list.action.archive": "아카이브",
   "list.action.batchAdd": "일괄 추가",
   "list.action.delete": "삭제",
+  "list.action.download": "다운로드",
   "list.action.enableWarning": "아카이브된 파일은 활성화할 수 없습니다.",
   "list.action.pause": "일시 중지",
   "list.action.resume": "재개",
