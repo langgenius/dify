@@ -20,27 +20,11 @@ from core.tools.entities.tool_entities import (
 )
 from core.tools.errors import ToolInvokeError
 from factories.file_factory import build_from_mapping
-from libs.login import current_user
 from models import Account, Tenant
 from models.model import App, EndUser
 from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
-
-
-def _try_resolve_user_from_request() -> Account | EndUser | None:
-    """
-    Try to resolve user from Flask request context.
-
-    Returns None if not in a request context or if user is not available.
-    """
-    # Note: `current_user` is a LocalProxy. Never compare it with None directly.
-    # Use _get_current_object() to dereference the proxy
-    user = getattr(current_user, "_get_current_object", lambda: current_user)()
-    # Check if we got a valid user object
-    if user is not None and hasattr(user, "id"):
-        return user
-    return None
 
 
 class WorkflowTool(Tool):
@@ -223,12 +207,6 @@ class WorkflowTool(Tool):
         Returns:
             Account | EndUser | None: The resolved user object, or None if resolution fails.
         """
-        # Try to resolve user from request context first
-        user = _try_resolve_user_from_request()
-        if user is not None:
-            return user
-
-        # Fall back to database resolution
         return self._resolve_user_from_database(user_id=user_id)
 
     def _resolve_user_from_database(self, user_id: str) -> Account | EndUser | None:
