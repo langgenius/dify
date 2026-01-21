@@ -5,7 +5,7 @@
 
 ## Key Decisions
 - Sandbox metadata is gathered during `_construct_environment` using the E2B SDK before returning `Metadata`.
-- Architecture/OS detection uses a single `uname -m -s` call split into two lines to reduce round-trips.
+- Architecture/OS detection uses a single `uname -m -s` call split by whitespace to reduce round-trips.
 - Command execution streams stdout/stderr through `QueueTransportReadCloser`; stdin is unsupported.
 
 ## Edge Cases

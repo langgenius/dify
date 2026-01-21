@@ -132,12 +132,18 @@ class E2BEnvironment(VirtualEnvironment):
             envs=dict(environments),
         )
         info = sandbox.get_info(api_key=options.get(self.OptionsKey.API_KEY, ""))
-        system_info = sandbox.commands.run("uname -m -s").stdout.splitlines()
+        system_info = sandbox.commands.run("uname -m -s").stdout.strip()
+        system_parts = system_info.split()
+        if len(system_parts) == 2:
+            os_part, arch_part = system_parts
+        else:
+            arch_part = system_parts[0]
+            os_part = system_parts[1] if len(system_parts) > 1 else ""
 
         return Metadata(
             id=info.sandbox_id,
-            arch=self._convert_architecture(system_info[0].strip()),
-            os=self._convert_operating_system(system_info[1].strip()),
+            arch=self._convert_architecture(arch_part.strip()),
+            os=self._convert_operating_system(os_part.strip()),
             store={
                 self.StoreKey.SANDBOX: sandbox,
             },
