@@ -350,7 +350,7 @@
   "modelProvider.card.quota": "QUOTA",
   "modelProvider.card.quotaExhausted": "Quota exhausted",
   "modelProvider.card.removeKey": "Remove API Key",
-  "modelProvider.card.tip": "Message Credits supports models from OpenAI, Anthropic, Gemini, xAI, DeepSeek and Tongyi. Priority will be given to the paid quota. The free quota will be used after the paid quota is exhausted.",
+  "modelProvider.card.tip": "Message Credits supports models from OpenAI. Priority will be given to the paid quota. The free quota will be used after the paid quota is exhausted.",
   "modelProvider.card.tokens": "Tokens",
   "modelProvider.collapse": "Collapse",
   "modelProvider.config": "Config",
