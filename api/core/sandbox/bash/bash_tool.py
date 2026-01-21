@@ -1,7 +1,7 @@
 from collections.abc import Generator
 from typing import Any
 
-from core.sandbox.constants import DIFY_CLI_CONFIG_FILENAME
+from core.sandbox.entities import DifyCli
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.common_entities import I18nObject
@@ -79,7 +79,7 @@ class SandboxBashTool(Tool):
                 if self._tools_path:
                     environments = {
                         "PATH": f"{self._tools_path}:/usr/local/bin:/usr/bin:/bin",
-                        "DIFY_CLI_CONFIG": self._tools_path + f"/{DIFY_CLI_CONFIG_FILENAME}",
+                        "DIFY_CLI_CONFIG": self._tools_path + f"/{DifyCli.CONFIG_FILENAME}",
                     }
                 future = submit_command(
                     self._sandbox,

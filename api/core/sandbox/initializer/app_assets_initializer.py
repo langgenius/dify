@@ -6,7 +6,7 @@ from core.virtual_environment.__base.virtual_environment import VirtualEnvironme
 from extensions.ext_storage import storage
 from extensions.storage.file_presign_storage import FilePresignStorage
 
-from ..constants import APP_ASSETS_PATH, APP_ASSETS_ZIP_PATH
+from ..entities import AppAssets
 from .base import SandboxInitializer
 
 logger = logging.getLogger(__name__)
@@ -26,11 +26,11 @@ class AppAssetsInitializer(SandboxInitializer):
 
         (
             pipeline(env)
-            .add(["wget", "-q", download_url, "-O", APP_ASSETS_ZIP_PATH], error_message="Failed to download assets zip")
+            .add(["wget", "-q", download_url, "-O", AppAssets.ZIP_PATH], error_message="Failed to download assets zip")
             # unzip with silent error and return 1 if the zip is empty
             # FIXME(Mairuis): should use a more robust way to check if the zip is empty
             .add(
-                ["sh", "-c", f"unzip {APP_ASSETS_ZIP_PATH} -d {APP_ASSETS_PATH} 2>/dev/null || [ $? -eq 1 ]"],
+                ["sh", "-c", f"unzip {AppAssets.ZIP_PATH} -d {AppAssets.PATH} 2>/dev/null || [ $? -eq 1 ]"],
                 error_message="Failed to unzip assets",
             )
             .execute(timeout=APP_ASSETS_DOWNLOAD_TIMEOUT, raise_on_error=True)
@@ -55,12 +55,12 @@ class DraftAppAssetsInitializer(SandboxInitializer):
 
         (
             pipeline(env)
-            .add(["rm", "-rf", APP_ASSETS_PATH])
-            .add(["wget", "-q", download_url, "-O", APP_ASSETS_ZIP_PATH], error_message="Failed to download assets zip")
+            .add(["rm", "-rf", AppAssets.PATH])
+            .add(["wget", "-q", download_url, "-O", AppAssets.ZIP_PATH], error_message="Failed to download assets zip")
             # unzip with silent error and return 1 if the zip is empty
             # FIXME(Mairuis): should use a more robust way to check if the zip is empty
             .add(
-                ["sh", "-c", f"unzip {APP_ASSETS_ZIP_PATH} -d {APP_ASSETS_PATH} 2>/dev/null || [ $? -eq 1 ]"],
+                ["sh", "-c", f"unzip {AppAssets.ZIP_PATH} -d {AppAssets.PATH} 2>/dev/null || [ $? -eq 1 ]"],
                 error_message="Failed to unzip assets",
             )
             .execute(timeout=APP_ASSETS_DOWNLOAD_TIMEOUT, raise_on_error=True)

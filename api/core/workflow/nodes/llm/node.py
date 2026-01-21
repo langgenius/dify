@@ -50,8 +50,8 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
-from core.sandbox import SandboxBashSession, SandboxManager
-from core.sandbox.vm import SandboxBuilder
+from core.sandbox import Sandbox
+from core.sandbox.bash.session import SandboxBashSession
 from core.tools.__base.tool import Tool
 from core.tools.signature import sign_upload_file
 from core.tools.tool_manager import ToolManager
@@ -64,7 +64,6 @@ from core.variables import (
     ObjectSegment,
     StringSegment,
 )
-from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.entities import GraphInitParams, ToolCall, ToolResult, ToolResultStatus
 from core.workflow.entities.tool_entities import ToolCallResult
@@ -173,19 +172,6 @@ class LLMNode(Node[LLMNodeData]):
     @classmethod
     def version(cls) -> str:
         return "1"
-
-    # FIXME(Mairuis): should read sandbox from workflow run context...
-    def _get_sandbox(self) -> VirtualEnvironment | None:
-        workflow_execution_id = self.graph_runtime_state.variable_pool.system_variables.workflow_execution_id
-        if not workflow_execution_id:
-            return None
-        sandbox_by_workflow_run_id = SandboxManager.get(workflow_execution_id)
-        if sandbox_by_workflow_run_id is not None:
-            return sandbox_by_workflow_run_id
-        sandbox_by_draft_id = SandboxManager.get(SandboxBuilder.draft_id(self.user_id))
-        if sandbox_by_draft_id is not None:
-            return sandbox_by_draft_id
-        return None
 
     def _run(self) -> Generator:
         node_inputs: dict[str, Any] = {}
@@ -301,8 +287,7 @@ class LLMNode(Node[LLMNodeData]):
             generation_data: LLMGenerationData | None = None
             structured_output: LLMStructuredOutput | None = None
 
-            # FIXME(Mairuis): should read sandbox from workflow run context...
-            sandbox = self._get_sandbox()
+            sandbox = self.graph_runtime_state.sandbox
             if sandbox:
                 generator = self._invoke_llm_with_sandbox(
                     sandbox=sandbox,
@@ -1839,7 +1824,7 @@ class LLMNode(Node[LLMNodeData]):
 
     def _invoke_llm_with_sandbox(
         self,
-        sandbox: VirtualEnvironment,
+        sandbox: Sandbox,
         model_instance: ModelInstance,
         prompt_messages: Sequence[PromptMessage],
         stop: Sequence[str] | None,
@@ -1849,23 +1834,14 @@ class LLMNode(Node[LLMNodeData]):
 
         result: LLMGenerationData | None = None
 
-        with SandboxBashSession(
-            sandbox=sandbox,
-            tenant_id=self.tenant_id,
-            user_id=self.user_id,
-            node_id=self.id,
-            app_id=self.app_id,
-            # FIXME(Mairuis): should read from workflow run context...
-            assets_id=getattr(self, "assets_id", ""),
-            allow_tools=allow_tools,
-        ) as sandbox_session:
+        with SandboxBashSession(sandbox=sandbox, node_id=self.id, allow_tools=allow_tools) as session:
             prompt_files = self._extract_prompt_files(variable_pool)
             model_features = self._get_model_features(model_instance)
 
             strategy = StrategyFactory.create_strategy(
                 model_features=model_features,
                 model_instance=model_instance,
-                tools=[sandbox_session.bash_tool],
+                tools=[session.bash_tool],
                 files=prompt_files,
                 max_iterations=self._node_data.max_iterations or 100,
                 agent_strategy=AgentEntity.Strategy.FUNCTION_CALLING,

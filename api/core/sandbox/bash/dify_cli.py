@@ -14,7 +14,7 @@ from core.tools.entities.tool_entities import ToolParameter, ToolProviderType
 from core.tools.tool_manager import ToolManager
 from core.virtual_environment.__base.entities import Arch, OperatingSystem
 
-from ..constants import DIFY_CLI_PATH_PATTERN
+from ..entities import DifyCli
 
 if TYPE_CHECKING:
     from core.tools.__base.tool import Tool
@@ -44,7 +44,7 @@ class DifyCliLocator:
             self._root = api_root / "bin"
 
     def resolve(self, operating_system: OperatingSystem, arch: Arch) -> DifyCliBinary:
-        filename = DIFY_CLI_PATH_PATTERN.format(os=operating_system.value, arch=arch.value)
+        filename = DifyCli.PATH_PATTERN.format(os=operating_system.value, arch=arch.value)
         candidate = self._root / filename
         if not candidate.is_file():
             raise FileNotFoundError(

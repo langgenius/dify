@@ -23,7 +23,7 @@ from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.models.document import Document
-from core.sandbox.vm import SandboxBuilder, SandboxType
+from core.sandbox import SandboxBuilder, SandboxType
 from core.tools.utils.system_encryption import encrypt_system_params
 from events.app_event import app_was_created
 from extensions.ext_database import db

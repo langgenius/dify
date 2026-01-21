@@ -6,44 +6,32 @@ from .bash.dify_cli import (
     DifyCliToolConfig,
 )
 from .bash.session import SandboxBashSession
-from .constants import (
-    APP_ASSETS_PATH,
-    APP_ASSETS_ZIP_PATH,
-    DIFY_CLI_CONFIG_FILENAME,
-    DIFY_CLI_GLOBAL_TOOLS_PATH,
-    DIFY_CLI_PATH,
-    DIFY_CLI_PATH_PATTERN,
-    DIFY_CLI_ROOT,
-    DIFY_CLI_TOOLS_ROOT,
-)
+from .builder import SandboxBuilder, VMConfig
+from .entities import AppAssets, DifyCli, SandboxProviderApiEntity, SandboxType
 from .initializer import AppAssetsInitializer, DifyCliInitializer, SandboxInitializer
 from .manager import SandboxManager
+from .sandbox import Sandbox
 from .storage import ArchiveSandboxStorage, SandboxStorage
 from .utils.debug import sandbox_debug
 from .utils.encryption import create_sandbox_config_encrypter, masked_config
-from .vm import SandboxBuilder, SandboxType, VMConfig
 
 __all__ = [
-    "APP_ASSETS_PATH",
-    "APP_ASSETS_ZIP_PATH",
-    "DIFY_CLI_CONFIG_FILENAME",
-    "DIFY_CLI_GLOBAL_TOOLS_PATH",
-    "DIFY_CLI_PATH",
-    "DIFY_CLI_PATH_PATTERN",
-    "DIFY_CLI_ROOT",
-    "DIFY_CLI_TOOLS_ROOT",
+    "AppAssets",
     "AppAssetsInitializer",
     "ArchiveSandboxStorage",
+    "DifyCli",
     "DifyCliBinary",
     "DifyCliConfig",
     "DifyCliEnvConfig",
     "DifyCliInitializer",
     "DifyCliLocator",
     "DifyCliToolConfig",
+    "Sandbox",
     "SandboxBashSession",
     "SandboxBuilder",
     "SandboxInitializer",
     "SandboxManager",
+    "SandboxProviderApiEntity",
     "SandboxStorage",
     "SandboxType",
     "VMConfig",

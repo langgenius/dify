@@ -6,8 +6,14 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from constants import HIDDEN_VALUE
-from core.sandbox import SandboxBuilder, SandboxType, VMConfig, create_sandbox_config_encrypter, masked_config
-from core.sandbox.entities import SandboxProviderApiEntity
+from core.sandbox import (
+    SandboxBuilder,
+    SandboxProviderApiEntity,
+    SandboxType,
+    VMConfig,
+    create_sandbox_config_encrypter,
+    masked_config,
+)
 from core.sandbox.entities.providers import SandboxProviderEntity
 from core.tools.utils.system_encryption import decrypt_system_params
 from extensions.ext_database import db
@@ -206,7 +212,6 @@ class SandboxProviderService:
         raise ValueError(f"No system default provider configured for tenant {tenant_id}")
 
     @classmethod
-    def create_sandbox_builder(cls, tenant_id: str) -> SandboxBuilder:
+    def get_sandbox_provider(cls, tenant_id: str) -> SandboxProviderEntity:
         with Session(db.engine, expire_on_commit=False) as session:
-            active_config = cls.get_active_sandbox_config(session, tenant_id)
-            return SandboxBuilder(tenant_id, SandboxType(active_config.provider_type)).options(active_config.config)
+            return cls.get_active_sandbox_config(session, tenant_id)
