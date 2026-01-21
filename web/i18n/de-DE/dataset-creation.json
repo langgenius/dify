@@ -68,7 +68,7 @@
   "stepOne.website.resetAll": "Alles zurücksetzen",
   "stepOne.website.run": "Laufen",
   "stepOne.website.running": "Ausgeführte",
-  "stepOne.website.scrapTimeInfo": "Insgesamt {{{total}} Seiten innerhalb von {{time}}s gescrapt",
+  "stepOne.website.scrapTimeInfo": "Insgesamt {{total}} Seiten innerhalb von {{time}}s gescrapt",
   "stepOne.website.selectAll": "Alles auswählen",
   "stepOne.website.totalPageScraped": "Gesamtzahl der gescrapten Seiten:",
   "stepOne.website.unknownError": "Unbekannter Fehler",
