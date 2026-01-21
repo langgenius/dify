@@ -361,9 +361,7 @@ class TestDuplicateDocumentIndexingTasks:
         # Re-query segments from database using captured IDs to avoid stale ORM instances
         for seg_id in segment_ids:
             deleted_segment = (
-                db_session_with_containers.query(DocumentSegment)
-                .where(DocumentSegment.id == seg_id)
-                .first()
+                db_session_with_containers.query(DocumentSegment).where(DocumentSegment.id == seg_id).first()
             )
             assert deleted_segment is None
 

@@ -30,9 +30,7 @@ def disable_annotation_reply_task(job_id: str, app_id: str, tenant_id: str):
             return
 
         app_annotation_setting = (
-            session.query(AppAnnotationSetting)
-            .where(AppAnnotationSetting.app_id == app_id)
-            .first()
+            session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).first()
         )
 
         if not app_annotation_setting:

@@ -474,6 +474,7 @@ class TraceTask:
                 if cls._workflow_run_repo is None:
                     # Lazy import to avoid circular import during module initialization
                     from repositories.factory import DifyAPIRepositoryFactory
+
                     session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
                     cls._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
         return cls._workflow_run_repo

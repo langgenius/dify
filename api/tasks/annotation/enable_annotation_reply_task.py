@@ -50,9 +50,7 @@ def enable_annotation_reply_task(
                 embedding_provider_name, embedding_model_name, "annotation"
             )
             annotation_setting = (
-                session.query(AppAnnotationSetting)
-                .where(AppAnnotationSetting.app_id == app_id)
-                .first()
+                session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).first()
             )
             if annotation_setting:
                 if dataset_collection_binding.id != annotation_setting.collection_binding_id:

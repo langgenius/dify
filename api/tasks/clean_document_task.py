@@ -65,10 +65,10 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
                             storage.delete(image_file.key)
                         except Exception:
                             logger.exception(
-                                    "Delete image_files failed when storage deleted, \
+                                "Delete image_files failed when storage deleted, \
                                                   image_upload_file_is: %s",
-                                    image_file.id,
-                                )
+                                image_file.id,
+                            )
 
                     image_file_delete_stmt = delete(UploadFile).where(UploadFile.id.in_(image_upload_file_ids))
                     session.execute(image_file_delete_stmt)
@@ -100,7 +100,8 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
                 session.execute(attachment_file_delete_stmt)
 
                 binding_delete_stmt = delete(SegmentAttachmentBinding).where(
-                    SegmentAttachmentBinding.id.in_(binding_ids))
+                    SegmentAttachmentBinding.id.in_(binding_ids)
+                )
                 session.execute(binding_delete_stmt)
 
             # delete dataset metadata binding

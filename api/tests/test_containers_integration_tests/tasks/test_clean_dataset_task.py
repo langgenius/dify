@@ -420,9 +420,7 @@ class TestCleanDatasetTask:
         assert len(remaining_metadata) == 0
 
         remaining_bindings = (
-            db_session_with_containers.query(DatasetMetadataBinding)
-            .filter_by(dataset_id=dataset.id)
-            .all()
+            db_session_with_containers.query(DatasetMetadataBinding).filter_by(dataset_id=dataset.id).all()
         )
         assert len(remaining_bindings) == 0
 
@@ -481,9 +479,7 @@ class TestCleanDatasetTask:
             assert len(remaining_documents) == 0
 
             remaining_segments = (
-                db_session_with_containers.query(DocumentSegment)
-                .filter_by(dataset_id=dataset.id)
-                .all()
+                db_session_with_containers.query(DocumentSegment).filter_by(dataset_id=dataset.id).all()
             )
             assert len(remaining_segments) == 0
 
@@ -626,9 +622,7 @@ class TestCleanDatasetTask:
         # Check that all image files were deleted from database
         image_file_ids = [f.id for f in image_files]
         remaining_image_files = (
-            db_session_with_containers.query(UploadFile)
-            .where(UploadFile.id.in_(image_file_ids))
-            .all()
+            db_session_with_containers.query(UploadFile).where(UploadFile.id.in_(image_file_ids)).all()
         )
         assert len(remaining_image_files) == 0
 
@@ -752,9 +746,7 @@ class TestCleanDatasetTask:
         assert len(remaining_metadata) == 0
 
         remaining_bindings = (
-            db_session_with_containers.query(DatasetMetadataBinding)
-            .filter_by(dataset_id=dataset.id)
-            .all()
+            db_session_with_containers.query(DatasetMetadataBinding).filter_by(dataset_id=dataset.id).all()
         )
         assert len(remaining_bindings) == 0
 

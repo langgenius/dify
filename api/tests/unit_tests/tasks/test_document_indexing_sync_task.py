@@ -119,6 +119,7 @@ def mock_db_session():
 
         def _exit_side_effect(*args, **kwargs):
             session.close()
+
         cm.__exit__.side_effect = _exit_side_effect
         mock_sf.create_session.return_value = cm
 

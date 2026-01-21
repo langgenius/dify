@@ -104,6 +104,7 @@ def mock_db_session():
 
         def _exit_side_effect(*args, **kwargs):
             session.close()
+
         cm.__exit__.side_effect = _exit_side_effect
         mock_sf.create_session.return_value = cm
 
@@ -228,6 +229,7 @@ class TestDuplicateDocumentIndexingTaskCore:
                 m.all.return_value = mock_document_segments
             _scalars_side_effect._calls += 1
             return m
+
         mock_db_session.scalars.side_effect = _scalars_side_effect
 
         # Act
@@ -304,6 +306,7 @@ class TestDuplicateDocumentIndexingTaskCore:
                 m.all.return_value = []
             _scalars_side_effect._calls += 1
             return m
+
         mock_db_session.scalars.side_effect = _scalars_side_effect
         mock_features = mock_feature_service.get_features.return_value
         mock_features.billing.enabled = True
@@ -345,6 +348,7 @@ class TestDuplicateDocumentIndexingTaskCore:
                 m.all.return_value = []
             _scalars_side_effect._calls += 1
             return m
+
         mock_db_session.scalars.side_effect = _scalars_side_effect
         mock_indexing_runner.run.side_effect = Exception("Indexing error")
 
@@ -380,6 +384,7 @@ class TestDuplicateDocumentIndexingTaskCore:
                 m.all.return_value = []
             _scalars_side_effect._calls += 1
             return m
+
         mock_db_session.scalars.side_effect = _scalars_side_effect
         mock_indexing_runner.run.side_effect = DocumentIsPausedError("Document paused")
 
@@ -416,6 +421,7 @@ class TestDuplicateDocumentIndexingTaskCore:
                 m.all.return_value = mock_document_segments
             _scalars_side_effect._calls += 1
             return m
+
         mock_db_session.scalars.side_effect = _scalars_side_effect
         mock_processor = mock_index_processor_factory.return_value.init_index_processor.return_value
 

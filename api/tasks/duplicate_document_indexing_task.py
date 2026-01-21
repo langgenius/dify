@@ -107,10 +107,7 @@ def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[st
             except Exception as e:
                 documents = list(
                     session.scalars(
-                        select(Document).where(
-                            Document.id.in_(document_ids),
-                            Document.dataset_id == dataset_id
-                        )
+                        select(Document).where(Document.id.in_(document_ids), Document.dataset_id == dataset_id)
                     ).all()
                 )
                 for document in documents:
@@ -124,10 +121,7 @@ def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[st
 
             documents = list(
                 session.scalars(
-                    select(Document).where(
-                        Document.id.in_(document_ids),
-                        Document.dataset_id == dataset_id
-                    )
+                    select(Document).where(Document.id.in_(document_ids), Document.dataset_id == dataset_id)
                 ).all()
             )
 
