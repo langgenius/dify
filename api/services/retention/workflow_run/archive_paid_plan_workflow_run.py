@@ -115,9 +115,6 @@ class WorkflowRunArchiver:
         "workflow_trigger_logs",
     ]
 
-    start_from: datetime.datetime | None
-    end_before: datetime.datetime
-
     def __init__(
         self,
         days: int = 90,
