@@ -109,8 +109,8 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
         </div>
       </div>
 
-      <div className="flex w-full items-center gap-x-0.5">
-        <div className="grow">
+      <div className="flex w-full items-center gap-x-0.5 pr-8">
+        <div className="min-w-0 grow">
           {/* Placeholder Info */}
           {isPlaceholderVariable && (
             <VariableBlock
@@ -123,13 +123,13 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
             />
           )}
           {!isPlaceholderVariable && (
-            <div className="system-xs-medium text-text-quaternary">{formInput.placeholder.value}</div>
+            <div className="system-xs-medium max-w-full truncate text-text-quaternary">{formInput.placeholder.value}</div>
           )}
         </div>
 
         {/* Actions */}
         {!readonly && (
-          <div className="hidden h-full shrink-0 items-center space-x-1 pr-8 group-hover:flex">
+          <div className="hidden h-full shrink-0 items-center space-x-1 group-hover:flex">
             <div className="flex h-full items-center" ref={editBtnRef}>
               <ActionButton size="s">
                 <RiEditLine className="size-4 text-text-tertiary" />
