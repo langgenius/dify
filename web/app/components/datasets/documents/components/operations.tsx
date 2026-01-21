@@ -1,8 +1,10 @@
 import type { OperationName } from '../types'
 import type { CommonResponse } from '@/models/common'
+import type { DocumentDownloadResponse } from '@/service/datasets'
 import {
   RiArchive2Line,
   RiDeleteBinLine,
+  RiDownload2Line,
   RiEditLine,
   RiEqualizer2Line,
   RiLoopLeftLine,
@@ -29,6 +31,7 @@ import {
   useDocumentArchive,
   useDocumentDelete,
   useDocumentDisable,
+  useDocumentDownload,
   useDocumentEnable,
   useDocumentPause,
   useDocumentResume,
@@ -39,6 +42,7 @@ import {
 } from '@/service/knowledge/use-document'
 import { asyncRunSafe } from '@/utils'
 import { cn } from '@/utils/classnames'
+import { downloadUrl } from '@/utils/download'
 import s from '../style.module.css'
 import RenameModal from './rename-modal'
 
@@ -71,7 +75,7 @@ const Operations = ({
   scene = 'list',
   className = '',
 }: OperationsProps) => {
-  const { id, enabled = false, archived = false, data_source_type, display_status } = detail || {}
+  const { id, name, enabled = false, archived = false, data_source_type, display_status } = detail || {}
   const [showModal, setShowModal] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const { notify } = useContext(ToastContext)
@@ -82,6 +86,7 @@ const Operations = ({
   const { mutateAsync: enableDocument } = useDocumentEnable()
   const { mutateAsync: disableDocument } = useDocumentDisable()
   const { mutateAsync: deleteDocument } = useDocumentDelete()
+  const { mutateAsync: downloadDocument, isPending: isDownloading } = useDocumentDownload()
   const { mutateAsync: syncDocument } = useSyncDocument()
   const { mutateAsync: syncWebsite } = useSyncWebsite()
   const { mutateAsync: generateSummary } = useDocumentSummary()
@@ -164,6 +169,24 @@ const Operations = ({
     onUpdate()
   }, [onUpdate])
 
+  const handleDownload = useCallback(async () => {
+    // Avoid repeated clicks while the signed URL request is in-flight.
+    if (isDownloading)
+      return
+
+    // Request a signed URL first (it points to `/files/<id>/file-preview?...&as_attachment=true`).
+    const [e, res] = await asyncRunSafe<DocumentDownloadResponse>(
+      downloadDocument({ datasetId, documentId: id }) as Promise<DocumentDownloadResponse>,
+    )
+    if (e || !res?.url) {
+      notify({ type: 'error', message: t('actionMsg.downloadUnsuccessfully', { ns: 'common' }) })
+      return
+    }
+
+    // Trigger download without navigating away (helps avoid duplicate downloads in some browsers).
+    downloadUrl({ url: res.url, fileName: name })
+  }, [datasetId, downloadDocument, id, isDownloading, name, notify, t])
+
   return (
     <div className="flex items-center" onClick={e => e.stopPropagation()}>
       {isListScene && !embeddingAvailable && (
@@ -220,6 +243,20 @@ const Operations = ({
                       <RiEditLine className="h-4 w-4 text-text-tertiary" />
                       <span className={s.actionName}>{t('list.table.rename', { ns: 'datasetDocuments' })}</span>
                     </div>
+                    {data_source_type === DataSourceType.FILE && (
+                      <div
+                        className={s.actionItem}
+                        onClick={(evt) => {
+                          evt.preventDefault()
+                          evt.stopPropagation()
+                          evt.nativeEvent.stopImmediatePropagation?.()
+                          handleDownload()
+                        }}
+                      >
+                        <RiDownload2Line className="h-4 w-4 text-text-tertiary" />
+                        <span className={s.actionName}>{t('list.action.download', { ns: 'datasetDocuments' })}</span>
+                      </div>
+                    )}
                     {['notion_import', DataSourceType.WEB].includes(data_source_type) && (
                       <div className={s.actionItem} onClick={() => onOperate('sync')}>
                         <RiLoopLeftLine className="h-4 w-4 text-text-tertiary" />
@@ -229,6 +266,23 @@ const Operations = ({
                     <div className={s.actionItem} onClick={() => onOperate('summary')}>
                       <SearchLinesSparkle className="h-4 w-4 text-text-tertiary" />
                       <span className={s.actionName}>{t('list.action.summary', { ns: 'datasetDocuments' })}</span>
+                    </div>
+                    <Divider className="my-1" />
+                  </>
+                )}
+                {archived && data_source_type === DataSourceType.FILE && (
+                  <>
+                    <div
+                      className={s.actionItem}
+                      onClick={(evt) => {
+                        evt.preventDefault()
+                        evt.stopPropagation()
+                        evt.nativeEvent.stopImmediatePropagation?.()
+                        handleDownload()
+                      }}
+                    >
+                      <RiDownload2Line className="h-4 w-4 text-text-tertiary" />
+                      <span className={s.actionName}>{t('list.action.download', { ns: 'datasetDocuments' })}</span>
                     </div>
                     <Divider className="my-1" />
                   </>

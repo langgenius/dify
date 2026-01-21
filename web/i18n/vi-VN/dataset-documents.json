@@ -26,6 +26,7 @@
   "list.action.archive": "Lưu trữ",
   "list.action.batchAdd": "Thêm hàng loạt",
   "list.action.delete": "Xóa",
+  "list.action.download": "Tải xuống",
   "list.action.enableWarning": "Tệp đã lưu trữ không thể được kích hoạt",
   "list.action.pause": "Tạm dừng",
   "list.action.resume": "Tiếp tục",

@@ -26,6 +26,7 @@
   "list.action.archive": "归档",
   "list.action.batchAdd": "批量添加",
   "list.action.delete": "删除",
+  "list.action.download": "下载",
   "list.action.enableWarning": "归档的文件无法启用",
   "list.action.pause": "暂停",
   "list.action.resume": "恢复",
