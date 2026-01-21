@@ -30,7 +30,7 @@ def clean_workflow_runs_task() -> None:
     with redis_client.lock(
         "retention:clean_workflow_runs_task",
         timeout=dify_config.SANDBOX_EXPIRED_RECORDS_CLEAN_TASK_LOCK_TTL,
-        blocking=False
+        blocking=False,
     ):
         WorkflowRunCleanup(
             days=dify_config.SANDBOX_EXPIRED_RECORDS_RETENTION_DAYS,

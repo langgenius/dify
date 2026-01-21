@@ -34,9 +34,7 @@ def clean_messages():
         # Create and run the cleanup service
         # lock the task to avoid concurrent execution in case of the future data volume growth
         with redis_client.lock(
-            "retention:clean_messages",
-            timeout=dify_config.SANDBOX_EXPIRED_RECORDS_CLEAN_TASK_LOCK_TTL,
-            blocking=False
+            "retention:clean_messages", timeout=dify_config.SANDBOX_EXPIRED_RECORDS_CLEAN_TASK_LOCK_TTL, blocking=False
         ):
             service = MessagesCleanService.from_days(
                 policy=policy,
