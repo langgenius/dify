@@ -1,7 +1,8 @@
-import type { EmailConfig } from '../../types'
+import type { EmailConfig, FormInputItem } from '../../types'
 import type {
   Node,
   NodeOutPutVar,
+  ValueSelector,
 } from '@/app/components/workflow/types'
 import { RiArrowRightSFill, RiCloseLine } from '@remixicon/react'
 import { noop, unionBy } from 'es-toolkit/compat'
@@ -36,6 +37,7 @@ type EmailConfigureModalProps = {
   onClose: () => void
   config?: EmailConfig
   formContent?: string
+  formInputs?: FormInputItem[]
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
 }
@@ -69,6 +71,7 @@ const EmailSenderModal = ({
   onClose,
   config,
   formContent,
+  formInputs,
   nodesOutputVars = [],
   availableNodes = [],
 }: EmailConfigureModalProps) => {
@@ -86,8 +89,14 @@ const EmailSenderModal = ({
   const accounts = members?.accounts || []
 
   const generatedInputs = useMemo(() => {
+    const placeholderValueSelectors = (formInputs || []).reduce((acc, input) => {
+      if (input.placeholder.type === 'variable') {
+        acc.push(input.placeholder.selector)
+      }
+      return acc
+    }, [] as ValueSelector[])
     const valueSelectors = doGetInputVars((formContent || '') + (config?.body || ''))
-    const variables = unionBy(valueSelectors, item => item.join('.')).map((item) => {
+    const variables = unionBy([...valueSelectors, ...placeholderValueSelectors], item => item.join('.')).map((item) => {
       const varInfo = getNodeInfoById(availableNodes, item[0])?.data
 
       return {
@@ -120,7 +129,7 @@ const EmailSenderModal = ({
       }
     })
     return varInputs
-  }, [availableNodes, config?.body, formContent, nodesOutputVars])
+  }, [availableNodes, config?.body, formContent, formInputs, nodesOutputVars])
 
   const [inputs, setInputs] = useState<Record<string, unknown>>({})
   const [collapsed, setCollapsed] = useState(true)

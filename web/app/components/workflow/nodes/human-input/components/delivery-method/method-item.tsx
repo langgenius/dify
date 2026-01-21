@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import type { DeliveryMethod, EmailConfig } from '../../types'
+import type { DeliveryMethod, EmailConfig, FormInputItem } from '../../types'
 import type {
   Node,
   NodeOutPutVar,
@@ -33,6 +33,7 @@ type DeliveryMethodItemProps = {
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
   formContent?: string
+  formInputs?: FormInputItem[]
   onChange: (method: DeliveryMethod) => void
   onDelete: (type: DeliveryMethodType) => void
   readonly?: boolean
@@ -44,6 +45,7 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
   nodesOutputVars,
   availableNodes,
   formContent,
+  formInputs,
   onChange,
   onDelete,
   readonly,
@@ -187,6 +189,7 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
           isShow={showTestEmailModal}
           config={method.config as EmailConfig}
           formContent={formContent}
+          formInputs={formInputs}
           nodesOutputVars={nodesOutputVars}
           availableNodes={availableNodes}
           onClose={() => setShowTestEmailModal(false)}

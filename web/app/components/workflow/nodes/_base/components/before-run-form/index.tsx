@@ -4,6 +4,7 @@ import type { Props as FormProps } from './form'
 import type { Emoji } from '@/app/components/tools/types'
 import type { SpecialResultPanelProps } from '@/app/components/workflow/run/special-result-panel'
 import type { NodeRunningStatus } from '@/app/components/workflow/types'
+import type { HumanInputFormData } from '@/types/workflow'
 import * as React from 'react'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -35,7 +36,7 @@ export type BeforeRunFormProps = {
   showGeneratedForm?: boolean
   handleShowGeneratedForm?: (data: Record<string, any>) => void
   handleHideGeneratedForm?: () => void
-  formData?: any
+  formData?: HumanInputFormData
   handleSubmitHumanInputForm?: (data: any) => Promise<void>
   handleAfterHumanInputStepRun?: () => void
 } & Partial<SpecialResultPanelProps>

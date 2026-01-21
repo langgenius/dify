@@ -1,9 +1,9 @@
 'use client'
-import type { FormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
+import type { HumanInputFormData } from '@/types/workflow'
 import { RiArrowLeftLine } from '@remixicon/react'
 import * as React from 'react'
-import { useState } from 'react'
 
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import ContentItem from '@/app/components/base/chat/chat/answer/human-input-content/content-item'
@@ -11,11 +11,7 @@ import { getButtonStyle, initializeInputs, splitByOutputVar } from '@/app/compon
 
 type Props = {
   nodeName: string
-  data: {
-    form_content: string
-    inputs: FormInputItem[]
-    actions: UserAction[]
-  }
+  data: HumanInputFormData
   showBackButton?: boolean
   handleBack?: () => void
   onSubmit?: (data: any) => Promise<void>
@@ -67,6 +63,7 @@ const FormContent = ({
             formInputFields={data.inputs}
             inputs={inputs}
             onInputChange={handleInputsChange}
+            resolvedPlaceholderValues={data.resolved_placeholder_values}
           />
         ))}
         <div className="flex flex-wrap gap-1 py-1">

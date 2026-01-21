@@ -89,6 +89,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
         nodeId={id}
         value={inputs.delivery_methods || []}
         formContent={inputs.form_content}
+        formInputs={inputs.inputs}
         nodesOutputVars={availableVars}
         availableNodes={availableNodesWithParent}
         onChange={handleDeliveryMethodChange}

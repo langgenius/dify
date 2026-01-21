@@ -1,4 +1,4 @@
-import type { DeliveryMethod, DeliveryMethodType } from '../../types'
+import type { DeliveryMethod, DeliveryMethodType, FormInputItem } from '../../types'
 import type {
   Node,
   NodeOutPutVar,
@@ -19,6 +19,7 @@ type Props = {
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
   formContent?: string
+  formInputs?: FormInputItem[]
   onChange: (value: DeliveryMethod[]) => void
   readonly?: boolean
 }
@@ -29,6 +30,7 @@ const DeliveryMethodForm: React.FC<Props> = ({
   nodesOutputVars,
   availableNodes,
   formContent,
+  formInputs,
   onChange,
   readonly,
 }) => {
@@ -95,6 +97,7 @@ const DeliveryMethodForm: React.FC<Props> = ({
               nodesOutputVars={nodesOutputVars}
               availableNodes={availableNodes}
               formContent={formContent}
+              formInputs={formInputs}
               readonly={readonly}
             />
           ))}

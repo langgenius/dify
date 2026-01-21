@@ -1,6 +1,7 @@
 import type { HumanInputNodeType } from '../types'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import type { InputVar } from '@/app/components/workflow/types'
+import type { HumanInputFormData } from '@/types/workflow'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -28,13 +29,19 @@ const useSingleRunFormParams = ({
   const { t } = useTranslation()
   const { inputs } = useNodeCrud<HumanInputNodeType>(id, payload)
   const [showGeneratedForm, setShowGeneratedForm] = useState(false)
-  const [formData, setFormData] = useState<any>(null)
+  const [formData, setFormData] = useState<HumanInputFormData | null>(null)
   const [requiredInputs, setRequiredInputs] = useState<Record<string, any>>()
   const generatedInputs = useMemo(() => {
+    const placeholderInputs = inputs.inputs.reduce((acc, input) => {
+      if (input.placeholder.type === 'variable') {
+        acc.push(...getInputVars([`{{#${input.placeholder.selector.join('.')}#}}`]))
+      }
+      return acc
+    }, [] as InputVar[])
     if (!inputs.form_content)
-      return []
-    return getInputVars([inputs.form_content]).filter(item => !isOutput(item.value_selector || []))
-  }, [getInputVars, inputs.form_content])
+      return placeholderInputs
+    return [...placeholderInputs, ...getInputVars([inputs.form_content]).filter(item => !isOutput(item.value_selector || []))]
+  }, [getInputVars, inputs.form_content, inputs.inputs])
 
   const forms = useMemo(() => {
     const forms: FormProps[] = [{
