@@ -113,10 +113,21 @@ class SandboxBuilder:
             assets_id=self._assets_id,
         )
 
+        """
+        # Run synchronous initializers before marking sandbox as ready.
+        """
+        for init in self._initializers:
+            if init.async_initialize():
+                continue
+            init.initialize(sandbox)
+
         # Run sandbox setup asynchronously so workflow execution can proceed.
         def initialize() -> None:
             try:
                 for init in self._initializers:
+                    if not init.async_initialize():
+                        continue
+
                     if sandbox.is_cancelled():
                         return
                     init.initialize(sandbox)
