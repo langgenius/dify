@@ -35,6 +35,7 @@ type EmailConfigureModalProps = {
   deliveryId: string
   isShow: boolean
   onClose: () => void
+  jumpToEmailConfigModal: () => void
   config?: EmailConfig
   formContent?: string
   formInputs?: FormInputItem[]
@@ -69,6 +70,7 @@ const EmailSenderModal = ({
   deliveryId,
   isShow,
   onClose,
+  jumpToEmailConfigModal,
   config,
   formContent,
   formInputs,
@@ -293,7 +295,9 @@ const EmailSenderModal = ({
             <Trans
               i18nKey={`${i18nPrefix}.deliveryMethod.emailSender.tip`}
               ns="workflow"
-              components={{ strong: <span className="system-xs-regular text-text-accent"></span> }}
+              components={{
+                strong: <span onClick={jumpToEmailConfigModal} className="system-xs-regular cursor-pointer text-text-accent"></span>,
+              }}
             />
           </div>
         </>

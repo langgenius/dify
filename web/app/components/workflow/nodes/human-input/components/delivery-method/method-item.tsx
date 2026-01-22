@@ -11,7 +11,7 @@ import {
   RiRobot2Fill,
   RiSendPlane2Line,
 } from '@remixicon/react'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge/index'
@@ -79,6 +79,11 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
     }
     return t(`${i18nPrefix}.deliveryMethod.emailSender.testSendTip`, { ns: 'workflow' })
   }, [method.type, method.config?.debug_mode, t, email])
+
+  const jumpToEmailConfigModal = useCallback(() => {
+    setShowTestEmailModal(false)
+    setShowEmailModal(true)
+  }, [])
 
   return (
     <>
@@ -193,6 +198,7 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
           nodesOutputVars={nodesOutputVars}
           availableNodes={availableNodes}
           onClose={() => setShowTestEmailModal(false)}
+          jumpToEmailConfigModal={jumpToEmailConfigModal}
         />
       )}
     </>
