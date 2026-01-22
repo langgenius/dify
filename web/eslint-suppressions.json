@@ -100,8 +100,11 @@
     }
   },
   "app/(humanInputLayout)/form/[token]/form.tsx": {
+    "react-hooks-extra/no-direct-set-state-in-use-effect": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
-      "count": 7
+      "count": 4
     }
   },
   "app/(shareLayout)/components/splash.tsx": {

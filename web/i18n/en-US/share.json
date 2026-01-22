@@ -61,6 +61,7 @@
   "humanInput.completed": "Seems like this request was dealt with elsewhere.",
   "humanInput.expirationTime": "This action will expire {{relativeTime}}.",
   "humanInput.expired": "Seems like this request has expired.",
+  "humanInput.formNotFound": "Form not found.",
   "humanInput.recorded": "Your input has been recorded.",
   "humanInput.sorry": "Sorry!",
   "humanInput.submissionID": "submission_id: {{id}}",

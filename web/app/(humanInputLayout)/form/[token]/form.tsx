@@ -1,12 +1,15 @@
 'use client'
 import type { FormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
+import type { HumanInputFormError } from '@/service/use-share'
 import {
   RiCheckboxCircleFill,
+  RiErrorWarningFill,
   RiInformation2Fill,
 } from '@remixicon/react'
+import { produce } from 'immer'
 import { useParams } from 'next/navigation'
 import * as React from 'react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Button from '@/app/components/base/button'
@@ -16,8 +19,7 @@ import { getButtonStyle } from '@/app/components/base/chat/chat/answer/human-inp
 import Loading from '@/app/components/base/loading'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { getHumanInputForm, submitHumanInputForm } from '@/service/share'
-import { asyncRunSafe } from '@/utils'
+import { useGetHumanInputForm, useSubmitHumanInputForm } from '@/service/use-share'
 import { cn } from '@/utils/classnames'
 
 export type FormData = {
@@ -35,14 +37,15 @@ const FormContent = () => {
   const { token } = useParams<{ token: string }>()
   useDocumentTitle('')
 
-  const [isLoading, setIsLoading] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [formData, setFormData] = useState<FormData>()
-  const [contentList, setContentList] = useState<string[]>([])
-  const [inputs, setInputs] = useState({})
+  const [inputs, setInputs] = useState<Record<string, string>>({})
   const [success, setSuccess] = useState(false)
-  const [expired, setExpired] = useState(false)
-  const [submitted, setSubmitted] = useState(false)
+
+  const { mutate: submitForm, isPending: isSubmitting } = useSubmitHumanInputForm()
+
+  const { data: formData, isLoading, error } = useGetHumanInputForm(token)
+
+  const expired = (error as HumanInputFormError | null)?.code === 'human_input_form_expired'
+  const submitted = (error as HumanInputFormError | null)?.code === 'human_input_form_submitted'
 
   const site = formData?.site.site
 
@@ -52,69 +55,42 @@ const FormContent = () => {
     return parts.filter(part => part.length > 0)
   }
 
-  const initializeInputs = (formInputs: FormInputItem[]) => {
-    const initialInputs: Record<string, any> = {}
-    formInputs.forEach((item) => {
-      if (item.type === 'text-input' || item.type === 'paragraph')
-        initialInputs[item.output_variable_name] = ''
-      else
-        initialInputs[item.output_variable_name] = undefined
-    })
-    setInputs(initialInputs)
-  }
-
-  const initializeContentList = (formContent: string) => {
-    const parts = splitByOutputVar(formContent)
-    setContentList(parts)
-  }
-
-  // use immer
-  const handleInputsChange = (name: string, value: any) => {
-    setInputs(prev => ({
-      ...prev,
-      [name]: value,
-    }))
-  }
-
-  const getForm = async (token: string) => {
-    try {
-      const data = await getHumanInputForm(token)
-      setFormData(data)
-      initializeInputs(data.inputs)
-      initializeContentList(data.form_content)
-      setIsLoading(false)
-    }
-    catch (error) {
-      console.error(error)
-    }
-  }
-
-  const submit = async (actionID: string) => {
-    setIsSubmitting(true)
-    try {
-      await submitHumanInputForm(token, { inputs, action: actionID })
-      setSuccess(true)
-    }
-    catch (e: any) {
-      if (e.status === 400) {
-        const [, errRespData] = await asyncRunSafe<{ error_code: string }>(e.json())
-        const { error_code } = errRespData || {}
-        if (error_code === 'human_input_form_expired')
-          setExpired(true)
-        if (error_code === 'human_input_form_submitted')
-          setSubmitted(true)
-      }
-    }
-    finally {
-      setIsSubmitting(false)
-    }
-  }
+  const contentList = useMemo(() => {
+    if (!formData?.form_content)
+      return []
+    return splitByOutputVar(formData.form_content)
+  }, [formData?.form_content])
 
   useEffect(() => {
-    getForm(token)
-  }, [token])
+    if (!formData?.inputs)
+      return
+    const initialInputs: Record<string, string> = {}
+    formData.inputs.forEach((item) => {
+      initialInputs[item.output_variable_name] = ''
+    })
+    setInputs(initialInputs)
+  }, [formData?.inputs])
 
-  if (isLoading || !formData) {
+  // use immer
+  const handleInputsChange = (name: string, value: string) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft[name] = value
+    })
+    setInputs(newInputs)
+  }
+
+  const submit = (actionID: string) => {
+    submitForm(
+      { token, data: { inputs, action: actionID } },
+      {
+        onSuccess: () => {
+          setSuccess(true)
+        },
+      },
+    )
+  }
+
+  if (isLoading) {
     return (
       <Loading type="app" />
     )
@@ -153,7 +129,7 @@ const FormContent = () => {
       <div className={cn('flex h-full w-full flex-col items-center justify-center')}>
         <div className="min-w-[480px] max-w-[640px]">
           <div className="border-components-divider-subtle flex h-[320px] flex-col gap-4 rounded-[20px] border bg-chat-bubble-bg p-10 pb-9 shadow-lg backdrop-blur-sm">
-            <div className="h-[56px] w-[56px] shrink-0 rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge p-3">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge p-3">
               <RiInformation2Fill className="h-8 w-8 text-text-accent" />
             </div>
             <div className="grow">
@@ -181,7 +157,7 @@ const FormContent = () => {
       <div className={cn('flex h-full w-full flex-col items-center justify-center')}>
         <div className="min-w-[480px] max-w-[640px]">
           <div className="border-components-divider-subtle flex h-[320px] flex-col gap-4 rounded-[20px] border bg-chat-bubble-bg p-10 pb-9 shadow-lg backdrop-blur-sm">
-            <div className="h-[56px] w-[56px] shrink-0 rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge p-3">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge p-3">
               <RiInformation2Fill className="h-8 w-8 text-text-accent" />
             </div>
             <div className="grow">
@@ -189,6 +165,32 @@ const FormContent = () => {
               <div className="title-4xl-semi-bold text-text-primary">{t('humanInput.completed', { ns: 'share' })}</div>
             </div>
             <div className="system-2xs-regular-uppercase shrink-0 text-text-tertiary">{t('humanInput.submissionID', { id: token, ns: 'share' })}</div>
+          </div>
+          <div className="flex flex-row-reverse px-2 py-3">
+            <div className={cn(
+              'flex shrink-0 items-center gap-1.5 px-1',
+            )}
+            >
+              <div className="system-2xs-medium-uppercase text-text-tertiary">{t('chat.poweredBy', { ns: 'share' })}</div>
+              <DifyLogo size="small" />
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!formData) {
+    return (
+      <div className={cn('flex h-full w-full flex-col items-center justify-center')}>
+        <div className="min-w-[480px] max-w-[640px]">
+          <div className="border-components-divider-subtle flex h-[320px] flex-col gap-4 rounded-[20px] border bg-chat-bubble-bg p-10 pb-9 shadow-lg backdrop-blur-sm">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge p-3">
+              <RiErrorWarningFill className="h-8 w-8 text-text-destructive" />
+            </div>
+            <div className="grow">
+              <div className="title-4xl-semi-bold text-text-primary">{t('humanInput.formNotFound', { ns: 'share' })}</div>
+            </div>
           </div>
           <div className="flex flex-row-reverse px-2 py-3">
             <div className={cn(

@@ -61,6 +61,7 @@
   "humanInput.completed": "此请求似乎在其他地方得到了处理。",
   "humanInput.expirationTime": "此操作将在 {{relativeTime}}过期。",
   "humanInput.expired": "此请求似乎已过期。",
+  "humanInput.formNotFound": "表单不存在。",
   "humanInput.recorded": "您的输入已被记录。",
   "humanInput.sorry": "抱歉！",
   "humanInput.thanks": "谢谢！",
