@@ -332,31 +332,55 @@ class TestFeatureService:
 
     def test_get_system_features_unauthenticated(self, db_session_with_containers, mock_external_service_dependencies):
         """
-        Test system features retrieval for an unauthenticated user to ensure no sensitive data is leaked.
+        Test system features retrieval for an unauthenticated user.
+        
+        This test verifies that:
+        - Sensitive data (License) is hidden/masked.
+        - Public data (Branding, SSO, Marketplace) remains visible.
+        - Default values are used for restricted fields.
         """
-        # Arrange
+        # Arrange: Setup test data with exact same config as success test
         with patch("services.feature_service.dify_config") as mock_config:
             mock_config.ENTERPRISE_ENABLED = True
             mock_config.MARKETPLACE_ENABLED = True
+            mock_config.ENABLE_EMAIL_CODE_LOGIN = True
+            mock_config.ENABLE_EMAIL_PASSWORD_LOGIN = True
+            mock_config.ENABLE_SOCIAL_OAUTH_LOGIN = False
+            mock_config.ALLOW_REGISTER = False
+            mock_config.ALLOW_CREATE_WORKSPACE = False
+            mock_config.MAIL_TYPE = "smtp"
+            mock_config.PLUGIN_MAX_PACKAGE_SIZE = 100
 
-            # Act
-            # Explicitly pass False to simulate an unauthenticated user
+            # Act: Execute with is_authenticated=False
             result = FeatureService.get_system_features(is_authenticated=False)
 
-        # Assert
+        # Assert: Basic structure
         assert result is not None
+        assert isinstance(result, SystemFeatureModel)
 
-        # Verify license information is not exposed and defaults are used
-        # Note: We compare against the Enum LicenseStatus.NONE for type safety
+        # --- 1. Verify Sensitive Data is HIDDEN (The Security Fix) ---
+        # Note: We compare against the Enum LicenseStatus.NONE
         assert result.license.status == LicenseStatus.NONE
         assert result.license.expired_at == ""
-
-        # Verify workspace limits are zeroed out/disabled
         assert result.license.workspaces.enabled is False
         assert result.license.workspaces.limit == 0
         assert result.license.workspaces.size == 0
 
-        # Verify that other public features are still available
+        # --- 2. Verify Public Data is STILL VISIBLE (The Reviewer's Request) ---
+        
+        # Branding should match the mock data (same as success test)
+        assert result.branding.enabled is True
+        assert result.branding.application_title == "Test Enterprise"
+        assert result.branding.login_page_logo == "https://example.com/logo.png"
+        
+        # SSO settings should be visible for login page rendering
+        assert result.sso_enforced_for_signin is True
+        assert result.sso_enforced_for_signin_protocol == "saml"
+
+        # General auth settings should be visible
+        assert result.enable_email_code_login is True
+
+        # Marketplace should be visible
         assert result.enable_marketplace is True
 
     def test_get_system_features_basic_config(self, db_session_with_containers, mock_external_service_dependencies):
