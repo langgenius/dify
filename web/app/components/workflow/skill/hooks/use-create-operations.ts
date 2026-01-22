@@ -19,6 +19,10 @@ type UseCreateOperationsOptions = {
   onClose: () => void
 }
 
+const getRelativePath = (file: File) => {
+  return (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name
+}
+
 export function useCreateOperations({
   parentId,
   appId,
@@ -89,7 +93,7 @@ export function useCreateOperations({
       const folders = new Set<string>()
 
       for (const file of files) {
-        const relativePath = (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name
+        const relativePath = getRelativePath(file)
         const parts = relativePath.split('/')
 
         if (parts.length > 1) {
@@ -108,36 +112,55 @@ export function useCreateOperations({
       const folderIdMap = new Map<string, string | null>()
       folderIdMap.set('', parentId)
 
+      const foldersByDepth = new Map<number, string[]>()
       for (const folderPath of sortedFolders) {
-        const parts = folderPath.split('/')
-        const folderName = parts[parts.length - 1]
-        const parentPath = parts.slice(0, -1).join('/')
-        const parentFolderId = folderIdMap.get(parentPath) ?? parentId
-
-        const result = await createFolder.mutateAsync({
-          appId,
-          payload: {
-            name: folderName,
-            parent_id: parentFolderId,
-          },
-        })
-
-        folderIdMap.set(folderPath, result.id)
+        const depth = folderPath.split('/').length
+        const group = foldersByDepth.get(depth)
+        if (group)
+          group.push(folderPath)
+        else
+          foldersByDepth.set(depth, [folderPath])
       }
 
-      for (const file of files) {
-        const relativePath = (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name
-        const parts = relativePath.split('/')
-        const parentPath = parts.length > 1 ? parts.slice(0, -1).join('/') : ''
-        const targetParentId = folderIdMap.get(parentPath) ?? parentId
+      for (const [, foldersAtDepth] of foldersByDepth) {
+        const createdFolders = await Promise.all(
+          foldersAtDepth.map(async (folderPath) => {
+            const parts = folderPath.split('/')
+            const folderName = parts[parts.length - 1]
+            const parentPath = parts.slice(0, -1).join('/')
+            const parentFolderId = folderIdMap.get(parentPath) ?? parentId
 
-        await createFile.mutateAsync({
-          appId,
-          name: file.name,
-          file,
-          parentId: targetParentId,
-        })
+            const result = await createFolder.mutateAsync({
+              appId,
+              payload: {
+                name: folderName,
+                parent_id: parentFolderId,
+              },
+            })
+
+            return { folderPath, id: result.id }
+          }),
+        )
+
+        for (const { folderPath, id } of createdFolders)
+          folderIdMap.set(folderPath, id)
       }
+
+      await Promise.all(
+        files.map((file) => {
+          const relativePath = getRelativePath(file)
+          const parts = relativePath.split('/')
+          const parentPath = parts.length > 1 ? parts.slice(0, -1).join('/') : ''
+          const targetParentId = folderIdMap.get(parentPath) ?? parentId
+
+          return createFile.mutateAsync({
+            appId,
+            name: file.name,
+            file,
+            parentId: targetParentId,
+          })
+        }),
+      )
 
       Toast.notify({
         type: 'success',
