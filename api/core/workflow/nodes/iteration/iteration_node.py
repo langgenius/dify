@@ -1,11 +1,9 @@
-import contextvars
 import logging
 from collections.abc import Generator, Mapping, Sequence
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, NewType, cast
 
-from flask import Flask, current_app
 from typing_extensions import TypeIs
 
 from core.model_runtime.entities.llm_entities import LLMUsage
@@ -39,7 +37,6 @@ from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.iteration.entities import ErrorHandleMode, IterationNodeData
 from core.workflow.runtime import VariablePool
 from libs.datetime_utils import naive_utc_now
-from libs.flask_utils import preserve_flask_contexts
 
 from .exc import (
     InvalidIteratorValueError,
@@ -51,6 +48,7 @@ from .exc import (
 )
 
 if TYPE_CHECKING:
+    from core.workflow.context import IExecutionContext
     from core.workflow.graph_engine import GraphEngine
 
 logger = logging.getLogger(__name__)
@@ -252,8 +250,7 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
                     self._execute_single_iteration_parallel,
                     index=index,
                     item=item,
-                    flask_app=current_app._get_current_object(),  # type: ignore
-                    context_vars=contextvars.copy_context(),
+                    execution_context=self._capture_execution_context(),
                 )
                 future_to_index[future] = index
 
@@ -306,11 +303,10 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
         self,
         index: int,
         item: object,
-        flask_app: Flask,
-        context_vars: contextvars.Context,
+        execution_context: "IExecutionContext",
     ) -> tuple[datetime, list[GraphNodeEventBase], object | None, dict[str, Variable], LLMUsage]:
         """Execute a single iteration in parallel mode and return results."""
-        with preserve_flask_contexts(flask_app=flask_app, context_vars=context_vars):
+        with execution_context:
             iter_start_at = datetime.now(UTC).replace(tzinfo=None)
             events: list[GraphNodeEventBase] = []
             outputs_temp: list[object] = []
@@ -338,6 +334,12 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
                 conversation_snapshot,
                 graph_engine.graph_runtime_state.llm_usage,
             )
+
+    def _capture_execution_context(self) -> "IExecutionContext":
+        """Capture current execution context for parallel iterations."""
+        from core.workflow.context import capture_current_context
+
+        return capture_current_context()
 
     def _handle_iteration_success(
         self,
@@ -586,11 +588,11 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
 
     def _create_graph_engine(self, index: int, item: object):
         # Import dependencies
+        from core.app.workflow.node_factory import DifyNodeFactory
         from core.workflow.entities import GraphInitParams
         from core.workflow.graph import Graph
         from core.workflow.graph_engine import GraphEngine
         from core.workflow.graph_engine.command_channels import InMemoryChannel
-        from core.workflow.nodes.node_factory import DifyNodeFactory
         from core.workflow.runtime import GraphRuntimeState
 
         # Create GraphInitParams from node attributes

@@ -220,6 +220,23 @@ class TestAnnotationService:
         # Note: In this test, no annotation setting exists, so task should not be called
         mock_external_service_dependencies["add_task"].delay.assert_not_called()
 
+    def test_insert_app_annotation_directly_requires_question(
+        self, db_session_with_containers, mock_external_service_dependencies
+    ):
+        """
+        Question must be provided when inserting annotations directly.
+        """
+        fake = Faker()
+        app, _ = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+
+        annotation_args = {
+            "question": None,
+            "answer": fake.text(max_nb_chars=200),
+        }
+
+        with pytest.raises(ValueError):
+            AppAnnotationService.insert_app_annotation_directly(annotation_args, app.id)
+
     def test_insert_app_annotation_directly_app_not_found(
         self, db_session_with_containers, mock_external_service_dependencies
     ):

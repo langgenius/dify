@@ -5,7 +5,6 @@ import { RiArrowRightLine, RiArrowRightSLine, RiCommandLine, RiCornerDownLeftLin
 
 import { useDebounceFn, useKeyPress } from 'ahooks'
 import Image from 'next/image'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -22,7 +21,6 @@ import { ToastContext } from '@/app/components/base/toast'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
-import { useDocLink } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
 import useTheme from '@/hooks/use-theme'
 import { createApp } from '@/service/apps'
@@ -346,41 +344,26 @@ function AppTypeCard({ icon, title, description, active, onClick }: AppTypeCardP
 
 function AppPreview({ mode }: { mode: AppModeEnum }) {
   const { t } = useTranslation()
-  const docLink = useDocLink()
   const modeToPreviewInfoMap = {
     [AppModeEnum.CHAT]: {
       title: t('types.chatbot', { ns: 'app' }),
       description: t('newApp.chatbotUserDescription', { ns: 'app' }),
-      link: docLink('/guides/application-orchestrate/chatbot-application'),
     },
     [AppModeEnum.ADVANCED_CHAT]: {
       title: t('types.advanced', { ns: 'app' }),
       description: t('newApp.advancedUserDescription', { ns: 'app' }),
-      link: docLink('/guides/workflow/README', {
-        'zh-Hans': '/guides/workflow/readme',
-        'ja-JP': '/guides/workflow/concepts',
-      }),
     },
     [AppModeEnum.AGENT_CHAT]: {
       title: t('types.agent', { ns: 'app' }),
       description: t('newApp.agentUserDescription', { ns: 'app' }),
-      link: docLink('/guides/application-orchestrate/agent'),
     },
     [AppModeEnum.COMPLETION]: {
       title: t('newApp.completeApp', { ns: 'app' }),
       description: t('newApp.completionUserDescription', { ns: 'app' }),
-      link: docLink('/guides/application-orchestrate/text-generator', {
-        'zh-Hans': '/guides/application-orchestrate/readme',
-        'ja-JP': '/guides/application-orchestrate/README',
-      }),
     },
     [AppModeEnum.WORKFLOW]: {
       title: t('types.workflow', { ns: 'app' }),
       description: t('newApp.workflowUserDescription', { ns: 'app' }),
-      link: docLink('/guides/workflow/README', {
-        'zh-Hans': '/guides/workflow/readme',
-        'ja-JP': '/guides/workflow/concepts',
-      }),
     },
   }
   const previewInfo = modeToPreviewInfoMap[mode]
@@ -389,7 +372,6 @@ function AppPreview({ mode }: { mode: AppModeEnum }) {
       <h4 className="system-sm-semibold-uppercase text-text-secondary">{previewInfo.title}</h4>
       <div className="system-xs-regular mt-1 min-h-8 max-w-96 text-text-tertiary">
         <span>{previewInfo.description}</span>
-        {previewInfo.link && <Link target="_blank" href={previewInfo.link} className="ml-1 text-text-accent">{t('newApp.learnMore', { ns: 'app' })}</Link>}
       </div>
     </div>
   )

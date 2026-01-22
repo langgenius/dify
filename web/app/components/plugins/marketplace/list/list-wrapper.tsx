@@ -19,6 +19,7 @@ const ListWrapper = ({
     marketplaceCollections,
     marketplaceCollectionPluginsMap,
     isLoading,
+    isFetchingNextPage,
     page,
   } = useMarketplaceData()
 
@@ -51,6 +52,11 @@ const ListWrapper = ({
             plugins={plugins}
             showInstallButton={showInstallButton}
           />
+        )
+      }
+      {
+        isFetchingNextPage && (
+          <Loading className="my-3" />
         )
       }
     </div>
