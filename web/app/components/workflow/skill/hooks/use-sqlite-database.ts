@@ -38,7 +38,6 @@ type SQLiteAction
     | { type: 'error', error: Error }
 
 const TABLES_QUERY = 'SELECT name FROM sqlite_master WHERE type=\'table\' AND name NOT LIKE \'sqlite_%\' ORDER BY name'
-const DEFAULT_ROW_LIMIT = 200
 
 let sqliteClientPromise: Promise<SQLiteClient> | null = null
 
@@ -218,10 +217,10 @@ export function useSQLiteDatabase(downloadUrl: string | undefined): UseSQLiteDat
     if (!state.tables.includes(tableName))
       return null
 
-    const rowLimit = Number.isFinite(limit) && limit && limit > 0
+    const resolvedLimit = Number.isFinite(limit) && limit && limit > 0
       ? Math.floor(limit)
-      : DEFAULT_ROW_LIMIT
-    const cacheKey = `${tableName}:${rowLimit}`
+      : null
+    const cacheKey = `${tableName}:${resolvedLimit ?? 'all'}`
     const cached = cacheRef.current.get(cacheKey)
     if (cached)
       return cached
@@ -229,7 +228,7 @@ export function useSQLiteDatabase(downloadUrl: string | undefined): UseSQLiteDat
     const safeName = tableName.replaceAll('"', '""')
     const result = await client.sqlite3.execWithParams(
       db,
-      `SELECT * FROM "${safeName}" LIMIT ${rowLimit}`,
+      `SELECT * FROM "${safeName}"${resolvedLimit ? ` LIMIT ${resolvedLimit}` : ''}`,
       [],
     )
     const data: SQLiteQueryResult = {

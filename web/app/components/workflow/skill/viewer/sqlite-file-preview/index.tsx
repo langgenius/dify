@@ -1,13 +1,11 @@
 import type { FC } from 'react'
 import * as React from 'react'
-import { useEffect, useMemo, useReducer, useState } from 'react'
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useSQLiteDatabase } from '../../hooks/use-sqlite-database'
 import DataTable from './data-table'
 import TableSelector from './table-selector'
-
-const ROW_LIMIT = 200
 
 type SQLiteFilePreviewProps = {
   downloadUrl: string
@@ -19,6 +17,7 @@ const SQLiteFilePreview: FC<SQLiteFilePreviewProps> = ({
   const { t } = useTranslation('workflow')
   const { tables, isLoading, error, queryTable } = useSQLiteDatabase(downloadUrl)
   const [selectedTableId, setSelectedTableId] = useState<string>('')
+  const tableScrollRef = useRef<HTMLDivElement | null>(null)
   const [tableState, dispatch] = useReducer((
     current: {
       data: Awaited<ReturnType<typeof queryTable>> | null
@@ -85,7 +84,7 @@ const SQLiteFilePreview: FC<SQLiteFilePreviewProps> = ({
       dispatch({ type: 'loading' })
 
       try {
-        const data = await queryTable(selectedTable, ROW_LIMIT)
+        const data = await queryTable(selectedTable)
         if (!cancelled)
           dispatch({ type: 'success', data })
       }
@@ -141,7 +140,7 @@ const SQLiteFilePreview: FC<SQLiteFilePreviewProps> = ({
   }
 
   return (
-    <div className="flex h-full w-full min-w-0 flex-col gap-1 p-1">
+    <div className="flex h-full w-full min-w-0 flex-col gap-1 overflow-hidden p-1">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <TableSelector
           tables={tables}
@@ -150,7 +149,10 @@ const SQLiteFilePreview: FC<SQLiteFilePreviewProps> = ({
           isLoading={tableState.isLoading}
         />
       </div>
-      <div className="min-h-0 min-w-0 flex-1 overflow-auto rounded-lg bg-components-panel-bg">
+      <div
+        ref={tableScrollRef}
+        className="min-h-0 min-w-0 flex-1 overflow-auto rounded-lg bg-components-panel-bg"
+      >
         {tableState.isLoading
           ? (
               <div className="flex h-full w-full items-center justify-center">
@@ -165,20 +167,21 @@ const SQLiteFilePreview: FC<SQLiteFilePreviewProps> = ({
                   </span>
                 </div>
               )
-            : (tableState.data && tableState.data.values.length > 0)
-                ? (
-                    <DataTable
-                      columns={tableState.data.columns}
-                      values={tableState.data.values}
-                    />
-                  )
-                : (
-                    <div className="flex h-full w-full items-center justify-center text-text-tertiary">
-                      <span className="system-sm-regular">
-                        {t('skillSidebar.sqlitePreview.emptyRows')}
-                      </span>
-                    </div>
-                  )}
+            : tableState.data
+              ? (
+                  <DataTable
+                    columns={tableState.data.columns}
+                    values={tableState.data.values}
+                    scrollRef={tableScrollRef}
+                  />
+                )
+              : (
+                  <div className="flex h-full w-full items-center justify-center text-text-tertiary">
+                    <span className="system-sm-regular">
+                      {t('skillSidebar.sqlitePreview.emptyRows')}
+                    </span>
+                  </div>
+                )}
       </div>
     </div>
   )
