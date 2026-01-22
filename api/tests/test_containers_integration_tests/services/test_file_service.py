@@ -255,13 +255,14 @@ class TestFileService:
         filename = "test/file<name>.txt"
         content = b"test content"
         mimetype = "text/plain"
-        
+
         file = FileService(engine).upload_file(
             filename=filename,
             content=content,
             mimetype=mimetype,
-            user=account, )
-        
+            user=account,
+        )
+
         # ✅ 关键断言：非法字符被移除或替换
         assert file.filename != filename
         assert "/" not in file.filename
