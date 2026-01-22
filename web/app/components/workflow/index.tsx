@@ -134,6 +134,11 @@ const edgeTypes = {
   [CUSTOM_EDGE]: CustomEdge,
 }
 
+export enum InteractionMode {
+  Default = 'default',
+  Subgraph = 'subgraph',
+}
+
 export type WorkflowProps = {
   nodes: Node[]
   edges: Edge[]
@@ -142,7 +147,7 @@ export type WorkflowProps = {
   onWorkflowDataUpdate?: (v: any) => void
   allowSelectionWhenReadOnly?: boolean
   canvasReadOnly?: boolean
-  interactionMode?: 'default' | 'subgraph'
+  interactionMode?: InteractionMode
 }
 export const Workflow: FC<WorkflowProps> = memo(({
   nodes: originalNodes,
@@ -223,7 +228,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const store = useStoreApi()
   eventEmitter?.useSubscription((v: any) => {
     if (v.type === WORKFLOW_DATA_UPDATE) {
-      if (interactionMode === 'subgraph')
+      if (interactionMode === InteractionMode.Subgraph)
         return
       setNodes(v.payload.nodes)
       store.getState().setNodes(v.payload.nodes)

@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { ModelConfig, Node, NodeOutPutVar, PromptItem, PromptMessageContext, PromptTemplateItem, ValueSelector, Var, Variable } from '../../../types'
+import type { ModelConfig, NodeOutPutVar, PromptItem, PromptMessageContext, PromptTemplateItem, ValueSelector, Var, Variable } from '../../../types'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useMemo, useRef, useState } from 'react'
@@ -18,7 +18,7 @@ import AddButton from '@/app/components/workflow/nodes/_base/components/add-butt
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 import { cn } from '@/utils/classnames'
-import { useStore, useWorkflowStore } from '../../../store'
+import { useWorkflowStore } from '../../../store'
 import { BlockEnum, EditionType, isPromptMessageContext, PromptRole, VarType } from '../../../types'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
 import ConfigContextItem from './config-context-item'
@@ -88,39 +88,9 @@ const ConfigPrompt: FC<Props> = ({
     onlyLeafNodeVar: false,
     filterVar,
   })
-  const parentAvailableVars = useStore(state => state.parentAvailableVars) || []
-  const parentAvailableNodes = useStore(state => state.parentAvailableNodes) || []
-
-  const mergedAvailableVars = useMemo(() => {
-    if (!parentAvailableVars.length)
-      return availableVars
-    const merged = new Map<string, NodeOutPutVar>()
-    availableVars.forEach((item) => {
-      merged.set(item.nodeId, item)
-    })
-    parentAvailableVars.forEach((item) => {
-      if (!merged.has(item.nodeId))
-        merged.set(item.nodeId, item)
-    })
-    return Array.from(merged.values())
-  }, [availableVars, parentAvailableVars])
-
-  const mergedAvailableNodesWithParent = useMemo(() => {
-    if (!parentAvailableNodes.length)
-      return availableNodesWithParent
-    const merged = new Map<string, Node>()
-    availableNodesWithParent.forEach((node) => {
-      merged.set(node.id, node)
-    })
-    parentAvailableNodes.forEach((node) => {
-      if (!merged.has(node.id))
-        merged.set(node.id, node)
-    })
-    return Array.from(merged.values())
-  }, [availableNodesWithParent, parentAvailableNodes])
 
   const contextVarOptions = useMemo<NodeOutPutVar[]>(() => {
-    return mergedAvailableNodesWithParent
+    return availableNodesWithParent
       .filter(node => node.data.type === BlockEnum.Agent || node.data.type === BlockEnum.LLM)
       .map(node => ({
         nodeId: node.id,
@@ -133,7 +103,7 @@ const ConfigPrompt: FC<Props> = ({
           },
         ],
       }))
-  }, [mergedAvailableNodesWithParent])
+  }, [availableNodesWithParent])
 
   const handleChatModePromptChange = useCallback((index: number) => {
     return (prompt: string) => {
@@ -315,7 +285,7 @@ const ConfigPrompt: FC<Props> = ({
                               readOnly={readOnly}
                               payload={item}
                               contextVars={contextVarOptions}
-                              availableNodes={mergedAvailableNodesWithParent}
+                              availableNodes={availableNodesWithParent}
                               onChange={handleContextChange(index)}
                               onRemove={handleRemove(index)}
                             />
@@ -354,8 +324,8 @@ const ConfigPrompt: FC<Props> = ({
                             onRemove={handleRemove(index)}
                             isShowContext={isShowContext}
                             hasSetBlockStatus={hasSetBlockStatus}
-                            availableVars={mergedAvailableVars}
-                            availableNodes={mergedAvailableNodesWithParent}
+                            availableVars={availableVars}
+                            availableNodes={availableNodesWithParent}
                             varList={varList}
                             handleAddVariable={handleAddVariable}
                             modelConfig={modelConfig}
@@ -425,8 +395,8 @@ const ConfigPrompt: FC<Props> = ({
                 isChatApp={isChatApp}
                 isShowContext={isShowContext}
                 hasSetBlockStatus={hasSetBlockStatus}
-                nodesOutputVars={mergedAvailableVars}
-                availableNodes={mergedAvailableNodesWithParent}
+                nodesOutputVars={availableVars}
+                availableNodes={availableNodesWithParent}
                 isSupportPromptGenerator
                 isSupportJinja
                 editionType={(payload as PromptItem).edition_type}

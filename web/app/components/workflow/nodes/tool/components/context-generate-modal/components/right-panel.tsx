@@ -1,6 +1,6 @@
 import type { PointerEvent, RefObject } from 'react'
 import type { ContextGenerateResponse } from '@/service/debug'
-import { RiArrowDownSLine, RiCheckLine, RiCloseLine } from '@remixicon/react'
+import { RiArrowDownSLine, RiCheckLine, RiCloseLine, RiPlayLargeLine } from '@remixicon/react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
@@ -178,6 +178,7 @@ const RightPanel = ({
                     onClick={onRun}
                     disabled={!canRun || isGenerating}
                   >
+                    <RiPlayLargeLine className="mr-1 h-4 w-4" />
                     {t('nodes.tool.contextGenerate.run', { ns: 'workflow' })}
                   </Button>
                 )}

@@ -270,8 +270,9 @@ const VarReferencePicker: FC<Props> = ({
   }, [onChange, varKindType])
 
   const handleVariableJump = useCallback((nodeId: string) => {
-    const currentNodeIndex = availableNodes.findIndex(node => node.id === nodeId)
-    const currentNode = availableNodes[currentNodeIndex]
+    const currentNode = nodes.find(node => node.id === nodeId)
+    if (!currentNode)
+      return
 
     const workflowContainer = document.getElementById('workflow-container')
     const {
@@ -289,7 +290,7 @@ const VarReferencePicker: FC<Props> = ({
       y: (clientHeight - currentNode.height! * zoom) / 2 - position.y * zoom,
       zoom: transform[2],
     })
-  }, [availableNodes, reactflow, store])
+  }, [nodes, reactflow, store])
 
   const type = getCurrentVariableType({
     parentNode: (isInIteration ? iterationNode : loopNode) as any,

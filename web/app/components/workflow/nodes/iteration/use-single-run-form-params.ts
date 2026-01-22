@@ -1,10 +1,12 @@
 import type { RefObject } from 'react'
 import type { IterationNodeType } from './types'
-import type { InputVar, ValueSelector, Variable } from '@/app/components/workflow/types'
+import type { InputVar, Node, ValueSelector, Variable } from '@/app/components/workflow/types'
 import type { NodeTracing } from '@/types/workflow'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useShallow } from 'zustand/react/shallow'
 import formatTracing from '@/app/components/workflow/run/utils/format-log'
+import { useStore } from '@/app/components/workflow/store'
 import { InputVarType, VarType } from '@/app/components/workflow/types'
 import { VALUE_SELECTOR_DELIMITER as DELIMITER } from '@/config'
 import { useIsNodeInIteration, useWorkflow } from '../../hooks'
@@ -34,8 +36,22 @@ const useSingleRunFormParams = ({
   const { isNodeInIteration } = useIsNodeInIteration(id)
 
   const { getIterationNodeChildren, getBeforeNodesInSameBranch } = useWorkflow()
+  const parentAvailableNodes = useStore(useShallow(s => s.parentAvailableNodes)) || []
   const iterationChildrenNodes = getIterationNodeChildren(id)
-  const beforeNodes = getBeforeNodesInSameBranch(id)
+  const beforeNodes = (() => {
+    const baseBeforeNodes = getBeforeNodesInSameBranch(id)
+    if (!parentAvailableNodes.length)
+      return baseBeforeNodes
+    const merged = new Map<string, Node>()
+    baseBeforeNodes.forEach((node) => {
+      merged.set(node.id, node)
+    })
+    parentAvailableNodes.forEach((node) => {
+      if (!merged.has(node.id))
+        merged.set(node.id, node)
+    })
+    return Array.from(merged.values())
+  })()
   const canChooseVarNodes = [...beforeNodes, ...iterationChildrenNodes]
 
   const iteratorInputKey = `${id}.input_selector`

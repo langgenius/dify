@@ -1,4 +1,4 @@
-import type { CommonNodeType, InputVar, TriggerNodeType, ValueSelector, Var, Variable } from '@/app/components/workflow/types'
+import type { CommonNodeType, InputVar, Node, TriggerNodeType, ValueSelector, Var, Variable } from '@/app/components/workflow/types'
 import type { FlowType } from '@/types/common'
 import type { NodeRunResult, NodeTracing } from '@/types/workflow'
 import { unionBy } from 'es-toolkit/compat'
@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next'
 import {
   useStoreApi,
 } from 'reactflow'
+import { useShallow } from 'zustand/react/shallow'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { getInputVars as doGetInputVars } from '@/app/components/base/prompt-editor/constants'
 import Toast from '@/app/components/base/toast'
@@ -150,9 +151,24 @@ const useOneStepRun = <T>({
   const isIteration = data.type === BlockEnum.Iteration
   const isLoop = data.type === BlockEnum.Loop
   const isStartNode = data.type === BlockEnum.Start
+  const parentAvailableNodes = useStore(useShallow(s => s.parentAvailableNodes)) || []
 
-  const availableNodes = getBeforeNodesInSameBranch(id)
-  const availableNodesIncludeParent = getBeforeNodesInSameBranchIncludeParent(id)
+  const mergeAvailableNodes = (baseNodes: Node[]) => {
+    if (!parentAvailableNodes.length)
+      return baseNodes
+    const merged = new Map<string, Node>()
+    baseNodes.forEach((node) => {
+      merged.set(node.id, node)
+    })
+    parentAvailableNodes.forEach((node) => {
+      if (!merged.has(node.id))
+        merged.set(node.id, node)
+    })
+    return Array.from(merged.values())
+  }
+
+  const availableNodes = mergeAvailableNodes(getBeforeNodesInSameBranch(id))
+  const availableNodesIncludeParent = mergeAvailableNodes(getBeforeNodesInSameBranchIncludeParent(id))
   const workflowStore = useWorkflowStore()
   const { schemaTypeDefinitions } = useMatchSchemaType()
 

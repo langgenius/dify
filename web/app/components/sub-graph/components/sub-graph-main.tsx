@@ -6,7 +6,7 @@ import type { NestedNodeConfig } from '@/app/components/workflow/nodes/_base/typ
 import type { Edge, Node } from '@/app/components/workflow/types'
 import { useCallback, useMemo } from 'react'
 import { useStoreApi } from 'reactflow'
-import { WorkflowWithInnerContext } from '@/app/components/workflow'
+import { InteractionMode, WorkflowWithInnerContext } from '@/app/components/workflow'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
 import { useInspectVarsCrudCommon } from '@/app/components/workflow/hooks/use-inspect-vars-crud-common'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -96,7 +96,7 @@ const SubGraphMain: FC<SubGraphMainProps> = (props) => {
   }, [selectableNodeTypes, variant])
 
   const hooksStore = useMemo(() => ({
-    interactionMode: 'subgraph',
+    interactionMode: InteractionMode.Subgraph,
     subGraphSelectableNodeTypes: resolvedSelectableTypes,
     availableNodesMetaData,
     configsMap,
@@ -135,7 +135,7 @@ const SubGraphMain: FC<SubGraphMainProps> = (props) => {
       hooksStore={hooksStore as any}
       allowSelectionWhenReadOnly
       canvasReadOnly
-      interactionMode="subgraph"
+      interactionMode={InteractionMode.Subgraph}
     >
       {subGraphChildren}
     </WorkflowWithInnerContext>

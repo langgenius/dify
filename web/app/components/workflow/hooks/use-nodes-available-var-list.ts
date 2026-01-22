@@ -1,10 +1,12 @@
 import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import { useCallback } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import {
   useIsChatMode,
   useWorkflow,
   useWorkflowVariables,
 } from '@/app/components/workflow/hooks'
+import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 
 type Params = {
@@ -13,6 +15,20 @@ type Params = {
   hideChatVar?: boolean
   filterVar: (payload: Var, selector: ValueSelector) => boolean
   passedInAvailableNodes?: Node[]
+}
+
+const mergeAvailableNodes = (baseNodes: Node[], extraNodes: Node[]) => {
+  if (!extraNodes.length)
+    return baseNodes
+  const merged = new Map<string, Node>()
+  baseNodes.forEach((node) => {
+    merged.set(node.id, node)
+  })
+  extraNodes.forEach((node) => {
+    if (!merged.has(node.id))
+      merged.set(node.id, node)
+  })
+  return Array.from(merged.values())
 }
 
 const getNodeInfo = (nodeId: string, nodes: Node[]) => {
@@ -44,12 +60,14 @@ const useNodesAvailableVarList = (nodes: Node[], {
   const { getTreeLeafNodes, getBeforeNodesInSameBranchIncludeParent } = useWorkflow()
   const { getNodeAvailableVars } = useWorkflowVariables()
   const isChatMode = useIsChatMode()
+  const parentAvailableNodes = useStore(useShallow(s => s.parentAvailableNodes)) || []
 
   const nodeAvailabilityMap: { [key: string ]: { availableVars: NodeOutPutVar[], availableNodes: Node[] } } = {}
 
   nodes.forEach((node) => {
     const nodeId = node.id
-    const availableNodes = passedInAvailableNodes || (onlyLeafNodeVar ? getTreeLeafNodes(nodeId) : getBeforeNodesInSameBranchIncludeParent(nodeId))
+    const baseAvailableNodes = passedInAvailableNodes || (onlyLeafNodeVar ? getTreeLeafNodes(nodeId) : getBeforeNodesInSameBranchIncludeParent(nodeId))
+    const availableNodes = mergeAvailableNodes(baseAvailableNodes, parentAvailableNodes)
     if (node.data.type === BlockEnum.Loop)
       availableNodes.push(node)
 
@@ -79,6 +97,7 @@ export const useGetNodesAvailableVarList = () => {
   const { getTreeLeafNodes, getBeforeNodesInSameBranchIncludeParent } = useWorkflow()
   const { getNodeAvailableVars } = useWorkflowVariables()
   const isChatMode = useIsChatMode()
+  const parentAvailableNodes = useStore(useShallow(s => s.parentAvailableNodes)) || []
   const getNodesAvailableVarList = useCallback((nodes: Node[], {
     onlyLeafNodeVar,
     filterVar,
@@ -93,7 +112,8 @@ export const useGetNodesAvailableVarList = () => {
 
     nodes.forEach((node) => {
       const nodeId = node.id
-      const availableNodes = passedInAvailableNodes || (onlyLeafNodeVar ? getTreeLeafNodes(nodeId) : getBeforeNodesInSameBranchIncludeParent(nodeId))
+      const baseAvailableNodes = passedInAvailableNodes || (onlyLeafNodeVar ? getTreeLeafNodes(nodeId) : getBeforeNodesInSameBranchIncludeParent(nodeId))
+      const availableNodes = mergeAvailableNodes(baseAvailableNodes, parentAvailableNodes)
       if (node.data.type === BlockEnum.Loop)
         availableNodes.push(node)
 
@@ -117,7 +137,7 @@ export const useGetNodesAvailableVarList = () => {
       nodeAvailabilityMap[nodeId] = result
     })
     return nodeAvailabilityMap
-  }, [getTreeLeafNodes, getBeforeNodesInSameBranchIncludeParent, getNodeAvailableVars, isChatMode])
+  }, [getTreeLeafNodes, getBeforeNodesInSameBranchIncludeParent, getNodeAvailableVars, isChatMode, parentAvailableNodes])
   return {
     getNodesAvailableVarList,
   }

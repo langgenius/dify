@@ -1,4 +1,6 @@
 import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
+import { useMemo } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import {
   useIsChatMode,
   useWorkflow,
@@ -31,7 +33,23 @@ const useAvailableVarList = (nodeId: string, {
   const { getTreeLeafNodes, getNodeById, getBeforeNodesInSameBranchIncludeParent } = useWorkflow()
   const { getNodeAvailableVars } = useWorkflowVariables()
   const isChatMode = useIsChatMode()
-  const availableNodes = passedInAvailableNodes || (onlyLeafNodeVar ? getTreeLeafNodes(nodeId) : getBeforeNodesInSameBranchIncludeParent(nodeId))
+  const baseAvailableNodes = useMemo(() => {
+    return passedInAvailableNodes || (onlyLeafNodeVar ? getTreeLeafNodes(nodeId) : getBeforeNodesInSameBranchIncludeParent(nodeId))
+  }, [passedInAvailableNodes, onlyLeafNodeVar, nodeId, getTreeLeafNodes, getBeforeNodesInSameBranchIncludeParent])
+  const parentAvailableNodes = useWorkflowStore(useShallow(s => s.parentAvailableNodes)) || []
+  const availableNodes = useMemo(() => {
+    if (!parentAvailableNodes.length)
+      return baseAvailableNodes
+    const merged = new Map<string, Node>()
+    baseAvailableNodes.forEach((node) => {
+      merged.set(node.id, node)
+    })
+    parentAvailableNodes.forEach((node) => {
+      if (!merged.has(node.id))
+        merged.set(node.id, node)
+    })
+    return Array.from(merged.values())
+  }, [baseAvailableNodes, parentAvailableNodes])
   const {
     parentNode: iterationNode,
   } = useNodeInfo(nodeId)
@@ -71,10 +89,12 @@ const useAvailableVarList = (nodeId: string, {
     hideEnv,
     hideChatVar,
   }), ...dataSourceRagVars]
-  const availableNodesWithParent = [
-    ...availableNodes,
-    ...(isDataSourceNode ? [currNode] : []),
-  ]
+  const availableNodesWithParent = useMemo(() => {
+    return [
+      ...availableNodes,
+      ...(isDataSourceNode ? [currNode] : []),
+    ]
+  }, [availableNodes, currNode, isDataSourceNode])
   const llmNodeIds = new Set(
     availableNodesWithParent
       .filter(node => node?.data.type === BlockEnum.LLM)

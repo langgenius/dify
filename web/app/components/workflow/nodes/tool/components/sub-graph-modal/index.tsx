@@ -18,7 +18,7 @@ import { useIsChatMode, useNodesSyncDraft, useWorkflow, useWorkflowVariables } f
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { useStore as useWorkflowStore } from '@/app/components/workflow/store'
-import { BlockEnum, EditionType, isPromptMessageContext, PromptRole, VarType } from '@/app/components/workflow/types'
+import { EditionType, isPromptMessageContext, PromptRole, VarType } from '@/app/components/workflow/types'
 import SubGraphCanvas from './sub-graph-canvas'
 
 const SubGraphModal: FC<SubGraphModalProps> = (props) => {
@@ -64,17 +64,11 @@ const SubGraphModal: FC<SubGraphModalProps> = (props) => {
     return getBeforeNodesInSameBranch(toolNodeId, workflowNodes, workflowEdges)
   }, [getBeforeNodesInSameBranch, isOpen, toolNodeId, workflowEdges, workflowNodes])
 
-  const parentContextNodes = useMemo(() => {
-    if (!parentBeforeNodes.length || !isAgentVariant)
-      return []
-    return parentBeforeNodes.filter(node => node.data.type === BlockEnum.Agent || node.data.type === BlockEnum.LLM)
-  }, [isAgentVariant, parentBeforeNodes])
-
   const parentAvailableNodes = useMemo(() => {
     if (!isOpen)
       return []
-    return isAgentVariant ? parentContextNodes : parentBeforeNodes
-  }, [isAgentVariant, isOpen, parentBeforeNodes, parentContextNodes])
+    return parentBeforeNodes
+  }, [isOpen, parentBeforeNodes])
 
   const parentAvailableVars = useMemo(() => {
     if (!parentAvailableNodes.length)
