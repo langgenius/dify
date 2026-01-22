@@ -29,6 +29,5 @@ export type ContentItemProps = {
   content: string
   formInputFields: FormInputItem[]
   inputs: Record<string, string>
-  resolvedPlaceholderValues?: Record<string, string>
   onInputChange: (name: string, value: any) => void
 }

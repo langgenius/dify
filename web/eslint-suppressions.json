@@ -796,7 +796,7 @@
   },
   "app/components/base/chat/chat/answer/human-input-content/human-input-form.tsx": {
     "ts/no-explicit-any": {
-      "count": 4
+      "count": 2
     }
   },
   "app/components/base/chat/chat/answer/human-input-content/type.ts": {

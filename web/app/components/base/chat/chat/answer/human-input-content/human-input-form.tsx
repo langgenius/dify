@@ -1,5 +1,7 @@
 'use client'
 import type { HumanInputFormProps } from './type'
+import type { ButtonProps } from '@/app/components/base/button'
+import type { UserAction } from '@/app/components/workflow/nodes/human-input/types'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import Button from '@/app/components/base/button'
@@ -11,7 +13,7 @@ const HumanInputForm = ({
   onSubmit,
 }: HumanInputFormProps) => {
   const formToken = formData.form_token
-  const defaultInputs = initializeInputs(formData.inputs)
+  const defaultInputs = initializeInputs(formData.inputs, formData.resolved_placeholder_values || {})
   const contentList = splitByOutputVar(formData.form_content)
   const [inputs, setInputs] = useState(defaultInputs)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -36,17 +38,16 @@ const HumanInputForm = ({
           key={index}
           content={content}
           formInputFields={formData.inputs}
-          resolvedPlaceholderValues={formData.resolved_placeholder_values || {}}
           inputs={inputs}
           onInputChange={handleInputsChange}
         />
       ))}
       <div className="flex flex-wrap gap-1 py-1">
-        {formData.actions.map((action: any) => (
+        {formData.actions.map((action: UserAction) => (
           <Button
             key={action.id}
             disabled={isSubmitting}
-            variant={getButtonStyle(action.button_style) as any}
+            variant={getButtonStyle(action.button_style) as ButtonProps['variant']}
             onClick={() => submit(formToken, action.id, inputs)}
           >
             {action.title}

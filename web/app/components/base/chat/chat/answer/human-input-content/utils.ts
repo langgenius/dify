@@ -30,11 +30,11 @@ export const splitByOutputVar = (content: string): string[] => {
   return parts.filter(part => part.length > 0)
 }
 
-export const initializeInputs = (formInputs: FormInputItem[]) => {
+export const initializeInputs = (formInputs: FormInputItem[], defaultValues: Record<string, string> = {}) => {
   const initialInputs: Record<string, any> = {}
   formInputs.forEach((item) => {
     if (item.type === 'text-input' || item.type === 'paragraph')
-      initialInputs[item.output_variable_name] = ''
+      initialInputs[item.output_variable_name] = item.placeholder.type === 'variable' ? defaultValues[item.output_variable_name] || '' : item.placeholder.value
     else
       initialInputs[item.output_variable_name] = undefined
   })

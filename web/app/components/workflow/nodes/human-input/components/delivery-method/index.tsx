@@ -7,6 +7,7 @@ import { produce } from 'immer'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
+import { useNodesSyncDraft } from '@/app/components/workflow/hooks'
 import MethodItem from './method-item'
 import MethodSelector from './method-selector'
 import UpgradeModal from './upgrade-modal'
@@ -35,6 +36,7 @@ const DeliveryMethodForm: React.FC<Props> = ({
   readonly,
 }) => {
   const { t } = useTranslation()
+  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
 
   const handleMethodChange = (target: DeliveryMethod) => {
     const newMethods = produce(value, (draft) => {
@@ -43,6 +45,7 @@ const DeliveryMethodForm: React.FC<Props> = ({
         draft[index] = target
     })
     onChange(newMethods)
+    handleSyncWorkflowDraft(true, true)
   }
 
   const handleMethodAdd = (newMethod: DeliveryMethod) => {

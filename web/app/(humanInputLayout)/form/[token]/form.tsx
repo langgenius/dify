@@ -1,4 +1,5 @@
 'use client'
+import type { ButtonProps } from '@/app/components/base/button'
 import type { FormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
 import type { HumanInputFormError } from '@/service/use-share'
 import {
@@ -66,10 +67,10 @@ const FormContent = () => {
       return
     const initialInputs: Record<string, string> = {}
     formData.inputs.forEach((item) => {
-      initialInputs[item.output_variable_name] = ''
+      initialInputs[item.output_variable_name] = item.placeholder.type === 'variable' ? formData.resolved_placeholder_values[item.output_variable_name] || '' : item.placeholder.value
     })
     setInputs(initialInputs)
-  }, [formData?.inputs])
+  }, [formData?.inputs, formData?.resolved_placeholder_values])
 
   // use immer
   const handleInputsChange = (name: string, value: string) => {
@@ -227,15 +228,14 @@ const FormContent = () => {
               formInputFields={formData.inputs}
               inputs={inputs}
               onInputChange={handleInputsChange}
-              resolvedPlaceholderValues={formData.resolved_placeholder_values}
             />
           ))}
           <div className="flex flex-wrap gap-1 py-1">
-            {formData.user_actions.map((action: any) => (
+            {formData.user_actions.map((action: UserAction) => (
               <Button
                 key={action.id}
                 disabled={isSubmitting}
-                variant={getButtonStyle(action.button_style) as any}
+                variant={getButtonStyle(action.button_style) as ButtonProps['variant']}
                 onClick={() => submit(action.id)}
               >
                 {action.title}

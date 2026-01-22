@@ -71,17 +71,19 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
       if (editBtn)
         editBtn.removeEventListener('click', showEditModal)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const removeBtnRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const removeBtn = removeBtnRef.current
+    const removeHandler = () => onRemove(varName)
     if (removeBtn)
-      removeBtn.addEventListener('click', () => onRemove(varName))
+      removeBtn.addEventListener('click', removeHandler)
 
     return () => {
       if (removeBtn)
-        removeBtn.removeEventListener('click', () => onRemove(varName))
+        removeBtn.removeEventListener('click', removeHandler)
     }
   }, [onRemove, varName])
 
@@ -123,7 +125,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
             />
           )}
           {!isPlaceholderVariable && (
-            <div className="system-xs-medium max-w-full truncate text-text-quaternary">{formInput.placeholder.value}</div>
+            <div className="system-xs-medium max-w-full truncate text-components-input-text-filled">{formInput.placeholder.value}</div>
           )}
         </div>
 

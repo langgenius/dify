@@ -25,7 +25,7 @@ const FormContent = ({
   onSubmit,
 }: Props) => {
   const { t } = useTranslation()
-  const defaultInputs = initializeInputs(data.inputs)
+  const defaultInputs = initializeInputs(data.inputs, data.resolved_placeholder_values || {})
   const contentList = splitByOutputVar(data.form_content)
   const [inputs, setInputs] = useState(defaultInputs)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -63,7 +63,6 @@ const FormContent = ({
             formInputFields={data.inputs}
             inputs={inputs}
             onInputChange={handleInputsChange}
-            resolvedPlaceholderValues={data.resolved_placeholder_values}
           />
         ))}
         <div className="flex flex-wrap gap-1 py-1">

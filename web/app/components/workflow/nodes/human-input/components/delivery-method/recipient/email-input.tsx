@@ -81,23 +81,32 @@ const EmailInput = ({
     return emailRegex.test(email)
   }
 
+  const handleEmailAdd = () => {
+    const emailAddress = searchKey.trim()
+    if (!checkEmailValid(emailAddress))
+      return
+    if (value.some(item => item.email === emailAddress))
+      return
+    if (list.some(item => item.email === emailAddress)) {
+      const item = list.find(item => item.email === emailAddress)!
+      onSelect(item.id)
+    }
+    else {
+      onAdd(emailAddress)
+    }
+    setSearchKey('')
+    setOpen(false)
+  }
+
+  const handleInputBlur = () => {
+    setIsFocus(false)
+    handleEmailAdd()
+  }
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' || e.key === 'Tab' || e.key === ' ' || e.key === ',') {
       e.preventDefault()
-      const emailAddress = searchKey.trim()
-      if (!checkEmailValid(emailAddress))
-        return
-      if (value.some(item => item.email === emailAddress))
-        return
-      if (list.some(item => item.email === emailAddress)) {
-        const item = list.find(item => item.email === emailAddress)!
-        onSelect(item.id)
-      }
-      else {
-        onAdd(emailAddress)
-      }
-      setSearchKey('')
-      setOpen(false)
+      handleEmailAdd()
     }
     else if (e.key === 'Backspace') {
       if (searchKey === '' && value.length > 0) {
@@ -144,7 +153,7 @@ const EmailInput = ({
                 className="system-sm-regular h-6 min-w-[166px] appearance-none bg-transparent p-1 text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder"
                 placeholder={placeholder}
                 onFocus={() => setIsFocus(true)}
-                onBlur={() => setIsFocus(false)}
+                onBlur={handleInputBlur}
                 value={searchKey}
                 onChange={handleValueChange}
                 onKeyDown={handleKeyDown}
