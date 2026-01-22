@@ -1,6 +1,6 @@
 import type { StateCreator } from 'zustand'
 import type { Shape as HooksStoreShape } from '@/app/components/workflow/hooks-store'
-import type { MentionConfig } from '@/app/components/workflow/nodes/_base/types'
+import type { NestedNodeConfig } from '@/app/components/workflow/nodes/_base/types'
 import type { CodeNodeType } from '@/app/components/workflow/nodes/code/types'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type { BlockEnum, Edge, Node, NodeOutPutVar, ValueSelector } from '@/app/components/workflow/types'
@@ -35,8 +35,8 @@ export type AgentSubGraphProps = BaseSubGraphProps & {
   sourceVariable: ValueSelector
   agentNodeId: string
   agentName: string
-  mentionConfig: MentionConfig
-  onMentionConfigChange: (config: MentionConfig) => void
+  nestedNodeConfig: NestedNodeConfig
+  onNestedNodeConfigChange: (config: NestedNodeConfig) => void
   extractorNode?: Node<LLMNodeType>
 }
 

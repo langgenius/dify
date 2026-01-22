@@ -12,7 +12,7 @@ import { useCallback, useMemo } from 'react'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { BlockEnum, EditionType, isPromptMessageContext, PromptRole, VarType } from '@/app/components/workflow/types'
 import { generateNewNode, getNodeCustomTypeByNodeDataType, mergeNodeDefaultData } from '@/app/components/workflow/utils'
-import { fetchMentionGraph } from '@/service/workflow'
+import { fetchNestedNodeGraph } from '@/service/workflow'
 import { FlowType } from '@/types/common'
 
 // Constants
@@ -160,7 +160,7 @@ export function useMixedVariableExtractor({
     return `${toolNodeId}_ext_${paramKey}`
   }, [paramKey, toolNodeId])
 
-  const resolveMentionParameterSchema = useCallback((key: string) => {
+  const resolveNestedNodeParameterSchema = useCallback((key: string) => {
     if (!toolNodeId) {
       return {
         name: key,
@@ -337,37 +337,37 @@ export function useMixedVariableExtractor({
     handleSyncWorkflowDraft()
   }, [handleSyncWorkflowDraft, paramKey, reactFlowStore, toolNodeId])
 
-  const applyMentionGraphNodeData = useCallback((payload: {
+  const applyNestedNodeGraphData = useCallback((payload: {
     extractorNodeId: string
-    mentionNodeData: Partial<LLMNodeType>
+    nestedNodeData: Partial<LLMNodeType>
     valueText: string
     detectAgentFromText: (text: string) => DetectedAgent | null
   }) => {
-    const { extractorNodeId, mentionNodeData, valueText, detectAgentFromText } = payload
+    const { extractorNodeId, nestedNodeData, valueText, detectAgentFromText } = payload
     if (!toolNodeId)
       return
-    const hasPromptTemplate = Array.isArray(mentionNodeData.prompt_template)
-      ? mentionNodeData.prompt_template.length > 0
-      : Boolean(mentionNodeData.prompt_template)
+    const hasPromptTemplate = Array.isArray(nestedNodeData.prompt_template)
+      ? nestedNodeData.prompt_template.length > 0
+      : Boolean(nestedNodeData.prompt_template)
     const nextData: Partial<LLMNodeType> = {}
-    if (mentionNodeData.title)
-      nextData.title = mentionNodeData.title
-    if (mentionNodeData.desc)
-      nextData.desc = mentionNodeData.desc
-    if (mentionNodeData.model && (mentionNodeData.model.provider || mentionNodeData.model.name))
-      nextData.model = mentionNodeData.model
+    if (nestedNodeData.title)
+      nextData.title = nestedNodeData.title
+    if (nestedNodeData.desc)
+      nextData.desc = nestedNodeData.desc
+    if (nestedNodeData.model && (nestedNodeData.model.provider || nestedNodeData.model.name))
+      nextData.model = nestedNodeData.model
     if (hasPromptTemplate)
-      nextData.prompt_template = mentionNodeData.prompt_template
-    if (typeof mentionNodeData.structured_output_enabled === 'boolean')
-      nextData.structured_output_enabled = mentionNodeData.structured_output_enabled
-    if (mentionNodeData.structured_output?.schema)
-      nextData.structured_output = mentionNodeData.structured_output
-    if (mentionNodeData.context)
-      nextData.context = mentionNodeData.context
-    if (mentionNodeData.vision)
-      nextData.vision = mentionNodeData.vision
-    if (Object.prototype.hasOwnProperty.call(mentionNodeData, 'memory'))
-      nextData.memory = mentionNodeData.memory
+      nextData.prompt_template = nestedNodeData.prompt_template
+    if (typeof nestedNodeData.structured_output_enabled === 'boolean')
+      nextData.structured_output_enabled = nestedNodeData.structured_output_enabled
+    if (nestedNodeData.structured_output?.schema)
+      nextData.structured_output = nestedNodeData.structured_output
+    if (nestedNodeData.context)
+      nextData.context = nestedNodeData.context
+    if (nestedNodeData.vision)
+      nextData.vision = nestedNodeData.vision
+    if (Object.prototype.hasOwnProperty.call(nestedNodeData, 'memory'))
+      nextData.memory = nestedNodeData.memory
 
     if (Object.keys(nextData).length === 0)
       return
@@ -396,7 +396,7 @@ export function useMixedVariableExtractor({
     syncExtractorPromptFromText(valueText, detectAgentFromText)
   }, [handleSyncWorkflowDraft, reactFlowStore, syncExtractorPromptFromText, toolNodeId])
 
-  const requestMentionGraph = useCallback(async (payload: {
+  const requestNestedNodeGraph = useCallback(async (payload: {
     agentId: string
     extractorNodeId: string
     valueText: string
@@ -406,28 +406,28 @@ export function useMixedVariableExtractor({
       return
     if (!configsMap?.flowId || configsMap.flowType !== FlowType.appFlow)
       return
-    const parameterSchema = resolveMentionParameterSchema(paramKey)
+    const parameterSchema = resolveNestedNodeParameterSchema(paramKey)
     try {
-      const response = await fetchMentionGraph(configsMap.flowType, configsMap.flowId, {
+      const response = await fetchNestedNodeGraph(configsMap.flowType, configsMap.flowId, {
         parent_node_id: toolNodeId,
         parameter_key: paramKey,
         context_source: [payload.agentId, 'context'],
         parameter_schema: parameterSchema,
       })
-      const mentionNode = response?.graph?.nodes?.find(node => node.id === payload.extractorNodeId)
-      const mentionNodeData = mentionNode?.data as Partial<LLMNodeType> | undefined
-      if (!mentionNodeData)
+      const nestedNode = response?.graph?.nodes?.find(node => node.id === payload.extractorNodeId)
+      const nestedNodeData = nestedNode?.data as Partial<LLMNodeType> | undefined
+      if (!nestedNodeData)
         return
-      applyMentionGraphNodeData({
+      applyNestedNodeGraphData({
         extractorNodeId: payload.extractorNodeId,
-        mentionNodeData,
+        nestedNodeData,
         valueText: payload.valueText,
         detectAgentFromText: payload.detectAgentFromText,
       })
     }
     catch {
     }
-  }, [applyMentionGraphNodeData, configsMap?.flowId, configsMap?.flowType, paramKey, resolveMentionParameterSchema, toolNodeId])
+  }, [applyNestedNodeGraphData, configsMap?.flowId, configsMap?.flowType, paramKey, resolveNestedNodeParameterSchema, toolNodeId])
 
   return {
     assembleExtractorNodeId,
@@ -435,6 +435,6 @@ export function useMixedVariableExtractor({
     ensureAssembleExtractorNode,
     removeExtractorNode,
     syncExtractorPromptFromText,
-    requestMentionGraph,
+    requestNestedNodeGraph,
   }
 }

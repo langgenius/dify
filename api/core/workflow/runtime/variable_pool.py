@@ -268,21 +268,21 @@ class VariablePool(BaseModel):
                 continue
             self.add(selector, value)
 
-    def resolve_mention(
+    def resolve_nested_node(
         self,
-        mention_config: Mapping[str, Any],
+        nested_node_config: Mapping[str, Any],
         /,
         *,
         parameter_name: str = "",
     ) -> tuple[Any, bool]:
         """
-        Resolve a mention parameter value from an extractor node's output.
+        Resolve a nested_node parameter value from an extractor node's output.
 
-        Mention parameters reference values extracted by an extractor LLM node
+        Nested node parameters reference values extracted by an extractor LLM node
         from list[PromptMessage] context.
 
         Args:
-            mention_config: A dict containing:
+            nested_node_config: A dict containing:
                 - extractor_node_id: ID of the extractor LLM node
                 - output_selector: Selector path for the output variable (e.g., ["text"])
                 - null_strategy: "raise_error" or "use_default"
@@ -298,13 +298,13 @@ class VariablePool(BaseModel):
             ValueError: If extractor_node_id is missing, or if null_strategy is
                        "raise_error" and the value is not found
         """
-        extractor_node_id = mention_config.get("extractor_node_id")
+        extractor_node_id = nested_node_config.get("extractor_node_id")
         if not extractor_node_id:
-            raise ValueError(f"Missing extractor_node_id for mention parameter '{parameter_name}'")
+            raise ValueError(f"Missing extractor_node_id for nested_node parameter '{parameter_name}'")
 
-        output_selector = list(mention_config.get("output_selector", []))
-        null_strategy = mention_config.get("null_strategy", "raise_error")
-        default_value = mention_config.get("default_value")
+        output_selector = list(nested_node_config.get("output_selector", []))
+        null_strategy = nested_node_config.get("null_strategy", "raise_error")
+        default_value = nested_node_config.get("default_value")
 
         # Build full selector: [extractor_node_id, ...output_selector]
         full_selector = [extractor_node_id] + output_selector

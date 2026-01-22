@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { MentionConfig, ResourceVarInputs } from '../types'
+import type { NestedNodeConfig, ResourceVarInputs } from '../types'
 import type { CredentialFormSchema, FormOption } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Event, Tool } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
@@ -319,7 +319,7 @@ const FormInputItem: FC<Props> = ({
     }
   }
 
-  const handleValueChange = (newValue: any, newType?: VarKindType, mentionConfig?: MentionConfig | null) => {
+  const handleValueChange = (newValue: any, newType?: VarKindType, nestedNodeConfig?: NestedNodeConfig | null) => {
     const normalizedValue = isNumber ? Number.parseFloat(newValue) : newValue
     const assemblePlaceholder = nodeId && variable
       ? `{{#${nodeId}_ext_${variable}.result#}}`
@@ -329,9 +329,9 @@ const FormInputItem: FC<Props> = ({
       && normalizedValue.includes(assemblePlaceholder)
     const resolvedType = isAssembleValue
       ? VarKindType.mixed
-      : newType ?? (varInput?.type === VarKindType.mention ? VarKindType.mention : getVarKindType())
-    const resolvedMentionConfig = resolvedType === VarKindType.mention
-      ? (mentionConfig ?? varInput?.mention_config ?? {
+      : newType ?? (varInput?.type === VarKindType.nested_node ? VarKindType.nested_node : getVarKindType())
+    const resolvedNestedNodeConfig = resolvedType === VarKindType.nested_node
+      ? (nestedNodeConfig ?? varInput?.nested_node_config ?? {
           extractor_node_id: '',
           output_selector: [],
           null_strategy: 'use_default',
@@ -345,7 +345,7 @@ const FormInputItem: FC<Props> = ({
         ...varInput,
         type: resolvedType,
         value: normalizedValue,
-        mention_config: resolvedMentionConfig,
+        nested_node_config: resolvedNestedNodeConfig,
       },
     })
   }

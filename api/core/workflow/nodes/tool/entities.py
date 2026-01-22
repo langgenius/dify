@@ -8,17 +8,17 @@ from pydantic_core.core_schema import ValidationInfo
 from core.tools.entities.tool_entities import ToolProviderType
 from core.workflow.nodes.base.entities import BaseNodeData
 
-# Pattern to match mention value format: {{@node.context@}}instruction
+# Pattern to match nested_node value format: {{@node.context@}}instruction
 # The placeholder {{@node.context@}} must appear at the beginning
 # Format: {{@agent_node_id.context@}} where agent_node_id is dynamic, context is fixed
-MENTION_VALUE_PATTERN = re.compile(r"^\{\{@([a-zA-Z0-9_]+)\.context@\}\}(.*)$", re.DOTALL)
+NESTED_NODE_VALUE_PATTERN = re.compile(r"^\{\{@([a-zA-Z0-9_]+)\.context@\}\}(.*)$", re.DOTALL)
 
 
-def parse_mention_value(value: str) -> tuple[str, str]:
-    """Parse mention value into (node_id, instruction).
+def parse_nested_node_value(value: str) -> tuple[str, str]:
+    """Parse nested_node value into (node_id, instruction).
 
     Args:
-        value: The mention value string like "{{@llm.context@}}extract keywords"
+        value: The nested_node value string like "{{@llm.context@}}extract keywords"
 
     Returns:
         Tuple of (node_id, instruction)
@@ -26,16 +26,16 @@ def parse_mention_value(value: str) -> tuple[str, str]:
     Raises:
         ValueError: If value format is invalid
     """
-    match = MENTION_VALUE_PATTERN.match(value)
+    match = NESTED_NODE_VALUE_PATTERN.match(value)
     if not match:
         raise ValueError(
-            "For mention type, value must start with {{@node.context@}} placeholder, "
+            "For nested_node type, value must start with {{@node.context@}} placeholder, "
             "e.g., '{{@llm.context@}}extract keywords'"
         )
     return match.group(1), match.group(2)
 
 
-class MentionConfig(BaseModel):
+class NestedNodeConfig(BaseModel):
     """Configuration for extracting value from context variable.
 
     Used when a tool parameter needs to be extracted from list[PromptMessage]
@@ -87,9 +87,9 @@ class ToolNodeData(BaseNodeData, ToolEntity):
     class ToolInput(BaseModel):
         # TODO: check this type
         value: Union[Any, list[str]]
-        type: Literal["mixed", "variable", "constant", "mention"]
-        # Required config for mention type, extracting value from context variable
-        mention_config: MentionConfig | None = None
+        type: Literal["mixed", "variable", "constant", "nested_node"]
+        # Required config for nested_node type, extracting value from context variable
+        nested_node_config: NestedNodeConfig | None = None
 
         @field_validator("type", mode="before")
         @classmethod
@@ -102,7 +102,7 @@ class ToolNodeData(BaseNodeData, ToolEntity):
 
             if typ == "mixed" and not isinstance(value, str):
                 raise ValueError("value must be a string")
-            elif typ == "mention":
+            elif typ == "nested_node":
                 # Skip here, will be validated in model_validator
                 pass
             elif typ == "variable":
@@ -116,9 +116,9 @@ class ToolNodeData(BaseNodeData, ToolEntity):
             return typ
 
         @model_validator(mode="after")
-        def check_mention_type(self) -> Self:
-            """Validate mention type with mention_config."""
-            if self.type != "mention":
+        def check_nested_node_type(self) -> Self:
+            """Validate nested_node type with nested_node_config."""
+            if self.type != "nested_node":
                 return self
 
             value = self.value
@@ -126,13 +126,13 @@ class ToolNodeData(BaseNodeData, ToolEntity):
                 return self
 
             if not isinstance(value, str):
-                raise ValueError("value must be a string for mention type")
-            # For mention type, value must match format: {{@node.context@}}instruction
+                raise ValueError("value must be a string for nested_node type")
+            # For nested_node type, value must match format: {{@node.context@}}instruction
             # This will raise ValueError if format is invalid
-            parse_mention_value(value)
-            # mention_config is required for mention type
-            if self.mention_config is None:
-                raise ValueError("mention_config is required for mention type")
+            parse_nested_node_value(value)
+            # nested_node_config is required for nested_node type
+            if self.nested_node_config is None:
+                raise ValueError("nested_node_config is required for nested_node type")
             return self
 
     tool_parameters: dict[str, ToolInput]

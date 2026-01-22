@@ -813,7 +813,19 @@ Parameter: {parameter_info.get("name")} ({param_type}) - {parameter_info.get("de
             if isinstance(v, dict)
         ]
 
-        outputs = content.get("outputs", {"result": {"type": parameter_type}})
+        # Convert outputs from array format [{name, type}] to dict format {name: {type}}
+        # Array format is required for OpenAI/Azure strict JSON schema compatibility
+        raw_outputs = content.get("outputs", [])
+        if isinstance(raw_outputs, list):
+            outputs = {
+                item.get("name", "result"): {"type": item.get("type", parameter_type)}
+                for item in raw_outputs
+                if isinstance(item, dict) and item.get("name")
+            }
+            if not outputs:
+                outputs = {"result": {"type": parameter_type}}
+        else:
+            outputs = raw_outputs or {"result": {"type": parameter_type}}
 
         return {
             "variables": variables,

@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import type { MentionConfig } from '@/app/components/workflow/nodes/_base/types'
+import type { NestedNodeConfig } from '@/app/components/workflow/nodes/_base/types'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
 import { memo, useMemo } from 'react'
 import { useStore as useReactFlowStore } from 'reactflow'
@@ -14,8 +14,8 @@ type SubGraphChildrenProps
     variant: 'agent'
     title: string
     extractorNodeId: string
-    mentionConfig: MentionConfig
-    onMentionConfigChange: (config: MentionConfig) => void
+    nestedNodeConfig: NestedNodeConfig
+    onNestedNodeConfigChange: (config: NestedNodeConfig) => void
   }
   | {
     variant: 'assemble'
@@ -72,10 +72,10 @@ const SubGraphChildren: FC<SubGraphChildrenProps> = (props) => {
           <ConfigPanel
             agentName={title}
             extractorNodeId={extractorNodeId}
-            mentionConfig={agentProps.mentionConfig}
+            nestedNodeConfig={agentProps.nestedNodeConfig}
             availableNodes={availableNodes}
             availableVars={availableVars}
-            onMentionConfigChange={agentProps.onMentionConfigChange}
+            onNestedNodeConfigChange={agentProps.onNestedNodeConfigChange}
           />
         </div>
       </div>

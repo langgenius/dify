@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { SubGraphModalProps } from './types'
-import type { MentionConfig } from '@/app/components/workflow/nodes/_base/types'
+import type { NestedNodeConfig } from '@/app/components/workflow/nodes/_base/types'
 import type { CodeNodeType } from '@/app/components/workflow/nodes/code/types'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type { ToolNodeType } from '@/app/components/workflow/nodes/tool/types'
@@ -88,8 +88,8 @@ const SubGraphModal: FC<SubGraphModalProps> = (props) => {
     return vars.filter(nodeVar => availableNodeIds.has(nodeVar.nodeId))
   }, [getNodeAvailableVars, isChatMode, parentAvailableNodes])
 
-  const mentionConfig = useMemo<MentionConfig>(() => {
-    const current = toolParam?.mention_config
+  const nestedNodeConfig = useMemo<NestedNodeConfig>(() => {
+    const current = toolParam?.nested_node_config
     const rawSelector = Array.isArray(current?.output_selector) ? current!.output_selector : []
     const outputSelector = rawSelector[0] === extractorNodeId ? rawSelector.slice(1) : rawSelector
     const defaultOutputSelector = ['structured_output', paramKey]
@@ -100,9 +100,9 @@ const SubGraphModal: FC<SubGraphModalProps> = (props) => {
       null_strategy: current?.null_strategy || 'use_default',
       default_value: current?.default_value ?? '',
     }
-  }, [extractorNodeId, paramKey, toolParam?.mention_config])
+  }, [extractorNodeId, paramKey, toolParam?.nested_node_config])
 
-  const handleMentionConfigChange = useCallback((config: MentionConfig) => {
+  const handleNestedNodeConfigChange = useCallback((config: NestedNodeConfig) => {
     if (!isAgentVariant)
       return
 
@@ -124,8 +124,8 @@ const SubGraphModal: FC<SubGraphModalProps> = (props) => {
             ...toolData.tool_parameters,
             [paramKey]: {
               ...currentParam,
-              type: currentParam.type || VarKindType.mention,
-              mention_config: config,
+              type: currentParam.type || VarKindType.nested_node,
+              nested_node_config: config,
             },
           },
         },
@@ -136,18 +136,18 @@ const SubGraphModal: FC<SubGraphModalProps> = (props) => {
   }, [handleSyncWorkflowDraft, isAgentVariant, paramKey, reactflowStore, toolNodeId])
 
   useEffect(() => {
-    if (!isAgentVariant || !toolParam || (toolParam.type && toolParam.type !== VarKindType.mention))
+    if (!isAgentVariant || !toolParam || (toolParam.type && toolParam.type !== VarKindType.nested_node))
       return
 
-    const current = toolParam.mention_config
+    const current = toolParam.nested_node_config
     const needsExtractor = !current?.extractor_node_id
     const needsNullStrategy = !current?.null_strategy
     const needsOutputSelector = !Array.isArray(current?.output_selector)
     const needsDefaultValue = current?.default_value === undefined
 
     if (needsExtractor || needsNullStrategy || needsOutputSelector || needsDefaultValue)
-      handleMentionConfigChange(mentionConfig)
-  }, [handleMentionConfigChange, isAgentVariant, mentionConfig, toolParam])
+      handleNestedNodeConfigChange(nestedNodeConfig)
+  }, [handleNestedNodeConfigChange, isAgentVariant, nestedNodeConfig, toolParam])
 
   const getUserPromptText = useCallback((promptTemplate?: PromptTemplateItem[] | PromptItem) => {
     if (!promptTemplate)
@@ -281,8 +281,8 @@ const SubGraphModal: FC<SubGraphModalProps> = (props) => {
                           agentNodeId={props.agentNodeId}
                           agentName={props.agentName}
                           configsMap={configsMap}
-                          mentionConfig={mentionConfig}
-                          onMentionConfigChange={handleMentionConfigChange}
+                          nestedNodeConfig={nestedNodeConfig}
+                          onNestedNodeConfigChange={handleNestedNodeConfigChange}
                           extractorNode={extractorNode as Node<LLMNodeType> | undefined}
                           toolParamValue={toolParamValue}
                           parentAvailableNodes={parentAvailableNodes}

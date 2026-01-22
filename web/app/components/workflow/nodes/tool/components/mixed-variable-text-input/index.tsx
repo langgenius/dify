@@ -2,7 +2,7 @@ import type { ContextGenerateModalHandle } from '../context-generate-modal'
 import type { DetectedAgent } from './hooks'
 import type { AgentNode, WorkflowVariableBlockType } from '@/app/components/base/prompt-editor/types'
 import type { StrategyDetail, StrategyPluginDetail } from '@/app/components/plugins/types'
-import type { MentionConfig, VarKindType } from '@/app/components/workflow/nodes/_base/types'
+import type { NestedNodeConfig, VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import type { AgentNodeType } from '@/app/components/workflow/nodes/agent/types'
 import type {
   CommonNodeType,
@@ -41,7 +41,7 @@ import {
 
 type WorkflowNodesMap = NonNullable<WorkflowVariableBlockType['workflowNodesMap']>
 
-const DEFAULT_MENTION_CONFIG: MentionConfig = {
+const DEFAULT_NESTED_NODE_CONFIG: NestedNodeConfig = {
   extractor_node_id: '',
   output_selector: [],
   null_strategy: 'use_default',
@@ -60,7 +60,7 @@ type MixedVariableTextInputProps = {
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: WorkflowNode[]
   value?: string
-  onChange?: (text: string, type?: VarKindType, mentionConfig?: MentionConfig | null) => void
+  onChange?: (text: string, type?: VarKindType, nestedNodeConfig?: NestedNodeConfig | null) => void
   showManageInputField?: boolean
   onManageInputField?: () => void
   disableVariableInsertion?: boolean
@@ -134,7 +134,7 @@ const MixedVariableTextInput = ({
     ensureAssembleExtractorNode,
     removeExtractorNode,
     syncExtractorPromptFromText,
-    requestMentionGraph,
+    requestNestedNodeGraph,
   } = useMixedVariableExtractor({
     toolNodeId,
     paramKey,
@@ -297,22 +297,22 @@ const MixedVariableTextInput = ({
       })
     }
 
-    const mentionConfigWithOutputSelector: MentionConfig = {
-      ...DEFAULT_MENTION_CONFIG,
+    const nestedNodeConfigWithOutputSelector: NestedNodeConfig = {
+      ...DEFAULT_NESTED_NODE_CONFIG,
       extractor_node_id: extractorNodeId,
       output_selector: paramKey ? ['structured_output', paramKey] : [],
     }
-    onChange(newValue, VarKindTypeEnum.mention, mentionConfigWithOutputSelector)
+    onChange(newValue, VarKindTypeEnum.nested_node, nestedNodeConfigWithOutputSelector)
     syncExtractorPromptFromText(newValue, detectAgentFromText)
     if (extractorNodeId) {
-      void requestMentionGraph({
+      void requestNestedNodeGraph({
         agentId: agent.id,
         extractorNodeId,
         valueText: newValue,
         detectAgentFromText,
       })
     }
-  }, [detectAgentFromText, ensureExtractorNode, onChange, paramKey, requestMentionGraph, syncExtractorPromptFromText, toolNodeId, value])
+  }, [detectAgentFromText, ensureExtractorNode, onChange, paramKey, requestNestedNodeGraph, syncExtractorPromptFromText, toolNodeId, value])
 
   const handleAssembleSelect = useCallback((): ValueSelector | null => {
     if (!toolNodeId || !paramKey || !assemblePlaceholder)

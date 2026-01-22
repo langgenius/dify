@@ -77,7 +77,7 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
     }, {} as Record<string, WorkflowNode>)
   }, [nodes])
 
-  const mentionEntries = useMemo(() => {
+  const nestedNodeEntries = useMemo(() => {
     const entries: Array<{ agentNodeId: string, extractorNodeId?: string, paramKey: string }> = []
     const seen = new Set<string>()
     const toolParams = data.tool_parameters || {}
@@ -97,8 +97,8 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
         entries.push({
           agentNodeId,
           paramKey,
-          extractorNodeId: param?.mention_config?.extractor_node_id
-            || (param?.type === VarType.mention ? `${id}_ext_${paramKey}` : undefined),
+          extractorNodeId: param?.nested_node_config?.extractor_node_id
+            || (param?.type === VarType.nested_node ? `${id}_ext_${paramKey}` : undefined),
         })
       }
     })
@@ -106,7 +106,7 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
   }, [data.tool_parameters, id])
 
   const referenceItems = useMemo(() => {
-    if (!mentionEntries.length)
+    if (!nestedNodeEntries.length)
       return []
 
     const getNodeWarning = (node?: WorkflowNode) => {
@@ -132,7 +132,7 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
       return Boolean(errorMessage)
     }
 
-    return mentionEntries.map(({ agentNodeId, extractorNodeId, paramKey }) => {
+    return nestedNodeEntries.map(({ agentNodeId, extractorNodeId, paramKey }) => {
       const agentNode = nodesById[agentNodeId]
       const agentLabel = `@${agentNode?.data.title || agentNodeId}`
       const agentWarning = getNodeWarning(agentNode)
@@ -148,7 +148,7 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
         hasWarning,
       }
     })
-  }, [mentionEntries, nodesById, nodesMetaDataMap, strategyProviders, language, t])
+  }, [nestedNodeEntries, nodesById, nodesMetaDataMap, strategyProviders, language, t])
 
   const hasConfigs = toolConfigs.length > 0
   const hasReferences = referenceItems.length > 0

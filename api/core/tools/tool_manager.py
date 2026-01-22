@@ -1058,10 +1058,10 @@ class ToolManager:
                     elif tool_input.type == "mixed":
                         segment_group = variable_pool.convert_template(str(tool_input.value))
                         parameter_value = segment_group.text
-                    elif tool_input.type == "mention":
-                        # Mention type not supported in agent mode
+                    elif tool_input.type == "nested_node":
+                        # Nested node type not supported in agent mode
                         raise ToolParameterError(
-                            f"Mention type not supported in agent for parameter '{parameter.name}'"
+                            f"Nested node type not supported in agent for parameter '{parameter.name}'"
                         )
                     else:
                         raise ToolParameterError(f"Unknown tool input type '{tool_input.type}'")

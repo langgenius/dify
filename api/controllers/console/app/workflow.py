@@ -46,8 +46,8 @@ from models.workflow import Workflow
 from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowHashNotEqualError
 from services.errors.llm import InvokeRateLimitError
-from services.workflow.entities import MentionGraphRequest, MentionParameterSchema
-from services.workflow.mention_graph_service import MentionGraphService
+from services.workflow.entities import NestedNodeGraphRequest, NestedNodeParameterSchema
+from services.workflow.nested_node_graph_service import NestedNodeGraphService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 
 logger = logging.getLogger(__name__)
@@ -190,8 +190,8 @@ class DraftWorkflowTriggerRunAllPayload(BaseModel):
     node_ids: list[str]
 
 
-class MentionGraphPayload(BaseModel):
-    """Request payload for generating mention graph."""
+class NestedNodeGraphPayload(BaseModel):
+    """Request payload for generating nested node graph."""
 
     parent_node_id: str = Field(description="ID of the parent node that uses the extracted value")
     parameter_key: str = Field(description="Key of the parameter being extracted")
@@ -216,7 +216,7 @@ reg(WorkflowListQuery)
 reg(WorkflowUpdatePayload)
 reg(DraftWorkflowTriggerRunPayload)
 reg(DraftWorkflowTriggerRunAllPayload)
-reg(MentionGraphPayload)
+reg(NestedNodeGraphPayload)
 
 
 # TODO(QuantumGhost): Refactor existing node run API to handle file parameter parsing
@@ -1180,20 +1180,20 @@ class DraftWorkflowTriggerRunAllApi(Resource):
             ), 400
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/draft/mention-graph")
-class MentionGraphApi(Resource):
+@console_ns.route("/apps/<uuid:app_id>/workflows/draft/nested-node-graph")
+class NestedNodeGraphApi(Resource):
     """
-    API for generating Mention LLM node graph structures.
+    API for generating Nested Node LLM graph structures.
 
     This endpoint creates a complete graph structure containing an LLM node
     configured to extract values from list[PromptMessage] variables.
     """
 
-    @console_ns.doc("generate_mention_graph")
-    @console_ns.doc(description="Generate a Mention LLM node graph structure")
+    @console_ns.doc("generate_nested_node_graph")
+    @console_ns.doc(description="Generate a Nested Node LLM graph structure")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[MentionGraphPayload.__name__])
-    @console_ns.response(200, "Mention graph generated successfully")
+    @console_ns.expect(console_ns.models[NestedNodeGraphPayload.__name__])
+    @console_ns.response(200, "Nested node graph generated successfully")
     @console_ns.response(400, "Invalid request parameters")
     @console_ns.response(403, "Permission denied")
     @setup_required
@@ -1203,21 +1203,21 @@ class MentionGraphApi(Resource):
     @edit_permission_required
     def post(self, app_model: App):
         """
-        Generate a Mention LLM node graph structure.
+        Generate a Nested Node LLM graph structure.
 
         Returns a complete graph structure containing a single LLM node
         configured for extracting values from list[PromptMessage] context.
         """
 
-        payload = MentionGraphPayload.model_validate(console_ns.payload or {})
+        payload = NestedNodeGraphPayload.model_validate(console_ns.payload or {})
 
-        parameter_schema = MentionParameterSchema(
+        parameter_schema = NestedNodeParameterSchema(
             name=payload.parameter_schema.get("name", payload.parameter_key),
             type=payload.parameter_schema.get("type", "string"),
             description=payload.parameter_schema.get("description", ""),
         )
 
-        request = MentionGraphRequest(
+        request = NestedNodeGraphRequest(
             parent_node_id=payload.parent_node_id,
             parameter_key=payload.parameter_key,
             context_source=payload.context_source,
@@ -1225,7 +1225,7 @@ class MentionGraphApi(Resource):
         )
 
         with Session(db.engine) as session:
-            service = MentionGraphService(session)
-            response = service.generate_mention_graph(tenant_id=app_model.tenant_id, request=request)
+            service = NestedNodeGraphService(session)
+            response = service.generate_nested_node_graph(tenant_id=app_model.tenant_id, request=request)
 
         return response.model_dump()

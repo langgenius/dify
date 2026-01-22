@@ -4,8 +4,8 @@ import type { FlowType } from '@/types/common'
 import type {
   ConversationVariableResponse,
   FetchWorkflowDraftResponse,
-  MentionGraphPayload,
-  MentionGraphResponse,
+  NestedNodeGraphPayload,
+  NestedNodeGraphResponse,
   NodesDefaultConfigsResponse,
   VarInInspect,
 } from '@/types/workflow'
@@ -34,8 +34,8 @@ export const fetchNodesDefaultConfigs = (url: string) => {
   return get<NodesDefaultConfigsResponse>(url)
 }
 
-export const fetchMentionGraph = (flowType: FlowType, flowId: string, payload: MentionGraphPayload) => {
-  return post<MentionGraphResponse>(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/mention-graph`, { body: payload }, { silent: true })
+export const fetchNestedNodeGraph = (flowType: FlowType, flowId: string, payload: NestedNodeGraphPayload) => {
+  return post<NestedNodeGraphResponse>(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/nested-node-graph`, { body: payload }, { silent: true })
 }
 
 export const singleNodeRun = (flowType: FlowType, flowId: string, nodeId: string, params: object) => {

@@ -256,7 +256,7 @@ class WorkflowNodeExecutionMetadataKey(StrEnum):
     LLM_CONTENT_SEQUENCE = "llm_content_sequence"
     LLM_TRACE = "llm_trace"
     COMPLETED_REASON = "completed_reason"  # completed reason for loop node
-    MENTION_PARENT_ID = "mention_parent_id"  # parent node id for extractor nodes
+    PARENT_NODE_ID = "parent_node_id"  # parent node id for nested nodes (extractor nodes)
 
 
 class WorkflowNodeExecutionStatus(StrEnum):

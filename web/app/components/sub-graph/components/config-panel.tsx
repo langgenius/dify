@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { Item } from '@/app/components/base/select'
-import type { MentionConfig } from '@/app/components/workflow/nodes/_base/types'
+import type { NestedNodeConfig } from '@/app/components/workflow/nodes/_base/types'
 import type { Node, NodeOutPutVar, ValueSelector } from '@/app/components/workflow/types'
 import { RiCheckLine } from '@remixicon/react'
 import { memo, useCallback, useMemo, useState } from 'react'
@@ -17,43 +17,43 @@ import { cn } from '@/utils/classnames'
 type ConfigPanelProps = {
   agentName: string
   extractorNodeId: string
-  mentionConfig: MentionConfig
+  nestedNodeConfig: NestedNodeConfig
   availableNodes: Node[]
   availableVars: NodeOutPutVar[]
-  onMentionConfigChange: (config: MentionConfig) => void
+  onNestedNodeConfigChange: (config: NestedNodeConfig) => void
 }
 
 const ConfigPanel: FC<ConfigPanelProps> = ({
   agentName,
   extractorNodeId,
-  mentionConfig,
+  nestedNodeConfig,
   availableNodes,
   availableVars,
-  onMentionConfigChange,
+  onNestedNodeConfigChange,
 }) => {
   const { t } = useTranslation()
   const [tabType, setTabType] = useState<TabType>(TabType.settings)
 
-  const resolvedExtractorId = mentionConfig.extractor_node_id || extractorNodeId
+  const resolvedExtractorId = nestedNodeConfig.extractor_node_id || extractorNodeId
 
   const selectedOutput = useMemo<ValueSelector>(() => {
-    if (!resolvedExtractorId || !mentionConfig.output_selector?.length)
+    if (!resolvedExtractorId || !nestedNodeConfig.output_selector?.length)
       return []
 
-    return [resolvedExtractorId, ...(mentionConfig.output_selector || [])]
-  }, [mentionConfig.output_selector, resolvedExtractorId])
+    return [resolvedExtractorId, ...(nestedNodeConfig.output_selector || [])]
+  }, [nestedNodeConfig.output_selector, resolvedExtractorId])
 
   const handleOutputVarChange = useCallback((value: ValueSelector | string) => {
     const selector = Array.isArray(value) ? value : []
     const nextExtractorId = selector[0] || resolvedExtractorId
     const nextOutputSelector = selector.length > 1 ? selector.slice(1) : []
 
-    onMentionConfigChange({
-      ...mentionConfig,
+    onNestedNodeConfigChange({
+      ...nestedNodeConfig,
       extractor_node_id: nextExtractorId,
       output_selector: nextOutputSelector,
     })
-  }, [mentionConfig, onMentionConfigChange, resolvedExtractorId])
+  }, [nestedNodeConfig, onNestedNodeConfigChange, resolvedExtractorId])
 
   const whenOutputNoneOptions = useMemo(() => ([
     {
@@ -68,17 +68,17 @@ const ConfigPanel: FC<ConfigPanelProps> = ({
     },
   ]), [t])
   const selectedWhenOutputNoneOption = useMemo(() => (
-    whenOutputNoneOptions.find(item => item.value === mentionConfig.null_strategy) ?? whenOutputNoneOptions[0]
-  ), [mentionConfig.null_strategy, whenOutputNoneOptions])
+    whenOutputNoneOptions.find(item => item.value === nestedNodeConfig.null_strategy) ?? whenOutputNoneOptions[0]
+  ), [nestedNodeConfig.null_strategy, whenOutputNoneOptions])
 
   const handleNullStrategyChange = useCallback((item: Item) => {
     if (typeof item.value !== 'string')
       return
-    onMentionConfigChange({
-      ...mentionConfig,
-      null_strategy: item.value as MentionConfig['null_strategy'],
+    onNestedNodeConfigChange({
+      ...nestedNodeConfig,
+      null_strategy: item.value as NestedNodeConfig['null_strategy'],
     })
-  }, [mentionConfig, onMentionConfigChange])
+  }, [nestedNodeConfig, onNestedNodeConfigChange])
 
   const handleDefaultValueChange = useCallback((value: string) => {
     const trimmed = value.trim()
@@ -92,12 +92,12 @@ const ConfigPanel: FC<ConfigPanelProps> = ({
       }
     }
 
-    onMentionConfigChange({
-      ...mentionConfig,
+    onNestedNodeConfigChange({
+      ...nestedNodeConfig,
       default_value: nextValue,
     })
-  }, [mentionConfig, onMentionConfigChange])
-  const defaultValue = mentionConfig.default_value ?? ''
+  }, [nestedNodeConfig, onNestedNodeConfigChange])
+  const defaultValue = nestedNodeConfig.default_value ?? ''
   const shouldFormatDefaultValue = typeof defaultValue !== 'string'
 
   return (
@@ -142,7 +142,7 @@ const ConfigPanel: FC<ConfigPanelProps> = ({
                 <div className="flex items-center">
                   <SimpleSelect
                     items={whenOutputNoneOptions}
-                    defaultValue={mentionConfig.null_strategy}
+                    defaultValue={nestedNodeConfig.null_strategy}
                     allowSearch={false}
                     notClearable
                     wrapperClassName="min-w-[160px]"
@@ -170,7 +170,7 @@ const ConfigPanel: FC<ConfigPanelProps> = ({
                     {selectedWhenOutputNoneOption.description}
                   </div>
                 )}
-                {mentionConfig.null_strategy === 'use_default' && (
+                {nestedNodeConfig.null_strategy === 'use_default' && (
                   <div className={cn('overflow-hidden rounded-lg border border-components-input-border-active bg-components-input-bg-normal p-1')}>
                     <CodeEditor
                       noWrapper

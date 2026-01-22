@@ -200,20 +200,20 @@ export type FetchWorkflowDraftResponse = {
   marked_comment: string
 }
 
-export type MentionParameterSchema = {
+export type NestedNodeParameterSchema = {
   name: string
   type: string
   description?: string
 }
 
-export type MentionGraphPayload = {
+export type NestedNodeGraphPayload = {
   parent_node_id: string
   parameter_key: string
   context_source: ValueSelector
-  parameter_schema: MentionParameterSchema
+  parameter_schema: NestedNodeParameterSchema
 }
 
-export type MentionGraphResponse = {
+export type NestedNodeGraphResponse = {
   graph: {
     nodes: Node[]
     edges: Edge[]

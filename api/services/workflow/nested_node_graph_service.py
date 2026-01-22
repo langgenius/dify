@@ -1,5 +1,5 @@
 """
-Service for generating Mention LLM node graph structures.
+Service for generating Nested Node LLM graph structures.
 
 This service creates graph structures containing LLM nodes configured for
 extracting values from list[PromptMessage] variables.
@@ -12,35 +12,35 @@ from sqlalchemy.orm import Session
 from core.model_runtime.entities import LLMMode
 from core.workflow.enums import NodeType
 from services.model_provider_service import ModelProviderService
-from services.workflow.entities import MentionGraphRequest, MentionGraphResponse, MentionParameterSchema
+from services.workflow.entities import NestedNodeGraphRequest, NestedNodeGraphResponse, NestedNodeParameterSchema
 
 
-class MentionGraphService:
-    """Service for generating Mention LLM node graph structures."""
+class NestedNodeGraphService:
+    """Service for generating Nested Node LLM graph structures."""
 
     def __init__(self, session: Session):
         self._session = session
 
-    def generate_mention_node_id(self, node_id: str, parameter_name: str) -> str:
-        """Generate mention node ID following the naming convention.
+    def generate_nested_node_id(self, node_id: str, parameter_name: str) -> str:
+        """Generate nested node ID following the naming convention.
 
         Format: {node_id}_ext_{parameter_name}
         """
         return f"{node_id}_ext_{parameter_name}"
 
-    def generate_mention_graph(self, tenant_id: str, request: MentionGraphRequest) -> MentionGraphResponse:
-        """Generate a complete graph structure containing a Mention LLM node.
+    def generate_nested_node_graph(self, tenant_id: str, request: NestedNodeGraphRequest) -> NestedNodeGraphResponse:
+        """Generate a complete graph structure containing a Nested Node LLM node.
 
         Args:
             tenant_id: The tenant ID for fetching default model config
-            request: The mention graph generation request
+            request: The nested node graph generation request
 
         Returns:
             Complete graph structure with nodes, edges, and viewport
         """
-        node_id = self.generate_mention_node_id(request.parent_node_id, request.parameter_key)
+        node_id = self.generate_nested_node_id(request.parent_node_id, request.parameter_key)
         model_config = self._get_default_model_config(tenant_id)
-        node = self._build_mention_llm_node(
+        node = self._build_nested_node_llm_node(
             node_id=node_id,
             parent_node_id=request.parent_node_id,
             context_source=request.context_source,
@@ -54,7 +54,7 @@ class MentionGraphService:
             "viewport": {},
         }
 
-        return MentionGraphResponse(graph=graph)
+        return NestedNodeGraphResponse(graph=graph)
 
     def _get_default_model_config(self, tenant_id: str) -> dict[str, Any]:
         """Get the default LLM model configuration for the tenant."""
@@ -80,16 +80,16 @@ class MentionGraphService:
             "completion_params": {},
         }
 
-    def _build_mention_llm_node(
+    def _build_nested_node_llm_node(
         self,
         *,
         node_id: str,
         parent_node_id: str,
         context_source: list[str],
-        parameter_schema: MentionParameterSchema,
+        parameter_schema: NestedNodeParameterSchema,
         model_config: dict[str, Any],
     ) -> dict[str, Any]:
-        """Build the Mention LLM node structure.
+        """Build the Nested Node LLM node structure.
 
         The node uses:
         - $context in prompt_template to reference the PromptMessage list
@@ -124,7 +124,7 @@ class MentionGraphService:
             "position": {"x": 0, "y": 0},
             "data": {
                 "type": NodeType.LLM.value,
-                "title": f"Mention: {parameter_schema.name}",
+                "title": f"NestedNode: {parameter_schema.name}",
                 "desc": f"Extract {parameter_schema.name} from conversation context",
                 "parent_node_id": parent_node_id,
                 "model": model_config,

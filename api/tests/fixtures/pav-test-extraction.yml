@@ -207,9 +207,9 @@ workflow:
         tool_node_version: '2'
         tool_parameters:
           query:
-            type: mention
+            type: nested_node
             value: '{{@llm.context@}}请从对话历史中提取用户想要搜索的关键词，只返回关键词本身'
-            mention_config:
+            nested_node_config:
               extractor_node_id: 1767773709491_ext_query
               output_selector:
               - structured_output

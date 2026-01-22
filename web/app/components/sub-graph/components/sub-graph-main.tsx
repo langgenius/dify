@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import type { Viewport } from 'reactflow'
 import type { SyncWorkflowDraft, SyncWorkflowDraftCallback } from '../types'
 import type { Shape as HooksStoreShape } from '@/app/components/workflow/hooks-store'
-import type { MentionConfig } from '@/app/components/workflow/nodes/_base/types'
+import type { NestedNodeConfig } from '@/app/components/workflow/nodes/_base/types'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import { useCallback, useMemo } from 'react'
 import { useStoreApi } from 'reactflow'
@@ -29,8 +29,8 @@ type SubGraphMainBaseProps = {
 type SubGraphMainProps
   = | (SubGraphMainBaseProps & {
     variant: 'agent'
-    mentionConfig: MentionConfig
-    onMentionConfigChange: (config: MentionConfig) => void
+    nestedNodeConfig: NestedNodeConfig
+    onNestedNodeConfigChange: (config: NestedNodeConfig) => void
   })
   | (SubGraphMainBaseProps & {
     variant: 'assemble'
@@ -110,8 +110,8 @@ const SubGraphMain: FC<SubGraphMainProps> = (props) => {
           variant="agent"
           title={title}
           extractorNodeId={extractorNodeId}
-          mentionConfig={props.mentionConfig}
-          onMentionConfigChange={props.onMentionConfigChange}
+          nestedNodeConfig={props.nestedNodeConfig}
+          onNestedNodeConfigChange={props.onNestedNodeConfigChange}
         />
       )
     : (

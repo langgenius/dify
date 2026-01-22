@@ -5,10 +5,10 @@ export enum VarKindType {
   variable = 'variable',
   constant = 'constant',
   mixed = 'mixed',
-  mention = 'mention',
+  nested_node = 'nested_node',
 }
 
-export type MentionConfig = {
+export type NestedNodeConfig = {
   extractor_node_id: string
   output_selector: ValueSelector
   null_strategy: 'raise_error' | 'use_default'
@@ -19,7 +19,7 @@ export type MentionConfig = {
 export type ResourceVarInputs = Record<string, {
   type: VarKindType
   value?: string | ValueSelector | any
-  mention_config?: MentionConfig
+  nested_node_config?: NestedNodeConfig
 }>
 
 // Base resource interface

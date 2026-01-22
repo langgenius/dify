@@ -21,8 +21,8 @@ export type ContextGenerateChatMessage = ContextGenerateMessage & {
 
 const defaultCompletionParams: CompletionParams = {
   temperature: 0.7,
-  max_tokens: 0,
-  top_p: 0,
+  max_tokens: 4096,
+  top_p: 0.1,
   echo: false,
   stop: [],
   presence_penalty: 0,

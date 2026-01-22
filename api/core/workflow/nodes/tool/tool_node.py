@@ -212,16 +212,16 @@ class ToolNode(Node[ToolNodeData]):
                         raise ToolParameterError(f"Variable {selector} does not exist")
                     continue
                 parameter_value = variable.value
-            elif tool_input.type == "mention":
-                # Mention type: get value from extractor node's output
-                if tool_input.mention_config is None:
+            elif tool_input.type == "nested_node":
+                # Nested node type: get value from extractor node's output
+                if tool_input.nested_node_config is None:
                     raise ToolParameterError(
-                        f"mention_config is required for mention type parameter '{parameter_name}'"
+                        f"nested_node_config is required for nested_node type parameter '{parameter_name}'"
                     )
-                mention_config = tool_input.mention_config.model_dump()
+                nested_node_config = tool_input.nested_node_config.model_dump()
                 try:
-                    parameter_value, found = variable_pool.resolve_mention(
-                        mention_config, parameter_name=parameter_name
+                    parameter_value, found = variable_pool.resolve_nested_node(
+                        nested_node_config, parameter_name=parameter_name
                     )
                     if not found and parameter.required:
                         raise ToolParameterError(
@@ -518,8 +518,8 @@ class ToolNode(Node[ToolNodeData]):
                 if isinstance(input.value, list):
                     selector_key = ".".join(input.value)
                     result[f"#{selector_key}#"] = input.value
-            elif input.type == "mention":
-                # Mention type: value is handled by extractor node, no direct variable reference
+            elif input.type == "nested_node":
+                # Nested node type: value is handled by extractor node, no direct variable reference
                 pass
             elif input.type == "constant":
                 pass
