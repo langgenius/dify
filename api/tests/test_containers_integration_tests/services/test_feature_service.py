@@ -4,7 +4,8 @@ import pytest
 from faker import Faker
 
 from enums.cloud_plan import CloudPlan
-from services.feature_service import FeatureModel, FeatureService, KnowledgeRateLimitModel, SystemFeatureModel
+from services.feature_service import FeatureModel, FeatureService, KnowledgeRateLimitModel, SystemFeatureModel, LicenseStatus
+
 
 
 class TestFeatureService:
@@ -323,6 +324,35 @@ class TestFeatureService:
 
         # Verify mock interactions
         mock_external_service_dependencies["enterprise_service"].get_info.assert_called_once()
+
+    def test_get_system_features_unauthenticated(self, db_session_with_containers, mock_external_service_dependencies):
+        """
+        Test system features retrieval for an unauthenticated user to ensure no sensitive data is leaked.
+        """
+        # Arrange
+        with patch("services.feature_service.dify_config") as mock_config:
+            mock_config.ENTERPRISE_ENABLED = True
+            mock_config.MARKETPLACE_ENABLED = True
+
+            # Act
+            # Explicitly pass False to simulate an unauthenticated user
+            result = FeatureService.get_system_features(is_authenticated=False)
+
+        # Assert
+        assert result is not None
+
+        # Verify license information is not exposed and defaults are used
+        # Note: We compare against the Enum LicenseStatus.NONE for type safety
+        assert result.license.status == LicenseStatus.NONE
+        assert result.license.expired_at == ""
+        
+        # Verify workspace limits are zeroed out/disabled
+        assert result.license.workspaces.enabled is False
+        assert result.license.workspaces.limit == 0
+        assert result.license.workspaces.size == 0
+
+        # Verify that other public features are still available
+        assert result.enable_marketplace is True
 
     def test_get_system_features_basic_config(self, db_session_with_containers, mock_external_service_dependencies):
         """
