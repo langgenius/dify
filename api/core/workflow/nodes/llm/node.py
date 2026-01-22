@@ -57,9 +57,9 @@ from core.sandbox import Sandbox
 from core.sandbox.bash.session import SandboxBashSession
 from core.sandbox.entities.config import AppAssets
 from core.skill.constants import SkillAttrs
-from core.skill.entities.skill_artifact_set import SkillArtifactSet
+from core.skill.entities.skill_bundle import SkillBundle
 from core.skill.entities.skill_document import SkillDocument
-from core.skill.entities.tool_artifact import ToolArtifact
+from core.skill.entities.tool_dependencies import ToolDependencies
 from core.skill.skill_compiler import SkillCompiler
 from core.tools.__base.tool import Tool
 from core.tools.signature import sign_upload_file
@@ -299,14 +299,14 @@ class LLMNode(Node[LLMNodeData]):
 
             sandbox = self.graph_runtime_state.sandbox
             if sandbox:
-                tool_artifact = self._extract_tool_artifact()
+                tool_dependencies = self._extract_tool_dependencies()
                 generator = self._invoke_llm_with_sandbox(
                     sandbox=sandbox,
                     model_instance=model_instance,
                     prompt_messages=prompt_messages,
                     stop=stop,
                     variable_pool=variable_pool,
-                    tool_artifact=tool_artifact,
+                    tool_dependencies=tool_dependencies,
                 )
             elif self.tool_call_enabled:
                 generator = self._invoke_llm_with_tools(
@@ -1492,11 +1492,10 @@ class LLMNode(Node[LLMNodeData]):
     ) -> Sequence[PromptMessage]:
         prompt_messages: list[PromptMessage] = []
 
-        # Extract skill compilation context from sandbox if available
-        artifact_set: SkillArtifactSet | None = None
+        bundle: SkillBundle | None = None
         file_tree: AppAssetFileTree | None = None
         if sandbox:
-            artifact_set = sandbox.attrs.get(SkillAttrs.ARTIFACT_SET)
+            bundle = sandbox.attrs.get(SkillAttrs.BUNDLE)
             file_tree = sandbox.attrs.get(AppAssetsAttrs.FILE_TREE)
 
         for message in messages:
@@ -1507,29 +1506,26 @@ class LLMNode(Node[LLMNodeData]):
                     variable_pool=variable_pool,
                 )
 
-                # Compile skill references after jinja2 rendering
-                if artifact_set is not None and file_tree is not None:
-                    skill_artifact = SkillCompiler().compile_one(
-                        artifact_set=artifact_set,
+                if bundle is not None and file_tree is not None:
+                    skill_entry = SkillCompiler().compile_one(
+                        bundle=bundle,
                         document=SkillDocument(skill_id="anonymous", content=result_text, metadata={}),
                         file_tree=file_tree,
                         base_path=AppAssets.PATH,
                     )
-                    result_text = skill_artifact.content
+                    result_text = skill_entry.content
 
                 prompt_message = _combine_message_content_with_role(
                     contents=[TextPromptMessageContent(data=result_text)], role=message.role
                 )
                 prompt_messages.append(prompt_message)
             else:
-                # Get segment group from basic message
                 if context:
                     template = message.text.replace("{#context#}", context)
                 else:
                     template = message.text
                 segment_group = variable_pool.convert_template(template)
 
-                # Process segments for images
                 file_contents = []
                 for segment in segment_group.value:
                     if isinstance(segment, ArrayFileSegment):
@@ -1547,18 +1543,16 @@ class LLMNode(Node[LLMNodeData]):
                             )
                             file_contents.append(file_content)
 
-                # Create message with text from all segments
                 plain_text = segment_group.text
 
-                # Compile skill references after context and variable substitution
-                if plain_text and artifact_set is not None and file_tree is not None:
-                    skill_artifact = SkillCompiler().compile_one(
-                        artifact_set=artifact_set,
+                if plain_text and bundle is not None and file_tree is not None:
+                    skill_entry = SkillCompiler().compile_one(
+                        bundle=bundle,
                         document=SkillDocument(skill_id="anonymous", content=plain_text, metadata={}),
                         file_tree=file_tree,
                         base_path=AppAssets.PATH,
                     )
-                    plain_text = skill_artifact.content
+                    plain_text = skill_entry.content
 
                 if plain_text:
                     prompt_message = _combine_message_content_with_role(
@@ -1813,30 +1807,30 @@ class LLMNode(Node[LLMNodeData]):
             generation_data,
         )
 
-    def _extract_tool_artifact(self) -> ToolArtifact | None:
+    def _extract_tool_dependencies(self) -> ToolDependencies | None:
         """Extract tool artifact from prompt template."""
 
         sandbox = self.graph_runtime_state.sandbox
         if not sandbox:
             raise LLMNodeError("Sandbox not found")
 
-        artifact_set = sandbox.attrs.get(SkillAttrs.ARTIFACT_SET)
+        bundle = sandbox.attrs.get(SkillAttrs.BUNDLE)
         file_tree = sandbox.attrs.get(AppAssetsAttrs.FILE_TREE)
-        tool_artifacts: list[ToolArtifact] = []
+        tool_deps_list: list[ToolDependencies] = []
         for prompt in self.node_data.prompt_template:
             if isinstance(prompt, LLMNodeChatModelMessage):
-                skill_artifact = SkillCompiler().compile_one(
-                    artifact_set=artifact_set,
+                skill_entry = SkillCompiler().compile_one(
+                    bundle=bundle,
                     document=SkillDocument(skill_id="anonymous", content=prompt.text, metadata={}),
                     file_tree=file_tree,
                     base_path=AppAssets.PATH,
                 )
-                tool_artifacts.append(skill_artifact.tools)
+                tool_deps_list.append(skill_entry.tools)
 
-        if len(tool_artifacts) == 0:
+        if len(tool_deps_list) == 0:
             return None
 
-        return reduce(lambda x, y: x.merge(y), tool_artifacts)
+        return reduce(lambda x, y: x.merge(y), tool_deps_list)
 
     def _invoke_llm_with_tools(
         self,
@@ -1889,11 +1883,11 @@ class LLMNode(Node[LLMNodeData]):
         prompt_messages: Sequence[PromptMessage],
         stop: Sequence[str] | None,
         variable_pool: VariablePool,
-        tool_artifact: ToolArtifact | None,
+        tool_dependencies: ToolDependencies | None,
     ) -> Generator[NodeEventBase, None, LLMGenerationData]:
         result: LLMGenerationData | None = None
 
-        with SandboxBashSession(sandbox=sandbox, node_id=self.id, tools=tool_artifact) as session:
+        with SandboxBashSession(sandbox=sandbox, node_id=self.id, tools=tool_dependencies) as session:
             prompt_files = self._extract_prompt_files(variable_pool)
             model_features = self._get_model_features(model_instance)
 

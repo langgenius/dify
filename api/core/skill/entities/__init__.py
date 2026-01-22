@@ -1,6 +1,6 @@
-from .file_artifact import FilesArtifact
-from .skill_artifact import SkillArtifact, SkillSourceInfo
-from .skill_artifact_set import SkillArtifactSet
+from .asset_references import AssetReferences
+from .skill_bundle import SkillBundle
+from .skill_bundle_entry import SkillBundleEntry, SourceInfo
 from .skill_document import SkillDocument
 from .skill_metadata import (
     FileReference,
@@ -9,18 +9,18 @@ from .skill_metadata import (
     ToolFieldConfig,
     ToolReference,
 )
-from .tool_artifact import ToolArtifact, ToolDependency
+from .tool_dependencies import ToolDependencies, ToolDependency
 
 __all__ = [
+    "AssetReferences",
     "FileReference",
-    "FilesArtifact",
-    "SkillArtifact",
-    "SkillArtifactSet",
+    "SkillBundle",
+    "SkillBundleEntry",
     "SkillDocument",
     "SkillMetadata",
-    "SkillSourceInfo",
-    "ToolArtifact",
+    "SourceInfo",
     "ToolConfiguration",
+    "ToolDependencies",
     "ToolDependency",
     "ToolFieldConfig",
     "ToolReference",

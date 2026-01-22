@@ -24,13 +24,20 @@ class SkillInitializer(SyncSandboxInitializer):
         self._user_id = user_id
         self._assets_id = assets_id
 
-    def initialize(self, env: Sandbox) -> None:
-        artifact_set = SkillManager.load_artifact(
+    def initialize(self, sandbox: Sandbox) -> None:
+        bundle = SkillManager.load_bundle(
             self._tenant_id,
             self._app_id,
             self._assets_id,
         )
-        env.attrs.set(
-            SkillAttrs.ARTIFACT_SET,
-            artifact_set,
+        if bundle is None:
+            raise ValueError(
+                f"No skill bundle found for tenant_id={self._tenant_id}, "
+                f"app_id={self._app_id}, "
+                f"assets_id={self._assets_id}"
+            )
+
+        sandbox.attrs.set(
+            SkillAttrs.BUNDLE,
+            bundle,
         )

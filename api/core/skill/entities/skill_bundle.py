@@ -3,27 +3,19 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from core.skill.entities.skill_artifact import SkillArtifact
+from core.skill.entities.skill_bundle_entry import SkillBundleEntry
 from core.skill.entities.skill_metadata import ToolReference
-from core.skill.entities.tool_artifact import ToolArtifact, ToolDependency
+from core.skill.entities.tool_dependencies import ToolDependencies, ToolDependency
 
 
-class SkillArtifactSet(BaseModel):
-    """
-    Compiled index for an entire skill project.
-
-    - Corresponds to a single JSON file in S3
-    - Load once, query multiple times
-    - All persistence operations handled by SkillManager
-    """
-
+class SkillBundle(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    assets_id: str = Field(description="Assets ID this artifact set belongs to")
+    assets_id: str = Field(description="Assets ID this bundle belongs to")
     schema_version: int = Field(default=1, description="Schema version for forward compatibility")
     built_at: datetime | None = Field(default=None, description="Build timestamp")
 
-    items: dict[str, SkillArtifact] = Field(default_factory=dict, description="skill_id -> SkillArtifact")
+    entries: dict[str, SkillBundleEntry] = Field(default_factory=dict, description="skill_id -> SkillBundleEntry")
 
     dependency_graph: dict[str, list[str]] = Field(
         default_factory=dict,
@@ -35,14 +27,14 @@ class SkillArtifactSet(BaseModel):
         description="skill_id -> list of skill_ids that depend on it",
     )
 
-    def get(self, skill_id: str) -> SkillArtifact | None:
-        return self.items.get(skill_id)
+    def get(self, skill_id: str) -> SkillBundleEntry | None:
+        return self.entries.get(skill_id)
 
-    def upsert(self, artifact: SkillArtifact) -> None:
-        self.items[artifact.skill_id] = artifact
+    def upsert(self, entry: SkillBundleEntry) -> None:
+        self.entries[entry.skill_id] = entry
 
     def remove(self, skill_id: str) -> None:
-        self.items.pop(skill_id, None)
+        self.entries.pop(skill_id, None)
         self.dependency_graph.pop(skill_id, None)
         self.reverse_graph.pop(skill_id, None)
         for deps in self.reverse_graph.values():
@@ -66,13 +58,13 @@ class SkillArtifactSet(BaseModel):
                     queue.append(dependent)
         return result
 
-    def subset(self, skill_ids: Iterable[str]) -> "SkillArtifactSet":
+    def subset(self, skill_ids: Iterable[str]) -> "SkillBundle":
         skill_id_set = set(skill_ids)
-        return SkillArtifactSet(
+        return SkillBundle(
             assets_id=self.assets_id,
             schema_version=self.schema_version,
             built_at=self.built_at,
-            items={sid: self.items[sid] for sid in skill_id_set if sid in self.items},
+            entries={sid: self.entries[sid] for sid in skill_id_set if sid in self.entries},
             dependency_graph={
                 sid: [dep for dep in deps if dep in skill_id_set]
                 for sid, deps in self.dependency_graph.items()
@@ -85,21 +77,21 @@ class SkillArtifactSet(BaseModel):
             },
         )
 
-    def get_tool_artifact(self) -> ToolArtifact:
+    def get_tool_dependencies(self) -> ToolDependencies:
         dependencies: dict[str, ToolDependency] = {}
         references: dict[str, ToolReference] = {}
 
-        for artifact in self.items.values():
-            for dep in artifact.tools.dependencies:
+        for entry in self.entries.values():
+            for dep in entry.tools.dependencies:
                 key = f"{dep.provider}.{dep.tool_name}"
                 if key not in dependencies:
                     dependencies[key] = dep
 
-            for ref in artifact.tools.references:
+            for ref in entry.tools.references:
                 if ref.uuid not in references:
                     references[ref.uuid] = ref
 
-        return ToolArtifact(
+        return ToolDependencies(
             dependencies=list(dependencies.values()),
             references=list(references.values()),
         )
