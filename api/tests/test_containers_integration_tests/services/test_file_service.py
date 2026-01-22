@@ -264,10 +264,10 @@ class TestFileService:
         )
 
         # ✅ 关键断言：非法字符被移除或替换
-        assert file.filename != filename
-        assert "/" not in file.filename
-        assert "<" not in file.filename
-        assert ">" not in file.filename
+        assert file.name != filename
+        assert "/" not in file.name
+        assert "<" not in file.name
+        assert ">" not in file.name
 
     def test_upload_file_filename_too_long(
         self, db_session_with_containers, engine, mock_external_service_dependencies
@@ -1095,3 +1095,4 @@ class TestFileService:
 
             assert upload_file is not None
             assert upload_file.extension == ""
+
