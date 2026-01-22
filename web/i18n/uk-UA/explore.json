@@ -1,12 +1,7 @@
 {
-  "appCard.addToWorkspace": "Додати до робочого простору",
-  "appCard.customize": "Налаштувати",
   "appCustomize.nameRequired": "Назва програми обов’язкова",
   "appCustomize.subTitle": "Значок програми та назва",
   "appCustomize.title": "Створити додаток з {{name}}",
-  "apps.allCategories": "Рекомендовані",
-  "apps.description": "Використовуйте ці шаблони миттєво або налаштуйте власні програми на основі шаблонів.",
-  "apps.title": "Вивчайте програми від Dify",
   "category.Agent": "Агент",
   "category.Assistant": "Помічник",
   "category.Entertainment": "Розваги",
@@ -23,7 +18,5 @@
   "sidebar.chat": "Чат",
   "sidebar.delete.content": "Ви впевнені, що хочете видалити цю програму?",
   "sidebar.delete.title": "Видалити додаток",
-  "sidebar.discovery": "Відкриття",
-  "sidebar.workspace": "Робочий простір",
   "title": "Досліджувати"
 }

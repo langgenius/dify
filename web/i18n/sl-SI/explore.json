@@ -1,12 +1,7 @@
 {
-  "appCard.addToWorkspace": "Dodaj v delovni prostor",
-  "appCard.customize": "Prilagodi",
   "appCustomize.nameRequired": "Ime aplikacije je obvezno",
   "appCustomize.subTitle": "Ikona aplikacije & ime",
   "appCustomize.title": "Ustvari aplikacijo iz {{name}}",
-  "apps.allCategories": "Priporočeno",
-  "apps.description": "Uporabite te predloge aplikacij takoj ali prilagodite svoje aplikacije na podlagi predlog.",
-  "apps.title": "Razišči aplikacije Dify",
   "category.Agent": "Agent",
   "category.Assistant": "Pomočnik",
   "category.Entertainment": "Zabava",
@@ -23,7 +18,5 @@
   "sidebar.chat": "Klepet",
   "sidebar.delete.content": "Ali ste prepričani, da želite izbrisati to aplikacijo?",
   "sidebar.delete.title": "Izbriši aplikacijo",
-  "sidebar.discovery": "Odkritja",
-  "sidebar.workspace": "Delovni prostor",
   "title": "Razišči"
 }

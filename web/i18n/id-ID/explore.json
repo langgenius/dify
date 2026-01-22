@@ -1,12 +1,7 @@
 {
-  "appCard.addToWorkspace": "Tambahkan ke Ruang Kerja",
-  "appCard.customize": "Menyesuaikan",
   "appCustomize.nameRequired": "Nama aplikasi diperlukan",
   "appCustomize.subTitle": "Ikon & nama aplikasi",
   "appCustomize.title": "Buat aplikasi dari {{name}}",
-  "apps.allCategories": "Direkomendasikan",
-  "apps.description": "Gunakan aplikasi templat ini secara instan atau sesuaikan aplikasi Anda sendiri berdasarkan templat.",
-  "apps.title": "Jelajahi Aplikasi",
   "category.Agent": "Agen",
   "category.Assistant": "Asisten",
   "category.Entertainment": "Hiburan",
@@ -23,7 +18,5 @@
   "sidebar.chat": "Mengobrol",
   "sidebar.delete.content": "Apakah Anda yakin ingin menghapus aplikasi ini?",
   "sidebar.delete.title": "Hapus aplikasi",
-  "sidebar.discovery": "Penemuan",
-  "sidebar.workspace": "Workspace",
   "title": "Menjelajahi"
 }

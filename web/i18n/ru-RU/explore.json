@@ -1,12 +1,7 @@
 {
-  "appCard.addToWorkspace": "Добавить в рабочее пространство",
-  "appCard.customize": "Настроить",
   "appCustomize.nameRequired": "Название приложения обязательно",
   "appCustomize.subTitle": "Значок и название приложения",
   "appCustomize.title": "Создать приложение из {{name}}",
-  "apps.allCategories": "Рекомендуемые",
-  "apps.description": "Используйте эти шаблонные приложения мгновенно или настройте свои собственные приложения на основе шаблонов.",
-  "apps.title": "Обзор приложений от Dify",
   "category.Agent": "Агент",
   "category.Assistant": "Ассистент",
   "category.Entertainment": "Развлечение",
@@ -23,7 +18,5 @@
   "sidebar.chat": "Чат",
   "sidebar.delete.content": "Вы уверены, что хотите удалить это приложение?",
   "sidebar.delete.title": "Удалить приложение",
-  "sidebar.discovery": "Открытия",
-  "sidebar.workspace": "Рабочее пространство",
   "title": "Обзор"
 }
