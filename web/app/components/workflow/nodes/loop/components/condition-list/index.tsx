@@ -86,7 +86,7 @@ const ConditionList = ({
               className="absolute right-1 top-1/2 flex h-[21px] -translate-y-1/2 cursor-pointer select-none items-center rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-1 text-[10px] font-semibold text-text-accent-secondary shadow-xs"
               onClick={() => doToggleConditionLogicalOperator(conditionId)}
             >
-              {logicalOperator && logicalOperator.toUpperCase()}
+              {!!logicalOperator && logicalOperator.toUpperCase()}
               <RiLoopLeftLine className="ml-0.5 h-3 w-3" />
             </div>
           </div>

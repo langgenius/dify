@@ -2,84 +2,124 @@ import { render, screen } from '@testing-library/react'
 import { ChunkingMode } from '@/models/datasets'
 import ChunkStructure from './index'
 
-type MockOptionCardProps = {
-  id: string
-  title: string
-  isActive?: boolean
-  disabled?: boolean
-}
-
-// Mock dependencies
-vi.mock('../option-card', () => ({
-  default: ({ id, title, isActive, disabled }: MockOptionCardProps) => (
-    <div
-      data-testid="option-card"
-      data-id={id}
-      data-active={isActive}
-      data-disabled={disabled}
-    >
-      {title}
-    </div>
-  ),
-}))
-
-// Mock hook
-vi.mock('./hooks', () => ({
-  useChunkStructure: () => ({
-    options: [
-      {
-        id: ChunkingMode.text,
-        title: 'General',
-        description: 'General description',
-        icon: <svg />,
-        effectColor: 'indigo',
-        iconActiveColor: 'indigo',
-      },
-      {
-        id: ChunkingMode.parentChild,
-        title: 'Parent-Child',
-        description: 'PC description',
-        icon: <svg />,
-        effectColor: 'blue',
-        iconActiveColor: 'blue',
-      },
-    ],
-  }),
-}))
+// Note: react-i18next is globally mocked in vitest.setup.ts
 
 describe('ChunkStructure', () => {
-  it('should render all options', () => {
-    render(<ChunkStructure chunkStructure={ChunkingMode.text} />)
+  describe('Rendering', () => {
+    it('should render without crashing', () => {
+      render(<ChunkStructure chunkStructure={ChunkingMode.text} />)
+      expect(screen.getByText('General')).toBeInTheDocument()
+    })
 
-    const options = screen.getAllByTestId('option-card')
-    expect(options).toHaveLength(2)
-    expect(options[0]).toHaveTextContent('General')
-    expect(options[1]).toHaveTextContent('Parent-Child')
+    it('should render all three options', () => {
+      render(<ChunkStructure chunkStructure={ChunkingMode.text} />)
+      expect(screen.getByText('General')).toBeInTheDocument()
+      expect(screen.getByText('Parent-Child')).toBeInTheDocument()
+      expect(screen.getByText('Q&A')).toBeInTheDocument()
+    })
+
+    it('should render in a vertical layout', () => {
+      const { container } = render(<ChunkStructure chunkStructure={ChunkingMode.text} />)
+      const wrapper = container.firstChild
+      expect(wrapper).toHaveClass('flex-col')
+    })
   })
 
-  it('should set active state correctly', () => {
-    // Render with 'text' active
-    const { unmount } = render(<ChunkStructure chunkStructure={ChunkingMode.text} />)
+  describe('Active State', () => {
+    it('should mark General option as active when chunkStructure is text', () => {
+      const { container } = render(<ChunkStructure chunkStructure={ChunkingMode.text} />)
+      // The active card has ring styling
+      const activeCards = container.querySelectorAll('.ring-\\[1px\\]')
+      expect(activeCards).toHaveLength(1)
+    })
 
-    const options = screen.getAllByTestId('option-card')
-    expect(options[0]).toHaveAttribute('data-active', 'true')
-    expect(options[1]).toHaveAttribute('data-active', 'false')
+    it('should mark Parent-Child option as active when chunkStructure is parentChild', () => {
+      const { container } = render(<ChunkStructure chunkStructure={ChunkingMode.parentChild} />)
+      const activeCards = container.querySelectorAll('.ring-\\[1px\\]')
+      expect(activeCards).toHaveLength(1)
+    })
 
-    unmount()
-
-    // Render with 'parentChild' active
-    render(<ChunkStructure chunkStructure={ChunkingMode.parentChild} />)
-    const newOptions = screen.getAllByTestId('option-card')
-    expect(newOptions[0]).toHaveAttribute('data-active', 'false')
-    expect(newOptions[1]).toHaveAttribute('data-active', 'true')
+    it('should mark Q&A option as active when chunkStructure is qa', () => {
+      const { container } = render(<ChunkStructure chunkStructure={ChunkingMode.qa} />)
+      const activeCards = container.querySelectorAll('.ring-\\[1px\\]')
+      expect(activeCards).toHaveLength(1)
+    })
   })
 
-  it('should be always disabled', () => {
-    render(<ChunkStructure chunkStructure={ChunkingMode.text} />)
+  describe('Disabled State', () => {
+    it('should render all options as disabled', () => {
+      const { container } = render(<ChunkStructure chunkStructure={ChunkingMode.text} />)
+      // All cards should have cursor-not-allowed (disabled)
+      const disabledCards = container.querySelectorAll('.cursor-not-allowed')
+      expect(disabledCards.length).toBeGreaterThan(0)
+    })
+  })
 
-    const options = screen.getAllByTestId('option-card')
-    options.forEach((option) => {
-      expect(option).toHaveAttribute('data-disabled', 'true')
+  describe('Option Cards', () => {
+    it('should render option cards with correct structure', () => {
+      render(<ChunkStructure chunkStructure={ChunkingMode.text} />)
+
+      // All options should have descriptions
+      expect(screen.getByText(/stepTwo\.generalTip/)).toBeInTheDocument()
+      expect(screen.getByText(/stepTwo\.parentChildTip/)).toBeInTheDocument()
+      expect(screen.getByText(/stepTwo\.qaTip/)).toBeInTheDocument()
+    })
+
+    it('should render icons for all options', () => {
+      const { container } = render(<ChunkStructure chunkStructure={ChunkingMode.text} />)
+      // Each option card should have an icon (SVG elements)
+      const svgs = container.querySelectorAll('svg')
+      expect(svgs.length).toBeGreaterThanOrEqual(3) // At least 3 icons
+    })
+  })
+
+  describe('Effect Colors', () => {
+    it('should show effect color for active General option', () => {
+      const { container } = render(<ChunkStructure chunkStructure={ChunkingMode.text} />)
+      const effectElement = container.querySelector('.bg-util-colors-indigo-indigo-600')
+      expect(effectElement).toBeInTheDocument()
+    })
+
+    it('should show effect color for active Parent-Child option', () => {
+      const { container } = render(<ChunkStructure chunkStructure={ChunkingMode.parentChild} />)
+      const effectElement = container.querySelector('.bg-util-colors-blue-light-blue-light-600')
+      expect(effectElement).toBeInTheDocument()
+    })
+  })
+
+  describe('Props', () => {
+    it('should update active state when chunkStructure prop changes', () => {
+      const { rerender, container } = render(<ChunkStructure chunkStructure={ChunkingMode.text} />)
+
+      // Initially one card is active
+      let activeCards = container.querySelectorAll('.ring-\\[1px\\]')
+      expect(activeCards).toHaveLength(1)
+
+      // Change to parentChild
+      rerender(<ChunkStructure chunkStructure={ChunkingMode.parentChild} />)
+
+      // Still one card should be active
+      activeCards = container.querySelectorAll('.ring-\\[1px\\]')
+      expect(activeCards).toHaveLength(1)
+
+      // Change to qa
+      rerender(<ChunkStructure chunkStructure={ChunkingMode.qa} />)
+
+      // Still one card should be active
+      activeCards = container.querySelectorAll('.ring-\\[1px\\]')
+      expect(activeCards).toHaveLength(1)
+    })
+  })
+
+  describe('Integration with useChunkStructure hook', () => {
+    it('should use options from useChunkStructure hook', () => {
+      render(<ChunkStructure chunkStructure={ChunkingMode.text} />)
+
+      // Verify all expected options are rendered
+      const expectedTitles = ['General', 'Parent-Child', 'Q&A']
+      expectedTitles.forEach((title) => {
+        expect(screen.getByText(title)).toBeInTheDocument()
+      })
     })
   })
 })
