@@ -576,6 +576,39 @@ class SummaryIndexService:
             return None
 
         try:
+            # Check if summary_content is empty (whitespace-only strings are considered empty)
+            if not summary_content or not summary_content.strip():
+                # If summary is empty, only delete existing summary vector and record
+                summary_record = (
+                    db.session.query(DocumentSegmentSummary)
+                    .filter_by(chunk_id=segment.id, dataset_id=dataset.id)
+                    .first()
+                )
+
+                if summary_record:
+                    # Delete old vector if exists
+                    old_summary_node_id = summary_record.summary_index_node_id
+                    if old_summary_node_id:
+                        try:
+                            vector = Vector(dataset)
+                            vector.delete_by_ids([old_summary_node_id])
+                        except Exception as e:
+                            logger.warning(
+                                "Failed to delete old summary vector for segment %s: %s",
+                                segment.id,
+                                str(e),
+                            )
+
+                    # Delete summary record since summary is empty
+                    db.session.delete(summary_record)
+                    db.session.commit()
+                    logger.info("Deleted summary for segment %s (empty content provided)", segment.id)
+                    return None
+                else:
+                    # No existing summary record, nothing to do
+                    logger.info("No summary record found for segment %s, nothing to delete", segment.id)
+                    return None
+
             # Find existing summary record
             summary_record = (
                 db.session.query(DocumentSegmentSummary).filter_by(chunk_id=segment.id, dataset_id=dataset.id).first()
