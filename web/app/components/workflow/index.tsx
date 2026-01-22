@@ -223,6 +223,8 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const store = useStoreApi()
   eventEmitter?.useSubscription((v: any) => {
     if (v.type === WORKFLOW_DATA_UPDATE) {
+      if (interactionMode === 'subgraph')
+        return
       setNodes(v.payload.nodes)
       store.getState().setNodes(v.payload.nodes)
       setEdges(v.payload.edges)
