@@ -398,7 +398,7 @@ class AppAssetService:
         after_node_id: str | None,
     ) -> AppAssetNode:
         with Session(db.engine, expire_on_commit=False) as session:
-            assets = AppAssetService.get_or_create_assets(session, app_model, account_id)
+            assets = AppAssetService.get_or_create_assets(session, app_model, account_id=account_id)
             tree = assets.asset_tree
 
             try:
@@ -512,19 +512,6 @@ class AppAssetService:
             storage_key = AssetPaths.draft_file(app_model.tenant_id, app_model.id, node_id)
             presign_storage = FilePresignStorage(storage.storage_runner)
             return presign_storage.get_download_url(storage_key, expires_in)
-
-    @staticmethod
-    def get_published_assets_by_workflow_id(tenant_id: str, app_id: str, workflow_id: str) -> AppAssets | None:
-        with Session(db.engine, expire_on_commit=False) as session:
-            return (
-                session.query(AppAssets)
-                .filter(
-                    AppAssets.tenant_id == tenant_id,
-                    AppAssets.app_id == app_id,
-                    AppAssets.version == workflow_id,
-                )
-                .first()
-            )
 
     @staticmethod
     def get_source_zip_bytes(tenant_id: str, app_id: str, workflow_id: str) -> bytes | None:
