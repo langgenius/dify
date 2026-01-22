@@ -33,7 +33,7 @@ const ViewPicker: FC<ViewPickerProps> = ({
 
   return (
     <SegmentedControl
-      className={cn('text-text-accent-light-mode-only', className)}
+      className={cn('absolute left-3 top-3 z-[12] text-text-accent-light-mode-only', className)}
       options={options}
       value={value}
       onChange={handleChange}

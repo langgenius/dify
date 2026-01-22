@@ -10,8 +10,8 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useReducer,
   useRef,
+  useState,
 } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { FeaturesProvider } from '@/app/components/base/features'
@@ -21,7 +21,6 @@ import WorkflowWithDefaultContext from '@/app/components/workflow'
 import {
   WorkflowContextProvider,
 } from '@/app/components/workflow/context'
-import { HeaderShell } from '@/app/components/workflow/header'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
 import {
@@ -37,7 +36,7 @@ import { fetchRunDetail } from '@/service/log'
 import { useAppTriggers } from '@/service/use-tools'
 import { AppModeEnum } from '@/types/app'
 import { useFeatures } from '../base/features/hooks'
-import ViewPickerTrigger from './components/workflow-header/view-picker-trigger'
+import ViewPicker from '../workflow/view-picker'
 import WorkflowAppMain from './components/workflow-main'
 import { useGetRunAndTraceUrl } from './hooks/use-get-run-and-trace-url'
 import { useNodesSyncDraft } from './hooks/use-nodes-sync-draft'
@@ -56,85 +55,52 @@ type WorkflowViewContentProps = {
   reload: () => Promise<void>
 }
 
-const WorkflowViewPickerDock = () => {
-  return (
-    <HeaderShell>
-      <div className="flex w-full items-center justify-between">
-        <div className="flex items-center gap-2">
-          <ViewPickerTrigger />
-        </div>
-      </div>
-    </HeaderShell>
-  )
-}
-
 const WorkflowViewContent = ({
   graphContent,
   reload,
 }: WorkflowViewContentProps) => {
   const features = useFeatures(s => s.features)
   const isSupportSandbox = !!features.sandbox?.enabled
-  const [viewType] = useQueryState(WORKFLOW_VIEW_PARAM_KEY, parseAsViewType)
+  const [viewType, doSetViewType] = useQueryState(WORKFLOW_VIEW_PARAM_KEY, parseAsViewType)
   const { syncWorkflowDraftImmediately } = useNodesSyncDraft()
-  const [isGraphRefreshing, setGraphRefreshing] = useReducer((_: boolean, next: boolean) => next, false)
   const pendingSyncRef = useRef<Promise<void> | null>(null)
-  const refreshInFlightRef = useRef<Promise<void> | null>(null)
-  const previousViewTypeRef = useRef<ViewType | null>(viewType)
-  const viewTypeRef = useRef(viewType)
+  const [isGraphRefreshing, setIsGraphRefreshing] = useState(false)
 
-  const refreshGraph = useCallback((waitFor?: Promise<void>) => {
-    if (refreshInFlightRef.current)
-      return refreshInFlightRef.current
-
-    setGraphRefreshing(true)
-    const runRefresh = () => {
-      if (viewTypeRef.current !== ViewType.graph) {
-        refreshInFlightRef.current = null
-        setGraphRefreshing(false)
-        return Promise.resolve()
-      }
-
-      return reload().finally(() => {
-        refreshInFlightRef.current = null
-        setGraphRefreshing(false)
-      })
-    }
-    refreshInFlightRef.current = waitFor ? waitFor.then(runRefresh, runRefresh) : runRefresh()
-    return refreshInFlightRef.current
+  const refreshGraph = useCallback(() => {
+    setIsGraphRefreshing(true)
+    return reload().finally(() => {
+      setIsGraphRefreshing(false)
+    })
   }, [reload])
 
-  useEffect(() => {
-    viewTypeRef.current = viewType
-    if (!isSupportSandbox) {
-      previousViewTypeRef.current = viewType
-      return
-    }
+  const handleViewTypeChange = useCallback((type: ViewType) => {
+    if (viewType === ViewType.graph && type !== viewType)
+      pendingSyncRef.current = syncWorkflowDraftImmediately(true).catch(() => { })
 
-    const previousView = previousViewTypeRef.current
-    if (previousView === ViewType.graph && viewType !== ViewType.graph) {
-      if (!pendingSyncRef.current) {
-        const pending = syncWorkflowDraftImmediately(true).catch(() => { })
-        pendingSyncRef.current = pending
+    doSetViewType(type)
+    if (type === ViewType.graph) {
+      const pending = pendingSyncRef.current
+      if (pending) {
         pending.finally(() => {
-          if (pendingSyncRef.current === pending)
-            pendingSyncRef.current = null
+          refreshGraph()
         })
+        pendingSyncRef.current = null
+      }
+      else {
+        refreshGraph()
       }
     }
+  }, [doSetViewType, refreshGraph, syncWorkflowDraftImmediately, viewType])
 
-    if (previousView !== ViewType.graph && viewType === ViewType.graph) {
-      refreshGraph(pendingSyncRef.current ?? undefined)
-    }
-
-    previousViewTypeRef.current = viewType
-  }, [isSupportSandbox, refreshGraph, syncWorkflowDraftImmediately, viewType])
-
-  if (!isSupportSandbox)
+  if (!isSupportSandbox) {
     return graphContent
-
+  }
   return (
-    <div className="relative h-full w-full min-w-[960px]">
-      {viewType !== ViewType.graph ? <WorkflowViewPickerDock /> : null}
+    <div className="relative h-full w-full">
+      <ViewPicker
+        value={viewType}
+        onChange={handleViewTypeChange}
+      />
       {viewType === ViewType.graph
         ? (
             isGraphRefreshing
