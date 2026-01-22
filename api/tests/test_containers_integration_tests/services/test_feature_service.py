@@ -4,8 +4,13 @@ import pytest
 from faker import Faker
 
 from enums.cloud_plan import CloudPlan
-from services.feature_service import FeatureModel, FeatureService, KnowledgeRateLimitModel, SystemFeatureModel, LicenseStatus
-
+from services.feature_service import (
+    FeatureModel,
+    FeatureService,
+    KnowledgeRateLimitModel,
+    LicenseStatus,
+    SystemFeatureModel,
+)
 
 
 class TestFeatureService:
@@ -345,7 +350,7 @@ class TestFeatureService:
         # Note: We compare against the Enum LicenseStatus.NONE for type safety
         assert result.license.status == LicenseStatus.NONE
         assert result.license.expired_at == ""
-        
+
         # Verify workspace limits are zeroed out/disabled
         assert result.license.workspaces.enabled is False
         assert result.license.workspaces.limit == 0
