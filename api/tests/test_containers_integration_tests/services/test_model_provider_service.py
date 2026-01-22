@@ -1235,7 +1235,7 @@ class TestModelProviderService:
         mock_plugin_list.list = [mock_plugin]
         mock_plugin_list.total = 1  # Only 1 plugin, so pagination will stop after first page
 
-        with patch('services.model_provider_service.PluginService') as mock_plugin_service:
+        with patch("services.model_provider_service.PluginService") as mock_plugin_service:
             mock_plugin_service.list_with_total.return_value = mock_plugin_list
 
             # Mock ProviderManager to return provider configurations
@@ -1288,4 +1288,3 @@ class TestModelProviderService:
             # Verify mock interactions
             mock_provider_manager.get_configurations.assert_called_once_with(tenant.id)
             mock_plugin_service.list_with_total.assert_called_once_with(tenant.id, 1, 256)
-
