@@ -41,8 +41,9 @@ class SystemFeatureApi(Resource):
     def get(self):
         """Get system-wide feature configuration"""
         system_features = FeatureService.get_system_features()
+        features_dict = system_features.model_dump()
 
         if not current_user.is_authenticated:
-            system_features.license = LicenseModel()
+            features_dict["license"] = LicenseModel().model_dump()
 
-        return system_features.model_dump()
+        return features_dict
