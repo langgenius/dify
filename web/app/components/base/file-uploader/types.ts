@@ -12,6 +12,7 @@ export enum FileAppearanceTypeEnum {
   word = 'word',
   ppt = 'ppt',
   gif = 'gif',
+  database = 'database',
   custom = 'custom',
 }
 

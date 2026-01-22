@@ -1,9 +1,9 @@
 'use client'
 
+import type { ViewType } from '@/app/components/workflow/types'
 import { useQueryState } from 'nuqs'
 import { useCallback } from 'react'
 import { useFeatures } from '@/app/components/base/features/hooks'
-import { ViewType } from '@/app/components/workflow/types'
 import ViewPicker from '@/app/components/workflow/view-picker'
 import { parseAsViewType, WORKFLOW_VIEW_PARAM_KEY } from '../../search-params'
 

@@ -4,6 +4,7 @@ const MARKDOWN_EXTENSIONS = ['md', 'markdown', 'mdx']
 const CODE_EXTENSIONS = ['json', 'yaml', 'yml', 'toml', 'js', 'jsx', 'ts', 'tsx', 'py', 'schema']
 const IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico', 'tiff', 'psd', 'heic', 'heif', 'avif']
 const VIDEO_EXTENSIONS = ['mp4', 'mov', 'webm', 'mpeg', 'mpg', 'm4v', 'avi', 'mkv', 'flv', 'wmv', '3gp']
+const SQLITE_EXTENSIONS = ['db', 'sqlite', 'sqlite3']
 
 const BINARY_EXTENSIONS = [
   'mp3',
@@ -94,6 +95,9 @@ export function getFileIconType(name: string): FileAppearanceTypeEnum {
   if (CODE_EXTENSIONS.includes(extension))
     return FileAppearanceTypeEnum.code
 
+  if (SQLITE_EXTENSIONS.includes(extension))
+    return FileAppearanceTypeEnum.database
+
   return FileAppearanceTypeEnum.document
 }
 
@@ -115,6 +119,10 @@ export function isImageFile(extension: string): boolean {
 
 export function isVideoFile(extension: string): boolean {
   return VIDEO_EXTENSIONS.includes(extension)
+}
+
+export function isSQLiteFile(extension: string): boolean {
+  return SQLITE_EXTENSIONS.includes(extension)
 }
 
 export function getFileLanguage(name: string): string {

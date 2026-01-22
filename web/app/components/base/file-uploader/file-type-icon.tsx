@@ -14,6 +14,7 @@ import {
   RiMarkdownFill,
 } from '@remixicon/react'
 import { memo } from 'react'
+import { FileDatabase2Fill } from '@/app/components/base/icons/src/vender/solid/development'
 import { cn } from '@/utils/classnames'
 import { FileAppearanceTypeEnum } from './types'
 
@@ -65,6 +66,10 @@ const FILE_TYPE_ICON_MAP = {
   [FileAppearanceTypeEnum.gif]: {
     component: RiFileGifFill,
     color: 'text-[#00B2EA]',
+  },
+  [FileAppearanceTypeEnum.database]: {
+    component: FileDatabase2Fill,
+    color: 'text-[#A4AAC1]',
   },
 }
 type FileTypeIconProps = {
