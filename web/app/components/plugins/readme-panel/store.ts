@@ -10,18 +10,20 @@ type Shape = {
   currentPluginDetail?: {
     detail: PluginDetail
     showType: ReadmeShowType
+    position?: 'left' | 'right'
   }
-  setCurrentPluginDetail: (detail?: PluginDetail, showType?: ReadmeShowType) => void
+  setCurrentPluginDetail: (detail?: PluginDetail, showType?: ReadmeShowType, position?: 'left' | 'right') => void
 }
 
 export const useReadmePanelStore = create<Shape>(set => ({
   currentPluginDetail: undefined,
-  setCurrentPluginDetail: (detail?: PluginDetail, showType?: ReadmeShowType) => set({
+  setCurrentPluginDetail: (detail?: PluginDetail, showType?: ReadmeShowType, position?: 'left' | 'right') => set({
     currentPluginDetail: !detail
       ? undefined
       : {
           detail,
           showType: showType ?? ReadmeShowType.drawer,
+          position,
         },
   }),
 }))

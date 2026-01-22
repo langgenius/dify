@@ -10,11 +10,13 @@ export const ReadmeEntrance = ({
   pluginDetail,
   showType = ReadmeShowType.drawer,
   className,
+  position = 'left',
   showShortTip = false,
 }: {
   pluginDetail: PluginDetail
   showType?: ReadmeShowType
   className?: string
+  position?: 'left' | 'right'
   showShortTip?: boolean
 }) => {
   const { t } = useTranslation()
@@ -22,7 +24,7 @@ export const ReadmeEntrance = ({
 
   const handleReadmeClick = () => {
     if (pluginDetail)
-      setCurrentPluginDetail(pluginDetail, showType)
+      setCurrentPluginDetail(pluginDetail, showType, position)
   }
   if (!pluginDetail || !pluginDetail?.plugin_unique_identifier || BUILTIN_TOOLS_ARRAY.includes(pluginDetail.id))
     return null

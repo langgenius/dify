@@ -1031,6 +1031,7 @@
   "singleRun.testRun": "Test Run",
   "singleRun.testRunIteration": "Test Run Iteration",
   "singleRun.testRunLoop": "Test Run Loop",
+  "skillEditor.authorizationRequired": "Authorization required before use.",
   "skillEditor.previewUnavailable": "Preview unavailable",
   "skillEditor.referenceFiles": "Reference files",
   "skillEditor.unsupportedPreview": "This file type is not supported for preview",

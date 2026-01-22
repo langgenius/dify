@@ -1,15 +1,20 @@
 import type { FC } from 'react'
+import type { PluginDetail } from '@/app/components/plugins/types'
 import type { Emoji } from '@/app/components/tools/types'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
+import { InfoCircle } from '@/app/components/base/icons/src/vender/line/general'
 import Modal from '@/app/components/base/modal'
 import { useSelectOrDelete } from '@/app/components/base/prompt-editor/hooks'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import ToolAuthorizationSection from '@/app/components/plugins/plugin-detail-panel/tool-selector/sections/tool-authorization-section'
+import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
+import { ReadmeShowType } from '@/app/components/plugins/readme-panel/store'
 import { CollectionType } from '@/app/components/tools/types'
 import { generateFormValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
@@ -103,6 +108,7 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
 }) => {
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_TOOL_BLOCK_COMMAND)
   const language = useGetLanguage()
+  const { t } = useTranslation()
   const { theme } = useTheme()
   const toolBlockContext = useToolBlockContext()
   const isUsingExternalMetadata = Boolean(toolBlockContext?.onMetadataChange)
@@ -396,11 +402,16 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
   }
 
   const needAuthorization = useMemo(() => {
-    return !(!currentProvider || currentProvider.type !== CollectionType.builtIn || !currentProvider.allow_delete)
+    return !currentProvider?.is_team_authorization
+  }, [currentProvider])
+  const readmeEntrance = useMemo(() => {
+    if (!currentProvider)
+      return null
+    return <ReadmeEntrance pluginDetail={currentProvider as unknown as PluginDetail} showType={ReadmeShowType.drawer} position="right" className="mt-auto" />
   }, [currentProvider])
 
   const toolSettingsContent = currentProvider && currentTool && toolValue && (
-    <>
+    <div className="flex min-h-full flex-col">
       <ToolHeader
         icon={resolvedIcon}
         providerLabel={currentProvider.label?.[language] || currentProvider.name || provider}
@@ -408,25 +419,31 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
         description={toolDescriptionText}
         onClose={() => setIsSettingOpen(false)}
       />
+
+      <ToolAuthorizationSection
+        currentProvider={currentProvider}
+        credentialId={toolValue.credential_id}
+        onAuthorizationItemClick={handleAuthorizationItemClick}
+      />
       {needAuthorization && (
-        <>
-          <ToolAuthorizationSection
-            currentProvider={currentProvider}
-            credentialId={toolValue.credential_id}
-            onAuthorizationItemClick={handleAuthorizationItemClick}
-          />
-        </>
+        <div className="flex min-h-[200px] flex-1 flex-col items-center justify-center px-4 py-6 text-text-tertiary">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full border border-divider-subtle">
+            <InfoCircle className="h-4 w-4 text-text-tertiary" />
+          </div>
+          <div className="system-xs-regular mt-3 text-text-tertiary">
+            {t('skillEditor.authorizationRequired', { ns: 'workflow' })}
+          </div>
+        </div>
       )}
-      {!needAuthorization && (
-        <ToolSettingsSection
-          currentProvider={currentProvider}
-          currentTool={currentTool}
-          value={toolValue}
-          onChange={handleToolValueChange}
-          nodeId={undefined}
-        />
-      )}
-    </>
+      <ToolSettingsSection
+        currentProvider={currentProvider}
+        currentTool={currentTool}
+        value={toolValue}
+        onChange={handleToolValueChange}
+        nodeId={undefined}
+      />
+      {readmeEntrance}
+    </div>
   )
 
   return (
