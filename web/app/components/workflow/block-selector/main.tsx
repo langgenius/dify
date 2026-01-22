@@ -8,7 +8,7 @@ import type {
 } from 'react'
 import type {
   CommonNodeType,
-  NodeDefault,
+  NodeDefaultBase,
   OnSelectBlock,
   ToolWithProvider,
 } from '../types'
@@ -49,7 +49,7 @@ export type NodeSelectorProps = {
   asChild?: boolean
   availableBlocksTypes?: BlockEnum[]
   disabled?: boolean
-  blocks?: NodeDefault[]
+  blocks?: NodeDefaultBase[]
   dataSources?: ToolWithProvider[]
   noBlocks?: boolean
   noTools?: boolean

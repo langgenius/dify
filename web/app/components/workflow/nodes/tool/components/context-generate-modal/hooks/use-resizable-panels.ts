@@ -24,7 +24,7 @@ const useResizablePanels = () => {
   const resolvedCodePanelHeight = useMemo(() => {
     if (!maxCodePanelHeight)
       return codePanelHeight
-    // Reason: Clamp the panel height so the output area always has space.
+    // Clamp the panel height so the output area always has space.
     return Math.min(codePanelHeight, maxCodePanelHeight)
   }, [codePanelHeight, maxCodePanelHeight])
 

@@ -340,7 +340,24 @@ export type NodeOutPutVar = {
   isFlat?: boolean
 }
 
-export type NodeDefault<T = {}> = {
+// allow node default validators with narrower payload types to be stored in shared collections.
+type CheckValidFn<T> = {
+  bivarianceHack: (payload: T, t: any, moreDataForCheckValid?: any) => { isValid: boolean, errorMessage?: string }
+}['bivarianceHack']
+
+// allow node output var generators with narrower payload types to be stored in shared collections.
+type GetOutputVarsFn<T> = {
+  bivarianceHack: (
+    payload: T,
+    allPluginInfoList: Record<string, ToolWithProvider[]>,
+    ragVariables?: Var[],
+    utils?: {
+      schemaTypeDefinitions?: SchemaTypeDefinition[]
+    },
+  ) => Var[]
+}['bivarianceHack']
+
+export type NodeDefaultBase = {
   metaData: {
     classification: BlockClassificationEnum
     sort: number
@@ -355,12 +372,16 @@ export type NodeDefault<T = {}> = {
     isSingleton?: boolean
     isTypeFixed?: boolean
   }
-  defaultValue: Partial<T>
+  defaultValue: Partial<CommonNodeType>
   defaultRunInputData?: Record<string, any>
-  checkValid: (payload: T, t: any, moreDataForCheckValid?: any) => { isValid: boolean, errorMessage?: string }
-  getOutputVars?: (payload: T, allPluginInfoList: Record<string, ToolWithProvider[]>, ragVariables?: Var[], utils?: {
-    schemaTypeDefinitions?: SchemaTypeDefinition[]
-  }) => Var[]
+  checkValid: CheckValidFn<CommonNodeType>
+  getOutputVars?: GetOutputVarsFn<CommonNodeType>
+}
+
+export type NodeDefault<T extends CommonNodeType = CommonNodeType> = Omit<NodeDefaultBase, 'defaultValue' | 'checkValid' | 'getOutputVars'> & {
+  defaultValue: Partial<T>
+  checkValid: CheckValidFn<T>
+  getOutputVars?: GetOutputVarsFn<T>
 }
 
 export type OnSelectBlock = (type: BlockEnum, pluginDefaultValue?: PluginDefaultValue) => void

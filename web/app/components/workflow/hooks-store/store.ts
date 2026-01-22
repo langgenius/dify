@@ -2,7 +2,7 @@ import type { FileUpload } from '../../base/features/types'
 import type {
   BlockEnum,
   Node,
-  NodeDefault,
+  NodeDefaultBase,
   ToolWithProvider,
   ValueSelector,
 } from '@/app/components/workflow/types'
@@ -16,14 +16,17 @@ import {
   useStore as useZustandStore,
 } from 'zustand'
 import { createStore } from 'zustand/vanilla'
+import { InteractionMode } from '@/app/components/workflow'
 import { HooksStoreContext } from './provider'
 
 export type AvailableNodesMetaData = {
-  nodes: NodeDefault[]
-  nodesMap?: Record<BlockEnum, NodeDefault<any>>
+  nodes: NodeDefaultBase[]
+  nodesMap: Record<BlockEnum, NodeDefaultBase>
 }
+
+export type HooksStore = ReturnType<typeof createHooksStore>
 export type CommonHooksFnMap = {
-  interactionMode?: 'default' | 'subgraph'
+  interactionMode?: InteractionMode
   doSyncWorkflowDraft: (
     notRefreshWhenSyncError?: boolean,
     callback?: {
@@ -78,7 +81,7 @@ export type Shape = {
 } & CommonHooksFnMap
 
 export const createHooksStore = ({
-  interactionMode = 'default',
+  interactionMode = InteractionMode.Default,
   doSyncWorkflowDraft = async () => noop(),
   syncWorkflowDraftWhenPageClose = noop,
   handleRefreshWorkflowDraft = noop,
@@ -97,6 +100,7 @@ export const createHooksStore = ({
   subGraphSelectableNodeTypes,
   availableNodesMetaData = {
     nodes: [],
+    nodesMap: {} as Record<BlockEnum, NodeDefaultBase>,
   },
   getWorkflowRunAndTraceUrl = () => ({
     runUrl: '',

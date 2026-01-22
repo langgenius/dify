@@ -4,7 +4,7 @@ import type { NestedNodeConfig } from '@/app/components/workflow/nodes/_base/typ
 import type { CodeNodeType, OutputVar } from '@/app/components/workflow/nodes/code/types'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type {
-  CommonNodeType,
+  NodeDefaultBase,
   PromptItem,
   PromptTemplateItem,
   Node as WorkflowNode,
@@ -40,7 +40,7 @@ export const getDefaultOutputKey = (outputs?: OutputVar): string => {
   const keys = Object.keys(outputs)
   if (keys.length === 0)
     return ''
-  // Reason: 'result' is the conventional default output key for code nodes
+  // 'result' is the conventional default output key for code nodes
   if (keys.includes('result'))
     return 'result'
   return keys[0]
@@ -132,10 +132,7 @@ const buildPromptTemplateWithText = (
   return [...promptTemplate, defaultUserPrompt] as PromptTemplateItem[]
 }
 
-type NodesMetaDataMap = Record<BlockEnum, {
-  defaultValue?: Partial<LLMNodeType | CodeNodeType>
-  checkValid?: (data: CommonNodeType, t: (key: string, options?: Record<string, unknown>) => string, moreData?: unknown) => { isValid: boolean, errorMessage?: string }
-}>
+type NodesMetaDataMap = Record<BlockEnum, Pick<NodeDefaultBase, 'defaultValue' | 'checkValid'>>
 
 type ConfigsMap = {
   flowId?: string

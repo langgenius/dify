@@ -131,8 +131,7 @@ const SubGraphMain: FC<SubGraphMainProps> = (props) => {
       nodes={nodes}
       edges={edges}
       viewport={viewport}
-      // eslint-disable-next-line ts/no-explicit-any -- TODO: remove after typing boundary
-      hooksStore={hooksStore as any}
+      hooksStore={hooksStore}
       allowSelectionWhenReadOnly
       canvasReadOnly
       interactionMode={InteractionMode.Subgraph}

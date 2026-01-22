@@ -1,7 +1,7 @@
 import type { Dispatch, FC, SetStateAction } from 'react'
 import type {
   BlockEnum,
-  NodeDefault,
+  NodeDefaultBase,
   OnSelectBlock,
   ToolWithProvider,
 } from '../types'
@@ -28,7 +28,7 @@ export type TabsProps = {
   onTagsChange: Dispatch<SetStateAction<string[]>>
   onSelect: OnSelectBlock
   availableBlocksTypes?: BlockEnum[]
-  blocks: NodeDefault[]
+  blocks: NodeDefaultBase[]
   dataSources?: ToolWithProvider[]
   tabs: Array<{
     key: TabsEnum

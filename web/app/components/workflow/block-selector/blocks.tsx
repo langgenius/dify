@@ -1,4 +1,4 @@
-import type { NodeDefault } from '../types'
+import type { NodeDefaultBase } from '../types'
 import type { BlockClassificationEnum } from './types'
 import { groupBy } from 'es-toolkit/compat'
 import {
@@ -19,7 +19,7 @@ type BlocksProps = {
   searchText: string
   onSelect: (type: BlockEnum) => void
   availableBlocksTypes?: BlockEnum[]
-  blocks?: NodeDefault[]
+  blocks?: NodeDefaultBase[]
 }
 const Blocks = ({
   searchText,
@@ -44,7 +44,7 @@ const Blocks = ({
     },
     defaultValue: {},
     checkValid: () => ({ isValid: true }),
-  }) as NodeDefault)
+  }) as NodeDefaultBase)
 
   const groups = useMemo(() => {
     return BLOCK_CLASSIFICATIONS.reduce((acc, classification) => {
