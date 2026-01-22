@@ -7,6 +7,7 @@ import type {
   SQLiteVFS,
 } from './sqlite/types'
 import { useCallback, useEffect, useReducer, useRef } from 'react'
+import { TABLES_QUERY } from './sqlite/constants'
 
 export type { SQLiteQueryResult, SQLiteValue } from './sqlite/types'
 
@@ -16,8 +17,6 @@ export type UseSQLiteDatabaseResult = {
   error: Error | null
   queryTable: (tableName: string, limit?: number) => Promise<SQLiteQueryResult | null>
 }
-
-const TABLES_QUERY = 'SELECT name FROM sqlite_master WHERE type=\'table\' AND name NOT LIKE \'sqlite_%\' ORDER BY name'
 
 let sqliteClientPromise: Promise<SQLiteClient> | null = null
 
