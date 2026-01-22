@@ -352,8 +352,7 @@ const Completed: FC<ICompletedProps> = ({
       params.attachment_ids = attachments.map(item => item.uploadedId!)
     }
 
-    if (summary)
-      params.summary = summary
+    params.summary = summary ?? ''
 
     if (needRegenerate)
       params.regenerate_child_chunks = needRegenerate
