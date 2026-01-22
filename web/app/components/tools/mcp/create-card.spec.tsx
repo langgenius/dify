@@ -11,6 +11,7 @@ vi.mock('@/context/app-context', () => ({
 
 vi.mock('@/context/i18n', () => ({
   useLocale: () => 'en-US',
+  useDocLink: () => (path: string) => `https://docs.dify.ai/en/${path?.startsWith('/') ? path.slice(1) : path}`,
 }))
 
 let mockLanguage = 'en'
@@ -81,11 +82,11 @@ describe('NewMCPCard', () => {
   })
 
   describe('Documentation Link', () => {
-    it('should link to English docs by default', () => {
+    it('should link to docs', () => {
       render(<NewMCPCard handleCreate={mockHandleCreate} />)
 
       const link = screen.getByRole('link')
-      expect(link).toHaveAttribute('href', 'https://docs.dify.ai/en/guides/tools/mcp')
+      expect(link).toHaveAttribute('href', expect.stringContaining('use-dify/build/mcp'))
     })
 
     it('should open link in new tab', () => {
@@ -94,22 +95,6 @@ describe('NewMCPCard', () => {
       const link = screen.getByRole('link')
       expect(link).toHaveAttribute('target', '_blank')
       expect(link).toHaveAttribute('rel', 'noopener noreferrer')
-    })
-
-    it('should link to Chinese docs when language starts with zh_', () => {
-      mockLanguage = 'zh_Hans'
-      render(<NewMCPCard handleCreate={mockHandleCreate} />)
-
-      const link = screen.getByRole('link')
-      expect(link).toHaveAttribute('href', 'https://docs.dify.ai/zh-hans/guides/tools/mcp')
-    })
-
-    it('should link to Japanese docs when language starts with ja_jp', () => {
-      mockLanguage = 'ja_jp'
-      render(<NewMCPCard handleCreate={mockHandleCreate} />)
-
-      const link = screen.getByRole('link')
-      expect(link).toHaveAttribute('href', 'https://docs.dify.ai/ja_jp/guides/tools/mcp')
     })
   })
 

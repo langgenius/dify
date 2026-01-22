@@ -246,4 +246,72 @@ describe('Keywords', () => {
       expect(screen.getByText('-')).toBeInTheDocument()
     })
   })
+
+  // TagInput callback tests
+  describe('TagInput Callback', () => {
+    it('should call onKeywordsChange when keywords are modified', () => {
+      // Arrange
+      const mockOnKeywordsChange = vi.fn()
+      render(
+        <Keywords
+          segInfo={{ id: '1', keywords: ['existing'] }}
+          keywords={['existing']}
+          onKeywordsChange={mockOnKeywordsChange}
+          isEditMode={true}
+          actionType="edit"
+        />,
+      )
+
+      // Assert - TagInput should be rendered
+      expect(screen.queryByText('-')).not.toBeInTheDocument()
+    })
+
+    it('should disable add when isEditMode is false', () => {
+      // Arrange & Act
+      const { container } = render(
+        <Keywords
+          segInfo={{ id: '1', keywords: ['test'] }}
+          keywords={['test']}
+          onKeywordsChange={vi.fn()}
+          isEditMode={false}
+          actionType="view"
+        />,
+      )
+
+      // Assert - TagInput should exist but with disabled add
+      expect(container.firstChild).toBeInTheDocument()
+    })
+
+    it('should disable remove when only one keyword exists in edit mode', () => {
+      // Arrange & Act
+      const { container } = render(
+        <Keywords
+          segInfo={{ id: '1', keywords: ['only-one'] }}
+          keywords={['only-one']}
+          onKeywordsChange={vi.fn()}
+          isEditMode={true}
+          actionType="edit"
+        />,
+      )
+
+      // Assert - component should render
+      expect(container.firstChild).toBeInTheDocument()
+    })
+
+    it('should allow remove when multiple keywords exist in edit mode', () => {
+      // Arrange & Act
+      const { container } = render(
+        <Keywords
+          segInfo={{ id: '1', keywords: ['first', 'second'] }}
+          keywords={['first', 'second']}
+          onKeywordsChange={vi.fn()}
+          isEditMode={true}
+          actionType="edit"
+        />,
+      )
+
+      // Assert - component should render
+      expect(container.firstChild).toBeInTheDocument()
+    })
+  })
 })

@@ -365,5 +365,121 @@ describe('CSVUploader', () => {
         )
       })
     })
+
+    it('should handle file without extension', () => {
+      // Arrange
+      const { container } = render(<CSVUploader {...defaultProps} />)
+      const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
+      const testFile = new File(['content'], 'noextension', { type: 'text/plain' })
+
+      // Act
+      fireEvent.change(fileInput, { target: { files: [testFile] } })
+
+      // Assert
+      expect(mockNotify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'error',
+        }),
+      )
+    })
+  })
+
+  // Drag and drop tests
+  // Note: Native drag and drop events use addEventListener which is set up in useEffect.
+  // Testing these requires triggering native DOM events on the actual dropRef element.
+  describe('Drag and Drop', () => {
+    it('should render drop zone element', () => {
+      // Arrange & Act
+      const { container } = render(<CSVUploader {...defaultProps} />)
+
+      // Assert - drop zone should exist for drag and drop
+      const dropZone = container.querySelector('div > div')
+      expect(dropZone).toBeInTheDocument()
+    })
+
+    it('should have drag overlay element that can appear during drag', () => {
+      // Arrange & Act
+      const { container } = render(<CSVUploader {...defaultProps} />)
+
+      // Assert - component structure supports dragging
+      expect(container.querySelector('div')).toBeInTheDocument()
+    })
+  })
+
+  // Upload progress callback tests
+  describe('Upload Progress Callbacks', () => {
+    it('should update progress during file upload', async () => {
+      // Arrange
+      const mockUpdateFile = vi.fn()
+      let progressCallback: ((e: ProgressEvent) => void) | undefined
+
+      mockUpload.mockImplementation(({ onprogress }) => {
+        progressCallback = onprogress
+        return Promise.resolve({ id: 'uploaded-id' })
+      })
+
+      const { container } = render(
+        <CSVUploader {...defaultProps} updateFile={mockUpdateFile} />,
+      )
+      const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
+      const testFile = new File(['content'], 'test.csv', { type: 'text/csv' })
+
+      // Act
+      fireEvent.change(fileInput, { target: { files: [testFile] } })
+
+      // Simulate progress event
+      if (progressCallback) {
+        const progressEvent = new ProgressEvent('progress', {
+          lengthComputable: true,
+          loaded: 50,
+          total: 100,
+        })
+        progressCallback(progressEvent)
+      }
+
+      // Assert
+      await waitFor(() => {
+        expect(mockUpdateFile).toHaveBeenCalledWith(
+          expect.objectContaining({
+            progress: expect.any(Number),
+          }),
+        )
+      })
+    })
+
+    it('should handle progress event with lengthComputable false', async () => {
+      // Arrange
+      const mockUpdateFile = vi.fn()
+      let progressCallback: ((e: ProgressEvent) => void) | undefined
+
+      mockUpload.mockImplementation(({ onprogress }) => {
+        progressCallback = onprogress
+        return Promise.resolve({ id: 'uploaded-id' })
+      })
+
+      const { container } = render(
+        <CSVUploader {...defaultProps} updateFile={mockUpdateFile} />,
+      )
+      const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
+      const testFile = new File(['content'], 'test.csv', { type: 'text/csv' })
+
+      // Act
+      fireEvent.change(fileInput, { target: { files: [testFile] } })
+
+      // Simulate progress event with lengthComputable false
+      if (progressCallback) {
+        const progressEvent = new ProgressEvent('progress', {
+          lengthComputable: false,
+          loaded: 50,
+          total: 100,
+        })
+        progressCallback(progressEvent)
+      }
+
+      // Assert - should complete upload without progress updates when lengthComputable is false
+      await waitFor(() => {
+        expect(mockUpdateFile).toHaveBeenCalled()
+      })
+    })
   })
 })

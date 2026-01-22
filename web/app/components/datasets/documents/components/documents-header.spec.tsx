@@ -77,7 +77,7 @@ describe('DocumentsHeader', () => {
       render(<DocumentsHeader {...defaultProps} />)
       const link = screen.getByRole('link')
       expect(link).toHaveTextContent(/list\.learnMore/i)
-      expect(link).toHaveAttribute('href', expect.stringContaining('guides/knowledge-base'))
+      expect(link).toHaveAttribute('href', expect.stringContaining('use-dify/knowledge'))
       expect(link).toHaveAttribute('target', '_blank')
       expect(link).toHaveAttribute('rel', 'noopener noreferrer')
     })

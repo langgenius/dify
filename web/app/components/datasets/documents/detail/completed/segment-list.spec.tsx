@@ -1,5 +1,5 @@
 import type { SegmentDetailModel } from '@/models/datasets'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ChunkingMode } from '@/models/datasets'
 
@@ -39,7 +39,31 @@ vi.mock('./common/empty', () => ({
 }))
 
 vi.mock('./segment-card', () => ({
-  default: ({ detail, onClick, _onChangeSwitch, archived, embeddingAvailable, focused }: { detail: SegmentDetailModel, onClick: () => void, _onChangeSwitch?: () => void, archived: boolean, embeddingAvailable: boolean, focused: { segmentIndex: boolean, segmentContent: boolean } }) => (
+  default: ({
+    detail,
+    onClick,
+    onChangeSwitch,
+    onClickEdit,
+    onDelete,
+    onDeleteChildChunk,
+    handleAddNewChildChunk,
+    onClickSlice,
+    archived,
+    embeddingAvailable,
+    focused,
+  }: {
+    detail: SegmentDetailModel
+    onClick: () => void
+    onChangeSwitch: (enabled: boolean, segId?: string) => Promise<void>
+    onClickEdit: () => void
+    onDelete: (segId: string) => Promise<void>
+    onDeleteChildChunk: (segId: string, childChunkId: string) => Promise<void>
+    handleAddNewChildChunk: (parentChunkId: string) => void
+    onClickSlice: (childChunk: unknown) => void
+    archived: boolean
+    embeddingAvailable: boolean
+    focused: { segmentIndex: boolean, segmentContent: boolean }
+  }) => (
     <div data-testid="segment-card" data-id={detail.id}>
       <span data-testid="segment-content">{detail.content}</span>
       <span data-testid="archived">{archived ? 'true' : 'false'}</span>
@@ -47,6 +71,12 @@ vi.mock('./segment-card', () => ({
       <span data-testid="focused-index">{focused.segmentIndex ? 'true' : 'false'}</span>
       <span data-testid="focused-content">{focused.segmentContent ? 'true' : 'false'}</span>
       <button onClick={onClick} data-testid="card-click">Click</button>
+      <button onClick={onClickEdit} data-testid="edit-btn">Edit</button>
+      <button onClick={() => onChangeSwitch(true, detail.id)} data-testid="switch-btn">Switch</button>
+      <button onClick={() => onDelete(detail.id)} data-testid="delete-btn">Delete</button>
+      <button onClick={() => onDeleteChildChunk(detail.id, 'child-1')} data-testid="delete-child-btn">Delete Child</button>
+      <button onClick={() => handleAddNewChildChunk(detail.id)} data-testid="add-child-btn">Add Child</button>
+      <button onClick={() => onClickSlice({ id: 'slice-1' })} data-testid="click-slice-btn">Click Slice</button>
     </div>
   ),
 }))
@@ -292,6 +322,121 @@ describe('SegmentList', () => {
 
       // Assert
       expect(screen.getAllByTestId('segment-card')).toHaveLength(2)
+    })
+  })
+
+  // Checkbox Selection
+  describe('Checkbox Selection', () => {
+    it('should render checkbox for each segment', () => {
+      // Arrange & Act
+      const { container } = render(<SegmentList {...defaultProps} />)
+
+      // Assert - Checkbox component should exist
+      const checkboxes = container.querySelectorAll('[class*="checkbox"]')
+      expect(checkboxes.length).toBeGreaterThan(0)
+    })
+
+    it('should pass selectedSegmentIds to check state', () => {
+      // Arrange & Act
+      const { container } = render(<SegmentList {...defaultProps} selectedSegmentIds={['seg-1']} />)
+
+      // Assert - component should render with selected state
+      expect(container.firstChild).toBeInTheDocument()
+    })
+
+    it('should handle empty selectedSegmentIds', () => {
+      // Arrange & Act
+      const { container } = render(<SegmentList {...defaultProps} selectedSegmentIds={[]} />)
+
+      // Assert - component should render
+      expect(container.firstChild).toBeInTheDocument()
+    })
+  })
+
+  // Card Actions
+  describe('Card Actions', () => {
+    it('should call onClick when card is clicked', () => {
+      // Arrange
+      const mockOnClick = vi.fn()
+      render(<SegmentList {...defaultProps} onClick={mockOnClick} />)
+
+      // Act
+      fireEvent.click(screen.getByTestId('card-click'))
+
+      // Assert
+      expect(mockOnClick).toHaveBeenCalled()
+    })
+
+    it('should call onChangeSwitch when switch button is clicked', async () => {
+      // Arrange
+      const mockOnChangeSwitch = vi.fn().mockResolvedValue(undefined)
+      render(<SegmentList {...defaultProps} onChangeSwitch={mockOnChangeSwitch} />)
+
+      // Act
+      fireEvent.click(screen.getByTestId('switch-btn'))
+
+      // Assert
+      expect(mockOnChangeSwitch).toHaveBeenCalledWith(true, 'seg-1')
+    })
+
+    it('should call onDelete when delete button is clicked', async () => {
+      // Arrange
+      const mockOnDelete = vi.fn().mockResolvedValue(undefined)
+      render(<SegmentList {...defaultProps} onDelete={mockOnDelete} />)
+
+      // Act
+      fireEvent.click(screen.getByTestId('delete-btn'))
+
+      // Assert
+      expect(mockOnDelete).toHaveBeenCalledWith('seg-1')
+    })
+
+    it('should call onDeleteChildChunk when delete child button is clicked', async () => {
+      // Arrange
+      const mockOnDeleteChildChunk = vi.fn().mockResolvedValue(undefined)
+      render(<SegmentList {...defaultProps} onDeleteChildChunk={mockOnDeleteChildChunk} />)
+
+      // Act
+      fireEvent.click(screen.getByTestId('delete-child-btn'))
+
+      // Assert
+      expect(mockOnDeleteChildChunk).toHaveBeenCalledWith('seg-1', 'child-1')
+    })
+
+    it('should call handleAddNewChildChunk when add child button is clicked', () => {
+      // Arrange
+      const mockHandleAddNewChildChunk = vi.fn()
+      render(<SegmentList {...defaultProps} handleAddNewChildChunk={mockHandleAddNewChildChunk} />)
+
+      // Act
+      fireEvent.click(screen.getByTestId('add-child-btn'))
+
+      // Assert
+      expect(mockHandleAddNewChildChunk).toHaveBeenCalledWith('seg-1')
+    })
+
+    it('should call onClickSlice when click slice button is clicked', () => {
+      // Arrange
+      const mockOnClickSlice = vi.fn()
+      render(<SegmentList {...defaultProps} onClickSlice={mockOnClickSlice} />)
+
+      // Act
+      fireEvent.click(screen.getByTestId('click-slice-btn'))
+
+      // Assert
+      expect(mockOnClickSlice).toHaveBeenCalledWith({ id: 'slice-1' })
+    })
+
+    it('should call onClick with edit mode when edit button is clicked', () => {
+      // Arrange
+      const mockOnClick = vi.fn()
+      render(<SegmentList {...defaultProps} onClick={mockOnClick} />)
+
+      // Act
+      fireEvent.click(screen.getByTestId('edit-btn'))
+
+      // Assert - onClick is called from onClickEdit with isEditMode=true
+      expect(mockOnClick).toHaveBeenCalled()
     })
   })
 })

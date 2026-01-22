@@ -126,11 +126,20 @@ vi.mock('./common/regeneration-modal', () => ({
 }))
 
 vi.mock('@/app/components/datasets/common/image-uploader/image-uploader-in-chunk', () => ({
-  default: ({ disabled }: { value?: unknown[], onChange?: (v: unknown[]) => void, disabled?: boolean }) => (
-    <div data-testid="image-uploader">
-      <span data-testid="uploader-disabled">{disabled ? 'disabled' : 'enabled'}</span>
-    </div>
-  ),
+  default: ({ disabled, value, onChange }: { value?: unknown[], onChange?: (v: unknown[]) => void, disabled?: boolean }) => {
+    return (
+      <div data-testid="image-uploader">
+        <span data-testid="uploader-disabled">{disabled ? 'disabled' : 'enabled'}</span>
+        <span data-testid="attachments-count">{value?.length || 0}</span>
+        <button
+          data-testid="add-attachment-btn"
+          onClick={() => onChange?.([...(value || []), { id: 'new-attachment' }])}
+        >
+          Add
+        </button>
+      </div>
+    )
+  },
 }))
 
 describe('SegmentDetail', () => {
@@ -502,6 +511,169 @@ describe('SegmentDetail', () => {
 
       // Assert
       expect(screen.getByTestId('action-buttons')).toBeInTheDocument()
+    })
+  })
+
+  // Attachments
+  describe('Attachments', () => {
+    it('should update attachments when onChange is called', () => {
+      // Arrange
+      render(<SegmentDetail {...defaultProps} isEditMode={true} />)
+
+      // Act
+      fireEvent.click(screen.getByTestId('add-attachment-btn'))
+
+      // Assert
+      expect(screen.getByTestId('attachments-count')).toHaveTextContent('1')
+    })
+
+    it('should pass attachments to onUpdate when save is clicked', () => {
+      // Arrange
+      const mockOnUpdate = vi.fn()
+      render(<SegmentDetail {...defaultProps} isEditMode={true} onUpdate={mockOnUpdate} />)
+
+      // Add an attachment
+      fireEvent.click(screen.getByTestId('add-attachment-btn'))
+
+      // Act
+      fireEvent.click(screen.getByTestId('save-btn'))
+
+      // Assert
+      expect(mockOnUpdate).toHaveBeenCalledWith(
+        'segment-1',
+        expect.any(String),
+        expect.any(String),
+        expect.any(Array),
+        expect.arrayContaining([expect.objectContaining({ id: 'new-attachment' })]),
+      )
+    })
+
+    it('should initialize attachments from segInfo', () => {
+      // Arrange
+      const segInfoWithAttachments = {
+        ...defaultSegInfo,
+        attachments: [
+          { id: 'att-1', name: 'file1.jpg', size: 1000, mime_type: 'image/jpeg', extension: 'jpg', source_url: 'http://example.com/file1.jpg' },
+        ],
+      }
+
+      // Act
+      render(<SegmentDetail {...defaultProps} segInfo={segInfoWithAttachments} isEditMode={true} />)
+
+      // Assert
+      expect(screen.getByTestId('attachments-count')).toHaveTextContent('1')
+    })
+  })
+
+  // Regeneration confirmation
+  describe('Regeneration Confirmation', () => {
+    it('should call onUpdate with needRegenerate true when confirm regeneration is clicked', () => {
+      // Arrange
+      const mockOnUpdate = vi.fn()
+      render(<SegmentDetail {...defaultProps} isEditMode={true} onUpdate={mockOnUpdate} />)
+
+      // Open regeneration modal
+      fireEvent.click(screen.getByTestId('regenerate-btn'))
+
+      // Act
+      fireEvent.click(screen.getByTestId('confirm-regeneration'))
+
+      // Assert
+      expect(mockOnUpdate).toHaveBeenCalledWith(
+        'segment-1',
+        expect.any(String),
+        expect.any(String),
+        expect.any(Array),
+        expect.any(Array),
+        true,
+      )
+    })
+
+    it('should close modal and edit drawer when close after regeneration is clicked', () => {
+      // Arrange
+      const mockOnCancel = vi.fn()
+      const mockOnModalStateChange = vi.fn()
+      render(
+        <SegmentDetail
+          {...defaultProps}
+          isEditMode={true}
+          onCancel={mockOnCancel}
+          onModalStateChange={mockOnModalStateChange}
+        />,
+      )
+
+      // Open regeneration modal
+      fireEvent.click(screen.getByTestId('regenerate-btn'))
+
+      // Act
+      fireEvent.click(screen.getByTestId('close-regeneration'))
+
+      // Assert
+      expect(mockOnModalStateChange).toHaveBeenCalledWith(false)
+      expect(mockOnCancel).toHaveBeenCalled()
+    })
+  })
+
+  // QA mode
+  describe('QA Mode', () => {
+    it('should render answer input in QA mode', () => {
+      // Arrange & Act
+      render(<SegmentDetail {...defaultProps} docForm={ChunkingMode.qa} isEditMode={true} />)
+
+      // Assert
+      expect(screen.getByTestId('answer-input')).toBeInTheDocument()
+    })
+
+    it('should update answer when input changes', () => {
+      // Arrange
+      render(<SegmentDetail {...defaultProps} docForm={ChunkingMode.qa} isEditMode={true} />)
+
+      // Act
+      fireEvent.change(screen.getByTestId('answer-input'), {
+        target: { value: 'Updated answer' },
+      })
+
+      // Assert
+      expect(screen.getByTestId('answer-input')).toHaveValue('Updated answer')
+    })
+
+    it('should calculate word count correctly in QA mode', () => {
+      // Arrange & Act
+      render(<SegmentDetail {...defaultProps} docForm={ChunkingMode.qa} isEditMode={true} />)
+
+      // Assert - should show combined length of question and answer
+      expect(screen.getByText(/segment\.characters/i)).toBeInTheDocument()
+    })
+  })
+
+  // Full doc mode
+  describe('Full Doc Mode', () => {
+    it('should show label in full-doc parent-child mode', () => {
+      // Arrange
+      mockParentMode = 'full-doc'
+
+      // Act
+      render(<SegmentDetail {...defaultProps} docForm={ChunkingMode.parentChild} />)
+
+      // Assert
+      expect(screen.getByTestId('segment-index-tag')).toBeInTheDocument()
+    })
+  })
+
+  // Keywords update
+  describe('Keywords Update', () => {
+    it('should update keywords when changed in edit mode', () => {
+      // Arrange
+      mockIndexingTechnique = IndexingType.ECONOMICAL
+      render(<SegmentDetail {...defaultProps} isEditMode={true} />)
+
+      // Act
+      fireEvent.change(screen.getByTestId('keywords-input'), {
+        target: { value: 'new,keywords' },
+      })
+
+      // Assert
+      expect(screen.getByTestId('keywords-input')).toHaveValue('new,keywords')
     })
   })
 })

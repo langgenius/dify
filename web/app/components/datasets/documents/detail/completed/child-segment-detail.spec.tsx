@@ -18,10 +18,13 @@ vi.mock('./index', () => ({
 }))
 
 // Mock event emitter context
+let mockSubscriptionCallback: ((v: string) => void) | null = null
 vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => ({
     eventEmitter: {
-      useSubscription: vi.fn(),
+      useSubscription: (callback: (v: string) => void) => {
+        mockSubscriptionCallback = callback
+      },
     },
   }),
 }))
@@ -68,6 +71,7 @@ describe('ChildSegmentDetail', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockFullScreen = false
+    mockSubscriptionCallback = null
   })
 
   const defaultChildChunkInfo = {
@@ -287,6 +291,40 @@ describe('ChildSegmentDetail', () => {
 
       // Assert
       expect(screen.getByTestId('content-input')).toBeInTheDocument()
+    })
+  })
+
+  // Event subscription tests
+  describe('Event Subscription', () => {
+    it('should register event subscription', () => {
+      // Arrange & Act
+      render(<ChildSegmentDetail {...defaultProps} />)
+
+      // Assert - subscription callback should be registered
+      expect(mockSubscriptionCallback).not.toBeNull()
+    })
+
+    it('should have save button enabled by default', () => {
+      // Arrange & Act
+      render(<ChildSegmentDetail {...defaultProps} />)
+
+      // Assert - save button should be enabled initially
+      expect(screen.getByTestId('save-btn')).not.toBeDisabled()
+    })
+  })
+
+  // Cancel behavior
+  describe('Cancel Behavior', () => {
+    it('should call onCancel when cancel button is clicked', () => {
+      // Arrange
+      const mockOnCancel = vi.fn()
+      render(<ChildSegmentDetail {...defaultProps} onCancel={mockOnCancel} />)
+
+      // Act
+      fireEvent.click(screen.getByTestId('cancel-btn'))
+
+      // Assert
+      expect(mockOnCancel).toHaveBeenCalled()
     })
   })
 })

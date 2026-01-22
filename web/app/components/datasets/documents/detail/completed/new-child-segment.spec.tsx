@@ -374,4 +374,134 @@ describe('NewChildSegmentModal', () => {
       expect(screen.getByTestId('chunk-content')).toBeInTheDocument()
     })
   })
+
+  // Add another behavior
+  describe('Add Another Behavior', () => {
+    it('should close modal when add another is unchecked after save', async () => {
+      // Arrange
+      const mockOnCancel = vi.fn()
+      mockAddChildSegment.mockImplementation((_params, options) => {
+        options.onSuccess({ data: { id: 'new-child-id' } })
+        options.onSettled()
+        return Promise.resolve()
+      })
+
+      render(<NewChildSegmentModal {...defaultProps} onCancel={mockOnCancel} />)
+
+      // Uncheck add another
+      fireEvent.click(screen.getByTestId('add-another-checkbox'))
+
+      // Enter valid content
+      fireEvent.change(screen.getByTestId('content-input'), {
+        target: { value: 'Valid content' },
+      })
+
+      // Act
+      fireEvent.click(screen.getByTestId('save-btn'))
+
+      // Assert - modal should close
+      await waitFor(() => {
+        expect(mockOnCancel).toHaveBeenCalled()
+      })
+    })
+
+    it('should not close modal when add another is checked after save', async () => {
+      // Arrange
+      const mockOnCancel = vi.fn()
+      mockAddChildSegment.mockImplementation((_params, options) => {
+        options.onSuccess({ data: { id: 'new-child-id' } })
+        options.onSettled()
+        return Promise.resolve()
+      })
+
+      render(<NewChildSegmentModal {...defaultProps} onCancel={mockOnCancel} />)
+
+      // Enter valid content (add another is checked by default)
+      fireEvent.change(screen.getByTestId('content-input'), {
+        target: { value: 'Valid content' },
+      })
+
+      // Act
+      fireEvent.click(screen.getByTestId('save-btn'))
+
+      // Assert - modal should not close, only content cleared
+      await waitFor(() => {
+        expect(screen.getByTestId('content-input')).toHaveValue('')
+      })
+    })
+  })
+
+  // View newly added chunk
+  describe('View Newly Added Chunk', () => {
+    it('should show custom button in full-doc mode after save', async () => {
+      // Arrange
+      mockParentMode = 'full-doc'
+      mockAddChildSegment.mockImplementation((_params, options) => {
+        options.onSuccess({ data: { id: 'new-child-id' } })
+        options.onSettled()
+        return Promise.resolve()
+      })
+
+      render(<NewChildSegmentModal {...defaultProps} />)
+
+      // Enter valid content
+      fireEvent.change(screen.getByTestId('content-input'), {
+        target: { value: 'Valid content' },
+      })
+
+      // Act
+      fireEvent.click(screen.getByTestId('save-btn'))
+
+      // Assert - success notification with custom component
+      await waitFor(() => {
+        expect(mockNotify).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'success',
+            customComponent: expect.anything(),
+          }),
+        )
+      })
+    })
+
+    it('should not show custom button in paragraph mode after save', async () => {
+      // Arrange
+      mockParentMode = 'paragraph'
+      const mockOnSave = vi.fn()
+      mockAddChildSegment.mockImplementation((_params, options) => {
+        options.onSuccess({ data: { id: 'new-child-id' } })
+        options.onSettled()
+        return Promise.resolve()
+      })
+
+      render(<NewChildSegmentModal {...defaultProps} onSave={mockOnSave} />)
+
+      // Enter valid content
+      fireEvent.change(screen.getByTestId('content-input'), {
+        target: { value: 'Valid content' },
+      })
+
+      // Act
+      fireEvent.click(screen.getByTestId('save-btn'))
+
+      // Assert - onSave should be called with data
+      await waitFor(() => {
+        expect(mockOnSave).toHaveBeenCalledWith(expect.objectContaining({ id: 'new-child-id' }))
+      })
+    })
+  })
+
+  // Cancel behavior
+  describe('Cancel Behavior', () => {
+    it('should call onCancel when close button is clicked', () => {
+      // Arrange
+      const mockOnCancel = vi.fn()
+      render(<NewChildSegmentModal {...defaultProps} onCancel={mockOnCancel} />)
+
+      // Act
+      fireEvent.click(screen.getByTestId('cancel-btn'))
+
+      // Assert
+      expect(mockOnCancel).toHaveBeenCalled()
+    })
+  })
 })

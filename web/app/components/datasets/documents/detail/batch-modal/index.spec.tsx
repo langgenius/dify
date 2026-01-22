@@ -209,5 +209,24 @@ describe('BatchModal', () => {
       // Assert
       expect(screen.getByText(/list\.batchModal\.title/i)).toBeInTheDocument()
     })
+
+    it('should handle file cleared after upload', async () => {
+      // Arrange
+      const mockOnConfirm = vi.fn()
+      render(<BatchModal {...defaultProps} onConfirm={mockOnConfirm} />)
+
+      // Upload a file first
+      fireEvent.click(screen.getByTestId('upload-btn'))
+      await waitFor(() => {
+        expect(screen.getByTestId('file-info')).toBeInTheDocument()
+      })
+
+      // Clear the file
+      fireEvent.click(screen.getByTestId('clear-btn'))
+
+      // Assert - run button should be disabled again
+      const runButton = screen.getByText(/list\.batchModal\.run/i).closest('button')
+      expect(runButton).toBeDisabled()
+    })
   })
 })

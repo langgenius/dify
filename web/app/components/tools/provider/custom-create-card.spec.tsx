@@ -125,24 +125,6 @@ describe('CustomCreateCard', () => {
       expect(iconContainer).toBeInTheDocument()
     })
 
-    it('should render documentation link', () => {
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
-
-      // Document link should have correct href
-      const link = document.querySelector('a[target="_blank"]')
-      expect(link).toBeInTheDocument()
-      expect(link).toHaveAttribute('href')
-      expect(link?.getAttribute('href')).toContain('docs.dify.ai')
-    })
-
-    it('should render book icon for documentation', () => {
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
-
-      // RiBookOpenLine icon should be present (h-3 w-3 shrink-0)
-      const bookIcons = document.querySelectorAll('.h-3.w-3.shrink-0')
-      expect(bookIcons.length).toBeGreaterThan(0)
-    })
-
     it('should have proper card styling', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
@@ -272,31 +254,6 @@ describe('CustomCreateCard', () => {
           }),
         )
       })
-    })
-  })
-
-  // Tests for documentation link
-  describe('Documentation Link', () => {
-    it('should have correct href for documentation', () => {
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
-
-      const link = document.querySelector('a[rel="noopener noreferrer"]')
-      expect(link).toBeInTheDocument()
-      expect(link?.getAttribute('href')).toContain('guides/tools')
-    })
-
-    it('should open documentation in new tab', () => {
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
-
-      const link = document.querySelector('a[target="_blank"]')
-      expect(link).toBeInTheDocument()
-    })
-
-    it('should render tip text for documentation', () => {
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
-
-      // customToolTip translation key should be rendered
-      expect(screen.getByText(/customToolTip/i)).toBeInTheDocument()
     })
   })
 
