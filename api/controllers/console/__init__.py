@@ -108,10 +108,12 @@ from .datasets.rag_pipeline import (
 
 # Import explore controllers
 from .explore import (
+    banner,
     installed_app,
     parameter,
     recommended_app,
     saved_message,
+    trial,
 )
 
 # Import tag controllers
@@ -148,6 +150,7 @@ __all__ = [
     "app",
     "app_asset",
     "audio",
+    "banner",
     "billing",
     "bp",
     "completion",
@@ -202,6 +205,7 @@ __all__ = [
     "statistic",
     "tags",
     "tool_providers",
+    "trial",
     "trigger_providers",
     "version",
     "website",

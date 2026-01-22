@@ -115,6 +115,12 @@ class InvokeRateLimitError(BaseHTTPException):
     code = 429
 
 
+class NeedAddIdsError(BaseHTTPException):
+    error_code = "need_add_ids"
+    description = "Need to add ids."
+    code = 400
+
+
 class AppAssetNodeNotFoundError(BaseHTTPException):
     error_code = "app_asset_node_not_found"
     description = "App asset node not found."
