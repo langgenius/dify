@@ -21,6 +21,7 @@ import WorkflowWithDefaultContext from '@/app/components/workflow'
 import {
   WorkflowContextProvider,
 } from '@/app/components/workflow/context'
+import { HeaderShell } from '@/app/components/workflow/header'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
 import {
@@ -51,12 +52,12 @@ const SkillMain = dynamic(() => import('@/app/components/workflow/skill/main'), 
 })
 
 type WorkflowViewContentProps = {
-  graphContent: ReactNode
+  renderGraph: (headerLeftSlot: ReactNode) => ReactNode
   reload: () => Promise<void>
 }
 
 const WorkflowViewContent = ({
-  graphContent,
+  renderGraph,
   reload,
 }: WorkflowViewContentProps) => {
   const features = useFeatures(s => s.features)
@@ -92,27 +93,45 @@ const WorkflowViewContent = ({
     }
   }, [doSetViewType, refreshGraph, syncWorkflowDraftImmediately, viewType])
 
-  if (!isSupportSandbox) {
-    return graphContent
-  }
+  if (!isSupportSandbox)
+    return renderGraph(null)
+
+  const viewPicker = (
+    <ViewPicker
+      value={viewType}
+      onChange={handleViewTypeChange}
+    />
+  )
+  const viewPickerDock = (
+    <HeaderShell>
+      <div className="flex w-full items-center justify-between">
+        <div className="flex items-center gap-2">
+          {viewPicker}
+        </div>
+      </div>
+    </HeaderShell>
+  )
+
   return (
     <div className="relative h-full w-full">
-      <ViewPicker
-        value={viewType}
-        onChange={handleViewTypeChange}
-      />
       {viewType === ViewType.graph
         ? (
             isGraphRefreshing
               ? (
-                  <div className="relative flex h-full w-full items-center justify-center">
-                    <Loading />
-                  </div>
+                  <>
+                    {viewPickerDock}
+                    <div className="relative flex h-full w-full items-center justify-center">
+                      <Loading />
+                    </div>
+                  </>
                 )
-              : graphContent
+              : renderGraph(viewPicker)
           )
         : (
-            <SkillMain />
+            <>
+              {viewPickerDock}
+              <SkillMain />
+            </>
           )}
     </div>
   )
@@ -243,7 +262,7 @@ const WorkflowAppWithAdditionalContext = () => {
   }, [replayRunId, workflowStore, getWorkflowRunAndTraceUrl])
 
   const isDataReady = !(!data || isLoading || isLoadingCurrentWorkspace || !currentWorkspace.id)
-  const GraphMain = useMemo(() => {
+  const renderGraph = useCallback((headerLeftSlot: ReactNode) => {
     if (!isDataReady)
       return null
 
@@ -252,6 +271,7 @@ const WorkflowAppWithAdditionalContext = () => {
         nodes={nodesData}
         edges={edgesData}
         viewport={data.graph.viewport}
+        headerLeftSlot={headerLeftSlot}
       />
     )
   }, [isDataReady, nodesData, edgesData, data])
@@ -299,7 +319,7 @@ const WorkflowAppWithAdditionalContext = () => {
     >
       <FeaturesProvider features={initialFeatures}>
         <WorkflowViewContent
-          graphContent={GraphMain}
+          renderGraph={renderGraph}
           reload={reload}
         />
       </FeaturesProvider>

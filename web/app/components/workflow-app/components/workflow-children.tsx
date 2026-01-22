@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type {
   PluginDefaultValue,
   TriggerDefaultValue,
@@ -65,7 +66,11 @@ const getTriggerPluginNodeData = (
   }
 }
 
-const WorkflowChildren = () => {
+type WorkflowChildrenProps = {
+  headerLeftSlot?: ReactNode
+}
+
+const WorkflowChildren = ({ headerLeftSlot }: WorkflowChildrenProps) => {
   const { eventEmitter } = useEventEmitterContextContext()
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
   const showFeaturesPanel = useStore(s => s.showFeaturesPanel)
@@ -188,7 +193,7 @@ const WorkflowChildren = () => {
           />
         )
       }
-      <WorkflowHeader />
+      <WorkflowHeader leftSlot={headerLeftSlot} />
       <WorkflowPanel />
     </>
   )

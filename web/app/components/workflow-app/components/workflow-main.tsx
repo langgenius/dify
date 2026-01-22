@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { WorkflowProps } from '@/app/components/workflow'
 import {
   useCallback,
@@ -21,11 +22,14 @@ import {
 } from '../hooks'
 import WorkflowChildren from './workflow-children'
 
-type WorkflowMainProps = Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport'>
+type WorkflowMainProps = Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport'> & {
+  headerLeftSlot?: ReactNode
+}
 const WorkflowMain = ({
   nodes,
   edges,
   viewport,
+  headerLeftSlot,
 }: WorkflowMainProps) => {
   const sandboxEnabled = useFeatures(state => state.features.sandbox?.enabled) ?? false
   const featuresStore = useFeaturesStore()
@@ -186,7 +190,7 @@ const WorkflowMain = ({
       hooksStore={hooksStore as any}
     >
       <MCPToolAvailabilityProvider sandboxEnabled={sandboxEnabled}>
-        <WorkflowChildren />
+        <WorkflowChildren headerLeftSlot={headerLeftSlot} />
       </MCPToolAvailabilityProvider>
     </WorkflowWithInnerContext>
   )
