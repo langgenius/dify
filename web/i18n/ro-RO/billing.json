@@ -172,6 +172,7 @@
   "usagePage.documentsUploadQuota": "Cota de încărcare a documentelor",
   "usagePage.perMonth": "pe lună",
   "usagePage.resetsIn": "Se resetează în {{count,number}} zile",
+  "usagePage.storageThresholdTooltip": "Utilizarea detaliată este afișată odată ce spațiul de stocare depășește 50 MB.",
   "usagePage.teamMembers": "Membrii echipei",
   "usagePage.triggerEvents": "Evenimente declanșatoare",
   "usagePage.vectorSpace": "Stocarea datelor de cunoștințe",
