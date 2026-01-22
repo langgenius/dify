@@ -175,7 +175,7 @@ class TestFileTypeValidation:
 
     @pytest.mark.parametrize(
         "extension",
-        ["mp3", "mp4", "mpeg", "mpga", "m4a", "wav", "webm"],
+        ["mp3", "mp4", "mpeg", "mpga", "m4a", "wav", "webm", "MP4", "MPEG", "WEBM"],
     )
     def test_audio_extension_in_constants(self, extension):
         """Test that audio extensions are correctly defined in constants."""
