@@ -118,7 +118,7 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
         />
       </Group>
       {
-        data.chunk_structure && (
+        !!data.chunk_structure && (
           <>
             <BoxGroupField
               boxGroupProps={{

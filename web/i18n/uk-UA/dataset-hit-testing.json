@@ -3,7 +3,7 @@
   "dateTimeFormat": "DD/MM/YYYY HH:mm A",
   "desc": "Тестування ефективності пошуку знань на основі наданого текстового запиту.",
   "hit.emptyTip": "Результати тестування вибірки відобразяться тут",
-  "hit.title": "ВИБРАНІ АБЗАЦИ",
+  "hit.title": "{{num}} вибрані абзаци",
   "hitChunks": "Натисніть {{num}} на дочірні шматки",
   "imageUploader.dropZoneTip": "Перетягніть файл сюди, щоб завантажити",
   "imageUploader.singleChunkAttachmentLimitTooltip": "Кількість вкладень у вигляді одного блоку не може перевищувати {{limit}}",

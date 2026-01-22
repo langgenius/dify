@@ -86,7 +86,7 @@ const Modal = ({
             </div>
           </div>
           {
-            children && (
+            !!children && (
               <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">{children}</div>
             )
           }
@@ -125,7 +125,7 @@ const Modal = ({
               </Button>
             </div>
           </div>
-          {bottomSlot && (
+          {!!bottomSlot && (
             <div className="shrink-0">
               {bottomSlot}
             </div>

@@ -1,10 +1,11 @@
 import logging
 import mimetypes
-from collections.abc import Mapping, Sequence
-from typing import Any
+from collections.abc import Callable, Mapping, Sequence
+from typing import TYPE_CHECKING, Any
 
 from configs import dify_config
-from core.file import File, FileTransferMethod
+from core.file import File, FileTransferMethod, file_manager
+from core.helper import ssrf_proxy
 from core.tools.tool_file_manager import ToolFileManager
 from core.variables.segments import ArrayFileSegment
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
@@ -13,6 +14,7 @@ from core.workflow.nodes.base import variable_template_parser
 from core.workflow.nodes.base.entities import VariableSelector
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.http_request.executor import Executor
+from core.workflow.nodes.protocols import FileManagerProtocol, HttpClientProtocol
 from factories import file_factory
 
 from .entities import (
@@ -30,9 +32,34 @@ HTTP_REQUEST_DEFAULT_TIMEOUT = HttpRequestNodeTimeout(
 
 logger = logging.getLogger(__name__)
 
+if TYPE_CHECKING:
+    from core.workflow.entities import GraphInitParams
+    from core.workflow.runtime import GraphRuntimeState
+
 
 class HttpRequestNode(Node[HttpRequestNodeData]):
     node_type = NodeType.HTTP_REQUEST
+
+    def __init__(
+        self,
+        id: str,
+        config: Mapping[str, Any],
+        graph_init_params: "GraphInitParams",
+        graph_runtime_state: "GraphRuntimeState",
+        *,
+        http_client: HttpClientProtocol = ssrf_proxy,
+        tool_file_manager_factory: Callable[[], ToolFileManager] = ToolFileManager,
+        file_manager: FileManagerProtocol = file_manager,
+    ) -> None:
+        super().__init__(
+            id=id,
+            config=config,
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
+        )
+        self._http_client = http_client
+        self._tool_file_manager_factory = tool_file_manager_factory
+        self._file_manager = file_manager
 
     @classmethod
     def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
@@ -71,6 +98,8 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
                 timeout=self._get_request_timeout(self.node_data),
                 variable_pool=self.graph_runtime_state.variable_pool,
                 max_retries=0,
+                http_client=self._http_client,
+                file_manager=self._file_manager,
             )
             process_data["request"] = http_executor.to_log()
 
@@ -199,7 +228,7 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
         mime_type = (
             content_disposition_type or content_type or mimetypes.guess_type(filename)[0] or "application/octet-stream"
         )
-        tool_file_manager = ToolFileManager()
+        tool_file_manager = self._tool_file_manager_factory()
 
         tool_file = tool_file_manager.create_file_by_raw(
             user_id=self.user_id,
