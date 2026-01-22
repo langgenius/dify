@@ -253,6 +253,8 @@ const SubGraphContent: FC<SubGraphProps> = (props) => {
         title={sourceTitle}
         extractorNodeId={`${toolNodeId}_ext_${paramKey}`}
         configsMap={configsMap}
+        nestedNodeConfig={props.nestedNodeConfig}
+        onNestedNodeConfigChange={props.onNestedNodeConfigChange}
         selectableNodeTypes={selectableNodeTypes}
         onSave={onSave}
         onSyncWorkflowDraft={onSyncWorkflowDraft}

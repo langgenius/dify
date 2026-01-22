@@ -92,7 +92,9 @@ const SubGraphModal: FC<SubGraphModalProps> = (props) => {
     const current = toolParam?.nested_node_config
     const rawSelector = Array.isArray(current?.output_selector) ? current!.output_selector : []
     const outputSelector = rawSelector[0] === extractorNodeId ? rawSelector.slice(1) : rawSelector
-    const defaultOutputSelector = ['structured_output', paramKey]
+    const defaultOutputSelector = isAgentVariant
+      ? ['structured_output', paramKey]
+      : ['result']
 
     return {
       extractor_node_id: current?.extractor_node_id || extractorNodeId,
@@ -100,12 +102,9 @@ const SubGraphModal: FC<SubGraphModalProps> = (props) => {
       null_strategy: current?.null_strategy || 'use_default',
       default_value: current?.default_value ?? '',
     }
-  }, [extractorNodeId, paramKey, toolParam?.nested_node_config])
+  }, [extractorNodeId, isAgentVariant, paramKey, toolParam?.nested_node_config])
 
   const handleNestedNodeConfigChange = useCallback((config: NestedNodeConfig) => {
-    if (!isAgentVariant)
-      return
-
     const { getNodes, setNodes } = reactflowStore.getState()
     const nextNodes = getNodes().map((node) => {
       if (node.id !== toolNodeId)
@@ -124,7 +123,7 @@ const SubGraphModal: FC<SubGraphModalProps> = (props) => {
             ...toolData.tool_parameters,
             [paramKey]: {
               ...currentParam,
-              type: currentParam.type || VarKindType.nested_node,
+              type: VarKindType.nested_node,
               nested_node_config: config,
             },
           },
@@ -133,10 +132,10 @@ const SubGraphModal: FC<SubGraphModalProps> = (props) => {
     })
     setNodes(nextNodes)
     handleSyncWorkflowDraft()
-  }, [handleSyncWorkflowDraft, isAgentVariant, paramKey, reactflowStore, toolNodeId])
+  }, [handleSyncWorkflowDraft, paramKey, reactflowStore, toolNodeId])
 
   useEffect(() => {
-    if (!isAgentVariant || !toolParam || (toolParam.type && toolParam.type !== VarKindType.nested_node))
+    if (!toolParam || (toolParam.type && toolParam.type !== VarKindType.nested_node))
       return
 
     const current = toolParam.nested_node_config
@@ -147,7 +146,7 @@ const SubGraphModal: FC<SubGraphModalProps> = (props) => {
 
     if (needsExtractor || needsNullStrategy || needsOutputSelector || needsDefaultValue)
       handleNestedNodeConfigChange(nestedNodeConfig)
-  }, [handleNestedNodeConfigChange, isAgentVariant, nestedNodeConfig, toolParam])
+  }, [handleNestedNodeConfigChange, nestedNodeConfig, toolParam])
 
   const getUserPromptText = useCallback((promptTemplate?: PromptTemplateItem[] | PromptItem) => {
     if (!promptTemplate)
@@ -220,6 +219,7 @@ const SubGraphModal: FC<SubGraphModalProps> = (props) => {
         if (!toolData.tool_parameters?.[paramKey])
           return node
 
+        const currentParam = toolData.tool_parameters[paramKey]
         return {
           ...node,
           data: {
@@ -227,8 +227,10 @@ const SubGraphModal: FC<SubGraphModalProps> = (props) => {
             tool_parameters: {
               ...toolData.tool_parameters,
               [paramKey]: {
-                ...toolData.tool_parameters[paramKey],
+                ...currentParam,
+                type: VarKindType.nested_node,
                 value: nextValue,
+                nested_node_config: currentParam.nested_node_config ?? nestedNodeConfig,
               },
             },
           },
@@ -238,7 +240,7 @@ const SubGraphModal: FC<SubGraphModalProps> = (props) => {
     })
     setNodes(nextNodes)
     setControlPromptEditorRerenderKey(Date.now())
-  }, [assemblePlaceholder, extractorNodeId, getUserPromptText, isAgentVariant, paramKey, reactflowStore, resolvedAgentNodeId, setControlPromptEditorRerenderKey, toolNodeId])
+  }, [assemblePlaceholder, extractorNodeId, getUserPromptText, isAgentVariant, nestedNodeConfig, paramKey, reactflowStore, resolvedAgentNodeId, setControlPromptEditorRerenderKey, toolNodeId])
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
@@ -298,6 +300,8 @@ const SubGraphModal: FC<SubGraphModalProps> = (props) => {
                           paramKey={paramKey}
                           title={props.title}
                           configsMap={configsMap}
+                          nestedNodeConfig={nestedNodeConfig}
+                          onNestedNodeConfigChange={handleNestedNodeConfigChange}
                           extractorNode={extractorNode as Node<CodeNodeType> | undefined}
                           toolParamValue={toolParamValue}
                           parentAvailableNodes={parentAvailableNodes}

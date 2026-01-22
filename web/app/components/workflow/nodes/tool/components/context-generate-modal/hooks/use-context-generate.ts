@@ -13,7 +13,7 @@ import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { languages } from '@/i18n-config/language'
 import { fetchContextGenerateSuggestedQuestions, generateContext } from '@/service/debug'
 import { AppModeEnum } from '@/types/app'
-import useContextGenData from '../use-context-gen-data'
+import useContextGenData from './use-context-gen-data'
 
 export type ContextGenerateChatMessage = ContextGenerateMessage & {
   durationMs?: number
@@ -68,6 +68,7 @@ type UseContextGenerateResult = {
   handleReset: () => void
   handleFetchSuggestedQuestions: () => Promise<void>
   abortSuggestedQuestions: () => void
+  resetSuggestions: () => void
   defaultAssistantMessage: string
   versionOptions: VersionOption[]
   currentVersionLabel: string
@@ -98,15 +99,8 @@ const useContextGenerate = ({
     { defaultValue: [] },
   )
 
-  const [suggestedQuestions, setSuggestedQuestions] = useSessionStorageState<string[]>(
-    `${storageKey}-suggested-questions`,
-    { defaultValue: [] },
-  )
-
-  const [hasFetchedSuggestions, setHasFetchedSuggestions] = useSessionStorageState<boolean>(
-    `${storageKey}-suggested-questions-fetched`,
-    { defaultValue: false },
-  )
+  const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([])
+  const [hasFetchedSuggestions, setHasFetchedSuggestions] = useState<boolean>(false)
 
   const [isFetchingSuggestions, { setTrue: setFetchingSuggestionsTrue, setFalse: setFetchingSuggestionsFalse }] = useBoolean(false)
   const suggestedQuestionsAbortControllerRef = useRef<AbortController | null>(null)
@@ -269,14 +263,17 @@ const useContextGenerate = ({
     promptLanguage,
     setFetchingSuggestionsFalse,
     setFetchingSuggestionsTrue,
-    setHasFetchedSuggestions,
-    setSuggestedQuestions,
     t,
     toolNodeId,
   ])
 
   const abortSuggestedQuestions = useCallback(() => {
     suggestedQuestionsAbortControllerRef.current?.abort()
+  }, [])
+
+  const resetSuggestions = useCallback(() => {
+    setSuggestedQuestions([])
+    setHasFetchedSuggestions(false)
   }, [])
 
   const generateStartRef = useRef<number | null>(null)
@@ -356,8 +353,8 @@ const useContextGenerate = ({
     promptMessages: promptMessages ?? [],
     inputValue,
     setInputValue,
-    suggestedQuestions: suggestedQuestions ?? [],
-    hasFetchedSuggestions: hasFetchedSuggestions ?? false,
+    suggestedQuestions,
+    hasFetchedSuggestions,
     isGenerating,
     model,
     handleModelChange,
@@ -366,6 +363,7 @@ const useContextGenerate = ({
     handleReset,
     handleFetchSuggestedQuestions,
     abortSuggestedQuestions,
+    resetSuggestions,
     defaultAssistantMessage,
     versionOptions,
     currentVersionLabel,

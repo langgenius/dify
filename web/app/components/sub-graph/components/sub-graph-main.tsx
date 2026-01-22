@@ -34,6 +34,8 @@ type SubGraphMainProps
   })
   | (SubGraphMainBaseProps & {
     variant: 'assemble'
+    nestedNodeConfig: NestedNodeConfig
+    onNestedNodeConfigChange: (config: NestedNodeConfig) => void
   })
 
 const SubGraphMain: FC<SubGraphMainProps> = (props) => {
@@ -119,6 +121,8 @@ const SubGraphMain: FC<SubGraphMainProps> = (props) => {
           variant="assemble"
           title={title}
           extractorNodeId={extractorNodeId}
+          nestedNodeConfig={props.nestedNodeConfig}
+          onNestedNodeConfigChange={props.onNestedNodeConfigChange}
         />
       )
 

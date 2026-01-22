@@ -30,10 +30,12 @@ import { useGetLanguage } from '@/context/i18n'
 import { useStrategyProviders } from '@/service/use-strategy'
 import { cn } from '@/utils/classnames'
 import ContextGenerateModal from '../context-generate-modal'
+import { buildContextGenStorageKey, clearContextGenStorage } from '../context-generate-modal/utils/storage'
 import SubGraphModal from '../sub-graph-modal'
 import { AgentHeaderBar, Placeholder } from './components'
 import {
   AGENT_CONTEXT_VAR_PATTERN,
+  buildAssembleNestedNodeConfig,
   buildAssemblePlaceholder,
   getAgentNodeIdFromContextVar,
   useMixedVariableExtractor,
@@ -319,23 +321,30 @@ const MixedVariableTextInput = ({
       return null
     const extractorNodeId = assembleExtractorNodeId || `${toolNodeId}_ext_${paramKey}`
     ensureAssembleExtractorNode()
-    onChange?.(assemblePlaceholder, VarKindTypeEnum.mixed, null)
+    const { getNodes } = reactFlowStore.getState()
+    const extractorNode = getNodes().find(node => node.id === extractorNodeId)
+    const outputs = (extractorNode?.data as { outputs?: Record<string, unknown> } | undefined)?.outputs
+    const nestedNodeConfig = buildAssembleNestedNodeConfig(extractorNodeId, outputs as import('@/app/components/workflow/nodes/code/types').OutputVar | undefined)
+    onChange?.(assemblePlaceholder, VarKindTypeEnum.nested_node, nestedNodeConfig)
     setControlPromptEditorRerenderKey(Date.now())
     setIsContextGenerateModalOpen(true)
     setTimeout(() => {
       contextGenerateModalRef.current?.onOpen()
     }, 0)
     return [extractorNodeId, 'result']
-  }, [assembleExtractorNodeId, assemblePlaceholder, ensureAssembleExtractorNode, onChange, paramKey, setControlPromptEditorRerenderKey, toolNodeId])
+  }, [assembleExtractorNodeId, assemblePlaceholder, ensureAssembleExtractorNode, onChange, paramKey, reactFlowStore, setControlPromptEditorRerenderKey, toolNodeId])
 
   const handleAssembleRemove = useCallback(() => {
-    if (!onChange || !assemblePlaceholder)
+    if (!onChange || !assemblePlaceholder || !toolNodeId)
       return
 
     removeExtractorNode()
     onChange('', VarKindTypeEnum.mixed, null)
     setControlPromptEditorRerenderKey(Date.now())
-  }, [assemblePlaceholder, onChange, removeExtractorNode, setControlPromptEditorRerenderKey])
+
+    const storageKey = buildContextGenStorageKey(configsMap?.flowId, toolNodeId, paramKey)
+    clearContextGenStorage(storageKey)
+  }, [assemblePlaceholder, configsMap?.flowId, onChange, paramKey, removeExtractorNode, setControlPromptEditorRerenderKey, toolNodeId])
 
   const handleOpenSubGraphModal = useCallback(() => {
     setIsSubGraphModalOpen(true)

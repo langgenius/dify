@@ -1,6 +1,7 @@
 import type { ReactFlowState } from 'reactflow'
 import type { ToolParameter } from '@/app/components/tools/types'
-import type { CodeNodeType } from '@/app/components/workflow/nodes/code/types'
+import type { NestedNodeConfig } from '@/app/components/workflow/nodes/_base/types'
+import type { CodeNodeType, OutputVar } from '@/app/components/workflow/nodes/code/types'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type {
   CommonNodeType,
@@ -31,6 +32,31 @@ export const buildAssemblePlaceholder = (toolNodeId?: string, paramKey?: string)
   if (!toolNodeId || !paramKey)
     return ''
   return `{{#${toolNodeId}_ext_${paramKey}.result#}}`
+}
+
+export const getDefaultOutputKey = (outputs?: OutputVar): string => {
+  if (!outputs)
+    return ''
+  const keys = Object.keys(outputs)
+  if (keys.length === 0)
+    return ''
+  // Reason: 'result' is the conventional default output key for code nodes
+  if (keys.includes('result'))
+    return 'result'
+  return keys[0]
+}
+
+export const buildAssembleNestedNodeConfig = (
+  extractorNodeId: string,
+  outputs?: OutputVar,
+): NestedNodeConfig => {
+  const defaultOutputKey = getDefaultOutputKey(outputs)
+  return {
+    extractor_node_id: extractorNodeId,
+    output_selector: defaultOutputKey ? [defaultOutputKey] : [],
+    null_strategy: 'use_default',
+    default_value: '',
+  }
 }
 
 const resolvePromptText = (item?: PromptItem): string => {

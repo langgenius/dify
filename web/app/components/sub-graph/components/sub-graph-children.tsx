@@ -21,11 +21,12 @@ type SubGraphChildrenProps
     variant: 'assemble'
     title: string
     extractorNodeId: string
+    nestedNodeConfig: NestedNodeConfig
+    onNestedNodeConfigChange: (config: NestedNodeConfig) => void
   }
 
 const SubGraphChildren: FC<SubGraphChildrenProps> = (props) => {
   const {
-    variant,
     title,
     extractorNodeId,
   } = props
@@ -57,10 +58,8 @@ const SubGraphChildren: FC<SubGraphChildrenProps> = (props) => {
     return vars.filter(item => item.nodeId === extractorNode.id)
   }, [extractorNode, getNodeAvailableVars, isChatMode])
 
-  const agentProps = variant === 'agent' ? props : null
-
   const panelRight = useMemo(() => {
-    if (!agentProps || selectedNode)
+    if (selectedNode)
       return null
 
     return (
@@ -72,23 +71,15 @@ const SubGraphChildren: FC<SubGraphChildrenProps> = (props) => {
           <ConfigPanel
             agentName={title}
             extractorNodeId={extractorNodeId}
-            nestedNodeConfig={agentProps.nestedNodeConfig}
+            nestedNodeConfig={props.nestedNodeConfig}
             availableNodes={availableNodes}
             availableVars={availableVars}
-            onNestedNodeConfigChange={agentProps.onNestedNodeConfigChange}
+            onNestedNodeConfigChange={props.onNestedNodeConfigChange}
           />
         </div>
       </div>
     )
-  }, [agentProps, availableNodes, availableVars, extractorNodeId, nodePanelWidth, selectedNode, title])
-
-  if (variant === 'assemble') {
-    return (
-      <Panel
-        withHeader={false}
-      />
-    )
-  }
+  }, [availableNodes, availableVars, extractorNodeId, nodePanelWidth, props.nestedNodeConfig, props.onNestedNodeConfigChange, selectedNode, title])
 
   return (
     <Panel

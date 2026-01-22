@@ -328,12 +328,12 @@ const FormInputItem: FC<Props> = ({
       && assemblePlaceholder
       && normalizedValue.includes(assemblePlaceholder)
     const resolvedType = isAssembleValue
-      ? VarKindType.mixed
+      ? VarKindType.nested_node
       : newType ?? (varInput?.type === VarKindType.nested_node ? VarKindType.nested_node : getVarKindType())
     const resolvedNestedNodeConfig = resolvedType === VarKindType.nested_node
       ? (nestedNodeConfig ?? varInput?.nested_node_config ?? {
-          extractor_node_id: '',
-          output_selector: [],
+          extractor_node_id: nodeId && variable ? `${nodeId}_ext_${variable}` : '',
+          output_selector: ['result'],
           null_strategy: 'use_default',
           default_value: '',
         })

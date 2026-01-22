@@ -43,6 +43,8 @@ export type AgentSubGraphProps = BaseSubGraphProps & {
 export type AssembleSubGraphProps = BaseSubGraphProps & {
   variant: 'assemble'
   title: string
+  nestedNodeConfig: NestedNodeConfig
+  onNestedNodeConfigChange: (config: NestedNodeConfig) => void
   extractorNode?: Node<CodeNodeType>
 }
 

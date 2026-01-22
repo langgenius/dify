@@ -104,6 +104,7 @@ const ContextGenerateModal = forwardRef<ContextGenerateModalHandle, Props>(({
     handleReset,
     handleFetchSuggestedQuestions,
     abortSuggestedQuestions,
+    resetSuggestions,
     defaultAssistantMessage,
     versionOptions,
     currentVersionLabel,
@@ -118,8 +119,9 @@ const ContextGenerateModal = forwardRef<ContextGenerateModalHandle, Props>(({
 
   const handleCloseModal = useCallback(() => {
     abortSuggestedQuestions()
+    resetSuggestions()
     onClose()
-  }, [abortSuggestedQuestions, onClose])
+  }, [abortSuggestedQuestions, onClose, resetSuggestions])
 
   useImperativeHandle(ref, () => ({
     onOpen: () => {
