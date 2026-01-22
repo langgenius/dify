@@ -85,7 +85,7 @@ const TableSelector: FC<TableSelectorProps> = ({
                 key={item.value}
                 type="button"
                 className={cn(
-                  'system-xs-regular flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-text-secondary hover:bg-state-base-hover',
+                  'system-sm-medium flex w-full items-center gap-1 rounded-lg px-2 py-1 text-left text-text-secondary hover:bg-state-base-hover',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-components-input-border-active',
                   item.value === selectedTable && 'bg-state-base-hover',
                 )}
@@ -94,9 +94,10 @@ const TableSelector: FC<TableSelectorProps> = ({
                   setOpen(false)
                 }}
               >
-                <span className="truncate">{item.name}</span>
+                <TableCells className="h-4 w-4 shrink-0 text-text-secondary" aria-hidden="true" />
+                <span className="flex-1 truncate px-1">{item.name}</span>
                 {item.value === selectedTable && (
-                  <Check className="ml-auto h-4 w-4 shrink-0 text-text-accent" aria-hidden="true" />
+                  <Check className="h-4 w-4 shrink-0 text-text-accent" aria-hidden="true" />
                 )}
               </button>
             ))}
