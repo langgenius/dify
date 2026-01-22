@@ -90,7 +90,7 @@
   "feature.conversationHistory.editModal.title": "Edycja nazw ról konwersacyjnych",
   "feature.conversationHistory.editModal.userPrefix": "Prefix użytkownika",
   "feature.conversationHistory.learnMore": "Dowiedz się więcej",
-  "feature.conversationHistory.tip": "Historia konwersacji nie jest włączona, proszę dodać <historie> w monicie powyżej.",
+  "feature.conversationHistory.tip": "Historia konwersacji nie jest włączona, proszę dodać <histories> w monicie powyżej.",
   "feature.conversationHistory.title": "Historia konwersacji",
   "feature.conversationOpener.description": "W aplikacji czatowej pierwsze zdanie, które AI aktywnie wypowiada do użytkownika, zazwyczaj służy jako powitanie.",
   "feature.conversationOpener.title": "Otwieracze do rozmów",
