@@ -51,16 +51,11 @@ class SkillBuilder:
         loaded = self._load_all(ctx)
 
         # 2. Compile all skills (CPU-bound, single thread)
-        documents = [
-            SkillDocument(skill_id=s.node.id, content=s.content, metadata=s.metadata)
-            for s in loaded
-        ]
+        documents = [SkillDocument(skill_id=s.node.id, content=s.content, metadata=s.metadata) for s in loaded]
         artifact_set = SkillCompiler().compile_all(documents, tree, ctx.build_id)
 
         # 3. Save tool artifact
-        SkillManager.save_tool_artifact(
-            ctx.tenant_id, ctx.app_id, ctx.build_id, artifact_set.get_tool_artifact()
-        )
+        SkillManager.save_artifact(ctx.tenant_id, ctx.app_id, ctx.build_id, artifact_set)
 
         # 4. Prepare compiled skills for upload
         to_upload: list[_CompiledSkill] = []
@@ -68,9 +63,7 @@ class SkillBuilder:
             artifact = artifact_set.get(skill.node.id)
             if artifact is None:
                 continue
-            resolved_key = AssetPaths.build_resolved_file(
-                ctx.tenant_id, ctx.app_id, ctx.build_id, skill.node.id
-            )
+            resolved_key = AssetPaths.build_resolved_file(ctx.tenant_id, ctx.app_id, ctx.build_id, skill.node.id)
             to_upload.append(
                 _CompiledSkill(
                     node=skill.node,

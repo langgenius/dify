@@ -60,8 +60,8 @@ class DifyCliInitializer(SandboxInitializer):
 
         logger.info("Dify CLI uploaded to sandbox, path=%s", DifyCli.PATH)
 
-        artifact = SkillManager.load_tool_artifact(self._tenant_id, self._app_id, self._assets_id)
-        if artifact is None or not artifact.references:
+        artifact = SkillManager.load_artifact(self._tenant_id, self._app_id, self._assets_id)
+        if artifact is None or not artifact.get_tool_artifact().is_empty:
             logger.info("No tools found in artifact for assets_id=%s", self._assets_id)
             return
 
@@ -72,7 +72,7 @@ class DifyCliInitializer(SandboxInitializer):
             ["mkdir", "-p", DifyCli.GLOBAL_TOOLS_PATH], error_message="Failed to create global tools dir"
         ).execute(raise_on_error=True)
 
-        config = DifyCliConfig.create(self._cli_api_session, self._tenant_id, artifact)
+        config = DifyCliConfig.create(self._cli_api_session, self._tenant_id, artifact.get_tool_artifact())
         config_json = json.dumps(config.model_dump(mode="json"), ensure_ascii=False)
         config_path = f"{DifyCli.GLOBAL_TOOLS_PATH}/{DifyCli.CONFIG_FILENAME}"
         vm.upload_file(config_path, BytesIO(config_json.encode("utf-8")))

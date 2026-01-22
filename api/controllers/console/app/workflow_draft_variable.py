@@ -16,6 +16,7 @@ from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from controllers.web.error import InvalidArgumentError, NotFoundError
 from core.file import helpers as file_helpers
+from core.sandbox.manager import SandboxManager
 from core.variables.segment_group import SegmentGroup
 from core.variables.segments import ArrayFileSegment, ArrayPromptMessageSegment, FileSegment, Segment
 from core.variables.types import SegmentType
@@ -23,7 +24,7 @@ from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIAB
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping, build_from_mappings
 from factories.variable_factory import build_segment_with_type
-from libs.login import login_required
+from libs.login import current_account_with_tenant, login_required
 from models import App, AppMode
 from models.workflow import WorkflowDraftVariable
 from services.workflow_draft_variable_service import WorkflowDraftVariableList, WorkflowDraftVariableService
@@ -249,6 +250,9 @@ class WorkflowVariableCollectionApi(Resource):
     @console_ns.response(204, "Workflow variables deleted successfully")
     @_api_prerequisite
     def delete(self, app_model: App):
+        # FIXME(Mairuis): move to SandboxArtifactService
+        current_user, _ = current_account_with_tenant()
+        SandboxManager.delete_storage(app_model.tenant_id, current_user.id)
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
         )

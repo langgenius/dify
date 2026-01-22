@@ -35,3 +35,25 @@ class ToolArtifact(BaseModel):
                 if f"{reference.provider}.{reference.tool_name}" in tool_names
             ],
         )
+
+    def merge(self, other: "ToolArtifact") -> "ToolArtifact":
+        dep_map: dict[str, ToolDependency] = {}
+        for dep in self.dependencies:
+            key = f"{dep.provider}.{dep.tool_name}"
+            dep_map[key] = dep
+        for dep in other.dependencies:
+            key = f"{dep.provider}.{dep.tool_name}"
+            if key not in dep_map:
+                dep_map[key] = dep
+
+        ref_map: dict[str, ToolReference] = {}
+        for ref in self.references:
+            ref_map[ref.uuid] = ref
+        for ref in other.references:
+            if ref.uuid not in ref_map:
+                ref_map[ref.uuid] = ref
+
+        return ToolArtifact(
+            dependencies=list(dep_map.values()),
+            references=list(ref_map.values()),
+        )

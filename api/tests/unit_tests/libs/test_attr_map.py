@@ -51,11 +51,27 @@ class TestAttrMap:
 
         assert result == "hello"
 
-    def test_get_returns_none_for_missing(self):
+    def test_get_raises_when_not_set(self):
         key: AttrKey[str] = AttrKey("session", str)
         attrs = AttrMap()
 
-        assert attrs.get(key) is None
+        with pytest.raises(AttrMapKeyError) as exc_info:
+            attrs.get(key)
+
+        assert exc_info.value.key is key
+
+    def test_get_or_none_returns_none_for_missing(self):
+        key: AttrKey[str] = AttrKey("session", str)
+        attrs = AttrMap()
+
+        assert attrs.get_or_none(key) is None
+
+    def test_get_or_none_returns_value_when_set(self):
+        key: AttrKey[str] = AttrKey("session", str)
+        attrs = AttrMap()
+        attrs.set(key, "hello")
+
+        assert attrs.get_or_none(key) == "hello"
 
     def test_get_or_default_returns_value_when_set(self):
         key: AttrKey[str] = AttrKey("session", str)
@@ -73,25 +89,6 @@ class TestAttrMap:
         result = attrs.get_or_default(key, "default")
 
         assert result == "default"
-
-    def test_require_returns_value_when_set(self):
-        key: AttrKey[str] = AttrKey("session", str)
-        attrs = AttrMap()
-        attrs.set(key, "hello")
-
-        result = attrs.require(key)
-
-        assert result == "hello"
-
-    def test_require_raises_when_not_set(self):
-        key: AttrKey[str] = AttrKey("session", str)
-        attrs = AttrMap()
-
-        with pytest.raises(AttrMapKeyError) as exc_info:
-            attrs.require(key)
-
-        assert exc_info.value.key is key
-        assert "session" in str(exc_info.value)
 
     def test_has(self):
         key: AttrKey[str] = AttrKey("session", str)

@@ -7,8 +7,8 @@ to the same AttrKey instance can read/write the corresponding attribute.
     SESSION_KEY: AttrKey[Session] = AttrKey("session", Session)
     attrs = AttrMap()
     attrs.set(SESSION_KEY, session)
-    session = attrs.get(SESSION_KEY)  # -> Session | None
-    session = attrs.require(SESSION_KEY)  # -> Session (raises if not set)
+    session = attrs.get(SESSION_KEY)  # -> Session (raises if not set)
+    session = attrs.get_or_none(SESSION_KEY)  # -> Session | None
 
 Note: AttrMap is NOT thread-safe. Each instance should be confined to a single
 thread/context (e.g., one AttrMap per Sandbox/VirtualEnvironment instance).
@@ -106,7 +106,13 @@ class AttrMap:
             raise AttrMapTypeError(key, key.type_, type(value))
         self._data[key] = value
 
-    def get(self, key: AttrKey[T]) -> T | None:
+    def get(self, key: AttrKey[T]) -> T:
+        """Retrieve an attribute. Raises AttrMapKeyError if not set."""
+        if key not in self._data:
+            raise AttrMapKeyError(key)
+        return cast(T, self._data[key])
+
+    def get_or_none(self, key: AttrKey[T]) -> T | None:
         """Retrieve an attribute, returning None if not set."""
         return cast(T | None, self._data.get(key))
 
@@ -121,12 +127,6 @@ class AttrMap:
         if key in self._data:
             return cast(T, self._data[key])
         return default
-
-    def require(self, key: AttrKey[T]) -> T:
-        """Retrieve an attribute, raising AttrMapKeyError if not set."""
-        if key not in self._data:
-            raise AttrMapKeyError(key)
-        return cast(T, self._data[key])
 
     def has(self, key: AttrKey[Any]) -> bool:
         """Check if an attribute is set."""

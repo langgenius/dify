@@ -1,3 +1,4 @@
+from .constants import AppAssetsAttrs
 from .entities import (
     AssetItem,
     FileAsset,
@@ -8,6 +9,7 @@ from .parser import AssetItemParser, AssetParser, FileAssetParser, SkillAssetPar
 from .paths import AssetPaths
 
 __all__ = [
+    "AppAssetsAttrs",
     "AssetItem",
     "AssetItemParser",
     "AssetPackager",

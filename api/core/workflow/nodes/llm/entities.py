@@ -59,6 +59,8 @@ class PromptConfig(BaseModel):
 class LLMNodeChatModelMessage(ChatModelMessage):
     text: str = ""
     jinja2_text: str | None = None
+    skill: bool = False
+    metadata: Mapping[str, Any] | None = None
 
 
 class LLMNodeCompletionModelPromptTemplate(CompletionModelPromptTemplate):

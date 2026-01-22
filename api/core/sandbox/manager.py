@@ -9,6 +9,7 @@ from core.sandbox.entities import AppAssets, SandboxType
 from core.sandbox.entities.providers import SandboxProviderEntity
 from core.sandbox.initializer.app_assets_initializer import AppAssetsInitializer
 from core.sandbox.initializer.dify_cli_initializer import DifyCliInitializer
+from core.sandbox.initializer.skill_initializer import SkillInitializer
 from core.sandbox.sandbox import Sandbox
 from core.sandbox.storage.archive_storage import ArchiveSandboxStorage
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
@@ -123,12 +124,18 @@ class SandboxManager:
             .app(app_id)
             .initializer(AppAssetsInitializer(tenant_id, app_id, assets.id))
             .initializer(DifyCliInitializer(tenant_id, user_id, app_id, assets.id))
+            .initializer(SkillInitializer(tenant_id, user_id, app_id, assets.id))
             .storage(storage, assets.id)
             .build()
         )
 
         logger.info("Sandbox created: id=%s, assets=%s", sandbox.vm.metadata.id, sandbox.assets_id)
         return sandbox
+
+    @classmethod
+    def delete_storage(cls, tenant_id: str, user_id: str) -> None:
+        storage = ArchiveSandboxStorage(tenant_id, SandboxBuilder.draft_id(user_id))
+        storage.delete()
 
     @classmethod
     def create_draft(
@@ -153,6 +160,7 @@ class SandboxManager:
             .app(app_id)
             .initializer(AppAssetsInitializer(tenant_id, app_id, assets.id))
             .initializer(DifyCliInitializer(tenant_id, user_id, app_id, assets.id))
+            .initializer(SkillInitializer(tenant_id, user_id, app_id, assets.id))
             .storage(storage, assets.id)
             .build()
         )
@@ -183,6 +191,7 @@ class SandboxManager:
             .app(app_id)
             .initializer(AppAssetsInitializer(tenant_id, app_id, assets.id))
             .initializer(DifyCliInitializer(tenant_id, user_id, app_id, assets.id))
+            .initializer(SkillInitializer(tenant_id, user_id, app_id, assets.id))
             .storage(storage, assets.id)
             .build()
         )

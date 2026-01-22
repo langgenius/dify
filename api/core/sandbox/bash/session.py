@@ -8,7 +8,6 @@ from types import TracebackType
 from core.sandbox.sandbox import Sandbox
 from core.session.cli_api import CliApiSession, CliApiSessionManager
 from core.skill.entities.tool_artifact import ToolArtifact
-from core.skill.skill_manager import SkillManager
 from core.virtual_environment.__base.helpers import pipeline
 
 from ..bash.dify_cli import DifyCliConfig
@@ -19,17 +18,10 @@ logger = logging.getLogger(__name__)
 
 
 class SandboxBashSession:
-    def __init__(
-        self,
-        *,
-        sandbox: Sandbox,
-        node_id: str,
-        allow_tools: list[tuple[str, str]] | None,
-    ) -> None:
+    def __init__(self, *, sandbox: Sandbox, node_id: str, tools: ToolArtifact | None) -> None:
         self._sandbox = sandbox
         self._node_id = node_id
-        self._allow_tools = allow_tools
-
+        self._tools = tools
         self._bash_tool: SandboxBashTool | None = None
         self._cli_api_session: CliApiSession | None = None
         self._tenant_id = sandbox.tenant_id
@@ -42,8 +34,8 @@ class SandboxBashSession:
             tenant_id=self._tenant_id,
             user_id=self._user_id,
         )
-        if self._allow_tools is not None:
-            tools_path = self._setup_node_tools_directory(self._node_id, self._allow_tools, self._cli_api_session)
+        if self._tools is not None and not self._tools.is_empty():
+            tools_path = self._setup_node_tools_directory(self._node_id, self._tools, self._cli_api_session)
         else:
             tools_path = DifyCli.GLOBAL_TOOLS_PATH
 
@@ -57,24 +49,9 @@ class SandboxBashSession:
     def _setup_node_tools_directory(
         self,
         node_id: str,
-        allow_tools: list[tuple[str, str]],
+        tools: ToolArtifact,
         cli_api_session: CliApiSession,
     ) -> str | None:
-        artifact: ToolArtifact | None = SkillManager.load_tool_artifact(
-            self._sandbox.tenant_id,
-            self._app_id,
-            self._assets_id,
-        )
-
-        if artifact is None or artifact.is_empty():
-            logger.info("No tools found in artifact for assets_id=%s", self._assets_id)
-            return None
-
-        artifact = artifact.filter(allow_tools)
-        if artifact.is_empty():
-            logger.info("No tools found in artifact for assets_id=%s", self._assets_id)
-            return None
-
         node_tools_path = f"{DifyCli.TOOLS_ROOT}/{node_id}"
 
         vm = self._sandbox.vm
@@ -86,7 +63,7 @@ class SandboxBashSession:
         )
 
         config_json = json.dumps(
-            DifyCliConfig.create(session=cli_api_session, tenant_id=self._tenant_id, artifact=artifact).model_dump(
+            DifyCliConfig.create(session=cli_api_session, tenant_id=self._tenant_id, artifact=tools).model_dump(
                 mode="json"
             ),
             ensure_ascii=False,
@@ -98,7 +75,7 @@ class SandboxBashSession:
         ).execute(raise_on_error=True)
 
         logger.info(
-            "Node %s tools initialized, path=%s, tool_count=%d", node_id, node_tools_path, len(artifact.references)
+            "Node %s tools initialized, path=%s, tool_count=%d", node_id, node_tools_path, len(tools.references)
         )
         return node_tools_path
 
