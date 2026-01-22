@@ -49,6 +49,10 @@ class SystemFeatureApi(Resource):
 
         Only non-sensitive configuration data should be returned by this endpoint.
         """
+        # NOTE(QuantumGhost): ideally we should access `current_user.is_authenticated`
+        # without a try-catch. However, due to the implementation of user loader (the `load_user_from_request`
+        # in api/extensions/ext_login.py), accessing `current_user.is_authenticated` will
+        # raise `Unauthorized` exception if authentication token is not provided.
         try:
             is_authenticated = current_user.is_authenticated
         except Unauthorized:
