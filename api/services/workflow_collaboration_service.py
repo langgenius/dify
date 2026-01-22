@@ -70,7 +70,7 @@ class WorkflowCollaborationService:
 
         workflow_id = mapping["workflow_id"]
         user_id = mapping["user_id"]
-        self._repository.refresh_session_state(workflow_id, sid)
+        self.refresh_session_state(workflow_id, sid)
 
         event_type = data.get("type")
         event_data = data.get("data")
@@ -94,7 +94,7 @@ class WorkflowCollaborationService:
             return {"msg": "unauthorized"}, 401
 
         workflow_id = mapping["workflow_id"]
-        self._repository.refresh_session_state(workflow_id, sid)
+        self.refresh_session_state(workflow_id, sid)
 
         self._socketio.emit("graph_update", data, room=workflow_id, skip_sid=sid)
 
@@ -163,6 +163,19 @@ class WorkflowCollaborationService:
 
     def refresh_session_state(self, workflow_id: str, sid: str) -> None:
         self._repository.refresh_session_state(workflow_id, sid)
+        self._ensure_leader(workflow_id, sid)
+
+    def _ensure_leader(self, workflow_id: str, sid: str) -> None:
+        current_leader = self._repository.get_current_leader(workflow_id)
+        if current_leader and self.is_session_active(workflow_id, current_leader):
+            self._repository.expire_leader(workflow_id)
+            return
+
+        if current_leader:
+            self._repository.delete_leader(workflow_id)
+
+        self._repository.set_leader(workflow_id, sid)
+        self.broadcast_leader_change(workflow_id, sid)
 
     def is_session_active(self, workflow_id: str, sid: str) -> bool:
         if not sid:

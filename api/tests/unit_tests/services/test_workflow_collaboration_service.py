@@ -226,6 +226,37 @@ class TestWorkflowCollaborationService:
             room="wf-1",
         )
 
+    def test_refresh_session_state_expires_active_leader(
+        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
+    ) -> None:
+        # Arrange
+        collaboration_service, repository, _socketio = service
+        repository.get_current_leader.return_value = "sid-1"
+
+        with patch.object(collaboration_service, "is_session_active", return_value=True):
+            # Act
+            collaboration_service.refresh_session_state("wf-1", "sid-1")
+
+        # Assert
+        repository.refresh_session_state.assert_called_once_with("wf-1", "sid-1")
+        repository.expire_leader.assert_called_once_with("wf-1")
+        repository.set_leader.assert_not_called()
+
+    def test_refresh_session_state_sets_leader_when_missing(
+        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
+    ) -> None:
+        # Arrange
+        collaboration_service, repository, _socketio = service
+        repository.get_current_leader.return_value = None
+
+        with patch.object(collaboration_service, "broadcast_leader_change") as broadcast_leader_change:
+            # Act
+            collaboration_service.refresh_session_state("wf-1", "sid-2")
+
+        # Assert
+        repository.set_leader.assert_called_once_with("wf-1", "sid-2")
+        broadcast_leader_change.assert_called_once_with("wf-1", "sid-2")
+
     def test_relay_graph_event_emits_update(self, service: tuple[WorkflowCollaborationService, Mock, Mock]) -> None:
         # Arrange
         collaboration_service, repository, socketio = service
