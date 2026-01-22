@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { HeaderInNormalProps } from './header-in-normal'
 import type { HeaderInRestoringProps } from './header-in-restoring'
 import type { HeaderInHistoryProps } from './header-in-view-history'
@@ -16,6 +17,26 @@ const HeaderInRestoring = dynamic(() => import('./header-in-restoring'), {
   ssr: false,
 })
 
+type HeaderShellProps = {
+  children: ReactNode
+}
+
+export const HeaderShell = ({ children }: HeaderShellProps) => {
+  const pathname = usePathname()
+  const inWorkflowCanvas = pathname.endsWith('/workflow')
+  const isPipelineCanvas = pathname.endsWith('/pipeline')
+  const maximizeCanvas = useStore(s => s.maximizeCanvas)
+
+  return (
+    <div
+      className="absolute left-0 top-7 z-10 flex h-0 w-full items-center justify-between bg-mask-top2bottom-gray-50-to-transparent px-3"
+    >
+      {(inWorkflowCanvas || isPipelineCanvas) && maximizeCanvas && <div className="h-14 w-[52px]" />}
+      {children}
+    </div>
+  )
+}
+
 export type HeaderProps = {
   normal?: HeaderInNormalProps
   viewHistory?: HeaderInHistoryProps
@@ -26,21 +47,14 @@ const Header = ({
   viewHistory: viewHistoryProps,
   restoring: restoringProps,
 }: HeaderProps) => {
-  const pathname = usePathname()
-  const inWorkflowCanvas = pathname.endsWith('/workflow')
-  const isPipelineCanvas = pathname.endsWith('/pipeline')
   const {
     normal,
     restoring,
     viewHistory,
   } = useWorkflowMode()
-  const maximizeCanvas = useStore(s => s.maximizeCanvas)
 
   return (
-    <div
-      className="absolute left-0 top-7 z-10 flex h-0 w-full items-center justify-between bg-mask-top2bottom-gray-50-to-transparent px-3"
-    >
-      {(inWorkflowCanvas || isPipelineCanvas) && maximizeCanvas && <div className="h-14 w-[52px]" />}
+    <HeaderShell>
       {
         normal && (
           <HeaderInNormal
@@ -62,7 +76,7 @@ const Header = ({
           />
         )
       }
-    </div>
+    </HeaderShell>
   )
 }
 

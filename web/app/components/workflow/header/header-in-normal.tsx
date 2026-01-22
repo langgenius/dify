@@ -61,18 +61,18 @@ const HeaderInNormal = ({
     setShowChatVariablePanel(false)
     setShowGlobalVariablePanel(false)
     closeAllInputFieldPanels()
-  }, [workflowStore, handleBackupDraft, selectedNode, handleNodeSelect, setShowWorkflowVersionHistoryPanel, setShowEnvPanel, setShowDebugAndPreviewPanel, setShowVariableInspectPanel, setShowChatVariablePanel, setShowGlobalVariablePanel])
+  }, [workflowStore, handleBackupDraft, selectedNode, handleNodeSelect, setShowWorkflowVersionHistoryPanel, setShowEnvPanel, setShowDebugAndPreviewPanel, setShowVariableInspectPanel, setShowChatVariablePanel, setShowGlobalVariablePanel, closeAllInputFieldPanels])
 
   return (
     <div className="flex w-full items-center justify-between">
-      <div className="relative top-[30px]">
+      <div className="flex items-center gap-2">
+        {components?.left}
         <EditingTitle />
       </div>
       <div>
         <ScrollToSelectedNodeButton />
       </div>
       <div className="flex items-center gap-2">
-        {components?.left}
         <Divider type="vertical" className="mx-auto h-3.5" />
         <RunAndHistory {...runAndHistoryProps} />
         <div className="shrink-0 cursor-pointer rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg shadow-xs backdrop-blur-[10px]">
