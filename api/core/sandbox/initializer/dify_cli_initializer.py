@@ -5,10 +5,10 @@ import logging
 from io import BytesIO
 from pathlib import Path
 
+from core.sandbox.sandbox import Sandbox
 from core.session.cli_api import CliApiSessionManager
 from core.skill.skill_manager import SkillManager
 from core.virtual_environment.__base.helpers import pipeline
-from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 
 from ..bash.dify_cli import DifyCliConfig, DifyCliLocator
 from ..entities import DifyCli
@@ -35,18 +35,19 @@ class DifyCliInitializer(SandboxInitializer):
         self._tools = []
         self._cli_api_session = None
 
-    def initialize(self, env: VirtualEnvironment) -> None:
-        binary = self._locator.resolve(env.metadata.os, env.metadata.arch)
+    def initialize(self, sandbox: Sandbox) -> None:
+        vm = sandbox.vm
+        binary = self._locator.resolve(vm.metadata.os, vm.metadata.arch)
 
-        pipeline(env).add(
+        pipeline(vm).add(
             ["mkdir", "-p", f"{DifyCli.ROOT}/bin"], error_message="Failed to create dify CLI directory"
         ).execute(raise_on_error=True)
 
-        env.upload_file(DifyCli.PATH, BytesIO(binary.path.read_bytes()))
+        vm.upload_file(DifyCli.PATH, BytesIO(binary.path.read_bytes()))
 
         # Use 'cp' with mode preservation workaround: copy file to itself to claim ownership,
         # then use 'install' to set executable permission
-        pipeline(env).add(
+        pipeline(vm).add(
             [
                 "sh",
                 "-c",
@@ -67,16 +68,16 @@ class DifyCliInitializer(SandboxInitializer):
         # FIXME(Mairuis): store it in workflow context
         self._cli_api_session = CliApiSessionManager().create(tenant_id=self._tenant_id, user_id=self._user_id)
 
-        pipeline(env).add(
+        pipeline(vm).add(
             ["mkdir", "-p", DifyCli.GLOBAL_TOOLS_PATH], error_message="Failed to create global tools dir"
         ).execute(raise_on_error=True)
 
         config = DifyCliConfig.create(self._cli_api_session, self._tenant_id, artifact)
         config_json = json.dumps(config.model_dump(mode="json"), ensure_ascii=False)
         config_path = f"{DifyCli.GLOBAL_TOOLS_PATH}/{DifyCli.CONFIG_FILENAME}"
-        env.upload_file(config_path, BytesIO(config_json.encode("utf-8")))
+        vm.upload_file(config_path, BytesIO(config_json.encode("utf-8")))
 
-        pipeline(env, cwd=DifyCli.GLOBAL_TOOLS_PATH).add(
+        pipeline(vm, cwd=DifyCli.GLOBAL_TOOLS_PATH).add(
             [DifyCli.PATH, "init"], error_message="Failed to initialize Dify CLI"
         ).execute(raise_on_error=True)
 

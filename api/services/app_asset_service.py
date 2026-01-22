@@ -59,6 +59,22 @@ class AppAssetService:
         return assets
 
     @staticmethod
+    def get_tenant_app_assets(tenant_id: str, assets_id: str) -> AppAssets:
+        with Session(db.engine, expire_on_commit=False) as session:
+            app_assets = (
+                session.query(AppAssets)
+                .filter(
+                    AppAssets.tenant_id == tenant_id,
+                    AppAssets.id == assets_id,
+                )
+                .first()
+            )
+            if not app_assets:
+                raise ValueError(f"App assets not found for tenant_id={tenant_id}, assets_id={assets_id}")
+
+            return app_assets
+
+    @staticmethod
     def get_assets(tenant_id: str, app_id: str, user_id: str, *, is_draft: bool) -> AppAssets | None:
         with Session(db.engine, expire_on_commit=False) as session:
             if is_draft:

@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 
-from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
+from core.sandbox.sandbox import Sandbox
 
 
 class SandboxInitializer(ABC):
     @abstractmethod
-    def initialize(self, env: VirtualEnvironment) -> None: ...
+    def initialize(self, env: Sandbox) -> None: ...

@@ -100,9 +100,6 @@ class SandboxBuilder:
             environments=self._environments,
             user_id=self._user_id,
         )
-        for init in self._initializers:
-            init.initialize(vm)
-
         sandbox = Sandbox(
             vm=vm,
             storage=self._storage,
@@ -111,6 +108,9 @@ class SandboxBuilder:
             app_id=self._app_id,
             assets_id=self._assets_id,
         )
+        for init in self._initializers:
+            init.initialize(sandbox)
+
         sandbox.mount()
         return sandbox
 

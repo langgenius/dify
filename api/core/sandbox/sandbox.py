@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from libs.attr_map import AttrMap
+
 if TYPE_CHECKING:
     from core.sandbox.storage.sandbox_storage import SandboxStorage
     from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
@@ -27,6 +29,11 @@ class Sandbox:
         self._user_id = user_id
         self._app_id = app_id
         self._assets_id = assets_id
+        self._attributes = AttrMap()
+
+    @property
+    def attrs(self) -> AttrMap:
+        return self._attributes
 
     @property
     def vm(self) -> VirtualEnvironment:
