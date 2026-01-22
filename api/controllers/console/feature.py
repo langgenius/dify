@@ -39,5 +39,13 @@ class SystemFeatureApi(Resource):
         ),
     )
     def get(self):
-        """Get system-wide feature configuration"""
+        """Get system-wide feature configuration
+
+        NOTE: This endpoint is unauthenticated by design, as it provides system features
+        data required for dashboard initialization.
+
+        Authentication would create circular dependency (can't login without dashboard loading).
+
+        Only non-sensitive configuration data should be returned by this endpoint.
+        """
         return FeatureService.get_system_features().model_dump()
