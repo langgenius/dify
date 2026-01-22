@@ -38,8 +38,6 @@ class SystemFeatureApi(Resource):
             "SystemFeatureResponse", {"features": fields.Raw(description="System feature configuration object")}
         ),
     )
-    @login_required
-    @account_initialization_required
     def get(self):
         """Get system-wide feature configuration"""
         return FeatureService.get_system_features().model_dump()
