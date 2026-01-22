@@ -1,7 +1,14 @@
 {
+  "appCard.addToWorkspace": "Uporabi predlogo",
+  "appCard.try": "Podrobnosti",
   "appCustomize.nameRequired": "Ime aplikacije je obvezno",
   "appCustomize.subTitle": "Ikona aplikacije & ime",
   "appCustomize.title": "Ustvari aplikacijo iz {{name}}",
+  "apps.allCategories": "Vse",
+  "apps.resetFilter": "Počisti filter",
+  "apps.resultNum": "{{num}} rezultatov",
+  "apps.title": "Preizkusite izbrane aplikacije Dify, da najdete rešitve AI za vaše podjetje",
+  "banner.viewMore": "POGLEJ VEČ",
   "category.Agent": "Agent",
   "category.Assistant": "Pomočnik",
   "category.Entertainment": "Zabava",
@@ -18,5 +25,16 @@
   "sidebar.chat": "Klepet",
   "sidebar.delete.content": "Ali ste prepričani, da želite izbrisati to aplikacijo?",
   "sidebar.delete.title": "Izbriši aplikacijo",
-  "title": "Razišči"
+  "sidebar.noApps.description": "Objavljene spletne aplikacije se bodo prikazale tukaj",
+  "sidebar.noApps.learnMore": "Izvedi več",
+  "sidebar.noApps.title": "Ni spletnih aplikacij",
+  "sidebar.title": "Galerija aplikacij",
+  "sidebar.webApps": "Spletne aplikacije",
+  "title": "Razišči",
+  "tryApp.category": "Kategorija",
+  "tryApp.createFromSampleApp": "Ustvari iz te vzorčne aplikacije",
+  "tryApp.requirements": "Zahteve",
+  "tryApp.tabHeader.detail": "Podrobnosti orkestracije",
+  "tryApp.tabHeader.try": "Preizkusi",
+  "tryApp.tryInfo": "To je vzorčna aplikacija. Lahko preizkusite do 5 sporočil. Za nadaljnjo uporabo kliknite \"Ustvari iz te vzorčne aplikacije\" in jo nastavite!"
 }
