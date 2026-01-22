@@ -247,7 +247,7 @@ class TestFileService:
         self, db_session_with_containers, engine, mock_external_service_dependencies
     ):
         """
-        Test file upload with invalid filename characters.
+        Test file upload with invalid filename characters (sanitized).
         """
         fake = Faker()
         account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
@@ -255,14 +255,18 @@ class TestFileService:
         filename = "test/file<name>.txt"
         content = b"test content"
         mimetype = "text/plain"
-
-        with pytest.raises(ValueError, match="Filename contains invalid characters"):
-            FileService(engine).upload_file(
-                filename=filename,
-                content=content,
-                mimetype=mimetype,
-                user=account,
-            )
+        
+        file = FileService(engine).upload_file(
+            filename=filename,
+            content=content,
+            mimetype=mimetype,
+            user=account, )
+        
+        # ✅ 关键断言：非法字符被移除或替换
+        assert file.filename != filename
+        assert "/" not in file.filename
+        assert "<" not in file.filename
+        assert ">" not in file.filename
 
     def test_upload_file_filename_too_long(
         self, db_session_with_containers, engine, mock_external_service_dependencies
