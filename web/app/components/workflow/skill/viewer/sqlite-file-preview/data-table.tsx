@@ -63,7 +63,7 @@ const DataTable: FC<DataTableProps> = ({ columns, values }) => {
   }, [keyColumnIndex, t, values])
 
   return (
-    <table className="min-w-full table-auto border-separate border-spacing-0">
+    <table className="w-max min-w-full table-auto border-separate border-spacing-0">
       <thead className="sticky top-0 z-10 text-text-secondary">
         <tr>
           {columns.map(column => (

@@ -36,6 +36,18 @@ const TableSelector: FC<TableSelectorProps> = ({
 
   const label = selectedTable || t('skillSidebar.sqlitePreview.selectTable')
   const isPlaceholder = !selectedTable
+  const isSingleTable = tables.length === 1
+
+  if (isSingleTable) {
+    return (
+      <div className="inline-flex items-center gap-1 rounded-[6px] px-1.5 py-1 text-text-secondary">
+        <TableCells className="h-3.5 w-3.5 text-text-secondary" aria-hidden="true" />
+        <span className={cn('system-sm-medium min-w-0 max-w-[220px] truncate', isPlaceholder && 'text-text-tertiary')}>
+          {label}
+        </span>
+      </div>
+    )
+  }
 
   return (
     <PortalToFollowElem
