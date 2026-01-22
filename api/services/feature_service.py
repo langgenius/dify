@@ -140,7 +140,6 @@ class FeatureModel(BaseModel):
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
     knowledge_pipeline: KnowledgePipeline = KnowledgePipeline()
-    next_credit_reset_date: int = 0
 
 
 class KnowledgeRateLimitModel(BaseModel):
@@ -200,7 +199,7 @@ class FeatureService:
         return knowledge_rate_limit
 
     @classmethod
-    def get_system_features(cls) -> SystemFeatureModel:
+    def get_system_features(cls, is_authenticated: bool = False) -> SystemFeatureModel:
         system_features = SystemFeatureModel()
 
         cls._fulfill_system_params_from_env(system_features)
@@ -210,7 +209,7 @@ class FeatureService:
             system_features.webapp_auth.enabled = True
             system_features.enable_change_email = False
             system_features.plugin_manager.enabled = True
-            cls._fulfill_params_from_enterprise(system_features)
+            cls._fulfill_params_from_enterprise(system_features, is_authenticated)
 
         if dify_config.MARKETPLACE_ENABLED:
             system_features.enable_marketplace = True
@@ -302,11 +301,8 @@ class FeatureService:
         if "knowledge_pipeline_publish_enabled" in billing_info:
             features.knowledge_pipeline.publish_enabled = billing_info["knowledge_pipeline_publish_enabled"]
 
-        if "next_credit_reset_date" in billing_info:
-            features.next_credit_reset_date = billing_info["next_credit_reset_date"]
-
     @classmethod
-    def _fulfill_params_from_enterprise(cls, features: SystemFeatureModel):
+    def _fulfill_params_from_enterprise(cls, features: SystemFeatureModel, is_authenticated: bool = False):
         enterprise_info = EnterpriseService.get_info()
 
         if "SSOEnforcedForSignin" in enterprise_info:
@@ -343,7 +339,7 @@ class FeatureService:
             )
             features.webapp_auth.sso_config.protocol = enterprise_info.get("SSOEnforcedForWebProtocol", "")
 
-        if "License" in enterprise_info:
+        if is_authenticated and "License" in enterprise_info:
             license_info = enterprise_info["License"]
 
             if "status" in license_info:
