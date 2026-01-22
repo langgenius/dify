@@ -34,6 +34,7 @@ import {
 } from '@/app/components/workflow/store'
 import { getKeyboardKeyCodeBySystem, getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { useDocLink } from '@/context/i18n'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
@@ -55,6 +56,7 @@ const Popup = () => {
   const { t } = useTranslation()
   const { datasetId } = useParams()
   const { push } = useRouter()
+  const docLink = useDocLink()
   const publishedAt = useStore(s => s.publishedAt)
   const draftUpdatedAt = useStore(s => s.draftUpdatedAt)
   const pipelineId = useStore(s => s.pipelineId)
@@ -186,7 +188,7 @@ const Popup = () => {
               {t('publishTemplate.success.tip', { ns: 'datasetPipeline' })}
             </span>
             <Link
-              href="https://docs.dify.ai"
+              href={docLink()}
               target="_blank"
               className="system-xs-medium-uppercase inline-block text-text-accent"
             >

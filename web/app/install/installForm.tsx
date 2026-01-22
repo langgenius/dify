@@ -14,7 +14,7 @@ import { zodSubmitValidator } from '@/app/components/base/form/utils/zod-submit-
 import Input from '@/app/components/base/input'
 import { validPassword } from '@/config'
 
-import { useDocLink } from '@/context/i18n'
+import { LICENSE_LINK } from '@/constants/link'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { fetchInitValidateStatus, fetchSetupStatus, login, setup } from '@/service/common'
 import { cn } from '@/utils/classnames'
@@ -35,7 +35,6 @@ const accountFormSchema = z.object({
 const InstallForm = () => {
   useDocumentTitle('')
   const { t, i18n } = useTranslation()
-  const docLink = useDocLink()
   const router = useRouter()
   const [showPassword, setShowPassword] = React.useState(false)
   const [loading, setLoading] = React.useState(true)
@@ -219,7 +218,7 @@ const InstallForm = () => {
                     className="text-text-accent"
                     target="_blank"
                     rel="noopener noreferrer"
-                    href={docLink('/policies/open-source')}
+                    href={LICENSE_LINK}
                   >
                     {t('license.link', { ns: 'login' })}
                   </Link>
