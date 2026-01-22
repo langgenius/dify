@@ -112,6 +112,8 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
             if dataset.indexing_technique == "high_quality":
                 summary_index_setting = dataset.summary_index_setting
                 if summary_index_setting and summary_index_setting.get("enable"):
+                    # expire all session to get latest document's indexing status
+                    session.expire_all()
                     # Check each document's indexing status and trigger summary generation if completed
                     for document_id in document_ids:
                         # Re-query document to get latest status (IndexingRunner may have updated it)
