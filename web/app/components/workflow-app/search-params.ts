@@ -4,7 +4,7 @@ import { ViewType } from '@/app/components/workflow/types'
 export const parseAsViewType = parseAsStringEnum<ViewType>(Object.values(ViewType))
   .withDefault(ViewType.graph)
   .withOptions({
-    history: 'replace',
+    history: 'push',
     clearOnDefault: true,
   })
 
