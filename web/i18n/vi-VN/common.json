@@ -110,6 +110,7 @@
   "chat.conversationName": "Tên cuộc trò chuyện",
   "chat.conversationNameCanNotEmpty": "Yêu cầu nhập tên cuộc trò chuyện",
   "chat.conversationNamePlaceholder": "Vui lòng nhập tên cuộc trò chuyện",
+  "chat.inputDisabledPlaceholder": "Chỉ Xem Trước",
   "chat.inputPlaceholder": "Nói chuyện với {{botName}}",
   "chat.renameConversation": "Đổi tên Cuộc trò chuyện",
   "chat.resend": "Gửi lại",

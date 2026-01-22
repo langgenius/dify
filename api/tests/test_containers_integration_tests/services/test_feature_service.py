@@ -335,9 +335,9 @@ class TestFeatureService:
         Test system features retrieval for an unauthenticated user.
 
         This test verifies that:
-        - Sensitive data (License) is hidden/masked.
-        - Public data (Branding, SSO, Marketplace) remains visible.
-        - Default values are used for restricted fields.
+        - The response payload is minimized (e.g., verbose license details are excluded).
+        - Essential UI configuration (Branding, SSO, Marketplace) remains available.
+        - The response structure adheres to the public schema for unauthenticated clients.
         """
         # Arrange: Setup test data with exact same config as success test
         with patch("services.feature_service.dify_config") as mock_config:
@@ -358,17 +358,19 @@ class TestFeatureService:
         assert result is not None
         assert isinstance(result, SystemFeatureModel)
 
-        # --- 1. Verify Sensitive Data is HIDDEN (The Security Fix) ---
-        # Note: We compare against the Enum LicenseStatus.NONE
+        # --- 1. Verify Response Payload Optimization (Data Minimization) ---
+        # Ensure only essential UI flags are returned to unauthenticated clients
+        # to keep the payload lightweight and adhere to architectural boundaries.
         assert result.license.status == LicenseStatus.NONE
         assert result.license.expired_at == ""
         assert result.license.workspaces.enabled is False
         assert result.license.workspaces.limit == 0
         assert result.license.workspaces.size == 0
 
-        # --- 2. Verify Public Data is STILL VISIBLE (The Reviewer's Request) ---
+        # --- 2. Verify Public UI Configuration Availability ---
+        # Ensure that data required for frontend rendering remains accessible.
 
-        # Branding should match the mock data (same as success test)
+        # Branding should match the mock data
         assert result.branding.enabled is True
         assert result.branding.application_title == "Test Enterprise"
         assert result.branding.login_page_logo == "https://example.com/logo.png"

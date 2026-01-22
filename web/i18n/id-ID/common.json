@@ -110,6 +110,7 @@
   "chat.conversationName": "Nama percakapan",
   "chat.conversationNameCanNotEmpty": "Nama percakapan diperlukan",
   "chat.conversationNamePlaceholder": "Silakan masukkan nama percakapan",
+  "chat.inputDisabledPlaceholder": "Hanya Pratinjau",
   "chat.inputPlaceholder": "Bicaralah dengan {{botName}}",
   "chat.renameConversation": "Ganti Nama Percakapan",
   "chat.resend": "Kirim Ulang",
