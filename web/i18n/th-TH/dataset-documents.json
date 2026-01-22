@@ -26,6 +26,7 @@
   "list.action.archive": "หอจดหมายเหตุ",
   "list.action.batchAdd": "เพิ่มแบทช์",
   "list.action.delete": "ลบ",
+  "list.action.download": "ดาวน์โหลด",
   "list.action.enableWarning": "ไม่สามารถเปิดใช้งานไฟล์ที่เก็บถาวรได้",
   "list.action.pause": "หยุด",
   "list.action.resume": "ดำเนิน",

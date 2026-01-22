@@ -205,7 +205,7 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
       }
       catch {
         try {
-          // eslint-disable-next-line no-new-func, sonarjs/code-eval
+          // eslint-disable-next-line no-new-func
           const result = new Function(`return ${trimmedContent}`)()
           if (typeof result === 'object' && result !== null) {
             setFinalChartOption(result)
@@ -250,7 +250,7 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
       }
       catch {
         try {
-          // eslint-disable-next-line no-new-func, sonarjs/code-eval
+          // eslint-disable-next-line no-new-func
           const result = new Function(`return ${trimmedContent}`)()
           if (typeof result === 'object' && result !== null) {
             setFinalChartOption(result)

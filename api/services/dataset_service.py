@@ -13,10 +13,11 @@ import sqlalchemy as sa
 from redis.exceptions import LockNotOwnedError
 from sqlalchemy import exists, func, select
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
+from core.file import helpers as file_helpers
 from core.helper.name_generator import generate_incremental_name
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelFeature, ModelType
@@ -73,6 +74,7 @@ from services.errors.document import DocumentIndexingError
 from services.errors.file import FileNotExistsError
 from services.external_knowledge_service import ExternalDatasetService
 from services.feature_service import FeatureModel, FeatureService
+from services.file_service import FileService
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.tag_service import TagService
 from services.vector_service import VectorService
@@ -1162,6 +1164,7 @@ class DocumentService:
             Document.archived.is_(True),
         ),
     }
+    DOCUMENT_BATCH_DOWNLOAD_ZIP_FILENAME_EXTENSION = ".zip"
 
     @classmethod
     def normalize_display_status(cls, status: str | None) -> str | None:
@@ -1287,6 +1290,143 @@ class DocumentService:
             return document
         else:
             return None
+
+    @staticmethod
+    def get_documents_by_ids(dataset_id: str, document_ids: Sequence[str]) -> Sequence[Document]:
+        """Fetch documents for a dataset in a single batch query."""
+        if not document_ids:
+            return []
+        document_id_list: list[str] = [str(document_id) for document_id in document_ids]
+        # Fetch all requested documents in one query to avoid N+1 lookups.
+        documents: Sequence[Document] = db.session.scalars(
+            select(Document).where(
+                Document.dataset_id == dataset_id,
+                Document.id.in_(document_id_list),
+            )
+        ).all()
+        return documents
+
+    @staticmethod
+    def get_document_download_url(document: Document) -> str:
+        """
+        Return a signed download URL for an upload-file document.
+        """
+        upload_file = DocumentService._get_upload_file_for_upload_file_document(document)
+        return file_helpers.get_signed_file_url(upload_file_id=upload_file.id, as_attachment=True)
+
+    @staticmethod
+    def prepare_document_batch_download_zip(
+        *,
+        dataset_id: str,
+        document_ids: Sequence[str],
+        tenant_id: str,
+        current_user: Account,
+    ) -> tuple[list[UploadFile], str]:
+        """
+        Resolve upload files for batch ZIP downloads and generate a client-visible filename.
+        """
+        dataset = DatasetService.get_dataset(dataset_id)
+        if not dataset:
+            raise NotFound("Dataset not found.")
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user)
+        except NoPermissionError as e:
+            raise Forbidden(str(e))
+
+        upload_files_by_document_id = DocumentService._get_upload_files_by_document_id_for_zip_download(
+            dataset_id=dataset_id,
+            document_ids=document_ids,
+            tenant_id=tenant_id,
+        )
+        upload_files = [upload_files_by_document_id[document_id] for document_id in document_ids]
+        download_name = DocumentService._generate_document_batch_download_zip_filename()
+        return upload_files, download_name
+
+    @staticmethod
+    def _generate_document_batch_download_zip_filename() -> str:
+        """
+        Generate a random attachment filename for the batch download ZIP.
+        """
+        return f"{uuid.uuid4().hex}{DocumentService.DOCUMENT_BATCH_DOWNLOAD_ZIP_FILENAME_EXTENSION}"
+
+    @staticmethod
+    def _get_upload_file_id_for_upload_file_document(
+        document: Document,
+        *,
+        invalid_source_message: str,
+        missing_file_message: str,
+    ) -> str:
+        """
+        Normalize and validate `Document -> UploadFile` linkage for download flows.
+        """
+        if document.data_source_type != "upload_file":
+            raise NotFound(invalid_source_message)
+
+        data_source_info: dict[str, Any] = document.data_source_info_dict or {}
+        upload_file_id: str | None = data_source_info.get("upload_file_id")
+        if not upload_file_id:
+            raise NotFound(missing_file_message)
+
+        return str(upload_file_id)
+
+    @staticmethod
+    def _get_upload_file_for_upload_file_document(document: Document) -> UploadFile:
+        """
+        Load the `UploadFile` row for an upload-file document.
+        """
+        upload_file_id = DocumentService._get_upload_file_id_for_upload_file_document(
+            document,
+            invalid_source_message="Document does not have an uploaded file to download.",
+            missing_file_message="Uploaded file not found.",
+        )
+        upload_files_by_id = FileService.get_upload_files_by_ids(document.tenant_id, [upload_file_id])
+        upload_file = upload_files_by_id.get(upload_file_id)
+        if not upload_file:
+            raise NotFound("Uploaded file not found.")
+        return upload_file
+
+    @staticmethod
+    def _get_upload_files_by_document_id_for_zip_download(
+        *,
+        dataset_id: str,
+        document_ids: Sequence[str],
+        tenant_id: str,
+    ) -> dict[str, UploadFile]:
+        """
+        Batch load upload files keyed by document id for ZIP downloads.
+        """
+        document_id_list: list[str] = [str(document_id) for document_id in document_ids]
+
+        documents = DocumentService.get_documents_by_ids(dataset_id, document_id_list)
+        documents_by_id: dict[str, Document] = {str(document.id): document for document in documents}
+
+        missing_document_ids: set[str] = set(document_id_list) - set(documents_by_id.keys())
+        if missing_document_ids:
+            raise NotFound("Document not found.")
+
+        upload_file_ids: list[str] = []
+        upload_file_ids_by_document_id: dict[str, str] = {}
+        for document_id, document in documents_by_id.items():
+            if document.tenant_id != tenant_id:
+                raise Forbidden("No permission.")
+
+            upload_file_id = DocumentService._get_upload_file_id_for_upload_file_document(
+                document,
+                invalid_source_message="Only uploaded-file documents can be downloaded as ZIP.",
+                missing_file_message="Only uploaded-file documents can be downloaded as ZIP.",
+            )
+            upload_file_ids.append(upload_file_id)
+            upload_file_ids_by_document_id[document_id] = upload_file_id
+
+        upload_files_by_id = FileService.get_upload_files_by_ids(tenant_id, upload_file_ids)
+        missing_upload_file_ids: set[str] = set(upload_file_ids) - set(upload_files_by_id.keys())
+        if missing_upload_file_ids:
+            raise NotFound("Only uploaded-file documents can be downloaded as ZIP.")
+
+        return {
+            document_id: upload_files_by_id[upload_file_id]
+            for document_id, upload_file_id in upload_file_ids_by_document_id.items()
+        }
 
     @staticmethod
     def get_document_by_id(document_id: str) -> Document | None:
