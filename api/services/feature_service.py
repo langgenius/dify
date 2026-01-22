@@ -302,6 +302,9 @@ class FeatureService:
         if "knowledge_pipeline_publish_enabled" in billing_info:
             features.knowledge_pipeline.publish_enabled = billing_info["knowledge_pipeline_publish_enabled"]
 
+        if "next_credit_reset_date" in billing_info:
+            features.next_credit_reset_date = billing_info["next_credit_reset_date"]
+            
     @classmethod
     def _fulfill_params_from_enterprise(cls, features: SystemFeatureModel, is_authenticated: bool = False):
         enterprise_info = EnterpriseService.get_info()
