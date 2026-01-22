@@ -343,19 +343,14 @@ class FeatureService:
             )
             features.webapp_auth.sso_config.protocol = enterprise_info.get("SSOEnforcedForWebProtocol", "")
 
-        if is_authenticated and "License" in enterprise_info:
-            license_info = enterprise_info["License"]
+        if is_authenticated and (license_info := enterprise_info.get("License")):
+            features.license.status = LicenseStatus(license_info.get("status", LicenseStatus.INACTIVE))
+            features.license.expired_at = license_info.get("expiredAt", "")
 
-            if "status" in license_info:
-                features.license.status = LicenseStatus(license_info.get("status", LicenseStatus.INACTIVE))
-
-            if "expiredAt" in license_info:
-                features.license.expired_at = license_info["expiredAt"]
-
-            if "workspaces" in license_info:
-                features.license.workspaces.enabled = license_info["workspaces"]["enabled"]
-                features.license.workspaces.limit = license_info["workspaces"]["limit"]
-                features.license.workspaces.size = license_info["workspaces"]["used"]
+            if workspaces_info := license_info.get("workspaces"):
+                features.license.workspaces.enabled = workspaces_info.get("enabled", False)
+                features.license.workspaces.limit = workspaces_info.get("limit", 0)
+                features.license.workspaces.size = workspaces_info.get("used", 0)
 
         if "PluginInstallationPermission" in enterprise_info:
             plugin_installation_info = enterprise_info["PluginInstallationPermission"]
