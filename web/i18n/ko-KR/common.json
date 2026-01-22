@@ -110,6 +110,7 @@
   "chat.conversationName": "대화 이름",
   "chat.conversationNameCanNotEmpty": "대화 이름은 필수입니다",
   "chat.conversationNamePlaceholder": "대화 이름을 입력하세요",
+  "chat.inputDisabledPlaceholder": "미리보기만",
   "chat.inputPlaceholder": "{{botName}}와 대화",
   "chat.renameConversation": "대화 이름 바꾸기",
   "chat.resend": "재전송",

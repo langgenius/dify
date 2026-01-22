@@ -110,6 +110,7 @@
   "chat.conversationName": "Konuşma adı",
   "chat.conversationNameCanNotEmpty": "Konuşma adı gereklidir",
   "chat.conversationNamePlaceholder": "Konuşma adını girin",
+  "chat.inputDisabledPlaceholder": "Yalnızca Önizleme",
   "chat.inputPlaceholder": "{{botName}} ile konuş",
   "chat.renameConversation": "Konuşmayı Yeniden Adlandır",
   "chat.resend": "Yeniden gönder",
