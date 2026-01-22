@@ -93,7 +93,7 @@ const PluginsPanel = () => {
   return (
     <>
       <div className="flex flex-col items-start justify-center gap-3 self-stretch px-12 pb-3 pt-1">
-        <div className="h-px self-stretch bg-divider-subtle"></div>
+        <div className="h-px hidden self-stretch bg-divider-subtle"></div>
         <FilterManagement
           onFilterChange={handleFilterChange}
         />

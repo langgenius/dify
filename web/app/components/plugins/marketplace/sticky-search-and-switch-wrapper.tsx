@@ -17,7 +17,7 @@ const StickySearchAndSwitchWrapper = ({
     <div
       className={cn(
         'mt-4 bg-background-body',
-        hasCustomTopClass && 'sticky z-10',
+        hasCustomTopClass && 'z-10',
         pluginTypeSwitchClassName,
       )}
     >
