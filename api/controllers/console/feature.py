@@ -1,4 +1,5 @@
 from flask_restx import Resource, fields
+from werkzeug.exceptions import Unauthorized
 
 from libs.login import current_account_with_tenant, current_user, login_required
 from services.feature_service import FeatureService
@@ -40,4 +41,8 @@ class SystemFeatureApi(Resource):
     )
     def get(self):
         """Get system-wide feature configuration"""
-        return FeatureService.get_system_features(is_authenticated=current_user.is_authenticated).model_dump()
+        try:
+            is_authenticated = current_user.is_authenticated
+        except Unauthorized:
+            is_authenticated = False
+        return FeatureService.get_system_features(is_authenticated=is_authenticated).model_dump()
