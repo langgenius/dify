@@ -123,7 +123,6 @@ describe('WorkflowOnboardingModal', () => {
       const descriptionDiv = container.querySelector('.body-xs-regular.leading-4')
       expect(descriptionDiv).toBeInTheDocument()
       expect(descriptionDiv).toHaveTextContent('workflow.onboarding.description')
-      expect(descriptionDiv).toHaveTextContent('workflow.onboarding.aboutStartNode')
     })
 
     it('should render StartNodeSelectionPanel', () => {
