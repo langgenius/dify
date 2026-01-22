@@ -1,3 +1,4 @@
+import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { DataSetListResponse } from '@/models/datasets'
 import type { TryAppFlowPreview, TryAppInfo } from '@/models/try-app'
 import { type } from '@orpc/contract'
@@ -41,3 +42,15 @@ export const trialAppWorkflowsContract = base
     }
   }>())
   .output(type<TryAppFlowPreview>())
+
+export const trialAppParametersContract = base
+  .route({
+    path: '/trial-apps/{appId}/parameters',
+    method: 'GET',
+  })
+  .input(type<{
+    params: {
+      appId: string
+    }
+  }>())
+  .output(type<ChatConfig>())
