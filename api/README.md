@@ -131,6 +131,7 @@ These commands assume you start from the repository root.
    cd api
    uv run celery -A app.celery beat
    ```
+
 </details>
 
 ### Environment notes
@@ -142,13 +143,13 @@ These commands assume you start from the repository root.
 - Generate a `SECRET_KEY` in the `.env` file.
 
   bash for Linux
-  
+
   ```bash
   sed -i "/^SECRET_KEY=/c\\SECRET_KEY=$(openssl rand -base64 42)" .env
   ```
-  
+
   bash for Mac
-  
+
   ```bash
   secret_key=$(openssl rand -base64 42)
   sed -i '' "/^SECRET_KEY=/c\\
