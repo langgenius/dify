@@ -11,6 +11,7 @@ type DataTableProps = {
   columns: string[]
   values: SQLiteValue[][]
   scrollRef: RefObject<HTMLDivElement | null>
+  isTruncated?: boolean
 }
 
 const MAX_CELL_LENGTH = 120
@@ -28,10 +29,10 @@ const formatValue = (value: SQLiteValue, t: TFunction<'workflow'>): string => {
 const truncateValue = (value: string): string => {
   if (value.length <= MAX_CELL_LENGTH)
     return value
-  return `${value.slice(0, MAX_CELL_LENGTH)}...`
+  return `${value.slice(0, MAX_CELL_LENGTH)}…`
 }
 
-const DataTable: FC<DataTableProps> = ({ columns, values, scrollRef }) => {
+const DataTable: FC<DataTableProps> = ({ columns, values, scrollRef, isTruncated = false }) => {
   const { t } = useTranslation('workflow')
   const keyColumnIndex = useMemo(() => {
     const candidates = new Set(['id', 'rowid', 'uuid'])
@@ -106,6 +107,20 @@ const DataTable: FC<DataTableProps> = ({ columns, values, scrollRef }) => {
           </tr>
         )}
       </tbody>
+      {isTruncated && (
+        <tfoot>
+          <tr>
+            <td
+              colSpan={columns.length}
+              className="border-b border-l border-r border-divider-subtle bg-background-section-burn px-2 py-1.5 text-center first:rounded-bl-lg last:rounded-br-lg"
+            >
+              <span className="system-xs-regular text-text-tertiary">
+                {t('skillSidebar.sqlitePreview.rowsTruncated', { limit: values.length })}
+              </span>
+            </td>
+          </tr>
+        </tfoot>
+      )}
     </table>
   )
 }

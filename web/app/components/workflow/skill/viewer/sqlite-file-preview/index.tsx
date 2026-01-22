@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useSQLiteDatabase } from '../../hooks/use-sqlite-database'
+import { PREVIEW_ROW_LIMIT } from './constants'
 import TablePanel from './table-panel'
 import TableSelector from './table-selector'
 import { useSQLiteTable } from './use-sqlite-table'
@@ -28,6 +29,7 @@ const SQLiteFilePreview: FC<SQLiteFilePreviewProps> = ({
     return tables[0]
   }, [selectedTableId, tables])
   const tableState = useSQLiteTable({ selectedTable, queryTable })
+  const isTruncated = tableState.data !== null && tableState.data.values.length >= PREVIEW_ROW_LIMIT
 
   if (!downloadUrl) {
     return (
@@ -82,6 +84,7 @@ const SQLiteFilePreview: FC<SQLiteFilePreviewProps> = ({
         isLoading={tableState.isLoading}
         error={tableState.error}
         scrollRef={tableScrollRef}
+        isTruncated={isTruncated}
       />
     </div>
   )

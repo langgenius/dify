@@ -10,6 +10,7 @@ type TablePanelProps = {
   isLoading: boolean
   error: Error | null
   scrollRef: RefObject<HTMLDivElement | null>
+  isTruncated?: boolean
 }
 
 const TablePanel: FC<TablePanelProps> = ({
@@ -17,6 +18,7 @@ const TablePanel: FC<TablePanelProps> = ({
   isLoading,
   error,
   scrollRef,
+  isTruncated = false,
 }) => {
   const { t } = useTranslation('workflow')
 
@@ -45,6 +47,7 @@ const TablePanel: FC<TablePanelProps> = ({
                   columns={data.columns}
                   values={data.values}
                   scrollRef={scrollRef}
+                  isTruncated={isTruncated}
                 />
               )
             : (

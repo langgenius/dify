@@ -1095,6 +1095,7 @@
   "skillSidebar.sqlitePreview.emptyTables": "No tables available",
   "skillSidebar.sqlitePreview.loadError": "Failed to load SQLite preview",
   "skillSidebar.sqlitePreview.nullValue": "NULL",
+  "skillSidebar.sqlitePreview.rowsTruncated": "Showing first {{limit}} rows. Additional rows are not displayed.",
   "skillSidebar.sqlitePreview.selectTable": "Select a table",
   "skillSidebar.toggleFolder": "Toggle folder",
   "skillSidebar.unsavedChanges.confirmClose": "Discard",
