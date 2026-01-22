@@ -140,7 +140,7 @@ class FeatureModel(BaseModel):
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
     knowledge_pipeline: KnowledgePipeline = KnowledgePipeline()
-    next_credit_reset_date：int  =  0
+    next_credit_reset_date: int = 0
 
 
 class KnowledgeRateLimitModel(BaseModel):
