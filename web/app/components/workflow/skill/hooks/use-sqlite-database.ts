@@ -210,8 +210,17 @@ export function useSQLiteDatabase(downloadUrl: string | undefined): UseSQLiteDat
       `SELECT * FROM "${safeName}"${resolvedLimit ? ` LIMIT ${resolvedLimit}` : ''}`,
       [],
     )
+    let columns = result.columns
+    if (columns.length === 0) {
+      const columnResult = await client.sqlite3.execWithParams(
+        db,
+        `PRAGMA table_info("${safeName}")`,
+        [],
+      )
+      columns = columnResult.rows.map(row => String(row[1]))
+    }
     const data: SQLiteQueryResult = {
-      columns: result.columns,
+      columns,
       values: result.rows as SQLiteValue[][],
     }
     cacheRef.current.set(cacheKey, data)
