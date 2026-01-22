@@ -4,7 +4,7 @@ import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useSQLiteDatabase } from '../../hooks/use-sqlite-database'
-import DataTable from './data-table'
+import TablePanel from './table-panel'
 import TableSelector from './table-selector'
 
 type SQLiteFilePreviewProps = {
@@ -149,40 +149,12 @@ const SQLiteFilePreview: FC<SQLiteFilePreviewProps> = ({
           isLoading={tableState.isLoading}
         />
       </div>
-      <div
-        ref={tableScrollRef}
-        className="min-h-0 min-w-0 flex-1 overflow-auto rounded-lg bg-components-panel-bg"
-      >
-        {tableState.isLoading
-          ? (
-              <div className="flex h-full w-full items-center justify-center">
-                <Loading type="area" />
-              </div>
-            )
-          : tableState.error
-            ? (
-                <div className="flex h-full w-full items-center justify-center text-text-tertiary">
-                  <span className="system-sm-regular">
-                    {t('skillSidebar.sqlitePreview.loadError')}
-                  </span>
-                </div>
-              )
-            : tableState.data
-              ? (
-                  <DataTable
-                    columns={tableState.data.columns}
-                    values={tableState.data.values}
-                    scrollRef={tableScrollRef}
-                  />
-                )
-              : (
-                  <div className="flex h-full w-full items-center justify-center text-text-tertiary">
-                    <span className="system-sm-regular">
-                      {t('skillSidebar.sqlitePreview.emptyRows')}
-                    </span>
-                  </div>
-                )}
-      </div>
+      <TablePanel
+        data={tableState.data}
+        isLoading={tableState.isLoading}
+        error={tableState.error}
+        scrollRef={tableScrollRef}
+      />
     </div>
   )
 }
