@@ -5,7 +5,7 @@ type SkillPageLayoutProps = PropsWithChildren
 
 const SkillPageLayout: FC<SkillPageLayoutProps> = ({ children }) => {
   return (
-    <div className="flex h-full gap-3">
+    <div className="flex h-full gap-3 overflow-hidden">
       {children}
     </div>
   )
