@@ -42,7 +42,7 @@ The scripts resolve paths relative to their location, so you can run them from a
 
 1. Set up your application by visiting `http://localhost:3000`.
 
-1. Optional: start the worker service (async tasks).
+1. Optional: start the worker service (async tasks, runs from `api`).
 
    ```bash
    ./dev/start-worker
