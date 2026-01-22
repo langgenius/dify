@@ -16,7 +16,7 @@
   "form.indexMethod": "Метод индексации",
   "form.indexMethodChangeToEconomyDisabledTip": "Недоступно для понижения уровня с HQ до ECO",
   "form.indexMethodEconomy": "Экономичный",
-  "form.indexMethodEconomyTip": "Используйте автономные векторные движки, индексы ключевых слов и т. д., чтобы снизить точность, не тратя токены",
+  "form.indexMethodEconomyTip": "Используйте {{count}} ключевых слов на чанк для поиска, без расхода токенов ценой меньшей точности.",
   "form.indexMethodHighQuality": "Высокое качество",
   "form.indexMethodHighQualityTip": "Вызов модели встраивания для обработки, чтобы обеспечить более высокую точность при запросах пользователей.",
   "form.me": "(Вы)",

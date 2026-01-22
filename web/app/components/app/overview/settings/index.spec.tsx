@@ -175,7 +175,7 @@ describe('SettingsModal', () => {
     renderSettingsModal()
     fireEvent.click(screen.getByText('appOverview.overview.appInfo.settings.more.entry'))
     const privacyInput = screen.getByPlaceholderText('appOverview.overview.appInfo.settings.more.privacyPolicyPlaceholder')
-    // eslint-disable-next-line sonarjs/no-clear-text-protocols
+
     fireEvent.change(privacyInput, { target: { value: 'ftp://invalid-url' } })
 
     fireEvent.click(screen.getByText('common.operation.save'))

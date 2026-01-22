@@ -16,7 +16,7 @@
   "form.indexMethod": "Phương pháp chỉ mục",
   "form.indexMethodChangeToEconomyDisabledTip": "Không khả dụng để hạ cấp từ HQ xuống ECO",
   "form.indexMethodEconomy": "Tiết kiệm",
-  "form.indexMethodEconomyTip": "Sử dụng các công cụ nhúng vector ngoại tuyến, chỉ mục từ khóa, v.v. để giảm độ chính xác mà không tiêu tốn token",
+  "form.indexMethodEconomyTip": "Sử dụng {{count}} từ khóa mỗi đoạn để truy xuất, không tiêu tốn token nhưng giảm độ chính xác.",
   "form.indexMethodHighQuality": "Chất lượng cao",
   "form.indexMethodHighQualityTip": "Sử dụng mô hình Embedding để xử lý, cung cấp độ chính xác cao hơn khi người dùng truy vấn.",
   "form.me": "(Bạn)",

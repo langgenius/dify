@@ -3,7 +3,7 @@
   "dateTimeFormat": "MM/DD/YYYY hh:mm A",
   "desc": "Testa l'effetto di recupero della Conoscenza basato sul testo di query fornito.",
   "hit.emptyTip": "I risultati del Test di Recupero verranno mostrati qui",
-  "hit.title": "PARAGRAFI RECUPERATI",
+  "hit.title": "{{num}} paragrafi recuperati",
   "hitChunks": "Premi {{num}} blocchi figlio",
   "imageUploader.dropZoneTip": "Trascina il file qui per caricarlo",
   "imageUploader.singleChunkAttachmentLimitTooltip": "Il numero di allegati a singolo blocco non può superare {{limit}}",

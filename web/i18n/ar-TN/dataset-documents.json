@@ -26,6 +26,7 @@
   "list.action.archive": "أرشيف",
   "list.action.batchAdd": "إضافة دفعة",
   "list.action.delete": "حذف",
+  "list.action.download": "تحميل",
   "list.action.enableWarning": "لا يمكن تمكين الملف المؤرشف",
   "list.action.pause": "إيقاف مؤقت",
   "list.action.resume": "استئناف",
