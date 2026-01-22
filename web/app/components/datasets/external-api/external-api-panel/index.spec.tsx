@@ -63,7 +63,7 @@ describe('ExternalAPIPanel', () => {
       render(<ExternalAPIPanel {...defaultProps} />)
       const docLink = screen.getByText('dataset.externalAPIPanelDocumentation')
       expect(docLink).toBeInTheDocument()
-      expect(docLink.closest('a')).toHaveAttribute('href', 'https://docs.example.com/use-dify/knowledge/connect-external-knowledge-base')
+      expect(docLink.closest('a')).toHaveAttribute('href', 'https://docs.example.com/use-dify/knowledge/external-knowledge-api')
     })
 
     it('should render create button', () => {
