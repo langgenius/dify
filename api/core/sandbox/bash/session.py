@@ -7,7 +7,7 @@ from types import TracebackType
 
 from core.sandbox.sandbox import Sandbox
 from core.session.cli_api import CliApiSession, CliApiSessionManager
-from core.skill.entities.tool_artifact import ToolArtifact
+from core.skill.entities.tool_dependencies import ToolDependencies
 from core.virtual_environment.__base.helpers import pipeline
 
 from ..bash.dify_cli import DifyCliConfig
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 class SandboxBashSession:
-    def __init__(self, *, sandbox: Sandbox, node_id: str, tools: ToolArtifact | None) -> None:
+    def __init__(self, *, sandbox: Sandbox, node_id: str, tools: ToolDependencies | None) -> None:
         self._sandbox = sandbox
         self._node_id = node_id
         self._tools = tools
@@ -49,7 +49,7 @@ class SandboxBashSession:
     def _setup_node_tools_directory(
         self,
         node_id: str,
-        tools: ToolArtifact,
+        tools: ToolDependencies,
         cli_api_session: CliApiSession,
     ) -> str | None:
         node_tools_path = f"{DifyCli.TOOLS_ROOT}/{node_id}"
@@ -63,7 +63,7 @@ class SandboxBashSession:
         )
 
         config_json = json.dumps(
-            DifyCliConfig.create(session=cli_api_session, tenant_id=self._tenant_id, artifact=tools).model_dump(
+            DifyCliConfig.create(session=cli_api_session, tenant_id=self._tenant_id, tool_deps=tools).model_dump(
                 mode="json"
             ),
             ensure_ascii=False,

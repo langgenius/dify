@@ -12,7 +12,7 @@ class ToolDependency(BaseModel):
     tool_name: str
 
 
-class ToolArtifact(BaseModel):
+class ToolDependencies(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     dependencies: list[ToolDependency] = Field(default_factory=list)
@@ -21,9 +21,9 @@ class ToolArtifact(BaseModel):
     def is_empty(self) -> bool:
         return not self.dependencies and not self.references
 
-    def filter(self, tools: list[tuple[str, str]]) -> "ToolArtifact":
+    def filter(self, tools: list[tuple[str, str]]) -> "ToolDependencies":
         tool_names = {f"{provider}.{tool_name}" for provider, tool_name in tools}
-        return ToolArtifact(
+        return ToolDependencies(
             dependencies=[
                 dependency
                 for dependency in self.dependencies
@@ -36,7 +36,7 @@ class ToolArtifact(BaseModel):
             ],
         )
 
-    def merge(self, other: "ToolArtifact") -> "ToolArtifact":
+    def merge(self, other: "ToolDependencies") -> "ToolDependencies":
         dep_map: dict[str, ToolDependency] = {}
         for dep in self.dependencies:
             key = f"{dep.provider}.{dep.tool_name}"
@@ -53,7 +53,7 @@ class ToolArtifact(BaseModel):
             if ref.uuid not in ref_map:
                 ref_map[ref.uuid] = ref
 
-        return ToolArtifact(
+        return ToolDependencies(
             dependencies=list(dep_map.values()),
             references=list(ref_map.values()),
         )

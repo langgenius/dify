@@ -54,8 +54,7 @@ class SkillBuilder:
         documents = [SkillDocument(skill_id=s.node.id, content=s.content, metadata=s.metadata) for s in loaded]
         artifact_set = SkillCompiler().compile_all(documents, tree, ctx.build_id)
 
-        # 3. Save tool artifact
-        SkillManager.save_artifact(ctx.tenant_id, ctx.app_id, ctx.build_id, artifact_set)
+        SkillManager.save_bundle(ctx.tenant_id, ctx.app_id, ctx.build_id, artifact_set)
 
         # 4. Prepare compiled skills for upload
         to_upload: list[_CompiledSkill] = []

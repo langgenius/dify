@@ -1,7 +1,7 @@
 from typing import Any
 
 from core.app.entities.app_asset_entities import AppAssetFileTree, AppAssetNode
-from core.skill.entities.skill_artifact_set import SkillArtifactSet
+from core.skill.entities.skill_bundle import SkillBundle
 from core.skill.entities.skill_document import SkillDocument
 from core.skill.entities.skill_metadata import FileReference, ToolConfiguration, ToolReference
 from core.skill.skill_compiler import SkillCompiler
@@ -48,7 +48,7 @@ class TestSkillCompilerBasic:
 
         # then
         assert artifact_set.assets_id == "assets-1"
-        assert len(artifact_set.items) == 1
+        assert len(artifact_set.entries) == 1
 
         artifact = artifact_set.get("skill-1")
         assert artifact is not None
@@ -235,7 +235,7 @@ class TestSkillCompilerTransitiveDependencies:
         assert tool_names_c == {"tool_c"}
 
 
-class TestSkillArtifactSetQueries:
+class TestSkillBundleQueries:
     def test_recompile_group_ids(self):
         # given
         # skill-a -> skill-b -> skill-c
@@ -774,11 +774,11 @@ class TestSkillCompilerComplexScenarios:
 
         # when - serialize and deserialize
         json_str = original.model_dump_json()
-        restored = SkillArtifactSet.model_validate_json(json_str)
+        restored = SkillBundle.model_validate_json(json_str)
 
         # then - all data preserved
         assert restored.assets_id == original.assets_id
-        assert len(restored.items) == len(original.items)
+        assert len(restored.entries) == len(original.entries)
         assert restored.dependency_graph == original.dependency_graph
         assert restored.reverse_graph == original.reverse_graph
 
@@ -836,7 +836,7 @@ class TestSkillCompilerComplexScenarios:
         subset = full_set.subset(["skill-b", "skill-c"])
 
         # then
-        assert len(subset.items) == 2
+        assert len(subset.entries) == 2
         assert subset.get("skill-b") is not None
         assert subset.get("skill-c") is not None
         assert subset.get("skill-a") is None

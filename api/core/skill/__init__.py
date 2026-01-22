@@ -1,11 +1,11 @@
 from .constants import SkillAttrs
-from .entities import ToolArtifact, ToolDependency, ToolReference
+from .entities import ToolDependencies, ToolDependency, ToolReference
 from .skill_manager import SkillManager
 
 __all__ = [
     "SkillAttrs",
     "SkillManager",
-    "ToolArtifact",
+    "ToolDependencies",
     "ToolDependency",
     "ToolReference",
 ]

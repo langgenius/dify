@@ -25,19 +25,19 @@ class SkillInitializer(SandboxInitializer):
         self._assets_id = assets_id
 
     def initialize(self, sandbox: Sandbox) -> None:
-        artifact_set = SkillManager.load_artifact(
+        bundle = SkillManager.load_bundle(
             self._tenant_id,
             self._app_id,
             self._assets_id,
         )
-        if artifact_set is None:
+        if bundle is None:
             raise ValueError(
-                f"No skill artifact set found for tenant_id={self._tenant_id},"
+                f"No skill bundle found for tenant_id={self._tenant_id},"
                 f"app_id={self._app_id}, "
                 f"assets_id={self._assets_id} "
             )
 
         sandbox.attrs.set(
-            SkillAttrs.ARTIFACT_SET,
-            artifact_set,
+            SkillAttrs.BUNDLE,
+            bundle,
         )

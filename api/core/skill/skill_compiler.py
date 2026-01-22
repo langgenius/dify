@@ -6,9 +6,9 @@ from datetime import UTC, datetime
 from typing import Any
 
 from core.app.entities.app_asset_entities import AppAssetFileTree
-from core.skill.entities.file_artifact import FilesArtifact
-from core.skill.entities.skill_artifact import SkillArtifact, SkillSourceInfo
-from core.skill.entities.skill_artifact_set import SkillArtifactSet
+from core.skill.entities.asset_references import AssetReferences
+from core.skill.entities.skill_bundle import SkillBundle
+from core.skill.entities.skill_bundle_entry import SkillBundleEntry, SourceInfo
 from core.skill.entities.skill_document import SkillDocument
 from core.skill.entities.skill_metadata import (
     FileReference,
@@ -16,7 +16,7 @@ from core.skill.entities.skill_metadata import (
     ToolConfiguration,
     ToolReference,
 )
-from core.skill.entities.tool_artifact import ToolArtifact, ToolDependency
+from core.skill.entities.tool_dependencies import ToolDependencies, ToolDependency
 from core.tools.entities.tool_entities import ToolProviderType
 
 logger = logging.getLogger(__name__)
@@ -26,17 +26,6 @@ FILE_REFERENCE_PATTERN = re.compile(r"§\[file\]\.\[([^\]]+)\]\.\[([^\]]+)\]§")
 
 
 class SkillCompiler:
-    """
-    Stateless skill compiler.
-
-    Responsibilities:
-    - Parse raw metadata dict into SkillMetadata
-    - Parse direct dependencies from skill content
-    - Compute transitive closure based on existing artifact set
-    - Resolve content by replacing references
-    - Generate SkillArtifact
-    """
-
     def _parse_metadata(self, content: str, raw_metadata: Mapping[str, Any]) -> SkillMetadata:
         tools_raw: dict[str, Any] = dict(raw_metadata.get("tools", {}))
         tools: dict[str, ToolReference] = {}
@@ -76,8 +65,8 @@ class SkillCompiler:
         documents: list[SkillDocument],
         file_tree: AppAssetFileTree,
         assets_id: str,
-    ) -> SkillArtifactSet:
-        artifact_set = SkillArtifactSet(
+    ) -> SkillBundle:
+        bundle = SkillBundle(
             assets_id=assets_id,
             built_at=datetime.now(UTC),
         )
@@ -89,26 +78,26 @@ class SkillCompiler:
             metadata = self._parse_metadata(doc.content, doc.metadata)
             parsed_metadata[doc.skill_id] = metadata
             direct_skill_refs = self._extract_skill_refs(metadata, doc_map)
-            artifact_set.dependency_graph[doc.skill_id] = list(direct_skill_refs)
+            bundle.dependency_graph[doc.skill_id] = list(direct_skill_refs)
             for ref_id in direct_skill_refs:
-                if ref_id not in artifact_set.reverse_graph:
-                    artifact_set.reverse_graph[ref_id] = []
-                artifact_set.reverse_graph[ref_id].append(doc.skill_id)
+                if ref_id not in bundle.reverse_graph:
+                    bundle.reverse_graph[ref_id] = []
+                bundle.reverse_graph[ref_id].append(doc.skill_id)
 
         for doc in documents:
             metadata = parsed_metadata[doc.skill_id]
-            artifact = self._compile_single(doc, metadata, artifact_set, parsed_metadata, file_tree)
-            artifact_set.upsert(artifact)
+            entry = self._compile_single(doc, metadata, bundle, parsed_metadata, file_tree)
+            bundle.upsert(entry)
 
-        return artifact_set
+        return bundle
 
     def compile_one(
         self,
-        artifact_set: SkillArtifactSet,
+        bundle: SkillBundle,
         document: SkillDocument,
         file_tree: AppAssetFileTree,
         all_documents: dict[str, SkillDocument] | None = None,
-    ) -> SkillArtifact:
+    ) -> SkillBundleEntry:
         doc_map = all_documents or {}
         if document.skill_id not in doc_map:
             doc_map[document.skill_id] = document
@@ -119,25 +108,25 @@ class SkillCompiler:
 
         metadata = parsed_metadata[document.skill_id]
         direct_skill_refs = self._extract_skill_refs(metadata, doc_map)
-        artifact_set.dependency_graph[document.skill_id] = list(direct_skill_refs)
+        bundle.dependency_graph[document.skill_id] = list(direct_skill_refs)
         for ref_id in direct_skill_refs:
-            if ref_id not in artifact_set.reverse_graph:
-                artifact_set.reverse_graph[ref_id] = []
-            if document.skill_id not in artifact_set.reverse_graph[ref_id]:
-                artifact_set.reverse_graph[ref_id].append(document.skill_id)
+            if ref_id not in bundle.reverse_graph:
+                bundle.reverse_graph[ref_id] = []
+            if document.skill_id not in bundle.reverse_graph[ref_id]:
+                bundle.reverse_graph[ref_id].append(document.skill_id)
 
-        return self._compile_single(document, metadata, artifact_set, parsed_metadata, file_tree)
+        return self._compile_single(document, metadata, bundle, parsed_metadata, file_tree)
 
     def _compile_single(
         self,
         document: SkillDocument,
         metadata: SkillMetadata,
-        artifact_set: SkillArtifactSet,
+        bundle: SkillBundle,
         parsed_metadata: dict[str, SkillMetadata],
         file_tree: AppAssetFileTree,
-    ) -> SkillArtifact:
+    ) -> SkillBundleEntry:
         all_tools, all_files = self._compute_transitive_closure(
-            document.skill_id, artifact_set, parsed_metadata
+            document.skill_id, bundle, parsed_metadata
         )
 
         current_node = file_tree.get(document.skill_id)
@@ -148,17 +137,17 @@ class SkillCompiler:
 
         content_digest = hashlib.sha256(document.content.encode("utf-8")).hexdigest()
 
-        return SkillArtifact(
+        return SkillBundleEntry(
             skill_id=document.skill_id,
-            source=SkillSourceInfo(
+            source=SourceInfo(
                 asset_id=document.skill_id,
                 content_digest=content_digest,
             ),
-            tools=ToolArtifact(
+            tools=ToolDependencies(
                 dependencies=list(all_tools.values()),
                 references=list(metadata.tools.values()),
             ),
-            files=FilesArtifact(
+            files=AssetReferences(
                 references=list(all_files.values()),
             ),
             content=resolved_content,
@@ -178,7 +167,7 @@ class SkillCompiler:
     def _compute_transitive_closure(
         self,
         skill_id: str,
-        artifact_set: SkillArtifactSet,
+        bundle: SkillBundle,
         parsed_metadata: dict[str, SkillMetadata],
     ) -> tuple[dict[str, ToolDependency], dict[str, FileReference]]:
         all_tools: dict[str, ToolDependency] = {}
@@ -195,13 +184,13 @@ class SkillCompiler:
 
             metadata = parsed_metadata.get(current_id)
             if metadata is None:
-                existing_artifact = artifact_set.get(current_id)
-                if existing_artifact:
-                    for dep in existing_artifact.tools.dependencies:
+                existing_entry = bundle.get(current_id)
+                if existing_entry:
+                    for dep in existing_entry.tools.dependencies:
                         key = f"{dep.provider}.{dep.tool_name}"
                         if key not in all_tools:
                             all_tools[key] = dep
-                    for file_ref in existing_artifact.files.references:
+                    for file_ref in existing_entry.files.references:
                         if file_ref.asset_id not in all_files:
                             all_files[file_ref.asset_id] = file_ref
                 continue
@@ -219,7 +208,7 @@ class SkillCompiler:
                 if file_ref.asset_id not in all_files:
                     all_files[file_ref.asset_id] = file_ref
 
-            for dep_id in artifact_set.dependency_graph.get(current_id, []):
+            for dep_id in bundle.dependency_graph.get(current_id, []):
                 if dep_id not in visited:
                     queue.append(dep_id)
 

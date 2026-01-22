@@ -45,8 +45,6 @@ class DifyCliInitializer(SandboxInitializer):
 
         vm.upload_file(DifyCli.PATH, BytesIO(binary.path.read_bytes()))
 
-        # Use 'cp' with mode preservation workaround: copy file to itself to claim ownership,
-        # then use 'install' to set executable permission
         pipeline(vm).add(
             [
                 "sh",
@@ -60,19 +58,18 @@ class DifyCliInitializer(SandboxInitializer):
 
         logger.info("Dify CLI uploaded to sandbox, path=%s", DifyCli.PATH)
 
-        artifact = SkillManager.load_artifact(self._tenant_id, self._app_id, self._assets_id)
-        if artifact is None or not artifact.get_tool_artifact().is_empty:
-            logger.info("No tools found in artifact for assets_id=%s", self._assets_id)
+        bundle = SkillManager.load_bundle(self._tenant_id, self._app_id, self._assets_id)
+        if bundle is None or not bundle.get_tool_dependencies().is_empty():
+            logger.info("No tools found in bundle for assets_id=%s", self._assets_id)
             return
 
-        # FIXME(Mairuis): store it in workflow context
         self._cli_api_session = CliApiSessionManager().create(tenant_id=self._tenant_id, user_id=self._user_id)
 
         pipeline(vm).add(
             ["mkdir", "-p", DifyCli.GLOBAL_TOOLS_PATH], error_message="Failed to create global tools dir"
         ).execute(raise_on_error=True)
 
-        config = DifyCliConfig.create(self._cli_api_session, self._tenant_id, artifact.get_tool_artifact())
+        config = DifyCliConfig.create(self._cli_api_session, self._tenant_id, bundle.get_tool_dependencies())
         config_json = json.dumps(config.model_dump(mode="json"), ensure_ascii=False)
         config_path = f"{DifyCli.GLOBAL_TOOLS_PATH}/{DifyCli.CONFIG_FILENAME}"
         vm.upload_file(config_path, BytesIO(config_json.encode("utf-8")))

@@ -1,7 +1,6 @@
-from core.skill.entities.skill_artifact_set import SkillArtifactSet
+from core.skill.entities.skill_bundle import SkillBundle
 from libs.attr_map import AttrKey
 
 
 class SkillAttrs:
-    # Skill artifact set
-    ARTIFACT_SET = AttrKey("skill_artifact_set", SkillArtifactSet)
+    BUNDLE = AttrKey("skill_bundle", SkillBundle)
