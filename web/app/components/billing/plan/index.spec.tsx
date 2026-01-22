@@ -105,7 +105,7 @@ describe('PlanComp', () => {
 
     await waitFor(() => expect(mutateAsyncMock).toHaveBeenCalled())
     await waitFor(() => expect(push).toHaveBeenCalledWith('/education-apply?token=token'))
-    expect(localStorage.removeItem).toHaveBeenCalledWith(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
+    expect(localStorage.removeItem).toHaveBeenCalledWith(`v1:${EDUCATION_VERIFYING_LOCALSTORAGE_ITEM}`)
   })
 
   it('shows modal when education verify fails', async () => {

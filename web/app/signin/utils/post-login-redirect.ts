@@ -1,15 +1,17 @@
 import type { ReadonlyURLSearchParams } from 'next/navigation'
 import dayjs from 'dayjs'
-import { OAUTH_AUTHORIZE_PENDING_KEY, REDIRECT_URL_KEY } from '@/app/account/oauth/authorize/constants'
+import { REDIRECT_URL_KEY } from '@/app/account/oauth/authorize/constants'
+import { STORAGE_KEYS } from '@/config/storage-keys'
+import { storage } from '@/utils/storage'
 
 function getItemWithExpiry(key: string): string | null {
-  const itemStr = localStorage.getItem(key)
+  const itemStr = storage.get<string>(key)
   if (!itemStr)
     return null
 
   try {
     const item = JSON.parse(itemStr)
-    localStorage.removeItem(key)
+    storage.remove(key)
     if (!item?.value)
       return null
 
@@ -24,7 +26,7 @@ export const resolvePostLoginRedirect = (searchParams: ReadonlyURLSearchParams) 
   const redirectUrl = searchParams.get(REDIRECT_URL_KEY)
   if (redirectUrl) {
     try {
-      localStorage.removeItem(OAUTH_AUTHORIZE_PENDING_KEY)
+      storage.remove(STORAGE_KEYS.AUTH.OAUTH_AUTHORIZE_PENDING)
       return decodeURIComponent(redirectUrl)
     }
     catch (e) {
@@ -33,5 +35,5 @@ export const resolvePostLoginRedirect = (searchParams: ReadonlyURLSearchParams) 
     }
   }
 
-  return getItemWithExpiry(OAUTH_AUTHORIZE_PENDING_KEY)
+  return getItemWithExpiry(STORAGE_KEYS.AUTH.OAUTH_AUTHORIZE_PENDING)
 }

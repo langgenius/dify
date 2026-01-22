@@ -23,12 +23,14 @@ import AppSideBar from '@/app/components/app-sidebar'
 import { useStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
 import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { useAppContext } from '@/context/app-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { fetchAppDetailDirect } from '@/service/apps'
 import { AppModeEnum } from '@/types/app'
 import { cn } from '@/utils/classnames'
+import { storage } from '@/utils/storage'
 import s from './style.module.css'
 
 const TagManagementModal = dynamic(() => import('@/app/components/base/tag-management'), {
@@ -108,7 +110,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
   useEffect(() => {
     if (appDetail) {
-      const localeMode = localStorage.getItem('app-detail-collapse-or-expand') || 'expand'
+      const localeMode = storage.get<string>(STORAGE_KEYS.APP.DETAIL_COLLAPSE) || 'expand'
       const mode = isMobile ? 'collapse' : 'expand'
       setAppSidebarExpand(isMobile ? mode : localeMode)
       // TODO: consider screen size and mode

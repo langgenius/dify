@@ -7,12 +7,14 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import Tooltip from '@/app/components/base/tooltip'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import useTimestamp from '@/hooks/use-timestamp'
 import { cn } from '@/utils/classnames'
+import { storage } from '@/utils/storage'
 import AddMetadataButton from '../add-metadata-button'
 import InputCombined from '../edit-metadata-batch/input-combined'
 import SelectMetadataModal from '../metadata-dataset/select-metadata-modal'
-import { DataType, isShowManageMetadataLocalStorageKey } from '../types'
+import { DataType } from '../types'
 import Field from './field'
 
 type Props = {
@@ -53,7 +55,7 @@ const InfoGroup: FC<Props> = ({
   const { formatTime: formatTimestamp } = useTimestamp()
 
   const handleMangeMetadata = () => {
-    localStorage.setItem(isShowManageMetadataLocalStorageKey, 'true')
+    storage.set(STORAGE_KEYS.UI.SHOW_MANAGE_METADATA, 'true')
     router.push(`/datasets/${dataSetId}/documents`)
   }
 

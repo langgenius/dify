@@ -30,15 +30,15 @@ import {
   DEFAULT_ACCOUNT_SETTING_TAB,
   isValidAccountSettingTab,
 } from '@/app/components/header/account-setting/constants'
-import {
-  EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
-} from '@/app/education-apply/constants'
+
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import {
   useAccountSettingModal,
   usePricingModal,
 } from '@/hooks/use-query-params'
+import { storage } from '@/utils/storage'
 
 import {
 
@@ -183,10 +183,10 @@ export const ModalContextProvider = ({
 
   const [showAnnotationFullModal, setShowAnnotationFullModal] = useState(false)
   const handleCancelAccountSettingModal = () => {
-    const educationVerifying = localStorage.getItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
+    const educationVerifying = storage.get<string>(STORAGE_KEYS.EDUCATION.VERIFYING)
 
     if (educationVerifying === 'yes')
-      localStorage.removeItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
+      storage.remove(STORAGE_KEYS.EDUCATION.VERIFYING)
 
     accountSettingCallbacksRef.current?.onCancelCallback?.()
     accountSettingCallbacksRef.current = null

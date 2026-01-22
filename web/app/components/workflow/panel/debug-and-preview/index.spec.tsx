@@ -27,7 +27,7 @@ const createMockLocalStorage = () => {
 
 // Preview panel width logic
 const createPreviewPanelManager = () => {
-  const storageKey = 'debug-and-preview-panel-width'
+  const storageKey = 'v1:debug-and-preview-panel-width'
 
   return {
     updateWidth: (width: number, source: PanelWidthSource = 'user') => {
@@ -63,7 +63,7 @@ describe('Debug and Preview Panel Width Persistence', () => {
       const result = manager.updateWidth(450, 'user')
 
       expect(result).toBe(450)
-      expect(localStorage.setItem).toHaveBeenCalledWith('debug-and-preview-panel-width', '450')
+      expect(localStorage.setItem).toHaveBeenCalledWith('v1:debug-and-preview-panel-width', '450')
     })
 
     it('should not save system compression to localStorage', () => {
@@ -80,17 +80,17 @@ describe('Debug and Preview Panel Width Persistence', () => {
 
       // Both user and system operations should behave consistently
       manager.updateWidth(500, 'user')
-      expect(localStorage.setItem).toHaveBeenCalledWith('debug-and-preview-panel-width', '500')
+      expect(localStorage.setItem).toHaveBeenCalledWith('v1:debug-and-preview-panel-width', '500')
 
       manager.updateWidth(200, 'system')
-      expect(localStorage.getItem('debug-and-preview-panel-width')).toBe('500')
+      expect(localStorage.getItem('v1:debug-and-preview-panel-width')).toBe('500')
     })
   })
 
   describe('Dual Panel Scenario', () => {
     it('should maintain independence from Node Panel', () => {
-      localStorage.setItem('workflow-node-panel-width', '600')
-      localStorage.setItem('debug-and-preview-panel-width', '450')
+      localStorage.setItem('v1:workflow-node-panel-width', '600')
+      localStorage.setItem('v1:debug-and-preview-panel-width', '450')
 
       const manager = createPreviewPanelManager()
 
@@ -98,8 +98,8 @@ describe('Debug and Preview Panel Width Persistence', () => {
       manager.updateWidth(200, 'system')
 
       // Only preview panel storage key should be unaffected
-      expect(localStorage.getItem('debug-and-preview-panel-width')).toBe('450')
-      expect(localStorage.getItem('workflow-node-panel-width')).toBe('600')
+      expect(localStorage.getItem('v1:debug-and-preview-panel-width')).toBe('450')
+      expect(localStorage.getItem('v1:workflow-node-panel-width')).toBe('600')
     })
 
     it('should handle F12 scenario consistently', () => {
@@ -107,13 +107,13 @@ describe('Debug and Preview Panel Width Persistence', () => {
 
       // User sets preference
       manager.updateWidth(500, 'user')
-      expect(localStorage.getItem('debug-and-preview-panel-width')).toBe('500')
+      expect(localStorage.getItem('v1:debug-and-preview-panel-width')).toBe('500')
 
       // F12 opens causing viewport compression
       manager.updateWidth(180, 'system')
 
       // User preference preserved
-      expect(localStorage.getItem('debug-and-preview-panel-width')).toBe('500')
+      expect(localStorage.getItem('v1:debug-and-preview-panel-width')).toBe('500')
     })
   })
 
@@ -124,7 +124,7 @@ describe('Debug and Preview Panel Width Persistence', () => {
       // Same 400px minimum as Node Panel
       const result = manager.updateWidth(300, 'user')
       expect(result).toBe(400)
-      expect(localStorage.setItem).toHaveBeenCalledWith('debug-and-preview-panel-width', '400')
+      expect(localStorage.setItem).toHaveBeenCalledWith('v1:debug-and-preview-panel-width', '400')
     })
 
     it('should use same source parameter pattern', () => {
@@ -132,7 +132,7 @@ describe('Debug and Preview Panel Width Persistence', () => {
 
       // Default to 'user' when source not specified
       manager.updateWidth(500)
-      expect(localStorage.setItem).toHaveBeenCalledWith('debug-and-preview-panel-width', '500')
+      expect(localStorage.setItem).toHaveBeenCalledWith('v1:debug-and-preview-panel-width', '500')
 
       // Explicit 'system' source
       manager.updateWidth(300, 'system')

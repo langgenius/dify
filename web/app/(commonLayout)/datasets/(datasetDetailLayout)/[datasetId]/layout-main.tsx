@@ -112,7 +112,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const setAppSidebarExpand = useStore(state => state.setAppSidebarExpand)
 
   useEffect(() => {
-    const localeMode = localStorage.getItem('app-detail-collapse-or-expand') || 'expand'
+    const localeMode = storage.get<string>(STORAGE_KEYS.APP.DETAIL_COLLAPSE) || 'expand'
     const mode = isMobile ? 'collapse' : 'expand'
     setAppSidebarExpand(isMobile ? mode : localeMode)
   }, [isMobile, setAppSidebarExpand])

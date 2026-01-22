@@ -14,12 +14,13 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { ApiAggregate, TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
 import UsageInfo from '@/app/components/billing/usage-info'
-import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/constants'
 import VerifyStateModal from '@/app/education-apply/verify-state-modal'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { useAppContext } from '@/context/app-context'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useEducationVerify } from '@/service/use-education'
+import { storage } from '@/utils/storage'
 import { getDaysUntilEndOfMonth } from '@/utils/time'
 import { Loading } from '../../base/icons/src/public/thought'
 import { NUM_INFINITE } from '../config'
@@ -72,7 +73,7 @@ const PlanComp: FC<Props> = ({
     if (isPending)
       return
     mutateAsync().then((res) => {
-      localStorage.removeItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
+      storage.remove(STORAGE_KEYS.EDUCATION.VERIFYING)
       if (unmountedRef.current)
         return
       router.push(`/education-apply?token=${res.token}`)

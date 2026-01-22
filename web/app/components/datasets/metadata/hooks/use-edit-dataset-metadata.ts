@@ -4,8 +4,9 @@ import { useBoolean } from 'ahooks'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { useBuiltInMetaDataFields, useCreateMetaData, useDatasetMetaData, useDeleteMetaData, useRenameMeta, useUpdateBuiltInStatus } from '@/service/knowledge/use-metadata'
-import { isShowManageMetadataLocalStorageKey } from '../types'
+import { storage } from '@/utils/storage'
 import useCheckMetadataName from './use-check-metadata-name'
 
 const useEditDatasetMetadata = ({
@@ -24,10 +25,10 @@ const useEditDatasetMetadata = ({
   }] = useBoolean(false)
 
   useEffect(() => {
-    const isShowManageMetadata = localStorage.getItem(isShowManageMetadataLocalStorageKey)
+    const isShowManageMetadata = storage.get<string>(STORAGE_KEYS.UI.SHOW_MANAGE_METADATA)
     if (isShowManageMetadata) {
       showEditModal()
-      localStorage.removeItem(isShowManageMetadataLocalStorageKey)
+      storage.remove(STORAGE_KEYS.UI.SHOW_MANAGE_METADATA)
     }
   }, [])
 

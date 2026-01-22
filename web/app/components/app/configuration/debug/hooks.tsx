@@ -14,27 +14,20 @@ import {
 } from 'react'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import {
   AgentStrategy,
 } from '@/types/app'
 import { promptVariablesToUserInputsForm } from '@/utils/model-config'
+import { storage } from '@/utils/storage'
 import { ORCHESTRATE_CHANGED } from './types'
 
 export const useDebugWithSingleOrMultipleModel = (appId: string) => {
-  const localeDebugWithSingleOrMultipleModelConfigs = localStorage.getItem('app-debug-with-single-or-multiple-models')
+  const localeDebugWithSingleOrMultipleModelConfigs = storage.get<DebugWithSingleOrMultipleModelConfigs>(STORAGE_KEYS.CONFIG.DEBUG_MODELS)
 
-  const debugWithSingleOrMultipleModelConfigs = useRef<DebugWithSingleOrMultipleModelConfigs>({})
-
-  if (localeDebugWithSingleOrMultipleModelConfigs) {
-    try {
-      debugWithSingleOrMultipleModelConfigs.current = JSON.parse(localeDebugWithSingleOrMultipleModelConfigs) || {}
-    }
-    catch (e) {
-      console.error(e)
-    }
-  }
+  const debugWithSingleOrMultipleModelConfigs = useRef<DebugWithSingleOrMultipleModelConfigs>(localeDebugWithSingleOrMultipleModelConfigs || {})
 
   const [
     debugWithMultipleModel,
@@ -55,7 +48,7 @@ export const useDebugWithSingleOrMultipleModel = (appId: string) => {
       configs: modelConfigs,
     }
     debugWithSingleOrMultipleModelConfigs.current[appId] = value
-    localStorage.setItem('app-debug-with-single-or-multiple-models', JSON.stringify(debugWithSingleOrMultipleModelConfigs.current))
+    storage.set(STORAGE_KEYS.CONFIG.DEBUG_MODELS, debugWithSingleOrMultipleModelConfigs.current)
     setDebugWithMultipleModel(value.multiple)
     setMultipleModelConfigs(value.configs)
   }, [appId])

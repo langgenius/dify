@@ -13,12 +13,14 @@ import { formContext, useAppForm } from '@/app/components/base/form'
 import { zodSubmitValidator } from '@/app/components/base/form/utils/zod-submit-validator'
 import Input from '@/app/components/base/input'
 import { validPassword } from '@/config'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 
 import { LICENSE_LINK } from '@/constants/link'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { fetchInitValidateStatus, fetchSetupStatus, login, setup } from '@/service/common'
 import { cn } from '@/utils/classnames'
 import { encryptPassword as encodePassword } from '@/utils/encryption'
+import { storage } from '@/utils/storage'
 import Loading from '../components/base/loading'
 
 const accountFormSchema = z.object({
@@ -85,7 +87,7 @@ const InstallForm = () => {
   useEffect(() => {
     fetchSetupStatus().then((res: SetupStatusResponse) => {
       if (res.step === 'finished') {
-        localStorage.setItem('setup_status', 'finished')
+        storage.set(STORAGE_KEYS.CONFIG.SETUP_STATUS, 'finished')
         router.push('/signin')
       }
       else {

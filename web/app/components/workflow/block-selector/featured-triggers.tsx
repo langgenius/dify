@@ -11,9 +11,11 @@ import Loading from '@/app/components/base/loading'
 import Tooltip from '@/app/components/base/tooltip'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import Action from '@/app/components/workflow/block-selector/market-place-plugin/action'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { useGetLanguage } from '@/context/i18n'
 import { isServer } from '@/utils/client'
 import { formatNumber } from '@/utils/format'
+import { storage } from '@/utils/storage'
 import { getMarketplaceUrl } from '@/utils/var'
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
@@ -30,8 +32,6 @@ type FeaturedTriggersProps = {
   onInstallSuccess?: () => void | Promise<void>
 }
 
-const STORAGE_KEY = 'workflow_triggers_featured_collapsed'
-
 const FeaturedTriggers = ({
   plugins,
   providerMap,
@@ -45,14 +45,14 @@ const FeaturedTriggers = ({
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
     if (isServer)
       return false
-    const stored = window.localStorage.getItem(STORAGE_KEY)
+    const stored = storage.get<string>(STORAGE_KEYS.WORKFLOW.TRIGGERS_FEATURED_COLLAPSED)
     return stored === 'true'
   })
 
   useEffect(() => {
     if (isServer)
       return
-    const stored = window.localStorage.getItem(STORAGE_KEY)
+    const stored = storage.get<string>(STORAGE_KEYS.WORKFLOW.TRIGGERS_FEATURED_COLLAPSED)
     if (stored !== null)
       setIsCollapsed(stored === 'true')
   }, [])
@@ -60,7 +60,7 @@ const FeaturedTriggers = ({
   useEffect(() => {
     if (isServer)
       return
-    window.localStorage.setItem(STORAGE_KEY, String(isCollapsed))
+    storage.set(STORAGE_KEYS.WORKFLOW.TRIGGERS_FEATURED_COLLAPSED, String(isCollapsed))
   }, [isCollapsed])
 
   useEffect(() => {

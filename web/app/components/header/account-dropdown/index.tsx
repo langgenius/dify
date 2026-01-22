@@ -23,6 +23,7 @@ import PremiumBadge from '@/app/components/base/premium-badge'
 import ThemeSwitcher from '@/app/components/base/theme-switcher'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { IS_CLOUD_EDITION } from '@/config'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useDocLink } from '@/context/i18n'
@@ -30,6 +31,7 @@ import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useLogout } from '@/service/use-common'
 import { cn } from '@/utils/classnames'
+import { storage } from '@/utils/storage'
 import AccountAbout from '../account-about'
 import GithubStar from '../github-star'
 import Indicator from '../indicator'
@@ -55,13 +57,13 @@ export default function AppSelector() {
   const handleLogout = async () => {
     await logout()
     resetUser()
-    localStorage.removeItem('setup_status')
+    storage.remove(STORAGE_KEYS.CONFIG.SETUP_STATUS)
     // Tokens are now stored in cookies and cleared by backend
 
     // To avoid use other account's education notice info
-    localStorage.removeItem('education-reverify-prev-expire-at')
-    localStorage.removeItem('education-reverify-has-noticed')
-    localStorage.removeItem('education-expired-has-noticed')
+    storage.remove(STORAGE_KEYS.EDUCATION.REVERIFY_PREV_EXPIRE_AT)
+    storage.remove(STORAGE_KEYS.EDUCATION.REVERIFY_HAS_NOTICED)
+    storage.remove(STORAGE_KEYS.EDUCATION.EXPIRED_HAS_NOTICED)
 
     router.push('/signin')
   }

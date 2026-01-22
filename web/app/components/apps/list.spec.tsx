@@ -434,13 +434,15 @@ describe('List', () => {
   })
 
   describe('Local Storage Refresh', () => {
-    it('should call refetch when refresh key is set in localStorage', () => {
-      localStorage.setItem('needRefreshAppList', '1')
+    it('should call refetch when refresh key is set in localStorage', async () => {
+      localStorage.setItem('v1:needRefreshAppList', '1')
 
       render(<List />)
 
-      expect(mockRefetch).toHaveBeenCalled()
-      expect(localStorage.getItem('needRefreshAppList')).toBeNull()
+      await vi.waitFor(() => {
+        expect(mockRefetch).toHaveBeenCalled()
+      })
+      expect(localStorage.getItem('v1:needRefreshAppList')).toBeNull()
     })
   })
 

@@ -6,6 +6,7 @@ import { NUM_INFINITE } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'
 import { IS_CLOUD_EDITION } from '@/config'
 import { isServer } from '@/utils/client'
+import { storage } from '@/utils/storage'
 
 export type TriggerEventsLimitModalPayload = {
   usage: number
@@ -80,15 +81,10 @@ export const useTriggerEventsLimitModal = ({
     if (dismissedTriggerEventsLimitStorageKeysRef.current[storageKey])
       return
 
-    let persistDismiss = true
+    const persistDismiss = storage.isAvailable()
     let hasDismissed = false
-    try {
-      if (localStorage.getItem(storageKey) === '1')
-        hasDismissed = true
-    }
-    catch {
-      persistDismiss = false
-    }
+    if (storage.get<string>(storageKey) === '1')
+      hasDismissed = true
     if (hasDismissed)
       return
 
@@ -110,16 +106,9 @@ export const useTriggerEventsLimitModal = ({
     const storageKey = showTriggerEventsLimitModal?.payload.storageKey
     if (!storageKey)
       return
-    if (showTriggerEventsLimitModal?.payload.persistDismiss) {
-      try {
-        localStorage.setItem(storageKey, '1')
-        return
-      }
-      catch {
-        // ignore error and fall back to in-memory guard
-      }
-    }
     dismissedTriggerEventsLimitStorageKeysRef.current[storageKey] = true
+    if (showTriggerEventsLimitModal?.payload.persistDismiss)
+      storage.set(storageKey, '1')
   }, [showTriggerEventsLimitModal])
 
   return {

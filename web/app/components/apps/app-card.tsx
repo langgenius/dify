@@ -20,7 +20,7 @@ import CustomPopover from '@/app/components/base/popover'
 import TagSelector from '@/app/components/base/tag-management/selector'
 import Toast, { ToastContext } from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useProviderContext } from '@/context/provider-context'
@@ -33,6 +33,7 @@ import { fetchWorkflowDraft } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { cn } from '@/utils/classnames'
+import { storage } from '@/utils/storage'
 import { formatTime } from '@/utils/time'
 import { basePath } from '@/utils/var'
 
@@ -144,7 +145,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
         type: 'success',
         message: t('newApp.appCreated', { ns: 'app' }),
       })
-      localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
+      storage.set(STORAGE_KEYS.APP.NEED_REFRESH_LIST, '1')
       if (onRefresh)
         onRefresh()
       onPlanInfoChanged()

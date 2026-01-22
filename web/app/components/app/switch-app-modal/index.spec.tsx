@@ -5,9 +5,10 @@ import * as React from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ToastContext } from '@/app/components/base/toast'
 import { Plan } from '@/app/components/billing/type'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { AppModeEnum } from '@/types/app'
 import SwitchAppModal from './index'
+
+const NEED_REFRESH_APP_LIST_KEY_PREFIXED = 'v1:needRefreshAppList'
 
 const mockPush = vi.fn()
 const mockReplace = vi.fn()
@@ -257,7 +258,7 @@ describe('SwitchAppModal', () => {
         expect(onSuccess).toHaveBeenCalledTimes(1)
         expect(onClose).toHaveBeenCalledTimes(1)
         expect(notify).toHaveBeenCalledWith({ type: 'success', message: 'app.newApp.appCreated' })
-        expect(localStorage.setItem).toHaveBeenCalledWith(NEED_REFRESH_APP_LIST_KEY, '1')
+        expect(localStorage.setItem).toHaveBeenCalledWith(NEED_REFRESH_APP_LIST_KEY_PREFIXED, '1')
         expect(mockPush).toHaveBeenCalledWith('/app/new-app-001/workflow')
         expect(mockReplace).not.toHaveBeenCalled()
       })

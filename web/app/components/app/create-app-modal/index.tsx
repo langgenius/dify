@@ -19,7 +19,7 @@ import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
 import { ToastContext } from '@/app/components/base/toast'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import useTheme from '@/hooks/use-theme'
@@ -27,6 +27,7 @@ import { createApp } from '@/service/apps'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { cn } from '@/utils/classnames'
+import { storage } from '@/utils/storage'
 import { basePath } from '@/utils/var'
 import AppIconPicker from '../../base/app-icon-picker'
 
@@ -91,7 +92,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
       notify({ type: 'success', message: t('newApp.appCreated', { ns: 'app' }) })
       onSuccess()
       onClose()
-      localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
+      storage.set(STORAGE_KEYS.APP.NEED_REFRESH_LIST, '1')
       getRedirection(isCurrentWorkspaceEditor, app, push)
     }
     catch (e: any) {

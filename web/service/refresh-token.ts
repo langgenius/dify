@@ -1,13 +1,13 @@
 import { API_PREFIX } from '@/config'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { fetchWithRetry } from '@/utils'
-
-const LOCAL_STORAGE_KEY = 'is_other_tab_refreshing'
+import { storage } from '@/utils/storage'
 
 let isRefreshing = false
 function waitUntilTokenRefreshed() {
   return new Promise<void>((resolve) => {
     function _check() {
-      const isRefreshingSign = globalThis.localStorage.getItem(LOCAL_STORAGE_KEY)
+      const isRefreshingSign = storage.get<string>(STORAGE_KEYS.AUTH.REFRESH_LOCK)
       if ((isRefreshingSign && isRefreshingSign === '1') || isRefreshing) {
         setTimeout(() => {
           _check()
@@ -23,35 +23,28 @@ function waitUntilTokenRefreshed() {
 
 const isRefreshingSignAvailable = function (delta: number) {
   const nowTime = new Date().getTime()
-  const lastTime = globalThis.localStorage.getItem('last_refresh_time') || '0'
+  const lastTime = storage.get<string>(STORAGE_KEYS.AUTH.LAST_REFRESH_TIME) || '0'
   return nowTime - Number.parseInt(lastTime) <= delta
 }
 
-// only one request can send
 async function getNewAccessToken(timeout: number): Promise<void> {
   try {
-    const isRefreshingSign = globalThis.localStorage.getItem(LOCAL_STORAGE_KEY)
+    const isRefreshingSign = storage.get<string>(STORAGE_KEYS.AUTH.REFRESH_LOCK)
     if ((isRefreshingSign && isRefreshingSign === '1' && isRefreshingSignAvailable(timeout)) || isRefreshing) {
       await waitUntilTokenRefreshed()
     }
     else {
       isRefreshing = true
-      globalThis.localStorage.setItem(LOCAL_STORAGE_KEY, '1')
-      globalThis.localStorage.setItem('last_refresh_time', new Date().getTime().toString())
+      storage.set(STORAGE_KEYS.AUTH.REFRESH_LOCK, '1')
+      storage.set(STORAGE_KEYS.AUTH.LAST_REFRESH_TIME, new Date().getTime().toString())
       globalThis.addEventListener('beforeunload', releaseRefreshLock)
 
-      // Do not use baseFetch to refresh tokens.
-      // If a 401 response occurs and baseFetch itself attempts to refresh the token,
-      // it can lead to an infinite loop if the refresh attempt also returns 401.
-      // To avoid this, handle token refresh separately in a dedicated function
-      // that does not call baseFetch and uses a single retry mechanism.
       const [error, ret] = await fetchWithRetry(globalThis.fetch(`${API_PREFIX}/refresh-token`, {
         method: 'POST',
-        credentials: 'include', // Important: include cookies in the request
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json;utf-8',
         },
-        // No body needed - refresh token is in cookie
       }))
       if (error) {
         return Promise.reject(error)
@@ -72,11 +65,9 @@ async function getNewAccessToken(timeout: number): Promise<void> {
 }
 
 function releaseRefreshLock() {
-  // Always clear the refresh lock to avoid cross-tab deadlocks.
-  // This is safe to call multiple times and from tabs that were only waiting.
   isRefreshing = false
-  globalThis.localStorage.removeItem(LOCAL_STORAGE_KEY)
-  globalThis.localStorage.removeItem('last_refresh_time')
+  storage.remove(STORAGE_KEYS.AUTH.REFRESH_LOCK)
+  storage.remove(STORAGE_KEYS.AUTH.LAST_REFRESH_TIME)
   globalThis.removeEventListener('beforeunload', releaseRefreshLock)
 }
 

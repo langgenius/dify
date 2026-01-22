@@ -5,6 +5,9 @@ export const STORAGE_KEYS = {
     VARIABLE_INSPECT_PANEL_HEIGHT: 'workflow-variable-inspect-panel-height',
     CANVAS_MAXIMIZE: 'workflow-canvas-maximize',
     OPERATION_MODE: 'workflow-operation-mode',
+    RAG_RECOMMENDATIONS_COLLAPSED: 'workflow_rag_recommendations_collapsed',
+    TOOLS_FEATURED_COLLAPSED: 'workflow_tools_featured_collapsed',
+    TRIGGERS_FEATURED_COLLAPSED: 'workflow_triggers_featured_collapsed',
   },
   APP: {
     SIDEBAR_COLLAPSE: 'webappSidebarCollapse',
@@ -18,6 +21,7 @@ export const STORAGE_KEYS = {
     ACCESS_TOKEN: 'access_token',
     REFRESH_LOCK: 'is_other_tab_refreshing',
     LAST_REFRESH_TIME: 'last_refresh_time',
+    OAUTH_AUTHORIZE_PENDING: 'oauth_authorize_pending',
   },
   EDUCATION: {
     VERIFYING: 'educationVerifying',
@@ -30,6 +34,44 @@ export const STORAGE_KEYS = {
     DEBUG_MODELS: 'app-debug-with-single-or-multiple-models',
     SETUP_STATUS: 'setup_status',
   },
+  UI: {
+    THEME: 'theme',
+    ANTHROPIC_QUOTA_NOTICE: 'anthropic_quota_notice',
+    HIDE_MAINTENANCE_NOTICE: 'hide-maintenance-notice',
+    COUNTDOWN_LEFT_TIME: 'leftTime',
+    SHOW_MANAGE_METADATA: 'dify-isShowManageMetadata',
+  },
 } as const
 
 export type StorageKeys = typeof STORAGE_KEYS
+
+export const LEGACY_KEY_MIGRATIONS: Array<{ old: string, new: string }> = [
+  { old: 'workflow-node-panel-width', new: 'workflow-node-panel-width' },
+  { old: 'debug-and-preview-panel-width', new: 'debug-and-preview-panel-width' },
+  { old: 'workflow-variable-inspect-panel-height', new: 'workflow-variable-inspect-panel-height' },
+  { old: 'workflow-canvas-maximize', new: 'workflow-canvas-maximize' },
+  { old: 'workflow-operation-mode', new: 'workflow-operation-mode' },
+  { old: 'workflow_rag_recommendations_collapsed', new: 'workflow_rag_recommendations_collapsed' },
+  { old: 'workflow_tools_featured_collapsed', new: 'workflow_tools_featured_collapsed' },
+  { old: 'workflow_triggers_featured_collapsed', new: 'workflow_triggers_featured_collapsed' },
+  { old: 'webappSidebarCollapse', new: 'webappSidebarCollapse' },
+  { old: 'needRefreshAppList', new: 'needRefreshAppList' },
+  { old: 'app-detail-collapse-or-expand', new: 'app-detail-collapse-or-expand' },
+  { old: 'conversationIdInfo', new: 'conversationIdInfo' },
+  { old: 'access_token', new: 'access_token' },
+  { old: 'is_other_tab_refreshing', new: 'is_other_tab_refreshing' },
+  { old: 'last_refresh_time', new: 'last_refresh_time' },
+  { old: 'oauth_authorize_pending', new: 'oauth_authorize_pending' },
+  { old: 'educationVerifying', new: 'educationVerifying' },
+  { old: 'education-reverify-prev-expire-at', new: 'education-reverify-prev-expire-at' },
+  { old: 'education-reverify-has-noticed', new: 'education-reverify-has-noticed' },
+  { old: 'education-expired-has-noticed', new: 'education-expired-has-noticed' },
+  { old: 'auto-gen-model', new: 'auto-gen-model' },
+  { old: 'app-debug-with-single-or-multiple-models', new: 'app-debug-with-single-or-multiple-models' },
+  { old: 'setup_status', new: 'setup_status' },
+  { old: 'theme', new: 'theme' },
+  { old: 'anthropic_quota_notice', new: 'anthropic_quota_notice' },
+  { old: 'hide-maintenance-notice', new: 'hide-maintenance-notice' },
+  { old: 'leftTime', new: 'leftTime' },
+  { old: 'dify-isShowManageMetadata', new: 'dify-isShowManageMetadata' },
+]

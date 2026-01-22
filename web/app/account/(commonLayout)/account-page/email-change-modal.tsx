@@ -10,6 +10,7 @@ import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 import { ToastContext } from '@/app/components/base/toast'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import {
   checkEmailExisted,
   resetEmail,
@@ -18,6 +19,7 @@ import {
 } from '@/service/common'
 import { useLogout } from '@/service/use-common'
 import { asyncRunSafe } from '@/utils'
+import { storage } from '@/utils/storage'
 
 type Props = {
   show: boolean
@@ -172,7 +174,7 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
   const handleLogout = async () => {
     await logout()
 
-    localStorage.removeItem('setup_status')
+    storage.remove(STORAGE_KEYS.CONFIG.SETUP_STATUS)
     // Tokens are now stored in cookies and cleared by backend
 
     router.push('/signin')

@@ -134,7 +134,7 @@ const createMockLocalStorage = () => {
 
 let mockLocalStorage: ReturnType<typeof createMockLocalStorage>
 
-beforeEach(() => {
+beforeEach(async () => {
   vi.clearAllMocks()
   mockLocalStorage = createMockLocalStorage()
   Object.defineProperty(globalThis, 'localStorage', {
@@ -142,4 +142,7 @@ beforeEach(() => {
     writable: true,
     configurable: true,
   })
+  // Reset storage module cache to ensure fresh state for each test
+  const { storage } = await import('./utils/storage')
+  storage.resetCache()
 })

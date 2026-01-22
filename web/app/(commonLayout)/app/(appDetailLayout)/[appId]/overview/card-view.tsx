@@ -15,7 +15,7 @@ import Loading from '@/app/components/base/loading'
 import { ToastContext } from '@/app/components/base/toast'
 import MCPServiceCard from '@/app/components/tools/mcp/mcp-service-card'
 import { isTriggerNode } from '@/app/components/workflow/types'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import {
   fetchAppDetail,
   updateAppSiteAccessToken,
@@ -25,6 +25,7 @@ import {
 import { useAppWorkflow } from '@/service/use-workflow'
 import { AppModeEnum } from '@/types/app'
 import { asyncRunSafe } from '@/utils'
+import { storage } from '@/utils/storage'
 
 export type ICardViewProps = {
   appId: string
@@ -126,7 +127,7 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
       }) as Promise<App>,
     )
     if (!err)
-      localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
+      storage.set(STORAGE_KEYS.APP.NEED_REFRESH_LIST, '1')
 
     handleCallbackResult(err)
   }
