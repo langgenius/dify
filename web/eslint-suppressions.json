@@ -2792,11 +2792,6 @@
       "count": 3
     }
   },
-  "app/components/workflow-app/hooks/use-workflow-refresh-draft.ts": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "app/components/workflow-app/hooks/use-workflow-run.ts": {
     "ts/no-explicit-any": {
       "count": 13
@@ -3651,11 +3646,6 @@
       "count": 7
     }
   },
-  "app/components/workflow/nodes/tool/components/mixed-variable-text-input/placeholder.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/workflow/nodes/tool/components/tool-form/index.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -4274,11 +4264,6 @@
   },
   "i18n/uk-UA/app-debug.json": {
     "no-irregular-whitespace": {
-      "count": 1
-    }
-  },
-  "middleware.ts": {
-    "node/prefer-global/buffer": {
       "count": 1
     }
   },
