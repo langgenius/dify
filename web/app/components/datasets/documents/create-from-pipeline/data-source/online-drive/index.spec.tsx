@@ -327,7 +327,7 @@ describe('OnlineDrive', () => {
       render(<OnlineDrive {...props} />)
 
       // Assert
-      expect(mockDocLink).toHaveBeenCalledWith('/guides/knowledge-base/knowledge-pipeline/authorize-data-source')
+      expect(mockDocLink).toHaveBeenCalledWith('/use-dify/knowledge/knowledge-pipeline/authorize-data-source')
     })
   })
 
