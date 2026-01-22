@@ -52,6 +52,7 @@ type Props = {
   scope?: string
   selectedTools?: ToolValue[]
   preventFocusLoss?: boolean
+  hideFeaturedTool?: boolean
 }
 
 const ToolPicker: FC<Props> = ({
@@ -69,6 +70,7 @@ const ToolPicker: FC<Props> = ({
   selectedTools,
   panelClassName,
   preventFocusLoss = false,
+  hideFeaturedTool = false,
 }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
@@ -215,6 +217,7 @@ const ToolPicker: FC<Props> = ({
             featuredPlugins={featuredPlugins}
             featuredLoading={isFeaturedLoading}
             showFeatured={scope === 'all' && enable_marketplace}
+            hideFeaturedTool={hideFeaturedTool}
             onFeaturedInstallSuccess={async () => {
               invalidateBuiltInTools()
               invalidateCustomTools()

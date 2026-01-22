@@ -53,6 +53,7 @@ type AllToolsProps = {
   featuredLoading?: boolean
   showFeatured?: boolean
   onFeaturedInstallSuccess?: () => Promise<void> | void
+  hideFeaturedTool?: boolean
 }
 
 const DEFAULT_TAGS: AllToolsProps['tags'] = []
@@ -76,6 +77,7 @@ const AllTools = ({
   featuredLoading = false,
   showFeatured = false,
   onFeaturedInstallSuccess,
+  hideFeaturedTool = false,
 }: AllToolsProps) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
@@ -194,6 +196,7 @@ const AllTools = ({
     && !isInRAGPipeline
     && activeTab === ToolTypeEnum.All
     && !hasFilter
+    && !hideFeaturedTool
   const shouldShowMarketplaceFooter = enable_marketplace && !hasFilter
 
   const handleRAGSelect = useCallback<OnSelectBlock>((type, pluginDefaultValue) => {
@@ -259,9 +262,11 @@ const AllTools = ({
             )}
             {hasToolsListContent && (
               <>
-                <div className="px-3 pb-1 pt-2">
-                  <span className="system-xs-medium text-text-primary">{t('allTools', { ns: 'tools' })}</span>
-                </div>
+                {!hideFeaturedTool && (
+                  <div className="px-3 pb-1 pt-2">
+                    <span className="system-xs-medium text-text-primary">{t('allTools', { ns: 'tools' })}</span>
+                  </div>
+                )}
                 <Tools
                   className={toolContentClassName}
                   tools={tools}
