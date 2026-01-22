@@ -16,7 +16,7 @@
   "form.indexMethod": "Метод індексації",
   "form.indexMethodChangeToEconomyDisabledTip": "Недоступно для пониження з HQ до ECO",
   "form.indexMethodEconomy": "Економний",
-  "form.indexMethodEconomyTip": "Використовуйте автономні векторні двигуни, індекси ключових слів тощо, щоб зменшити точність без використання токенів.",
+  "form.indexMethodEconomyTip": "Використовуйте {{count}} ключових слів на кожен чанк для пошуку, без витрат токенів ціною меншої точності.",
   "form.indexMethodHighQuality": "Висока якість",
   "form.indexMethodHighQualityTip": "Викликати модель Embedding для обробки, щоб забезпечити вищу точність під час запитів користувачів.",
   "form.me": "(Ви)",

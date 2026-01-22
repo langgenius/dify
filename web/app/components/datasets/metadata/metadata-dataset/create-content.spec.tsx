@@ -27,7 +27,7 @@ vi.mock('../../../base/modal-like-wrap', () => ({
   default: ({ children, title, onClose, onConfirm, beforeHeader }: ModalLikeWrapProps) => (
     <div data-testid="modal-wrap">
       <div data-testid="modal-title">{title}</div>
-      {beforeHeader && <div data-testid="before-header">{beforeHeader}</div>}
+      {!!beforeHeader && <div data-testid="before-header">{beforeHeader}</div>}
       <div data-testid="modal-content">{children}</div>
       <button data-testid="close-btn" onClick={onClose}>Close</button>
       <button data-testid="confirm-btn" onClick={onConfirm}>Confirm</button>
