@@ -350,7 +350,7 @@
   "modelProvider.card.quota": "KUOTA",
   "modelProvider.card.quotaExhausted": "Kuota habis",
   "modelProvider.card.removeKey": "Menghapus Kunci API",
-  "modelProvider.card.tip": "Prioritas akan diberikan pada kuota yang dibayarkan. Kuota Trial akan digunakan setelah kuota yang dibayarkan habis.",
+  "modelProvider.card.tip": "Kredit pesan mendukung model dari OpenAI. Prioritas akan diberikan pada kuota yang dibayarkan. Kuota gratis akan digunakan setelah kuota yang dibayarkan habis.",
   "modelProvider.card.tokens": "Token",
   "modelProvider.collapse": "Roboh",
   "modelProvider.config": "Konfigurasi",
