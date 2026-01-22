@@ -17,7 +17,7 @@ The scripts resolve paths relative to their location, so you can run them from a
 1. Run setup (copies env files and installs dependencies).
 
    ```bash
-   ./dev/setup.sh
+   ./dev/setup
    ```
 
 1. Review `api/.env`, `web/.env.local`, and `docker/middleware.env` values (see the `SECRET_KEY` note below).
@@ -25,7 +25,7 @@ The scripts resolve paths relative to their location, so you can run them from a
 1. Start middleware (PostgreSQL/Redis/Weaviate).
 
    ```bash
-   ./dev/start-docker-compose.sh
+   ./dev/start-docker-compose
    ```
 
 1. Start backend (runs migrations first).
