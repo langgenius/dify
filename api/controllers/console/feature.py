@@ -1,7 +1,7 @@
 from flask_restx import Resource, fields
 
-from libs.login import current_account_with_tenant, login_required
-from services.feature_service import FeatureService
+from libs.login import current_account_with_tenant, current_user, login_required
+from services.feature_service import FeatureService, LicenseModel
 
 from . import console_ns
 from .wraps import account_initialization_required, cloud_utm_record, setup_required
@@ -38,8 +38,11 @@ class SystemFeatureApi(Resource):
             "SystemFeatureResponse", {"features": fields.Raw(description="System feature configuration object")}
         ),
     )
-    @login_required
-    @account_initialization_required
     def get(self):
         """Get system-wide feature configuration"""
-        return FeatureService.get_system_features().model_dump()
+        system_features = FeatureService.get_system_features()
+
+        if not current_user.is_authenticated:
+            system_features.license = LicenseModel()
+
+        return system_features.model_dump()
