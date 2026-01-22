@@ -1,12 +1,10 @@
 import logging
 
-from core.app_assets.constants import AppAssetsAttrs
 from core.app_assets.paths import AssetPaths
 from core.sandbox.sandbox import Sandbox
 from core.virtual_environment.__base.helpers import pipeline
 from extensions.ext_storage import storage
 from extensions.storage.file_presign_storage import FilePresignStorage
-from services.app_asset_service import AppAssetService
 
 from ..entities import AppAssets
 from .base import SandboxInitializer
@@ -24,10 +22,6 @@ class AppAssetsInitializer(SandboxInitializer):
 
     def initialize(self, env: Sandbox) -> None:
         vm = env.vm
-        # Load published app assets and unzip the artifact bundle.
-        app_assets = AppAssetService.get_tenant_app_assets(self._tenant_id, self._assets_id)
-        env.attrs.set(AppAssetsAttrs.FILE_TREE, app_assets.asset_tree)
-
         zip_key = AssetPaths.build_zip(self._tenant_id, self._app_id, self._assets_id)
         download_url = FilePresignStorage(storage.storage_runner).get_download_url(zip_key)
 
@@ -51,3 +45,6 @@ class AppAssetsInitializer(SandboxInitializer):
             self._app_id,
             self._assets_id,
         )
+
+    def async_initialize(self) -> bool:
+        return True

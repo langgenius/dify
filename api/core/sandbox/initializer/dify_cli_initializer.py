@@ -82,3 +82,6 @@ class DifyCliInitializer(SandboxInitializer):
         ).execute(raise_on_error=True)
 
         logger.info("Global tools initialized, path=%s, tool_count=%d", DifyCli.GLOBAL_TOOLS_PATH, len(self._tools))
+
+    def async_initialize(self) -> bool:
+        return True

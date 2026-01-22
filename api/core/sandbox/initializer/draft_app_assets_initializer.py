@@ -1,6 +1,5 @@
 import logging
 
-from core.app_assets.constants import AppAssetsAttrs
 from core.sandbox.entities import AppAssets
 from core.sandbox.sandbox import Sandbox
 from core.sandbox.services import AssetDownloadService
@@ -24,8 +23,8 @@ class DraftAppAssetsInitializer(SandboxInitializer):
     def initialize(self, env: Sandbox) -> None:
         vm = env.vm
         # Draft assets download via presigned URLs to avoid zip build overhead.
+        # FIXME(Yeuoly): merge 2 IO operations in DraftAppAssetsInitializer and AppAssetsAttrsInitializer
         app_assets = AppAssetService.get_tenant_app_assets(self._tenant_id, self._assets_id)
-        env.attrs.set(AppAssetsAttrs.FILE_TREE, app_assets.asset_tree)
 
         items = [
             AssetDownloadItem(path=path, url=url)
@@ -42,3 +41,6 @@ class DraftAppAssetsInitializer(SandboxInitializer):
             self._app_id,
             self._assets_id,
         )
+
+    def async_initialize(self) -> bool:
+        return True
