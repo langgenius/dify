@@ -1,5 +1,6 @@
 import type { SQLiteQueryResult } from '../../hooks/sqlite/types'
 import { useEffect, useReducer } from 'react'
+import { PREVIEW_ROW_LIMIT } from './constants'
 
 type TableState = {
   data: SQLiteQueryResult | null
@@ -71,7 +72,7 @@ export const useSQLiteTable = ({
       dispatch({ type: 'loading' })
 
       try {
-        const data = await queryTable(selectedTable)
+        const data = await queryTable(selectedTable, PREVIEW_ROW_LIMIT)
         if (!cancelled)
           dispatch({ type: 'success', data })
       }
