@@ -3,6 +3,7 @@
 import type { OnMount } from '@monaco-editor/react'
 import type { FC } from 'react'
 import { loader } from '@monaco-editor/react'
+import dynamic from 'next/dynamic'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -21,6 +22,11 @@ import { useSkillFileSave } from './hooks/use-skill-file-save'
 import { getFileLanguage } from './utils/file-utils'
 import MediaFilePreview from './viewer/media-file-preview'
 import UnsupportedFileDownload from './viewer/unsupported-file-download'
+
+const SQLiteFilePreview = dynamic(
+  () => import('./viewer/sqlite-file-preview'),
+  { ssr: false, loading: () => <Loading type="area" /> },
+)
 
 if (typeof window !== 'undefined')
   loader.config({ paths: { vs: `${window.location.origin}${basePath}/vs` } })
@@ -43,7 +49,7 @@ const FileContentPanel: FC = () => {
 
   const currentFileNode = activeTabId ? nodeMap?.get(activeTabId) : undefined
 
-  const { isMarkdown, isCodeOrText, isImage, isVideo, isEditable } = useFileTypeInfo(currentFileNode)
+  const { isMarkdown, isCodeOrText, isImage, isVideo, isSQLite, isEditable } = useFileTypeInfo(currentFileNode)
 
   const { fileContent, downloadUrlData, isLoading, error } = useSkillFileData(appId, activeTabId, isEditable)
 
@@ -149,11 +155,11 @@ const FileContentPanel: FC = () => {
     )
   }
 
-  // For non-editable files (media, unsupported), use download URL
+  // For non-editable files (media, sqlite, unsupported), use download URL
   const downloadUrl = downloadUrlData?.download_url || ''
   const fileName = currentFileNode?.name || ''
   const fileSize = currentFileNode?.size
-  const isUnsupportedFile = !isMarkdown && !isCodeOrText && !isImage && !isVideo
+  const isUnsupportedFile = !isMarkdown && !isCodeOrText && !isImage && !isVideo && !isSQLite
 
   return (
     <div className="h-full w-full overflow-auto bg-components-panel-bg">
@@ -183,6 +189,14 @@ const FileContentPanel: FC = () => {
             <MediaFilePreview
               type={isImage ? 'image' : 'video'}
               src={downloadUrl}
+            />
+          )
+        : null}
+      {isSQLite
+        ? (
+            <SQLiteFilePreview
+              key={activeTabId}
+              downloadUrl={downloadUrl}
             />
           )
         : null}
