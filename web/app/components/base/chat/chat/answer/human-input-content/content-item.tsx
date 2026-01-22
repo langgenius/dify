@@ -8,7 +8,6 @@ const ContentItem = ({
   content,
   formInputFields,
   inputs,
-  resolvedPlaceholderValues,
   onInputChange,
 }: ContentItemProps) => {
   const isInputField = (field: string) => {
@@ -30,14 +29,6 @@ const ContentItem = ({
     return formInputFields.find(field => field.output_variable_name === fieldName)
   }, [formInputFields, fieldName])
 
-  const placeholder = useMemo(() => {
-    if (!formInputField)
-      return ''
-    return formInputField.placeholder.type === 'variable'
-      ? resolvedPlaceholderValues?.[fieldName] || ''
-      : formInputField.placeholder.value
-  }, [formInputField, resolvedPlaceholderValues, fieldName])
-
   if (!isInputField(content)) {
     return (
       <Markdown content={content} />
@@ -52,7 +43,6 @@ const ContentItem = ({
       {formInputField.type === 'paragraph' && (
         <Textarea
           className="h-[104px] sm:text-xs"
-          placeholder={placeholder}
           value={inputs[fieldName]}
           onChange={(e) => { onInputChange(fieldName, e.target.value) }}
         />
