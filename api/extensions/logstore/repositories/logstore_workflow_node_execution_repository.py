@@ -67,8 +67,17 @@ def _dict_to_workflow_node_execution(data: dict[str, Any]) -> WorkflowNodeExecut
     status = WorkflowNodeExecutionStatus(data.get("status", "running"))
 
     # Parse datetime fields
-    created_at = datetime.fromisoformat(data.get("created_at", "")) if data.get("created_at") else datetime.now()
-    finished_at = datetime.fromisoformat(data.get("finished_at", "")) if data.get("finished_at") else None
+    created_at_value = data.get("created_at")
+    if created_at_value and created_at_value not in {"null", ""}:
+        created_at = datetime.fromisoformat(created_at_value)
+    else:
+        created_at = datetime.now()
+    
+    finished_at_value = data.get("finished_at")
+    if finished_at_value and finished_at_value not in {"null", ""}:
+        finished_at = datetime.fromisoformat(finished_at_value)
+    else:
+        finished_at = None
 
     return WorkflowNodeExecution(
         id=data.get("id", ""),

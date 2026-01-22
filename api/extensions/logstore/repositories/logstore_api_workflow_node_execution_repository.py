@@ -69,7 +69,7 @@ def _dict_to_workflow_node_execution_model(data: dict[str, Any]) -> WorkflowNode
 
     # Handle datetime fields
     created_at = data.get("created_at")
-    if created_at:
+    if created_at and created_at not in {"null", ""}:
         if isinstance(created_at, str):
             model.created_at = datetime.fromisoformat(created_at)
         elif isinstance(created_at, (int, float)):
@@ -81,7 +81,7 @@ def _dict_to_workflow_node_execution_model(data: dict[str, Any]) -> WorkflowNode
         model.created_at = datetime.now()
 
     finished_at = data.get("finished_at")
-    if finished_at:
+    if finished_at and finished_at not in {"null", ""}:
         if isinstance(finished_at, str):
             model.finished_at = datetime.fromisoformat(finished_at)
         elif isinstance(finished_at, (int, float)):

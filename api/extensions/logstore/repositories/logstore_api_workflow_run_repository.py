@@ -78,7 +78,7 @@ def _dict_to_workflow_run(data: dict[str, Any]) -> WorkflowRun:
 
     # Handle datetime fields
     created_at = data.get("created_at") or data.get("started_at")
-    if created_at:
+    if created_at and created_at not in {"null", ""}:
         if isinstance(created_at, str):
             model.created_at = datetime.fromisoformat(created_at)
         elif isinstance(created_at, (int, float)):
@@ -90,7 +90,7 @@ def _dict_to_workflow_run(data: dict[str, Any]) -> WorkflowRun:
         model.created_at = datetime.now()
 
     finished_at = data.get("finished_at")
-    if finished_at:
+    if finished_at and finished_at not in {"null", ""}:
         if isinstance(finished_at, str):
             model.finished_at = datetime.fromisoformat(finished_at)
         elif isinstance(finished_at, (int, float)):
@@ -100,7 +100,7 @@ def _dict_to_workflow_run(data: dict[str, Any]) -> WorkflowRun:
 
     # Handle elapsed_time
     elapsed_time_value = data.get("elapsed_time")
-    if elapsed_time_value is not None and elapsed_time_value != "":
+    if elapsed_time_value is not None and elapsed_time_value not in {"null", ""}:
         model.elapsed_time = safe_float(elapsed_time_value)
     elif model.finished_at and model.created_at:
         # Compute from timestamps if not stored
