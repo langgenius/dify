@@ -252,7 +252,7 @@ class WorkflowVariableCollectionApi(Resource):
     def delete(self, app_model: App):
         # FIXME(Mairuis): move to SandboxArtifactService
         current_user, _ = current_account_with_tenant()
-        SandboxManager.delete_storage(app_model.tenant_id, current_user.id)
+        SandboxManager.delete_draft_storage(app_model.tenant_id, current_user.id)
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
         )

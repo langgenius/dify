@@ -136,8 +136,7 @@ class SandboxManager:
         return sandbox
 
     @classmethod
-    def delete_storage(cls, tenant_id: str, user_id: str) -> None:
-        # FIXME(Mairuis): move to SandboxArtifactService
+    def delete_draft_storage(cls, tenant_id: str, user_id: str) -> None:
         storage = ArchiveSandboxStorage(tenant_id, SandboxBuilder.draft_id(user_id))
         storage.delete()
 

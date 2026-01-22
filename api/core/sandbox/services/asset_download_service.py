@@ -38,7 +38,7 @@ def _render_download_script(root_path: str, download_commands: str) -> str:
     download_one() {{
       file_path="$1"
       url="$2"
-      dest="${{download_root}}${{file_path}}"
+      dest="${{download_root}}/${{file_path}}"
       mkdir -p "$(dirname "${{dest}}")"
       eval "${{download_cmd}}" || echo "${{file_path}}" >> "${{fail_log}}"
     }}

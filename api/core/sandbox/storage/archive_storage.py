@@ -87,6 +87,8 @@ class ArchiveSandboxStorage(SandboxStorage):
         return storage.exists(self._storage_key)
 
     def delete(self) -> None:
-        if self.exists():
+        try:
             storage.delete(self._storage_key)
             logger.info("Deleted archive for sandbox %s", self._sandbox_id)
+        except Exception:
+            logger.exception("Failed to delete archive for sandbox %s", self._sandbox_id)
