@@ -23,7 +23,6 @@ import Textarea from '@/app/components/base/textarea'
 import { useToastContext } from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useDocLink } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { languages } from '@/i18n-config/language'
@@ -100,7 +99,6 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const [language, setLanguage] = useState(default_language)
   const [saveLoading, setSaveLoading] = useState(false)
   const { t } = useTranslation()
-  const docLink = useDocLink()
 
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const [appIcon, setAppIcon] = useState<AppIconSelection>(
@@ -240,16 +238,6 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           </div>
           <div className="system-xs-regular mt-0.5 text-text-tertiary">
             <span>{t(`${prefixSettings}.modalTip`, { ns: 'appOverview' })}</span>
-            <Link
-              href={docLink('/guides/application-publishing/launch-your-webapp-quickly/README', {
-                'zh-Hans': '/guides/application-publishing/launch-your-webapp-quickly/readme',
-              })}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-text-accent"
-            >
-              {t('operation.learnMore', { ns: 'common' })}
-            </Link>
           </div>
         </div>
         {/* form body */}

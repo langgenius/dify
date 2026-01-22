@@ -1131,11 +1131,6 @@
       "count": 1
     }
   },
-  "app/components/base/input-with-copy/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "app/components/base/input/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 1
