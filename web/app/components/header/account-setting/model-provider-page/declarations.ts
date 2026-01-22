@@ -249,6 +249,7 @@ export type ModelProvider = {
     quota_configurations: QuotaConfiguration[]
   }
   allow_custom_token?: boolean
+  plugin_installation_id?: string // Installation ID if this provider comes from a plugin
 }
 
 export type Model = {

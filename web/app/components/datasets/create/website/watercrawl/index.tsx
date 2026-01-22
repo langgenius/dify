@@ -126,16 +126,29 @@ const WaterCrawl: FC<Props> = ({
       return await waitForCrawlFinished(jobId)
     }
     catch (e: any) {
-      const errorBody = await e.json()
+      let errorMessage = t(`${I18N_PREFIX}.unknownError`, { ns: 'datasetCreation' })
+      if (e && typeof e.json === 'function') {
+        try {
+          const errorBody = await e.json()
+          errorMessage = errorBody.message || errorMessage
+        }
+        catch {
+          // ignore json parse error
+        }
+      }
+      else if (e && e.message) {
+        errorMessage = e.message
+      }
+
       return {
         isError: true,
-        errorMessage: errorBody.message,
+        errorMessage,
         data: {
           data: [],
         },
       }
     }
-  }, [crawlOptions.limit, onCheckedCrawlResultChange])
+  }, [crawlOptions.limit, onCheckedCrawlResultChange, t])
 
   const handleRun = useCallback(async (url: string) => {
     const { isValid, errorMsg } = checkValid(url)

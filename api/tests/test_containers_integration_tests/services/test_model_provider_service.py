@@ -5,6 +5,7 @@ from faker import Faker
 
 from core.entities.model_entities import ModelStatus
 from core.model_runtime.entities.model_entities import FetchFrom, ModelType
+from core.plugin.entities.plugin_daemon import PluginListResponse
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.provider import Provider, ProviderModel, ProviderModelSetting, ProviderType
 from services.model_provider_service import ModelProviderService
@@ -19,14 +20,18 @@ class TestModelProviderService:
         with (
             patch("services.model_provider_service.ProviderManager") as mock_provider_manager,
             patch("services.model_provider_service.ModelProviderFactory") as mock_model_provider_factory,
+            patch("services.model_provider_service.PluginService") as mock_plugin_service,
         ):
             # Setup default mock returns
             mock_provider_manager.return_value.get_configurations.return_value = MagicMock()
             mock_model_provider_factory.return_value.get_provider_icon.return_value = (None, None)
+            # By default, avoid hitting plugin daemon in tests
+            mock_plugin_service.list_with_total.return_value = PluginListResponse(list=[], total=0)
 
             yield {
                 "provider_manager": mock_provider_manager,
                 "model_provider_factory": mock_model_provider_factory,
+                "plugin_service": mock_plugin_service,
             }
 
     def _create_test_account_and_tenant(self, db_session_with_containers, mock_external_service_dependencies):
@@ -1204,3 +1209,83 @@ class TestModelProviderService:
 
         # Verify mock interactions
         mock_provider_manager.get_configurations.assert_called_once_with(tenant.id)
+
+    def test_get_provider_list_with_plugin_installation_id(
+        self, db_session_with_containers, mock_external_service_dependencies
+    ):
+        """
+        Test provider list retrieval includes plugin_installation_id for plugin-based providers.
+
+        This test verifies:
+        - Plugin providers have plugin_installation_id in the response
+        - Non-plugin providers have plugin_installation_id as None
+        - Correct matching between provider names and plugin base identifiers
+        """
+        # Arrange: Create test data
+        fake = Faker()
+        account, tenant = self._create_test_account_and_tenant(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+
+        # Mock PluginService to return plugin list
+        mock_plugin_list = MagicMock()
+        mock_plugin = MagicMock()
+        mock_plugin.plugin_unique_identifier = "langgenius/gemini:0.7.4@test_hash"
+        mock_plugin.installation_id = "test-installation-id-123"
+        mock_plugin_list.list = [mock_plugin]
+        mock_plugin_list.total = 1  # Only 1 plugin, so pagination will stop after first page
+
+        with patch('services.model_provider_service.PluginService') as mock_plugin_service:
+            mock_plugin_service.list_with_total.return_value = mock_plugin_list
+
+            # Mock ProviderManager to return provider configurations
+            mock_provider_manager = mock_external_service_dependencies["provider_manager"].return_value
+
+            # Create mock provider entity for plugin-based provider
+            mock_provider_entity = MagicMock()
+            mock_provider_entity.provider = "langgenius/gemini/google"
+            mock_provider_entity.label = {"en_US": "Gemini", "zh_Hans": "Gemini"}
+            mock_provider_entity.description = {"en_US": "Google Gemini", "zh_Hans": "Google Gemini"}
+            mock_provider_entity.icon_small = {"en_US": "icon.png", "zh_Hans": "icon.png"}
+            mock_provider_entity.icon_small_dark = None
+            mock_provider_entity.background = "#4285F4"
+            mock_provider_entity.help = None
+            mock_provider_entity.supported_model_types = [ModelType.LLM]
+            mock_provider_entity.configurate_methods = []
+            mock_provider_entity.provider_credential_schema = None
+            mock_provider_entity.model_credential_schema = None
+
+            # Create mock provider configuration
+            mock_custom_config = MagicMock()
+            mock_custom_config.provider.current_credential_id = "credential-123"
+            mock_custom_config.provider.current_credential_name = "test-credential"
+            mock_custom_config.provider.available_credentials = []
+            mock_custom_config.models = []
+
+            mock_provider_config = MagicMock()
+            mock_provider_config.provider = mock_provider_entity
+            mock_provider_config.preferred_provider_type = ProviderType.CUSTOM
+            mock_provider_config.is_custom_configuration_available.return_value = True
+            mock_provider_config.custom_configuration = mock_custom_config
+            mock_provider_config.system_configuration.enabled = True
+            mock_provider_config.system_configuration.current_quota_type = "free"
+            mock_provider_config.system_configuration.quota_configurations = []
+
+            mock_configurations = MagicMock()
+            mock_configurations.values.return_value = [mock_provider_config]
+            mock_provider_manager.get_configurations.return_value = mock_configurations
+
+            # Act: Execute the method under test
+            service = ModelProviderService()
+            result = service.get_provider_list(tenant.id)
+
+            # Assert: Verify plugin_installation_id is included
+            assert result is not None
+            assert len(result) == 1
+            assert result[0].provider == "langgenius/gemini/google"
+            assert result[0].plugin_installation_id == "test-installation-id-123"
+
+            # Verify mock interactions
+            mock_provider_manager.get_configurations.assert_called_once_with(tenant.id)
+            mock_plugin_service.list_with_total.assert_called_once_with(tenant.id, 1, 256)
+

@@ -748,3 +748,21 @@ export const usePluginReadmeAsset = ({ file_name, plugin_unique_identifier }: { 
     enabled: !!plugin_unique_identifier && !!file_name && /(^\.\/_assets|^_assets)/.test(file_name),
   })
 }
+
+export const useUninstallModelProvider = (options?: {
+  onSuccess?: () => void
+  onError?: (error: Error) => void
+}) => {
+  const queryClient = useQueryClient()
+  const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
+
+  return useMutation({
+    mutationFn: (pluginInstallationId: string) => uninstallPlugin(pluginInstallationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['common', 'model-providers'] })
+      invalidateInstalledPluginList()
+      options?.onSuccess?.()
+    },
+    onError: options?.onError,
+  })
+}

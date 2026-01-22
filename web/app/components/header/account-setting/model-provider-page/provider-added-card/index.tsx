@@ -6,11 +6,16 @@ import type {
 import type { ModelProviderQuotaGetPaid } from '../utils'
 import {
   RiArrowRightSLine,
+  RiDeleteBinLine,
   RiInformation2Fill,
   RiLoader2Line,
 } from '@remixicon/react'
-import { useState } from 'react'
+import { useBoolean } from 'ahooks'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import ActionButton from '@/app/components/base/action-button'
+import Confirm from '@/app/components/base/confirm'
+import Tooltip from '@/app/components/base/tooltip'
 import {
   AddCustomModel,
   ManageCustomModelCredentials,
@@ -19,6 +24,7 @@ import { IS_CE_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { fetchModelProviderModelList } from '@/service/common'
+import { useUninstallModelProvider } from '@/service/use-plugins'
 import { cn } from '@/utils/classnames'
 import { ConfigurationMethodEnum } from '../declarations'
 import ModelBadge from '../model-badge'
@@ -39,7 +45,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   notConfigured,
   provider,
 }) => {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { eventEmitter } = useEventEmitterContextContext()
   const [fetched, setFetched] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -51,6 +57,30 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   const { isCurrentWorkspaceManager } = useAppContext()
   const showModelProvider = systemConfig.enabled && MODEL_PROVIDER_QUOTA_GET_PAID.includes(provider.provider as ModelProviderQuotaGetPaid) && !IS_CE_EDITION
   const showCredential = configurationMethods.includes(ConfigurationMethodEnum.predefinedModel) && isCurrentWorkspaceManager
+
+  // Check if this provider is installed from a plugin (marketplace)
+  // Plugin providers have plugin_installation_id in the response
+  const isPluginProvider = !!provider.plugin_installation_id
+
+  // Uninstall functionality
+  const [isShowDeleteConfirm, {
+    setTrue: showDeleteConfirm,
+    setFalse: hideDeleteConfirm,
+  }] = useBoolean(false)
+  const { mutate: uninstallProvider, isPending: isUninstalling } = useUninstallModelProvider({
+    onSuccess: () => {
+      hideDeleteConfirm()
+    },
+    onError: (error) => {
+      console.error('Failed to uninstall provider:', error)
+    },
+  })
+
+  const handleUninstall = useCallback(() => {
+    if (provider.plugin_installation_id) {
+      uninstallProvider(provider.plugin_installation_id)
+    }
+  }, [provider.plugin_installation_id, uninstallProvider])
 
   const getModelList = async (providerName: string) => {
     if (loading)
@@ -104,14 +134,39 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
             }
           </div>
         </div>
-        {
-          showCredential && (
+        <div className="flex items-center gap-1">
+          {showCredential && (
             <CredentialPanel
               provider={provider}
             />
-          )
-        }
+          )}
+          {isPluginProvider && isCurrentWorkspaceManager && (
+            <Tooltip popupContent={t('action.delete', { ns: 'plugin' })}>
+              <ActionButton
+                className="text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
+                onClick={showDeleteConfirm}
+              >
+                <RiDeleteBinLine className="h-4 w-4" />
+              </ActionButton>
+            </Tooltip>
+          )}
+        </div>
       </div>
+      <Confirm
+        isShow={isShowDeleteConfirm}
+        title={t('action.delete', { ns: 'plugin' })}
+        content={(
+          <div>
+            {t('action.deleteContentLeft', { ns: 'plugin' })}
+            <span className="system-md-semibold">{provider.label[i18n.language] || provider.label.en_US || provider.provider}</span>
+            {t('action.deleteContentRight', { ns: 'plugin' })}
+          </div>
+        )}
+        onCancel={hideDeleteConfirm}
+        onConfirm={handleUninstall}
+        isLoading={isUninstalling}
+        isDisabled={isUninstalling}
+      />
       {
         collapsed && (
           <div className="system-xs-medium group flex items-center justify-between border-t border-t-divider-subtle py-1.5 pl-2 pr-[11px] text-text-tertiary">

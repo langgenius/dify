@@ -79,6 +79,7 @@ class ProviderResponse(BaseModel):
     preferred_provider_type: ProviderType
     custom_configuration: CustomConfigurationResponse
     system_configuration: SystemConfigurationResponse
+    plugin_installation_id: str | None = None  # Installation ID if this provider comes from a plugin
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())

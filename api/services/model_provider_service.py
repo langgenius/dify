@@ -16,6 +16,7 @@ from services.entities.model_provider_entities import (
     SystemConfigurationResponse,
 )
 from services.errors.app_model_config import ProviderNotFoundError
+from services.plugin.plugin_service import PluginService
 
 logger = logging.getLogger(__name__)
 
@@ -62,8 +63,47 @@ class ModelProviderService:
         # Get all provider configurations of the current workspace
         provider_configurations = self.provider_manager.get_configurations(tenant_id)
 
+        # Fetch all plugins with pagination
+        plugin_base_map = {}
+        plugin_installation_map = {}
+        page = 1
+        page_size = 256
+        while True:
+            plugins = PluginService.list_with_total(tenant_id, page, page_size)
+            if not plugins.list:
+                break
+
+            for plugin in plugins.list:
+                base_identifier = plugin.plugin_unique_identifier.split(":")[0].split("@")[0]
+                plugin_base_map[base_identifier] = plugin.installation_id
+
+            # Check if we've fetched all plugins
+            if len(plugins.list) < page_size:
+                break
+
+            page += 1
+
         provider_responses = []
         for provider_configuration in provider_configurations.values():
+            provider_name = provider_configuration.provider.provider
+            parts = provider_name.split("/")
+
+            # Try to match provider name with plugin base identifier
+            # Supports formats like:
+            # - langgenius/gemini/google -> langgenius/gemini
+            # - wwwzhouhui/nano_banana2_text2image -> wwwzhouhui/nano_banana2_text2image
+            if len(parts) >= 2:
+                possible_bases = [
+                    "/".join(parts[:2]),
+                    "/".join(parts[:3]),
+                    provider_name,
+                ]
+
+                for possible_base in possible_bases:
+                    if possible_base in plugin_base_map:
+                        plugin_installation_map[provider_name] = plugin_base_map[possible_base]
+                        break
+
             if model_type:
                 model_type_entity = ModelType.value_of(model_type)
                 if model_type_entity not in provider_configuration.provider.supported_model_types:
@@ -92,9 +132,13 @@ class ModelProviderService:
                         )
                     )
 
+            # Get plugin_installation_id if this provider comes from a plugin
+            provider_name = provider_configuration.provider.provider
+            plugin_installation_id = plugin_installation_map.get(provider_name)
+
             provider_response = ProviderResponse(
                 tenant_id=tenant_id,
-                provider=provider_configuration.provider.provider,
+                provider=provider_name,
                 label=provider_configuration.provider.label,
                 description=provider_configuration.provider.description,
                 icon_small=provider_configuration.provider.icon_small,
@@ -121,6 +165,7 @@ class ModelProviderService:
                     current_quota_type=provider_configuration.system_configuration.current_quota_type,
                     quota_configurations=provider_configuration.system_configuration.quota_configurations,
                 ),
+                plugin_installation_id=plugin_installation_id,
             )
 
             provider_responses.append(provider_response)

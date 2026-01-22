@@ -6,8 +6,10 @@ from core.entities.provider_entities import CredentialConfiguration, CustomModel
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.entities.provider_entities import ConfigurateMethod
+from core.plugin.entities.plugin_daemon import PluginListResponse
 from models.provider import ProviderType
 from services.model_provider_service import ModelProviderService
+from services.plugin.plugin_service import PluginService
 
 
 class _FakeConfigurations:
@@ -75,7 +77,16 @@ def service_with_fake_configurations():
     return svc
 
 
-def test_get_provider_list_strips_credentials(service_with_fake_configurations: ModelProviderService):
+def test_get_provider_list_strips_credentials(
+    service_with_fake_configurations: ModelProviderService, monkeypatch: pytest.MonkeyPatch
+):
+    # Avoid hitting plugin daemon in unit tests; return empty plugin list
+    monkeypatch.setattr(
+        PluginService,
+        "list_with_total",
+        staticmethod(lambda tenant_id, page, page_size: PluginListResponse(list=[], total=0)),
+    )
+
     providers = service_with_fake_configurations.get_provider_list(tenant_id="tenant-1", model_type=None)
 
     assert len(providers) == 1
