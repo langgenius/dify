@@ -236,7 +236,6 @@ def invoke_llm_with_structured_output(
         return generator()
 
 
-@overload
 def invoke_llm_with_pydantic_model(
     *,
     provider: str,
@@ -251,24 +250,7 @@ def invoke_llm_with_pydantic_model(
     user: str | None = None,
     callbacks: list[Callback] | None = None,
     tenant_id: str | None = None,
-) -> LLMResultWithStructuredOutput: ...
-
-
-def invoke_llm_with_pydantic_model(
-    *,
-    provider: str,
-    model_schema: AIModelEntity,
-    model_instance: ModelInstance,
-    prompt_messages: Sequence[PromptMessage],
-    output_model: type[T],
-    model_parameters: Mapping | None = None,
-    tools: Sequence[PromptMessageTool] | None = None,
-    stop: list[str] | None = None,
-    stream: bool = False,
-    user: str | None = None,
-    callbacks: list[Callback] | None = None,
-    tenant_id: str | None = None,
-) -> LLMResultWithStructuredOutput:
+) -> T:
     """
     Invoke large language model with a Pydantic output model.
 
@@ -299,7 +281,7 @@ def invoke_llm_with_pydantic_model(
         raise OutputParserError("Structured output is empty")
 
     validated_output = _validate_structured_output(output_model, structured_output)
-    return result.model_copy(update={"structured_output": validated_output})
+    return output_model.model_validate(validated_output)
 
 
 def _schema_from_pydantic(output_model: type[BaseModel]) -> dict[str, Any]:
@@ -309,12 +291,12 @@ def _schema_from_pydantic(output_model: type[BaseModel]) -> dict[str, Any]:
 def _validate_structured_output(
     output_model: type[T],
     structured_output: Mapping[str, Any],
-) -> dict[str, Any]:
+) -> T:
     try:
         validated_output = output_model.model_validate(structured_output)
     except ValidationError as exc:
         raise OutputParserError(f"Structured output validation failed: {exc}") from exc
-    return validated_output.model_dump(mode="python")
+    return validated_output
 
 
 def _handle_native_json_schema(

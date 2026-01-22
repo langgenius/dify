@@ -16,6 +16,11 @@ from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotIni
 from core.helper.code_executor.code_node_provider import CodeNodeProvider
 from core.helper.code_executor.javascript.javascript_code_provider import JavascriptCodeProvider
 from core.helper.code_executor.python3.python3_code_provider import Python3CodeProvider
+from core.llm_generator.context_models import (
+    AvailableVarPayload,
+    CodeContextPayload,
+    ParameterInfoPayload,
+)
 from core.llm_generator.llm_generator import LLMGenerator
 from core.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
@@ -58,22 +63,21 @@ class InstructionTemplatePayload(BaseModel):
 class ContextGeneratePayload(BaseModel):
     """Payload for generating extractor code node."""
 
-    workflow_id: str = Field(..., description="Workflow ID")
-    node_id: str = Field(..., description="Current tool/llm node ID")
-    parameter_name: str = Field(..., description="Parameter name to generate code for")
     language: str = Field(default="python3", description="Code language (python3/javascript)")
     prompt_messages: list[dict[str, Any]] = Field(
         ..., description="Multi-turn conversation history, last message is the current instruction"
     )
     model_config_data: dict[str, Any] = Field(..., alias="model_config", description="Model configuration")
+    available_vars: list[AvailableVarPayload] = Field(..., description="Available variables from upstream nodes")
+    parameter_info: ParameterInfoPayload = Field(..., description="Target parameter metadata from the frontend")
+    code_context: CodeContextPayload | None = Field(
+        default=None, description="Existing code node context for incremental generation"
+    )
 
 
 class SuggestedQuestionsPayload(BaseModel):
     """Payload for generating suggested questions."""
 
-    workflow_id: str = Field(..., description="Workflow ID")
-    node_id: str = Field(..., description="Current tool/llm node ID")
-    parameter_name: str = Field(..., description="Parameter name")
     language: str = Field(
         default="English", description="Language for generated questions (e.g. English, Chinese, Japanese)"
     )
@@ -82,6 +86,8 @@ class SuggestedQuestionsPayload(BaseModel):
         alias="model_config",
         description="Model configuration (optional, uses system default if not provided)",
     )
+    available_vars: list[AvailableVarPayload] = Field(..., description="Available variables from upstream nodes")
+    parameter_info: ParameterInfoPayload = Field(..., description="Target parameter metadata from the frontend")
 
 
 def reg(cls: type[BaseModel]):
@@ -328,17 +334,15 @@ class ContextGenerateApi(Resource):
         args = ContextGeneratePayload.model_validate(console_ns.payload)
         _, current_tenant_id = current_account_with_tenant()
 
-        prompt_messages = deserialize_prompt_messages(args.prompt_messages)
-
         try:
             return LLMGenerator.generate_with_context(
                 tenant_id=current_tenant_id,
-                workflow_id=args.workflow_id,
-                node_id=args.node_id,
-                parameter_name=args.parameter_name,
                 language=args.language,
-                prompt_messages=prompt_messages,
+                prompt_messages=deserialize_prompt_messages(args.prompt_messages),
                 model_config=args.model_config_data,
+                available_vars=args.available_vars,
+                parameter_info=args.parameter_info,
+                code_context=args.code_context,
             )
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -362,14 +366,12 @@ class SuggestedQuestionsApi(Resource):
     def post(self):
         args = SuggestedQuestionsPayload.model_validate(console_ns.payload)
         _, current_tenant_id = current_account_with_tenant()
-
         try:
             return LLMGenerator.generate_suggested_questions(
                 tenant_id=current_tenant_id,
-                workflow_id=args.workflow_id,
-                node_id=args.node_id,
-                parameter_name=args.parameter_name,
                 language=args.language,
+                available_vars=args.available_vars,
+                parameter_info=args.parameter_info,
                 model_config=args.model_config_data,
             )
         except ProviderTokenNotInitError as ex:

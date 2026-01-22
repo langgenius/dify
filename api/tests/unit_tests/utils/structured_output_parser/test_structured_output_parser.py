@@ -493,8 +493,8 @@ def test_structured_output_with_pydantic_model():
         stream=False,
     )
 
-    assert isinstance(result, LLMResultWithStructuredOutput)
-    assert result.structured_output == {"name": "test"}
+    assert isinstance(result, ExampleOutput)
+    assert result.name == "test"
 
 
 def test_structured_output_with_pydantic_model_streaming_rejected():
