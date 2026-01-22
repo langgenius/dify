@@ -1,7 +1,7 @@
 from flask_restx import Resource, fields
 
 from libs.login import current_account_with_tenant, current_user, login_required
-from services.feature_service import FeatureService, LicenseModel
+from services.feature_service import FeatureService
 
 from . import console_ns
 from .wraps import account_initialization_required, cloud_utm_record, setup_required
