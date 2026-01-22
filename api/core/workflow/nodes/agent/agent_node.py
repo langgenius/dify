@@ -211,7 +211,7 @@ class AgentNode(Node[AgentNodeData]):
                 segment_group = variable_pool.convert_template(parameter_value)
                 for i, segment in enumerate(segment_group.value):
                     if isinstance(segment, StringVariable):
-                        # use json.dumps() to uniformly and safely escape strings, 
+                        # use json.dumps() to uniformly and safely escape strings,
                         # and use [1:-1] to remove the surrounding quotes after conversion.
                         new_text = json.dumps(segment.text, ensure_ascii=False)[1:-1]
                         segment_group.value[i] = StringVariable(value=new_text, name=segment.name)
