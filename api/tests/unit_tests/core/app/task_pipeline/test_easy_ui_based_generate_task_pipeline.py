@@ -133,10 +133,8 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
             pipeline._task_state = mock_task_state
             return pipeline
 
-    def test_get_message_event_type_called_once_when_first_llm_chunk_arrives(
-        self, pipeline, mock_message_cycle_manager
-    ):
-        """Expect get_message_event_type to be called when processing the first LLM chunk event."""
+    def test_get_message_event_type_not_called_for_llm_text_chunks(self, pipeline, mock_message_cycle_manager):
+        """Expect LLM text chunks to always use MESSAGE event type."""
         # Setup a minimal LLM chunk event
         chunk = Mock()
         chunk.delta.message.content = "hi"
@@ -151,7 +149,10 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         list(pipeline._process_stream_response(publisher=None, trace_manager=None))
 
         # Assert
-        mock_message_cycle_manager.get_message_event_type.assert_called_once_with(message_id="test-message-id")
+        mock_message_cycle_manager.get_message_event_type.assert_not_called()
+        mock_message_cycle_manager.message_to_stream_response.assert_called_once_with(
+            answer="hi", message_id="test-message-id", event_type=StreamEvent.MESSAGE
+        )
 
     def test_llm_chunk_event_with_text_content(self, pipeline, mock_message_cycle_manager, mock_task_state):
         """Test handling of LLM chunk events with text content."""
