@@ -188,8 +188,22 @@ class SandboxProviderService:
                     id=tenant_configed.id, provider_type=tenant_configed.provider_type, config=config
                 )
             else:
-                return cls.get_system_default_config(session, tenant_id)
+                system_configed: SandboxProviderSystemConfig | None = (
+                    session.query(SandboxProviderSystemConfig)
+                    .filter_by(provider_type=tenant_configed.provider_type)
+                    .first()
+                )
+                if not system_configed:
+                    raise ValueError(
+                        f"No system default provider configured for tenant {tenant_id} and provider type {tenant_configed.provider_type}"
+                    )
+                return SandboxProviderEntity(
+                    id=tenant_configed.id,
+                    provider_type=system_configed.provider_type,
+                    config=decrypt_system_params(system_configed.encrypted_config),
+                )
 
+        # fallback to system default config
         system_configed: SandboxProviderSystemConfig | None = session.query(SandboxProviderSystemConfig).first()
         if system_configed:
             return SandboxProviderEntity(
@@ -201,8 +215,10 @@ class SandboxProviderService:
         raise ValueError(f"No sandbox provider configured for tenant {tenant_id}")
 
     @classmethod
-    def get_system_default_config(cls, session: Session, tenant_id: str) -> SandboxProviderEntity:
-        system_configed: SandboxProviderSystemConfig | None = session.query(SandboxProviderSystemConfig).first()
+    def get_system_default_config(cls, session: Session, tenant_id: str, provider_type: str) -> SandboxProviderEntity:
+        system_configed: SandboxProviderSystemConfig | None = (
+            session.query(SandboxProviderSystemConfig).filter_by(provider_type=provider_type).first()
+        )
         if system_configed:
             return SandboxProviderEntity(
                 id=system_configed.id,
