@@ -7,21 +7,21 @@ from core.sandbox.services.asset_download_service import AssetDownloadItem
 from core.virtual_environment.__base.helpers import pipeline
 from services.app_asset_service import AppAssetService
 
-from .base import SandboxInitializer
+from .base import AsyncSandboxInitializer
 
 logger = logging.getLogger(__name__)
 
 DRAFT_ASSETS_DOWNLOAD_TIMEOUT = 60 * 10
 
 
-class DraftAppAssetsInitializer(SandboxInitializer):
+class DraftAppAssetsInitializer(AsyncSandboxInitializer):
     def __init__(self, tenant_id: str, app_id: str, assets_id: str) -> None:
         self._tenant_id = tenant_id
         self._app_id = app_id
         self._assets_id = assets_id
 
-    def initialize(self, env: Sandbox) -> None:
-        vm = env.vm
+    def initialize(self, sandbox: Sandbox) -> None:
+        vm = sandbox.vm
         # Draft assets download via presigned URLs to avoid zip build overhead.
         # FIXME(Yeuoly): merge 2 IO operations in DraftAppAssetsInitializer and AppAssetsAttrsInitializer
         app_assets = AppAssetService.get_tenant_app_assets(self._tenant_id, self._assets_id)
@@ -41,6 +41,3 @@ class DraftAppAssetsInitializer(SandboxInitializer):
             self._app_id,
             self._assets_id,
         )
-
-    def async_initialize(self) -> bool:
-        return True

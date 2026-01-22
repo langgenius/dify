@@ -9,7 +9,7 @@ from core.entities.provider_entities import BasicProviderConfig
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 
 from .entities.sandbox_type import SandboxType
-from .initializer import SandboxInitializer
+from .initializer import AsyncSandboxInitializer, SandboxInitializer, SyncSandboxInitializer
 from .sandbox import Sandbox
 
 if TYPE_CHECKING:
@@ -113,19 +113,16 @@ class SandboxBuilder:
             assets_id=self._assets_id,
         )
 
-        """
         # Run synchronous initializers before marking sandbox as ready.
-        """
         for init in self._initializers:
-            if init.async_initialize():
-                continue
-            init.initialize(sandbox)
+            if isinstance(init, SyncSandboxInitializer):
+                init.initialize(sandbox)
 
         # Run sandbox setup asynchronously so workflow execution can proceed.
         def initialize() -> None:
             try:
                 for init in self._initializers:
-                    if not init.async_initialize():
+                    if not isinstance(init, AsyncSandboxInitializer):
                         continue
 
                     if sandbox.is_cancelled():

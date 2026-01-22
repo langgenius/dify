@@ -7,21 +7,21 @@ from extensions.ext_storage import storage
 from extensions.storage.file_presign_storage import FilePresignStorage
 
 from ..entities import AppAssets
-from .base import SandboxInitializer
+from .base import AsyncSandboxInitializer
 
 logger = logging.getLogger(__name__)
 
 APP_ASSETS_DOWNLOAD_TIMEOUT = 60 * 10
 
 
-class AppAssetsInitializer(SandboxInitializer):
+class AppAssetsInitializer(AsyncSandboxInitializer):
     def __init__(self, tenant_id: str, app_id: str, assets_id: str) -> None:
         self._tenant_id = tenant_id
         self._app_id = app_id
         self._assets_id = assets_id
 
-    def initialize(self, env: Sandbox) -> None:
-        vm = env.vm
+    def initialize(self, sandbox: Sandbox) -> None:
+        vm = sandbox.vm
         zip_key = AssetPaths.build_zip(self._tenant_id, self._app_id, self._assets_id)
         download_url = FilePresignStorage(storage.storage_runner).get_download_url(zip_key)
 
@@ -45,6 +45,3 @@ class AppAssetsInitializer(SandboxInitializer):
             self._app_id,
             self._assets_id,
         )
-
-    def async_initialize(self) -> bool:
-        return True
