@@ -1,12 +1,14 @@
-import type { MemoryVFS } from 'wa-sqlite/src/examples/MemoryVFS.js'
+import type {
+  SQLiteAction,
+  SQLiteClient,
+  SQLiteQueryResult,
+  SQLiteState,
+  SQLiteValue,
+  SQLiteVFS,
+} from './sqlite/types'
 import { useCallback, useEffect, useReducer, useRef } from 'react'
 
-export type SQLiteValue = string | number | bigint | Uint8Array | null
-
-export type SQLiteQueryResult = {
-  columns: string[]
-  values: SQLiteValue[][]
-}
+export type { SQLiteQueryResult, SQLiteValue } from './sqlite/types'
 
 export type UseSQLiteDatabaseResult = {
   tables: string[]
@@ -14,28 +16,6 @@ export type UseSQLiteDatabaseResult = {
   error: Error | null
   queryTable: (tableName: string, limit?: number) => Promise<SQLiteQueryResult | null>
 }
-
-type SQLiteModuleType = typeof import('wa-sqlite')
-type SQLiteAPI = ReturnType<SQLiteModuleType['Factory']>
-type SQLiteVFS = Parameters<SQLiteAPI['vfs_register']>[0]
-
-type SQLiteClient = {
-  sqlite3: ReturnType<SQLiteModuleType['Factory']>
-  sqlite: SQLiteModuleType
-  vfs: MemoryVFS
-}
-
-type SQLiteState = {
-  tables: string[]
-  isLoading: boolean
-  error: Error | null
-}
-
-type SQLiteAction
-  = | { type: 'reset' }
-    | { type: 'loading' }
-    | { type: 'success', tables: string[] }
-    | { type: 'error', error: Error }
 
 const TABLES_QUERY = 'SELECT name FROM sqlite_master WHERE type=\'table\' AND name NOT LIKE \'sqlite_%\' ORDER BY name'
 
