@@ -277,6 +277,7 @@ const AllTools = ({
                   viewType={isSupportGroupView ? activeView : ViewType.flat}
                   hasSearchText={hasSearchText}
                   selectedTools={selectedTools}
+                  hideSelectedInfo={hideFeaturedTool}
                 />
               </>
             )}

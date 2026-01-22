@@ -395,6 +395,10 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
     setToolValue(prev => (prev ? { ...prev, credential_id: id } : prev))
   }
 
+  const needAuthorization = useMemo(() => {
+    return !(!currentProvider || currentProvider.type !== CollectionType.builtIn || !currentProvider.allow_delete)
+  }, [currentProvider])
+
   const toolSettingsContent = currentProvider && currentTool && toolValue && (
     <>
       <ToolHeader
@@ -404,18 +408,24 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
         description={toolDescriptionText}
         onClose={() => setIsSettingOpen(false)}
       />
-      <ToolAuthorizationSection
-        currentProvider={currentProvider}
-        credentialId={toolValue.credential_id}
-        onAuthorizationItemClick={handleAuthorizationItemClick}
-      />
-      <ToolSettingsSection
-        currentProvider={currentProvider}
-        currentTool={currentTool}
-        value={toolValue}
-        onChange={handleToolValueChange}
-        nodeId={undefined}
-      />
+      {needAuthorization && (
+        <>
+          <ToolAuthorizationSection
+            currentProvider={currentProvider}
+            credentialId={toolValue.credential_id}
+            onAuthorizationItemClick={handleAuthorizationItemClick}
+          />
+        </>
+      )}
+      {!needAuthorization && (
+        <ToolSettingsSection
+          currentProvider={currentProvider}
+          currentTool={currentTool}
+          value={toolValue}
+          onChange={handleToolValueChange}
+          nodeId={undefined}
+        />
+      )}
     </>
   )
 

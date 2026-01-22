@@ -18,6 +18,7 @@ type Props = {
   letters: string[]
   toolRefs: any
   selectedTools?: ToolValue[]
+  hideSelectedInfo?: boolean
 }
 
 const ToolViewFlatView: FC<Props> = ({
@@ -31,6 +32,7 @@ const ToolViewFlatView: FC<Props> = ({
   onSelectMultiple,
   toolRefs,
   selectedTools,
+  hideSelectedInfo,
 }) => {
   const firstLetterToolIds = useMemo(() => {
     const res: Record<string, string> = {}
@@ -61,6 +63,7 @@ const ToolViewFlatView: FC<Props> = ({
               canNotSelectMultiple={canNotSelectMultiple}
               onSelectMultiple={onSelectMultiple}
               selectedTools={selectedTools}
+              hideSelectedInfo={hideSelectedInfo}
             />
           </div>
         ))}
