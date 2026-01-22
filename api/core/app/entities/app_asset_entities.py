@@ -107,7 +107,7 @@ class AppAssetFileTree(BaseModel):
         while current:
             parts.append(current.name)
             current = self.get(current.parent_id) if current.parent_id else None
-        return "/" + "/".join(reversed(parts))
+        return "/".join(reversed(parts))
 
     def relative_path(self, a: AppAssetNode, b: AppAssetNode) -> str:
         """

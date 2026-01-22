@@ -55,6 +55,7 @@ from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.sandbox import Sandbox
 from core.sandbox.bash.session import SandboxBashSession
+from core.sandbox.entities.config import AppAssets
 from core.skill.constants import SkillAttrs
 from core.skill.entities.skill_artifact_set import SkillArtifactSet
 from core.skill.entities.skill_document import SkillDocument
@@ -1509,9 +1510,10 @@ class LLMNode(Node[LLMNodeData]):
                 # Compile skill references after jinja2 rendering
                 if artifact_set is not None and file_tree is not None:
                     skill_artifact = SkillCompiler().compile_one(
-                        artifact_set,
-                        SkillDocument(skill_id="anonymous", content=result_text, metadata={}),
-                        file_tree,
+                        artifact_set=artifact_set,
+                        document=SkillDocument(skill_id="anonymous", content=result_text, metadata={}),
+                        file_tree=file_tree,
+                        base_path=AppAssets.PATH,
                     )
                     result_text = skill_artifact.content
 
@@ -1551,9 +1553,10 @@ class LLMNode(Node[LLMNodeData]):
                 # Compile skill references after context and variable substitution
                 if plain_text and artifact_set is not None and file_tree is not None:
                     skill_artifact = SkillCompiler().compile_one(
-                        artifact_set,
-                        SkillDocument(skill_id="anonymous", content=plain_text, metadata={}),
-                        file_tree,
+                        artifact_set=artifact_set,
+                        document=SkillDocument(skill_id="anonymous", content=plain_text, metadata={}),
+                        file_tree=file_tree,
+                        base_path=AppAssets.PATH,
                     )
                     plain_text = skill_artifact.content
 
@@ -1823,7 +1826,10 @@ class LLMNode(Node[LLMNodeData]):
         for prompt in self.node_data.prompt_template:
             if isinstance(prompt, LLMNodeChatModelMessage):
                 skill_artifact = SkillCompiler().compile_one(
-                    artifact_set, SkillDocument(skill_id="anonymous", content=prompt.text, metadata={}), file_tree
+                    artifact_set=artifact_set,
+                    document=SkillDocument(skill_id="anonymous", content=prompt.text, metadata={}),
+                    file_tree=file_tree,
+                    base_path=AppAssets.PATH,
                 )
                 tool_artifacts.append(skill_artifact.tools)
 
