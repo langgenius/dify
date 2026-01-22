@@ -99,6 +99,11 @@ class AppExportQuery(BaseModel):
     workflow_id: str | None = Field(default=None, description="Specific workflow ID to export")
 
 
+class AppExportBundleQuery(BaseModel):
+    include_secret: bool = Field(default=False, description="Include secrets in export")
+    workflow_id: str | None = Field(default=None, description="Specific workflow ID to export")
+
+
 class AppNamePayload(BaseModel):
     name: str = Field(..., min_length=1, description="Name to check")
 
@@ -648,6 +653,36 @@ class AppExportApi(Resource):
             )
         )
         return payload.model_dump(mode="json")
+
+
+@console_ns.route("/apps/<uuid:app_id>/export-bundle")
+class AppExportBundleApi(Resource):
+    @get_app_model
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    def get(self, app_model):
+        from io import BytesIO
+
+        from flask import send_file
+
+        from services.app_bundle_service import AppBundleService
+
+        args = AppExportBundleQuery.model_validate(request.args.to_dict(flat=True))
+
+        result = AppBundleService.export_bundle(
+            app_model=app_model,
+            include_secret=args.include_secret,
+            workflow_id=args.workflow_id,
+        )
+
+        return send_file(
+            BytesIO(result.zip_bytes),
+            mimetype="application/zip",
+            as_attachment=True,
+            download_name=result.filename,
+        )
 
 
 @console_ns.route("/apps/<uuid:app_id>/name")

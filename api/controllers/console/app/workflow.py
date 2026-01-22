@@ -686,13 +686,14 @@ class PublishedWorkflowApi(Resource):
         """
         Publish workflow
         """
+        from services.app_bundle_service import AppBundleService
+
         current_user, _ = current_account_with_tenant()
 
         args = PublishWorkflowPayload.model_validate(console_ns.payload or {})
 
-        workflow_service = WorkflowService()
         with Session(db.engine) as session:
-            workflow = workflow_service.publish_workflow(
+            workflow = AppBundleService.publish(
                 session=session,
                 app_model=app_model,
                 account=current_user,

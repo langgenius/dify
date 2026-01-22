@@ -243,22 +243,6 @@ class AppAssetNodeReorderResource(Resource):
             raise AppAssetNodeNotFoundError()
 
 
-@console_ns.route("/apps/<string:app_id>/assets/publish")
-class AppAssetPublishResource(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def post(self, app_model: App):
-        current_user, _ = current_account_with_tenant()
-        published = AppAssetService.publish(app_model, current_user.id)
-        return {
-            "id": published.id,
-            "version": published.version,
-            "asset_tree": published.asset_tree.model_dump(),
-        }, 201
-
-
 @console_ns.route("/apps/<string:app_id>/assets/files/<string:node_id>/download-url")
 class AppAssetFileDownloadUrlResource(Resource):
     @setup_required

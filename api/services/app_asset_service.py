@@ -13,13 +13,13 @@ from core.app.entities.app_asset_entities import (
     TreePathConflictError,
 )
 from core.app_assets.builder import AssetBuildPipeline, BuildContext
-from core.app_assets.packager.zip_packager import ZipPackager
+from core.app_assets.converters import tree_to_asset_items
+from core.app_assets.packager import AssetZipPackager
 from core.app_assets.paths import AssetPaths
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from extensions.storage.file_presign_storage import FilePresignStorage
-from libs.datetime_utils import naive_utc_now
 from models.app_asset import AppAssets
 from models.model import App
 
@@ -445,35 +445,39 @@ class AppAssetService:
             AppAssetService._clear_draft_download_cache(cache_keys)
 
     @staticmethod
-    def publish(app_model: App, account_id: str) -> AppAssets:
+    def publish(session: Session, app_model: App, account_id: str, workflow_id: str) -> AppAssets:
         tenant_id = app_model.tenant_id
         app_id = app_model.id
-        with Session(db.engine, expire_on_commit=False) as session:
-            assets = AppAssetService.get_or_create_assets(session, app_model, account_id)
-            tree = assets.asset_tree
 
-            publish_id = str(uuid4())
+        assets = AppAssetService.get_or_create_assets(session, app_model, account_id)
+        tree = assets.asset_tree
 
-            published = AppAssets(
-                id=publish_id,
-                tenant_id=tenant_id,
-                app_id=app_id,
-                version=str(naive_utc_now()),
-                created_by=account_id,
-            )
-            published.asset_tree = tree
-            session.add(published)
-            session.flush()
+        publish_id = str(uuid4())
 
-            ctx = BuildContext(tenant_id=tenant_id, app_id=app_id, build_id=publish_id)
-            built_assets = AssetBuildPipeline().build_all(tree, ctx)
+        published = AppAssets(
+            id=publish_id,
+            tenant_id=tenant_id,
+            app_id=app_id,
+            version=workflow_id,
+            created_by=account_id,
+        )
+        published.asset_tree = tree
+        session.add(published)
+        session.flush()
 
-            packager = ZipPackager(storage)
-            zip_bytes = packager.package(built_assets)
-            zip_key = AssetPaths.build_zip(tenant_id, app_id, publish_id)
-            storage.save(zip_key, zip_bytes)
+        ctx = BuildContext(tenant_id=tenant_id, app_id=app_id, build_id=publish_id)
+        built_assets = AssetBuildPipeline().build_all(tree, ctx)
 
-            session.commit()
+        packager = AssetZipPackager(storage)
+
+        runtime_zip_bytes = packager.package(built_assets)
+        runtime_zip_key = AssetPaths.build_zip(tenant_id, app_id, publish_id)
+        storage.save(runtime_zip_key, runtime_zip_bytes)
+
+        source_items = tree_to_asset_items(tree, tenant_id, app_id)
+        source_zip_bytes = packager.package(source_items)
+        source_zip_key = AssetPaths.build_source_zip(tenant_id, app_id, workflow_id)
+        storage.save(source_zip_key, source_zip_bytes)
 
         return published
 
@@ -483,7 +487,12 @@ class AppAssetService:
         tree = assets.asset_tree
 
         ctx = BuildContext(tenant_id=tenant_id, app_id=app_id, build_id=assets.id)
-        AssetBuildPipeline().build_all(tree, ctx)
+        built_assets = AssetBuildPipeline().build_all(tree, ctx)
+
+        packager = AssetZipPackager(storage)
+        zip_bytes = packager.package(built_assets)
+        zip_key = AssetPaths.build_zip(tenant_id, app_id, assets.id)
+        storage.save(zip_key, zip_bytes)
 
     @staticmethod
     def get_file_download_url(
@@ -503,3 +512,39 @@ class AppAssetService:
             storage_key = AssetPaths.draft_file(app_model.tenant_id, app_model.id, node_id)
             presign_storage = FilePresignStorage(storage.storage_runner)
             return presign_storage.get_download_url(storage_key, expires_in)
+
+    @staticmethod
+    def get_published_assets_by_workflow_id(tenant_id: str, app_id: str, workflow_id: str) -> AppAssets | None:
+        with Session(db.engine, expire_on_commit=False) as session:
+            return (
+                session.query(AppAssets)
+                .filter(
+                    AppAssets.tenant_id == tenant_id,
+                    AppAssets.app_id == app_id,
+                    AppAssets.version == workflow_id,
+                )
+                .first()
+            )
+
+    @staticmethod
+    def get_source_zip_bytes(tenant_id: str, app_id: str, workflow_id: str) -> bytes | None:
+        source_zip_key = AssetPaths.build_source_zip(tenant_id, app_id, workflow_id)
+        try:
+            return storage.load_once(source_zip_key)
+        except Exception:
+            logger.warning("Source zip not found: %s", source_zip_key)
+            return None
+
+    @staticmethod
+    def set_draft_assets(
+        app_model: App,
+        account_id: str,
+        new_tree: AppAssetFileTree,
+    ) -> AppAssets:
+        with Session(db.engine, expire_on_commit=False) as session:
+            assets = AppAssetService.get_or_create_assets(session, app_model, account_id)
+            assets.asset_tree = new_tree
+            assets.updated_by = account_id
+            session.commit()
+
+        return assets

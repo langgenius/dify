@@ -40,7 +40,6 @@ from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
 from models.workflow_features import WorkflowFeatures
 from repositories.factory import DifyAPIRepositoryFactory
-from services.app_asset_service import AppAssetService
 from services.billing_service import BillingService
 from services.enterprise.plugin_manager_service import PluginCredentialType
 from services.errors.app import IsDraftWorkflowError, TriggerNodeLimitExceededError, WorkflowHashNotEqualError
@@ -155,8 +154,6 @@ class WorkflowService:
             )
             .first()
         )
-
-        AppAssetService.publish(app_model=app_model, account_id=app_model.created_by)
 
         return workflow
 

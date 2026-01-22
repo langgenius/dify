@@ -51,6 +51,14 @@ class AppImportPayload(BaseModel):
     app_id: str | None = None
 
 
+class AppImportBundlePayload(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    icon_type: str | None = None
+    icon: str | None = None
+    icon_background: str | None = None
+
+
 console_ns.schema_model(
     AppImportPayload.__name__, AppImportPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
 )
@@ -138,4 +146,56 @@ class AppImportCheckDependenciesApi(Resource):
             import_service = AppDslService(session)
             result = import_service.check_dependencies(app_model=app_model)
 
+        return result.model_dump(mode="json"), 200
+
+
+@console_ns.route("/apps/imports-bundle")
+class AppImportBundleApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @marshal_with(app_import_model)
+    @cloud_edition_billing_resource_check("apps")
+    @edit_permission_required
+    def post(self):
+        from flask import request
+
+        from core.app.entities.app_bundle_entities import BundleFormatError
+        from services.app_bundle_service import AppBundleService
+
+        current_user, _ = current_account_with_tenant()
+
+        if "file" not in request.files:
+            return {"error": "No file provided"}, 400
+
+        file = request.files["file"]
+        if not file.filename or not file.filename.endswith(".zip"):
+            return {"error": "Invalid file format, expected .zip"}, 400
+
+        zip_bytes = file.read()
+
+        form_data = request.form.to_dict()
+        args = AppImportBundlePayload.model_validate(form_data)
+
+        try:
+            result = AppBundleService.import_bundle(
+                account=current_user,
+                zip_bytes=zip_bytes,
+                name=args.name,
+                description=args.description,
+                icon_type=args.icon_type,
+                icon=args.icon,
+                icon_background=args.icon_background,
+            )
+        except BundleFormatError as e:
+            return {"error": str(e)}, 400
+
+        if result.app_id and FeatureService.get_system_features().webapp_auth.enabled:
+            EnterpriseService.WebAppAuth.update_app_access_mode(result.app_id, "private")
+
+        status = result.status
+        if status == ImportStatus.FAILED:
+            return result.model_dump(mode="json"), 400
+        elif status == ImportStatus.PENDING:
+            return result.model_dump(mode="json"), 202
         return result.model_dump(mode="json"), 200

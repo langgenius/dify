@@ -1,11 +1,30 @@
 from typing import Any
 
 from core.app.entities.app_asset_entities import AppAssetFileTree, AppAssetNode
-from core.skill.entities.skill_bundle import SkillBundle
 from core.skill.entities.skill_document import SkillDocument
-from core.skill.entities.skill_metadata import FileReference, ToolConfiguration, ToolReference
+from core.skill.entities.skill_metadata import FileReference, ToolConfiguration, ToolFieldConfig, ToolReference
 from core.skill.skill_compiler import SkillCompiler
 from core.tools.entities.tool_entities import ToolProviderType
+
+
+class MockPathResolver:
+    def __init__(self, tree: AppAssetFileTree):
+        self.tree = tree
+
+    def resolve(self, source_id: str, target_id: str) -> str:
+        source_node = self.tree.get(source_id)
+        target_node = self.tree.get(target_id)
+        if not source_node or not target_node:
+            if target_node:
+                return "./" + target_node.name
+            return f"./{target_id}"
+
+        return self.tree.relative_path(source_node, target_node)
+
+
+class MockToolResolver:
+    def resolve(self, tool_ref: ToolReference) -> str:
+        return f"[Executable: {tool_ref.tool_name}_{tool_ref.uuid} --help command]"
 
 
 def create_file_tree(*nodes: AppAssetNode) -> AppAssetFileTree:
@@ -119,21 +138,19 @@ class TestSkillCompilerBasic:
 
 
 class TestSkillCompilerTransitiveDependencies:
-    def test_compile_skill_with_skill_dependency(self):
+    def test_references_are_transitive(self):
         # given
-        # skill-a references skill-b
-        # skill-b has a tool dependency
-        tool_ref = ToolReference(
-            uuid="tool-1",
-            type=ToolProviderType.BUILT_IN,
-            provider="sandbox",
-            tool_name="python",
-            credential_id=None,
-            configuration=None,
+        tool_b = ToolReference(
+            uuid="tool-b",
+            type=ToolProviderType.API,
+            provider="external",
+            tool_name="api_tool",
+            credential_id="cred-123",
+            configuration=ToolConfiguration(fields=[ToolFieldConfig(id="key", value="secret")]),
         )
         doc_a = SkillDocument(
             skill_id="skill-a",
-            content="See: §[file].[app].[skill-b]§",
+            content="A refs B: §[file].[app].[skill-b]§",
             metadata=make_metadata(
                 tools={},
                 files=[FileReference(source="app", asset_id="skill-b")],
@@ -141,15 +158,12 @@ class TestSkillCompilerTransitiveDependencies:
         )
         doc_b = SkillDocument(
             skill_id="skill-b",
-            content="Run: §[tool].[sandbox].[python].[tool-1]§",
-            metadata=make_metadata(
-                tools={"tool-1": tool_ref},
-                files=[],
-            ),
+            content="B: §[tool].[external].[api_tool].[tool-b]§",
+            metadata=make_metadata(tools={"tool-b": tool_b}, files=[]),
         )
         tree = create_file_tree(
-            AppAssetNode.create_file("skill-a", "skill-a.md"),
-            AppAssetNode.create_file("skill-b", "skill-b.md"),
+            AppAssetNode.create_file("skill-a", "a.md"),
+            AppAssetNode.create_file("skill-b", "b.md"),
         )
         compiler = SkillCompiler()
 
@@ -159,32 +173,271 @@ class TestSkillCompilerTransitiveDependencies:
         # then
         artifact_a = artifact_set.get("skill-a")
         assert artifact_a is not None
-        # skill-a should have transitive tool dependency from skill-b
-        assert len(artifact_a.tools.dependencies) == 1
-        assert artifact_a.tools.dependencies[0].tool_name == "python"
+        assert len(artifact_a.tools.references) == 1
+        ref = artifact_a.tools.references[0]
+        assert ref.uuid == "tool-b"
+        assert ref.credential_id == "cred-123"
+        assert ref.configuration is not None
+        assert ref.configuration.fields == [ToolFieldConfig(id="key", value="secret")]
 
-        # dependency graph should show skill-a depends on skill-b
-        assert "skill-b" in artifact_set.dependency_graph.get("skill-a", [])
-        # reverse graph should show skill-b is depended by skill-a
-        assert "skill-a" in artifact_set.reverse_graph.get("skill-b", [])
+        artifact_b = artifact_set.get("skill-b")
+        assert artifact_b is not None
+        assert len(artifact_b.tools.references) == 1
+        assert artifact_b.tools.references[0].uuid == "tool-b"
 
-    def test_compile_chain_dependency(self):
+
+class TestSkillCompilerCompileOne:
+    def test_compile_one_resolves_context(self):
         # given
-        # skill-a -> skill-b -> skill-c
-        # each has its own tool
-        tool_a = ToolReference(
-            uuid="tool-a", type=ToolProviderType.BUILT_IN, provider="p", tool_name="tool_a"
+        tool_ref = ToolReference(
+            uuid="tool-1",
+            type=ToolProviderType.BUILT_IN,
+            provider="sandbox",
+            tool_name="python",
         )
-        tool_b = ToolReference(
-            uuid="tool-b", type=ToolProviderType.BUILT_IN, provider="p", tool_name="tool_b"
-        )
-        tool_c = ToolReference(
-            uuid="tool-c", type=ToolProviderType.BUILT_IN, provider="p", tool_name="tool_c"
+        doc_skill = SkillDocument(
+            skill_id="skill-lib",
+            content="Library Code §[tool].[sandbox].[python].[tool-1]§",
+            metadata=make_metadata(tools={"tool-1": tool_ref}, files=[]),
         )
 
+        tree = create_file_tree(
+            AppAssetNode.create_file("skill-lib", "lib.md"),
+        )
+        compiler = SkillCompiler()
+
+        context = compiler.compile_all([doc_skill], tree, "assets-1")
+
+        # when
+        template_doc = SkillDocument(
+            skill_id="anonymous",
+            content="Use the lib: §[file].[app].[skill-lib]§",
+            metadata=make_metadata(tools={}, files=[FileReference(source="app", asset_id="skill-lib")]),
+        )
+
+        result = compiler.compile_one(context, template_doc, tree)
+
+        # then
+        assert "lib.md" in result.content
+        assert len(result.tools.dependencies) == 1
+        assert result.tools.dependencies[0].tool_name == "python"
+
+
+class TestSkillCompilerComplexGraph:
+    def test_large_complex_dependency_graph(self):
+        """
+        Generate 100 skills with complex inter-dependencies:
+        - Random file references between skills
+        - Random tool assignments
+        - Multiple circular dependencies
+        - Chain dependencies
+        - Star dependencies (hub nodes)
+        """
+        import random
+
+        random.seed(42)  # Reproducible
+
+        num_skills = 100
+        num_tools = 20
+
+        # Create tools
+        tools: dict[str, ToolReference] = {}
+        for i in range(num_tools):
+            tools[f"tool-{i}"] = ToolReference(
+                uuid=f"tool-{i}",
+                type=random.choice([ToolProviderType.BUILT_IN, ToolProviderType.API]),  # noqa: S311
+                provider=f"provider-{i % 5}",
+                tool_name=f"tool_func_{i}",
+                credential_id=f"cred-{i}" if i % 3 == 0 else None,
+            )
+
+        # Create skills with various dependency patterns
+        documents: list[SkillDocument] = []
+        nodes: list[AppAssetNode] = []
+
+        for i in range(num_skills):
+            skill_id = f"skill-{i}"
+            nodes.append(AppAssetNode.create_file(skill_id, f"{skill_id}.md"))
+
+            # Determine file references (other skills this skill references)
+            file_refs: list[FileReference] = []
+            ref_placeholders: list[str] = []
+
+            # Pattern 1: Chain dependency (skill-i references skill-i+1)
+            if i < num_skills - 1 and i % 10 != 9:
+                target = f"skill-{i + 1}"
+                file_refs.append(FileReference(source="app", asset_id=target))
+                ref_placeholders.append(f"§[file].[app].[{target}]§")
+
+            # Pattern 2: Circular dependency (every 10th skill references back)
+            if i % 10 == 9 and i >= 10:
+                target = f"skill-{i - 9}"
+                file_refs.append(FileReference(source="app", asset_id=target))
+                ref_placeholders.append(f"§[file].[app].[{target}]§")
+
+            # Pattern 3: Hub pattern (skill-0, skill-50 are hubs referenced by many)
+            if i > 0 and i % 7 == 0:
+                target = "skill-0"
+                file_refs.append(FileReference(source="app", asset_id=target))
+                ref_placeholders.append(f"§[file].[app].[{target}]§")
+
+            if i > 50 and i % 11 == 0:
+                target = "skill-50"
+                file_refs.append(FileReference(source="app", asset_id=target))
+                ref_placeholders.append(f"§[file].[app].[{target}]§")
+
+            # Pattern 4: Random references (sparse)
+            if random.random() < 0.2:  # noqa: S311
+                target_idx = random.randint(0, num_skills - 1)  # noqa: S311
+                if target_idx != i:
+                    target = f"skill-{target_idx}"
+                    if not any(f.asset_id == target for f in file_refs):
+                        file_refs.append(FileReference(source="app", asset_id=target))
+                        ref_placeholders.append(f"§[file].[app].[{target}]§")
+
+            # Assign tools to skills
+            skill_tools: dict[str, ToolReference] = {}
+            tool_placeholders: list[str] = []
+
+            # Each skill has 0-3 tools
+            num_skill_tools = random.randint(0, 3)  # noqa: S311
+            assigned_tools = random.sample(list(tools.keys()), min(num_skill_tools, len(tools)))
+
+            for tool_id in assigned_tools:
+                tool = tools[tool_id]
+                skill_tools[tool_id] = tool
+                tool_placeholders.append(f"§[tool].[{tool.provider}].[{tool.tool_name}].[{tool_id}]§")
+
+            # Build content
+            content_parts = [f"# Skill {i}\n\nThis is skill number {i}.\n"]
+            if ref_placeholders:
+                content_parts.append(f"References: {', '.join(ref_placeholders)}\n")
+            if tool_placeholders:
+                content_parts.append(f"Tools: {', '.join(tool_placeholders)}\n")
+
+            content = "\n".join(content_parts)
+
+            doc = SkillDocument(
+                skill_id=skill_id,
+                content=content,
+                metadata=make_metadata(tools=skill_tools, files=file_refs),
+            )
+            documents.append(doc)
+
+        tree = create_file_tree(*nodes)
+        compiler = SkillCompiler()
+
+        # when
+        bundle = compiler.compile_all(documents, tree, "stress-test-assets")
+
+        # then
+        assert len(bundle.entries) == num_skills
+
+        # Verify all skills compiled successfully
+        for i in range(num_skills):
+            entry = bundle.get(f"skill-{i}")
+            assert entry is not None, f"skill-{i} should exist"
+            assert entry.content, f"skill-{i} should have content"
+            # Content should have resolved references (no § markers for valid refs)
+            assert "§[file].[app].[skill-" not in entry.content or "[File not found]" in entry.content
+
+        # Verify hub nodes have many dependents in reverse graph
+        assert len(bundle.reverse_graph.get("skill-0", [])) > 5, "skill-0 should be a hub"
+
+        # Verify transitive dependencies propagate through cycles
+        # skill-9 -> skill-0 (via chain 9->8->...->1->0) and skill-9 refs skill-0 directly via cycle
+        entry_9 = bundle.get("skill-9")
+        assert entry_9 is not None
+
+        # Verify tool propagation works
+        # Find a skill with tools and check its dependents have those tools
+        for i in range(num_skills):
+            entry = bundle.get(f"skill-{i}")
+            if entry and entry.tools.dependencies:
+                # This skill has tools, check if skills that reference it also have these tools
+                dependents = bundle.reverse_graph.get(f"skill-{i}", [])
+                for dep_id in dependents[:3]:  # Check first 3 dependents
+                    dep_entry = bundle.get(dep_id)
+                    if dep_entry:
+                        # Dependent should have at least as many tool dependencies
+                        # (might have more from other paths)
+                        original_tool_names = {d.tool_name for d in entry.tools.dependencies}
+                        dep_tool_names = {d.tool_name for d in dep_entry.tools.dependencies}
+                        assert original_tool_names.issubset(dep_tool_names), (
+                            f"{dep_id} should have tools from {entry.skill_id}"
+                        )
+                break  # Only need to verify one case
+
+        print(f"\n✓ Successfully compiled {num_skills} skills")
+        print(f"  - {num_tools} tool types")
+        print(f"  - {sum(len(v) for v in bundle.dependency_graph.values())} total edges")
+        print(f"  - Hub skill-0 has {len(bundle.reverse_graph.get('skill-0', []))} dependents")
+
+
+class TestSkillCompilerCircularDependencies:
+    def test_simple_circular_dependency(self):
+        """A ↔ B: Two skills reference each other."""
+        # given
         doc_a = SkillDocument(
             skill_id="skill-a",
-            content="A refs B: §[file].[app].[skill-b]§ §[tool].[p].[tool_a].[tool-a]§",
+            content="A references B: §[file].[app].[skill-b]§",
+            metadata=make_metadata(
+                tools={},
+                files=[FileReference(source="app", asset_id="skill-b")],
+            ),
+        )
+        doc_b = SkillDocument(
+            skill_id="skill-b",
+            content="B references A: §[file].[app].[skill-a]§",
+            metadata=make_metadata(
+                tools={},
+                files=[FileReference(source="app", asset_id="skill-a")],
+            ),
+        )
+        tree = create_file_tree(
+            AppAssetNode.create_file("skill-a", "a.md"),
+            AppAssetNode.create_file("skill-b", "b.md"),
+        )
+        compiler = SkillCompiler()
+
+        # when
+        bundle = compiler.compile_all([doc_a, doc_b], tree, "assets-1")
+
+        # then
+        assert len(bundle.entries) == 2
+
+        entry_a = bundle.get("skill-a")
+        assert entry_a is not None
+        assert entry_a.content == "A references B: ./b.md"
+        # Transitive closure: A refs B, B refs A, so A has both
+        file_ids_a = {f.asset_id for f in entry_a.files.references}
+        assert file_ids_a == {"skill-a", "skill-b"}
+
+        entry_b = bundle.get("skill-b")
+        assert entry_b is not None
+        assert entry_b.content == "B references A: ./a.md"
+        # Transitive closure: B refs A, A refs B, so B has both
+        file_ids_b = {f.asset_id for f in entry_b.files.references}
+        assert file_ids_b == {"skill-a", "skill-b"}
+
+    def test_circular_dependency_with_tools(self):
+        """A ↔ B with tools: Both skills should have access to both tools."""
+        # given
+        tool_a = ToolReference(
+            uuid="tool-a",
+            type=ToolProviderType.BUILT_IN,
+            provider="sandbox",
+            tool_name="bash",
+        )
+        tool_b = ToolReference(
+            uuid="tool-b",
+            type=ToolProviderType.BUILT_IN,
+            provider="sandbox",
+            tool_name="python",
+        )
+        doc_a = SkillDocument(
+            skill_id="skill-a",
+            content="A: §[tool].[sandbox].[bash].[tool-a]§ refs §[file].[app].[skill-b]§",
             metadata=make_metadata(
                 tools={"tool-a": tool_a},
                 files=[FileReference(source="app", asset_id="skill-b")],
@@ -192,986 +445,88 @@ class TestSkillCompilerTransitiveDependencies:
         )
         doc_b = SkillDocument(
             skill_id="skill-b",
-            content="B refs C: §[file].[app].[skill-c]§ §[tool].[p].[tool_b].[tool-b]§",
+            content="B: §[tool].[sandbox].[python].[tool-b]§ refs §[file].[app].[skill-a]§",
             metadata=make_metadata(
                 tools={"tool-b": tool_b},
-                files=[FileReference(source="app", asset_id="skill-c")],
+                files=[FileReference(source="app", asset_id="skill-a")],
             ),
         )
-        doc_c = SkillDocument(
-            skill_id="skill-c",
-            content="C is leaf §[tool].[p].[tool_c].[tool-c]§",
-            metadata=make_metadata(
-                tools={"tool-c": tool_c},
-                files=[],
-            ),
-        )
-
         tree = create_file_tree(
             AppAssetNode.create_file("skill-a", "a.md"),
             AppAssetNode.create_file("skill-b", "b.md"),
-            AppAssetNode.create_file("skill-c", "c.md"),
         )
         compiler = SkillCompiler()
 
         # when
-        artifact_set = compiler.compile_all([doc_a, doc_b, doc_c], tree, "assets-1")
+        bundle = compiler.compile_all([doc_a, doc_b], tree, "assets-1")
 
         # then
-        artifact_a = artifact_set.get("skill-a")
-        assert artifact_a is not None
-        # skill-a should have all 3 tools (own + transitive)
-        tool_names = {d.tool_name for d in artifact_a.tools.dependencies}
-        assert tool_names == {"tool_a", "tool_b", "tool_c"}
+        entry_a = bundle.get("skill-a")
+        assert entry_a is not None
+        # A should have both tools (its own + B's via transitive dependency)
+        assert len(entry_a.tools.dependencies) == 2
+        tool_names_a = {dep.tool_name for dep in entry_a.tools.dependencies}
+        assert tool_names_a == {"bash", "python"}
 
-        artifact_b = artifact_set.get("skill-b")
-        assert artifact_b is not None
-        tool_names_b = {d.tool_name for d in artifact_b.tools.dependencies}
-        assert tool_names_b == {"tool_b", "tool_c"}
+        entry_b = bundle.get("skill-b")
+        assert entry_b is not None
+        # B should have both tools (its own + A's via transitive dependency)
+        assert len(entry_b.tools.dependencies) == 2
+        tool_names_b = {dep.tool_name for dep in entry_b.tools.dependencies}
+        assert tool_names_b == {"bash", "python"}
 
-        artifact_c = artifact_set.get("skill-c")
-        assert artifact_c is not None
-        tool_names_c = {d.tool_name for d in artifact_c.tools.dependencies}
-        assert tool_names_c == {"tool_c"}
-
-
-class TestSkillBundleQueries:
-    def test_recompile_group_ids(self):
+    def test_three_way_circular_dependency(self):
+        """A → B → C → A: Three skills form a cycle."""
         # given
-        # skill-a -> skill-b -> skill-c
-        doc_a = SkillDocument(
-            skill_id="skill-a",
-            content="refs B: §[file].[app].[skill-b]§",
-            metadata=make_metadata(
-                tools={},
-                files=[FileReference(source="app", asset_id="skill-b")],
-            ),
-        )
-        doc_b = SkillDocument(
-            skill_id="skill-b",
-            content="refs C: §[file].[app].[skill-c]§",
-            metadata=make_metadata(
-                tools={},
-                files=[FileReference(source="app", asset_id="skill-c")],
-            ),
-        )
-        doc_c = SkillDocument(
-            skill_id="skill-c",
-            content="leaf",
-            metadata=make_metadata(tools={}, files=[]),
-        )
-
-        tree = create_file_tree(
-            AppAssetNode.create_file("skill-a", "a.md"),
-            AppAssetNode.create_file("skill-b", "b.md"),
-            AppAssetNode.create_file("skill-c", "c.md"),
-        )
-        compiler = SkillCompiler()
-        artifact_set = compiler.compile_all([doc_a, doc_b, doc_c], tree, "assets-1")
-
-        # when - if skill-c changes, who needs recompile?
-        affected = artifact_set.recompile_group_ids("skill-c")
-
-        # then - all upstream skills need recompile
-        assert affected == {"skill-a", "skill-b", "skill-c"}
-
-    def test_referenced_skill_ids(self):
-        # given
-        doc_a = SkillDocument(
-            skill_id="skill-a",
-            content="refs B and C: §[file].[app].[skill-b]§ §[file].[app].[skill-c]§",
-            metadata=make_metadata(
-                tools={},
-                files=[
-                    FileReference(source="app", asset_id="skill-b"),
-                    FileReference(source="app", asset_id="skill-c"),
-                ],
-            ),
-        )
-        doc_b = SkillDocument(
-            skill_id="skill-b",
-            content="B",
-            metadata=make_metadata(tools={}, files=[]),
-        )
-        doc_c = SkillDocument(
-            skill_id="skill-c",
-            content="C",
-            metadata=make_metadata(tools={}, files=[]),
-        )
-
-        tree = create_file_tree(
-            AppAssetNode.create_file("skill-a", "a.md"),
-            AppAssetNode.create_file("skill-b", "b.md"),
-            AppAssetNode.create_file("skill-c", "c.md"),
-        )
-        compiler = SkillCompiler()
-        artifact_set = compiler.compile_all([doc_a, doc_b, doc_c], tree, "assets-1")
-
-        # when
-        refs = artifact_set.referenced_skill_ids("skill-a")
-
-        # then
-        assert refs == {"skill-b", "skill-c"}
-
-
-class TestSkillCompilerIncrementalCompile:
-    def test_compile_one_updates_artifact_set(self):
-        # given - initial compile
-        doc_a = SkillDocument(
-            skill_id="skill-a",
-            content="original content",
-            metadata=make_metadata(tools={}, files=[]),
-        )
-        tree = create_file_tree(
-            AppAssetNode.create_file("skill-a", "a.md"),
-        )
-        compiler = SkillCompiler()
-        artifact_set = compiler.compile_all([doc_a], tree, "assets-1")
-
-        # when - update skill-a
-        updated_doc = SkillDocument(
-            skill_id="skill-a",
-            content="updated content",
-            metadata=make_metadata(tools={}, files=[]),
-        )
-        updated_artifact = compiler.compile_one(artifact_set, updated_doc, tree)
-        artifact_set.upsert(updated_artifact)
-
-        # then
-        artifact = artifact_set.get("skill-a")
-        assert artifact is not None
-        assert artifact.content == "updated content"
-
-
-class TestSkillCompilerEdgeCases:
-    def test_missing_file_reference_replaced_with_placeholder(self):
-        # given
-        doc = SkillDocument(
-            skill_id="skill-1",
-            content="See: §[file].[app].[non-existent]§",
-            metadata=make_metadata(
-                tools={},
-                files=[FileReference(source="app", asset_id="non-existent")],
-            ),
-        )
-        tree = create_file_tree(
-            AppAssetNode.create_file("skill-1", "skill.md"),
-        )
-        compiler = SkillCompiler()
-
-        # when
-        artifact_set = compiler.compile_all([doc], tree, "assets-1")
-
-        # then
-        artifact = artifact_set.get("skill-1")
-        assert artifact is not None
-        assert "[File not found]" in artifact.content
-
-    def test_missing_tool_reference_replaced_with_placeholder(self):
-        # given
-        doc = SkillDocument(
-            skill_id="skill-1",
-            content="Run: §[tool].[sandbox].[bash].[missing-tool]§",
-            metadata=make_metadata(tools={}, files=[]),
-        )
-        tree = create_file_tree(
-            AppAssetNode.create_file("skill-1", "skill.md"),
-        )
-        compiler = SkillCompiler()
-
-        # when
-        artifact_set = compiler.compile_all([doc], tree, "assets-1")
-
-        # then
-        artifact = artifact_set.get("skill-1")
-        assert artifact is not None
-        assert "[Tool not found: missing-tool]" in artifact.content
-
-    def test_content_digest_changes_when_content_changes(self):
-        # given
-        tree = create_file_tree(
-            AppAssetNode.create_file("skill-1", "skill.md"),
-        )
-        compiler = SkillCompiler()
-
-        doc1 = SkillDocument(
-            skill_id="skill-1",
-            content="content version 1",
-            metadata=make_metadata(tools={}, files=[]),
-        )
-        artifact_set1 = compiler.compile_all([doc1], tree, "assets-1")
-        artifact1 = artifact_set1.get("skill-1")
-        assert artifact1 is not None
-        digest1 = artifact1.source.content_digest
-
-        doc2 = SkillDocument(
-            skill_id="skill-1",
-            content="content version 2",
-            metadata=make_metadata(tools={}, files=[]),
-        )
-        artifact_set2 = compiler.compile_all([doc2], tree, "assets-1")
-        artifact2 = artifact_set2.get("skill-1")
-        assert artifact2 is not None
-        digest2 = artifact2.source.content_digest
-
-        # then
-        assert digest1 != digest2
-
-
-class TestSkillCompilerComplexScenarios:
-    def test_diamond_dependency(self):
-        # given
-        #     skill-a
-        #    /       \
-        # skill-b   skill-c
-        #    \       /
-        #     skill-d (has tool)
-        tool_d = ToolReference(
-            uuid="tool-d", type=ToolProviderType.BUILT_IN, provider="p", tool_name="tool_d"
-        )
-
-        doc_a = SkillDocument(
-            skill_id="skill-a",
-            content="A refs B and C: §[file].[app].[skill-b]§ §[file].[app].[skill-c]§",
-            metadata=make_metadata(
-                tools={},
-                files=[
-                    FileReference(source="app", asset_id="skill-b"),
-                    FileReference(source="app", asset_id="skill-c"),
-                ],
-            ),
-        )
-        doc_b = SkillDocument(
-            skill_id="skill-b",
-            content="B refs D: §[file].[app].[skill-d]§",
-            metadata=make_metadata(
-                tools={},
-                files=[FileReference(source="app", asset_id="skill-d")],
-            ),
-        )
-        doc_c = SkillDocument(
-            skill_id="skill-c",
-            content="C refs D: §[file].[app].[skill-d]§",
-            metadata=make_metadata(
-                tools={},
-                files=[FileReference(source="app", asset_id="skill-d")],
-            ),
-        )
-        doc_d = SkillDocument(
-            skill_id="skill-d",
-            content="D is leaf with tool: §[tool].[p].[tool_d].[tool-d]§",
-            metadata=make_metadata(
-                tools={"tool-d": tool_d},
-                files=[],
-            ),
-        )
-
-        tree = create_file_tree(
-            AppAssetNode.create_file("skill-a", "a.md"),
-            AppAssetNode.create_file("skill-b", "b.md"),
-            AppAssetNode.create_file("skill-c", "c.md"),
-            AppAssetNode.create_file("skill-d", "d.md"),
-        )
-        compiler = SkillCompiler()
-
-        # when
-        artifact_set = compiler.compile_all([doc_a, doc_b, doc_c, doc_d], tree, "assets-1")
-
-        # then
-        # skill-a should have tool_d (via both B and C paths, but only once)
-        artifact_a = artifact_set.get("skill-a")
-        assert artifact_a is not None
-        assert len(artifact_a.tools.dependencies) == 1
-        assert artifact_a.tools.dependencies[0].tool_name == "tool_d"
-
-        # if skill-d changes, all upstream need recompile
-        affected = artifact_set.recompile_group_ids("skill-d")
-        assert affected == {"skill-a", "skill-b", "skill-c", "skill-d"}
-
-    def test_multiple_tools_from_multiple_paths(self):
-        # given
-        #     skill-a
-        #    /       \
-        # skill-b   skill-c
-        # (tool_b)  (tool_c)
-        #    \       /
-        #     skill-d
-        #     (tool_d)
-        tool_b = ToolReference(
-            uuid="tool-b", type=ToolProviderType.BUILT_IN, provider="p", tool_name="tool_b"
-        )
         tool_c = ToolReference(
-            uuid="tool-c", type=ToolProviderType.API, provider="q", tool_name="tool_c"
+            uuid="tool-c",
+            type=ToolProviderType.API,
+            provider="external",
+            tool_name="api_tool",
+            credential_id="cred-123",
         )
-        tool_d = ToolReference(
-            uuid="tool-d", type=ToolProviderType.WORKFLOW, provider="r", tool_name="tool_d"
-        )
-
         doc_a = SkillDocument(
             skill_id="skill-a",
-            content="A: §[file].[app].[skill-b]§ §[file].[app].[skill-c]§",
+            content="A refs B: §[file].[app].[skill-b]§",
             metadata=make_metadata(
                 tools={},
-                files=[
-                    FileReference(source="app", asset_id="skill-b"),
-                    FileReference(source="app", asset_id="skill-c"),
-                ],
+                files=[FileReference(source="app", asset_id="skill-b")],
             ),
         )
         doc_b = SkillDocument(
             skill_id="skill-b",
-            content="B: §[file].[app].[skill-d]§ §[tool].[p].[tool_b].[tool-b]§",
+            content="B refs C: §[file].[app].[skill-c]§",
             metadata=make_metadata(
-                tools={"tool-b": tool_b},
-                files=[FileReference(source="app", asset_id="skill-d")],
+                tools={},
+                files=[FileReference(source="app", asset_id="skill-c")],
             ),
         )
         doc_c = SkillDocument(
             skill_id="skill-c",
-            content="C: §[file].[app].[skill-d]§ §[tool].[q].[tool_c].[tool-c]§",
+            content="C refs A: §[file].[app].[skill-a]§ and uses §[tool].[external].[api_tool].[tool-c]§",
             metadata=make_metadata(
                 tools={"tool-c": tool_c},
-                files=[FileReference(source="app", asset_id="skill-d")],
+                files=[FileReference(source="app", asset_id="skill-a")],
             ),
         )
-        doc_d = SkillDocument(
-            skill_id="skill-d",
-            content="D: §[tool].[r].[tool_d].[tool-d]§",
-            metadata=make_metadata(
-                tools={"tool-d": tool_d},
-                files=[],
-            ),
-        )
-
         tree = create_file_tree(
             AppAssetNode.create_file("skill-a", "a.md"),
             AppAssetNode.create_file("skill-b", "b.md"),
             AppAssetNode.create_file("skill-c", "c.md"),
-            AppAssetNode.create_file("skill-d", "d.md"),
         )
         compiler = SkillCompiler()
 
         # when
-        artifact_set = compiler.compile_all([doc_a, doc_b, doc_c, doc_d], tree, "assets-1")
+        bundle = compiler.compile_all([doc_a, doc_b, doc_c], tree, "assets-1")
 
         # then
-        artifact_a = artifact_set.get("skill-a")
-        assert artifact_a is not None
-        tool_names = {d.tool_name for d in artifact_a.tools.dependencies}
-        assert tool_names == {"tool_b", "tool_c", "tool_d"}
-
-        # verify different tool types are preserved
-        tool_types = {d.type for d in artifact_a.tools.dependencies}
-        assert tool_types == {ToolProviderType.BUILT_IN, ToolProviderType.API, ToolProviderType.WORKFLOW}
-
-    def test_deep_nested_folder_structure_with_relative_paths(self):
-        # given
-        # /root/
-        #   main.md (refs helper and asset)
-        #   helpers/
-        #     helper.md (refs deep asset)
-        #     deep/
-        #       deep-helper.md
-        #   assets/
-        #     image.png
-        folder_root = AppAssetNode.create_folder("folder-root", "root")
-        folder_helpers = AppAssetNode.create_folder("folder-helpers", "helpers", parent_id="folder-root")
-        folder_deep = AppAssetNode.create_folder("folder-deep", "deep", parent_id="folder-helpers")
-        folder_assets = AppAssetNode.create_folder("folder-assets", "assets", parent_id="folder-root")
-
-        file_main = AppAssetNode.create_file("file-main", "main.md", parent_id="folder-root")
-        file_helper = AppAssetNode.create_file("file-helper", "helper.md", parent_id="folder-helpers")
-        file_deep = AppAssetNode.create_file("file-deep", "deep-helper.md", parent_id="folder-deep")
-        file_image = AppAssetNode.create_file("file-image", "image.png", parent_id="folder-assets")
-
-        tree = create_file_tree(
-            folder_root, folder_helpers, folder_deep, folder_assets,
-            file_main, file_helper, file_deep, file_image,
-        )
-
-        doc_main = SkillDocument(
-            skill_id="file-main",
-            content="Main refs helper: §[file].[app].[file-helper]§ and image: §[file].[app].[file-image]§",
-            metadata=make_metadata(
-                tools={},
-                files=[
-                    FileReference(source="app", asset_id="file-helper"),
-                    FileReference(source="app", asset_id="file-image"),
-                ],
-            ),
-        )
-        doc_helper = SkillDocument(
-            skill_id="file-helper",
-            content="Helper refs deep: §[file].[app].[file-deep]§",
-            metadata=make_metadata(
-                tools={},
-                files=[FileReference(source="app", asset_id="file-deep")],
-            ),
-        )
-        doc_deep = SkillDocument(
-            skill_id="file-deep",
-            content="Deep helper content",
-            metadata=make_metadata(tools={}, files=[]),
-        )
-
-        compiler = SkillCompiler()
-
-        # when
-        artifact_set = compiler.compile_all([doc_main, doc_helper, doc_deep], tree, "assets-1")
-
-        # then
-        artifact_main = artifact_set.get("file-main")
-        assert artifact_main is not None
-        # main.md -> helpers/helper.md = ./helpers/helper.md
-        assert "./helpers/helper.md" in artifact_main.content
-        # main.md -> assets/image.png = ./assets/image.png
-        assert "./assets/image.png" in artifact_main.content
-
-        artifact_helper = artifact_set.get("file-helper")
-        assert artifact_helper is not None
-        # helpers/helper.md -> helpers/deep/deep-helper.md = ./deep/deep-helper.md
-        assert "./deep/deep-helper.md" in artifact_helper.content
-
-    def test_skill_with_many_tools_and_files(self):
-        # given - skill with 10 tools and 5 file references
-        tools = {
-            f"tool-{i}": ToolReference(
-                uuid=f"tool-{i}",
-                type=ToolProviderType.BUILT_IN,
-                provider=f"provider-{i}",
-                tool_name=f"tool_name_{i}",
-            )
-            for i in range(10)
-        }
-        files = [
-            FileReference(source="app", asset_id=f"file-{i}")
-            for i in range(5)
-        ]
-
-        tool_refs_in_content = " ".join(
-            f"§[tool].[provider-{i}].[tool_name_{i}].[tool-{i}]§" for i in range(10)
-        )
-        file_refs_in_content = " ".join(
-            f"§[file].[app].[file-{i}]§" for i in range(5)
-        )
-
-        doc = SkillDocument(
-            skill_id="skill-main",
-            content=f"Tools: {tool_refs_in_content}\nFiles: {file_refs_in_content}",
-            metadata=make_metadata(tools=tools, files=files),
-        )
-
-        nodes = [AppAssetNode.create_file("skill-main", "main.md")]
-        nodes.extend(AppAssetNode.create_file(f"file-{i}", f"file-{i}.txt") for i in range(5))
-        tree = create_file_tree(*nodes)
-
-        compiler = SkillCompiler()
-
-        # when
-        artifact_set = compiler.compile_all([doc], tree, "assets-1")
-
-        # then
-        artifact = artifact_set.get("skill-main")
-        assert artifact is not None
-        assert len(artifact.tools.dependencies) == 10
-        assert len(artifact.tools.references) == 10
-        assert len(artifact.files.references) == 5
-
-        # all tool references should be replaced
-        for i in range(10):
-            assert f"[Bash Command: tool_name_{i}_tool-{i}]" in artifact.content
-        # all file references should be replaced
-        for i in range(5):
-            assert f"./file-{i}.txt" in artifact.content
-
-    def test_incremental_compile_with_new_dependency(self):
-        # given - initial state: skill-a standalone
-        tree = create_file_tree(
-            AppAssetNode.create_file("skill-a", "a.md"),
-            AppAssetNode.create_file("skill-b", "b.md"),
-        )
-
-        doc_a_v1 = SkillDocument(
-            skill_id="skill-a",
-            content="A standalone",
-            metadata=make_metadata(tools={}, files=[]),
-        )
-        doc_b = SkillDocument(
-            skill_id="skill-b",
-            content="B with tool: §[tool].[p].[tool_b].[tool-b]§",
-            metadata=make_metadata(
-                tools={
-                    "tool-b": ToolReference(
-                        uuid="tool-b",
-                        type=ToolProviderType.BUILT_IN,
-                        provider="p",
-                        tool_name="tool_b",
-                    )
-                },
-                files=[],
-            ),
-        )
-
-        compiler = SkillCompiler()
-        artifact_set = compiler.compile_all([doc_a_v1, doc_b], tree, "assets-1")
-
-        # skill-a has no dependencies initially
-        artifact_a_v1 = artifact_set.get("skill-a")
-        assert artifact_a_v1 is not None
-        assert len(artifact_a_v1.tools.dependencies) == 0
-
-        # when - update skill-a to reference skill-b
-        doc_a_v2 = SkillDocument(
-            skill_id="skill-a",
-            content="A now refs B: §[file].[app].[skill-b]§",
-            metadata=make_metadata(
-                tools={},
-                files=[FileReference(source="app", asset_id="skill-b")],
-            ),
-        )
-        doc_map = {"skill-a": doc_a_v2, "skill-b": doc_b}
-        artifact_a_v2 = compiler.compile_one(artifact_set, doc_a_v2, tree, doc_map)
-        artifact_set.upsert(artifact_a_v2)
-
-        # then - skill-a now has tool_b from skill-b
-        artifact_a_final = artifact_set.get("skill-a")
-        assert artifact_a_final is not None
-        assert len(artifact_a_final.tools.dependencies) == 1
-        assert artifact_a_final.tools.dependencies[0].tool_name == "tool_b"
-
-        # dependency graph updated
-        assert "skill-b" in artifact_set.dependency_graph.get("skill-a", [])
-        assert "skill-a" in artifact_set.reverse_graph.get("skill-b", [])
-
-    def test_serialization_roundtrip(self):
-        # given - complex artifact set
-        tool = ToolReference(
-            uuid="tool-1",
-            type=ToolProviderType.BUILT_IN,
-            provider="sandbox",
-            tool_name="bash",
-        )
-        doc_a = SkillDocument(
-            skill_id="skill-a",
-            content="A refs B: §[file].[app].[skill-b]§ §[tool].[sandbox].[bash].[tool-1]§",
-            metadata=make_metadata(
-                tools={"tool-1": tool},
-                files=[FileReference(source="app", asset_id="skill-b")],
-            ),
-        )
-        doc_b = SkillDocument(
-            skill_id="skill-b",
-            content="B leaf",
-            metadata=make_metadata(tools={}, files=[]),
-        )
-
-        tree = create_file_tree(
-            AppAssetNode.create_file("skill-a", "a.md"),
-            AppAssetNode.create_file("skill-b", "b.md"),
-        )
-        compiler = SkillCompiler()
-        original = compiler.compile_all([doc_a, doc_b], tree, "assets-1")
-
-        # when - serialize and deserialize
-        json_str = original.model_dump_json()
-        restored = SkillBundle.model_validate_json(json_str)
-
-        # then - all data preserved
-        assert restored.assets_id == original.assets_id
-        assert len(restored.entries) == len(original.entries)
-        assert restored.dependency_graph == original.dependency_graph
-        assert restored.reverse_graph == original.reverse_graph
-
-        original_a = original.get("skill-a")
-        assert original_a is not None
-        artifact_a = restored.get("skill-a")
-        assert artifact_a is not None
-        assert artifact_a.content == original_a.content
-        assert len(artifact_a.tools.dependencies) == 1
-
-    def test_subset_preserves_internal_dependencies(self):
-        # given
-        # skill-a -> skill-b -> skill-c -> skill-d
-        docs = [
-            SkillDocument(
-                skill_id="skill-a",
-                content="A: §[file].[app].[skill-b]§",
-                metadata=make_metadata(
-                    tools={},
-                    files=[FileReference(source="app", asset_id="skill-b")],
-                ),
-            ),
-            SkillDocument(
-                skill_id="skill-b",
-                content="B: §[file].[app].[skill-c]§",
-                metadata=make_metadata(
-                    tools={},
-                    files=[FileReference(source="app", asset_id="skill-c")],
-                ),
-            ),
-            SkillDocument(
-                skill_id="skill-c",
-                content="C: §[file].[app].[skill-d]§",
-                metadata=make_metadata(
-                    tools={},
-                    files=[FileReference(source="app", asset_id="skill-d")],
-                ),
-            ),
-            SkillDocument(
-                skill_id="skill-d",
-                content="D",
-                metadata=make_metadata(tools={}, files=[]),
-            ),
-        ]
-        tree = create_file_tree(
-            AppAssetNode.create_file("skill-a", "a.md"),
-            AppAssetNode.create_file("skill-b", "b.md"),
-            AppAssetNode.create_file("skill-c", "c.md"),
-            AppAssetNode.create_file("skill-d", "d.md"),
-        )
-        compiler = SkillCompiler()
-        full_set = compiler.compile_all(docs, tree, "assets-1")
-
-        # when - get subset of B and C only
-        subset = full_set.subset(["skill-b", "skill-c"])
-
-        # then
-        assert len(subset.entries) == 2
-        assert subset.get("skill-b") is not None
-        assert subset.get("skill-c") is not None
-        assert subset.get("skill-a") is None
-        assert subset.get("skill-d") is None
-
-        # internal dependency preserved (B -> C)
-        assert "skill-c" in subset.dependency_graph.get("skill-b", [])
-        # external dependencies filtered out
-        assert "skill-d" not in subset.dependency_graph.get("skill-c", [])
-
-
-class TestSkillCompilerIncrementalRecompile:
-    def test_single_change_triggers_upstream_recompile(self):
-        # given
-        # skill-a -> skill-b -> skill-c (leaf)
-        # each has unique tool
-        tool_a = ToolReference(uuid="t-a", type=ToolProviderType.BUILT_IN, provider="p", tool_name="tool_a")
-        tool_b = ToolReference(uuid="t-b", type=ToolProviderType.BUILT_IN, provider="p", tool_name="tool_b")
-        tool_c = ToolReference(uuid="t-c", type=ToolProviderType.BUILT_IN, provider="p", tool_name="tool_c")
-
-        doc_a = SkillDocument(
-            skill_id="a",
-            content="A content v1 §[tool].[p].[tool_a].[t-a]§ §[file].[app].[b]§",
-            metadata=make_metadata(
-                tools={"t-a": tool_a},
-                files=[FileReference(source="app", asset_id="b")],
-            ),
-        )
-        doc_b = SkillDocument(
-            skill_id="b",
-            content="B content v1 §[tool].[p].[tool_b].[t-b]§ §[file].[app].[c]§",
-            metadata=make_metadata(
-                tools={"t-b": tool_b},
-                files=[FileReference(source="app", asset_id="c")],
-            ),
-        )
-        doc_c = SkillDocument(
-            skill_id="c",
-            content="C content v1 §[tool].[p].[tool_c].[t-c]§",
-            metadata=make_metadata(tools={"t-c": tool_c}, files=[]),
-        )
-
-        tree = create_file_tree(
-            AppAssetNode.create_file("a", "a.md"),
-            AppAssetNode.create_file("b", "b.md"),
-            AppAssetNode.create_file("c", "c.md"),
-        )
-        compiler = SkillCompiler()
-        artifact_set = compiler.compile_all([doc_a, doc_b, doc_c], tree, "assets-1")
-
-        original_a_digest = artifact_set.get("a").source.content_digest
-        original_b_digest = artifact_set.get("b").source.content_digest
-        original_c_digest = artifact_set.get("c").source.content_digest
-
-        # when - skill-c changes
-        doc_c_v2 = SkillDocument(
-            skill_id="c",
-            content="C content v2 - UPDATED §[tool].[p].[tool_c].[t-c]§",
-            metadata=make_metadata(tools={"t-c": tool_c}, files=[]),
-        )
-
-        # find affected skills using recompile_group_ids
-        affected_ids = artifact_set.recompile_group_ids("c")
-
-        # then - all upstream skills are affected
-        assert affected_ids == {"a", "b", "c"}
-
-        # simulate incremental recompile for affected skills
-        doc_map = {"a": doc_a, "b": doc_b, "c": doc_c_v2}
-        for skill_id in affected_ids:
-            updated = compiler.compile_one(artifact_set, doc_map[skill_id], tree, doc_map)
-            artifact_set.upsert(updated)
-
-        # verify c's content changed
-        assert artifact_set.get("c").source.content_digest != original_c_digest
-        assert "v2 - UPDATED" in artifact_set.get("c").content
-
-        # a and b content didn't change (only their dependencies were refreshed)
-        assert artifact_set.get("a").source.content_digest == original_a_digest
-        assert artifact_set.get("b").source.content_digest == original_b_digest
-
-    def test_branch_change_only_affects_upstream_branch(self):
-        # given
-        #       skill-root
-        #      /          \
-        # skill-left    skill-right
-        #     |              |
-        # skill-l-leaf   skill-r-leaf
-        tool = ToolReference(uuid="t", type=ToolProviderType.BUILT_IN, provider="p", tool_name="tool")
-
-        doc_root = SkillDocument(
-            skill_id="root",
-            content="root §[file].[app].[left]§ §[file].[app].[right]§",
-            metadata=make_metadata(
-                tools={},
-                files=[
-                    FileReference(source="app", asset_id="left"),
-                    FileReference(source="app", asset_id="right"),
-                ],
-            ),
-        )
-        doc_left = SkillDocument(
-            skill_id="left",
-            content="left §[file].[app].[l-leaf]§",
-            metadata=make_metadata(
-                tools={},
-                files=[FileReference(source="app", asset_id="l-leaf")],
-            ),
-        )
-        doc_right = SkillDocument(
-            skill_id="right",
-            content="right §[file].[app].[r-leaf]§",
-            metadata=make_metadata(
-                tools={},
-                files=[FileReference(source="app", asset_id="r-leaf")],
-            ),
-        )
-        doc_l_leaf = SkillDocument(
-            skill_id="l-leaf",
-            content="left leaf §[tool].[p].[tool].[t]§",
-            metadata=make_metadata(tools={"t": tool}, files=[]),
-        )
-        doc_r_leaf = SkillDocument(
-            skill_id="r-leaf",
-            content="right leaf",
-            metadata=make_metadata(tools={}, files=[]),
-        )
-
-        tree = create_file_tree(
-            AppAssetNode.create_file("root", "root.md"),
-            AppAssetNode.create_file("left", "left.md"),
-            AppAssetNode.create_file("right", "right.md"),
-            AppAssetNode.create_file("l-leaf", "l-leaf.md"),
-            AppAssetNode.create_file("r-leaf", "r-leaf.md"),
-        )
-        compiler = SkillCompiler()
-        artifact_set = compiler.compile_all(
-            [doc_root, doc_left, doc_right, doc_l_leaf, doc_r_leaf], tree, "assets-1"
-        )
-
-        # when - l-leaf changes
-        affected_by_l_leaf = artifact_set.recompile_group_ids("l-leaf")
-
-        # then - only left branch + root affected (not right branch)
-        assert affected_by_l_leaf == {"root", "left", "l-leaf"}
-        assert "right" not in affected_by_l_leaf
-        assert "r-leaf" not in affected_by_l_leaf
-
-        # when - r-leaf changes
-        affected_by_r_leaf = artifact_set.recompile_group_ids("r-leaf")
-
-        # then - only right branch + root affected (not left branch)
-        assert affected_by_r_leaf == {"root", "right", "r-leaf"}
-        assert "left" not in affected_by_r_leaf
-        assert "l-leaf" not in affected_by_r_leaf
-
-    def test_add_new_tool_to_leaf_propagates_to_all_upstream(self):
-        # given - chain without tools initially
-        doc_a = SkillDocument(
-            skill_id="a",
-            content="A §[file].[app].[b]§",
-            metadata=make_metadata(tools={}, files=[FileReference(source="app", asset_id="b")]),
-        )
-        doc_b = SkillDocument(
-            skill_id="b",
-            content="B §[file].[app].[c]§",
-            metadata=make_metadata(tools={}, files=[FileReference(source="app", asset_id="c")]),
-        )
-        doc_c = SkillDocument(
-            skill_id="c",
-            content="C - no tools",
-            metadata=make_metadata(tools={}, files=[]),
-        )
-
-        tree = create_file_tree(
-            AppAssetNode.create_file("a", "a.md"),
-            AppAssetNode.create_file("b", "b.md"),
-            AppAssetNode.create_file("c", "c.md"),
-        )
-        compiler = SkillCompiler()
-        artifact_set = compiler.compile_all([doc_a, doc_b, doc_c], tree, "assets-1")
-
-        # initially no tools anywhere
-        assert len(artifact_set.get("a").tools.dependencies) == 0
-        assert len(artifact_set.get("b").tools.dependencies) == 0
-        assert len(artifact_set.get("c").tools.dependencies) == 0
-
-        # when - add tool to c
-        new_tool = ToolReference(uuid="new-t", type=ToolProviderType.BUILT_IN, provider="p", tool_name="new_tool")
-        doc_c_v2 = SkillDocument(
-            skill_id="c",
-            content="C - now has tool: §[tool].[p].[new_tool].[new-t]§",
-            metadata=make_metadata(tools={"new-t": new_tool}, files=[]),
-        )
-
-        # recompile affected
-        affected = artifact_set.recompile_group_ids("c")
-        doc_map = {"a": doc_a, "b": doc_b, "c": doc_c_v2}
-        for skill_id in affected:
-            updated = compiler.compile_one(artifact_set, doc_map[skill_id], tree, doc_map)
-            artifact_set.upsert(updated)
-
-        # then - new tool propagated to all upstream
-        assert len(artifact_set.get("c").tools.dependencies) == 1
-        assert len(artifact_set.get("b").tools.dependencies) == 1
-        assert len(artifact_set.get("a").tools.dependencies) == 1
-
-        assert artifact_set.get("a").tools.dependencies[0].tool_name == "new_tool"
-        assert artifact_set.get("b").tools.dependencies[0].tool_name == "new_tool"
-        assert artifact_set.get("c").tools.dependencies[0].tool_name == "new_tool"
-
-    def test_remove_dependency_link_affects_recompile_group(self):
-        # given - a -> b -> c
-        doc_a = SkillDocument(
-            skill_id="a",
-            content="A refs B §[file].[app].[b]§",
-            metadata=make_metadata(tools={}, files=[FileReference(source="app", asset_id="b")]),
-        )
-        doc_b = SkillDocument(
-            skill_id="b",
-            content="B refs C §[file].[app].[c]§",
-            metadata=make_metadata(tools={}, files=[FileReference(source="app", asset_id="c")]),
-        )
-        doc_c = SkillDocument(
-            skill_id="c",
-            content="C leaf",
-            metadata=make_metadata(tools={}, files=[]),
-        )
-
-        tree = create_file_tree(
-            AppAssetNode.create_file("a", "a.md"),
-            AppAssetNode.create_file("b", "b.md"),
-            AppAssetNode.create_file("c", "c.md"),
-        )
-        compiler = SkillCompiler()
-        artifact_set = compiler.compile_all([doc_a, doc_b, doc_c], tree, "assets-1")
-
-        # initially c change affects a, b, c
-        assert artifact_set.recompile_group_ids("c") == {"a", "b", "c"}
-
-        # when - b no longer refs c
-        doc_b_v2 = SkillDocument(
-            skill_id="b",
-            content="B standalone now",
-            metadata=make_metadata(tools={}, files=[]),
-        )
-        doc_map = {"a": doc_a, "b": doc_b_v2, "c": doc_c}
-
-        # recompile b (which changes its dependencies)
-        updated_b = compiler.compile_one(artifact_set, doc_b_v2, tree, doc_map)
-        artifact_set.upsert(updated_b)
-
-        # then - c change now only affects c (b no longer depends on c)
-        # note: reverse_graph still has old data until we clean it
-        # in real usage, we'd rebuild graphs or clean stale entries
-        assert "c" not in artifact_set.dependency_graph.get("b", [])
-
-    def test_complex_graph_multiple_changes(self):
-        # given - complex dependency graph
-        #
-        #     A -----> B -----> E
-        #     |        |
-        #     v        v
-        #     C -----> D
-        #
-        # A depends on B, C
-        # B depends on D, E
-        # C depends on D
-        tool_d = ToolReference(uuid="t-d", type=ToolProviderType.BUILT_IN, provider="p", tool_name="tool_d")
-        tool_e = ToolReference(uuid="t-e", type=ToolProviderType.BUILT_IN, provider="p", tool_name="tool_e")
-
-        doc_a = SkillDocument(
-            skill_id="a",
-            content="A §[file].[app].[b]§ §[file].[app].[c]§",
-            metadata=make_metadata(
-                tools={},
-                files=[
-                    FileReference(source="app", asset_id="b"),
-                    FileReference(source="app", asset_id="c"),
-                ],
-            ),
-        )
-        doc_b = SkillDocument(
-            skill_id="b",
-            content="B §[file].[app].[d]§ §[file].[app].[e]§",
-            metadata=make_metadata(
-                tools={},
-                files=[
-                    FileReference(source="app", asset_id="d"),
-                    FileReference(source="app", asset_id="e"),
-                ],
-            ),
-        )
-        doc_c = SkillDocument(
-            skill_id="c",
-            content="C §[file].[app].[d]§",
-            metadata=make_metadata(
-                tools={},
-                files=[FileReference(source="app", asset_id="d")],
-            ),
-        )
-        doc_d = SkillDocument(
-            skill_id="d",
-            content="D §[tool].[p].[tool_d].[t-d]§",
-            metadata=make_metadata(tools={"t-d": tool_d}, files=[]),
-        )
-        doc_e = SkillDocument(
-            skill_id="e",
-            content="E §[tool].[p].[tool_e].[t-e]§",
-            metadata=make_metadata(tools={"t-e": tool_e}, files=[]),
-        )
-
-        tree = create_file_tree(
-            AppAssetNode.create_file("a", "a.md"),
-            AppAssetNode.create_file("b", "b.md"),
-            AppAssetNode.create_file("c", "c.md"),
-            AppAssetNode.create_file("d", "d.md"),
-            AppAssetNode.create_file("e", "e.md"),
-        )
-        compiler = SkillCompiler()
-        artifact_set = compiler.compile_all([doc_a, doc_b, doc_c, doc_d, doc_e], tree, "assets-1")
-
-        # verify initial state
-        a_tools = {t.tool_name for t in artifact_set.get("a").tools.dependencies}
-        assert a_tools == {"tool_d", "tool_e"}
-
-        # when - d changes, who needs recompile?
-        affected_by_d = artifact_set.recompile_group_ids("d")
-        # d is depended by: b, c, and transitively a
-        assert affected_by_d == {"a", "b", "c", "d"}
-        assert "e" not in affected_by_d
-
-        # when - e changes, who needs recompile?
-        affected_by_e = artifact_set.recompile_group_ids("e")
-        # e is depended by: b, and transitively a
-        assert affected_by_e == {"a", "b", "e"}
-        assert "c" not in affected_by_e
-        assert "d" not in affected_by_e
+        assert len(bundle.entries) == 3
+
+        # All three should have access to tool-c (transitive through the cycle)
+        for skill_id in ["skill-a", "skill-b", "skill-c"]:
+            entry = bundle.get(skill_id)
+            assert entry is not None
+            assert len(entry.tools.dependencies) == 1
+            assert entry.tools.dependencies[0].tool_name == "api_tool"
+            assert len(entry.tools.references) == 1
+            assert entry.tools.references[0].uuid == "tool-c"

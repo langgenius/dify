@@ -37,6 +37,11 @@ class AppAssetsInitializer(AsyncSandboxInitializer):
                 ["sh", "-c", f"unzip {AppAssets.ZIP_PATH} -d {AppAssets.PATH} 2>/dev/null || [ $? -eq 1 ]"],
                 error_message="Failed to unzip assets",
             )
+            # Ensure directories have execute permission for traversal and files are readable
+            .add(
+                ["sh", "-c", f"chmod -R u+rwX,go+rX {AppAssets.PATH}"],
+                error_message="Failed to set permissions on assets",
+            )
             .execute(timeout=APP_ASSETS_DOWNLOAD_TIMEOUT, raise_on_error=True)
         )
 

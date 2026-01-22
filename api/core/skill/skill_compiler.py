@@ -1,248 +1,390 @@
 import hashlib
-import logging
 import re
-from collections.abc import Mapping
-from datetime import UTC, datetime
-from typing import Any
+from collections.abc import Iterable, Mapping, Sequence
+from dataclasses import dataclass
+from typing import Any, Protocol, cast
 
 from core.app.entities.app_asset_entities import AppAssetFileTree
 from core.skill.entities.asset_references import AssetReferences
 from core.skill.entities.skill_bundle import SkillBundle
 from core.skill.entities.skill_bundle_entry import SkillBundleEntry, SourceInfo
 from core.skill.entities.skill_document import SkillDocument
-from core.skill.entities.skill_metadata import (
-    FileReference,
-    SkillMetadata,
-    ToolConfiguration,
-    ToolReference,
-)
+from core.skill.entities.skill_metadata import FileReference, SkillMetadata, ToolConfiguration, ToolReference
 from core.skill.entities.tool_dependencies import ToolDependencies, ToolDependency
 from core.tools.entities.tool_entities import ToolProviderType
 
-logger = logging.getLogger(__name__)
 
-TOOL_REFERENCE_PATTERN = re.compile(r"§\[tool\]\.\[([^\]]+)\]\.\[([^\]]+)\]\.\[([^\]]+)\]§")
-FILE_REFERENCE_PATTERN = re.compile(r"§\[file\]\.\[([^\]]+)\]\.\[([^\]]+)\]§")
+class PathResolver(Protocol):
+    def resolve(self, source_id: str, target_id: str) -> str: ...
+
+
+class ToolResolver(Protocol):
+    def resolve(self, tool_ref: ToolReference) -> str: ...
+
+
+@dataclass(frozen=True)
+class CompilerConfig:
+    tool_pattern: re.Pattern[str] = re.compile(r"§\[tool\]\.\[.*?\]\.\[.*?\]\.\[(.*?)\]§")
+    file_pattern: re.Pattern[str] = re.compile(r"§\[file\]\.\[.*?\]\.\[(.*?)\]§")
+
+
+class FileTreePathResolver:
+    def __init__(self, tree: AppAssetFileTree, base_path: str = ""):
+        self._tree = tree
+        self._base_path = base_path.rstrip("/")
+
+    def resolve(self, source_id: str, target_id: str) -> str:
+        source_node = self._tree.get(source_id)
+        target_node = self._tree.get(target_id)
+
+        if target_node is None:
+            return "[File not found]"
+
+        if source_node is not None:
+            return self._tree.relative_path(source_node, target_node)
+
+        full_path = self._tree.get_path(target_node.id)
+        if self._base_path:
+            return f"{self._base_path}/{full_path}"
+        return full_path
+
+
+class DefaultToolResolver:
+    def resolve(self, tool_ref: ToolReference) -> str:
+        return f"[Executable: {tool_ref.tool_name}_{tool_ref.uuid} --help command]"
 
 
 class SkillCompiler:
-    def _parse_metadata(self, content: str, raw_metadata: Mapping[str, Any]) -> SkillMetadata:
-        tools_raw: dict[str, Any] = dict(raw_metadata.get("tools", {}))
-        tools: dict[str, ToolReference] = {}
-        files: list[FileReference] = []
-
-        for match in TOOL_REFERENCE_PATTERN.finditer(content):
-            tool_id = match.group(3)
-            tool_name = match.group(2)
-            tool_provider = match.group(1)
-            tool_meta = tools_raw.get(tool_id)
-            if tool_meta is None:
-                continue
-
-            config_raw = tool_meta.get("configuration", {})
-            configuration = ToolConfiguration.model_validate(config_raw) if config_raw else None
-            tools[tool_id] = ToolReference(
-                uuid=tool_id,
-                type=ToolProviderType.value_of(tool_meta.get("type")),
-                provider=tool_provider,
-                tool_name=tool_name,
-                credential_id=tool_meta.get("credential_id"),
-                configuration=configuration,
-            )
-
-        for match in FILE_REFERENCE_PATTERN.finditer(content):
-            files.append(
-                FileReference(
-                    source=match.group(1),
-                    asset_id=match.group(2),
-                )
-            )
-
-        return SkillMetadata(tools=tools, files=files)
+    def __init__(
+        self,
+        path_resolver: PathResolver | None = None,
+        tool_resolver: ToolResolver | None = None,
+        config: CompilerConfig | None = None,
+    ):
+        self._path_resolver = path_resolver
+        self._tool_resolver = tool_resolver or DefaultToolResolver()
+        self._config = config or CompilerConfig()
 
     def compile_all(
         self,
-        documents: list[SkillDocument],
+        documents: Iterable[SkillDocument],
         file_tree: AppAssetFileTree,
         assets_id: str,
     ) -> SkillBundle:
-        bundle = SkillBundle(
-            assets_id=assets_id,
-            built_at=datetime.now(UTC),
-        )
-
-        doc_map: dict[str, SkillDocument] = {doc.skill_id: doc for doc in documents}
-        parsed_metadata: dict[str, SkillMetadata] = {}
-
-        for doc in documents:
-            metadata = self._parse_metadata(doc.content, doc.metadata)
-            parsed_metadata[doc.skill_id] = metadata
-            direct_skill_refs = self._extract_skill_refs(metadata, doc_map)
-            bundle.dependency_graph[doc.skill_id] = list(direct_skill_refs)
-            for ref_id in direct_skill_refs:
-                if ref_id not in bundle.reverse_graph:
-                    bundle.reverse_graph[ref_id] = []
-                bundle.reverse_graph[ref_id].append(doc.skill_id)
-
-        for doc in documents:
-            metadata = parsed_metadata[doc.skill_id]
-            entry = self._compile_single(doc, metadata, bundle, parsed_metadata, file_tree)
-            bundle.upsert(entry)
-
-        return bundle
+        path_resolver = self._path_resolver or FileTreePathResolver(file_tree)
+        return self._compile_batch_internal(documents, assets_id, path_resolver)
 
     def compile_one(
         self,
         bundle: SkillBundle,
         document: SkillDocument,
         file_tree: AppAssetFileTree,
-        all_documents: dict[str, SkillDocument] | None = None,
+        base_path: str = "",
     ) -> SkillBundleEntry:
-        doc_map = all_documents or {}
-        if document.skill_id not in doc_map:
-            doc_map[document.skill_id] = document
-
-        parsed_metadata: dict[str, SkillMetadata] = {}
-        for skill_id, doc in doc_map.items():
-            parsed_metadata[skill_id] = self._parse_metadata(doc.content, doc.metadata)
-
-        metadata = parsed_metadata[document.skill_id]
-        direct_skill_refs = self._extract_skill_refs(metadata, doc_map)
-        bundle.dependency_graph[document.skill_id] = list(direct_skill_refs)
-        for ref_id in direct_skill_refs:
-            if ref_id not in bundle.reverse_graph:
-                bundle.reverse_graph[ref_id] = []
-            if document.skill_id not in bundle.reverse_graph[ref_id]:
-                bundle.reverse_graph[ref_id].append(document.skill_id)
-
-        return self._compile_single(document, metadata, bundle, parsed_metadata, file_tree)
-
-    def _compile_single(
-        self,
-        document: SkillDocument,
-        metadata: SkillMetadata,
-        bundle: SkillBundle,
-        parsed_metadata: dict[str, SkillMetadata],
-        file_tree: AppAssetFileTree,
-    ) -> SkillBundleEntry:
-        all_tools, all_files = self._compute_transitive_closure(
-            document.skill_id, bundle, parsed_metadata
+        path_resolver = self._path_resolver or FileTreePathResolver(file_tree, base_path)
+        resolved_content, tool_dependencies = self._compile_template_internal(
+            document.content, document.metadata, bundle, path_resolver
         )
 
-        current_node = file_tree.get(document.skill_id)
-
-        resolved_content = self._resolve_content(
-            document.content, metadata, current_node, file_tree
-        )
-
-        content_digest = hashlib.sha256(document.content.encode("utf-8")).hexdigest()
+        metadata = self._parse_metadata(document.content, document.metadata)
+        final_files: dict[str, FileReference] = {f.asset_id: f for f in metadata.files}
 
         return SkillBundleEntry(
             skill_id=document.skill_id,
             source=SourceInfo(
                 asset_id=document.skill_id,
-                content_digest=content_digest,
+                content_digest=hashlib.sha256(document.content.encode("utf-8")).hexdigest(),
+            ),
+            tools=tool_dependencies,
+            files=AssetReferences(references=list(final_files.values())),
+            content=resolved_content,
+        )
+
+    def _compile_batch_internal(
+        self,
+        documents: Iterable[SkillDocument],
+        assets_id: str,
+        path_resolver: PathResolver,
+    ) -> SkillBundle:
+        doc_map = {doc.skill_id: doc for doc in documents}
+        graph: dict[str, set[str]] = {}
+        metadata_cache: dict[str, SkillMetadata] = {}
+
+        # Phase 1: Parse metadata and build dependency graph
+        for doc in doc_map.values():
+            metadata = self._parse_metadata(doc.content, doc.metadata)
+            metadata_cache[doc.skill_id] = metadata
+
+            deps: set[str] = set()
+            for file_ref in metadata.files:
+                if file_ref.asset_id in doc_map:
+                    deps.add(file_ref.asset_id)
+            graph[doc.skill_id] = deps
+
+        bundle = SkillBundle(assets_id=assets_id)
+        bundle.dependency_graph = {k: list(v) for k, v in graph.items()}
+
+        # Build reverse graph for propagation
+        reverse_graph: dict[str, set[str]] = {skill_id: set() for skill_id in doc_map}
+        for skill_id, deps in graph.items():
+            for dep_id in deps:
+                if dep_id in reverse_graph:
+                    reverse_graph[dep_id].add(skill_id)
+        bundle.reverse_graph = {k: list(v) for k, v in reverse_graph.items()}
+
+        # Phase 2: Compile each skill independently (content + direct dependencies only)
+        for skill_id, doc in doc_map.items():
+            metadata = metadata_cache[skill_id]
+            entry = self._compile_node_direct(doc, metadata, path_resolver)
+            bundle.upsert(entry)
+
+        # Phase 3: Propagate transitive dependencies until fixed-point
+        self._propagate_transitive_dependencies(bundle, graph)
+
+        return bundle
+
+    def _compile_node_direct(
+        self,
+        doc: SkillDocument,
+        metadata: SkillMetadata,
+        path_resolver: PathResolver,
+    ) -> SkillBundleEntry:
+        """Compile a single skill with only its direct dependencies (no transitive)."""
+        direct_tools: dict[str, ToolDependency] = {}
+        direct_refs: dict[str, ToolReference] = {}
+
+        for tool_ref in metadata.tools.values():
+            key = f"{tool_ref.provider}.{tool_ref.tool_name}"
+            if key not in direct_tools:
+                direct_tools[key] = ToolDependency(
+                    type=tool_ref.type,
+                    provider=tool_ref.provider,
+                    tool_name=tool_ref.tool_name,
+                )
+            direct_refs[tool_ref.uuid] = tool_ref
+
+        direct_files: dict[str, FileReference] = {f.asset_id: f for f in metadata.files}
+        resolved_content = self._resolve_content(doc.content, metadata, path_resolver, doc.skill_id)
+
+        return SkillBundleEntry(
+            skill_id=doc.skill_id,
+            source=SourceInfo(
+                asset_id=doc.skill_id,
+                content_digest=hashlib.sha256(doc.content.encode("utf-8")).hexdigest(),
             ),
             tools=ToolDependencies(
-                dependencies=list(all_tools.values()),
-                references=list(metadata.tools.values()),
+                dependencies=list(direct_tools.values()),
+                references=list(direct_refs.values()),
             ),
             files=AssetReferences(
-                references=list(all_files.values()),
+                references=list(direct_files.values()),
             ),
             content=resolved_content,
         )
 
-    def _extract_skill_refs(
+    def _propagate_transitive_dependencies(
         self,
-        metadata: SkillMetadata,
-        doc_map: dict[str, SkillDocument],
-    ) -> set[str]:
-        skill_refs: set[str] = set()
-        for file_ref in metadata.files:
-            if file_ref.asset_id in doc_map:
-                skill_refs.add(file_ref.asset_id)
-        return skill_refs
-
-    def _compute_transitive_closure(
-        self,
-        skill_id: str,
         bundle: SkillBundle,
-        parsed_metadata: dict[str, SkillMetadata],
-    ) -> tuple[dict[str, ToolDependency], dict[str, FileReference]]:
-        all_tools: dict[str, ToolDependency] = {}
-        all_files: dict[str, FileReference] = {}
+        graph: dict[str, set[str]],
+    ) -> None:
+        """Iteratively propagate transitive dependencies until no changes occur."""
+        changed = True
+        while changed:
+            changed = False
+            for skill_id, dep_ids in graph.items():
+                entry = bundle.get(skill_id)
+                if not entry:
+                    continue
 
-        visited: set[str] = set()
-        queue = [skill_id]
+                # Collect current tools and files
+                current_tools: dict[str, ToolDependency] = {
+                    f"{d.provider}.{d.tool_name}": d for d in entry.tools.dependencies
+                }
+                current_refs: dict[str, ToolReference] = {r.uuid: r for r in entry.tools.references}
+                current_files: dict[str, FileReference] = {f.asset_id: f for f in entry.files.references}
 
-        while queue:
-            current_id = queue.pop(0)
-            if current_id in visited:
-                continue
-            visited.add(current_id)
+                original_tool_count = len(current_tools)
+                original_ref_count = len(current_refs)
+                original_file_count = len(current_files)
 
-            metadata = parsed_metadata.get(current_id)
-            if metadata is None:
-                existing_entry = bundle.get(current_id)
-                if existing_entry:
-                    for dep in existing_entry.tools.dependencies:
-                        key = f"{dep.provider}.{dep.tool_name}"
-                        if key not in all_tools:
-                            all_tools[key] = dep
-                    for file_ref in existing_entry.files.references:
-                        if file_ref.asset_id not in all_files:
-                            all_files[file_ref.asset_id] = file_ref
-                continue
+                # Merge from dependencies
+                for dep_id in dep_ids:
+                    dep_entry = bundle.get(dep_id)
+                    if not dep_entry:
+                        continue
 
-            for tool_ref in metadata.tools.values():
-                key = f"{tool_ref.provider}.{tool_ref.tool_name}"
-                if key not in all_tools:
-                    all_tools[key] = ToolDependency(
-                        type=tool_ref.type,
-                        provider=tool_ref.provider,
-                        tool_name=tool_ref.tool_name,
+                    for tool_dep in dep_entry.tools.dependencies:
+                        key = f"{tool_dep.provider}.{tool_dep.tool_name}"
+                        if key not in current_tools:
+                            current_tools[key] = tool_dep
+
+                    for tool_ref in dep_entry.tools.references:
+                        if tool_ref.uuid not in current_refs:
+                            current_refs[tool_ref.uuid] = tool_ref
+
+                    for file_ref in dep_entry.files.references:
+                        if file_ref.asset_id not in current_files:
+                            current_files[file_ref.asset_id] = file_ref
+
+                # Check if anything changed
+                if (
+                    len(current_tools) != original_tool_count
+                    or len(current_refs) != original_ref_count
+                    or len(current_files) != original_file_count
+                ):
+                    changed = True
+                    # Update the entry with new transitive dependencies
+                    updated_entry = SkillBundleEntry(
+                        skill_id=entry.skill_id,
+                        source=entry.source,
+                        tools=ToolDependencies(
+                            dependencies=list(current_tools.values()),
+                            references=list(current_refs.values()),
+                        ),
+                        files=AssetReferences(
+                            references=list(current_files.values()),
+                        ),
+                        content=entry.content,
                     )
+                    bundle.upsert(updated_entry)
 
-            for file_ref in metadata.files:
-                if file_ref.asset_id not in all_files:
-                    all_files[file_ref.asset_id] = file_ref
-
-            for dep_id in bundle.dependency_graph.get(current_id, []):
-                if dep_id not in visited:
-                    queue.append(dep_id)
-
-        return all_tools, all_files
-
-    def _resolve_content(
+    def _compile_template_internal(
         self,
         content: str,
+        metadata_dict: Mapping[str, Any],
+        context: SkillBundle,
+        path_resolver: PathResolver,
+    ) -> tuple[str, ToolDependencies]:
+        metadata = self._parse_metadata(content, metadata_dict)
+
+        direct_deps: list[SkillBundleEntry] = []
+        for file_ref in metadata.files:
+            artifact = context.get(file_ref.asset_id)
+            if artifact:
+                direct_deps.append(artifact)
+
+        final_tools, final_refs = self._aggregate_dependencies(metadata, direct_deps)
+
+        resolved_content = self._resolve_content(content, metadata, path_resolver, current_id="<template>")
+
+        return resolved_content, ToolDependencies(
+            dependencies=list(final_tools.values()), references=list(final_refs.values())
+        )
+
+    def _compile_node(
+        self,
+        doc: SkillDocument,
         metadata: SkillMetadata,
-        current_node: Any,
-        file_tree: AppAssetFileTree,
+        direct_deps: Sequence[SkillBundleEntry],
+        path_resolver: PathResolver,
+    ) -> SkillBundleEntry:
+        final_tools, final_refs = self._aggregate_dependencies(metadata, direct_deps)
+
+        final_files: dict[str, FileReference] = {}
+        for f in metadata.files:
+            final_files[f.asset_id] = f
+
+        for dep in direct_deps:
+            for f in dep.files.references:
+                if f.asset_id not in final_files:
+                    final_files[f.asset_id] = f
+
+        resolved_content = self._resolve_content(doc.content, metadata, path_resolver, doc.skill_id)
+
+        return SkillBundleEntry(
+            skill_id=doc.skill_id,
+            source=SourceInfo(
+                asset_id=doc.skill_id,
+                content_digest=hashlib.sha256(doc.content.encode("utf-8")).hexdigest(),
+            ),
+            tools=ToolDependencies(
+                dependencies=list(final_tools.values()),
+                references=list(final_refs.values()),
+            ),
+            files=AssetReferences(
+                references=list(final_files.values()),
+            ),
+            content=resolved_content,
+        )
+
+    def _aggregate_dependencies(
+        self, metadata: SkillMetadata, direct_deps: Sequence[SkillBundleEntry]
+    ) -> tuple[dict[str, ToolDependency], dict[str, ToolReference]]:
+        all_tools: dict[str, ToolDependency] = {}
+        all_refs: dict[str, ToolReference] = {}
+
+        for tool_ref in metadata.tools.values():
+            key = f"{tool_ref.provider}.{tool_ref.tool_name}"
+            if key not in all_tools:
+                all_tools[key] = ToolDependency(
+                    type=tool_ref.type,
+                    provider=tool_ref.provider,
+                    tool_name=tool_ref.tool_name,
+                )
+            all_refs[tool_ref.uuid] = tool_ref
+
+        for dep in direct_deps:
+            for tool_dep in dep.tools.dependencies:
+                key = f"{tool_dep.provider}.{tool_dep.tool_name}"
+                if key not in all_tools:
+                    all_tools[key] = tool_dep
+
+            for tool_ref in dep.tools.references:
+                if tool_ref.uuid not in all_refs:
+                    all_refs[tool_ref.uuid] = tool_ref
+
+        return all_tools, all_refs
+
+    def _resolve_content(
+        self, content: str, metadata: SkillMetadata, path_resolver: PathResolver, current_id: str
     ) -> str:
-        if not content:
-            return content
+        def replace_file(match: re.Match[str]) -> str:
+            target_id = match.group(1)
+            try:
+                return path_resolver.resolve(current_id, target_id)
+            except Exception:
+                return match.group(0)
 
-        for match in FILE_REFERENCE_PATTERN.finditer(content):
-            file_id = match.group(2)
-            file_node = file_tree.get(file_id)
-            if file_node is None:
-                logger.warning("File not found for id=%s, skipping", file_id)
-                content = content.replace(match.group(0), "[File not found]")
-                continue
-            if current_node is not None:
-                content = content.replace(match.group(0), file_tree.relative_path(current_node, file_node))
-            else:
-                content = content.replace(match.group(0), f"[{file_node.name}]")
+        def replace_tool(match: re.Match[str]) -> str:
+            tool_id = match.group(1)
+            tool_ref = metadata.tools.get(tool_id)
+            if not tool_ref:
+                return f"[Tool not found: {tool_id}]"
+            return self._tool_resolver.resolve(tool_ref)
 
-        for match in TOOL_REFERENCE_PATTERN.finditer(content):
-            tool_id = match.group(3)
-            tool = metadata.tools.get(tool_id)
-            if tool is None:
-                logger.warning("Tool not found for id=%s, skipping", tool_id)
-                content = content.replace(match.group(0), f"[Tool not found: {tool_id}]")
-                continue
-            content = content.replace(match.group(0), f"[Bash Command: {tool.tool_name}_{tool_id}]")
-
+        content = self._config.file_pattern.sub(replace_file, content)
+        content = self._config.tool_pattern.sub(replace_tool, content)
         return content
+
+    def _parse_metadata(self, content: str, raw_metadata: Mapping[str, Any]) -> SkillMetadata:
+        tools_raw = dict(raw_metadata.get("tools", {}))
+        tools: dict[str, ToolReference] = {}
+
+        tool_iter = re.finditer(r"§\[tool\]\.\[([^\]]+)\]\.\[([^\]]+)\]\.\[([^\]]+)\]§", content)
+        for match in tool_iter:
+            provider, name, uuid = match.group(1), match.group(2), match.group(3)
+            if uuid in tools_raw:
+                meta = tools_raw[uuid]
+                if isinstance(meta, ToolReference):
+                    tools[uuid] = meta
+                elif isinstance(meta, dict):
+                    tool_type_str = cast(str | None, meta.get("type"))
+                    if tool_type_str:
+                        tools[uuid] = ToolReference(
+                            uuid=uuid,
+                            type=ToolProviderType.value_of(tool_type_str),
+                            provider=provider,
+                            tool_name=name,
+                            credential_id=cast(str | None, meta.get("credential_id")),
+                            configuration=ToolConfiguration.model_validate(meta.get("configuration", {}))
+                            if meta.get("configuration")
+                            else None,
+                        )
+
+        parsed_files: list[FileReference] = []
+        file_iter = re.finditer(r"§\[file\]\.\[([^\]]+)\]\.\[([^\]]+)\]§", content)
+        for match in file_iter:
+            source, asset_id = match.group(1), match.group(2)
+            parsed_files.append(FileReference(source=source, asset_id=asset_id))
+
+        return SkillMetadata(tools=tools, files=parsed_files)
