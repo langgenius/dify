@@ -1,7 +1,7 @@
 """add table explore banner and trial
 
 Revision ID: f9f6d18a37f9
-Revises: 288345cd01d1
+Revises: 9e6fa5cbcd80
 Create Date: 2026-01-017 11:10:18.079355
 
 """
@@ -12,7 +12,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = 'f9f6d18a37f9'
-down_revision = '288345cd01d1'
+down_revision = '9e6fa5cbcd80'
 branch_labels = None
 depends_on = None
 
