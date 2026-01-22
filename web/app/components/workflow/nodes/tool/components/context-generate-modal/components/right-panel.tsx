@@ -175,7 +175,6 @@ const RightPanel = ({
                 )
               : (
                   <Button
-                    size="small"
                     onClick={onRun}
                     disabled={!canRun || isGenerating}
                   >
@@ -184,7 +183,6 @@ const RightPanel = ({
                 )}
             <Button
               variant="primary"
-              size="small"
               onClick={onApply}
               disabled={!canApply || isGenerating}
             >

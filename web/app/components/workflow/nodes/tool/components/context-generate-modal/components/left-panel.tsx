@@ -2,7 +2,7 @@ import type { ContextGenerateChatMessage } from '../hooks/use-context-generate'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { TriggerProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/trigger'
 import type { Model } from '@/types/app'
-import { RiArrowDownSLine, RiRefreshLine, RiSendPlaneLine } from '@remixicon/react'
+import { RiArrowDownSLine, RiRefreshLine, RiSendPlaneLine, RiSparklingLine } from '@remixicon/react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
@@ -189,7 +189,7 @@ const LeftPanel = ({
                       className="flex items-start gap-2 rounded-lg px-2 py-1 text-left text-sm text-text-secondary transition hover:bg-state-base-hover"
                       onClick={() => onInputChange(question)}
                     >
-                      <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-divider-regular" />
+                      <RiSparklingLine className="mt-[2px] h-4 w-4 text-text-secondary" />
                       <span className="flex-1 whitespace-pre-wrap">{question}</span>
                     </button>
                   ))}
