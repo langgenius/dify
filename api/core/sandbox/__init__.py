@@ -14,7 +14,14 @@ if TYPE_CHECKING:
     from .bash.session import SandboxBashSession
     from .builder import SandboxBuilder, VMConfig
     from .entities import AppAssets, DifyCli, SandboxProviderApiEntity, SandboxType
-    from .initializer import AppAssetsInitializer, DifyCliInitializer, SandboxInitializer
+    from .initializer import (
+        AppAssetsInitializer,
+        AsyncSandboxInitializer,
+        DifyCliInitializer,
+        DraftAppAssetsInitializer,
+        SandboxInitializer,
+        SyncSandboxInitializer,
+    )
     from .manager import SandboxManager
     from .sandbox import Sandbox
     from .storage import ArchiveSandboxStorage, SandboxStorage
@@ -25,6 +32,7 @@ __all__ = [
     "AppAssets",
     "AppAssetsInitializer",
     "ArchiveSandboxStorage",
+    "AsyncSandboxInitializer",
     "DifyCli",
     "DifyCliBinary",
     "DifyCliConfig",
@@ -32,6 +40,7 @@ __all__ = [
     "DifyCliInitializer",
     "DifyCliLocator",
     "DifyCliToolConfig",
+    "DraftAppAssetsInitializer",
     "Sandbox",
     "SandboxBashSession",
     "SandboxBuilder",
@@ -40,6 +49,7 @@ __all__ = [
     "SandboxProviderApiEntity",
     "SandboxStorage",
     "SandboxType",
+    "SyncSandboxInitializer",
     "VMConfig",
     "create_sandbox_config_encrypter",
     "masked_config",
@@ -49,6 +59,7 @@ __all__ = [
 _LAZY_IMPORTS = {
     "AppAssets": ("core.sandbox.entities", "AppAssets"),
     "AppAssetsInitializer": ("core.sandbox.initializer", "AppAssetsInitializer"),
+    "AsyncSandboxInitializer": ("core.sandbox.initializer", "AsyncSandboxInitializer"),
     "ArchiveSandboxStorage": ("core.sandbox.storage", "ArchiveSandboxStorage"),
     "DifyCli": ("core.sandbox.entities", "DifyCli"),
     "DifyCliBinary": ("core.sandbox.bash.dify_cli", "DifyCliBinary"),
@@ -57,6 +68,7 @@ _LAZY_IMPORTS = {
     "DifyCliInitializer": ("core.sandbox.initializer", "DifyCliInitializer"),
     "DifyCliLocator": ("core.sandbox.bash.dify_cli", "DifyCliLocator"),
     "DifyCliToolConfig": ("core.sandbox.bash.dify_cli", "DifyCliToolConfig"),
+    "DraftAppAssetsInitializer": ("core.sandbox.initializer", "DraftAppAssetsInitializer"),
     "Sandbox": ("core.sandbox.sandbox", "Sandbox"),
     "SandboxBashSession": ("core.sandbox.bash.session", "SandboxBashSession"),
     "SandboxBuilder": ("core.sandbox.builder", "SandboxBuilder"),
@@ -65,6 +77,7 @@ _LAZY_IMPORTS = {
     "SandboxProviderApiEntity": ("core.sandbox.entities", "SandboxProviderApiEntity"),
     "SandboxStorage": ("core.sandbox.storage", "SandboxStorage"),
     "SandboxType": ("core.sandbox.entities", "SandboxType"),
+    "SyncSandboxInitializer": ("core.sandbox.initializer", "SyncSandboxInitializer"),
     "VMConfig": ("core.sandbox.builder", "VMConfig"),
     "create_sandbox_config_encrypter": ("core.sandbox.utils.encryption", "create_sandbox_config_encrypter"),
     "masked_config": ("core.sandbox.utils.encryption", "masked_config"),

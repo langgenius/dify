@@ -61,7 +61,7 @@ class DifyCliInitializer(AsyncSandboxInitializer):
         logger.info("Dify CLI uploaded to sandbox, path=%s", DifyCli.PATH)
 
         artifact = SkillManager.load_artifact(self._tenant_id, self._app_id, self._assets_id)
-        if artifact is None or not artifact.get_tool_artifact().is_empty:
+        if not artifact.get_tool_artifact().is_empty():
             logger.info("No tools found in artifact for assets_id=%s", self._assets_id)
             return
 
