@@ -295,7 +295,7 @@ class Node(Generic[NodeDataT]):
         Nested nodes are nodes with parent_node_id == self._node_id.
         They are executed before the main node to extract values from list[PromptMessage].
         """
-        from core.workflow.nodes.node_factory import DifyNodeFactory
+        from core.app.workflow.node_factory import DifyNodeFactory
 
         extractor_configs = self._find_extractor_node_configs()
         logger.debug("[NestedNode] Found %d nested nodes for parent '%s'", len(extractor_configs), self._node_id)

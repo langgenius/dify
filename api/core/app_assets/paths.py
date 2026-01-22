@@ -14,7 +14,7 @@ class AssetPaths:
         return f"{AssetPaths._BASE}/{tenant_id}/{app_id}/artifacts/{assets_id}/resolved/{node_id}"
 
     @staticmethod
-    def build_skill_artifact_set(tenant_id: str, app_id: str, assets_id: str) -> str:
+    def build_skill_bundle(tenant_id: str, app_id: str, assets_id: str) -> str:
         return f"{AssetPaths._BASE}/{tenant_id}/{app_id}/artifacts/{assets_id}/skill_artifact_set.json"
 
     @staticmethod

@@ -13,14 +13,14 @@ class SkillManager:
         tenant_id: str,
         app_id: str,
         assets_id: str,
-    ) -> SkillBundle | None:
-        key = AssetPaths.build_skill_artifact_set(tenant_id, app_id, assets_id)
+    ) -> SkillBundle:
+        key = AssetPaths.build_skill_bundle(tenant_id, app_id, assets_id)
         try:
             data = storage.load_once(key)
             return SkillBundle.model_validate_json(data)
         except Exception:
             logger.info("Skill bundle missing or invalid for assets_id=%s", assets_id)
-            return None
+            return SkillBundle(assets_id=assets_id)
 
     @staticmethod
     def save_bundle(
@@ -29,5 +29,5 @@ class SkillManager:
         assets_id: str,
         bundle: SkillBundle,
     ) -> None:
-        key = AssetPaths.build_skill_artifact_set(tenant_id, app_id, assets_id)
+        key = AssetPaths.build_skill_bundle(tenant_id, app_id, assets_id)
         storage.save(key, bundle.model_dump_json(indent=2).encode("utf-8"))

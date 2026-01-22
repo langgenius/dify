@@ -30,13 +30,6 @@ class SkillInitializer(SyncSandboxInitializer):
             self._app_id,
             self._assets_id,
         )
-        if bundle is None:
-            raise ValueError(
-                f"No skill bundle found for tenant_id={self._tenant_id}, "
-                f"app_id={self._app_id}, "
-                f"assets_id={self._assets_id}"
-            )
-
         sandbox.attrs.set(
             SkillAttrs.BUNDLE,
             bundle,

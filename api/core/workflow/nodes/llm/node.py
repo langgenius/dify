@@ -1509,7 +1509,9 @@ class LLMNode(Node[LLMNodeData]):
                 if bundle is not None and file_tree is not None:
                     skill_entry = SkillCompiler().compile_one(
                         bundle=bundle,
-                        document=SkillDocument(skill_id="anonymous", content=result_text, metadata={}),
+                        document=SkillDocument(
+                            skill_id="anonymous", content=result_text, metadata=message.metadata or {}
+                        ),
                         file_tree=file_tree,
                         base_path=AppAssets.PATH,
                     )
@@ -1548,7 +1550,9 @@ class LLMNode(Node[LLMNodeData]):
                 if plain_text and bundle is not None and file_tree is not None:
                     skill_entry = SkillCompiler().compile_one(
                         bundle=bundle,
-                        document=SkillDocument(skill_id="anonymous", content=plain_text, metadata={}),
+                        document=SkillDocument(
+                            skill_id="anonymous", content=plain_text, metadata=message.metadata or {}
+                        ),
                         file_tree=file_tree,
                         base_path=AppAssets.PATH,
                     )
@@ -1821,7 +1825,7 @@ class LLMNode(Node[LLMNodeData]):
             if isinstance(prompt, LLMNodeChatModelMessage):
                 skill_entry = SkillCompiler().compile_one(
                     bundle=bundle,
-                    document=SkillDocument(skill_id="anonymous", content=prompt.text, metadata={}),
+                    document=SkillDocument(skill_id="anonymous", content=prompt.text, metadata=prompt.metadata or {}),
                     file_tree=file_tree,
                     base_path=AppAssets.PATH,
                 )

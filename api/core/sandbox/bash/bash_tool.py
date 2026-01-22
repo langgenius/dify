@@ -20,6 +20,27 @@ from ..utils.debug import sandbox_debug
 
 COMMAND_TIMEOUT_SECONDS = 60 * 60
 
+# Output truncation settings to avoid overwhelming model context
+# 8000 chars ≈ 2000-2700 tokens, safe for models with 8K+ context
+MAX_OUTPUT_LENGTH = 8000
+TRUNCATE_HEAD_LENGTH = 2500  # Keep beginning for context
+TRUNCATE_TAIL_LENGTH = 2500  # Keep end for results/errors
+
+
+def _truncate_output(output: str, name: str = "output") -> str:
+    """Truncate output if it exceeds the maximum length.
+
+    Keeps the head and tail of the output to preserve context and final results.
+    """
+    if len(output) <= MAX_OUTPUT_LENGTH:
+        return output
+
+    omitted_length = len(output) - TRUNCATE_HEAD_LENGTH - TRUNCATE_TAIL_LENGTH
+    head = output[:TRUNCATE_HEAD_LENGTH]
+    tail = output[-TRUNCATE_TAIL_LENGTH:]
+
+    return f"{head}\n\n... [{omitted_length} characters omitted from {name}] ...\n\n{tail}"
+
 
 class SandboxBashTool(Tool):
     def __init__(self, sandbox: VirtualEnvironment, tenant_id: str, tools_path: str | None = None) -> None:
@@ -35,7 +56,7 @@ class SandboxBashTool(Tool):
             ),
             parameters=[
                 ToolParameter.get_simple_instance(
-                    name="command",
+                    name="bash",
                     llm_description="The bash command to execute in current working directory",
                     typ=ToolParameter.ToolParameterType.STRING,
                     required=True,
@@ -65,7 +86,7 @@ class SandboxBashTool(Tool):
         app_id: str | None = None,
         message_id: str | None = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        command = tool_parameters.get("command", "")
+        command = tool_parameters.get("bash", "")
         if not command:
             yield self.create_text_message("Error: No command provided")
             return
@@ -92,14 +113,16 @@ class SandboxBashTool(Tool):
 
                 stdout = result.stdout.decode("utf-8", errors="replace") if result.stdout else ""
                 stderr = result.stderr.decode("utf-8", errors="replace") if result.stderr else ""
-                exit_code = result.exit_code
+
+                # Truncate long outputs to avoid overwhelming the model
+                stdout = _truncate_output(stdout, "stdout")
+                stderr = _truncate_output(stderr, "stderr")
 
                 output_parts: list[str] = []
                 if stdout:
                     output_parts.append(f"\n{stdout}")
                 if stderr:
                     output_parts.append(f"\n{stderr}")
-                output_parts.append(f"\nCommand exited with code {exit_code}")
 
                 yield self.create_text_message("\n".join(output_parts))
 
