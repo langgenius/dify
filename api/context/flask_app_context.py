@@ -3,6 +3,7 @@ Flask App Context - Flask implementation of AppContext interface.
 """
 
 import contextvars
+import threading
 from collections.abc import Generator
 from contextlib import contextmanager
 from typing import Any, final
@@ -118,6 +119,7 @@ class FlaskExecutionContext:
         self._context_vars = context_vars
         self._user = user
         self._flask_app = flask_app
+        self._local = threading.local()
 
     @property
     def app_context(self) -> FlaskAppContext:
@@ -136,47 +138,39 @@ class FlaskExecutionContext:
 
     def __enter__(self) -> "FlaskExecutionContext":
         """Enter the Flask execution context."""
-        # Restore context variables
+        # Restore non-Flask context variables to avoid leaking Flask tokens across threads
         for var, val in self._context_vars.items():
             var.set(val)
 
-        # Save current user from g if available
-        saved_user = None
-        if hasattr(g, "_login_user"):
-            saved_user = g._login_user
-
         # Enter Flask app context
-        self._cm = self._app_context.enter()
-        self._cm.__enter__()
+        cm = self._app_context.enter()
+        self._local.cm = cm
+        cm.__enter__()
 
         # Restore user in new app context
-        if saved_user is not None:
-            g._login_user = saved_user
+        if self._user is not None:
+            g._login_user = self._user
 
         return self
 
     def __exit__(self, *args: Any) -> None:
         """Exit the Flask execution context."""
-        if hasattr(self, "_cm"):
-            self._cm.__exit__(*args)
+        cm = getattr(self._local, "cm", None)
+        if cm is not None:
+            cm.__exit__(*args)
 
     @contextmanager
     def enter(self) -> Generator[None, None, None]:
         """Enter Flask execution context as context manager."""
-        # Restore context variables
+        # Restore non-Flask context variables to avoid leaking Flask tokens across threads
         for var, val in self._context_vars.items():
             var.set(val)
-
-        # Save current user from g if available
-        saved_user = None
-        if hasattr(g, "_login_user"):
-            saved_user = g._login_user
 
         # Enter Flask app context
         with self._flask_app.app_context():
             # Restore user in new app context
-            if saved_user is not None:
-                g._login_user = saved_user
+            if self._user is not None:
+                g._login_user = self._user
             yield
 
 

@@ -855,10 +855,7 @@
   },
   "app/components/base/chat/embedded-chatbot/hooks.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 6
-    },
-    "ts/no-explicit-any": {
-      "count": 16
+      "count": 3
     }
   },
   "app/components/base/chat/embedded-chatbot/inputs-form/content.tsx": {
@@ -2655,7 +2652,7 @@
       "count": 1
     },
     "ts/no-explicit-any": {
-      "count": 8
+      "count": 3
     }
   },
   "app/components/share/utils.ts": {
@@ -4292,7 +4289,7 @@
       "count": 1
     },
     "ts/no-explicit-any": {
-      "count": 2
+      "count": 1
     }
   },
   "scripts/analyze-component.js": {
@@ -4335,11 +4332,6 @@
       "count": 8
     }
   },
-  "service/explore.ts": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "service/fetch.ts": {
     "regexp/no-unused-capturing-group": {
       "count": 1
@@ -4350,7 +4342,7 @@
   },
   "service/share.ts": {
     "ts/no-explicit-any": {
-      "count": 4
+      "count": 3
     }
   },
   "service/tools.ts": {

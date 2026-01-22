@@ -110,6 +110,7 @@
   "chat.conversationName": "會話名稱",
   "chat.conversationNameCanNotEmpty": "會話名稱必填",
   "chat.conversationNamePlaceholder": "請輸入會話名稱",
+  "chat.inputDisabledPlaceholder": "僅供預覽",
   "chat.inputPlaceholder": "與 {{botName}} 對話",
   "chat.renameConversation": "重新命名會話",
   "chat.resend": "重新發送",

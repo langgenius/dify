@@ -110,6 +110,7 @@
   "chat.conversationName": "Название разговора",
   "chat.conversationNameCanNotEmpty": "Название разговора обязательно",
   "chat.conversationNamePlaceholder": "Пожалуйста, введите название разговора",
+  "chat.inputDisabledPlaceholder": "Только предпросмотр",
   "chat.inputPlaceholder": "Поговорить с {{botName}}",
   "chat.renameConversation": "Переименовать разговор",
   "chat.resend": "Переслать",
