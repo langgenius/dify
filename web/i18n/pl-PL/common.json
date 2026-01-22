@@ -350,7 +350,7 @@
   "modelProvider.card.quota": "LIMIT",
   "modelProvider.card.quotaExhausted": "Wyczerpany limit",
   "modelProvider.card.removeKey": "Usuń klucz API",
-  "modelProvider.card.tip": "Priorytet zostanie nadany płatnemu limitowi. Po wyczerpaniu limitu próbnego zostanie użyty limit płatny.",
+  "modelProvider.card.tip": "Kredyty wiadomości obsługują modele od OpenAI. Priorytet zostanie nadany płatnemu limitowi. Darmowy limit zostanie użyty po wyczerpaniu płatnego limitu.",
   "modelProvider.card.tokens": "Tokeny",
   "modelProvider.collapse": "Zwiń",
   "modelProvider.config": "Konfiguracja",
