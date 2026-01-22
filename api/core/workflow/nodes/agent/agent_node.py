@@ -209,12 +209,13 @@ class AgentNode(Node[AgentNodeData]):
                 except TypeError:
                     parameter_value = str(agent_input.value)
                 segment_group = variable_pool.convert_template(parameter_value)
-                for i, segment in enumerate(segment_group.value):
-                    if isinstance(segment, StringVariable):
-                        # use json.dumps() to uniformly and safely escape strings,
-                        # and use [1:-1] to remove the surrounding quotes after conversion.
-                        new_text = json.dumps(segment.text, ensure_ascii=False)[1:-1]
-                        segment_group.value[i] = StringVariable(value=new_text, name=segment.name)
+                if parameter.type == "array[tools]":
+                    for i, segment in enumerate(segment_group.value):
+                        if isinstance(segment, StringVariable):
+                            # use json.dumps() to uniformly and safely escape strings,
+                            # and use [1:-1] to remove the surrounding quotes after conversion.
+                            new_text = json.dumps(segment.text, ensure_ascii=False)[1:-1]
+                            segment_group.value[i] = StringVariable(value=new_text, name=segment.name)
                 parameter_value = segment_group.log if for_log else segment_group.text
                 # variable_pool.convert_template returns a string,
                 # so we need to convert it back to a dictionary
