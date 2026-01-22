@@ -1,7 +1,7 @@
 'use client'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '@/context/i18n'
-import { formatRelativeTimeInZone } from './utils'
+import { getRelativeTime, isRelativeTimeSameOrAfter } from './utils'
 
 type ExpirationTimeProps = {
   expirationTime: number
@@ -12,11 +12,14 @@ const ExpirationTime = ({
 }: ExpirationTimeProps) => {
   const { t } = useTranslation()
   const locale = useLocale()
-  const relativeTime = formatRelativeTimeInZone(expirationTime, locale)
+  const relativeTime = getRelativeTime(expirationTime, locale)
+  const isSameOrAfter = isRelativeTimeSameOrAfter(expirationTime)
 
   return (
     <div className="system-xs-regular mt-1 text-text-tertiary">
-      {t('humanInput.expirationTime', { relativeTime, ns: 'share' })}
+      {isSameOrAfter
+        ? t('humanInput.expirationTimeNowOrFuture', { relativeTime, ns: 'share' })
+        : t('humanInput.expirationTimePast', { relativeTime, ns: 'share' })}
     </div>
   )
 }

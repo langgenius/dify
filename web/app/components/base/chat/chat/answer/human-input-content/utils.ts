@@ -1,6 +1,7 @@
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import type { Locale } from '@/i18n-config'
 import dayjs from 'dayjs'
+import isSameOrAfter from 'dayjs/plugin/isSameOrAfter'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import utc from 'dayjs/plugin/utc'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
@@ -10,6 +11,7 @@ import 'dayjs/locale/ja'
 
 dayjs.extend(utc)
 dayjs.extend(relativeTime)
+dayjs.extend(isSameOrAfter)
 
 export const getButtonStyle = (style: UserActionButtonType) => {
   if (style === UserActionButtonType.Primary)
@@ -45,7 +47,7 @@ const localeMap: Record<string, string> = {
   'ja-JP': 'ja',
 }
 
-export const formatRelativeTimeInZone = (
+export const getRelativeTime = (
   utcTimestamp: string | number,
   locale: Locale = 'en-US',
 ) => {
@@ -55,4 +57,8 @@ export const formatRelativeTimeInZone = (
     .utc(utcTimestamp)
     .locale(dayjsLocale)
     .fromNow()
+}
+
+export const isRelativeTimeSameOrAfter = (utcTimestamp: string | number) => {
+  return dayjs.utc(utcTimestamp).isSameOrAfter(dayjs())
 }
