@@ -1,41 +1,21 @@
-import type { Viewport } from 'reactflow'
-import type { Edge, Node } from '@/app/components/workflow/types'
 import type { DataSetListResponse } from '@/models/datasets'
-import type {
-  SiteInfo,
-} from '@/models/share'
-import type { AppModeEnum, ModelConfig } from '@/types/app'
-import qs from 'qs'
-import {
-  get,
-} from './base'
+import type { TryAppFlowPreview, TryAppInfo } from '@/models/try-app'
+import { consoleClient } from '@/service/client'
 
-export type TryAppInfo = {
-  name: string
-  description: string
-  mode: AppModeEnum
-  site: SiteInfo
-  model_config: ModelConfig
-  deleted_tools: { id: string, tool_name: string }[]
+export const fetchTryAppInfo = (appId: string): Promise<TryAppInfo> => {
+  return consoleClient.trialApps.info({ params: { appId } })
 }
 
-export const fetchTryAppInfo = async (appId: string) => {
-  return get(`/trial-apps/${appId}`) as Promise<TryAppInfo>
+export const fetchTryAppDatasets = (appId: string, ids: string[]): Promise<DataSetListResponse> => {
+  return consoleClient.trialApps.datasets({
+    params: { appId },
+    query: { ids },
+  })
 }
 
-export const fetchTryAppDatasets = (appId: string, ids: string[]) => {
-  const urlParams = qs.stringify({ ids }, { indices: false })
-  return get<DataSetListResponse>(`/trial-apps/${appId}/datasets?${urlParams}`)
+export const fetchTryAppFlowPreview = (appId: string): Promise<TryAppFlowPreview> => {
+  return consoleClient.trialApps.workflows({ params: { appId } })
+    .then(res => res as TryAppFlowPreview)
 }
 
-type TryAppFlowPreview = {
-  graph: {
-    nodes: Node[]
-    edges: Edge[]
-    viewport: Viewport
-  }
-}
-
-export const fetchTryAppFlowPreview = (appId: string) => {
-  return get<TryAppFlowPreview>(`/trial-apps/${appId}/workflows`)
-}
+export type { TryAppInfo } from '@/models/try-app'
