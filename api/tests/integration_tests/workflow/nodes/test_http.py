@@ -5,11 +5,11 @@ from urllib.parse import urlencode
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.workflow.node_factory import DifyNodeFactory
 from core.workflow.entities import GraphInitParams
 from core.workflow.enums import WorkflowNodeExecutionStatus
 from core.workflow.graph import Graph
 from core.workflow.nodes.http_request.node import HttpRequestNode
-from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
