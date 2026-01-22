@@ -274,7 +274,7 @@ class TestFeatureService:
             mock_config.PLUGIN_MAX_PACKAGE_SIZE = 100
 
             # Act: Execute the method under test
-            result = FeatureService.get_system_features()
+            result = FeatureService.get_system_features(is_authenticated=True)
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -1031,7 +1031,7 @@ class TestFeatureService:
             }
 
             # Act: Execute the method under test
-            result = FeatureService.get_system_features()
+            result = FeatureService.get_system_features(is_authenticated=True)
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -1400,7 +1400,7 @@ class TestFeatureService:
             }
 
             # Act: Execute the method under test
-            result = FeatureService.get_system_features()
+            result = FeatureService.get_system_features(is_authenticated=True)
 
         # Assert: Verify the expected outcomes
         assert result is not None
