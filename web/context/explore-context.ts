@@ -7,7 +7,7 @@ export type CurrentTryAppParams = {
   app: App
 }
 
-type IExplore = {
+export type IExplore = {
   controlUpdateInstalledApps: number
   setControlUpdateInstalledApps: (controlUpdateInstalledApps: number) => void
   hasEditPermission: boolean

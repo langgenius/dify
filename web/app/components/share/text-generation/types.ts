@@ -1,5 +1,5 @@
 type TaskParam = {
-  inputs: Record<string, any>
+  inputs: Record<string, string | boolean | undefined>
 }
 
 export type Task = {
@@ -14,3 +14,6 @@ export enum TaskStatus {
   completed = 'completed',
   failed = 'failed',
 }
+
+// eslint-disable-next-line ts/no-explicit-any
+export type InputValueTypes = string | boolean | number | string[] | object | undefined | any

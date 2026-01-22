@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
-import type { Task } from '../../../share/text-generation/types'
+import type { InputValueTypes, Task } from '../../../share/text-generation/types'
 import type { MoreLikeThisConfig, PromptConfig, TextToSpeechConfig } from '@/models/debug'
-import type { AppData, SiteInfo } from '@/models/share'
+import type { AppData, CustomConfigValueType, SiteInfo } from '@/models/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
@@ -41,9 +41,9 @@ const TextGeneration: FC<Props> = ({
   const media = useBreakpoints()
   const isPC = media === MediaType.pc
 
-  const [inputs, doSetInputs] = useState<Record<string, any>>({})
-  const inputsRef = useRef<Record<string, any>>(inputs)
-  const setInputs = useCallback((newInputs: Record<string, any>) => {
+  const [inputs, doSetInputs] = useState<Record<string, InputValueTypes>>({})
+  const inputsRef = useRef<Record<string, InputValueTypes>>(inputs)
+  const setInputs = useCallback((newInputs: Record<string, InputValueTypes>) => {
     doSetInputs(newInputs)
     inputsRef.current = newInputs
   }, [])
@@ -55,7 +55,7 @@ const TextGeneration: FC<Props> = ({
   const appParams = useWebAppStore(s => s.appParams)
   const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null)
   const [promptConfig, setPromptConfig] = useState<PromptConfig | null>(null)
-  const [customConfig, setCustomConfig] = useState<Record<string, any> | null>(null)
+  const [customConfig, setCustomConfig] = useState<Record<string, CustomConfigValueType> | null>(null)
   const [moreLikeThisConfig, setMoreLikeThisConfig] = useState<MoreLikeThisConfig | null>(null)
   const [textToSpeechConfig, setTextToSpeechConfig] = useState<TextToSpeechConfig | null>(null)
   const [controlSend, setControlSend] = useState(0)
@@ -101,7 +101,7 @@ const TextGeneration: FC<Props> = ({
       setSiteInfo(siteInfo as SiteInfo)
       setCustomConfig(custom_config)
 
-      const { user_input_form, more_like_this, file_upload, text_to_speech }: any = appParams
+      const { user_input_form, more_like_this, file_upload, text_to_speech } = appParams
       setVisionConfig({
         // legacy of image upload compatible
         ...file_upload,
@@ -109,6 +109,7 @@ const TextGeneration: FC<Props> = ({
         // legacy of image upload compatible
         image_file_size_limit: appParams?.system_parameters.image_file_size_limit,
         fileUploadConfig: appParams?.system_parameters,
+        // eslint-disable-next-line ts/no-explicit-any
       } as any)
       const prompt_variables = userInputsFormToPromptVariables(user_input_form)
       setPromptConfig({

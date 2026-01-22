@@ -1,3 +1,4 @@
+/* eslint-disable ts/no-explicit-any */
 'use client'
 import type { FC } from 'react'
 import type { Features as FeaturesData, FileUpload } from '@/app/components/base/features/types'
@@ -106,7 +107,7 @@ const BasicAppPreview: FC<Props> = ({
             ...(modelConfig.user_input_form as any),
             ...(
               modelConfig.external_data_tools?.length
-                ? modelConfig.external_data_tools.map((item: any) => {
+                ? modelConfig.external_data_tools.map((item) => {
                     return {
                       external_data_tool: {
                         variable: item.variable as string,
@@ -138,28 +139,30 @@ const BasicAppPreview: FC<Props> = ({
       annotation_reply: modelConfig.annotation_reply,
       external_data_tools: modelConfig.external_data_tools,
       dataSets,
-      agentConfig: appDetail?.mode === 'agent-chat' ? {
-        max_iteration: DEFAULT_AGENT_SETTING.max_iteration,
-        ...modelConfig.agent_mode,
-        // remove dataset
-        enabled: true, // modelConfig.agent_mode?.enabled is not correct. old app: the value of app with dataset's is always true
-        tools: modelConfig.agent_mode?.tools.filter((tool: any) => {
-          return !tool.dataset
-        }).map((tool: any) => {
-          const toolInCollectionList = collectionList?.find(c => tool.provider_id === c.id)
-          return {
-            ...tool,
-            isDeleted: appDetail?.deleted_tools?.some((deletedTool: any) => deletedTool.id === tool.id && deletedTool.tool_name === tool.tool_name),
-            notAuthor: toolInCollectionList?.is_team_authorization === false,
-            ...(tool.provider_type === 'builtin'
-              ? {
-                  provider_id: correctToolProvider(tool.provider_name, !!toolInCollectionList),
-                  provider_name: correctToolProvider(tool.provider_name, !!toolInCollectionList),
-                }
-              : {}),
-          }
-        }),
-      } : DEFAULT_AGENT_SETTING,
+      agentConfig: appDetail?.mode === 'agent-chat'
+        // eslint-disable-next-line style/multiline-ternary
+        ? ({
+            max_iteration: DEFAULT_AGENT_SETTING.max_iteration,
+            ...modelConfig.agent_mode,
+            // remove dataset
+            enabled: true, // modelConfig.agent_mode?.enabled is not correct. old app: the value of app with dataset's is always true
+            tools: modelConfig.agent_mode?.tools.filter((tool: any) => {
+              return !tool.dataset
+            }).map((tool: any) => {
+              const toolInCollectionList = collectionList?.find(c => tool.provider_id === c.id)
+              return {
+                ...tool,
+                isDeleted: appDetail?.deleted_tools?.some((deletedTool: any) => deletedTool.id === tool.id && deletedTool.tool_name === tool.tool_name),
+                notAuthor: toolInCollectionList?.is_team_authorization === false,
+                ...(tool.provider_type === 'builtin'
+                  ? {
+                      provider_id: correctToolProvider(tool.provider_name, !!toolInCollectionList),
+                      provider_name: correctToolProvider(tool.provider_name, !!toolInCollectionList),
+                    }
+                  : {}),
+              }
+            }),
+          }) : DEFAULT_AGENT_SETTING,
     }
     return (newModelConfig as any)
   })(appDetail?.model_config)

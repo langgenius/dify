@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks-extra/no-direct-set-state-in-use-effect */
 import type { UseEmblaCarouselType } from 'embla-carousel-react'
 import Autoplay from 'embla-carousel-autoplay'
 import useEmblaCarousel from 'embla-carousel-react'

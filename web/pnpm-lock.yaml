@@ -175,10 +175,10 @@ importers:
         specifier: 0.9.3
         version: 0.9.3
       embla-carousel-autoplay:
-        specifier: ^8.6.0
+        specifier: 8.6.0
         version: 8.6.0(embla-carousel@8.6.0)
       embla-carousel-react:
-        specifier: ^8.6.0
+        specifier: 8.6.0
         version: 8.6.0(react@19.2.3)
       emoji-mart:
         specifier: 5.6.0

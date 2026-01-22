@@ -60,6 +60,7 @@ const CreateAppCard = ({
   const controlHideCreateFromTemplatePanel = useContextSelector(AppListContext, ctx => ctx.controlHideCreateFromTemplatePanel)
   useEffect(() => {
     if (controlHideCreateFromTemplatePanel > 0)
+      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
       setShowNewAppTemplateDialog(false)
   }, [controlHideCreateFromTemplatePanel])
 

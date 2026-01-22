@@ -1,8 +1,10 @@
+/* eslint-disable ts/no-explicit-any */
 import type {
   ChatConfig,
   ChatItem,
   Feedback,
 } from '../types'
+import type { InputValueTypes } from '@/app/components/share/text-generation/types'
 import type { Locale } from '@/i18n-config'
 import type {
   AppData,
@@ -76,7 +78,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
 
   const appId = useMemo(() => {
     return isTryApp ? tryAppId : (appInfo as any)?.app_id
-  }, [appInfo])
+  }, [appInfo, isTryApp, tryAppId])
 
   const embeddedConversationId = useWebAppStore(s => s.embeddedConversationId)
   const embeddedUserId = useWebAppStore(s => s.embeddedUserId)
@@ -211,6 +213,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
   const [initUserVariables, setInitUserVariables] = useState<Record<string, any>>({})
   const handleNewConversationInputsChange = useCallback((newInputs: Record<string, any>) => {
     newConversationInputsRef.current = newInputs
+    // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
     setNewConversationInputs(newInputs)
   }, [])
   const inputsForms = useMemo(() => {
@@ -302,9 +305,9 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     })()
   }, [])
   useEffect(() => {
-    const conversationInputs: Record<string, any> = {}
+    const conversationInputs: Record<string, InputValueTypes> = {}
 
-    inputsForms.forEach((item: any) => {
+    inputsForms.forEach((item) => {
       conversationInputs[item.variable] = item.default || null
     })
     handleNewConversationInputsChange(conversationInputs)
@@ -321,6 +324,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
   const [originConversationList, setOriginConversationList] = useState<ConversationItem[]>([])
   useEffect(() => {
     if (appConversationData?.data && !appConversationDataLoading)
+      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
       setOriginConversationList(appConversationData?.data)
   }, [appConversationData, appConversationDataLoading])
   const conversationList = useMemo(() => {
@@ -367,6 +371,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
   const [currentConversationInputs, setCurrentConversationInputs] = useState<Record<string, any>>(currentConversationLatestInputs || {})
   useEffect(() => {
     if (currentConversationItem && !isTryApp)
+      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
       setCurrentConversationInputs(currentConversationLatestInputs || {})
   }, [currentConversationItem, currentConversationLatestInputs])
 
@@ -411,7 +416,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
 
     return true
   }, [inputsForms, notify, t, allInputsHidden])
-  const handleStartChat = useCallback((callback?: any) => {
+  const handleStartChat = useCallback((callback?: () => void) => {
     if (checkInputsRequired()) {
       setShowNewConversationItemInList(true)
       callback?.()

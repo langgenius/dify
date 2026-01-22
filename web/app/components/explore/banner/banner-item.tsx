@@ -1,4 +1,6 @@
+/* eslint-disable react-hooks-extra/no-direct-set-state-in-use-effect */
 import type { FC } from 'react'
+import type { Banner } from '@/models/app'
 import { RiArrowRightLine } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -6,21 +8,8 @@ import { useCarousel } from '@/app/components/base/carousel'
 import { cn } from '@/utils/classnames'
 import { IndicatorButton } from './indicator-button'
 
-export type BannerData = {
-  id: string
-  content: {
-    'category': string
-    'title': string
-    'description': string
-    'img-src': string
-  }
-  status: 'enabled' | 'disabled'
-  link: string
-  created_at: number
-}
-
 type BannerItemProps = {
-  banner: BannerData
+  banner: Banner
   autoplayDelay: number
   isPaused?: boolean
 }

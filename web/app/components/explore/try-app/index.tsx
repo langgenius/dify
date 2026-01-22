@@ -1,3 +1,4 @@
+/* eslint-disable style/multiline-ternary */
 'use client'
 import type { FC } from 'react'
 import { RiCloseLine } from '@remixicon/react'

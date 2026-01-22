@@ -1,5 +1,8 @@
 'use client'
 import type { FC } from 'react'
+import type {
+  EmbeddedChatbotContextValue,
+} from '@/app/components/base/chat/embedded-chatbot/context'
 import type { TryAppInfo } from '@/service/try-app'
 import { RiResetLeftLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
@@ -59,7 +62,7 @@ const TryApp: FC<Props> = ({
       disableFeedback: true,
       isMobile,
       themeBuilder,
-    } as any}
+    } as EmbeddedChatbotContextValue}
     >
       <div className={cn('flex h-full flex-col rounded-2xl bg-background-section-burn', className)}>
         <div className="flex shrink-0 justify-between p-3">

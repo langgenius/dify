@@ -16,7 +16,7 @@ export type TryAppInfo = {
   mode: AppModeEnum
   site: SiteInfo
   model_config: ModelConfig
-  deleted_tools: any[]
+  deleted_tools: { id: string, tool_name: string }[]
 }
 
 export const fetchTryAppInfo = async (appId: string) => {

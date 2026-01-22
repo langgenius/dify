@@ -1,5 +1,4 @@
 import type { FC } from 'react'
-import type { BannerData } from './banner-item'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Carousel } from '@/app/components/base/carousel'
@@ -29,7 +28,7 @@ const Banner: FC = () => {
   const resizeTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   const enabledBanners = useMemo(
-    () => banners?.filter((banner: BannerData) => banner.status === 'enabled') ?? [],
+    () => banners?.filter(banner => banner.status === 'enabled') ?? [],
     [banners],
   )
 
@@ -78,7 +77,7 @@ const Banner: FC = () => {
       onMouseLeave={() => setIsHovered(false)}
     >
       <Carousel.Content>
-        {enabledBanners.map((banner: BannerData) => (
+        {enabledBanners.map(banner => (
           <Carousel.Item key={banner.id}>
             <BannerItem
               banner={banner}

@@ -1,3 +1,4 @@
+import type { IExplore } from '@/context/explore-context'
 import type { InstalledApp } from '@/models/explore'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import Toast from '@/app/components/base/toast'
@@ -72,7 +73,7 @@ const renderWithContext = (installedApps: InstalledApp[] = []) => {
         setInstalledApps: vi.fn(),
         isFetchingInstalledApps: false,
         setIsFetchingInstalledApps: vi.fn(),
-      } as any}
+      } as unknown as IExplore}
     >
       <SideBar controlUpdateInstalledApps={0} />
     </ExploreContext.Provider>,
