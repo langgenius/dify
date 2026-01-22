@@ -1095,4 +1095,3 @@ class TestFileService:
 
             assert upload_file is not None
             assert upload_file.extension == ""
-
