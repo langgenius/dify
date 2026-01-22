@@ -16,9 +16,13 @@ let mockIsError = false
 const mockHandleImportDSL = vi.fn()
 const mockHandleImportDSLConfirm = vi.fn()
 
-vi.mock('nuqs', () => ({
-  useQueryState: () => [mockTabValue, mockSetTab],
-}))
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return {
+    ...actual,
+    useQueryState: () => [mockTabValue, mockSetTab],
+  }
+})
 
 vi.mock('ahooks', async () => {
   const actual = await vi.importActual<typeof import('ahooks')>('ahooks')

@@ -60,6 +60,7 @@ const ActionButton = ({ className, size, state = ActionButtonState.Default, styl
         getActionButtonState(state),
         disabled && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
       )}
+      disabled={disabled}
       ref={ref}
       style={styleCss}
       {...props}

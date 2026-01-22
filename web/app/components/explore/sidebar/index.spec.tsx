@@ -98,8 +98,8 @@ describe('SideBar', () => {
       renderWithContext(mockInstalledApps)
 
       // Assert
-      expect(screen.getByText('explore.sidebar.discovery')).toBeInTheDocument()
-      expect(screen.getByText('explore.sidebar.workspace')).toBeInTheDocument()
+      expect(screen.getByText('explore.sidebar.title')).toBeInTheDocument()
+      expect(screen.getByText('explore.sidebar.webApps')).toBeInTheDocument()
       expect(screen.getByText('My App')).toBeInTheDocument()
     })
   })

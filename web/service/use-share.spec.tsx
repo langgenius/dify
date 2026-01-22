@@ -16,15 +16,19 @@ import {
   useShareConversations,
 } from './use-share'
 
-vi.mock('./share', () => ({
-  fetchChatList: vi.fn(),
-  fetchConversations: vi.fn(),
-  generationConversationName: vi.fn(),
-  fetchAppInfo: vi.fn(),
-  fetchAppMeta: vi.fn(),
-  fetchAppParams: vi.fn(),
-  getAppAccessModeByAppCode: vi.fn(),
-}))
+vi.mock('./share', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./share')>()
+  return {
+    ...actual,
+    fetchChatList: vi.fn(),
+    fetchConversations: vi.fn(),
+    generationConversationName: vi.fn(),
+    fetchAppInfo: vi.fn(),
+    fetchAppMeta: vi.fn(),
+    fetchAppParams: vi.fn(),
+    getAppAccessModeByAppCode: vi.fn(),
+  }
+})
 
 const mockFetchConversations = vi.mocked(fetchConversations)
 const mockFetchChatList = vi.mocked(fetchChatList)
@@ -91,7 +95,7 @@ describe('useShareConversations', () => {
 
     // Assert
     await waitFor(() => {
-      expect(mockFetchConversations).toHaveBeenCalledWith(false, undefined, undefined, true, 50)
+      expect(mockFetchConversations).toHaveBeenCalledWith(AppSourceType.webApp, undefined, undefined, true, 50)
     })
     await waitFor(() => {
       expect(result.current.data).toEqual(response)
@@ -140,7 +144,7 @@ describe('useShareChatList', () => {
 
     // Assert
     await waitFor(() => {
-      expect(mockFetchChatList).toHaveBeenCalledWith('conversation-1', true, 'app-1')
+      expect(mockFetchChatList).toHaveBeenCalledWith('conversation-1', AppSourceType.installedApp, 'app-1')
     })
     await waitFor(() => {
       expect(result.current.data).toEqual(response)
@@ -235,7 +239,7 @@ describe('useShareConversationName', () => {
 
     // Assert
     await waitFor(() => {
-      expect(mockGenerationConversationName).toHaveBeenCalledWith(false, undefined, 'conversation-2')
+      expect(mockGenerationConversationName).toHaveBeenCalledWith(AppSourceType.webApp, undefined, 'conversation-2')
     })
     await waitFor(() => {
       expect(result.current.data).toEqual(response)
