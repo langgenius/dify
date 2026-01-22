@@ -244,7 +244,6 @@ class FeatureService:
             )
         ]
 
-
     @classmethod
     def _fulfill_params_from_env(cls, features: FeatureModel):
         features.can_replace_logo = dify_config.CAN_REPLACE_LOGO
