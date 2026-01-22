@@ -57,7 +57,7 @@ class FileService:
     ) -> UploadFile:
         # get file extension
         extension = os.path.splitext(filename)[1].lstrip(".").lower()
-        
+
         # sanitize filename by replacing invalid characters instead of raising an exception
         INVALID_CHARS = ["/", "\\", ":", "*", "?", '"', "<", ">", "|"]
         for c in INVALID_CHARS:
