@@ -333,7 +333,7 @@ class TestFeatureService:
     def test_get_system_features_unauthenticated(self, db_session_with_containers, mock_external_service_dependencies):
         """
         Test system features retrieval for an unauthenticated user.
-        
+
         This test verifies that:
         - Sensitive data (License) is hidden/masked.
         - Public data (Branding, SSO, Marketplace) remains visible.
@@ -367,12 +367,12 @@ class TestFeatureService:
         assert result.license.workspaces.size == 0
 
         # --- 2. Verify Public Data is STILL VISIBLE (The Reviewer's Request) ---
-        
+
         # Branding should match the mock data (same as success test)
         assert result.branding.enabled is True
         assert result.branding.application_title == "Test Enterprise"
         assert result.branding.login_page_logo == "https://example.com/logo.png"
-        
+
         # SSO settings should be visible for login page rendering
         assert result.sso_enforced_for_signin is True
         assert result.sso_enforced_for_signin_protocol == "saml"
