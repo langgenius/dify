@@ -27,7 +27,7 @@ import { useProviderContext } from '@/context/provider-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { AccessMode } from '@/models/access-control'
 import { useGetUserCanAccessApp } from '@/service/access-control'
-import { copyApp, deleteApp, exportAppConfig, updateAppInfo } from '@/service/apps'
+import { copyApp, deleteApp, exportAppBundle, exportAppConfig, updateAppInfo } from '@/service/apps'
 import { fetchInstalledAppList } from '@/service/explore'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
@@ -193,6 +193,39 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     }
   }
 
+  const onExportBundle = async (include = false) => {
+    try {
+      await exportAppBundle({
+        appID: app.id,
+        include,
+      })
+    }
+    catch {
+      notify({ type: 'error', message: t('exportBundleFailed', { ns: 'app' }) })
+    }
+  }
+
+  const [secretEnvListForBundle, setSecretEnvListForBundle] = useState<EnvironmentVariable[]>([])
+
+  const exportBundleCheck = async () => {
+    if (app.mode !== AppModeEnum.WORKFLOW && app.mode !== AppModeEnum.ADVANCED_CHAT) {
+      onExportBundle()
+      return
+    }
+    try {
+      const workflowDraft = await fetchWorkflowDraft(`/apps/${app.id}/workflows/draft`)
+      const list = (workflowDraft.environment_variables || []).filter(env => env.value_type === 'secret')
+      if (list.length === 0) {
+        onExportBundle()
+        return
+      }
+      setSecretEnvListForBundle(list)
+    }
+    catch {
+      notify({ type: 'error', message: t('exportBundleFailed', { ns: 'app' }) })
+    }
+  }
+
   const onSwitch = () => {
     if (onRefresh)
       onRefresh()
@@ -227,6 +260,12 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       props.onClick?.()
       e.preventDefault()
       exportCheck()
+    }
+    const onClickExportBundle = async (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation()
+      props.onClick?.()
+      e.preventDefault()
+      exportBundleCheck()
     }
     const onClickSwitch = async (e: React.MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation()
@@ -277,6 +316,9 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
         </button>
         <button type="button" className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover" onClick={onClickExport}>
           <span className="system-sm-regular text-text-secondary">{t('export', { ns: 'app' })}</span>
+        </button>
+        <button type="button" className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover" onClick={onClickExportBundle}>
+          <span className="system-sm-regular text-text-secondary">{t('exportBundle', { ns: 'app' })}</span>
         </button>
         {(app.mode === AppModeEnum.COMPLETION || app.mode === AppModeEnum.CHAT) && (
           <>
@@ -512,6 +554,13 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           envList={secretEnvList}
           onConfirm={onExport}
           onClose={() => setSecretEnvList([])}
+        />
+      )}
+      {secretEnvListForBundle.length > 0 && (
+        <DSLExportConfirmModal
+          envList={secretEnvListForBundle}
+          onConfirm={onExportBundle}
+          onClose={() => setSecretEnvListForBundle([])}
         />
       )}
       {showAccessControl && (

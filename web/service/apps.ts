@@ -92,12 +92,98 @@ export const exportAppConfig = ({ appID, include = false, workflowID }: { appID:
   return get<{ data: string }>(`apps/${appID}/export?${params.toString()}`)
 }
 
+export const exportAppBundle = async ({ appID, include = false, workflowID }: { appID: string, include?: boolean, workflowID?: string }): Promise<void> => {
+  const { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME } = await import('@/config')
+  const Cookies = (await import('js-cookie')).default
+  const params = new URLSearchParams({
+    include_secret: include.toString(),
+  })
+  if (workflowID)
+    params.append('workflow_id', workflowID)
+
+  const url = `${API_PREFIX}/apps/${appID}/export-bundle?${params.toString()}`
+  const response = await fetch(url, {
+    method: 'GET',
+    credentials: 'include',
+    headers: {
+      [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '',
+    },
+  })
+
+  if (!response.ok)
+    throw new Error('Export bundle failed')
+
+  const blob = await response.blob()
+  const contentDisposition = response.headers.get('content-disposition')
+  let filename = `app-${appID}.zip`
+  if (contentDisposition) {
+    const filenameMatch = contentDisposition.match(/filename="?([^";\n]+)"?/)
+    if (filenameMatch)
+      filename = filenameMatch[1]
+  }
+
+  const downloadUrl = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = downloadUrl
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(downloadUrl)
+}
+
 export const importDSL = ({ mode, yaml_content, yaml_url, app_id, name, description, icon_type, icon, icon_background }: { mode: DSLImportMode, yaml_content?: string, yaml_url?: string, app_id?: string, name?: string, description?: string, icon_type?: AppIconType, icon?: string, icon_background?: string }): Promise<DSLImportResponse> => {
   return post<DSLImportResponse>('apps/imports', { body: { mode, yaml_content, yaml_url, app_id, name, description, icon, icon_type, icon_background } })
 }
 
 export const importDSLConfirm = ({ import_id }: { import_id: string }): Promise<DSLImportResponse> => {
   return post<DSLImportResponse>(`apps/imports/${import_id}/confirm`, { body: {} })
+}
+
+export const importAppBundle = async ({
+  file,
+  name,
+  description,
+  icon_type,
+  icon,
+  icon_background,
+}: {
+  file: File
+  name?: string
+  description?: string
+  icon_type?: string
+  icon?: string
+  icon_background?: string
+}): Promise<DSLImportResponse> => {
+  const { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME } = await import('@/config')
+  const Cookies = (await import('js-cookie')).default
+
+  const formData = new FormData()
+  formData.append('file', file)
+  if (name)
+    formData.append('name', name)
+  if (description)
+    formData.append('description', description)
+  if (icon_type)
+    formData.append('icon_type', icon_type)
+  if (icon)
+    formData.append('icon', icon)
+  if (icon_background)
+    formData.append('icon_background', icon_background)
+
+  const response = await fetch(`${API_PREFIX}/apps/imports-bundle`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '',
+    },
+    body: formData,
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json()
+    throw new Error(errorData.error || 'Import bundle failed')
+  }
+
+  return response.json()
 }
 
 export const switchApp = ({ appID, name, icon_type, icon, icon_background }: { appID: string, name: string, icon_type: AppIconType, icon: string, icon_background?: string | null }): Promise<{ new_app_id: string }> => {

@@ -17,17 +17,22 @@ import {
 import { parseAsString, useQueryState } from 'nuqs'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
 import Input from '@/app/components/base/input'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
 import TagFilter from '@/app/components/base/tag-management/filter'
 import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
+import { ToastContext } from '@/app/components/base/toast'
 import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { CheckModal } from '@/hooks/use-pay'
+import { DSLImportStatus } from '@/models/app'
+import { importAppBundle } from '@/service/apps'
 import { useInfiniteAppList } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
+import { getRedirection } from '@/utils/app-redirection'
 import { cn } from '@/utils/classnames'
 import AppCard from './app-card'
 import { AppCardSkeleton } from './app-card-skeleton'
@@ -61,8 +66,10 @@ const List: FC<Props> = ({
   controlRefreshList = 0,
 }) => {
   const { t } = useTranslation()
+  const { notify } = useContext(ToastContext)
   const { systemFeatures } = useGlobalPublicStore()
   const router = useRouter()
+  const { push } = useRouter()
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, isLoadingCurrentWorkspace } = useAppContext()
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
   const [activeTab, setActiveTab] = useQueryState(
@@ -90,8 +97,41 @@ const List: FC<Props> = ({
     setShowCreateFromDSLModal(true)
   }, [])
 
+  const [importingBundle, setImportingBundle] = useState(false)
+
+  const handleBundleFileDropped = useCallback(async (file: File) => {
+    if (importingBundle)
+      return
+    setImportingBundle(true)
+    try {
+      const response = await importAppBundle({ file })
+      const { status, app_id, app_mode } = response
+
+      if (status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS) {
+        notify({
+          type: status === DSLImportStatus.COMPLETED ? 'success' : 'warning',
+          message: t(status === DSLImportStatus.COMPLETED ? 'newApp.appCreated' : 'newApp.caution', { ns: 'app' }),
+        })
+        localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
+        if (app_id)
+          getRedirection(isCurrentWorkspaceEditor, { id: app_id, mode: app_mode }, push)
+      }
+      else {
+        notify({ type: 'error', message: t('importBundleFailed', { ns: 'app' }) })
+      }
+    }
+    catch (e) {
+      const error = e as Error
+      notify({ type: 'error', message: error.message || t('importBundleFailed', { ns: 'app' }) })
+    }
+    finally {
+      setImportingBundle(false)
+    }
+  }, [importingBundle, isCurrentWorkspaceEditor, notify, push, t])
+
   const { dragging } = useDSLDragDrop({
     onDSLFileDropped: handleDSLFileDropped,
+    onBundleFileDropped: handleBundleFileDropped,
     containerRef,
     enabled: isCurrentWorkspaceEditor,
   })
