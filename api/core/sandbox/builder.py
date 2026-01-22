@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+import threading
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
@@ -12,6 +14,8 @@ from .sandbox import Sandbox
 
 if TYPE_CHECKING:
     from .storage.sandbox_storage import SandboxStorage
+
+logger = logging.getLogger(__name__)
 
 
 def _get_sandbox_class(sandbox_type: SandboxType) -> type[VirtualEnvironment]:
@@ -108,10 +112,24 @@ class SandboxBuilder:
             app_id=self._app_id,
             assets_id=self._assets_id,
         )
-        for init in self._initializers:
-            init.initialize(sandbox)
 
-        sandbox.mount()
+        # Run sandbox setup asynchronously so workflow execution can proceed.
+        def initialize() -> None:
+            try:
+                for init in self._initializers:
+                    if sandbox.is_cancelled():
+                        return
+                    init.initialize(sandbox)
+                if sandbox.is_cancelled():
+                    return
+                sandbox.mount()
+                sandbox.mark_ready()
+            except Exception as exc:
+                logger.exception("Failed to initialize sandbox: tenant_id=%s, app_id=%s", self._tenant_id, self._app_id)
+                sandbox.mark_failed(exc)
+
+        # Background init completes or signals failure via sandbox state.
+        threading.Thread(target=initialize, daemon=True).start()
         return sandbox
 
     @staticmethod

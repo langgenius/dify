@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 from typing import TYPE_CHECKING
 
 from libs.attr_map import AttrMap
@@ -30,6 +31,9 @@ class Sandbox:
         self._app_id = app_id
         self._assets_id = assets_id
         self._attributes = AttrMap()
+        self._ready_event = threading.Event()
+        self._cancel_event = threading.Event()
+        self._init_error: Exception | None = None
 
     @property
     def attrs(self) -> AttrMap:
@@ -59,6 +63,32 @@ class Sandbox:
     def assets_id(self) -> str:
         return self._assets_id
 
+    def mark_ready(self) -> None:
+        # Signal that sandbox initialization has completed successfully.
+        self._ready_event.set()
+
+    def mark_failed(self, error: Exception) -> None:
+        # Capture initialization error and unblock waiters.
+        self._init_error = error
+        self._ready_event.set()
+
+    def cancel_init(self) -> None:
+        # Mark initialization as cancelled to stop background setup.
+        self._cancel_event.set()
+        self._ready_event.set()
+
+    def is_cancelled(self) -> bool:
+        return self._cancel_event.is_set()
+
+    def wait_ready(self, timeout: float | None = None) -> None:
+        # Block until initialization completes, fails, or is cancelled.
+        if not self._ready_event.wait(timeout=timeout):
+            raise TimeoutError("Sandbox initialization timed out")
+        if self._cancel_event.is_set():
+            raise RuntimeError("Sandbox initialization was cancelled")
+        if self._init_error is not None:
+            raise RuntimeError("Sandbox initialization failed") from self._init_error
+
     def mount(self) -> bool:
         return self._storage.mount(self._vm)
 
@@ -66,6 +96,7 @@ class Sandbox:
         return self._storage.unmount(self._vm)
 
     def release(self) -> None:
+        self.cancel_init()
         sandbox_id = self._vm.metadata.id
         try:
             self._storage.unmount(self._vm)

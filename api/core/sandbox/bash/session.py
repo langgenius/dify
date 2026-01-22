@@ -16,6 +16,8 @@ from .bash_tool import SandboxBashTool
 
 logger = logging.getLogger(__name__)
 
+SANDBOX_READY_TIMEOUT = 60 * 10
+
 
 class SandboxBashSession:
     def __init__(self, *, sandbox: Sandbox, node_id: str, tools: ToolArtifact | None) -> None:
@@ -30,6 +32,8 @@ class SandboxBashSession:
         self._assets_id = sandbox.assets_id
 
     def __enter__(self) -> SandboxBashSession:
+        # Ensure sandbox initialization completes before any bash commands run.
+        self._sandbox.wait_ready(timeout=SANDBOX_READY_TIMEOUT)
         self._cli_api_session = CliApiSessionManager().create(
             tenant_id=self._tenant_id,
             user_id=self._user_id,

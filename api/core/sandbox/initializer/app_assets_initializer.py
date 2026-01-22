@@ -22,18 +22,21 @@ class AppAssetsInitializer(SandboxInitializer):
         self._app_id = app_id
         self._assets_id = assets_id
 
-    def initialize(self, sandbox: Sandbox) -> None:
-        vm = sandbox.vm
-        # load app assets
+    def initialize(self, env: Sandbox) -> None:
+        vm = env.vm
+        # Load published app assets and unzip the artifact bundle.
         app_assets = AppAssetService.get_tenant_app_assets(self._tenant_id, self._assets_id)
-        sandbox.attrs.set(AppAssetsAttrs.FILE_TREE, app_assets.asset_tree)
+        env.attrs.set(AppAssetsAttrs.FILE_TREE, app_assets.asset_tree)
 
         zip_key = AssetPaths.build_zip(self._tenant_id, self._app_id, self._assets_id)
         download_url = FilePresignStorage(storage.storage_runner).get_download_url(zip_key)
 
         (
             pipeline(vm)
-            .add(["wget", "-q", download_url, "-O", AppAssets.ZIP_PATH], error_message="Failed to download assets zip")
+            .add(
+                ["wget", "-q", download_url, "-O", AppAssets.ZIP_PATH],
+                error_message="Failed to download assets zip",
+            )
             # unzip with silent error and return 1 if the zip is empty
             # FIXME(Mairuis): should use a more robust way to check if the zip is empty
             .add(
