@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(pwd)"
+SCRIPT_DIR="$(dirname "$(realpath "$0")")"
+ROOT="$(dirname "$SCRIPT_DIR")"
 
 API_ENV_EXAMPLE="$ROOT/api/.env.example"
 API_ENV="$ROOT/api/.env"
