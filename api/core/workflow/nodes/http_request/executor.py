@@ -85,9 +85,8 @@ def _quote_unquoted_values(json_string: str) -> str:
         except ValueError:
             pass
 
-        # Quote as string, escape internal quotes and backslashes
-        escaped = value_stripped.replace("\\", "\\\\").replace('"', '\\"')
-        return f'{prefix}"{escaped}"{suffix}'
+        # Quote as string using json.dumps for proper escaping
+        return f'{prefix}{json.dumps(value_stripped)}{suffix}'
 
     return _UNQUOTED_VALUE_PATTERN.sub(quote_if_needed, json_string)
 
