@@ -15,6 +15,7 @@ import docker.errors
 from docker.models.containers import Container
 
 import docker
+from configs import dify_config
 from core.entities.provider_entities import BasicProviderConfig
 from core.virtual_environment.__base.entities import (
     Arch,
@@ -293,6 +294,26 @@ class DockerDaemonEnvironment(VirtualEnvironment):
             working_dir=self._WORKING_DIR,
             environment=dict(environments),
         )
+
+        # FIXME(yeuoly): For a better solution
+        if dify_config.FILES_URL.startswith("http://localhost") or dify_config.FILES_URL.startswith("http://127.0.0.1"):
+            logging.warning(
+                "DIFY_FILES_URL is set to a localhost address. "
+                "Docker containers may not be able to access the host's localhost. "
+                "Consider using host.docker.internal or the host machine's IP address."
+            )
+
+            dify_host_port = dify_config.DIFY_PORT
+            # launch socat to forward 5001 port from host to container
+            container.exec_run(  # pyright: ignore[reportUnknownMemberType] #
+                cmd=[
+                    "bash",
+                    "-c",
+                    f"nohup socat TCP-LISTEN:{dify_host_port},bind=127.0.0.1,fork,reuseaddr "
+                    f"TCP:host.docker.internal:{dify_host_port} >/tmp/socat.log 2>&1",
+                ],
+                detach=True,
+            )
 
         # wait for the container to be fully started
         container.reload()
