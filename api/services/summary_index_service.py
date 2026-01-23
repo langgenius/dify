@@ -3,6 +3,7 @@
 import logging
 import time
 import uuid
+from datetime import UTC, datetime
 
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.index_processor.constant.doc_type import DocType
@@ -173,15 +174,21 @@ class SummaryIndexService:
         for attempt in range(max_retries):
             try:
                 vector = Vector(dataset)
-                vector.add_texts([summary_document], duplicate_check=True)
+                # Use duplicate_check=False to ensure re-vectorization even if old vector still exists
+                # The old vector should have been deleted above, but if deletion failed,
+                # we still want to re-vectorize (upsert will overwrite)
+                vector.add_texts([summary_document], duplicate_check=False)
 
                 # Success - update summary record with index node info
                 summary_record.summary_index_node_id = summary_index_node_id
                 summary_record.summary_index_node_hash = summary_hash
                 summary_record.status = "completed"
+                # Explicitly update updated_at to ensure it's refreshed even if other fields haven't changed
+                summary_record.updated_at = datetime.now(UTC).replace(tzinfo=None)
                 db.session.add(summary_record)
                 db.session.flush()
-                return  # Success, exit function
+                # Success, exit function
+                return 
 
             except (ConnectionError, Exception) as e:
                 error_str = str(e).lower()
@@ -223,6 +230,8 @@ class SummaryIndexService:
                     )
                     summary_record.status = "error"
                     summary_record.error = f"Vectorization failed: {str(e)}"
+                    # Explicitly update updated_at to ensure it's refreshed
+                    summary_record.updated_at = datetime.now(UTC).replace(tzinfo=None)
                     db.session.add(summary_record)
                     db.session.flush()
                     raise
