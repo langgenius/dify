@@ -178,10 +178,13 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             else:
                 usage_dict["usage"] = LLMUsage.empty_usage()
 
+            temp_tool_name = scratchpad.action.action_name if scratchpad.action and not scratchpad.is_final() else ""
             self.save_agent_thought(
                 agent_thought_id=agent_thought_id,
-                tool_name=(scratchpad.action.action_name if scratchpad.action and not scratchpad.is_final() else ""),
-                tool_input={scratchpad.action.action_name: scratchpad.action.action_input} if scratchpad.action else {},
+                tool_name={temp_tool_name: temp_tool_name},
+                tool_input={temp_tool_name: scratchpad.action.action_input}
+                if temp_tool_name and scratchpad.action
+                else {},
                 tool_invoke_meta={},
                 thought=scratchpad.thought or "",
                 observation="",
@@ -222,13 +225,14 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                     scratchpad.observation = tool_invoke_response
                     scratchpad.agent_response = tool_invoke_response
 
+                    temp_tool_name = scratchpad.action.action_name
                     self.save_agent_thought(
                         agent_thought_id=agent_thought_id,
-                        tool_name=scratchpad.action.action_name,
-                        tool_input={scratchpad.action.action_name: scratchpad.action.action_input},
+                        tool_name={temp_tool_name: temp_tool_name},
+                        tool_input={temp_tool_name: scratchpad.action.action_input},
                         thought=scratchpad.thought or "",
-                        observation={scratchpad.action.action_name: tool_invoke_response},
-                        tool_invoke_meta={scratchpad.action.action_name: tool_invoke_meta.to_dict()},
+                        observation={temp_tool_name: tool_invoke_response},
+                        tool_invoke_meta={temp_tool_name: tool_invoke_meta.to_dict()},
                         answer=scratchpad.agent_response,
                         messages_ids=message_file_ids,
                         llm_usage=usage_dict["usage"],
@@ -256,7 +260,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         # save agent thought
         self.save_agent_thought(
             agent_thought_id=agent_thought_id,
-            tool_name="",
+            tool_name={},
             tool_input={},
             tool_invoke_meta={},
             thought=final_answer,
