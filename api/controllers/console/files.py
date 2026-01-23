@@ -1,5 +1,6 @@
 from typing import Literal, cast
 from uuid import UUID
+
 from flask import request
 from werkzeug.exceptions import Forbidden
 
