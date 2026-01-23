@@ -1,11 +1,8 @@
-import tailwindTypography from '@tailwindcss/typography'
 // @ts-expect-error workaround for turbopack issue
 import tailwindThemeVarDefine from './themes/tailwind-theme-var-define.ts'
-import typography from './typography.js'
 
 const config = {
   theme: {
-    typography,
     extend: {
       colors: {
         gray: {
@@ -146,7 +143,7 @@ const config = {
       },
     },
   },
-  plugins: [tailwindTypography],
+  plugins: [],
   // https://github.com/tailwindlabs/tailwindcss/discussions/5969
   corePlugins: {
     preflight: false,

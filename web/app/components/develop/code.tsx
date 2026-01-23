@@ -273,7 +273,7 @@ export function CodeGroup({ children, title, targetCode, ...props }: CodeGroupPr
     <CodeGroupContext.Provider value={true}>
       <Container
         {...containerProps}
-        className="not-prose my-6 overflow-hidden rounded-2xl bg-zinc-900 shadow-md dark:ring-1 dark:ring-white/10"
+        className="my-6 overflow-hidden rounded-2xl bg-zinc-900 shadow-md dark:ring-1 dark:ring-white/10"
       >
         <CodeGroupHeader title={title} {...headerProps} />
         <CodeGroupPanels {...props} targetCode={examples}>{children}</CodeGroupPanels>

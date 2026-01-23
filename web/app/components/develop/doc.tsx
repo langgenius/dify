@@ -3,9 +3,8 @@ import { RiCloseLine, RiListUnordered } from '@remixicon/react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '@/context/i18n'
-import useTheme from '@/hooks/use-theme'
 import { LanguagesSupported } from '@/i18n-config/language'
-import { AppModeEnum, Theme } from '@/types/app'
+import { AppModeEnum } from '@/types/app'
 import { cn } from '@/utils/classnames'
 import TemplateEn from './template/template.en.mdx'
 import TemplateJa from './template/template.ja.mdx'
@@ -30,7 +29,6 @@ const Doc = ({ appDetail }: IDocProps) => {
   const [toc, setToc] = useState<Array<{ href: string, text: string }>>([])
   const [isTocExpanded, setIsTocExpanded] = useState(false)
   const [activeSection, setActiveSection] = useState<string>('')
-  const { theme } = useTheme()
 
   const variables = appDetail?.model_config?.configs?.prompt_variables || []
   const inputs = variables.reduce((res: any, variable: any) => {
@@ -236,7 +234,7 @@ const Doc = ({ appDetail }: IDocProps) => {
               </button>
             )}
       </div>
-      <article className={cn('prose-xl prose', theme === Theme.dark && 'prose-invert')}>
+      <article>
         {Template}
       </article>
     </div>
