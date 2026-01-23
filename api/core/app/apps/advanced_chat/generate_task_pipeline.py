@@ -186,6 +186,9 @@ class StreamEventBuffer:
             idx = self._tool_call_id_map[tool_call_id]
             self.tool_calls[idx]["result"] = result
             self.tool_calls[idx]["elapsed_time"] = tool_elapsed_time
+            # Remove from map after result is recorded, so that subsequent calls
+            # with the same tool_call_id are treated as new tool calls
+            del self._tool_call_id_map[tool_call_id]
 
     def finalize(self) -> None:
         """Finalize the buffer, flushing any pending data."""
