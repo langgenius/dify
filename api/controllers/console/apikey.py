@@ -2,7 +2,7 @@ import flask_restx
 from flask_restx import Resource, fields, marshal_with
 from flask_restx._http import HTTPStatus
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden
 
 from extensions.ext_database import db
@@ -117,24 +117,21 @@ class BaseApiKeyResource(Resource):
 
         if not current_user.is_admin_or_owner:
             raise Forbidden()
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+            key = session.scalars(
+                select(ApiToken).where(
+                    getattr(ApiToken, self.resource_id_field) == resource_id,
+                    ApiToken.type == self.resource_type,
+                    ApiToken.id == api_key_id,
+                )
+            ).one_or_none()
 
-        key = (
-            db.session.query(ApiToken)
-            .where(
-                getattr(ApiToken, self.resource_id_field) == resource_id,
-                ApiToken.type == self.resource_type,
-                ApiToken.id == api_key_id,
-            )
-            .first()
-        )
+            if key is None:
+                flask_restx.abort(HTTPStatus.NOT_FOUND, message="API key not found")
 
-        if key is None:
-            flask_restx.abort(HTTPStatus.NOT_FOUND, message="API key not found")
+            session.execute(sa.delete(ApiToken).where(ApiToken.id == api_key_id))
 
-        db.session.query(ApiToken).where(ApiToken.id == api_key_id).delete()
-        db.session.commit()
-
-        return {"result": "success"}, 204
+            return {"result": "success"}, 204
 
 
 @console_ns.route("/apps/<uuid:resource_id>/api-keys")
