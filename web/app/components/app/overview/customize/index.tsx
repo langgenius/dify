@@ -118,7 +118,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
           className="mt-2"
           onClick={() =>
             window.open(
-              docLink('/guides/application-publishing/developing-with-apis'),
+              docLink('/use-dify/publish/developing-with-apis'),
               '_blank',
             )}
         >

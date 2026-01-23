@@ -1,3 +1,4 @@
+import type { IExplore } from '@/context/explore-context'
 import type { InstalledApp } from '@/models/explore'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import Toast from '@/app/components/base/toast'
@@ -72,7 +73,7 @@ const renderWithContext = (installedApps: InstalledApp[] = []) => {
         setInstalledApps: vi.fn(),
         isFetchingInstalledApps: false,
         setIsFetchingInstalledApps: vi.fn(),
-      }}
+      } as unknown as IExplore}
     >
       <SideBar controlUpdateInstalledApps={0} />
     </ExploreContext.Provider>,
@@ -97,8 +98,8 @@ describe('SideBar', () => {
       renderWithContext(mockInstalledApps)
 
       // Assert
-      expect(screen.getByText('explore.sidebar.discovery')).toBeInTheDocument()
-      expect(screen.getByText('explore.sidebar.workspace')).toBeInTheDocument()
+      expect(screen.getByText('explore.sidebar.title')).toBeInTheDocument()
+      expect(screen.getByText('explore.sidebar.webApps')).toBeInTheDocument()
       expect(screen.getByText('My App')).toBeInTheDocument()
     })
   })

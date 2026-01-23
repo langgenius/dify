@@ -1,4 +1,3 @@
-import type { UnsafeUnwrappedHeaders } from 'next/headers'
 import type { FC } from 'react'
 import { headers } from 'next/headers'
 import Script from 'next/script'
@@ -26,14 +25,14 @@ const extractNonceFromCSP = (cspHeader: string | null): string | undefined => {
   return nonceMatch ? nonceMatch[1] : undefined
 }
 
-const GA: FC<IGAProps> = ({
+const GA: FC<IGAProps> = async ({
   gaType,
 }) => {
   if (IS_CE_EDITION)
     return null
 
   const cspHeader = IS_PROD
-    ? (headers() as unknown as UnsafeUnwrappedHeaders).get('content-security-policy')
+    ? (await headers()).get('content-security-policy')
     : null
   const nonce = extractNonceFromCSP(cspHeader)
 

@@ -27,7 +27,7 @@ from .segments import (
 from .types import SegmentType
 
 
-class Variable(Segment):
+class VariableBase(Segment):
     """
     A variable is a segment that has a name.
 
@@ -45,23 +45,23 @@ class Variable(Segment):
     selector: Sequence[str] = Field(default_factory=list)
 
 
-class StringVariable(StringSegment, Variable):
+class StringVariable(StringSegment, VariableBase):
     pass
 
 
-class FloatVariable(FloatSegment, Variable):
+class FloatVariable(FloatSegment, VariableBase):
     pass
 
 
-class IntegerVariable(IntegerSegment, Variable):
+class IntegerVariable(IntegerSegment, VariableBase):
     pass
 
 
-class ObjectVariable(ObjectSegment, Variable):
+class ObjectVariable(ObjectSegment, VariableBase):
     pass
 
 
-class ArrayVariable(ArraySegment, Variable):
+class ArrayVariable(ArraySegment, VariableBase):
     pass
 
 
@@ -89,16 +89,16 @@ class SecretVariable(StringVariable):
         return encrypter.obfuscated_token(self.value)
 
 
-class NoneVariable(NoneSegment, Variable):
+class NoneVariable(NoneSegment, VariableBase):
     value_type: SegmentType = SegmentType.NONE
     value: None = None
 
 
-class FileVariable(FileSegment, Variable):
+class FileVariable(FileSegment, VariableBase):
     pass
 
 
-class BooleanVariable(BooleanSegment, Variable):
+class BooleanVariable(BooleanSegment, VariableBase):
     pass
 
 
@@ -139,13 +139,13 @@ class RAGPipelineVariableInput(BaseModel):
     value: Any
 
 
-# The `VariableUnion`` type is used to enable serialization and deserialization with Pydantic.
-# Use `Variable` for type hinting when serialization is not required.
+# The `Variable` type is used to enable serialization and deserialization with Pydantic.
+# Use `VariableBase` for type hinting when serialization is not required.
 #
 # Note:
-# - All variants in `VariableUnion` must inherit from the `Variable` class.
-# - The union must include all non-abstract subclasses of `Segment`, except:
-VariableUnion: TypeAlias = Annotated[
+# - All variants in `Variable` must inherit from the `VariableBase` class.
+# - The union must include all non-abstract subclasses of `VariableBase`.
+Variable: TypeAlias = Annotated[
     (
         Annotated[NoneVariable, Tag(SegmentType.NONE)]
         | Annotated[StringVariable, Tag(SegmentType.STRING)]

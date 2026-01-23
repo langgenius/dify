@@ -26,6 +26,7 @@
   "list.action.archive": "संग्रहीत करें",
   "list.action.batchAdd": "बैच में जोड़ें",
   "list.action.delete": "हटाएँ",
+  "list.action.download": "डाउनलोड करें",
   "list.action.enableWarning": "संग्रहित फाइल को सक्रिय नहीं किया जा सकता",
   "list.action.pause": "रोकें",
   "list.action.resume": "रिज़्यूमे",
