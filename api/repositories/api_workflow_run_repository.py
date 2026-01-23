@@ -302,6 +302,26 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         """
         ...
 
+    def delete_archive_log_by_run_id(
+        self,
+        session: Session,
+        run_id: str,
+    ) -> int:
+        """
+        Delete archive log by workflow run ID.
+
+        Used after restoring a workflow run to remove the archive log record,
+        allowing the run to be archived again if needed.
+
+        Args:
+            session: Database session
+            run_id: Workflow run ID
+
+        Returns:
+            Number of records deleted (0 or 1)
+        """
+        ...
+
     def delete_runs_with_related(
         self,
         runs: Sequence[WorkflowRun],

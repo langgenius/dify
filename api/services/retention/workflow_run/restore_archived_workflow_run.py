@@ -204,6 +204,11 @@ class WorkflowRunRestore:
                         manifest_total,
                         restored_total,
                     )
+
+                    # Delete the archive log record after successful restore
+                    repo = self._get_workflow_run_repo()
+                    repo.delete_archive_log_by_run_id(session, run_id)
+
                     session.commit()
 
                 result.success = True
