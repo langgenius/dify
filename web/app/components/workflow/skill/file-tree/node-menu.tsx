@@ -119,17 +119,15 @@ const NodeMenu: FC<NodeMenuProps> = ({
             aria-label={t('skillSidebar.menu.uploadFile')}
             onChange={handleFileChange}
           />
-          {!isRoot && (
-            <input
-              ref={folderInputRef}
-              type="file"
-              // @ts-expect-error webkitdirectory is a non-standard attribute
-              webkitdirectory=""
-              className="hidden"
-              aria-label={t('skillSidebar.menu.uploadFolder')}
-              onChange={handleFolderChange}
-            />
-          )}
+          <input
+            ref={folderInputRef}
+            type="file"
+            // @ts-expect-error webkitdirectory is a non-standard attribute
+            webkitdirectory=""
+            className="hidden"
+            aria-label={t('skillSidebar.menu.uploadFolder')}
+            onChange={handleFolderChange}
+          />
 
           <MenuItem
             icon={RiFileAddLine}
@@ -143,20 +141,21 @@ const NodeMenu: FC<NodeMenuProps> = ({
             onClick={handleNewFolder}
             disabled={isLoading}
           />
+
+          <div className="my-1 h-px bg-divider-subtle" />
+
           <MenuItem
             icon={RiUploadLine}
             label={t('skillSidebar.menu.uploadFile')}
             onClick={() => fileInputRef.current?.click()}
             disabled={isLoading}
           />
-          {!isRoot && (
-            <MenuItem
-              icon={RiFolderUploadLine}
-              label={t('skillSidebar.menu.uploadFolder')}
-              onClick={() => folderInputRef.current?.click()}
-              disabled={isLoading}
-            />
-          )}
+          <MenuItem
+            icon={RiFolderUploadLine}
+            label={t('skillSidebar.menu.uploadFolder')}
+            onClick={() => folderInputRef.current?.click()}
+            disabled={isLoading}
+          />
 
           {(showRenameDelete || hasClipboard) && <div className="my-1 h-px bg-divider-subtle" />}
         </>
