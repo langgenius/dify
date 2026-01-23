@@ -1,5 +1,6 @@
 import base64
 import json
+import re
 import secrets
 import string
 from collections.abc import Mapping
@@ -40,6 +41,55 @@ BODY_TYPE_TO_CONTENT_TYPE = {
     "form-data": "multipart/form-data",
     "raw-text": "text/plain",
 }
+
+# Pattern to match unquoted values in JSON that should be quoted as strings.
+# Matches: colon, optional whitespace, value (not starting with ", [, {, or whitespace),
+# followed by comma, closing brace, or closing bracket.
+_UNQUOTED_VALUE_PATTERN = re.compile(r'(:\s*)([^"\[{\s][^,}\]]*?)(\s*[,}\]])')
+
+
+def _quote_unquoted_values(json_string: str) -> str:
+    """
+    Preprocess JSON string to quote unquoted string values.
+
+    This fixes issues where template variables are inserted without quotes,
+    e.g., {"rowId": 57eeeeb1-450b-482c-81b9-4be77e95dee2}
+    The json_repair library can truncate certain patterns (like UUIDs starting
+    with digits followed by 'e') when they appear as unquoted values.
+
+    Args:
+        json_string: The JSON string to preprocess.
+
+    Returns:
+        The JSON string with unquoted string values properly quoted.
+    """
+
+    def quote_if_needed(match: re.Match) -> str:
+        prefix = match.group(1)  # : and optional whitespace
+        value = match.group(2)  # the unquoted value
+        suffix = match.group(3)  # , } ] or whitespace before them
+
+        value_stripped = value.strip()
+
+        if not value_stripped:
+            return match.group(0)
+
+        # Don't quote JSON literals
+        if value_stripped in ("true", "false", "null"):
+            return match.group(0)
+
+        # Don't quote if it's a valid number
+        try:
+            float(value_stripped)
+            return match.group(0)
+        except ValueError:
+            pass
+
+        # Quote as string, escape internal quotes and backslashes
+        escaped = value_stripped.replace("\\", "\\\\").replace('"', '\\"')
+        return f'{prefix}"{escaped}"{suffix}'
+
+    return _UNQUOTED_VALUE_PATTERN.sub(quote_if_needed, json_string)
 
 
 class Executor:
@@ -191,10 +241,18 @@ class Executor:
                         raise RequestBodyError("json body type should have exactly one item")
                     json_string = self.variable_pool.convert_template(data[0].value).text
                     try:
-                        repaired = repair_json(json_string)
-                        json_object = json.loads(repaired, strict=False)
-                    except json.JSONDecodeError as e:
-                        raise RequestBodyError(f"Failed to parse JSON: {json_string}") from e
+                        # First try direct parsing for valid JSON
+                        json_object = json.loads(json_string, strict=False)
+                    except json.JSONDecodeError:
+                        # Preprocess to quote unquoted string values before repair.
+                        # This fixes issues where json_repair truncates certain patterns
+                        # like UUIDs (e.g., 57eeeeb1-...) when they appear unquoted.
+                        preprocessed = _quote_unquoted_values(json_string)
+                        try:
+                            repaired = repair_json(preprocessed)
+                            json_object = json.loads(repaired, strict=False)
+                        except json.JSONDecodeError as e:
+                            raise RequestBodyError(f"Failed to parse JSON: {json_string}") from e
                     self.json = json_object
                     # self.json = self._parse_object_contains_variables(json_object)
                 case "binary":
