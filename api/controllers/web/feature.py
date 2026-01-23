@@ -19,7 +19,7 @@ class SystemFeatureApi(Resource):
             dict: System feature configuration object
 
         This endpoint is akin to the `SystemFeatureApi` endpoint in api/controllers/console/feature.py,
-        except it is intended for use by the web app, instead of the console dashboard..
+        except it is intended for use by the web app, instead of the console dashboard.
 
         NOTE: This endpoint is unauthenticated by design, as it provides system features
         data required for webapp initialization.
