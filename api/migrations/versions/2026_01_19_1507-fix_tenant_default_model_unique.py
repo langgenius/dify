@@ -1,7 +1,7 @@
 """add unique constraint to tenant_default_models
 
 Revision ID: fix_tenant_default_model_unique
-Revises: 288345cd01d1
+Revises: 9d77545f524e
 Create Date: 2026-01-19 15:07:00.000000
 
 """
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = 'fix_tenant_default_model_unique'
-down_revision = '288345cd01d1'
+down_revision = '9d77545f524e'
 branch_labels = None
 depends_on = None
 
