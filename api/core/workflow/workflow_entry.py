@@ -276,7 +276,7 @@ class WorkflowEntry:
 
         # init variable pool
         variable_pool = VariablePool(
-            system_variables=SystemVariable.empty(),
+            system_variables=SystemVariable.default(),
             user_inputs={},
             environment_variables=[],
         )
