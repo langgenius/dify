@@ -7,15 +7,17 @@ import { IS_DEV } from '@/config'
 export function PWAProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (IS_DEV && 'serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then((registrations) => {
-        registrations.forEach((registration) => {
-          registration.unregister()
+      navigator.serviceWorker.getRegistrations()
+        .then((registrations) => {
+          return Promise.all(
+            registrations.map(registration => registration.unregister()),
+          )
         })
-      }).catch((error) => {
-        // Silently fail if service worker unregistration fails
-        // This is a development-only optimization and shouldn't block the app
-        console.warn('Failed to unregister service workers:', error)
-      })
+        .catch((error) => {
+          // Silently fail if service worker unregistration fails
+          // This is a development-only optimization and shouldn't block the app
+          console.warn('Failed to unregister service workers:', error)
+        })
     }
   }, [])
 
