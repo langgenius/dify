@@ -60,6 +60,7 @@ register_schema_models(web_ns, LoginPayload, EmailCodeLoginSendPayload, EmailCod
 class LoginApi(Resource):
     """Resource for web app email/password login."""
 
+    @web_ns.expect(web_ns.models[LoginPayload.__name__])
     @setup_required
     @only_edition_enterprise
     @web_ns.doc("web_app_login")

@@ -1,7 +1,7 @@
 import logging
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from werkzeug.exceptions import InternalServerError
 
 from controllers.common.schema import register_schema_models
@@ -31,8 +31,8 @@ from services.errors.llm import InvokeRateLimitError
 
 
 class WorkflowRunPayload(BaseModel):
-    inputs: dict[str, Any]
-    files: list[dict[str, Any]] | None = None
+    inputs: dict[str, Any] = Field(description="Input variables for the workflow")
+    files: list[dict[str, Any]] | None = Field(default=None, description="Files to be processed by the workflow")
 
 
 logger = logging.getLogger(__name__)
@@ -44,12 +44,7 @@ register_schema_models(web_ns, WorkflowRunPayload)
 class WorkflowRunApi(WebApiResource):
     @web_ns.doc("Run Workflow")
     @web_ns.doc(description="Execute a workflow with provided inputs and files.")
-    @web_ns.doc(
-        params={
-            "inputs": {"description": "Input variables for the workflow", "type": "object", "required": True},
-            "files": {"description": "Files to be processed by the workflow", "type": "array", "required": False},
-        }
-    )
+    @web_ns.expect(web_ns.models[WorkflowRunPayload.__name__])
     @web_ns.doc(
         responses={
             200: "Success",
