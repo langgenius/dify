@@ -26,6 +26,7 @@ def test_console_remote_files_fastopenapi_get_info(app: Flask):
 
     response = httpx.Response(
         200,
+        request=httpx.Request("HEAD", "http://example.com/file.txt"),
         headers={"Content-Type": "text/plain", "Content-Length": "10"},
     )
 
@@ -63,9 +64,11 @@ def test_console_remote_files_fastopenapi_upload(app: Flask):
     )
 
     with (
+        patch("controllers.console.remote_files.db", new=SimpleNamespace(engine=object())),
         patch("controllers.console.remote_files.ssrf_proxy.head", return_value=head_response),
         patch("controllers.console.remote_files.helpers.guess_file_info_from_response", return_value=file_info),
         patch("controllers.console.remote_files.FileService.is_file_size_within_limit", return_value=True),
+        patch("controllers.console.remote_files.FileService.__init__", return_value=None),
         patch("controllers.console.remote_files.current_account_with_tenant", return_value=(object(), "tenant-id")),
         patch("controllers.console.remote_files.FileService.upload_file", return_value=uploaded),
         patch("controllers.console.remote_files.file_helpers.get_signed_file_url", return_value="signed-url"),
