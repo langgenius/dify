@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from enum import StrEnum
 from typing import Any, Literal, TypeAlias
 
 from flask import request
@@ -27,12 +28,18 @@ from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
 from models import App, Workflow
 from models.model import IconType
+from models.workflow_features import WorkflowFeatures
 from services.app_dsl_service import AppDslService, ImportMode
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 
 ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
+
+
+class RuntimeType(StrEnum):
+    CLASSIC = "classic"
+    SANDBOXED = "sandboxed"
 
 
 class AppListQuery(BaseModel):
@@ -329,6 +336,7 @@ class AppPartial(ResponseModel):
     create_user_name: str | None = None
     author_name: str | None = None
     has_draft_trigger: bool | None = None
+    runtime_type: RuntimeType = RuntimeType.CLASSIC
 
     @computed_field(return_type=str | None)  # type: ignore
     @property
@@ -460,6 +468,7 @@ class AppListApi(Resource):
             str(app.id) for app in app_pagination.items if app.mode in {"workflow", "advanced-chat"}
         ]
         draft_trigger_app_ids: set[str] = set()
+        sandbox_app_ids: set[str] = set()
         if workflow_capable_app_ids:
             draft_workflows = (
                 db.session.execute(
@@ -477,6 +486,10 @@ class AppListApi(Resource):
                 NodeType.TRIGGER_PLUGIN,
             }
             for workflow in draft_workflows:
+                # Check sandbox feature
+                if workflow.get_feature(WorkflowFeatures.SANDBOX).enabled:
+                    sandbox_app_ids.add(str(workflow.app_id))
+
                 try:
                     for _, node_data in workflow.walk_nodes():
                         if node_data.get("type") in trigger_node_types:
@@ -487,6 +500,7 @@ class AppListApi(Resource):
 
         for app in app_pagination.items:
             app.has_draft_trigger = str(app.id) in draft_trigger_app_ids
+            app.runtime_type = RuntimeType.SANDBOXED if str(app.id) in sandbox_app_ids else RuntimeType.CLASSIC
 
         pagination_model = AppPagination.model_validate(app_pagination, from_attributes=True)
         return pagination_model.model_dump(mode="json"), 200
