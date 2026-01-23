@@ -71,6 +71,8 @@ def create_app() -> DifyApp:
 
 
 def initialize_extensions(app: DifyApp):
+    # Initialize Flask context capture for workflow execution
+    from context.flask_app_context import init_flask_context
     from extensions import (
         ext_app_metrics,
         ext_blueprints,
@@ -79,6 +81,7 @@ def initialize_extensions(app: DifyApp):
         ext_commands,
         ext_compress,
         ext_database,
+        ext_fastopenapi,
         ext_forward_refs,
         ext_hosting_provider,
         ext_import_modules,
@@ -99,6 +102,8 @@ def initialize_extensions(app: DifyApp):
         ext_timezone,
         ext_warnings,
     )
+
+    init_flask_context()
 
     extensions = [
         ext_timezone,
@@ -124,6 +129,7 @@ def initialize_extensions(app: DifyApp):
         ext_proxy_fix,
         ext_blueprints,
         ext_commands,
+        ext_fastopenapi,
         ext_otel,
         ext_request_logging,
         ext_session_factory,

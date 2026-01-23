@@ -3,7 +3,7 @@
   "dateTimeFormat": "MM/DD/YYYY hh:mm A",
   "desc": "Przetestuj efekt uderzenia wiedzy na podstawie podanego tekstu zapytania.",
   "hit.emptyTip": "Wyniki testowania odzyskiwania będą tu pokazane",
-  "hit.title": "AKAPITY ODZYSKIWANIA",
+  "hit.title": "{{num}} akapity odzyskiwania",
   "hitChunks": "Trafienie w {{num}} fragmentów podrzędnych",
   "imageUploader.dropZoneTip": "Przeciągnij plik tutaj, aby go przesłać",
   "imageUploader.singleChunkAttachmentLimitTooltip": "Liczba pojedynczych załączników nie może przekroczyć {{limit}}",

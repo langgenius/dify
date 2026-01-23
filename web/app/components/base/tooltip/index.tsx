@@ -109,7 +109,7 @@ const Tooltip: FC<TooltipProps> = ({
       <PortalToFollowElemContent
         className={cn('z-[9999]', portalContentClassName || '')}
       >
-        {popupContent && (
+        {!!popupContent && (
           <div
             className={cn(
               !noDecoration && 'system-xs-regular relative max-w-[300px] break-words rounded-md bg-components-panel-bg px-3 py-2 text-left text-text-tertiary shadow-lg',
