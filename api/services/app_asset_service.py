@@ -21,6 +21,7 @@ from core.app_assets.packager import AssetZipPackager
 from core.app_assets.paths import AssetPaths
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from extensions.ext_storage import storage
 from extensions.storage.base_storage import BaseStorage
 from extensions.storage.cached_presign_storage import CachedPresignStorage
 from extensions.storage.file_presign_storage import FilePresignStorage
@@ -49,8 +50,6 @@ class AppAssetService:
 
     @staticmethod
     def assets_storage() -> BaseStorage:
-        from extensions.ext_storage import storage
-
         return SilentStorage(
             CachedPresignStorage(
                 storage=FilePresignStorage(storage.storage_runner),
@@ -436,6 +435,12 @@ class AppAssetService:
 
             storage_key = AssetPaths.draft_file(app_model.tenant_id, app_model.id, node_id)
             presign_storage = AppAssetService.assets_storage()
+
+            # put empty content to create the file record
+            # which avoids file not found error when uploading via presigned URL is never touched
+            # resulting in inconsistent state
+            AppAssetService.assets_storage().save(storage_key, b"")
+
             upload_url = presign_storage.get_upload_url(storage_key, expires_in)
 
             return node, upload_url
