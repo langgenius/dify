@@ -15,6 +15,7 @@ class FeatureResponse(BaseModel):
 class SystemFeatureResponse(BaseModel):
     features: dict = Field(description="System feature configuration object")
 
+
 @console_router.get(
     "/features",
     response_model=FeatureResponse,
