@@ -18,6 +18,7 @@ import { ReadmeShowType } from '@/app/components/plugins/readme-panel/store'
 import { CollectionType } from '@/app/components/tools/types'
 import { generateFormValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
+import { START_TAB_ID } from '@/app/components/workflow/skill/constants'
 import ToolSettingsSection from '@/app/components/workflow/skill/editor/skill-editor/tool-setting/tool-settings-section'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { useGetLanguage } from '@/context/i18n'
@@ -169,7 +170,7 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
       const metadata = toolBlockContext?.metadata as SkillFileMetadata | undefined
       return metadata?.tools?.[configId]
     }
-    if (!activeTabId)
+    if (!activeTabId || activeTabId === START_TAB_ID)
       return undefined
     const metadata = fileMetadata.get(activeTabId) as SkillFileMetadata | undefined
     return metadata?.tools?.[configId]
@@ -365,7 +366,7 @@ const ToolBlockComponent: FC<ToolBlockComponentProps> = ({
       toolBlockContext?.onMetadataChange?.(nextMetadata)
       return
     }
-    if (!activeTabId)
+    if (!activeTabId || activeTabId === START_TAB_ID)
       return
     const metadata = (fileMetadata.get(activeTabId) || {}) as SkillFileMetadata
     const toolType = currentProvider.type === CollectionType.mcp ? 'mcp' : 'builtin'

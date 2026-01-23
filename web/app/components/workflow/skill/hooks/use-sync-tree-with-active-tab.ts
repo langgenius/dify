@@ -3,6 +3,7 @@
 import type { TreeApi } from 'react-arborist'
 import type { TreeNodeData } from '../type'
 import { useEffect } from 'react'
+import { START_TAB_ID } from '@/app/components/workflow/skill/constants'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 
 type UseSyncTreeWithActiveTabOptions = {
@@ -24,7 +25,7 @@ export function useSyncTreeWithActiveTab({
   const storeApi = useWorkflowStore()
 
   useEffect(() => {
-    if (!activeTabId)
+    if (!activeTabId || activeTabId === START_TAB_ID)
       return
 
     const tree = treeRef.current

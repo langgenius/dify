@@ -16,6 +16,7 @@ import { useBasicTypeaheadTriggerMatch } from '@/app/components/base/prompt-edit
 import { $splitNodeContainingQuery } from '@/app/components/base/prompt-editor/utils'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import ToolPicker from '@/app/components/workflow/block-selector/tool-picker'
+import { START_TAB_ID } from '@/app/components/workflow/skill/constants'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { $createToolBlockNode } from './node'
 import { useToolBlockContext } from './tool-block-context'
@@ -95,7 +96,7 @@ const ToolPickerBlock: FC<ToolPickerBlockProps> = ({ scope = 'all' }) => {
       return
     }
     const { activeTabId, fileMetadata, setDraftMetadata, pinTab } = storeApi.getState()
-    if (!activeTabId)
+    if (!activeTabId || activeTabId === START_TAB_ID)
       return
     const metadata = (fileMetadata.get(activeTabId) || {}) as Record<string, unknown>
     const nextTools = { ...(metadata.tools || {}) } as Record<string, unknown>
