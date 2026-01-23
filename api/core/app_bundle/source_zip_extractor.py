@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import io
 import zipfile
 from collections.abc import Callable
@@ -77,8 +76,7 @@ class SourceZipExtractor:
             parent_path = file.path.rsplit("/", 1)[0] if "/" in file.path else None
             parent_id = path_to_node_id.get(parent_path) if parent_path else None
 
-            checksum = hashlib.sha256(file.content).hexdigest()
-            node = AppAssetNode.create_file(node_id, name, parent_id, len(file.content), checksum)
+            node = AppAssetNode.create_file(node_id, name, parent_id, len(file.content))
             tree.add(node)
 
             storage_key = storage_key_fn(tenant_id, app_id, node_id)

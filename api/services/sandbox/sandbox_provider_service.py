@@ -195,7 +195,7 @@ class SandboxProviderService:
                 )
                 if not system_configed:
                     raise ValueError(
-                        f"No system default provider configured for tenant {tenant_id} and provider type {tenant_configed.provider_type}"
+                        f"No system default provider configured for provider type {tenant_configed.provider_type}"
                     )
                 return SandboxProviderEntity(
                     id=tenant_configed.id,

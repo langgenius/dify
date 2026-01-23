@@ -10,6 +10,7 @@ from controllers.console.app.error import (
 )
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
+from core.app.entities.app_asset_entities import BatchUploadNode
 from libs.login import current_account_with_tenant, login_required
 from models import App
 from models.model import AppMode
@@ -47,6 +48,26 @@ class CreateFilePayload(BaseModel):
         return v or None
 
 
+class GetUploadUrlPayload(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    size: int = Field(..., ge=0)
+    parent_id: str | None = None
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def strip_name(cls, v: str) -> str:
+        return v.strip() if isinstance(v, str) else v
+
+    @field_validator("parent_id", mode="before")
+    @classmethod
+    def empty_to_none(cls, v: str | None) -> str | None:
+        return v or None
+
+
+class BatchUploadPayload(BaseModel):
+    children: list[BatchUploadNode] = Field(..., min_length=1)
+
+
 class UpdateFileContentPayload(BaseModel):
     content: str
 
@@ -69,6 +90,9 @@ def reg(cls: type[BaseModel]) -> None:
 
 reg(CreateFolderPayload)
 reg(CreateFilePayload)
+reg(GetUploadUrlPayload)
+reg(BatchUploadNode)
+reg(BatchUploadPayload)
 reg(UpdateFileContentPayload)
 reg(RenameNodePayload)
 reg(MoveNodePayload)
@@ -256,3 +280,70 @@ class AppAssetFileDownloadUrlResource(Resource):
             return {"download_url": download_url}
         except ServiceNodeNotFoundError:
             raise AppAssetNodeNotFoundError()
+
+
+@console_ns.route("/apps/<string:app_id>/assets/files/upload")
+class AppAssetFileUploadUrlResource(Resource):
+    @console_ns.expect(console_ns.models[GetUploadUrlPayload.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    def post(self, app_model: App):
+        current_user, _ = current_account_with_tenant()
+        payload = GetUploadUrlPayload.model_validate(console_ns.payload or {})
+
+        try:
+            node, upload_url = AppAssetService.get_file_upload_url(
+                app_model, current_user.id, payload.name, payload.size, payload.parent_id
+            )
+            return {"node": node.model_dump(), "upload_url": upload_url}, 201
+        except AppAssetParentNotFoundError:
+            raise AppAssetNodeNotFoundError()
+        except ServicePathConflictError:
+            raise AppAssetPathConflictError()
+
+
+@console_ns.route("/apps/<string:app_id>/assets/batch-upload")
+class AppAssetBatchUploadResource(Resource):
+    @console_ns.expect(console_ns.models[BatchUploadPayload.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    def post(self, app_model: App):
+        """
+        Create nodes from tree structure and return upload URLs.
+
+        Input:
+        {
+            "children": [
+                {"name": "folder1", "node_type": "folder", "children": [
+                    {"name": "file1.txt", "node_type": "file", "size": 1024}
+                ]},
+                {"name": "root.txt", "node_type": "file", "size": 512}
+            ]
+        }
+
+        Output:
+        {
+            "children": [
+                {"id": "xxx", "name": "folder1", "node_type": "folder", "children": [
+                    {"id": "yyy", "name": "file1.txt", "node_type": "file", "size": 1024, "upload_url": "..."}
+                ]},
+                {"id": "zzz", "name": "root.txt", "node_type": "file", "size": 512, "upload_url": "..."}
+            ]
+        }
+        """
+        current_user, _ = current_account_with_tenant()
+        payload = BatchUploadPayload.model_validate(console_ns.payload or {})
+
+        try:
+            result_children = AppAssetService.batch_create_from_tree(
+                app_model, current_user.id, payload.children
+            )
+            return {"children": [child.model_dump() for child in result_children]}, 201
+        except AppAssetParentNotFoundError:
+            raise AppAssetNodeNotFoundError()
+        except ServicePathConflictError:
+            raise AppAssetPathConflictError()

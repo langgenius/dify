@@ -1,4 +1,3 @@
-import hashlib
 import logging
 from uuid import uuid4
 
@@ -8,6 +7,7 @@ from core.app.entities.app_asset_entities import (
     AppAssetFileTree,
     AppAssetNode,
     AssetNodeType,
+    BatchUploadNode,
     TreeNodeNotFoundError,
     TreeParentNotFoundError,
     TreePathConflictError,
@@ -34,9 +34,14 @@ logger = logging.getLogger(__name__)
 
 
 class AppAssetService:
-    MAX_PREVIEW_CONTENT_SIZE = 5 * 1024 * 1024  # 1MB
+    MAX_PREVIEW_CONTENT_SIZE = 5 * 1024 * 1024  # 5MB
     _PRESIGN_CACHE_TTL_BUFFER_SECONDS = 300
     _PRESIGN_CACHE_MIN_TTL_SECONDS = 60
+    _LOCK_TIMEOUT_SECONDS = 60
+
+    @staticmethod
+    def _lock(app_id: str):
+        return redis_client.lock(f"app_asset:lock:{app_id}", timeout=AppAssetService._LOCK_TIMEOUT_SECONDS)
 
     @staticmethod
     def _draft_download_cache_key(storage_key: str) -> str:
@@ -198,25 +203,27 @@ class AppAssetService:
         name: str,
         parent_id: str | None = None,
     ) -> AppAssetNode:
-        with Session(db.engine, expire_on_commit=False) as session:
-            assets = AppAssetService.get_or_create_assets(session, app_model, account_id)
-            tree = assets.asset_tree
+        with AppAssetService._lock(app_model.id):
+            with Session(db.engine, expire_on_commit=False) as session:
+                assets = AppAssetService.get_or_create_assets(session, app_model, account_id)
+                tree = assets.asset_tree
 
-            node = AppAssetNode.create_folder(str(uuid4()), name, parent_id)
+                node = AppAssetNode.create_folder(str(uuid4()), name, parent_id)
 
-            try:
-                tree.add(node)
-            except TreeParentNotFoundError as e:
-                raise AppAssetParentNotFoundError(str(e)) from e
-            except TreePathConflictError as e:
-                raise AppAssetPathConflictError(str(e)) from e
+                try:
+                    tree.add(node)
+                except TreeParentNotFoundError as e:
+                    raise AppAssetParentNotFoundError(str(e)) from e
+                except TreePathConflictError as e:
+                    raise AppAssetPathConflictError(str(e)) from e
 
-            assets.asset_tree = tree
-            assets.updated_by = account_id
-            session.commit()
+                assets.asset_tree = tree
+                assets.updated_by = account_id
+                session.commit()
 
-        return node
+            return node
 
+    # FIXME(Mairuis): migrate to get_file_upload_url / get_file_upload_urls API
     @staticmethod
     def create_file(
         app_model: App,
@@ -225,37 +232,37 @@ class AppAssetService:
         content: bytes,
         parent_id: str | None = None,
     ) -> AppAssetNode:
-        with Session(db.engine, expire_on_commit=False) as session:
-            assets = AppAssetService.get_or_create_assets(session, app_model, account_id)
-            tree = assets.asset_tree
+        with AppAssetService._lock(app_model.id):
+            with Session(db.engine, expire_on_commit=False) as session:
+                assets = AppAssetService.get_or_create_assets(session, app_model, account_id)
+                tree = assets.asset_tree
 
-            node_id = str(uuid4())
-            checksum = hashlib.sha256(content).hexdigest()
-            node = AppAssetNode.create_file(node_id, name, parent_id, len(content), checksum)
+                node_id = str(uuid4())
+                node = AppAssetNode.create_file(node_id, name, parent_id, len(content))
 
-            try:
-                tree.add(node)
-            except TreeParentNotFoundError as e:
-                raise AppAssetParentNotFoundError(str(e)) from e
-            except TreePathConflictError as e:
-                raise AppAssetPathConflictError(str(e)) from e
+                try:
+                    tree.add(node)
+                except TreeParentNotFoundError as e:
+                    raise AppAssetParentNotFoundError(str(e)) from e
+                except TreePathConflictError as e:
+                    raise AppAssetPathConflictError(str(e)) from e
 
-            storage_key = AssetPaths.draft_file(app_model.tenant_id, app_model.id, node_id)
-            storage.save(storage_key, content)
+                storage_key = AssetPaths.draft_file(app_model.tenant_id, app_model.id, node_id)
+                storage.save(storage_key, content)
 
-            assets.asset_tree = tree
-            assets.updated_by = account_id
-            session.commit()
+                assets.asset_tree = tree
+                assets.updated_by = account_id
+                session.commit()
 
-            cache_key = AppAssetService._draft_storage_key_for_node(
-                app_model.tenant_id,
-                app_model.id,
-                assets.id,
-                node,
-            )
-            AppAssetService._clear_draft_download_cache([cache_key])
+                cache_key = AppAssetService._draft_storage_key_for_node(
+                    app_model.tenant_id,
+                    app_model.id,
+                    assets.id,
+                    node,
+                )
+                AppAssetService._clear_draft_download_cache([cache_key])
 
-        return node
+            return node
 
     @staticmethod
     def get_file_content(app_model: App, account_id: str, node_id: str) -> bytes:
@@ -274,6 +281,7 @@ class AppAssetService:
             storage_key = AssetPaths.draft_file(app_model.tenant_id, app_model.id, node_id)
             return storage.load_once(storage_key)
 
+    # FIXME(Mairuis): migrate to presigned upload API
     @staticmethod
     def update_file_content(
         app_model: App,
@@ -281,105 +289,23 @@ class AppAssetService:
         node_id: str,
         content: bytes,
     ) -> AppAssetNode:
-        with Session(db.engine, expire_on_commit=False) as session:
-            assets = AppAssetService.get_or_create_assets(session, app_model, account_id)
-            tree = assets.asset_tree
+        with AppAssetService._lock(app_model.id):
+            with Session(db.engine, expire_on_commit=False) as session:
+                assets = AppAssetService.get_or_create_assets(session, app_model, account_id)
+                tree = assets.asset_tree
 
-            checksum = hashlib.sha256(content).hexdigest()
+                try:
+                    node = tree.update(node_id, len(content))
+                except TreeNodeNotFoundError as e:
+                    raise AppAssetNodeNotFoundError(str(e)) from e
 
-            try:
-                node = tree.update(node_id, len(content), checksum)
-            except TreeNodeNotFoundError as e:
-                raise AppAssetNodeNotFoundError(str(e)) from e
+                storage_key = AssetPaths.draft_file(app_model.tenant_id, app_model.id, node_id)
+                storage.save(storage_key, content)
 
-            storage_key = AssetPaths.draft_file(app_model.tenant_id, app_model.id, node_id)
-            storage.save(storage_key, content)
+                assets.asset_tree = tree
+                assets.updated_by = account_id
+                session.commit()
 
-            assets.asset_tree = tree
-            assets.updated_by = account_id
-            session.commit()
-
-            cache_key = AppAssetService._draft_storage_key_for_node(
-                app_model.tenant_id,
-                app_model.id,
-                assets.id,
-                node,
-            )
-            AppAssetService._clear_draft_download_cache([cache_key])
-
-        return node
-
-    @staticmethod
-    def rename_node(
-        app_model: App,
-        account_id: str,
-        node_id: str,
-        new_name: str,
-    ) -> AppAssetNode:
-        with Session(db.engine, expire_on_commit=False) as session:
-            assets = AppAssetService.get_or_create_assets(session, app_model, account_id)
-            tree = assets.asset_tree
-
-            old_node = tree.get(node_id)
-            old_extension = old_node.extension if old_node else None
-
-            try:
-                node = tree.rename(node_id, new_name)
-            except TreeNodeNotFoundError as e:
-                raise AppAssetNodeNotFoundError(str(e)) from e
-            except TreePathConflictError as e:
-                raise AppAssetPathConflictError(str(e)) from e
-
-            assets.asset_tree = tree
-            assets.updated_by = account_id
-            session.commit()
-
-            if node.node_type == AssetNodeType.FILE:
-                cache_keys: list[str] = []
-                if old_extension is not None:
-                    old_storage_key = (
-                        AssetPaths.build_resolved_file(app_model.tenant_id, app_model.id, assets.id, node.id)
-                        if old_extension == "md"
-                        else AssetPaths.draft_file(app_model.tenant_id, app_model.id, node.id)
-                    )
-                    cache_keys.append(old_storage_key)
-                cache_keys.append(
-                    AppAssetService._draft_storage_key_for_node(
-                        app_model.tenant_id,
-                        app_model.id,
-                        assets.id,
-                        node,
-                    )
-                )
-                AppAssetService._clear_draft_download_cache(list(set(cache_keys)))
-
-        return node
-
-    @staticmethod
-    def move_node(
-        app_model: App,
-        account_id: str,
-        node_id: str,
-        new_parent_id: str | None,
-    ) -> AppAssetNode:
-        with Session(db.engine, expire_on_commit=False) as session:
-            assets = AppAssetService.get_or_create_assets(session, app_model, account_id)
-            tree = assets.asset_tree
-
-            try:
-                node = tree.move(node_id, new_parent_id)
-            except TreeNodeNotFoundError as e:
-                raise AppAssetNodeNotFoundError(str(e)) from e
-            except TreeParentNotFoundError as e:
-                raise AppAssetParentNotFoundError(str(e)) from e
-            except TreePathConflictError as e:
-                raise AppAssetPathConflictError(str(e)) from e
-
-            assets.asset_tree = tree
-            assets.updated_by = account_id
-            session.commit()
-
-            if node.node_type == AssetNodeType.FILE:
                 cache_key = AppAssetService._draft_storage_key_for_node(
                     app_model.tenant_id,
                     app_model.id,
@@ -388,7 +314,90 @@ class AppAssetService:
                 )
                 AppAssetService._clear_draft_download_cache([cache_key])
 
-        return node
+            return node
+
+    @staticmethod
+    def rename_node(
+        app_model: App,
+        account_id: str,
+        node_id: str,
+        new_name: str,
+    ) -> AppAssetNode:
+        with AppAssetService._lock(app_model.id):
+            with Session(db.engine, expire_on_commit=False) as session:
+                assets = AppAssetService.get_or_create_assets(session, app_model, account_id)
+                tree = assets.asset_tree
+
+                old_node = tree.get(node_id)
+                old_extension = old_node.extension if old_node else None
+
+                try:
+                    node = tree.rename(node_id, new_name)
+                except TreeNodeNotFoundError as e:
+                    raise AppAssetNodeNotFoundError(str(e)) from e
+                except TreePathConflictError as e:
+                    raise AppAssetPathConflictError(str(e)) from e
+
+                assets.asset_tree = tree
+                assets.updated_by = account_id
+                session.commit()
+
+                if node.node_type == AssetNodeType.FILE:
+                    cache_keys: list[str] = []
+                    if old_extension is not None:
+                        old_storage_key = (
+                            AssetPaths.build_resolved_file(app_model.tenant_id, app_model.id, assets.id, node.id)
+                            if old_extension == "md"
+                            else AssetPaths.draft_file(app_model.tenant_id, app_model.id, node.id)
+                        )
+                        cache_keys.append(old_storage_key)
+                    cache_keys.append(
+                        AppAssetService._draft_storage_key_for_node(
+                            app_model.tenant_id,
+                            app_model.id,
+                            assets.id,
+                            node,
+                        )
+                    )
+                    AppAssetService._clear_draft_download_cache(list(set(cache_keys)))
+
+            return node
+
+    @staticmethod
+    def move_node(
+        app_model: App,
+        account_id: str,
+        node_id: str,
+        new_parent_id: str | None,
+    ) -> AppAssetNode:
+        with AppAssetService._lock(app_model.id):
+            with Session(db.engine, expire_on_commit=False) as session:
+                assets = AppAssetService.get_or_create_assets(session, app_model, account_id)
+                tree = assets.asset_tree
+
+                try:
+                    node = tree.move(node_id, new_parent_id)
+                except TreeNodeNotFoundError as e:
+                    raise AppAssetNodeNotFoundError(str(e)) from e
+                except TreeParentNotFoundError as e:
+                    raise AppAssetParentNotFoundError(str(e)) from e
+                except TreePathConflictError as e:
+                    raise AppAssetPathConflictError(str(e)) from e
+
+                assets.asset_tree = tree
+                assets.updated_by = account_id
+                session.commit()
+
+                if node.node_type == AssetNodeType.FILE:
+                    cache_key = AppAssetService._draft_storage_key_for_node(
+                        app_model.tenant_id,
+                        app_model.id,
+                        assets.id,
+                        node,
+                    )
+                    AppAssetService._clear_draft_download_cache([cache_key])
+
+            return node
 
     @staticmethod
     def reorder_node(
@@ -397,52 +406,54 @@ class AppAssetService:
         node_id: str,
         after_node_id: str | None,
     ) -> AppAssetNode:
-        with Session(db.engine, expire_on_commit=False) as session:
-            assets = AppAssetService.get_or_create_assets(session, app_model, account_id=account_id)
-            tree = assets.asset_tree
+        with AppAssetService._lock(app_model.id):
+            with Session(db.engine, expire_on_commit=False) as session:
+                assets = AppAssetService.get_or_create_assets(session, app_model, account_id=account_id)
+                tree = assets.asset_tree
 
-            try:
-                node = tree.reorder(node_id, after_node_id)
-            except TreeNodeNotFoundError as e:
-                raise AppAssetNodeNotFoundError(str(e)) from e
+                try:
+                    node = tree.reorder(node_id, after_node_id)
+                except TreeNodeNotFoundError as e:
+                    raise AppAssetNodeNotFoundError(str(e)) from e
 
-            assets.asset_tree = tree
-            assets.updated_by = account_id
-            session.commit()
+                assets.asset_tree = tree
+                assets.updated_by = account_id
+                session.commit()
 
-        return node
+            return node
 
     @staticmethod
     def delete_node(app_model: App, account_id: str, node_id: str) -> None:
-        with Session(db.engine) as session:
-            assets = AppAssetService.get_or_create_assets(session, app_model, account_id)
-            tree = assets.asset_tree
+        with AppAssetService._lock(app_model.id):
+            with Session(db.engine) as session:
+                assets = AppAssetService.get_or_create_assets(session, app_model, account_id)
+                tree = assets.asset_tree
 
-            target_ids = [node_id] + tree.get_descendant_ids(node_id)
-            target_nodes = [tree.get(nid) for nid in target_ids]
-            cache_keys = [
-                AppAssetService._draft_storage_key_for_node(app_model.tenant_id, app_model.id, assets.id, node)
-                for node in target_nodes
-                if node is not None and node.node_type == AssetNodeType.FILE
-            ]
+                target_ids = [node_id] + tree.get_descendant_ids(node_id)
+                target_nodes = [tree.get(nid) for nid in target_ids]
+                cache_keys = [
+                    AppAssetService._draft_storage_key_for_node(app_model.tenant_id, app_model.id, assets.id, node)
+                    for node in target_nodes
+                    if node is not None and node.node_type == AssetNodeType.FILE
+                ]
 
-            try:
-                removed_ids = tree.remove(node_id)
-            except TreeNodeNotFoundError as e:
-                raise AppAssetNodeNotFoundError(str(e)) from e
-
-            for nid in removed_ids:
-                storage_key = AssetPaths.draft_file(app_model.tenant_id, app_model.id, nid)
                 try:
-                    storage.delete(storage_key)
-                except Exception:
-                    logger.warning("Failed to delete storage file %s", storage_key, exc_info=True)
+                    removed_ids = tree.remove(node_id)
+                except TreeNodeNotFoundError as e:
+                    raise AppAssetNodeNotFoundError(str(e)) from e
 
-            assets.asset_tree = tree
-            assets.updated_by = account_id
-            session.commit()
+                for nid in removed_ids:
+                    storage_key = AssetPaths.draft_file(app_model.tenant_id, app_model.id, nid)
+                    try:
+                        storage.delete(storage_key)
+                    except Exception:
+                        logger.warning("Failed to delete storage file %s", storage_key, exc_info=True)
 
-            AppAssetService._clear_draft_download_cache(cache_keys)
+                assets.asset_tree = tree
+                assets.updated_by = account_id
+                session.commit()
+
+                AppAssetService._clear_draft_download_cache(cache_keys)
 
     @staticmethod
     def publish(session: Session, app_model: App, account_id: str, workflow_id: str) -> AppAssets:
@@ -528,10 +539,99 @@ class AppAssetService:
         account_id: str,
         new_tree: AppAssetFileTree,
     ) -> AppAssets:
-        with Session(db.engine, expire_on_commit=False) as session:
-            assets = AppAssetService.get_or_create_assets(session, app_model, account_id)
-            assets.asset_tree = new_tree
-            assets.updated_by = account_id
-            session.commit()
+        with AppAssetService._lock(app_model.id):
+            with Session(db.engine, expire_on_commit=False) as session:
+                assets = AppAssetService.get_or_create_assets(session, app_model, account_id)
+                assets.asset_tree = new_tree
+                assets.updated_by = account_id
+                session.commit()
 
-        return assets
+            return assets
+
+    @staticmethod
+    def get_file_upload_url(
+        app_model: App,
+        account_id: str,
+        name: str,
+        size: int,
+        parent_id: str | None = None,
+        expires_in: int = 3600,
+    ) -> tuple[AppAssetNode, str]:
+        """
+        Create a file node with metadata and return a pre-signed upload URL.
+
+        The file metadata is saved immediately. If the user doesn't upload,
+        the download will fail when the file is accessed.
+
+        Returns:
+            tuple of (node, upload_url)
+        """
+        with AppAssetService._lock(app_model.id):
+            with Session(db.engine, expire_on_commit=False) as session:
+                assets = AppAssetService.get_or_create_assets(session, app_model, account_id)
+                tree = assets.asset_tree
+
+                node_id = str(uuid4())
+                node = AppAssetNode.create_file(node_id, name, parent_id, size)
+
+                try:
+                    tree.add(node)
+                except TreeParentNotFoundError as e:
+                    raise AppAssetParentNotFoundError(str(e)) from e
+                except TreePathConflictError as e:
+                    raise AppAssetPathConflictError(str(e)) from e
+
+                assets.asset_tree = tree
+                assets.updated_by = account_id
+                session.commit()
+
+            storage_key = AssetPaths.draft_file(app_model.tenant_id, app_model.id, node_id)
+            presign_storage = FilePresignStorage(storage.storage_runner)
+            upload_url = presign_storage.get_upload_url(storage_key, expires_in)
+
+            return node, upload_url
+
+    @staticmethod
+    def batch_create_from_tree(
+        app_model: App,
+        account_id: str,
+        input_children: list[BatchUploadNode],
+        expires_in: int = 3600,
+    ) -> list[BatchUploadNode]:
+        if not input_children:
+            return []
+
+        new_nodes: list[AppAssetNode] = []
+        for child in input_children:
+            new_nodes.extend(child.to_app_asset_nodes(None))
+
+        with AppAssetService._lock(app_model.id):
+            with Session(db.engine, expire_on_commit=False) as session:
+                assets = AppAssetService.get_or_create_assets(session, app_model, account_id)
+                tree = assets.asset_tree
+
+                try:
+                    for node in new_nodes:
+                        tree.add(node)
+                except TreeParentNotFoundError as e:
+                    raise AppAssetParentNotFoundError(str(e)) from e
+                except TreePathConflictError as e:
+                    raise AppAssetPathConflictError(str(e)) from e
+
+                assets.asset_tree = tree
+                assets.updated_by = account_id
+                session.commit()
+
+        presign_storage = FilePresignStorage(storage.storage_runner)
+
+        def fill_urls(node: BatchUploadNode) -> None:
+            if node.node_type == AssetNodeType.FILE and node.id:
+                storage_key = AssetPaths.draft_file(app_model.tenant_id, app_model.id, node.id)
+                node.upload_url = presign_storage.get_upload_url(storage_key, expires_in)
+            for child in node.children:
+                fill_urls(child)
+
+        for child in input_children:
+            fill_urls(child)
+
+        return input_children

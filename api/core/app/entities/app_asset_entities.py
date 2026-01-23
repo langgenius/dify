@@ -20,16 +20,13 @@ class AppAssetNode(BaseModel):
     order: int = Field(default=0, description="Sort order within parent folder, lower values first")
     extension: str = Field(default="", description="File extension without dot, empty for folders")
     size: int = Field(default=0, description="File size in bytes, 0 for folders")
-    checksum: str = Field(default="", description="SHA-256 checksum of file content, empty for folders")
 
     @classmethod
     def create_folder(cls, node_id: str, name: str, parent_id: str | None = None) -> AppAssetNode:
         return cls(id=node_id, node_type=AssetNodeType.FOLDER, name=name, parent_id=parent_id)
 
     @classmethod
-    def create_file(
-        cls, node_id: str, name: str, parent_id: str | None = None, size: int = 0, checksum: str = ""
-    ) -> AppAssetNode:
+    def create_file(cls, node_id: str, name: str, parent_id: str | None = None, size: int = 0) -> AppAssetNode:
         return cls(
             id=node_id,
             node_type=AssetNodeType.FILE,
@@ -37,7 +34,6 @@ class AppAssetNode(BaseModel):
             parent_id=parent_id,
             extension=name.rsplit(".", 1)[-1] if "." in name else "",
             size=size,
-            checksum=checksum,
         )
 
 
@@ -48,8 +44,37 @@ class AppAssetNodeView(BaseModel):
     path: str = Field(description="Full path from root, e.g. '/folder/file.txt'")
     extension: str = Field(default="", description="File extension without dot")
     size: int = Field(default=0, description="File size in bytes")
-    checksum: str = Field(default="", description="SHA-256 checksum of file content")
     children: list[AppAssetNodeView] = Field(default_factory=list, description="Child nodes for folders")
+
+
+class BatchUploadNode(BaseModel):
+    """Structure for batch upload_url tree nodes, used for both input and output."""
+
+    name: str
+    node_type: AssetNodeType
+    size: int = 0
+    children: list[BatchUploadNode] = []
+    id: str | None = None
+    upload_url: str | None = None
+
+    def to_app_asset_nodes(self, parent_id: str | None = None) -> list[AppAssetNode]:
+        """
+        Generate IDs and convert to AppAssetNode list.
+        Mutates self to set id field.
+        """
+        from uuid import uuid4
+
+        self.id = str(uuid4())
+        nodes: list[AppAssetNode] = []
+
+        if self.node_type == AssetNodeType.FOLDER:
+            nodes.append(AppAssetNode.create_folder(self.id, self.name, parent_id))
+            for child in self.children:
+                nodes.extend(child.to_app_asset_nodes(self.id))
+        else:
+            nodes.append(AppAssetNode.create_file(self.id, self.name, parent_id, self.size))
+
+        return nodes
 
 
 class TreeNodeNotFoundError(Exception):
@@ -192,12 +217,11 @@ class AppAssetFileTree(BaseModel):
         self.nodes.append(node)
         return node
 
-    def update(self, node_id: str, size: int, checksum: str) -> AppAssetNode:
+    def update(self, node_id: str, size: int) -> AppAssetNode:
         node = self.get(node_id)
         if not node or node.node_type != AssetNodeType.FILE:
             raise TreeNodeNotFoundError(node_id)
         node.size = size
-        node.checksum = checksum
         return node
 
     def rename(self, node_id: str, new_name: str) -> AppAssetNode:
@@ -284,7 +308,6 @@ class AppAssetFileTree(BaseModel):
                 path=path,
                 extension=node.extension,
                 size=node.size,
-                checksum=node.checksum,
                 children=child_views,
             )
 
