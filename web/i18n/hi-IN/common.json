@@ -110,6 +110,7 @@
   "chat.conversationName": "संवाद का नाम",
   "chat.conversationNameCanNotEmpty": "संवाद का नाम आवश्यक है",
   "chat.conversationNamePlaceholder": "कृपया संवाद का नाम दर्ज करें",
+  "chat.inputDisabledPlaceholder": "केवल पूर्वावलोकन",
   "chat.inputPlaceholder": "{{botName}} से बात करें",
   "chat.renameConversation": "संवाद का नाम बदलें",
   "chat.resend": "फिर से भेजें",

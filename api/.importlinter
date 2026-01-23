@@ -27,7 +27,9 @@ ignore_imports =
     core.workflow.nodes.iteration.iteration_node -> core.workflow.graph_events
     core.workflow.nodes.loop.loop_node -> core.workflow.graph_events
 
-    core.workflow.nodes.node_factory -> core.workflow.graph
+    core.workflow.nodes.iteration.iteration_node -> core.app.workflow.node_factory
+    core.workflow.nodes.loop.loop_node -> core.app.workflow.node_factory
+
     core.workflow.nodes.iteration.iteration_node -> core.workflow.graph_engine
     core.workflow.nodes.iteration.iteration_node -> core.workflow.graph
     core.workflow.nodes.iteration.iteration_node -> core.workflow.graph_engine.command_channels
@@ -56,6 +58,252 @@ ignore_imports =
     core.workflow.graph_engine.command_channels.redis_channel -> extensions.ext_redis
     core.workflow.graph_engine.manager -> extensions.ext_redis
     core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> extensions.ext_redis
+
+[importlinter:contract:workflow-external-imports]
+name = Workflow External Imports
+type = forbidden
+source_modules =
+    core.workflow
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    models
+    services
+    tasks
+    core.agent
+    core.app
+    core.base
+    core.callback_handler
+    core.datasource
+    core.db
+    core.entities
+    core.errors
+    core.extension
+    core.external_data_tool
+    core.file
+    core.helper
+    core.hosting_configuration
+    core.indexing_runner
+    core.llm_generator
+    core.logging
+    core.mcp
+    core.memory
+    core.model_manager
+    core.moderation
+    core.ops
+    core.plugin
+    core.prompt
+    core.provider_manager
+    core.rag
+    core.repositories
+    core.schemas
+    core.tools
+    core.trigger
+    core.variables
+ignore_imports =
+    core.workflow.nodes.loop.loop_node -> core.app.workflow.node_factory
+    core.workflow.graph_engine.command_channels.redis_channel -> extensions.ext_redis
+    core.workflow.graph_engine.layers.observability -> configs
+    core.workflow.graph_engine.layers.observability -> extensions.otel.runtime
+    core.workflow.graph_engine.layers.persistence -> core.ops.ops_trace_manager
+    core.workflow.graph_engine.worker_management.worker_pool -> configs
+    core.workflow.nodes.agent.agent_node -> core.model_manager
+    core.workflow.nodes.agent.agent_node -> core.provider_manager
+    core.workflow.nodes.agent.agent_node -> core.tools.tool_manager
+    core.workflow.nodes.code.code_node -> core.helper.code_executor.code_executor
+    core.workflow.nodes.datasource.datasource_node -> models.model
+    core.workflow.nodes.datasource.datasource_node -> models.tools
+    core.workflow.nodes.datasource.datasource_node -> services.datasource_provider_service
+    core.workflow.nodes.document_extractor.node -> configs
+    core.workflow.nodes.document_extractor.node -> core.file.file_manager
+    core.workflow.nodes.document_extractor.node -> core.helper.ssrf_proxy
+    core.workflow.nodes.http_request.entities -> configs
+    core.workflow.nodes.http_request.executor -> configs
+    core.workflow.nodes.http_request.executor -> core.file.file_manager
+    core.workflow.nodes.http_request.node -> configs
+    core.workflow.nodes.http_request.node -> core.tools.tool_file_manager
+    core.workflow.nodes.iteration.iteration_node -> core.app.workflow.node_factory
+    core.workflow.nodes.knowledge_index.knowledge_index_node -> core.rag.index_processor.index_processor_factory
+    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.rag.datasource.retrieval_service
+    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.rag.retrieval.dataset_retrieval
+    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> models.dataset
+    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> services.feature_service
+    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.model_runtime.model_providers.__base.large_language_model
+    core.workflow.nodes.llm.llm_utils -> configs
+    core.workflow.nodes.llm.llm_utils -> core.app.entities.app_invoke_entities
+    core.workflow.nodes.llm.llm_utils -> core.file.models
+    core.workflow.nodes.llm.llm_utils -> core.model_manager
+    core.workflow.nodes.llm.llm_utils -> core.model_runtime.model_providers.__base.large_language_model
+    core.workflow.nodes.llm.llm_utils -> models.model
+    core.workflow.nodes.llm.llm_utils -> models.provider
+    core.workflow.nodes.llm.llm_utils -> services.credit_pool_service
+    core.workflow.nodes.llm.node -> core.tools.signature
+    core.workflow.nodes.template_transform.template_transform_node -> configs
+    core.workflow.nodes.tool.tool_node -> core.callback_handler.workflow_tool_callback_handler
+    core.workflow.nodes.tool.tool_node -> core.tools.tool_engine
+    core.workflow.nodes.tool.tool_node -> core.tools.tool_manager
+    core.workflow.workflow_entry -> configs
+    core.workflow.workflow_entry -> models.workflow
+    core.workflow.nodes.agent.agent_node -> core.agent.entities
+    core.workflow.nodes.agent.agent_node -> core.agent.plugin_entities
+    core.workflow.graph_engine.layers.persistence -> core.app.entities.app_invoke_entities
+    core.workflow.nodes.base.node -> core.app.entities.app_invoke_entities
+    core.workflow.nodes.knowledge_index.knowledge_index_node -> core.app.entities.app_invoke_entities
+    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.app.app_config.entities
+    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.app.entities.app_invoke_entities
+    core.workflow.nodes.llm.node -> core.app.entities.app_invoke_entities
+    core.workflow.nodes.parameter_extractor.parameter_extractor_node -> core.app.entities.app_invoke_entities
+    core.workflow.nodes.parameter_extractor.parameter_extractor_node -> core.prompt.advanced_prompt_transform
+    core.workflow.nodes.parameter_extractor.parameter_extractor_node -> core.prompt.simple_prompt_transform
+    core.workflow.nodes.parameter_extractor.parameter_extractor_node -> core.model_runtime.model_providers.__base.large_language_model
+    core.workflow.nodes.question_classifier.question_classifier_node -> core.app.entities.app_invoke_entities
+    core.workflow.nodes.question_classifier.question_classifier_node -> core.prompt.advanced_prompt_transform
+    core.workflow.nodes.question_classifier.question_classifier_node -> core.prompt.simple_prompt_transform
+    core.workflow.nodes.start.entities -> core.app.app_config.entities
+    core.workflow.nodes.start.start_node -> core.app.app_config.entities
+    core.workflow.workflow_entry -> core.app.apps.exc
+    core.workflow.workflow_entry -> core.app.entities.app_invoke_entities
+    core.workflow.workflow_entry -> core.app.workflow.node_factory
+    core.workflow.nodes.datasource.datasource_node -> core.datasource.datasource_manager
+    core.workflow.nodes.datasource.datasource_node -> core.datasource.utils.message_transformer
+    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.entities.agent_entities
+    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.entities.model_entities
+    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.model_manager
+    core.workflow.nodes.llm.llm_utils -> core.entities.provider_entities
+    core.workflow.nodes.parameter_extractor.parameter_extractor_node -> core.model_manager
+    core.workflow.nodes.question_classifier.question_classifier_node -> core.model_manager
+    core.workflow.node_events.node -> core.file
+    core.workflow.nodes.agent.agent_node -> core.file
+    core.workflow.nodes.datasource.datasource_node -> core.file
+    core.workflow.nodes.datasource.datasource_node -> core.file.enums
+    core.workflow.nodes.document_extractor.node -> core.file
+    core.workflow.nodes.http_request.executor -> core.file.enums
+    core.workflow.nodes.http_request.node -> core.file
+    core.workflow.nodes.http_request.node -> core.file.file_manager
+    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.file.models
+    core.workflow.nodes.list_operator.node -> core.file
+    core.workflow.nodes.llm.file_saver -> core.file
+    core.workflow.nodes.llm.llm_utils -> core.variables.segments
+    core.workflow.nodes.llm.node -> core.file
+    core.workflow.nodes.llm.node -> core.file.file_manager
+    core.workflow.nodes.llm.node -> core.file.models
+    core.workflow.nodes.loop.entities -> core.variables.types
+    core.workflow.nodes.parameter_extractor.parameter_extractor_node -> core.file
+    core.workflow.nodes.protocols -> core.file
+    core.workflow.nodes.question_classifier.question_classifier_node -> core.file.models
+    core.workflow.nodes.tool.tool_node -> core.file
+    core.workflow.nodes.tool.tool_node -> core.tools.utils.message_transformer
+    core.workflow.nodes.tool.tool_node -> models
+    core.workflow.nodes.trigger_webhook.node -> core.file
+    core.workflow.runtime.variable_pool -> core.file
+    core.workflow.runtime.variable_pool -> core.file.file_manager
+    core.workflow.system_variable -> core.file.models
+    core.workflow.utils.condition.processor -> core.file
+    core.workflow.utils.condition.processor -> core.file.file_manager
+    core.workflow.workflow_entry -> core.file.models
+    core.workflow.workflow_type_encoder -> core.file.models
+    core.workflow.nodes.agent.agent_node -> models.model
+    core.workflow.nodes.code.code_node -> core.helper.code_executor.code_node_provider
+    core.workflow.nodes.code.code_node -> core.helper.code_executor.javascript.javascript_code_provider
+    core.workflow.nodes.code.code_node -> core.helper.code_executor.python3.python3_code_provider
+    core.workflow.nodes.code.entities -> core.helper.code_executor.code_executor
+    core.workflow.nodes.datasource.datasource_node -> core.variables.variables
+    core.workflow.nodes.http_request.executor -> core.helper.ssrf_proxy
+    core.workflow.nodes.http_request.node -> core.helper.ssrf_proxy
+    core.workflow.nodes.llm.file_saver -> core.helper.ssrf_proxy
+    core.workflow.nodes.llm.node -> core.helper.code_executor
+    core.workflow.nodes.template_transform.template_renderer -> core.helper.code_executor.code_executor
+    core.workflow.nodes.llm.node -> core.llm_generator.output_parser.errors
+    core.workflow.nodes.llm.node -> core.llm_generator.output_parser.structured_output
+    core.workflow.nodes.llm.node -> core.model_manager
+    core.workflow.graph_engine.layers.persistence -> core.ops.entities.trace_entity
+    core.workflow.nodes.agent.entities -> core.prompt.entities.advanced_prompt_entities
+    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.prompt.simple_prompt_transform
+    core.workflow.nodes.llm.entities -> core.prompt.entities.advanced_prompt_entities
+    core.workflow.nodes.llm.llm_utils -> core.prompt.entities.advanced_prompt_entities
+    core.workflow.nodes.llm.node -> core.prompt.entities.advanced_prompt_entities
+    core.workflow.nodes.llm.node -> core.prompt.utils.prompt_message_util
+    core.workflow.nodes.parameter_extractor.entities -> core.prompt.entities.advanced_prompt_entities
+    core.workflow.nodes.parameter_extractor.parameter_extractor_node -> core.prompt.entities.advanced_prompt_entities
+    core.workflow.nodes.parameter_extractor.parameter_extractor_node -> core.prompt.utils.prompt_message_util
+    core.workflow.nodes.question_classifier.entities -> core.prompt.entities.advanced_prompt_entities
+    core.workflow.nodes.question_classifier.question_classifier_node -> core.prompt.utils.prompt_message_util
+    core.workflow.nodes.knowledge_index.entities -> core.rag.retrieval.retrieval_methods
+    core.workflow.nodes.knowledge_index.knowledge_index_node -> core.rag.retrieval.retrieval_methods
+    core.workflow.nodes.knowledge_index.knowledge_index_node -> models.dataset
+    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.rag.retrieval.retrieval_methods
+    core.workflow.nodes.llm.node -> models.dataset
+    core.workflow.nodes.agent.agent_node -> core.tools.utils.message_transformer
+    core.workflow.nodes.llm.file_saver -> core.tools.signature
+    core.workflow.nodes.llm.file_saver -> core.tools.tool_file_manager
+    core.workflow.nodes.tool.tool_node -> core.tools.errors
+    core.workflow.conversation_variable_updater -> core.variables
+    core.workflow.graph_engine.entities.commands -> core.variables.variables
+    core.workflow.nodes.agent.agent_node -> core.variables.segments
+    core.workflow.nodes.answer.answer_node -> core.variables
+    core.workflow.nodes.code.code_node -> core.variables.segments
+    core.workflow.nodes.code.code_node -> core.variables.types
+    core.workflow.nodes.code.entities -> core.variables.types
+    core.workflow.nodes.datasource.datasource_node -> core.variables.segments
+    core.workflow.nodes.document_extractor.node -> core.variables
+    core.workflow.nodes.document_extractor.node -> core.variables.segments
+    core.workflow.nodes.http_request.executor -> core.variables.segments
+    core.workflow.nodes.http_request.node -> core.variables.segments
+    core.workflow.nodes.iteration.iteration_node -> core.variables
+    core.workflow.nodes.iteration.iteration_node -> core.variables.segments
+    core.workflow.nodes.iteration.iteration_node -> core.variables.variables
+    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.variables
+    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> core.variables.segments
+    core.workflow.nodes.list_operator.node -> core.variables
+    core.workflow.nodes.list_operator.node -> core.variables.segments
+    core.workflow.nodes.llm.node -> core.variables
+    core.workflow.nodes.loop.loop_node -> core.variables
+    core.workflow.nodes.parameter_extractor.entities -> core.variables.types
+    core.workflow.nodes.parameter_extractor.exc -> core.variables.types
+    core.workflow.nodes.parameter_extractor.parameter_extractor_node -> core.variables.types
+    core.workflow.nodes.tool.tool_node -> core.variables.segments
+    core.workflow.nodes.tool.tool_node -> core.variables.variables
+    core.workflow.nodes.trigger_webhook.node -> core.variables.types
+    core.workflow.nodes.trigger_webhook.node -> core.variables.variables
+    core.workflow.nodes.variable_aggregator.entities -> core.variables.types
+    core.workflow.nodes.variable_aggregator.variable_aggregator_node -> core.variables.segments
+    core.workflow.nodes.variable_assigner.common.helpers -> core.variables
+    core.workflow.nodes.variable_assigner.common.helpers -> core.variables.consts
+    core.workflow.nodes.variable_assigner.common.helpers -> core.variables.types
+    core.workflow.nodes.variable_assigner.v1.node -> core.variables
+    core.workflow.nodes.variable_assigner.v2.helpers -> core.variables
+    core.workflow.nodes.variable_assigner.v2.node -> core.variables
+    core.workflow.nodes.variable_assigner.v2.node -> core.variables.consts
+    core.workflow.runtime.graph_runtime_state_protocol -> core.variables.segments
+    core.workflow.runtime.read_only_wrappers -> core.variables.segments
+    core.workflow.runtime.variable_pool -> core.variables
+    core.workflow.runtime.variable_pool -> core.variables.consts
+    core.workflow.runtime.variable_pool -> core.variables.segments
+    core.workflow.runtime.variable_pool -> core.variables.variables
+    core.workflow.utils.condition.processor -> core.variables
+    core.workflow.utils.condition.processor -> core.variables.segments
+    core.workflow.variable_loader -> core.variables
+    core.workflow.variable_loader -> core.variables.consts
+    core.workflow.workflow_type_encoder -> core.variables
+    core.workflow.graph_engine.manager -> extensions.ext_redis
+    core.workflow.nodes.agent.agent_node -> extensions.ext_database
+    core.workflow.nodes.datasource.datasource_node -> extensions.ext_database
+    core.workflow.nodes.knowledge_index.knowledge_index_node -> extensions.ext_database
+    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> extensions.ext_database
+    core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node -> extensions.ext_redis
+    core.workflow.nodes.llm.file_saver -> extensions.ext_database
+    core.workflow.nodes.llm.llm_utils -> extensions.ext_database
+    core.workflow.nodes.llm.node -> extensions.ext_database
+    core.workflow.nodes.tool.tool_node -> extensions.ext_database
+    core.workflow.workflow_entry -> extensions.otel.runtime
+    core.workflow.nodes.agent.agent_node -> models
+    core.workflow.nodes.base.node -> models.enums
+    core.workflow.nodes.llm.llm_utils -> models.provider_ids
+    core.workflow.nodes.llm.node -> models.model
+    core.workflow.workflow_entry -> models.enums
+    core.workflow.nodes.agent.agent_node -> services
+    core.workflow.nodes.tool.tool_node -> services
 
 [importlinter:contract:rsc]
 name = RSC

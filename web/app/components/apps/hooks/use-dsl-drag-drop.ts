@@ -36,7 +36,7 @@ export const useDSLDragDrop = ({ onDSLFileDropped, containerRef, enabled = true 
     if (!e.dataTransfer)
       return
 
-    const files = [...e.dataTransfer.files]
+    const files = Array.from(e.dataTransfer.files)
     if (files.length === 0)
       return
 
