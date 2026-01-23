@@ -71,17 +71,17 @@ class TestBaseAppRunnerMultimodal:
             mime_type="image/png",
         )
 
-        with patch('core.app.apps.base_app_runner.ToolFileManager') as mock_mgr_class:
+        with patch("core.app.apps.base_app_runner.ToolFileManager") as mock_mgr_class:
             # Setup mock tool file manager
             mock_mgr = MagicMock()
             mock_mgr.create_file_by_url.return_value = mock_tool_file
             mock_mgr_class.return_value = mock_mgr
 
-            with patch('core.app.apps.base_app_runner.MessageFile') as mock_msg_file_class:
+            with patch("core.app.apps.base_app_runner.MessageFile") as mock_msg_file_class:
                 # Setup mock message file
                 mock_msg_file_class.return_value = mock_message_file
 
-                with patch('core.app.apps.base_app_runner.db.session') as mock_session:
+                with patch("core.app.apps.base_app_runner.db.session") as mock_session:
                     mock_session.add = MagicMock()
                     mock_session.commit = MagicMock()
                     mock_session.refresh = MagicMock()
@@ -113,11 +113,11 @@ class TestBaseAppRunnerMultimodal:
                     # Verify message file was created with correct parameters
                     mock_msg_file_class.assert_called_once()
                     call_kwargs = mock_msg_file_class.call_args[1]
-                    assert call_kwargs['message_id'] == mock_message_id
-                    assert call_kwargs['type'] == FileType.IMAGE
-                    assert call_kwargs['transfer_method'] == FileTransferMethod.TOOL_FILE
-                    assert call_kwargs['belongs_to'] == "assistant"
-                    assert call_kwargs['created_by'] == mock_user_id
+                    assert call_kwargs["message_id"] == mock_message_id
+                    assert call_kwargs["type"] == FileType.IMAGE
+                    assert call_kwargs["transfer_method"] == FileTransferMethod.TOOL_FILE
+                    assert call_kwargs["belongs_to"] == "assistant"
+                    assert call_kwargs["created_by"] == mock_user_id
 
                     # Verify database operations
                     mock_session.add.assert_called_once_with(mock_message_file)
@@ -132,7 +132,7 @@ class TestBaseAppRunnerMultimodal:
                     # publish_from might be passed as positional or keyword argument
                     assert (
                         publish_call[0][1] == PublishFrom.APPLICATION_MANAGER
-                        or publish_call.kwargs.get('publish_from') == PublishFrom.APPLICATION_MANAGER
+                        or publish_call.kwargs.get("publish_from") == PublishFrom.APPLICATION_MANAGER
                     )
 
     def test_handle_multimodal_image_content_with_base64(
@@ -150,8 +150,7 @@ class TestBaseAppRunnerMultimodal:
 
         # Create a small test image (1x1 PNG)
         test_image_data = base64.b64encode(
-            b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00'
-            b'\x90wS\xde'
+            b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde"
         ).decode()
         content = ImagePromptMessageContent(
             base64_data=test_image_data,
@@ -159,17 +158,17 @@ class TestBaseAppRunnerMultimodal:
             mime_type="image/png",
         )
 
-        with patch('core.app.apps.base_app_runner.ToolFileManager') as mock_mgr_class:
+        with patch("core.app.apps.base_app_runner.ToolFileManager") as mock_mgr_class:
             # Setup mock tool file manager
             mock_mgr = MagicMock()
             mock_mgr.create_file_by_raw.return_value = mock_tool_file
             mock_mgr_class.return_value = mock_mgr
 
-            with patch('core.app.apps.base_app_runner.MessageFile') as mock_msg_file_class:
+            with patch("core.app.apps.base_app_runner.MessageFile") as mock_msg_file_class:
                 # Setup mock message file
                 mock_msg_file_class.return_value = mock_message_file
 
-                with patch('core.app.apps.base_app_runner.db.session') as mock_session:
+                with patch("core.app.apps.base_app_runner.db.session") as mock_session:
                     mock_session.add = MagicMock()
                     mock_session.commit = MagicMock()
                     mock_session.refresh = MagicMock()
@@ -192,13 +191,13 @@ class TestBaseAppRunnerMultimodal:
                     # Verify tool file was created from base64
                     mock_mgr.create_file_by_raw.assert_called_once()
                     call_kwargs = mock_mgr.create_file_by_raw.call_args[1]
-                    assert call_kwargs['user_id'] == mock_user_id
-                    assert call_kwargs['tenant_id'] == mock_tenant_id
-                    assert call_kwargs['conversation_id'] is None
-                    assert 'file_binary' in call_kwargs
-                    assert call_kwargs['mimetype'] == "image/png"
-                    assert call_kwargs['filename'].startswith("generated_image")
-                    assert call_kwargs['filename'].endswith(".png")
+                    assert call_kwargs["user_id"] == mock_user_id
+                    assert call_kwargs["tenant_id"] == mock_tenant_id
+                    assert call_kwargs["conversation_id"] is None
+                    assert "file_binary" in call_kwargs
+                    assert call_kwargs["mimetype"] == "image/png"
+                    assert call_kwargs["filename"].startswith("generated_image")
+                    assert call_kwargs["filename"].endswith(".png")
 
                     # Verify message file was created
                     mock_msg_file_class.assert_called_once()
@@ -224,8 +223,7 @@ class TestBaseAppRunnerMultimodal:
         # Arrange
         # Data URI format: data:image/png;base64,<base64_data>
         test_image_data = (
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGA"
-            "WjR9awAAAABJRU5ErkJggg=="
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
         )
         content = ImagePromptMessageContent(
             base64_data=f"data:image/png;base64,{test_image_data}",
@@ -233,17 +231,17 @@ class TestBaseAppRunnerMultimodal:
             mime_type="image/png",
         )
 
-        with patch('core.app.apps.base_app_runner.ToolFileManager') as mock_mgr_class:
+        with patch("core.app.apps.base_app_runner.ToolFileManager") as mock_mgr_class:
             # Setup mock tool file manager
             mock_mgr = MagicMock()
             mock_mgr.create_file_by_raw.return_value = mock_tool_file
             mock_mgr_class.return_value = mock_mgr
 
-            with patch('core.app.apps.base_app_runner.MessageFile') as mock_msg_file_class:
+            with patch("core.app.apps.base_app_runner.MessageFile") as mock_msg_file_class:
                 # Setup mock message file
                 mock_msg_file_class.return_value = mock_message_file
 
-                with patch('core.app.apps.base_app_runner.db.session') as mock_session:
+                with patch("core.app.apps.base_app_runner.db.session") as mock_session:
                     mock_session.add = MagicMock()
                     mock_session.commit = MagicMock()
                     mock_session.refresh = MagicMock()
@@ -266,7 +264,7 @@ class TestBaseAppRunnerMultimodal:
                     mock_mgr.create_file_by_raw.assert_called_once()
                     call_kwargs = mock_mgr.create_file_by_raw.call_args[1]
                     # The base64 data should be decoded, so we check the binary was passed
-                    assert 'file_binary' in call_kwargs
+                    assert "file_binary" in call_kwargs
 
     def test_handle_multimodal_image_content_without_url_or_base64(
         self,
@@ -284,9 +282,9 @@ class TestBaseAppRunnerMultimodal:
             mime_type="image/png",
         )
 
-        with patch('core.app.apps.base_app_runner.ToolFileManager') as mock_mgr_class:
-            with patch('core.app.apps.base_app_runner.MessageFile') as mock_msg_file_class:
-                with patch('core.app.apps.base_app_runner.db.session') as mock_session:
+        with patch("core.app.apps.base_app_runner.ToolFileManager") as mock_mgr_class:
+            with patch("core.app.apps.base_app_runner.MessageFile") as mock_msg_file_class:
+                with patch("core.app.apps.base_app_runner.db.session") as mock_session:
                     # Act
                     # Create a mock runner with the method bound
                     runner = MagicMock()
@@ -323,14 +321,14 @@ class TestBaseAppRunnerMultimodal:
             mime_type="image/png",
         )
 
-        with patch('core.app.apps.base_app_runner.ToolFileManager') as mock_mgr_class:
+        with patch("core.app.apps.base_app_runner.ToolFileManager") as mock_mgr_class:
             # Setup mock to raise exception
             mock_mgr = MagicMock()
             mock_mgr.create_file_by_url.side_effect = Exception("Network error")
             mock_mgr_class.return_value = mock_mgr
 
-            with patch('core.app.apps.base_app_runner.MessageFile') as mock_msg_file_class:
-                with patch('core.app.apps.base_app_runner.db.session') as mock_session:
+            with patch("core.app.apps.base_app_runner.MessageFile") as mock_msg_file_class:
+                with patch("core.app.apps.base_app_runner.db.session") as mock_session:
                     # Act
                     # Create a mock runner with the method bound
                     runner = MagicMock()
@@ -370,17 +368,17 @@ class TestBaseAppRunnerMultimodal:
         )
         mock_queue_manager.invoke_from = InvokeFrom.DEBUGGER
 
-        with patch('core.app.apps.base_app_runner.ToolFileManager') as mock_mgr_class:
+        with patch("core.app.apps.base_app_runner.ToolFileManager") as mock_mgr_class:
             # Setup mock tool file manager
             mock_mgr = MagicMock()
             mock_mgr.create_file_by_url.return_value = mock_tool_file
             mock_mgr_class.return_value = mock_mgr
 
-            with patch('core.app.apps.base_app_runner.MessageFile') as mock_msg_file_class:
+            with patch("core.app.apps.base_app_runner.MessageFile") as mock_msg_file_class:
                 # Setup mock message file
                 mock_msg_file_class.return_value = mock_message_file
 
-                with patch('core.app.apps.base_app_runner.db.session') as mock_session:
+                with patch("core.app.apps.base_app_runner.db.session") as mock_session:
                     mock_session.add = MagicMock()
                     mock_session.commit = MagicMock()
                     mock_session.refresh = MagicMock()
@@ -401,7 +399,7 @@ class TestBaseAppRunnerMultimodal:
 
                     # Assert - verify created_by_role is ACCOUNT for debugger mode
                     call_kwargs = mock_msg_file_class.call_args[1]
-                    assert call_kwargs['created_by_role'] == CreatorUserRole.ACCOUNT
+                    assert call_kwargs["created_by_role"] == CreatorUserRole.ACCOUNT
 
     def test_handle_multimodal_image_content_service_api_mode(
         self,
@@ -422,17 +420,17 @@ class TestBaseAppRunnerMultimodal:
         )
         mock_queue_manager.invoke_from = InvokeFrom.SERVICE_API
 
-        with patch('core.app.apps.base_app_runner.ToolFileManager') as mock_mgr_class:
+        with patch("core.app.apps.base_app_runner.ToolFileManager") as mock_mgr_class:
             # Setup mock tool file manager
             mock_mgr = MagicMock()
             mock_mgr.create_file_by_url.return_value = mock_tool_file
             mock_mgr_class.return_value = mock_mgr
 
-            with patch('core.app.apps.base_app_runner.MessageFile') as mock_msg_file_class:
+            with patch("core.app.apps.base_app_runner.MessageFile") as mock_msg_file_class:
                 # Setup mock message file
                 mock_msg_file_class.return_value = mock_message_file
 
-                with patch('core.app.apps.base_app_runner.db.session') as mock_session:
+                with patch("core.app.apps.base_app_runner.db.session") as mock_session:
                     mock_session.add = MagicMock()
                     mock_session.commit = MagicMock()
                     mock_session.refresh = MagicMock()
@@ -453,4 +451,4 @@ class TestBaseAppRunnerMultimodal:
 
                     # Assert - verify created_by_role is END_USER for service API
                     call_kwargs = mock_msg_file_class.call_args[1]
-                    assert call_kwargs['created_by_role'] == CreatorUserRole.END_USER
+                    assert call_kwargs["created_by_role"] == CreatorUserRole.END_USER
