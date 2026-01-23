@@ -188,7 +188,9 @@ const ToolPicker: FC<Props> = ({
             e.preventDefault()
           }}
         >
-          <div className="p-2 pb-1">
+          <div
+            className="p-2 pb-1"
+          >
             <SearchBox
               search={searchText}
               onSearchChange={setSearchText}

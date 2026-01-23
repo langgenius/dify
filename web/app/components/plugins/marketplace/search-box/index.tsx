@@ -52,7 +52,7 @@ const SearchBox = ({
               <div className="flex grow items-center gap-x-2 p-1">
                 <input
                   className={cn(
-                    'body-md-medium inline-block grow appearance-none bg-transparent text-text-secondary outline-none',
+                    'body-md-medium var-search-input inline-block grow appearance-none bg-transparent text-text-secondary outline-none',
                   )}
                   value={search}
                   onChange={(e) => {
@@ -82,7 +82,7 @@ const SearchBox = ({
                 <input
                   autoFocus={autoFocus}
                   className={cn(
-                    'system-sm-regular ml-1.5 mr-1 inline-block grow appearance-none bg-transparent text-components-input-text-filled outline-none placeholder:text-components-input-text-placeholder',
+                    'system-sm-regular var-search-input ml-1.5 mr-1 inline-block grow appearance-none bg-transparent text-components-input-text-filled outline-none placeholder:text-components-input-text-placeholder',
                     search && 'mr-2',
                   )}
                   value={search}
