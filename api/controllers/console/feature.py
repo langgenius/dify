@@ -3,7 +3,7 @@ from werkzeug.exceptions import Unauthorized
 
 from controllers.fastopenapi import console_router
 from libs.login import current_account_with_tenant, current_user, login_required
-from services.feature_service import FeatureService, FeatureModel, SystemFeatureModel
+from services.feature_service import FeatureModel, FeatureService, SystemFeatureModel
 
 from .wraps import account_initialization_required, cloud_utm_record, setup_required
 
@@ -55,6 +55,4 @@ def get_system_features() -> SystemFeatureResponse:
         is_authenticated = current_user.is_authenticated
     except Unauthorized:
         is_authenticated = False
-    return SystemFeatureResponse(
-        features=FeatureService.get_system_features(is_authenticated=is_authenticated)
-    )
+    return SystemFeatureResponse(features=FeatureService.get_system_features(is_authenticated=is_authenticated))
