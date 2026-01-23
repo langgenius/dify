@@ -75,9 +75,9 @@ const FormContentPreview: FC<FormContentPreviewProps> = ({
                   </div>
                 )
               }
-              const placeholder = input.placeholder
+              const defaultInput = input.default
               return (
-                <Note placeholder={placeholder!} />
+                <Note defaultInput={defaultInput!} />
               )
             })(),
           }}

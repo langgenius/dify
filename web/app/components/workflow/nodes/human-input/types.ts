@@ -59,7 +59,7 @@ export type UserAction = {
   button_style: UserActionButtonType
 }
 
-export type FormInputItemPlaceholder = {
+export type FormInputItemDefault = {
   selector: ValueSelector
   type: 'variable' | 'constant'
   value: string
@@ -68,5 +68,5 @@ export type FormInputItemPlaceholder = {
 export type FormInputItem = {
   type: InputVarType
   output_variable_name: string
-  placeholder: FormInputItemPlaceholder
+  default: FormInputItemDefault
 }

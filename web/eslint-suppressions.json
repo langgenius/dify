@@ -104,7 +104,7 @@
       "count": 1
     },
     "ts/no-explicit-any": {
-      "count": 4
+      "count": 2
     }
   },
   "app/(shareLayout)/components/splash.tsx": {
@@ -1388,11 +1388,6 @@
     }
   },
   "app/components/base/prompt-editor/plugins/hitl-input-block/hitl-input-block-replacement-block.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/base/prompt-editor/plugins/hitl-input-block/input-field.tsx": {
     "ts/no-explicit-any": {
       "count": 1
     }

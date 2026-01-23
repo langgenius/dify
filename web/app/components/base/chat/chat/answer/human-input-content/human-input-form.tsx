@@ -13,7 +13,7 @@ const HumanInputForm = ({
   onSubmit,
 }: HumanInputFormProps) => {
   const formToken = formData.form_token
-  const defaultInputs = initializeInputs(formData.inputs, formData.resolved_placeholder_values || {})
+  const defaultInputs = initializeInputs(formData.inputs, formData.resolved_default_values || {})
   const contentList = splitByOutputVar(formData.form_content)
   const [inputs, setInputs] = useState(defaultInputs)
   const [isSubmitting, setIsSubmitting] = useState(false)

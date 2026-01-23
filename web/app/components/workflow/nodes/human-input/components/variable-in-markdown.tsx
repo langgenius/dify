@@ -1,5 +1,5 @@
 import type * as React from 'react'
-import type { FormInputItemPlaceholder } from '../types'
+import type { FormInputItemDefault } from '../types'
 
 const variableRegex = /\{\{#(.+?)#\}\}/g
 const noteRegex = /\{\{#\$(.+?)#\}\}/g
@@ -123,11 +123,11 @@ export const Variable: React.FC<{ path: string }> = ({ path }) => {
   )
 }
 
-export const Note: React.FC<{ placeholder: FormInputItemPlaceholder }> = ({ placeholder }) => {
-  const isVariable = placeholder.type === 'variable'
+export const Note: React.FC<{ defaultInput: FormInputItemDefault }> = ({ defaultInput }) => {
+  const isVariable = defaultInput.type === 'variable'
   return (
     <div className="my-3 rounded-[10px] bg-components-input-bg-normal px-2.5 py-2">
-      {isVariable ? <Variable path={`{{${placeholder.selector.join('.')}}}`} /> : <span>{placeholder.value}</span>}
+      {isVariable ? <Variable path={`{{${defaultInput.selector.join('.')}}}`} /> : <span>{defaultInput.value}</span>}
     </div>
   )
 }

@@ -166,9 +166,9 @@ const ChatWrapper = () => {
       handleSwitchSibling(
         lastPausedNode.id,
         {
-          onGetSuggestedQuestions: responseItemId => fetchSuggestedQuestions(responseItemId, isInstalledApp, appId),
+          onGetSuggestedQuestions: responseItemId => fetchSuggestedQuestions(responseItemId, appSourceType, appId),
           onConversationComplete: currentConversationId ? undefined : handleNewConversationCompleted,
-          isPublicAPI: !isInstalledApp,
+          isPublicAPI: appSourceType === AppSourceType.webApp,
         },
       )
     }
@@ -189,10 +189,10 @@ const ChatWrapper = () => {
       {
         onGetSuggestedQuestions: responseItemId => fetchSuggestedQuestions(responseItemId, appSourceType, appId),
         onConversationComplete: isHistoryConversation ? undefined : handleNewConversationCompleted,
-        isPublicAPI: !isInstalledApp,
+        isPublicAPI: appSourceType === AppSourceType.webApp,
       },
     )
-  }, [inputsForms, currentConversationId, currentConversationInputs, newConversationInputs, chatList, handleSend, isInstalledApp, appId, handleNewConversationCompleted])
+  }, [inputsForms, currentConversationId, currentConversationInputs, newConversationInputs, chatList, handleSend, appSourceType, appId, isHistoryConversation, handleNewConversationCompleted])
 
   const doRegenerate = useCallback((chatItem: ChatItem, editedQuestion?: { message: string, files?: FileEntity[] }) => {
     const question = editedQuestion ? chatItem : chatList.find(item => item.id === chatItem.parentMessageId)!
@@ -202,11 +202,11 @@ const ChatWrapper = () => {
 
   const doSwitchSibling = useCallback((siblingMessageId: string) => {
     handleSwitchSibling(siblingMessageId, {
-      onGetSuggestedQuestions: responseItemId => fetchSuggestedQuestions(responseItemId, isInstalledApp, appId),
+      onGetSuggestedQuestions: responseItemId => fetchSuggestedQuestions(responseItemId, appSourceType, appId),
       onConversationComplete: currentConversationId ? undefined : handleNewConversationCompleted,
-      isPublicAPI: !isInstalledApp,
+      isPublicAPI: appSourceType === AppSourceType.webApp,
     })
-  }, [handleSwitchSibling, isInstalledApp, appId, currentConversationId, handleNewConversationCompleted])
+  }, [handleSwitchSibling, currentConversationId, handleNewConversationCompleted, appSourceType, appId])
 
   const messageList = useMemo(() => {
     if (currentConversationId || chatList.length > 1)

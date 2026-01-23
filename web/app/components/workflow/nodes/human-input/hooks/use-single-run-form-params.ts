@@ -32,15 +32,15 @@ const useSingleRunFormParams = ({
   const [formData, setFormData] = useState<HumanInputFormData | null>(null)
   const [requiredInputs, setRequiredInputs] = useState<Record<string, any>>({})
   const generatedInputs = useMemo(() => {
-    const placeholderInputs = inputs.inputs.reduce((acc, input) => {
-      if (input.placeholder.type === 'variable') {
-        acc.push(...getInputVars([`{{#${input.placeholder.selector.join('.')}#}}`]))
+    const defaultInputs = inputs.inputs.reduce((acc, input) => {
+      if (input.default.type === 'variable') {
+        acc.push(...getInputVars([`{{#${input.default.selector.join('.')}#}}`]))
       }
       return acc
     }, [] as InputVar[])
     if (!inputs.form_content)
-      return placeholderInputs
-    return [...placeholderInputs, ...getInputVars([inputs.form_content]).filter(item => !isOutput(item.value_selector || []))]
+      return defaultInputs
+    return [...defaultInputs, ...getInputVars([inputs.form_content]).filter(item => !isOutput(item.value_selector || []))]
   }, [getInputVars, inputs.form_content, inputs.inputs])
 
   const forms = useMemo(() => {
