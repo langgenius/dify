@@ -61,7 +61,7 @@ class DebugExecutionCache:
     ) -> None:
         """
         Cache a workflow node execution model.
-        
+
         Args:
             execution_id: The execution ID as cache key
             model: The WorkflowNodeExecutionModel to cache
@@ -146,9 +146,7 @@ class DebugExecutionCache:
         with cls._cache_lock:
             current_time = time.time()
             expired_keys = [
-                key
-                for key, entry in cls._cache.items()
-                if current_time - entry["timestamp"] > cls._cache_ttl
+                key for key, entry in cls._cache.items() if current_time - entry["timestamp"] > cls._cache_ttl
             ]
 
             for key in expired_keys:

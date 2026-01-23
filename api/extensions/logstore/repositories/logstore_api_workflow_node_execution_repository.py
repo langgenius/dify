@@ -354,7 +354,7 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
                 return cached_result
 
             logger.warning(
-                f"Execution not found in LogStore or debug cache: execution_id={execution_id}, tenant_id={tenant_id}"
+                "Execution not found in LogStore or debug cache: execution_id=%s, tenant_id=%s", execution_id, tenant_id
             )
             return None
 
@@ -363,7 +363,7 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
             # Try cache as last resort on any error
             cached_result = DebugExecutionCache.get(execution_id)
             if cached_result is not None:
-                logger.info(f"Returning cached result after LogStore error: {execution_id}")
+                logger.info("Returning cached result after LogStore error: %s", execution_id)
                 return cached_result
             raise
 
