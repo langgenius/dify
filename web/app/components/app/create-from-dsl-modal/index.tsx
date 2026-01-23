@@ -1,6 +1,5 @@
 'use client'
 
-import type { MouseEventHandler } from 'react'
 import { RiCloseLine, RiExternalLinkLine } from '@remixicon/react'
 import { useDebounceFn, useKeyPress } from 'ahooks'
 import { noop } from 'es-toolkit/function'
@@ -24,11 +23,13 @@ import {
   DSLImportStatus,
 } from '@/models/app'
 import {
+  importAppBundle,
   importDSL,
   importDSLConfirm,
 } from '@/service/apps'
 import { getRedirection } from '@/utils/app-redirection'
 import { cn } from '@/utils/classnames'
+import DSLConfirmModal from './dsl-confirm-modal'
 import Uploader from './uploader'
 
 type CreateFromDSLModalProps = {
@@ -59,6 +60,8 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
   const [importId, setImportId] = useState<string>()
   const { handleCheckPluginDependencies } = usePluginDependencies()
 
+  const isZipFile = (file?: File) => !!file && file.name.toLowerCase().endsWith('.zip')
+
   const readFile = (file: File) => {
     const reader = new FileReader()
     reader.onload = function (event) {
@@ -70,9 +73,9 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
 
   const handleFile = (file?: File) => {
     setDSLFile(file)
-    if (file)
+    if (file && !isZipFile(file))
       readFile(file)
-    if (!file)
+    if (!file || isZipFile(file))
       setFileContent('')
   }
 
@@ -99,10 +102,15 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
       let response
 
       if (currentTab === CreateFromDSLModalTab.FROM_FILE) {
-        response = await importDSL({
-          mode: DSLImportMode.YAML_CONTENT,
-          yaml_content: fileContent || '',
-        })
+        if (isZipFile(currentFile)) {
+          response = await importAppBundle({ file: currentFile! })
+        }
+        else {
+          response = await importDSL({
+            mode: DSLImportMode.YAML_CONTENT,
+            yaml_content: fileContent || '',
+          })
+        }
       }
       if (currentTab === CreateFromDSLModalTab.FROM_URL) {
         response = await importDSL({
@@ -170,7 +178,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
       onClose()
   })
 
-  const onDSLConfirm: MouseEventHandler = async () => {
+  const onDSLConfirm = async () => {
     try {
       if (!importId)
         return
@@ -203,6 +211,12 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
     catch (e) {
       notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
     }
+  }
+
+  const handleConfirmSuccess = () => {
+    if (onSuccess)
+      onSuccess()
+    onClose()
   }
 
   const tabs = [
@@ -273,6 +287,8 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
               className="mt-0"
               file={currentFile}
               updateFile={handleFile}
+              accept=".yaml,.yml,.zip"
+              displayName={isZipFile(currentFile) ? 'ZIP' : 'YAML'}
             />
           )}
           {currentTab === CreateFromDSLModalTab.FROM_URL && (
@@ -317,32 +333,15 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
           </div>
         </div>
       </Modal>
-      <Modal
-        isShow={showErrorModal}
-        onClose={() => setShowErrorModal(false)}
-        className="w-[480px]"
-      >
-        <div className="flex flex-col items-start gap-2 self-stretch pb-4">
-          <div className="title-2xl-semi-bold text-text-primary">{t('newApp.appCreateDSLErrorTitle', { ns: 'app' })}</div>
-          <div className="system-md-regular flex grow flex-col text-text-secondary">
-            <div>{t('newApp.appCreateDSLErrorPart1', { ns: 'app' })}</div>
-            <div>{t('newApp.appCreateDSLErrorPart2', { ns: 'app' })}</div>
-            <br />
-            <div>
-              {t('newApp.appCreateDSLErrorPart3', { ns: 'app' })}
-              <span className="system-md-medium">{versions?.importedVersion}</span>
-            </div>
-            <div>
-              {t('newApp.appCreateDSLErrorPart4', { ns: 'app' })}
-              <span className="system-md-medium">{versions?.systemVersion}</span>
-            </div>
-          </div>
-        </div>
-        <div className="flex items-start justify-end gap-2 self-stretch pt-6">
-          <Button variant="secondary" onClick={() => setShowErrorModal(false)}>{t('newApp.Cancel', { ns: 'app' })}</Button>
-          <Button variant="primary" destructive onClick={onDSLConfirm}>{t('newApp.Confirm', { ns: 'app' })}</Button>
-        </div>
-      </Modal>
+      {showErrorModal && (
+        <DSLConfirmModal
+          file={currentFile}
+          versions={versions}
+          onCancel={() => setShowErrorModal(false)}
+          onConfirm={onDSLConfirm}
+          onSuccess={handleConfirmSuccess}
+        />
+      )}
     </>
   )
 }
