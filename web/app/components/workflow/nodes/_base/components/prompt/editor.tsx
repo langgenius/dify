@@ -165,7 +165,7 @@ const Editor: FC<Props> = ({
                 {' '}
                 {required && <span className="text-text-destructive">*</span>}
               </div>
-              {titleTooltip && <Tooltip popupContent={titleTooltip} />}
+              {!!titleTooltip && <Tooltip popupContent={titleTooltip} />}
             </div>
             <div className="flex items-center">
               <div className="text-xs font-medium leading-[18px] text-text-tertiary">{value?.length || 0}</div>
