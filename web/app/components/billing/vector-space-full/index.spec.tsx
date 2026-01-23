@@ -21,6 +21,18 @@ vi.mock('../upgrade-btn', () => ({
   default: () => <button data-testid="vector-upgrade-btn" type="button">Upgrade</button>,
 }))
 
+// Mock utils to control threshold and plan limits
+vi.mock('../utils', () => ({
+  getPlanVectorSpaceLimitMB: (planType: string) => {
+    // Return 5 for sandbox (threshold) and 100 for team
+    if (planType === 'sandbox')
+      return 5
+    if (planType === 'team')
+      return 100
+    return 0
+  },
+}))
+
 describe('VectorSpaceFull', () => {
   const planMock = {
     type: 'team',
@@ -52,6 +64,6 @@ describe('VectorSpaceFull', () => {
     render(<VectorSpaceFull />)
 
     expect(screen.getByText('8')).toBeInTheDocument()
-    expect(screen.getByText('10MB')).toBeInTheDocument()
+    expect(screen.getByText('100MB')).toBeInTheDocument()
   })
 })

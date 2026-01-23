@@ -26,6 +26,7 @@
   "list.action.archive": "アーカイブ",
   "list.action.batchAdd": "一括追加",
   "list.action.delete": "削除",
+  "list.action.download": "ダウンロード",
   "list.action.enableWarning": "アーカイブされたファイルは有効にできません",
   "list.action.pause": "一時停止",
   "list.action.resume": "再開",

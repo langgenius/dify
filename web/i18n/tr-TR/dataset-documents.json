@@ -26,6 +26,7 @@
   "list.action.archive": "Arşivle",
   "list.action.batchAdd": "Toplu ekle",
   "list.action.delete": "Sil",
+  "list.action.download": "İndir",
   "list.action.enableWarning": "Arşivlenmiş dosya etkinleştirilemez",
   "list.action.pause": "Duraklat",
   "list.action.resume": "Devam Et",

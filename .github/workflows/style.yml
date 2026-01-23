@@ -117,10 +117,15 @@ jobs:
       #     eslint-report: web/eslint_report.json
       #     github-token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Web tsslint
+        if: steps.changed-files.outputs.any_changed == 'true'
+        working-directory: ./web
+        run: pnpm run lint:tss
+
       - name: Web type check
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
-        run: pnpm run type-check:tsgo
+        run: pnpm run type-check
 
       - name: Web dead code check
         if: steps.changed-files.outputs.any_changed == 'true'

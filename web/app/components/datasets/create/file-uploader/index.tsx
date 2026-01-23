@@ -278,7 +278,7 @@ const FileUploader = ({
     onFileListUpdate?.([...fileListRef.current])
   }
   const fileChangeHandle = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    let files = [...(e.target.files ?? [])] as File[]
+    let files = Array.from(e.target.files ?? []) as File[]
     files = files.slice(0, fileUploadConfig.batch_count_limit)
     initialUpload(files.filter(isValid))
   }, [isValid, initialUpload, fileUploadConfig])
