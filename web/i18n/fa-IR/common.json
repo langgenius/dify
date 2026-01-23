@@ -110,6 +110,7 @@
   "chat.conversationName": "نام مکالمه",
   "chat.conversationNameCanNotEmpty": "نام مکالمه الزامی است",
   "chat.conversationNamePlaceholder": "لطفاً نام مکالمه را وارد کنید",
+  "chat.inputDisabledPlaceholder": "فقط پیش‌نمایش",
   "chat.inputPlaceholder": "با {{botName}} صحبت کنید",
   "chat.renameConversation": "تغییر نام مکالمه",
   "chat.resend": "دوباره ارسال کنید",
