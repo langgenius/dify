@@ -217,7 +217,7 @@ const MetadataSection: FC<MetadataSectionProps> = ({
                               )}
                             </select>
                           </div>
-                          <div className="flex h-8 grow items-center gap-1">
+                          <div className="border-components-input-border-normal flex h-8 grow items-center gap-1 rounded-lg border bg-components-input-bg-normal">
                             <div className="ml-1 inline-flex shrink-0 gap-px rounded-[10px] bg-components-segmented-control-bg-normal p-0.5">
                               <Tooltip
                                 popupContent={isVariable ? '' : t('nodes.common.valueType.variable', { ns: 'workflow' })}
