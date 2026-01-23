@@ -23,11 +23,18 @@ export function PWAProvider({ children }: { children: React.ReactNode }) {
 function DisabledPWAProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isClient && 'serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then((registrations) => {
-        registrations.forEach((registration) => {
-          registration.unregister()
+      navigator.serviceWorker.getRegistrations()
+        .then((registrations) => {
+          registrations.forEach((registration) => {
+            registration.unregister()
+              .catch((error) => {
+                console.error('Error unregistering service worker:', error)
+              })
+          })
         })
-      })
+        .catch((error) => {
+          console.error('Error unregistering service workers:', error)
+        })
     }
   }, [])
 
