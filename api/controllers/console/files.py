@@ -1,5 +1,5 @@
-from typing import Literal
-
+from typing import Literal, cast
+from uuid import UUID
 from flask import request
 from werkzeug.exceptions import Forbidden
 
@@ -107,8 +107,8 @@ def upload_file() -> FileResponse:
 @setup_required
 @login_required
 @account_initialization_required
-def get_file_preview(file_id: "UUID") -> dict[str, str]:
-    text = FileService(db.engine).get_file_preview(str(file_id))
+def get_file_preview(file_id: UUID) -> dict[str, str]:
+    text = cast(str, FileService(db.engine).get_file_preview(str(file_id)))
     return {"content": text}
 
 
