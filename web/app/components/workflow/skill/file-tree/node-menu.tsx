@@ -143,9 +143,6 @@ const NodeMenu: FC<NodeMenuProps> = ({
             onClick={handleNewFolder}
             disabled={isLoading}
           />
-
-          <div className="my-1 h-px bg-divider-subtle" />
-
           <MenuItem
             icon={RiUploadLine}
             label={t('skillSidebar.menu.uploadFile')}
@@ -161,7 +158,7 @@ const NodeMenu: FC<NodeMenuProps> = ({
             />
           )}
 
-          {showRenameDelete && <div className="my-1 h-px bg-divider-subtle" />}
+          {(showRenameDelete || hasClipboard) && <div className="my-1 h-px bg-divider-subtle" />}
         </>
       )}
 
@@ -180,29 +177,29 @@ const NodeMenu: FC<NodeMenuProps> = ({
       {!isRoot && (
         <>
           <MenuItem
-            icon={RiFileCopyLine}
-            label={t('skillSidebar.menu.copy')}
-            kbd={KBD_COPY}
-            onClick={handleCopy}
-            disabled={isLoading}
-          />
-          <MenuItem
             icon={RiScissorsLine}
             label={t('skillSidebar.menu.cut')}
             kbd={KBD_CUT}
             onClick={handleCut}
             disabled={isLoading}
           />
+          <MenuItem
+            icon={RiFileCopyLine}
+            label={t('skillSidebar.menu.copy')}
+            kbd={KBD_COPY}
+            onClick={handleCopy}
+            disabled={isLoading}
+          />
         </>
       )}
 
-      {isFolder && (
+      {isFolder && hasClipboard && (
         <MenuItem
           icon={RiClipboardLine}
           label={t('skillSidebar.menu.paste')}
           kbd={KBD_PASTE}
           onClick={handlePaste}
-          disabled={isLoading || !hasClipboard}
+          disabled={isLoading}
         />
       )}
 
