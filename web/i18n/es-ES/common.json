@@ -110,6 +110,7 @@
   "chat.conversationName": "Nombre de la conversación",
   "chat.conversationNameCanNotEmpty": "Nombre de la conversación requerido",
   "chat.conversationNamePlaceholder": "Por favor ingresa el nombre de la conversación",
+  "chat.inputDisabledPlaceholder": "Solo Vista Previa",
   "chat.inputPlaceholder": "Hablar con el {{botName}}",
   "chat.renameConversation": "Renombrar Conversación",
   "chat.resend": "Reenviar",

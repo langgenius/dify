@@ -7,6 +7,7 @@ from typing import Any
 from configs import dify_config
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.workflow.node_factory import DifyNodeFactory
 from core.file.models import File
 from core.workflow.constants import ENVIRONMENT_VARIABLE_NODE_ID
 from core.workflow.entities import GraphInitParams
@@ -19,7 +20,6 @@ from core.workflow.graph_engine.protocols.command_channel import CommandChannel
 from core.workflow.graph_events import GraphEngineEvent, GraphNodeEventBase, GraphRunFailedEvent
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.base.node import Node
-from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
