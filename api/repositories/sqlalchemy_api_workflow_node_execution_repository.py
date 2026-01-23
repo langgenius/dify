@@ -363,8 +363,8 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         stmt = select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.workflow_run_id == run_id)
         return list(session.scalars(stmt))
 
-    @staticmethod
     def get_offloads_by_execution_ids(
+        self,
         session: Session,
         node_execution_ids: Sequence[str],
     ) -> Sequence[WorkflowNodeExecutionOffload]:

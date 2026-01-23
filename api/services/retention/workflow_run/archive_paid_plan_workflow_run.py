@@ -40,10 +40,8 @@ from libs.archive_storage import (
     get_archive_storage,
 )
 from models.workflow import WorkflowAppLog, WorkflowRun
+from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
-from repositories.sqlalchemy_api_workflow_node_execution_repository import (
-    DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
-)
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 from services.billing_service import BillingService
 from services.retention.workflow_run.constants import ARCHIVE_BUNDLE_NAME, ARCHIVE_SCHEMA_VERSION
@@ -428,12 +426,14 @@ class WorkflowRunArchiver:
         repo = self._get_workflow_run_repo()
         app_logs = repo.get_app_logs_by_run_id(session, run.id)
         table_data["workflow_app_logs"] = [self._row_to_dict(row) for row in app_logs]
-        node_exec_records = DifyAPISQLAlchemyWorkflowNodeExecutionRepository.get_by_run(session, run.id)
-        node_exec_ids = [record.id for record in node_exec_records]
-        offload_records = DifyAPISQLAlchemyWorkflowNodeExecutionRepository.get_offloads_by_execution_ids(
-            session,
-            node_exec_ids,
+        node_exec_repo = self._get_workflow_node_execution_repo()
+        node_exec_records = node_exec_repo.get_executions_by_workflow_run(
+            tenant_id=run.tenant_id,
+            app_id=run.app_id,
+            workflow_run_id=run.id,
         )
+        node_exec_ids = [record.id for record in node_exec_records]
+        offload_records = node_exec_repo.get_offloads_by_execution_ids(session, node_exec_ids)
         table_data["workflow_node_executions"] = [self._row_to_dict(row) for row in node_exec_records]
         table_data["workflow_node_execution_offload"] = [self._row_to_dict(row) for row in offload_records]
         repo = self._get_workflow_run_repo()
@@ -506,7 +506,15 @@ class WorkflowRunArchiver:
 
     def _delete_node_executions(self, session: Session, runs: Sequence[WorkflowRun]) -> tuple[int, int]:
         run_ids = [run.id for run in runs]
-        return DifyAPISQLAlchemyWorkflowNodeExecutionRepository.delete_by_runs(session, run_ids)
+        return self._get_workflow_node_execution_repo().delete_by_runs(session, run_ids)
+
+    def _get_workflow_node_execution_repo(
+        self,
+    ) -> DifyAPIWorkflowNodeExecutionRepository:
+        from repositories.factory import DifyAPIRepositoryFactory
+
+        session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+        return DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(session_maker)
 
     def _get_workflow_run_repo(self) -> APIWorkflowRunRepository:
         if self.workflow_run_repo is not None:
