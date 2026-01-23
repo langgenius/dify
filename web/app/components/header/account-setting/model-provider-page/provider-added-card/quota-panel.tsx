@@ -43,6 +43,15 @@ const providerKeyToPluginId: Record<string, string> = {
   [ModelProviderQuotaGetPaid.TONGYI]: 'langgenius/tongyi',
 }
 
+const providerNameMap = {
+  [ModelProviderQuotaGetPaid.OPENAI]: 'OpenAI',
+  [ModelProviderQuotaGetPaid.ANTHROPIC]: 'Anthropic',
+  [ModelProviderQuotaGetPaid.GEMINI]: 'Gemini',
+  [ModelProviderQuotaGetPaid.X]: 'xAI',
+  [ModelProviderQuotaGetPaid.DEEPSEEK]: 'DeepSeek',
+  [ModelProviderQuotaGetPaid.TONGYI]: 'Tongyi',
+}
+
 type QuotaPanelProps = {
   providers: ModelProvider[]
   isLoading?: boolean
@@ -104,7 +113,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
     <div className={cn('my-2 min-w-[72px] shrink-0 rounded-xl border-[0.5px] pb-2.5 pl-4 pr-2.5 pt-3 shadow-xs', credits <= 0 ? 'border-state-destructive-border hover:bg-state-destructive-hover' : 'border-components-panel-border bg-third-party-model-bg-default')}>
       <div className="system-xs-medium-uppercase mb-2 flex h-4 items-center text-text-tertiary">
         {t('modelProvider.quota', { ns: 'common' })}
-        <Tooltip popupContent={t('modelProvider.card.tip', { ns: 'common' })} />
+        <Tooltip popupContent={t('modelProvider.card.tip', { ns: 'common', modelNames: trial_models.map(key => providerNameMap[key as keyof typeof providerNameMap]).filter(Boolean).join(', ') })} />
       </div>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1 text-xs text-text-tertiary">
