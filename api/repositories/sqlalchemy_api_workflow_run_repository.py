@@ -388,7 +388,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
     ) -> int:
         stmt = delete(WorkflowArchiveLog).where(WorkflowArchiveLog.workflow_run_id == run_id)
         result = session.execute(stmt)
-        return result.rowcount or 0
+        return cast(CursorResult, result).rowcount or 0
 
     def get_pause_records_by_run_id(
         self,
