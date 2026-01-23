@@ -26,9 +26,7 @@ class TestKnowledgeIndexNode(unittest.TestCase):
     @patch("core.workflow.nodes.knowledge_index.knowledge_index_node.attributes.flag_modified")
     @patch("core.workflow.nodes.knowledge_index.knowledge_index_node.db.session")
     @patch("core.workflow.nodes.knowledge_index.knowledge_index_node.IndexProcessorFactory")
-    def test_run_with_custom_metadata(
-        self, mock_index_processor_factory, mock_db_session, mock_flag_modified
-    ):
+    def test_run_with_custom_metadata(self, mock_index_processor_factory, mock_db_session, mock_flag_modified):
         # Mock DB queries
         mock_db_session.query.return_value.filter_by.return_value.first.side_effect = [
             self.mock_dataset,  # For dataset query
