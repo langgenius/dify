@@ -124,17 +124,14 @@ class MetadataService:
 
         if pipeline.workflow_id:
             workflows = (
-                db.session.query(Workflow)
-                .filter(
-                    or_(
-                        draft_condition,
-                        Workflow.id == pipeline.workflow_id,
-                    )
-                )
+                db.session.query(Workflow).where(or_(
+                    draft_condition,
+                    Workflow.id == pipeline.workflow_id,
+                ))
                 .all()
             )
         else:
-            workflows = db.session.query(Workflow).filter(draft_condition).all()
+            workflows = db.session.query(Workflow).where(draft_condition).all()
 
         if not workflows:
             return False, None
