@@ -7,8 +7,8 @@ import pytest
 from flask import Flask
 from flask.views import MethodView
 
-from models.account import AccountStatus
 from extensions import ext_fastopenapi
+from models.account import AccountStatus
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
@@ -58,12 +58,15 @@ def test_console_extension_api_based_fastopenapi_list(app: Flask, monkeypatch: p
         created_at=datetime(2024, 1, 1),
     )
 
-    with patch(
-        "controllers.console.extension.current_account_with_tenant",
-        return_value=(SimpleNamespace(), "tenant-id"),
-    ), patch(
-        "controllers.console.extension.APIBasedExtensionService.get_all_by_tenant_id",
-        return_value=[extension],
+    with (
+        patch(
+            "controllers.console.extension.current_account_with_tenant",
+            return_value=(SimpleNamespace(), "tenant-id"),
+        ),
+        patch(
+            "controllers.console.extension.APIBasedExtensionService.get_all_by_tenant_id",
+            return_value=[extension],
+        ),
     ):
         client = app.test_client()
         response = client.get("/console/api/api-based-extension")
