@@ -1,13 +1,14 @@
 import copy
 import logging
 
+from sqlalchemy import or_
+
 from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant
-from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding
-from models.model import App
+from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding, Pipeline
 from models.workflow import Workflow
 from services.dataset_service import DocumentService
 from services.entities.knowledge_entities.knowledge_entities import (
@@ -102,6 +103,9 @@ class MetadataService:
         """
         Check if a metadata is used in the associated Pipeline's Knowledge Base node.
 
+        Checks both draft and current published workflows to prevent deletion of metadata
+        that is actively used in production.
+
         Returns:
             tuple[bool, str | None]: (is_used, pipeline_name) - True if used, with pipeline name
         """
@@ -110,35 +114,42 @@ class MetadataService:
         if not dataset or not dataset.pipeline_id:
             return False, None
 
-        # Get the draft workflow directly using pipeline_id as app_id
-        workflow = (
-            db.session.query(Workflow).filter_by(app_id=dataset.pipeline_id, version=Workflow.VERSION_DRAFT).first()
-        )
-        if not workflow:
+        # Get the pipeline to access workflow_id (current published version)
+        pipeline = db.session.query(Pipeline).filter_by(id=dataset.pipeline_id).first()
+        if not pipeline:
             return False, None
 
-        # Get pipeline name from App if exists
-        app = db.session.query(App).filter_by(id=dataset.pipeline_id).first()
-        pipeline_name = app.name if app else "Pipeline"
+        # Build conditions for draft and current published workflows only
+        workflow_conditions = [
+            (Workflow.app_id == pipeline.id) & (Workflow.version == Workflow.VERSION_DRAFT)
+        ]
+        if pipeline.workflow_id:
+            workflow_conditions.append(Workflow.id == pipeline.workflow_id)
 
-        # Walk through nodes to find Knowledge Index node (type is "knowledge-index")
-        try:
-            graph_dict = workflow.graph_dict
-            if "nodes" not in graph_dict:
-                return False, None
+        workflows = db.session.query(Workflow).filter(or_(*workflow_conditions)).all()
 
-            for node in graph_dict["nodes"]:
-                node_data = node.get("data", {})
-                # Check if this is a knowledge-index node
-                if node_data.get("type") == "knowledge-index":
-                    doc_metadata = node_data.get("doc_metadata", [])
-                    if doc_metadata:
-                        for item in doc_metadata:
-                            if item.get("metadata_id") == metadata_id:
-                                return True, pipeline_name
-        except Exception:
-            logger.exception("Error checking metadata usage in pipeline")
+        if not workflows:
             return False, None
+
+        # Check each workflow for metadata usage
+        for workflow in workflows:
+            try:
+                graph_dict = workflow.graph_dict
+                if "nodes" not in graph_dict:
+                    continue
+
+                for node in graph_dict["nodes"]:
+                    node_data = node.get("data", {})
+                    # Check if this is a knowledge-index node
+                    if node_data.get("type") == "knowledge-index":
+                        doc_metadata = node_data.get("doc_metadata", [])
+                        if doc_metadata:
+                            for item in doc_metadata:
+                                if item.get("metadata_id") == metadata_id:
+                                    return True, pipeline.name
+            except Exception:
+                logger.exception("Error checking metadata usage in pipeline workflow %s", workflow.id)
+                continue
 
         return False, None
 

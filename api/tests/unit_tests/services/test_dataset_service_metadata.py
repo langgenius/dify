@@ -87,6 +87,7 @@ class TestDocumentServiceMetadata:
                     m.filter.return_value.filter.return_value.first.return_value = mock_metadata_def
                     # handle the specific chain in code
                     m.filter_by.return_value.first.return_value = mock_metadata_def
+                    m.filter.return_value.all.return_value = [mock_metadata_def]
                     return m
                 if model == Document:
                     doc_mock = Mock()

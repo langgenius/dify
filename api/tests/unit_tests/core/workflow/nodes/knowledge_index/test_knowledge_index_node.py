@@ -43,33 +43,26 @@ class TestKnowledgeIndexNode(unittest.TestCase):
         # Mock Variable Pool
         pool = MagicMock(spec=VariablePool)
 
-        # System variables
-        pool.get.side_effect = lambda selector: {
-            ("sys", SystemVariableKey.DATASET_ID): MagicMock(value=self.dataset_id),
-            ("sys", SystemVariableKey.DOCUMENT_ID): MagicMock(value=self.document_id),
-            ("sys", SystemVariableKey.INVOKE_FROM): None,
-            ("Start", "category"): MagicMock(to_object=lambda: "Financial"),
-            # handle list as key? get takes list
-            frozenset(["Start", "category"]): MagicMock(to_object=lambda: "Financial"),
-        }.get(tuple(selector) if isinstance(selector, list) else selector)
-
-        # Handle the chunk variable specifically first
+        # Handle the chunk variable
         chunk_var_mock = MagicMock()
         chunk_var_mock.value = {"chunk": "data"}
 
-        # Override side_effect to handle list lookups correctly
         def variable_pool_get(selector):
             if selector == ["sys", SystemVariableKey.DATASET_ID]:
                 return MagicMock(value=self.dataset_id)
             if selector == ["sys", SystemVariableKey.DOCUMENT_ID]:
                 return MagicMock(value=self.document_id)
+            if selector == ["sys", SystemVariableKey.BATCH]:
+                return MagicMock(value="test-batch")
+            if selector == ["sys", SystemVariableKey.ORIGINAL_DOCUMENT_ID]:
+                return None
             if selector == ["Start", "category"]:
                 var = MagicMock()
                 var.to_object.return_value = "Financial"
                 return var
             if selector == ["sys", SystemVariableKey.INVOKE_FROM]:
                 return None
-            if selector == ["sys", "chunks"]:  # whatever index_chunk_variable_selector is
+            if selector == ["sys", "chunks"]:
                 return chunk_var_mock
             return None
 
@@ -97,9 +90,6 @@ class TestKnowledgeIndexNode(unittest.TestCase):
             graph_runtime_state=MagicMock(variable_pool=pool),
             config=config,
         )
-
-        # Mock _invoke_knowledge_index to avoid calling specific index logic
-        node._invoke_knowledge_index = MagicMock()
 
         # Execute
         result = node._run()
