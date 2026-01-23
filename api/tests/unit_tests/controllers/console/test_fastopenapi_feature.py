@@ -1,6 +1,6 @@
 import builtins
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 from flask import Flask
@@ -31,7 +31,7 @@ def test_console_features_fastopenapi_get(app: Flask, monkeypatch: pytest.Monkey
         patch("controllers.console.feature.current_account_with_tenant", return_value=(object(), "tenant-id")),
         patch(
             "controllers.console.feature.FeatureService.get_features",
-            return_value=SimpleNamespace(model_dump=lambda: {"enabled": True}),
+            return_value=Mock(model_dump=lambda: {"enabled": True}),
         ),
     ):
         client = app.test_client()
@@ -46,7 +46,7 @@ def test_console_system_features_fastopenapi_get(app: Flask):
 
     with patch(
         "controllers.console.feature.FeatureService.get_system_features",
-        return_value=SimpleNamespace(model_dump=lambda: {"system": True}),
+        return_value=Mock(model_dump=lambda: {"system": True}),
     ):
         client = app.test_client()
         response = client.get("/console/api/system-features")
