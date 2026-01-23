@@ -6,18 +6,20 @@ import { memo } from 'react'
 type SectionHeaderProps = {
   title: string
   description: string
+  className?: string
 }
 
 const SectionHeader: FC<SectionHeaderProps> = ({
   title,
   description,
+  className,
 }) => {
   return (
-    <header className="mb-3 flex flex-col gap-0.5">
+    <header className={className}>
       <h2 className="title-xl-semi-bold text-text-primary">
         {title}
       </h2>
-      <p className="system-xs-regular text-text-tertiary">
+      <p className="system-xs-regular mt-0.5 text-text-tertiary">
         {description}
       </p>
     </header>
