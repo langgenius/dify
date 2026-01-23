@@ -2723,11 +2723,6 @@
       "count": 15
     }
   },
-  "app/components/tools/workflow-tool/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "app/components/workflow-app/components/workflow-children.tsx": {
     "no-console": {
       "count": 1
