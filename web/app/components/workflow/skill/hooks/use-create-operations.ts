@@ -134,6 +134,7 @@ export function useCreateOperations({
         appId,
         tree,
         files: fileMap,
+        parentId,
       })
 
       Toast.notify({
