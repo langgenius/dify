@@ -205,9 +205,7 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
                     # Resolve Name
                     md_name = metadata_name_map.get(item.metadata_id)
                     if not md_name:
-                        logger.warning(
-                            "[KnowledgeIndexNode] metadata_id %s not found, skipping", item.metadata_id
-                        )
+                        logger.warning("[KnowledgeIndexNode] metadata_id %s not found, skipping", item.metadata_id)
                         continue
 
                     # Resolve Value
@@ -298,6 +296,5 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
             for item in node_data_obj.doc_metadata:
                 if isinstance(item.value, list):
                     variable_mapping[node_id + "." + item.metadata_id] = item.value
-        
-        return variable_mapping
 
+        return variable_mapping

@@ -31,7 +31,7 @@ class TestDocumentServiceMetadata:
             # Hack to pass isinstance check
             mock_current_user.__class__ = Account
             mock_current_user.current_tenant_id = "tenant-123"
-            
+
             yield {
                 "db": mock_db,
                 "get_dataset": mock_get_dataset,
@@ -57,24 +57,19 @@ class TestDocumentServiceMetadata:
 
         # Define metadata inputs
         metadata_id = str(uuid4())
-        doc_metadata_inputs = [
-            DocumentMetadataInput(metadata_id=metadata_id, value="custom_value")
-        ]
+        doc_metadata_inputs = [DocumentMetadataInput(metadata_id=metadata_id, value="custom_value")]
 
         # Knowledge config
         knowledge_config = KnowledgeConfig(
             data_source_type="upload_file",
             data_source=DataSource(
-                info_list=InfoList(
-                    data_source_type="upload_file",
-                    file_info_list=FileInfo(file_ids=["file-1"])
-                )
+                info_list=InfoList(data_source_type="upload_file", file_info_list=FileInfo(file_ids=["file-1"]))
             ),
             doc_form="text_model",
             doc_language="en",
             indexing_technique="high_quality",
             enable_built_in_metadata=True,
-            doc_metadata=doc_metadata_inputs
+            doc_metadata=doc_metadata_inputs,
         )
 
         # Mock local file for upload_file type
@@ -84,7 +79,7 @@ class TestDocumentServiceMetadata:
             mock_metadata_def.id = metadata_id
             mock_metadata_def.name = "custom_field"
             mock_metadata_def.field_type = "text"
-            
+
             # Create a side effect for query(Model)
             def query_side_effect(model):
                 m = Mock()
@@ -106,9 +101,9 @@ class TestDocumentServiceMetadata:
                     return m
 
                 return m
-            
+
             mock_query.side_effect = query_side_effect
-            
+
             # Mock build_document to return a document
             mock_document = Mock(spec=Document)
             mock_document.id = "doc-123"
@@ -117,15 +112,13 @@ class TestDocumentServiceMetadata:
 
             # Act
             DocumentService.save_document_with_dataset_id(
-                dataset=dataset,
-                knowledge_config=knowledge_config,
-                account=account
+                dataset=dataset, knowledge_config=knowledge_config, account=account
             )
 
             # Assert
             # 1. Check built-in metadata enabled
             assert dataset.built_in_field_enabled is True
-            
+
             # 2. Check custom metadata passed to build_document
             call_args = mock_dependencies["build_document"].call_args
             assert call_args is not None
