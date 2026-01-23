@@ -1498,6 +1498,7 @@ dependencies = [
     { name = "celery" },
     { name = "charset-normalizer" },
     { name = "croniter" },
+    { name = "fastopenapi", extra = ["flask"] },
     { name = "daytona" },
     { name = "docker" },
     { name = "e2b-code-interpreter" },
@@ -1700,6 +1701,7 @@ requires-dist = [
     { name = "celery", specifier = "~=5.5.2" },
     { name = "charset-normalizer", specifier = ">=3.4.4" },
     { name = "croniter", specifier = ">=6.0.0" },
+    { name = "fastopenapi", extras = ["flask"], specifier = ">=0.7.0" },
     { name = "daytona", specifier = "==0.128.1" },
     { name = "docker", specifier = ">=7.1.0" },
     { name = "e2b-code-interpreter", specifier = ">=2.4.1" },
@@ -2093,6 +2095,23 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/52/08/8c8508db6c7b9aae8f7175046af41baad690771c9bcde676419965e338c7/fastapi-0.128.0.tar.gz", hash = "sha256:1cc179e1cef10a6be60ffe429f79b829dce99d8de32d7acb7e6c8dfdf7f2645a", size = 365682, upload-time = "2025-12-27T15:21:13.714Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/5c/05/5cbb59154b093548acd0f4c7c474a118eda06da25aa75c616b72d8fcd92a/fastapi-0.128.0-py3-none-any.whl", hash = "sha256:aebd93f9716ee3b4f4fcfe13ffb7cf308d99c9f3ab5622d8877441072561582d", size = 103094, upload-time = "2025-12-27T15:21:12.154Z" },
+]
+
+[[package]]
+name = "fastopenapi"
+version = "0.7.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pydantic" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/0e/02/6ee3ecc1e176bbb8c02cbeee30b11f526167c77ef2f7e741ab7999787ad0/fastopenapi-0.7.0.tar.gz", hash = "sha256:5a671fa663e3d89608e9b39a213595f7ac0bf0caf71f2b6016adf4d8c3e1a50e", size = 17191, upload-time = "2025-04-27T13:38:48.368Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d5/ad/1881ed46a0a7d3ce14472425db0ddc7aa45c858b4b14727647805487f10d/fastopenapi-0.7.0-py3-none-any.whl", hash = "sha256:482914301f348270cb231617863cacfadf1841012c5ff7d4255a27077704c7b2", size = 21272, upload-time = "2025-04-27T13:38:46.877Z" },
+]
+
+[package.optional-dependencies]
+flask = [
+    { name = "flask" },
 ]
 
 [[package]]

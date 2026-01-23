@@ -95,6 +95,7 @@ dependencies = [
     "weaviate-client==4.17.0",
     "apscheduler>=3.11.0",
     "weave>=0.52.16",
+    "fastopenapi[flask]>=0.7.0",
     "docker>=7.1.0",
     "e2b-code-interpreter>=2.4.1",
 ]
