@@ -31,7 +31,7 @@ from factories import file_factory
 from models import ToolFile
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 
-from .entities import ToolNodeData
+from .entities import ToolNodeData, is_variable_format
 from .exc import (
     ToolFileError,
     ToolNodeError,
@@ -213,20 +213,18 @@ class ToolNode(Node[ToolNodeData]):
                     continue
                 parameter_value = variable.value
             elif tool_input.type == "nested_node":
-                # Nested node type: get value from extractor node's output
-                if tool_input.nested_node_config is None:
-                    raise ToolParameterError(
-                        f"nested_node_config is required for nested_node type parameter '{parameter_name}'"
-                    )
-                nested_node_config = tool_input.nested_node_config.model_dump()
+                if not isinstance(tool_input.value, str) or tool_input.nested_node_config is None:
+                    raise ToolParameterError(f"Invalid nested_node parameter '{parameter_name}'")
+                config = tool_input.nested_node_config
+                # Variable format: use output_selector directly
+                # Mention format: use extractor_node_id + output_selector
+                use_extractor = not is_variable_format(tool_input.value)
                 try:
                     parameter_value, found = variable_pool.resolve_nested_node(
-                        nested_node_config, parameter_name=parameter_name
+                        config.model_dump(), use_extractor=use_extractor, parameter_name=parameter_name
                     )
                     if not found and parameter.required:
-                        raise ToolParameterError(
-                            f"Extractor output not found for required parameter '{parameter_name}'"
-                        )
+                        raise ToolParameterError(f"Value not found for required parameter '{parameter_name}'")
                     if not found:
                         continue
                 except ValueError as e:
