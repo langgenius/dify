@@ -13,6 +13,7 @@ import type {
 import { useLocalStorageState } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
+import { parseAsString, useQueryState } from 'nuqs'
 import {
   useCallback,
   useEffect,
@@ -103,14 +104,12 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     setConversationId(embeddedConversationId || undefined)
   }, [embeddedConversationId])
 
+  const [localeParam] = useQueryState('locale', parseAsString)
+
   useEffect(() => {
     if (isTryApp)
       return
     const setLanguageFromParams = async () => {
-      // Check URL parameters for language override
-      const urlParams = new URLSearchParams(window.location.search)
-      const localeParam = urlParams.get('locale')
-
       // Check for encoded system variables
       const systemVariables = await getProcessedSystemVariablesFromUrlParams()
       const localeFromSysVar = systemVariables.locale
@@ -130,7 +129,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     }
 
     setLanguageFromParams()
-  }, [appInfo])
+  }, [appInfo, localeParam])
 
   const [conversationIdInfo, setConversationIdInfo] = useLocalStorageState<Record<string, Record<string, string>>>(CONVERSATION_ID_INFO, {
     defaultValue: {},

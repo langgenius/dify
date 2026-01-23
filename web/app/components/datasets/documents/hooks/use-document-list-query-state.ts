@@ -1,6 +1,5 @@
-import type { ReadonlyURLSearchParams } from 'next/navigation'
 import type { SortType } from '@/service/datasets'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { parseAsInteger, parseAsString, useQueryStates } from 'nuqs'
 import { useCallback, useMemo } from 'react'
 import { sanitizeStatusValue } from '../status-filter'
 
@@ -21,6 +20,14 @@ export type DocumentListQuery = {
   sort: SortType
 }
 
+type DocumentListQueryInput = {
+  page?: number
+  limit?: number
+  keyword?: string | null
+  status?: string | null
+  sort?: string | null
+}
+
 const DEFAULT_QUERY: DocumentListQuery = {
   page: 1,
   limit: 10,
@@ -29,89 +36,60 @@ const DEFAULT_QUERY: DocumentListQuery = {
   sort: '-created_at',
 }
 
-// Parse the query parameters from the URL search string.
-function parseParams(params: ReadonlyURLSearchParams): DocumentListQuery {
-  const page = Number.parseInt(params.get('page') || '1', 10)
-  const limit = Number.parseInt(params.get('limit') || '10', 10)
-  const keyword = params.get('keyword') || ''
-  const status = sanitizeStatusValue(params.get('status'))
-  const sort = sanitizeSortValue(params.get('sort'))
+const normalizeKeywordValue = (value?: string | null) => (value && value.trim() ? value : '')
+
+const normalizeDocumentListQuery = (query: DocumentListQueryInput): DocumentListQuery => {
+  const page = (query.page && query.page > 0) ? query.page : DEFAULT_QUERY.page
+  const limit = (query.limit && query.limit > 0 && query.limit <= 100) ? query.limit : DEFAULT_QUERY.limit
+  const keyword = normalizeKeywordValue(query.keyword ?? DEFAULT_QUERY.keyword)
+  const status = sanitizeStatusValue(query.status ?? DEFAULT_QUERY.status)
+  const sort = sanitizeSortValue(query.sort ?? DEFAULT_QUERY.sort)
 
   return {
-    page: page > 0 ? page : 1,
-    limit: (limit > 0 && limit <= 100) ? limit : 10,
-    keyword: keyword ? decodeURIComponent(keyword) : '',
+    page,
+    limit,
+    keyword,
     status,
     sort,
   }
 }
 
-// Update the URL search string with the given query parameters.
-function updateSearchParams(query: DocumentListQuery, searchParams: URLSearchParams) {
-  const { page, limit, keyword, status, sort } = query || {}
-
-  const hasNonDefaultParams = (page && page > 1) || (limit && limit !== 10) || (keyword && keyword.trim())
-
-  if (hasNonDefaultParams) {
-    searchParams.set('page', (page || 1).toString())
-    searchParams.set('limit', (limit || 10).toString())
-  }
-  else {
-    searchParams.delete('page')
-    searchParams.delete('limit')
-  }
-
-  if (keyword && keyword.trim())
-    searchParams.set('keyword', encodeURIComponent(keyword))
-  else
-    searchParams.delete('keyword')
-
-  const sanitizedStatus = sanitizeStatusValue(status)
-  if (sanitizedStatus && sanitizedStatus !== 'all')
-    searchParams.set('status', sanitizedStatus)
-  else
-    searchParams.delete('status')
-
-  const sanitizedSort = sanitizeSortValue(sort)
-  if (sanitizedSort !== '-created_at')
-    searchParams.set('sort', sanitizedSort)
-  else
-    searchParams.delete('sort')
-}
-
 function useDocumentListQueryState() {
-  const searchParams = useSearchParams()
-  const query = useMemo(() => parseParams(searchParams), [searchParams])
+  const [query, setQuery] = useQueryStates(
+    {
+      page: parseAsInteger.withDefault(DEFAULT_QUERY.page),
+      limit: parseAsInteger.withDefault(DEFAULT_QUERY.limit),
+      keyword: parseAsString.withDefault(DEFAULT_QUERY.keyword),
+      status: parseAsString.withDefault(DEFAULT_QUERY.status),
+      sort: parseAsString.withDefault(DEFAULT_QUERY.sort),
+    },
+    {
+      history: 'push',
+      urlKeys: {
+        page: 'page',
+        limit: 'limit',
+        keyword: 'keyword',
+        status: 'status',
+        sort: 'sort',
+      },
+    },
+  )
 
-  const router = useRouter()
-  const pathname = usePathname()
+  const finalQuery = useMemo(() => normalizeDocumentListQuery(query), [query])
 
-  // Helper function to update specific query parameters
   const updateQuery = useCallback((updates: Partial<DocumentListQuery>) => {
-    const newQuery = { ...query, ...updates }
-    newQuery.status = sanitizeStatusValue(newQuery.status)
-    newQuery.sort = sanitizeSortValue(newQuery.sort)
-    const params = new URLSearchParams()
-    updateSearchParams(newQuery, params)
-    const search = params.toString()
-    const queryString = search ? `?${search}` : ''
-    router.push(`${pathname}${queryString}`, { scroll: false })
-  }, [query, router, pathname])
+    setQuery(prev => normalizeDocumentListQuery({ ...prev, ...updates }))
+  }, [setQuery])
 
-  // Helper function to reset query to defaults
   const resetQuery = useCallback(() => {
-    const params = new URLSearchParams()
-    updateSearchParams(DEFAULT_QUERY, params)
-    const search = params.toString()
-    const queryString = search ? `?${search}` : ''
-    router.push(`${pathname}${queryString}`, { scroll: false })
-  }, [router, pathname])
+    setQuery(DEFAULT_QUERY)
+  }, [setQuery])
 
   return useMemo(() => ({
-    query,
+    query: finalQuery,
     updateQuery,
     resetQuery,
-  }), [query, updateQuery, resetQuery])
+  }), [finalQuery, updateQuery, resetQuery])
 }
 
 export default useDocumentListQueryState
