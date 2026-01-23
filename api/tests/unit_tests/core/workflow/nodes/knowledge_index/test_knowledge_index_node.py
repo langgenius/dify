@@ -7,7 +7,7 @@ from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.knowledge_index.entities import DocMetadata, KnowledgeIndexNodeData
 from core.workflow.nodes.knowledge_index.knowledge_index_node import KnowledgeIndexNode
 from core.workflow.runtime import VariablePool
-from models.dataset import Dataset, DatasetMetadata, Document
+from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding, Document
 from models.enums import UserFrom
 
 
@@ -23,9 +23,12 @@ class TestKnowledgeIndexNode(unittest.TestCase):
         self.mock_document.id = self.document_id
         self.mock_document.doc_metadata = {}
 
+    @patch("core.workflow.nodes.knowledge_index.knowledge_index_node.attributes.flag_modified")
     @patch("core.workflow.nodes.knowledge_index.knowledge_index_node.db.session")
     @patch("core.workflow.nodes.knowledge_index.knowledge_index_node.IndexProcessorFactory")
-    def test_run_with_custom_metadata(self, mock_index_processor_factory, mock_db_session):
+    def test_run_with_custom_metadata(
+        self, mock_index_processor_factory, mock_db_session, mock_flag_modified
+    ):
         # Mock DB queries
         mock_db_session.query.return_value.filter_by.return_value.first.side_effect = [
             self.mock_dataset,  # For dataset query
@@ -94,7 +97,9 @@ class TestKnowledgeIndexNode(unittest.TestCase):
         # Execute
         result = node._run()
 
-        # Verify
+        # Verify metadata was set on document
         assert self.mock_document.doc_metadata["Category"] == "Financial"
-        mock_db_session.add.assert_called_with(self.mock_document)
+        # Verify flag_modified was called for the doc_metadata field
+        mock_flag_modified.assert_called_with(self.mock_document, "doc_metadata")
+        # Verify commit was called
         mock_db_session.commit.assert_called()
