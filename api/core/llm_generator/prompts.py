@@ -434,3 +434,20 @@ INSTRUCTION_GENERATE_TEMPLATE_PROMPT = """The output of this prompt is not as ex
 You should edit the prompt according to the IDEAL OUTPUT."""
 
 INSTRUCTION_GENERATE_TEMPLATE_CODE = """Please fix the errors in the {{#error_message#}}."""
+
+DEFAULT_GENERATOR_SUMMARY_PROMPT = (
+    """Summarize the following content. Extract only the key information and main points. """
+    """Remove redundant details.
+
+Requirements:
+1. Write a concise summary in plain text
+2. Use the same language as the input content
+3. Focus on important facts, concepts, and details
+4. If images are included, describe their key information
+5. Do not use words like "好的", "ok", "I understand", "This text discusses", "The content mentions"
+6. Write directly without extra words
+
+Output only the summary text. Start summarizing now:
+
+"""
+)
