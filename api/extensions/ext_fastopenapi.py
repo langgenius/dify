@@ -27,8 +27,10 @@ def init_app(app: DifyApp) -> None:
     )
 
     # Ensure route decorators are evaluated.
+    import controllers.console.init_validate as init_validate_module
     import controllers.console.ping as ping_module
 
+    _ = init_validate_module
     _ = ping_module
 
     router.include_router(console_router, prefix="/console/api")
