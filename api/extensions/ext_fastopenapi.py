@@ -28,8 +28,11 @@ def init_app(app: DifyApp) -> None:
 
     # Ensure route decorators are evaluated.
     import controllers.console.ping as ping_module
+    import controllers.console.setup as setup
+ 
 
     _ = ping_module
+    _ = setup
 
     router.include_router(console_router, prefix="/console/api")
     CORS(
