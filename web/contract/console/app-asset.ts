@@ -4,7 +4,11 @@ import type {
   AppAssetNode,
   AppAssetPublishResponse,
   AppAssetTreeResponse,
+  BatchUploadPayload,
+  BatchUploadResponse,
   CreateFolderPayload,
+  FileUploadUrlResponse,
+  GetFileUploadUrlPayload,
   MoveNodePayload,
   RenameNodePayload,
   ReorderNodePayload,
@@ -30,16 +34,6 @@ export const createFolderContract = base
   .input(type<{
     params: { appId: string }
     body: CreateFolderPayload
-  }>())
-  .output(type<AppAssetNode>())
-
-export const createFileContract = base
-  .route({
-    path: '/apps/{appId}/assets/files',
-    method: 'POST',
-  })
-  .input(type<{
-    params: { appId: string }
   }>())
   .output(type<AppAssetNode>())
 
@@ -126,3 +120,25 @@ export const publishContract = base
     params: { appId: string }
   }>())
   .output(type<AppAssetPublishResponse>())
+
+export const getFileUploadUrlContract = base
+  .route({
+    path: '/apps/{appId}/assets/files/upload',
+    method: 'POST',
+  })
+  .input(type<{
+    params: { appId: string }
+    body: GetFileUploadUrlPayload
+  }>())
+  .output(type<FileUploadUrlResponse>())
+
+export const batchUploadContract = base
+  .route({
+    path: '/apps/{appId}/assets/batch-upload',
+    method: 'POST',
+  })
+  .input(type<{
+    params: { appId: string }
+    body: BatchUploadPayload
+  }>())
+  .output(type<BatchUploadResponse>())

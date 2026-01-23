@@ -29,8 +29,6 @@ export type AppAssetNode = {
   extension: string
   /** File size in bytes, 0 for folders */
   size: number
-  /** SHA-256 checksum of file content, empty for folders */
-  checksum: string
 }
 
 /**
@@ -50,8 +48,6 @@ export type AppAssetTreeView = {
   extension: string
   /** File size in bytes */
   size: number
-  /** SHA-256 checksum */
-  checksum: string
   /** Child nodes (for folders) */
   children: AppAssetTreeView[]
 }
@@ -137,4 +133,57 @@ export type MoveNodePayload = {
 export type ReorderNodePayload = {
   /** Place after this node ID, null for first position */
   after_node_id: string | null
+}
+
+/**
+ * Request payload for getting file upload URL
+ */
+export type GetFileUploadUrlPayload = {
+  name: string
+  size: number
+  parent_id?: string | null
+}
+
+/**
+ * Response for file upload URL request
+ */
+export type FileUploadUrlResponse = {
+  node: AppAssetNode
+  upload_url: string
+}
+
+/**
+ * Input node structure for batch upload
+ */
+export type BatchUploadNodeInput = {
+  name: string
+  node_type: AssetNodeType
+  size?: number
+  children?: BatchUploadNodeInput[]
+}
+
+/**
+ * Output node structure from batch upload (with IDs and upload URLs)
+ */
+export type BatchUploadNodeOutput = {
+  id: string
+  name: string
+  node_type: AssetNodeType
+  size: number
+  children: BatchUploadNodeOutput[]
+  upload_url?: string
+}
+
+/**
+ * Request payload for batch upload
+ */
+export type BatchUploadPayload = {
+  children: BatchUploadNodeInput[]
+}
+
+/**
+ * Response for batch upload request
+ */
+export type BatchUploadResponse = {
+  children: BatchUploadNodeOutput[]
 }

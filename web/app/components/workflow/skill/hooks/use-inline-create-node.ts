@@ -8,9 +8,9 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import Toast from '@/app/components/base/toast'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import {
-  useCreateAppAssetFile,
   useCreateAppAssetFolder,
   useRenameAppAssetNode,
+  useUploadFileWithPresignedUrl,
 } from '@/service/use-app-asset'
 import { getFileExtension, isTextLikeFile } from '../utils/file-utils'
 import { createDraftTreeNode, insertDraftTreeNode } from '../utils/tree-utils'
@@ -35,7 +35,7 @@ export function useInlineCreateNode({
   const pendingCreateNode = useStore(s => s.pendingCreateNode)
   const storeApi = useWorkflowStore()
 
-  const createFile = useCreateAppAssetFile()
+  const uploadFile = useUploadFileWithPresignedUrl()
   const createFolder = useCreateAppAssetFolder()
   const renameNode = useRenameAppAssetNode()
 
@@ -79,9 +79,8 @@ export function useInlineCreateNode({
         else {
           const emptyBlob = new Blob([''], { type: 'text/plain' })
           const file = new File([emptyBlob], trimmedName)
-          const createdFile = await createFile.mutateAsync({
+          const createdFile = await uploadFile.mutateAsync({
             appId,
-            name: trimmedName,
             file,
             parentId: pendingCreateParentId,
           })
@@ -123,7 +122,7 @@ export function useInlineCreateNode({
     })
   }, [
     appId,
-    createFile,
+    uploadFile,
     createFolder,
     pendingCreateId,
     pendingCreateParentId,

@@ -1,10 +1,11 @@
 import type { InferContractRouterInputs } from '@orpc/contract'
 import {
-  createFileContract,
+  batchUploadContract,
   createFolderContract,
   deleteNodeContract,
   getFileContentContract,
   getFileDownloadUrlContract,
+  getFileUploadUrlContract,
   moveNodeContract,
   publishContract,
   renameNodeContract,
@@ -52,7 +53,6 @@ export const consoleRouterContract = {
   appAsset: {
     tree: treeContract,
     createFolder: createFolderContract,
-    createFile: createFileContract,
     getFileContent: getFileContentContract,
     getFileDownloadUrl: getFileDownloadUrlContract,
     updateFileContent: updateFileContentContract,
@@ -61,6 +61,8 @@ export const consoleRouterContract = {
     moveNode: moveNodeContract,
     reorderNode: reorderNodeContract,
     publish: publishContract,
+    getFileUploadUrl: getFileUploadUrlContract,
+    batchUpload: batchUploadContract,
   },
 }
 

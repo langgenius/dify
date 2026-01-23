@@ -1,15 +1,15 @@
 'use client'
 
-// Handles file/folder creation and upload operations
-
 import type { StoreApi } from 'zustand'
 import type { SkillEditorSliceShape } from '@/app/components/workflow/store/workflow/skill-editor/types'
+import type { BatchUploadNodeInput } from '@/types/app-asset'
 import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
 import {
-  useCreateAppAssetFile,
+  useBatchUpload,
   useCreateAppAssetFolder,
+  useUploadFileWithPresignedUrl,
 } from '@/service/use-app-asset'
 
 type UseCreateOperationsOptions = {
@@ -34,7 +34,8 @@ export function useCreateOperations({
   const folderInputRef = useRef<HTMLInputElement>(null)
 
   const createFolder = useCreateAppAssetFolder()
-  const createFile = useCreateAppAssetFile()
+  const uploadFile = useUploadFileWithPresignedUrl()
+  const batchUpload = useBatchUpload()
 
   const handleNewFile = useCallback(() => {
     storeApi.getState().startCreateNode('file', parentId)
@@ -56,9 +57,8 @@ export function useCreateOperations({
     try {
       await Promise.all(
         files.map(file =>
-          createFile.mutateAsync({
+          uploadFile.mutateAsync({
             appId,
-            name: file.name,
             file,
             parentId,
           }),
@@ -80,7 +80,7 @@ export function useCreateOperations({
       e.target.value = ''
       onClose()
     }
-  }, [appId, createFile, onClose, parentId, t])
+  }, [appId, uploadFile, onClose, parentId, t])
 
   const handleFolderChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
@@ -90,77 +90,51 @@ export function useCreateOperations({
     }
 
     try {
-      const folders = new Set<string>()
+      const fileMap = new Map<string, File>()
+      const tree: BatchUploadNodeInput[] = []
+      const folderMap = new Map<string, BatchUploadNodeInput>()
 
       for (const file of files) {
         const relativePath = getRelativePath(file)
-        const parts = relativePath.split('/')
+        fileMap.set(relativePath, file)
 
-        if (parts.length > 1) {
-          let folderPath = ''
-          for (let i = 0; i < parts.length - 1; i++) {
-            folderPath = folderPath ? `${folderPath}/${parts[i]}` : parts[i]
-            folders.add(folderPath)
+        const parts = relativePath.split('/')
+        let currentLevel = tree
+        let currentPath = ''
+
+        for (let i = 0; i < parts.length; i++) {
+          const part = parts[i]
+          const isLastPart = i === parts.length - 1
+          currentPath = currentPath ? `${currentPath}/${part}` : part
+
+          if (isLastPart) {
+            currentLevel.push({
+              name: part,
+              node_type: 'file',
+              size: file.size,
+            })
+          }
+          else {
+            let folder = folderMap.get(currentPath)
+            if (!folder) {
+              folder = {
+                name: part,
+                node_type: 'folder',
+                children: [],
+              }
+              folderMap.set(currentPath, folder)
+              currentLevel.push(folder)
+            }
+            currentLevel = folder.children!
           }
         }
       }
 
-      const sortedFolders = Array.from(folders).sort((a, b) => {
-        return a.split('/').length - b.split('/').length
+      await batchUpload.mutateAsync({
+        appId,
+        tree,
+        files: fileMap,
       })
-
-      const folderIdMap = new Map<string, string | null>()
-      folderIdMap.set('', parentId)
-
-      const foldersByDepth = new Map<number, string[]>()
-      for (const folderPath of sortedFolders) {
-        const depth = folderPath.split('/').length
-        const group = foldersByDepth.get(depth)
-        if (group)
-          group.push(folderPath)
-        else
-          foldersByDepth.set(depth, [folderPath])
-      }
-
-      for (const [, foldersAtDepth] of foldersByDepth) {
-        const createdFolders = await Promise.all(
-          foldersAtDepth.map(async (folderPath) => {
-            const parts = folderPath.split('/')
-            const folderName = parts[parts.length - 1]
-            const parentPath = parts.slice(0, -1).join('/')
-            const parentFolderId = folderIdMap.get(parentPath) ?? parentId
-
-            const result = await createFolder.mutateAsync({
-              appId,
-              payload: {
-                name: folderName,
-                parent_id: parentFolderId,
-              },
-            })
-
-            return { folderPath, id: result.id }
-          }),
-        )
-
-        for (const { folderPath, id } of createdFolders)
-          folderIdMap.set(folderPath, id)
-      }
-
-      await Promise.all(
-        files.map((file) => {
-          const relativePath = getRelativePath(file)
-          const parts = relativePath.split('/')
-          const parentPath = parts.length > 1 ? parts.slice(0, -1).join('/') : ''
-          const targetParentId = folderIdMap.get(parentPath) ?? parentId
-
-          return createFile.mutateAsync({
-            appId,
-            name: file.name,
-            file,
-            parentId: targetParentId,
-          })
-        }),
-      )
 
       Toast.notify({
         type: 'success',
@@ -177,12 +151,12 @@ export function useCreateOperations({
       e.target.value = ''
       onClose()
     }
-  }, [appId, createFile, createFolder, onClose, parentId, t])
+  }, [appId, batchUpload, onClose, t])
 
   return {
     fileInputRef,
     folderInputRef,
-    isCreating: createFile.isPending || createFolder.isPending,
+    isCreating: uploadFile.isPending || createFolder.isPending || batchUpload.isPending,
     handleNewFile,
     handleNewFolder,
     handleFileChange,

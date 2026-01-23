@@ -161,7 +161,6 @@ export function createDraftTreeNode(options: DraftTreeNodeOptions): AppAssetTree
     path: '',
     extension: '',
     size: 0,
-    checksum: '',
     children: [],
   }
 }

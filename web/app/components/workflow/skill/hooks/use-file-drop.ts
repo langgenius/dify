@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Toast from '@/app/components/base/toast'
 import { useWorkflowStore } from '@/app/components/workflow/store'
-import { useCreateAppAssetFile } from '@/service/use-app-asset'
+import { useUploadFileWithPresignedUrl } from '@/service/use-app-asset'
 import { ROOT_ID } from '../constants'
 
 type FileDropTarget = {
@@ -21,7 +21,7 @@ export function useFileDrop() {
   const appDetail = useAppStore(s => s.appDetail)
   const appId = appDetail?.id || ''
   const storeApi = useWorkflowStore()
-  const createFile = useCreateAppAssetFile()
+  const uploadFile = useUploadFileWithPresignedUrl()
 
   const handleDragOver = useCallback((e: React.DragEvent, target: FileDropTarget) => {
     e.preventDefault()
@@ -80,9 +80,8 @@ export function useFileDrop() {
     try {
       await Promise.all(
         files.map(file =>
-          createFile.mutateAsync({
+          uploadFile.mutateAsync({
             appId,
-            name: file.name,
             file,
             parentId: targetFolderId,
           }),
@@ -100,12 +99,12 @@ export function useFileDrop() {
         message: t('skillSidebar.menu.uploadError'),
       })
     }
-  }, [appId, createFile, t, storeApi])
+  }, [appId, uploadFile, t, storeApi])
 
   return {
     handleDragOver,
     handleDragLeave,
     handleDrop,
-    isUploading: createFile.isPending,
+    isUploading: uploadFile.isPending,
   }
 }
