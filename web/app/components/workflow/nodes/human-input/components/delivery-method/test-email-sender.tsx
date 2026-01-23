@@ -91,14 +91,14 @@ const EmailSenderModal = ({
   const accounts = members?.accounts || []
 
   const generatedInputs = useMemo(() => {
-    const placeholderValueSelectors = (formInputs || []).reduce((acc, input) => {
-      if (input.placeholder.type === 'variable') {
-        acc.push(input.placeholder.selector)
+    const defaultValueSelectors = (formInputs || []).reduce((acc, input) => {
+      if (input.default.type === 'variable') {
+        acc.push(input.default.selector)
       }
       return acc
     }, [] as ValueSelector[])
     const valueSelectors = doGetInputVars((formContent || '') + (config?.body || ''))
-    const variables = unionBy([...valueSelectors, ...placeholderValueSelectors], item => item.join('.')).map((item) => {
+    const variables = unionBy([...valueSelectors, ...defaultValueSelectors], item => item.join('.')).map((item) => {
       const varInfo = getNodeInfoById(availableNodes, item[0])?.data
 
       return {

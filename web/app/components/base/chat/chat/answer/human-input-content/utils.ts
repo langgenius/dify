@@ -34,7 +34,7 @@ export const initializeInputs = (formInputs: FormInputItem[], defaultValues: Rec
   const initialInputs: Record<string, any> = {}
   formInputs.forEach((item) => {
     if (item.type === 'text-input' || item.type === 'paragraph')
-      initialInputs[item.output_variable_name] = item.placeholder.type === 'variable' ? defaultValues[item.output_variable_name] || '' : item.placeholder.value
+      initialInputs[item.output_variable_name] = item.default.type === 'variable' ? defaultValues[item.output_variable_name] || '' : item.default.value
     else
       initialInputs[item.output_variable_name] = undefined
   })

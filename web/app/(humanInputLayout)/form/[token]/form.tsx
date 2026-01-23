@@ -27,7 +27,7 @@ export type FormData = {
   site: any
   form_content: string
   inputs: FormInputItem[]
-  resolved_placeholder_values: Record<string, string>
+  resolved_default_values: Record<string, string>
   user_actions: UserAction[]
   expiration_time: number
 }
@@ -67,10 +67,10 @@ const FormContent = () => {
       return
     const initialInputs: Record<string, string> = {}
     formData.inputs.forEach((item) => {
-      initialInputs[item.output_variable_name] = item.placeholder.type === 'variable' ? formData.resolved_placeholder_values[item.output_variable_name] || '' : item.placeholder.value
+      initialInputs[item.output_variable_name] = item.default.type === 'variable' ? formData.resolved_default_values[item.output_variable_name] || '' : item.default.value
     })
     setInputs(initialInputs)
-  }, [formData?.inputs, formData?.resolved_placeholder_values])
+  }, [formData?.inputs, formData?.resolved_default_values])
 
   // use immer
   const handleInputsChange = (name: string, value: string) => {

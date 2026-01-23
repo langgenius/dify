@@ -321,7 +321,7 @@ export type HumanInputFormData = {
   inputs: FormInputItem[]
   actions: UserAction[]
   form_token: string
-  resolved_placeholder_values: Record<string, string>
+  resolved_default_values: Record<string, string>
   display_in_ui: boolean
 }
 

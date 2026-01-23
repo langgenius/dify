@@ -25,7 +25,7 @@ const FormContent = ({
   onSubmit,
 }: Props) => {
   const { t } = useTranslation()
-  const defaultInputs = initializeInputs(data.inputs, data.resolved_placeholder_values || {})
+  const defaultInputs = initializeInputs(data.inputs, data.resolved_default_values || {})
   const contentList = splitByOutputVar(data.form_content)
   const [inputs, setInputs] = useState(defaultInputs)
   const [isSubmitting, setIsSubmitting] = useState(false)

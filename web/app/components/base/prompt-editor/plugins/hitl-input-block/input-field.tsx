@@ -1,4 +1,5 @@
-import type { FormInputItem, FormInputItemPlaceholder } from '@/app/components/workflow/nodes/human-input/types'
+import type { FormInputItem, FormInputItemDefault } from '@/app/components/workflow/nodes/human-input/types'
+import type { ValueSelector } from '@/app/components/workflow/types'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -6,14 +7,12 @@ import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import { InputVarType } from '@/app/components/workflow/types'
 import { getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'
-// import PromptEditor from '@/app/components/base/prompt-editor'
-// import TagLabel from './tag-label'
 import Button from '../../../button'
 import PrePopulate from './pre-populate'
 
 const i18nPrefix = 'nodes.humanInput.insertInputField'
 
-type Props = {
+type InputFieldProps = {
   nodeId: string
   isEdit: boolean
   payload?: FormInputItem
@@ -23,9 +22,9 @@ type Props = {
 const defaultPayload: FormInputItem = {
   type: InputVarType.paragraph,
   output_variable_name: '',
-  placeholder: { type: 'constant', selector: [], value: '' },
+  default: { type: 'constant', selector: [], value: '' },
 }
-const InputField: React.FC<Props> = ({
+const InputField: React.FC<InputFieldProps> = ({
   nodeId,
   isEdit,
   payload,
@@ -47,17 +46,23 @@ const InputField: React.FC<Props> = ({
       return
     onChange(tempPayload)
   }, [nameValid, onChange, tempPayload])
-  const placeholderConfig = tempPayload.placeholder
-  const handlePlaceholderChange = useCallback((key: keyof FormInputItemPlaceholder) => {
-    return (value: any) => {
+  const defaultValueConfig = tempPayload.default
+  const handleDefaultValueChange = useCallback((key: keyof FormInputItemDefault) => {
+    return (value: ValueSelector | string) => {
       const nextValue = produce(tempPayload, (draft) => {
-        if (!draft.placeholder)
-          draft.placeholder = { type: 'constant', selector: [], value: '' }
-        draft.placeholder[key] = value
-        if (key === 'selector')
-          draft.placeholder.type = 'variable'
-        else if (key === 'value')
-          draft.placeholder.type = 'constant'
+        if (!draft.default)
+          draft.default = { type: 'constant', selector: [], value: '' }
+        if (key === 'selector') {
+          draft.default.type = 'variable'
+          draft.default.selector = value as ValueSelector
+        }
+        else if (key === 'value') {
+          draft.default.type = 'constant'
+          draft.default.value = value as string
+        }
+        else if (key === 'type') {
+          draft.default.type = value as 'constant' | 'variable'
+        }
       })
       setTempPayload(nextValue)
     }
@@ -104,15 +109,15 @@ const InputField: React.FC<Props> = ({
           {t(`${i18nPrefix}.prePopulateField`, { ns: 'workflow' })}
         </div>
         <PrePopulate
-          isVariable={placeholderConfig?.type === 'variable'}
+          isVariable={defaultValueConfig?.type === 'variable'}
           onIsVariableChange={(isVariable) => {
-            handlePlaceholderChange('type')(isVariable ? 'variable' : 'constant')
+            handleDefaultValueChange('type')(isVariable ? 'variable' : 'constant')
           }}
           nodeId={nodeId}
-          valueSelector={placeholderConfig?.selector}
-          onValueSelectorChange={handlePlaceholderChange('selector')}
-          value={placeholderConfig?.value}
-          onValueChange={handlePlaceholderChange('value')}
+          valueSelector={defaultValueConfig?.selector}
+          onValueSelectorChange={handleDefaultValueChange('selector')}
+          value={defaultValueConfig?.value}
+          onValueChange={handleDefaultValueChange('value')}
         />
       </div>
       <div className="mt-4 flex justify-end space-x-2">

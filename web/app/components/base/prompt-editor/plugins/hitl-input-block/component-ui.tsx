@@ -39,7 +39,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
   formInput = {
     type: InputVarType.paragraph,
     output_variable_name: varName,
-    placeholder: {
+    default: {
       type: 'constant',
       selector: [],
       value: '',
@@ -95,9 +95,9 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
     hideEditModal()
   }, [hideEditModal, onChange, onRename, varName])
 
-  const isPlaceholderVariable = useMemo(() => {
-    return formInput.placeholder.type === 'variable'
-  }, [formInput.placeholder.type])
+  const isDefaultValueVariable = useMemo(() => {
+    return formInput.default?.type === 'variable'
+  }, [formInput.default?.type])
 
   return (
     <div
@@ -113,10 +113,10 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
 
       <div className="flex w-full items-center gap-x-0.5 pr-8">
         <div className="min-w-0 grow">
-          {/* Placeholder Info */}
-          {isPlaceholderVariable && (
+          {/* Default Value Info */}
+          {isDefaultValueVariable && (
             <VariableBlock
-              variables={formInput.placeholder.selector}
+              variables={formInput.default?.selector}
               workflowNodesMap={workflowNodesMap}
               getVarType={getVarType}
               environmentVariables={environmentVariables}
@@ -124,8 +124,8 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
               ragVariables={ragVariables}
             />
           )}
-          {!isPlaceholderVariable && (
-            <div className="system-xs-medium max-w-full truncate text-components-input-text-filled">{formInput.placeholder.value}</div>
+          {!isDefaultValueVariable && (
+            <div className="system-xs-medium max-w-full truncate text-components-input-text-filled">{formInput.default?.value}</div>
           )}
         </div>
 
