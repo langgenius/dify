@@ -12,10 +12,7 @@ const SummaryStatus = ({ status }: SummaryStatusProps) => {
   const { t } = useTranslation()
 
   const tip = useMemo(() => {
-    if (status === 'COMPLETED') {
-      return t('list.summary.ready', { ns: 'datasetDocuments' })
-    }
-    if (status === 'GENERATING') {
+    if (status === 'SUMMARIZING') {
       return t('list.summary.generatingSummary', { ns: 'datasetDocuments' })
     }
     return ''
@@ -26,14 +23,7 @@ const SummaryStatus = ({ status }: SummaryStatusProps) => {
       popupContent={tip}
     >
       {
-        status === 'COMPLETED' && (
-          <Badge>
-            <SearchLinesSparkle className="h-3 w-3" />
-          </Badge>
-        )
-      }
-      {
-        status === 'GENERATING' && (
+        status === 'SUMMARIZING' && (
           <Badge className="border-text-accent-secondary text-text-accent-secondary">
             <SearchLinesSparkle className="mr-0.5 h-3 w-3" />
             <span>{t('list.summary.generating', { ns: 'datasetDocuments' })}</span>
