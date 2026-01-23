@@ -681,16 +681,15 @@ class SummaryIndexService:
             summary_content: New summary content
 
         Returns:
-            Updated DocumentSegmentSummary instance, or None if summary index is not enabled
+            Updated DocumentSegmentSummary instance, or None if indexing technique is not high_quality
         """
         # Only update summary index for high_quality indexing technique
         if dataset.indexing_technique != "high_quality":
             return None
 
-        # Check if summary index is enabled
-        summary_index_setting = dataset.summary_index_setting
-        if not summary_index_setting or not summary_index_setting.get("enable"):
-            return None
+        # When user manually provides summary, allow saving even if summary_index_setting doesn't exist
+        # summary_index_setting is only needed for LLM generation, not for manual summary vectorization
+        # Vectorization uses dataset.embedding_model, which doesn't require summary_index_setting
 
         # Skip qa_model documents
         if segment.document and segment.document.doc_form == "qa_model":
