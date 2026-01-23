@@ -223,47 +223,6 @@ class AppAssetService:
 
             return node
 
-    # FIXME(Mairuis): migrate to get_file_upload_url / get_file_upload_urls API
-    @staticmethod
-    def create_file(
-        app_model: App,
-        account_id: str,
-        name: str,
-        content: bytes,
-        parent_id: str | None = None,
-    ) -> AppAssetNode:
-        with AppAssetService._lock(app_model.id):
-            with Session(db.engine, expire_on_commit=False) as session:
-                assets = AppAssetService.get_or_create_assets(session, app_model, account_id)
-                tree = assets.asset_tree
-
-                node_id = str(uuid4())
-                node = AppAssetNode.create_file(node_id, name, parent_id, len(content))
-
-                try:
-                    tree.add(node)
-                except TreeParentNotFoundError as e:
-                    raise AppAssetParentNotFoundError(str(e)) from e
-                except TreePathConflictError as e:
-                    raise AppAssetPathConflictError(str(e)) from e
-
-                storage_key = AssetPaths.draft_file(app_model.tenant_id, app_model.id, node_id)
-                storage.save(storage_key, content)
-
-                assets.asset_tree = tree
-                assets.updated_by = account_id
-                session.commit()
-
-                cache_key = AppAssetService._draft_storage_key_for_node(
-                    app_model.tenant_id,
-                    app_model.id,
-                    assets.id,
-                    node,
-                )
-                AppAssetService._clear_draft_download_cache([cache_key])
-
-            return node
-
     @staticmethod
     def get_file_content(app_model: App, account_id: str, node_id: str) -> bytes:
         with Session(db.engine) as session:

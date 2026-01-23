@@ -4,7 +4,6 @@ from pydantic import BaseModel, Field, field_validator
 
 from controllers.console import console_ns
 from controllers.console.app.error import (
-    AppAssetFileRequiredError,
     AppAssetNodeNotFoundError,
     AppAssetPathConflictError,
 )
@@ -124,31 +123,6 @@ class AppAssetFolderResource(Resource):
 
         try:
             node = AppAssetService.create_folder(app_model, current_user.id, payload.name, payload.parent_id)
-            return node.model_dump(), 201
-        except AppAssetParentNotFoundError:
-            raise AppAssetNodeNotFoundError()
-        except ServicePathConflictError:
-            raise AppAssetPathConflictError()
-
-
-@console_ns.route("/apps/<string:app_id>/assets/files")
-class AppAssetFileResource(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def post(self, app_model: App):
-        current_user, _ = current_account_with_tenant()
-
-        file = request.files.get("file")
-        if not file:
-            raise AppAssetFileRequiredError()
-
-        payload = CreateFilePayload.model_validate(request.form.to_dict())
-        content = file.read()
-
-        try:
-            node = AppAssetService.create_file(app_model, current_user.id, payload.name, content, payload.parent_id)
             return node.model_dump(), 201
         except AppAssetParentNotFoundError:
             raise AppAssetNodeNotFoundError()
@@ -339,9 +313,7 @@ class AppAssetBatchUploadResource(Resource):
         payload = BatchUploadPayload.model_validate(console_ns.payload or {})
 
         try:
-            result_children = AppAssetService.batch_create_from_tree(
-                app_model, current_user.id, payload.children
-            )
+            result_children = AppAssetService.batch_create_from_tree(app_model, current_user.id, payload.children)
             return {"children": [child.model_dump() for child in result_children]}, 201
         except AppAssetParentNotFoundError:
             raise AppAssetNodeNotFoundError()
