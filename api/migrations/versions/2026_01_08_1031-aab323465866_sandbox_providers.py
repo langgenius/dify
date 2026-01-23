@@ -1,7 +1,7 @@
 """sandbox_providers
 
 Revision ID: aab323465866
-Revises: 85c8b4a64f53
+Revises: 9d77545f524e
 Create Date: 2026-01-08 10:31:05.062722
 
 """
