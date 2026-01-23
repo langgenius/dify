@@ -40,7 +40,7 @@ def _render_download_script(root_path: str, download_commands: str) -> str:
       url="$2"
       dest="${{download_root}}/${{file_path}}"
       mkdir -p "$(dirname "${{dest}}")"
-      eval "${{download_cmd}}" || echo "${{file_path}}" >> "${{fail_log}}"
+      eval "${{download_cmd}}" 2>/dev/null || echo "${{file_path}}" >> "${{fail_log}}"
     }}
 
     {download_commands}
@@ -52,6 +52,7 @@ def _render_download_script(root_path: str, download_commands: str) -> str:
     else
       rm -f "${{fail_log}}"
     fi
+    exit 0
     """
     return textwrap.dedent(script).strip()
 
