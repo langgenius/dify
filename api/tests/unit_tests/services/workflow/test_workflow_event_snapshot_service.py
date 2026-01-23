@@ -24,8 +24,6 @@ from services.workflow_event_snapshot_service import (
     BufferState,
     MessageContext,
     _build_snapshot_events,
-    _collect_snapshot_keys,
-    _filter_buffered_events,
     _resolve_task_id,
 )
 
@@ -221,36 +219,3 @@ def test_resolve_task_id_priority(context_task_id, buffered_task_id, expected) -
         buffer_state.task_id_ready.set()
     task_id = _resolve_task_id(resumption_context, buffer_state, "run-1", wait_timeout=0.0)
     assert task_id == expected
-
-
-def test_filter_buffered_events_deduplicates_snapshot_nodes() -> None:
-    workflow_run = _build_workflow_run(WorkflowExecutionStatus.RUNNING)
-    snapshot = _build_snapshot(WorkflowNodeExecutionStatus.SUCCEEDED)
-    events = _build_snapshot_events(
-        workflow_run=workflow_run,
-        node_snapshots=[snapshot],
-        task_id="task-1",
-        message_context=None,
-        pause_entity=None,
-        resumption_context=None,
-    )
-    snapshot_keys = _collect_snapshot_keys(events)
-
-    buffered_events = [
-        {
-            "event": "node_started",
-            "data": {"id": "exec-1"},
-        },
-        {
-            "event": "node_finished",
-            "data": {"id": "exec-2"},
-        },
-    ]
-
-    filtered = list(_filter_buffered_events(buffered_events, snapshot_keys))
-    assert filtered == [
-        {
-            "event": "node_finished",
-            "data": {"id": "exec-2"},
-        }
-    ]

@@ -127,7 +127,7 @@ def test_get_by_message_ids_returns_unsubmitted_form_definition() -> None:
         rendered_content="rendered",
         timeout=1,
         timeout_unit=TimeoutUnit.HOUR,
-        placeholder_values={"name": "John"},
+        default_values={"name": "John"},
         node_title="Approval",
         display_in_ui=True,
     )
@@ -177,4 +177,4 @@ def test_get_by_message_ids_returns_unsubmitted_form_definition() -> None:
     assert form_definition.form_content == "Rendered block"
     assert form_definition.display_in_ui is True
     assert form_definition.form_token == "token-1"
-    assert form_definition.resolved_placeholder_values == {"name": "John"}
+    assert form_definition.resolved_default_values == {"name": "John"}

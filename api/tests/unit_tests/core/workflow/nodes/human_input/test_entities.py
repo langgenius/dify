@@ -17,7 +17,7 @@ from core.workflow.nodes.human_input.entities import (
     EmailRecipients,
     ExternalRecipient,
     FormInput,
-    FormInputPlaceholder,
+    FormInputDefault,
     HumanInputNodeData,
     MemberRecipient,
     UserAction,
@@ -76,37 +76,37 @@ class TestDeliveryMethod:
 class TestFormInput:
     """Test FormInput entity."""
 
-    def test_text_input_with_constant_placeholder(self):
-        """Test text input with constant placeholder."""
-        placeholder = FormInputPlaceholder(type=PlaceholderType.CONSTANT, value="Enter your response here...")
+    def test_text_input_with_constant_default(self):
+        """Test text input with constant default value."""
+        default = FormInputDefault(type=PlaceholderType.CONSTANT, value="Enter your response here...")
 
         form_input = FormInput(
-            type=FormInputType.TEXT_INPUT, output_variable_name="user_input", placeholder=placeholder
+            type=FormInputType.TEXT_INPUT, output_variable_name="user_input", default=default
         )
 
         assert form_input.type == FormInputType.TEXT_INPUT
         assert form_input.output_variable_name == "user_input"
-        assert form_input.placeholder.type == PlaceholderType.CONSTANT
-        assert form_input.placeholder.value == "Enter your response here..."
+        assert form_input.default.type == PlaceholderType.CONSTANT
+        assert form_input.default.value == "Enter your response here..."
 
-    def test_text_input_with_variable_placeholder(self):
-        """Test text input with variable placeholder."""
-        placeholder = FormInputPlaceholder(type=PlaceholderType.VARIABLE, selector=["node_123", "output_var"])
+    def test_text_input_with_variable_default(self):
+        """Test text input with variable default value."""
+        default = FormInputDefault(type=PlaceholderType.VARIABLE, selector=["node_123", "output_var"])
 
         form_input = FormInput(
-            type=FormInputType.TEXT_INPUT, output_variable_name="user_input", placeholder=placeholder
+            type=FormInputType.TEXT_INPUT, output_variable_name="user_input", default=default
         )
 
-        assert form_input.placeholder.type == PlaceholderType.VARIABLE
-        assert form_input.placeholder.selector == ["node_123", "output_var"]
+        assert form_input.default.type == PlaceholderType.VARIABLE
+        assert form_input.default.selector == ["node_123", "output_var"]
 
-    def test_form_input_without_placeholder(self):
-        """Test form input without placeholder."""
+    def test_form_input_without_default(self):
+        """Test form input without default value."""
         form_input = FormInput(type=FormInputType.PARAGRAPH, output_variable_name="description")
 
         assert form_input.type == FormInputType.PARAGRAPH
         assert form_input.output_variable_name == "description"
-        assert form_input.placeholder is None
+        assert form_input.default is None
 
 
 class TestUserAction:
@@ -163,7 +163,7 @@ class TestHumanInputNodeData:
             FormInput(
                 type=FormInputType.TEXT_INPUT,
                 output_variable_name="content",
-                placeholder=FormInputPlaceholder(type=PlaceholderType.CONSTANT, value="Enter content..."),
+                default=FormInputDefault(type=PlaceholderType.CONSTANT, value="Enter content..."),
             )
         ]
 
@@ -209,7 +209,7 @@ class TestHumanInputNodeData:
         assert node_data.timeout == 1
         assert node_data.timeout_unit == TimeoutUnit.DAY
 
-    def test_node_data_default_values(self):
+    def test_node_data_defaults(self):
         """Test node data with default values."""
         node_data = HumanInputNodeData(title="Test Node")
 
@@ -302,9 +302,9 @@ class TestRecipients:
 
 
 class TestHumanInputNodeVariableResolution:
-    """Tests for resolving variable-based placeholders in HumanInputNode."""
+    """Tests for resolving variable-based defaults in HumanInputNode."""
 
-    def test_resolves_variable_placeholders(self):
+    def test_resolves_variable_defaults(self):
         variable_pool = VariablePool(
             system_variables=SystemVariable(
                 user_id="user",
@@ -335,12 +335,12 @@ class TestHumanInputNodeVariableResolution:
                 FormInput(
                     type=FormInputType.TEXT_INPUT,
                     output_variable_name="user_name",
-                    placeholder=FormInputPlaceholder(type=PlaceholderType.VARIABLE, selector=["start", "name"]),
+                    default=FormInputDefault(type=PlaceholderType.VARIABLE, selector=["start", "name"]),
                 ),
                 FormInput(
                     type=FormInputType.TEXT_INPUT,
                     output_variable_name="user_email",
-                    placeholder=FormInputPlaceholder(type=PlaceholderType.CONSTANT, value="foo@example.com"),
+                    default=FormInputDefault(type=PlaceholderType.CONSTANT, value="foo@example.com"),
                 ),
             ],
             user_actions=[UserAction(id="submit", title="Submit")],
@@ -370,10 +370,10 @@ class TestHumanInputNodeVariableResolution:
 
         assert isinstance(pause_event, PauseRequestedEvent)
         expected_values = {"user_name": "Jane Doe"}
-        assert pause_event.reason.resolved_placeholder_values == expected_values
+        assert pause_event.reason.resolved_default_values == expected_values
 
         params = mock_repo.create_form.call_args.args[0]
-        assert params.resolved_placeholder_values == expected_values
+        assert params.resolved_default_values == expected_values
 
     def test_debugger_falls_back_to_recipient_token_when_webapp_disabled(self):
         variable_pool = VariablePool(

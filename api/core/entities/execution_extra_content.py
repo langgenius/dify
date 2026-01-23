@@ -20,7 +20,7 @@ class HumanInputFormDefinition(BaseModel):
     actions: Sequence[UserAction] = Field(default_factory=list)
     display_in_ui: bool = False
     form_token: str | None = None
-    resolved_placeholder_values: Mapping[str, Any] = Field(default_factory=dict)
+    resolved_default_values: Mapping[str, Any] = Field(default_factory=dict)
 
 
 class HumanInputFormSubmissionData(BaseModel):

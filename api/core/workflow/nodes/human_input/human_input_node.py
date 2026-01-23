@@ -136,23 +136,23 @@ class HumanInputNode(Node[HumanInputNodeData]):
         pause_requested_event = PauseRequestedEvent(reason=required_event)
         return pause_requested_event
 
-    def _resolve_inputs(self) -> Mapping[str, Any]:
+    def _resolve_default_values(self) -> Mapping[str, Any]:
         variable_pool = self.graph_runtime_state.variable_pool
-        resolved_inputs = {}
+        resolved_defaults: dict[str, Any] = {}
         for input in self._node_data.inputs:
-            if (placeholder := input.placeholder) is None:
+            if (default_value := input.default) is None:
                 continue
-            if placeholder.type == PlaceholderType.CONSTANT:
+            if default_value.type == PlaceholderType.CONSTANT:
                 continue
-            placeholder_value = variable_pool.get(placeholder.selector)
-            if placeholder_value is None:
+            resolved_value = variable_pool.get(default_value.selector)
+            if resolved_value is None:
                 # TODO: How should we handle this?
                 continue
-            resolved_inputs[input.output_variable_name] = (
-                WorkflowRuntimeTypeConverter().value_to_json_encodable_recursive(placeholder_value.value)
+            resolved_defaults[input.output_variable_name] = (
+                WorkflowRuntimeTypeConverter().value_to_json_encodable_recursive(resolved_value.value)
             )
 
-        return resolved_inputs
+        return resolved_defaults
 
     def _should_require_console_recipient(self) -> bool:
         if self.invoke_from == InvokeFrom.DEBUGGER:
@@ -181,7 +181,7 @@ class HumanInputNode(Node[HumanInputNodeData]):
 
     def _human_input_required_event(self, form_entity: HumanInputFormEntity) -> HumanInputRequired:
         node_data = self._node_data
-        resolved_placeholder_values = self._resolve_inputs()
+        resolved_default_values = self._resolve_default_values()
         display_in_ui = self._display_in_ui()
         form_token = form_entity.web_app_token
         if display_in_ui and form_token is None:
@@ -195,7 +195,7 @@ class HumanInputNode(Node[HumanInputNodeData]):
             node_id=self.id,
             node_title=node_data.title,
             form_token=form_token,
-            resolved_placeholder_values=resolved_placeholder_values,
+            resolved_default_values=resolved_default_values,
         )
 
     def _run(self) -> Generator[NodeEventBase, None, None]:
@@ -222,7 +222,7 @@ class HumanInputNode(Node[HumanInputNodeData]):
                 rendered_content=self._render_form_content_before_submission(),
                 delivery_methods=self._effective_delivery_methods(),
                 display_in_ui=display_in_ui,
-                resolved_placeholder_values=self._resolve_inputs(),
+                resolved_default_values=self._resolve_default_values(),
                 console_recipient_required=self._should_require_console_recipient(),
                 console_creator_account_id=(
                     self.user_id if self.invoke_from in {InvokeFrom.DEBUGGER, InvokeFrom.EXPLORE} else None
@@ -330,11 +330,11 @@ class HumanInputNode(Node[HumanInputNodeData]):
         node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
         """
-        Extract variable selectors referenced in form content and input placeholders.
+        Extract variable selectors referenced in form content and input default values.
 
         This method should parse:
         1. Variables referenced in form_content ({{#node_name.var_name#}})
-        2. Variables referenced in input placeholders
+        2. Variables referenced in input default values
         """
         validated_node_data = HumanInputNodeData.model_validate(node_data)
         return validated_node_data.extract_variable_selector_to_variable_mapping(node_id)

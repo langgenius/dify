@@ -807,7 +807,7 @@ class WorkflowService:
         )
 
         rendered_content = node._render_form_content_before_submission()
-        resolved_placeholder_values = node._resolve_inputs()
+        resolved_default_values = node._resolve_default_values()
         node_data = node.node_data
         human_input_required = HumanInputRequired(
             form_id=node_id,
@@ -816,7 +816,7 @@ class WorkflowService:
             actions=node_data.user_actions,
             node_id=node_id,
             node_title=node.title,
-            resolved_placeholder_values=resolved_placeholder_values,
+            resolved_default_values=resolved_default_values,
             form_token=None,
         )
         return human_input_required.model_dump(mode="json")
@@ -944,14 +944,14 @@ class WorkflowService:
             variable_pool=variable_pool,
         )
         rendered_content = node._render_form_content_before_submission()
-        resolved_placeholder_values = node._resolve_inputs()
+        resolved_default_values = node._resolve_default_values()
         form_id, recipients = self._create_human_input_delivery_test_form(
             app_model=app_model,
             node_id=node_id,
             node_data=node_data,
             delivery_method=delivery_method,
             rendered_content=rendered_content,
-            resolved_placeholder_values=resolved_placeholder_values,
+            resolved_default_values=resolved_default_values,
         )
         test_service = HumanInputDeliveryTestService()
         context = DeliveryTestContext(
@@ -990,7 +990,7 @@ class WorkflowService:
         node_data: HumanInputNodeData,
         delivery_method: DeliveryChannelConfig,
         rendered_content: str,
-        resolved_placeholder_values: Mapping[str, Any],
+        resolved_default_values: Mapping[str, Any],
     ) -> tuple[str, list[DeliveryTestEmailRecipient]]:
         repo = HumanInputFormRepositoryImpl(session_factory=db.engine, tenant_id=app_model.tenant_id)
         params = FormCreateParams(
@@ -1001,7 +1001,7 @@ class WorkflowService:
             rendered_content=rendered_content,
             delivery_methods=[delivery_method],
             display_in_ui=False,
-            resolved_placeholder_values=resolved_placeholder_values,
+            resolved_default_values=resolved_default_values,
             form_kind=HumanInputFormKind.DELIVERY_TEST,
         )
         form_entity = repo.create_form(params)

@@ -36,11 +36,11 @@ class FormCreateParams:
     # UI display flag computed by runtime context.
     display_in_ui: bool
 
-    # resolved_placeholder_values saves the values for placeholders with
+    # resolved_default_values saves the values for defaults with
     # type = VARIABLE.
     #
-    # For type = CONSTANT, the value is not stored inside `resolved_placeholder_values`
-    resolved_placeholder_values: Mapping[str, Any]
+    # For type = CONSTANT, the value is not stored inside `resolved_default_values`
+    resolved_default_values: Mapping[str, Any]
     form_kind: HumanInputFormKind = HumanInputFormKind.RUNTIME
 
     # Force creating a console-only recipient for submission in Console.

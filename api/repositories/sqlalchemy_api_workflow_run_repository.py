@@ -80,7 +80,7 @@ def _build_human_input_required_reason(
     inputs = []
     actions = []
     display_in_ui = False
-    resolved_placeholder_values: dict[str, Any] = {}
+    resolved_default_values: dict[str, Any] = {}
     node_title = "Human Input"
     form_id = reason_model.form_id
     node_id = reason_model.node_id
@@ -98,7 +98,7 @@ def _build_human_input_required_reason(
             inputs = list(definition.inputs)
             actions = list(definition.user_actions)
             display_in_ui = bool(definition.display_in_ui)
-            resolved_placeholder_values = dict(definition.placeholder_values)
+            resolved_default_values = dict(definition.default_values)
             node_title = definition.node_title or node_title
 
     form_token = (
@@ -116,7 +116,7 @@ def _build_human_input_required_reason(
         node_id=node_id,
         node_title=node_title,
         form_token=form_token,
-        resolved_placeholder_values=resolved_placeholder_values,
+        resolved_default_values=resolved_default_values,
     )
 
 

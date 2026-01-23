@@ -95,7 +95,7 @@ def test_human_input_delivery_dispatches_to_test_service(monkeypatch: pytest.Mon
     service._build_human_input_variable_pool = MagicMock(return_value=MagicMock())  # type: ignore[attr-defined]
     node_stub = MagicMock()
     node_stub._render_form_content_before_submission.return_value = "rendered"
-    node_stub._resolve_inputs.return_value = {}
+    node_stub._resolve_default_values.return_value = {}
     service._build_human_input_node = MagicMock(return_value=node_stub)  # type: ignore[attr-defined]
     service._create_human_input_delivery_test_form = MagicMock(  # type: ignore[attr-defined]
         return_value=("form-1", {})
@@ -134,7 +134,7 @@ def test_human_input_delivery_debug_mode_overrides_recipients(monkeypatch: pytes
     service._build_human_input_variable_pool = MagicMock(return_value=MagicMock())  # type: ignore[attr-defined]
     node_stub = MagicMock()
     node_stub._render_form_content_before_submission.return_value = "rendered"
-    node_stub._resolve_inputs.return_value = {}
+    node_stub._resolve_default_values.return_value = {}
     service._build_human_input_node = MagicMock(return_value=node_stub)  # type: ignore[attr-defined]
     service._create_human_input_delivery_test_form = MagicMock(  # type: ignore[attr-defined]
         return_value=("form-1", {})

@@ -66,8 +66,8 @@ def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask):
             return {
                 "form_content": "Raw content",
                 "rendered_content": "Rendered {{#$output.name#}}",
-                "inputs": [{"type": "text", "output_variable_name": "name", "placeholder": None}],
-                "placeholder_values": {"name": "Alice", "age": 30, "meta": {"k": "v"}},
+                "inputs": [{"type": "text", "output_variable_name": "name", "default": None}],
+                "default_values": {"name": "Alice", "age": 30, "meta": {"k": "v"}},
                 "user_actions": [{"id": "approve", "title": "Approve", "button_style": "default"}],
             }
 
@@ -132,13 +132,13 @@ def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask):
         "site",
         "form_content",
         "inputs",
-        "resolved_placeholder_values",
+        "resolved_default_values",
         "user_actions",
         "expiration_time",
     }
     assert body["form_content"] == "Rendered {{#$output.name#}}"
-    assert body["inputs"] == [{"type": "text", "output_variable_name": "name", "placeholder": None}]
-    assert body["resolved_placeholder_values"] == {"name": "Alice", "age": "30", "meta": '{"k": "v"}'}
+    assert body["inputs"] == [{"type": "text", "output_variable_name": "name", "default": None}]
+    assert body["resolved_default_values"] == {"name": "Alice", "age": "30", "meta": '{"k": "v"}'}
     assert body["user_actions"] == [{"id": "approve", "title": "Approve", "button_style": "default"}]
     assert body["expiration_time"] == int(expiration_time.timestamp())
     assert body["site"] == {
@@ -184,7 +184,7 @@ def test_get_form_allows_backstage_token(monkeypatch: pytest.MonkeyPatch, app: F
                 "form_content": "Raw content",
                 "rendered_content": "Rendered",
                 "inputs": [],
-                "placeholder_values": {},
+                "default_values": {},
                 "user_actions": [],
             }
 
@@ -245,13 +245,13 @@ def test_get_form_allows_backstage_token(monkeypatch: pytest.MonkeyPatch, app: F
         "site",
         "form_content",
         "inputs",
-        "resolved_placeholder_values",
+        "resolved_default_values",
         "user_actions",
         "expiration_time",
     }
     assert body["form_content"] == "Rendered"
     assert body["inputs"] == []
-    assert body["resolved_placeholder_values"] == {}
+    assert body["resolved_default_values"] == {}
     assert body["user_actions"] == []
     assert body["expiration_time"] == int(expiration_time.timestamp())
     assert body["site"] == {
@@ -297,7 +297,7 @@ def test_get_form_raises_forbidden_when_site_missing(monkeypatch: pytest.MonkeyP
                 "form_content": "Raw content",
                 "rendered_content": "Rendered",
                 "inputs": [],
-                "placeholder_values": {},
+                "default_values": {},
                 "user_actions": [],
             }
 

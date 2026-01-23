@@ -337,7 +337,7 @@ class HumanInputFormRepositoryImpl:
                 rendered_content=params.rendered_content,
                 timeout=form_config.timeout,
                 timeout_unit=form_config.timeout_unit,
-                placeholder_values=dict(params.resolved_placeholder_values),
+                default_values=dict(params.resolved_default_values),
                 display_in_ui=params.display_in_ui,
                 node_title=form_config.title,
             )

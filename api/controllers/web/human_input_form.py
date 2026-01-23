@@ -21,7 +21,7 @@ from services.human_input_service import Form, FormNotFoundError, HumanInputServ
 logger = logging.getLogger(__name__)
 
 
-def _stringify_placeholder_values(values: dict[str, object]) -> dict[str, str]:
+def _stringify_default_values(values: dict[str, object]) -> dict[str, str]:
     result: dict[str, str] = {}
     for key, value in values.items():
         if value is None:
@@ -43,7 +43,7 @@ def _jsonify_form_definition(form: Form, site_payload: dict | None = None) -> Re
     payload = {
         "form_content": definition_payload["rendered_content"],
         "inputs": definition_payload["inputs"],
-        "resolved_placeholder_values": _stringify_placeholder_values(definition_payload["placeholder_values"]),
+        "resolved_default_values": _stringify_default_values(definition_payload["default_values"]),
         "user_actions": definition_payload["user_actions"],
         "expiration_time": _to_timestamp(form.expiration_time),
     }

@@ -51,7 +51,7 @@ class FormInputType(enum.StrEnum):
 
 
 class PlaceholderType(enum.StrEnum):
-    """Placeholder types for form inputs."""
+    """Default value types for form inputs."""
 
     VARIABLE = enum.auto()
     CONSTANT = enum.auto()

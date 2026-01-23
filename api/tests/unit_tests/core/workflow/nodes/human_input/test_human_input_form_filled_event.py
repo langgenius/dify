@@ -53,7 +53,7 @@ def _build_node(form_content: str = "Please enter your name:\n\n{{#$output.name#
                 {
                     "type": "text_input",
                     "output_variable_name": "name",
-                    "placeholder": {"type": "constant", "value": ""},
+                    "default": {"type": "constant", "value": ""},
                 }
             ],
             "user_actions": [

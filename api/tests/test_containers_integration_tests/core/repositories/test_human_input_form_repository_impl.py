@@ -74,7 +74,7 @@ def _build_form_params(delivery_methods: list[EmailDeliveryMethod]) -> FormCreat
         rendered_content="<p>Approve?</p>",
         delivery_methods=delivery_methods,
         display_in_ui=False,
-        resolved_placeholder_values={},
+        resolved_default_values={},
     )
 
 
@@ -164,7 +164,7 @@ class TestHumanInputFormRepositoryImplWithContainers:
         assert len(external_payloads) == 1
         assert external_payloads[0].email == "external@example.com"
 
-    def test_create_form_persists_placeholder_values(self, db_session_with_containers: Session) -> None:
+    def test_create_form_persists_default_values(self, db_session_with_containers: Session) -> None:
         engine = db_session_with_containers.get_bind()
         assert isinstance(engine, Engine)
         tenant, _ = _create_tenant_with_members(
@@ -187,7 +187,7 @@ class TestHumanInputFormRepositoryImplWithContainers:
             rendered_content="<p>Approve?</p>",
             delivery_methods=[],
             display_in_ui=False,
-            resolved_placeholder_values=resolved_values,
+            resolved_default_values=resolved_values,
         )
 
         form_entity = repository.create_form(params)
@@ -199,7 +199,7 @@ class TestHumanInputFormRepositoryImplWithContainers:
 
         assert form_model is not None
         definition = FormDefinition.model_validate_json(form_model.form_definition)
-        assert definition.placeholder_values == resolved_values
+        assert definition.default_values == resolved_values
 
     def test_create_form_persists_display_in_ui(self, db_session_with_containers: Session) -> None:
         engine = db_session_with_containers.get_bind()
@@ -224,7 +224,7 @@ class TestHumanInputFormRepositoryImplWithContainers:
             rendered_content="<p>Approve?</p>",
             delivery_methods=[WebAppDeliveryMethod()],
             display_in_ui=True,
-            resolved_placeholder_values={},
+            resolved_default_values={},
         )
 
         form_entity = repository.create_form(params)

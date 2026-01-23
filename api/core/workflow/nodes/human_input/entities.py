@@ -153,20 +153,20 @@ def apply_debug_email_recipient(
     return method.model_copy(update={"config": debug_config})
 
 
-class FormInputPlaceholder(BaseModel):
-    """Placeholder configuration for form inputs."""
+class FormInputDefault(BaseModel):
+    """Default configuration for form inputs."""
 
     # NOTE: Ideally, a discriminated union would be used to model
-    # FormInputPlaceholder. However, the UI requires preserving the previous
+    # FormInputDefault. However, the UI requires preserving the previous
     # value when switching between `VARIABLE` and `CONSTANT` types. This
     # necessitates retaining all fields, making a discriminated union unsuitable.
 
     type: PlaceholderType
 
-    # The selector of placeholder variable, used when `type` is `VARIABLE`
+    # The selector of default variable, used when `type` is `VARIABLE`.
     selector: Sequence[str] = Field(default_factory=tuple)  #
 
-    # The value of the placeholder, used when `type` is `CONSTANT`.
+    # The value of the default, used when `type` is `CONSTANT`.
     # TODO: How should we express JSON values?
     value: str = ""
 
@@ -184,7 +184,7 @@ class FormInput(BaseModel):
 
     type: FormInputType
     output_variable_name: str
-    placeholder: Optional[FormInputPlaceholder] = None
+    default: Optional[FormInputDefault] = None
 
 
 _IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -286,14 +286,14 @@ class HumanInputNodeData(BaseNodeData):
             _add_variable_selectors(delivery_method.extract_variable_selectors())
 
         for input in self.inputs:
-            placeholder = input.placeholder
-            if placeholder is None:
+            default_value = input.default
+            if default_value is None:
                 continue
-            if placeholder.type == PlaceholderType.CONSTANT:
+            if default_value.type == PlaceholderType.CONSTANT:
                 continue
-            placeholder_key = ".".join(placeholder.selector)
-            qualified_variable_mapping_key = f"{node_id}.#{placeholder_key}#"
-            variable_mappings[qualified_variable_mapping_key] = placeholder.selector
+            default_value_key = ".".join(default_value.selector)
+            qualified_variable_mapping_key = f"{node_id}.#{default_value_key}#"
+            variable_mappings[qualified_variable_mapping_key] = default_value.selector
 
         return variable_mappings
 
@@ -316,8 +316,8 @@ class FormDefinition(BaseModel):
     timeout: int
     timeout_unit: TimeoutUnit
 
-    # this is used to store the values of the placeholders
-    placeholder_values: dict[str, Any] = Field(default_factory=dict)
+    # this is used to store the resolved default values
+    default_values: dict[str, Any] = Field(default_factory=dict)
 
     # node_title records the title of the HumanInput node.
     node_title: str | None = None

@@ -50,7 +50,7 @@ class TestFormService:
             "tenant_id": "tenant-abc",
             "app_id": "app-def",
             "form_content": "# Test Form\n\nInput: {{#$output.input#}}",
-            "inputs": [FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="input", placeholder=None)],
+            "inputs": [FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="input", default=None)],
             "user_actions": [UserAction(id="submit", title="Submit")],
             "timeout": 1,
             "timeout_unit": TimeoutUnit.HOUR,
@@ -305,7 +305,7 @@ class TestFormValidation:
             "app_id": "app-def",
             "form_content": "Test form",
             "inputs": [
-                FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="required_input", placeholder=None)
+                FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="required_input", default=None)
             ],
             "user_actions": [UserAction(id="submit", title="Submit")],
             "timeout": 1,

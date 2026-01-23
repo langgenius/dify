@@ -379,7 +379,7 @@ class TestBuildHumanInputRequiredReason:
             rendered_content="rendered",
             timeout=1,
             timeout_unit=TimeoutUnit.HOUR,
-            placeholder_values={"name": "Alice"},
+            default_values={"name": "Alice"},
             node_title="Ask Name",
             display_in_ui=True,
         )

@@ -134,7 +134,7 @@ class SQLAlchemyExecutionExtraContentRepository(ExecutionExtraContentRepository)
                     actions=form_definition.user_actions,
                     display_in_ui=display_in_ui,
                     form_token=form_token,
-                    resolved_placeholder_values=form_definition.placeholder_values,
+                    resolved_default_values=form_definition.default_values,
                 ),
             )
 

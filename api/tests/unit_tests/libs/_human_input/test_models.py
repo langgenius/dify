@@ -31,7 +31,7 @@ class TestHumanInputForm:
             "tenant_id": "tenant-abc",
             "app_id": "app-def",
             "form_content": "# Test Form\n\nInput: {{#$output.input#}}",
-            "inputs": [FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="input", placeholder=None)],
+            "inputs": [FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="input", default=None)],
             "user_actions": [UserAction(id="submit", title="Submit")],
             "timeout": 2,
             "timeout_unit": TimeoutUnit.HOUR,

@@ -124,7 +124,7 @@ def test_queue_workflow_paused_event_to_stream_responses():
         form_id="form-1",
         form_content="Rendered",
         inputs=[
-            FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="field", placeholder=None),
+            FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="field", default=None),
         ],
         actions=[UserAction(id="approve", title="Approve")],
         display_in_ui=True,
