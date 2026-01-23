@@ -165,6 +165,11 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
             )
             .scalar()
         )
+        # Update need_summary based on dataset's summary_index_setting
+        if dataset.summary_index_setting and dataset.summary_index_setting.get("enable") is True:
+            document.need_summary = True
+        else:
+            document.need_summary = False
         db.session.add(document)
         # update document segment status
         db.session.query(DocumentSegment).where(
