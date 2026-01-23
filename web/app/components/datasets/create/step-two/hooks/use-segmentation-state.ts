@@ -1,5 +1,5 @@
-import type { ParentMode, PreProcessingRule, ProcessRule, Rules } from '@/models/datasets'
-import { useCallback, useState } from 'react'
+import type { ParentMode, PreProcessingRule, ProcessRule, Rules, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
+import { useCallback, useRef, useState } from 'react'
 import { ChunkingMode, ProcessMode } from '@/models/datasets'
 import escape from './escape'
 import unescape from './unescape'
@@ -39,10 +39,11 @@ export const defaultParentChildConfig: ParentChildConfig = {
 
 export type UseSegmentationStateOptions = {
   initialSegmentationType?: ProcessMode
+  initialSummaryIndexSetting?: SummaryIndexSettingType
 }
 
 export const useSegmentationState = (options: UseSegmentationStateOptions = {}) => {
-  const { initialSegmentationType } = options
+  const { initialSegmentationType, initialSummaryIndexSetting } = options
 
   // Segmentation type (general or parent-child)
   const [segmentationType, setSegmentationType] = useState<ProcessMode>(
@@ -58,6 +59,12 @@ export const useSegmentationState = (options: UseSegmentationStateOptions = {}) 
   // Pre-processing rules
   const [rules, setRules] = useState<PreProcessingRule[]>([])
   const [defaultConfig, setDefaultConfig] = useState<Rules>()
+  const [summaryIndexSetting, setSummaryIndexSetting] = useState<SummaryIndexSettingType | undefined>(initialSummaryIndexSetting)
+  const summaryIndexSettingRef = useRef<SummaryIndexSettingType | undefined>(initialSummaryIndexSetting)
+  const handleSummaryIndexSettingChange = useCallback((payload: SummaryIndexSettingType) => {
+    setSummaryIndexSetting({ ...summaryIndexSettingRef.current, ...payload })
+    summaryIndexSettingRef.current = { ...summaryIndexSettingRef.current, ...payload }
+  }, [])
 
   // Parent-child config
   const [parentChildConfig, setParentChildConfig] = useState<ParentChildConfig>(defaultParentChildConfig)
@@ -134,6 +141,7 @@ export const useSegmentationState = (options: UseSegmentationStateOptions = {}) 
           },
         },
         mode: 'hierarchical',
+        summary_index_setting: summaryIndexSettingRef.current,
       } as ProcessRule
     }
 
@@ -147,6 +155,7 @@ export const useSegmentationState = (options: UseSegmentationStateOptions = {}) 
         },
       },
       mode: segmentationType,
+      summary_index_setting: summaryIndexSettingRef.current,
     } as ProcessRule
   }, [rules, parentChildConfig, segmentIdentifier, maxChunkLength, overlap, segmentationType])
 
@@ -204,6 +213,8 @@ export const useSegmentationState = (options: UseSegmentationStateOptions = {}) 
     defaultConfig,
     setDefaultConfig,
     toggleRule,
+    summaryIndexSetting,
+    handleSummaryIndexSettingChange,
 
     // Parent-child config
     parentChildConfig,
