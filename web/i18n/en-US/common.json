@@ -110,6 +110,7 @@
   "chat.conversationName": "Conversation name",
   "chat.conversationNameCanNotEmpty": "Conversation name required",
   "chat.conversationNamePlaceholder": "Please input conversation name",
+  "chat.inputDisabledPlaceholder": "Preview Only",
   "chat.inputPlaceholder": "Talk to {{botName}}",
   "chat.renameConversation": "Rename Conversation",
   "chat.resend": "Resend",
