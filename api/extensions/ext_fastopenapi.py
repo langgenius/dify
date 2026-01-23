@@ -28,8 +28,7 @@ def init_app(app: DifyApp) -> None:
 
     # Ensure route decorators are evaluated.
     import controllers.console.ping as ping_module
-    import controllers.console.setup as setup
- 
+    from controllers.console import setup
 
     _ = ping_module
     _ = setup
