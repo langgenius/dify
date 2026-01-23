@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from core.app.entities.app_asset_entities import AppAssetFileTree, AppAssetNode
 from core.app_assets.entities import AssetItem, FileAsset
 from core.app_assets.paths import AssetPaths
+from core.skill.entities.skill_bundle import SkillBundle
 from core.skill.entities.skill_document import SkillDocument
 from core.skill.skill_compiler import SkillCompiler
 from core.skill.skill_manager import SkillManager
@@ -47,6 +48,8 @@ class SkillBuilder:
 
     def build(self, tree: AppAssetFileTree, ctx: BuildContext) -> list[AssetItem]:
         if not self._nodes:
+            bundle = SkillBundle(assets_id=ctx.build_id)
+            SkillManager.save_bundle(ctx.tenant_id, ctx.app_id, ctx.build_id, bundle)
             return []
 
         # 1. Load all skills (parallel IO)

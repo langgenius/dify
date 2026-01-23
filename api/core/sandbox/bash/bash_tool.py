@@ -43,7 +43,7 @@ def _truncate_output(output: str, name: str = "output") -> str:
 
 
 class SandboxBashTool(Tool):
-    def __init__(self, sandbox: VirtualEnvironment, tenant_id: str, tools_path: str | None = None) -> None:
+    def __init__(self, sandbox: VirtualEnvironment, tenant_id: str, tools_path: str) -> None:
         self._sandbox = sandbox
         self._tools_path = tools_path
 
@@ -93,20 +93,20 @@ class SandboxBashTool(Tool):
 
         try:
             with with_connection(self._sandbox) as conn:
-                cmd_list = ["bash", "-c", command]
+                # Build command with embedded environment variables
+                env_exports = (
+                    f"export PATH={self._tools_path}:/usr/local/bin:/usr/bin:/bin && "
+                    f"export DIFY_CLI_CONFIG={self._tools_path}/{DifyCli.CONFIG_FILENAME} && "
+                )
+                full_command = env_exports + command
 
+                cmd_list = ["bash", "-c", full_command]
                 sandbox_debug("bash_tool", "cmd_list", cmd_list)
-                environments: dict[str, str] | None = None
-                if self._tools_path:
-                    environments = {
-                        "PATH": f"{self._tools_path}:/usr/local/bin:/usr/bin:/bin",
-                        "DIFY_CLI_CONFIG": self._tools_path + f"/{DifyCli.CONFIG_FILENAME}",
-                    }
+
                 future = submit_command(
                     self._sandbox,
                     conn,
                     cmd_list,
-                    environments=environments,
                 )
                 timeout = COMMAND_TIMEOUT_SECONDS if COMMAND_TIMEOUT_SECONDS > 0 else None
                 result = future.result(timeout=timeout)
