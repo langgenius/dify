@@ -1,7 +1,7 @@
 """create workflow_archive_logs
 
 Revision ID: 9d77545f524e
-Revises: 7df29de0f6be
+Revises: f9f6d18a37f9
 Create Date: 2026-01-06 17:18:56.292479
 
 """
@@ -15,7 +15,7 @@ def _is_pg(conn):
 
 # revision identifiers, used by Alembic.
 revision = '9d77545f524e'
-down_revision = '7df29de0f6be'
+down_revision = 'f9f6d18a37f9'
 branch_labels = None
 depends_on = None
 
