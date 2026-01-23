@@ -7,7 +7,7 @@ from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.knowledge_index.entities import DocMetadata, KnowledgeIndexNodeData
 from core.workflow.nodes.knowledge_index.knowledge_index_node import KnowledgeIndexNode
 from core.workflow.runtime import VariablePool
-from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding, Document
+from models.dataset import Dataset, DatasetMetadata, Document
 from models.enums import UserFrom
 
 
