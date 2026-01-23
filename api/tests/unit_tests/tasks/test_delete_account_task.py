@@ -18,12 +18,18 @@ from tasks.delete_account_task import delete_account_task
 
 @pytest.fixture
 def mock_db_session():
-    """Mock the db.session used in delete_account_task."""
-    with patch("tasks.delete_account_task.db.session") as mock_session:
-        mock_query = MagicMock()
-        mock_session.query.return_value = mock_query
-        mock_query.where.return_value = mock_query
-        yield mock_session
+    """Mock session via session_factory.create_session()."""
+    with patch("tasks.delete_account_task.session_factory") as mock_sf:
+        session = MagicMock()
+        cm = MagicMock()
+        cm.__enter__.return_value = session
+        cm.__exit__.return_value = None
+        mock_sf.create_session.return_value = cm
+
+        query = MagicMock()
+        session.query.return_value = query
+        query.where.return_value = query
+        yield session
 
 
 @pytest.fixture

@@ -236,7 +236,7 @@
   "task.installSuccess": "{{successLength}} plugins installed successfully",
   "task.installed": "Installed",
   "task.installedError": "Gagal menginstal {{errorLength}} plugin",
-  "task.installing": "Memasang plugin {{installingLength}}, 0 selesai.",
+  "task.installing": "Memasang plugin.",
   "task.installingWithError": "Memasang {{installingLength}} plugin, {{successLength}} berhasil, {{errorLength}} gagal",
   "task.installingWithSuccess": "Memasang plugin {{installingLength}}, {{successLength}} berhasil.",
   "task.runningPlugins": "Installing Plugins",

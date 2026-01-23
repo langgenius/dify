@@ -1,7 +1,7 @@
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
-from core.variables import SegmentType, Variable
+from core.variables import SegmentType, VariableBase
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID
 from core.workflow.entities import GraphInitParams
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
@@ -32,6 +32,15 @@ class VariableAssignerNode(Node[VariableAssignerData]):
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
+
+    def blocks_variable_output(self, variable_selectors: set[tuple[str, ...]]) -> bool:
+        """
+        Check if this Variable Assigner node blocks the output of specific variables.
+
+        Returns True if this node updates any of the requested conversation variables.
+        """
+        assigned_selector = tuple(self.node_data.assigned_variable_selector)
+        return assigned_selector in variable_selectors
 
     @classmethod
     def version(cls) -> str:
@@ -64,7 +73,7 @@ class VariableAssignerNode(Node[VariableAssignerData]):
         assigned_variable_selector = self.node_data.assigned_variable_selector
         # Should be String, Number, Object, ArrayString, ArrayNumber, ArrayObject
         original_variable = self.graph_runtime_state.variable_pool.get(assigned_variable_selector)
-        if not isinstance(original_variable, Variable):
+        if not isinstance(original_variable, VariableBase):
             raise VariableOperatorNodeError("assigned variable not found")
 
         match self.node_data.write_mode:
