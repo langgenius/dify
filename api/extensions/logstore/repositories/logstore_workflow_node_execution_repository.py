@@ -72,7 +72,7 @@ def _dict_to_workflow_node_execution(data: dict[str, Any]) -> WorkflowNodeExecut
         created_at = datetime.fromisoformat(created_at_value)
     else:
         created_at = datetime.now()
-    
+
     finished_at_value = data.get("finished_at")
     if finished_at_value and finished_at_value not in {"null", ""}:
         finished_at = datetime.fromisoformat(finished_at_value)
