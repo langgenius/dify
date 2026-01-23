@@ -47,7 +47,7 @@ class DraftAppAssetsInitializer(AsyncSandboxInitializer):
         items = [AssetDownloadItem(path=tree.get_path(node.id).lstrip("/"), url=url) for node, url in zip(nodes, urls)]
         script = AssetDownloadService.build_download_script(items, AppAssets.PATH)
         pipeline(vm).add(
-            ["sh", "-lc", script],
+            ["sh", "-c", script],
             error_message="Failed to download draft assets",
         ).execute(timeout=DRAFT_ASSETS_DOWNLOAD_TIMEOUT, raise_on_error=True)
 

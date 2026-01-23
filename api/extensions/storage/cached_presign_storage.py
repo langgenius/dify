@@ -1,15 +1,15 @@
 """Storage wrapper that caches presigned download URLs."""
 
 import logging
-from collections.abc import Generator
 from typing import Any
 
 from extensions.storage.base_storage import BaseStorage
+from extensions.storage.storage_wrapper import StorageWrapper
 
 logger = logging.getLogger(__name__)
 
 
-class CachedPresignStorage(BaseStorage):
+class CachedPresignStorage(StorageWrapper):
     """Storage wrapper that caches presigned download URLs.
 
     Wraps a storage with presign capability and caches the generated URLs
@@ -33,35 +33,13 @@ class CachedPresignStorage(BaseStorage):
         redis_client: Any,
         cache_key_prefix: str = "presign_cache",
     ):
-        super().__init__()
-        self._storage = storage
+        super().__init__(storage)
         self._redis = redis_client
         self._cache_key_prefix = cache_key_prefix
 
-    def save(self, filename: str, data: bytes):
-        self._storage.save(filename, data)
-
-    def load_once(self, filename: str) -> bytes:
-        return self._storage.load_once(filename)
-
-    def load_stream(self, filename: str) -> Generator:
-        return self._storage.load_stream(filename)
-
-    def download(self, filename: str, target_filepath: str):
-        self._storage.download(filename, target_filepath)
-
-    def exists(self, filename: str) -> bool:
-        return self._storage.exists(filename)
-
     def delete(self, filename: str):
-        self._storage.delete(filename)
+        super().delete(filename)
         self.invalidate([filename])
-
-    def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
-        return self._storage.scan(path, files=files, directories=directories)
-
-    def get_upload_url(self, filename: str, expires_in: int = 3600) -> str:
-        return self._storage.get_upload_url(filename, expires_in)
 
     def get_download_url(self, filename: str, expires_in: int = 3600) -> str:
         """Get a presigned download URL, using cache when available.
@@ -79,7 +57,7 @@ class CachedPresignStorage(BaseStorage):
         if cached:
             return cached
 
-        url = self._storage.get_download_url(filename, expires_in)
+        url = super().get_download_url(filename, expires_in)
         self._set_cached(cache_key, url, expires_in)
 
         return url
@@ -104,16 +82,29 @@ class CachedPresignStorage(BaseStorage):
         cache_keys = [self._cache_key(f) for f in filenames]
         cached_values = self._get_cached_batch(cache_keys)
 
-        results: list[str] = []
-        for filename, cache_key, cached in zip(filenames, cache_keys, cached_values):
-            if cached:
-                results.append(cached)
-            else:
-                url = self._storage.get_download_url(filename, expires_in)
-                self._set_cached(cache_key, url, expires_in)
-                results.append(url)
+        # Build results list, tracking which indices need fetching
+        results: list[str | None] = list(cached_values)
+        uncached_indices: list[int] = []
+        uncached_filenames: list[str] = []
 
-        return results
+        for i, (filename, cached) in enumerate(zip(filenames, cached_values)):
+            if not cached:
+                uncached_indices.append(i)
+                uncached_filenames.append(filename)
+
+        # Batch fetch uncached URLs from storage
+        if uncached_filenames:
+            uncached_urls = [super().get_download_url(f, expires_in) for f in uncached_filenames]
+
+            # Fill results at correct positions
+            for idx, url in zip(uncached_indices, uncached_urls):
+                results[idx] = url
+
+            # Batch set cache
+            uncached_cache_keys = [cache_keys[i] for i in uncached_indices]
+            self._set_cached_batch(uncached_cache_keys, uncached_urls, expires_in)
+
+        return results  # type: ignore[return-value]
 
     def invalidate(self, filenames: list[str]) -> None:
         """Invalidate cached URLs for given filenames.
@@ -170,3 +161,16 @@ class CachedPresignStorage(BaseStorage):
             self._redis.setex(cache_key, ttl, url)
         except Exception:
             logger.warning("Failed to write presign cache", exc_info=True)
+
+    def _set_cached_batch(self, cache_keys: list[str], urls: list[str], expires_in: int) -> None:
+        """Store multiple URLs in cache with computed TTL using pipeline."""
+        if not cache_keys:
+            return
+        ttl = self._compute_ttl(expires_in)
+        try:
+            pipe = self._redis.pipeline()
+            for cache_key, url in zip(cache_keys, urls):
+                pipe.setex(cache_key, ttl, url)
+            pipe.execute()
+        except Exception:
+            logger.warning("Failed to write presign cache batch", exc_info=True)

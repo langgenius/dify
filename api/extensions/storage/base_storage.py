@@ -58,6 +58,12 @@ class BaseStorage(ABC):
         """
         raise NotImplementedError("This storage backend doesn't support pre-signed URLs")
 
+    def get_download_urls(self, filenames: list[str], expires_in: int = 3600) -> list[str]:
+        """
+        Generate pre-signed URLs for downloading multiple files.
+        """
+        raise NotImplementedError("This storage backend doesn't support pre-signed URLs")
+
     def get_upload_url(self, filename: str, expires_in: int = 3600) -> str:
         """
         Generate a pre-signed URL for uploading a file.

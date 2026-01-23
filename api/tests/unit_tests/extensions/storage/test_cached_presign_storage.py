@@ -63,7 +63,9 @@ class TestCachedPresignStorage:
 
         assert result == ["https://cached1.com", "https://new.com", "https://cached2.com"]
         mock_storage.get_download_url.assert_called_once_with("file2.txt", 3600)
-        mock_redis.setex.assert_called_once()
+        # Verify pipeline was used for batch cache write
+        mock_redis.pipeline.assert_called_once()
+        mock_redis.pipeline().execute.assert_called_once()
 
     def test_get_download_urls_empty_list(self, cached_storage, mock_storage, mock_redis):
         """Test batch URL retrieval with empty list."""

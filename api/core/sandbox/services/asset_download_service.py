@@ -48,12 +48,10 @@ def _render_download_script(root_path: str, download_commands: str) -> str:
     wait
 
     if [ -s "${{fail_log}}" ]; then
-      echo 'Failed downloads:' >&2
-      cat "${{fail_log}}" >&2
+      mv "${{fail_log}}" "${{download_root}}/DOWNLOAD_FAILURES.txt"
+    else
       rm -f "${{fail_log}}"
-      exit 1
     fi
-    rm -f "${{fail_log}}"
     """
     return textwrap.dedent(script).strip()
 

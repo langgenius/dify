@@ -94,6 +94,16 @@ class AwsS3Storage(BaseStorage):
         )
         return url
 
+    def get_download_urls(self, filenames: list[str], expires_in: int = 3600) -> list[str]:
+        return [
+            self.client.generate_presigned_url(
+                ClientMethod="get_object",
+                Params={"Bucket": self.bucket_name, "Key": filename},
+                ExpiresIn=expires_in,
+            )
+            for filename in filenames
+        ]
+
     def get_upload_url(self, filename: str, expires_in: int = 3600) -> str:
         url: str = self.client.generate_presigned_url(
             ClientMethod="put_object",

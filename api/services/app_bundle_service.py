@@ -158,7 +158,7 @@ class AppBundleService:
             return None
 
         items = tree_to_asset_items(tree, app_model.tenant_id, app_model.id)
-        packager = AssetZipPackager(storage)
+        packager = AssetZipPackager(AppAssetService.assets_storage())
         return packager.package(items)
 
     @staticmethod

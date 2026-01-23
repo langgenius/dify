@@ -16,12 +16,15 @@ from core.app_assets.builder import AssetBuildPipeline, BuildContext
 from core.app_assets.builder.file_builder import FileBuilder
 from core.app_assets.builder.skill_builder import SkillBuilder
 from core.app_assets.converters import tree_to_asset_items
+from core.app_assets.entities.assets import AssetItem
 from core.app_assets.packager import AssetZipPackager
 from core.app_assets.paths import AssetPaths
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from extensions.storage.base_storage import BaseStorage
 from extensions.storage.cached_presign_storage import CachedPresignStorage
 from extensions.storage.file_presign_storage import FilePresignStorage
+from extensions.storage.silent_storage import SilentStorage
 from models.app_asset import AppAssets
 from models.model import App
 
@@ -45,20 +48,16 @@ class AppAssetService:
         return redis_client.lock(f"app_asset:lock:{app_id}", timeout=AppAssetService._LOCK_TIMEOUT_SECONDS)
 
     @staticmethod
-    def assets_storage() -> CachedPresignStorage:
+    def assets_storage() -> BaseStorage:
         from extensions.ext_storage import storage
 
-        return CachedPresignStorage(
-            storage=FilePresignStorage(storage.storage_runner),
-            redis_client=redis_client,
-            cache_key_prefix=AppAssetService._DRAFT_CACHE_KEY_PREFIX,
+        return SilentStorage(
+            CachedPresignStorage(
+                storage=FilePresignStorage(storage.storage_runner),
+                redis_client=redis_client,
+                cache_key_prefix=AppAssetService._DRAFT_CACHE_KEY_PREFIX,
+            )
         )
-
-    @staticmethod
-    def _draft_storage_key_for_node(tenant_id: str, app_id: str, assets_id: str, node: AppAssetNode) -> str:
-        if node.extension == "md":
-            return AssetPaths.build_resolved_file(tenant_id, app_id, assets_id, node.id)
-        return AssetPaths.draft_file(tenant_id, app_id, node.id)
 
     @staticmethod
     def get_or_create_assets(session: Session, app_model: App, account_id: str) -> AppAssets:
@@ -347,7 +346,7 @@ class AppAssetService:
         tree = assets.asset_tree
 
         ctx = BuildContext(tenant_id=tenant_id, app_id=app_id, build_id=assets.id)
-        built_assets = AssetBuildPipeline(
+        built_assets: list[AssetItem] = AssetBuildPipeline(
             [SkillBuilder(storage=AppAssetService.assets_storage()), FileBuilder()]
         ).build_all(tree, ctx)
 

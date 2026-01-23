@@ -185,7 +185,7 @@ class CommandPipeline:
             return []
 
         script = self._build_script(fail_fast=raise_on_error)
-        batch_cmd = ["sh", "-lc", script]
+        batch_cmd = ["sh", "-c", script]
 
         if self.connection is not None:
             batch_result = try_execute(self.env, batch_cmd, timeout=timeout, cwd=self.cwd, connection=self.connection)
