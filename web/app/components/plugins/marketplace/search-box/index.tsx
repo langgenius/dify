@@ -63,6 +63,7 @@ const SearchBox = ({
                 {
                   search && (
                     <ActionButton
+                      size="xs"
                       onClick={() => onSearchChange('')}
                       className="shrink-0"
                     >
@@ -94,6 +95,7 @@ const SearchBox = ({
                 {
                   search && (
                     <ActionButton
+                      size="xs"
                       onClick={() => onSearchChange('')}
                       className="shrink-0"
                     >
