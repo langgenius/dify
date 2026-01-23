@@ -11,6 +11,10 @@ export function PWAProvider({ children }: { children: React.ReactNode }) {
         registrations.forEach((registration) => {
           registration.unregister()
         })
+      }).catch((error) => {
+        // Silently fail if service worker unregistration fails
+        // This is a development-only optimization and shouldn't block the app
+        console.warn('Failed to unregister service workers:', error)
       })
     }
   }, [])
