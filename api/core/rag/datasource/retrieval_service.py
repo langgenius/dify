@@ -395,6 +395,7 @@ class RetrievalService:
             index_node_ids = []
             doc_to_document_map = {}
             summary_segment_ids = set()  # Track segments retrieved via summary
+            summary_score_map: dict[str, float] = {}  # Map original_chunk_id to summary score
 
             # First pass: collect all document IDs and identify summary documents
             for document in documents:
@@ -417,6 +418,21 @@ class RetrievalService:
                     original_chunk_id = document.metadata.get("original_chunk_id")
                     if original_chunk_id:
                         summary_segment_ids.add(original_chunk_id)
+                        # Save summary's score for later use
+                        summary_score = document.metadata.get("score")
+                        if summary_score is not None:
+                            try:
+                                summary_score_float = float(summary_score)
+                                # If the same segment has multiple summary hits, take the highest score
+                                if original_chunk_id not in summary_score_map:
+                                    summary_score_map[original_chunk_id] = summary_score_float
+                                else:
+                                    summary_score_map[original_chunk_id] = max(
+                                        summary_score_map[original_chunk_id], summary_score_float
+                                    )
+                            except (ValueError, TypeError):
+                                # Skip invalid score values
+                                pass
                     continue  # Skip adding to other lists for summary documents
 
                 if dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
@@ -535,30 +551,43 @@ class RetrievalService:
                 if ds_dataset_document and ds_dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
                     if segment.id not in include_segment_ids:
                         include_segment_ids.add(segment.id)
+                        # Check if this segment was retrieved via summary
+                        # Use summary score as base score if available, otherwise 0.0
+                        max_score = summary_score_map.get(segment.id, 0.0)
+                        
                         if child_chunks or attachment_infos:
                             child_chunk_details = []
-                            max_score = 0.0
                             for child_chunk in child_chunks:
                                 document = doc_to_document_map.get(child_chunk.index_node_id)
+                                child_score = document.metadata.get("score", 0.0) if document else 0.0
                                 child_chunk_detail = {
                                     "id": child_chunk.id,
                                     "content": child_chunk.content,
                                     "position": child_chunk.position,
-                                    "score": document.metadata.get("score", 0.0) if document else 0.0,
+                                    "score": child_score,
                                 }
                                 child_chunk_details.append(child_chunk_detail)
-                                max_score = max(max_score, document.metadata.get("score", 0.0) if document else 0.0)
+                                max_score = max(max_score, child_score)
                             for attachment_info in attachment_infos:
                                 file_document = doc_to_document_map.get(attachment_info["id"])
-                                max_score = max(
-                                    max_score, file_document.metadata.get("score", 0.0) if file_document else 0.0
-                                )
+                                if file_document:
+                                    max_score = max(
+                                        max_score, file_document.metadata.get("score", 0.0)
+                                    )
 
                             map_detail = {
                                 "max_score": max_score,
                                 "child_chunks": child_chunk_details,
                             }
                             segment_child_map[segment.id] = map_detail
+                        else:
+                            # No child chunks or attachments, use summary score if available
+                            summary_score = summary_score_map.get(segment.id)
+                            if summary_score is not None:
+                                segment_child_map[segment.id] = {
+                                    "max_score": summary_score,
+                                    "child_chunks": [],
+                                }
                         record: dict[str, Any] = {
                             "segment": segment,
                         }
@@ -566,14 +595,23 @@ class RetrievalService:
                 else:
                     if segment.id not in include_segment_ids:
                         include_segment_ids.add(segment.id)
-                        max_score = 0.0
-                        segment_document = doc_to_document_map.get(segment.index_node_id)
-                        if segment_document:
-                            max_score = max(max_score, segment_document.metadata.get("score", 0.0))
+                        
+                        # Check if this segment was retrieved via summary
+                        # Use summary score if available (summary retrieval takes priority)
+                        max_score = summary_score_map.get(segment.id, 0.0)
+                        
+                        # If not retrieved via summary, use original segment's score
+                        if segment.id not in summary_score_map:
+                            segment_document = doc_to_document_map.get(segment.index_node_id)
+                            if segment_document:
+                                max_score = max(max_score, segment_document.metadata.get("score", 0.0))
+                        
+                        # Also consider attachment scores
                         for attachment_info in attachment_infos:
                             file_doc = doc_to_document_map.get(attachment_info["id"])
                             if file_doc:
                                 max_score = max(max_score, file_doc.metadata.get("score", 0.0))
+                        
                         record = {
                             "segment": segment,
                             "score": max_score,
