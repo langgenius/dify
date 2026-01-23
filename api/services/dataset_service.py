@@ -564,9 +564,6 @@ class DatasetService:
         # Handle indexing technique changes and embedding model updates
         action = DatasetService._handle_indexing_technique_change(dataset, data, filtered_data)
 
-        # Check if summary_index_setting model changed (before updating database)
-        summary_model_changed = DatasetService._check_summary_index_setting_model_changed(dataset, data)
-
         # Add metadata fields
         filtered_data["updated_by"] = user.id
         filtered_data["updated_at"] = naive_utc_now()
@@ -601,13 +598,10 @@ class DatasetService:
                     regenerate_vectors_only=True,
                 )
 
-        # Trigger summary index regeneration if summary model changed
-        if summary_model_changed:
-            regenerate_summary_index_task.delay(
-                dataset.id,
-                regenerate_reason="summary_model_changed",
-                regenerate_vectors_only=False,
-            )
+        # Note: summary_index_setting changes do not trigger automatic regeneration of existing summaries.
+        # The new setting will only apply to:
+        # 1. New documents added after the setting change
+        # 2. Manual summary generation requests
 
         return dataset
 
@@ -904,12 +898,17 @@ class DatasetService:
         new_summary_setting = data.get("summary_index_setting")
         old_summary_setting = dataset.summary_index_setting
 
-        # If old setting doesn't exist or is disabled, no need to regenerate
-        if not old_summary_setting or not old_summary_setting.get("enable"):
-            return False
-
         # If new setting is disabled, no need to regenerate
         if not new_summary_setting or not new_summary_setting.get("enable"):
+            return False
+
+        # If old setting doesn't exist, no need to regenerate (no existing summaries to regenerate)
+        # Note: This task only regenerates existing summaries, not generates new ones
+        if not old_summary_setting:
+            return False
+
+        # If old setting was disabled, no need to regenerate (no existing summaries to regenerate)
+        if not old_summary_setting.get("enable"):
             return False
 
         # Compare model_name and model_provider_name
