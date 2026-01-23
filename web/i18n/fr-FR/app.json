@@ -116,7 +116,7 @@
   "iconPicker.image": "Image",
   "iconPicker.ok": "OK",
   "importDSL": "Importer le fichier DSL",
-  "importFromDSL": "Importation à partir d'une DSL",
+  "importFromDSL": "Importer depuis DSL",
   "importFromDSLFile": "À partir d’un fichier DSL",
   "importFromDSLUrl": "À partir de l’URL",
   "importFromDSLUrlPlaceholder": "Collez le lien DSL ici",

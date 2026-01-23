@@ -120,7 +120,7 @@
   "importBundleFailed": "导入 Bundle 失败",
   "importDSL": "导入 DSL 文件",
   "importFromDSL": "导入 DSL",
-  "importFromDSLFile": "文件",
+  "importFromDSLFile": "从 DSL 文件",
   "importFromDSLUrl": "URL",
   "importFromDSLUrlPlaceholder": "输入 DSL 文件的 URL",
   "join": "参与社区",
