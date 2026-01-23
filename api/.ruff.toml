@@ -111,10 +111,10 @@ ignore = [
     "S110", # allow ignoring exceptions in tests code (currently)
 
 ]
+"controllers/console/explore/trial.py" = ["TID251"]
 
 [lint.pyflakes]
 allowed-unused-imports = [
-    "_pytest.monkeypatch",
     "tests.integration_tests",
     "tests.unit_tests",
 ]

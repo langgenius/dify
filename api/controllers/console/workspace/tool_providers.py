@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 
 from flask import make_response, redirect, request, send_file
 from flask_restx import Resource
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
@@ -96,14 +96,7 @@ class ApiToolProviderUpdatePayload(ApiToolProviderBasePayload):
 
 
 class UrlQuery(BaseModel):
-    url: str
-
-    @field_validator("url")
-    @classmethod
-    def validate_url(cls, value: str) -> str:
-        if not is_valid_url(value):
-            raise ValueError("Invalid URL")
-        return value
+    url: HttpUrl
 
 
 class ProviderQuery(BaseModel):
@@ -439,7 +432,7 @@ class ToolApiProviderGetRemoteSchemaApi(Resource):
         return ApiToolManageService.get_api_tool_provider_remote_schema(
             user_id,
             tenant_id,
-            query.url,
+            str(query.url),
         )
 
 
