@@ -188,7 +188,7 @@ class SummaryIndexService:
                 db.session.add(summary_record)
                 db.session.flush()
                 # Success, exit function
-                return  
+                return 
 
             except (ConnectionError, Exception) as e:
                 error_str = str(e).lower()
