@@ -228,6 +228,90 @@ class SummaryIndexService:
                     raise
 
     @staticmethod
+    def batch_create_summary_records(
+        segments: list[DocumentSegment],
+        dataset: Dataset,
+        status: str = "not_started",
+    ) -> None:
+        """
+        Batch create summary records for segments with specified status.
+        If a record already exists, update its status.
+
+        Args:
+            segments: List of DocumentSegment instances
+            dataset: Dataset containing the segments
+            status: Initial status for the records (default: "not_started")
+        """
+        segment_ids = [segment.id for segment in segments]
+        if not segment_ids:
+            return
+
+        # Query existing summary records
+        existing_summaries = (
+            db.session.query(DocumentSegmentSummary)
+            .filter(
+                DocumentSegmentSummary.chunk_id.in_(segment_ids),
+                DocumentSegmentSummary.dataset_id == dataset.id,
+            )
+            .all()
+        )
+        existing_summary_map = {summary.chunk_id: summary for summary in existing_summaries}
+
+        # Create or update records
+        for segment in segments:
+            existing_summary = existing_summary_map.get(segment.id)
+            if existing_summary:
+                # Update existing record
+                existing_summary.status = status
+                existing_summary.error = None  # Clear any previous errors
+                if not existing_summary.enabled:
+                    existing_summary.enabled = True
+                    existing_summary.disabled_at = None
+                    existing_summary.disabled_by = None
+                db.session.add(existing_summary)
+            else:
+                # Create new record
+                summary_record = DocumentSegmentSummary(
+                    dataset_id=dataset.id,
+                    document_id=segment.document_id,
+                    chunk_id=segment.id,
+                    summary_content=None,  # Will be filled later
+                    status=status,
+                    enabled=True,
+                )
+                db.session.add(summary_record)
+
+    @staticmethod
+    def update_summary_record_error(
+        segment: DocumentSegment,
+        dataset: Dataset,
+        error: str,
+    ) -> None:
+        """
+        Update summary record with error status.
+
+        Args:
+            segment: DocumentSegment
+            dataset: Dataset containing the segment
+            error: Error message
+        """
+        summary_record = (
+            db.session.query(DocumentSegmentSummary)
+            .filter_by(chunk_id=segment.id, dataset_id=dataset.id)
+            .first()
+        )
+
+        if summary_record:
+            summary_record.status = "error"
+            summary_record.error = error
+            db.session.add(summary_record)
+            db.session.flush()
+        else:
+            logger.warning(
+                "Summary record not found for segment %s when updating error", segment.id
+            )
+
+    @staticmethod
     def generate_and_vectorize_summary(
         segment: DocumentSegment,
         dataset: Dataset,
@@ -235,6 +319,7 @@ class SummaryIndexService:
     ) -> DocumentSegmentSummary:
         """
         Generate summary for a segment and vectorize it.
+        Assumes summary record already exists (created by batch_create_summary_records).
 
         Args:
             segment: DocumentSegment to generate summary for
@@ -247,33 +332,52 @@ class SummaryIndexService:
         Raises:
             ValueError: If summary generation fails
         """
-        try:
-            # Generate summary
-            summary_content = SummaryIndexService.generate_summary_for_segment(segment, dataset, summary_index_setting)
+        # Get existing summary record (should have been created by batch_create_summary_records)
+        summary_record = (
+            db.session.query(DocumentSegmentSummary)
+            .filter_by(chunk_id=segment.id, dataset_id=dataset.id)
+            .first()
+        )
 
-            # Create or update summary record (will handle overwrite internally)
-            summary_record = SummaryIndexService.create_summary_record(
-                segment, dataset, summary_content, status="generating"
+        if not summary_record:
+            # If not found (shouldn't happen), create one
+            logger.warning(
+                "Summary record not found for segment %s, creating one", segment.id
             )
+            summary_record = SummaryIndexService.create_summary_record(
+                segment, dataset, summary_content="", status="generating"
+            )
+
+        try:
+            # Update status to "generating"
+            summary_record.status = "generating"
+            summary_record.error = None
+            db.session.add(summary_record)
+            db.session.flush()
+
+            # Generate summary
+            summary_content = SummaryIndexService.generate_summary_for_segment(
+                segment, dataset, summary_index_setting
+            )
+
+            # Update summary content
+            summary_record.summary_content = summary_content
 
             # Vectorize summary (will delete old vector if exists before creating new one)
             SummaryIndexService.vectorize_summary(summary_record, segment, dataset)
 
+            # Status will be updated to "completed" by vectorize_summary on success
             db.session.commit()
             logger.info("Successfully generated and vectorized summary for segment %s", segment.id)
             return summary_record
 
-        except Exception:
+        except Exception as e:
             logger.exception("Failed to generate summary for segment %s", segment.id)
-            # Update summary record with error status if it exists
-            summary_record = (
-                db.session.query(DocumentSegmentSummary).filter_by(chunk_id=segment.id, dataset_id=dataset.id).first()
-            )
-            if summary_record:
-                summary_record.status = "error"
-                summary_record.error = str(e)
-                db.session.add(summary_record)
-                db.session.commit()
+            # Update summary record with error status
+            summary_record.status = "error"
+            summary_record.error = str(e)
+            db.session.add(summary_record)
+            db.session.commit()
             raise
 
     @staticmethod
@@ -340,6 +444,15 @@ class SummaryIndexService:
             logger.info("No segments found for document %s", document.id)
             return []
 
+        # Batch create summary records with "not_started" status before processing
+        # This ensures all records exist upfront, allowing status tracking
+        SummaryIndexService.batch_create_summary_records(
+            segments=segments,
+            dataset=dataset,
+            status="not_started",
+        )
+        db.session.commit()  # Commit initial records
+
         summary_records = []
 
         for segment in segments:
@@ -359,10 +472,18 @@ class SummaryIndexService:
                     segment, dataset, summary_index_setting
                 )
                 summary_records.append(summary_record)
-            except Exception:
+            except Exception as e:
                 logger.exception("Failed to generate summary for segment %s", segment.id)
+                # Update summary record with error status
+                SummaryIndexService.update_summary_record_error(
+                    segment=segment,
+                    dataset=dataset,
+                    error=str(e),
+                )
                 # Continue with other segments
                 continue
+
+        db.session.commit()  # Commit any remaining changes
 
         logger.info(
             "Completed summary generation for document %s: %s summaries generated and vectorized",

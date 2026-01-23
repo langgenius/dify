@@ -3362,15 +3362,71 @@ class SegmentService:
                 elif document.doc_form in (IndexStructureType.PARAGRAPH_INDEX, IndexStructureType.QA_INDEX):
                     # update segment vector index
                     VectorService.update_segment_vector(args.keywords, segment, dataset)
-            # update summary index if summary is provided
-            if args.summary is not None:
-                from services.summary_index_service import SummaryIndexService
+                # Handle summary index when content changed
+                has_summary_index = (
+                    dataset.indexing_technique == "high_quality"
+                    and dataset.summary_index_setting
+                    and dataset.summary_index_setting.get("enable") is True
+                )
+                if has_summary_index:
+                    from models.dataset import DocumentSegmentSummary
 
-                try:
-                    SummaryIndexService.update_summary_for_segment(segment, dataset, args.summary)
-                except Exception:
-                    logger.exception("Failed to update summary for segment %s", segment.id)
-                    # Don't fail the entire update if summary update fails
+                    existing_summary = (
+                        db.session.query(DocumentSegmentSummary)
+                        .where(
+                            DocumentSegmentSummary.chunk_id == segment.id,
+                            DocumentSegmentSummary.dataset_id == dataset.id,
+                        )
+                        .first()
+                    )
+
+                    if args.summary is None:
+                        # User didn't provide summary, auto-regenerate if segment previously had summary
+                        if existing_summary:
+                            # Segment previously had summary, regenerate it with new content
+                            from services.summary_index_service import SummaryIndexService
+
+                            try:
+                                SummaryIndexService.generate_and_vectorize_summary(
+                                    segment, dataset, dataset.summary_index_setting
+                                )
+                                logger.info(
+                                    "Auto-regenerated summary for segment %s after content change", segment.id
+                                )
+                            except Exception:
+                                logger.exception("Failed to auto-regenerate summary for segment %s", segment.id)
+                                # Don't fail the entire update if summary regeneration fails
+                    else:
+                        # User provided summary, check if it has changed
+                        existing_summary_content = existing_summary.summary_content if existing_summary else None
+                        if existing_summary_content != args.summary:
+                            # Summary has changed, use user-provided summary
+                            from services.summary_index_service import SummaryIndexService
+
+                            try:
+                                SummaryIndexService.update_summary_for_segment(segment, dataset, args.summary)
+                                logger.info(
+                                    "Updated summary for segment %s with user-provided content", segment.id
+                                )
+                            except Exception:
+                                logger.exception("Failed to update summary for segment %s", segment.id)
+                                # Don't fail the entire update if summary update fails
+                        else:
+                            # Summary hasn't changed, regenerate based on new content
+                            if existing_summary:
+                                from services.summary_index_service import SummaryIndexService
+
+                                try:
+                                    SummaryIndexService.generate_and_vectorize_summary(
+                                        segment, dataset, dataset.summary_index_setting
+                                    )
+                                    logger.info(
+                                        "Regenerated summary for segment %s after content change (summary unchanged)",
+                                        segment.id,
+                                    )
+                                except Exception:
+                                    logger.exception("Failed to regenerate summary for segment %s", segment.id)
+                                    # Don't fail the entire update if summary regeneration fails
             # update multimodel vector index
             VectorService.update_multimodel_vector(segment, args.attachment_ids or [], dataset)
         except Exception as e:

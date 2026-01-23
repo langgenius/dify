@@ -378,25 +378,22 @@ class DatasetDocumentListApi(Resource):
                     summary_status_map[doc_id] = None
                     continue
 
-                # Count summary statuses for this document's segments
-                status_counts = {"completed": 0, "generating": 0, "error": 0, "not_started": 0}
-                for segment_id in segment_ids:
-                    status = summaries.get(segment_id, "not_started")
-                    if status in status_counts:
-                        status_counts[status] += 1
-                    else:
-                        status_counts["not_started"] += 1
+                # Check if there are any "not_started" or "generating" status summaries
+                # Only check enabled=True summaries (already filtered in query)
+                # If segment has no summary record (summaries.get returns None),
+                # it means the summary is disabled (enabled=False) or not created yet, ignore it
+                has_pending_summaries = any(
+                    summaries.get(segment_id) is not None  # Ensure summary exists (enabled=True)
+                    and summaries[segment_id] in ("not_started", "generating")
+                    for segment_id in segment_ids
+                )
 
-                generating_count = status_counts["generating"]
-
-                # Determine overall status:
-                # - "SUMMARIZING" only when task is queued and at least one summary is generating
-                # - None (empty) for all other cases (not queued, all completed/error)
-                if generating_count > 0:
-                    # Task is queued and at least one summary is still generating
+                if has_pending_summaries:
+                    # Task is still running (not started or generating)
                     summary_status_map[doc_id] = "SUMMARIZING"
                 else:
-                    # Task not queued yet, or all summaries are completed/error (task finished)
+                    # All enabled=True summaries are "completed" or "error", task finished
+                    # Or no enabled=True summaries exist (all disabled)
                     summary_status_map[doc_id] = None
 
         # Add summary_index_status to each document
