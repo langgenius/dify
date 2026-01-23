@@ -1,7 +1,14 @@
 {
+  "appCard.addToWorkspace": "Użyj szablonu",
+  "appCard.try": "Szczegóły",
   "appCustomize.nameRequired": "Nazwa aplikacji jest wymagana",
   "appCustomize.subTitle": "Ikona i nazwa aplikacji",
   "appCustomize.title": "Utwórz aplikację z {{name}}",
+  "apps.allCategories": "Wszystkie",
+  "apps.resetFilter": "Wyczyść filtr",
+  "apps.resultNum": "{{num}} wyników",
+  "apps.title": "Wypróbuj wyselekcjonowane aplikacje Dify, aby znaleźć rozwiązania AI dla Twojej firmy",
+  "banner.viewMore": "ZOBACZ WIĘCEJ",
   "category.Agent": "Agent",
   "category.Assistant": "Asystent",
   "category.Entertainment": "Rozrywka",
@@ -18,5 +25,16 @@
   "sidebar.chat": "Czat",
   "sidebar.delete.content": "Czy na pewno chcesz usunąć tę aplikację?",
   "sidebar.delete.title": "Usuń aplikację",
-  "title": "Odkryj"
+  "sidebar.noApps.description": "Opublikowane aplikacje internetowe pojawią się tutaj",
+  "sidebar.noApps.learnMore": "Dowiedz się więcej",
+  "sidebar.noApps.title": "Brak aplikacji internetowych",
+  "sidebar.title": "Galeria aplikacji",
+  "sidebar.webApps": "Aplikacje internetowe",
+  "title": "Odkryj",
+  "tryApp.category": "Kategoria",
+  "tryApp.createFromSampleApp": "Utwórz z tej przykładowej aplikacji",
+  "tryApp.requirements": "Wymagania",
+  "tryApp.tabHeader.detail": "Szczegóły orkiestracji",
+  "tryApp.tabHeader.try": "Wypróbuj",
+  "tryApp.tryInfo": "To jest przykładowa aplikacja. Możesz wypróbować do 5 wiadomości. Aby nadal z niej korzystać, kliknij \"Utwórz z tej przykładowej aplikacji\" i skonfiguruj ją!"
 }

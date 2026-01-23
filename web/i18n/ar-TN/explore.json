@@ -1,10 +1,14 @@
 {
   "appCard.addToWorkspace": "إضافة إلى مساحة العمل",
+  "appCard.try": "التفاصيل",
   "appCustomize.nameRequired": "اسم التطبيق مطلوب",
   "appCustomize.subTitle": "أيقونة التطبيق واسمه",
   "appCustomize.title": "إنشاء تطبيق من {{name}}",
   "apps.allCategories": "موصى به",
+  "apps.resetFilter": "مسح الفلتر",
+  "apps.resultNum": "{{num}} نتائج",
   "apps.title": "استكشاف التطبيقات",
+  "banner.viewMore": "عرض المزيد",
   "category.Agent": "وكيل",
   "category.Assistant": "مساعد",
   "category.Entertainment": "ترفيه",
@@ -21,5 +25,16 @@
   "sidebar.chat": "دردشة",
   "sidebar.delete.content": "هل أنت متأكد أنك تريد حذف هذا التطبيق؟",
   "sidebar.delete.title": "حذف التطبيق",
-  "title": "استكشاف"
+  "sidebar.noApps.description": "ستظهر تطبيقات الويب المنشورة هنا",
+  "sidebar.noApps.learnMore": "اعرف المزيد",
+  "sidebar.noApps.title": "لا توجد تطبيقات ويب",
+  "sidebar.title": "معرض التطبيقات",
+  "sidebar.webApps": "تطبيقات الويب",
+  "title": "استكشاف",
+  "tryApp.category": "الفئة",
+  "tryApp.createFromSampleApp": "إنشاء من هذا التطبيق النموذجي",
+  "tryApp.requirements": "المتطلبات",
+  "tryApp.tabHeader.detail": "تفاصيل التنسيق",
+  "tryApp.tabHeader.try": "جرب",
+  "tryApp.tryInfo": "هذا تطبيق نموذجي. يمكنك تجربة ما يصل إلى 5 رسائل. لمواصلة استخدامه، انقر فوق \"إنشاء من هذا التطبيق النموذجي\" وقم بإعداده!"
 }
