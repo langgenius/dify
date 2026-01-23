@@ -3,7 +3,7 @@
   "dateTimeFormat": "YYYY/MM/DD HH:mm",
   "desc": "주어진 쿼리 텍스트에 기반하여 지식의 검색 효과를 테스트합니다.",
   "hit.emptyTip": "검색 테스트 결과가 여기에 표시됩니다.",
-  "hit.title": "검색 결과 단락",
+  "hit.title": "{{num}} 검색 결과 단락",
   "hitChunks": "{{num}}개의 자식 청크를 히트했습니다.",
   "imageUploader.dropZoneTip": "업로드할 파일을 여기에 끌어놓으세요",
   "imageUploader.singleChunkAttachmentLimitTooltip": "단일 청크 첨부 파일의 수는 {{limit}}를 초과할 수 없습니다",

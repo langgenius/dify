@@ -5,25 +5,25 @@ Workers pull node IDs from the ready_queue, execute nodes, and push events
 to the event_queue for the dispatcher to process.
 """
 
-import contextvars
 import queue
 import threading
 import time
 from collections.abc import Sequence
 from datetime import datetime
-from typing import final
-from uuid import uuid4
+from typing import TYPE_CHECKING, final
 
-from flask import Flask
 from typing_extensions import override
 
+from core.workflow.context import IExecutionContext
 from core.workflow.graph import Graph
 from core.workflow.graph_engine.layers.base import GraphEngineLayer
 from core.workflow.graph_events import GraphNodeEventBase, NodeRunFailedEvent
 from core.workflow.nodes.base.node import Node
-from libs.flask_utils import preserve_flask_contexts
 
 from .ready_queue import ReadyQueue
+
+if TYPE_CHECKING:
+    pass
 
 
 @final
@@ -44,8 +44,7 @@ class Worker(threading.Thread):
         layers: Sequence[GraphEngineLayer],
         stop_event: threading.Event,
         worker_id: int = 0,
-        flask_app: Flask | None = None,
-        context_vars: contextvars.Context | None = None,
+        execution_context: IExecutionContext | None = None,
     ) -> None:
         """
         Initialize worker thread.
@@ -56,19 +55,17 @@ class Worker(threading.Thread):
             graph: Graph containing nodes to execute
             layers: Graph engine layers for node execution hooks
             worker_id: Unique identifier for this worker
-            flask_app: Optional Flask application for context preservation
-            context_vars: Optional context variables to preserve in worker thread
+            execution_context: Optional execution context for context preservation
         """
         super().__init__(name=f"GraphWorker-{worker_id}", daemon=True)
         self._ready_queue = ready_queue
         self._event_queue = event_queue
         self._graph = graph
         self._worker_id = worker_id
-        self._flask_app = flask_app
-        self._context_vars = context_vars
-        self._last_task_time = time.time()
+        self._execution_context = execution_context
         self._stop_event = stop_event
         self._layers = layers if layers is not None else []
+        self._last_task_time = time.time()
 
     def stop(self) -> None:
         """Worker is controlled via shared stop_event from GraphEngine.
@@ -115,7 +112,7 @@ class Worker(threading.Thread):
                 self._ready_queue.task_done()
             except Exception as e:
                 error_event = NodeRunFailedEvent(
-                    id=str(uuid4()),
+                    id=node.execution_id,
                     node_id=node.id,
                     node_type=node.node_type,
                     in_iteration_id=None,
@@ -135,11 +132,9 @@ class Worker(threading.Thread):
 
         error: Exception | None = None
 
-        if self._flask_app and self._context_vars:
-            with preserve_flask_contexts(
-                flask_app=self._flask_app,
-                context_vars=self._context_vars,
-            ):
+        # Execute the node with preserved context if execution context is provided
+        if self._execution_context is not None:
+            with self._execution_context:
                 self._invoke_node_run_start_hooks(node)
                 try:
                     node_events = node.run()
