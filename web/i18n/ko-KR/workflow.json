@@ -1050,6 +1050,7 @@
   "versionHistory.action.deleteFailure": "버전을 삭제하지 못했습니다.",
   "versionHistory.action.deleteSuccess": "버전 삭제됨",
   "versionHistory.action.restoreFailure": "버전을 복원하지 못했습니다.",
+  "versionHistory.action.restoreInProgress": "{{userName}} is restoring to version {{versionName}}...",
   "versionHistory.action.restoreSuccess": "복원된 버전",
   "versionHistory.action.updateFailure": "버전 업데이트에 실패했습니다.",
   "versionHistory.action.updateSuccess": "버전이 업데이트되었습니다.",

@@ -1050,6 +1050,7 @@
   "versionHistory.action.deleteFailure": "無法刪除版本",
   "versionHistory.action.deleteSuccess": "版本已刪除",
   "versionHistory.action.restoreFailure": "無法恢復版本",
+  "versionHistory.action.restoreInProgress": "{{userName}} is restoring to version {{versionName}}...",
   "versionHistory.action.restoreSuccess": "恢復版本",
   "versionHistory.action.updateFailure": "更新版本失敗",
   "versionHistory.action.updateSuccess": "版本已更新",

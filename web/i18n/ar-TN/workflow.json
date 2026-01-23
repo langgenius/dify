@@ -1050,6 +1050,7 @@
   "versionHistory.action.deleteFailure": "فشل حذف الإصدار",
   "versionHistory.action.deleteSuccess": "تم حذف الإصدار",
   "versionHistory.action.restoreFailure": "فشل استعادة الإصدار",
+  "versionHistory.action.restoreInProgress": "{{userName}} is restoring to version {{versionName}}...",
   "versionHistory.action.restoreSuccess": "تم استعادة الإصدار",
   "versionHistory.action.updateFailure": "فشل تحديث الإصدار",
   "versionHistory.action.updateSuccess": "تم تحديث الإصدار",

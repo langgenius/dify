@@ -1,4 +1,6 @@
-import type { Edge, Node } from '../../types'
+import type { Viewport } from 'reactflow'
+import type { ConversationVariable, Edge, EnvironmentVariable, Node } from '../../types'
+import type { Features } from '@/app/components/base/features/types'
 
 export type OnlineUser = {
   user_id: string
@@ -61,10 +63,41 @@ export type CollaborationEventType
     | 'node_panel_presence'
     | 'app_publish_update'
     | 'graph_resync_request'
+    | 'workflow_restore_request'
+    | 'workflow_restore_intent'
+    | 'workflow_restore_complete'
 
 export type CollaborationUpdate = {
   type: CollaborationEventType
   userId: string
   data: Record<string, unknown>
   timestamp: number
+}
+
+export type RestoreRequestData = {
+  versionId: string
+  versionName?: string
+  initiatorUserId: string
+  initiatorName: string
+  graphData: {
+    nodes: Node[]
+    edges: Edge[]
+    viewport?: Viewport
+  }
+  features?: Features
+  environmentVariables?: EnvironmentVariable[]
+  conversationVariables?: ConversationVariable[]
+}
+
+export type RestoreIntentData = {
+  versionId: string
+  versionName?: string
+  initiatorUserId: string
+  initiatorName: string
+}
+
+export type RestoreCompleteData = {
+  versionId: string
+  success: boolean
+  error?: string
 }

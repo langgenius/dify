@@ -1050,6 +1050,7 @@
   "versionHistory.action.deleteFailure": "削除に失敗しました",
   "versionHistory.action.deleteSuccess": "削除が完了しました",
   "versionHistory.action.restoreFailure": "復元に失敗しました",
+  "versionHistory.action.restoreInProgress": "{{userName}} is restoring to version {{versionName}}...",
   "versionHistory.action.restoreSuccess": "復元が完了しました",
   "versionHistory.action.updateFailure": "更新に失敗しました",
   "versionHistory.action.updateSuccess": "更新が完了しました",

@@ -1050,6 +1050,7 @@
   "versionHistory.action.deleteFailure": "ลบเวอร์ชันไม่สำเร็จ",
   "versionHistory.action.deleteSuccess": "เวอร์ชันถูกลบ",
   "versionHistory.action.restoreFailure": "ไม่สามารถกู้คืนเวอร์ชันได้",
+  "versionHistory.action.restoreInProgress": "{{userName}} is restoring to version {{versionName}}...",
   "versionHistory.action.restoreSuccess": "เวอร์ชันที่กู้คืน",
   "versionHistory.action.updateFailure": "ไม่สามารถอัปเดตเวอร์ชันได้",
   "versionHistory.action.updateSuccess": "อัปเดตเวอร์ชัน",

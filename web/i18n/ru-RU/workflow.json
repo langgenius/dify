@@ -1050,6 +1050,7 @@
   "versionHistory.action.deleteFailure": "Не удалось удалить версию",
   "versionHistory.action.deleteSuccess": "Версия удалена",
   "versionHistory.action.restoreFailure": "Не удалось восстановить версию",
+  "versionHistory.action.restoreInProgress": "{{userName}} is restoring to version {{versionName}}...",
   "versionHistory.action.restoreSuccess": "Версия восстановлена",
   "versionHistory.action.updateFailure": "Не удалось обновить версию",
   "versionHistory.action.updateSuccess": "Версия обновлена",

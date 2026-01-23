@@ -1050,6 +1050,7 @@
   "versionHistory.action.deleteFailure": "Brisanje različice ni uspelo",
   "versionHistory.action.deleteSuccess": "Različica izbrisana",
   "versionHistory.action.restoreFailure": "Obnavljanje različice ni uspelo",
+  "versionHistory.action.restoreInProgress": "{{userName}} is restoring to version {{versionName}}...",
   "versionHistory.action.restoreSuccess": "Obnovljena različica",
   "versionHistory.action.updateFailure": "Posodobitev različice ni uspela",
   "versionHistory.action.updateSuccess": "Različica posodobljena",

@@ -1050,6 +1050,7 @@
   "versionHistory.action.deleteFailure": "Ștergerea versiunii a eșuat",
   "versionHistory.action.deleteSuccess": "Versiune ștearsă",
   "versionHistory.action.restoreFailure": "Restaurarea versiunii a eșuat",
+  "versionHistory.action.restoreInProgress": "{{userName}} is restoring to version {{versionName}}...",
   "versionHistory.action.restoreSuccess": "Versiune restaurată",
   "versionHistory.action.updateFailure": "Actualizarea versiunii a eșuat",
   "versionHistory.action.updateSuccess": "Versiune actualizată",

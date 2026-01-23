@@ -71,10 +71,12 @@ vi.mock('@/service/use-workflow', () => ({
 
 vi.mock('../../hooks', () => ({
   useDSL: () => ({ handleExportDSL: vi.fn() }),
-  useNodesSyncDraft: () => ({ handleSyncWorkflowDraft: vi.fn() }),
   useWorkflowRun: () => ({
     handleRestoreFromPublishedWorkflow: mockHandleRestoreFromPublishedWorkflow,
     handleLoadBackupDraft: mockHandleLoadBackupDraft,
+  }),
+  useLeaderRestore: () => ({
+    requestRestore: vi.fn(),
   }),
 }))
 

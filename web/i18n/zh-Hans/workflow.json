@@ -1050,6 +1050,7 @@
   "versionHistory.action.deleteFailure": "删除失败",
   "versionHistory.action.deleteSuccess": "版本已删除",
   "versionHistory.action.restoreFailure": "回滚失败",
+  "versionHistory.action.restoreInProgress": "{{userName}} 正在回滚到版本 {{versionName}}...",
   "versionHistory.action.restoreSuccess": "回滚成功",
   "versionHistory.action.updateFailure": "更新失败",
   "versionHistory.action.updateSuccess": "版本信息已更新",

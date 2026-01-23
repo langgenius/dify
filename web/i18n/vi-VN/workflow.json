@@ -1050,6 +1050,7 @@
   "versionHistory.action.deleteFailure": "Xóa phiên bản thất bại",
   "versionHistory.action.deleteSuccess": "Phiên bản đã bị xóa",
   "versionHistory.action.restoreFailure": "Không thể khôi phục phiên bản",
+  "versionHistory.action.restoreInProgress": "{{userName}} is restoring to version {{versionName}}...",
   "versionHistory.action.restoreSuccess": "Phiên bản đã được khôi phục",
   "versionHistory.action.updateFailure": "Cập nhật phiên bản không thành công",
   "versionHistory.action.updateSuccess": "Phiên bản đã được cập nhật",

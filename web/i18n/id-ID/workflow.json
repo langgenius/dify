@@ -1050,6 +1050,7 @@
   "versionHistory.action.deleteFailure": "Gagal menghapus versi",
   "versionHistory.action.deleteSuccess": "Versi dihapus",
   "versionHistory.action.restoreFailure": "Gagal memulihkan versi",
+  "versionHistory.action.restoreInProgress": "{{userName}} is restoring to version {{versionName}}...",
   "versionHistory.action.restoreSuccess": "Versi dipulihkan",
   "versionHistory.action.updateFailure": "Gagal memperbarui versi",
   "versionHistory.action.updateSuccess": "Versi diperbarui",

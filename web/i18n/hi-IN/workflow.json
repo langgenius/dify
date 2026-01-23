@@ -1050,6 +1050,7 @@
   "versionHistory.action.deleteFailure": "संस्करण को हटाने में विफल",
   "versionHistory.action.deleteSuccess": "संस्करण हटाया गया",
   "versionHistory.action.restoreFailure": "संस्करण को पुनर्स्थापित करने में विफल",
+  "versionHistory.action.restoreInProgress": "{{userName}} is restoring to version {{versionName}}...",
   "versionHistory.action.restoreSuccess": "संस्करण पुनर्स्थापित किया गया",
   "versionHistory.action.updateFailure": "संस्करण अपडेट करने में विफल",
   "versionHistory.action.updateSuccess": "संस्करण अपडेट किया गया",

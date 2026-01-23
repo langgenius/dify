@@ -12,6 +12,9 @@ import type {
   NodePanelPresenceMap,
   NodePanelPresenceUser,
   OnlineUser,
+  RestoreCompleteData,
+  RestoreIntentData,
+  RestoreRequestData,
 } from '../types/collaboration'
 import { cloneDeep } from 'es-toolkit/object'
 import { isEqual } from 'es-toolkit/predicate'
@@ -658,6 +661,51 @@ export class CollaborationManager {
     return this.eventEmitter.on('undoRedoStateChange', callback)
   }
 
+  emitRestoreRequest(data: RestoreRequestData): void {
+    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId))
+      return
+
+    this.sendCollaborationEvent({
+      type: 'workflow_restore_request',
+      data: data as unknown as Record<string, unknown>,
+      timestamp: Date.now(),
+    })
+  }
+
+  emitRestoreIntent(data: RestoreIntentData): void {
+    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId))
+      return
+
+    this.sendCollaborationEvent({
+      type: 'workflow_restore_intent',
+      data: data as unknown as Record<string, unknown>,
+      timestamp: Date.now(),
+    })
+  }
+
+  emitRestoreComplete(data: RestoreCompleteData): void {
+    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId))
+      return
+
+    this.sendCollaborationEvent({
+      type: 'workflow_restore_complete',
+      data: data as unknown as Record<string, unknown>,
+      timestamp: Date.now(),
+    })
+  }
+
+  onRestoreRequest(callback: (data: RestoreRequestData) => void): () => void {
+    return this.eventEmitter.on('restoreRequest', callback)
+  }
+
+  onRestoreIntent(callback: (data: RestoreIntentData) => void): () => void {
+    return this.eventEmitter.on('restoreIntent', callback)
+  }
+
+  onRestoreComplete(callback: (data: RestoreCompleteData) => void): () => void {
+    return this.eventEmitter.on('restoreComplete', callback)
+  }
+
   getLeaderId(): string | null {
     return this.leaderId
   }
@@ -898,6 +946,14 @@ export class CollaborationManager {
     })
   }
 
+  refreshGraphSynchronously(): void {
+    const mergedNodes = this.mergeLocalNodeState(this.getNodes())
+    this.eventEmitter.emit('graphImport', {
+      nodes: mergedNodes,
+      edges: this.getEdges(),
+    })
+  }
+
   private mergeLocalNodeState(nodes: Node[]): Node[] {
     const reactFlowStore = this.reactFlowStore
     const state = reactFlowStore?.getState()
@@ -978,6 +1034,16 @@ export class CollaborationManager {
       else if (update.type === 'graph_resync_request') {
         if (this.isLeader)
           this.broadcastCurrentGraph()
+      }
+      else if (update.type === 'workflow_restore_request') {
+        if (this.isLeader)
+          this.eventEmitter.emit('restoreRequest', update.data as RestoreRequestData)
+      }
+      else if (update.type === 'workflow_restore_intent') {
+        this.eventEmitter.emit('restoreIntent', update.data as RestoreIntentData)
+      }
+      else if (update.type === 'workflow_restore_complete') {
+        this.eventEmitter.emit('restoreComplete', update.data as RestoreCompleteData)
       }
     })
 

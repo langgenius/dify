@@ -1050,6 +1050,7 @@
   "versionHistory.action.deleteFailure": "Impossibile eliminare la versione",
   "versionHistory.action.deleteSuccess": "Versione eliminata",
   "versionHistory.action.restoreFailure": "Impossibile ripristinare la versione",
+  "versionHistory.action.restoreInProgress": "{{userName}} is restoring to version {{versionName}}...",
   "versionHistory.action.restoreSuccess": "Versione ripristinata",
   "versionHistory.action.updateFailure": "Impossibile aggiornare la versione",
   "versionHistory.action.updateSuccess": "Versione aggiornata",

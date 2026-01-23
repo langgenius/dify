@@ -68,6 +68,7 @@ import DatasetsDetailProvider from './datasets-detail-store/provider'
 import HelpLine from './help-line'
 import {
   useEdgesInteractions,
+  useLeaderRestoreListener,
   useNodesInteractions,
   useNodesReadOnly,
   useNodesSyncDraft,
@@ -333,7 +334,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
 
     else if (document.visibilityState === 'visible')
       setTimeout(() => handleRefreshWorkflowDraft(), 500)
-  }, [syncWorkflowDraftWhenPageClose, handleRefreshWorkflowDraft, workflowStore])
+  }, [syncWorkflowDraftWhenPageClose, handleRefreshWorkflowDraft])
 
   // Also add beforeunload handler as additional safety net for tab close
   const handleBeforeUnload = useCallback(() => {
@@ -477,6 +478,8 @@ export const Workflow: FC<WorkflowProps> = memo(({
   useShortcuts()
   // Initialize workflow node search functionality
   useWorkflowSearch()
+
+  useLeaderRestoreListener()
 
   // Set up scroll to node event listener using the utility function
   useEffect(() => {

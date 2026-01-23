@@ -1050,6 +1050,7 @@
   "versionHistory.action.deleteFailure": "Versiyonu silme işlemi başarısız oldu",
   "versionHistory.action.deleteSuccess": "Sürüm silindi",
   "versionHistory.action.restoreFailure": "Sürümü geri yüklemekte başarısız olundu",
+  "versionHistory.action.restoreInProgress": "{{userName}} is restoring to version {{versionName}}...",
   "versionHistory.action.restoreSuccess": "Sürüm geri yüklendi",
   "versionHistory.action.updateFailure": "Sürüm güncellenemedi",
   "versionHistory.action.updateSuccess": "Sürüm güncellendi",
