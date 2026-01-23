@@ -31,7 +31,7 @@ import { Markdown } from '@/app/components/base/markdown'
 import NewAudioButton from '@/app/components/base/new-audio-button'
 import Toast from '@/app/components/base/toast'
 import { fetchTextGenerationMessage } from '@/service/debug'
-import { fetchMoreLikeThis, submitHumanInputForm, updateFeedback } from '@/service/share'
+import { AppSourceType, fetchMoreLikeThis, submitHumanInputForm, updateFeedback } from '@/service/share'
 import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
 import { cn } from '@/utils/classnames'
 import ResultTab from './result-tab'
@@ -56,7 +56,7 @@ export type IGenerationItemProps = {
   onFeedback?: (feedback: FeedbackType) => void
   onSave?: (messageId: string) => void
   isMobile?: boolean
-  isInstalledApp: boolean
+  appSourceType: AppSourceType
   installedAppId?: string
   taskId?: string
   controlClearMoreLikeThis?: number
@@ -90,7 +90,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   onSave,
   depth = 1,
   isMobile,
-  isInstalledApp,
+  appSourceType,
   installedAppId,
   taskId,
   controlClearMoreLikeThis,
@@ -103,6 +103,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   const { t } = useTranslation()
   const params = useParams()
   const isTop = depth === 1
+  const isTryApp = appSourceType === AppSourceType.tryApp
   const [completionRes, setCompletionRes] = useState('')
   const [childMessageId, setChildMessageId] = useState<string | null>(null)
   const [childFeedback, setChildFeedback] = useState<FeedbackType>({
@@ -116,7 +117,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   const setShowPromptLogModal = useAppStore(s => s.setShowPromptLogModal)
 
   const handleFeedback = async (childFeedback: FeedbackType) => {
-    await updateFeedback({ url: `/messages/${childMessageId}/feedbacks`, body: { rating: childFeedback.rating } }, isInstalledApp, installedAppId)
+    await updateFeedback({ url: `/messages/${childMessageId}/feedbacks`, body: { rating: childFeedback.rating } }, appSourceType, installedAppId)
     setChildFeedback(childFeedback)
   }
 
@@ -134,7 +135,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     onSave,
     isShowTextToSpeech,
     isMobile,
-    isInstalledApp,
+    appSourceType,
     installedAppId,
     controlClearMoreLikeThis,
     isWorkflow,
@@ -148,7 +149,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
       return
     }
     startQuerying()
-    const res: any = await fetchMoreLikeThis(messageId as string, isInstalledApp, installedAppId)
+    const res: any = await fetchMoreLikeThis(messageId as string, appSourceType, installedAppId)
     setCompletionRes(res.answer)
     setChildFeedback({
       rating: null,
@@ -336,7 +337,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
               )}
               {/* action buttons */}
               <div className="absolute bottom-1 right-2 flex items-center">
-                {!isInWebApp && !isInstalledApp && !isResponding && (
+                {!isInWebApp && (appSourceType !== AppSourceType.installedApp) && !isResponding && (
                   <div className="ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm">
                     <ActionButton disabled={isError || !messageId} onClick={handleOpenLogModal}>
                       <RiFileList3Line className="h-4 w-4" />
@@ -345,12 +346,12 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                   </div>
                 )}
                 <div className="ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm">
-                  {moreLikeThis && (
+                  {moreLikeThis && !isTryApp && (
                     <ActionButton state={depth === MAX_DEPTH ? ActionButtonState.Disabled : ActionButtonState.Default} disabled={depth === MAX_DEPTH} onClick={handleMoreLikeThis}>
                       <RiSparklingLine className="h-4 w-4" />
                     </ActionButton>
                   )}
-                  {isShowTextToSpeech && (
+                  {isShowTextToSpeech && !isTryApp && (
                     <NewAudioButton
                       id={messageId!}
                       voice={config?.text_to_speech?.voice}
@@ -376,13 +377,13 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                       <RiResetLeftLine className="h-4 w-4" />
                     </ActionButton>
                   )}
-                  {isInWebApp && !isWorkflow && (
+                  {isInWebApp && !isWorkflow && !isTryApp && (
                     <ActionButton disabled={isError || !messageId} onClick={() => { onSave?.(messageId as string) }}>
                       <RiBookmark3Line className="h-4 w-4" />
                     </ActionButton>
                   )}
                 </div>
-                {(supportFeedback || isInWebApp) && !isWorkflow && !isError && messageId && (
+                {(supportFeedback || isInWebApp) && !isWorkflow && !isTryApp && !isError && messageId && (
                   <div className="ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm">
                     {!feedback?.rating && (
                       <>

@@ -81,12 +81,25 @@ def mock_documents(document_ids, dataset_id):
 
 @pytest.fixture
 def mock_db_session():
-    """Mock database session."""
-    with patch("tasks.document_indexing_task.db.session") as mock_session:
-        mock_query = MagicMock()
-        mock_session.query.return_value = mock_query
-        mock_query.where.return_value = mock_query
-        yield mock_session
+    """Mock database session via session_factory.create_session()."""
+    with patch("tasks.document_indexing_task.session_factory") as mock_sf:
+        session = MagicMock()
+        # Ensure tests that expect session.close() to be called can observe it via the context manager
+        session.close = MagicMock()
+        cm = MagicMock()
+        cm.__enter__.return_value = session
+        # Link __exit__ to session.close so "close" expectations reflect context manager teardown
+
+        def _exit_side_effect(*args, **kwargs):
+            session.close()
+
+        cm.__exit__.side_effect = _exit_side_effect
+        mock_sf.create_session.return_value = cm
+
+        query = MagicMock()
+        session.query.return_value = query
+        query.where.return_value = query
+        yield session
 
 
 @pytest.fixture
