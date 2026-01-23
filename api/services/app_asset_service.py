@@ -1,4 +1,5 @@
 import logging
+import threading
 from uuid import uuid4
 
 from sqlalchemy.orm import Session
@@ -288,17 +289,22 @@ class AppAssetService:
                     removed_ids = tree.remove(node_id)
                 except TreeNodeNotFoundError as e:
                     raise AppAssetNodeNotFoundError(str(e)) from e
-
-                for nid in removed_ids:
-                    storage_key = AssetPaths.draft_file(app_model.tenant_id, app_model.id, nid)
-                    try:
-                        AppAssetService.assets_storage().delete(storage_key)
-                    except Exception:
-                        logger.warning("Failed to delete storage file %s", storage_key, exc_info=True)
-
                 assets.asset_tree = tree
                 assets.updated_by = account_id
                 session.commit()
+
+        # FIXME(Mairuis): sync deletion queue
+        def _delete_file_from_storage(tenant_id: str, app_id: str, node_ids: list[str]) -> None:
+            for nid in removed_ids:
+                storage_key = AssetPaths.draft_file(app_model.tenant_id, app_model.id, nid)
+                try:
+                    AppAssetService.assets_storage().delete(storage_key)
+                except Exception:
+                    logger.warning("Failed to delete storage file %s", storage_key, exc_info=True)
+
+        threading.Thread(
+            target=lambda: _delete_file_from_storage(app_model.tenant_id, app_model.id, removed_ids)
+        ).start()
 
     @staticmethod
     def publish(session: Session, app_model: App, account_id: str, workflow_id: str) -> AppAssets:
