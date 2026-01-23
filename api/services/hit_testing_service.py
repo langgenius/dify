@@ -32,7 +32,7 @@ class HitTestingService:
         dataset: Dataset,
         query: str,
         account: Account,
-        retrieval_model: dict[str, Any] | None,
+        retrieval_model: dict[str, Any] | None,  # Can be None if no retrieval model is provided
         external_retrieval_model: dict,
         attachment_ids: list | None = None,
         limit: int = 10,
