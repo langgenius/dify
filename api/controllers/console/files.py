@@ -107,10 +107,9 @@ def upload_file() -> FileResponse:
 @setup_required
 @login_required
 @account_initialization_required
-def get_file_preview(file_id: str) -> dict[str, str]:
-    file_id = str(file_id)
-    text = FileService(db.engine).get_file_preview(file_id)
-    return {"content": str(text)}
+def get_file_preview(file_id: 'UUID') -> dict[str, str]:
+    text = FileService(db.engine).get_file_preview(str(file_id))
+    return {"content": text}
 
 
 @console_router.get(
