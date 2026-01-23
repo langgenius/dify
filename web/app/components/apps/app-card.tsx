@@ -157,6 +157,14 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
 
   const onExport = async (include = false) => {
     try {
+      const isDownLoadBundle = app.runtime_type === 'sandboxed'
+      if (isDownLoadBundle) {
+        await exportAppBundle({
+          appID: app.id,
+          include,
+        })
+        return
+      }
       const { data } = await exportAppConfig({
         appID: app.id,
         include,
@@ -165,12 +173,15 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       const file = new Blob([data], { type: 'application/yaml' })
       const url = URL.createObjectURL(file)
       a.href = url
-      a.download = `${app.name}.yml`
+      a.download = `${app.name}.${isDownLoadBundle ? 'zip' : 'yaml'}`
       a.click()
       URL.revokeObjectURL(url)
     }
     catch {
-      notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
+      notify({
+        type: 'error',
+        message: t('exportFailed', { ns: 'app' }),
+      })
     }
   }
 
@@ -189,40 +200,10 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       setSecretEnvList(list)
     }
     catch {
-      notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
-    }
-  }
-
-  const onExportBundle = async (include = false) => {
-    try {
-      await exportAppBundle({
-        appID: app.id,
-        include,
+      notify({
+        type: 'error',
+        message: t('exportFailed', { ns: 'app' }),
       })
-    }
-    catch {
-      notify({ type: 'error', message: t('exportBundleFailed', { ns: 'app' }) })
-    }
-  }
-
-  const [secretEnvListForBundle, setSecretEnvListForBundle] = useState<EnvironmentVariable[]>([])
-
-  const exportBundleCheck = async () => {
-    if (app.mode !== AppModeEnum.WORKFLOW && app.mode !== AppModeEnum.ADVANCED_CHAT) {
-      onExportBundle()
-      return
-    }
-    try {
-      const workflowDraft = await fetchWorkflowDraft(`/apps/${app.id}/workflows/draft`)
-      const list = (workflowDraft.environment_variables || []).filter(env => env.value_type === 'secret')
-      if (list.length === 0) {
-        onExportBundle()
-        return
-      }
-      setSecretEnvListForBundle(list)
-    }
-    catch {
-      notify({ type: 'error', message: t('exportBundleFailed', { ns: 'app' }) })
     }
   }
 
@@ -260,12 +241,6 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       props.onClick?.()
       e.preventDefault()
       exportCheck()
-    }
-    const onClickExportBundle = async (e: React.MouseEvent<HTMLButtonElement>) => {
-      e.stopPropagation()
-      props.onClick?.()
-      e.preventDefault()
-      exportBundleCheck()
     }
     const onClickSwitch = async (e: React.MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation()
@@ -316,9 +291,6 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
         </button>
         <button type="button" className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover" onClick={onClickExport}>
           <span className="system-sm-regular text-text-secondary">{t('export', { ns: 'app' })}</span>
-        </button>
-        <button type="button" className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover" onClick={onClickExportBundle}>
-          <span className="system-sm-regular text-text-secondary">{t('exportBundle', { ns: 'app' })}</span>
         </button>
         {(app.mode === AppModeEnum.COMPLETION || app.mode === AppModeEnum.CHAT) && (
           <>
@@ -554,13 +526,6 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           envList={secretEnvList}
           onConfirm={onExport}
           onClose={() => setSecretEnvList([])}
-        />
-      )}
-      {secretEnvListForBundle.length > 0 && (
-        <DSLExportConfirmModal
-          envList={secretEnvListForBundle}
-          onConfirm={onExportBundle}
-          onClose={() => setSecretEnvListForBundle([])}
         />
       )}
       {showAccessControl && (

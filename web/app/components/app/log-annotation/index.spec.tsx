@@ -42,6 +42,7 @@ const createMockApp = (overrides: Partial<App> = {}): App => ({
   icon_url: null,
   use_icon_as_answer_icon: false,
   mode: AppModeEnum.CHAT,
+  runtime_type: 'classic' as const,
   enable_site: true,
   enable_api: true,
   api_rpm: 60,

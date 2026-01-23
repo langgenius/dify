@@ -1,8 +1,9 @@
 'use client'
 
 import type { AppIconSelection } from '../../base/app-icon-picker'
-import { RiArrowRightLine, RiArrowRightSLine, RiCheckLine, RiCommandLine, RiCornerDownLeftLine, RiExchange2Fill } from '@remixicon/react'
+import type { RuntimeMode } from '@/types/app'
 
+import { RiArrowRightLine, RiArrowRightSLine, RiCheckLine, RiCommandLine, RiCornerDownLeftLine, RiExchange2Fill } from '@remixicon/react'
 import { useDebounceFn, useKeyPress } from 'ahooks'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -38,8 +39,6 @@ type CreateAppProps = {
   onCreateFromTemplate?: () => void
   defaultAppMode?: AppModeEnum
 }
-
-type RuntimeMode = 'sandboxed' | 'classic'
 
 type RuntimeOption = {
   label: string

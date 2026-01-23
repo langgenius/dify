@@ -317,6 +317,7 @@ export type SiteConfig = {
 }
 
 export type AppIconType = 'image' | 'emoji' | 'link'
+export type RuntimeMode = 'sandboxed' | 'classic'
 
 /**
  * App
@@ -347,6 +348,7 @@ export type App = {
 
   /** Mode */
   mode: AppModeEnum
+  runtime_type: RuntimeMode
   /** Enable web app */
   enable_site: boolean
   /** Enable web API */
