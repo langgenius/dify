@@ -32,7 +32,7 @@ class HitTestingService:
         dataset: Dataset,
         query: str,
         account: Account,
-        retrieval_model: Any,  # FIXME drop this any
+        retrieval_model: dict[str, Any] | None,
         external_retrieval_model: dict,
         attachment_ids: list | None = None,
         limit: int = 10,
