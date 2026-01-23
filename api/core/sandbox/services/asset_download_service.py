@@ -7,14 +7,14 @@ from dataclasses import dataclass
 
 def _render_download_script(root_path: str, download_commands: str) -> str:
     python_download_cmd = (
-        "python3 - \"${url}\" \"${dest}\" <<\"PY\"\n"
+        'python3 - "${url}" "${dest}" <<"PY"\n'
         "import sys\n"
         "import urllib.request\n"
         "url = sys.argv[1]\n"
         "dest = sys.argv[2]\n"
         "with urllib.request.urlopen(url) as resp:\n"
         "    data = resp.read()\n"
-        "with open(dest, \"wb\") as f:\n"
+        'with open(dest, "wb") as f:\n'
         "    f.write(data)\n"
         "PY"
     )

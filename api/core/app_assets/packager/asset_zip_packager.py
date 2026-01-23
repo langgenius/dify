@@ -4,12 +4,9 @@ import io
 import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from threading import Lock
-from typing import TYPE_CHECKING
 
 from core.app_assets.entities import AssetItem
-
-if TYPE_CHECKING:
-    from extensions.ext_storage import Storage
+from extensions.storage.base_storage import BaseStorage
 
 
 class AssetZipPackager:
@@ -18,7 +15,7 @@ class AssetZipPackager:
     Automatically creates directory entries from asset paths.
     """
 
-    def __init__(self, storage: Storage, *, max_workers: int = 8) -> None:
+    def __init__(self, storage: BaseStorage, *, max_workers: int = 8) -> None:
         self._storage = storage
         self._max_workers = max_workers
 

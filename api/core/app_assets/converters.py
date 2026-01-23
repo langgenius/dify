@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from core.app.entities.app_asset_entities import AppAssetFileTree, AssetNodeType
 from core.app_assets.entities import FileAsset
+from core.app_assets.entities.assets import AssetItem
 from core.app_assets.paths import AssetPaths
 
 
@@ -9,7 +10,7 @@ def tree_to_asset_items(
     tree: AppAssetFileTree,
     tenant_id: str,
     app_id: str,
-) -> list[FileAsset]:
+) -> list[AssetItem]:
     """
     Convert AppAssetFileTree to list of FileAsset for packaging.
 
@@ -21,7 +22,7 @@ def tree_to_asset_items(
     Returns:
         List of FileAsset items ready for packaging
     """
-    items: list[FileAsset] = []
+    items: list[AssetItem] = []
     for node in tree.nodes:
         if node.node_type == AssetNodeType.FILE:
             path = tree.get_path(node.id)

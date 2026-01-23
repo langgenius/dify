@@ -7,7 +7,6 @@ from typing import Final
 from core.sandbox.builder import SandboxBuilder
 from core.sandbox.entities import AppAssets, SandboxType
 from core.sandbox.entities.providers import SandboxProviderEntity
-from core.sandbox.initializer.app_assets_attrs_loader import AppAssetsAttrsInitializer
 from core.sandbox.initializer.app_assets_initializer import AppAssetsInitializer
 from core.sandbox.initializer.dify_cli_initializer import DifyCliInitializer
 from core.sandbox.initializer.draft_app_assets_initializer import DraftAppAssetsInitializer
@@ -124,7 +123,6 @@ class SandboxManager:
             .options(sandbox_provider.config)
             .user(user_id)
             .app(app_id)
-            .initializer(AppAssetsAttrsInitializer(tenant_id, app_id, assets.id))
             .initializer(AppAssetsInitializer(tenant_id, app_id, assets.id))
             .initializer(DifyCliInitializer(tenant_id, user_id, app_id, assets.id))
             .initializer(SkillInitializer(tenant_id, user_id, app_id, assets.id))
@@ -161,7 +159,6 @@ class SandboxManager:
             .options(sandbox_provider.config)
             .user(user_id)
             .app(app_id)
-            .initializer(AppAssetsAttrsInitializer(tenant_id, app_id, assets.id))
             .initializer(DraftAppAssetsInitializer(tenant_id, app_id, assets.id))
             .initializer(DifyCliInitializer(tenant_id, user_id, app_id, assets.id))
             .initializer(SkillInitializer(tenant_id, user_id, app_id, assets.id))
@@ -193,7 +190,6 @@ class SandboxManager:
             .options(sandbox_provider.config)
             .user(user_id)
             .app(app_id)
-            .initializer(AppAssetsAttrsInitializer(tenant_id, app_id, assets.id))
             .initializer(AppAssetsInitializer(tenant_id, app_id, assets.id))
             .initializer(DifyCliInitializer(tenant_id, user_id, app_id, assets.id))
             .initializer(SkillInitializer(tenant_id, user_id, app_id, assets.id))

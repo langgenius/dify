@@ -8,7 +8,7 @@ from core.app_assets.paths import AssetPaths
 from core.skill.entities.skill_document import SkillDocument
 from core.skill.skill_compiler import SkillCompiler
 from core.skill.skill_manager import SkillManager
-from extensions.ext_storage import storage
+from extensions.storage.base_storage import BaseStorage
 
 from .base import BuildContext
 
@@ -32,10 +32,12 @@ class _CompiledSkill:
 class SkillBuilder:
     _nodes: list[tuple[AppAssetNode, str]]
     _max_workers: int
+    _storage: BaseStorage
 
-    def __init__(self, max_workers: int = 8) -> None:
+    def __init__(self, storage: BaseStorage, max_workers: int = 8) -> None:
         self._nodes = []
         self._max_workers = max_workers
+        self._storage = storage
 
     def accept(self, node: AppAssetNode) -> bool:
         return node.extension == "md"
@@ -91,7 +93,7 @@ class SkillBuilder:
         def load_one(node: AppAssetNode, path: str) -> _LoadedSkill:
             draft_key = AssetPaths.draft_file(ctx.tenant_id, ctx.app_id, node.id)
             try:
-                data = json.loads(storage.load_once(draft_key))
+                data = json.loads(self._storage.load_once(draft_key))
                 content = data.get("content", "") if isinstance(data, dict) else ""
                 metadata = data.get("metadata", {}) if isinstance(data, dict) else {}
             except Exception:
@@ -105,7 +107,7 @@ class SkillBuilder:
 
     def _upload_all(self, skills: list[_CompiledSkill]) -> None:
         def upload_one(skill: _CompiledSkill) -> None:
-            storage.save(skill.resolved_key, skill.content_bytes)
+            self._storage.save(skill.resolved_key, skill.content_bytes)
 
         with ThreadPoolExecutor(max_workers=self._max_workers) as executor:
             futures = [executor.submit(upload_one, skill) for skill in skills]

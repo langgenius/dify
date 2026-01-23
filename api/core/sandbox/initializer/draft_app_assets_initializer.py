@@ -1,5 +1,7 @@
 import logging
 
+from core.app_assets.constants import AppAssetsAttrs
+from core.app_assets.paths import AssetPaths
 from core.sandbox.entities import AppAssets
 from core.sandbox.sandbox import Sandbox
 from core.sandbox.services import AssetDownloadService
@@ -12,6 +14,7 @@ from .base import AsyncSandboxInitializer
 logger = logging.getLogger(__name__)
 
 DRAFT_ASSETS_DOWNLOAD_TIMEOUT = 60 * 10
+DRAFT_ASSETS_EXPIRES_IN = 60 * 10
 
 
 class DraftAppAssetsInitializer(AsyncSandboxInitializer):
@@ -21,15 +24,27 @@ class DraftAppAssetsInitializer(AsyncSandboxInitializer):
         self._assets_id = assets_id
 
     def initialize(self, sandbox: Sandbox) -> None:
-        vm = sandbox.vm
-        # Draft assets download via presigned URLs to avoid zip build overhead.
-        # FIXME(Yeuoly): merge 2 IO operations in DraftAppAssetsInitializer and AppAssetsAttrsInitializer
+        # Load published app assets and unzip the artifact bundle.
         app_assets = AppAssetService.get_tenant_app_assets(self._tenant_id, self._assets_id)
+        sandbox.attrs.set(AppAssetsAttrs.FILE_TREE, app_assets.asset_tree)
+        sandbox.attrs.set(AppAssetsAttrs.APP_ASSETS_ID, self._assets_id)
 
-        items = [
-            AssetDownloadItem(path=path, url=url)
-            for path, url in AppAssetService.get_cached_draft_download_urls(app_assets)
+        vm = sandbox.vm
+        build_id = self._assets_id
+        tree = app_assets.asset_tree
+        storage = AppAssetService.assets_storage()
+        nodes = list(tree.walk_files())
+        if not nodes:
+            return
+        # FIXME(Mairuis): should be more graceful
+        storage_keys = [
+            AssetPaths.build_resolved_file(self._tenant_id, self._app_id, build_id, node.id)
+            if node.extension == "md"
+            else AssetPaths.draft_file(self._tenant_id, self._app_id, node.id)
+            for node in nodes
         ]
+        urls = storage.get_download_urls(storage_keys, DRAFT_ASSETS_EXPIRES_IN)
+        items = [AssetDownloadItem(path=tree.get_path(node.id).lstrip("/"), url=url) for node, url in zip(nodes, urls)]
         script = AssetDownloadService.build_download_script(items, AppAssets.PATH)
         pipeline(vm).add(
             ["sh", "-lc", script],
