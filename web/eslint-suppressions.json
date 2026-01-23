@@ -2898,7 +2898,7 @@
   },
   "app/components/workflow/hooks-store/store.ts": {
     "ts/no-explicit-any": {
-      "count": 6
+      "count": 5
     }
   },
   "app/components/workflow/hooks/use-checklist.ts": {
@@ -3981,7 +3981,7 @@
   },
   "app/components/workflow/types.ts": {
     "ts/no-empty-object-type": {
-      "count": 3
+      "count": 2
     }
   },
   "app/components/workflow/update-dsl-modal.tsx": {
