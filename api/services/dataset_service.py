@@ -3257,14 +3257,10 @@ class SegmentService:
                         VectorService.update_segment_vector(args.keywords, segment, dataset)
                 # update summary index if summary is provided and has changed
                 if args.summary is not None:
-                    # Check if summary index is enabled
-                    has_summary_index = (
-                        dataset.indexing_technique == "high_quality"
-                        and dataset.summary_index_setting
-                        and dataset.summary_index_setting.get("enable") is True
-                    )
-
-                    if has_summary_index:
+                    # When user manually provides summary, allow saving even if summary_index_setting doesn't exist
+                    # summary_index_setting is only needed for LLM generation, not for manual summary vectorization
+                    # Vectorization uses dataset.embedding_model, which doesn't require summary_index_setting
+                    if dataset.indexing_technique == "high_quality":
                         # Query existing summary from database
                         from models.dataset import DocumentSegmentSummary
 
@@ -3363,12 +3359,7 @@ class SegmentService:
                     # update segment vector index
                     VectorService.update_segment_vector(args.keywords, segment, dataset)
                 # Handle summary index when content changed
-                has_summary_index = (
-                    dataset.indexing_technique == "high_quality"
-                    and dataset.summary_index_setting
-                    and dataset.summary_index_setting.get("enable") is True
-                )
-                if has_summary_index:
+                if dataset.indexing_technique == "high_quality":
                     from models.dataset import DocumentSegmentSummary
 
                     existing_summary = (
@@ -3382,7 +3373,12 @@ class SegmentService:
 
                     if args.summary is None:
                         # User didn't provide summary, auto-regenerate if segment previously had summary
-                        if existing_summary:
+                        # Auto-regeneration only happens if summary_index_setting exists and enable is True
+                        if (
+                            existing_summary
+                            and dataset.summary_index_setting
+                            and dataset.summary_index_setting.get("enable") is True
+                        ):
                             # Segment previously had summary, regenerate it with new content
                             from services.summary_index_service import SummaryIndexService
 
@@ -3398,6 +3394,7 @@ class SegmentService:
                                 # Don't fail the entire update if summary regeneration fails
                     else:
                         # User provided summary, check if it has changed
+                        # Manual summary updates are allowed even if summary_index_setting doesn't exist
                         existing_summary_content = existing_summary.summary_content if existing_summary else None
                         if existing_summary_content != args.summary:
                             # Summary has changed, use user-provided summary
@@ -3413,7 +3410,12 @@ class SegmentService:
                                 # Don't fail the entire update if summary update fails
                         else:
                             # Summary hasn't changed, regenerate based on new content
-                            if existing_summary:
+                            # Auto-regeneration only happens if summary_index_setting exists and enable is True
+                            if (
+                                existing_summary
+                                and dataset.summary_index_setting
+                                and dataset.summary_index_setting.get("enable") is True
+                            ):
                                 from services.summary_index_service import SummaryIndexService
 
                                 try:
