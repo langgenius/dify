@@ -56,12 +56,11 @@ def check_version_update(query: VersionQuery) -> VersionResponse:
             params={"current_version": query.current_version},
             timeout=httpx.Timeout(timeout=10.0, connect=3.0),
         )
+        content = response.json()
     except Exception as error:
         logger.warning("Check update version error: %s.", str(error))
         result.version = query.current_version
         return result
-
-    content = response.json()
     latest_version = content.get("version", result.version)
     if _has_new_version(latest_version=latest_version, current_version=f"{query.current_version}"):
         result.version = latest_version
