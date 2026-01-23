@@ -125,7 +125,7 @@ jobs:
       - name: Web type check
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
-        run: pnpm run type-check:tsgo
+        run: pnpm run type-check
 
       - name: Web dead code check
         if: steps.changed-files.outputs.any_changed == 'true'
