@@ -118,7 +118,6 @@ export const useNodesSyncDraft = () => {
       onError?: () => void
       onSettled?: () => void
     },
-    forceUpload?: boolean,
   ) => {
     if (getNodesReadOnly())
       return
@@ -126,8 +125,8 @@ export const useNodesSyncDraft = () => {
     // Check leader status at sync time
     const currentIsLeader = isCollaborationEnabled ? collaborationManager.getIsLeader() : true
 
-    // If not leader and not forcing upload, request the leader to sync
-    if (isCollaborationEnabled && !currentIsLeader && !forceUpload) {
+    // If not leader, request the leader to sync
+    if (isCollaborationEnabled && !currentIsLeader) {
       if (isCollaborationEnabled)
         collaborationManager.emitSyncRequest()
       callback?.onSettled?.()
@@ -141,16 +140,10 @@ export const useNodesSyncDraft = () => {
         setDraftUpdatedAt,
       } = workflowStore.getState()
 
-      // Add force_upload parameter if needed
-      const finalParams = {
-        ...postParams.params,
-        ...(forceUpload && { force_upload: true }),
-      }
-
       try {
         const res = await syncWorkflowDraft({
           url: postParams.url,
-          params: finalParams,
+          params: postParams.params,
         })
         setSyncWorkflowDraftHash(res.hash)
         setDraftUpdatedAt(res.updated_at)

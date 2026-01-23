@@ -331,7 +331,6 @@ class DraftWorkflowApi(Resource):
                 account=current_user,
                 environment_variables=environment_variables,
                 conversation_variables=conversation_variables,
-                force_upload=args.get("force_upload", False),
             )
         except WorkflowHashNotEqualError:
             raise DraftWorkflowNotSync()

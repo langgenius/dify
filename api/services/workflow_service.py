@@ -200,17 +200,15 @@ class WorkflowService:
         account: Account,
         environment_variables: Sequence[VariableBase],
         conversation_variables: Sequence[VariableBase],
-        force_upload: bool = False,
     ) -> Workflow:
         """
         Sync draft workflow
-        :param force_upload: Skip hash validation when True (for restore operations)
         :raises WorkflowHashNotEqualError
         """
         # fetch draft workflow by app_model
         workflow = self.get_draft_workflow(app_model=app_model)
 
-        if workflow and workflow.unique_hash != unique_hash and not force_upload:
+        if workflow and workflow.unique_hash != unique_hash:
             raise WorkflowHashNotEqualError()
 
         # validate features structure
