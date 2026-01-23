@@ -1432,7 +1432,7 @@ class DocumentGenerateSummaryApi(Resource):
                 continue
 
             # Dispatch async task
-            generate_summary_index_task(dataset_id, document.id)
+            generate_summary_index_task.delay(dataset_id, document.id)
             logger.info(
                 "Dispatched summary generation task for document %s in dataset %s",
                 document.id,

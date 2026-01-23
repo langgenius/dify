@@ -6,7 +6,7 @@ from collections import defaultdict
 
 import click
 from celery import shared_task
-from sqlalchemy import and_, or_, select
+from sqlalchemy import or_, select
 
 from extensions.ext_database import db
 from models.dataset import Dataset, DocumentSegment, DocumentSegmentSummary
