@@ -5,7 +5,6 @@ import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { PromptConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
-import type { AppSourceType } from '@/service/share'
 import type {
   IOtherOptions,
 } from '@/service/base'
@@ -31,7 +30,14 @@ import { TEXT_GENERATION_TIMEOUT_MS } from '@/config'
 import {
   sseGet,
 } from '@/service/base'
-import { sendCompletionMessage, sendWorkflowMessage, stopChatMessageResponding, stopWorkflowMessage, updateFeedback } from '@/service/share'
+import {
+  AppSourceType,
+  sendCompletionMessage,
+  sendWorkflowMessage,
+  stopChatMessageResponding,
+  stopWorkflowMessage,
+  updateFeedback,
+} from '@/service/share'
 import { TransferMethod } from '@/types/app'
 import { sleep } from '@/utils'
 import { formatBooleanInputs } from '@/utils/model-config'
@@ -163,7 +169,7 @@ const Result: FC<IResultProps> = ({
     finally {
       setIsStopping(false)
     }
-  }, [appId, currentTaskId, appSourceType, appId, isStopping, isWorkflow, notify])
+  }, [appId, currentTaskId, appSourceType, isStopping, isWorkflow, notify])
 
   useEffect(() => {
     if (!onRunControlChange)
@@ -288,7 +294,7 @@ const Result: FC<IResultProps> = ({
 
     if (isWorkflow) {
       const otherOptions: IOtherOptions = {
-        isPublicAPI: !isInstalledApp,
+        isPublicAPI: appSourceType === AppSourceType.webApp,
         onWorkflowStarted: ({ workflow_run_id, task_id }) => {
           const workflowProcessData = getWorkflowProcessData()
           if (workflowProcessData && workflowProcessData.tracing.length > 0) {
@@ -368,10 +374,15 @@ const Result: FC<IResultProps> = ({
           }))
         },
         onNodeStarted: ({ data }) => {
+          if (data.iteration_id)
+            return
+
+          if (data.loop_id)
+            return
           const workflowProcessData = getWorkflowProcessData()
-          if (workflowProcessData && workflowProcessData.tracing.length > 0) {
-            setWorkflowProcessData(produce(workflowProcessData, (draft) => {
-              const currentIndex = draft.tracing!.findIndex(item => item.node_id === data.node_id)
+          setWorkflowProcessData(produce(workflowProcessData!, (draft) => {
+            if (draft.tracing.length > 0) {
+              const currentIndex = draft.tracing.findIndex(item => item.node_id === data.node_id)
               if (currentIndex > -1) {
                 draft.expand = true
                 draft.tracing![currentIndex] = {
@@ -380,24 +391,24 @@ const Result: FC<IResultProps> = ({
                   expand: true,
                 }
               }
-            }))
-          }
-          else {
-            if (data.iteration_id)
-              return
-
-            if (data.loop_id)
-              return
-
-            setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+              else {
+                draft.expand = true
+                draft.tracing.push({
+                  ...data,
+                  status: NodeRunningStatus.Running,
+                  expand: true,
+                })
+              }
+            }
+            else {
               draft.expand = true
               draft.tracing!.push({
                 ...data,
                 status: NodeRunningStatus.Running,
                 expand: true,
               })
-            }))
-          }
+            }
+          }))
         },
         onNodeFinished: ({ data }) => {
           if (data.iteration_id)
@@ -496,18 +507,23 @@ const Result: FC<IResultProps> = ({
           }))
         },
         onHumanInputRequired: ({ data: humanInputRequiredData }) => {
-          setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+          const workflowProcessData = getWorkflowProcessData()
+          setWorkflowProcessData(produce(workflowProcessData!, (draft) => {
             if (!draft.humanInputFormDataList) {
               draft.humanInputFormDataList = [humanInputRequiredData]
             }
             else {
-              const currentFormIndex = draft.humanInputFormDataList.findIndex(item => item.node_id === data.node_id)
+              const currentFormIndex = draft.humanInputFormDataList.findIndex(item => item.node_id === humanInputRequiredData.node_id)
               if (currentFormIndex > -1) {
                 draft.humanInputFormDataList[currentFormIndex] = humanInputRequiredData
               }
               else {
                 draft.humanInputFormDataList.push(humanInputRequiredData)
               }
+            }
+            const currentIndex = draft.tracing!.findIndex(item => item.node_id === humanInputRequiredData.node_id)
+            if (currentIndex > -1) {
+              draft.tracing![currentIndex].status = NodeRunningStatus.Paused
             }
           }))
         },
