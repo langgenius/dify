@@ -11,6 +11,7 @@ from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.queue_entities import QueueMessageReplaceEvent
 from core.moderation.base import ModerationAction, ModerationOutputsResult
 from core.moderation.factory import ModerationFactory
+from core.moderation.moderation_coordinator import ModerationCoordinator
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +33,8 @@ class OutputModeration(BaseModel):
     buffer: str = ""
     is_final_chunk: bool = False
     final_output: str | None = None
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
+    coordinator: ModerationCoordinator | None = None
 
     def should_direct_output(self) -> bool:
         return self.final_output is not None
@@ -45,6 +47,14 @@ class OutputModeration(BaseModel):
 
         if not self.thread:
             self.thread = self.start_thread()
+
+    def flush_and_stop(self):
+        self.thread_running = False
+        if self.thread and self.thread.is_alive():
+            self.thread.join(timeout=2.0)
+        if not self.thread:
+            if self.coordinator:
+                self.coordinator.async_done.set()
 
     def moderation_completion(self, completion: str, public_event: bool = False) -> tuple[str, bool]:
         self.buffer = completion
@@ -87,45 +97,58 @@ class OutputModeration(BaseModel):
     def stop_thread(self):
         if self.thread and self.thread.is_alive():
             self.thread_running = False
+            self.thread.join(timeout=2.0)
+
+        # If no thread ever started, ensure async_done so the pipeline isn’t blocked
+        if self.coordinator and not self.thread:
+            if self.coordinator:
+                self.coordinator.async_done.set()
 
     def worker(self, flask_app: Flask, buffer_size: int):
-        with flask_app.app_context():
-            current_length = 0
-            while self.thread_running:
-                moderation_buffer = self.buffer
-                buffer_length = len(moderation_buffer)
-                if not self.is_final_chunk:
-                    chunk_length = buffer_length - current_length
-                    if 0 <= chunk_length < buffer_size:
-                        time.sleep(1)
-                        continue
+        try:
+            with flask_app.app_context():
+                current_length = 0
+                while self.thread_running:
+                    moderation_buffer = self.buffer
+                    buffer_length = len(moderation_buffer)
+                    if not self.is_final_chunk:
+                        chunk_length = buffer_length - current_length
+                        if 0 <= chunk_length < buffer_size:
+                            time.sleep(1)
+                            continue
 
-                current_length = buffer_length
+                    current_length = buffer_length
 
-                result = self.moderation(
-                    tenant_id=self.tenant_id, app_id=self.app_id, moderation_buffer=moderation_buffer
-                )
-
-                if not result or not result.flagged:
-                    continue
-
-                if result.action == ModerationAction.DIRECT_OUTPUT:
-                    final_output = result.preset_response
-                    self.final_output = final_output
-                else:
-                    final_output = result.text + self.buffer[len(moderation_buffer) :]
-
-                # trigger replace event
-                if self.thread_running:
-                    self.queue_manager.publish(
-                        QueueMessageReplaceEvent(
-                            text=final_output, reason=QueueMessageReplaceEvent.MessageReplaceReason.OUTPUT_MODERATION
-                        ),
-                        PublishFrom.TASK_PIPELINE,
+                    result = self.moderation(
+                        tenant_id=self.tenant_id, app_id=self.app_id, moderation_buffer=moderation_buffer
                     )
 
-                if result.action == ModerationAction.DIRECT_OUTPUT:
-                    break
+                    if not result or not result.flagged:
+                        continue
+
+                    if result.action == ModerationAction.DIRECT_OUTPUT:
+                        final_output = result.preset_response
+                        self.final_output = final_output
+                    else:
+                        final_output = result.text + self.buffer[len(moderation_buffer) :]
+
+                    # trigger replace event
+                    if self.thread_running:
+                        self.queue_manager.publish(
+                            QueueMessageReplaceEvent(
+                                text=final_output,
+                                reason=QueueMessageReplaceEvent.MessageReplaceReason.OUTPUT_MODERATION,
+                            ),
+                            PublishFrom.TASK_PIPELINE,
+                        )
+
+                    if result.action == ModerationAction.DIRECT_OUTPUT:
+                        break
+        except Exception:
+            logger.exception("Moderation Output error, app_id: %s", self.app_id, exc_info=True)
+        finally:
+            if self.coordinator:
+                self.coordinator.async_done.set()
 
     def moderation(self, tenant_id: str, app_id: str, moderation_buffer: str) -> ModerationOutputsResult | None:
         try:
