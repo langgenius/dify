@@ -5,6 +5,9 @@
 // Root folder identifier (convert to null for API calls via toApiParentId)
 export const ROOT_ID = 'root' as const
 
+// Start tab identifier - a special tab that is always present
+export const START_TAB_ID = '__start__' as const
+
 // Drag type identifier for internal tree node dragging
 export const INTERNAL_NODE_DRAG_TYPE = 'application/x-dify-tree-node'
 

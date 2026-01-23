@@ -1,5 +1,6 @@
 import type { StateCreator } from 'zustand'
 import type { OpenTabOptions, SkillEditorSliceShape, TabSliceShape } from './types'
+import { START_TAB_ID } from '@/app/components/workflow/skill/constants'
 
 export type { OpenTabOptions, TabSliceShape } from './types'
 
@@ -10,7 +11,7 @@ export const createTabSlice: StateCreator<
   TabSliceShape
 > = (set, get) => ({
   openTabIds: [],
-  activeTabId: null,
+  activeTabId: START_TAB_ID,
   previewTabId: null,
 
   openTab: (fileId: string, options?: OpenTabOptions) => {
@@ -54,7 +55,7 @@ export const createTabSlice: StateCreator<
       if (newOpenTabIds.length > 0)
         newActiveTabId = newOpenTabIds[Math.min(closedIndex, newOpenTabIds.length - 1)]
       else
-        newActiveTabId = null
+        newActiveTabId = START_TAB_ID
     }
 
     let newPreviewTabId: string | null = null
@@ -70,7 +71,7 @@ export const createTabSlice: StateCreator<
 
   activateTab: (fileId: string) => {
     const { openTabIds } = get()
-    if (openTabIds.includes(fileId))
+    if (fileId === START_TAB_ID || openTabIds.includes(fileId))
       set({ activeTabId: fileId })
   },
 

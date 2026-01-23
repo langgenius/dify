@@ -1,5 +1,6 @@
 import type { StateCreator } from 'zustand'
 import type { SkillEditorSliceShape } from './types'
+import { START_TAB_ID } from '@/app/components/workflow/skill/constants'
 import { createClipboardSlice } from './clipboard-slice'
 import { createDirtySlice } from './dirty-slice'
 import { createFileOperationsMenuSlice } from './file-operations-menu-slice'
@@ -27,7 +28,7 @@ export const createSkillEditorSlice: StateCreator<SkillEditorSliceShape> = (...a
     const [set] = args
     set({
       openTabIds: [],
-      activeTabId: null,
+      activeTabId: START_TAB_ID,
       previewTabId: null,
       expandedFolderIds: new Set<string>(),
       selectedTreeNodeId: null,

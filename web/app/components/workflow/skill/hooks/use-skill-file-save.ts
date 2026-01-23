@@ -9,8 +9,8 @@ type UseSkillFileSaveParams = {
   appId: string
   activeTabId: string | null
   isEditable: boolean
-  dirtyContents: Map<string, string>
-  dirtyMetadataIds: Set<string>
+  draftContent: string | undefined
+  isMetadataDirty: boolean
   originalContent: string
   currentMetadata: Record<string, unknown> | undefined
   storeApi: StoreApi<Shape>
@@ -25,8 +25,8 @@ export function useSkillFileSave({
   appId,
   activeTabId,
   isEditable,
-  dirtyContents,
-  dirtyMetadataIds,
+  draftContent,
+  isMetadataDirty,
   originalContent,
   currentMetadata,
   storeApi,
@@ -38,9 +38,7 @@ export function useSkillFileSave({
     if (!activeTabId || !appId || !isEditable)
       return
 
-    const content = dirtyContents.get(activeTabId)
-    const hasDirtyMetadata = dirtyMetadataIds.has(activeTabId)
-    if (content === undefined && !hasDirtyMetadata)
+    if (draftContent === undefined && !isMetadataDirty)
       return
 
     try {
@@ -48,7 +46,7 @@ export function useSkillFileSave({
         appId,
         nodeId: activeTabId,
         payload: {
-          content: content ?? originalContent,
+          content: draftContent ?? originalContent,
           ...(currentMetadata ? { metadata: currentMetadata } : {}),
         },
       })
@@ -65,7 +63,7 @@ export function useSkillFileSave({
         message: String(error),
       })
     }
-  }, [activeTabId, appId, currentMetadata, dirtyContents, dirtyMetadataIds, isEditable, originalContent, storeApi, t, updateContent])
+  }, [activeTabId, appId, currentMetadata, draftContent, isMetadataDirty, isEditable, originalContent, storeApi, t, updateContent])
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent): void {

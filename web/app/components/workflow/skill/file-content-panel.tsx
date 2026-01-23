@@ -5,7 +5,7 @@ import type { FC } from 'react'
 import { loader } from '@monaco-editor/react'
 import dynamic from 'next/dynamic'
 import * as React from 'react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
@@ -13,12 +13,14 @@ import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import { basePath } from '@/utils/var'
+import { START_TAB_ID } from './constants'
 import CodeFileEditor from './editor/code-file-editor'
 import MarkdownFileEditor from './editor/markdown-file-editor'
 import { useFileTypeInfo } from './hooks/use-file-type-info'
 import { useSkillAssetNodeMap } from './hooks/use-skill-asset-tree'
 import { useSkillFileData } from './hooks/use-skill-file-data'
 import { useSkillFileSave } from './hooks/use-skill-file-save'
+import StartTabContent from './start-tab-content'
 import { getFileLanguage } from './utils/file-utils'
 import MediaFilePreview from './viewer/media-file-preview'
 import UnsupportedFileDownload from './viewer/unsupported-file-download'
@@ -41,39 +43,29 @@ const FileContentPanel: FC = () => {
   const appId = appDetail?.id || ''
 
   const activeTabId = useStore(s => s.activeTabId)
-  const dirtyContents = useStore(s => s.dirtyContents)
-  const dirtyMetadataIds = useStore(s => s.dirtyMetadataIds)
-  const fileMetadata = useStore(s => s.fileMetadata)
   const storeApi = useWorkflowStore()
   const { data: nodeMap } = useSkillAssetNodeMap()
 
-  const currentFileNode = activeTabId ? nodeMap?.get(activeTabId) : undefined
+  const isStartTab = activeTabId === START_TAB_ID
+  const fileTabId = isStartTab ? null : activeTabId
+
+  const draftContent = useStore(s => fileTabId ? s.dirtyContents.get(fileTabId) : undefined)
+  const currentMetadata = useStore(s => fileTabId ? s.fileMetadata.get(fileTabId) : undefined)
+  const isMetadataDirty = useStore(s => fileTabId ? s.dirtyMetadataIds.has(fileTabId) : false)
+
+  const currentFileNode = fileTabId ? nodeMap?.get(fileTabId) : undefined
 
   const { isMarkdown, isCodeOrText, isImage, isVideo, isSQLite, isEditable } = useFileTypeInfo(currentFileNode)
 
-  const { fileContent, downloadUrlData, isLoading, error } = useSkillFileData(appId, activeTabId, isEditable)
+  const { fileContent, downloadUrlData, isLoading, error } = useSkillFileData(appId, fileTabId, isEditable)
 
   const originalContent = fileContent?.content ?? ''
-
-  const currentContent = useMemo(() => {
-    if (!activeTabId)
-      return ''
-    const draft = dirtyContents.get(activeTabId)
-    if (draft !== undefined)
-      return draft
-    return originalContent
-  }, [activeTabId, dirtyContents, originalContent])
-
-  const currentMetadata = useMemo(() => {
-    if (!activeTabId)
-      return undefined
-    return fileMetadata.get(activeTabId)
-  }, [activeTabId, fileMetadata])
+  const currentContent = draftContent !== undefined ? draftContent : originalContent
 
   useEffect(() => {
-    if (!activeTabId || !fileContent)
+    if (!fileTabId || !fileContent)
       return
-    if (dirtyMetadataIds.has(activeTabId))
+    if (isMetadataDirty)
       return
     let nextMetadata: Record<string, unknown> = {}
     if (fileContent.metadata) {
@@ -89,29 +81,29 @@ const FileContentPanel: FC = () => {
         nextMetadata = fileContent.metadata
       }
     }
-    storeApi.getState().setFileMetadata(activeTabId, nextMetadata)
-    storeApi.getState().clearDraftMetadata(activeTabId)
-  }, [activeTabId, dirtyMetadataIds, fileContent, storeApi])
+    storeApi.getState().setFileMetadata(fileTabId, nextMetadata)
+    storeApi.getState().clearDraftMetadata(fileTabId)
+  }, [fileTabId, isMetadataDirty, fileContent, storeApi])
 
   const handleEditorChange = useCallback((value: string | undefined) => {
-    if (!activeTabId || !isEditable)
+    if (!fileTabId || !isEditable)
       return
     const newValue = value ?? ''
 
     if (newValue === originalContent)
-      storeApi.getState().clearDraftContent(activeTabId)
+      storeApi.getState().clearDraftContent(fileTabId)
     else
-      storeApi.getState().setDraftContent(activeTabId, newValue)
+      storeApi.getState().setDraftContent(fileTabId, newValue)
 
-    storeApi.getState().pinTab(activeTabId)
-  }, [activeTabId, isEditable, originalContent, storeApi])
+    storeApi.getState().pinTab(fileTabId)
+  }, [fileTabId, isEditable, originalContent, storeApi])
 
   useSkillFileSave({
     appId,
-    activeTabId,
+    activeTabId: fileTabId,
     isEditable,
-    dirtyContents,
-    dirtyMetadataIds,
+    draftContent,
+    isMetadataDirty,
     originalContent,
     currentMetadata,
     storeApi,
@@ -127,7 +119,10 @@ const FileContentPanel: FC = () => {
   const language = currentFileNode ? getFileLanguage(currentFileNode.name) : 'plaintext'
   const theme = appTheme === Theme.light ? 'light' : 'vs-dark'
 
-  if (!activeTabId) {
+  if (isStartTab)
+    return <StartTabContent />
+
+  if (!fileTabId) {
     return (
       <div className="flex h-full w-full items-center justify-center bg-components-panel-bg text-text-tertiary">
         <span className="system-sm-regular">
@@ -166,7 +161,7 @@ const FileContentPanel: FC = () => {
       {isMarkdown
         ? (
             <MarkdownFileEditor
-              key={activeTabId}
+              key={fileTabId}
               value={currentContent}
               onChange={handleEditorChange}
             />
@@ -175,7 +170,7 @@ const FileContentPanel: FC = () => {
       {isCodeOrText
         ? (
             <CodeFileEditor
-              key={activeTabId}
+              key={fileTabId}
               language={language}
               theme={isMounted ? theme : 'default-theme'}
               value={currentContent}
@@ -195,7 +190,7 @@ const FileContentPanel: FC = () => {
       {isSQLite
         ? (
             <SQLiteFilePreview
-              key={activeTabId}
+              key={fileTabId}
               downloadUrl={downloadUrl}
             />
           )

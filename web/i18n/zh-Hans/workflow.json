@@ -1088,6 +1088,7 @@
   "skillSidebar.sqlitePreview.nullValue": "NULL",
   "skillSidebar.sqlitePreview.rowsTruncated": "仅显示前 {{limit}} 行，更多行已省略。",
   "skillSidebar.sqlitePreview.selectTable": "选择表",
+  "skillSidebar.startTab": "开始",
   "skillSidebar.unsavedChanges.confirmClose": "放弃",
   "skillSidebar.unsavedChanges.content": "您有未保存的更改，是否放弃？",
   "skillSidebar.unsavedChanges.title": "未保存的更改",

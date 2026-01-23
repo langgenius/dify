@@ -1097,6 +1097,7 @@
   "skillSidebar.sqlitePreview.nullValue": "NULL",
   "skillSidebar.sqlitePreview.rowsTruncated": "Showing first {{limit}} rows. Additional rows are not displayed.",
   "skillSidebar.sqlitePreview.selectTable": "Select a table",
+  "skillSidebar.startTab": "Start",
   "skillSidebar.toggleFolder": "Toggle folder",
   "skillSidebar.unsavedChanges.confirmClose": "Discard",
   "skillSidebar.unsavedChanges.content": "You have unsaved changes. Do you want to discard them?",

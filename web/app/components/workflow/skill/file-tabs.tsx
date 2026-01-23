@@ -7,8 +7,10 @@ import { useTranslation } from 'react-i18next'
 import Confirm from '@/app/components/base/confirm'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { cn } from '@/utils/classnames'
+import { START_TAB_ID } from './constants'
 import FileTabItem from './file-tab-item'
 import { useSkillAssetNodeMap } from './hooks/use-skill-asset-tree'
+import StartTabItem from './start-tab-item'
 
 const FileTabs: FC = () => {
   const { t } = useTranslation('workflow')
@@ -19,6 +21,12 @@ const FileTabs: FC = () => {
   const dirtyMetadataIds = useStore(s => s.dirtyMetadataIds)
   const storeApi = useWorkflowStore()
   const { data: nodeMap } = useSkillAssetNodeMap()
+
+  const isStartTabActive = activeTabId === START_TAB_ID
+
+  const handleStartTabClick = useCallback(() => {
+    storeApi.getState().activateTab(START_TAB_ID)
+  }, [storeApi])
 
   const [pendingCloseId, setPendingCloseId] = useState<string | null>(null)
 
@@ -55,9 +63,6 @@ const FileTabs: FC = () => {
     setPendingCloseId(null)
   }, [])
 
-  if (openTabIds.length === 0)
-    return null
-
   return (
     <>
       <div
@@ -65,6 +70,10 @@ const FileTabs: FC = () => {
           'flex items-center overflow-hidden rounded-t-lg border-b border-components-panel-border-subtle bg-components-panel-bg-alt',
         )}
       >
+        <StartTabItem
+          isActive={isStartTabActive}
+          onClick={handleStartTabClick}
+        />
         {openTabIds.map((fileId) => {
           const node = nodeMap?.get(fileId)
           const name = node?.name ?? fileId
