@@ -302,7 +302,7 @@ export const useUploadFileWithPresignedUrl = () => {
 
       return node
     },
-    onSuccess: (_, variables) => {
+    onSettled: (_, __, variables) => {
       queryClient.invalidateQueries({
         queryKey: consoleQuery.appAsset.tree.queryKey({ input: { params: { appId: variables.appId } } }),
       })
@@ -361,7 +361,7 @@ export const useBatchUpload = () => {
         }),
       )
     },
-    onSuccess: (_, variables) => {
+    onSettled: (_, __, variables) => {
       queryClient.invalidateQueries({
         queryKey: consoleQuery.appAsset.tree.queryKey({ input: { params: { appId: variables.appId } } }),
       })
