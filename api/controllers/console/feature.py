@@ -3,17 +3,17 @@ from werkzeug.exceptions import Unauthorized
 
 from controllers.fastopenapi import console_router
 from libs.login import current_account_with_tenant, current_user, login_required
-from services.feature_service import FeatureService
+from services.feature_service import FeatureService, FeatureModel, SystemFeatureModel
 
 from .wraps import account_initialization_required, cloud_utm_record, setup_required
 
 
 class FeatureResponse(BaseModel):
-    features: dict = Field(description="Feature configuration object")
+    features: FeatureModel = Field(description="Feature configuration object")
 
 
 class SystemFeatureResponse(BaseModel):
-    features: dict = Field(description="System feature configuration object")
+    features: SystemFeatureModel = Field(description="System feature configuration object")
 
 
 @console_router.get(
@@ -29,7 +29,7 @@ def get_tenant_features() -> FeatureResponse:
     """Get feature configuration for current tenant."""
     _, current_tenant_id = current_account_with_tenant()
 
-    return FeatureResponse(features=FeatureService.get_features(current_tenant_id).model_dump())
+    return FeatureResponse(features=FeatureService.get_features(current_tenant_id))
 
 
 @console_router.get(
@@ -56,5 +56,5 @@ def get_system_features() -> SystemFeatureResponse:
     except Unauthorized:
         is_authenticated = False
     return SystemFeatureResponse(
-        features=FeatureService.get_system_features(is_authenticated=is_authenticated).model_dump()
+        features=FeatureService.get_system_features(is_authenticated=is_authenticated)
     )
