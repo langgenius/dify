@@ -14,12 +14,12 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
-from controllers.fastopenapi import console_router
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
     setup_required,
 )
+from controllers.fastopenapi import console_router
 from extensions.ext_database import db
 from fields.file_fields import FileResponse, UploadConfig
 from libs.login import current_account_with_tenant, login_required
