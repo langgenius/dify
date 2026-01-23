@@ -109,12 +109,19 @@ const Uploader: FC<Props> = ({
       />
       <div ref={dropRef}>
         {!file && (
-          <div className={cn('flex h-12 items-center rounded-[10px] border border-dashed border-components-dropzone-border bg-components-dropzone-bg text-sm font-normal', dragging && 'border-components-dropzone-border-accent bg-components-dropzone-bg-accent')}>
-            <div className="flex w-full items-center justify-center space-x-2">
-              <RiUploadCloud2Line className="h-6 w-6 text-text-tertiary" />
-              <div className="text-text-tertiary">
+          <div
+            className={cn(
+              'relative flex items-center justify-center rounded-[10px] border border-dashed border-components-dropzone-border bg-components-dropzone-bg px-4 py-[14px]',
+              dragging && 'border-components-dropzone-border-accent bg-components-dropzone-bg-accent',
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <RiUploadCloud2Line className="h-5 w-5 text-text-tertiary" />
+              <div className="text-[13px] font-medium leading-4 text-text-secondary">
                 {t('dslUploader.button', { ns: 'app' })}
-                <span className="cursor-pointer pl-1 text-text-accent" onClick={selectHandle}>{t('dslUploader.browse', { ns: 'app' })}</span>
+                <span className="cursor-pointer pl-1 text-text-accent" onClick={selectHandle}>
+                  {t('dslUploader.browse', { ns: 'app' })}
+                </span>
               </div>
             </div>
             {dragging && <div ref={dragRef} className="absolute left-0 top-0 h-full w-full" />}

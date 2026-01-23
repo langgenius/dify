@@ -1,7 +1,7 @@
 'use client'
 
 import type { MouseEventHandler } from 'react'
-import { RiCloseLine, RiCommandLine, RiCornerDownLeftLine } from '@remixicon/react'
+import { RiCloseLine, RiExternalLinkLine } from '@remixicon/react'
 import { useDebounceFn, useKeyPress } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { useRouter } from 'next/navigation'
@@ -17,6 +17,7 @@ import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
+import { useDocLink } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
 import {
   DSLImportMode,
@@ -47,6 +48,7 @@ export enum CreateFromDSLModalTab {
 const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDSLModalTab.FROM_FILE, dslUrl = '', droppedFile }: CreateFromDSLModalProps) => {
   const { push } = useRouter()
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const { notify } = useContext(ToastContext)
   const [currentFile, setDSLFile] = useState<File | undefined>(droppedFile)
   const [fileContent, setFileContent] = useState<string>()
@@ -223,6 +225,10 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
       return !dslUrlValue
     return false
   }, [isAppsFull, currentTab, currentFile, dslUrlValue])
+  const learnMoreLabel = t('importFromDSLModal.learnMore', {
+    ns: 'app',
+    defaultValue: t('newApp.learnMore', { ns: 'app' }),
+  })
 
   return (
     <>
@@ -231,18 +237,20 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         isShow={show}
         onClose={noop}
       >
-        <div className="title-2xl-semi-bold flex items-center justify-between pb-3 pl-6 pr-5 pt-6 text-text-primary">
-          {t('importFromDSL', { ns: 'app' })}
+        <div className="flex items-start justify-between pb-3 pl-6 pr-5 pt-6">
+          <div className="title-2xl-semi-bold text-text-primary">
+            {t('importFromDSL', { ns: 'app' })}
+          </div>
           <div
-            className="flex h-8 w-8 cursor-pointer items-center"
+            className="flex h-8 w-8 cursor-pointer items-center justify-center"
             onClick={() => onClose()}
           >
-            <RiCloseLine className="h-5 w-5 text-text-tertiary" />
+            <RiCloseLine className="h-[18px] w-[18px] text-text-tertiary" />
           </div>
         </div>
-        <div className="system-md-semibold flex h-9 items-center space-x-6 border-b border-divider-subtle px-6 text-text-tertiary">
-          {
-            tabs.map(tab => (
+        <div className="border-b border-divider-subtle px-6">
+          <div className="system-md-semibold flex h-9 items-center gap-6 text-text-tertiary">
+            {tabs.map(tab => (
               <div
                 key={tab.key}
                 className={cn(
@@ -252,57 +260,61 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
                 onClick={() => setCurrentTab(tab.key)}
               >
                 {tab.label}
-                {
-                  currentTab === tab.key && (
-                    <div className="absolute bottom-0 h-[2px] w-full bg-util-colors-blue-brand-blue-brand-600"></div>
-                  )
-                }
+                {currentTab === tab.key && (
+                  <div className="absolute bottom-0 h-[2px] w-full bg-util-colors-blue-brand-blue-brand-600"></div>
+                )}
               </div>
-            ))
-          }
+            ))}
+          </div>
         </div>
         <div className="px-6 py-4">
-          {
-            currentTab === CreateFromDSLModalTab.FROM_FILE && (
-              <Uploader
-                className="mt-0"
-                file={currentFile}
-                updateFile={handleFile}
-              />
-            )
-          }
-          {
-            currentTab === CreateFromDSLModalTab.FROM_URL && (
-              <div>
-                <div className="system-md-semibold mb-1 text-text-secondary">DSL URL</div>
-                <Input
-                  placeholder={t('importFromDSLUrlPlaceholder', { ns: 'app' }) || ''}
-                  value={dslUrlValue}
-                  onChange={e => setDslUrlValue(e.target.value)}
-                />
+          {currentTab === CreateFromDSLModalTab.FROM_FILE && (
+            <Uploader
+              className="mt-0"
+              file={currentFile}
+              updateFile={handleFile}
+            />
+          )}
+          {currentTab === CreateFromDSLModalTab.FROM_URL && (
+            <div>
+              <div className="system-md-semibold mb-1 text-text-secondary">
+                {t('importFromDSLUrl', { ns: 'app' })}
               </div>
-            )
-          }
+              <Input
+                placeholder={t('importFromDSLUrlPlaceholder', { ns: 'app' }) || ''}
+                value={dslUrlValue}
+                onChange={e => setDslUrlValue(e.target.value)}
+              />
+            </div>
+          )}
         </div>
         {isAppsFull && (
           <div className="px-6">
             <AppsFull className="mt-0" loc="app-create-dsl" />
           </div>
         )}
-        <div className="flex justify-end px-6 py-5">
-          <Button className="mr-2" onClick={onClose}>{t('newApp.Cancel', { ns: 'app' })}</Button>
-          <Button
-            disabled={buttonDisabled}
-            variant="primary"
-            onClick={handleCreateApp}
-            className="gap-1"
+        <div className="flex items-center justify-between px-6 pb-6 pt-5">
+          <a
+            className="system-xs-regular flex items-center gap-1 text-text-accent"
+            href={docLink('/use-dify/workspace/app-management#app-export-and-import')}
+            target="_blank"
+            rel="noopener noreferrer"
           >
-            <span>{t('newApp.Create', { ns: 'app' })}</span>
-            <div className="flex gap-0.5">
-              <RiCommandLine size={14} className="system-kbd rounded-sm bg-components-kbd-bg-white p-0.5" />
-              <RiCornerDownLeftLine size={14} className="system-kbd rounded-sm bg-components-kbd-bg-white p-0.5" />
-            </div>
-          </Button>
+            {learnMoreLabel}
+            <RiExternalLinkLine className="h-[12px] w-[12px]" />
+          </a>
+          <div className="flex items-center gap-3">
+            <Button variant="secondary" onClick={onClose}>
+              {t('newApp.Cancel', { ns: 'app' })}
+            </Button>
+            <Button
+              disabled={buttonDisabled}
+              variant="primary"
+              onClick={handleCreateApp}
+            >
+              {t('newApp.import', { ns: 'app' })}
+            </Button>
+          </div>
         </div>
       </Modal>
       <Modal
