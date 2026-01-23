@@ -16,7 +16,7 @@
   "form.indexMethod": "วิธีการจัดทําดัชนี",
   "form.indexMethodChangeToEconomyDisabledTip": "ไม่สามารถดาวน์เกรดจาก HQ เป็น ECO ได้",
   "form.indexMethodEconomy": "ประหยัด",
-  "form.indexMethodEconomyTip": "ใช้เอ็นจิ้นเวกเตอร์ออฟไลน์ ดัชนีคําหลัก ฯลฯ เพื่อลดความแม่นยําโดยไม่ต้องใช้โทเค็น",
+  "form.indexMethodEconomyTip": "ใช้ {{count}} คำสำคัญต่อชังก์เพื่อการค้นคืน โดยไม่ใช้โทเค็นแต่ลดความแม่นยำลง",
   "form.indexMethodHighQuality": "คุณภาพสูง",
   "form.indexMethodHighQualityTip": "เรียกใช้แบบจําลองการฝังตัวสําหรับการประมวลผลเพื่อให้มีความแม่นยําสูงขึ้นเมื่อผู้ใช้สืบค้น",
   "form.me": "(คุณ)",

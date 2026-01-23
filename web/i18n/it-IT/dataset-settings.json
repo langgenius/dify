@@ -16,7 +16,7 @@
   "form.indexMethod": "Metodo di Indicizzazione",
   "form.indexMethodChangeToEconomyDisabledTip": "Non disponibile per il downgrade da HQ a ECO",
   "form.indexMethodEconomy": "Economico",
-  "form.indexMethodEconomyTip": "Usa motori vettoriali offline, indici di parole chiave, ecc. per ridurre l'accuratezza senza spendere token",
+  "form.indexMethodEconomyTip": "Usa {{count}} parole chiave per chunk per il recupero, senza consumare token a costo di minore accuratezza.",
   "form.indexMethodHighQuality": "Alta Qualità",
   "form.indexMethodHighQualityTip": "Chiama il modello di Embedding per l'elaborazione per fornire maggiore accuratezza quando gli utenti fanno query.",
   "form.me": "(Tu)",
