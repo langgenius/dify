@@ -120,11 +120,21 @@ class MetadataService:
             return False, None
 
         # Build conditions for draft and current published workflows only
-        workflow_conditions = [(Workflow.app_id == pipeline.id) & (Workflow.version == Workflow.VERSION_DRAFT)]
-        if pipeline.workflow_id:
-            workflow_conditions.append(Workflow.id == pipeline.workflow_id)
+        draft_condition = (Workflow.app_id == pipeline.id) & (Workflow.version == Workflow.VERSION_DRAFT)
 
-        workflows = db.session.query(Workflow).where(or_(*workflow_conditions)).all()
+        if pipeline.workflow_id:
+            workflows = (
+                db.session.query(Workflow)
+                .filter(
+                    or_(
+                        draft_condition,
+                        Workflow.id == pipeline.workflow_id,
+                    )
+                )
+                .all()
+            )
+        else:
+            workflows = db.session.query(Workflow).filter(draft_condition).all()
 
         if not workflows:
             return False, None
