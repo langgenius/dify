@@ -37,6 +37,11 @@ class AppAssetsInitializer(AsyncSandboxInitializer):
                 ["wget", "-q", download_url, "-O", AppAssets.ZIP_PATH],
                 error_message="Failed to download assets zip",
             )
+            # Create the assets directory first to ensure it exists even if zip is empty
+            .add(
+                ["mkdir", "-p", AppAssets.PATH],
+                error_message="Failed to create assets directory",
+            )
             # unzip with silent error and return 1 if the zip is empty
             # FIXME(Mairuis): should use a more robust way to check if the zip is empty
             .add(

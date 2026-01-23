@@ -190,7 +190,7 @@ class SandboxManager:
             .options(sandbox_provider.config)
             .user(user_id)
             .app(app_id)
-            .initializer(AppAssetsInitializer(tenant_id, app_id, assets.id))
+            .initializer(DraftAppAssetsInitializer(tenant_id, app_id, assets.id))
             .initializer(DifyCliInitializer(tenant_id, user_id, app_id, assets.id))
             .initializer(SkillInitializer(tenant_id, user_id, app_id, assets.id))
             .storage(storage, assets.id)
