@@ -44,3 +44,5 @@ ToolBlock.displayName = 'ToolBlock'
 export { ToolBlock }
 export { ToolBlockNode } from './node'
 export { default as ToolBlockReplacementBlock } from './tool-block-replacement-block'
+export { ToolGroupBlockNode } from './tool-group-block-node'
+export { default as ToolGroupBlockReplacementBlock } from './tool-group-block-replacement-block'

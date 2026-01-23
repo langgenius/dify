@@ -35,6 +35,8 @@ import {
   ToolBlock,
   ToolBlockNode,
   ToolBlockReplacementBlock,
+  ToolGroupBlockNode,
+  ToolGroupBlockReplacementBlock,
 } from '@/app/components/workflow/skill/editor/skill-editor/plugins/tool-block'
 import { ToolBlockContextProvider } from '@/app/components/workflow/skill/editor/skill-editor/plugins/tool-block/tool-block-context'
 import ToolPickerBlock from '@/app/components/workflow/skill/editor/skill-editor/plugins/tool-block/tool-picker-block'
@@ -167,7 +169,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
       CurrentBlockNode,
       ErrorMessageBlockNode,
       LastRunBlockNode, // LastRunBlockNode is used for error message block replacement
-      ...(isSupportSandbox ? [FileReferenceNode, ToolBlockNode] : []),
+      ...(isSupportSandbox ? [FileReferenceNode, ToolGroupBlockNode, ToolBlockNode] : []),
     ],
     editorState: textToEditorState(value || ''),
     onError: (error: Error) => {
@@ -266,6 +268,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           {isSupportSandbox && (
             <>
               <ToolBlock />
+              <ToolGroupBlockReplacementBlock />
               <ToolBlockReplacementBlock />
               {editable && <ToolPickerBlock />}
             </>

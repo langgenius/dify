@@ -20,6 +20,7 @@ import { START_TAB_ID } from '@/app/components/workflow/skill/constants'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { $createToolBlockNode } from './node'
 import { useToolBlockContext } from './tool-block-context'
+import { $createToolGroupBlockNode } from './tool-group-block-node'
 
 class ToolPickerMenuOption extends MenuOption {
   constructor() {
@@ -55,20 +56,31 @@ const ToolPickerBlock: FC<ToolPickerBlockProps> = ({ scope = 'all' }) => {
         nodeToRemove.remove()
 
       const nodes: LexicalNode[] = []
-      toolEntries.forEach(({ tool, configId }, index) => {
-        nodes.push(
-          $createToolBlockNode({
+      if (toolEntries.length > 1) {
+        nodes.push($createToolGroupBlockNode({
+          tools: toolEntries.map(({ tool, configId }) => ({
             provider: tool.provider_id,
             tool: tool.tool_name,
             configId,
-            label: tool.tool_label,
-            icon: tool.provider_icon,
-            iconDark: tool.provider_icon_dark,
-          }),
-        )
-        if (index !== tools.length - 1)
-          nodes.push($createTextNode(' '))
-      })
+          })),
+        }))
+      }
+      else {
+        toolEntries.forEach(({ tool, configId }, index) => {
+          nodes.push(
+            $createToolBlockNode({
+              provider: tool.provider_id,
+              tool: tool.tool_name,
+              configId,
+              label: tool.tool_label,
+              icon: tool.provider_icon,
+              iconDark: tool.provider_icon_dark,
+            }),
+          )
+          if (index !== tools.length - 1)
+            nodes.push($createTextNode(' '))
+        })
+      }
 
       if (nodes.length)
         $insertNodes(nodes)

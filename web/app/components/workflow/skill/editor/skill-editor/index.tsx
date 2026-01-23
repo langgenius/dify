@@ -28,6 +28,8 @@ import {
   ToolBlock,
   ToolBlockNode,
   ToolBlockReplacementBlock,
+  ToolGroupBlockNode,
+  ToolGroupBlockReplacementBlock,
 } from './plugins/tool-block'
 import ToolPickerBlock from './plugins/tool-block/tool-picker-block'
 
@@ -73,6 +75,7 @@ const SkillEditor: FC<SkillEditorProps> = ({
         replace: TextNode,
         with: (node: TextNode) => new CustomTextNode(node.__text),
       },
+      ToolGroupBlockNode,
       ToolBlockNode,
       FileReferenceNode,
     ],
@@ -123,6 +126,7 @@ const SkillEditor: FC<SkillEditorProps> = ({
         />
         <>
           <ToolBlock />
+          <ToolGroupBlockReplacementBlock />
           <ToolBlockReplacementBlock />
           <FileReferenceReplacementBlock />
           {editable && <FilePickerBlock />}

@@ -54,6 +54,7 @@ type AllToolsProps = {
   showFeatured?: boolean
   onFeaturedInstallSuccess?: () => Promise<void> | void
   hideFeaturedTool?: boolean
+  hideSelectedInfo?: boolean
 }
 
 const DEFAULT_TAGS: AllToolsProps['tags'] = []
@@ -78,6 +79,7 @@ const AllTools = ({
   showFeatured = false,
   onFeaturedInstallSuccess,
   hideFeaturedTool = false,
+  hideSelectedInfo = false,
 }: AllToolsProps) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
@@ -277,7 +279,7 @@ const AllTools = ({
                   viewType={isSupportGroupView ? activeView : ViewType.flat}
                   hasSearchText={hasSearchText}
                   selectedTools={selectedTools}
-                  hideSelectedInfo={hideFeaturedTool}
+                  hideSelectedInfo={hideSelectedInfo}
                 />
               </>
             )}
