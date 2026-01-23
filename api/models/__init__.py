@@ -35,6 +35,7 @@ from .enums import (
     WorkflowTriggerStatus,
 )
 from .model import (
+    AccountTrialAppRecord,
     ApiRequest,
     ApiToken,
     App,
@@ -47,6 +48,7 @@ from .model import (
     DatasetRetrieverResource,
     DifySetup,
     EndUser,
+    ExporleBanner,
     IconType,
     InstalledApp,
     Message,
@@ -62,6 +64,7 @@ from .model import (
     TagBinding,
     TenantCreditPool,
     TraceAppConfig,
+    TrialApp,
     UploadFile,
 )
 from .oauth import DatasourceOauthParamConfig, DatasourceProvider
@@ -100,6 +103,7 @@ from .workflow import (
     Workflow,
     WorkflowAppLog,
     WorkflowAppLogCreatedFrom,
+    WorkflowArchiveLog,
     WorkflowNodeExecutionModel,
     WorkflowNodeExecutionOffload,
     WorkflowNodeExecutionTriggeredFrom,
@@ -114,6 +118,7 @@ __all__ = [
     "Account",
     "AccountIntegrate",
     "AccountStatus",
+    "AccountTrialAppRecord",
     "ApiRequest",
     "ApiToken",
     "ApiToolProvider",
@@ -150,6 +155,7 @@ __all__ = [
     "DocumentSegment",
     "Embedding",
     "EndUser",
+    "ExporleBanner",
     "ExternalKnowledgeApis",
     "ExternalKnowledgeBindings",
     "IconType",
@@ -188,6 +194,7 @@ __all__ = [
     "ToolLabelBinding",
     "ToolModelInvoke",
     "TraceAppConfig",
+    "TrialApp",
     "TriggerOAuthSystemClient",
     "TriggerOAuthTenantClient",
     "TriggerSubscription",
@@ -197,6 +204,7 @@ __all__ = [
     "Workflow",
     "WorkflowAppLog",
     "WorkflowAppLogCreatedFrom",
+    "WorkflowArchiveLog",
     "WorkflowNodeExecutionModel",
     "WorkflowNodeExecutionOffload",
     "WorkflowNodeExecutionTriggeredFrom",

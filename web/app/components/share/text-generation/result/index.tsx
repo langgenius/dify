@@ -4,8 +4,8 @@ import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { PromptConfig } from '@/models/debug'
-import type { InstalledApp } from '@/models/explore'
 import type { SiteInfo } from '@/models/share'
+import type { AppSourceType } from '@/service/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { RiLoader2Line } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
@@ -35,9 +35,8 @@ export type IResultProps = {
   isCallBatchAPI: boolean
   isPC: boolean
   isMobile: boolean
-  isInstalledApp: boolean
-  appId: string
-  installedAppInfo?: InstalledApp
+  appSourceType: AppSourceType
+  appId?: string
   isError: boolean
   isShowTextToSpeech: boolean
   promptConfig: PromptConfig | null
@@ -63,9 +62,8 @@ const Result: FC<IResultProps> = ({
   isCallBatchAPI,
   isPC,
   isMobile,
-  isInstalledApp,
+  appSourceType,
   appId,
-  installedAppInfo,
   isError,
   isShowTextToSpeech,
   promptConfig,
@@ -133,7 +131,7 @@ const Result: FC<IResultProps> = ({
   })
 
   const handleFeedback = async (feedback: FeedbackType) => {
-    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating, content: feedback.content } }, isInstalledApp, installedAppInfo?.id)
+    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating, content: feedback.content } }, appSourceType, appId)
     setFeedback(feedback)
   }
 
@@ -147,9 +145,9 @@ const Result: FC<IResultProps> = ({
     setIsStopping(true)
     try {
       if (isWorkflow)
-        await stopWorkflowMessage(appId, currentTaskId, isInstalledApp, installedAppInfo?.id || '')
+        await stopWorkflowMessage(appId!, currentTaskId, appSourceType, appId || '')
       else
-        await stopChatMessageResponding(appId, currentTaskId, isInstalledApp, installedAppInfo?.id || '')
+        await stopChatMessageResponding(appId!, currentTaskId, appSourceType, appId || '')
       abortControllerRef.current?.abort()
     }
     catch (error) {
@@ -159,7 +157,7 @@ const Result: FC<IResultProps> = ({
     finally {
       setIsStopping(false)
     }
-  }, [appId, currentTaskId, installedAppInfo?.id, isInstalledApp, isStopping, isWorkflow, notify])
+  }, [appId, currentTaskId, appSourceType, appId, isStopping, isWorkflow, notify])
 
   useEffect(() => {
     if (!onRunControlChange)
@@ -468,8 +466,8 @@ const Result: FC<IResultProps> = ({
             }))
           },
         },
-        isInstalledApp,
-        installedAppInfo?.id,
+        appSourceType,
+        appId,
       ).catch((error) => {
         setRespondingFalse()
         resetRunState()
@@ -514,7 +512,7 @@ const Result: FC<IResultProps> = ({
         getAbortController: (abortController) => {
           abortControllerRef.current = abortController
         },
-      }, isInstalledApp, installedAppInfo?.id)
+      }, appSourceType, appId)
     }
   }
 
@@ -562,8 +560,8 @@ const Result: FC<IResultProps> = ({
         feedback={feedback}
         onSave={handleSaveMessage}
         isMobile={isMobile}
-        isInstalledApp={isInstalledApp}
-        installedAppId={installedAppInfo?.id}
+        appSourceType={appSourceType}
+        installedAppId={appId}
         isLoading={isCallBatchAPI ? (!completionRes && isResponding) : false}
         taskId={isCallBatchAPI ? ((taskId as number) < 10 ? `0${taskId}` : `${taskId}`) : undefined}
         controlClearMoreLikeThis={controlClearMoreLikeThis}

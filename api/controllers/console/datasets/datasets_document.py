@@ -2,12 +2,14 @@ import json
 import logging
 from argparse import ArgumentTypeError
 from collections.abc import Sequence
-from typing import Literal, cast
+from contextlib import ExitStack
+from typing import Any, Literal, cast
+from uuid import UUID
 
 import sqlalchemy as sa
-from flask import request
+from flask import request, send_file
 from flask_restx import Resource, fields, marshal, marshal_with
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import asc, desc, select
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -42,6 +44,7 @@ from models import DatasetProcessRule, Document, DocumentSegment, UploadFile
 from models.dataset import DocumentPipelineExecutionLog
 from services.dataset_service import DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig, ProcessRule, RetrievalModel
+from services.file_service import FileService
 
 from ..app.error import (
     ProviderModelCurrentlyNotSupportError,
@@ -64,6 +67,9 @@ from ..wraps import (
 )
 
 logger = logging.getLogger(__name__)
+
+# NOTE: Keep constants near the top of the module for discoverability.
+DOCUMENT_BATCH_DOWNLOAD_ZIP_MAX_DOCS = 100
 
 
 def _get_or_create_model(model_name: str, field_def):
@@ -104,6 +110,21 @@ class DocumentRenamePayload(BaseModel):
     name: str
 
 
+class DocumentBatchDownloadZipPayload(BaseModel):
+    """Request payload for bulk downloading documents as a zip archive."""
+
+    document_ids: list[UUID] = Field(..., min_length=1, max_length=DOCUMENT_BATCH_DOWNLOAD_ZIP_MAX_DOCS)
+
+
+class DocumentDatasetListParam(BaseModel):
+    page: int = Field(1, title="Page", description="Page number.")
+    limit: int = Field(20, title="Limit", description="Page size.")
+    search: str | None = Field(None, alias="keyword", title="Search", description="Search keyword.")
+    sort_by: str = Field("-created_at", alias="sort", title="SortBy", description="Sort by field.")
+    status: str | None = Field(None, title="Status", description="Document status.")
+    fetch_val: str = Field("false", alias="fetch")
+
+
 register_schema_models(
     console_ns,
     KnowledgeConfig,
@@ -111,6 +132,7 @@ register_schema_models(
     RetrievalModel,
     DocumentRetryPayload,
     DocumentRenamePayload,
+    DocumentBatchDownloadZipPayload,
 )
 
 
@@ -225,14 +247,16 @@ class DatasetDocumentListApi(Resource):
     def get(self, dataset_id):
         current_user, current_tenant_id = current_account_with_tenant()
         dataset_id = str(dataset_id)
-        page = request.args.get("page", default=1, type=int)
-        limit = request.args.get("limit", default=20, type=int)
-        search = request.args.get("keyword", default=None, type=str)
-        sort = request.args.get("sort", default="-created_at", type=str)
-        status = request.args.get("status", default=None, type=str)
+        raw_args = request.args.to_dict()
+        param = DocumentDatasetListParam.model_validate(raw_args)
+        page = param.page
+        limit = param.limit
+        search = param.search
+        sort = param.sort_by
+        status = param.status
         # "yes", "true", "t", "y", "1" convert to True, while others convert to False.
         try:
-            fetch_val = request.args.get("fetch", default="false")
+            fetch_val = param.fetch_val
             if isinstance(fetch_val, bool):
                 fetch = fetch_val
             else:
@@ -840,6 +864,62 @@ class DocumentApi(DocumentResource):
             raise DocumentIndexingError("Cannot delete document during indexing.")
 
         return {"result": "success"}, 204
+
+
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/download")
+class DocumentDownloadApi(DocumentResource):
+    """Return a signed download URL for a dataset document's original uploaded file."""
+
+    @console_ns.doc("get_dataset_document_download_url")
+    @console_ns.doc(description="Get a signed download URL for a dataset document's original uploaded file")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
+    def get(self, dataset_id: str, document_id: str) -> dict[str, Any]:
+        # Reuse the shared permission/tenant checks implemented in DocumentResource.
+        document = self.get_document(str(dataset_id), str(document_id))
+        return {"url": DocumentService.get_document_download_url(document)}
+
+
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/download-zip")
+class DocumentBatchDownloadZipApi(DocumentResource):
+    """Download multiple uploaded-file documents as a single ZIP (avoids browser multi-download limits)."""
+
+    @console_ns.doc("download_dataset_documents_as_zip")
+    @console_ns.doc(description="Download selected dataset documents as a single ZIP archive (upload-file only)")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
+    @console_ns.expect(console_ns.models[DocumentBatchDownloadZipPayload.__name__])
+    def post(self, dataset_id: str):
+        """Stream a ZIP archive containing the requested uploaded documents."""
+        # Parse and validate request payload.
+        payload = DocumentBatchDownloadZipPayload.model_validate(console_ns.payload or {})
+
+        current_user, current_tenant_id = current_account_with_tenant()
+        dataset_id = str(dataset_id)
+        document_ids: list[str] = [str(document_id) for document_id in payload.document_ids]
+        upload_files, download_name = DocumentService.prepare_document_batch_download_zip(
+            dataset_id=dataset_id,
+            document_ids=document_ids,
+            tenant_id=current_tenant_id,
+            current_user=current_user,
+        )
+
+        # Delegate ZIP packing to FileService, but keep Flask response+cleanup in the route.
+        with ExitStack() as stack:
+            zip_path = stack.enter_context(FileService.build_upload_files_zip_tempfile(upload_files=upload_files))
+            response = send_file(
+                zip_path,
+                mimetype="application/zip",
+                as_attachment=True,
+                download_name=download_name,
+            )
+            cleanup = stack.pop_all()
+            response.call_on_close(cleanup.close)
+        return response
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/<string:action>")

@@ -1,0 +1,7 @@
+.light {
+  background-image: url('./no-web-apps-light.png');
+}
+
+.dark {
+  background-image: url('./no-web-apps-dark.png');
+}
