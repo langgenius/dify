@@ -5,6 +5,7 @@ class HostedTrialProvider(StrEnum):
     """
     Enum representing hosted model provider names for trial access.
     """
+
     OPENAI = "langgenius/openai/openai"
     ANTHROPIC = "langgenius/anthropic/anthropic"
     GEMINI = "langgenius/gemini/google"
