@@ -4,7 +4,6 @@ import {
   RiFileCodeFill,
   RiFileExcelFill,
   RiFileGifFill,
-  RiFileImageFill,
   RiFileMusicFill,
   RiFilePdf2Fill,
   RiFilePpt2Fill,
@@ -15,6 +14,7 @@ import {
 } from '@remixicon/react'
 import { memo } from 'react'
 import { FileDatabase2Fill } from '@/app/components/base/icons/src/vender/solid/development'
+import { FileImageFill } from '@/app/components/base/icons/src/vender/solid/files'
 import { cn } from '@/utils/classnames'
 import { FileAppearanceTypeEnum } from './types'
 
@@ -24,7 +24,7 @@ const FILE_TYPE_ICON_MAP = {
     color: 'text-[#EA3434]',
   },
   [FileAppearanceTypeEnum.image]: {
-    component: RiFileImageFill,
+    component: FileImageFill,
     color: 'text-[#00B2EA]',
   },
   [FileAppearanceTypeEnum.video]: {
