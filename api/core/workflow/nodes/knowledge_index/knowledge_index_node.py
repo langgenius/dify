@@ -1,10 +1,11 @@
 import datetime
 import logging
 import time
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 from sqlalchemy import func, select
+from sqlalchemy.orm import attributes
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
@@ -16,7 +17,7 @@ from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.template import Template
 from core.workflow.runtime import VariablePool
 from extensions.ext_database import db
-from models.dataset import Dataset, Document, DocumentSegment
+from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding, Document, DocumentSegment
 
 from .entities import KnowledgeIndexNodeData
 from .exc import (
@@ -24,6 +25,9 @@ from .exc import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Constant for built-in metadata identifier
+BUILT_IN_METADATA_ID = "built-in"
 
 default_retrieval_model = {
     "search_method": RetrievalMethod.SEMANTIC_SEARCH,
@@ -161,6 +165,88 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
             }
         )
 
+        # Process doc_metadata before commit to ensure it's saved with the same document object
+        if node_data.doc_metadata:
+            try:
+                # Fetch metadata definitions for name mapping
+                metadata_name_map: dict[str, str] = {}
+                dataset_metadatas = db.session.scalars(
+                    select(DatasetMetadata).where(DatasetMetadata.dataset_id == dataset.id)
+                ).all()
+                for md in dataset_metadatas:
+                    metadata_name_map[md.id] = md.name
+
+                # Collect valid metadata IDs (excluding built-in)
+                valid_metadata_ids = [
+                    item.metadata_id
+                    for item in node_data.doc_metadata
+                    if item.metadata_id != BUILT_IN_METADATA_ID and item.metadata_id in metadata_name_map
+                ]
+
+                # Batch fetch existing bindings to avoid N+1 query
+                existing_binding_ids: set[str] = set()
+                if valid_metadata_ids:
+                    existing_bindings = db.session.scalars(
+                        select(DatasetMetadataBinding.metadata_id).where(
+                            DatasetMetadataBinding.dataset_id == dataset.id,
+                            DatasetMetadataBinding.document_id == doc_id_value,
+                            DatasetMetadataBinding.metadata_id.in_(valid_metadata_ids),
+                        )
+                    ).all()
+                    existing_binding_ids = set(existing_bindings)
+
+                doc_metadata_dict = document.doc_metadata or {}
+
+                for item in node_data.doc_metadata:
+                    # Skip built-in fields
+                    if item.metadata_id == BUILT_IN_METADATA_ID:
+                        continue
+
+                    # Resolve Name
+                    md_name = metadata_name_map.get(item.metadata_id)
+                    if not md_name:
+                        logger.warning(
+                            "[KnowledgeIndexNode] metadata_id %s not found, skipping", item.metadata_id
+                        )
+                        continue
+
+                    # Resolve Value
+                    value = item.value
+                    if isinstance(value, list):
+                        var_obj = variable_pool.get(value)
+                        if var_obj:
+                            value = var_obj.to_object()
+                        else:
+                            # Variable not found - raise error to notify user of configuration issue
+                            variable_path = ".".join(value)
+                            raise KnowledgeIndexNodeError(
+                                f"Variable '{variable_path}' not found for metadata '{md_name}'. "
+                                f"Please check your variable configuration."
+                            )
+
+                    if value is not None:
+                        doc_metadata_dict[md_name] = value
+
+                    # Create DatasetMetadataBinding if not exists
+                    if item.metadata_id not in existing_binding_ids:
+                        binding = DatasetMetadataBinding(
+                            tenant_id=dataset.tenant_id,
+                            dataset_id=dataset.id,
+                            metadata_id=item.metadata_id,
+                            document_id=doc_id_value,
+                            created_by=self.user_id,
+                        )
+                        db.session.add(binding)
+                        existing_binding_ids.add(item.metadata_id)  # Prevent duplicate in same batch
+
+                document.doc_metadata = doc_metadata_dict
+                # Force SQLAlchemy to recognize the change to the JSON field
+                attributes.flag_modified(document, "doc_metadata")
+
+            except Exception as e:
+                logger.exception("[KnowledgeIndexNode] Failed to process doc_metadata")
+                raise KnowledgeIndexNodeError(f"Failed to process document metadata: {e}") from e
+
         db.session.commit()
 
         return {
@@ -189,3 +275,29 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
             Template instance for this knowledge index node
         """
         return Template(segments=[])
+
+    @classmethod
+    def _extract_variable_selector_to_variable_mapping(
+        cls, *, graph_config: Mapping[str, Any], node_id: str, node_data: Mapping[str, Any]
+    ) -> Mapping[str, Sequence[str]]:
+        """
+        Extract variable selector to variable mapping
+        :param graph_config: graph config
+        :param node_id: node id
+        :param node_data: node data
+        :return:
+        """
+        variable_mapping = {}
+        node_data_obj = KnowledgeIndexNodeData(**node_data)
+
+        # index chunk variable
+        variable_mapping[node_id + ".index_chunk_variable_selector"] = node_data_obj.index_chunk_variable_selector
+
+        # doc_metadata variables
+        if node_data_obj.doc_metadata:
+            for item in node_data_obj.doc_metadata:
+                if isinstance(item.value, list):
+                    variable_mapping[node_id + "." + item.metadata_id] = item.value
+        
+        return variable_mapping
+

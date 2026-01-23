@@ -17,10 +17,13 @@ import {
   Group,
 } from '@/app/components/workflow/nodes/_base/components/layout'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { useDatasetMetaData } from '@/service/knowledge/use-metadata'
 import Split from '../_base/components/split'
 import ChunkStructure from './components/chunk-structure'
 import EmbeddingModel from './components/embedding-model'
 import IndexMethod from './components/index-method'
+import MetadataSection from './components/metadata-section'
 import RetrievalSetting from './components/retrieval-setting'
 import { useConfig } from './hooks/use-config'
 import {
@@ -37,6 +40,10 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
   const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
   const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
 
+  // Get datasetId from context and fetch metadata
+  const datasetId = useDatasetDetailContextWithSelector(s => s.dataset?.id)
+  const { data: metadataList, refetch: refetchMetadataList } = useDatasetMetaData(datasetId || '')
+
   const {
     handleChunkStructureChange,
     handleIndexMethodChange,
@@ -51,6 +58,8 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
     handleScoreThresholdChange,
     handleScoreThresholdEnabledChange,
     handleInputVariableChange,
+    handleEnableBuiltInMetadataChange,
+    handleDocMetadataChange,
   } = useConfig(id)
 
   const filterVar = useCallback((variable: Var) => {
@@ -189,6 +198,19 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
                   readonly={nodesReadOnly}
                 />
               </div>
+            </BoxGroup>
+            <BoxGroup>
+              <MetadataSection
+                nodeId={id}
+                datasetId={datasetId}
+                enableBuiltInMetadata={data.enable_built_in_metadata ?? false}
+                onEnableBuiltInMetadataChange={handleEnableBuiltInMetadataChange}
+                userMetadata={metadataList?.doc_metadata || []}
+                docMetadata={data.doc_metadata}
+                onDocMetadataChange={handleDocMetadataChange}
+                onMetadataListChange={refetchMetadataList}
+                readonly={nodesReadOnly}
+              />
             </BoxGroup>
           </>
         )

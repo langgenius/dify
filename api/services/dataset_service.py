@@ -39,6 +39,8 @@ from models.dataset import (
     Dataset,
     DatasetAutoDisableLog,
     DatasetCollectionBinding,
+    DatasetMetadata,
+    DatasetMetadataBinding,
     DatasetPermission,
     DatasetPermissionEnum,
     DatasetProcessRule,
@@ -1595,6 +1597,36 @@ class DocumentService:
                         else default_retrieval_model
                     )
 
+        # Handle metadata configuration
+        # 1. Enable built-in metadata if requested
+        if knowledge_config.enable_built_in_metadata and not dataset.built_in_field_enabled:
+            dataset.built_in_field_enabled = True
+            db.session.add(dataset)
+
+        # 2. Process custom metadata - validate and build dict
+        custom_metadata: dict = {}
+        metadata_bindings_to_create: list[tuple[str, str]] = []  # (metadata_id, metadata_name)
+        if knowledge_config.doc_metadata:
+            # Batch fetch all metadata definitions to avoid N+1 query
+            metadata_ids = [item.metadata_id for item in knowledge_config.doc_metadata]
+            metadata_defs = (
+                db.session.query(DatasetMetadata)
+                .filter(
+                    DatasetMetadata.id.in_(metadata_ids),
+                    DatasetMetadata.dataset_id == dataset.id,
+                )
+                .all()
+            )
+            metadata_map = {md.id: md for md in metadata_defs}
+
+            for item in knowledge_config.doc_metadata:
+                # Validate metadata_id belongs to this dataset
+                metadata_def = metadata_map.get(item.metadata_id)
+                if not metadata_def:
+                    raise ValueError(f"Metadata with id '{item.metadata_id}' not found in this dataset")
+                custom_metadata[metadata_def.name] = item.value
+                metadata_bindings_to_create.append((item.metadata_id, metadata_def.name))
+
         documents = []
         if knowledge_config.original_document_id:
             document = DocumentService.update_document_with_dataset_id(dataset, knowledge_config, account)
@@ -1717,6 +1749,7 @@ class DocumentService:
                                     account,
                                     file.name,
                                     batch,
+                                    custom_metadata=custom_metadata or None,
                                 )
                                 db.session.add(document)
                                 db.session.flush()
@@ -1769,6 +1802,7 @@ class DocumentService:
                                         account,
                                         truncated_page_name,
                                         batch,
+                                        custom_metadata=custom_metadata or None,
                                     )
                                     db.session.add(document)
                                     db.session.flush()
@@ -1809,6 +1843,7 @@ class DocumentService:
                                 account,
                                 document_name,
                                 batch,
+                                custom_metadata=custom_metadata or None,
                             )
                             db.session.add(document)
                             db.session.flush()
@@ -1816,6 +1851,20 @@ class DocumentService:
                             documents.append(document)
                             position += 1
                     db.session.commit()
+
+                    # Create DatasetMetadataBinding records for custom metadata
+                    if metadata_bindings_to_create and document_ids:
+                        for doc_id in document_ids:
+                            for metadata_id, _ in metadata_bindings_to_create:
+                                binding = DatasetMetadataBinding(
+                                    tenant_id=dataset.tenant_id,
+                                    dataset_id=dataset.id,
+                                    document_id=doc_id,
+                                    metadata_id=metadata_id,
+                                    created_by=account.id,
+                                )
+                                db.session.add(binding)
+                        db.session.commit()
 
                     # trigger async task
                     if document_ids:
@@ -2127,6 +2176,7 @@ class DocumentService:
         account: Account,
         name: str,
         batch: str,
+        custom_metadata: dict | None = None,
     ):
         document = Document(
             tenant_id=dataset.tenant_id,
@@ -2151,6 +2201,9 @@ class DocumentService:
                 BuiltInField.last_update_date: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"),
                 BuiltInField.source: data_source_type,
             }
+        # Merge custom metadata if provided
+        if custom_metadata:
+            doc_metadata.update(custom_metadata)
         if doc_metadata:
             document.doc_metadata = doc_metadata
         return document

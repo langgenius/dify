@@ -42,6 +42,12 @@ export type RetrievalSetting = {
   score_threshold: number
   reranking_mode?: RerankingModeEnum
 }
+
+export type DocMetadataItem = {
+  metadata_id: string
+  value: string | number | string[] // string[] for ValueSelector
+}
+
 export type KnowledgeBaseNodeType = CommonNodeType & {
   index_chunk_variable_selector: string[]
   chunk_structure?: ChunkStructureEnum
@@ -50,6 +56,8 @@ export type KnowledgeBaseNodeType = CommonNodeType & {
   embedding_model_provider?: string
   keyword_number: number
   retrieval_model: RetrievalSetting
+  enable_built_in_metadata?: boolean
+  doc_metadata?: DocMetadataItem[]
   _embeddingModelList?: Model[]
   _rerankModelList?: Model[]
 }

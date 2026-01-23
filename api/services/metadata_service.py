@@ -7,6 +7,8 @@ from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant
 from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding
+from models.model import App
+from models.workflow import Workflow
 from services.dataset_service import DocumentService
 from services.entities.knowledge_entities.knowledge_entities import (
     MetadataArgs,
@@ -96,6 +98,52 @@ class MetadataService:
             redis_client.delete(lock_key)
 
     @staticmethod
+    def check_metadata_used_in_pipeline(dataset_id: str, metadata_id: str) -> tuple[bool, str | None]:
+        """
+        Check if a metadata is used in the associated Pipeline's Knowledge Base node.
+        
+        Returns:
+            tuple[bool, str | None]: (is_used, pipeline_name) - True if used, with pipeline name
+        """
+        # Get the dataset
+        dataset = db.session.query(Dataset).filter_by(id=dataset_id).first()
+        if not dataset or not dataset.pipeline_id:
+            return False, None
+        
+        # Get the draft workflow directly using pipeline_id as app_id
+        workflow = db.session.query(Workflow).filter_by(
+            app_id=dataset.pipeline_id, 
+            version=Workflow.VERSION_DRAFT
+        ).first()
+        if not workflow:
+            return False, None
+        
+        # Get pipeline name from App if exists
+        app = db.session.query(App).filter_by(id=dataset.pipeline_id).first()
+        pipeline_name = app.name if app else "Pipeline"
+        
+        # Walk through nodes to find Knowledge Index node (type is "knowledge-index")
+        try:
+            graph_dict = workflow.graph_dict
+            if "nodes" not in graph_dict:
+                return False, None
+            
+            for node in graph_dict["nodes"]:
+                node_data = node.get("data", {})
+                # Check if this is a knowledge-index node
+                if node_data.get("type") == "knowledge-index":
+                    doc_metadata = node_data.get("doc_metadata", [])
+                    if doc_metadata:
+                        for item in doc_metadata:
+                            if item.get("metadata_id") == metadata_id:
+                                return True, pipeline_name
+        except Exception:
+            logger.exception("Error checking metadata usage in pipeline")
+            return False, None
+        
+        return False, None
+
+    @staticmethod
     def delete_metadata(dataset_id: str, metadata_id: str):
         lock_key = f"dataset_metadata_lock_{dataset_id}"
         try:
@@ -103,6 +151,15 @@ class MetadataService:
             metadata = db.session.query(DatasetMetadata).filter_by(id=metadata_id).first()
             if metadata is None:
                 raise ValueError("Metadata not found.")
+            
+            # Check if metadata is used in Pipeline before deletion
+            is_used, pipeline_name = MetadataService.check_metadata_used_in_pipeline(dataset_id, metadata_id)
+            if is_used:
+                raise ValueError(
+                    f"Cannot delete metadata '{metadata.name}' because it is currently used in "
+                    f"Pipeline '{pipeline_name}'."
+                )
+            
             db.session.delete(metadata)
 
             # deal related documents
@@ -122,6 +179,8 @@ class MetadataService:
                     db.session.add(document)
             db.session.commit()
             return metadata
+        except ValueError:
+            raise
         except Exception:
             logger.exception("Delete metadata failed")
         finally:
