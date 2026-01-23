@@ -1,0 +1,55 @@
+import builtins
+from types import SimpleNamespace
+from unittest.mock import patch
+
+import pytest
+from flask import Flask
+from flask.views import MethodView
+
+from extensions import ext_fastopenapi
+
+if not hasattr(builtins, "MethodView"):
+    builtins.MethodView = MethodView  # type: ignore[attr-defined]
+
+
+@pytest.fixture
+def app() -> Flask:
+    app = Flask(__name__)
+    app.config["TESTING"] = True
+    return app
+
+
+def test_console_features_fastopenapi_get(app: Flask, monkeypatch: pytest.MonkeyPatch):
+    ext_fastopenapi.init_app(app)
+
+    monkeypatch.setattr("controllers.console.feature.setup_required", lambda f: f)
+    monkeypatch.setattr("controllers.console.feature.login_required", lambda f: f)
+    monkeypatch.setattr("controllers.console.feature.account_initialization_required", lambda f: f)
+    monkeypatch.setattr("controllers.console.feature.cloud_utm_record", lambda f: f)
+
+    with (
+        patch("controllers.console.feature.current_account_with_tenant", return_value=(object(), "tenant-id")),
+        patch(
+            "controllers.console.feature.FeatureService.get_features",
+            return_value=SimpleNamespace(model_dump=lambda: {"enabled": True}),
+        ),
+    ):
+        client = app.test_client()
+        response = client.get("/console/api/features")
+
+    assert response.status_code == 200
+    assert response.get_json() == {"features": {"enabled": True}}
+
+
+def test_console_system_features_fastopenapi_get(app: Flask):
+    ext_fastopenapi.init_app(app)
+
+    with patch(
+        "controllers.console.feature.FeatureService.get_system_features",
+        return_value=SimpleNamespace(model_dump=lambda: {"system": True}),
+    ):
+        client = app.test_client()
+        response = client.get("/console/api/system-features")
+
+    assert response.status_code == 200
+    assert response.get_json() == {"features": {"system": True}}
