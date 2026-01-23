@@ -110,6 +110,7 @@
   "chat.conversationName": "Назва розмови",
   "chat.conversationNameCanNotEmpty": "Потрібна назва розмови",
   "chat.conversationNamePlaceholder": "Будь ласка, введіть назву розмови",
+  "chat.inputDisabledPlaceholder": "Лише попередній перегляд",
   "chat.inputPlaceholder": "Поговоріть з {{botName}}",
   "chat.renameConversation": "Перейменувати розмову",
   "chat.resend": "Відправити знову",
