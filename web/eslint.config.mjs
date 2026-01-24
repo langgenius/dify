@@ -40,6 +40,13 @@ export default antfu(
       overrides: {
         'ts/consistent-type-definitions': ['error', 'type'],
         'ts/no-explicit-any': 'warn',
+        'no-restricted-syntax': [
+          'error',
+          {
+            selector: 'TSEnumDeclaration',
+            message: 'We should not use Enum',
+          },
+        ],
       },
     },
     test: {
