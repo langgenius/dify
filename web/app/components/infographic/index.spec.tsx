@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import InfographicViewer from '../index'
+import InfographicViewer from './index'
 
 // Mock the @antv/infographic library - must be before imports
 const mockRender = vi.fn()
