@@ -852,10 +852,7 @@
   },
   "app/components/base/chat/embedded-chatbot/hooks.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 6
-    },
-    "ts/no-explicit-any": {
-      "count": 16
+      "count": 3
     }
   },
   "app/components/base/chat/embedded-chatbot/inputs-form/content.tsx": {
@@ -1124,11 +1121,6 @@
     "no-console": {
       "count": 2
     },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/base/input-with-copy/index.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -1554,11 +1546,6 @@
   "app/components/billing/upgrade-btn/index.tsx": {
     "ts/no-explicit-any": {
       "count": 3
-    }
-  },
-  "app/components/billing/usage-info/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "app/components/custom/custom-web-app-brand/index.spec.tsx": {
@@ -2652,7 +2639,7 @@
       "count": 1
     },
     "ts/no-explicit-any": {
-      "count": 8
+      "count": 3
     }
   },
   "app/components/share/utils.ts": {
@@ -4231,11 +4218,6 @@
       "count": 1
     }
   },
-  "middleware.ts": {
-    "node/prefer-global/buffer": {
-      "count": 1
-    }
-  },
   "models/common.ts": {
     "ts/no-explicit-any": {
       "count": 3
@@ -4266,7 +4248,7 @@
       "count": 1
     },
     "ts/no-explicit-any": {
-      "count": 2
+      "count": 1
     }
   },
   "scripts/analyze-component.js": {
@@ -4311,12 +4293,7 @@
   },
   "service/debug.ts": {
     "ts/no-explicit-any": {
-      "count": 7
-    }
-  },
-  "service/explore.ts": {
-    "ts/no-explicit-any": {
-      "count": 1
+      "count": 6
     }
   },
   "service/fetch.ts": {
@@ -4329,7 +4306,7 @@
   },
   "service/share.ts": {
     "ts/no-explicit-any": {
-      "count": 4
+      "count": 3
     }
   },
   "service/tools.ts": {

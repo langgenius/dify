@@ -60,6 +60,8 @@ export type SystemFeatures = {
     allow_email_code_login: boolean
     allow_email_password_login: boolean
   }
+  enable_trial_app: boolean
+  enable_explore_banner: boolean
 }
 
 export const defaultSystemFeatures: SystemFeatures = {
@@ -100,6 +102,8 @@ export const defaultSystemFeatures: SystemFeatures = {
     allow_email_code_login: false,
     allow_email_password_login: false,
   },
+  enable_trial_app: false,
+  enable_explore_banner: false,
 }
 
 export enum DatasetAttr {

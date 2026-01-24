@@ -26,6 +26,7 @@
   "list.action.archive": "Arhiviraj",
   "list.action.batchAdd": "Serijsko dodajanje",
   "list.action.delete": "Izbriši",
+  "list.action.download": "Prenesi",
   "list.action.enableWarning": "Arhivirane datoteke ni mogoče omogočiti",
   "list.action.pause": "Zaustavi",
   "list.action.resume": "Nadaljuj",

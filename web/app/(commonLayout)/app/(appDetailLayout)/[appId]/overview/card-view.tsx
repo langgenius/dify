@@ -19,7 +19,6 @@ import { collaborationManager } from '@/app/components/workflow/collaboration/co
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { isTriggerNode } from '@/app/components/workflow/types'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
-import { useDocLink } from '@/context/i18n'
 import {
   fetchAppDetail,
   updateAppSiteAccessToken,
@@ -38,7 +37,6 @@ export type ICardViewProps = {
 
 const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const { t } = useTranslation()
-  const docLink = useDocLink()
   const { notify } = useContext(ToastContext)
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(state => state.setAppDetail)
@@ -61,25 +59,13 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const shouldRenderAppCards = !isWorkflowApp || hasTriggerNode === false
   const disableAppCards = !shouldRenderAppCards
 
-  const triggerDocUrl = docLink('/guides/workflow/node/start')
   const buildTriggerModeMessage = useCallback((featureName: string) => (
     <div className="flex flex-col gap-1">
       <div className="text-xs text-text-secondary">
         {t('overview.disableTooltip.triggerMode', { ns: 'appOverview', feature: featureName })}
       </div>
-      <a
-        href={triggerDocUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="block cursor-pointer text-xs font-medium text-text-accent hover:underline"
-        onClick={(event) => {
-          event.stopPropagation()
-        }}
-      >
-        {t('overview.appInfo.enableTooltip.learnMore', { ns: 'appOverview' })}
-      </a>
     </div>
-  ), [t, triggerDocUrl])
+  ), [t])
 
   const disableWebAppTooltip = disableAppCards
     ? buildTriggerModeMessage(t('overview.appInfo.title', { ns: 'appOverview' }))

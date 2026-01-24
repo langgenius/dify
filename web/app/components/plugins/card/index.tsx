@@ -95,7 +95,7 @@ const Card = ({
           text={getLocalizedText(brief)}
           descriptionLineRows={descriptionLineRows}
         />
-        {footer && <div>{footer}</div>}
+        {!!footer && <div>{footer}</div>}
       </div>
       {limitedInstall
         && (

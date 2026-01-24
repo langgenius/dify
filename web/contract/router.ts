@@ -3,6 +3,7 @@ import { accountAvatarContract } from './console/account'
 import { workflowOnlineUsersContract } from './console/apps'
 import { bindPartnerStackContract, invoicesContract } from './console/billing'
 import { systemFeaturesContract } from './console/system'
+import { trialAppDatasetsContract, trialAppInfoContract, trialAppParametersContract, trialAppWorkflowsContract } from './console/try-app'
 import {
   workflowDraftEnvironmentVariablesContract,
   workflowDraftUpdateConversationVariablesContract,
@@ -25,6 +26,12 @@ export const consoleRouterContract = {
     avatar: accountAvatarContract,
   },
   systemFeatures: systemFeaturesContract,
+  trialApps: {
+    info: trialAppInfoContract,
+    datasets: trialAppDatasetsContract,
+    parameters: trialAppParametersContract,
+    workflows: trialAppWorkflowsContract,
+  },
   billing: {
     invoices: invoicesContract,
     bindPartnerStack: bindPartnerStackContract,
