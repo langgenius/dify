@@ -52,7 +52,8 @@
     "preinstall": "npx only-allow pnpm",
     "analyze": "ANALYZE=true pnpm build",
     "knip": "knip",
-    "generate:contract": "kubb generate"
+    "generate:contract": "kubb generate",
+    "openapi-ts": "openapi-ts"
   },
   "dependencies": {
     "@amplitude/analytics-browser": "2.33.1",
@@ -164,6 +165,7 @@
     "@antfu/eslint-config": "7.0.1",
     "@chromatic-com/storybook": "4.1.1",
     "@eslint-react/eslint-plugin": "2.7.0",
+    "@hey-api/openapi-ts": "0.90.9",
     "@kubb/cli": "4.18.4",
     "@kubb/core": "4.18.4",
     "@kubb/plugin-oas": "4.18.4",
