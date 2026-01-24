@@ -52,7 +52,6 @@
     "preinstall": "npx only-allow pnpm",
     "analyze": "ANALYZE=true pnpm build",
     "knip": "knip",
-    "generate:contract": "kubb generate",
     "openapi-ts": "openapi-ts"
   },
   "dependencies": {
