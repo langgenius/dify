@@ -1,5 +1,7 @@
 import { defineConfig } from '@hey-api/openapi-ts'
 
+import { defineConfig as defineOrpcConfig } from './plugins/hey-api-orpc'
+
 export default defineConfig({
   input: './open-api/petStore.yaml',
   output: './gen',
@@ -15,5 +17,9 @@ export default defineConfig({
         infer: true,
       },
     },
+    defineOrpcConfig({
+      output: 'orpc',
+      generateRouter: true,
+    }),
   ],
 })
