@@ -11,7 +11,6 @@ import time
 from collections.abc import Sequence
 from datetime import datetime
 from typing import TYPE_CHECKING, final
-from uuid import uuid4
 
 from typing_extensions import override
 
@@ -113,7 +112,7 @@ class Worker(threading.Thread):
                 self._ready_queue.task_done()
             except Exception as e:
                 error_event = NodeRunFailedEvent(
-                    id=str(uuid4()),
+                    id=node.execution_id,
                     node_id=node.id,
                     node_type=node.node_type,
                     in_iteration_id=None,

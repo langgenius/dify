@@ -110,6 +110,7 @@
   "chat.conversationName": "اسم المحادثة",
   "chat.conversationNameCanNotEmpty": "اسم المحادثة مطلوب",
   "chat.conversationNamePlaceholder": "يرجى إدخال اسم المحادثة",
+  "chat.inputDisabledPlaceholder": "معاينة فقط",
   "chat.inputPlaceholder": "تحدث إلى {{botName}}",
   "chat.renameConversation": "إعادة تسمية المحادثة",
   "chat.resend": "إعادة إرسال",
