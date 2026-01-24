@@ -121,7 +121,7 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
             className="flex items-center text-text-accent"
             target="_blank"
             rel="noopener noreferrer"
-            href={docLink('/guides/knowledge-base/integrate-knowledge-within-application')}
+            href={docLink('/use-dify/knowledge/integrate-knowledge-within-application')}
           >
             <span>{t('list.learnMore', { ns: 'datasetDocuments' })}</span>
             <RiExternalLinkLine className="h-3 w-3" />

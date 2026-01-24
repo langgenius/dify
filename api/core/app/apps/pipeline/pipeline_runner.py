@@ -9,13 +9,13 @@ from core.app.entities.app_invoke_entities import (
     InvokeFrom,
     RagPipelineGenerateEntity,
 )
+from core.app.workflow.node_factory import DifyNodeFactory
 from core.variables.variables import RAGPipelineVariable, RAGPipelineVariableInput
 from core.workflow.entities.graph_init_params import GraphInitParams
 from core.workflow.enums import WorkflowType
 from core.workflow.graph import Graph
 from core.workflow.graph_engine.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.workflow.graph_events import GraphEngineEvent, GraphRunFailedEvent
-from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.runtime import GraphRuntimeState, VariablePool
