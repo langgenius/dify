@@ -3,7 +3,7 @@ import { defineConfig } from '@hey-api/openapi-ts'
 import { defineConfig as defineOrpcConfig } from './plugins/hey-api-orpc/config'
 
 export default defineConfig({
-  input: './open-api/petStore.yaml',
+  input: '../open-api/fastopenapi.json',
   output: {
     indexFile: false,
     path: './gen',
