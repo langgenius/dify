@@ -105,7 +105,7 @@ ignore_imports =
     core.workflow.nodes.loop.loop_node -> core.app.workflow.node_factory
     core.workflow.graph_engine.command_channels.redis_channel -> extensions.ext_redis
     core.workflow.graph_engine.layers.observability -> configs
-    core.workflow.graph_engine.layers.observability -> extensions.otel.runtime
+    core.workflow.graph_engine.layers.observability -> otel
     core.workflow.graph_engine.layers.persistence -> core.ops.ops_trace_manager
     core.workflow.graph_engine.worker_management.worker_pool -> configs
     core.workflow.nodes.agent.agent_node -> core.model_manager
@@ -296,7 +296,6 @@ ignore_imports =
     core.workflow.nodes.llm.llm_utils -> extensions.ext_database
     core.workflow.nodes.llm.node -> extensions.ext_database
     core.workflow.nodes.tool.tool_node -> extensions.ext_database
-    core.workflow.workflow_entry -> extensions.otel.runtime
     core.workflow.nodes.agent.agent_node -> models
     core.workflow.nodes.base.node -> models.enums
     core.workflow.nodes.llm.llm_utils -> models.provider_ids

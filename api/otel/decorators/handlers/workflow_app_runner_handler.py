@@ -5,8 +5,8 @@ from typing import Any
 from opentelemetry.trace import SpanKind, Status, StatusCode
 from opentelemetry.util.types import AttributeValue
 
-from extensions.otel.decorators.handler import SpanHandler
-from extensions.otel.semconv import DifySpanAttributes, GenAIAttributes
+from otel.decorators.handler import SpanHandler
+from otel.semconv import DifySpanAttributes, GenAIAttributes
 
 logger = logging.getLogger(__name__)
 

@@ -13,7 +13,7 @@ from opentelemetry.trace.status import StatusCode
 
 from configs import dify_config
 from dify_app import DifyApp
-from extensions.otel.runtime import is_celery_worker
+from otel.runtime import is_celery_worker
 
 logger = logging.getLogger(__name__)
 

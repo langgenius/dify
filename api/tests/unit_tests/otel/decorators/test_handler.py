@@ -13,7 +13,7 @@ from unittest.mock import patch
 import pytest
 from opentelemetry.trace import StatusCode
 
-from extensions.otel.decorators.handler import SpanHandler
+from otel import SpanHandler
 
 
 class TestSpanHandlerExtractArguments:
@@ -133,7 +133,7 @@ class TestSpanHandlerExtractArguments:
 class TestSpanHandlerWrapper:
     """Test SpanHandler.wrapper default implementation."""
 
-    @patch("extensions.otel.decorators.base.dify_config.ENABLE_OTEL", True)
+    @patch("otel.decorators.base.dify_config.ENABLE_OTEL", True)
     def test_wrapper_creates_span(self, tracer_provider_with_memory_exporter, memory_span_exporter):
         """Test that wrapper creates a span."""
         handler = SpanHandler()
@@ -148,7 +148,7 @@ class TestSpanHandlerWrapper:
         spans = memory_span_exporter.get_finished_spans()
         assert len(spans) == 1
 
-    @patch("extensions.otel.decorators.base.dify_config.ENABLE_OTEL", True)
+    @patch("otel.decorators.base.dify_config.ENABLE_OTEL", True)
     def test_wrapper_sets_span_kind_internal(self, tracer_provider_with_memory_exporter, memory_span_exporter):
         """Test that wrapper sets SpanKind to INTERNAL."""
         from opentelemetry.trace import SpanKind
@@ -165,7 +165,7 @@ class TestSpanHandlerWrapper:
         assert len(spans) == 1
         assert spans[0].kind == SpanKind.INTERNAL
 
-    @patch("extensions.otel.decorators.base.dify_config.ENABLE_OTEL", True)
+    @patch("otel.decorators.base.dify_config.ENABLE_OTEL", True)
     def test_wrapper_sets_status_ok_on_success(self, tracer_provider_with_memory_exporter, memory_span_exporter):
         """Test that wrapper sets status to OK when function succeeds."""
         handler = SpanHandler()
@@ -180,7 +180,7 @@ class TestSpanHandlerWrapper:
         assert len(spans) == 1
         assert spans[0].status.status_code == StatusCode.OK
 
-    @patch("extensions.otel.decorators.base.dify_config.ENABLE_OTEL", True)
+    @patch("otel.decorators.base.dify_config.ENABLE_OTEL", True)
     def test_wrapper_records_exception_on_error(self, tracer_provider_with_memory_exporter, memory_span_exporter):
         """Test that wrapper records exception when function raises."""
         handler = SpanHandler()
@@ -198,7 +198,7 @@ class TestSpanHandlerWrapper:
         assert len(events) > 0
         assert any("exception" in event.name.lower() for event in events)
 
-    @patch("extensions.otel.decorators.base.dify_config.ENABLE_OTEL", True)
+    @patch("otel.decorators.base.dify_config.ENABLE_OTEL", True)
     def test_wrapper_sets_status_error_on_exception(self, tracer_provider_with_memory_exporter, memory_span_exporter):
         """Test that wrapper sets status to ERROR when function raises exception."""
         handler = SpanHandler()
@@ -215,7 +215,7 @@ class TestSpanHandlerWrapper:
         assert spans[0].status.status_code == StatusCode.ERROR
         assert "test error" in spans[0].status.description
 
-    @patch("extensions.otel.decorators.base.dify_config.ENABLE_OTEL", True)
+    @patch("otel.decorators.base.dify_config.ENABLE_OTEL", True)
     def test_wrapper_re_raises_exception(self, tracer_provider_with_memory_exporter):
         """Test that wrapper re-raises exception after recording it."""
         handler = SpanHandler()
@@ -227,7 +227,7 @@ class TestSpanHandlerWrapper:
         with pytest.raises(ValueError, match="test error"):
             handler.wrapper(tracer, test_func, (), {})
 
-    @patch("extensions.otel.decorators.base.dify_config.ENABLE_OTEL", True)
+    @patch("otel.decorators.base.dify_config.ENABLE_OTEL", True)
     def test_wrapper_passes_arguments_correctly(self, tracer_provider_with_memory_exporter, memory_span_exporter):
         """Test that wrapper correctly passes arguments to wrapped function."""
         handler = SpanHandler()
@@ -240,7 +240,7 @@ class TestSpanHandlerWrapper:
 
         assert result == 6
 
-    @patch("extensions.otel.decorators.base.dify_config.ENABLE_OTEL", True)
+    @patch("otel.decorators.base.dify_config.ENABLE_OTEL", True)
     def test_wrapper_with_memory_exporter(self, tracer_provider_with_memory_exporter, memory_span_exporter):
         """Test wrapper end-to-end with memory exporter."""
         handler = SpanHandler()

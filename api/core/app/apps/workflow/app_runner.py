@@ -18,9 +18,9 @@ from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import VariableLoader
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_redis import redis_client
-from extensions.otel import WorkflowAppRunnerHandler, trace_span
 from libs.datetime_utils import naive_utc_now
 from models.workflow import Workflow
+from otel import WorkflowAppRunnerHandler, trace_span
 
 logger = logging.getLogger(__name__)
 

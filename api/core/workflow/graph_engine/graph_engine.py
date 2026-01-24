@@ -43,6 +43,7 @@ from .event_management import EventHandler, EventManager
 from .graph_state_manager import GraphStateManager
 from .graph_traversal import EdgeProcessor, SkipPropagator
 from .layers.base import GraphEngineLayer
+from .layers.observability import ObservabilityLayer
 from .orchestration import Dispatcher, ExecutionCoordinator
 from .protocols.command_channel import CommandChannel
 from .ready_queue import ReadyQueue
@@ -155,6 +156,9 @@ class GraphEngine:
         # === Extensibility ===
         # Layers allow plugins to extend engine functionality
         self._layers: list[GraphEngineLayer] = []
+
+        # Default observability layer (self-disables when OTEL not enabled)
+        self.layer(ObservabilityLayer())
 
         # === Worker Pool Setup ===
         # Capture execution context for worker threads

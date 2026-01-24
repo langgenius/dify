@@ -12,9 +12,9 @@ from opentelemetry.propagators.composite import CompositePropagator
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 
 from configs import dify_config
-from extensions.otel.semconv import DifySpanAttributes, GenAIAttributes
 from libs.helper import extract_tenant_id
 from models import Account, EndUser
+from otel.semconv import DifySpanAttributes, GenAIAttributes
 
 logger = logging.getLogger(__name__)
 

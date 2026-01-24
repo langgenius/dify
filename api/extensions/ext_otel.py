@@ -29,8 +29,7 @@ def init_app(app: DifyApp):
     from opentelemetry.semconv.resource import ResourceAttributes
     from opentelemetry.trace import set_tracer_provider
 
-    from extensions.otel.instrumentation import init_instruments
-    from extensions.otel.runtime import setup_context_propagation, shutdown_tracer
+    from otel import init_instruments, setup_context_propagation, shutdown_tracer
 
     setup_context_propagation()
     # Initialize OpenTelemetry

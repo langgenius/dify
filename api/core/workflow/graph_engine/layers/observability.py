@@ -24,7 +24,7 @@ from core.workflow.graph_engine.layers.node_parsers import (
     ToolNodeOTelParser,
 )
 from core.workflow.nodes.base.node import Node
-from extensions.otel.runtime import is_instrument_flag_enabled
+from otel import is_instrument_flag_enabled
 
 logger = logging.getLogger(__name__)
 

@@ -86,11 +86,11 @@ def mock_workflow_runner():
 @pytest.fixture(autouse=True)
 def reset_handler_instances():
     """Reset handler singleton instances before each test."""
-    from extensions.otel.decorators.base import _HANDLER_INSTANCES
+    from otel import HANDLER_INSTANCES
 
-    _HANDLER_INSTANCES.clear()
-    from extensions.otel.decorators.handler import SpanHandler
+    HANDLER_INSTANCES.clear()
+    from otel import SpanHandler
 
-    _HANDLER_INSTANCES[SpanHandler] = SpanHandler()
+    HANDLER_INSTANCES[SpanHandler] = SpanHandler()
     yield
-    _HANDLER_INSTANCES.clear()
+    HANDLER_INSTANCES.clear()

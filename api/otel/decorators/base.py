@@ -5,19 +5,19 @@ from typing import Any, TypeVar, cast
 from opentelemetry.trace import get_tracer
 
 from configs import dify_config
-from extensions.otel.decorators.handler import SpanHandler
-from extensions.otel.runtime import is_instrument_flag_enabled
+from otel.decorators.handler import SpanHandler
+from otel.runtime import is_instrument_flag_enabled
 
 T = TypeVar("T", bound=Callable[..., Any])
 
-_HANDLER_INSTANCES: dict[type[SpanHandler], SpanHandler] = {SpanHandler: SpanHandler()}
+HANDLER_INSTANCES: dict[type[SpanHandler], SpanHandler] = {SpanHandler: SpanHandler()}
 
 
 def _get_handler_instance(handler_class: type[SpanHandler]) -> SpanHandler:
     """Get or create a singleton instance of the handler class."""
-    if handler_class not in _HANDLER_INSTANCES:
-        _HANDLER_INSTANCES[handler_class] = handler_class()
-    return _HANDLER_INSTANCES[handler_class]
+    if handler_class not in HANDLER_INSTANCES:
+        HANDLER_INSTANCES[handler_class] = handler_class()
+    return HANDLER_INSTANCES[handler_class]
 
 
 def trace_span(handler_class: type[SpanHandler] | None = None) -> Callable[[T], T]:

@@ -13,13 +13,13 @@ from unittest.mock import patch
 import pytest
 from opentelemetry.trace import StatusCode
 
-from extensions.otel.decorators.base import trace_span
+from otel import trace_span
 
 
 class TestTraceSpanDecorator:
     """Test trace_span decorator basic functionality."""
 
-    @patch("extensions.otel.decorators.base.dify_config.ENABLE_OTEL", True)
+    @patch("otel.decorators.base.dify_config.ENABLE_OTEL", True)
     def test_decorated_function_executes_normally(self, tracer_provider_with_memory_exporter):
         """Test that decorated function executes and returns correct value."""
 
@@ -30,7 +30,7 @@ class TestTraceSpanDecorator:
         result = test_func(2, 3)
         assert result == 5
 
-    @patch("extensions.otel.decorators.base.dify_config.ENABLE_OTEL", True)
+    @patch("otel.decorators.base.dify_config.ENABLE_OTEL", True)
     def test_decorator_with_args_and_kwargs(self, tracer_provider_with_memory_exporter):
         """Test that decorator correctly handles args and kwargs."""
 
@@ -45,7 +45,7 @@ class TestTraceSpanDecorator:
 class TestTraceSpanWithMemoryExporter:
     """Test trace_span with MemorySpanExporter to verify span creation."""
 
-    @patch("extensions.otel.decorators.base.dify_config.ENABLE_OTEL", True)
+    @patch("otel.decorators.base.dify_config.ENABLE_OTEL", True)
     def test_span_is_created_and_exported(self, tracer_provider_with_memory_exporter, memory_span_exporter):
         """Test that span is created and exported to memory exporter."""
 
@@ -58,7 +58,7 @@ class TestTraceSpanWithMemoryExporter:
         spans = memory_span_exporter.get_finished_spans()
         assert len(spans) == 1
 
-    @patch("extensions.otel.decorators.base.dify_config.ENABLE_OTEL", True)
+    @patch("otel.decorators.base.dify_config.ENABLE_OTEL", True)
     def test_span_name_matches_function(self, tracer_provider_with_memory_exporter, memory_span_exporter):
         """Test that span name matches the decorated function."""
 
@@ -72,7 +72,7 @@ class TestTraceSpanWithMemoryExporter:
         assert len(spans) == 1
         assert "my_test_function" in spans[0].name
 
-    @patch("extensions.otel.decorators.base.dify_config.ENABLE_OTEL", True)
+    @patch("otel.decorators.base.dify_config.ENABLE_OTEL", True)
     def test_span_status_is_ok_on_success(self, tracer_provider_with_memory_exporter, memory_span_exporter):
         """Test that span status is OK when function succeeds."""
 
@@ -86,7 +86,7 @@ class TestTraceSpanWithMemoryExporter:
         assert len(spans) == 1
         assert spans[0].status.status_code == StatusCode.OK
 
-    @patch("extensions.otel.decorators.base.dify_config.ENABLE_OTEL", True)
+    @patch("otel.decorators.base.dify_config.ENABLE_OTEL", True)
     def test_span_status_is_error_on_exception(self, tracer_provider_with_memory_exporter, memory_span_exporter):
         """Test that span status is ERROR when function raises exception."""
 
@@ -101,7 +101,7 @@ class TestTraceSpanWithMemoryExporter:
         assert len(spans) == 1
         assert spans[0].status.status_code == StatusCode.ERROR
 
-    @patch("extensions.otel.decorators.base.dify_config.ENABLE_OTEL", True)
+    @patch("otel.decorators.base.dify_config.ENABLE_OTEL", True)
     def test_exception_is_recorded_in_span(self, tracer_provider_with_memory_exporter, memory_span_exporter):
         """Test that exception details are recorded in span events."""
 

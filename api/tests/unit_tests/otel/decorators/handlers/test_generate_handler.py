@@ -9,14 +9,14 @@ Test objectives:
 from unittest.mock import patch
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from extensions.otel.decorators.handlers.generate_handler import AppGenerateHandler
-from extensions.otel.semconv import DifySpanAttributes, GenAIAttributes
+from otel import DifySpanAttributes, GenAIAttributes
+from otel.decorators.handlers.generate_handler import AppGenerateHandler
 
 
 class TestAppGenerateHandler:
     """Core tests for AppGenerateHandler"""
 
-    @patch("extensions.otel.decorators.base.dify_config.ENABLE_OTEL", True)
+    @patch("otel.decorators.base.dify_config.ENABLE_OTEL", True)
     def test_compatible_with_real_function_signature(
         self, tracer_provider_with_memory_exporter, mock_app_model, mock_account_user
     ):
@@ -47,7 +47,7 @@ class TestAppGenerateHandler:
         assert "args" in arguments, "Handler uses args but parameter is missing"
         assert "streaming" in arguments, "Handler uses streaming but parameter is missing"
 
-    @patch("extensions.otel.decorators.base.dify_config.ENABLE_OTEL", True)
+    @patch("otel.decorators.base.dify_config.ENABLE_OTEL", True)
     def test_all_span_attributes_set_correctly(
         self, tracer_provider_with_memory_exporter, memory_span_exporter, mock_app_model, mock_account_user
     ):

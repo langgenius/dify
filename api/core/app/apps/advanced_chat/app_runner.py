@@ -37,10 +37,10 @@ from core.workflow.variable_loader import VariableLoader
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from extensions.otel import WorkflowAppRunnerHandler, trace_span
 from models import Workflow
 from models.model import App, Conversation, Message, MessageAnnotation
 from models.workflow import ConversationVariable
+from otel import WorkflowAppRunnerHandler, trace_span
 from services.conversation_variable_updater import ConversationVariableUpdater
 
 logger = logging.getLogger(__name__)
