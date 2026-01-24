@@ -2,37 +2,651 @@
 
 import { z } from 'zod'
 
-export const zErrorSchema = z.object({
-  error: z.object({
-    type: z.string(),
-    message: z.string(),
-    status: z.number().int(),
-    details: z.string().optional(),
-  }),
+/**
+ * TextToAudioPayload
+ */
+export const zTextToAudioPayload = z.object({
+  message_id: z.record(z.unknown()).optional(),
+  voice: z.record(z.unknown()).optional(),
+  text: z.record(z.unknown()).optional(),
+  streaming: z.record(z.unknown()).optional(),
 })
 
-export type ErrorSchemaZodType = z.infer<typeof zErrorSchema>
+export type TextToAudioPayloadZodType = z.infer<typeof zTextToAudioPayload>
 
 /**
- * PingResponse
+ * CompletionMessagePayload
  */
-export const zPingResponse = z.object({
-  result: z.string().describe('Health check result'),
+export const zCompletionMessagePayload = z.object({
+  inputs: z.record(z.unknown()).describe('Input variables for the completion'),
+  query: z.string().describe('Query text for completion').optional().default(''),
+  files: z.record(z.unknown()).describe('Files to be processed').optional(),
+  response_mode: z.record(z.unknown()).describe('Response mode: blocking or streaming').optional(),
+  retriever_from: z.string().describe('Source of retriever').optional().default('web_app'),
 })
 
-export type PingResponseZodType = z.infer<typeof zPingResponse>
+export type CompletionMessagePayloadZodType = z.infer<typeof zCompletionMessagePayload>
 
-export const zGetConsoleApiPingData = z.object({
+/**
+ * ChatMessagePayload
+ */
+export const zChatMessagePayload = z.object({
+  inputs: z.record(z.unknown()).describe('Input variables for the chat'),
+  query: z.string().describe('User query/message'),
+  files: z.record(z.unknown()).describe('Files to be processed').optional(),
+  response_mode: z.record(z.unknown()).describe('Response mode: blocking or streaming').optional(),
+  conversation_id: z.record(z.unknown()).describe('Conversation ID').optional(),
+  parent_message_id: z.record(z.unknown()).describe('Parent message ID').optional(),
+  retriever_from: z.string().describe('Source of retriever').optional().default('web_app'),
+})
+
+export type ChatMessagePayloadZodType = z.infer<typeof zChatMessagePayload>
+
+/**
+ * FileResponse
+ */
+export const zFileResponse = z.object({
+  id: z.string(),
+  name: z.string(),
+  size: z.number().int(),
+  extension: z.record(z.unknown()).optional(),
+  mime_type: z.record(z.unknown()).optional(),
+  created_by: z.record(z.unknown()).optional(),
+  created_at: z.record(z.unknown()).optional(),
+  preview_url: z.record(z.unknown()).optional(),
+  source_url: z.record(z.unknown()).optional(),
+  original_url: z.record(z.unknown()).optional(),
+  user_id: z.record(z.unknown()).optional(),
+  tenant_id: z.record(z.unknown()).optional(),
+  conversation_id: z.record(z.unknown()).optional(),
+  file_key: z.record(z.unknown()).optional(),
+})
+
+export type FileResponseZodType = z.infer<typeof zFileResponse>
+
+/**
+ * ForgotPasswordSendPayload
+ */
+export const zForgotPasswordSendPayload = z.object({
+  email: z.string(),
+  language: z.record(z.unknown()).optional(),
+})
+
+export type ForgotPasswordSendPayloadZodType = z.infer<typeof zForgotPasswordSendPayload>
+
+/**
+ * ForgotPasswordCheckPayload
+ */
+export const zForgotPasswordCheckPayload = z.object({
+  email: z.string(),
+  code: z.string(),
+  token: z.string().min(1),
+})
+
+export type ForgotPasswordCheckPayloadZodType = z.infer<typeof zForgotPasswordCheckPayload>
+
+/**
+ * ForgotPasswordResetPayload
+ */
+export const zForgotPasswordResetPayload = z.object({
+  token: z.string().min(1),
+  new_password: z.string(),
+  password_confirm: z.string(),
+})
+
+export type ForgotPasswordResetPayloadZodType = z.infer<typeof zForgotPasswordResetPayload>
+
+/**
+ * LoginPayload
+ */
+export const zLoginPayload = z.object({
+  email: z.string(),
+  password: z.string(),
+})
+
+export type LoginPayloadZodType = z.infer<typeof zLoginPayload>
+
+/**
+ * EmailCodeLoginSendPayload
+ */
+export const zEmailCodeLoginSendPayload = z.object({
+  email: z.string(),
+  language: z.record(z.unknown()).optional(),
+})
+
+export type EmailCodeLoginSendPayloadZodType = z.infer<typeof zEmailCodeLoginSendPayload>
+
+/**
+ * EmailCodeLoginVerifyPayload
+ */
+export const zEmailCodeLoginVerifyPayload = z.object({
+  email: z.string(),
+  code: z.string(),
+  token: z.string().min(1),
+})
+
+export type EmailCodeLoginVerifyPayloadZodType = z.infer<typeof zEmailCodeLoginVerifyPayload>
+
+/**
+ * MessageMoreLikeThisQuery
+ */
+export const zMessageMoreLikeThisQuery = z.object({
+  response_mode: z.enum(['blocking', 'streaming']).describe('Response mode'),
+})
+
+export type MessageMoreLikeThisQueryZodType = z.infer<typeof zMessageMoreLikeThisQuery>
+
+/**
+ * RemoteFileInfo
+ */
+export const zRemoteFileInfo = z.object({
+  file_type: z.string(),
+  file_length: z.number().int(),
+})
+
+export type RemoteFileInfoZodType = z.infer<typeof zRemoteFileInfo>
+
+/**
+ * FileWithSignedUrl
+ */
+export const zFileWithSignedUrl = z.object({
+  id: z.string(),
+  name: z.string(),
+  size: z.number().int(),
+  extension: z.record(z.unknown()).optional(),
+  url: z.record(z.unknown()).optional(),
+  mime_type: z.record(z.unknown()).optional(),
+  created_by: z.record(z.unknown()).optional(),
+  created_at: z.record(z.unknown()).optional(),
+})
+
+export type FileWithSignedUrlZodType = z.infer<typeof zFileWithSignedUrl>
+
+/**
+ * WorkflowRunPayload
+ */
+export const zWorkflowRunPayload = z.object({
+  inputs: z.record(z.unknown()).describe('Input variables for the workflow'),
+  files: z.record(z.unknown()).describe('Files to be processed by the workflow').optional(),
+})
+
+export type WorkflowRunPayloadZodType = z.infer<typeof zWorkflowRunPayload>
+
+/**
+ * AppAccessModeQuery
+ */
+export const zAppAccessModeQuery = z.object({
+  appId: z.record(z.unknown()).describe('Application ID').optional(),
+  appCode: z.record(z.unknown()).describe('Application code').optional(),
+})
+
+export type AppAccessModeQueryZodType = z.infer<typeof zAppAccessModeQuery>
+
+/**
+ * ConversationListQuery
+ */
+export const zConversationListQuery = z.object({
+  last_id: z.record(z.unknown()).optional(),
+  limit: z.number().int().gte(1).lte(100).optional(),
+  pinned: z.record(z.unknown()).optional(),
+  sort_by: z.enum([
+    'created_at',
+    '-created_at',
+    'updated_at',
+    '-updated_at',
+  ]).optional(),
+})
+
+export type ConversationListQueryZodType = z.infer<typeof zConversationListQuery>
+
+/**
+ * ConversationRenamePayload
+ */
+export const zConversationRenamePayload = z.object({
+  name: z.record(z.unknown()).optional(),
+  auto_generate: z.boolean().optional().default(false),
+})
+
+export type ConversationRenamePayloadZodType = z.infer<typeof zConversationRenamePayload>
+
+/**
+ * MessageListQuery
+ */
+export const zMessageListQuery = z.object({
+  conversation_id: z.string().describe('Conversation UUID'),
+  first_id: z.record(z.unknown()).describe('First message ID for pagination').optional(),
+  limit: z.number().int().gte(1).lte(100).describe('Number of messages to return (1-100)').optional(),
+})
+
+export type MessageListQueryZodType = z.infer<typeof zMessageListQuery>
+
+/**
+ * MessageFeedbackPayload
+ */
+export const zMessageFeedbackPayload = z.object({
+  rating: z.record(z.unknown()).describe('Feedback rating').optional(),
+  content: z.record(z.unknown()).describe('Feedback content').optional(),
+})
+
+export type MessageFeedbackPayloadZodType = z.infer<typeof zMessageFeedbackPayload>
+
+/**
+ * RemoteFileUploadPayload
+ */
+export const zRemoteFileUploadPayload = z.object({
+  url: z.string().url().min(1).max(2083).describe('Remote file URL'),
+})
+
+export type RemoteFileUploadPayloadZodType = z.infer<typeof zRemoteFileUploadPayload>
+
+/**
+ * SavedMessageListQuery
+ */
+export const zSavedMessageListQuery = z.object({
+  last_id: z.record(z.unknown()).optional(),
+  limit: z.number().int().gte(1).lte(100).optional(),
+})
+
+export type SavedMessageListQueryZodType = z.infer<typeof zSavedMessageListQuery>
+
+/**
+ * SavedMessageCreatePayload
+ */
+export const zSavedMessageCreatePayload = z.object({
+  message_id: z.string(),
+})
+
+export type SavedMessageCreatePayloadZodType = z.infer<typeof zSavedMessageCreatePayload>
+
+export const zAudioToTextData = z.object({
   body: z.never().optional(),
   path: z.never().optional(),
   query: z.never().optional(),
 })
 
-export type GetConsoleApiPingDataZodType = z.infer<typeof zGetConsoleApiPingData>
+export type AudioToTextDataZodType = z.infer<typeof zAudioToTextData>
+
+export const zCreateChatMessageData = z.object({
+  body: zChatMessagePayload,
+  path: z.never().optional(),
+  query: z.never().optional(),
+})
+
+export type CreateChatMessageDataZodType = z.infer<typeof zCreateChatMessageData>
+
+export const zStopChatMessageData = z.object({
+  body: z.never().optional(),
+  path: z.object({
+    task_id: z.string().describe('Task ID to stop'),
+  }),
+  query: z.never().optional(),
+})
+
+export type StopChatMessageDataZodType = z.infer<typeof zStopChatMessageData>
+
+export const zCreateCompletionMessageData = z.object({
+  body: zCompletionMessagePayload,
+  path: z.never().optional(),
+  query: z.never().optional(),
+})
+
+export type CreateCompletionMessageDataZodType = z.infer<typeof zCreateCompletionMessageData>
+
+export const zStopCompletionMessageData = z.object({
+  body: z.never().optional(),
+  path: z.object({
+    task_id: z.string().describe('Task ID to stop'),
+  }),
+  query: z.never().optional(),
+})
+
+export type StopCompletionMessageDataZodType = z.infer<typeof zStopCompletionMessageData>
+
+export const zGetConversationListData = z.object({
+  body: z.never().optional(),
+  path: z.never().optional(),
+  query: z.object({
+    last_id: z.string().describe('Last conversation ID for pagination').optional(),
+    limit: z.number().int().describe('Number of conversations to return (1-100)').optional().default(20),
+    pinned: z.enum(['true', 'false']).describe('Filter by pinned status').optional(),
+    sort_by: z.enum([
+      'created_at',
+      '-created_at',
+      'updated_at',
+      '-updated_at',
+    ]).describe('Sort order').optional(),
+  }).optional(),
+})
+
+export type GetConversationListDataZodType = z.infer<typeof zGetConversationListData>
+
+export const zDeleteConversationData = z.object({
+  body: z.never().optional(),
+  path: z.object({
+    c_id: z.string().describe('Conversation UUID'),
+  }),
+  query: z.never().optional(),
+})
+
+export type DeleteConversationDataZodType = z.infer<typeof zDeleteConversationData>
 
 /**
- * OK
+ * Conversation deleted successfully
  */
-export const zGetConsoleApiPingResponse = zPingResponse
+export const zDeleteConversationResponse = z.void().describe('Conversation deleted successfully')
 
-export type GetConsoleApiPingResponseZodType = z.infer<typeof zGetConsoleApiPingResponse>
+export type DeleteConversationResponseZodType = z.infer<typeof zDeleteConversationResponse>
+
+export const zRenameConversationData = z.object({
+  body: z.never().optional(),
+  path: z.object({
+    c_id: z.string().describe('Conversation UUID'),
+  }),
+  query: z.object({
+    name: z.string().describe('New conversation name').optional(),
+    auto_generate: z.boolean().describe('Auto-generate conversation name').optional().default(false),
+  }).optional(),
+})
+
+export type RenameConversationDataZodType = z.infer<typeof zRenameConversationData>
+
+export const zPinConversationData = z.object({
+  body: z.never().optional(),
+  path: z.object({
+    c_id: z.string().describe('Conversation UUID'),
+  }),
+  query: z.never().optional(),
+})
+
+export type PinConversationDataZodType = z.infer<typeof zPinConversationData>
+
+export const zUnpinConversationData = z.object({
+  body: z.never().optional(),
+  path: z.object({
+    c_id: z.string().describe('Conversation UUID'),
+  }),
+  query: z.never().optional(),
+})
+
+export type UnpinConversationDataZodType = z.infer<typeof zUnpinConversationData>
+
+export const zSendEmailCodeLoginData = z.object({
+  body: zEmailCodeLoginSendPayload,
+  path: z.never().optional(),
+  query: z.never().optional(),
+})
+
+export type SendEmailCodeLoginDataZodType = z.infer<typeof zSendEmailCodeLoginData>
+
+export const zVerifyEmailCodeLoginData = z.object({
+  body: zEmailCodeLoginVerifyPayload,
+  path: z.never().optional(),
+  query: z.never().optional(),
+})
+
+export type VerifyEmailCodeLoginDataZodType = z.infer<typeof zVerifyEmailCodeLoginData>
+
+export const zUploadFileData = z.object({
+  body: z.never().optional(),
+  path: z.never().optional(),
+  query: z.never().optional(),
+})
+
+export type UploadFileDataZodType = z.infer<typeof zUploadFileData>
+
+/**
+ * File uploaded successfully
+ */
+export const zUploadFileResponse = zFileResponse
+
+export type UploadFileResponseZodType = z.infer<typeof zUploadFileResponse>
+
+export const zSendForgotPasswordEmailData = z.object({
+  body: zForgotPasswordSendPayload,
+  path: z.never().optional(),
+  query: z.never().optional(),
+})
+
+export type SendForgotPasswordEmailDataZodType = z.infer<typeof zSendForgotPasswordEmailData>
+
+export const zResetPasswordData = z.object({
+  body: zForgotPasswordResetPayload,
+  path: z.never().optional(),
+  query: z.never().optional(),
+})
+
+export type ResetPasswordDataZodType = z.infer<typeof zResetPasswordData>
+
+export const zCheckForgotPasswordTokenData = z.object({
+  body: zForgotPasswordCheckPayload,
+  path: z.never().optional(),
+  query: z.never().optional(),
+})
+
+export type CheckForgotPasswordTokenDataZodType = z.infer<typeof zCheckForgotPasswordTokenData>
+
+export const zWebAppLoginData = z.object({
+  body: zLoginPayload,
+  path: z.never().optional(),
+  query: z.never().optional(),
+})
+
+export type WebAppLoginDataZodType = z.infer<typeof zWebAppLoginData>
+
+export const zWebAppLoginStatusData = z.object({
+  body: z.never().optional(),
+  path: z.never().optional(),
+  query: z.never().optional(),
+})
+
+export type WebAppLoginStatusDataZodType = z.infer<typeof zWebAppLoginStatusData>
+
+export const zWebAppLogoutData = z.object({
+  body: z.never().optional(),
+  path: z.never().optional(),
+  query: z.never().optional(),
+})
+
+export type WebAppLogoutDataZodType = z.infer<typeof zWebAppLogoutData>
+
+export const zGetMessageListData = z.object({
+  body: z.never().optional(),
+  path: z.never().optional(),
+  query: z.object({
+    conversation_id: z.string().describe('Conversation UUID'),
+    first_id: z.string().describe('First message ID for pagination').optional(),
+    limit: z.number().int().describe('Number of messages to return (1-100)').optional().default(20),
+  }),
+})
+
+export type GetMessageListDataZodType = z.infer<typeof zGetMessageListData>
+
+export const zCreateMessageFeedbackData = z.object({
+  body: z.never().optional(),
+  path: z.object({
+    message_id: z.string().describe('Message UUID'),
+  }),
+  query: z.object({
+    rating: z.enum(['like', 'dislike']).describe('Feedback rating').optional(),
+    content: z.string().describe('Feedback content').optional(),
+  }).optional(),
+})
+
+export type CreateMessageFeedbackDataZodType = z.infer<typeof zCreateMessageFeedbackData>
+
+export const zGenerateMoreLikeThisData = z.object({
+  body: zMessageMoreLikeThisQuery,
+  path: z.object({
+    message_id: z.string(),
+  }),
+  query: z.never().optional(),
+})
+
+export type GenerateMoreLikeThisDataZodType = z.infer<typeof zGenerateMoreLikeThisData>
+
+export const zGetSuggestedQuestionsData = z.object({
+  body: z.never().optional(),
+  path: z.object({
+    message_id: z.string().describe('Message UUID'),
+  }),
+  query: z.never().optional(),
+})
+
+export type GetSuggestedQuestionsDataZodType = z.infer<typeof zGetSuggestedQuestionsData>
+
+export const zGetAppMetaData = z.object({
+  body: z.never().optional(),
+  path: z.never().optional(),
+  query: z.never().optional(),
+})
+
+export type GetAppMetaDataZodType = z.infer<typeof zGetAppMetaData>
+
+export const zGetAppParametersData = z.object({
+  body: z.never().optional(),
+  path: z.never().optional(),
+  query: z.never().optional(),
+})
+
+export type GetAppParametersDataZodType = z.infer<typeof zGetAppParametersData>
+
+export const zGetPassportData = z.object({
+  body: z.never().optional(),
+  path: z.never().optional(),
+  query: z.never().optional(),
+})
+
+export type GetPassportDataZodType = z.infer<typeof zGetPassportData>
+
+export const zUploadRemoteFileData = z.object({
+  body: z.never().optional(),
+  path: z.never().optional(),
+  query: z.never().optional(),
+})
+
+export type UploadRemoteFileDataZodType = z.infer<typeof zUploadRemoteFileData>
+
+/**
+ * Remote file uploaded successfully
+ */
+export const zUploadRemoteFileResponse = zFileWithSignedUrl
+
+export type UploadRemoteFileResponseZodType = z.infer<typeof zUploadRemoteFileResponse>
+
+export const zGetRemoteFileInfoData = z.object({
+  body: z.never().optional(),
+  path: z.object({
+    url: z.string(),
+  }),
+  query: z.never().optional(),
+})
+
+export type GetRemoteFileInfoDataZodType = z.infer<typeof zGetRemoteFileInfoData>
+
+/**
+ * Remote file information retrieved successfully
+ */
+export const zGetRemoteFileInfoResponse = zRemoteFileInfo
+
+export type GetRemoteFileInfoResponseZodType = z.infer<typeof zGetRemoteFileInfoResponse>
+
+export const zGetSavedMessagesData = z.object({
+  body: z.never().optional(),
+  path: z.never().optional(),
+  query: z.object({
+    last_id: z.string().describe('Last message ID for pagination').optional(),
+    limit: z.number().int().describe('Number of messages to return (1-100)').optional().default(20),
+  }).optional(),
+})
+
+export type GetSavedMessagesDataZodType = z.infer<typeof zGetSavedMessagesData>
+
+export const zSaveMessageData = z.object({
+  body: z.never().optional(),
+  path: z.never().optional(),
+  query: z.object({
+    message_id: z.string().describe('Message UUID to save'),
+  }),
+})
+
+export type SaveMessageDataZodType = z.infer<typeof zSaveMessageData>
+
+export const zDeleteSavedMessageData = z.object({
+  body: z.never().optional(),
+  path: z.object({
+    message_id: z.string().describe('Message UUID to delete'),
+  }),
+  query: z.never().optional(),
+})
+
+export type DeleteSavedMessageDataZodType = z.infer<typeof zDeleteSavedMessageData>
+
+/**
+ * Message removed successfully
+ */
+export const zDeleteSavedMessageResponse = z.void().describe('Message removed successfully')
+
+export type DeleteSavedMessageResponseZodType = z.infer<typeof zDeleteSavedMessageResponse>
+
+export const zGetAppSiteInfoData = z.object({
+  body: z.never().optional(),
+  path: z.never().optional(),
+  query: z.never().optional(),
+})
+
+export type GetAppSiteInfoDataZodType = z.infer<typeof zGetAppSiteInfoData>
+
+export const zGetSystemFeaturesData = z.object({
+  body: z.never().optional(),
+  path: z.never().optional(),
+  query: z.never().optional(),
+})
+
+export type GetSystemFeaturesDataZodType = z.infer<typeof zGetSystemFeaturesData>
+
+export const zTextToAudioData = z.object({
+  body: zTextToAudioPayload,
+  path: z.never().optional(),
+  query: z.never().optional(),
+})
+
+export type TextToAudioDataZodType = z.infer<typeof zTextToAudioData>
+
+export const zGetAppAccessModeData = z.object({
+  body: z.never().optional(),
+  path: z.never().optional(),
+  query: z.object({
+    appId: z.string().describe('Application ID').optional(),
+    appCode: z.string().describe('Application code').optional(),
+  }).optional(),
+})
+
+export type GetAppAccessModeDataZodType = z.infer<typeof zGetAppAccessModeData>
+
+export const zCheckAppPermissionData = z.object({
+  body: z.never().optional(),
+  path: z.never().optional(),
+  query: z.object({
+    appId: z.string().describe('Application ID'),
+  }),
+})
+
+export type CheckAppPermissionDataZodType = z.infer<typeof zCheckAppPermissionData>
+
+export const zRunWorkflowData = z.object({
+  body: zWorkflowRunPayload,
+  path: z.never().optional(),
+  query: z.never().optional(),
+})
+
+export type RunWorkflowDataZodType = z.infer<typeof zRunWorkflowData>
+
+export const zStopWorkflowTaskData = z.object({
+  body: z.never().optional(),
+  path: z.object({
+    task_id: z.string().describe('Task ID to stop'),
+  }),
+  query: z.never().optional(),
+})
+
+export type StopWorkflowTaskDataZodType = z.infer<typeof zStopWorkflowTaskData>

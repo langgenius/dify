@@ -1,2297 +1,2230 @@
 {
-    "swagger": "2.0",
-    "basePath": "\/api",
-    "paths": {
-        "\/audio-to-text": {
-            "post": {
-                "responses": {
-                    "200": {
-                        "description": "Success"
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "401": {
-                        "description": "Unauthorized"
-                    },
-                    "403": {
-                        "description": "Forbidden"
-                    },
-                    "413": {
-                        "description": "Audio file too large"
-                    },
-                    "415": {
-                        "description": "Unsupported audio type"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                },
-                "summary": "Convert audio to text",
-                "description": "Convert audio file to text using speech-to-text service.",
-                "operationId": "Audio to Text",
-                "tags": [
-                    "web"
-                ]
-            }
-        },
-        "\/chat-messages": {
-            "post": {
-                "responses": {
-                    "200": {
-                        "description": "Success"
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "401": {
-                        "description": "Unauthorized"
-                    },
-                    "403": {
-                        "description": "Forbidden"
-                    },
-                    "404": {
-                        "description": "App Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                },
-                "description": "Create a chat message for conversational applications.",
-                "operationId": "Create Chat Message",
-                "parameters": [
-                    {
-                        "name": "payload",
-                        "required": true,
-                        "in": "body",
-                        "schema": {
-                            "$ref": "#\/definitions\/ChatMessagePayload"
-                        }
-                    }
-                ],
-                "tags": [
-                    "web"
-                ]
-            }
-        },
-        "\/chat-messages\/{task_id}\/stop": {
-            "post": {
-                "responses": {
-                    "200": {
-                        "description": "Success"
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "401": {
-                        "description": "Unauthorized"
-                    },
-                    "403": {
-                        "description": "Forbidden"
-                    },
-                    "404": {
-                        "description": "Task Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                },
-                "description": "Stop a running chat message task.",
-                "operationId": "Stop Chat Message",
-                "parameters": [
-                    {
-                        "name": "task_id",
-                        "in": "path",
-                        "required": true,
-                        "type": "string",
-                        "description": "Task ID to stop"
-                    }
-                ],
-                "tags": [
-                    "web"
-                ]
-            }
-        },
-        "\/completion-messages": {
-            "post": {
-                "responses": {
-                    "200": {
-                        "description": "Success"
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "401": {
-                        "description": "Unauthorized"
-                    },
-                    "403": {
-                        "description": "Forbidden"
-                    },
-                    "404": {
-                        "description": "App Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                },
-                "description": "Create a completion message for text generation applications.",
-                "operationId": "Create Completion Message",
-                "parameters": [
-                    {
-                        "name": "payload",
-                        "required": true,
-                        "in": "body",
-                        "schema": {
-                            "$ref": "#\/definitions\/CompletionMessagePayload"
-                        }
-                    }
-                ],
-                "tags": [
-                    "web"
-                ]
-            }
-        },
-        "\/completion-messages\/{task_id}\/stop": {
-            "post": {
-                "responses": {
-                    "200": {
-                        "description": "Success"
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "401": {
-                        "description": "Unauthorized"
-                    },
-                    "403": {
-                        "description": "Forbidden"
-                    },
-                    "404": {
-                        "description": "Task Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                },
-                "description": "Stop a running completion message task.",
-                "operationId": "Stop Completion Message",
-                "parameters": [
-                    {
-                        "name": "task_id",
-                        "in": "path",
-                        "required": true,
-                        "type": "string",
-                        "description": "Task ID to stop"
-                    }
-                ],
-                "tags": [
-                    "web"
-                ]
-            }
-        },
-        "\/conversations": {
-            "get": {
-                "responses": {
-                    "200": {
-                        "description": "Success"
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "401": {
-                        "description": "Unauthorized"
-                    },
-                    "403": {
-                        "description": "Forbidden"
-                    },
-                    "404": {
-                        "description": "App Not Found or Not a Chat App"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                },
-                "description": "Retrieve paginated list of conversations for a chat application.",
-                "operationId": "Get Conversation List",
-                "parameters": [
-                    {
-                        "description": "Last conversation ID for pagination",
-                        "type": "string",
-                        "required": false,
-                        "name": "last_id",
-                        "in": "query"
-                    },
-                    {
-                        "description": "Number of conversations to return (1-100)",
-                        "type": "integer",
-                        "required": false,
-                        "default": 20,
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "description": "Filter by pinned status",
-                        "type": "string",
-                        "enum": [
-                            "true",
-                            "false"
-                        ],
-                        "required": false,
-                        "name": "pinned",
-                        "in": "query"
-                    },
-                    {
-                        "description": "Sort order",
-                        "type": "string",
-                        "enum": [
-                            "created_at",
-                            "-created_at",
-                            "updated_at",
-                            "-updated_at"
-                        ],
-                        "required": false,
-                        "default": "-updated_at",
-                        "name": "sort_by",
-                        "in": "query"
-                    }
-                ],
-                "tags": [
-                    "web"
-                ]
-            }
-        },
-        "\/conversations\/{c_id}": {
-            "delete": {
-                "responses": {
-                    "204": {
-                        "description": "Conversation deleted successfully"
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "401": {
-                        "description": "Unauthorized"
-                    },
-                    "403": {
-                        "description": "Forbidden"
-                    },
-                    "404": {
-                        "description": "Conversation Not Found or Not a Chat App"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                },
-                "description": "Delete a specific conversation.",
-                "operationId": "Delete Conversation",
-                "parameters": [
-                    {
-                        "name": "c_id",
-                        "in": "path",
-                        "required": true,
-                        "type": "string",
-                        "description": "Conversation UUID"
-                    }
-                ],
-                "tags": [
-                    "web"
-                ]
-            }
-        },
-        "\/conversations\/{c_id}\/name": {
-            "post": {
-                "responses": {
-                    "200": {
-                        "description": "Conversation renamed successfully"
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "401": {
-                        "description": "Unauthorized"
-                    },
-                    "403": {
-                        "description": "Forbidden"
-                    },
-                    "404": {
-                        "description": "Conversation Not Found or Not a Chat App"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                },
-                "description": "Rename a specific conversation with a custom name or auto-generate one.",
-                "operationId": "Rename Conversation",
-                "parameters": [
-                    {
-                        "name": "c_id",
-                        "in": "path",
-                        "required": true,
-                        "type": "string",
-                        "description": "Conversation UUID"
-                    },
-                    {
-                        "description": "New conversation name",
-                        "type": "string",
-                        "required": false,
-                        "name": "name",
-                        "in": "query"
-                    },
-                    {
-                        "description": "Auto-generate conversation name",
-                        "type": "boolean",
-                        "required": false,
-                        "default": false,
-                        "name": "auto_generate",
-                        "in": "query"
-                    }
-                ],
-                "tags": [
-                    "web"
-                ]
-            }
-        },
-        "\/conversations\/{c_id}\/pin": {
-            "patch": {
-                "responses": {
-                    "200": {
-                        "description": "Conversation pinned successfully"
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "401": {
-                        "description": "Unauthorized"
-                    },
-                    "403": {
-                        "description": "Forbidden"
-                    },
-                    "404": {
-                        "description": "Conversation Not Found or Not a Chat App"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                },
-                "description": "Pin a specific conversation to keep it at the top of the list.",
-                "operationId": "Pin Conversation",
-                "parameters": [
-                    {
-                        "name": "c_id",
-                        "in": "path",
-                        "required": true,
-                        "type": "string",
-                        "description": "Conversation UUID"
-                    }
-                ],
-                "tags": [
-                    "web"
-                ]
-            }
-        },
-        "\/conversations\/{c_id}\/unpin": {
-            "patch": {
-                "responses": {
-                    "200": {
-                        "description": "Conversation unpinned successfully"
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "401": {
-                        "description": "Unauthorized"
-                    },
-                    "403": {
-                        "description": "Forbidden"
-                    },
-                    "404": {
-                        "description": "Conversation Not Found or Not a Chat App"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                },
-                "description": "Unpin a specific conversation to remove it from the top of the list.",
-                "operationId": "Unpin Conversation",
-                "parameters": [
-                    {
-                        "name": "c_id",
-                        "in": "path",
-                        "required": true,
-                        "type": "string",
-                        "description": "Conversation UUID"
-                    }
-                ],
-                "tags": [
-                    "web"
-                ]
-            }
-        },
-        "\/email-code-login": {
-            "post": {
-                "responses": {
-                    "200": {
-                        "description": "Email code sent successfully"
-                    },
-                    "400": {
-                        "description": "Bad request - invalid email format"
-                    },
-                    "404": {
-                        "description": "Account not found"
-                    }
-                },
-                "description": "Send email verification code for login",
-                "operationId": "send_email_code_login",
-                "parameters": [
-                    {
-                        "name": "payload",
-                        "required": true,
-                        "in": "body",
-                        "schema": {
-                            "$ref": "#\/definitions\/EmailCodeLoginSendPayload"
-                        }
-                    }
-                ],
-                "tags": [
-                    "web"
-                ]
-            }
-        },
-        "\/email-code-login\/validity": {
-            "post": {
-                "responses": {
-                    "200": {
-                        "description": "Email code verified and login successful"
-                    },
-                    "400": {
-                        "description": "Bad request - invalid code or token"
-                    },
-                    "401": {
-                        "description": "Invalid token or expired code"
-                    },
-                    "404": {
-                        "description": "Account not found"
-                    }
-                },
-                "description": "Verify email code and complete login",
-                "operationId": "verify_email_code_login",
-                "parameters": [
-                    {
-                        "name": "payload",
-                        "required": true,
-                        "in": "body",
-                        "schema": {
-                            "$ref": "#\/definitions\/EmailCodeLoginVerifyPayload"
-                        }
-                    }
-                ],
-                "tags": [
-                    "web"
-                ]
-            }
-        },
-        "\/files\/upload": {
-            "post": {
-                "responses": {
-                    "201": {
-                        "description": "File uploaded successfully",
-                        "schema": {
-                            "$ref": "#\/definitions\/FileResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad request - invalid file or parameters"
-                    },
-                    "413": {
-                        "description": "File too large"
-                    },
-                    "415": {
-                        "description": "Unsupported file type"
-                    }
-                },
-                "summary": "Upload a file for use in web applications",
-                "description": "Upload a file for use in web applications\nAccepts file uploads for use within web applications, supporting\nmultiple file types with automatic validation and storage.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user uploading the file\n\nForm Parameters:\n    file: The file to upload (required)\n    source: Optional source type (datasets or None)\n\nReturns:\n    dict: File information including ID, URL, and metadata\n    int: HTTP status code 201 for success\n\nRaises:\n    NoFileUploadedError: No file provided in request\n    TooManyFilesError: Multiple files provided (only one allowed)\n    FilenameNotExistsError: File has no filename\n    FileTooLargeError: File exceeds size limit\n    UnsupportedFileTypeError: File type not supported",
-                "operationId": "upload_file",
-                "tags": [
-                    "web"
-                ]
-            }
-        },
-        "\/forgot-password": {
-            "post": {
-                "responses": {
-                    "200": {
-                        "description": "Password reset email sent successfully"
-                    },
-                    "400": {
-                        "description": "Bad request - invalid email format"
-                    },
-                    "404": {
-                        "description": "Account not found"
-                    },
-                    "429": {
-                        "description": "Too many requests - rate limit exceeded"
-                    }
-                },
-                "description": "Send password reset email",
-                "operationId": "send_forgot_password_email",
-                "parameters": [
-                    {
-                        "name": "payload",
-                        "required": true,
-                        "in": "body",
-                        "schema": {
-                            "$ref": "#\/definitions\/ForgotPasswordSendPayload"
-                        }
-                    }
-                ],
-                "tags": [
-                    "web"
-                ]
-            }
-        },
-        "\/forgot-password\/resets": {
-            "post": {
-                "responses": {
-                    "200": {
-                        "description": "Password reset successfully"
-                    },
-                    "400": {
-                        "description": "Bad request - invalid parameters or password mismatch"
-                    },
-                    "401": {
-                        "description": "Invalid or expired token"
-                    },
-                    "404": {
-                        "description": "Account not found"
-                    }
-                },
-                "description": "Reset user password with verification token",
-                "operationId": "reset_password",
-                "parameters": [
-                    {
-                        "name": "payload",
-                        "required": true,
-                        "in": "body",
-                        "schema": {
-                            "$ref": "#\/definitions\/ForgotPasswordResetPayload"
-                        }
-                    }
-                ],
-                "tags": [
-                    "web"
-                ]
-            }
-        },
-        "\/forgot-password\/validity": {
-            "post": {
-                "responses": {
-                    "200": {
-                        "description": "Token is valid"
-                    },
-                    "400": {
-                        "description": "Bad request - invalid token format"
-                    },
-                    "401": {
-                        "description": "Invalid or expired token"
-                    }
-                },
-                "description": "Verify password reset token validity",
-                "operationId": "check_forgot_password_token",
-                "parameters": [
-                    {
-                        "name": "payload",
-                        "required": true,
-                        "in": "body",
-                        "schema": {
-                            "$ref": "#\/definitions\/ForgotPasswordCheckPayload"
-                        }
-                    }
-                ],
-                "tags": [
-                    "web"
-                ]
-            }
-        },
-        "\/login": {
-            "post": {
-                "responses": {
-                    "200": {
-                        "description": "Authentication successful"
-                    },
-                    "400": {
-                        "description": "Bad request - invalid email or password format"
-                    },
-                    "401": {
-                        "description": "Authentication failed - email or password mismatch"
-                    },
-                    "403": {
-                        "description": "Account banned or login disabled"
-                    },
-                    "404": {
-                        "description": "Account not found"
-                    }
-                },
-                "summary": "Authenticate user and login",
-                "description": "Authenticate user for web application access",
-                "operationId": "web_app_login",
-                "parameters": [
-                    {
-                        "name": "payload",
-                        "required": true,
-                        "in": "body",
-                        "schema": {
-                            "$ref": "#\/definitions\/LoginPayload"
-                        }
-                    }
-                ],
-                "tags": [
-                    "web"
-                ]
-            }
-        },
-        "\/login\/status": {
-            "get": {
-                "responses": {
-                    "200": {
-                        "description": "Login status"
-                    },
-                    "401": {
-                        "description": "Login status"
-                    }
-                },
-                "description": "Check login status",
-                "operationId": "web_app_login_status",
-                "tags": [
-                    "web"
-                ]
-            }
-        },
-        "\/logout": {
-            "post": {
-                "responses": {
-                    "200": {
-                        "description": "Logout successful"
-                    }
-                },
-                "description": "Logout user from web application",
-                "operationId": "web_app_logout",
-                "tags": [
-                    "web"
-                ]
-            }
-        },
-        "\/messages": {
-            "get": {
-                "responses": {
-                    "200": {
-                        "description": "Success"
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "401": {
-                        "description": "Unauthorized"
-                    },
-                    "403": {
-                        "description": "Forbidden"
-                    },
-                    "404": {
-                        "description": "Conversation Not Found or Not a Chat App"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                },
-                "description": "Retrieve paginated list of messages from a conversation in a chat application.",
-                "operationId": "Get Message List",
-                "parameters": [
-                    {
-                        "description": "Conversation UUID",
-                        "type": "string",
-                        "required": true,
-                        "name": "conversation_id",
-                        "in": "query"
-                    },
-                    {
-                        "description": "First message ID for pagination",
-                        "type": "string",
-                        "required": false,
-                        "name": "first_id",
-                        "in": "query"
-                    },
-                    {
-                        "description": "Number of messages to return (1-100)",
-                        "type": "integer",
-                        "required": false,
-                        "default": 20,
-                        "name": "limit",
-                        "in": "query"
-                    }
-                ],
-                "tags": [
-                    "web"
-                ]
-            }
-        },
-        "\/messages\/{message_id}\/feedbacks": {
-            "post": {
-                "responses": {
-                    "200": {
-                        "description": "Feedback submitted successfully"
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "401": {
-                        "description": "Unauthorized"
-                    },
-                    "403": {
-                        "description": "Forbidden"
-                    },
-                    "404": {
-                        "description": "Message Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                },
-                "description": "Submit feedback (like\/dislike) for a specific message.",
-                "operationId": "Create Message Feedback",
-                "parameters": [
-                    {
-                        "name": "message_id",
-                        "in": "path",
-                        "required": true,
-                        "type": "string",
-                        "description": "Message UUID"
-                    },
-                    {
-                        "description": "Feedback rating",
-                        "type": "string",
-                        "enum": [
-                            "like",
-                            "dislike"
-                        ],
-                        "required": false,
-                        "name": "rating",
-                        "in": "query"
-                    },
-                    {
-                        "description": "Feedback content",
-                        "type": "string",
-                        "required": false,
-                        "name": "content",
-                        "in": "query"
-                    }
-                ],
-                "tags": [
-                    "web"
-                ]
-            }
-        },
-        "\/messages\/{message_id}\/more-like-this": {
-            "parameters": [
-                {
-                    "name": "message_id",
-                    "in": "path",
-                    "required": true,
-                    "type": "string"
-                }
-            ],
-            "get": {
-                "responses": {
-                    "200": {
-                        "description": "Success"
-                    },
-                    "400": {
-                        "description": "Bad Request - Not a completion app or feature disabled"
-                    },
-                    "401": {
-                        "description": "Unauthorized"
-                    },
-                    "403": {
-                        "description": "Forbidden"
-                    },
-                    "404": {
-                        "description": "Message Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                },
-                "description": "Generate a new completion similar to an existing message (completion apps only).",
-                "operationId": "Generate More Like This",
-                "parameters": [
-                    {
-                        "name": "payload",
-                        "required": true,
-                        "in": "body",
-                        "schema": {
-                            "$ref": "#\/definitions\/MessageMoreLikeThisQuery"
-                        }
-                    }
-                ],
-                "tags": [
-                    "web"
-                ]
-            }
-        },
-        "\/messages\/{message_id}\/suggested-questions": {
-            "get": {
-                "responses": {
-                    "200": {
-                        "description": "Success"
-                    },
-                    "400": {
-                        "description": "Bad Request - Not a chat app or feature disabled"
-                    },
-                    "401": {
-                        "description": "Unauthorized"
-                    },
-                    "403": {
-                        "description": "Forbidden"
-                    },
-                    "404": {
-                        "description": "Message Not Found or Conversation Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                },
-                "description": "Get suggested follow-up questions after a message (chat apps only).",
-                "operationId": "Get Suggested Questions",
-                "parameters": [
-                    {
-                        "name": "message_id",
-                        "in": "path",
-                        "required": true,
-                        "type": "string",
-                        "description": "Message UUID"
-                    }
-                ],
-                "tags": [
-                    "web"
-                ]
-            }
-        },
-        "\/meta": {
-            "get": {
-                "responses": {
-                    "200": {
-                        "description": "Success"
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "401": {
-                        "description": "Unauthorized"
-                    },
-                    "403": {
-                        "description": "Forbidden"
-                    },
-                    "404": {
-                        "description": "App Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                },
-                "summary": "Get app meta",
-                "description": "Retrieve the metadata for a specific app.",
-                "operationId": "Get App Meta",
-                "tags": [
-                    "web"
-                ]
-            }
-        },
-        "\/parameters": {
-            "get": {
-                "responses": {
-                    "200": {
-                        "description": "Success"
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "401": {
-                        "description": "Unauthorized"
-                    },
-                    "403": {
-                        "description": "Forbidden"
-                    },
-                    "404": {
-                        "description": "App Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                },
-                "summary": "Retrieve app parameters",
-                "description": "Retrieve the parameters for a specific app.",
-                "operationId": "Get App Parameters",
-                "tags": [
-                    "web"
-                ]
-            }
-        },
-        "\/passport": {
-            "get": {
-                "responses": {
-                    "200": {
-                        "description": "Passport retrieved successfully"
-                    },
-                    "401": {
-                        "description": "Unauthorized - missing app code or invalid authentication"
-                    },
-                    "404": {
-                        "description": "Application or user not found"
-                    }
-                },
-                "description": "Get authentication passport for web application access",
-                "operationId": "get_passport",
-                "tags": [
-                    "web"
-                ]
-            }
-        },
-        "\/remote-files\/upload": {
-            "post": {
-                "responses": {
-                    "201": {
-                        "description": "Remote file uploaded successfully",
-                        "schema": {
-                            "$ref": "#\/definitions\/FileWithSignedUrl"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad request - invalid URL or parameters"
-                    },
-                    "413": {
-                        "description": "File too large"
-                    },
-                    "415": {
-                        "description": "Unsupported file type"
-                    },
-                    "500": {
-                        "description": "Failed to fetch remote file"
-                    }
-                },
-                "summary": "Upload a file from a remote URL",
-                "description": "Upload a file from a remote URL\nDownloads a file from the provided remote URL and uploads it\nto the platform storage for use in web applications.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user making the request\n\nJSON Parameters:\n    url: The remote URL to download the file from (required)\n\nReturns:\n    dict: File information including ID, signed URL, and metadata\n    int: HTTP status code 201 for success\n\nRaises:\n    RemoteFileUploadError: Failed to fetch file from remote URL\n    FileTooLargeError: File exceeds size limit\n    UnsupportedFileTypeError: File type not supported",
-                "operationId": "upload_remote_file",
-                "tags": [
-                    "web"
-                ]
-            }
-        },
-        "\/remote-files\/{url}": {
-            "parameters": [
-                {
-                    "name": "url",
-                    "in": "path",
-                    "required": true,
-                    "type": "string"
-                }
-            ],
-            "get": {
-                "responses": {
-                    "200": {
-                        "description": "Remote file information retrieved successfully",
-                        "schema": {
-                            "$ref": "#\/definitions\/RemoteFileInfo"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad request - invalid URL"
-                    },
-                    "404": {
-                        "description": "Remote file not found"
-                    },
-                    "500": {
-                        "description": "Failed to fetch remote file"
-                    }
-                },
-                "summary": "Get information about a remote file",
-                "description": "Get information about a remote file\nRetrieves basic information about a file located at a remote URL,\nincluding content type and content length.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user making the request\n    url: URL-encoded path to the remote file\n\nReturns:\n    dict: Remote file information including type and length\n\nRaises:\n    HTTPException: If the remote file cannot be accessed",
-                "operationId": "get_remote_file_info",
-                "tags": [
-                    "web"
-                ]
-            }
-        },
-        "\/saved-messages": {
-            "get": {
-                "responses": {
-                    "200": {
-                        "description": "Success"
-                    },
-                    "400": {
-                        "description": "Bad Request - Not a completion app"
-                    },
-                    "401": {
-                        "description": "Unauthorized"
-                    },
-                    "403": {
-                        "description": "Forbidden"
-                    },
-                    "404": {
-                        "description": "App Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                },
-                "description": "Retrieve paginated list of saved messages for a completion application.",
-                "operationId": "Get Saved Messages",
-                "parameters": [
-                    {
-                        "description": "Last message ID for pagination",
-                        "type": "string",
-                        "required": false,
-                        "name": "last_id",
-                        "in": "query"
-                    },
-                    {
-                        "description": "Number of messages to return (1-100)",
-                        "type": "integer",
-                        "required": false,
-                        "default": 20,
-                        "name": "limit",
-                        "in": "query"
-                    }
-                ],
-                "tags": [
-                    "web"
-                ]
-            },
-            "post": {
-                "responses": {
-                    "200": {
-                        "description": "Message saved successfully"
-                    },
-                    "400": {
-                        "description": "Bad Request - Not a completion app"
-                    },
-                    "401": {
-                        "description": "Unauthorized"
-                    },
-                    "403": {
-                        "description": "Forbidden"
-                    },
-                    "404": {
-                        "description": "Message Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                },
-                "description": "Save a specific message for later reference.",
-                "operationId": "Save Message",
-                "parameters": [
-                    {
-                        "description": "Message UUID to save",
-                        "type": "string",
-                        "required": true,
-                        "name": "message_id",
-                        "in": "query"
-                    }
-                ],
-                "tags": [
-                    "web"
-                ]
-            }
-        },
-        "\/saved-messages\/{message_id}": {
-            "delete": {
-                "responses": {
-                    "204": {
-                        "description": "Message removed successfully"
-                    },
-                    "400": {
-                        "description": "Bad Request - Not a completion app"
-                    },
-                    "401": {
-                        "description": "Unauthorized"
-                    },
-                    "403": {
-                        "description": "Forbidden"
-                    },
-                    "404": {
-                        "description": "Message Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                },
-                "description": "Remove a message from saved messages.",
-                "operationId": "Delete Saved Message",
-                "parameters": [
-                    {
-                        "name": "message_id",
-                        "in": "path",
-                        "required": true,
-                        "type": "string",
-                        "description": "Message UUID to delete"
-                    }
-                ],
-                "tags": [
-                    "web"
-                ]
-            }
-        },
-        "\/site": {
-            "get": {
-                "responses": {
-                    "200": {
-                        "description": "Success"
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "401": {
-                        "description": "Unauthorized"
-                    },
-                    "403": {
-                        "description": "Forbidden"
-                    },
-                    "404": {
-                        "description": "App Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                },
-                "summary": "Retrieve app site info",
-                "description": "Retrieve app site information and configuration.",
-                "operationId": "Get App Site Info",
-                "tags": [
-                    "web"
-                ]
-            }
-        },
-        "\/system-features": {
-            "get": {
-                "responses": {
-                    "200": {
-                        "description": "System features retrieved successfully"
-                    },
-                    "500": {
-                        "description": "Internal server error"
-                    }
-                },
-                "summary": "Get system feature flags and configuration",
-                "description": "Get system feature flags and configuration\nReturns the current system feature flags and configuration\nthat control various functionalities across the platform.\n\nReturns:\n    dict: System feature configuration object\n\nThis endpoint is akin to the `SystemFeatureApi` endpoint in api\/controllers\/console\/feature.py,\nexcept it is intended for use by the web app, instead of the console dashboard.\n\nNOTE: This endpoint is unauthenticated by design, as it provides system features\ndata required for webapp initialization.\n\nAuthentication would create circular dependency (can't authenticate without webapp loading).\n\nOnly non-sensitive configuration data should be returned by this endpoint.",
-                "operationId": "get_system_features",
-                "tags": [
-                    "web"
-                ]
-            }
-        },
-        "\/text-to-audio": {
-            "post": {
-                "responses": {
-                    "200": {
-                        "description": "Success"
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "401": {
-                        "description": "Unauthorized"
-                    },
-                    "403": {
-                        "description": "Forbidden"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                },
-                "summary": "Convert text to audio",
-                "description": "Convert text to audio using text-to-speech service.",
-                "operationId": "Text to Audio",
-                "parameters": [
-                    {
-                        "name": "payload",
-                        "required": true,
-                        "in": "body",
-                        "schema": {
-                            "$ref": "#\/definitions\/TextToAudioPayload"
-                        }
-                    }
-                ],
-                "tags": [
-                    "web"
-                ]
-            }
-        },
-        "\/webapp\/access-mode": {
-            "get": {
-                "responses": {
-                    "200": {
-                        "description": "Success"
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                },
-                "description": "Retrieve the access mode for a web application (public or restricted).",
-                "operationId": "Get App Access Mode",
-                "parameters": [
-                    {
-                        "description": "Application ID",
-                        "type": "string",
-                        "required": false,
-                        "name": "appId",
-                        "in": "query"
-                    },
-                    {
-                        "description": "Application code",
-                        "type": "string",
-                        "required": false,
-                        "name": "appCode",
-                        "in": "query"
-                    }
-                ],
-                "tags": [
-                    "web"
-                ]
-            }
-        },
-        "\/webapp\/permission": {
-            "get": {
-                "responses": {
-                    "200": {
-                        "description": "Success"
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "401": {
-                        "description": "Unauthorized"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                },
-                "description": "Check if user has permission to access a web application.",
-                "operationId": "Check App Permission",
-                "parameters": [
-                    {
-                        "description": "Application ID",
-                        "type": "string",
-                        "required": true,
-                        "name": "appId",
-                        "in": "query"
-                    }
-                ],
-                "tags": [
-                    "web"
-                ]
-            }
-        },
-        "\/workflows\/run": {
-            "post": {
-                "responses": {
-                    "200": {
-                        "description": "Success"
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "401": {
-                        "description": "Unauthorized"
-                    },
-                    "403": {
-                        "description": "Forbidden"
-                    },
-                    "404": {
-                        "description": "App Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                },
-                "summary": "Run workflow",
-                "description": "Execute a workflow with provided inputs and files.",
-                "operationId": "Run Workflow",
-                "parameters": [
-                    {
-                        "name": "payload",
-                        "required": true,
-                        "in": "body",
-                        "schema": {
-                            "$ref": "#\/definitions\/WorkflowRunPayload"
-                        }
-                    }
-                ],
-                "tags": [
-                    "web"
-                ]
-            }
-        },
-        "\/workflows\/tasks\/{task_id}\/stop": {
-            "post": {
-                "responses": {
-                    "200": {
-                        "description": "Success"
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "401": {
-                        "description": "Unauthorized"
-                    },
-                    "403": {
-                        "description": "Forbidden"
-                    },
-                    "404": {
-                        "description": "Task Not Found"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                },
-                "summary": "Stop workflow task",
-                "description": "Stop a running workflow task.",
-                "operationId": "Stop Workflow Task",
-                "parameters": [
-                    {
-                        "name": "task_id",
-                        "in": "path",
-                        "required": true,
-                        "type": "string",
-                        "description": "Task ID to stop"
-                    }
-                ],
-                "tags": [
-                    "web"
-                ]
-            }
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Web API",
+    "description": "Public APIs for web applications including file uploads, chat interactions, and app management",
+    "version": "1.0"
+  },
+  "servers": [
+    {
+      "url": "/api"
+    }
+  ],
+  "security": [
+    {
+      "Bearer": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "web",
+      "description": "Web application API operations"
+    }
+  ],
+  "paths": {
+    "/audio-to-text": {
+      "post": {
+        "tags": [
+          "web"
+        ],
+        "summary": "Convert audio to text",
+        "description": "Convert audio file to text using speech-to-text service.",
+        "operationId": "Audio to Text",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {}
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {}
+          },
+          "413": {
+            "description": "Audio file too large",
+            "content": {}
+          },
+          "415": {
+            "description": "Unsupported audio type",
+            "content": {}
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {}
+          }
         }
+      }
     },
-    "info": {
-        "title": "Web API",
-        "version": "1.0",
-        "description": "Public APIs for web applications including file uploads, chat interactions, and app management"
+    "/chat-messages": {
+      "post": {
+        "tags": [
+          "web"
+        ],
+        "description": "Create a chat message for conversational applications.",
+        "operationId": "Create Chat Message",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatMessagePayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {}
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {}
+          },
+          "404": {
+            "description": "App Not Found",
+            "content": {}
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
     },
-    "produces": [
-        "application\/json"
-    ],
-    "consumes": [
-        "application\/json"
-    ],
-    "securityDefinitions": {
-        "Bearer": {
-            "type": "apiKey",
-            "in": "header",
-            "name": "Authorization",
-            "description": "Type: Bearer {your-api-key}"
+    "/chat-messages/{task_id}/stop": {
+      "post": {
+        "tags": [
+          "web"
+        ],
+        "description": "Stop a running chat message task.",
+        "operationId": "Stop Chat Message",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "description": "Task ID to stop",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {}
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {}
+          },
+          "404": {
+            "description": "Task Not Found",
+            "content": {}
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {}
+          }
         }
+      }
     },
-    "security": [
-        {
-            "Bearer": []
+    "/completion-messages": {
+      "post": {
+        "tags": [
+          "web"
+        ],
+        "description": "Create a completion message for text generation applications.",
+        "operationId": "Create Completion Message",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompletionMessagePayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {}
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {}
+          },
+          "404": {
+            "description": "App Not Found",
+            "content": {}
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/completion-messages/{task_id}/stop": {
+      "post": {
+        "tags": [
+          "web"
+        ],
+        "description": "Stop a running completion message task.",
+        "operationId": "Stop Completion Message",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "description": "Task ID to stop",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {}
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {}
+          },
+          "404": {
+            "description": "Task Not Found",
+            "content": {}
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {}
+          }
         }
-    ],
-    "tags": [
-        {
-            "name": "web",
-            "description": "Web application API operations"
+      }
+    },
+    "/conversations": {
+      "get": {
+        "tags": [
+          "web"
+        ],
+        "description": "Retrieve paginated list of conversations for a chat application.",
+        "operationId": "Get Conversation List",
+        "parameters": [
+          {
+            "name": "last_id",
+            "in": "query",
+            "description": "Last conversation ID for pagination",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Number of conversations to return (1-100)",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          },
+          {
+            "name": "pinned",
+            "in": "query",
+            "description": "Filter by pinned status",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "description": "Sort order",
+            "schema": {
+              "type": "string",
+              "default": "-updated_at",
+              "enum": [
+                "created_at",
+                "-created_at",
+                "updated_at",
+                "-updated_at"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {}
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {}
+          },
+          "404": {
+            "description": "App Not Found or Not a Chat App",
+            "content": {}
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {}
+          }
         }
-    ],
-    "definitions": {
-        "TextToAudioPayload": {
-            "properties": {
-                "message_id": {
-                    "anyOf": [
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "title": "Message Id"
-                },
-                "voice": {
-                    "anyOf": [
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "title": "Voice"
-                },
-                "text": {
-                    "anyOf": [
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "title": "Text"
-                },
-                "streaming": {
-                    "anyOf": [
-                        {
-                            "type": "boolean"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "title": "Streaming"
-                }
-            },
-            "title": "TextToAudioPayload",
-            "type": "object"
-        },
-        "CompletionMessagePayload": {
-            "properties": {
-                "inputs": {
-                    "additionalProperties": true,
-                    "description": "Input variables for the completion",
-                    "title": "Inputs",
-                    "type": "object"
-                },
-                "query": {
-                    "default": "",
-                    "description": "Query text for completion",
-                    "title": "Query",
-                    "type": "string"
-                },
-                "files": {
-                    "anyOf": [
-                        {
-                            "items": {
-                                "additionalProperties": true,
-                                "type": "object"
-                            },
-                            "type": "array"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "description": "Files to be processed",
-                    "title": "Files"
-                },
-                "response_mode": {
-                    "anyOf": [
-                        {
-                            "enum": [
-                                "blocking",
-                                "streaming"
-                            ],
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "description": "Response mode: blocking or streaming",
-                    "title": "Response Mode"
-                },
-                "retriever_from": {
-                    "default": "web_app",
-                    "description": "Source of retriever",
-                    "title": "Retriever From",
-                    "type": "string"
-                }
-            },
-            "required": [
-                "inputs"
-            ],
-            "title": "CompletionMessagePayload",
-            "type": "object"
-        },
-        "ChatMessagePayload": {
-            "properties": {
-                "inputs": {
-                    "additionalProperties": true,
-                    "description": "Input variables for the chat",
-                    "title": "Inputs",
-                    "type": "object"
-                },
-                "query": {
-                    "description": "User query\/message",
-                    "title": "Query",
-                    "type": "string"
-                },
-                "files": {
-                    "anyOf": [
-                        {
-                            "items": {
-                                "additionalProperties": true,
-                                "type": "object"
-                            },
-                            "type": "array"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "description": "Files to be processed",
-                    "title": "Files"
-                },
-                "response_mode": {
-                    "anyOf": [
-                        {
-                            "enum": [
-                                "blocking",
-                                "streaming"
-                            ],
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "description": "Response mode: blocking or streaming",
-                    "title": "Response Mode"
-                },
-                "conversation_id": {
-                    "anyOf": [
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "description": "Conversation ID",
-                    "title": "Conversation Id"
-                },
-                "parent_message_id": {
-                    "anyOf": [
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "description": "Parent message ID",
-                    "title": "Parent Message Id"
-                },
-                "retriever_from": {
-                    "default": "web_app",
-                    "description": "Source of retriever",
-                    "title": "Retriever From",
-                    "type": "string"
-                }
-            },
-            "required": [
-                "inputs",
-                "query"
-            ],
-            "title": "ChatMessagePayload",
-            "type": "object"
-        },
-        "FileResponse": {
-            "properties": {
-                "id": {
-                    "title": "Id",
-                    "type": "string"
-                },
-                "name": {
-                    "title": "Name",
-                    "type": "string"
-                },
-                "size": {
-                    "title": "Size",
-                    "type": "integer"
-                },
-                "extension": {
-                    "anyOf": [
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "title": "Extension"
-                },
-                "mime_type": {
-                    "anyOf": [
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "title": "Mime Type"
-                },
-                "created_by": {
-                    "anyOf": [
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "title": "Created By"
-                },
-                "created_at": {
-                    "anyOf": [
-                        {
-                            "type": "integer"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "title": "Created At"
-                },
-                "preview_url": {
-                    "anyOf": [
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "title": "Preview Url"
-                },
-                "source_url": {
-                    "anyOf": [
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "title": "Source Url"
-                },
-                "original_url": {
-                    "anyOf": [
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "title": "Original Url"
-                },
-                "user_id": {
-                    "anyOf": [
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "title": "User Id"
-                },
-                "tenant_id": {
-                    "anyOf": [
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "title": "Tenant Id"
-                },
-                "conversation_id": {
-                    "anyOf": [
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "title": "Conversation Id"
-                },
-                "file_key": {
-                    "anyOf": [
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "title": "File Key"
-                }
-            },
-            "required": [
-                "id",
-                "name",
-                "size"
-            ],
-            "title": "FileResponse",
-            "type": "object"
-        },
-        "ForgotPasswordSendPayload": {
-            "properties": {
-                "email": {
-                    "title": "Email",
-                    "type": "string"
-                },
-                "language": {
-                    "anyOf": [
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "title": "Language"
-                }
-            },
-            "required": [
-                "email"
-            ],
-            "title": "ForgotPasswordSendPayload",
-            "type": "object"
-        },
-        "ForgotPasswordCheckPayload": {
-            "properties": {
-                "email": {
-                    "title": "Email",
-                    "type": "string"
-                },
-                "code": {
-                    "title": "Code",
-                    "type": "string"
-                },
-                "token": {
-                    "minLength": 1,
-                    "title": "Token",
-                    "type": "string"
-                }
-            },
-            "required": [
-                "email",
-                "code",
-                "token"
-            ],
-            "title": "ForgotPasswordCheckPayload",
-            "type": "object"
-        },
-        "ForgotPasswordResetPayload": {
-            "properties": {
-                "token": {
-                    "minLength": 1,
-                    "title": "Token",
-                    "type": "string"
-                },
-                "new_password": {
-                    "title": "New Password",
-                    "type": "string"
-                },
-                "password_confirm": {
-                    "title": "Password Confirm",
-                    "type": "string"
-                }
-            },
-            "required": [
-                "token",
-                "new_password",
-                "password_confirm"
-            ],
-            "title": "ForgotPasswordResetPayload",
-            "type": "object"
-        },
-        "LoginPayload": {
-            "properties": {
-                "email": {
-                    "title": "Email",
-                    "type": "string"
-                },
-                "password": {
-                    "title": "Password",
-                    "type": "string"
-                }
-            },
-            "required": [
-                "email",
-                "password"
-            ],
-            "title": "LoginPayload",
-            "type": "object"
-        },
-        "EmailCodeLoginSendPayload": {
-            "properties": {
-                "email": {
-                    "title": "Email",
-                    "type": "string"
-                },
-                "language": {
-                    "anyOf": [
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "title": "Language"
-                }
-            },
-            "required": [
-                "email"
-            ],
-            "title": "EmailCodeLoginSendPayload",
-            "type": "object"
-        },
-        "EmailCodeLoginVerifyPayload": {
-            "properties": {
-                "email": {
-                    "title": "Email",
-                    "type": "string"
-                },
-                "code": {
-                    "title": "Code",
-                    "type": "string"
-                },
-                "token": {
-                    "minLength": 1,
-                    "title": "Token",
-                    "type": "string"
-                }
-            },
-            "required": [
-                "email",
-                "code",
-                "token"
-            ],
-            "title": "EmailCodeLoginVerifyPayload",
-            "type": "object"
-        },
-        "MessageMoreLikeThisQuery": {
-            "properties": {
-                "response_mode": {
-                    "description": "Response mode",
-                    "enum": [
-                        "blocking",
-                        "streaming"
-                    ],
-                    "title": "Response Mode",
-                    "type": "string"
-                }
-            },
-            "required": [
-                "response_mode"
-            ],
-            "title": "MessageMoreLikeThisQuery",
-            "type": "object"
-        },
-        "RemoteFileInfo": {
-            "properties": {
-                "file_type": {
-                    "title": "File Type",
-                    "type": "string"
-                },
-                "file_length": {
-                    "title": "File Length",
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "file_type",
-                "file_length"
-            ],
-            "title": "RemoteFileInfo",
-            "type": "object"
-        },
-        "FileWithSignedUrl": {
-            "properties": {
-                "id": {
-                    "title": "Id",
-                    "type": "string"
-                },
-                "name": {
-                    "title": "Name",
-                    "type": "string"
-                },
-                "size": {
-                    "title": "Size",
-                    "type": "integer"
-                },
-                "extension": {
-                    "anyOf": [
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "title": "Extension"
-                },
-                "url": {
-                    "anyOf": [
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "title": "Url"
-                },
-                "mime_type": {
-                    "anyOf": [
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "title": "Mime Type"
-                },
-                "created_by": {
-                    "anyOf": [
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "title": "Created By"
-                },
-                "created_at": {
-                    "anyOf": [
-                        {
-                            "type": "integer"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "title": "Created At"
-                }
-            },
-            "required": [
-                "id",
-                "name",
-                "size"
-            ],
-            "title": "FileWithSignedUrl",
-            "type": "object"
-        },
-        "WorkflowRunPayload": {
-            "properties": {
-                "inputs": {
-                    "additionalProperties": true,
-                    "description": "Input variables for the workflow",
-                    "title": "Inputs",
-                    "type": "object"
-                },
-                "files": {
-                    "anyOf": [
-                        {
-                            "items": {
-                                "additionalProperties": true,
-                                "type": "object"
-                            },
-                            "type": "array"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "description": "Files to be processed by the workflow",
-                    "title": "Files"
-                }
-            },
-            "required": [
-                "inputs"
-            ],
-            "title": "WorkflowRunPayload",
-            "type": "object"
-        },
-        "AppAccessModeQuery": {
-            "properties": {
-                "appId": {
-                    "anyOf": [
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "description": "Application ID",
-                    "title": "Appid"
-                },
-                "appCode": {
-                    "anyOf": [
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "description": "Application code",
-                    "title": "Appcode"
-                }
-            },
-            "title": "AppAccessModeQuery",
-            "type": "object"
-        },
-        "ConversationListQuery": {
-            "properties": {
-                "last_id": {
-                    "anyOf": [
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "title": "Last Id"
-                },
-                "limit": {
-                    "default": 20,
-                    "maximum": 100,
-                    "minimum": 1,
-                    "title": "Limit",
-                    "type": "integer"
-                },
-                "pinned": {
-                    "anyOf": [
-                        {
-                            "type": "boolean"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "title": "Pinned"
-                },
-                "sort_by": {
-                    "default": "-updated_at",
-                    "enum": [
-                        "created_at",
-                        "-created_at",
-                        "updated_at",
-                        "-updated_at"
-                    ],
-                    "title": "Sort By",
-                    "type": "string"
-                }
-            },
-            "title": "ConversationListQuery",
-            "type": "object"
-        },
-        "ConversationRenamePayload": {
-            "properties": {
-                "name": {
-                    "anyOf": [
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "title": "Name"
-                },
-                "auto_generate": {
-                    "default": false,
-                    "title": "Auto Generate",
-                    "type": "boolean"
-                }
-            },
-            "title": "ConversationRenamePayload",
-            "type": "object"
-        },
-        "MessageListQuery": {
-            "properties": {
-                "conversation_id": {
-                    "description": "Conversation UUID",
-                    "title": "Conversation Id",
-                    "type": "string"
-                },
-                "first_id": {
-                    "anyOf": [
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "description": "First message ID for pagination",
-                    "title": "First Id"
-                },
-                "limit": {
-                    "default": 20,
-                    "description": "Number of messages to return (1-100)",
-                    "maximum": 100,
-                    "minimum": 1,
-                    "title": "Limit",
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "conversation_id"
-            ],
-            "title": "MessageListQuery",
-            "type": "object"
-        },
-        "MessageFeedbackPayload": {
-            "properties": {
-                "rating": {
-                    "anyOf": [
-                        {
-                            "enum": [
-                                "like",
-                                "dislike"
-                            ],
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "description": "Feedback rating",
-                    "title": "Rating"
-                },
-                "content": {
-                    "anyOf": [
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "description": "Feedback content",
-                    "title": "Content"
-                }
-            },
-            "title": "MessageFeedbackPayload",
-            "type": "object"
-        },
-        "RemoteFileUploadPayload": {
-            "properties": {
-                "url": {
-                    "description": "Remote file URL",
-                    "format": "uri",
-                    "maxLength": 2083,
-                    "minLength": 1,
-                    "title": "Url",
-                    "type": "string"
-                }
-            },
-            "required": [
-                "url"
-            ],
-            "title": "RemoteFileUploadPayload",
-            "type": "object"
-        },
-        "SavedMessageListQuery": {
-            "properties": {
-                "last_id": {
-                    "anyOf": [
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "title": "Last Id"
-                },
-                "limit": {
-                    "default": 20,
-                    "maximum": 100,
-                    "minimum": 1,
-                    "title": "Limit",
-                    "type": "integer"
-                }
-            },
-            "title": "SavedMessageListQuery",
-            "type": "object"
-        },
-        "SavedMessageCreatePayload": {
-            "properties": {
-                "message_id": {
-                    "title": "Message Id",
-                    "type": "string"
-                }
-            },
-            "required": [
-                "message_id"
-            ],
-            "title": "SavedMessageCreatePayload",
-            "type": "object"
+      }
+    },
+    "/conversations/{c_id}": {
+      "delete": {
+        "tags": [
+          "web"
+        ],
+        "description": "Delete a specific conversation.",
+        "operationId": "Delete Conversation",
+        "parameters": [
+          {
+            "name": "c_id",
+            "in": "path",
+            "description": "Conversation UUID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Conversation deleted successfully",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {}
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {}
+          },
+          "404": {
+            "description": "Conversation Not Found or Not a Chat App",
+            "content": {}
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {}
+          }
         }
+      }
+    },
+    "/conversations/{c_id}/name": {
+      "post": {
+        "tags": [
+          "web"
+        ],
+        "description": "Rename a specific conversation with a custom name or auto-generate one.",
+        "operationId": "Rename Conversation",
+        "parameters": [
+          {
+            "name": "c_id",
+            "in": "path",
+            "description": "Conversation UUID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "description": "New conversation name",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "auto_generate",
+            "in": "query",
+            "description": "Auto-generate conversation name",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Conversation renamed successfully",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {}
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {}
+          },
+          "404": {
+            "description": "Conversation Not Found or Not a Chat App",
+            "content": {}
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/conversations/{c_id}/pin": {
+      "patch": {
+        "tags": [
+          "web"
+        ],
+        "description": "Pin a specific conversation to keep it at the top of the list.",
+        "operationId": "Pin Conversation",
+        "parameters": [
+          {
+            "name": "c_id",
+            "in": "path",
+            "description": "Conversation UUID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Conversation pinned successfully",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {}
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {}
+          },
+          "404": {
+            "description": "Conversation Not Found or Not a Chat App",
+            "content": {}
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/conversations/{c_id}/unpin": {
+      "patch": {
+        "tags": [
+          "web"
+        ],
+        "description": "Unpin a specific conversation to remove it from the top of the list.",
+        "operationId": "Unpin Conversation",
+        "parameters": [
+          {
+            "name": "c_id",
+            "in": "path",
+            "description": "Conversation UUID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Conversation unpinned successfully",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {}
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {}
+          },
+          "404": {
+            "description": "Conversation Not Found or Not a Chat App",
+            "content": {}
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/email-code-login": {
+      "post": {
+        "tags": [
+          "web"
+        ],
+        "description": "Send email verification code for login",
+        "operationId": "send_email_code_login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailCodeLoginSendPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Email code sent successfully",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad request - invalid email format",
+            "content": {}
+          },
+          "404": {
+            "description": "Account not found",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/email-code-login/validity": {
+      "post": {
+        "tags": [
+          "web"
+        ],
+        "description": "Verify email code and complete login",
+        "operationId": "verify_email_code_login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailCodeLoginVerifyPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Email code verified and login successful",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad request - invalid code or token",
+            "content": {}
+          },
+          "401": {
+            "description": "Invalid token or expired code",
+            "content": {}
+          },
+          "404": {
+            "description": "Account not found",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/files/upload": {
+      "post": {
+        "tags": [
+          "web"
+        ],
+        "summary": "Upload a file for use in web applications",
+        "description": "Upload a file for use in web applications\nAccepts file uploads for use within web applications, supporting\nmultiple file types with automatic validation and storage.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user uploading the file\n\nForm Parameters:\n    file: The file to upload (required)\n    source: Optional source type (datasets or None)\n\nReturns:\n    dict: File information including ID, URL, and metadata\n    int: HTTP status code 201 for success\n\nRaises:\n    NoFileUploadedError: No file provided in request\n    TooManyFilesError: Multiple files provided (only one allowed)\n    FilenameNotExistsError: File has no filename\n    FileTooLargeError: File exceeds size limit\n    UnsupportedFileTypeError: File type not supported",
+        "operationId": "upload_file",
+        "responses": {
+          "201": {
+            "description": "File uploaded successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - invalid file or parameters",
+            "content": {}
+          },
+          "413": {
+            "description": "File too large",
+            "content": {}
+          },
+          "415": {
+            "description": "Unsupported file type",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/forgot-password": {
+      "post": {
+        "tags": [
+          "web"
+        ],
+        "description": "Send password reset email",
+        "operationId": "send_forgot_password_email",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordSendPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Password reset email sent successfully",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad request - invalid email format",
+            "content": {}
+          },
+          "404": {
+            "description": "Account not found",
+            "content": {}
+          },
+          "429": {
+            "description": "Too many requests - rate limit exceeded",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/forgot-password/resets": {
+      "post": {
+        "tags": [
+          "web"
+        ],
+        "description": "Reset user password with verification token",
+        "operationId": "reset_password",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordResetPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Password reset successfully",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad request - invalid parameters or password mismatch",
+            "content": {}
+          },
+          "401": {
+            "description": "Invalid or expired token",
+            "content": {}
+          },
+          "404": {
+            "description": "Account not found",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/forgot-password/validity": {
+      "post": {
+        "tags": [
+          "web"
+        ],
+        "description": "Verify password reset token validity",
+        "operationId": "check_forgot_password_token",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordCheckPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Token is valid",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad request - invalid token format",
+            "content": {}
+          },
+          "401": {
+            "description": "Invalid or expired token",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/login": {
+      "post": {
+        "tags": [
+          "web"
+        ],
+        "summary": "Authenticate user and login",
+        "description": "Authenticate user for web application access",
+        "operationId": "web_app_login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Authentication successful",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad request - invalid email or password format",
+            "content": {}
+          },
+          "401": {
+            "description": "Authentication failed - email or password mismatch",
+            "content": {}
+          },
+          "403": {
+            "description": "Account banned or login disabled",
+            "content": {}
+          },
+          "404": {
+            "description": "Account not found",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/login/status": {
+      "get": {
+        "tags": [
+          "web"
+        ],
+        "description": "Check login status",
+        "operationId": "web_app_login_status",
+        "responses": {
+          "200": {
+            "description": "Login status",
+            "content": {}
+          },
+          "401": {
+            "description": "Login status",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/logout": {
+      "post": {
+        "tags": [
+          "web"
+        ],
+        "description": "Logout user from web application",
+        "operationId": "web_app_logout",
+        "responses": {
+          "200": {
+            "description": "Logout successful",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/messages": {
+      "get": {
+        "tags": [
+          "web"
+        ],
+        "description": "Retrieve paginated list of messages from a conversation in a chat application.",
+        "operationId": "Get Message List",
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "query",
+            "description": "Conversation UUID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "first_id",
+            "in": "query",
+            "description": "First message ID for pagination",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Number of messages to return (1-100)",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {}
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {}
+          },
+          "404": {
+            "description": "Conversation Not Found or Not a Chat App",
+            "content": {}
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/messages/{message_id}/feedbacks": {
+      "post": {
+        "tags": [
+          "web"
+        ],
+        "description": "Submit feedback (like/dislike) for a specific message.",
+        "operationId": "Create Message Feedback",
+        "parameters": [
+          {
+            "name": "message_id",
+            "in": "path",
+            "description": "Message UUID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "rating",
+            "in": "query",
+            "description": "Feedback rating",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "like",
+                "dislike"
+              ]
+            }
+          },
+          {
+            "name": "content",
+            "in": "query",
+            "description": "Feedback content",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Feedback submitted successfully",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {}
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {}
+          },
+          "404": {
+            "description": "Message Not Found",
+            "content": {}
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/messages/{message_id}/more-like-this": {
+      "get": {
+        "tags": [
+          "web"
+        ],
+        "description": "Generate a new completion similar to an existing message (completion apps only).",
+        "operationId": "Generate More Like This",
+        "parameters": [
+          {
+            "name": "message_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageMoreLikeThisQuery"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad Request - Not a completion app or feature disabled",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {}
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {}
+          },
+          "404": {
+            "description": "Message Not Found",
+            "content": {}
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/messages/{message_id}/suggested-questions": {
+      "get": {
+        "tags": [
+          "web"
+        ],
+        "description": "Get suggested follow-up questions after a message (chat apps only).",
+        "operationId": "Get Suggested Questions",
+        "parameters": [
+          {
+            "name": "message_id",
+            "in": "path",
+            "description": "Message UUID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad Request - Not a chat app or feature disabled",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {}
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {}
+          },
+          "404": {
+            "description": "Message Not Found or Conversation Not Found",
+            "content": {}
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/meta": {
+      "get": {
+        "tags": [
+          "web"
+        ],
+        "summary": "Get app meta",
+        "description": "Retrieve the metadata for a specific app.",
+        "operationId": "Get App Meta",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {}
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {}
+          },
+          "404": {
+            "description": "App Not Found",
+            "content": {}
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/parameters": {
+      "get": {
+        "tags": [
+          "web"
+        ],
+        "summary": "Retrieve app parameters",
+        "description": "Retrieve the parameters for a specific app.",
+        "operationId": "Get App Parameters",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {}
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {}
+          },
+          "404": {
+            "description": "App Not Found",
+            "content": {}
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/passport": {
+      "get": {
+        "tags": [
+          "web"
+        ],
+        "description": "Get authentication passport for web application access",
+        "operationId": "get_passport",
+        "responses": {
+          "200": {
+            "description": "Passport retrieved successfully",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized - missing app code or invalid authentication",
+            "content": {}
+          },
+          "404": {
+            "description": "Application or user not found",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/remote-files/upload": {
+      "post": {
+        "tags": [
+          "web"
+        ],
+        "summary": "Upload a file from a remote URL",
+        "description": "Upload a file from a remote URL\nDownloads a file from the provided remote URL and uploads it\nto the platform storage for use in web applications.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user making the request\n\nJSON Parameters:\n    url: The remote URL to download the file from (required)\n\nReturns:\n    dict: File information including ID, signed URL, and metadata\n    int: HTTP status code 201 for success\n\nRaises:\n    RemoteFileUploadError: Failed to fetch file from remote URL\n    FileTooLargeError: File exceeds size limit\n    UnsupportedFileTypeError: File type not supported",
+        "operationId": "upload_remote_file",
+        "responses": {
+          "201": {
+            "description": "Remote file uploaded successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileWithSignedUrl"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - invalid URL or parameters",
+            "content": {}
+          },
+          "413": {
+            "description": "File too large",
+            "content": {}
+          },
+          "415": {
+            "description": "Unsupported file type",
+            "content": {}
+          },
+          "500": {
+            "description": "Failed to fetch remote file",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/remote-files/{url}": {
+      "get": {
+        "tags": [
+          "web"
+        ],
+        "summary": "Get information about a remote file",
+        "description": "Get information about a remote file\nRetrieves basic information about a file located at a remote URL,\nincluding content type and content length.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user making the request\n    url: URL-encoded path to the remote file\n\nReturns:\n    dict: Remote file information including type and length\n\nRaises:\n    HTTPException: If the remote file cannot be accessed",
+        "operationId": "get_remote_file_info",
+        "parameters": [
+          {
+            "name": "url",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Remote file information retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemoteFileInfo"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - invalid URL",
+            "content": {}
+          },
+          "404": {
+            "description": "Remote file not found",
+            "content": {}
+          },
+          "500": {
+            "description": "Failed to fetch remote file",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/saved-messages": {
+      "get": {
+        "tags": [
+          "web"
+        ],
+        "description": "Retrieve paginated list of saved messages for a completion application.",
+        "operationId": "Get Saved Messages",
+        "parameters": [
+          {
+            "name": "last_id",
+            "in": "query",
+            "description": "Last message ID for pagination",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Number of messages to return (1-100)",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad Request - Not a completion app",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {}
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {}
+          },
+          "404": {
+            "description": "App Not Found",
+            "content": {}
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {}
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "web"
+        ],
+        "description": "Save a specific message for later reference.",
+        "operationId": "Save Message",
+        "parameters": [
+          {
+            "name": "message_id",
+            "in": "query",
+            "description": "Message UUID to save",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Message saved successfully",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad Request - Not a completion app",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {}
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {}
+          },
+          "404": {
+            "description": "Message Not Found",
+            "content": {}
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/saved-messages/{message_id}": {
+      "delete": {
+        "tags": [
+          "web"
+        ],
+        "description": "Remove a message from saved messages.",
+        "operationId": "Delete Saved Message",
+        "parameters": [
+          {
+            "name": "message_id",
+            "in": "path",
+            "description": "Message UUID to delete",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Message removed successfully",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad Request - Not a completion app",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {}
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {}
+          },
+          "404": {
+            "description": "Message Not Found",
+            "content": {}
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/site": {
+      "get": {
+        "tags": [
+          "web"
+        ],
+        "summary": "Retrieve app site info",
+        "description": "Retrieve app site information and configuration.",
+        "operationId": "Get App Site Info",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {}
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {}
+          },
+          "404": {
+            "description": "App Not Found",
+            "content": {}
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/system-features": {
+      "get": {
+        "tags": [
+          "web"
+        ],
+        "summary": "Get system feature flags and configuration",
+        "description": "Get system feature flags and configuration\nReturns the current system feature flags and configuration\nthat control various functionalities across the platform.\n\nReturns:\n    dict: System feature configuration object\n\nThis endpoint is akin to the `SystemFeatureApi` endpoint in api/controllers/console/feature.py,\nexcept it is intended for use by the web app, instead of the console dashboard.\n\nNOTE: This endpoint is unauthenticated by design, as it provides system features\ndata required for webapp initialization.\n\nAuthentication would create circular dependency (can't authenticate without webapp loading).\n\nOnly non-sensitive configuration data should be returned by this endpoint.",
+        "operationId": "get_system_features",
+        "responses": {
+          "200": {
+            "description": "System features retrieved successfully",
+            "content": {}
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/text-to-audio": {
+      "post": {
+        "tags": [
+          "web"
+        ],
+        "summary": "Convert text to audio",
+        "description": "Convert text to audio using text-to-speech service.",
+        "operationId": "Text to Audio",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TextToAudioPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {}
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {}
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/webapp/access-mode": {
+      "get": {
+        "tags": [
+          "web"
+        ],
+        "description": "Retrieve the access mode for a web application (public or restricted).",
+        "operationId": "Get App Access Mode",
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "query",
+            "description": "Application ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "appCode",
+            "in": "query",
+            "description": "Application code",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {}
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/webapp/permission": {
+      "get": {
+        "tags": [
+          "web"
+        ],
+        "description": "Check if user has permission to access a web application.",
+        "operationId": "Check App Permission",
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "query",
+            "description": "Application ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {}
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/workflows/run": {
+      "post": {
+        "tags": [
+          "web"
+        ],
+        "summary": "Run workflow",
+        "description": "Execute a workflow with provided inputs and files.",
+        "operationId": "Run Workflow",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowRunPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {}
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {}
+          },
+          "404": {
+            "description": "App Not Found",
+            "content": {}
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {}
+          }
+        },
+        "x-codegen-request-body-name": "payload"
+      }
+    },
+    "/workflows/tasks/{task_id}/stop": {
+      "post": {
+        "tags": [
+          "web"
+        ],
+        "summary": "Stop workflow task",
+        "description": "Stop a running workflow task.",
+        "operationId": "Stop Workflow Task",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "description": "Task ID to stop",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {}
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {}
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {}
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {}
+          },
+          "404": {
+            "description": "Task Not Found",
+            "content": {}
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {}
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "TextToAudioPayload": {
+        "title": "TextToAudioPayload",
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "title": "Message Id",
+            "type": "object"
+          },
+          "voice": {
+            "title": "Voice",
+            "type": "object"
+          },
+          "text": {
+            "title": "Text",
+            "type": "object"
+          },
+          "streaming": {
+            "title": "Streaming",
+            "type": "object"
+          }
+        }
+      },
+      "CompletionMessagePayload": {
+        "title": "CompletionMessagePayload",
+        "required": [
+          "inputs"
+        ],
+        "type": "object",
+        "properties": {
+          "inputs": {
+            "title": "Inputs",
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Input variables for the completion"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string",
+            "description": "Query text for completion",
+            "default": ""
+          },
+          "files": {
+            "title": "Files",
+            "type": "object",
+            "description": "Files to be processed"
+          },
+          "response_mode": {
+            "title": "Response Mode",
+            "type": "object",
+            "description": "Response mode: blocking or streaming"
+          },
+          "retriever_from": {
+            "title": "Retriever From",
+            "type": "string",
+            "description": "Source of retriever",
+            "default": "web_app"
+          }
+        }
+      },
+      "ChatMessagePayload": {
+        "title": "ChatMessagePayload",
+        "required": [
+          "inputs",
+          "query"
+        ],
+        "type": "object",
+        "properties": {
+          "inputs": {
+            "title": "Inputs",
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Input variables for the chat"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string",
+            "description": "User query/message"
+          },
+          "files": {
+            "title": "Files",
+            "type": "object",
+            "description": "Files to be processed"
+          },
+          "response_mode": {
+            "title": "Response Mode",
+            "type": "object",
+            "description": "Response mode: blocking or streaming"
+          },
+          "conversation_id": {
+            "title": "Conversation Id",
+            "type": "object",
+            "description": "Conversation ID"
+          },
+          "parent_message_id": {
+            "title": "Parent Message Id",
+            "type": "object",
+            "description": "Parent message ID"
+          },
+          "retriever_from": {
+            "title": "Retriever From",
+            "type": "string",
+            "description": "Source of retriever",
+            "default": "web_app"
+          }
+        }
+      },
+      "FileResponse": {
+        "title": "FileResponse",
+        "required": [
+          "id",
+          "name",
+          "size"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "size": {
+            "title": "Size",
+            "type": "integer"
+          },
+          "extension": {
+            "title": "Extension",
+            "type": "object"
+          },
+          "mime_type": {
+            "title": "Mime Type",
+            "type": "object"
+          },
+          "created_by": {
+            "title": "Created By",
+            "type": "object"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "object"
+          },
+          "preview_url": {
+            "title": "Preview Url",
+            "type": "object"
+          },
+          "source_url": {
+            "title": "Source Url",
+            "type": "object"
+          },
+          "original_url": {
+            "title": "Original Url",
+            "type": "object"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "object"
+          },
+          "tenant_id": {
+            "title": "Tenant Id",
+            "type": "object"
+          },
+          "conversation_id": {
+            "title": "Conversation Id",
+            "type": "object"
+          },
+          "file_key": {
+            "title": "File Key",
+            "type": "object"
+          }
+        }
+      },
+      "ForgotPasswordSendPayload": {
+        "title": "ForgotPasswordSendPayload",
+        "required": [
+          "email"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "language": {
+            "title": "Language",
+            "type": "object"
+          }
+        }
+      },
+      "ForgotPasswordCheckPayload": {
+        "title": "ForgotPasswordCheckPayload",
+        "required": [
+          "code",
+          "email",
+          "token"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "token": {
+            "title": "Token",
+            "minLength": 1,
+            "type": "string"
+          }
+        }
+      },
+      "ForgotPasswordResetPayload": {
+        "title": "ForgotPasswordResetPayload",
+        "required": [
+          "new_password",
+          "password_confirm",
+          "token"
+        ],
+        "type": "object",
+        "properties": {
+          "token": {
+            "title": "Token",
+            "minLength": 1,
+            "type": "string"
+          },
+          "new_password": {
+            "title": "New Password",
+            "type": "string"
+          },
+          "password_confirm": {
+            "title": "Password Confirm",
+            "type": "string"
+          }
+        }
+      },
+      "LoginPayload": {
+        "title": "LoginPayload",
+        "required": [
+          "email",
+          "password"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "password": {
+            "title": "Password",
+            "type": "string"
+          }
+        }
+      },
+      "EmailCodeLoginSendPayload": {
+        "title": "EmailCodeLoginSendPayload",
+        "required": [
+          "email"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "language": {
+            "title": "Language",
+            "type": "object"
+          }
+        }
+      },
+      "EmailCodeLoginVerifyPayload": {
+        "title": "EmailCodeLoginVerifyPayload",
+        "required": [
+          "code",
+          "email",
+          "token"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "token": {
+            "title": "Token",
+            "minLength": 1,
+            "type": "string"
+          }
+        }
+      },
+      "MessageMoreLikeThisQuery": {
+        "title": "MessageMoreLikeThisQuery",
+        "required": [
+          "response_mode"
+        ],
+        "type": "object",
+        "properties": {
+          "response_mode": {
+            "title": "Response Mode",
+            "type": "string",
+            "description": "Response mode",
+            "enum": [
+              "blocking",
+              "streaming"
+            ]
+          }
+        }
+      },
+      "RemoteFileInfo": {
+        "title": "RemoteFileInfo",
+        "required": [
+          "file_length",
+          "file_type"
+        ],
+        "type": "object",
+        "properties": {
+          "file_type": {
+            "title": "File Type",
+            "type": "string"
+          },
+          "file_length": {
+            "title": "File Length",
+            "type": "integer"
+          }
+        }
+      },
+      "FileWithSignedUrl": {
+        "title": "FileWithSignedUrl",
+        "required": [
+          "id",
+          "name",
+          "size"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "size": {
+            "title": "Size",
+            "type": "integer"
+          },
+          "extension": {
+            "title": "Extension",
+            "type": "object"
+          },
+          "url": {
+            "title": "Url",
+            "type": "object"
+          },
+          "mime_type": {
+            "title": "Mime Type",
+            "type": "object"
+          },
+          "created_by": {
+            "title": "Created By",
+            "type": "object"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "object"
+          }
+        }
+      },
+      "WorkflowRunPayload": {
+        "title": "WorkflowRunPayload",
+        "required": [
+          "inputs"
+        ],
+        "type": "object",
+        "properties": {
+          "inputs": {
+            "title": "Inputs",
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Input variables for the workflow"
+          },
+          "files": {
+            "title": "Files",
+            "type": "object",
+            "description": "Files to be processed by the workflow"
+          }
+        }
+      },
+      "AppAccessModeQuery": {
+        "title": "AppAccessModeQuery",
+        "type": "object",
+        "properties": {
+          "appId": {
+            "title": "Appid",
+            "type": "object",
+            "description": "Application ID"
+          },
+          "appCode": {
+            "title": "Appcode",
+            "type": "object",
+            "description": "Application code"
+          }
+        }
+      },
+      "ConversationListQuery": {
+        "title": "ConversationListQuery",
+        "type": "object",
+        "properties": {
+          "last_id": {
+            "title": "Last Id",
+            "type": "object"
+          },
+          "limit": {
+            "title": "Limit",
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "pinned": {
+            "title": "Pinned",
+            "type": "object"
+          },
+          "sort_by": {
+            "title": "Sort By",
+            "type": "string",
+            "default": "-updated_at",
+            "enum": [
+              "created_at",
+              "-created_at",
+              "updated_at",
+              "-updated_at"
+            ]
+          }
+        }
+      },
+      "ConversationRenamePayload": {
+        "title": "ConversationRenamePayload",
+        "type": "object",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "object"
+          },
+          "auto_generate": {
+            "title": "Auto Generate",
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
+      "MessageListQuery": {
+        "title": "MessageListQuery",
+        "required": [
+          "conversation_id"
+        ],
+        "type": "object",
+        "properties": {
+          "conversation_id": {
+            "title": "Conversation Id",
+            "type": "string",
+            "description": "Conversation UUID"
+          },
+          "first_id": {
+            "title": "First Id",
+            "type": "object",
+            "description": "First message ID for pagination"
+          },
+          "limit": {
+            "title": "Limit",
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer",
+            "description": "Number of messages to return (1-100)"
+          }
+        }
+      },
+      "MessageFeedbackPayload": {
+        "title": "MessageFeedbackPayload",
+        "type": "object",
+        "properties": {
+          "rating": {
+            "title": "Rating",
+            "type": "object",
+            "description": "Feedback rating"
+          },
+          "content": {
+            "title": "Content",
+            "type": "object",
+            "description": "Feedback content"
+          }
+        }
+      },
+      "RemoteFileUploadPayload": {
+        "title": "RemoteFileUploadPayload",
+        "required": [
+          "url"
+        ],
+        "type": "object",
+        "properties": {
+          "url": {
+            "title": "Url",
+            "maxLength": 2083,
+            "minLength": 1,
+            "type": "string",
+            "description": "Remote file URL",
+            "format": "uri"
+          }
+        }
+      },
+      "SavedMessageListQuery": {
+        "title": "SavedMessageListQuery",
+        "type": "object",
+        "properties": {
+          "last_id": {
+            "title": "Last Id",
+            "type": "object"
+          },
+          "limit": {
+            "title": "Limit",
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        }
+      },
+      "SavedMessageCreatePayload": {
+        "title": "SavedMessageCreatePayload",
+        "required": [
+          "message_id"
+        ],
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "title": "Message Id",
+            "type": "string"
+          }
+        }
+      }
     },
     "responses": {
-        "ParseError": {
-            "description": "When a mask can't be parsed"
-        },
-        "MaskError": {
-            "description": "When any error occurs on mask"
-        },
-        "HTTPException": {},
-        "ValueError": {},
-        "AppInvokeQuotaExceededError": {},
-        "Exception": {}
+      "ParseError": {
+        "description": "When a mask can't be parsed",
+        "content": {}
+      },
+      "MaskError": {
+        "description": "When any error occurs on mask",
+        "content": {}
+      },
+      "HTTPException": {
+        "content": {}
+      },
+      "ValueError": {
+        "content": {}
+      },
+      "AppInvokeQuotaExceededError": {
+        "content": {}
+      },
+      "Exception": {
+        "content": {}
+      }
+    },
+    "securitySchemes": {
+      "Bearer": {
+        "type": "apiKey",
+        "description": "Type: Bearer {your-api-key}",
+        "name": "Authorization",
+        "in": "header"
+      }
     }
+  },
+  "x-original-swagger-version": "2.0"
 }
