@@ -247,9 +247,6 @@
   "app/components/app/app-publisher/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 3
-    },
-    "ts/no-explicit-any": {
-      "count": 6
     }
   },
   "app/components/app/configuration/config-prompt/advanced-prompt-input.tsx": {
@@ -2701,9 +2698,6 @@
   "app/components/tools/mcp/mcp-service-card.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 4
     }
   },
   "app/components/tools/mcp/modal.tsx": {
@@ -2752,11 +2746,6 @@
     },
     "ts/no-explicit-any": {
       "count": 3
-    }
-  },
-  "app/components/workflow-app/components/workflow-main.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "app/components/workflow-app/components/workflow-onboarding-modal/index.spec.tsx": {
@@ -2896,11 +2885,6 @@
       "count": 1
     }
   },
-  "app/components/workflow/hooks-store/store.ts": {
-    "ts/no-explicit-any": {
-      "count": 5
-    }
-  },
   "app/components/workflow/hooks/use-checklist.ts": {
     "ts/no-empty-object-type": {
       "count": 2
@@ -2920,11 +2904,6 @@
     }
   },
   "app/components/workflow/hooks/use-inspect-vars-crud-common.ts": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "app/components/workflow/hooks/use-node-data-update.ts": {
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -2971,7 +2950,7 @@
   },
   "app/components/workflow/index.tsx": {
     "ts/no-explicit-any": {
-      "count": 2
+      "count": 1
     }
   },
   "app/components/workflow/nodes/_base/components/add-variable-popup-with-position.tsx": {

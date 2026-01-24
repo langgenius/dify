@@ -1,5 +1,7 @@
 import type { ModelAndParameter } from '../configuration/debug/types'
+import type { CollaborationUpdate } from '@/app/components/workflow/collaboration/types/collaboration'
 import type { InputVar, Variable } from '@/app/components/workflow/types'
+import type { InstalledApp } from '@/models/explore'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import type { PublishWorkflowParams } from '@/types/workflow'
 import {
@@ -18,6 +20,7 @@ import { useKeyPress } from 'ahooks'
 import {
   memo,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useState,
@@ -35,6 +38,9 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import WorkflowToolConfigureButton from '@/app/components/tools/workflow-tool/configure-button'
+import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
+import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
+import { WorkflowContext } from '@/app/components/workflow/context'
 import { appDefaultIconBackground } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
@@ -43,6 +49,8 @@ import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/access-control'
 import { fetchAppDetailDirect } from '@/service/apps'
 import { fetchInstalledAppList } from '@/service/explore'
+import { useInvalidateAppWorkflow } from '@/service/use-workflow'
+import { fetchPublishedWorkflow } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
 import Divider from '../../base/divider'
@@ -55,6 +63,10 @@ import PublishWithMultipleModel from './publish-with-multiple-model'
 import SuggestedAction from './suggested-action'
 
 type AccessModeLabel = I18nKeysByPrefix<'app', 'accessControlDialog.accessItems.'>
+
+type InstalledAppsResponse = {
+  installed_apps?: InstalledApp[]
+}
 
 const ACCESS_MODE_MAP: Record<AccessMode, { label: AccessModeLabel, icon: React.ElementType }> = {
   [AccessMode.ORGANIZATION]: {
@@ -102,8 +114,8 @@ export type AppPublisherProps = {
   debugWithMultipleModel?: boolean
   multipleModelConfigs?: ModelAndParameter[]
   /** modelAndParameter is passed when debugWithMultipleModel is true */
-  onPublish?: (params?: any) => Promise<any> | any
-  onRestore?: () => Promise<any> | any
+  onPublish?: (params?: ModelAndParameter | PublishWorkflowParams) => Promise<void> | void
+  onRestore?: () => Promise<void> | void
   onToggle?: (state: boolean) => void
   crossAxisOffset?: number
   toolPublished?: boolean
@@ -146,6 +158,7 @@ const AppPublisher = ({
   const [isAppAccessSet, setIsAppAccessSet] = useState(true)
   const [embeddingModalOpen, setEmbeddingModalOpen] = useState(false)
 
+  const workflowStore = useContext(WorkflowContext)
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(s => s.setAppDetail)
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
@@ -158,6 +171,7 @@ const AppPublisher = ({
 
   const { data: userCanAccessApp, isLoading: isGettingUserCanAccessApp, refetch } = useGetUserCanAccessApp({ appId: appDetail?.id, enabled: false })
   const { data: appAccessSubjects, isLoading: isGettingAppWhiteListSubjects } = useAppWhiteListSubjects(appDetail?.id, open && systemFeatures.webapp_auth.enabled && appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS)
+  const invalidateAppWorkflow = useInvalidateAppWorkflow()
   const openAsyncWindow = useAsyncWindowOpen()
 
   const noAccessPermission = useMemo(() => systemFeatures.webapp_auth.enabled && appDetail && appDetail.access_mode !== AccessMode.EXTERNAL_MEMBERS && !userCanAccessApp?.result, [systemFeatures, appDetail, userCanAccessApp])
@@ -193,12 +207,39 @@ const AppPublisher = ({
     try {
       await onPublish?.(params)
       setPublished(true)
+
+      const appId = appDetail?.id
+      const socket = appId ? webSocketClient.getSocket(appId) : null
+      console.warn('[app-publisher] publish success', {
+        appId,
+        hasSocket: Boolean(socket),
+      })
+      if (appId)
+        invalidateAppWorkflow(appId)
+      else
+        console.warn('[app-publisher] missing appId, skip workflow invalidate and socket emit')
+      if (socket) {
+        const timestamp = Date.now()
+        socket.emit('collaboration_event', {
+          type: 'app_publish_update',
+          data: {
+            action: 'published',
+            timestamp,
+          },
+          timestamp,
+        })
+      }
+      else if (appId) {
+        console.warn('[app-publisher] socket not ready, skip collaboration_event emit', { appId })
+      }
+
       trackEvent('app_published_time', { action_mode: 'app', app_id: appDetail?.id, app_name: appDetail?.name })
     }
-    catch {
+    catch (error) {
+      console.warn('[app-publisher] publish failed', error)
       setPublished(false)
     }
-  }, [appDetail, onPublish])
+  }, [appDetail, onPublish, invalidateAppWorkflow])
 
   const handleRestore = useCallback(async () => {
     try {
@@ -227,9 +268,10 @@ const AppPublisher = ({
     await openAsyncWindow(async () => {
       if (!appDetail?.id)
         throw new Error('App not found')
-      const { installed_apps }: any = await fetchInstalledAppList(appDetail?.id) || {}
-      if (installed_apps?.length > 0)
-        return `${basePath}/explore/installed/${installed_apps[0].id}`
+      const response = (await fetchInstalledAppList(appDetail?.id)) as InstalledAppsResponse
+      const installedApps = response?.installed_apps
+      if (installedApps?.length)
+        return `${basePath}/explore/installed/${installedApps[0].id}`
       throw new Error('No app found in Explore')
     }, {
       onError: (err) => {
@@ -256,6 +298,29 @@ const AppPublisher = ({
       return
     handlePublish()
   }, { exactMatch: true, useCapture: true })
+
+  useEffect(() => {
+    const appId = appDetail?.id
+    if (!appId)
+      return
+
+    const unsubscribe = collaborationManager.onAppPublishUpdate((update: CollaborationUpdate) => {
+      const action = typeof update.data.action === 'string' ? update.data.action : undefined
+      if (action === 'published') {
+        invalidateAppWorkflow(appId)
+        fetchPublishedWorkflow(`/apps/${appId}/workflows/publish`)
+          .then((publishedWorkflow) => {
+            if (publishedWorkflow?.created_at)
+              workflowStore?.getState().setPublishedAt(publishedWorkflow.created_at)
+          })
+          .catch((error) => {
+            console.warn('[app-publisher] refresh published workflow failed', error)
+          })
+      }
+    })
+
+    return unsubscribe
+  }, [appDetail?.id, invalidateAppWorkflow, workflowStore])
 
   const hasPublishedVersion = !!publishedAt
   const workflowToolDisabled = !hasPublishedVersion || !workflowToolAvailable

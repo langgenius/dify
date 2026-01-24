@@ -18,9 +18,10 @@ import {
   useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useReactFlowStore, useStoreApi } from 'reactflow'
+import { useStore as useReactFlowStore } from 'reactflow'
 import { shallow } from 'zustand/shallow'
 import Tooltip from '@/app/components/base/tooltip'
+import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import { useNodesInteractions, useNodesReadOnly, useNodesSyncDraft } from './hooks'
 import { useMakeGroupAvailability } from './hooks/use-make-group'
 import { useSelectionInteractions } from './hooks/use-selection-interactions'
@@ -90,8 +91,8 @@ const SelectionContextmenu = () => {
   const selectionMenu = useStore(s => s.selectionMenu)
 
   // Access React Flow methods
-  const store = useStoreApi()
   const workflowStore = useWorkflowStore()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
 
   const selectedNodeIds = useReactFlowStore((state) => {
     const ids = state.getNodes().filter(node => node.selected).map(node => node.id)
@@ -309,7 +310,7 @@ const SelectionContextmenu = () => {
     workflowStore.setState({ nodeAnimation: false })
 
     // Get all current nodes
-    const nodes = store.getState().getNodes()
+    const { nodes, setNodes } = collaborativeWorkflow.getState()
 
     // Find container nodes and their children
     // Container nodes (like Iteration and Loop) have child nodes that should not be aligned independently
@@ -362,7 +363,7 @@ const SelectionContextmenu = () => {
       const distributeNodes = handleDistributeNodes(nodesToAlign, nodes, alignType)
       if (distributeNodes) {
         // Apply node distribution updates
-        store.getState().setNodes(distributeNodes)
+        setNodes(distributeNodes)
         handleSelectionContextmenuCancel()
 
         // Clear guide lines
@@ -397,7 +398,7 @@ const SelectionContextmenu = () => {
     // Apply node position updates - consistent with handleNodeDrag and handleNodeDragStop
     try {
       // Directly use setNodes to update nodes - consistent with handleNodeDrag
-      store.getState().setNodes(newNodes)
+      setNodes(newNodes)
 
       // Close popup
       handleSelectionContextmenuCancel()
@@ -416,7 +417,7 @@ const SelectionContextmenu = () => {
     catch (err) {
       console.error('Failed to update nodes:', err)
     }
-  }, [getNodesReadOnly, handleAlignNode, handleDistributeNodes, handleSelectionContextmenuCancel, handleSyncWorkflowDraft, saveStateToHistory, selectedNodeIds, store, workflowStore])
+  }, [collaborativeWorkflow, workflowStore, selectedNodeIds, getNodesReadOnly, handleSyncWorkflowDraft, saveStateToHistory, handleSelectionContextmenuCancel, handleAlignNode, handleDistributeNodes])
 
   if (!selectionMenu)
     return null

@@ -4,12 +4,14 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
+import { useFeaturesStore } from '@/app/components/base/features/hooks'
+import { useSelector as useAppContextSelector } from '@/context/app-context'
 import useTheme from '@/hooks/use-theme'
 import { useInvalidAllLastRun } from '@/service/use-workflow'
 import { cn } from '@/utils/classnames'
 import Toast from '../../base/toast'
 import {
-  useNodesSyncDraft,
+  useLeaderRestore,
   useWorkflowRun,
 } from '../hooks'
 import { useHooksStore } from '../hooks-store'
@@ -31,6 +33,8 @@ const HeaderInRestoring = ({
   const { t } = useTranslation()
   const { theme } = useTheme()
   const workflowStore = useWorkflowStore()
+  const userProfile = useAppContextSelector(s => s.userProfile)
+  const featuresStore = useFeaturesStore()
   const configsMap = useHooksStore(s => s.configsMap)
   const invalidAllLastRun = useInvalidAllLastRun(configsMap?.flowType, configsMap?.flowId)
   const {
@@ -42,7 +46,7 @@ const HeaderInRestoring = ({
   const {
     handleLoadBackupDraft,
   } = useWorkflowRun()
-  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const { requestRestore } = useLeaderRestore()
 
   const handleCancelRestore = useCallback(() => {
     handleLoadBackupDraft()
@@ -51,10 +55,32 @@ const HeaderInRestoring = ({
   }, [workflowStore, handleLoadBackupDraft, setShowWorkflowVersionHistoryPanel])
 
   const handleRestore = useCallback(() => {
+    if (!currentVersion)
+      return
+
     setShowWorkflowVersionHistoryPanel(false)
     workflowStore.setState({ isRestoring: false })
     workflowStore.setState({ backupDraft: undefined })
-    handleSyncWorkflowDraft(true, false, {
+
+    const { graph } = currentVersion
+    const features = featuresStore?.getState().features
+    const environmentVariables = currentVersion.environment_variables || []
+    const conversationVariables = currentVersion.conversation_variables || []
+
+    requestRestore({
+      versionId: currentVersion.id,
+      versionName: currentVersion.marked_name,
+      initiatorUserId: userProfile.id,
+      initiatorName: userProfile.name,
+      graphData: {
+        nodes: graph.nodes,
+        edges: graph.edges,
+        viewport: graph.viewport,
+      },
+      features,
+      environmentVariables,
+      conversationVariables,
+    }, {
       onSuccess: () => {
         Toast.notify({
           type: 'success',
@@ -73,7 +99,7 @@ const HeaderInRestoring = ({
     })
     deleteAllInspectVars()
     invalidAllLastRun()
-  }, [setShowWorkflowVersionHistoryPanel, workflowStore, handleSyncWorkflowDraft, deleteAllInspectVars, invalidAllLastRun, t, onRestoreSettled])
+  }, [currentVersion, featuresStore, setShowWorkflowVersionHistoryPanel, workflowStore, requestRestore, userProfile, deleteAllInspectVars, invalidAllLastRun, t, onRestoreSettled])
 
   return (
     <>

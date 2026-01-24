@@ -37,6 +37,7 @@ import {
 } from '@/service/apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
+import { collaborationManager } from './collaboration/core/collaboration-manager'
 import { WORKFLOW_DATA_UPDATE } from './constants'
 import {
   BlockEnum,
@@ -236,6 +237,8 @@ const UpdateDSLModal = ({
           return
         }
         handleWorkflowUpdate(app_id)
+        // Notify other collaboration clients about the workflow update
+        collaborationManager.emitWorkflowUpdate(app_id)
         await handleCheckPluginDependencies(app_id)
         if (onImport)
           onImport()

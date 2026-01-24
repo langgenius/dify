@@ -24,7 +24,7 @@ export const useAvailableNodesMetaData = () => {
     },
     knowledgeBaseDefault,
     dataSourceEmptyDefault,
-  ], [])
+  ] as AvailableNodesMetaData['nodes'], [])
 
   const helpLinkUri = useMemo(() => docLink(
     '/use-dify/knowledge/knowledge-pipeline/knowledge-pipeline-orchestration',

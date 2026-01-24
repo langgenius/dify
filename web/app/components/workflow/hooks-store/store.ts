@@ -1,4 +1,5 @@
 import type { FileUpload } from '../../base/features/types'
+import type { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 import type {
   BlockEnum,
   Node,
@@ -9,7 +10,7 @@ import type {
 import type { IOtherOptions } from '@/service/base'
 import type { SchemaTypeDefinition } from '@/service/use-common'
 import type { FlowType } from '@/types/common'
-import type { VarInInspect } from '@/types/workflow'
+import type { FetchWorkflowDraftResponse, VarInInspect } from '@/types/workflow'
 import { noop } from 'es-toolkit/function'
 import { useContext } from 'react'
 import {
@@ -19,6 +20,13 @@ import { createStore } from 'zustand/vanilla'
 import { InteractionMode } from '@/app/components/workflow'
 import { HooksStoreContext } from './provider'
 
+export type WorkflowRunOptions = {
+  mode?: TriggerType
+  scheduleNodeId?: string
+  webhookNodeId?: string
+  pluginNodeId?: string
+  allNodeIds?: string[]
+}
 export type AvailableNodesMetaData = {
   nodes: NodeDefaultBase[]
   nodesMap: Record<BlockEnum, NodeDefaultBase>
@@ -39,9 +47,9 @@ export type CommonHooksFnMap = {
   handleRefreshWorkflowDraft: () => void
   handleBackupDraft: () => void
   handleLoadBackupDraft: () => void
-  handleRestoreFromPublishedWorkflow: (...args: any[]) => void
-  handleRun: (params: any, callback?: IOtherOptions, options?: any) => void
-  handleStopRun: (...args: any[]) => void
+  handleRestoreFromPublishedWorkflow: (publishedWorkflow: FetchWorkflowDraftResponse) => void
+  handleRun: (params: unknown, callback?: IOtherOptions, options?: WorkflowRunOptions) => void | Promise<void>
+  handleStopRun: (taskId: string) => void
   handleStartWorkflowRun: () => void
   handleWorkflowStartRunInWorkflow: () => void
   handleWorkflowStartRunInChatflow: () => void
@@ -58,7 +66,7 @@ export type CommonHooksFnMap = {
   hasNodeInspectVars: (nodeId: string) => boolean
   hasSetInspectVar: (nodeId: string, name: string, sysVars: VarInInspect[], conversationVars: VarInInspect[]) => boolean
   fetchInspectVarValue: (selector: ValueSelector, schemaTypeDefinitions: SchemaTypeDefinition[]) => Promise<void>
-  editInspectVarValue: (nodeId: string, varId: string, value: any) => Promise<void>
+  editInspectVarValue: (nodeId: string, varId: string, value: unknown) => Promise<void>
   renameInspectVarName: (nodeId: string, oldName: string, newName: string) => Promise<void>
   appendNodeInspectVars: (nodeId: string, payload: VarInInspect[], allNodes: Node[]) => void
   deleteInspectVar: (nodeId: string, varId: string) => Promise<void>
@@ -72,7 +80,7 @@ export type CommonHooksFnMap = {
   configsMap?: {
     flowId: string
     flowType: FlowType
-    fileSettings: FileUpload
+    fileSettings?: FileUpload
   }
 }
 
@@ -87,9 +95,9 @@ export const createHooksStore = ({
   handleRefreshWorkflowDraft = noop,
   handleBackupDraft = noop,
   handleLoadBackupDraft = noop,
-  handleRestoreFromPublishedWorkflow = noop,
+  handleRestoreFromPublishedWorkflow = (_publishedWorkflow: FetchWorkflowDraftResponse) => noop(),
   handleRun = noop,
-  handleStopRun = noop,
+  handleStopRun = (_taskId: string) => noop(),
   handleStartWorkflowRun = noop,
   handleWorkflowStartRunInWorkflow = noop,
   handleWorkflowStartRunInChatflow = noop,

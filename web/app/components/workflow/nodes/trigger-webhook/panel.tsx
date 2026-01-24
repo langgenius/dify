@@ -79,6 +79,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
             <div className="flex gap-1" style={{ height: '32px' }}>
               <div className="w-26 shrink-0">
                 <SimpleSelect
+                  key={`${id}-method-${inputs.method}`}
                   items={HTTP_METHODS}
                   defaultValue={inputs.method}
                   onSelect={item => handleMethodChange(item.value as HttpMethod)}
@@ -147,6 +148,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
         <Field title={t(`${i18nPrefix}.contentType`, { ns: 'workflow' })}>
           <div className="w-full">
             <SimpleSelect
+              key={`${id}-content-type-${inputs.content_type}`}
               items={CONTENT_TYPES}
               defaultValue={inputs.content_type}
               onSelect={item => handleContentTypeChange(item.value as string)}

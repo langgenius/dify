@@ -18,6 +18,7 @@ import type {
   TextToSpeechConfig,
 } from '@/models/debug'
 import type { ModelConfig as BackendModelConfig, UserInputFormItem, VisionSettings } from '@/types/app'
+import type { PublishWorkflowParams } from '@/types/workflow'
 import { CodeBracketIcon } from '@heroicons/react/20/solid'
 import { useBoolean, useGetState } from 'ahooks'
 import { clone } from 'es-toolkit/object'
@@ -760,7 +761,8 @@ const Configuration: FC = () => {
     else { return promptEmpty }
   })()
   const contextVarEmpty = mode === AppModeEnum.COMPLETION && dataSets.length > 0 && !hasSetContextVar
-  const onPublish = async (modelAndParameter?: ModelAndParameter, features?: FeaturesData) => {
+  const onPublish = async (params?: ModelAndParameter | PublishWorkflowParams, features?: FeaturesData) => {
+    const modelAndParameter = params && 'model' in params ? params : undefined
     const modelId = modelAndParameter?.model || modelConfig.model_id
     const promptTemplate = modelConfig.configs.prompt_template
     const promptVariables = modelConfig.configs.prompt_variables

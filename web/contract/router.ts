@@ -1,4 +1,5 @@
 import type { InferContractRouterInputs } from '@orpc/contract'
+import { accountAvatarContract } from './console/account'
 import {
   batchUploadContract,
   createFolderContract,
@@ -13,6 +14,7 @@ import {
   treeContract,
   updateFileContentContract,
 } from './console/app-asset'
+import { workflowOnlineUsersContract } from './console/apps'
 import { bindPartnerStackContract, invoicesContract } from './console/billing'
 import {
   activateSandboxProviderContract,
@@ -22,6 +24,13 @@ import {
 } from './console/sandbox-provider'
 import { systemFeaturesContract } from './console/system'
 import { trialAppDatasetsContract, trialAppInfoContract, trialAppParametersContract, trialAppWorkflowsContract } from './console/try-app'
+import {
+  workflowDraftEnvironmentVariablesContract,
+  workflowDraftUpdateConversationVariablesContract,
+  workflowDraftUpdateEnvironmentVariablesContract,
+  workflowDraftUpdateFeaturesContract,
+} from './console/workflow'
+import { workflowCommentContracts } from './console/workflow-comment'
 import { collectionPluginsContract, collectionsContract, searchAdvancedContract } from './marketplace'
 
 export const marketplaceRouterContract = {
@@ -33,6 +42,9 @@ export const marketplaceRouterContract = {
 export type MarketPlaceInputs = InferContractRouterInputs<typeof marketplaceRouterContract>
 
 export const consoleRouterContract = {
+  account: {
+    avatar: accountAvatarContract,
+  },
   systemFeatures: systemFeaturesContract,
   trialApps: {
     info: trialAppInfoContract,
@@ -64,6 +76,16 @@ export const consoleRouterContract = {
     getFileUploadUrl: getFileUploadUrlContract,
     batchUpload: batchUploadContract,
   },
+  apps: {
+    workflowOnlineUsers: workflowOnlineUsersContract,
+  },
+  workflowDraft: {
+    environmentVariables: workflowDraftEnvironmentVariablesContract,
+    updateEnvironmentVariables: workflowDraftUpdateEnvironmentVariablesContract,
+    updateConversationVariables: workflowDraftUpdateConversationVariablesContract,
+    updateFeatures: workflowDraftUpdateFeaturesContract,
+  },
+  workflowComments: workflowCommentContracts,
 }
 
 export type ConsoleInputs = InferContractRouterInputs<typeof consoleRouterContract>

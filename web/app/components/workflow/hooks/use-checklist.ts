@@ -363,7 +363,10 @@ export const useChecklistBeforePublish = () => {
         usedVars = getNodeUsedVars(node).filter(v => v.length > 0)
       }
       const checkData = getCheckData(node.data, datasets)
-      const { errorMessage } = nodesExtraData![node.data.type as BlockEnum].checkValid(checkData, t, moreDataForCheckValid)
+      const nodeMetaData = nodesExtraData?.[node.data.type as BlockEnum]
+      if (!nodeMetaData)
+        continue
+      const { errorMessage } = nodeMetaData.checkValid(checkData, t, moreDataForCheckValid)
 
       if (errorMessage) {
         notify({ type: 'error', message: `[${node.data.title}] ${errorMessage}` })

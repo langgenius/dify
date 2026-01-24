@@ -43,6 +43,8 @@ NEXT_PUBLIC_EDITION=SELF_HOSTED
 # example: http://cloud.dify.ai/console/api
 NEXT_PUBLIC_API_PREFIX=http://localhost:5001/console/api
 NEXT_PUBLIC_COOKIE_DOMAIN=
+# WebSocket server URL.
+NEXT_PUBLIC_SOCKET_URL=ws://localhost:5001
 # The URL for Web APP, refers to the Web App base URL of WEB service if web app domain is different from
 # console or api domain.
 # example: http://udify.app/api

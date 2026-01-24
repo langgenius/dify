@@ -32,8 +32,10 @@ from core.trigger.debug.event_selectors import (
 from core.workflow.enums import NodeType
 from core.workflow.graph_engine.manager import GraphEngineManager
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from factories import file_factory, variable_factory
 from fields.member_fields import simple_account_fields
+from fields.online_user_fields import online_user_list_fields
 from fields.workflow_fields import workflow_fields, workflow_pagination_fields
 from fields.workflow_run_fields import workflow_run_node_execution_fields
 from libs import helper
@@ -43,6 +45,7 @@ from libs.login import current_account_with_tenant, login_required
 from models import App
 from models.model import AppMode
 from models.workflow import Workflow
+from repositories.workflow_collaboration_repository import WORKFLOW_ONLINE_USERS_PREFIX
 from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowHashNotEqualError
 from services.errors.llm import InvokeRateLimitError
@@ -182,6 +185,14 @@ class WorkflowUpdatePayload(BaseModel):
     marked_comment: str | None = Field(default=None, max_length=100)
 
 
+class WorkflowFeaturesPayload(BaseModel):
+    features: dict[str, Any] = Field(..., description="Workflow feature configuration")
+
+
+class WorkflowOnlineUsersQuery(BaseModel):
+    workflow_ids: str = Field(..., description="Comma-separated workflow IDs")
+
+
 class DraftWorkflowTriggerRunPayload(BaseModel):
     node_id: str
 
@@ -214,6 +225,8 @@ reg(DefaultBlockConfigQuery)
 reg(ConvertToWorkflowPayload)
 reg(WorkflowListQuery)
 reg(WorkflowUpdatePayload)
+reg(WorkflowFeaturesPayload)
+reg(WorkflowOnlineUsersQuery)
 reg(DraftWorkflowTriggerRunPayload)
 reg(DraftWorkflowTriggerRunAllPayload)
 reg(NestedNodeGraphPayload)
@@ -804,6 +817,31 @@ class ConvertToWorkflowApi(Resource):
         }
 
 
+@console_ns.route("/apps/<uuid:app_id>/workflows/draft/features")
+class WorkflowFeaturesApi(Resource):
+    """Update draft workflow features."""
+
+    @console_ns.expect(console_ns.models[WorkflowFeaturesPayload.__name__])
+    @console_ns.doc("update_workflow_features")
+    @console_ns.doc(description="Update draft workflow features")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.response(200, "Workflow features updated successfully")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    def post(self, app_model: App):
+        current_user, _ = current_account_with_tenant()
+
+        args = WorkflowFeaturesPayload.model_validate(console_ns.payload or {})
+        features = args.features
+
+        workflow_service = WorkflowService()
+        workflow_service.update_draft_workflow_features(app_model=app_model, features=features, account=current_user)
+
+        return {"result": "success"}
+
+
 @console_ns.route("/apps/<uuid:app_id>/workflows")
 class PublishedAllWorkflowApi(Resource):
     @console_ns.expect(console_ns.models[WorkflowListQuery.__name__])
@@ -1230,3 +1268,32 @@ class NestedNodeGraphApi(Resource):
             response = service.generate_nested_node_graph(tenant_id=app_model.tenant_id, request=request)
 
         return response.model_dump()
+
+
+@console_ns.route("/apps/workflows/online-users")
+class WorkflowOnlineUsersApi(Resource):
+    @console_ns.expect(console_ns.models[WorkflowOnlineUsersQuery.__name__])
+    @console_ns.doc("get_workflow_online_users")
+    @console_ns.doc(description="Get workflow online users")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @marshal_with(online_user_list_fields)
+    def get(self):
+        args = WorkflowOnlineUsersQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+
+        workflow_ids = [workflow_id.strip() for workflow_id in args.workflow_ids.split(",") if workflow_id.strip()]
+
+        results = []
+        for workflow_id in workflow_ids:
+            users_json = redis_client.hgetall(f"{WORKFLOW_ONLINE_USERS_PREFIX}{workflow_id}")
+
+            users = []
+            for _, user_info_json in users_json.items():
+                try:
+                    users.append(json.loads(user_info_json))
+                except Exception:
+                    continue
+            results.append({"workflow_id": workflow_id, "users": users})
+
+        return {"data": results}

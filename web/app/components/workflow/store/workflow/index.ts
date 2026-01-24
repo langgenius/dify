@@ -2,6 +2,7 @@ import type {
   StateCreator,
 } from 'zustand'
 import type { ChatVariableSliceShape } from './chat-variable-slice'
+import type { CommentSliceShape } from './comment-slice'
 import type { InspectVarsSliceShape } from './debug/inspect-vars-slice'
 import type { EnvVariableSliceShape } from './env-variable-slice'
 import type { FormSliceShape } from './form-slice'
@@ -25,6 +26,7 @@ import {
 import { createStore } from 'zustand/vanilla'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { createChatVariableSlice } from './chat-variable-slice'
+import { createCommentSlice } from './comment-slice'
 import { createInspectVarsSlice } from './debug/inspect-vars-slice'
 import { createEnvVariableSlice } from './env-variable-slice'
 import { createFormSlice } from './form-slice'
@@ -56,6 +58,7 @@ export type Shape
     & VersionSliceShape
     & WorkflowDraftSliceShape
     & WorkflowSliceShape
+    & CommentSliceShape
     & InspectVarsSliceShape
     & LayoutSliceShape
     & SkillEditorSliceShape
@@ -78,6 +81,7 @@ export const createWorkflowStore = (params: CreateWorkflowStoreParams) => {
     ...createHistorySlice(...args),
     ...createNodeSlice(...args),
     ...createPanelSlice(...args),
+    ...createCommentSlice(...args),
     ...createToolSlice(...args),
     ...createVersionSlice(...args),
     ...createWorkflowDraftSlice(...args),

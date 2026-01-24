@@ -39,6 +39,7 @@ export type SystemFeatures = {
   enable_email_code_login: boolean
   enable_email_password_login: boolean
   enable_social_oauth_login: boolean
+  enable_collaboration_mode: boolean
   is_allow_create_workspace: boolean
   is_allow_register: boolean
   is_email_setup: boolean
@@ -77,6 +78,7 @@ export const defaultSystemFeatures: SystemFeatures = {
   enable_email_code_login: false,
   enable_email_password_login: false,
   enable_social_oauth_login: false,
+  enable_collaboration_mode: false,
   is_allow_create_workspace: false,
   is_allow_register: false,
   is_email_setup: false,
@@ -112,6 +114,7 @@ export enum DatasetAttr {
   DATA_PUBLIC_EDITION = 'data-public-edition',
   DATA_PUBLIC_AMPLITUDE_API_KEY = 'data-public-amplitude-api-key',
   DATA_PUBLIC_COOKIE_DOMAIN = 'data-public-cookie-domain',
+  DATA_PUBLIC_SOCKET_URL = 'data-public-socket-url',
   DATA_PUBLIC_SUPPORT_MAIL_LOGIN = 'data-public-support-mail-login',
   DATA_PUBLIC_SENTRY_DSN = 'data-public-sentry-dsn',
   DATA_PUBLIC_MAINTENANCE_NOTICE = 'data-public-maintenance-notice',

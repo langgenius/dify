@@ -6,6 +6,12 @@
   transition: transform 0.2s ease-in-out;
 }
 
+/* Comment mode cursor override */
+.comment-mode-flow .react-flow__pane,
+.comment-mode-flow .react-flow__viewport {
+  cursor: none !important;
+}
+
 #workflow-container .react-flow__nodesselection-rect {
   border: 1px solid #528BFF;
   background: rgba(21, 94, 239, 0.05);

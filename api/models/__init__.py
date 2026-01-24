@@ -10,6 +10,11 @@ from .account import (
 )
 from .api_based_extension import APIBasedExtension, APIBasedExtensionPoint
 from .app_asset import AppAssets
+from .comment import (
+    WorkflowComment,
+    WorkflowCommentMention,
+    WorkflowCommentReply,
+)
 from .dataset import (
     AppDatasetJoin,
     Dataset,
@@ -213,6 +218,9 @@ __all__ = [
     "WorkflowAppLog",
     "WorkflowAppLogCreatedFrom",
     "WorkflowArchiveLog",
+    "WorkflowComment",
+    "WorkflowCommentMention",
+    "WorkflowCommentReply",
     "WorkflowFeature",
     "WorkflowFeatures",
     "WorkflowNodeExecutionModel",

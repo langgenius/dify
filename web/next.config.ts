@@ -36,6 +36,19 @@ const nextConfig: NextConfig = {
       bundler: 'turbopack',
     }),
   },
+  webpack: (config, { dev: _dev, isServer: _isServer }) => {
+    config.plugins.push(codeInspectorPlugin({ bundler: 'webpack' }))
+
+    config.experiments = {
+      asyncWebAssembly: true,
+      layers: true,
+    }
+    config.output.environment = {
+      asyncFunction: true,
+    }
+
+    return config
+  },
   productionBrowserSourceMaps: false, // enable browser source map generation during the production build
   // Configure pageExtensions to include md and mdx
   pageExtensions: ['ts', 'tsx', 'js', 'jsx', 'md', 'mdx'],

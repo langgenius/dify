@@ -165,6 +165,11 @@ const COOKIE_DOMAIN = getStringConfig(
   DatasetAttr.DATA_PUBLIC_COOKIE_DOMAIN,
   '',
 ).trim()
+export const SOCKET_URL = getStringConfig(
+  process.env.NEXT_PUBLIC_SOCKET_URL,
+  DatasetAttr.DATA_PUBLIC_SOCKET_URL,
+  'ws://localhost:5001',
+).trim()
 
 export const BATCH_CONCURRENCY = getNumberConfig(
   process.env.NEXT_PUBLIC_BATCH_CONCURRENCY,

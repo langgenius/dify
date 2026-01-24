@@ -254,6 +254,78 @@ class WorkflowService:
         # return draft workflow
         return workflow
 
+    def update_draft_workflow_environment_variables(
+        self,
+        *,
+        app_model: App,
+        environment_variables: Sequence[VariableBase],
+        account: Account,
+    ):
+        """
+        Update draft workflow environment variables
+        """
+        # fetch draft workflow by app_model
+        workflow = self.get_draft_workflow(app_model=app_model)
+
+        if not workflow:
+            raise ValueError("No draft workflow found.")
+
+        workflow.environment_variables = environment_variables
+        workflow.updated_by = account.id
+        workflow.updated_at = naive_utc_now()
+
+        # commit db session changes
+        db.session.commit()
+
+    def update_draft_workflow_conversation_variables(
+        self,
+        *,
+        app_model: App,
+        conversation_variables: Sequence[VariableBase],
+        account: Account,
+    ):
+        """
+        Update draft workflow conversation variables
+        """
+        # fetch draft workflow by app_model
+        workflow = self.get_draft_workflow(app_model=app_model)
+
+        if not workflow:
+            raise ValueError("No draft workflow found.")
+
+        workflow.conversation_variables = conversation_variables
+        workflow.updated_by = account.id
+        workflow.updated_at = naive_utc_now()
+
+        # commit db session changes
+        db.session.commit()
+
+    def update_draft_workflow_features(
+        self,
+        *,
+        app_model: App,
+        features: dict,
+        account: Account,
+    ):
+        """
+        Update draft workflow features
+        """
+        # fetch draft workflow by app_model
+        workflow = self.get_draft_workflow(app_model=app_model)
+
+        if not workflow:
+            raise ValueError("No draft workflow found.")
+
+        # validate features structure
+        self.validate_features_structure(app_model=app_model, features=features)
+
+        workflow.features = json.dumps(features)
+        workflow.updated_by = account.id
+        workflow.updated_at = naive_utc_now()
+
+        # commit db session changes
+        db.session.commit()
+
     def publish_workflow(
         self,
         *,

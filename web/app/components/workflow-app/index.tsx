@@ -18,6 +18,7 @@ import { FeaturesProvider } from '@/app/components/base/features'
 import Loading from '@/app/components/base/loading'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
+import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import {
   WorkflowContextProvider,
 } from '@/app/components/workflow/context'
@@ -185,15 +186,20 @@ const WorkflowAppWithAdditionalContext = () => {
   }, [workflowStore])
 
   const nodesData = useMemo(() => {
-    if (data)
-      return initialNodes(data.graph.nodes, data.graph.edges)
-
+    if (data) {
+      const processedNodes = initialNodes(data.graph.nodes, data.graph.edges)
+      collaborationManager.setNodes([], processedNodes)
+      return processedNodes
+    }
     return []
   }, [data])
-  const edgesData = useMemo(() => {
-    if (data)
-      return initialEdges(data.graph.edges, data.graph.nodes)
 
+  const edgesData = useMemo(() => {
+    if (data) {
+      const processedEdges = initialEdges(data.graph.edges, data.graph.nodes)
+      collaborationManager.setEdges([], processedEdges)
+      return processedEdges
+    }
     return []
   }, [data])
 

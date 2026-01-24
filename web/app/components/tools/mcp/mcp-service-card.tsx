@@ -1,6 +1,8 @@
 'use client'
+import type { CollaborationUpdate } from '@/app/components/workflow/collaboration/types/collaboration'
+import type { InputVar } from '@/app/components/workflow/types'
 import type { AppDetailResponse } from '@/models/app'
-import type { AppSSO } from '@/types/app'
+import type { AppSSO, ModelConfig, UserInputFormItem } from '@/types/app'
 import { RiEditLine, RiLoopLeftLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
@@ -16,6 +18,8 @@ import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
 import Indicator from '@/app/components/header/indicator'
 import MCPServerModal from '@/app/components/tools/mcp/mcp-server-modal'
+import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
+import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useAppContext } from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
@@ -36,6 +40,16 @@ export type IAppCardProps = {
   triggerModeMessage?: React.ReactNode // display-only message explaining the trigger restriction
 }
 
+type BasicAppConfig = Partial<ModelConfig> & {
+  updated_at?: number
+}
+
+type McpServerParam = {
+  label: string
+  variable: string
+  type: string
+}
+
 function MCPServiceCard({
   appInfo,
   triggerModeDisabled = false,
@@ -54,16 +68,16 @@ function MCPServiceCard({
   const isAdvancedApp = appInfo?.mode === AppModeEnum.ADVANCED_CHAT || appInfo?.mode === AppModeEnum.WORKFLOW
   const isBasicApp = !isAdvancedApp
   const { data: currentWorkflow } = useAppWorkflow(isAdvancedApp ? appId : '')
-  const [basicAppConfig, setBasicAppConfig] = useState<any>({})
-  const basicAppInputForm = useMemo(() => {
-    if (!isBasicApp || !basicAppConfig?.user_input_form)
+  const [basicAppConfig, setBasicAppConfig] = useState<BasicAppConfig>({})
+  const basicAppInputForm = useMemo<McpServerParam[]>(() => {
+    if (!isBasicApp || !basicAppConfig.user_input_form)
       return []
-    return basicAppConfig.user_input_form.map((item: any) => {
-      const type = Object.keys(item)[0]
-      return {
-        ...item[type],
-        type: type || 'text-input',
-      }
+    return basicAppConfig.user_input_form.map((item: UserInputFormItem) => {
+      if ('text-input' in item)
+        return { label: item['text-input'].label, variable: item['text-input'].variable, type: 'text-input' }
+      if ('select' in item)
+        return { label: item.select.label, variable: item.select.variable, type: 'select' }
+      return { label: item.paragraph.label, variable: item.paragraph.variable, type: 'paragraph' }
     })
   }, [basicAppConfig.user_input_form, isBasicApp])
   useEffect(() => {
@@ -90,12 +104,22 @@ function MCPServiceCard({
 
   const [activated, setActivated] = useState(serverActivated)
 
-  const latestParams = useMemo(() => {
+  const latestParams = useMemo<McpServerParam[]>(() => {
     if (isAdvancedApp) {
       if (!currentWorkflow?.graph)
         return []
-      const startNode = currentWorkflow?.graph.nodes.find(node => node.data.type === BlockEnum.Start) as any
-      return startNode?.data.variables as any[] || []
+      const startNode = currentWorkflow?.graph.nodes.find(node => node.data.type === BlockEnum.Start)
+      const variables = (startNode?.data as { variables?: InputVar[] } | undefined)?.variables || []
+      return variables.map((variable) => {
+        const label = typeof variable.label === 'string'
+          ? variable.label
+          : (variable.label.variable || variable.label.nodeName)
+        return {
+          label,
+          variable: variable.variable,
+          type: variable.type,
+        }
+      })
     }
     return basicAppInputForm
   }, [currentWorkflow, basicAppInputForm, isAdvancedApp])
@@ -103,6 +127,19 @@ function MCPServiceCard({
   const onGenCode = async () => {
     await refreshMCPServerCode(detail?.id || '')
     invalidateMCPServerDetail(appId)
+
+    // Emit collaboration event to notify other clients of MCP server changes
+    const socket = webSocketClient.getSocket(appId)
+    if (socket) {
+      socket.emit('collaboration_event', {
+        type: 'mcp_server_update',
+        data: {
+          action: 'codeRegenerated',
+          timestamp: Date.now(),
+        },
+        timestamp: Date.now(),
+      })
+    }
   }
 
   const onChangeStatus = async (state: boolean) => {
@@ -132,6 +169,20 @@ function MCPServiceCard({
       })
       invalidateMCPServerDetail(appId)
     }
+
+    // Emit collaboration event to notify other clients of MCP server status change
+    const socket = webSocketClient.getSocket(appId)
+    if (socket) {
+      socket.emit('collaboration_event', {
+        type: 'mcp_server_update',
+        data: {
+          action: 'statusChanged',
+          status: state ? 'active' : 'inactive',
+          timestamp: Date.now(),
+        },
+        timestamp: Date.now(),
+      })
+    }
   }
 
   const handleServerModalHide = () => {
@@ -143,6 +194,23 @@ function MCPServiceCard({
   useEffect(() => {
     setActivated(serverActivated)
   }, [serverActivated])
+
+  // Listen for collaborative MCP server updates from other clients
+  useEffect(() => {
+    if (!appId)
+      return
+
+    const unsubscribe = collaborationManager.onMcpServerUpdate(async (_update: CollaborationUpdate) => {
+      try {
+        invalidateMCPServerDetail(appId)
+      }
+      catch (error) {
+        console.error('MCP server update failed:', error)
+      }
+    })
+
+    return unsubscribe
+  }, [appId, invalidateMCPServerDetail])
 
   if (!currentWorkflow && isAdvancedApp)
     return null

@@ -57,6 +57,7 @@ export enum BlockEnum {
 export enum ControlMode {
   Pointer = 'pointer',
   Hand = 'hand',
+  Comment = 'comment',
 }
 export enum ErrorHandleMode {
   Terminated = 'terminated',

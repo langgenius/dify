@@ -40,7 +40,7 @@ export const useAvailableNodesMetaData = () => {
             TriggerPluginDefault,
           ]
     ),
-  ], [isChatMode, startNodeMetaData])
+  ] as AvailableNodesMetaData['nodes'], [isChatMode, startNodeMetaData])
 
   const availableNodesMetaData = useMemo<NodeDefaultBase[]>(() => {
     const toNodeDefaultBase = (
