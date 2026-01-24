@@ -123,19 +123,6 @@ describe('WorkflowOnboardingModal', () => {
       const descriptionDiv = container.querySelector('.body-xs-regular.leading-4')
       expect(descriptionDiv).toBeInTheDocument()
       expect(descriptionDiv).toHaveTextContent('workflow.onboarding.description')
-      expect(descriptionDiv).toHaveTextContent('workflow.onboarding.aboutStartNode')
-    })
-
-    it('should render learn more link', () => {
-      // Arrange & Act
-      renderComponent()
-
-      // Assert
-      const learnMoreLink = screen.getByText('workflow.onboarding.learnMore')
-      expect(learnMoreLink).toBeInTheDocument()
-      expect(learnMoreLink.closest('a')).toHaveAttribute('href', 'https://docs.example.com/guides/workflow/node/start')
-      expect(learnMoreLink.closest('a')).toHaveAttribute('target', '_blank')
-      expect(learnMoreLink.closest('a')).toHaveAttribute('rel', 'noopener noreferrer')
     })
 
     it('should render StartNodeSelectionPanel', () => {
@@ -547,16 +534,6 @@ describe('WorkflowOnboardingModal', () => {
       expect(heading).toHaveTextContent('workflow.onboarding.title')
     })
 
-    it('should have external link with proper attributes', () => {
-      // Arrange & Act
-      renderComponent()
-
-      // Assert
-      const link = screen.getByText('workflow.onboarding.learnMore').closest('a')
-      expect(link).toHaveAttribute('target', '_blank')
-      expect(link).toHaveAttribute('rel', 'noopener noreferrer')
-    })
-
     it('should have keyboard navigation support via ESC key', () => {
       // Arrange
       renderComponent({ isShow: true })
@@ -594,16 +571,6 @@ describe('WorkflowOnboardingModal', () => {
       // Assert
       const title = screen.getByText('workflow.onboarding.title')
       expect(title).toHaveClass('text-text-primary')
-    })
-
-    it('should have underlined learn more link', () => {
-      // Arrange & Act
-      renderComponent()
-
-      // Assert
-      const link = screen.getByText('workflow.onboarding.learnMore').closest('a')
-      expect(link).toHaveClass('underline')
-      expect(link).toHaveClass('cursor-pointer')
     })
   })
 
@@ -653,9 +620,6 @@ describe('WorkflowOnboardingModal', () => {
       // Assert - Header elements
       const heading = container.querySelector('h3')
       expect(heading).toBeInTheDocument()
-
-      // Assert - Description with link
-      expect(screen.getByText('workflow.onboarding.learnMore').closest('a')).toBeInTheDocument()
 
       // Assert - Selection panel
       expect(screen.getByTestId('start-node-selection-panel')).toBeInTheDocument()

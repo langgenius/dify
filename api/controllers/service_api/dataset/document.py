@@ -261,17 +261,6 @@ class DocumentAddByFileApi(DatasetApiResource):
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id, dataset_id):
         """Create document by upload file."""
-        args = {}
-        if "data" in request.form:
-            args = json.loads(request.form["data"])
-        if "doc_form" not in args:
-            args["doc_form"] = "text_model"
-        if "doc_language" not in args:
-            args["doc_language"] = "English"
-
-        # get dataset info
-        dataset_id = str(dataset_id)
-        tenant_id = str(tenant_id)
         dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
 
         if not dataset:
@@ -279,6 +268,18 @@ class DocumentAddByFileApi(DatasetApiResource):
 
         if dataset.provider == "external":
             raise ValueError("External datasets are not supported.")
+
+        args = {}
+        if "data" in request.form:
+            args = json.loads(request.form["data"])
+        if "doc_form" not in args:
+            args["doc_form"] = dataset.chunk_structure or "text_model"
+        if "doc_language" not in args:
+            args["doc_language"] = "English"
+
+        # get dataset info
+        dataset_id = str(dataset_id)
+        tenant_id = str(tenant_id)
 
         indexing_technique = args.get("indexing_technique") or dataset.indexing_technique
         if not indexing_technique:
@@ -370,17 +371,6 @@ class DocumentUpdateByFileApi(DatasetApiResource):
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id, dataset_id, document_id):
         """Update document by upload file."""
-        args = {}
-        if "data" in request.form:
-            args = json.loads(request.form["data"])
-        if "doc_form" not in args:
-            args["doc_form"] = "text_model"
-        if "doc_language" not in args:
-            args["doc_language"] = "English"
-
-        # get dataset info
-        dataset_id = str(dataset_id)
-        tenant_id = str(tenant_id)
         dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
 
         if not dataset:
@@ -388,6 +378,18 @@ class DocumentUpdateByFileApi(DatasetApiResource):
 
         if dataset.provider == "external":
             raise ValueError("External datasets are not supported.")
+
+        args = {}
+        if "data" in request.form:
+            args = json.loads(request.form["data"])
+        if "doc_form" not in args:
+            args["doc_form"] = dataset.chunk_structure or "text_model"
+        if "doc_language" not in args:
+            args["doc_language"] = "English"
+
+        # get dataset info
+        dataset_id = str(dataset_id)
+        tenant_id = str(tenant_id)
 
         # indexing_technique is already set in dataset since this is an update
         args["indexing_technique"] = dataset.indexing_technique

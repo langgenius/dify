@@ -16,14 +16,14 @@ jobs:
 
       - name: Check Docker Compose inputs
         id: docker-compose-changes
-        uses: tj-actions/changed-files@v46
+        uses: tj-actions/changed-files@v47
         with:
           files: |
             docker/generate_docker_compose
             docker/.env.example
             docker/docker-compose-template.yaml
             docker/docker-compose.yaml
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -79,9 +79,32 @@ jobs:
           find . -name "*.py" -type f -exec sed -i.bak -E 's/"([^"]+)" \| None/Optional["\1"]/g; s/'"'"'([^'"'"']+)'"'"' \| None/Optional['"'"'\1'"'"']/g' {} \;
           find . -name "*.py.bak" -type f -delete
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: ./web/pnpm-lock.yaml
+
+      - name: Install web dependencies
+        run: |
+          cd web
+          pnpm install --frozen-lockfile
+
+      - name: ESLint autofix
+        run: |
+          cd web
+          pnpm lint:fix || true
+
       # mdformat breaks YAML front matter in markdown files. Add --exclude for directories containing YAML front matter.
       - name: mdformat
         run: |
-          uvx --python 3.13 mdformat . --exclude ".claude/skills/**/SKILL.md"
+          uvx --python 3.13 mdformat . --exclude ".agents/skills/**"
 
       - uses: autofix-ci/action@635ffb0c9798bd160680f18fd73371e355b85f27

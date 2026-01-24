@@ -12,12 +12,8 @@ The codebase is split into:
 
 ## Backend Workflow
 
+- Read `api/AGENTS.md` for details
 - Run backend CLI commands through `uv run --project api <command>`.
-
-- Before submission, all backend modifications must pass local checks: `make lint`, `make type-check`, and `uv run --project api --dev dev/pytest/pytest_unit_tests.sh`.
-
-- Use Makefile targets for linting and formatting; `make lint` and `make type-check` cover the required checks.
-
 - Integration tests are CI-only and are not expected to run in the local environment.
 
 ## Frontend Workflow
