@@ -64,6 +64,7 @@ type WorkflowPreviewProps = {
   className?: string
   fitView?: boolean
   fitViewOptions?: FitViewOptions
+  miniMapToRight?: boolean
 }
 const WorkflowPreview = ({
   nodes,
@@ -72,6 +73,7 @@ const WorkflowPreview = ({
   className,
   fitView,
   fitViewOptions,
+  miniMapToRight,
 }: WorkflowPreviewProps) => {
   const [nodesData, setNodesData] = useState(() => initialNodes(nodes, edges))
   const [edgesData, setEdgesData] = useState(() => initialEdges(edges, nodes))
@@ -102,8 +104,7 @@ const WorkflowPreview = ({
             height: 72,
           }}
           maskColor="var(--color-workflow-minimap-bg)"
-          className="!absolute !bottom-14 !left-4 z-[9] !m-0 !h-[72px] !w-[102px] !rounded-lg !border-[0.5px]
-          !border-divider-subtle !bg-background-default-subtle !shadow-md !shadow-shadow-shadow-5"
+          className={cn('!absolute !bottom-14 z-[9] !m-0 !h-[72px] !w-[102px] !rounded-lg !border-[0.5px] !border-divider-subtle !bg-background-default-subtle !shadow-md !shadow-shadow-shadow-5', miniMapToRight ? '!right-4' : '!left-4')}
         />
         <div className="absolute bottom-4 left-4 z-[9] mt-1 flex items-center gap-2">
           <ZoomInOut />

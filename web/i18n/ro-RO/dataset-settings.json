@@ -16,7 +16,7 @@
   "form.indexMethod": "Metodă de indexare",
   "form.indexMethodChangeToEconomyDisabledTip": "Nu este disponibil pentru retrogradarea de la HQ la ECO",
   "form.indexMethodEconomy": "Economică",
-  "form.indexMethodEconomyTip": "Utilizați motoare de vectori offline, indexuri de cuvinte cheie etc. pentru a reduce acuratețea fără a cheltui jetoane",
+  "form.indexMethodEconomyTip": "Utilizați {{count}} cuvinte cheie per fragment pentru recuperare, fără consum de tokenuri, cu prețul unei acurateți mai scăzute.",
   "form.indexMethodHighQuality": "Calitate ridicată",
   "form.indexMethodHighQualityTip": "Invocă modelul Embedding pentru procesare pentru a oferi o acuratețe mai mare la interogările utilizatorilor.",
   "form.me": "(Tu)",

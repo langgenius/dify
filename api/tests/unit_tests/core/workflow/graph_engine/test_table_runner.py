@@ -19,6 +19,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+from core.app.workflow.node_factory import DifyNodeFactory
 from core.tools.utils.yaml_utils import _load_yaml_file
 from core.variables import (
     ArrayNumberVariable,
@@ -38,7 +39,6 @@ from core.workflow.graph_events import (
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
 )
-from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 
