@@ -79,6 +79,29 @@ jobs:
           find . -name "*.py" -type f -exec sed -i.bak -E 's/"([^"]+)" \| None/Optional["\1"]/g; s/'"'"'([^'"'"']+)'"'"' \| None/Optional['"'"'\1'"'"']/g' {} \;
           find . -name "*.py.bak" -type f -delete
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: ./web/pnpm-lock.yaml
+
+      - name: Install web dependencies
+        run: |
+          cd web
+          pnpm install --frozen-lockfile
+
+      - name: ESLint autofix
+        run: |
+          cd web
+          pnpm lint:fix || true
+
       # mdformat breaks YAML front matter in markdown files. Add --exclude for directories containing YAML front matter.
       - name: mdformat
         run: |

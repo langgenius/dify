@@ -110,6 +110,7 @@
   "chat.conversationName": "Nume conversație",
   "chat.conversationNameCanNotEmpty": "Numele conversației este obligatoriu",
   "chat.conversationNamePlaceholder": "Vă rugăm să introduceți numele conversației",
+  "chat.inputDisabledPlaceholder": "Doar Previzualizare",
   "chat.inputPlaceholder": "Vorbește cu {{botName}}",
   "chat.renameConversation": "Redenumește conversația",
   "chat.resend": "Reexpediați",

@@ -30,7 +30,7 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
   onSave,
 }) => {
   const { t } = useTranslation()
-  const docLink = useDocLink('https://docs.dify.ai/versions/3-0-x')
+  const docLink = useDocLink()
   const [localeData, setLocaleData] = useState(data)
   const [loading, setLoading] = useState(false)
   const { notify } = useToastContext()

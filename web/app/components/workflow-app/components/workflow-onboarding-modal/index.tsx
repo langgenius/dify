@@ -60,8 +60,6 @@ const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
             </h3>
             <div className="body-xs-regular leading-4 text-text-tertiary">
               {t('onboarding.description', { ns: 'workflow' })}
-              {' '}
-              {t('onboarding.aboutStartNode', { ns: 'workflow' })}
             </div>
           </div>
 
