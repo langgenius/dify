@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import Loading from '@/app/components/base/loading'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useDatasetList, useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import DatasetCard from './dataset-card'
@@ -25,6 +26,7 @@ const Datasets = ({
     fetchNextPage,
     hasNextPage,
     isFetching,
+    isFetchingNextPage,
   } = useDatasetList({
     initialPage: 1,
     tag_ids: tags,
@@ -60,6 +62,7 @@ const Datasets = ({
         {datasetList?.pages.map(({ data: datasets }) => datasets.map(dataset => (
           <DatasetCard key={dataset.id} dataset={dataset} onSuccess={invalidDatasetList} />),
         ))}
+        {isFetchingNextPage && <Loading />}
         <div ref={anchorRef} className="h-0" />
       </nav>
     </>

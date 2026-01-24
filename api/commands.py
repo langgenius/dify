@@ -862,8 +862,27 @@ def clear_free_plan_tenant_expired_logs(days: int, batch: int, tenant_ids: list[
 
 
 @click.command("clean-workflow-runs", help="Clean expired workflow runs and related data for free tenants.")
-@click.option("--days", default=30, show_default=True, help="Delete workflow runs created before N days ago.")
+@click.option(
+    "--before-days",
+    "--days",
+    default=30,
+    show_default=True,
+    type=click.IntRange(min=0),
+    help="Delete workflow runs created before N days ago.",
+)
 @click.option("--batch-size", default=200, show_default=True, help="Batch size for selecting workflow runs.")
+@click.option(
+    "--from-days-ago",
+    default=None,
+    type=click.IntRange(min=0),
+    help="Lower bound in days ago (older). Must be paired with --to-days-ago.",
+)
+@click.option(
+    "--to-days-ago",
+    default=None,
+    type=click.IntRange(min=0),
+    help="Upper bound in days ago (newer). Must be paired with --from-days-ago.",
+)
 @click.option(
     "--start-from",
     type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
@@ -882,8 +901,10 @@ def clear_free_plan_tenant_expired_logs(days: int, batch: int, tenant_ids: list[
     help="Preview cleanup results without deleting any workflow run data.",
 )
 def clean_workflow_runs(
-    days: int,
+    before_days: int,
     batch_size: int,
+    from_days_ago: int | None,
+    to_days_ago: int | None,
     start_from: datetime.datetime | None,
     end_before: datetime.datetime | None,
     dry_run: bool,
@@ -894,11 +915,24 @@ def clean_workflow_runs(
     if (start_from is None) ^ (end_before is None):
         raise click.UsageError("--start-from and --end-before must be provided together.")
 
+    if (from_days_ago is None) ^ (to_days_ago is None):
+        raise click.UsageError("--from-days-ago and --to-days-ago must be provided together.")
+
+    if from_days_ago is not None and to_days_ago is not None:
+        if start_from or end_before:
+            raise click.UsageError("Choose either day offsets or explicit dates, not both.")
+        if from_days_ago <= to_days_ago:
+            raise click.UsageError("--from-days-ago must be greater than --to-days-ago.")
+        now = datetime.datetime.now()
+        start_from = now - datetime.timedelta(days=from_days_ago)
+        end_before = now - datetime.timedelta(days=to_days_ago)
+        before_days = 0
+
     start_time = datetime.datetime.now(datetime.UTC)
     click.echo(click.style(f"Starting workflow run cleanup at {start_time.isoformat()}.", fg="white"))
 
     WorkflowRunCleanup(
-        days=days,
+        days=before_days,
         batch_size=batch_size,
         start_from=start_from,
         end_before=end_before,
@@ -914,6 +948,346 @@ def clean_workflow_runs(
             fg="green",
         )
     )
+
+
+@click.command(
+    "archive-workflow-runs",
+    help="Archive workflow runs for paid plan tenants to S3-compatible storage.",
+)
+@click.option("--tenant-ids", default=None, help="Optional comma-separated tenant IDs for grayscale rollout.")
+@click.option("--before-days", default=90, show_default=True, help="Archive runs older than N days.")
+@click.option(
+    "--from-days-ago",
+    default=None,
+    type=click.IntRange(min=0),
+    help="Lower bound in days ago (older). Must be paired with --to-days-ago.",
+)
+@click.option(
+    "--to-days-ago",
+    default=None,
+    type=click.IntRange(min=0),
+    help="Upper bound in days ago (newer). Must be paired with --from-days-ago.",
+)
+@click.option(
+    "--start-from",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    default=None,
+    help="Archive runs created at or after this timestamp (UTC if no timezone).",
+)
+@click.option(
+    "--end-before",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    default=None,
+    help="Archive runs created before this timestamp (UTC if no timezone).",
+)
+@click.option("--batch-size", default=100, show_default=True, help="Batch size for processing.")
+@click.option("--workers", default=1, show_default=True, type=int, help="Concurrent workflow runs to archive.")
+@click.option("--limit", default=None, type=int, help="Maximum number of runs to archive.")
+@click.option("--dry-run", is_flag=True, help="Preview without archiving.")
+@click.option("--delete-after-archive", is_flag=True, help="Delete runs and related data after archiving.")
+def archive_workflow_runs(
+    tenant_ids: str | None,
+    before_days: int,
+    from_days_ago: int | None,
+    to_days_ago: int | None,
+    start_from: datetime.datetime | None,
+    end_before: datetime.datetime | None,
+    batch_size: int,
+    workers: int,
+    limit: int | None,
+    dry_run: bool,
+    delete_after_archive: bool,
+):
+    """
+    Archive workflow runs for paid plan tenants older than the specified days.
+
+    This command archives the following tables to storage:
+    - workflow_node_executions
+    - workflow_node_execution_offload
+    - workflow_pauses
+    - workflow_pause_reasons
+    - workflow_trigger_logs
+
+    The workflow_runs and workflow_app_logs tables are preserved for UI listing.
+    """
+    from services.retention.workflow_run.archive_paid_plan_workflow_run import WorkflowRunArchiver
+
+    run_started_at = datetime.datetime.now(datetime.UTC)
+    click.echo(
+        click.style(
+            f"Starting workflow run archiving at {run_started_at.isoformat()}.",
+            fg="white",
+        )
+    )
+
+    if (start_from is None) ^ (end_before is None):
+        click.echo(click.style("start-from and end-before must be provided together.", fg="red"))
+        return
+
+    if (from_days_ago is None) ^ (to_days_ago is None):
+        click.echo(click.style("from-days-ago and to-days-ago must be provided together.", fg="red"))
+        return
+
+    if from_days_ago is not None and to_days_ago is not None:
+        if start_from or end_before:
+            click.echo(click.style("Choose either day offsets or explicit dates, not both.", fg="red"))
+            return
+        if from_days_ago <= to_days_ago:
+            click.echo(click.style("from-days-ago must be greater than to-days-ago.", fg="red"))
+            return
+        now = datetime.datetime.now()
+        start_from = now - datetime.timedelta(days=from_days_ago)
+        end_before = now - datetime.timedelta(days=to_days_ago)
+        before_days = 0
+
+    if start_from and end_before and start_from >= end_before:
+        click.echo(click.style("start-from must be earlier than end-before.", fg="red"))
+        return
+    if workers < 1:
+        click.echo(click.style("workers must be at least 1.", fg="red"))
+        return
+
+    archiver = WorkflowRunArchiver(
+        days=before_days,
+        batch_size=batch_size,
+        start_from=start_from,
+        end_before=end_before,
+        workers=workers,
+        tenant_ids=[tid.strip() for tid in tenant_ids.split(",")] if tenant_ids else None,
+        limit=limit,
+        dry_run=dry_run,
+        delete_after_archive=delete_after_archive,
+    )
+    summary = archiver.run()
+    click.echo(
+        click.style(
+            f"Summary: processed={summary.total_runs_processed}, archived={summary.runs_archived}, "
+            f"skipped={summary.runs_skipped}, failed={summary.runs_failed}, "
+            f"time={summary.total_elapsed_time:.2f}s",
+            fg="cyan",
+        )
+    )
+
+    run_finished_at = datetime.datetime.now(datetime.UTC)
+    elapsed = run_finished_at - run_started_at
+    click.echo(
+        click.style(
+            f"Workflow run archiving completed. start={run_started_at.isoformat()} "
+            f"end={run_finished_at.isoformat()} duration={elapsed}",
+            fg="green",
+        )
+    )
+
+
+@click.command(
+    "restore-workflow-runs",
+    help="Restore archived workflow runs from S3-compatible storage.",
+)
+@click.option(
+    "--tenant-ids",
+    required=False,
+    help="Tenant IDs (comma-separated).",
+)
+@click.option("--run-id", required=False, help="Workflow run ID to restore.")
+@click.option(
+    "--start-from",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    default=None,
+    help="Optional lower bound (inclusive) for created_at; must be paired with --end-before.",
+)
+@click.option(
+    "--end-before",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    default=None,
+    help="Optional upper bound (exclusive) for created_at; must be paired with --start-from.",
+)
+@click.option("--workers", default=1, show_default=True, type=int, help="Concurrent workflow runs to restore.")
+@click.option("--limit", type=int, default=100, show_default=True, help="Maximum number of runs to restore.")
+@click.option("--dry-run", is_flag=True, help="Preview without restoring.")
+def restore_workflow_runs(
+    tenant_ids: str | None,
+    run_id: str | None,
+    start_from: datetime.datetime | None,
+    end_before: datetime.datetime | None,
+    workers: int,
+    limit: int,
+    dry_run: bool,
+):
+    """
+    Restore an archived workflow run from storage to the database.
+
+    This restores the following tables:
+    - workflow_node_executions
+    - workflow_node_execution_offload
+    - workflow_pauses
+    - workflow_pause_reasons
+    - workflow_trigger_logs
+    """
+    from services.retention.workflow_run.restore_archived_workflow_run import WorkflowRunRestore
+
+    parsed_tenant_ids = None
+    if tenant_ids:
+        parsed_tenant_ids = [tid.strip() for tid in tenant_ids.split(",") if tid.strip()]
+        if not parsed_tenant_ids:
+            raise click.BadParameter("tenant-ids must not be empty")
+
+    if (start_from is None) ^ (end_before is None):
+        raise click.UsageError("--start-from and --end-before must be provided together.")
+    if run_id is None and (start_from is None or end_before is None):
+        raise click.UsageError("--start-from and --end-before are required for batch restore.")
+    if workers < 1:
+        raise click.BadParameter("workers must be at least 1")
+
+    start_time = datetime.datetime.now(datetime.UTC)
+    click.echo(
+        click.style(
+            f"Starting restore of workflow run {run_id} at {start_time.isoformat()}.",
+            fg="white",
+        )
+    )
+
+    restorer = WorkflowRunRestore(dry_run=dry_run, workers=workers)
+    if run_id:
+        results = [restorer.restore_by_run_id(run_id)]
+    else:
+        assert start_from is not None
+        assert end_before is not None
+        results = restorer.restore_batch(
+            parsed_tenant_ids,
+            start_date=start_from,
+            end_date=end_before,
+            limit=limit,
+        )
+
+    end_time = datetime.datetime.now(datetime.UTC)
+    elapsed = end_time - start_time
+
+    successes = sum(1 for result in results if result.success)
+    failures = len(results) - successes
+
+    if failures == 0:
+        click.echo(
+            click.style(
+                f"Restore completed successfully. success={successes} duration={elapsed}",
+                fg="green",
+            )
+        )
+    else:
+        click.echo(
+            click.style(
+                f"Restore completed with failures. success={successes} failed={failures} duration={elapsed}",
+                fg="red",
+            )
+        )
+
+
+@click.command(
+    "delete-archived-workflow-runs",
+    help="Delete archived workflow runs from the database.",
+)
+@click.option(
+    "--tenant-ids",
+    required=False,
+    help="Tenant IDs (comma-separated).",
+)
+@click.option("--run-id", required=False, help="Workflow run ID to delete.")
+@click.option(
+    "--start-from",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    default=None,
+    help="Optional lower bound (inclusive) for created_at; must be paired with --end-before.",
+)
+@click.option(
+    "--end-before",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    default=None,
+    help="Optional upper bound (exclusive) for created_at; must be paired with --start-from.",
+)
+@click.option("--limit", type=int, default=100, show_default=True, help="Maximum number of runs to delete.")
+@click.option("--dry-run", is_flag=True, help="Preview without deleting.")
+def delete_archived_workflow_runs(
+    tenant_ids: str | None,
+    run_id: str | None,
+    start_from: datetime.datetime | None,
+    end_before: datetime.datetime | None,
+    limit: int,
+    dry_run: bool,
+):
+    """
+    Delete archived workflow runs from the database.
+    """
+    from services.retention.workflow_run.delete_archived_workflow_run import ArchivedWorkflowRunDeletion
+
+    parsed_tenant_ids = None
+    if tenant_ids:
+        parsed_tenant_ids = [tid.strip() for tid in tenant_ids.split(",") if tid.strip()]
+        if not parsed_tenant_ids:
+            raise click.BadParameter("tenant-ids must not be empty")
+
+    if (start_from is None) ^ (end_before is None):
+        raise click.UsageError("--start-from and --end-before must be provided together.")
+    if run_id is None and (start_from is None or end_before is None):
+        raise click.UsageError("--start-from and --end-before are required for batch delete.")
+
+    start_time = datetime.datetime.now(datetime.UTC)
+    target_desc = f"workflow run {run_id}" if run_id else "workflow runs"
+    click.echo(
+        click.style(
+            f"Starting delete of {target_desc} at {start_time.isoformat()}.",
+            fg="white",
+        )
+    )
+
+    deleter = ArchivedWorkflowRunDeletion(dry_run=dry_run)
+    if run_id:
+        results = [deleter.delete_by_run_id(run_id)]
+    else:
+        assert start_from is not None
+        assert end_before is not None
+        results = deleter.delete_batch(
+            parsed_tenant_ids,
+            start_date=start_from,
+            end_date=end_before,
+            limit=limit,
+        )
+
+    for result in results:
+        if result.success:
+            click.echo(
+                click.style(
+                    f"{'[DRY RUN] Would delete' if dry_run else 'Deleted'} "
+                    f"workflow run {result.run_id} (tenant={result.tenant_id})",
+                    fg="green",
+                )
+            )
+        else:
+            click.echo(
+                click.style(
+                    f"Failed to delete workflow run {result.run_id}: {result.error}",
+                    fg="red",
+                )
+            )
+
+    end_time = datetime.datetime.now(datetime.UTC)
+    elapsed = end_time - start_time
+
+    successes = sum(1 for result in results if result.success)
+    failures = len(results) - successes
+
+    if failures == 0:
+        click.echo(
+            click.style(
+                f"Delete completed successfully. success={successes} duration={elapsed}",
+                fg="green",
+            )
+        )
+    else:
+        click.echo(
+            click.style(
+                f"Delete completed with failures. success={successes} failed={failures} duration={elapsed}",
+                fg="red",
+            )
+        )
 
 
 @click.option("-f", "--force", is_flag=True, help="Skip user confirmation and force the command to execute.")
